@@ -25,17 +25,26 @@ class AvoidCrossParameters(QubitFluxParameters):
 
 @dataclass
 class AvoidCrossResults(Results):
+    """Avoided crossing outputs"""
+
     parabolas: dict
-    # TODO: doc
+    """Extracted parabolas"""
     fits: dict
+    """Fits parameters"""
     cz: dict
+    """CZ intersection points """
     iswap: dict
+    """iSwap intersection points"""
 
 
 @dataclass
 class AvoidCrossData(Data):
+    """Avoided crossing acquisition outputs"""
+
     qubit_pairs: list
-    ro_freq_high: dict = field(default_factory=dict)
+    """list of qubit pairs ordered following the drive frequency"""
+    drive_frequency_high: dict = field(default_factory=dict)
+    """Highest drive frequency in each qubit pair"""
     data: dict[tuple[QubitId, str], npt.NDArray[QubitFluxType]] = field(
         default_factory=dict
     )
@@ -47,6 +56,17 @@ def _acquisition(
     platform: Platform,
     qubits: QubitsPairs,  # qubit pairs
 ) -> AvoidCrossData:
+    """
+    Data acquisition for avoided crossing.
+    This routine performs the qubit flux dependency for the "01" and "02" transition
+    on the qubit pair. It returns the bias and frequency values to perform a CZ
+    and a iSwap gate.
+
+    Args:
+        params (AvoidCrossParameters): experiment's parameters.
+        platform (Platform): Qibolab platform object.
+        qubits (dict): list of targets qubit pairs to perform the action.
+    """
     qubit_pairs = list(qubits.keys())
     order_pairs = np.array([order_pair(pair, platform.qubits) for pair in qubit_pairs])
     data = AvoidCrossData(qubit_pairs=order_pairs.tolist())
@@ -82,15 +102,17 @@ def _acquisition(
             )
 
     unique_high_qubits = np.unique(order_pairs[:, 1])
-    data.ro_freq_high = {
-        float(qubit): float(platform.qubits[qubit].readout_frequency)
+    data.drive_frequency_high = {
+        float(qubit): float(platform.qubits[qubit].drive_frequency)
         for qubit in unique_high_qubits
     }
     return data
 
 
 def _fit(data: AvoidCrossData) -> AvoidCrossResults:
-    # qubits = data.qubits
+    """
+    Post-Processing for avoided crossing.
+    """
     qubit_data = data.data
     fits = {}
     cz = {}
@@ -109,7 +131,7 @@ def _fit(data: AvoidCrossData) -> AvoidCrossResults:
         # Fit the 01+10 curve
         curve_01 = np.array(curves[low, "01"])
         x_01 = np.unique(qubit_data[low, "01"]["bias"])
-        fit_01_10 = np.polyfit(x_01, curve_01 + data.ro_freq_high[high], 2)
+        fit_01_10 = np.polyfit(x_01, curve_01 + data.drive_frequency_high[high], 2)
         fits[qubit_pair, "01+10"] = fit_01_10.tolist()
         # find the intersection of the two parabolas
         delta_fit = fit_02 - fit_01_10
@@ -122,7 +144,7 @@ def _fit(data: AvoidCrossData) -> AvoidCrossResults:
         fit_01 = np.polyfit(x_01, curve_01, 2)
         fits[qubit_pair, "01"] = fit_01.tolist()
         fit_pars = deepcopy(fit_01)
-        line_val = data.ro_freq_high[high]
+        line_val = data.drive_frequency_high[high]
         fit_pars[2] -= line_val
         x1, x2 = solve_eq(fit_pars)
         iswap[qubit_pair] = [[x1, line_val], [x2, line_val]]
@@ -137,6 +159,7 @@ def _fit(data: AvoidCrossData) -> AvoidCrossResults:
 
 
 def _plot(data: AvoidCrossData, fit: AvoidCrossResults, qubit):
+    """Plotting function for avoided crossing"""
     fitting_report = ""
     figures = []
     order_pair = tuple(index(data.qubit_pairs, qubit))
@@ -206,7 +229,7 @@ def _plot(data: AvoidCrossData, fit: AvoidCrossResults, qubit):
     parabolas.add_trace(
         go.Scatter(
             x=bias_range,
-            y=[data.ro_freq_high[order_pair[1]]] * STEP,
+            y=[data.drive_frequency_high[order_pair[1]]] * STEP,
             showlegend=True,
             name="10",
         )
@@ -249,11 +272,12 @@ def _plot(data: AvoidCrossData, fit: AvoidCrossResults, qubit):
 avoided_crossing = Routine(_acquisition, _fit, _plot)
 
 
-def find_parabola(data):
+def find_parabola(data: dict) -> list:
+    """
+    Finds the parabola in `data`
+    """
     freqs = data["freq"]
     currs = data["bias"]
-    # filter1 = (freqs < max_freq) & (currs > min_bias) & (currs < max_bias)
-    # filtered = data[filter1]
     biass = sorted(np.unique(currs))
     frequencies = []
     for bias in biass:
@@ -262,7 +286,13 @@ def find_parabola(data):
     return frequencies
 
 
-def solve_eq(pars):
+def solve_eq(pars: list) -> tuple:
+    """
+    Solver of the quadratic equation
+    .. math::
+        a x^2 + b x + c = 0
+    `pars` is the list [a, b, c].
+    """
     first_term = -1 * pars[1]
     second_term = np.sqrt(pars[1] ** 2 - 4 * pars[0] * pars[2])
     x1 = (first_term + second_term) / pars[0] / 2
@@ -270,7 +300,9 @@ def solve_eq(pars):
     return x1, x2
 
 
-def index(pairs, item):
+def index(pairs: list, item: list) -> list:
+    """Find the ordered pair"""
     for pair in pairs:
         if set(pair) == set(item):
             return pair
+    raise ValueError(f"{item} not in pairs")
