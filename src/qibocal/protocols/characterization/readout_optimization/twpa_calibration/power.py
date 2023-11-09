@@ -27,6 +27,8 @@ TwpaPowerType = np.dtype(
     [
         ("power", np.float64),
         ("assignment_fidelity", np.float64),
+        ("angle", np.float64),
+        ("threshold", np.float64),
     ]
 )
 
@@ -45,6 +47,8 @@ class TwpaPowerResults(Results):
 
     best_powers: dict[QubitId, float] = field(default_factory=dict)
     best_fidelities: dict[QubitId, float] = field(default_factory=dict)
+    best_angles: dict[QubitId, float] = field(default_factory=dict)
+    best_thresholds: dict[QubitId, float] = field(default_factory=dict)
 
 
 def _acquisition(
@@ -106,6 +110,8 @@ def _acquisition(
                     assignment_fidelity=np.array(
                         [classification_result.assignment_fidelity[qubit]]
                     ),
+                    angle=np.array([classification_result.rotation_angle[qubit]]),
+                    threshold=np.array([classification_result.threshold[qubit]]),
                 ),
             )
     return data
@@ -117,13 +123,22 @@ def _fit(data: TwpaPowerData) -> TwpaPowerResults:
     qubits = data.qubits
     best_power = {}
     best_fidelity = {}
+    best_angle = {}
+    best_threshold = {}
     for qubit in qubits:
         data_qubit = data[qubit]
         index_best_err = np.argmax(data_qubit["assignment_fidelity"])
         best_fidelity[qubit] = data_qubit["assignment_fidelity"][index_best_err]
         best_power[qubit] = data_qubit["power"][index_best_err]
+        best_angle[qubit] = data_qubit["angle"][index_best_err]
+        best_threshold[qubit] = data_qubit["threshold"][index_best_err]
 
-    return TwpaPowerResults(best_power, best_fidelity)
+    return TwpaPowerResults(
+        best_power,
+        best_fidelity,
+        best_angles=best_angle,
+        best_thresholds=best_threshold,
+    )
 
 
 def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
@@ -162,6 +177,8 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
 
 def _update(results: TwpaPowerResults, platform: Platform, qubit: QubitId):
     update.twpa_power(results.best_powers[qubit], platform, qubit)
+    update.iq_angle(results.best_angles[qubit], platform, qubit)
+    update.threshold(results.best_thresholds[qubit], platform, qubit)
 
 
 twpa_power = Routine(_acquisition, _fit, _plot, _update)

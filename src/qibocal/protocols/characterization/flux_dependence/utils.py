@@ -51,15 +51,23 @@ def flux_dependence_plot(data, fit, qubit):
 
     qubit_data = data[qubit]
 
+    if not data.__class__.__name__ == "CouplerSpectroscopyData":
+        subplot_titles = (
+            "MSR [V]",
+            "Phase [rad]",
+        )
+    else:
+        subplot_titles = (
+            "MSR [V] Qubit" + str(qubit),
+            "Phase [rad] Qubit" + str(qubit),
+        )
+
     fig = make_subplots(
         rows=1,
         cols=2,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=(
-            "MSR [V]",
-            "Phase [rad]",
-        ),
+        subplot_titles=subplot_titles,
     )
     frequencies = qubit_data.freq * HZ_TO_GHZ
     msr = qubit_data.msr
@@ -67,7 +75,10 @@ def flux_dependence_plot(data, fit, qubit):
         msr_mask = 0.5
         if data.resonator_type == "3D":
             msr = -msr
-    elif data.__class__.__name__ == "QubitFluxData":
+    elif (
+        data.__class__.__name__ == "QubitFluxData"
+        or data.__class__.__name__ == "CouplerSpectroscopyData"
+    ):
         msr_mask = 0.3
         if data.resonator_type == "2D":
             msr = -msr
@@ -85,19 +96,22 @@ def flux_dependence_plot(data, fit, qubit):
         col=1,
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=frequencies1,
-            y=biases1,
-            mode="markers",
-            marker_color="green",
-            showlegend=True,
-            name="Curve estimation",
-        ),
-        row=1,
-        col=1,
-    )
-    if fit is not None:
+    if not data.__class__.__name__ == "CouplerSpectroscopyData":
+        fig.add_trace(
+            go.Scatter(
+                x=frequencies1,
+                y=biases1,
+                mode="markers",
+                marker_color="green",
+                showlegend=True,
+                name="Curve estimation",
+            ),
+            row=1,
+            col=1,
+        )
+
+    # TODO: This fit is for frequency, can it be reused here, do we even want the fit ?
+    if fit is not None and not data.__class__.__name__ == "CouplerSpectroscopyData":
         fitting_report = ""
         params = fit.fitted_parameters[qubit]
         fitting_report_label = "Frequency"
@@ -177,7 +191,10 @@ def flux_dependence_plot(data, fit, qubit):
         row=1,
         col=1,
     )
-    fig.update_yaxes(title_text="Bias (V)", row=1, col=1)
+    if not data.__class__.__name__ == "CouplerSpectroscopyData":
+        fig.update_yaxes(title_text="Bias (V)", row=1, col=1)
+    else:
+        fig.update_yaxes(title_text="Pulse Amplitude", row=1, col=1)
 
     fig.add_trace(
         go.Heatmap(
@@ -194,7 +211,11 @@ def flux_dependence_plot(data, fit, qubit):
         row=1,
         col=2,
     )
-    fig.update_yaxes(title_text="Bias (V)", row=1, col=2)
+
+    if not data.__class__.__name__ == "CouplerSpectroscopyData":
+        fig.update_yaxes(title_text="Bias (V)", row=1, col=2)
+    else:
+        fig.update_yaxes(title_text="Pulse Amplitude", row=1, col=2)
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
 
@@ -209,9 +230,9 @@ def flux_dependence_plot(data, fit, qubit):
     return figures, fitting_report
 
 
-def flux_crosstalk_plot(data, fit, qubit):
+def flux_crosstalk_plot(data, qubit):
     figures = []
-    fitting_report = None
+    fitting_report = ""
 
     all_qubit_data = {
         index: data_qubit
@@ -226,7 +247,6 @@ def flux_crosstalk_plot(data, fit, qubit):
         vertical_spacing=0.1,
         subplot_titles=len(all_qubit_data) * ("MSR [V]",),
     )
-
     for col, (flux_qubit, qubit_data) in enumerate(all_qubit_data.items()):
         frequencies = qubit_data.freq * HZ_TO_GHZ
         msr = qubit_data.msr
@@ -244,10 +264,11 @@ def flux_crosstalk_plot(data, fit, qubit):
         )
 
         fig.update_xaxes(
-            title_text="Frequency (Hz)",
+            title_text="Frequency (GHz)",
             row=1,
             col=col + 1,
         )
+
         fig.update_yaxes(
             title_text=f"Qubit {flux_qubit[1]}: Bias (V)", row=1, col=col + 1
         )
@@ -469,3 +490,75 @@ def image_to_curve(x, y, z, msr_mask=0.5, alpha=1e-5, order=50):
     X_pred = feature(x_pred, order)
     y_pred = model.predict(X_pred)
     return y_pred, x_pred
+
+
+def get_resonator_freq_flux(
+    bias, sweetspot, flux_to_bias, asymmetry, g, brf, ssf_brf, Ec, Ej
+):
+    """
+    Estimate the resonator frequency for a give "bias".
+
+    Args:
+        bias (float): Bias value where the resonator frequency should be estimated
+        sweetspot (float): qubit sweetspot
+        flux_to_bias (float): Resonator value to convert from flux to bias
+        asymmetry (float): Resonator asymmetry
+        g (float): Readout coupling
+        brf (float): Bare resonator frequency at sweetspot
+        ssf_brf (float): Estimated sweetspot qubit frequency divided by the bare_resonator_frequency
+        Ec (float): Readout Charge Energy
+        Ej (float): Readout Josephson Energy
+
+    Returns:
+        freq_resonator (float): Estimated Resonator frequency at the provided bias point
+    """
+    if (
+        flux_to_bias == 0.0
+        or asymmetry == 0.0
+        or g == 0.0
+        or brf == 0.0
+        or Ec == 0.0
+        or Ej == 0.0
+    ):
+        raise ValueError(
+            "Not enough parameters to estimate the resonator frequency for the given bias"
+        )
+
+    if ssf_brf == 0:
+        # First order approximation used during resonator flux fitting
+        #   'sweetspot_0':p0,
+        #   'flux_to_bias':p1,
+        #   'asymmetry':p2,
+        #   'readout_coupling':p4,
+        #   'bare_resonator_frequency_0':p5
+        #   'sweetspot_qubit_frequency/bare_resonator_frequency':p3,
+        freq_resonator = freq_r_transmon(
+            bias,
+            sweetspot,
+            flux_to_bias,
+            asymmetry,
+            ssf_brf,
+            g,
+            brf,
+        )
+    else:
+        # Second order approximation used during resonator flux fitting
+        #   'sweetspot_0':p2,
+        #   'flux_to_bias':p3,
+        #   'asymmetry':p4,
+        #   'readout_coupling':p1,
+        #   'bare_resonator_frequency_0':p0,
+        #   'Ec':p5,
+        #   'Ej:p6'
+        freq_resonator = freq_r_mathieu(
+            bias,
+            brf,
+            g,
+            sweetspot,
+            flux_to_bias,
+            asymmetry,
+            Ec,
+            Ej,
+        )
+
+    return freq_resonator
