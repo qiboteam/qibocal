@@ -10,6 +10,7 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, QubitsPairs, Results, Routine
 from qibocal.protocols.characterization.two_qubit_interaction.utils import order_pair
+from qibocal.protocols.characterization.utils import table_dict, table_html
 
 from .qubit_flux_dependence import QubitFluxParameters, QubitFluxType
 from .qubit_flux_dependence import _acquisition as flux_acquisition
@@ -256,6 +257,10 @@ def _plot(data: AvoidCrossData, fit: AvoidCrossResults, qubit):
             marker=dict(symbol="cross", size=10),
         )
     )
+    parabolas.update_layout(
+        xaxis_title="Bias",
+        yaxis_title="Frequency",
+    )
     heatmaps.update_layout(
         coloraxis_colorbar=dict(
             yanchor="top",
@@ -266,6 +271,9 @@ def _plot(data: AvoidCrossData, fit: AvoidCrossResults, qubit):
     )
     figures.append(heatmaps)
     figures.append(parabolas)
+    fitting_report = table_html(
+        table_dict(qubit, ["CZ bias", "iSwap bias"], [cz[:, 0], iswap[:, 0]])
+    )
     return figures, fitting_report
 
 
