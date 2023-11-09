@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
@@ -11,6 +13,9 @@ from qibocal.protocols.characterization.two_qubit_interaction.utils import order
 
 from .qubit_flux_dependence import QubitFluxParameters, QubitFluxType
 from .qubit_flux_dependence import _acquisition as flux_acquisition
+
+STEP = 60
+POINT_SIZE = 10
 
 
 @dataclass
@@ -30,6 +35,7 @@ class AvoidCrossResults(Results):
 @dataclass
 class AvoidCrossData(Data):
     qubit_pairs: list
+    ro_freq_high: dict = field(default_factory=dict)
     data: dict[tuple[QubitId, str], npt.NDArray[QubitFluxType]] = field(
         default_factory=dict
     )
@@ -76,17 +82,10 @@ def _acquisition(
             )
 
     unique_high_qubits = np.unique(order_pairs[:, 1])
-    for qubit in unique_high_qubits:
-        data.register_qubit(
-            QubitFluxType,
-            (float(qubit), "01"),
-            dict(
-                freq=[platform.qubits[qubit].readout_frequency],
-                bias=[0],
-                msr=[0],
-                phase=[0],
-            ),
-        )
+    data.ro_freq_high = {
+        float(qubit): float(platform.qubits[qubit].readout_frequency)
+        for qubit in unique_high_qubits
+    }
     return data
 
 
@@ -106,10 +105,11 @@ def _fit(data: AvoidCrossData) -> AvoidCrossResults:
         x_02 = np.unique(qubit_data[low, "02"]["bias"])
         fit_02 = np.polyfit(x_02, curve_02, 2)
         fits[qubit_pair, "02"] = fit_02.tolist()
+
         # Fit the 01+10 curve
         curve_01 = np.array(curves[low, "01"])
         x_01 = np.unique(qubit_data[low, "01"]["bias"])
-        fit_01_10 = np.polyfit(x_01, curve_01 + qubit_data[high, "01"]["freq"][0], 2)
+        fit_01_10 = np.polyfit(x_01, curve_01 + data.ro_freq_high[high], 2)
         fits[qubit_pair, "01+10"] = fit_01_10.tolist()
         # find the intersection of the two parabolas
         delta_fit = fit_02 - fit_01_10
@@ -122,15 +122,128 @@ def _fit(data: AvoidCrossData) -> AvoidCrossResults:
         fit_01 = np.polyfit(x_01, curve_01, 2)
         fits[qubit_pair, "01"] = fit_01.tolist()
         fit_pars = deepcopy(fit_01)
-        line_val = qubit_data[high, "01"]["freq"][0]
+        line_val = data.ro_freq_high[high]
         fit_pars[2] -= line_val
         x1, x2 = solve_eq(fit_pars)
         iswap[qubit_pair] = [[x1, line_val], [x2, line_val]]
+        import matplotlib.pyplot as plt
+
+        plt.plot(x_02, curve_02)
+        plt.scatter(x_02, np.polyval(fit_02, x_02))
+        plt.title(f"{qubit_pair}")
+        plt.savefig(f"{qubit_pair}")
+
     return AvoidCrossResults(curves, fits, cz, iswap)
 
 
 def _plot(data: AvoidCrossData, fit: AvoidCrossResults, qubit):
-    pass
+    fitting_report = ""
+    figures = []
+    order_pair = tuple(index(data.qubit_pairs, qubit))
+    heatmaps = make_subplots(
+        rows=1,
+        cols=2,
+        subplot_titles=[f"{i} transition qubit {qubit[0]}" for i in ["01", "02"]],
+    )
+    parabolas = make_subplots(rows=1, cols=1, subplot_titles=["Parabolas"])
+    for i, transition in enumerate(["01", "02"]):
+        data_low = data.data[order_pair[0], transition]
+        bias_unique = np.unique(data_low.bias)
+        min_bias = min(bias_unique)
+        max_bias = max(bias_unique)
+        heatmaps.add_trace(
+            go.Heatmap(
+                x=data_low.freq,
+                y=data_low.bias,
+                z=data_low.msr,
+                coloraxis="coloraxis",
+            ),
+            row=1,
+            col=i + 1,
+        )
+
+        # the fit of the parabola in 02 transition was done doubling the frequencies
+        heatmaps.add_trace(
+            go.Scatter(
+                x=np.polyval(fit.fits[order_pair, transition], data_low.bias) / (i + 1),
+                y=bias_unique,
+                mode="markers",
+                marker_color="lime",
+                showlegend=True,
+                marker=dict(size=POINT_SIZE),
+                name=f"Curve estimation {transition}",
+            ),
+            row=1,
+            col=i + 1,
+        )
+        heatmaps.add_trace(
+            go.Scatter(
+                x=fit.parabolas[order_pair[0], transition],
+                y=bias_unique,
+                mode="markers",
+                marker_color="turquoise",
+                showlegend=True,
+                marker=dict(symbol="cross", size=POINT_SIZE),
+                name=f"Parabola {transition}",
+            ),
+            row=1,
+            col=i + 1,
+        )
+    cz = np.array(fit.cz[order_pair])
+    iswap = np.array(fit.iswap[order_pair])
+    min_bias = min(min_bias, *cz[:, 0], *iswap[:, 0])
+    max_bias = max(max_bias, *cz[:, 0], *iswap[:, 0])
+    bias_range = np.linspace(min_bias, max_bias, STEP)
+    for transition in ["01", "02", "01+10"]:
+        parabolas.add_trace(
+            go.Scatter(
+                x=bias_range,
+                y=np.polyval(fit.fits[order_pair, transition], bias_range),
+                showlegend=True,
+                name=transition,
+            )
+        )
+    parabolas.add_trace(
+        go.Scatter(
+            x=bias_range,
+            y=[data.ro_freq_high[order_pair[1]]] * STEP,
+            showlegend=True,
+            name="10",
+        )
+    )
+    parabolas.add_trace(
+        go.Scatter(
+            x=cz[:, 0],
+            y=cz[:, 1],
+            showlegend=True,
+            name="CZ",
+            marker_color="black",
+            mode="markers",
+            marker=dict(symbol="cross", size=POINT_SIZE),
+        )
+    )
+    parabolas.add_trace(
+        go.Scatter(
+            x=iswap[:, 0],
+            y=iswap[:, 1],
+            showlegend=True,
+            name="iswap",
+            marker_color="blue",
+            mode="markers",
+            marker=dict(symbol="cross", size=10),
+        )
+    )
+    heatmaps.update_layout(
+        coloraxis_colorbar=dict(
+            yanchor="top",
+            y=1,
+            x=-0.08,
+            ticks="outside",
+        )
+    )
+    figures.append(heatmaps)
+    figures.append(parabolas)
+    return figures, fitting_report
 
 
 avoided_crossing = Routine(_acquisition, _fit, _plot)
@@ -155,3 +268,9 @@ def solve_eq(pars):
     x1 = (first_term + second_term) / pars[0] / 2
     x2 = (first_term - second_term) / pars[0] / 2
     return x1, x2
+
+
+def index(pairs, item):
+    for pair in pairs:
+        if set(pair) == set(item):
+            return pair
