@@ -27,6 +27,7 @@ from .operation import (
 )
 from .runcard import Action, Id
 from .status import Normal, Status
+from .validation import ValidationSchemes
 
 MAX_PRIORITY = int(1e9)
 """A number bigger than whatever will be manually typed. But not so insanely big not to fit in a native integer."""
@@ -85,6 +86,21 @@ class Task:
             raise RuntimeError("No operation specified")
 
         return Operation[self.action.operation].value
+
+    @property
+    def validator(self):
+        """Validator object from ValidationSchemes Enum"""
+        if self.action.update is None:
+            return None
+        return ValidationSchemes[self.action.validator["scheme"]].value.load(
+            self.action.validator
+        )
+
+    def validate(self, results: Results):
+        if self.validator is not None:
+            status = {}
+            for qubit in self.qubits:
+                status[qubit] = self.validator(results, qubit)
 
     @property
     def main(self):
@@ -159,6 +175,7 @@ class Task:
 
         if mode.name in ["autocalibration", "fit"]:
             completed.results, completed.results_time = operation.fit(completed.data)
+            self.validate(completed.results)
 
         return completed
 

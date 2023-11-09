@@ -35,6 +35,8 @@ class Action:
     """Local qubits (optional)."""
     update: bool = True
     """Runcard update mechanism."""
+    validator: Optional[dict[str, Any]] = None
+    """Define validation scheme and parameters."""
     parameters: Optional[dict[str, Any]] = None
     """Input parameters, either values or provider reference."""
 
