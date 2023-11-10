@@ -30,13 +30,13 @@ class AvoidedCrossingParameters(QubitFluxParameters):
 class AvoidedCrossingResults(Results):
     """Avoided crossing outputs"""
 
-    parabolas: dict
+    parabolas: dict[tuple, list]
     """Extracted parabolas"""
-    fits: dict
+    fits: dict[tuple, list]
     """Fits parameters"""
-    cz: dict
+    cz: dict[tuple, list]
     """CZ intersection points """
-    iswap: dict
+    iswap: dict[tuple, list]
     """iSwap intersection points"""
 
 
@@ -150,7 +150,6 @@ def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
         fit_pars[2] -= line_val
         x1, x2 = solve_eq(fit_pars)
         iswap[qubit_pair] = [[x1, line_val], [x2, line_val]]
-
     return AvoidedCrossingResults(curves, fits, cz, iswap)
 
 
