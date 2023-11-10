@@ -30,13 +30,13 @@ class AvoidedCrossingParameters(QubitFluxParameters):
 class AvoidedCrossingResults(Results):
     """Avoided crossing outputs"""
 
-    parabolas: dict
+    parabolas: dict[tuple, list]
     """Extracted parabolas"""
-    fits: dict
+    fits: dict[tuple, list]
     """Fits parameters"""
-    cz: dict
+    cz: dict[tuple, list]
     """CZ intersection points """
-    iswap: dict
+    iswap: dict[tuple, list]
     """iSwap intersection points"""
 
 
@@ -105,7 +105,7 @@ def _acquisition(
 
     unique_low_qubits = np.unique(order_pairs[:, 0])
     data.drive_frequency_low = {
-        float(qubit): float(platform.qubits[qubit].drive_frequency)
+        str(qubit): float(platform.qubits[qubit].drive_frequency)
         for qubit in unique_low_qubits
     }
     return data
@@ -133,7 +133,7 @@ def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
         # Fit the 01+10 curve
         curve_01 = np.array(curves[high, "01"])
         x_01 = np.unique(qubit_data[high, "01"]["bias"])
-        fit_01_10 = np.polyfit(x_01, curve_01 + data.drive_frequency_low[low], 2)
+        fit_01_10 = np.polyfit(x_01, curve_01 + data.drive_frequency_low[str(low)], 2)
         fits[qubit_pair, "01+10"] = fit_01_10.tolist()
         # find the intersection of the two parabolas
         delta_fit = fit_02 - fit_01_10
@@ -146,11 +146,10 @@ def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
         fit_01 = np.polyfit(x_01, curve_01, 2)
         fits[qubit_pair, "01"] = fit_01.tolist()
         fit_pars = deepcopy(fit_01)
-        line_val = data.drive_frequency_low[low]
+        line_val = data.drive_frequency_low[str(low)]
         fit_pars[2] -= line_val
         x1, x2 = solve_eq(fit_pars)
         iswap[qubit_pair] = [[x1, line_val], [x2, line_val]]
-
     return AvoidedCrossingResults(curves, fits, cz, iswap)
 
 
@@ -225,7 +224,7 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
     parabolas.add_trace(
         go.Scatter(
             x=bias_range,
-            y=[data.drive_frequency_low[order_pair[0]]] * STEP,
+            y=[data.drive_frequency_low[str(order_pair[0])]] * STEP,
             showlegend=True,
             name="10",
         )
@@ -284,8 +283,15 @@ def find_parabola(data: dict) -> list:
     biass = sorted(np.unique(currs))
     frequencies = []
     for bias in biass:
-        index = data[currs == bias]["msr"].argmax()
-        frequencies.append(freqs[index])
+        data_bias = data[currs == bias]
+        index = data_bias["msr"].argmax()
+        average_msr = np.average(data_bias["msr"])
+        st_dev_msr = np.std(data_bias["msr"])
+        if (
+            data_bias["msr"][index] > average_msr + st_dev_msr
+            or data_bias["msr"][index] > average_msr - st_dev_msr
+        ):
+            frequencies.append(freqs[index])
     return frequencies
 
 
