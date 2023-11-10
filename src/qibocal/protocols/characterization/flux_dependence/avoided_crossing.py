@@ -20,12 +20,12 @@ POINT_SIZE = 10
 
 
 @dataclass
-class AvoidCrossParameters(QubitFluxParameters):
+class AvoidedCrossingParameters(QubitFluxParameters):
     ...
 
 
 @dataclass
-class AvoidCrossResults(Results):
+class AvoidedCrossingResults(Results):
     """Avoided crossing outputs"""
 
     parabolas: dict
@@ -39,7 +39,7 @@ class AvoidCrossResults(Results):
 
 
 @dataclass
-class AvoidCrossData(Data):
+class AvoidedCrossingData(Data):
     """Avoided crossing acquisition outputs"""
 
     qubit_pairs: list
@@ -53,10 +53,10 @@ class AvoidCrossData(Data):
 
 
 def _acquisition(
-    params: AvoidCrossParameters,
+    params: AvoidedCrossingParameters,
     platform: Platform,
     qubits: QubitsPairs,  # qubit pairs
-) -> AvoidCrossData:
+) -> AvoidedCrossingData:
     """
     Data acquisition for avoided crossing.
     This routine performs the qubit flux dependency for the "01" and "02" transition
@@ -64,13 +64,13 @@ def _acquisition(
     and a iSwap gate.
 
     Args:
-        params (AvoidCrossParameters): experiment's parameters.
+        params (AvoidedCrossingParameters): experiment's parameters.
         platform (Platform): Qibolab platform object.
         qubits (dict): list of targets qubit pairs to perform the action.
     """
     qubit_pairs = list(qubits.keys())
     order_pairs = np.array([order_pair(pair, platform.qubits) for pair in qubit_pairs])
-    data = AvoidCrossData(qubit_pairs=order_pairs.tolist())
+    data = AvoidedCrossingData(qubit_pairs=order_pairs.tolist())
     # Extract the qubits in the qubits pairs and evaluate their flux dep
     unique_qubits = np.unique(
         order_pairs[:, 0]
@@ -103,13 +103,13 @@ def _acquisition(
 
     unique_high_qubits = np.unique(order_pairs[:, 1])
     data.drive_frequency_high = {
-        float(qubit): float(platform.qubits[qubit].drive_frequency)
+        float(qubit): float(platform.qubits[qubit].frequency)
         for qubit in unique_high_qubits
     }
     return data
 
 
-def _fit(data: AvoidCrossData) -> AvoidCrossResults:
+def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
     """
     Post-Processing for avoided crossing.
     """
@@ -149,10 +149,10 @@ def _fit(data: AvoidCrossData) -> AvoidCrossResults:
         x1, x2 = solve_eq(fit_pars)
         iswap[qubit_pair] = [[x1, line_val], [x2, line_val]]
 
-    return AvoidCrossResults(curves, fits, cz, iswap)
+    return AvoidedCrossingResults(curves, fits, cz, iswap)
 
 
-def _plot(data: AvoidCrossData, fit: AvoidCrossResults, qubit):
+def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
     """Plotting function for avoided crossing"""
     fitting_report = ""
     figures = []
