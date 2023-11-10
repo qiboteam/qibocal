@@ -200,7 +200,7 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
                 x=fit.parabolas[order_pair[1], transition],
                 y=bias_unique,
                 mode="markers",
-                marker_color="turquoise",
+                marker_color="black",
                 showlegend=True,
                 marker=dict(symbol="cross", size=POINT_SIZE),
                 name=f"Parabola {transition}",
