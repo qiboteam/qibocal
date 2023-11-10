@@ -46,7 +46,7 @@ class AvoidedCrossingData(Data):
 
     qubit_pairs: list
     """list of qubit pairs ordered following the drive frequency"""
-    drive_frequency_high: dict = field(default_factory=dict)
+    drive_frequency_low: dict = field(default_factory=dict)
     """Highest drive frequency in each qubit pair"""
     data: dict[tuple[QubitId, str], npt.NDArray[QubitFluxType]] = field(
         default_factory=dict
@@ -75,7 +75,7 @@ def _acquisition(
     data = AvoidedCrossingData(qubit_pairs=order_pairs.tolist())
     # Extract the qubits in the qubits pairs and evaluate their flux dep
     unique_qubits = np.unique(
-        order_pairs[:, 0]
+        order_pairs[:, 1]
     )  # select qubits with lower freq in each couple
     new_qubits = {key: platform.qubits[key] for key in unique_qubits}
 
@@ -103,10 +103,10 @@ def _acquisition(
                 ),
             )
 
-    unique_high_qubits = np.unique(order_pairs[:, 1])
-    data.drive_frequency_high = {
-        float(qubit): float(platform.qubits[qubit].frequency)
-        for qubit in unique_high_qubits
+    unique_low_qubits = np.unique(order_pairs[:, 0])
+    data.drive_frequency_low = {
+        float(qubit): float(platform.qubits[qubit].drive_frequency)
+        for qubit in unique_low_qubits
     }
     return data
 
@@ -125,15 +125,15 @@ def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
         low = qubit_pair[0]
         high = qubit_pair[1]
         # Fit the 02*2 curve
-        curve_02 = np.array(curves[low, "02"]) * 2
-        x_02 = np.unique(qubit_data[low, "02"]["bias"])
+        curve_02 = np.array(curves[high, "02"]) * 2
+        x_02 = np.unique(qubit_data[high, "02"]["bias"])
         fit_02 = np.polyfit(x_02, curve_02, 2)
         fits[qubit_pair, "02"] = fit_02.tolist()
 
         # Fit the 01+10 curve
-        curve_01 = np.array(curves[low, "01"])
-        x_01 = np.unique(qubit_data[low, "01"]["bias"])
-        fit_01_10 = np.polyfit(x_01, curve_01 + data.drive_frequency_high[high], 2)
+        curve_01 = np.array(curves[high, "01"])
+        x_01 = np.unique(qubit_data[high, "01"]["bias"])
+        fit_01_10 = np.polyfit(x_01, curve_01 + data.drive_frequency_low[low], 2)
         fits[qubit_pair, "01+10"] = fit_01_10.tolist()
         # find the intersection of the two parabolas
         delta_fit = fit_02 - fit_01_10
@@ -146,7 +146,7 @@ def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
         fit_01 = np.polyfit(x_01, curve_01, 2)
         fits[qubit_pair, "01"] = fit_01.tolist()
         fit_pars = deepcopy(fit_01)
-        line_val = data.drive_frequency_high[high]
+        line_val = data.drive_frequency_low[low]
         fit_pars[2] -= line_val
         x1, x2 = solve_eq(fit_pars)
         iswap[qubit_pair] = [[x1, line_val], [x2, line_val]]
@@ -166,15 +166,15 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
     )
     parabolas = make_subplots(rows=1, cols=1, subplot_titles=["Parabolas"])
     for i, transition in enumerate(["01", "02"]):
-        data_low = data.data[order_pair[0], transition]
-        bias_unique = np.unique(data_low.bias)
+        data_high = data.data[order_pair[1], transition]
+        bias_unique = np.unique(data_high.bias)
         min_bias = min(bias_unique)
         max_bias = max(bias_unique)
         heatmaps.add_trace(
             go.Heatmap(
-                x=data_low.freq,
-                y=data_low.bias,
-                z=data_low.msr,
+                x=data_high.freq,
+                y=data_high.bias,
+                z=data_high.msr,
                 coloraxis="coloraxis",
             ),
             row=1,
@@ -184,7 +184,8 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
         # the fit of the parabola in 02 transition was done doubling the frequencies
         heatmaps.add_trace(
             go.Scatter(
-                x=np.polyval(fit.fits[order_pair, transition], data_low.bias) / (i + 1),
+                x=np.polyval(fit.fits[order_pair, transition], data_high.bias)
+                / (i + 1),
                 y=bias_unique,
                 mode="markers",
                 marker_color="lime",
@@ -197,7 +198,7 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
         )
         heatmaps.add_trace(
             go.Scatter(
-                x=fit.parabolas[order_pair[0], transition],
+                x=fit.parabolas[order_pair[1], transition],
                 y=bias_unique,
                 mode="markers",
                 marker_color="turquoise",
@@ -225,7 +226,7 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
     parabolas.add_trace(
         go.Scatter(
             x=bias_range,
-            y=[data.drive_frequency_high[order_pair[1]]] * STEP,
+            y=[data.drive_frequency_low[order_pair[0]]] * STEP,
             showlegend=True,
             name="10",
         )
