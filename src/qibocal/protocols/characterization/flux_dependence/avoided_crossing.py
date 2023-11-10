@@ -10,7 +10,7 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, QubitsPairs, Results, Routine
 from qibocal.protocols.characterization.two_qubit_interaction.utils import order_pair
-from qibocal.protocols.characterization.utils import table_dict, table_html
+from qibocal.protocols.characterization.utils import HZ_TO_GHZ, table_dict, table_html
 
 from .qubit_flux_dependence import QubitFluxParameters, QubitFluxType
 from .qubit_flux_dependence import _acquisition as flux_acquisition
@@ -171,7 +171,7 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
         max_bias = max(bias_unique)
         heatmaps.add_trace(
             go.Heatmap(
-                x=data_high.freq,
+                x=data_high.freq * HZ_TO_GHZ,
                 y=data_high.bias,
                 z=data_high.msr,
                 coloraxis="coloraxis",
@@ -183,7 +183,9 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
         # the fit of the parabola in 02 transition was done doubling the frequencies
         heatmaps.add_trace(
             go.Scatter(
-                x=np.polyval(fit.fits[order_pair, transition], bias_unique) / (i + 1),
+                x=np.polyval(fit.fits[order_pair, transition], bias_unique)
+                / (i + 1)
+                * HZ_TO_GHZ,
                 y=bias_unique,
                 mode="markers",
                 marker_color="lime",
@@ -196,7 +198,7 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
         )
         heatmaps.add_trace(
             go.Scatter(
-                x=fit.parabolas[order_pair[1], transition],
+                x=np.array(fit.parabolas[order_pair[1], transition]) * HZ_TO_GHZ,
                 y=bias_unique,
                 mode="markers",
                 marker_color="black",
@@ -216,7 +218,7 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
         parabolas.add_trace(
             go.Scatter(
                 x=bias_range,
-                y=np.polyval(fit.fits[order_pair, transition], bias_range),
+                y=np.polyval(fit.fits[order_pair, transition], bias_range) * HZ_TO_GHZ,
                 showlegend=True,
                 name=transition,
             )
@@ -224,7 +226,8 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
     parabolas.add_trace(
         go.Scatter(
             x=bias_range,
-            y=[data.drive_frequency_low[str(order_pair[0])]] * STEP,
+            y=np.array([data.drive_frequency_low[str(order_pair[0])]] * STEP)
+            * HZ_TO_GHZ,
             showlegend=True,
             name="10",
         )
@@ -232,7 +235,7 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
     parabolas.add_trace(
         go.Scatter(
             x=cz[:, 0],
-            y=cz[:, 1],
+            y=cz[:, 1] * HZ_TO_GHZ,
             showlegend=True,
             name="CZ",
             marker_color="black",
@@ -243,7 +246,7 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
     parabolas.add_trace(
         go.Scatter(
             x=iswap[:, 0],
-            y=iswap[:, 1],
+            y=iswap[:, 1] * HZ_TO_GHZ,
             showlegend=True,
             name="iswap",
             marker_color="blue",
@@ -252,8 +255,8 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
         )
     )
     parabolas.update_layout(
-        xaxis_title="Bias",
-        yaxis_title="Frequency",
+        xaxis_title="Bias[V]",
+        yaxis_title="Frequency[GHz]",
     )
     heatmaps.update_layout(
         coloraxis_colorbar=dict(
@@ -261,7 +264,11 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
             y=1,
             x=-0.08,
             ticks="outside",
-        )
+        ),
+        xaxis_title="Frequency[GHz]",
+        yaxis_title="Bias[V]",
+        xaxis2_title="Frequency[GHz]",
+        yaxis2_title="Bias[V]",
     )
     figures.append(heatmaps)
     figures.append(parabolas)
