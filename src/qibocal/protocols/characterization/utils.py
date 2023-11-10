@@ -28,7 +28,7 @@ COLUMNWIDTH = 600
 LEGEND_FONT_SIZE = 20
 TITLE_SIZE = 25
 EXTREME_CHI = 1e4
-KB = constants.physical_constants["Boltzmann constant in Hz/K"][0]
+KB = constants.k
 HBAR = constants.hbar
 """Chi2 output when errors list contains zero elements"""
 COLORBAND = "rgba(0,100,80,0.2)"

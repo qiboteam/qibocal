@@ -300,6 +300,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         mean_exc_states=mean_exc_states,
         fidelity=fidelity,
         assignment_fidelity=assignment_fidelity,
+        effective_temperature=effective_temperature,
         savedir=data.savedir,
         y_preds=y_test_predict,
         grid_preds=grid_preds_dict,
@@ -363,6 +364,7 @@ def _plot(
                         "Threshold",
                         "Readout Fidelity",
                         "Assignment Fidelity",
+                        "Effective Qubit Temperature [K]",
                     ],
                     [
                         np.round(fit.mean_gnd_states[qubit], 3),
@@ -371,6 +373,7 @@ def _plot(
                         np.round(fit.threshold[qubit], 6),
                         np.round(fit.fidelity[qubit], 3),
                         np.round(fit.assignment_fidelity[qubit], 3),
+                        np.round(fit.effective_temperature[qubit], 3),
                     ],
                 )
             )
