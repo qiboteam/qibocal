@@ -184,8 +184,7 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
         # the fit of the parabola in 02 transition was done doubling the frequencies
         heatmaps.add_trace(
             go.Scatter(
-                x=np.polyval(fit.fits[order_pair, transition], data_high.bias)
-                / (i + 1),
+                x=np.polyval(fit.fits[order_pair, transition], bias_unique) / (i + 1),
                 y=bias_unique,
                 mode="markers",
                 marker_color="lime",
