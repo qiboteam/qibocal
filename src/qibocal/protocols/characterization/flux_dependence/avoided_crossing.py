@@ -88,7 +88,7 @@ def _acquisition(
             qubit_data = data_transition.data[qubit]
             freq = qubit_data["freq"]
             bias = qubit_data["bias"]
-            msr = qubit_data["msr"]
+            signal = qubit_data["signal"]
             phase = qubit_data["phase"]
             data.register_qubit(
                 QubitFluxType,
@@ -96,7 +96,7 @@ def _acquisition(
                 dict(
                     freq=freq.tolist(),
                     bias=bias.tolist(),
-                    msr=msr.tolist(),
+                    signal=signal.tolist(),
                     phase=phase.tolist(),
                 ),
             )
@@ -171,7 +171,7 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
             go.Heatmap(
                 x=data_high.freq * HZ_TO_GHZ,
                 y=data_high.bias,
-                z=data_high.msr,
+                z=data_high.signal,
                 coloraxis="coloraxis",
             ),
             row=1,
@@ -293,14 +293,8 @@ def find_parabola(data: dict) -> list:
     frequencies = []
     for bias in biass:
         data_bias = data[currs == bias]
-        index = data_bias["msr"].argmax()
-        average_msr = np.average(data_bias["msr"])
-        st_dev_msr = np.std(data_bias["msr"])
-        if (
-            data_bias["msr"][index] > average_msr + st_dev_msr
-            or data_bias["msr"][index] > average_msr - st_dev_msr
-        ):
-            frequencies.append(freqs[index])
+        index = data_bias["signal"].argmax()
+        frequencies.append(freqs[index])
     return frequencies
 
 
