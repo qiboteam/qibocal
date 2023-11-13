@@ -179,7 +179,17 @@ def _plot(
         z = fit.measurement_matrix[tuple(qubit)]
 
         fig = px.imshow(
-            z, x=computational_basis, y=computational_basis[::-1], text_auto=True
+            z,
+            x=computational_basis,
+            y=computational_basis[::-1],
+            text_auto=True,
+            labels={
+                "x": "Prepeared States",
+                "y": "Measured States",
+                "color": "Probabilities",
+            },
+            width=700,
+            height=700,
         )
     return [fig], fitting_report
 
