@@ -166,7 +166,8 @@ def _fit(data: FlippingData) -> FlippingResults:
                 ),
                 sigma=qubit_data.error,
             )
-            perr = np.sqrt(np.diag(perr))
+            perr = np.sqrt(np.diag(perr)).tolist()
+            popt = popt.tolist()
         except:
             log.warning("flipping_fit: the fitting was not succesful")
             popt = [0] * 4
@@ -178,7 +179,7 @@ def _fit(data: FlippingData) -> FlippingResults:
             signed_correction = popt[2] / 2
         # The amplitude is directly proportional to the rotation angle
         corrected_amplitudes[qubit] = (
-            (pi_pulse_amplitude * np.pi) / (float(np.pi + signed_correction)),
+            float((pi_pulse_amplitude * np.pi) / (np.pi + signed_correction)),
             float(
                 pi_pulse_amplitude
                 * np.pi
@@ -187,7 +188,7 @@ def _fit(data: FlippingData) -> FlippingResults:
                 / 2
             ),
         )
-        fitted_parameters[qubit] = popt.tolist()
+        fitted_parameters[qubit] = popt
         amplitude_correction_factors[qubit] = (
             float(signed_correction / np.pi * pi_pulse_amplitude),
             float(perr[2] * pi_pulse_amplitude / np.pi / 2),
