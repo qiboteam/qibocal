@@ -63,7 +63,7 @@ QubitFluxType = np.dtype(
     [
         ("freq", np.float64),
         ("bias", np.float64),
-        ("msr", np.float64),
+        ("signal", np.float64),
         ("phase", np.float64),
     ]
 )
@@ -87,14 +87,14 @@ class QubitFluxData(Data):
     data: dict[QubitId, npt.NDArray[QubitFluxType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit_track(self, qubit, freq, bias, msr, phase):
+    def register_qubit_track(self, qubit, freq, bias, signal, phase):
         """Store output for single qubit."""
         # to be able to handle the 1D sweeper case
         size = len(freq)
         ar = np.empty(size, dtype=QubitFluxType)
         ar["freq"] = freq
         ar["bias"] = [bias] * size
-        ar["msr"] = msr
+        ar["signal"] = signal
         ar["phase"] = phase
         if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
@@ -201,7 +201,7 @@ def _acquisition(
             result = results[ro_pulses[qubit].serial]
             data.register_qubit_track(
                 qubit,
-                msr=result.magnitude,
+                signal=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
                 bias=bias + qubits[qubit].sweetspot,
@@ -240,13 +240,13 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
         biases = qubit_data.bias
         frequencies = qubit_data.freq
-        msr = qubit_data.msr
+        signal = qubit_data.signal
 
         if data.resonator_type == "2D":
-            msr = -msr
+            signal = -signal
 
         frequencies, biases = utils.image_to_curve(
-            frequencies, biases, msr, msr_mask=0.3
+            frequencies, biases, signal, signal_mask=0.3
         )
         max_c = biases[np.argmax(frequencies)]
         min_c = biases[np.argmin(frequencies)]
