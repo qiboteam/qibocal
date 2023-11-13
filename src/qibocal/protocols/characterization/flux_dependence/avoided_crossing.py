@@ -76,7 +76,7 @@ def _acquisition(
     # Extract the qubits in the qubits pairs and evaluate their flux dep
     unique_qubits = np.unique(
         order_pairs[:, 1]
-    )  # select qubits with lower freq in each couple
+    )  # select qubits with high freq in each couple
     new_qubits = {key: platform.qubits[key] for key in unique_qubits}
 
     for transition in ["01", "02"]:
