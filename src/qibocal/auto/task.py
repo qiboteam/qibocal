@@ -26,7 +26,7 @@ from .operation import (
     dummy_operation,
 )
 from .runcard import Action, Id
-from .status import Broken, Normal, Status
+from .status import Failure, Normal, Status
 
 MAX_PRIORITY = int(1e9)
 """A number bigger than whatever will be manually typed. But not so insanely big not to fit in a native integer."""
@@ -91,9 +91,9 @@ class Task:
             status = {}
             for qubit in self.qubits:
                 status[qubit] = self.action.validator.__call__(results, qubit)
-            # exit if any of the qubit state is Broken
-            if any(isinstance(stat, Broken) for stat in status.values()):
-                return Broken()
+            # exit if any of the qubit state is Failure
+            if any(isinstance(stat, Failure) for stat in status.values()):
+                return Failure()
             else:
                 return Normal()
 

@@ -6,7 +6,7 @@ from qibolab.qubits import QubitId, QubitPairId
 from qibocal.config import raise_error
 
 from ..operation import Results
-from ..status import Broken, Normal
+from ..status import Failure, Normal
 
 CHI2_MAX = 0.05
 """Max value for accepting fit result."""
@@ -30,7 +30,7 @@ def chi2(
         if chi2 < chi2_max_value:
             return Normal()
         else:
-            return Broken()
+            return Failure()
     except AttributeError:
         raise_error(
             NotImplementedError, f"Chi2 validation not available for {type(results)}"
