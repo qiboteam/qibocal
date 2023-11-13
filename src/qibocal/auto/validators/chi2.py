@@ -1,12 +1,12 @@
-"""Possible validators."""
+"""Chi2 validation"""
 from typing import Union
 
 from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.config import log
 
-from .operation import Results
-from .status import Broken, Normal
+from ..operation import Results
+from ..status import Broken, Normal
 
 CHI2_MAX = 0.05
 """Max value for accepting fit result."""
@@ -22,9 +22,7 @@ def chi2(
     It assesses that chi2 is below the chi2_max_value threshold.
 
     """
-    log.info(
-        f"Performing validation in qubit {qubit} of {results.__class__.__name__} using chi2 scheme."
-    )
+
     if chi2_max_value is None:
         chi2_max_value = CHI2_MAX
     try:
