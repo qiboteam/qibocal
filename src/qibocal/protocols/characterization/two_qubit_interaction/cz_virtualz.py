@@ -379,7 +379,7 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis1_title="theta [rad] + virtual phase[rad]",
         xaxis2_title="theta [rad] + virtual phase [rad]",
-        yaxis_title="MSR[V]",
+        yaxis_title="Signal [a.u.]",
     )
 
     fig2.update_layout(
@@ -388,7 +388,7 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis1_title="theta [rad] + virtual phase[rad]",
         xaxis2_title="theta [rad] + virtual phase[rad]",
-        yaxis_title="MSR[V]",
+        yaxis_title="Signal [a.u.]",
     )
 
     return [fig1, fig2], fitting_report

@@ -12,7 +12,7 @@ from qibolab.qubits import QubitId
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from ..utils import V_TO_UV, table_dict, table_html
+from ..utils import table_dict, table_html
 from . import utils
 
 
@@ -28,7 +28,7 @@ class ZenoParameters(Parameters):
     """Relaxation time (ns)."""
 
 
-ZenoType = np.dtype([("msr", np.float64), ("phase", np.float64)])
+ZenoType = np.dtype([("signal", np.float64), ("phase", np.float64)])
 """Custom dtype for Zeno."""
 
 
@@ -39,10 +39,10 @@ class ZenoData(Data):
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, msr, phase):
+    def register_qubit(self, qubit, signal, phase):
         """Store output for single qubit."""
         ar = np.empty((1,), dtype=ZenoType)
-        ar["msr"] = msr
+        ar["signal"] = signal
         ar["phase"] = phase
         if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
@@ -109,7 +109,9 @@ def _acquisition(
     for qubit in qubits:
         for ro_pulse in ro_pulses[qubit]:
             result = results[ro_pulse.serial]
-            data.register_qubit(qubit=qubit, msr=result.magnitude, phase=result.phase)
+            data.register_qubit(
+                qubit=qubit, signal=result.magnitude, phase=result.phase
+            )
     return data
 
 
@@ -134,12 +136,12 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
 
     fitting_report = ""
     qubit_data = data[qubit]
-    readouts = np.arange(1, len(qubit_data.msr) + 1)
+    readouts = np.arange(1, len(qubit_data.signal) + 1)
 
     fig.add_trace(
         go.Scatter(
             x=readouts,
-            y=qubit_data.msr * V_TO_UV,
+            y=qubit_data.signal,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -180,7 +182,7 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Number of readouts",
-        yaxis_title="MSR (uV)",
+        yaxis_title="Signal [a.u.]",
     )
 
     figures.append(fig)
@@ -192,4 +194,4 @@ def _update(results: ZenoResults, platform: Platform, qubit: QubitId):
     update.t1(results.zeno_t1[qubit], platform, qubit)
 
 
-zeno_msr = Routine(_acquisition, _fit, _plot, _update)
+zeno_signal = Routine(_acquisition, _fit, _plot, _update)

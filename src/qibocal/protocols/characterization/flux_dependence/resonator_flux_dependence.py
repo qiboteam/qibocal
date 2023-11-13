@@ -62,7 +62,7 @@ ResFluxType = np.dtype(
     [
         ("freq", np.float64),
         ("bias", np.float64),
-        ("msr", np.float64),
+        ("signal", np.float64),
         ("phase", np.float64),
     ]
 )
@@ -91,10 +91,10 @@ class ResonatorFluxData(Data):
     data: dict[QubitId, npt.NDArray[ResFluxType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, freq, bias, msr, phase):
+    def register_qubit(self, qubit, freq, bias, signal, phase):
         """Store output for single qubit."""
         self.data[qubit] = utils.create_data_array(
-            freq, bias, msr, phase, dtype=ResFluxType
+            freq, bias, signal, phase, dtype=ResFluxType
         )
 
 
@@ -165,7 +165,7 @@ def _acquisition(
             sweetspot = qubits[qubit].sweetspot
             data.register_qubit(
                 qubit,
-                msr=result.magnitude,
+                signal=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + ro_pulses[qubit].frequency,
                 bias=delta_bias_range + sweetspot,
@@ -223,13 +223,13 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
         biases = qubit_data.bias
         frequencies = qubit_data.freq
-        msr = qubit_data.msr
+        signal = qubit_data.signal
 
         if data.resonator_type == "3D":
-            msr = -msr
+            signal = -signal
 
         frequencies, biases = utils.image_to_curve(
-            frequencies, biases, msr, msr_mask=0.5
+            frequencies, biases, signal, signal_mask=0.5
         )
 
         bare_resonator_frequency = data.bare_resonator_frequency[

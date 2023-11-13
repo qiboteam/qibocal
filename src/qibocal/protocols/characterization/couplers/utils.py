@@ -38,7 +38,7 @@ CouplerSpecType = np.dtype(
     [
         ("freq", np.float64),
         ("bias", np.float64),
-        ("msr", np.float64),
+        ("signal", np.float64),
         ("phase", np.float64),
     ]
 )
@@ -66,8 +66,8 @@ class CouplerSpectroscopyData(Data):
     data: dict[QubitId, npt.NDArray[CouplerSpecType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, freq, bias, msr, phase):
+    def register_qubit(self, qubit, freq, bias, signal, phase):
         """Store output for single qubit."""
         self.data[qubit] = create_data_array(
-            freq, bias, msr, phase, dtype=CouplerSpecType
+            freq, bias, signal, phase, dtype=CouplerSpecType
         )

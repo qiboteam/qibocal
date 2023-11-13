@@ -58,7 +58,7 @@ class ResonatorSpectroscopyResults(Results):
 
 
 ResSpecType = np.dtype(
-    [("freq", np.float64), ("msr", np.float64), ("phase", np.float64)]
+    [("freq", np.float64), ("signal", np.float64), ("phase", np.float64)]
 )
 """Custom dtype for resonator spectroscopy."""
 
@@ -135,14 +135,13 @@ def _acquisition(
 
     # retrieve the results for every qubit
     for qubit in qubits:
-        # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         # store the results
         data.register_qubit(
             ResSpecType,
             (qubit),
             dict(
-                msr=result.magnitude,
+                signal=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + ro_pulses[qubit].frequency,
             ),

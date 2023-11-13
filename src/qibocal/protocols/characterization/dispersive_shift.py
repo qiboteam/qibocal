@@ -15,7 +15,6 @@ from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.protocols.characterization.utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
-    V_TO_UV,
     lorentzian,
     lorentzian_fit,
     table_dict,
@@ -62,7 +61,7 @@ DispersiveShiftType = np.dtype(
         ("freq", np.float64),
         ("i", np.float64),
         ("q", np.float64),
-        ("msr", np.float64),
+        ("signal", np.float64),
         ("phase", np.float64),
     ]
 )
@@ -151,7 +150,6 @@ def _acquisition(
 
     # retrieve the results for every qubit
     for qubit in qubits:
-        # average msr, phase, i and q over the number of shots defined in the runcard
         for i, results in enumerate([results_0, results_1]):
             result = results[ro_pulses[qubit].serial]
             # store the results
@@ -160,7 +158,7 @@ def _acquisition(
                 (qubit, i),
                 dict(
                     freq=ro_pulses[qubit].frequency + delta_frequency_range,
-                    msr=result.magnitude,
+                    signal=result.magnitude,
                     phase=result.phase,
                     i=result.voltage_i,
                     q=result.voltage_q,
@@ -223,8 +221,8 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=(
-            "MSR (V)",
-            "phase (rad)",
+            "Signal [a.u.]",
+            "phase [rad]",
         ),
     )
     # iterate over multiple data folders
@@ -249,7 +247,7 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
         fig.add_trace(
             go.Scatter(
                 x=frequencies,
-                y=q_data.msr * V_TO_UV,
+                y=q_data.signal,
                 opacity=opacity,
                 name=f"{label}",
                 showlegend=True,
@@ -297,8 +295,8 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
             go.Scatter(
                 x=[fit.best_freq[qubit], fit.best_freq[qubit]],
                 y=[
-                    np.min(np.concatenate((data_0.msr, data_1.msr))),
-                    np.max(np.concatenate((data_0.msr, data_1.msr))),
+                    np.min(np.concatenate((data_0.signal, data_1.signal))),
+                    np.max(np.concatenate((data_0.signal, data_1.signal))),
                 ],
                 mode="lines",
                 line=go.scatter.Line(color="orange", width=3, dash="dash"),
@@ -340,10 +338,10 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
         )
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Frequency (GHz)",
-        yaxis_title="MSR (uV)",
-        xaxis2_title="Frequency (GHz)",
-        yaxis2_title="Phase (rad)",
+        xaxis_title="Frequency [GHz]",
+        yaxis_title="Signal [a.u.]",
+        xaxis2_title="Frequency [GHz]",
+        yaxis2_title="Phase [rad]",
     )
 
     figures.append(fig)

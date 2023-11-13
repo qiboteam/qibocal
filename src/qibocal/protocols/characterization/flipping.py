@@ -15,8 +15,6 @@ from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.characterization.utils import table_dict, table_html
 
-from .utils import V_TO_UV
-
 
 @dataclass
 class FlippingParameters(Parameters):
@@ -40,7 +38,7 @@ class FlippingResults(Results):
     """Raw fitting output."""
 
 
-FlippingType = np.dtype([("flips", np.float64), ("msr", np.float64)])
+FlippingType = np.dtype([("flips", np.float64), ("signal", np.float64)])
 
 
 @dataclass
@@ -75,7 +73,6 @@ def _acquisition(
         data (:class:`FlippingData`)
     """
 
-    # create a DataUnits object to store MSR, phase, i, q and the number of flips
     data = FlippingData(
         resonator_type=platform.resonator_type,
         pi_pulse_amplitudes={
@@ -120,7 +117,7 @@ def _acquisition(
                 (qubit),
                 dict(
                     flips=np.array([flips]),
-                    msr=np.array([result.magnitude]),
+                    signal=np.array([result.magnitude]),
                 ),
             )
 
@@ -147,7 +144,7 @@ def _fit(data: FlippingData) -> FlippingResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         pi_pulse_amplitude = data.pi_pulse_amplitudes[qubit]
-        voltages = qubit_data.msr
+        voltages = qubit_data.signal
         flips = qubit_data.flips
         y_min = np.min(voltages)
         # Guessing period using Fourier transform
@@ -225,7 +222,7 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
     fig.add_trace(
         go.Scatter(
             x=qubit_data.flips,
-            y=qubit_data.msr * V_TO_UV,
+            y=qubit_data.signal,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -271,7 +268,7 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Flips (dimensionless)",
-        yaxis_title="MSR (uV)",
+        yaxis_title="Signal [a.u.]",
     )
 
     figures.append(fig)

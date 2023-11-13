@@ -14,7 +14,6 @@ from qibocal.auto.operation import Qubits, Results, Routine
 from qibocal.protocols.characterization.utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
-    V_TO_UV,
     lorentzian,
     lorentzian_fit,
     table_dict,
@@ -139,7 +138,7 @@ def _acquisition(
                 dict(
                     freq=sequence.get_qubit_pulses(qubit).ro_pulses[0].frequency
                     + delta_frequency_range,
-                    msr=result.magnitude,
+                    signal=result.magnitude,
                     phase=result.phase,
                 ),
             )
@@ -193,7 +192,7 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=(
-            "MSR (uV)",
+            "Signal [a.u.]",
             "phase (rad)",
         ),
     )
@@ -220,7 +219,7 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
         fig.add_trace(
             go.Scatter(
                 x=frequencies,
-                y=q_data.msr * V_TO_UV,
+                y=q_data.signal,
                 opacity=opacity,
                 name=f"{label}",
                 showlegend=True,
@@ -288,7 +287,7 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
     fig.update_layout(
         showlegend=True,
         xaxis_title="Frequency (GHz)",
-        yaxis_title="MSR (uV)",
+        yaxis_title="Signal [a.u.]",
         xaxis2_title="Frequency (GHz)",
         yaxis2_title="Phase (rad)",
     )

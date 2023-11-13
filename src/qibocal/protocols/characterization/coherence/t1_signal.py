@@ -11,28 +11,28 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Qubits, Routine
 
-from ..utils import V_TO_UV, table_dict, table_html
+from ..utils import table_dict, table_html
 from . import t1, utils
 
 
 @dataclass
-class T1MSRParameters(t1.T1Parameters):
-    """T1 MSR runcard inputs."""
+class T1SignalParameters(t1.T1Parameters):
+    """T1 Signal runcard inputs."""
 
 
 @dataclass
-class T1MSRResults(t1.T1Results):
-    """T1 MSR outputs."""
+class T1SignalResults(t1.T1Results):
+    """T1 Signal outputs."""
 
 
 CoherenceType = np.dtype(
-    [("wait", np.float64), ("msr", np.float64), ("phase", np.float64)]
+    [("wait", np.float64), ("signal", np.float64), ("phase", np.float64)]
 )
 """Custom dtype for coherence routines."""
 
 
 @dataclass
-class T1MSRData(Data):
+class T1SignalData(Data):
     """T1 acquisition outputs."""
 
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
@@ -40,8 +40,8 @@ class T1MSRData(Data):
 
 
 def _acquisition(
-    params: T1MSRParameters, platform: Platform, qubits: Qubits
-) -> T1MSRData:
+    params: T1SignalParameters, platform: Platform, qubits: Qubits
+) -> T1SignalData:
     r"""Data acquisition for T1 experiment.
     In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
     (e.g. amplitude damping channel), it is possible that, at the time of measurement, after the delay,
@@ -88,8 +88,7 @@ def _acquisition(
         type=SweeperType.ABSOLUTE,
     )
 
-    # create a DataUnits object to store the MSR, phase, i, q and the delay time
-    data = T1MSRData()
+    data = T1SignalData()
 
     # sweep the parameter
     # execute the pulse sequence
@@ -109,13 +108,13 @@ def _acquisition(
         data.register_qubit(
             CoherenceType,
             (qubit),
-            dict(wait=ro_wait_range, msr=result.magnitude, phase=result.phase),
+            dict(wait=ro_wait_range, signal=result.magnitude, phase=result.phase),
         )
 
     return data
 
 
-def _fit(data: T1MSRData) -> T1MSRResults:
+def _fit(data: T1SignalData) -> T1SignalResults:
     """
     Fitting routine for T1 experiment. The used model is
 
@@ -125,10 +124,10 @@ def _fit(data: T1MSRData) -> T1MSRResults:
     """
     t1s, fitted_parameters = utils.exponential_fit(data)
 
-    return T1MSRResults(t1s, fitted_parameters)
+    return T1SignalResults(t1s, fitted_parameters)
 
 
-def _plot(data: T1MSRData, qubit, fit: T1MSRResults = None):
+def _plot(data: T1SignalData, qubit, fit: T1SignalResults = None):
     """Plotting function for T1 experiment."""
 
     figures = []
@@ -141,7 +140,7 @@ def _plot(data: T1MSRData, qubit, fit: T1MSRResults = None):
     fig.add_trace(
         go.Scatter(
             x=waits,
-            y=qubit_data.msr * V_TO_UV,
+            y=qubit_data.signal,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -173,8 +172,8 @@ def _plot(data: T1MSRData, qubit, fit: T1MSRResults = None):
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Time (ns)",
-        yaxis_title="MSR (uV)",
+        xaxis_title="Time [ns]",
+        yaxis_title="Signal [a.u.]",
     )
 
     figures.append(fig)
@@ -182,5 +181,5 @@ def _plot(data: T1MSRData, qubit, fit: T1MSRResults = None):
     return figures, fitting_report
 
 
-t1_msr = Routine(_acquisition, _fit, _plot, t1._update)
-"""T1 MSR Routine object."""
+t1_signal = Routine(_acquisition, _fit, _plot, t1._update)
+"""T1 Signal Routine object."""
