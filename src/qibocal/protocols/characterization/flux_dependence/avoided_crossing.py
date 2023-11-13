@@ -47,7 +47,7 @@ class AvoidedCrossingData(Data):
     qubit_pairs: list
     """list of qubit pairs ordered following the drive frequency"""
     drive_frequency_low: dict = field(default_factory=dict)
-    """Highest drive frequency in each qubit pair"""
+    """Lowest drive frequency in each qubit pair"""
     data: dict[tuple[QubitId, str], npt.NDArray[QubitFluxType]] = field(
         default_factory=dict
     )
