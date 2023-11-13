@@ -106,7 +106,6 @@ def _acquisition(
     for i, pair in enumerate(qubits):
         # TODO: May measure both qubits on the pair
         qubit = platform.qubits[params.measured_qubits[i]].name
-        # average signal, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         # store the results
         data.register_qubit(

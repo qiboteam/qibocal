@@ -50,7 +50,6 @@ def _acquisition(
         params.delay_before_readout_step,
     )
 
-    # create a DataUnits object to store the Signal, phase, i, q and the delay time
     data = t1_signal.T1SignalData()
 
     # repeat the experiment as many times as defined by software_averages
@@ -70,7 +69,6 @@ def _acquisition(
             ),
         )
         for qubit in qubits:
-            # average signal, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
                 t1_signal.CoherenceType,
