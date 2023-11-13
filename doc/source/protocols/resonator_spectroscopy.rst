@@ -44,6 +44,8 @@ The bare resonator frequency can be found setting a large value for the amplitud
             nshots: 1024
             relaxation_time: 100000
 
+.. image:: resonator_spectroscopy_high.png
+
 Lowering the amplitude we can see a shift in the peak, e.g.:
 
 .. code-block:: yaml
@@ -64,6 +66,8 @@ Lowering the amplitude we can see a shift in the peak, e.g.:
             power_level: low
             nshots: 1024
             relaxation_time: 100000
+
+.. image:: resonator_spectroscopy_low.png
 
 Lowering the amplitude value reduces the height of the peak and increases the noise.
 
