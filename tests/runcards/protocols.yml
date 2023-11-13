@@ -674,4 +674,3 @@ actions:
       bias_width: 0.2
       bias_step:  0.05
       drive_amplitude: 0.5
-      transition: "01"
