@@ -23,8 +23,6 @@ POINT_SIZE = 10
 class AvoidedCrossingParameters(QubitFluxParameters):
     """Avoided Crossing Parameters"""
 
-    ...
-
 
 @dataclass
 class AvoidedCrossingResults(Results):
