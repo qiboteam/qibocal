@@ -26,7 +26,7 @@ from .operation import (
     dummy_operation,
 )
 from .runcard import Action, Id
-from .status import Normal, Status
+from .status import Broken, Normal, Status
 
 MAX_PRIORITY = int(1e9)
 """A number bigger than whatever will be manually typed. But not so insanely big not to fit in a native integer."""
@@ -91,6 +91,11 @@ class Task:
             status = {}
             for qubit in self.qubits:
                 status[qubit] = self.action.validator.__call__(results, qubit)
+            # exit if any of the qubit state is Broken
+            if any(isinstance(stat, Broken) for stat in status.values()):
+                return Broken()
+            else:
+                return Normal()
 
     @property
     def main(self):
@@ -162,11 +167,9 @@ class Task:
                 completed.data, completed.data_time = operation.acquisition(
                     parameters, platform=platform
                 )
-
         if mode.name in ["autocalibration", "fit"]:
             completed.results, completed.results_time = operation.fit(completed.data)
-            self.validate(completed.results)
-
+            completed.status = self.validate(completed.results)
         return completed
 
 

@@ -3,7 +3,7 @@ from typing import Union
 
 from qibolab.qubits import QubitId, QubitPairId
 
-from qibocal.config import log
+from qibocal.config import raise_error
 
 from ..operation import Results
 from ..status import Broken, Normal
@@ -32,5 +32,6 @@ def chi2(
         else:
             return Broken()
     except AttributeError:
-        log.warning(f"Chi2 attribute not present in {type(results)}")
-        return Broken()
+        raise_error(
+            NotImplementedError, f"Chi2 validation not available for {type(results)}"
+        )
