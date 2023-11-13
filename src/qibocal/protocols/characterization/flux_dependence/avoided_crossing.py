@@ -273,7 +273,11 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
     figures.append(heatmaps)
     figures.append(parabolas)
     fitting_report = table_html(
-        table_dict(qubit, ["CZ bias", "iSwap bias"], [cz[:, 0], iswap[:, 0]])
+        table_dict(
+            qubit,
+            ["CZ bias", "iSwap bias"],
+            [np.round(cz[:, 0], 3), np.round(iswap[:, 0], 3)],
+        )
     )
     return figures, fitting_report
 
