@@ -663,3 +663,14 @@ actions:
     parameters:
       nshots: 100
       classifiers_list: ["naive_bayes", "decision_tree"]
+
+  - id: avoided crossing
+    priority: 0
+    operation: avoided_crossing
+    qubits: [[2,1],[0,2]]
+    parameters:
+      freq_width: 100_000_000
+      freq_step: 50_000_000
+      bias_width: 0.2
+      bias_step:  0.05
+      drive_amplitude: 0.5
