@@ -2,9 +2,6 @@ import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-
-# from qibolab.qubits import QubitId, QubitPair
-# from qibolab.qubits import QubitPairId
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Qubits, Routine
@@ -118,7 +115,6 @@ def _aquisition(
             sweeper_amplitude,
         )
 
-        # I removed both phase and iq distance, they didn't seem that relevant
         # TODO: Explore probabilities instead of magnitude
         data.register_qubit(
             ordered_pair[0],
