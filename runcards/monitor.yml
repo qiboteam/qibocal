@@ -3,7 +3,7 @@ actions:
 
   - id: t1
     priority: 00
-    operation: t1_msr
+    operation: t1_signal
     main: t2
     parameters:
       delay_before_readout_start: 50
@@ -13,7 +13,7 @@ actions:
 
   - id: t2
     priority: 10
-    operation: t2_msr
+    operation: t2_signal
     main: readout characterization
     parameters:
       delay_between_pulses_start: 50
