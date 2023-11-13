@@ -292,7 +292,7 @@ def _fit(data: RBData) -> StandardRBResult:
 
     for qubit in qubits:
         # Extract depths and probabilities
-        x = list(set(data.params["depths"]))
+        x = data.depths
         y_scatter = data.samples_to_p0s(qubit, x)
 
         # TODO: Remove this extra list needed to work
@@ -416,7 +416,7 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     fitting_report = ""
 
     # Find a better way of recover signals for qubit and depths
-    x = data.params["depths"]
+    x = data.depths
     y = data.samples_to_p0s(qubit, x)
 
     fig.add_trace(

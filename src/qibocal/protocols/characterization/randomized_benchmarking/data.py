@@ -6,11 +6,6 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data
 
-# RBType = np.dtype(
-#     [("depth", np.int64), ("signal", np.float64),]
-# )
-# """Custom dtype for RB."""
-
 RBType = np.dtype(
     [
         ("samples", np.float64),
@@ -24,9 +19,13 @@ class RBData(Data):
     """A pandas DataFrame bastard child. The output of the acquisition function."""
 
     params: dict
-    # depths: dict
     data: dict[QubitId, npt.NDArray[RBType]] = field(default_factory=dict)
     """Raw data acquired."""
+    depths: list
+
+    # TODO: Can I put this in a __post_init__ or something ???
+    def depths(self):
+        self.depths = list(set(self.data.params["depths"]))
 
     def samples_to_p0s(self, qubit, depths):
         p0s = []
