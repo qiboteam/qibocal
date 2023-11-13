@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -8,14 +9,13 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
-from scipy.signal import find_peaks
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.characterization.utils import table_dict, table_html
 
-from .utils import V_TO_UV
+from .utils import COLORBAND, COLORBAND_LINE
 
 
 @dataclass
@@ -32,15 +32,17 @@ class FlippingParameters(Parameters):
 class FlippingResults(Results):
     """Flipping outputs."""
 
-    amplitude: dict[QubitId, float]
+    amplitude: dict[QubitId, tuple[float, Optional[float]]]
     """Drive amplitude for each qubit."""
-    amplitude_factors: dict[QubitId, float]
+    amplitude_factors: dict[QubitId, tuple[float, Optional[float]]]
     """Drive amplitude correction factor for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
-FlippingType = np.dtype([("flips", np.float64), ("msr", np.float64)])
+FlippingType = np.dtype(
+    [("flips", np.float64), ("prob", np.float64), ("error", np.float64)]
+)
 
 
 @dataclass
@@ -109,18 +111,19 @@ def _acquisition(
             ExecutionParameters(
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
+                acquisition_type=AcquisitionType.DISCRIMINATION,
+                averaging_mode=AveragingMode.SINGLESHOT,
             ),
         )
         for qubit in qubits:
-            result = results[ro_pulses[qubit].serial]
+            prob = results[qubit].probability(state=1)
             data.register_qubit(
                 FlippingType,
                 (qubit),
                 dict(
-                    flips=np.array([flips]),
-                    msr=np.array([result.magnitude]),
+                    flips=[flips],
+                    prob=prob.tolist(),
+                    error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
                 ),
             )
 
@@ -147,31 +150,11 @@ def _fit(data: FlippingData) -> FlippingResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         pi_pulse_amplitude = data.pi_pulse_amplitudes[qubit]
-        voltages = qubit_data.msr
-        flips = qubit_data.flips
-        y_min = np.min(voltages)
-        # Guessing period using Fourier transform
-        ft = np.fft.rfft(voltages)
-        # Remove the zero frequency mode
-        mags = abs(ft)[1:]
-        local_maxima = find_peaks(mags, height=0)
-        peak_heights = local_maxima[1]["peak_heights"]
-        # Select the frequency with the highest peak
-        index = (
-            int(local_maxima[0][np.argmax(peak_heights)] + 1)
-            if len(local_maxima[0]) > 0
-            else None
-        )
-        f = flips[index] / (flips[1] - flips[0]) if index is not None else 1
-        y_max = np.max(voltages)
-        x_min = np.min(flips)
-        x_max = np.max(flips)
-        x = (flips - x_min) * 2 * np.pi * f / (x_max - x_min)
-        y = (voltages - y_min) / (y_max - y_min)
-
+        y = qubit_data.prob
+        x = qubit_data.flips
         pguess = [0.5, 0.5, 1, np.pi, 0]
         try:
-            popt, _ = curve_fit(
+            popt, perr = curve_fit(
                 flipping_fit,
                 x,
                 y,
@@ -181,33 +164,34 @@ def _fit(data: FlippingData) -> FlippingResults:
                     [0, 0, -np.inf, 0, 0],
                     [1, np.inf, np.inf, 2 * np.pi, np.inf],
                 ),
+                sigma=qubit_data.error,
             )
+            perr = np.sqrt(np.diag(perr))
         except:
             log.warning("flipping_fit: the fitting was not succesful")
-            popt = [0, 0, 0, 0]
+            popt = [0] * 4
+            perr = [1] * 4
 
-        translated_popt = [
-            y_min + (y_max - y_min) * popt[0],
-            (y_max - y_min)
-            * popt[1]
-            * np.exp(x_min * popt[4] * 2 * np.pi * f / (x_max - x_min)),
-            popt[2] * 2 * np.pi * f / (x_max - x_min),
-            popt[3] - x_min * 2 * np.pi * f / (x_max - x_min) * popt[2],
-            popt[4] * 2 * np.pi * f / (x_max - x_min),
-        ]
         if popt[3] > np.pi / 2 and popt[3] < 3 * np.pi / 2:
-            signed_correction = -translated_popt[2] / 2
+            signed_correction = -popt[2] / 2
         else:
-            signed_correction = translated_popt[2] / 2
+            signed_correction = popt[2] / 2
         # The amplitude is directly proportional to the rotation angle
-        corrected_amplitudes[qubit] = (pi_pulse_amplitude * np.pi) / (
-            np.pi + signed_correction
+        corrected_amplitudes[qubit] = (
+            (pi_pulse_amplitude * np.pi) / (float(np.pi + signed_correction)),
+            float(
+                pi_pulse_amplitude
+                * np.pi
+                * np.log(np.pi + signed_correction)
+                * perr[2]
+                / 2
+            ),
         )
-        fitted_parameters[qubit] = translated_popt
+        fitted_parameters[qubit] = popt.tolist()
         amplitude_correction_factors[qubit] = (
-            signed_correction / np.pi * pi_pulse_amplitude
+            float(signed_correction / np.pi * pi_pulse_amplitude),
+            float(perr[2] * pi_pulse_amplitude / np.pi / 2),
         )
-
     return FlippingResults(
         corrected_amplitudes, amplitude_correction_factors, fitted_parameters
     )
@@ -222,14 +206,28 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
     fitting_report = ""
     qubit_data = data[qubit]
 
+    probs = qubit_data.prob
+    error_bars = qubit_data.error
+
     fig.add_trace(
         go.Scatter(
             x=qubit_data.flips,
-            y=qubit_data.msr * V_TO_UV,
+            y=qubit_data.prob,
             opacity=1,
             name="Voltage",
             showlegend=True,
             legendgroup="Voltage",
+        ),
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=np.concatenate((qubit_data.flips, qubit_data.flips[::-1])),
+            y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
+            fill="toself",
+            fillcolor=COLORBAND,
+            line=dict(color=COLORBAND_LINE),
+            showlegend=True,
+            name="Errors",
         ),
     )
 
@@ -271,7 +269,7 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Flips (dimensionless)",
-        yaxis_title="MSR (uV)",
+        yaxis_title="Probability",
     )
 
     figures.append(fig)
