@@ -58,12 +58,12 @@ def effective_qubit_temperature(
     error_prob_1 = np.sqrt(prob_1 * (1 - prob_1) / nshots)
     try:
         temp = -HBAR * qubit_frequency / (np.log(prob_1 / prob_0) * KB)
+        dT_dp0 = temp / prob_0 / np.log(prob_1 / prob_0)
+        dT_dp1 = temp / prob_1 / np.log(prob_1 / prob_0)
+        error = np.sqrt((dT_dp0 * error_prob_0) ** 2 + (dT_dp1 * error_prob_1) ** 2)
     except ZeroDivisionError:
-        # TODO: choose appropriate value to return
-        temp = -1
-    dT_dp0 = temp / prob_0 / np.log(prob_1 / prob_0)
-    dT_dp1 = temp / prob_1 / np.log(prob_1 / prob_0)
-    error = np.sqrt((dT_dp0 * error_prob_0) ** 2 + (dT_dp1 * error_prob_1) ** 2)
+        temp = np.nan
+        error = np.nan
     return temp, error
 
 
@@ -425,7 +425,12 @@ def significant_digit(number: float):
             is ``>= 1``, ``= 0`` or ``inf``.
     """
 
-    if np.isinf(np.real(number)) or np.real(number) >= 1 or number == 0:
+    if (
+        np.isinf(np.real(number))
+        or np.real(number) >= 1
+        or number == 0
+        or np.isnan(number)
+    ):
         return -1
 
     position = max(np.ceil(-np.log10(abs(np.real(number)))), -1)
