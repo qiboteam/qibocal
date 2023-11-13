@@ -36,21 +36,35 @@ COLORBAND_LINE = "rgba(255,255,255,0)"
 
 
 def effective_qubit_temperature(
-    prob_0: np.array, prob_1: np.array, qubit_frequency: float
+    prob_0: np.array, prob_1: np.array, qubit_frequency: float, nshots: int
 ):
     """Calculates the qubit effective temperature.
 
-    The formula used in this one:
+    The formula used is the following one:
 
     kB Teff = - hbar qubit_freq / ln(prob_1/prob_0)
 
+    Args:
+        prob_0 (np.array): population 0 samples
+        prob_1 (np.array): population 1 samples
+        qubit_frequency(float): frequency of qubit
+        nshots (int): number of shots
+    Returns:
+        temp (float): effective temperature
+        error (float): error on effective temperature
+
     """
+    error_prob_0 = np.sqrt(prob_0 * (1 - prob_0) / nshots)
+    error_prob_1 = np.sqrt(prob_1 * (1 - prob_1) / nshots)
     try:
         temp = -HBAR * qubit_frequency / (np.log(prob_1 / prob_0) * KB)
     except ZeroDivisionError:
         # TODO: choose appropriate value to return
         temp = -1
-    return temp
+    dT_dp0 = temp / prob_0 / np.log(prob_1 / prob_0)
+    dT_dp1 = temp / prob_1 / np.log(prob_1 / prob_0)
+    error = np.sqrt((dT_dp0 * error_prob_0) ** 2 + (dT_dp1 * error_prob_1) ** 2)
+    return temp, error
 
 
 def calculate_frequencies(results, qubit_list):
@@ -348,14 +362,31 @@ def round_report(
             magnitude = 0
 
         ndigits = max(significant_digit(error * 10 ** (-1 * magnitude)), 0)
-        rounded_values.append(
-            f"{round(value * 10 ** (-1 * magnitude), ndigits)} * 10 ^{magnitude}"
-        )
-        rounded_errors.append(
-            f"{np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')}* 10 ^ {magnitude}"
-        )
+        if magnitude != 0:
+            rounded_values.append(
+                f"{round(value * 10 ** (-1 * magnitude), ndigits)}e{magnitude}"
+            )
+            rounded_errors.append(
+                f"{np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')}e{magnitude}"
+            )
+        else:
+            rounded_values.append(f"{round(value * 10 ** (-1 * magnitude), ndigits)}")
+            rounded_errors.append(
+                f"{np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')}"
+            )
 
     return rounded_values, rounded_errors
+
+
+def format_error_single_cell(measure: tuple):
+    """Helper function to print mean value and error in one line."""
+    # extract mean value and error
+    mean = measure[0][0]
+    error = measure[1][0]
+    if all("e" in number for number in measure[0] + measure[1]):
+        magn = mean.split("e")[1]
+        return f"({mean.split('e')[0]} ± {error.split('e')[0]}) e{magn}"
+    return f"{mean} ± {error}"
 
 
 def chi2_reduced(

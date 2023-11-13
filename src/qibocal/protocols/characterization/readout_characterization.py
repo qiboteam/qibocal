@@ -12,6 +12,8 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.protocols.characterization.utils import (
     effective_qubit_temperature,
+    format_error_single_cell,
+    round_report,
     table_dict,
     table_html,
 )
@@ -32,7 +34,7 @@ class ReadoutCharacterizationResults(Results):
     """Assignment fidelity."""
     qnd: dict[QubitId, float]
     "QND-ness of the measurement"
-    effective_temperature: dict[QubitId, float]
+    effective_temperature: dict[QubitId, tuple[float, float]]
     """Effective qubit temperature."""
     Lambda_M: dict[QubitId, float]
     "Mapping between a given initial state to an outcome adter the measurement"
@@ -174,6 +176,7 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
             prob_1=state0_count_1_m1 / nshots,
             prob_0=state0_count_0_m1 / nshots,
             qubit_frequency=data.qubit_frequencies[qubit],
+            nshots=nshots,
         )
 
     return ReadoutCharacterizationResults(
@@ -210,7 +213,9 @@ def _plot(
                     np.round(fit.assignment_fidelity[qubit], 6),
                     np.round(fit.fidelity[qubit], 6),
                     np.round(fit.qnd[qubit], 6),
-                    np.round(fit.effective_temperature[qubit], 6),
+                    format_error_single_cell(
+                        round_report([fit.effective_temperature[qubit]])
+                    ),
                 ],
             )
         )

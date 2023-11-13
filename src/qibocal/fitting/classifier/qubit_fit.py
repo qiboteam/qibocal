@@ -123,7 +123,10 @@ class QubitFit:
         prob_1 = np.count_nonzero(predictions) / len(predictions)
         prob_0 = 1 - prob_1
         return effective_qubit_temperature(
-            prob_0=prob_0, prob_1=prob_1, qubit_frequency=qubit_frequency
+            prob_0=prob_0,
+            prob_1=prob_1,
+            qubit_frequency=qubit_frequency,
+            nshots=len(predictions),
         )
 
     def rotate(self, v):

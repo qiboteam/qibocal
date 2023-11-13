@@ -113,7 +113,6 @@ def _acquisition(
                     ),
                 ),
             )
-    print(data)
     return data
 
 

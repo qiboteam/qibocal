@@ -29,8 +29,10 @@ from qibocal.protocols.characterization.utils import (
     MESH_SIZE,
     TITLE_SIZE,
     evaluate_grid,
+    format_error_single_cell,
     get_color_state0,
     plot_results,
+    round_report,
     table_dict,
     table_html,
 )
@@ -373,7 +375,9 @@ def _plot(
                         np.round(fit.threshold[qubit], 6),
                         np.round(fit.fidelity[qubit], 3),
                         np.round(fit.assignment_fidelity[qubit], 3),
-                        np.round(fit.effective_temperature[qubit], 3),
+                        format_error_single_cell(
+                            round_report([fit.effective_temperature[qubit]])
+                        ),
                     ],
                 )
             )
