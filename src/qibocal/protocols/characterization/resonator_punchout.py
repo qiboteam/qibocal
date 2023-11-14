@@ -14,7 +14,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from .utils import GHZ_TO_HZ, HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
+from .utils import HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
 
 
 @dataclass
@@ -175,7 +175,7 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
         vertical_spacing=0.2,
         subplot_titles=(
             "Normalised Signal [a.u.]",
-            "phase (rad)",
+            "phase [rad]",
         ),
     )
     qubit_data = data[qubit]
@@ -198,8 +198,8 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
         row=1,
         col=1,
     )
-    fig.update_xaxes(title_text="Frequency (GHz)", row=1, col=1)
-    fig.update_xaxes(title_text="Frequency (GHz)", row=1, col=2)
+    fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=1)
+    fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=2)
     fig.update_yaxes(title_text="Amplitude", row=1, col=1)
     fig.update_yaxes(title_text="Amplitude", row=1, col=2)
     fig.add_trace(
@@ -239,9 +239,9 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
                     "High Power Resonator Frequency",
                 ],
                 [
-                    np.round(fit.readout_frequency[qubit] * GHZ_TO_HZ),
+                    np.round(fit.readout_frequency[qubit]),
                     np.round(fit.readout_amplitude[qubit], 3),
-                    np.round(fit.bare_frequency[qubit] * GHZ_TO_HZ),
+                    np.round(fit.bare_frequency[qubit]),
                 ],
             )
         )

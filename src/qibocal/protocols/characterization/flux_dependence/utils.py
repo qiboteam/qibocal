@@ -4,28 +4,20 @@ from plotly.subplots import make_subplots
 from scipy.special import mathieu_a, mathieu_b
 from sklearn.linear_model import Ridge
 
-from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, table_dict, table_html
+from ..utils import HZ_TO_GHZ, table_dict, table_html
 
 FLUX_PARAMETERS = {
     "Xi": "Constant to map flux to bias [V]",
     "d": "Junction asymmetry",
-    "Ec": "Charge energy Ec [GHz]",
-    "Ej": "Josephson energy Ej [GHz]",
-    "f_q_offset": "Qubit frequency offset [GHz]",
-    "C_ii": "Flux matrix element C_ii [GHz/V]",
+    "Ec": "Charge energy Ec [Hz]",
+    "Ej": "Josephson energy Ej [Hz]",
+    "f_q_offset": "Qubit frequency offset [Hz]",
+    "C_ii": "Flux matrix element C_ii [Hz/V]",
     "g": "Readout coupling",
-    "bare_resonator_frequency": "Bare resonator frequency [GHz]",
-    "f_qs": "Qubit frequency [GHz]",
-    "f_r_offset": "Resonator frequency offset [GHz]",
+    "bare_resonator_frequency": "Bare resonator frequency [Hz]",
+    "f_qs": "Qubit frequency [Hz]",
+    "f_r_offset": "Resonator frequency offset [Hz]",
 }
-FREQUENCY_PARAMETERS = [
-    "Ec",
-    "Ej",
-    "f_q_offset",
-    "bare_resonator_frequency",
-    "f_qs",
-    "f_r_offset",
-]
 
 
 def is_crosstalk(data):
@@ -130,7 +122,7 @@ def flux_dependence_plot(data, fit, qubit):
                         params["Ec"],
                         params["Ej"],
                     ]
-                    freq_fit = freq_r_mathieu(biases1, *popt) * HZ_TO_GHZ
+                    freq_fit = freq_r_mathieu(biases1, *popt)
                 else:
                     popt = [
                         fit.sweetspot[qubit],
@@ -140,7 +132,7 @@ def flux_dependence_plot(data, fit, qubit):
                         params["g"],
                         params["bare_resonator_frequency"],
                     ]
-                    freq_fit = freq_r_transmon(biases1, *popt) * HZ_TO_GHZ
+                    freq_fit = freq_r_transmon(biases1, *popt)
             elif data.__class__.__name__ == "QubitFluxData":
                 fitting_report_label = "Qubit Frequency [GHz]"
                 if all(param in params for param in ["Ec", "Ej"]):
@@ -151,15 +143,15 @@ def flux_dependence_plot(data, fit, qubit):
                         params["Ec"],
                         params["Ej"],
                     ]
-                    freq_fit = freq_q_mathieu(biases1, *popt) * HZ_TO_GHZ
+                    freq_fit = freq_q_mathieu(biases1, *popt)
                 else:
                     popt = [
                         fit.sweetspot[qubit],
                         params["Xi"],
                         params["d"],
-                        fit.frequency[qubit] * GHZ_TO_HZ,
+                        fit.frequency[qubit],
                     ]
-                    freq_fit = freq_q_transmon(biases1, *popt) * HZ_TO_GHZ
+                    freq_fit = freq_q_transmon(biases1, *popt)
 
             fig.add_trace(
                 go.Scatter(
@@ -176,8 +168,6 @@ def flux_dependence_plot(data, fit, qubit):
             values = []
 
             for key, value in fit.fitted_parameters[qubit].items():
-                if key in FREQUENCY_PARAMETERS:  # Select frequency parameters
-                    value *= HZ_TO_GHZ
                 values.append(np.round(value, 5))
                 parameters.append(FLUX_PARAMETERS[key])
 

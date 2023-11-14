@@ -14,7 +14,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from .utils import GHZ_TO_HZ, HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
+from .utils import HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
 
 
 @dataclass
@@ -22,15 +22,15 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
     """ResonatorPunchoutAttenuation runcard inputs."""
 
     freq_width: int
-    """Width for frequency sweep relative  to the readout frequency (Hz)."""
+    """Width for frequency sweep relative  to the readout frequency [Hz]."""
     freq_step: int
-    """Frequency step for sweep (Hz)."""
+    """Frequency step for sweep [Hz]."""
     min_att: int
-    """Attenuation minimum value (dB)."""
+    """Attenuation minimum value [dB]."""
     max_att: int
-    """Attenuation maximum value (dB)."""
+    """Attenuation maximum value [dB]."""
     step_att: int
-    """Attenuation step (dB)."""
+    """Attenuation step [dB]."""
 
 
 @dataclass
@@ -196,8 +196,8 @@ def _plot(
         row=1,
         col=1,
     )
-    fig.update_xaxes(title_text="Frequency (Hz)", row=1, col=1)
-    fig.update_yaxes(title_text="Attenuation (dB)", row=1, col=1)
+    fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=1)
+    fig.update_yaxes(title_text="Attenuation [dB]", row=1, col=1)
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
@@ -208,8 +208,8 @@ def _plot(
         row=1,
         col=2,
     )
-    fig.update_xaxes(title_text="Frequency (Hz)", row=1, col=2)
-    fig.update_yaxes(title_text="Attenuation (dB)", row=1, col=2)
+    fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=2)
+    fig.update_yaxes(title_text="Attenuation [dB]", row=1, col=2)
 
     if fit is not None:
         fig.add_trace(
@@ -237,9 +237,9 @@ def _plot(
                     "High Power Resonator Frequency",
                 ],
                 [
-                    np.round(fit.readout_frequency[qubit] * GHZ_TO_HZ, 0),
+                    np.round(fit.readout_frequency[qubit], 0),
                     fit.readout_attenuation[qubit],
-                    np.round(fit.bare_frequency[qubit] * GHZ_TO_HZ),
+                    np.round(fit.bare_frequency[qubit]),
                 ],
             )
         )

@@ -13,7 +13,6 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.protocols.characterization.utils import (
-    GHZ_TO_HZ,
     HZ_TO_GHZ,
     lorentzian,
     lorentzian_fit,
@@ -197,7 +196,7 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     iq_couples = np.array(iq_couples)
     best_freqs = {}
     for idx, qubit in enumerate(qubits):
-        frequencies = data[qubit, 0].freq * HZ_TO_GHZ
+        frequencies = data[qubit, 0].freq
 
         max_index = np.argmax(
             np.linalg.norm(iq_couples[0][idx] - iq_couples[1][idx], axis=-1)
@@ -323,15 +322,14 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
                 ],
                 np.round(
                     [
-                        fit_data_0["frequency_state_zero"][qubit] * GHZ_TO_HZ,
-                        fit_data_1["frequency_state_one"][qubit] * GHZ_TO_HZ,
+                        fit_data_0["frequency_state_zero"][qubit],
+                        fit_data_1["frequency_state_one"][qubit],
                         (
                             fit_data_0["frequency_state_zero"][qubit]
                             - fit_data_1["frequency_state_one"][qubit]
                         )
-                        / 2
-                        * GHZ_TO_HZ,
-                        fit.best_freq[qubit] * GHZ_TO_HZ,
+                        / 2,
+                        fit.best_freq[qubit],
                     ]
                 ),
             )
