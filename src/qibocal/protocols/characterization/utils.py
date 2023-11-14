@@ -59,7 +59,7 @@ def effective_qubit_temperature(
     try:
         temp = -HBAR * qubit_frequency / (np.log(prob_1 / prob_0) * KB)
         dT_dp0 = temp / prob_0 / np.log(prob_1 / prob_0)
-        dT_dp1 = temp / prob_1 / np.log(prob_1 / prob_0)
+        dT_dp1 = -temp / prob_1 / np.log(prob_1 / prob_0)
         error = np.sqrt((dT_dp0 * error_prob_0) ** 2 + (dT_dp1 * error_prob_1) ** 2)
     except ZeroDivisionError:
         temp = np.nan
