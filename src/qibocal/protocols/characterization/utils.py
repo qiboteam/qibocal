@@ -385,7 +385,7 @@ def format_error_single_cell(measure: tuple):
     error = measure[1][0]
     if all("e" in number for number in measure[0] + measure[1]):
         magn = mean.split("e")[1]
-        return f"({mean.split('e')[0]} ± {error.split('e')[0]}) e{magn}"
+        return f"({mean.split('e')[0]} ± {error.split('e')[0]}) 10<sup>{magn}</sup>"
     return f"{mean} ± {error}"
 
 
@@ -685,8 +685,11 @@ def table_html(data: dict) -> str:
     Args:
         data (dict): the keys will be converted into table entries and the
         values will be the columns of the table.
+        Values must be valid HTML strings.
 
     Return:
         str
     """
-    return pd.DataFrame(data).to_html(classes="fitting-table", index=False, border=0)
+    return pd.DataFrame(data).to_html(
+        classes="fitting-table", index=False, border=0, escape=False
+    )
