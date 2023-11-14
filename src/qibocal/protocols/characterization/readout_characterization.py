@@ -102,14 +102,12 @@ def _acquisition(
                     dict(i=result.voltage_i, q=result.voltage_q),
                 )
     for qubit, state, measure in data.data.keys():
-        print(qubit, state)
         model = QubitFit()
         model.iq_angle = qubits[qubit].iq_angle
         model.threshold = qubits[qubit].threshold
         qubit_data = data.data[qubit, state, measure]
         predictions = model.predict(np.stack([qubit_data.i, qubit_data.q], axis=-1))
         data.samples[qubit, state, measure] = predictions.tolist()
-    print(data)
     return data
 
 
