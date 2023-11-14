@@ -19,7 +19,7 @@ Here is an example of a runcard which validates the results through
       parameters:
         ...
 
-The execution will be interrupted in this case if the :math:`\chi^2` exceed
+The execution will be interrupted in this case if the :math:`\chi^2` exceeds
 `chi_max_value`.
 
 Adding a custom validator at runtime
