@@ -10,7 +10,6 @@ from qibolab.qubits import QubitId
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.characterization.utils import table_dict, table_html
 
 
@@ -91,6 +90,13 @@ def _acquisition(
                 acquisition_type=AcquisitionType.INTEGRATION,
             ),
         )
+        results_samples = platform.execute_pulse_sequence(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+            ),
+        )
 
         # Save the data
         for qubit in qubits:
@@ -101,13 +107,9 @@ def _acquisition(
                     (qubit, state, i),
                     dict(i=result.voltage_i, q=result.voltage_q),
                 )
-    for qubit, state, measure in data.data.keys():
-        model = QubitFit()
-        model.iq_angle = qubits[qubit].iq_angle
-        model.threshold = qubits[qubit].threshold
-        qubit_data = data.data[qubit, state, measure]
-        predictions = model.predict(np.stack([qubit_data.i, qubit_data.q], axis=-1))
-        data.samples[qubit, state, measure] = predictions.tolist()
+                result_samples = results_samples[ro_pulse.serial]
+                data.samples[qubit, state, i] = result_samples.samples.tolist()
+
     return data
 
 
