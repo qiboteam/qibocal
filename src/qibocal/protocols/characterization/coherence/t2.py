@@ -196,8 +196,7 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
         )
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Time (ns)",
+        xaxis_title="Time [ns]",
         yaxis_title="Probability of State 1",
     )
 
