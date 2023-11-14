@@ -12,7 +12,7 @@ CHI2_MAX = 0.05
 """Max value for accepting fit result."""
 
 
-def chi2(
+def check_chi2(
     results: Results,
     qubit: Union[QubitId, QubitPairId, list[QubitId]],
     chi2_max_value=None,

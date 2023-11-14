@@ -86,16 +86,19 @@ class Task:
 
         return Operation[self.action.operation].value
 
-    def validate(self, results: Results):
-        if self.action.validator is not None:
-            status = {}
-            for qubit in self.qubits:
-                status[qubit] = self.action.validator.__call__(results, qubit)
-            # exit if any of the qubit state is Failure
-            if any(isinstance(stat, Failure) for stat in status.values()):
-                return Failure()
-            else:
-                return Normal()
+    def validate(self, results: Results) -> Optional[Status]:
+        """Performs validation only if validator is provided."""
+
+        if self.action.validator is None:
+            return None
+        status = {}
+        for qubit in self.qubits:
+            status[qubit] = self.action.validator.__call__(results, qubit)
+        # exit if any of the qubit state is Failure
+        if any(isinstance(stat, Failure) for stat in status.values()):
+            return Failure()
+        else:
+            return Normal()
 
     @property
     def main(self):

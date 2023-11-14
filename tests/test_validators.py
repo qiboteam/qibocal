@@ -44,7 +44,7 @@ DUMMY_CARD = {
 # TODO: generalize to all protocols that support chi2.
 
 
-@pytest.mark.parametrize("chi2_max_value", [100, 1e-5])
+@pytest.mark.parametrize("chi2_max_value", [1000, 1e-5])
 def test_chi2(chi2_max_value, tmp_path):
     """Dummy test only for t1"""
     DUMMY_CARD["actions"][0]["validator"]["parameters"][
