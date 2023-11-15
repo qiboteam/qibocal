@@ -10,7 +10,13 @@ from qibolab.qubits import QubitId
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.protocols.characterization.utils import table_dict, table_html
+from qibocal.protocols.characterization.utils import (
+    effective_qubit_temperature,
+    format_error_single_cell,
+    round_report,
+    table_dict,
+    table_html,
+)
 
 
 @dataclass
@@ -28,6 +34,8 @@ class ReadoutCharacterizationResults(Results):
     """Assignment fidelity."""
     qnd: dict[QubitId, float]
     "QND-ness of the measurement"
+    effective_temperature: dict[QubitId, tuple[float, float]]
+    """Effective qubit temperature."""
     Lambda_M: dict[QubitId, float]
     "Mapping between a given initial state to an outcome adter the measurement"
 
@@ -45,6 +53,8 @@ ReadoutCharacterizationType = np.dtype(
 class ReadoutCharacterizationData(Data):
     """ReadoutCharacterization acquisition outputs."""
 
+    qubit_frequencies: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit frequencies."""
     data: dict[tuple, npt.NDArray[ReadoutCharacterizationType]] = field(
         default_factory=dict
     )
@@ -58,7 +68,11 @@ def _acquisition(
 ) -> ReadoutCharacterizationData:
     """Data acquisition for resonator spectroscopy."""
 
-    data = ReadoutCharacterizationData()
+    data = ReadoutCharacterizationData(
+        qubit_frequencies={
+            qubit: platform.qubits[qubit].drive_frequency for qubit in qubits
+        }
+    )
 
     # FIXME: ADD 1st measurament and post_selection for accurate state preparation ?
 
@@ -119,6 +133,7 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
     qubits = data.qubits
     assignment_fidelity = {}
     fidelity = {}
+    effective_temperature = {}
     qnd = {}
     Lambda_M = {}
     for qubit in qubits:
@@ -167,8 +182,16 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
         P_1o_0i = P_1o_m0_0i + P_1o_m1_0i
 
         qnd[qubit] = 1 - (P_0o_1i + P_1o_0i) / 2
+        effective_temperature[qubit] = effective_qubit_temperature(
+            prob_1=state0_count_1_m1 / nshots,
+            prob_0=state0_count_0_m1 / nshots,
+            qubit_frequency=data.qubit_frequencies[qubit],
+            nshots=nshots,
+        )
 
-    return ReadoutCharacterizationResults(fidelity, assignment_fidelity, qnd, Lambda_M)
+    return ReadoutCharacterizationResults(
+        fidelity, assignment_fidelity, qnd, effective_temperature, Lambda_M
+    )
 
 
 def _plot(
@@ -208,11 +231,19 @@ def _plot(
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["Assignment Fidelity", "Fidelity", "QND"],
+                [
+                    "Assignment Fidelity",
+                    "Fidelity",
+                    "QND",
+                    "Effective Qubit Temperature [K]",
+                ],
                 [
                     np.round(fit.assignment_fidelity[qubit], 6),
                     np.round(fit.fidelity[qubit], 6),
                     np.round(fit.qnd[qubit], 6),
+                    format_error_single_cell(
+                        round_report([fit.effective_temperature[qubit]])
+                    ),
                 ],
             )
         )
