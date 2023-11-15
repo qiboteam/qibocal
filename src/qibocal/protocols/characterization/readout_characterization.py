@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import ExecutionParameters
+from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
@@ -34,7 +34,8 @@ class ReadoutCharacterizationResults(Results):
 
 ReadoutCharacterizationType = np.dtype(
     [
-        ("probability", np.float64),
+        ("i", np.float64),
+        ("q", np.float64),
     ]
 )
 """Custom dtype for ReadoutCharacterization."""
@@ -47,6 +48,8 @@ class ReadoutCharacterizationData(Data):
     data: dict[tuple, npt.NDArray[ReadoutCharacterizationType]] = field(
         default_factory=dict
     )
+    """Raw data acquired."""
+    samples: dict[tuple, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
 
@@ -84,21 +87,28 @@ def _acquisition(
             ExecutionParameters(
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+            ),
+        )
+        results_samples = platform.execute_pulse_sequence(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
             ),
         )
 
         # Save the data
         for qubit in qubits:
-            i = 0
-            for ro_pulse in ro_pulses[qubit]:
+            for i, ro_pulse in enumerate(ro_pulses[qubit]):
                 result = results[ro_pulse.serial]
-                qubit = ro_pulse.qubit
                 data.register_qubit(
                     ReadoutCharacterizationType,
                     (qubit, state, i),
-                    dict(probability=result.samples),
+                    dict(i=result.voltage_i, q=result.voltage_q),
                 )
-                i += 1
+                result_samples = results_samples[ro_pulse.serial]
+                data.samples[qubit, state, i] = result_samples.samples.tolist()
 
     return data
 
@@ -113,24 +123,24 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
     Lambda_M = {}
     for qubit in qubits:
         # 1st measurement (m=1)
-        m1_state_1 = data[qubit, 1, 0].probability
+        m1_state_1 = data.samples[qubit, 1, 0]
         nshots = len(m1_state_1)
         # state 1
         state1_count_1_m1 = np.count_nonzero(m1_state_1)
         state0_count_1_m1 = nshots - state1_count_1_m1
 
-        m1_state_0 = data[qubit, 0, 0].probability
+        m1_state_0 = data.samples[qubit, 0, 0]
         # state 0
         state1_count_0_m1 = np.count_nonzero(m1_state_0)
         state0_count_0_m1 = nshots - state1_count_0_m1
 
         # 2nd measurement (m=2)
-        m2_state_1 = data[qubit, 1, 1].probability
+        m2_state_1 = data.samples[qubit, 1, 1]
         # state 1
         state1_count_1_m2 = np.count_nonzero(m2_state_1)
         state0_count_1_m2 = nshots - state1_count_1_m2
 
-        m2_state_0 = data[qubit, 0, 1].probability
+        m2_state_0 = data.samples[qubit, 0, 1]
         # state 0
         state1_count_0_m2 = np.count_nonzero(m2_state_0)
         state0_count_0_m2 = nshots - state1_count_0_m2
@@ -171,11 +181,29 @@ def _plot(
     figures = []
     fitting_report = ""
     fig = go.Figure()
+    for state in range(2):
+        for measure in range(2):
+            shots = data.data[qubit, state, measure]
+
+            fig.add_trace(
+                go.Scatter(
+                    x=shots.i,
+                    y=shots.q,
+                    name=f"state {state} measure {measure}",
+                    mode="markers",
+                    showlegend=True,
+                    opacity=0.7,
+                    marker=dict(size=3),
+                )
+            )
+    figures.append(fig)
     if fit is not None:
-        fig.add_trace(
+        fig2 = go.Figure()
+
+        fig2.add_trace(
             go.Heatmap(
                 z=fit.Lambda_M[qubit],
-            ),
+            )
         )
         fitting_report = table_html(
             table_dict(
@@ -188,20 +216,7 @@ def _plot(
                 ],
             )
         )
-
-    fig.update_xaxes(title_text="Shot")
-    fig.update_xaxes(tickvals=[0, 1])
-    fig.update_yaxes(tickvals=[0, 1])
-
-    # last part
-    fig.update_layout(
-        showlegend=False,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="State prepared",
-        yaxis_title="State read",
-    )
-
-    figures.append(fig)
+        figures.append(fig2)
 
     return figures, fitting_report
 
