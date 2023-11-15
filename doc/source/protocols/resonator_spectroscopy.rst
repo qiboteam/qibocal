@@ -69,7 +69,12 @@ Lowering the amplitude we can see a shift in the peak, e.g.:
 
 .. image:: resonator_spectroscopy_low.png
 
-Lowering the amplitude value reduces the height of the peak and increases the noise.
+Running the ``qibocal`` routines above produces outputs in the reports like the ones shown above.
+The peaks are Lorentzian. As we can see, at low power the resonator fequency shifts.
+This is due to the Hamiltonian of the system :cite:p:`Blais_2004, wallraff2004strong`. Therefore, the dressed resonator
+frequency is larger than the bare resonator frequency.
+
+Lowering the amplitude value also reduces the height of the peak and increases the noise.
 
 Another parameter connected to the amplitude, is also the relaxation time (in some
 literature also referred to as repetition duration) and the number of shots.
@@ -91,13 +96,6 @@ an idea of the region to scan (for standard cavities around 7 GHz). Also, a very
 step between two subsequent frequency points is not needed and could really slow down
 the experiment (from seconds to tens of minutes) if chosen incorrectly. Usually, a step
 of 200 MHz is fine enough.
-
-Running the ``qibocal`` routines above produces outputs like these in the reports:
-
-
-The peaks are Lorentzian. As we can see, at low power the resonator fequency shifts.
-This is due to the Hamiltonian of the system :cite:p:`Blais_2004, wallraff2004strong`. Therefore, the dressed resonator
-frequency is larger than the bare resonator frequency.
 
 The resonator frequencies can be then inserted into the platform runcards (in ``qibolab_platforms_qrc``).
 For example, if we are reading qubit 0:
