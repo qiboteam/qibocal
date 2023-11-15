@@ -21,7 +21,7 @@ elements to take into consideration:
 * higher amplitudes usually correspond to better signal to noise ratio;
 * at high amplitudes the signal breaks superconductivity, therefore resonator is not effectively not coupled to the qubit (we talk of bare resonator frequency);
 * at intermediate amplitudes the peak could completely disappear and is, in general, not Lorentzian;
-* very high amplitudes could damage the components3
+* very high amplitudes could damage the components.
 
 The bare resonator frequency can be found setting a large value for the amplitude, e.g.:
 
