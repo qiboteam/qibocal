@@ -28,11 +28,11 @@ def autocalibrate(runcard, folder, force, update):
      - RUNCARD: runcard with declarative inputs.
     """
 
+    # generate output folder
+    path = generate_output_folder(folder, force)
     # rename for brevity
     backend = runcard.backend_obj
     platform = runcard.platform_obj
-    # generate output folder
-    path = generate_output_folder(folder, force)
 
     # allocate qubits
     qubits = create_qubits_dict(qubits=runcard.qubits, platform=platform)
