@@ -48,6 +48,8 @@ class CZVirtualZResults(Results):
     """CZ angle."""
     virtual_phase: dict[QubitPairId, dict[QubitId, float]]
     """Virtual Z phase correction."""
+    leakage: dict[QubitPairId, dict[QubitId, float]]
+    """Leakage on control qubit for pair."""
 
 
 CZVirtualZType = np.dtype([("target", np.float64), ("control", np.float64)])
@@ -215,8 +217,8 @@ def _acquisition(
                     sweeper,
                 )
 
-                result_target = results[target_q].probability(0)
-                result_control = results[control_q].probability(0)
+                result_target = results[target_q].probability(1)
+                result_control = results[control_q].probability(1)
 
                 data.register_qubit(
                     CZVirtualZType,
@@ -250,8 +252,10 @@ def _fit(
     pairs = data.pairs
     virtual_phase = {}
     cz_angle = {}
+    leakage = {}
     for pair in pairs:
         virtual_phase[pair] = {}
+        leakage[pair] = {}
         for target, control, setup in data[pair]:
             target_data = data[pair][target, control, setup].target
             pguess = [
@@ -284,14 +288,24 @@ def _fit(
                 fitted_parameters[target_q, control_q, "X"][2]
                 - fitted_parameters[target_q, control_q, "I"][2]
             )
-            virtual_phase[pair][target_q] = -fitted_parameters[
-                target_q, control_q, "I"
-            ][2]
+            virtual_phase[pair][target_q] = fitted_parameters[target_q, control_q, "I"][
+                2
+            ]
+            # leakage estimate: L = m /2
+            # See NZ paper from Di Carlo
+            # approximation which does not need qutrits
+            leakage[pair][control_q] = 0.5 * float(
+                np.mean(
+                    data[pair][target_q, control_q, "X"].control
+                    - data[pair][target_q, control_q, "I"].control
+                )
+            )
 
     return CZVirtualZResults(
         cz_angle=cz_angle,
         virtual_phase=virtual_phase,
         fitted_parameters=fitted_parameters,
+        leakage=leakage,
     )
 
 
@@ -364,12 +378,13 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
 
             fitting_report = table_html(
                 table_dict(
-                    [target, target, qubits[1]],
-                    ["CZ angle", "Virtual Z phase", "Flux pulse amplitude"],
+                    [target, target, qubits[1], control],
+                    ["CZ angle", "Virtual Z phase", "Flux pulse amplitude", "Leakage"],
                     [
                         np.round(fit.cz_angle[target, control], 4),
                         np.round(fit.virtual_phase[tuple(sorted(qubit))][target], 4),
                         np.round(data.amplitudes[qubits]),
+                        np.round(fit.leakage[tuple(sorted(qubit))][control], 4),
                     ],
                 )
             )
@@ -398,7 +413,8 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
 def _update(results: CZVirtualZResults, platform: Platform, qubit_pair: QubitPairId):
     # FIXME: quick fix for qubit order
     qubit_pair = tuple(sorted(qubit_pair))
-    update.virtual_phases(results.virtual_phase[qubit_pair], platform, qubit_pair)
+    # FIXME: the virtual phase should be corrected with a negative sign?
+    update.virtual_phases(-results.virtual_phase[qubit_pair], platform, qubit_pair)
 
 
 cz_virtualz = Routine(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
