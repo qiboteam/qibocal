@@ -94,7 +94,6 @@ of 200 MHz is fine enough.
 
 Running the ``qibocal`` routines above produces outputs like these in the reports:
 
-IMAGES
 
 The peaks are Lorentzian. As we can see, at low power the resonator fequency shifts.
 This is due to the Hamiltonian of the system :cite:p:`Blais_2004, wallraff2004strong`. Therefore, the dressed resonator
