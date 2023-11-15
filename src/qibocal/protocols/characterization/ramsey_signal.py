@@ -232,9 +232,9 @@ def _plot(data: RamseySignalData, qubit, fit: RamseySignalResults = None):
                 x=waits,
                 y=signal,
                 opacity=1,
-                name="Voltage",
+                name="Signal",
                 showlegend=True,
-                legendgroup="Voltage",
+                legendgroup="Signal",
                 mode="lines",
             ),
         ]

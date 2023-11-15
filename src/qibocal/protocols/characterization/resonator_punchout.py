@@ -200,8 +200,8 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
     )
     fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=1)
     fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=2)
-    fig.update_yaxes(title_text="Amplitude", row=1, col=1)
-    fig.update_yaxes(title_text="Amplitude", row=1, col=2)
+    fig.update_yaxes(title_text="Amplitude [a.u.]", row=1, col=1)
+    fig.update_yaxes(title_text="Amplitude [a.u.]", row=1, col=2)
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
@@ -234,9 +234,9 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
             table_dict(
                 qubit,
                 [
-                    "Low Power Resonator Frequency",
-                    "Low Power readout amplitude",
-                    "High Power Resonator Frequency",
+                    "Low Power Resonator Frequency [Hz]",
+                    "Low Power readout amplitude [a.u.]",
+                    "High Power Resonator Frequency [Hz]",
                 ],
                 [
                     np.round(fit.readout_frequency[qubit]),
@@ -248,7 +248,6 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
 
     fig.update_layout(
         showlegend=False,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
     )
 
     figures.append(fig)

@@ -172,7 +172,7 @@ def _plot(
         vertical_spacing=0.2,
         subplot_titles=(
             "Normalised Signal [a.u.]",
-            "phase (rad)",
+            "phase [rad]",
         ),
     )
 
@@ -232,9 +232,9 @@ def _plot(
             table_dict(
                 qubit,
                 [
-                    "Low Power Resonator Frequency",
-                    "Readout Attenuation",
-                    "High Power Resonator Frequency",
+                    "Low Power Resonator Frequency [Hz]",
+                    "Readout Attenuation [dB]",
+                    "High Power Resonator Frequency [Hz]",
                 ],
                 [
                     np.round(fit.readout_frequency[qubit], 0),
@@ -245,7 +245,6 @@ def _plot(
         )
     fig.update_layout(
         showlegend=False,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
     )
 
     figures.append(fig)

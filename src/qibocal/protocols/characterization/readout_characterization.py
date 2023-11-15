@@ -196,7 +196,6 @@ def _plot(
     # last part
     fig.update_layout(
         showlegend=False,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="State prepared",
         yaxis_title="State read",
     )

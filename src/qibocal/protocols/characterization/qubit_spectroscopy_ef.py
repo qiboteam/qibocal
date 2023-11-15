@@ -158,7 +158,7 @@ def _plot(data: QubitSpectroscopyEFData, qubit, fit: QubitSpectroscopyEFResults)
         report = table_html(
             table_dict(
                 qubit,
-                ["Frequency 1->2", "Amplitude", "Anharmonicity"],
+                ["Frequency 1->2 [Hz]", "Amplitude [a.u.]", "Anharmonicity [Hz]"],
                 [
                     np.round(fit.frequency[qubit], 0),
                     fit.amplitude[qubit],

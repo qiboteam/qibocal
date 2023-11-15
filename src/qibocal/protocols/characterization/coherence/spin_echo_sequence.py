@@ -127,9 +127,9 @@ def _plot(data: SpinEchoSignalData, qubit, fit: SpinEchoSignalResults = None):
             x=waits,
             y=qubit_data.signal,
             opacity=1,
-            name="Voltage",
+            name="Signal",
             showlegend=True,
-            legendgroup="Voltage",
+            legendgroup="Signal",
         ),
     )
 
@@ -157,7 +157,6 @@ def _plot(data: SpinEchoSignalData, qubit, fit: SpinEchoSignalResults = None):
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Time [ns]",
         yaxis_title="Signal [a.u.]",
     )

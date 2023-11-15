@@ -185,7 +185,7 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
 
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Time (ns)",
+        xaxis_title="Time [ns]",
         yaxis_title="Probability of State 0",
     )
 

@@ -275,9 +275,9 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
                 x=waits,
                 y=probs,
                 opacity=1,
-                name="Voltage",
+                name="Probability of State 0",
                 showlegend=True,
-                legendgroup="Voltage",
+                legendgroup="Probability of State 0",
                 mode="lines",
             ),
             go.Scatter(

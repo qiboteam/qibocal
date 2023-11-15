@@ -511,7 +511,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             )
 
         fig.update_xaxes(
-            title_text=f"i (V)",
+            title_text=f"i [a.u.]",
             range=[min_x, max_x],
             row=1,
             col=i + 1,
@@ -519,7 +519,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             rangeslider=dict(visible=False),
         )
         fig.update_yaxes(
-            title_text="q (V)",
+            title_text="q [a.u.]",
             range=[min_y, max_y],
             scaleanchor="x",
             scaleratio=1,
@@ -528,7 +528,6 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
         )
 
     fig.update_layout(
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         autosize=False,
         height=COLUMNWIDTH,
         width=COLUMNWIDTH * len(models_name),
@@ -553,8 +552,8 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             vertical_spacing=SPACING,
             subplot_titles=(
                 "accuracy",
-                "testing time (s)",
-                "training time (s)",
+                "testing time [s]",
+                "training time [s]",
             )
             # pylint: disable=E1101
         )

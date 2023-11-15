@@ -143,9 +143,9 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
             x=readouts,
             y=qubit_data.signal,
             opacity=1,
-            name="Voltage",
+            name="Signal",
             showlegend=True,
-            legendgroup="Voltage",
+            legendgroup="Signal",
         )
     )
 
@@ -180,7 +180,6 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
     # last part
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Number of readouts",
         yaxis_title="Signal [a.u.]",
     )

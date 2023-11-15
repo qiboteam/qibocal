@@ -244,7 +244,6 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Beta parameter",
         yaxis_title="Signal [a.u.] [Rx(pi/2) - Ry(pi)] - [Ry(pi/2) - Rx(pi)]",
     )
