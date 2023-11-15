@@ -27,7 +27,7 @@ The bare resonator frequency can be found setting a large value for the amplitud
 
 .. code-block:: yaml
 
-    platform: dummy
+    platform: <platform_name>
 
     qubits: [0]
 
@@ -50,7 +50,7 @@ Lowering the amplitude we can see a shift in the peak, e.g.:
 
 .. code-block:: yaml
 
-    platform: dummy
+    platform: <platform_name>
 
     qubits: [0]
 
