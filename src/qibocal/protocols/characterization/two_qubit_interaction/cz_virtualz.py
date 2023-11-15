@@ -209,14 +209,14 @@ def _acquisition(
                     sequence,
                     ExecutionParameters(
                         nshots=params.nshots,
-                        acquisition_type=AcquisitionType.INTEGRATION,
+                        acquisition_type=AcquisitionType.DISCRIMINATION,
                         averaging_mode=AveragingMode.CYCLIC,
                     ),
                     sweeper,
                 )
 
-                result_target = results[target_q].magnitude
-                result_control = results[control_q].magnitude
+                result_target = results[target_q].probability(0)
+                result_control = results[control_q].probability(0)
 
                 data.register_qubit(
                     CZVirtualZType,
@@ -259,14 +259,16 @@ def _fit(
                 np.mean(target_data),
                 3.14,
             ]
-
             try:
                 popt, _ = curve_fit(
                     fit_function,
                     np.array(data.thetas) + data.vphases[pair][target],
                     target_data,
                     p0=pguess,
-                    bounds=((0, 0, 0), (2.5, 2.5, 2 * np.pi)),
+                    bounds=(
+                        (-np.max(target_data), -np.max(target_data), 0),
+                        (np.max(target_data), np.max(target_data), 2 * np.pi),
+                    ),
                 )
                 fitted_parameters[target, control, setup] = popt.tolist()
 
@@ -378,7 +380,7 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis1_title="theta [rad] + virtual phase[rad]",
         xaxis2_title="theta [rad] + virtual phase [rad]",
-        yaxis_title="Signal [a.u.]",
+        yaxis_title="Probability of State 0",
     )
 
     fig2.update_layout(
@@ -387,7 +389,7 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis1_title="theta [rad] + virtual phase[rad]",
         xaxis2_title="theta [rad] + virtual phase[rad]",
-        yaxis_title="Signal [a.u.]",
+        yaxis_title="Probability of State 0",
     )
 
     return [fig1, fig2], fitting_report
