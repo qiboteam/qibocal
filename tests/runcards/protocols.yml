@@ -544,6 +544,7 @@ actions:
       theta_end: 180
       theta_step: 10
       flux_pulse_amplitude: 0.5
+      flux_pulse_duration: 10
       dt: 0
       parking: True
 
@@ -556,6 +557,7 @@ actions:
       theta_end: 180
       theta_step: 10
       flux_pulse_amplitude: 0.5
+      flux_pulse_duration: 10
       dt: 0
       parking: True
 

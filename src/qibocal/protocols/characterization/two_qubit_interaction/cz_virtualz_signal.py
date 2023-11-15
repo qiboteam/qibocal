@@ -76,6 +76,7 @@ def _acquisition(
                     virtual_z_phase,
                     theta_pulse,
                     data.amplitudes[ord_pair],
+                    data.durations[ord_pair],
                 ) = create_sequence(
                     platform,
                     setup,

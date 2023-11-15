@@ -32,6 +32,8 @@ class CZVirtualZParameters(Parameters):
     """Step size for the theta sweep in radians."""
     flux_pulse_amplitude: Optional[float] = None
     """Amplitude of flux pulse implementing CZ."""
+    flux_pulse_duration: Optional[float] = None
+    """Duration of flux pulse implementing CZ."""
     dt: Optional[float] = 20
     """Time delay between flux pulses and readout."""
     parking: bool = True
@@ -63,6 +65,7 @@ class CZVirtualZData(Data):
     thetas: list = field(default_factory=list)
     vphases: dict[QubitPairId, dict[QubitId, float]] = field(default_factory=dict)
     amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
+    durations: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
 
     def __getitem__(self, pair):
         return {
@@ -81,8 +84,13 @@ def create_sequence(
     parking: bool,
     dt: float,
     amplitude: float = None,
+    duration: float = None,
 ) -> tuple[
-    PulseSequence, dict[QubitId, Pulse], dict[QubitId, Pulse], dict[QubitId, Pulse]
+    PulseSequence,
+    dict[QubitId, Pulse],
+    dict[QubitId, Pulse],
+    dict[QubitId, Pulse],
+    dict[QubitId, Pulse],
 ]:
     """Create the experiment PulseSequence."""
 
@@ -100,6 +108,9 @@ def create_sequence(
 
     if amplitude is not None:
         cz.get_qubit_pulses(ordered_pair[1])[0].amplitude = amplitude
+
+    if duration is not None:
+        cz.get_qubit_pulses(ordered_pair[1])[0].duration = duration
 
     theta_pulse = platform.create_RX90_pulse(
         target_qubit,
@@ -143,6 +154,7 @@ def create_sequence(
         virtual_z_phase,
         theta_pulse,
         cz.get_qubit_pulses(ordered_pair[1])[0].amplitude,
+        cz.get_qubit_pulses(ordered_pair[1])[0].duration,
     )
 
 
@@ -184,6 +196,7 @@ def _acquisition(
                     virtual_z_phase,
                     theta_pulse,
                     data.amplitudes[ord_pair],
+                    data.durations[ord_pair],
                 ) = create_sequence(
                     platform,
                     setup,
@@ -378,12 +391,19 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
 
             fitting_report = table_html(
                 table_dict(
-                    [target, target, qubits[1], control],
-                    ["CZ angle", "Virtual Z phase", "Flux pulse amplitude", "Leakage"],
+                    [target, target, qubits[1], qubit[1], control],
+                    [
+                        "CZ angle",
+                        "Virtual Z phase",
+                        "Flux pulse amplitude",
+                        "Flux pulse duration",
+                        "Leakage",
+                    ],
                     [
                         np.round(fit.cz_angle[target, control], 4),
                         np.round(fit.virtual_phase[tuple(sorted(qubit))][target], 4),
                         np.round(data.amplitudes[qubits]),
+                        np.round(data.durations[qubits]),
                         np.round(fit.leakage[tuple(sorted(qubit))][control], 4),
                     ],
                 )
@@ -414,7 +434,7 @@ def _update(results: CZVirtualZResults, platform: Platform, qubit_pair: QubitPai
     # FIXME: quick fix for qubit order
     qubit_pair = tuple(sorted(qubit_pair))
     # FIXME: the virtual phase should be corrected with a negative sign?
-    update.virtual_phases(-results.virtual_phase[qubit_pair], platform, qubit_pair)
+    update.virtual_phases(results.virtual_phase[qubit_pair], platform, qubit_pair)
 
 
 cz_virtualz = Routine(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
