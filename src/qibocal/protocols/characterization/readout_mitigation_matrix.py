@@ -171,7 +171,7 @@ def _plot(
 ):
     """Plotting function for readout mitigation matrix."""
     fitting_report = ""
-
+    figs = []
     if fit is not None:
         computational_basis = [
             format(i, f"0{len(qubit)}b") for i in range(2 ** len(qubit))
@@ -191,7 +191,8 @@ def _plot(
             width=700,
             height=700,
         )
-    return [fig], fitting_report
+        figs.append(fig)
+    return figs, fitting_report
 
 
 readout_mitigation_matrix = Routine(_acquisition, _fit, _plot)

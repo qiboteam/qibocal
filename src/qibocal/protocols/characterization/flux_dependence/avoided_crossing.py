@@ -117,22 +117,23 @@ def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
     fits = {}
     cz = {}
     iswap = {}
-    curves = {key: find_parabola(val) for key, val in qubit_data.items()}
+    curves = {tuple(key): find_parabola(val) for key, val in qubit_data.items()}
     for qubit_pair in data.qubit_pairs:
         qubit_pair = tuple(qubit_pair)
+        fits[qubit_pair] = {}
         low = qubit_pair[0]
         high = qubit_pair[1]
         # Fit the 02*2 curve
         curve_02 = np.array(curves[high, "02"]) * 2
         x_02 = np.unique(qubit_data[high, "02"]["bias"])
         fit_02 = np.polyfit(x_02, curve_02, 2)
-        fits[qubit_pair, "02"] = fit_02.tolist()
+        fits[qubit_pair]["02"] = fit_02.tolist()
 
         # Fit the 01+10 curve
         curve_01 = np.array(curves[high, "01"])
         x_01 = np.unique(qubit_data[high, "01"]["bias"])
         fit_01_10 = np.polyfit(x_01, curve_01 + data.drive_frequency_low[str(low)], 2)
-        fits[qubit_pair, "01+10"] = fit_01_10.tolist()
+        fits[qubit_pair]["01+10"] = fit_01_10.tolist()
         # find the intersection of the two parabolas
         delta_fit = fit_02 - fit_01_10
         x1, x2 = solve_eq(delta_fit)
@@ -142,12 +143,13 @@ def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
         ]
         # find the intersection of the 01 parabola and the 10 line
         fit_01 = np.polyfit(x_01, curve_01, 2)
-        fits[qubit_pair, "01"] = fit_01.tolist()
+        fits[qubit_pair]["01"] = fit_01.tolist()
         fit_pars = deepcopy(fit_01)
         line_val = data.drive_frequency_low[str(low)]
         fit_pars[2] -= line_val
         x1, x2 = solve_eq(fit_pars)
         iswap[qubit_pair] = [[x1, line_val], [x2, line_val]]
+
     return AvoidedCrossingResults(curves, fits, cz, iswap)
 
 
@@ -177,106 +179,109 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
             row=1,
             col=i + 1,
         )
+        if fit:
+            # the fit of the parabola in 02 transition was done doubling the frequencies
+            heatmaps.add_trace(
+                go.Scatter(
+                    x=np.polyval(fit.fits[order_pair][transition], bias_unique)
+                    / (i + 1)
+                    * HZ_TO_GHZ,
+                    y=bias_unique,
+                    mode="markers",
+                    marker_color="lime",
+                    showlegend=True,
+                    marker=dict(size=POINT_SIZE),
+                    name=f"Curve estimation {transition}",
+                ),
+                row=1,
+                col=i + 1,
+            )
+            heatmaps.add_trace(
+                go.Scatter(
+                    x=np.array(fit.parabolas[order_pair[1], transition]) * HZ_TO_GHZ,
+                    y=bias_unique,
+                    mode="markers",
+                    marker_color="black",
+                    showlegend=True,
+                    marker=dict(symbol="cross", size=POINT_SIZE),
+                    name=f"Parabola {transition}",
+                ),
+                row=1,
+                col=i + 1,
+            )
+    figures.append(heatmaps)
 
-        # the fit of the parabola in 02 transition was done doubling the frequencies
-        heatmaps.add_trace(
-            go.Scatter(
-                x=np.polyval(fit.fits[order_pair, transition], bias_unique)
-                / (i + 1)
-                * HZ_TO_GHZ,
-                y=bias_unique,
-                mode="markers",
-                marker_color="lime",
-                showlegend=True,
-                marker=dict(size=POINT_SIZE),
-                name=f"Curve estimation {transition}",
-            ),
-            row=1,
-            col=i + 1,
-        )
-        heatmaps.add_trace(
-            go.Scatter(
-                x=np.array(fit.parabolas[order_pair[1], transition]) * HZ_TO_GHZ,
-                y=bias_unique,
-                mode="markers",
-                marker_color="black",
-                showlegend=True,
-                marker=dict(symbol="cross", size=POINT_SIZE),
-                name=f"Parabola {transition}",
-            ),
-            row=1,
-            col=i + 1,
-        )
-    cz = np.array(fit.cz[order_pair])
-    iswap = np.array(fit.iswap[order_pair])
-    min_bias = min(min_bias, *cz[:, 0], *iswap[:, 0])
-    max_bias = max(max_bias, *cz[:, 0], *iswap[:, 0])
-    bias_range = np.linspace(min_bias, max_bias, STEP)
-    for transition in ["01", "02", "01+10"]:
+    if fit:
+        cz = np.array(fit.cz[order_pair])
+        iswap = np.array(fit.iswap[order_pair])
+        min_bias = min(min_bias, *cz[:, 0], *iswap[:, 0])
+        max_bias = max(max_bias, *cz[:, 0], *iswap[:, 0])
+        bias_range = np.linspace(min_bias, max_bias, STEP)
+        for transition in ["01", "02", "01+10"]:
+            parabolas.add_trace(
+                go.Scatter(
+                    x=bias_range,
+                    y=np.polyval(fit.fits[order_pair][transition], bias_range)
+                    * HZ_TO_GHZ,
+                    showlegend=True,
+                    name=transition,
+                )
+            )
         parabolas.add_trace(
             go.Scatter(
                 x=bias_range,
-                y=np.polyval(fit.fits[order_pair, transition], bias_range) * HZ_TO_GHZ,
+                y=np.array([data.drive_frequency_low[str(order_pair[0])]] * STEP)
+                * HZ_TO_GHZ,
                 showlegend=True,
-                name=transition,
+                name="10",
             )
         )
-    parabolas.add_trace(
-        go.Scatter(
-            x=bias_range,
-            y=np.array([data.drive_frequency_low[str(order_pair[0])]] * STEP)
-            * HZ_TO_GHZ,
-            showlegend=True,
-            name="10",
+        parabolas.add_trace(
+            go.Scatter(
+                x=cz[:, 0],
+                y=cz[:, 1] * HZ_TO_GHZ,
+                showlegend=True,
+                name="CZ",
+                marker_color="black",
+                mode="markers",
+                marker=dict(symbol="cross", size=POINT_SIZE),
+            )
         )
-    )
-    parabolas.add_trace(
-        go.Scatter(
-            x=cz[:, 0],
-            y=cz[:, 1] * HZ_TO_GHZ,
-            showlegend=True,
-            name="CZ",
-            marker_color="black",
-            mode="markers",
-            marker=dict(symbol="cross", size=POINT_SIZE),
+        parabolas.add_trace(
+            go.Scatter(
+                x=iswap[:, 0],
+                y=iswap[:, 1] * HZ_TO_GHZ,
+                showlegend=True,
+                name="iswap",
+                marker_color="blue",
+                mode="markers",
+                marker=dict(symbol="cross", size=10),
+            )
         )
-    )
-    parabolas.add_trace(
-        go.Scatter(
-            x=iswap[:, 0],
-            y=iswap[:, 1] * HZ_TO_GHZ,
-            showlegend=True,
-            name="iswap",
-            marker_color="blue",
-            mode="markers",
-            marker=dict(symbol="cross", size=10),
+        parabolas.update_layout(
+            xaxis_title="Bias[V]",
+            yaxis_title="Frequency[GHz]",
         )
-    )
-    parabolas.update_layout(
-        xaxis_title="Bias[V]",
-        yaxis_title="Frequency[GHz]",
-    )
-    heatmaps.update_layout(
-        coloraxis_colorbar=dict(
-            yanchor="top",
-            y=1,
-            x=-0.08,
-            ticks="outside",
-        ),
-        xaxis_title="Frequency[GHz]",
-        yaxis_title="Bias[V]",
-        xaxis2_title="Frequency[GHz]",
-        yaxis2_title="Bias[V]",
-    )
-    figures.append(heatmaps)
-    figures.append(parabolas)
-    fitting_report = table_html(
-        table_dict(
-            qubit,
-            ["CZ bias", "iSwap bias"],
-            [np.round(cz[:, 0], 3), np.round(iswap[:, 0], 3)],
+        heatmaps.update_layout(
+            coloraxis_colorbar=dict(
+                yanchor="top",
+                y=1,
+                x=-0.08,
+                ticks="outside",
+            ),
+            xaxis_title="Frequency[GHz]",
+            yaxis_title="Bias[V]",
+            xaxis2_title="Frequency[GHz]",
+            yaxis2_title="Bias[V]",
         )
-    )
+        figures.append(parabolas)
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                ["CZ bias", "iSwap bias"],
+                [np.round(cz[:, 0], 3), np.round(iswap[:, 0], 3)],
+            )
+        )
     return figures, fitting_report
 
 
