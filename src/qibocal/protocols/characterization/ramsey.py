@@ -54,6 +54,7 @@ class RamseyResults(Results):
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
     chi2: dict[QubitId, tuple[float, Optional[float]]]
+    """Chi squared estimate mean value and error. """
 
 
 RamseyType = np.dtype(
