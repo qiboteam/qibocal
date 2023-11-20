@@ -412,7 +412,6 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
     fig1.update_layout(
         title_text=f"Phase correction Qubit {qubits[0]}",
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis1_title="theta [rad] + virtual phase[rad]",
         xaxis2_title="theta [rad] + virtual phase [rad]",
         yaxis_title="Probability of State 0",
@@ -421,7 +420,6 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
     fig2.update_layout(
         title_text=f"Phase correction Qubit {qubits[1]}",
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis1_title="theta [rad] + virtual phase[rad]",
         xaxis2_title="theta [rad] + virtual phase[rad]",
         yaxis_title="Probability of State 0",

@@ -57,6 +57,7 @@ from .two_qubit_interaction import (
     chsh_pulses,
     cz_virtualz,
     cz_virtualz_signal,
+    tune_landscape,
 )
 
 
@@ -117,3 +118,4 @@ class Operation(Enum):
     coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
     coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
     cz_virtualz_signal = cz_virtualz_signal
+    tune_landscape = tune_landscape

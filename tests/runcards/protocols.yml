@@ -535,9 +535,22 @@ actions:
       nshots: 1000
       parking: True
 
-  - id: tune landscape
+  - id: cz
     priority: 0
     operation: cz_virtualz
+    qubits: [[0, 2],[1,2],[3,2]]
+    parameters:
+      theta_start: 0
+      theta_end: 180
+      theta_step: 10
+      flux_pulse_amplitude: 0.5
+      flux_pulse_duration: 10
+      dt: 0
+      parking: True
+
+  - id: cz signal
+    priority: 0
+    operation: cz_virtualz_signal
     qubits: [[0, 2],[1,2],[3,2]]
     parameters:
       theta_start: 0
@@ -560,6 +573,20 @@ actions:
       flux_pulse_duration: 10
       dt: 0
       parking: True
+
+
+  - id: tune landscape
+    priority: 0
+    operation: tune_landscape
+    qubits: [[0, 2],[1,2],[2,3]]
+    parameters:
+      amplitude_min: 0.1
+      amplitude_max: 0.2
+      amplitude_step: 0.01
+      duration_min: 10
+      duration_max: 20
+      duration_step: 1
+
 
   - id: standard rb inhomogeneous
     priority: 0
