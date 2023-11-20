@@ -19,9 +19,9 @@ class CouplerSpectroscopyParameters(Parameters):
     bias_step: int
     """Frequency step for bias sweep (V)."""
     freq_width: int
-    """Width for frequency sweep relative  to the readout frequency (Hz)."""
+    """Width for frequency sweep relative  to the readout frequency [Hz]."""
     freq_step: int
-    """Frequency step for frequency sweep (Hz)."""
+    """Frequency step for frequency sweep [Hz]."""
     # TODO: It may be better not to use readout multiplex to avoid readout crosstalk
     measured_qubits: list[QubitId]
     """Qubit to readout from the pair"""

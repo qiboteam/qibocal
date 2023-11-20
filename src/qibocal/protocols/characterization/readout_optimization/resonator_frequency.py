@@ -21,9 +21,9 @@ class ResonatorFrequencyParameters(Parameters):
     """Optimization RO frequency inputs."""
 
     freq_width: int
-    """Width [Hz] for frequency sweep relative to the readout frequency (Hz)."""
+    """Width [Hz] for frequency sweep relative to the readout frequency [Hz]."""
     freq_step: int
-    """Frequency step for sweep (Hz)."""
+    """Frequency step for sweep [Hz]."""
 
 
 @dataclass

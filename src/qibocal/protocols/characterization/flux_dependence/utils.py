@@ -179,7 +179,7 @@ def flux_dependence_plot(data, fit, qubit):
             fitting_report = table_html(table_dict(qubit, parameters, values))
 
     fig.update_xaxes(
-        title_text=f"Frequency (GHz)",
+        title_text=f"Frequency [GHz]",
         row=1,
         col=1,
     )
@@ -199,7 +199,7 @@ def flux_dependence_plot(data, fit, qubit):
         col=2,
     )
     fig.update_xaxes(
-        title_text=f"Frequency (GHz)",
+        title_text=f"Frequency [GHz]",
         row=1,
         col=2,
     )

@@ -27,7 +27,7 @@ class QubitFluxParameters(Parameters):
     """QubitFlux runcard inputs."""
 
     freq_width: int
-    """Width for frequency sweep relative to the qubit frequency (Hz)."""
+    """Width for frequency sweep relative to the qubit frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
     bias_width: float

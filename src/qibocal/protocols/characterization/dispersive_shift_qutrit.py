@@ -286,9 +286,9 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
         )
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Frequency (GHz)",
+        xaxis_title="Frequency [GHz]",
         yaxis_title="Signal [a.u.]",
-        xaxis2_title="Frequency (GHz)",
+        xaxis2_title="Frequency [GHz]",
         yaxis2_title="Phase (rad)",
     )
 

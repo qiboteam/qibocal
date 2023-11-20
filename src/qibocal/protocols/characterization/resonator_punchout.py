@@ -22,9 +22,9 @@ class ResonatorPunchoutParameters(Parameters):
     """ "ResonatorPunchout runcard inputs."""
 
     freq_width: int
-    """Width for frequency sweep relative  to the readout frequency (Hz)."""
+    """Width for frequency sweep relative  to the readout frequency [Hz]."""
     freq_step: int
-    """Frequency step for sweep (Hz)."""
+    """Frequency step for sweep [Hz]."""
     min_amp_factor: float
     """Minimum amplitude multiplicative factor."""
     max_amp_factor: float
