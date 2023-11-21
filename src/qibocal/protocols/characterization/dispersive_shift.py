@@ -282,7 +282,7 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
             fig.add_trace(
                 go.Scatter(
                     x=freqrange,
-                    y=lorentzian(freqrange, **params),
+                    y=lorentzian(freqrange, *params),
                     name=f"{label} Fit",
                     line=go.scatter.Line(dash="dot"),
                 ),
