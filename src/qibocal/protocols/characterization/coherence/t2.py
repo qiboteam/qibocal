@@ -33,7 +33,7 @@ class T2Results(Results):
     """T2 outputs."""
 
     t2: dict[QubitId, float]
-    """T2 for each qubit (ns)."""
+    """T2 for each qubit [ns]."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
     chi2: Optional[dict[QubitId, tuple[float, Optional[float]]]] = field(

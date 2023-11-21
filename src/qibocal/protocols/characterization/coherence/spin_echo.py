@@ -25,7 +25,7 @@ class SpinEchoParameters(Parameters):
     delay_between_pulses_end: int
     """Final delay between pulses [ns]."""
     delay_between_pulses_step: int
-    """Step delay between pulses (ns)."""
+    """Step delay between pulses [ns]."""
 
 
 @dataclass
@@ -201,7 +201,7 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
 
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Time (ns)",
+        xaxis_title="Time [ns]",
         yaxis_title="Probability of State 0",
     )
 

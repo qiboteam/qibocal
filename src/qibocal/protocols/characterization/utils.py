@@ -135,7 +135,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
             data=voltages, frequency=frequencies, params=guess_parameters
         )
         # get the values for postprocessing and for legend.
-        return fit_res.best_values["center"], fit_res.best_values
+        return fit_res.best_values["center"] * GHZ_TO_HZ, fit_res.best_values
 
     except:
         log.warning("lorentzian_fit: the fitting was not successful")
@@ -215,7 +215,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                 table_dict(
                     qubit,
                     [label, "amplitude"],
-                    [np.round(freq[qubit] * GHZ_TO_HZ, 0), fit.amplitude[qubit]],
+                    [np.round(freq[qubit], 0), fit.amplitude[qubit]],
                 )
             )
 
@@ -225,17 +225,16 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                     table_dict(
                         qubit,
                         [label, "attenuation"],
-                        [np.round(freq[qubit] * GHZ_TO_HZ, 0), fit.attenuation[qubit]],
+                        [np.round(freq[qubit], 0), fit.attenuation[qubit]],
                     )
                 )
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Frequency (GHz)",
+        xaxis_title="Frequency [GHz]",
         yaxis_title="Signal [a.u.]",
-        xaxis2_title="Frequency (GHz)",
-        yaxis2_title="Phase (rad)",
+        xaxis2_title="Frequency [GHz]",
+        yaxis2_title="Phase [rad]",
     )
     figures.append(fig)
 
@@ -332,8 +331,8 @@ def fit_punchout(data: Data, fit_type: str):
             ro_val = round((high_att_max + high_att_min) / 2)
             ro_val = ro_val + (ro_val % 2)
 
-        low_freqs[qubit] = freq_lp.item() * HZ_TO_GHZ
-        high_freqs[qubit] = freq_hp[0] * HZ_TO_GHZ
+        low_freqs[qubit] = freq_lp.item()
+        high_freqs[qubit] = freq_hp[0]
         ro_values[qubit] = ro_val
     return [low_freqs, high_freqs, ro_values]
 
@@ -569,7 +568,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             )
 
         fig.update_xaxes(
-            title_text=f"i (V)",
+            title_text=f"i [a.u.]",
             range=[min_x, max_x],
             row=1,
             col=i + 1,
@@ -577,7 +576,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             rangeslider=dict(visible=False),
         )
         fig.update_yaxes(
-            title_text="q (V)",
+            title_text="q [a.u.]",
             range=[min_y, max_y],
             scaleanchor="x",
             scaleratio=1,
@@ -586,7 +585,6 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
         )
 
     fig.update_layout(
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         autosize=False,
         height=COLUMNWIDTH,
         width=COLUMNWIDTH * len(models_name),
@@ -611,8 +609,8 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             vertical_spacing=SPACING,
             subplot_titles=(
                 "accuracy",
-                "testing time (s)",
-                "training time (s)",
+                "testing time [s]",
+                "training time [s]",
             )
             # pylint: disable=E1101
         )

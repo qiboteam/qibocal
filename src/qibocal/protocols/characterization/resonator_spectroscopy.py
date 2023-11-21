@@ -20,9 +20,9 @@ class ResonatorSpectroscopyParameters(Parameters):
     """ResonatorSpectroscopy runcard inputs."""
 
     freq_width: int
-    """Width for frequency sweep relative  to the readout frequency (Hz)."""
+    """Width for frequency sweep relative  to the readout frequency [Hz]."""
     freq_step: int
-    """Frequency step for sweep (Hz)."""
+    """Frequency step for sweep [Hz]."""
     power_level: PowerLevel
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""

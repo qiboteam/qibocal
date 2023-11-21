@@ -23,13 +23,13 @@ class ResonatorFluxParameters(Parameters):
     """ResonatorFlux runcard inputs."""
 
     freq_width: int
-    """Width for frequency sweep relative to the readout frequency (Hz)."""
+    """Width for frequency sweep relative to the readout frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
     bias_width: float
     """Width for bias sweep [V]."""
     bias_step: float
-    """Bias step for sweep (V)."""
+    """Bias step for sweep [a.u.]."""
 
 
 @dataclass

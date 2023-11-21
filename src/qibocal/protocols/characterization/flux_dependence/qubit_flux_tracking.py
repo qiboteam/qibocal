@@ -27,13 +27,13 @@ class QubitFluxParameters(Parameters):
     """QubitFlux runcard inputs."""
 
     freq_width: int
-    """Width for frequency sweep relative to the qubit frequency (Hz)."""
+    """Width for frequency sweep relative to the qubit frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
     bias_width: float
     """Width for bias sweep [V]."""
     bias_step: float
-    """Bias step for sweep (V)."""
+    """Bias step for sweep [a.u.]."""
     drive_duration: int
     """Drive pulse duration [ns]. Same for all qubits."""
     drive_amplitude: Optional[float] = None
@@ -42,7 +42,7 @@ class QubitFluxParameters(Parameters):
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
+    """Relaxation time [ns]."""
     transition: Optional[str] = "01"
     """Flux spectroscopy transition type ("01" or "02"). Default value is 01"""
 

@@ -298,7 +298,7 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
     fig.update_layout(
         xaxis_title="Duration [ns]",
         xaxis2_title="Duration [ns]",
-        yaxis_title="Amplitude [dimensionless]",
+        yaxis_title="Amplitude [a.u.]",
         legend=dict(orientation="h"),
     )
     fig.update_layout(
