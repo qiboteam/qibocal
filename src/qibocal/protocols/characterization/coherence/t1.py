@@ -25,11 +25,11 @@ class T1Parameters(Parameters):
     """T1 runcard inputs."""
 
     delay_before_readout_start: int
-    """Initial delay before readout (ns)."""
+    """Initial delay before readout [ns]."""
     delay_before_readout_end: int
-    """Final delay before readout (ns)."""
+    """Final delay before readout [ns]."""
     delay_before_readout_step: int
-    """Step delay before readout (ns)."""
+    """Step delay before readout [ns]."""
 
 
 @dataclass

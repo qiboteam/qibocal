@@ -25,7 +25,7 @@ class ZenoParameters(Parameters):
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
+    """Relaxation time [ns]."""
 
 
 ZenoType = np.dtype([("signal", np.float64), ("phase", np.float64)])

@@ -25,7 +25,7 @@ class SpinEchoParameters(Parameters):
     delay_between_pulses_end: int
     """Final delay between pulses [ns]."""
     delay_between_pulses_step: int
-    """Step delay between pulses (ns)."""
+    """Step delay between pulses [ns]."""
 
 
 @dataclass
