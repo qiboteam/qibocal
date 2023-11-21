@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -11,7 +12,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
-from ..utils import table_dict, table_html
+from ..utils import chi2_reduced, table_dict, table_html
 from . import t1, utils
 
 
@@ -35,6 +36,10 @@ class T2Results(Results):
     """T2 for each qubit (ns)."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    chi2: Optional[dict[QubitId, tuple[float, Optional[float]]]] = field(
+        default_factory=dict
+    )
+    """Chi squared estimate mean value and error."""
 
 
 class T2Data(t1.T1Data):
@@ -111,7 +116,18 @@ def _fit(data: T2Data) -> T2Results:
         y = p_0 - p_1 e^{-x p_2}.
     """
     t2s, fitted_parameters = utils.exponential_fit_probability(data)
-    return T2Results(t2s, fitted_parameters)
+    chi2 = {
+        qubit: (
+            chi2_reduced(
+                data[qubit].prob,
+                utils.exp_decay(data[qubit].wait, *fitted_parameters[qubit]),
+                data[qubit].error,
+            ),
+            np.sqrt(2 / len(data[qubit].prob)),
+        )
+        for qubit in data.qubits
+    }
+    return T2Results(t2s, fitted_parameters, chi2)
 
 
 def _plot(data: T2Data, qubit, fit: T2Results = None):
@@ -168,11 +184,19 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
             )
         )
         fitting_report = table_html(
-            table_dict(qubit, ["T2 [ns]"], [fit.t2[qubit]], display_error=True)
+            table_dict(
+                qubit,
+                [
+                    "T2 [ns]",
+                    "chi2 reduced",
+                ],
+                [fit.t2[qubit], fit.chi2[qubit]],
+                display_error=True,
+            )
         )
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Time (ns)",
+        xaxis_title="Time [ns]",
         yaxis_title="Probability of State 1",
     )
 

@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -10,7 +11,7 @@ from qibolab.qubits import QubitId
 from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
-from ..utils import table_dict, table_html
+from ..utils import chi2_reduced, table_dict, table_html
 from . import t1
 from .utils import exp_decay, exponential_fit_probability
 
@@ -35,6 +36,10 @@ class SpinEchoResults(Results):
     """T2 echo for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    chi2: Optional[dict[QubitId, tuple[float, Optional[float]]]] = field(
+        default_factory=dict
+    )
+    """Chi squared estimate mean value and error."""
 
 
 class SpinEchoData(t1.T1Data):
@@ -118,8 +123,19 @@ def _acquisition(
 def _fit(data: SpinEchoData) -> SpinEchoResults:
     """Post-processing for SpinEcho."""
     t2Echos, fitted_parameters = exponential_fit_probability(data)
+    chi2 = {
+        qubit: (
+            chi2_reduced(
+                data[qubit].prob,
+                exp_decay(data[qubit].wait, *fitted_parameters[qubit]),
+                data[qubit].error,
+            ),
+            np.sqrt(2 / len(data[qubit].prob)),
+        )
+        for qubit in data.qubits
+    }
 
-    return SpinEchoResults(t2Echos, fitted_parameters)
+    return SpinEchoResults(t2Echos, fitted_parameters, chi2)
 
 
 def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
@@ -177,8 +193,8 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["T2 Spin Echo [ns]"],
-                [fit.t2_spin_echo[qubit]],
+                ["T2 Spin Echo [ns]", "chi2 reduced"],
+                [fit.t2_spin_echo[qubit], fit.chi2[qubit]],
                 display_error=True,
             )
         )
