@@ -94,12 +94,13 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
     ]
     # fit the model with the data and guessed parameters
     try:
-        model_parameters, _ = curve_fit(
+        fit_parameters, _ = curve_fit(
             lorentzian,
             frequencies,
             voltages,
             p0=model_parameters,
         )
+        model_parameters = list(fit_parameters)
 
     except:
         log.warning("lorentzian_fit: the fitting was not successful")
