@@ -29,7 +29,7 @@ class ResonatorFluxParameters(Parameters):
     bias_width: float
     """Width for bias sweep [V]."""
     bias_step: float
-    """Bias step for sweep (V)."""
+    """Bias step for sweep [a.u.]."""
 
 
 @dataclass

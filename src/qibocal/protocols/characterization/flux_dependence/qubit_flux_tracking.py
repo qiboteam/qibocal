@@ -33,7 +33,7 @@ class QubitFluxParameters(Parameters):
     bias_width: float
     """Width for bias sweep [V]."""
     bias_step: float
-    """Bias step for sweep (V)."""
+    """Bias step for sweep [a.u.]."""
     drive_duration: int
     """Drive pulse duration [ns]. Same for all qubits."""
     drive_amplitude: Optional[float] = None

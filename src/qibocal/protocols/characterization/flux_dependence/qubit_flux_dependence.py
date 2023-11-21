@@ -33,7 +33,7 @@ class QubitFluxParameters(Parameters):
     bias_width: float
     """Width for bias sweep [V]."""
     bias_step: float
-    """Bias step for sweep (V)."""
+    """Bias step for sweep [a.u.]."""
     drive_amplitude: Optional[float] = None
     """Drive amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""

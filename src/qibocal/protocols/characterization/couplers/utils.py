@@ -15,9 +15,9 @@ class CouplerSpectroscopyParameters(Parameters):
     """CouplerResonatorSpectroscopy and CouplerQubitSpectroscopy runcard inputs."""
 
     bias_width: int
-    """Width for bias (V)."""
+    """Width for bias [a.u.]."""
     bias_step: int
-    """Frequency step for bias sweep (V)."""
+    """Frequency step for bias sweep [a.u.]."""
     freq_width: int
     """Width for frequency sweep relative  to the readout frequency [Hz]."""
     freq_step: int

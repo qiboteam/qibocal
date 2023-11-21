@@ -109,7 +109,7 @@ def plot(data, qubit, fit):
             xaxis_title=title,
             yaxis_title="Signal [a.u.]",
             xaxis2_title=title,
-            yaxis2_title="Phase (rad)",
+            yaxis2_title="Phase [rad]",
         )
 
     figures.append(fig)
