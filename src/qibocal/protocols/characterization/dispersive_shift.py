@@ -40,9 +40,9 @@ class DispersiveShiftResults(Results):
     """State zero frequency."""
     frequency_state_one: dict[QubitId, float]
     """State one frequency."""
-    fitted_parameters_state_zero: dict[QubitId, dict[str, float]]
+    fitted_parameters_state_zero: dict[QubitId, list[float]]
     """Fitted parameters state zero."""
-    fitted_parameters_state_one: dict[QubitId, dict[str, float]]
+    fitted_parameters_state_one: dict[QubitId, list[float]]
     """Fitted parameters state one."""
     best_freq: dict[QubitId, float]
     """Readout frequency that maximizes the distance of ground and excited states in iq-plane"""

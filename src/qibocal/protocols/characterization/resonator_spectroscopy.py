@@ -41,7 +41,7 @@ class ResonatorSpectroscopyResults(Results):
 
     frequency: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency [GHz] for each qubit."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
+    fitted_parameters: dict[QubitId, list[float]]
     """Raw fitted parameters."""
     bare_frequency: Optional[dict[QubitId, float]] = field(
         default_factory=dict, metadata=dict(update="bare_resonator_frequency")

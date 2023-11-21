@@ -86,28 +86,25 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
         guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
 
-    model_parameters = {
-        "amplitude": guess_amp,
-        "center": guess_center,
-        "sigma": guess_sigma,
-        "offset": guess_offset,
-    }
+    model_parameters = [
+        guess_amp,
+        guess_center,
+        guess_sigma,
+        guess_offset,
+    ]
     # fit the model with the data and guessed parameters
     try:
-        fit_parameters, _ = curve_fit(
+        model_parameters, _ = curve_fit(
             lorentzian,
             frequencies,
             voltages,
-            p0=list(model_parameters.values()),
+            p0=model_parameters,
         )
-        # add all parameters to the dictionary with model parameters
-        for key, value in zip(model_parameters, fit_parameters):
-            model_parameters[key] = value
 
     except:
         log.warning("lorentzian_fit: the fitting was not successful")
 
-    return model_parameters["center"], model_parameters
+    return model_parameters[1], model_parameters
 
 
 def spectroscopy_plot(data, qubit, fit: Results = None):
