@@ -9,8 +9,8 @@ import plotly.graph_objects as go
 from numba import njit
 from plotly.subplots import make_subplots
 from qibolab.qubits import QubitId
-from scipy.optimize import curve_fit
 from scipy import constants
+from scipy.optimize import curve_fit
 from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Results
