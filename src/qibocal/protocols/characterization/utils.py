@@ -2,7 +2,6 @@ from colorsys import hls_to_rgb
 from enum import Enum
 from typing import Union
 
-import lmfit
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
@@ -11,6 +10,7 @@ from numba import njit
 from plotly.subplots import make_subplots
 from qibolab.qubits import QubitId
 from scipy import constants
+from scipy.optimize import curve_fit
 from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Results
@@ -99,7 +99,6 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
 def lorentzian_fit(data, resonator_type=None, fit=None):
     frequencies = data.freq * HZ_TO_GHZ
     voltages = data.signal
-    model_Q = lmfit.Model(lorentzian)
 
     # Guess parameters for Lorentzian max or min
     # TODO: probably this is not working on HW
@@ -122,25 +121,25 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
         guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
 
-    # Add guessed parameters to the model
-    model_Q.set_param_hint("center", value=guess_center, vary=True)
-    model_Q.set_param_hint("sigma", value=guess_sigma, vary=True)
-    model_Q.set_param_hint("amplitude", value=guess_amp, vary=True)
-    model_Q.set_param_hint("offset", value=guess_offset, vary=True)
-    guess_parameters = model_Q.make_params()
-
+    model_parameters = [
+        guess_amp,
+        guess_center,
+        guess_sigma,
+        guess_offset,
+    ]
     # fit the model with the data and guessed parameters
     try:
-        fit_res = model_Q.fit(
-            data=voltages, frequency=frequencies, params=guess_parameters
+        fit_parameters, _ = curve_fit(
+            lorentzian,
+            frequencies,
+            voltages,
+            p0=model_parameters,
         )
-        # get the values for postprocessing and for legend.
-        return fit_res.best_values["center"] * GHZ_TO_HZ, fit_res.best_values
-
-    except:
+        model_parameters = list(fit_parameters)
+    except RuntimeError:
         log.warning("lorentzian_fit: the fitting was not successful")
-        fit_res = lmfit.model.ModelResult(model=model_Q, params=guess_parameters)
-        return guess_center, fit_res.params.valuesdict()
+
+    return model_parameters[1] * GHZ_TO_HZ, model_parameters
 
 
 def spectroscopy_plot(data, qubit, fit: Results = None):
@@ -192,7 +191,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
-                y=lorentzian(freqrange, **params),
+                y=lorentzian(freqrange, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
             ),

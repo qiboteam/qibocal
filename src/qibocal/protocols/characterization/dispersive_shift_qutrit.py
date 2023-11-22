@@ -39,11 +39,11 @@ class DispersiveShiftQutritResults(Results):
     """State one frequency."""
     frequency_state_two: dict[QubitId, float]
     """State two frequency."""
-    fitted_parameters_state_zero: dict[QubitId, dict[str, float]]
+    fitted_parameters_state_zero: dict[QubitId, list[float]]
     """Fitted parameters state zero."""
-    fitted_parameters_state_one: dict[QubitId, dict[str, float]]
+    fitted_parameters_state_one: dict[QubitId, list[float]]
     """Fitted parameters state one."""
-    fitted_parameters_state_two: dict[QubitId, dict[str, float]]
+    fitted_parameters_state_two: dict[QubitId, list[float]]
     """Fitted parameters state one."""
 
     @property
@@ -258,7 +258,7 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
             fig.add_trace(
                 go.Scatter(
                     x=freqrange,
-                    y=lorentzian(freqrange, **params),
+                    y=lorentzian(freqrange, *params),
                     name=f"{label} Fit",
                     line=go.scatter.Line(dash="dot"),
                 ),
