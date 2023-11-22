@@ -1,5 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -153,7 +154,7 @@ def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
     return AvoidedCrossingResults(curves, fits, cz, iswap)
 
 
-def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
+def _plot(data: AvoidedCrossingData, fit: Optional[AvoidedCrossingResults], qubit):
     """Plotting function for avoided crossing"""
     fitting_report = ""
     figures = []
