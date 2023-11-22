@@ -14,7 +14,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from .utils import GHZ_TO_HZ, HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
+from .utils import HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
 
 
 @dataclass
@@ -22,9 +22,9 @@ class ResonatorPunchoutParameters(Parameters):
     """ "ResonatorPunchout runcard inputs."""
 
     freq_width: int
-    """Width for frequency sweep relative  to the readout frequency (Hz)."""
+    """Width for frequency sweep relative  to the readout frequency [Hz]."""
     freq_step: int
-    """Frequency step for sweep (Hz)."""
+    """Frequency step for sweep [Hz]."""
     min_amp_factor: float
     """Minimum amplitude multiplicative factor."""
     max_amp_factor: float
@@ -175,7 +175,7 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
         vertical_spacing=0.2,
         subplot_titles=(
             "Normalised Signal [a.u.]",
-            "phase (rad)",
+            "phase [rad]",
         ),
     )
     qubit_data = data[qubit]
@@ -198,10 +198,10 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
         row=1,
         col=1,
     )
-    fig.update_xaxes(title_text="Frequency (GHz)", row=1, col=1)
-    fig.update_xaxes(title_text="Frequency (GHz)", row=1, col=2)
-    fig.update_yaxes(title_text="Amplitude", row=1, col=1)
-    fig.update_yaxes(title_text="Amplitude", row=1, col=2)
+    fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=1)
+    fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=2)
+    fig.update_yaxes(title_text="Amplitude [a.u.]", row=1, col=1)
+    fig.update_yaxes(title_text="Amplitude [a.u.]", row=1, col=2)
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
@@ -234,21 +234,20 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
             table_dict(
                 qubit,
                 [
-                    "Low Power Resonator Frequency",
-                    "Low Power readout amplitude",
-                    "High Power Resonator Frequency",
+                    "Low Power Resonator Frequency [Hz]",
+                    "Low Power readout amplitude [a.u.]",
+                    "High Power Resonator Frequency [Hz]",
                 ],
                 [
-                    np.round(fit.readout_frequency[qubit] * GHZ_TO_HZ),
+                    np.round(fit.readout_frequency[qubit]),
                     np.round(fit.readout_amplitude[qubit], 3),
-                    np.round(fit.bare_frequency[qubit] * GHZ_TO_HZ),
+                    np.round(fit.bare_frequency[qubit]),
                 ],
             )
         )
 
     fig.update_layout(
         showlegend=False,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
     )
 
     figures.append(fig)

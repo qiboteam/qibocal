@@ -193,7 +193,7 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
         vertical_spacing=0.1,
         subplot_titles=(
             "Signal [a.u.]",
-            "phase (rad)",
+            "phase [rad]",
         ),
     )
     # iterate over multiple data folders
@@ -286,10 +286,10 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
         )
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Frequency (GHz)",
+        xaxis_title="Frequency [GHz]",
         yaxis_title="Signal [a.u.]",
-        xaxis2_title="Frequency (GHz)",
-        yaxis2_title="Phase (rad)",
+        xaxis2_title="Frequency [GHz]",
+        yaxis2_title="Phase [rad]",
     )
 
     figures.append(fig)

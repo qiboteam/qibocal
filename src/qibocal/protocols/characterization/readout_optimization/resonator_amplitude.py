@@ -185,15 +185,14 @@ def _plot(data: ResonatorAmplitudeData, fit: ResonatorAmplitudeResults, qubit):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                "Best Readout Amplitude",
+                "Best Readout Amplitude [a.u.]",
                 np.round(fit.best_amp[qubit], 4),
             )
         )
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Readout Amplitude",
+        xaxis_title="Readout Amplitude [a.u.]",
         yaxis_title="Probability Error",
     )
 

@@ -26,7 +26,7 @@ class ReadoutMitigationMatrixParameters(Parameters):
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
+    """Relaxation time [ns]."""
 
 
 @dataclass

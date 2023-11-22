@@ -14,6 +14,7 @@ SINGLE_ACTION_RUNCARD = "action.yml"
 
 
 def generate_runcard_single_protocol():
+    actions = yaml.safe_load(PATH_TO_RUNCARD.read_text(encoding="utf-8"))
     with open(PATH_TO_RUNCARD) as file:
         actions = yaml.safe_load(file)
     for action in actions["actions"]:

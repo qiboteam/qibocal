@@ -3616,7 +3616,6 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 
 [extras]
 classify = ["keras-tuner", "matplotlib", "onnx", "onnxruntime", "seaborn", "skl2onnx", "tensorflow"]
-docs = ["Sphinx", "furo", "recommonmark", "sphinx-copybutton", "sphinx_markdown_tables", "sphinxcontrib-bibtex"]
 viz = ["pydot"]
 
 [metadata]

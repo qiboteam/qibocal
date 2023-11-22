@@ -28,11 +28,11 @@ def rabi_length_fit(x, p0, p1, p2, p3, p4):
 def plot(data, qubit, fit):
     if "RabiAmplitude" in data.__class__.__name__:
         quantity = "amp"
-        title = "Amplitude (dimensionless)"
+        title = "Amplitude [a.u.]"
         fitting = rabi_amplitude_fit
     elif data.__class__.__name__ == "RabiLengthVoltData":
         quantity = "length"
-        title = "Time (ns)"
+        title = "Time [ns]"
         fitting = rabi_length_fit
 
     figures = []
@@ -45,7 +45,7 @@ def plot(data, qubit, fit):
         vertical_spacing=0.1,
         subplot_titles=(
             "Signal [a.u.]",
-            "phase (rad)",
+            "phase [rad]",
         ),
     )
 
@@ -57,9 +57,9 @@ def plot(data, qubit, fit):
             x=rabi_parameters,
             y=qubit_data.signal,
             opacity=1,
-            name="Voltage",
+            name="Signal",
             showlegend=True,
-            legendgroup="Voltage",
+            legendgroup="Signal",
         ),
         row=1,
         col=1,
@@ -99,18 +99,17 @@ def plot(data, qubit, fit):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["Pi pulse amplitude", "Pi pulse length"],
+                ["Pi pulse amplitude [a.u.]", "Pi pulse length [ns]"],
                 [np.round(fit.amplitude[qubit], 3), np.round(fit.length[qubit], 3)],
             )
         )
 
         fig.update_layout(
             showlegend=True,
-            uirevision="0",  # ``uirevision`` allows zooming while live plotting
             xaxis_title=title,
             yaxis_title="Signal [a.u.]",
             xaxis2_title=title,
-            yaxis2_title="Phase (rad)",
+            yaxis2_title="Phase [rad]",
         )
 
     figures.append(fig)
@@ -121,11 +120,11 @@ def plot(data, qubit, fit):
 def plot_probabilities(data, qubit, fit):
     if data.__class__.__name__ == "RabiAmplitudeData":
         quantity = "amp"
-        title = "Amplitude (dimensionless)"
+        title = "Amplitude [a.u.]"
         fitting = rabi_amplitude_fit
     elif data.__class__.__name__ == "RabiLengthData":
         quantity = "length"
-        title = "Time (ns)"
+        title = "Time [ns]"
         fitting = rabi_length_fit
 
     figures = []
@@ -179,7 +178,7 @@ def plot_probabilities(data, qubit, fit):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["Pi pulse amplitude", "Pi pulse length", "chi2 reduced"],
+                ["Pi pulse amplitude [a.u.]", "Pi pulse length [ns]", "chi2 reduced"],
                 [fit.amplitude[qubit], fit.length[qubit], fit.chi2[qubit]],
                 display_error=True,
             )
@@ -187,7 +186,6 @@ def plot_probabilities(data, qubit, fit):
 
         fig.update_layout(
             showlegend=True,
-            uirevision="0",  # ``uirevision`` allows zooming while live plotting
             xaxis_title=title,
             yaxis_title="Excited state probability",
         )

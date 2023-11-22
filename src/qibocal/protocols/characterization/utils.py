@@ -10,6 +10,7 @@ from numba import njit
 from plotly.subplots import make_subplots
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
+from scipy import constants
 from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Results
@@ -27,9 +28,43 @@ COLUMNWIDTH = 600
 LEGEND_FONT_SIZE = 20
 TITLE_SIZE = 25
 EXTREME_CHI = 1e4
+KB = constants.k
+HBAR = constants.hbar
 """Chi2 output when errors list contains zero elements"""
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
+
+
+def effective_qubit_temperature(
+    prob_0: np.array, prob_1: np.array, qubit_frequency: float, nshots: int
+):
+    """Calculates the qubit effective temperature.
+
+    The formula used is the following one:
+
+    kB Teff = - hbar qubit_freq / ln(prob_1/prob_0)
+
+    Args:
+        prob_0 (np.array): population 0 samples
+        prob_1 (np.array): population 1 samples
+        qubit_frequency(float): frequency of qubit
+        nshots (int): number of shots
+    Returns:
+        temp (float): effective temperature
+        error (float): error on effective temperature
+
+    """
+    error_prob_0 = np.sqrt(prob_0 * (1 - prob_0) / nshots)
+    error_prob_1 = np.sqrt(prob_1 * (1 - prob_1) / nshots)
+    try:
+        temp = -HBAR * qubit_frequency / (np.log(prob_1 / prob_0) * KB)
+        dT_dp0 = temp / prob_0 / np.log(prob_1 / prob_0)
+        dT_dp1 = -temp / prob_1 / np.log(prob_1 / prob_0)
+        error = np.sqrt((dT_dp0 * error_prob_0) ** 2 + (dT_dp1 * error_prob_1) ** 2)
+    except ZeroDivisionError:
+        temp = np.nan
+        error = np.nan
+    return temp, error
 
 
 def calculate_frequencies(results, qubit_list):
@@ -101,11 +136,10 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
             p0=model_parameters,
         )
         model_parameters = list(fit_parameters)
-
     except RuntimeError:
         log.warning("lorentzian_fit: the fitting was not successful")
 
-    return model_parameters[1], model_parameters
+    return model_parameters[1] * GHZ_TO_HZ, model_parameters
 
 
 def spectroscopy_plot(data, qubit, fit: Results = None):
@@ -180,7 +214,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                 table_dict(
                     qubit,
                     [label, "amplitude"],
-                    [np.round(freq[qubit] * GHZ_TO_HZ, 0), fit.amplitude[qubit]],
+                    [np.round(freq[qubit], 0), fit.amplitude[qubit]],
                 )
             )
 
@@ -190,17 +224,16 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                     table_dict(
                         qubit,
                         [label, "attenuation"],
-                        [np.round(freq[qubit] * GHZ_TO_HZ, 0), fit.attenuation[qubit]],
+                        [np.round(freq[qubit], 0), fit.attenuation[qubit]],
                     )
                 )
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Frequency (GHz)",
+        xaxis_title="Frequency [GHz]",
         yaxis_title="Signal [a.u.]",
-        xaxis2_title="Frequency (GHz)",
-        yaxis2_title="Phase (rad)",
+        xaxis2_title="Frequency [GHz]",
+        yaxis2_title="Phase [rad]",
     )
     figures.append(fig)
 
@@ -297,8 +330,8 @@ def fit_punchout(data: Data, fit_type: str):
             ro_val = round((high_att_max + high_att_min) / 2)
             ro_val = ro_val + (ro_val % 2)
 
-        low_freqs[qubit] = freq_lp.item() * HZ_TO_GHZ
-        high_freqs[qubit] = freq_hp[0] * HZ_TO_GHZ
+        low_freqs[qubit] = freq_lp.item()
+        high_freqs[qubit] = freq_hp[0]
         ro_values[qubit] = ro_val
     return [low_freqs, high_freqs, ro_values]
 
@@ -331,14 +364,31 @@ def round_report(
             magnitude = 0
 
         ndigits = max(significant_digit(error * 10 ** (-1 * magnitude)), 0)
-        rounded_values.append(
-            f"{round(value * 10 ** (-1 * magnitude), ndigits)} * 10 ^{magnitude}"
-        )
-        rounded_errors.append(
-            f"{np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')}* 10 ^ {magnitude}"
-        )
+        if magnitude != 0:
+            rounded_values.append(
+                f"{round(value * 10 ** (-1 * magnitude), ndigits)}e{magnitude}"
+            )
+            rounded_errors.append(
+                f"{np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')}e{magnitude}"
+            )
+        else:
+            rounded_values.append(f"{round(value * 10 ** (-1 * magnitude), ndigits)}")
+            rounded_errors.append(
+                f"{np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')}"
+            )
 
     return rounded_values, rounded_errors
+
+
+def format_error_single_cell(measure: tuple):
+    """Helper function to print mean value and error in one line."""
+    # extract mean value and error
+    mean = measure[0][0]
+    error = measure[1][0]
+    if all("e" in number for number in measure[0] + measure[1]):
+        magn = mean.split("e")[1]
+        return f"({mean.split('e')[0]} ± {error.split('e')[0]}) 10<sup>{magn}</sup>"
+    return f"{mean} ± {error}"
 
 
 def chi2_reduced(
@@ -377,7 +427,12 @@ def significant_digit(number: float):
             is ``>= 1``, ``= 0`` or ``inf``.
     """
 
-    if np.isinf(np.real(number)) or np.real(number) >= 1 or number == 0:
+    if (
+        np.isinf(np.real(number))
+        or np.real(number) >= 1
+        or number == 0
+        or np.isnan(number)
+    ):
         return -1
 
     position = max(np.ceil(-np.log10(abs(np.real(number)))), -1)
@@ -512,7 +567,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             )
 
         fig.update_xaxes(
-            title_text=f"i (V)",
+            title_text=f"i [a.u.]",
             range=[min_x, max_x],
             row=1,
             col=i + 1,
@@ -520,7 +575,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             rangeslider=dict(visible=False),
         )
         fig.update_yaxes(
-            title_text="q (V)",
+            title_text="q [a.u.]",
             range=[min_y, max_y],
             scaleanchor="x",
             scaleratio=1,
@@ -529,7 +584,6 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
         )
 
     fig.update_layout(
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         autosize=False,
         height=COLUMNWIDTH,
         width=COLUMNWIDTH * len(models_name),
@@ -554,8 +608,8 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             vertical_spacing=SPACING,
             subplot_titles=(
                 "accuracy",
-                "testing time (s)",
-                "training time (s)",
+                "testing time [s]",
+                "training time [s]",
             )
             # pylint: disable=E1101
         )
@@ -632,8 +686,11 @@ def table_html(data: dict) -> str:
     Args:
         data (dict): the keys will be converted into table entries and the
         values will be the columns of the table.
+        Values must be valid HTML strings.
 
     Return:
         str
     """
-    return pd.DataFrame(data).to_html(classes="fitting-table", index=False, border=0)
+    return pd.DataFrame(data).to_html(
+        classes="fitting-table", index=False, border=0, escape=False
+    )
