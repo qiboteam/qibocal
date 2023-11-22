@@ -102,7 +102,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         )
         model_parameters = list(fit_parameters)
 
-    except:
+    except RuntimeError:
         log.warning("lorentzian_fit: the fitting was not successful")
 
     return model_parameters[1], model_parameters
