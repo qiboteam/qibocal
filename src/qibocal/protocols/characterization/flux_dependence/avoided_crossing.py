@@ -179,7 +179,7 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
             row=1,
             col=i + 1,
         )
-        if fit:
+        if fit is not None:
             # the fit of the parabola in 02 transition was done doubling the frequencies
             heatmaps.add_trace(
                 go.Scatter(
