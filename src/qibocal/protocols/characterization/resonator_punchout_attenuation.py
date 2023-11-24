@@ -209,13 +209,12 @@ def _plot(
         col=2,
     )
     fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=2)
-    fig.update_yaxes(title_text="Attenuation [dB]", row=1, col=2)
 
     if fit is not None:
         fig.add_trace(
             go.Scatter(
                 x=[
-                    fit.readout_frequency[qubit],
+                    fit.readout_frequency[qubit] * HZ_TO_GHZ,
                 ],
                 y=[
                     fit.readout_attenuation[qubit],
@@ -226,6 +225,8 @@ def _plot(
                     color="gray",
                     symbol="circle",
                 ),
+                name="Estimated readout point",
+                showlegend=True,
             )
         )
         fitting_report = table_html(
@@ -244,7 +245,8 @@ def _plot(
             )
         )
     fig.update_layout(
-        showlegend=False,
+        showlegend=True,
+        legend=dict(orientation="h"),
     )
 
     figures.append(fig)
