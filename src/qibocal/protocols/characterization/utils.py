@@ -6,7 +6,6 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import plotly.graph_objects as go
-from numba import njit
 from plotly.subplots import make_subplots
 from qibolab.qubits import QubitId
 from scipy import constants
@@ -244,23 +243,12 @@ def norm(x_mags):
     return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
 
 
-@njit(["float64[:] (float64[:], float64[:])"], parallel=True, cache=True)
 def cumulative(input_data, points):
     r"""Evaluates in data the cumulative distribution
     function of `points`.
     WARNING: `input_data` and `points` should be sorted data.
     """
-    input_data = np.sort(input_data)
-    points = np.sort(points)
-    # data and points sorted
-    prob = []
-    app = 0
-
-    for val in input_data:
-        app += np.maximum(np.searchsorted(points[app::], val), 0)
-        prob.append(float(app))
-
-    return np.array(prob)
+    return np.searchsorted(np.sort(points), np.sort(input_data))
 
 
 def fit_punchout(data: Data, fit_type: str):
