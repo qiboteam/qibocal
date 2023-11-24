@@ -225,6 +225,8 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
                     color="gray",
                     symbol="circle",
                 ),
+                name="Estimated readout point",
+                showlegend=True,
             )
         )
         fitting_report = table_html(
@@ -244,13 +246,13 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
         )
 
     fig.update_layout(
-        showlegend=False,
+        showlegend=True,
+        legend=dict(orientation="h"),
     )
 
     fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=1)
     fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=2)
     fig.update_yaxes(title_text="Amplitude [a.u.]", row=1, col=1)
-    fig.update_yaxes(title_text="Amplitude [a.u.]", row=1, col=2)
 
     figures.append(fig)
 
