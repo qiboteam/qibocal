@@ -215,7 +215,7 @@ def _plot(
         fig.add_trace(
             go.Scatter(
                 x=[
-                    fit.readout_frequency[qubit],
+                    fit.readout_frequency[qubit] * HZ_TO_GHZ,
                 ],
                 y=[
                     fit.readout_attenuation[qubit],
