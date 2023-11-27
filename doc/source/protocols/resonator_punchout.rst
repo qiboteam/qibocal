@@ -15,8 +15,32 @@ particular we expect it to be fixed at first (in the high power regime) then und
 transition phase and then be fixed again at a different frequency because of the coupling
 with the qubit.
 
+This is and example of a runcard for a resonator punchout:
+
+.. code-block:: yaml
+
+    platform: <platform_name>
+
+    qubits: [0]
+
+    actions:
+
+      - id: resonator punchout
+        priority: 0
+        operation: resonator_punchout
+        main: qubit spectroscopy
+        parameters:
+          freq_width: 40_000_000
+          freq_step: 500_000
+          amplitude: 0.03
+          min_amp_factor: 0.1
+          max_amp_factor: 2.4
+          step_amp_factor: 0.3
+          nshots: 2048
+          relaxation_time: 5000
+
 Eventually, we want to have a plot like fig. 3.8 !!!!!
-This experiment is the first one where we actually are ”seeing” the qubit and it's
+This experiment is the first one where we actually are "seeing" the qubit and it's
 extremely important also to check that the qubit is working properly.
 During a characterization, various experimental problems can happen and can lead the experimenter
 to believe that the qubit is no longer working: this experiment gives us an easy way to check it.
