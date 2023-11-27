@@ -246,7 +246,6 @@ def norm(x_mags):
 def cumulative(input_data, points):
     r"""Evaluates in data the cumulative distribution
     function of `points`.
-    WARNING: `input_data` and `points` should be sorted data.
     """
     return np.searchsorted(np.sort(points), np.sort(input_data))
 
