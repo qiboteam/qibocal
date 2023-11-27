@@ -28,7 +28,6 @@ This is and example of a runcard for a resonator punchout:
       - id: resonator punchout
         priority: 0
         operation: resonator_punchout
-        main: qubit spectroscopy
         parameters:
           freq_width: 40_000_000
           freq_step: 500_000
