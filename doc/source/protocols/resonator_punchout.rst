@@ -38,7 +38,10 @@ This is and example of a runcard for a resonator punchout:
           nshots: 2048
           relaxation_time: 5000
 
-Eventually, we want to have a plot like fig. 3.8 !!!!!
+Eventually, we want to have a plot like the one below:
+
+.. image:: resonator_punchout.png
+
 This experiment is the first one where we actually are "seeing" the qubit and it's
 extremely important also to check that the qubit is working properly.
 During a characterization, various experimental problems can happen and can lead the experimenter
