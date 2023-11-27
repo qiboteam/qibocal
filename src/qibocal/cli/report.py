@@ -40,7 +40,7 @@ def report(path):
     qubits = create_qubits_dict(qubits=runcard.qubits, platform=platform)
 
     # load executor
-    executor = Executor.load(runcard, path, qubits=qubits, platform=platform)
+    executor = Executor.load(runcard, path, qubits=qubits)
     # produce html
     builder = ReportBuilder(path, qubits, executor, meta)
     builder.run(path)
