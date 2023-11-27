@@ -212,7 +212,7 @@ def _plot(data: AvoidedCrossingData, fit: Optional[AvoidedCrossingResults], qubi
             )
     figures.append(heatmaps)
 
-    if fit:
+    if fit is not None:
         cz = np.array(fit.cz[order_pair])
         iswap = np.array(fit.iswap[order_pair])
         min_bias = min(min_bias, *cz[:, 0], *iswap[:, 0])
