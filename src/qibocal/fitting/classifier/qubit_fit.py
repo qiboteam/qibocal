@@ -4,9 +4,11 @@ from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
-import skops.io as sio
 
-from qibocal.protocols.characterization.utils import cumulative
+from qibocal.protocols.characterization.utils import (
+    cumulative,
+    effective_qubit_temperature,
+)
 
 
 def constructor(_hyperparams):
@@ -37,6 +39,9 @@ normalize = lambda x: x
 
 def dump(model, save_path: Path):
     r"""Dumps the `model` in `save_path`"""
+    # relative import to reduce overhead when importing qibocal
+    import skops.io as sio
+
     sio.dump(model, save_path.with_suffix(".skops"))
 
 
@@ -44,6 +49,9 @@ def predict_from_file(loading_path: Path, input: np.typing.NDArray):
     r"""This function loads the model saved in `loading_path`
     and returns the predictions of `input`.
     """
+    # relative import to reduce overhead when importing qibocal
+    import skops.io as sio
+
     model = sio.load(loading_path, trusted=True)
     return model.predict(input)
 
@@ -66,6 +74,7 @@ class QubitFit:
     fidelity: float = None
     assignment_fidelity: float = None
     probability_error: float = None
+    effective_qubit_temperature: float = None
 
     def fit(self, iq_coordinates: list, states: list):
         r"""Evaluate the model's parameters given the
@@ -107,6 +116,17 @@ class QubitFit:
         predictions = self.predict(iq_coordinates)
         self.probability_error = np.sum(np.absolute(states - predictions)) / len(
             predictions
+        )
+
+    def effective_temperature(self, predictions, qubit_frequency: float):
+        """Calculate effective qubit temperature."""
+        prob_1 = np.count_nonzero(predictions) / len(predictions)
+        prob_0 = 1 - prob_1
+        return effective_qubit_temperature(
+            prob_0=prob_0,
+            prob_1=prob_1,
+            qubit_frequency=qubit_frequency,
+            nshots=len(predictions),
         )
 
     def rotate(self, v):

@@ -1,0 +1,38 @@
+
+actions:
+
+  - id: t1
+    priority: 00
+    operation: t1_signal
+    main: t2
+    parameters:
+      delay_before_readout_start: 50
+      delay_before_readout_end: 100000
+      delay_before_readout_step: 2500
+      nshots: 1024
+
+  - id: t2
+    priority: 10
+    operation: t2_signal
+    main: readout characterization
+    parameters:
+      delay_between_pulses_start: 50
+      delay_between_pulses_end: 100000
+      delay_between_pulses_step: 2500
+      nshots: 1024
+
+  - id: readout characterization
+    priority: 20
+    # main: standard rb bootstrap
+    operation: readout_characterization
+    parameters:
+      nshots: 5000
+
+  # - id: standard rb bootstrap
+  #   priority: 40
+  #   operation: standard_rb
+  #   parameters:
+  #     depths: [10, 100, 150, 200, 250, 300]
+  #     niter: 8
+  #     nshots: 256
+  #     n_bootstrap: 10

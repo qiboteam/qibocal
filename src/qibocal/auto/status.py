@@ -38,5 +38,5 @@ class Normal(Status):
     """All green."""
 
 
-class Broken(Status):
+class Failure(Status):
     """Unrecoverable."""

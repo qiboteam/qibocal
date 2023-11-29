@@ -8,13 +8,10 @@ from qibolab.native import VirtualZPulse
 from qibolab.pulses import Drag
 
 from qibocal import update
-from qibocal.protocols.characterization.utils import GHZ_TO_HZ
 
 PLATFORM = create_platform("dummy")
 QUBITS = list(PLATFORM.qubits.values())
 PAIRS = list(PLATFORM.pairs)
-FREQUENCIES_GHZ = random.randint(5, 9)
-FREQUENCIES_HZ = int(FREQUENCIES_GHZ * GHZ_TO_HZ)
 RANDOM_FLOAT = random.random()
 RANDOM_INT = random.randint(0, 10)
 
@@ -25,20 +22,19 @@ def generate_update_list(length):
 
 @pytest.mark.parametrize("qubit", QUBITS)
 def test_readout_frequency_update(qubit):
-    update.readout_frequency(FREQUENCIES_GHZ, PLATFORM, qubit.name)
-    assert qubit.native_gates.MZ.frequency == FREQUENCIES_HZ
+    update.readout_frequency(RANDOM_INT, PLATFORM, qubit.name)
+    assert qubit.native_gates.MZ.frequency == RANDOM_INT
     if qubit.native_gates.MZ.if_frequency is not None:
-        assert qubit.readout_frequency == FREQUENCIES_HZ
+        assert qubit.readout_frequency == RANDOM_INT
         assert (
-            qubit.native_gates.MZ.if_frequency
-            == FREQUENCIES_HZ - qubit.readout_frequency
+            qubit.native_gates.MZ.if_frequency == RANDOM_INT - qubit.readout_frequency
         )
 
 
 @pytest.mark.parametrize("qubit", QUBITS)
 def test_update_bare_resonator_frequency_update(qubit):
-    update.bare_resonator_frequency(FREQUENCIES_GHZ, PLATFORM, qubit.name)
-    assert qubit.bare_resonator_frequency == FREQUENCIES_HZ
+    update.bare_resonator_frequency(RANDOM_INT, PLATFORM, qubit.name)
+    assert qubit.bare_resonator_frequency == RANDOM_INT
 
 
 @pytest.mark.parametrize("qubit", QUBITS)
@@ -55,9 +51,9 @@ def test_readout_attenuation_update(qubit):
 
 @pytest.mark.parametrize("qubit", QUBITS)
 def test_drive_frequency_update(qubit):
-    update.drive_frequency(FREQUENCIES_GHZ, PLATFORM, qubit.name)
-    assert qubit.native_gates.RX.frequency == FREQUENCIES_HZ
-    assert qubit.drive_frequency == FREQUENCIES_HZ
+    update.drive_frequency(RANDOM_INT, PLATFORM, qubit.name)
+    assert qubit.native_gates.RX.frequency == RANDOM_INT
+    assert qubit.drive_frequency == RANDOM_INT
 
 
 @pytest.mark.parametrize("qubit", QUBITS)
@@ -71,13 +67,11 @@ def test_classification_update(qubit):
     # generate random lists
     mean_gnd_state = generate_update_list(2)
     mean_exc_state = generate_update_list(2)
-    classifiers_hpars = generate_update_list(4)
     # perform update
     update.iq_angle(RANDOM_FLOAT, PLATFORM, qubit.name)
     update.threshold(RANDOM_FLOAT, PLATFORM, qubit.name)
     update.mean_gnd_states(mean_gnd_state, PLATFORM, qubit.name)
     update.mean_exc_states(mean_exc_state, PLATFORM, qubit.name)
-    update.classifiers_hpars(classifiers_hpars, PLATFORM, qubit.name)
     update.readout_fidelity(RANDOM_FLOAT, PLATFORM, qubit.name)
     update.assignment_fidelity(RANDOM_FLOAT, PLATFORM, qubit.name)
 
@@ -86,7 +80,6 @@ def test_classification_update(qubit):
     assert qubit.threshold == RANDOM_FLOAT
     assert qubit.mean_gnd_states == mean_gnd_state
     assert qubit.mean_exc_states == mean_exc_state
-    assert qubit.classifiers_hpars == classifiers_hpars
     assert qubit.readout_fidelity == RANDOM_FLOAT
     assert qubit.assignment_fidelity == RANDOM_FLOAT
 
@@ -154,12 +147,12 @@ def test_sweetspot_update(qubit):
 @pytest.mark.parametrize("qubit", QUBITS[:-1])
 def test_12_transition_update(qubit):
     update.drive_12_amplitude(RANDOM_FLOAT, PLATFORM, qubit.name)
-    update.frequency_12_transition(FREQUENCIES_GHZ, PLATFORM, qubit.name)
-    update.anharmonicity(FREQUENCIES_GHZ, PLATFORM, qubit.name)
+    update.frequency_12_transition(RANDOM_INT, PLATFORM, qubit.name)
+    update.anharmonicity(RANDOM_INT, PLATFORM, qubit.name)
 
     assert qubit.native_gates.RX12.amplitude == RANDOM_FLOAT
-    assert qubit.native_gates.RX12.frequency == FREQUENCIES_HZ
-    assert qubit.anharmonicity == FREQUENCIES_HZ
+    assert qubit.native_gates.RX12.frequency == RANDOM_INT
+    assert qubit.anharmonicity == RANDOM_INT
 
 
 @pytest.mark.parametrize("qubit", QUBITS)
