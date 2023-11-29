@@ -39,11 +39,11 @@ class DispersiveShiftQutritResults(Results):
     """State one frequency."""
     frequency_state_two: dict[QubitId, float]
     """State two frequency."""
-    fitted_parameters_state_zero: dict[QubitId, dict[str, float]]
+    fitted_parameters_state_zero: dict[QubitId, list[float]]
     """Fitted parameters state zero."""
-    fitted_parameters_state_one: dict[QubitId, dict[str, float]]
+    fitted_parameters_state_one: dict[QubitId, list[float]]
     """Fitted parameters state one."""
-    fitted_parameters_state_two: dict[QubitId, dict[str, float]]
+    fitted_parameters_state_two: dict[QubitId, list[float]]
     """Fitted parameters state one."""
 
     @property
@@ -193,7 +193,7 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
         vertical_spacing=0.1,
         subplot_titles=(
             "Signal [a.u.]",
-            "phase (rad)",
+            "phase [rad]",
         ),
     )
     # iterate over multiple data folders
@@ -258,7 +258,7 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
             fig.add_trace(
                 go.Scatter(
                     x=freqrange,
-                    y=lorentzian(freqrange, **params),
+                    y=lorentzian(freqrange, *params),
                     name=f"{label} Fit",
                     line=go.scatter.Line(dash="dot"),
                 ),
@@ -286,10 +286,10 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
         )
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Frequency (GHz)",
+        xaxis_title="Frequency [GHz]",
         yaxis_title="Signal [a.u.]",
-        xaxis2_title="Frequency (GHz)",
-        yaxis2_title="Phase (rad)",
+        xaxis2_title="Frequency [GHz]",
+        yaxis2_title="Phase [rad]",
     )
 
     figures.append(fig)

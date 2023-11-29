@@ -232,9 +232,9 @@ def _plot(data: RamseySignalData, qubit, fit: RamseySignalResults = None):
                 x=waits,
                 y=signal,
                 opacity=1,
-                name="Voltage",
+                name="Signal",
                 showlegend=True,
-                legendgroup="Voltage",
+                legendgroup="Signal",
                 mode="lines",
             ),
         ]
@@ -274,8 +274,7 @@ def _plot(data: RamseySignalData, qubit, fit: RamseySignalResults = None):
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Time (ns)",
+        xaxis_title="Time [ns]",
         yaxis_title="Signal [a.u.]",
     )
 

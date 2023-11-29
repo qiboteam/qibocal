@@ -26,7 +26,7 @@ from .operation import (
     dummy_operation,
 )
 from .runcard import Action, Id
-from .status import Normal, Status
+from .status import Failure, Normal, Status
 
 MAX_PRIORITY = int(1e9)
 """A number bigger than whatever will be manually typed. But not so insanely big not to fit in a native integer."""
@@ -85,6 +85,20 @@ class Task:
             raise RuntimeError("No operation specified")
 
         return Operation[self.action.operation].value
+
+    def validate(self, results: Results) -> Optional[Status]:
+        """Performs validation only if validator is provided."""
+
+        if self.action.validator is None:
+            return None
+        status = {}
+        for qubit in self.qubits:
+            status[qubit] = self.action.validator.__call__(results, qubit)
+        # exit if any of the qubit state is Failure
+        if any(isinstance(stat, Failure) for stat in status.values()):
+            return Failure()
+        else:
+            return Normal()
 
     @property
     def main(self):
@@ -154,10 +168,9 @@ class Task:
                 completed.data, completed.data_time = operation.acquisition(
                     parameters, platform=platform
                 )
-
         if mode.name in ["autocalibration", "fit"]:
             completed.results, completed.results_time = operation.fit(completed.data)
-
+            completed.status = self.validate(completed.results)
         return completed
 
 

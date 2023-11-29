@@ -21,9 +21,9 @@ class ResonatorFrequencyParameters(Parameters):
     """Optimization RO frequency inputs."""
 
     freq_width: int
-    """Width [Hz] for frequency sweep relative to the readout frequency (Hz)."""
+    """Width [Hz] for frequency sweep relative to the readout frequency [Hz]."""
     freq_step: int
-    """Frequency step for sweep (Hz)."""
+    """Frequency step for sweep [Hz]."""
 
 
 @dataclass
@@ -208,15 +208,14 @@ def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                "Best Resonator Frequency [GHz]",
-                np.round(fit.best_freq[qubit] * HZ_TO_GHZ, 4),
+                "Best Resonator Frequency [Hz]",
+                np.round(fit.best_freq[qubit], 4),
             )
         )
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Resonator Frequencies (GHz)",
+        xaxis_title="Resonator Frequencies [GHz]",
         yaxis_title="Assignment Fidelities",
     )
 

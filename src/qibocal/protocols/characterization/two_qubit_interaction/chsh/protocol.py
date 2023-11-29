@@ -239,8 +239,7 @@ def _plot(data: CHSHData, fit: CHSHResults, qubit):
         )
 
         fig.update_layout(
-            uirevision="0",  # ``uirevision`` allows zooming while live plotting
-            xaxis_title="Theta[rad]",
+            xaxis_title="Theta [rad]",
             yaxis_title="CHSH value",
         )
         figures.append(fig)
