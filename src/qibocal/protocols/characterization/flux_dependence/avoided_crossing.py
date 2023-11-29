@@ -1,5 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Optional
 
 import numpy as np
@@ -77,8 +78,8 @@ def _acquisition(
         order_pairs[:, 1]
     )  # select qubits with high freq in each couple
     new_qubits = {key: platform.qubits[key] for key in unique_qubits}
-
-    for transition in ["01", "02"]:
+    excitations = [Excitations.ge, Excitations.gf]
+    for transition in excitations:
         params.transition = transition
         data_transition = flux_acquisition(
             params=params,
@@ -125,16 +126,16 @@ def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
         low = qubit_pair[0]
         high = qubit_pair[1]
         # Fit the 02*2 curve
-        curve_02 = np.array(curves[high, "02"]) * 2
-        x_02 = np.unique(qubit_data[high, "02"]["bias"])
+        curve_02 = np.array(curves[high, Excitations.gf]) * 2
+        x_02 = np.unique(qubit_data[high, Excitations.gf]["bias"])
         fit_02 = np.polyfit(x_02, curve_02, 2)
-        fits[qubit_pair]["02"] = fit_02.tolist()
+        fits[qubit_pair][Excitations.gf] = fit_02.tolist()
 
         # Fit the 01+10 curve
-        curve_01 = np.array(curves[high, "01"])
-        x_01 = np.unique(qubit_data[high, "01"]["bias"])
+        curve_01 = np.array(curves[high, Excitations.ge])
+        x_01 = np.unique(qubit_data[high, Excitations.ge]["bias"])
         fit_01_10 = np.polyfit(x_01, curve_01 + data.drive_frequency_low[str(low)], 2)
-        fits[qubit_pair]["01+10"] = fit_01_10.tolist()
+        fits[qubit_pair][Excitations.all_ge] = fit_01_10.tolist()
         # find the intersection of the two parabolas
         delta_fit = fit_02 - fit_01_10
         x1, x2 = solve_eq(delta_fit)
@@ -144,7 +145,7 @@ def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
         ]
         # find the intersection of the 01 parabola and the 10 line
         fit_01 = np.polyfit(x_01, curve_01, 2)
-        fits[qubit_pair]["01"] = fit_01.tolist()
+        fits[qubit_pair][Excitations.ge] = fit_01.tolist()
         fit_pars = deepcopy(fit_01)
         line_val = data.drive_frequency_low[str(low)]
         fit_pars[2] -= line_val
@@ -162,10 +163,12 @@ def _plot(data: AvoidedCrossingData, fit: Optional[AvoidedCrossingResults], qubi
     heatmaps = make_subplots(
         rows=1,
         cols=2,
-        subplot_titles=[f"{i} transition qubit {qubit[0]}" for i in ["01", "02"]],
+        subplot_titles=[
+            f"{i} transition qubit {qubit[0]}" for i in [Excitations.ge, Excitations.gf]
+        ],
     )
     parabolas = make_subplots(rows=1, cols=1, subplot_titles=["Parabolas"])
-    for i, transition in enumerate(["01", "02"]):
+    for i, transition in enumerate([Excitations.ge, Excitations.gf]):
         data_high = data.data[order_pair[1], transition]
         bias_unique = np.unique(data_high.bias)
         min_bias = min(bias_unique)
@@ -218,7 +221,7 @@ def _plot(data: AvoidedCrossingData, fit: Optional[AvoidedCrossingResults], qubi
         min_bias = min(min_bias, *cz[:, 0], *iswap[:, 0])
         max_bias = max(max_bias, *cz[:, 0], *iswap[:, 0])
         bias_range = np.linspace(min_bias, max_bias, STEP)
-        for transition in ["01", "02", "01+10"]:
+        for transition in [Excitations.ge, Excitations.gf, Excitations.all_ge]:
             parabolas.add_trace(
                 go.Scatter(
                     x=bias_range,
@@ -324,3 +327,13 @@ def index(pairs: list, item: list) -> list:
         if set(pair) == set(item):
             return pair
     raise ValueError(f"{item} not in pairs")
+
+
+class Excitations(str, Enum):
+    """
+    Excited two qubits states.
+    """
+
+    ge = "01"
+    gf = "02"
+    all_ge = "01+10"
