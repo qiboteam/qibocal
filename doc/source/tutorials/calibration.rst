@@ -128,6 +128,109 @@ and here is the output.
 
 .. image:: ../protocols/resonator_spectroscopy_low.png
 
+Qubit characterization    min_amp_factor: -1.1
+            max_amp_factor: 1.1
+            step_amp_factor: 0.1
+            pulse_length: 40
+            relaxation_time: 100_000
+            nshots: 1024
+^^^^^^^^^^^^^^^^^^^^^^
+
+After having a rough estimate on the readout frequency and the readout amplitude, we
+can start to characterize the qubit.
+
+To estimate the qubit frequency :math:`\omega_{01}`, the frequency of the transition between state
+:math:`\ket{0}` and  state :math:`\ket{1}`, we can run a qubit spectroscopy experiment, which will
+probe the qubit at different drive frequencies.
+
+Here is an example runcard:
+
+.. code-block:: yaml
+
+    platform: <platform_name>
+
+    qubits: [0]
+
+    actions:
+
+      - id: qubit spectroscopy 01
+        priority: 0
+        operation: qubit_spectroscopy
+        parameters:
+            drive_amplitude: 0.5
+            drive_duration: 4000
+            freq_width: 100_000_000
+            freq_step: 100_000
+            nshots: 1024
+            relaxation_time: 5000
+
+
+PUT PLOT HERE
+
+Similarly to the resonator, we expect a lorentzian peak around :math:`\omega_{01}`
+which will be our drive frequency.
+
+The missing step required to perform a transition between state :math:`\ket{0}` and state
+:math:`\ket{1}` is to calibrate the amplitude of the drive pulse, also known as :math:`\pi` pulse.
+
+Such amplitude is estimated through a Rabi experiment, which can be executed in qibocal through
+the following runcard:
+
+.. code-block:: yaml
+
+    platform: <platform_name>
+
+    qubits: [0]
+
+    actions:
+
+        - id: rabi
+        priority: 0
+        operation: rabi_amplitude_signal
+        parameters:
+            min_amp_factor: 0
+            max_amp_factor: 1.1
+            step_amp_factor: 0.1
+            pulse_length: 40
+            relaxation_time: 100_000
+            nshots: 1024
+
+in this particular case we are fixing the duration of the pulse to be 40 ns and we peform
+a sweep in the drive amplitude to find the correct value. Experimentally we expect a sinusoidal
+behavior.
+
+PUT PLOT HERE
+
+Classification model
+^^^^^^^^^^^^^^^^^^^^
+
+Now that we are able to produce :math:`\ket{0}` and :math:`\ket{1}` we need to build a model
+that will discriminate between these two states, also known as `classifier`.
+Qibocal provides several classifiers of different complexities including Machine Learning based
+ones.
+
+The simplest model can be trained by running the following experiment:
+
+.. code-block:: yaml
+
+    platform: <platform_name>
+
+    qubits: [0]
+
+    actions:
+
+        - id: single shot classification 1
+          priority: 0
+          main: allXY
+          operation: single_shot_classification
+          parameters:
+          nshots: 5000
+
+
+The expected results are two separated clouds in the IQ plane.
+
+ADD MISSING PLOT
+
 
 Flux tunable qubits
 -------------------
