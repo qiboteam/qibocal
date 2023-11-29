@@ -147,7 +147,6 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
     for qubit in qubits:
         traces = []
         for i in range(2):
-            # TODO: Are traces calculated with these values or MSR or Phase???
             trace = (
                 data[qubit, i]["i"][: (len(data[qubit, i]["i"]) // 16) * 16]
                 + 1j * data[qubit, i]["q"][: (len(data[qubit, i]["i"]) // 16) * 16]
