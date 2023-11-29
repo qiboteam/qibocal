@@ -4,8 +4,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-import zhinst.utils.shfqa
-from laboneq.simple import pulse_library
+from laboneq.analysis import calculate_integration_kernels
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
@@ -155,10 +154,7 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
             )
             traces.append(trace)
 
-        qdit_settings = zhinst.utils.shfqa.multistate.QuditSettings(ref_traces=traces)
-        num_states = 2
-        weights = qdit_settings.weights[: num_states - 1]
-        kernels = [pulse_library.sampled_pulse_complex(w.vector) for w in weights]
+        kernels = calculate_integration_kernels(traces)
         kernel_state_zero[qubit] = kernels[0].samples
 
     return CalibrateStateDiscriminationResults(data=kernel_state_zero)
