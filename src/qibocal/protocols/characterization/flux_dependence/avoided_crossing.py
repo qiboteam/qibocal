@@ -173,46 +173,10 @@ def _plot(data: AvoidedCrossingData, fit: Optional[AvoidedCrossingResults], qubi
         bias_unique = np.unique(data_high.bias)
         min_bias = min(bias_unique)
         max_bias = max(bias_unique)
-        heatmaps.add_trace(
-            go.Heatmap(
-                x=data_high.freq * HZ_TO_GHZ,
-                y=data_high.bias,
-                z=data_high.signal,
-                coloraxis="coloraxis",
-            ),
-            row=1,
-            col=i + 1,
+        plot_heatmap(
+            heatmaps, fit, transition, bias_unique, order_pair, data_high, i + 1
         )
-        if fit is not None:
-            # the fit of the parabola in 02 transition was done doubling the frequencies
-            heatmaps.add_trace(
-                go.Scatter(
-                    x=np.polyval(fit.fits[order_pair][transition], bias_unique)
-                    / (i + 1)
-                    * HZ_TO_GHZ,
-                    y=bias_unique,
-                    mode="markers",
-                    marker_color="lime",
-                    showlegend=True,
-                    marker=dict(size=POINT_SIZE),
-                    name=f"Curve estimation {transition}",
-                ),
-                row=1,
-                col=i + 1,
-            )
-            heatmaps.add_trace(
-                go.Scatter(
-                    x=np.array(fit.parabolas[order_pair[1], transition]) * HZ_TO_GHZ,
-                    y=bias_unique,
-                    mode="markers",
-                    marker_color="black",
-                    showlegend=True,
-                    marker=dict(symbol="cross", size=POINT_SIZE),
-                    name=f"Parabola {transition}",
-                ),
-                row=1,
-                col=i + 1,
-            )
+
     figures.append(heatmaps)
 
     if fit is not None:
@@ -221,47 +185,9 @@ def _plot(data: AvoidedCrossingData, fit: Optional[AvoidedCrossingResults], qubi
         min_bias = min(min_bias, *cz[:, 0], *iswap[:, 0])
         max_bias = max(max_bias, *cz[:, 0], *iswap[:, 0])
         bias_range = np.linspace(min_bias, max_bias, STEP)
-        for transition in [Excitations.ge, Excitations.gf, Excitations.all_ge]:
-            parabolas.add_trace(
-                go.Scatter(
-                    x=bias_range,
-                    y=np.polyval(fit.fits[order_pair][transition], bias_range)
-                    * HZ_TO_GHZ,
-                    showlegend=True,
-                    name=transition,
-                )
-            )
-        parabolas.add_trace(
-            go.Scatter(
-                x=bias_range,
-                y=np.array([data.drive_frequency_low[str(order_pair[0])]] * STEP)
-                * HZ_TO_GHZ,
-                showlegend=True,
-                name="10",
-            )
-        )
-        parabolas.add_trace(
-            go.Scatter(
-                x=cz[:, 0],
-                y=cz[:, 1] * HZ_TO_GHZ,
-                showlegend=True,
-                name="CZ",
-                marker_color="black",
-                mode="markers",
-                marker=dict(symbol="cross", size=POINT_SIZE),
-            )
-        )
-        parabolas.add_trace(
-            go.Scatter(
-                x=iswap[:, 0],
-                y=iswap[:, 1] * HZ_TO_GHZ,
-                showlegend=True,
-                name="iswap",
-                marker_color="blue",
-                mode="markers",
-                marker=dict(symbol="cross", size=10),
-            )
-        )
+        plot_curves(parabolas, fit, data, order_pair, bias_range)
+        plot_intersections(parabolas, cz, iswap)
+
         parabolas.update_layout(
             xaxis_title="Bias[V]",
             yaxis_title="Frequency[GHz]",
@@ -337,3 +263,92 @@ class Excitations(str, Enum):
     ge = "01"
     gf = "02"
     all_ge = "01+10"
+
+
+def plot_heatmap(heatmaps, fit, transition, bias_unique, order_pair, data_high, col):
+    heatmaps.add_trace(
+        go.Heatmap(
+            x=data_high.freq * HZ_TO_GHZ,
+            y=data_high.bias,
+            z=data_high.signal,
+            coloraxis="coloraxis",
+        ),
+        row=1,
+        col=col,
+    )
+    if fit is not None:
+        # the fit of the parabola in 02 transition was done doubling the frequencies
+        heatmaps.add_trace(
+            go.Scatter(
+                x=np.polyval(fit.fits[order_pair][transition], bias_unique)
+                / col
+                * HZ_TO_GHZ,
+                y=bias_unique,
+                mode="markers",
+                marker_color="lime",
+                showlegend=True,
+                marker=dict(size=POINT_SIZE),
+                name=f"Curve estimation {transition}",
+            ),
+            row=1,
+            col=col,
+        )
+        heatmaps.add_trace(
+            go.Scatter(
+                x=np.array(fit.parabolas[order_pair[1], transition]) * HZ_TO_GHZ,
+                y=bias_unique,
+                mode="markers",
+                marker_color="black",
+                showlegend=True,
+                marker=dict(symbol="cross", size=POINT_SIZE),
+                name=f"Parabola {transition}",
+            ),
+            row=1,
+            col=col,
+        )
+
+
+def plot_curves(parabolas, fit, data, order_pair, bias_range):
+    for transition in [Excitations.ge, Excitations.gf, Excitations.all_ge]:
+        parabolas.add_trace(
+            go.Scatter(
+                x=bias_range,
+                y=np.polyval(fit.fits[order_pair][transition], bias_range) * HZ_TO_GHZ,
+                showlegend=True,
+                name=transition,
+            )
+        )
+    parabolas.add_trace(
+        go.Scatter(
+            x=bias_range,
+            y=np.array([data.drive_frequency_low[str(order_pair[0])]] * STEP)
+            * HZ_TO_GHZ,
+            showlegend=True,
+            name="10",
+        )
+    )
+
+
+def plot_intersections(parabolas, cz, iswap):
+    parabolas.add_trace(
+        go.Scatter(
+            x=cz[:, 0],
+            y=cz[:, 1] * HZ_TO_GHZ,
+            showlegend=True,
+            name="CZ",
+            marker_color="black",
+            mode="markers",
+            marker=dict(symbol="cross", size=POINT_SIZE),
+        )
+    )
+    parabolas.add_trace(
+        go.Scatter(
+            x=iswap[:, 0],
+            y=iswap[:, 1] * HZ_TO_GHZ,
+            showlegend=True,
+            name="iswap",
+            marker_color="blue",
+            mode="markers",
+            marker=dict(symbol="cross", size=10),
+        )
+    )
