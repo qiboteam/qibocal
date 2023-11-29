@@ -133,7 +133,7 @@ class Task:
     ):
         completed = Completed(self, Normal(), folder)
         task_qubits = self._allocate_local_qubits(qubits, platform)
-        if platform is not None:
+        try:
             if self.parameters.nshots is None:
                 self.action.parameters["nshots"] = platform.settings.nshots
             if self.parameters.relaxation_time is None:
@@ -142,7 +142,7 @@ class Task:
                 ] = platform.settings.relaxation_time
             operation: Routine = self.operation
             parameters = self.parameters
-        else:
+        except (RuntimeError, AttributeError):
             operation = dummy_operation
             parameters = DummyPars()
         if mode.name in ["autocalibration", "acquire"]:
