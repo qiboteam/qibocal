@@ -12,21 +12,21 @@ includes the following steps:
 
 #. Resonator characterization:
     #. Probing the resonator at high power
-    #. Estimate the readout amplitude through a punchout
+    #. Estimating the readout amplitude through a punchout
     #. Finding the dressed resonator frequency
 #. Qubit characterization
     #. Finding the qubit frequency
-    #. Calibration of :math:`\pi` pulse
-#. Build classification model for :math:`\ket{0}` and  :math:`\ket{1}`
+    #. Calibrating the :math:`\pi` pulse
+#. Building classification model for :math:`\ket{0}` and  :math:`\ket{1}`
 
 We are going to explain how to use qibocal to address each step of the calibration.
 
 Resonator characterization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Usually each qubit is coupled to a resonator to perform the readout.
-The resonator is characterized by a bare frequency that we can extract
-by running a resonator spectroscopy at high power. To peform this experiment
+Each qubit is coupled to a resonator to perform the measurement.
+The resonator is characterized by a bare frequency that we can be extracted
+by running a resonator spectroscopy at high power. To perform this experiment
 with qibocal it is sufficient to write the following runcard `spectroscopy.yaml`:
 
 .. code-block:: yaml
@@ -48,7 +48,10 @@ with qibocal it is sufficient to write the following runcard `spectroscopy.yaml`
             nshots: 1024
             relaxation_time: 100000
 
-which can then be executed with the following command:
+the choice of the parameters is arbitrary. In this specific case the
+user should make sure to specify an amplitude value sufficiently large.
+
+This experiment can be launched with the following command:
 
 .. code-block:: bash
 
@@ -87,13 +90,9 @@ power we observe this shift it is possible to run a resonator punchout using the
           nshots: 2048
           relaxation_time: 5000
 
-We can execute the runcard using the following command
-
-.. code-block:: bash
-
-    qq auto punchout.yaml -o <output_folder>
-
-Here is the expected output:
+Which corresponds to a 2D scan in amplitude and readout frequency.
+After executing the experiment with the previous syntax we should
+see something like this.
 
 .. image:: ../protocols/resonator_punchout.png
 
@@ -101,7 +100,7 @@ The image above shows that below 0.15 amplitude the frequency of the resonator
 shifted as expected.
 
 Finally, now that we have a reasonable guess for the readout amplitude we can
-run again a resonator spectroscopy putting the correct readout amplitude value.
+eventually run again a resonator spectroscopy putting the correct readout amplitude value.
 
 Here is an example of a runcard.
 
@@ -124,24 +123,22 @@ Here is an example of a runcard.
             nshots: 1024
             relaxation_time: 100000
 
-and here is the output.
+Note that in this case we changed the ``power_level`` entry from
+``high`` to ``low``, this keyword is used by qibocal to upgrade
+correctly the QPU parameters depending on the power regime.
 
 .. image:: ../protocols/resonator_spectroscopy_low.png
 
-Qubit characterization    min_amp_factor: -1.1
-            max_amp_factor: 1.1
-            step_amp_factor: 0.1
-            pulse_length: 40
-            relaxation_time: 100_000
-            nshots: 1024
+Qubit characterization
 ^^^^^^^^^^^^^^^^^^^^^^
+
 
 After having a rough estimate on the readout frequency and the readout amplitude, we
 can start to characterize the qubit.
 
-To estimate the qubit frequency :math:`\omega_{01}`, the frequency of the transition between state
-:math:`\ket{0}` and  state :math:`\ket{1}`, we can run a qubit spectroscopy experiment, which will
-probe the qubit at different drive frequencies.
+The qubit transition frequency :math:`\omega_{01}`,the frequency of the transition between state
+:math:`\ket{0}` and  state :math:`\ket{1}`, is determined using a dispersive spectroscopy measurement.
+
 
 Here is an example runcard:
 
@@ -165,10 +162,19 @@ Here is an example runcard:
             relaxation_time: 5000
 
 
+For this particular experiment it is recommended to use
+a ``drive_duration`` large compared to the coherence time of
+the qubit.
+
+
 PUT PLOT HERE
 
 Similarly to the resonator, we expect a lorentzian peak around :math:`\omega_{01}`
 which will be our drive frequency.
+
+.. note::
+    By using high values of ``drive_amplitude`` it might be possible to see
+    another peak which corresponds to :math:`\omega_{02}/2`.
 
 The missing step required to perform a transition between state :math:`\ket{0}` and state
 :math:`\ket{1}` is to calibrate the amplitude of the drive pulse, also known as :math:`\pi` pulse.
@@ -195,9 +201,9 @@ the following runcard:
             relaxation_time: 100_000
             nshots: 1024
 
-in this particular case we are fixing the duration of the pulse to be 40 ns and we peform
-a sweep in the drive amplitude to find the correct value. Experimentally we expect a sinusoidal
-behavior.
+In this particular case we are fixing the duration of the pulse to be 40 ns and we perform
+a sweep in the drive amplitude to find the correct value. The :math:`\pi` corresponds to
+first half period of the oscillation.
 
 PUT PLOT HERE
 
@@ -235,17 +241,16 @@ ADD MISSING PLOT
 Flux tunable qubits
 -------------------
 
-For flux-tunable qubits it is also required to calibrate the sweetspot
+When dealing with flux tunable qubits it is important to also
+study how the qubit react when changing the magnetic flux.
+From the theory we know that by modifying the flux the qubit
+frequency will be modified.
 
-#. Resonator characterization:
-    #. Probing the resonator at high power
-    #. Estimate the readout amplitude through a punchout
-    #. Finding the dressed resonator frequency
-#. Qubit characterization
-    #. Finding the qubit frequency
-    #. Calibrating the qubit sweetspot
-    #. Calibration of :math:`\pi` pulse
-#. Build classification model for :math:`\ket{0}` and  :math:`\ket{1}`
+Usually the qubit it is place where it is most insesitive to a
+a change in flux, also know as ``sweetspot``.
+
+We can study the flux dependence of the qubit using the following runcard:
+
 
 
 
