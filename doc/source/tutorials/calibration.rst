@@ -255,14 +255,40 @@ We can study the flux dependence of the qubit using the following runcard:
 
 
 Assessing the goodness of the calibration
-----------------------------------------
+-----------------------------------------
 
-Evaluating coherence and dephasing
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Several experiments can be performed to estimate the goodness of the
+calibration.
 
 Fidelities
 ^^^^^^^^^^
 
+We can estimate the `assignment fidelity` :math:`\\mathcal{F}` which is defined as
 
-Fine tuning of calibration parameters
--------------------------------------
+
+In order to estimate a gate-fidelity which is unaffected by
+State Preparation And Measurement errors it is possible to run a standard
+randomized benchmarking.
+
+Measurement of the qubit coherences
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The fidelity achievable using a superconducting qubit is limited
+by the coherences times of the qubit.
+
+To measure the energy decay of a qubit state, also known as :math:`\\T_1`.
+The experiment consists in bringing the qubit to  :math:`\ket{1}` and then
+performing a measurement after a waiting time :math:`\tau`.
+
+Here is the runcard:
+
+
+
+We expect to see an exponential decay whose rate will give us
+the factor :math:`\\T_1`.
+
+We can also estimate the loss of quantum information due to the
+loss in the knowledge of the phase of a quantum state. Such parameters is
+denoted with :math:`\\T_2` and can be estimated through a Ramsey experiment.
+
+PUT RUNCARD
