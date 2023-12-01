@@ -43,7 +43,7 @@ def plot(data, qubit, fit):
     elif data.__class__.__name__ == "RabiLengthVoltData":
         quantity = "length"
         title = "Time (ns)"
-        fitting = rabi_length_fit
+        fitting = rabi_length_signal
 
     figures = []
     fitting_report = ""

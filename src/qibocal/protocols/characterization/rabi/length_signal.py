@@ -166,7 +166,6 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
             log.warning("rabi_fit: the fitting was not succesful")
             pi_pulse_parameter = 0
             translated_popt = [0, 0, 1, 0, 0]
-
         durations[qubit] = pi_pulse_parameter
         fitted_parameters[qubit] = translated_popt
 
