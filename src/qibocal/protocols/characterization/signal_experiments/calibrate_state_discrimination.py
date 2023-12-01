@@ -84,12 +84,17 @@ def _acquisition(
     # sequence_0: I  - MZ
     # sequence_1: RX - MZ
 
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
-    sequence_0 = PulseSequence()
-    sequence_1 = PulseSequence()
-    ro_pulses = {}
-    qd_pulses = {}
+    data = CalibrateStateDiscriminationData(resonator_type=platform.resonator_type)
+
+    # FIXME: Multiplex Raw acquisition may not work properly ???
     for qubit in qubits:
+        # create 2 sequences of pulses for the experiment:
+        # sequence_0: I  - MZ
+        # sequence_1: RX - MZ
+        sequence_0 = PulseSequence()
+        sequence_1 = PulseSequence()
+        ro_pulses = {}
+        qd_pulses = {}
         qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].duration
@@ -98,30 +103,26 @@ def _acquisition(
         sequence_1.add(qd_pulses[qubit])
         sequence_1.add(ro_pulses[qubit])
 
-    data = CalibrateStateDiscriminationData(resonator_type=platform.resonator_type)
+        results_0 = platform.execute_pulse_sequence(
+            sequence_0,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.RAW,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
 
-    results_0 = platform.execute_pulse_sequence(
-        sequence_0,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.RAW,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
-    )
+        results_1 = platform.execute_pulse_sequence(
+            sequence_1,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.RAW,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
 
-    results_1 = platform.execute_pulse_sequence(
-        sequence_1,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.RAW,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
-    )
-
-    # retrieve the results for every qubit
-    for qubit in qubits:
         for i, results in enumerate([results_0, results_1]):
             result = results[ro_pulses[qubit].serial]
             # store the results
@@ -180,8 +181,8 @@ def _plot(
 
         fig.add_trace(
             go.Scatter(
-                x=fit.data[qubit].real,
-                y=fit.data[qubit].imag,
+                x=np.arange(len(fit.data[qubit])),
+                y=np.abs(fit.data[qubit]),
                 opacity=1,
                 name="kernel state 0",
                 showlegend=True,
@@ -194,8 +195,8 @@ def _plot(
         fig.update_layout(
             showlegend=True,
             uirevision="0",  # ``uirevision`` allows zooming while live plotting
-            xaxis_title="Kernel Imag",
-            yaxis_title="Kernel Real",
+            xaxis_title="Kernel samples",
+            yaxis_title="Kernel absolute value",
         )
 
         figures.append(fig)
