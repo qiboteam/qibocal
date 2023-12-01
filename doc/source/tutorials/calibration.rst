@@ -167,7 +167,7 @@ a ``drive_duration`` large compared to the coherence time of
 the qubit.
 
 
-PUT PLOT HERE
+.. image:: ../protocols/qubit_spectroscopy.png
 
 Similarly to the resonator, we expect a lorentzian peak around :math:`\omega_{01}`
 which will be our drive frequency.
@@ -205,7 +205,7 @@ In this particular case we are fixing the duration of the pulse to be 40 ns and 
 a sweep in the drive amplitude to find the correct value. The :math:`\pi` corresponds to
 first half period of the oscillation.
 
-PUT PLOT HERE
+.. image:: ../protocols/rabi_amplitude.png
 
 Classification model
 ^^^^^^^^^^^^^^^^^^^^
@@ -235,7 +235,7 @@ The simplest model can be trained by running the following experiment:
 
 The expected results are two separated clouds in the IQ plane.
 
-ADD MISSING PLOT
+.. image:: ../protocols/single_shot_80.png
 
 
 Flux tunable qubits
@@ -252,7 +252,7 @@ a change in flux, also know as ``sweetspot``.
 We can study the flux dependence of the qubit using the following runcard:
 
 
-
+.. image:: ../protocols/qubit_flux_spectroscopy.png
 
 Assessing the goodness of the calibration
 -----------------------------------------
@@ -263,12 +263,22 @@ calibration.
 Fidelities
 ^^^^^^^^^^
 
-We can estimate the `assignment fidelity` :math:`\\mathcal{F}` which is defined as
+We can estimate the `assignment fidelity` :math:`\\\mathcal{F}` which is defined as
+:cite:p:`gao2021practical`
 
+.. math::
+
+  \mathcal{F} = 1 - \frac{P(m=0|\ket{1}_i) + P(m=1|\ket{0}_i)}{2}
+
+where :math:`P(m=X|\ket{Y}_i)` is the probability of measuring :math:`\ket{X}`
+after having prepared  :math:`\ket{Y}`.
 
 In order to estimate a gate-fidelity which is unaffected by
 State Preparation And Measurement errors it is possible to run a standard
 randomized benchmarking.
+
+
+.. image:: ../protocols/rb_short.png
 
 Measurement of the qubit coherences
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -283,12 +293,61 @@ performing a measurement after a waiting time :math:`\tau`.
 Here is the runcard:
 
 
+.. code-block:: yaml
+
+    platform: <platform_name>
+
+    qubits: [0]
+
+    actions:
+
+        - id: t1
+          priority: 0
+          operation: t1
+          parameters:
+            delay_before_readout_end: 200000
+            delay_before_readout_start: 50
+            delay_before_readout_step: 1000
+            nshots: 1024
+            relaxation_time: 300000
+
+.. image:: ../protocols/t1.png
 
 We expect to see an exponential decay whose rate will give us
 the factor :math:`\\T_1`.
 
 We can also estimate the loss of quantum information due to the
-loss in the knowledge of the phase of a quantum state. Such parameters is
+loss in the knowledge of the phase of a quantum state. Such parameter is
 denoted with :math:`\\T_2` and can be estimated through a Ramsey experiment.
 
-PUT RUNCARD
+.. TODO: change in RAMSEY probability
+
+
+.. code-block:: yaml
+
+    platform: <platform_name>
+
+    qubits: [0]
+
+    actions:
+
+        - id: ramsey detuned
+          priority: 0
+          operation: ramsey
+          parameters:
+            delay_between_pulses_end: 40000
+            delay_between_pulses_start: 100
+            delay_between_pulses_step: 1000
+            n_osc: 0
+            nshots: 4096
+            relaxation_time: 200000
+
+
+
+.. image:: ../protocols/t2.png
+
+.. rubric:: References
+
+.. bibliography::
+   :cited:
+   :style: plain
