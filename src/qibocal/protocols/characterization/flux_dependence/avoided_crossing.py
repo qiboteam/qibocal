@@ -263,10 +263,10 @@ def _plot(data: AvoidedCrossingData, fit: AvoidedCrossingResults, qubit):
             x=-0.08,
             ticks="outside",
         ),
-        xaxis_title="Frequency[GHz]",
-        yaxis_title="Bias[V]",
-        xaxis2_title="Frequency[GHz]",
-        yaxis2_title="Bias[V]",
+        xaxis_title="Frequency [GHz]",
+        yaxis_title="Bias [V]",
+        xaxis2_title="Frequency [GHz]",
+        yaxis2_title="Bias [V]",
     )
     figures.append(heatmaps)
     figures.append(parabolas)

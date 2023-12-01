@@ -30,7 +30,7 @@ class RabiAmplitudeParameters(Parameters):
     step_amp_factor: float
     """Step amplitude multiplicative factor."""
     pulse_length: Optional[float]
-    """RX pulse duration (ns)."""
+    """RX pulse duration [ns]."""
 
 
 @dataclass

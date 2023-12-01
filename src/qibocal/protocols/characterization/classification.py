@@ -29,8 +29,10 @@ from qibocal.protocols.characterization.utils import (
     MESH_SIZE,
     TITLE_SIZE,
     evaluate_grid,
+    format_error_single_cell,
     get_color_state0,
     plot_results,
+    round_report,
     table_dict,
     table_html,
 )
@@ -62,6 +64,8 @@ class SingleShotClassificationData(Data):
     """Number of shots."""
     savedir: str
     """Dumping folder of the classification results"""
+    qubit_frequencies: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit frequencies."""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
     classifiers_list: Optional[list[str]] = field(
@@ -94,6 +98,8 @@ class SingleShotClassificationResults(Results):
     """Fidelity evaluated only with the `qubit_fit` model."""
     assignment_fidelity: dict[QubitId, float] = field(default_factory=dict)
     """Assignment fidelity evaluated only with the `qubit_fit` model."""
+    effective_temperature: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit effective temperature from Boltzmann distribution."""
     models: dict[QubitId, list] = field(default_factory=list)
     """List of trained classification models."""
     benchmark_table: Optional[dict[QubitId, pd.DataFrame]] = field(default_factory=dict)
@@ -183,6 +189,9 @@ def _acquisition(
 
     data = SingleShotClassificationData(
         nshots=params.nshots,
+        qubit_frequencies={
+            qubit: platform.qubits[qubit].drive_frequency for qubit in qubits
+        },
         classifiers_list=params.classifiers_list,
         savedir=params.savedir,
     )
@@ -242,6 +251,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     assignment_fidelity = {}
     y_test_predict = {}
     grid_preds_dict = {}
+    effective_temperature = {}
     for qubit in qubits:
         qubit_data = data.data[qubit]
         benchmark_table, y_test, x_test, models, names, hpars_list = run.train_qubit(
@@ -274,6 +284,9 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
                 mean_exc_states[qubit] = models[i].iq_mean1.tolist()
                 fidelity[qubit] = models[i].fidelity
                 assignment_fidelity[qubit] = models[i].assignment_fidelity
+                effective_temperature[qubit] = models[i].effective_temperature(
+                    y_preds[-1], data.qubit_frequencies[qubit]
+                )
         y_test_predict[qubit] = y_preds
         grid_preds_dict[qubit] = grid_preds
     return SingleShotClassificationResults(
@@ -289,6 +302,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         mean_exc_states=mean_exc_states,
         fidelity=fidelity,
         assignment_fidelity=assignment_fidelity,
+        effective_temperature=effective_temperature,
         savedir=data.savedir,
         y_preds=y_test_predict,
         grid_preds=grid_preds_dict,
@@ -352,6 +366,7 @@ def _plot(
                         "Threshold",
                         "Readout Fidelity",
                         "Assignment Fidelity",
+                        "Effective Qubit Temperature [K]",
                     ],
                     [
                         np.round(fit.mean_gnd_states[qubit], 3),
@@ -360,6 +375,9 @@ def _plot(
                         np.round(fit.threshold[qubit], 6),
                         np.round(fit.fidelity[qubit], 3),
                         np.round(fit.assignment_fidelity[qubit], 3),
+                        format_error_single_cell(
+                            round_report([fit.effective_temperature[qubit]])
+                        ),
                     ],
                 )
             )
