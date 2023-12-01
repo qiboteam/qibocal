@@ -25,6 +25,16 @@ def rabi_length_fit(x, p0, p1, p2, p3, p4):
     return p0 + p1 * np.sin(2 * np.pi * x / p2 + p3) * np.exp(-x * p4)
 
 
+def rabi_length_signal(x, p0, p1, p2, p3, p4):
+    # A fit to Superconducting Qubit Rabi Oscillation
+    #   Offset                       : p[0]
+    #   Oscillation amplitude        : p[1]
+    #   Period    T                  : 1/p[2]
+    #   Phase                        : p[3]
+    #   Arbitrary parameter T_2      : 1/p[4]
+    return p0 + p1 * np.cos(2 * np.pi * x / p2 + p3) * np.exp(-x * p4)
+
+
 def plot(data, qubit, fit):
     if "RabiAmplitude" in data.__class__.__name__:
         quantity = "amp"
