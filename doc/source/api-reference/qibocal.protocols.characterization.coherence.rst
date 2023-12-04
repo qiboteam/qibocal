@@ -17,6 +17,14 @@ qibocal.protocols.characterization.coherence.spin\_echo module
    :undoc-members:
    :show-inheritance:
 
+qibocal.protocols.characterization.coherence.spin\_echo\_sequence module
+------------------------------------------------------------------------
+
+.. automodule:: qibocal.protocols.characterization.coherence.spin_echo_sequence
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 qibocal.protocols.characterization.coherence.t1 module
 ------------------------------------------------------
 
@@ -29,6 +37,14 @@ qibocal.protocols.characterization.coherence.t1\_sequences module
 -----------------------------------------------------------------
 
 .. automodule:: qibocal.protocols.characterization.coherence.t1_sequences
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+qibocal.protocols.characterization.coherence.t1\_signal module
+--------------------------------------------------------------
+
+.. automodule:: qibocal.protocols.characterization.coherence.t1_signal
    :members:
    :undoc-members:
    :show-inheritance:
@@ -49,6 +65,14 @@ qibocal.protocols.characterization.coherence.t2\_sequences module
    :undoc-members:
    :show-inheritance:
 
+qibocal.protocols.characterization.coherence.t2\_signal module
+--------------------------------------------------------------
+
+.. automodule:: qibocal.protocols.characterization.coherence.t2_signal
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 qibocal.protocols.characterization.coherence.utils module
 ---------------------------------------------------------
 
@@ -61,6 +85,14 @@ qibocal.protocols.characterization.coherence.zeno module
 --------------------------------------------------------
 
 .. automodule:: qibocal.protocols.characterization.coherence.zeno
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+qibocal.protocols.characterization.coherence.zeno\_signal module
+----------------------------------------------------------------
+
+.. automodule:: qibocal.protocols.characterization.coherence.zeno_signal
    :members:
    :undoc-members:
    :show-inheritance:

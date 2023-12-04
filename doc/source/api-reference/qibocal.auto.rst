@@ -6,6 +6,15 @@ qibocal.auto package
    :undoc-members:
    :show-inheritance:
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   qibocal.auto.handlers
+   qibocal.auto.validators
+
 Submodules
 ----------
 
@@ -41,6 +50,14 @@ qibocal.auto.history module
    :undoc-members:
    :show-inheritance:
 
+qibocal.auto.mode module
+------------------------
+
+.. automodule:: qibocal.auto.mode
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 qibocal.auto.operation module
 -----------------------------
 
@@ -53,6 +70,14 @@ qibocal.auto.runcard module
 ---------------------------
 
 .. automodule:: qibocal.auto.runcard
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+qibocal.auto.serialize module
+-----------------------------
+
+.. automodule:: qibocal.auto.serialize
    :members:
    :undoc-members:
    :show-inheritance:
@@ -77,6 +102,14 @@ qibocal.auto.validate module
 ----------------------------
 
 .. automodule:: qibocal.auto.validate
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+qibocal.auto.validation module
+------------------------------
+
+.. automodule:: qibocal.auto.validation
    :members:
    :undoc-members:
    :show-inheritance:

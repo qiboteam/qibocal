@@ -14,6 +14,7 @@ Subpackages
 
    qibocal.protocols.characterization.allxy
    qibocal.protocols.characterization.coherence
+   qibocal.protocols.characterization.couplers
    qibocal.protocols.characterization.flux_dependence
    qibocal.protocols.characterization.rabi
    qibocal.protocols.characterization.randomized_benchmarking
@@ -38,6 +39,14 @@ qibocal.protocols.characterization.dispersive\_shift module
    :undoc-members:
    :show-inheritance:
 
+qibocal.protocols.characterization.dispersive\_shift\_qutrit module
+-------------------------------------------------------------------
+
+.. automodule:: qibocal.protocols.characterization.dispersive_shift_qutrit
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 qibocal.protocols.characterization.flipping module
 --------------------------------------------------
 
@@ -50,6 +59,22 @@ qibocal.protocols.characterization.qubit\_spectroscopy module
 -------------------------------------------------------------
 
 .. automodule:: qibocal.protocols.characterization.qubit_spectroscopy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+qibocal.protocols.characterization.qubit\_spectroscopy\_ef module
+-----------------------------------------------------------------
+
+.. automodule:: qibocal.protocols.characterization.qubit_spectroscopy_ef
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+qibocal.protocols.characterization.qutrit\_classification module
+----------------------------------------------------------------
+
+.. automodule:: qibocal.protocols.characterization.qutrit_classification
    :members:
    :undoc-members:
    :show-inheritance:
@@ -70,10 +95,26 @@ qibocal.protocols.characterization.ramsey\_sequences module
    :undoc-members:
    :show-inheritance:
 
+qibocal.protocols.characterization.ramsey\_signal module
+--------------------------------------------------------
+
+.. automodule:: qibocal.protocols.characterization.ramsey_signal
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 qibocal.protocols.characterization.readout\_characterization module
 -------------------------------------------------------------------
 
 .. automodule:: qibocal.protocols.characterization.readout_characterization
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+qibocal.protocols.characterization.readout\_mitigation\_matrix module
+---------------------------------------------------------------------
+
+.. automodule:: qibocal.protocols.characterization.readout_mitigation_matrix
    :members:
    :undoc-members:
    :show-inheritance:

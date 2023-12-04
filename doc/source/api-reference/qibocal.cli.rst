@@ -9,10 +9,42 @@ qibocal.cli package
 Submodules
 ----------
 
-qibocal.cli.builders module
----------------------------
+qibocal.cli.acquisition module
+------------------------------
 
-.. automodule:: qibocal.cli.builders
+.. automodule:: qibocal.cli.acquisition
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+qibocal.cli.autocalibration module
+----------------------------------
+
+.. automodule:: qibocal.cli.autocalibration
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+qibocal.cli.fit module
+----------------------
+
+.. automodule:: qibocal.cli.fit
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+qibocal.cli.report module
+-------------------------
+
+.. automodule:: qibocal.cli.report
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+qibocal.cli.upload module
+-------------------------
+
+.. automodule:: qibocal.cli.upload
    :members:
    :undoc-members:
    :show-inheritance:

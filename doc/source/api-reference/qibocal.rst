@@ -36,6 +36,14 @@ qibocal.config module
    :undoc-members:
    :show-inheritance:
 
+qibocal.update module
+---------------------
+
+.. automodule:: qibocal.update
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 qibocal.utils module
 --------------------
 

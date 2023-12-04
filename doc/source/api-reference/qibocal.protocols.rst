@@ -1,5 +1,3 @@
-.. _calibration_routines:
-
 qibocal.protocols package
 =========================
 

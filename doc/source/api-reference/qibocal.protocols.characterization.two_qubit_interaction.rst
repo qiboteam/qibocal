@@ -6,6 +6,14 @@ qibocal.protocols.characterization.two\_qubit\_interaction package
    :undoc-members:
    :show-inheritance:
 
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   qibocal.protocols.characterization.two_qubit_interaction.chsh
+
 Submodules
 ----------
 
