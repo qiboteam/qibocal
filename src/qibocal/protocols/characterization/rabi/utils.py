@@ -194,7 +194,7 @@ def extract_rabi(data):
     """
     Extract Rabi fit info.
     """
-    if data.__class__.__name__ == "RabiAmplitudeData":
+    if "RabiAmplitude" in data.__class__.__name__:
         return "amp", "Amplitude (dimensionless)", rabi_amplitude_function
-    elif data.__class__.__name__ == "RabiLengthData":
+    elif "RabiLength" in data.__class__.__name__:
         return "length", "Time (ns)", rabi_length_function
