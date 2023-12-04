@@ -69,8 +69,8 @@ instance/
 .scrapy
 
 # Sphinx documentation
-doc/_build/
-doc/source/api-reference/qibocal*
+docs/_build/
+docs/source/api-reference/qibocal*
 
 # PyBuilder
 target/
