@@ -64,7 +64,7 @@ DispersiveShiftType = np.dtype(
         ("phase", np.float64),
     ]
 )
-"""Custom dtype for Dispersive shift."""
+"""Custom dtype for dispersive shift."""
 
 
 @dataclass
