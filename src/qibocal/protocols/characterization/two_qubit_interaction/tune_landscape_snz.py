@@ -16,7 +16,7 @@ COLORAXIS = ["coloraxis2", "coloraxis1"]
 
 
 @dataclass
-class TuneLandscapeParameters(Parameters):
+class TuneLandscapeSNZParameters(Parameters):
     """CzVirtualZ runcard inputs."""
 
     amplitude_min: float
@@ -25,11 +25,13 @@ class TuneLandscapeParameters(Parameters):
     """Amplitude maximum."""
     amplitude_step: float
     """Amplitude step."""
-    duration_min: float
+    duration: float
+    """Pulse duration."""
+    wait_min: float
     """Duration minimum."""
-    duration_max: float
+    wait_max: float
     """Duration maximum."""
-    duration_step: float
+    wait_step: float
     """Duration step."""
     dt: Optional[float] = 20
     """Time delay between flux pulses and readout."""
@@ -87,7 +89,7 @@ class TuneLandscapeData(Data):
 
 # TODO: make acquisition working regardless of the qubits order
 def _acquisition(
-    params: TuneLandscapeParameters,
+    params: TuneLandscapeSNZParameters,
     platform: Platform,
     qubits: QubitsPairs,
 ) -> TuneLandscapeData:
@@ -106,12 +108,10 @@ def _acquisition(
         params.amplitude_step,
     )
 
-    duration_range = np.arange(
-        params.duration_min, params.duration_max, params.duration_step
-    )
+    wait_range = np.arange(params.wait_min, params.wait_max, params.wait_step)
 
     for amplitude in amplitude_range:
-        for duration in duration_range:
+        for wait in wait_range:
             cz_data, _ = cz_virtualz.acquisition(
                 params=cz_virtualz.parameters_type.load(
                     dict(
@@ -119,7 +119,8 @@ def _acquisition(
                         theta_end=7,
                         theta_step=0.1,
                         flux_pulse_amplitude=amplitude,
-                        flux_pulse_duration=duration,
+                        flux_pulse_duration=params.duration,
+                        idling_time=wait,
                     )
                 ),
                 platform=platform,
@@ -135,7 +136,7 @@ def _acquisition(
                     data.register_qubit(
                         target_q,
                         control_q,
-                        duration,
+                        wait,
                         amplitude,
                         leakage=cz_fit.leakage[pair][control_q],
                         cz_angle=cz_fit.cz_angle[pair],
@@ -214,17 +215,18 @@ def _plot(data: TuneLandscapeData, fit: TuneLandscapeResults, qubit):
         )
         fig1.update_layout(
             showlegend=True,
-            xaxis1_title="Flux pulse duration",
-            xaxis2_title="Flux pulse duration",
+            xaxis1_title="Idling time",
+            xaxis2_title="Idling time",
             yaxis_title="Flux pulse amplitude",
         )
 
         fig2.update_layout(
             showlegend=True,
-            xaxis1_title="Flux pulse duration",
-            xaxis2_title="Flux pulse duration",
+            xaxis1_title="Idling time",
+            xaxis2_title="Idling time",
             yaxis_title="Flux pulse amplitude",
         )
+
     return [fig1, fig2], ""
 
 
@@ -234,5 +236,5 @@ def _plot(data: TuneLandscapeData, fit: TuneLandscapeResults, qubit):
 #     update.virtual_phases(results.virtual_phase[qubit_pair], platform, qubit_pair)
 
 
-tune_landscape = Routine(_acquisition, _fit, _plot, two_qubit_gates=True)
+tune_landscape_snz = Routine(_acquisition, _fit, _plot, two_qubit_gates=True)
 """CZ virtual Z correction routine."""

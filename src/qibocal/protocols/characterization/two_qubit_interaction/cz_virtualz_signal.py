@@ -83,9 +83,7 @@ def _acquisition(
                     target_q,
                     control_q,
                     ord_pair,
-                    params.dt,
-                    params.parking,
-                    params.flux_pulse_amplitude,
+                    params,
                 )
                 data.vphases[ord_pair] = dict(virtual_z_phase)
                 theta = np.arange(

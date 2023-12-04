@@ -587,6 +587,18 @@ actions:
       duration_max: 20
       duration_step: 1
 
+  - id: tune landscape
+    priority: 0
+    operation: tune_landscape_snz
+    qubits: [[0, 2],[1,2],[2,3]]
+    parameters:
+      amplitude_min: 0.1
+      amplitude_max: 0.2
+      amplitude_step: 0.01
+      wait_min: 10
+      wait_max: 20
+      wait_step: 1
+      duration: 40
 
   - id: standard rb inhomogeneous
     priority: 0
