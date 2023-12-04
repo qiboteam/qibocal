@@ -7,7 +7,7 @@ from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
 
 def rabi_amplitude_function(x, p0, p1, p2, p3):
     """
-    Fit function of rabi amplitude signal experiment.
+    Fit function of Rabi amplitude signal experiment.
 
     Args:
         x: Input data.
@@ -21,7 +21,7 @@ def rabi_amplitude_function(x, p0, p1, p2, p3):
 
 def rabi_length_function(x, p0, p1, p2, p3, p4):
     """
-    Fit function of rabi length signal experiment.
+    Fit function of Rabi length signal experiment.
 
     Args:
         x: Input data.
