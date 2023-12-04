@@ -28,7 +28,7 @@ Resonator characterization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Each qubit is coupled to a resonator to perform the measurement.
-The resonator is characterized by a bare frequency that we can be extracted
+The resonator is characterized by a bare frequency that can be extracted
 by running a resonator spectroscopy at high power. To perform this experiment
 with qibocal it is sufficient to write the following runcard `spectroscopy.yaml`:
 
@@ -67,7 +67,7 @@ It is then possible to visualize a report included in the output folder.
 
 The expected signal is a lorentzian centered around the bare frequency of the resonator.
 
-At lower power, the resonator will coupled to the qubit in the dispersive regime.
+At lower power, the resonator will be coupled to the qubit in the dispersive regime.
 The coupling manifests itself in a shift of the energy levels. In order to check at which
 power we observe this shift it is possible to run a resonator punchout using the following
 `punchout.yaml` runcard.
@@ -241,7 +241,7 @@ The simplest model can be trained by running the following experiment:
           priority: 0
           operation: single_shot_classification
           parameters:
-          nshots: 5000
+              nshots: 5000
 
 
 The expected results are two separated clouds in the IQ plane.
@@ -253,11 +253,11 @@ Flux tunable qubits
 ~~~~~~~~~~~~~~~~~~~
 
 When dealing with flux tunable qubits it is important to also
-study how the qubit react when changing the magnetic flux.
+study how the qubit reacts when changing the magnetic flux.
 From the theory we know that by modifying the flux the qubit
 frequency will be modified.
 
-Usually the qubit it is place where it is most insesitive to a
+Usually we should characterize the qubit in the flux range where it is most insensitive to a
 a change in flux, also know as ``sweetspot``.
 
 We can study the flux dependence of the qubit using the following runcard:
@@ -300,10 +300,10 @@ Measurement of the qubit coherences
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The fidelity achievable using a superconducting qubit is limited
-by the coherences times of the qubit.
+by the coherence times of the qubit.
 
 To measure the energy decay of a qubit state, also known as :math:`\\T_1`.
-The experiment consists in bringing the qubit to  :math:`\ket{1}` and then
+The experiment consists in bringing the qubit to :math:`\ket{1}` and then
 performing a measurement after a waiting time :math:`\tau`.
 
 Here is the runcard:
@@ -363,7 +363,7 @@ denoted with :math:`\\T_2` and can be estimated through a Ramsey experiment.
 .. image:: ../protocols/t2.png
 
 
-  Fidelities
+Fidelities
 ^^^^^^^^^^
 
 We can estimate the `assignment fidelity` :math:`\\\mathcal{F}` which is defined as
