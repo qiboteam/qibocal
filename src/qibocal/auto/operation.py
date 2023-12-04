@@ -229,7 +229,9 @@ class Results:
         if self.data:
             np.savez(
                 path / RESULTSFILE_DATA,
-                **{json.dumps(i): self.data[i] for i in self.data}, # pylint: disable=E1136
+                **{
+                    json.dumps(i): self.data[i] for i in self.data
+                },  # pylint: disable=E1136
             )
 
     def _to_json(self, path):
