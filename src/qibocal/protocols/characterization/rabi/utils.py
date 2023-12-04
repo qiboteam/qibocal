@@ -36,7 +36,6 @@ def rabi_length_function(x, p0, p1, p2, p3, p4):
 
 def plot(data, qubit, fit):
     quantity, title, fitting = extract_rabi(data)
-
     figures = []
     fitting_report = ""
 
