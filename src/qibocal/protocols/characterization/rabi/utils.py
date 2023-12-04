@@ -15,23 +15,18 @@ def rabi_amplitude_fit(x, p0, p1, p2, p3):
     return p0 + p1 * np.sin(2 * np.pi * x / p2 + p3)
 
 
-def rabi_length_fit(x, p0, p1, p2, p3, p4):
-    # A fit to Superconducting Qubit Rabi Oscillation
-    #   Offset                       : p[0]
-    #   Oscillation amplitude        : p[1]
-    #   Period    T                  : 1/p[2]
-    #   Phase                        : p[3]
-    #   Arbitrary parameter T_2      : 1/p[4]
-    return p0 + p1 * np.sin(2 * np.pi * x / p2 + p3) * np.exp(-x * p4)
+def rabi_function(x, p0, p1, p2, p3, p4):
+    """
+    Fit function of rabi length signal experiment.
 
-
-def rabi_length_signal(x, p0, p1, p2, p3, p4):
-    # A fit to Superconducting Qubit Rabi Oscillation
-    #   Offset                       : p[0]
-    #   Oscillation amplitude        : p[1]
-    #   Period    T                  : 1/p[2]
-    #   Phase                        : p[3]
-    #   Arbitrary parameter T_2      : 1/p[4]
+    Args:
+        x: Input data.
+        p0: Offset.
+        p1: Oscillation Amplitude.
+        p2: Period.
+        p3: Phase.
+        p4: T2.
+    """
     return p0 + p1 * np.cos(2 * np.pi * x / p2 + p3) * np.exp(-x * p4)
 
 
