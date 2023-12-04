@@ -70,8 +70,8 @@ def _acquisition(
 ) -> CalibrateStateDiscriminationData:
     r"""
     Data acquisition for Calibrate State Discrimination experiment.
-    Perform spectroscopy on the readout resonator, with the qubit in ground and excited state, showing
-    the resonator shift produced by the coupling between the resonator and the qubit.
+    Calculates the optimal kernel for the readout. It has to be run one qubit at a time.
+    The kernels are stored in the result.npz generated on the report.
 
     Args:
         params (CalibrateStateDiscriminationParameters): experiment's parameters
