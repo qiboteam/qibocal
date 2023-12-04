@@ -157,7 +157,7 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         pguess = [0.5, 0.5, np.max(x) / f, 0, 0]
         try:
             popt, perr = curve_fit(
-                utils.rabi_function,
+                utils.rabi_length_function,
                 x,
                 y,
                 p0=pguess,
@@ -180,7 +180,7 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         chi2[qubit] = (
             chi2_reduced(
                 y,
-                utils.rabi_length_fit(x, *popt),
+                utils.rabi_length_function(x, *popt),
                 qubit_data.error,
             ),
             np.sqrt(2 / len(y)),

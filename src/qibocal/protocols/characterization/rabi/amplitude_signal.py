@@ -139,7 +139,7 @@ def _fit(data: RabiAmplitudeVoltData) -> RabiAmplitudeVoltResults:
         pguess = [0.5, 1, 1 / f, np.pi / 2]
         try:
             popt, _ = curve_fit(
-                utils.rabi_amplitude_fit,
+                utils.rabi_amplitude_function,
                 x,
                 y,
                 p0=pguess,
