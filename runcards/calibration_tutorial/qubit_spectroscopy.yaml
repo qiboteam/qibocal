@@ -1,0 +1,15 @@
+platform: <platform_name>
+
+qubits: [0]
+
+actions:
+  - id: qubit spectroscopy 01
+    priority: 0
+    operation: qubit_spectroscopy
+    parameters:
+        drive_amplitude: 0.5
+        drive_duration: 4000
+        freq_width: 100_000_000
+        freq_step: 100_000
+        nshots: 1024
+        relaxation_time: 5000

@@ -236,8 +236,10 @@ def find_parabola(data: dict) -> list:
 def solve_eq(pars: list) -> tuple:
     """
     Solver of the quadratic equation
+
     .. math::
         a x^2 + b x + c = 0
+
     `pars` is the list [a, b, c].
     """
     first_term = -1 * pars[1]
