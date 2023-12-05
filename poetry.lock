@@ -2748,7 +2748,7 @@ zh = ["laboneq (==2.20.1)"]
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
 reference = "snz"
-resolved_reference = "f9bd543b02c2501251e344eefed5fa32b95a4c26"
+resolved_reference = "1948b5d53ae8fd2cfb9d2215c64875b291554d41"
 
 [[package]]
 name = "recommonmark"
