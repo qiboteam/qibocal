@@ -47,7 +47,8 @@ extremely important also to check that the qubit is working properly.
 During a characterization, various experimental problems can happen and can lead the experimenter
 to believe that the qubit is no longer working: this experiment gives us an easy way to check it.
 
-????? Why is punchout better than low power resonator spectroscopy? ?????
+Compared to a low power resonator spectroscopy, with punchout we can see the shift in the resonator frequency
+and thus ensure that we are in the low power regime.
 
 Moreover, from this experiment we can actually already have an estimate of the qubit
 frequency using:
@@ -75,8 +76,6 @@ by default a logarithmic scan), but the plot is reversed: at the top (high atten
 we will see the low power regime and at the bottom (low attenuation) the high power
 one.
 
-In fig. 3.9 different punchout plots are shown, so that is understandable how much
-they can differ. (!!!!! Removed? !!!!!)
 Note that in the plots measured amplitudes are normalized for every readout amplitude and we
 actually have very high amplitudes in high power, and much lower amplitude elsewhere.
 From these plots we can extract few things:
