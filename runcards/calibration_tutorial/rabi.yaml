@@ -1,0 +1,16 @@
+platform: <platform_name>
+
+qubits: [0]
+
+actions:
+
+  - id: rabi
+    priority: 0
+    operation: rabi_amplitude_signal
+    parameters:
+        min_amp_factor: 0
+        max_amp_factor: 1.1
+        step_amp_factor: 0.1
+        pulse_length: 40
+        relaxation_time: 100_000
+        nshots: 1024

@@ -1,0 +1,15 @@
+platform: <platform_name>
+
+qubits: [0]
+
+actions:
+  - id: ramsey detuned
+    priority: 0
+    operation: ramsey
+    parameters:
+        delay_between_pulses_end: 40000
+        delay_between_pulses_start: 100
+        delay_between_pulses_step: 1000
+        n_osc: 0
+        nshots: 4096
+        relaxation_time: 200000

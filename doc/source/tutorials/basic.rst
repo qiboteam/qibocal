@@ -3,6 +3,7 @@ Basic examples
 
 In this section we are going to explain briefly how to perform
 the calibration of single qubit devices.
+All runcards that are going to be used are available in ``runcards/calibration_tutorial/``
 
 Dummy guide for single qubit calibration
 ----------------------------------------
@@ -24,41 +25,34 @@ includes the following steps:
 
 We are going to explain how to use qibocal to address each step of the calibration.
 
+
 Resonator characterization
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Each qubit is coupled to a resonator to perform the measurement.
 The resonator is characterized by a bare frequency that can be extracted
 by running a resonator spectroscopy at high power. To perform this experiment
-with qibocal it is sufficient to write the following runcard `spectroscopy.yaml`:
+with qibocal it is sufficient to write the following action:
 
 .. code-block:: yaml
 
-    platform: <platform_name>
+    - id: resonator_spectroscopy high power
+      priority: 0
+      operation: resonator_spectroscopy
+      parameters:
+          freq_width: 60_000_000
+          freq_step: 200_000
+          amplitude: 0.6
+          power_level: high
+          nshots: 1024
+          relaxation_time: 100000
 
-    qubits: [0]
+In order to learn how to run this action using Qibocal you can a look at
+:ref:`this tutorial <runcard>`.
 
-    actions:
-
-      - id: resonator_spectroscopy high power
-        priority: 0
-        operation: resonator_spectroscopy
-        parameters:
-            freq_width: 60_000_000
-            freq_step: 200_000
-            amplitude: 0.6
-            power_level: high
-            nshots: 1024
-            relaxation_time: 100000
-
-the choice of the parameters is arbitrary. In this specific case the
+The choice of the parameters is arbitrary. In this specific case the
 user should make sure to specify an amplitude value sufficiently large.
 
-This experiment can be launched with the following command:
-
-.. code-block:: bash
-
-    qq auto spectroscopy.yaml -o <output_folder>
 
 It is then possible to visualize a report included in the output folder.
 
@@ -74,24 +68,18 @@ power we observe this shift it is possible to run a resonator punchout using the
 
 .. code-block:: yaml
 
-    platform: <platform_name>
-
-    qubits: [0]
-
-    actions:
-
-      - id: resonator punchout
-        priority: 0
-        operation: resonator_punchout
-        parameters:
-            freq_width: 40_000_000
-            freq_step: 500_000
-            amplitude: 0.03
-            min_amp_factor: 0.1
-            max_amp_factor: 2.4
-            step_amp_factor: 0.3
-            nshots: 2048
-            relaxation_time: 5000
+    - id: resonator punchout
+      priority: 0
+      operation: resonator_punchout
+      parameters:
+          freq_width: 40_000_000
+          freq_step: 500_000
+          amplitude: 0.03
+          min_amp_factor: 0.1
+          max_amp_factor: 2.4
+          step_amp_factor: 0.3
+          nshots: 2048
+          relaxation_time: 5000
 
 Which corresponds to a 2D scan in amplitude and readout frequency.
 After executing the experiment with the previous syntax we should
@@ -109,22 +97,16 @@ Here is an example of a runcard.
 
 .. code-block:: yaml
 
-    platform: <platform_name>
-
-    qubits: [0]
-
-    actions:
-
-      - id: resonator_spectroscopy low power
-        priority: 0
-        operation: resonator_spectroscopy
-        parameters:
-            freq_width: 60_000_000
-            freq_step: 200_000
-            amplitude: 0.03
-            power_level: low
-            nshots: 1024
-            relaxation_time: 100000
+    - id: resonator_spectroscopy low power
+      priority: 0
+      operation: resonator_spectroscopy
+      parameters:
+          freq_width: 60_000_000
+          freq_step: 200_000
+          amplitude: 0.03
+          power_level: low
+          nshots: 1024
+          relaxation_time: 100000
 
 Note that in this case we changed the ``power_level`` entry from
 ``high`` to ``low``, this keyword is used by qibocal to upgrade
@@ -152,22 +134,16 @@ Here is an example runcard:
 
 .. code-block:: yaml
 
-    platform: <platform_name>
-
-    qubits: [0]
-
-    actions:
-
-      - id: qubit spectroscopy 01
-        priority: 0
-        operation: qubit_spectroscopy
-        parameters:
-            drive_amplitude: 0.5
-            drive_duration: 4000
-            freq_width: 100_000_000
-            freq_step: 100_000
-            nshots: 1024
-            relaxation_time: 5000
+    - id: qubit spectroscopy 01
+      priority: 0
+      operation: qubit_spectroscopy
+      parameters:
+          drive_amplitude: 0.5
+          drive_duration: 4000
+          freq_width: 100_000_000
+          freq_step: 100_000
+          nshots: 1024
+          relaxation_time: 5000
 
 
 For this particular experiment it is recommended to use
@@ -201,13 +177,7 @@ the following runcard:
 
 .. code-block:: yaml
 
-    platform: <platform_name>
-
-    qubits: [0]
-
-    actions:
-
-        - id: rabi
+      - id: rabi
         priority: 0
         operation: rabi_amplitude_signal
         parameters:
@@ -236,17 +206,11 @@ The simplest model can be trained by running the following experiment:
 
 .. code-block:: yaml
 
-    platform: <platform_name>
-
-    qubits: [0]
-
-    actions:
-
-      - id: single shot classification 1
-        priority: 0
-        operation: single_shot_classification
-        parameters:
-            nshots: 5000
+    - id: single shot classification 1
+      priority: 0
+      operation: single_shot_classification
+      parameters:
+          nshots: 5000
 
 
 The expected results are two separated clouds in the IQ plane.
@@ -270,23 +234,17 @@ We can study the flux dependence of the qubit using the following runcard:
 
 .. code-block:: yaml
 
-    platform: <platform_name>
-
-    qubits: [0]
-
-    actions:
-
-      - id: qubit flux dependence
-        priority: 0
-        operation: qubit_flux
-        parameters:
-            freq_width: 100_000_000
-            freq_step: 500_000
-            bias_width: 0.20
-            bias_step:  0.01
-            drive_amplitude: 0.1
-            nshots: 1024
-            relaxation_time: 20_000
+    - id: qubit flux dependence
+      priority: 0
+      operation: qubit_flux
+      parameters:
+          freq_width: 100_000_000
+          freq_step: 500_000
+          bias_width: 0.20
+          bias_step:  0.01
+          drive_amplitude: 0.1
+          nshots: 1024
+          relaxation_time: 20_000
 
 
 .. image:: ../protocols/qubit_flux_spectroscopy.png
@@ -317,21 +275,15 @@ Here is the runcard:
 
 .. code-block:: yaml
 
-    platform: <platform_name>
-
-    qubits: [0]
-
-    actions:
-
-      - id: t1
-        priority: 0
-        operation: t1
-        parameters:
-            delay_before_readout_end: 200000
-            delay_before_readout_start: 50
-            delay_before_readout_step: 1000
-            nshots: 1024
-            relaxation_time: 300000
+    - id: t1
+      priority: 0
+      operation: t1
+      parameters:
+          delay_before_readout_end: 200000
+          delay_before_readout_start: 50
+          delay_before_readout_step: 1000
+          nshots: 1024
+          relaxation_time: 300000
 
 .. image:: ../protocols/t1.png
 
@@ -347,22 +299,16 @@ denoted with :math:`\\T_2` and can be estimated through a Ramsey experiment.
 
 .. code-block:: yaml
 
-    platform: <platform_name>
-
-    qubits: [0]
-
-    actions:
-
-      - id: ramsey detuned
-        priority: 0
-        operation: ramsey
-        parameters:
-            delay_between_pulses_end: 40000
-            delay_between_pulses_start: 100
-            delay_between_pulses_step: 1000
-            n_osc: 0
-            nshots: 4096
-            relaxation_time: 200000
+    - id: ramsey detuned
+      priority: 0
+      operation: ramsey
+      parameters:
+          delay_between_pulses_end: 40000
+          delay_between_pulses_start: 100
+          delay_between_pulses_step: 1000
+          n_osc: 0
+          nshots: 4096
+          relaxation_time: 200000
 
 
 
@@ -384,17 +330,11 @@ after having prepared  :math:`\ket{Y}`.
 
 .. code-block:: yaml
 
-    platform: <platform_name>
-
-    qubits: [0]
-
-    actions:
-
-      - id: readout characterization
-        priority: 0
-        operation: readout_characterization
-        parameters:
-            nshots: 5000
+    - id: readout characterization
+      priority: 0
+      operation: readout_characterization
+      parameters:
+          nshots: 5000
 
 .. image:: ../protocols/ro_characterization.png
 
@@ -407,20 +347,14 @@ randomized benchmarking.
 
 .. code-block:: yaml
 
-    platform: <platform_name>
-
-    qubits: [0]
-
-    actions:
-
-      - id: standard rb bootstrap
-        priority: 0
-        operation: standard_rb
-        parameters:
-            depths: [10, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500]
-            n_bootstrap: 10
-            niter: 256
-            nshots: 128
+    - id: standard rb bootstrap
+      priority: 0
+      operation: standard_rb
+      parameters:
+          depths: [10, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500]
+          n_bootstrap: 10
+          niter: 256
+          nshots: 128
 
 .. image:: ../protocols/rb.png
 
