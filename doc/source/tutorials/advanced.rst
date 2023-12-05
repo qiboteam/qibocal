@@ -171,7 +171,7 @@ of shots.
 
 Data structure
 ^^^^^^^^^^^^^^
-Secondly, we define a data structure aims at storing both the angles and
+Secondly, we define a data structure that aims at storing both the angles and
 the probabilities measured for each qubit. A generic data structure is usually composed
 of some raw data (the data attribute), which is usually coded as a dictionary of arrays
 plus additional information if required.
@@ -204,7 +204,7 @@ plus additional information if required.
 
 .. note::
       When the protocols will be executed the data will be saved automatically.
-      The `data` attribute will be store as a `npz` file, while the rest of the
+      The `data` attribute will be stored as a `npz` file, while the rest of the
       information will be stored as `json` file. If the user would like
       to use a custom format the implementation of a `save` method inside the
       data structure will be necessary.
@@ -429,7 +429,6 @@ to the ``Operation`` `Enum` in `src/qibocal/protocols/characterization/__init__.
 
 .. code-block:: python
 
-    # src/qibocal/protocols/characterization/__init__.py
     # other imports...
     from rotate import rotation
 
