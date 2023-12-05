@@ -39,7 +39,7 @@ def plot(data, qubit, fit):
         vertical_spacing=0.1,
         subplot_titles=(
             "Signal [a.u.]",
-            "phase (rad)",
+            "phase [rad]",
         ),
     )
 
@@ -51,9 +51,9 @@ def plot(data, qubit, fit):
             x=rabi_parameters,
             y=qubit_data.signal,
             opacity=1,
-            name="Voltage",
+            name="Signal",
             showlegend=True,
-            legendgroup="Voltage",
+            legendgroup="Signal",
         ),
         row=1,
         col=1,
@@ -93,18 +93,17 @@ def plot(data, qubit, fit):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["Pi pulse amplitude", "Pi pulse length"],
+                ["Pi pulse amplitude [a.u.]", "Pi pulse length [ns]"],
                 [np.round(fit.amplitude[qubit], 3), np.round(fit.length[qubit], 3)],
             )
         )
 
         fig.update_layout(
             showlegend=True,
-            uirevision="0",  # ``uirevision`` allows zooming while live plotting
             xaxis_title=title,
             yaxis_title="Signal [a.u.]",
             xaxis2_title=title,
-            yaxis2_title="Phase (rad)",
+            yaxis2_title="Phase [rad]",
         )
 
     figures.append(fig)
@@ -165,7 +164,7 @@ def plot_probabilities(data, qubit, fit):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["Pi pulse amplitude", "Pi pulse length", "chi2 reduced"],
+                ["Pi pulse amplitude [a.u.]", "Pi pulse length [ns]", "chi2 reduced"],
                 [fit.amplitude[qubit], fit.length[qubit], fit.chi2[qubit]],
                 display_error=True,
             )
@@ -173,7 +172,6 @@ def plot_probabilities(data, qubit, fit):
 
         fig.update_layout(
             showlegend=True,
-            uirevision="0",  # ``uirevision`` allows zooming while live plotting
             xaxis_title=title,
             yaxis_title="Excited state probability",
         )

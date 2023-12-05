@@ -224,9 +224,9 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
             x=qubit_data.flips,
             y=qubit_data.signal,
             opacity=1,
-            name="Voltage",
+            name="Signal",
             showlegend=True,
-            legendgroup="Voltage",
+            legendgroup="Signal",
         ),
     )
 
@@ -255,7 +255,7 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["Amplitude correction factor", "Corrected amplitude"],
+                ["Amplitude correction factor", "Corrected amplitude [a.u.]"],
                 [
                     np.round(fit.amplitude_factors[qubit], 4),
                     np.round(fit.amplitude[qubit], 4),
@@ -266,8 +266,7 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
     # last part
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Flips (dimensionless)",
+        xaxis_title="Flips",
         yaxis_title="Signal [a.u.]",
     )
 

@@ -2,15 +2,14 @@ from colorsys import hls_to_rgb
 from enum import Enum
 from typing import Union
 
-import lmfit
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import plotly.graph_objects as go
-from numba import njit
 from plotly.subplots import make_subplots
 from qibolab.qubits import QubitId
 from scipy import constants
+from scipy.optimize import curve_fit
 from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Results
@@ -99,7 +98,6 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
 def lorentzian_fit(data, resonator_type=None, fit=None):
     frequencies = data.freq * HZ_TO_GHZ
     voltages = data.signal
-    model_Q = lmfit.Model(lorentzian)
 
     # Guess parameters for Lorentzian max or min
     # TODO: probably this is not working on HW
@@ -122,25 +120,25 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
         guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
 
-    # Add guessed parameters to the model
-    model_Q.set_param_hint("center", value=guess_center, vary=True)
-    model_Q.set_param_hint("sigma", value=guess_sigma, vary=True)
-    model_Q.set_param_hint("amplitude", value=guess_amp, vary=True)
-    model_Q.set_param_hint("offset", value=guess_offset, vary=True)
-    guess_parameters = model_Q.make_params()
-
+    model_parameters = [
+        guess_amp,
+        guess_center,
+        guess_sigma,
+        guess_offset,
+    ]
     # fit the model with the data and guessed parameters
     try:
-        fit_res = model_Q.fit(
-            data=voltages, frequency=frequencies, params=guess_parameters
+        fit_parameters, _ = curve_fit(
+            lorentzian,
+            frequencies,
+            voltages,
+            p0=model_parameters,
         )
-        # get the values for postprocessing and for legend.
-        return fit_res.best_values["center"], fit_res.best_values
-
-    except:
+        model_parameters = list(fit_parameters)
+    except RuntimeError:
         log.warning("lorentzian_fit: the fitting was not successful")
-        fit_res = lmfit.model.ModelResult(model=model_Q, params=guess_parameters)
-        return guess_center, fit_res.params.valuesdict()
+
+    return model_parameters[1] * GHZ_TO_HZ, model_parameters
 
 
 def spectroscopy_plot(data, qubit, fit: Results = None):
@@ -192,7 +190,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
-                y=lorentzian(freqrange, **params),
+                y=lorentzian(freqrange, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
             ),
@@ -215,7 +213,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                 table_dict(
                     qubit,
                     [label, "amplitude"],
-                    [np.round(freq[qubit] * GHZ_TO_HZ, 0), fit.amplitude[qubit]],
+                    [np.round(freq[qubit], 0), fit.amplitude[qubit]],
                 )
             )
 
@@ -225,17 +223,16 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                     table_dict(
                         qubit,
                         [label, "attenuation"],
-                        [np.round(freq[qubit] * GHZ_TO_HZ, 0), fit.attenuation[qubit]],
+                        [np.round(freq[qubit], 0), fit.attenuation[qubit]],
                     )
                 )
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Frequency (GHz)",
+        xaxis_title="Frequency [GHz]",
         yaxis_title="Signal [a.u.]",
-        xaxis2_title="Frequency (GHz)",
-        yaxis2_title="Phase (rad)",
+        xaxis2_title="Frequency [GHz]",
+        yaxis2_title="Phase [rad]",
     )
     figures.append(fig)
 
@@ -246,23 +243,11 @@ def norm(x_mags):
     return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
 
 
-@njit(["float64[:] (float64[:], float64[:])"], parallel=True, cache=True)
 def cumulative(input_data, points):
     r"""Evaluates in data the cumulative distribution
     function of `points`.
-    WARNING: `input_data` and `points` should be sorted data.
     """
-    input_data = np.sort(input_data)
-    points = np.sort(points)
-    # data and points sorted
-    prob = []
-    app = 0
-
-    for val in input_data:
-        app += np.maximum(np.searchsorted(points[app::], val), 0)
-        prob.append(float(app))
-
-    return np.array(prob)
+    return np.searchsorted(np.sort(points), np.sort(input_data))
 
 
 def fit_punchout(data: Data, fit_type: str):
@@ -332,8 +317,8 @@ def fit_punchout(data: Data, fit_type: str):
             ro_val = round((high_att_max + high_att_min) / 2)
             ro_val = ro_val + (ro_val % 2)
 
-        low_freqs[qubit] = freq_lp.item() * HZ_TO_GHZ
-        high_freqs[qubit] = freq_hp[0] * HZ_TO_GHZ
+        low_freqs[qubit] = freq_lp.item()
+        high_freqs[qubit] = freq_hp[0]
         ro_values[qubit] = ro_val
     return [low_freqs, high_freqs, ro_values]
 
@@ -569,7 +554,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             )
 
         fig.update_xaxes(
-            title_text=f"i (V)",
+            title_text=f"i [a.u.]",
             range=[min_x, max_x],
             row=1,
             col=i + 1,
@@ -577,7 +562,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             rangeslider=dict(visible=False),
         )
         fig.update_yaxes(
-            title_text="q (V)",
+            title_text="q [a.u.]",
             range=[min_y, max_y],
             scaleanchor="x",
             scaleratio=1,
@@ -586,7 +571,6 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
         )
 
     fig.update_layout(
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         autosize=False,
         height=COLUMNWIDTH,
         width=COLUMNWIDTH * len(models_name),
@@ -611,8 +595,8 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             vertical_spacing=SPACING,
             subplot_titles=(
                 "accuracy",
-                "testing time (s)",
-                "training time (s)",
+                "testing time [s]",
+                "training time [s]",
             )
             # pylint: disable=E1101
         )

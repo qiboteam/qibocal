@@ -24,11 +24,11 @@ class RabiLengthParameters(Parameters):
     """RabiLength runcard inputs."""
 
     pulse_duration_start: float
-    """Initial pi pulse duration (ns)."""
+    """Initial pi pulse duration [ns]."""
     pulse_duration_end: float
-    """Final pi pulse duration (ns)."""
+    """Final pi pulse duration [ns]."""
     pulse_duration_step: float
-    """Step pi pulse duration (ns)."""
+    """Step pi pulse duration [ns]."""
     pulse_amplitude: Optional[float] = None
     """Pi pulse amplitude. Same for all qubits."""
 

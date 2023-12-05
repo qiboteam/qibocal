@@ -363,7 +363,11 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
             fitting_report = table_html(
                 table_dict(
                     [target, target, qubits[1]],
-                    ["CZ angle", "Virtual Z phase", "Flux pulse amplitude"],
+                    [
+                        "CZ angle [rad]",
+                        "Virtual Z phase [rad]",
+                        "Flux pulse amplitude [a.u.]",
+                    ],
                     [
                         np.round(fit.cz_angle[target, control], 4),
                         np.round(fit.virtual_phase[tuple(sorted(qubit))][target], 4),
@@ -375,7 +379,6 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
     fig1.update_layout(
         title_text=f"Phase correction Qubit {qubits[0]}",
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis1_title="theta [rad] + virtual phase[rad]",
         xaxis2_title="theta [rad] + virtual phase [rad]",
         yaxis_title="Signal [a.u.]",
@@ -384,7 +387,6 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
     fig2.update_layout(
         title_text=f"Phase correction Qubit {qubits[1]}",
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis1_title="theta [rad] + virtual phase[rad]",
         xaxis2_title="theta [rad] + virtual phase[rad]",
         yaxis_title="Signal [a.u.]",

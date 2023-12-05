@@ -4,28 +4,20 @@ from plotly.subplots import make_subplots
 from scipy.special import mathieu_a, mathieu_b
 from sklearn.linear_model import Ridge
 
-from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, table_dict, table_html
+from ..utils import HZ_TO_GHZ, table_dict, table_html
 
 FLUX_PARAMETERS = {
     "Xi": "Constant to map flux to bias [V]",
     "d": "Junction asymmetry",
-    "Ec": "Charge energy Ec [GHz]",
-    "Ej": "Josephson energy Ej [GHz]",
-    "f_q_offset": "Qubit frequency offset [GHz]",
-    "C_ii": "Flux matrix element C_ii [GHz/V]",
+    "Ec": "Charge energy Ec [Hz]",
+    "Ej": "Josephson energy Ej [Hz]",
+    "f_q_offset": "Qubit frequency offset [Hz]",
+    "C_ii": "Flux matrix element C_ii [Hz/V]",
     "g": "Readout coupling",
-    "bare_resonator_frequency": "Bare resonator frequency [GHz]",
-    "f_qs": "Qubit frequency [GHz]",
-    "f_r_offset": "Resonator frequency offset [GHz]",
+    "bare_resonator_frequency": "Bare resonator frequency [Hz]",
+    "f_qs": "Qubit frequency [Hz]",
+    "f_r_offset": "Resonator frequency offset [Hz]",
 }
-FREQUENCY_PARAMETERS = [
-    "Ec",
-    "Ej",
-    "f_q_offset",
-    "bare_resonator_frequency",
-    "f_qs",
-    "f_r_offset",
-]
 
 
 def is_crosstalk(data):
@@ -119,7 +111,7 @@ def flux_dependence_plot(data, fit, qubit):
         fitting_report_label = "Frequency"
         if fit.frequency[qubit] != 0:
             if data.__class__.__name__ == "ResonatorFluxData":
-                fitting_report_label = "Resonator Frequency [GHz]"
+                fitting_report_label = "Resonator Frequency [Hz]"
                 if all(param in params for param in ["Ec", "Ej"]):
                     popt = [
                         params["bare_resonator_frequency"],
@@ -130,7 +122,7 @@ def flux_dependence_plot(data, fit, qubit):
                         params["Ec"],
                         params["Ej"],
                     ]
-                    freq_fit = freq_r_mathieu(biases1, *popt) * HZ_TO_GHZ
+                    freq_fit = freq_r_mathieu(biases1, *popt)
                 else:
                     popt = [
                         fit.sweetspot[qubit],
@@ -140,9 +132,9 @@ def flux_dependence_plot(data, fit, qubit):
                         params["g"],
                         params["bare_resonator_frequency"],
                     ]
-                    freq_fit = freq_r_transmon(biases1, *popt) * HZ_TO_GHZ
+                    freq_fit = freq_r_transmon(biases1, *popt)
             elif data.__class__.__name__ == "QubitFluxData":
-                fitting_report_label = "Qubit Frequency [GHz]"
+                fitting_report_label = "Qubit Frequency [Hz]"
                 if all(param in params for param in ["Ec", "Ej"]):
                     popt = [
                         fit.sweetspot[qubit],
@@ -151,15 +143,15 @@ def flux_dependence_plot(data, fit, qubit):
                         params["Ec"],
                         params["Ej"],
                     ]
-                    freq_fit = freq_q_mathieu(biases1, *popt) * HZ_TO_GHZ
+                    freq_fit = freq_q_mathieu(biases1, *popt)
                 else:
                     popt = [
                         fit.sweetspot[qubit],
                         params["Xi"],
                         params["d"],
-                        fit.frequency[qubit] * GHZ_TO_HZ,
+                        fit.frequency[qubit],
                     ]
-                    freq_fit = freq_q_transmon(biases1, *popt) * HZ_TO_GHZ
+                    freq_fit = freq_q_transmon(biases1, *popt)
 
             fig.add_trace(
                 go.Scatter(
@@ -176,8 +168,6 @@ def flux_dependence_plot(data, fit, qubit):
             values = []
 
             for key, value in fit.fitted_parameters[qubit].items():
-                if key in FREQUENCY_PARAMETERS:  # Select frequency parameters
-                    value *= HZ_TO_GHZ
                 values.append(np.round(value, 5))
                 parameters.append(FLUX_PARAMETERS[key])
 
@@ -189,14 +179,14 @@ def flux_dependence_plot(data, fit, qubit):
             fitting_report = table_html(table_dict(qubit, parameters, values))
 
     fig.update_xaxes(
-        title_text=f"Frequency (GHz)",
+        title_text=f"Frequency [GHz]",
         row=1,
         col=1,
     )
     if not data.__class__.__name__ == "CouplerSpectroscopyData":
-        fig.update_yaxes(title_text="Bias (V)", row=1, col=1)
+        fig.update_yaxes(title_text="Bias [V]", row=1, col=1)
     else:
-        fig.update_yaxes(title_text="Pulse Amplitude", row=1, col=1)
+        fig.update_yaxes(title_text="Pulse Amplitude [a.u.]", row=1, col=1)
 
     fig.add_trace(
         go.Heatmap(
@@ -209,21 +199,20 @@ def flux_dependence_plot(data, fit, qubit):
         col=2,
     )
     fig.update_xaxes(
-        title_text=f"Frequency (GHz)",
+        title_text=f"Frequency [GHz]",
         row=1,
         col=2,
     )
 
     if not data.__class__.__name__ == "CouplerSpectroscopyData":
-        fig.update_yaxes(title_text="Bias (V)", row=1, col=2)
+        fig.update_yaxes(title_text="Bias [V]", row=1, col=2)
     else:
-        fig.update_yaxes(title_text="Pulse Amplitude", row=1, col=2)
+        fig.update_yaxes(title_text="Pulse Amplitude [a.u.]", row=1, col=2)
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         legend=dict(orientation="h"),
     )
 
@@ -266,20 +255,19 @@ def flux_crosstalk_plot(data, qubit):
         )
 
         fig.update_xaxes(
-            title_text="Frequency (GHz)",
+            title_text="Frequency [GHz]",
             row=1,
             col=col + 1,
         )
 
         fig.update_yaxes(
-            title_text=f"Qubit {flux_qubit[1]}: Bias (V)", row=1, col=col + 1
+            title_text=f"Qubit {flux_qubit[1]}: Bias [V]", row=1, col=col + 1
         )
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
     fig.update_traces(showscale=False)  # disable colorbar
     fig.update_layout(
         showlegend=False,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
     )
 
     figures.append(fig)

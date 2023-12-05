@@ -132,7 +132,6 @@ def _plot(data: TimeOfFlightReadoutData, qubit, fit: TimeOfFlightReadoutResults)
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Sample",
         yaxis_title="Signal [a.u.]",
     )
@@ -150,7 +149,6 @@ def _plot(data: TimeOfFlightReadoutData, qubit, fit: TimeOfFlightReadoutResults)
         )
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Sample",
         yaxis_title="Signal [a.u.]",
     )
