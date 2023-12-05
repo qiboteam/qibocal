@@ -261,8 +261,12 @@ class Excitations(str, Enum):
     """
 
     ge = "01"
+    """First qubit in ground state, second qubit in excited state"""
     gf = "02"
+    """First qubit in ground state, second qubit in the first excited state out
+    of the computational basis."""
     all_ge = "01+10"
+    """One of the qubit in the ground state and the other one in the excited state."""
 
 
 def plot_heatmap(heatmaps, fit, transition, bias_unique, order_pair, data_high, col):
