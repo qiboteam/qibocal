@@ -212,62 +212,6 @@ def _plot(data: AvoidedCrossingData, fit: Optional[AvoidedCrossingResults], qubi
                 [np.round(cz[:, 0], 3), np.round(iswap[:, 0], 3)],
             )
         )
-    parabolas.add_trace(
-        go.Scatter(
-            x=bias_range,
-            y=np.array([data.drive_frequency_low[str(order_pair[0])]] * STEP)
-            * HZ_TO_GHZ,
-            showlegend=True,
-            name="10",
-        )
-    )
-    parabolas.add_trace(
-        go.Scatter(
-            x=cz[:, 0],
-            y=cz[:, 1] * HZ_TO_GHZ,
-            showlegend=True,
-            name="CZ",
-            marker_color="black",
-            mode="markers",
-            marker=dict(symbol="cross", size=POINT_SIZE),
-        )
-    )
-    parabolas.add_trace(
-        go.Scatter(
-            x=iswap[:, 0],
-            y=iswap[:, 1] * HZ_TO_GHZ,
-            showlegend=True,
-            name="iswap",
-            marker_color="blue",
-            mode="markers",
-            marker=dict(symbol="cross", size=10),
-        )
-    )
-    parabolas.update_layout(
-        xaxis_title="Bias[V]",
-        yaxis_title="Frequency[GHz]",
-    )
-    heatmaps.update_layout(
-        coloraxis_colorbar=dict(
-            yanchor="top",
-            y=1,
-            x=-0.08,
-            ticks="outside",
-        ),
-        xaxis_title="Frequency [GHz]",
-        yaxis_title="Bias [V]",
-        xaxis2_title="Frequency [GHz]",
-        yaxis2_title="Bias [V]",
-    )
-    figures.append(heatmaps)
-    figures.append(parabolas)
-    fitting_report = table_html(
-        table_dict(
-            qubit,
-            ["CZ bias", "iSwap bias"],
-            [np.round(cz[:, 0], 3), np.round(iswap[:, 0], 3)],
-        )
-    )
     return figures, fitting_report
 
 
