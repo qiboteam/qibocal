@@ -41,7 +41,6 @@ def report(path):
 
     # load executor
     executor = Executor.load(runcard, path, qubits=qubits)
-
     # produce html
     builder = ReportBuilder(path, qubits, executor, meta)
     builder.run(path)
