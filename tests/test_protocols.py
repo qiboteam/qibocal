@@ -130,12 +130,12 @@ def test_fit_command(runcard, tmp_path):
 def test_extract_rabi():
     assert extract_rabi(RabiAmplitudeData()) == (
         "amp",
-        "Amplitude (dimensionless)",
+        "Amplitude [dimensionless]",
         rabi_amplitude_function,
     )
     assert extract_rabi(RabiLengthData()) == (
         "length",
-        "Time (ns)",
+        "Time [ns]",
         rabi_length_function,
     )
     with pytest.raises(RuntimeError):
