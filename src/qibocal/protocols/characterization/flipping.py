@@ -77,7 +77,6 @@ def _acquisition(
         data (:class:`FlippingData`)
     """
 
-    # create a DataUnits object to store MSR, phase, i, q and the number of flips
     data = FlippingData(
         resonator_type=platform.resonator_type,
         pi_pulse_amplitudes={
@@ -121,9 +120,11 @@ def _acquisition(
                 FlippingType,
                 (qubit),
                 dict(
+
                     flips=[flips],
                     prob=prob.tolist(),
                     error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
+
                 ),
             )
 
@@ -215,9 +216,9 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
             x=qubit_data.flips,
             y=qubit_data.prob,
             opacity=1,
-            name="Voltage",
+            name="Signal",
             showlegend=True,
-            legendgroup="Voltage",
+            legendgroup="Signal",
         ),
     )
     fig.add_trace(
@@ -257,7 +258,7 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["Amplitude correction factor", "Corrected amplitude"],
+                ["Amplitude correction factor", "Corrected amplitude [a.u.]"],
                 [
                     np.round(fit.amplitude_factors[qubit], 4),
                     np.round(fit.amplitude[qubit], 4),

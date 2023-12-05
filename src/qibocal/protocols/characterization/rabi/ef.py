@@ -10,21 +10,21 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Qubits, Routine
 
-from . import amplitude_msr, utils
+from . import amplitude_signal, utils
 
 
 @dataclass
-class RabiAmplitudeEFParameters(amplitude_msr.RabiAmplitudeVoltParameters):
+class RabiAmplitudeEFParameters(amplitude_signal.RabiAmplitudeVoltParameters):
     """RabiAmplitudeEF runcard inputs."""
 
 
 @dataclass
-class RabiAmplitudeEFResults(amplitude_msr.RabiAmplitudeVoltResults):
+class RabiAmplitudeEFResults(amplitude_signal.RabiAmplitudeVoltResults):
     """RabiAmplitudeEF outputs."""
 
 
 @dataclass
-class RabiAmplitudeEFData(amplitude_msr.RabiAmplitudeVoltData):
+class RabiAmplitudeEFData(amplitude_signal.RabiAmplitudeVoltData):
     """RabiAmplitude data acquisition."""
 
 
@@ -92,11 +92,11 @@ def _acquisition(
     for qubit in qubits:
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
-            amplitude_msr.RabiAmpVoltType,
+            amplitude_signal.RabiAmpVoltType,
             (qubit),
             dict(
                 amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
-                msr=result.magnitude,
+                signal=result.magnitude,
                 phase=result.phase,
             ),
         )
@@ -112,9 +112,9 @@ def _plot(data: RabiAmplitudeEFData, qubit, fit: RabiAmplitudeEFResults = None):
 
 
 def _update(results: RabiAmplitudeEFResults, platform: Platform, qubit: QubitId):
-    """Update RX2 amplitude_msr"""
+    """Update RX2 amplitude_signal"""
     update.drive_12_amplitude(results.amplitude[qubit], platform, qubit)
 
 
-rabi_amplitude_ef = Routine(_acquisition, amplitude_msr._fit, _plot, _update)
+rabi_amplitude_ef = Routine(_acquisition, amplitude_signal._fit, _plot, _update)
 """RabiAmplitudeEF Routine object."""

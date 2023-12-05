@@ -5,7 +5,7 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Qubits, Routine
 
-from .length_msr import (
+from .length_signal import (
     RabiLengthVoltData,
     RabiLengthVoltParameters,
     RabiLenVoltType,
@@ -76,7 +76,7 @@ def _acquisition(
                 (qubit),
                 dict(
                     length=np.array([duration]),
-                    msr=np.array([result.magnitude]),
+                    signal=np.array([result.magnitude]),
                     phase=np.array([result.phase]),
                 ),
             )

@@ -15,13 +15,13 @@ class CouplerSpectroscopyParameters(Parameters):
     """CouplerResonatorSpectroscopy and CouplerQubitSpectroscopy runcard inputs."""
 
     bias_width: int
-    """Width for bias (V)."""
+    """Width for bias [a.u.]."""
     bias_step: int
-    """Frequency step for bias sweep (V)."""
+    """Frequency step for bias sweep [a.u.]."""
     freq_width: int
-    """Width for frequency sweep relative  to the readout frequency (Hz)."""
+    """Width for frequency sweep relative  to the readout frequency [Hz]."""
     freq_step: int
-    """Frequency step for frequency sweep (Hz)."""
+    """Frequency step for frequency sweep [Hz]."""
     # TODO: It may be better not to use readout multiplex to avoid readout crosstalk
     measured_qubits: list[QubitId]
     """Qubit to readout from the pair"""
@@ -31,14 +31,14 @@ class CouplerSpectroscopyParameters(Parameters):
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
+    """Relaxation time [ns]."""
 
 
 CouplerSpecType = np.dtype(
     [
         ("freq", np.float64),
         ("bias", np.float64),
-        ("msr", np.float64),
+        ("signal", np.float64),
         ("phase", np.float64),
     ]
 )
@@ -66,8 +66,8 @@ class CouplerSpectroscopyData(Data):
     data: dict[QubitId, npt.NDArray[CouplerSpecType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, freq, bias, msr, phase):
+    def register_qubit(self, qubit, freq, bias, signal, phase):
         """Store output for single qubit."""
         self.data[qubit] = create_data_array(
-            freq, bias, msr, phase, dtype=CouplerSpecType
+            freq, bias, signal, phase, dtype=CouplerSpecType
         )

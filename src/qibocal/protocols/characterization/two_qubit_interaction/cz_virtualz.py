@@ -14,7 +14,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitsPairs, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.characterization.two_qubit_interaction.chevron import order_pair
 from qibocal.protocols.characterization.utils import table_dict, table_html
@@ -147,7 +147,7 @@ def create_sequence(
 def _acquisition(
     params: CZVirtualZParameters,
     platform: Platform,
-    qubits: Qubits,
+    qubits: QubitsPairs,
 ) -> CZVirtualZData:
     r"""
     Acquisition for CZVirtualZ.
@@ -160,14 +160,13 @@ def _acquisition(
     is undone in the high frequency qubit and a theta90 pulse is applied to the low
     frequency qubit before measurement. That is, a pi-half pulse around the relative phase
     parametereized by the angle theta.
-    Measurements on the low frequency qubit yield the the 2Q-phase of the gate and the
+    Measurements on the low frequency qubit yield the 2Q-phase of the gate and the
     remnant single qubit Z phase aquired during the execution to be corrected.
     Population of the high frequency qubit yield the leakage to the non-computational states
     during the execution of the flux pulse.
     """
 
     theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
-
     data = CZVirtualZData(thetas=theta_absolute.tolist())
     for pair in qubits:
         # order the qubits so that the low frequency one is the first
@@ -364,7 +363,11 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
             fitting_report = table_html(
                 table_dict(
                     [target, target, qubits[1]],
-                    ["CZ angle", "Virtual Z phase", "Flux pulse amplitude"],
+                    [
+                        "CZ angle [rad]",
+                        "Virtual Z phase [rad]",
+                        "Flux pulse amplitude [a.u.]",
+                    ],
                     [
                         np.round(fit.cz_angle[target, control], 4),
                         np.round(fit.virtual_phase[tuple(sorted(qubit))][target], 4),
@@ -376,19 +379,17 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
     fig1.update_layout(
         title_text=f"Phase correction Qubit {qubits[0]}",
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis1_title="theta [rad] + virtual phase[rad]",
         xaxis2_title="theta [rad] + virtual phase [rad]",
-        yaxis_title="MSR[V]",
+        yaxis_title="Signal [a.u.]",
     )
 
     fig2.update_layout(
         title_text=f"Phase correction Qubit {qubits[1]}",
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis1_title="theta [rad] + virtual phase[rad]",
         xaxis2_title="theta [rad] + virtual phase[rad]",
-        yaxis_title="MSR[V]",
+        yaxis_title="Signal [a.u.]",
     )
 
     return [fig1, fig2], fitting_report

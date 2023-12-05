@@ -151,7 +151,6 @@ def _plot(data: AllXYDragData, qubit, fit: AllXYDragResults = None):
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Gate sequence number",
         yaxis_title="Expectation value of Z",
     )
