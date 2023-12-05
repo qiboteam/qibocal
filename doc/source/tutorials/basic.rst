@@ -172,7 +172,8 @@ Here is an example runcard:
 
 For this particular experiment it is recommended to use
 a ``drive_duration`` large compared to the coherence time of
-the qubit.
+the qubit. Currenty the coherence time for transmon qubits
+if of the order of :math:`10^3 - 10^6` ns.
 
 
 .. image:: ../protocols/qubit_spectroscopy.png
