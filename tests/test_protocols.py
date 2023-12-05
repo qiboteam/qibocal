@@ -7,6 +7,14 @@ from click.testing import CliRunner
 from qibolab import create_platform
 
 from qibocal.cli._base import command
+from qibocal.protocols.characterization.rabi.amplitude import RabiAmplitudeData
+from qibocal.protocols.characterization.rabi.ef import RabiAmplitudeEFData
+from qibocal.protocols.characterization.rabi.length import RabiLengthData
+from qibocal.protocols.characterization.rabi.utils import (
+    extract_rabi,
+    rabi_amplitude_function,
+    rabi_length_function,
+)
 
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/protocols.yml"
 PLATFORM = create_platform("dummy")
@@ -117,6 +125,21 @@ def test_fit_command(runcard, tmp_path):
     results_plot = runner.invoke(command, ["report", str(tmp_path)])
     assert not results_plot.exception
     assert results_plot.exit_code == 0
+
+
+def test_extract_rabi():
+    assert extract_rabi(RabiAmplitudeData()) == (
+        "amp",
+        "Amplitude (dimensionless)",
+        rabi_amplitude_function,
+    )
+    assert extract_rabi(RabiLengthData()) == (
+        "length",
+        "Time (ns)",
+        rabi_length_function,
+    )
+    with pytest.raises(RuntimeError):
+        extract_rabi(RabiAmplitudeEFData)
 
 
 # TODO: compare report by calling qq report
