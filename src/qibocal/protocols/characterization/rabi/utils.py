@@ -5,33 +5,26 @@ from plotly.subplots import make_subplots
 from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
 
 
-def rabi_amplitude_function(x, p0, p1, p2, p3):
+def rabi_amplitude_function(x, offset, amplitude, period, phase):
     """
     Fit function of Rabi amplitude signal experiment.
 
     Args:
         x: Input data.
-        p0: Offset.
-        p1: Oscillation Amplitude.
-        p2: Period.
-        p3: Phase.
     """
-    return p0 + p1 * np.sin(2 * np.pi * x / p2 + p3)
+    return offset + amplitude * np.sin(2 * np.pi * x / period + phase)
 
 
-def rabi_length_function(x, p0, p1, p2, p3, p4):
+def rabi_length_function(x, offset, amplitude, period, phase, t2_inv):
     """
     Fit function of Rabi length signal experiment.
 
     Args:
         x: Input data.
-        p0: Offset.
-        p1: Oscillation Amplitude.
-        p2: Period.
-        p3: Phase.
-        p4: T2.
     """
-    return p0 + p1 * np.cos(2 * np.pi * x / p2 + p3) * np.exp(-x * p4)
+    return offset + amplitude * np.cos(2 * np.pi * x / period + phase) * np.exp(
+        -x * t2_inv
+    )
 
 
 def plot(data, qubit, fit):
