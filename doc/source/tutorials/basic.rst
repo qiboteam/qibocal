@@ -84,14 +84,14 @@ power we observe this shift it is possible to run a resonator punchout using the
         priority: 0
         operation: resonator_punchout
         parameters:
-          freq_width: 40_000_000
-          freq_step: 500_000
-          amplitude: 0.03
-          min_amp_factor: 0.1
-          max_amp_factor: 2.4
-          step_amp_factor: 0.3
-          nshots: 2048
-          relaxation_time: 5000
+            freq_width: 40_000_000
+            freq_step: 500_000
+            amplitude: 0.03
+            min_amp_factor: 0.1
+            max_amp_factor: 2.4
+            step_amp_factor: 0.3
+            nshots: 2048
+            relaxation_time: 5000
 
 Which corresponds to a 2D scan in amplitude and readout frequency.
 After executing the experiment with the previous syntax we should
@@ -188,6 +188,10 @@ which will be our drive frequency.
     Depending on the resonator type the qubit frequency
     might appear as a deep or a peak.
 
+.. note::
+    If the qubit is flux-tunable make sure to have a look at this :ref:`section <flux>`.
+
+
 The missing step required to perform a transition between state :math:`\ket{0}` and state
 :math:`\ket{1}` is to calibrate the amplitude of the drive pulse, also known as :math:`\pi` pulse.
 
@@ -237,17 +241,18 @@ The simplest model can be trained by running the following experiment:
 
     actions:
 
-        - id: single shot classification 1
-          priority: 0
-          operation: single_shot_classification
-          parameters:
-              nshots: 5000
+      - id: single shot classification 1
+        priority: 0
+        operation: single_shot_classification
+        parameters:
+            nshots: 5000
 
 
 The expected results are two separated clouds in the IQ plane.
 
 .. image:: ../protocols/classification.png
 
+.. _flux:
 
 Flux tunable qubits
 ~~~~~~~~~~~~~~~~~~~
@@ -270,10 +275,10 @@ We can study the flux dependence of the qubit using the following runcard:
 
     actions:
 
-        - id: qubit flux dependence
-          priority: 0
-          operation: qubit_flux
-          parameters:
+      - id: qubit flux dependence
+        priority: 0
+        operation: qubit_flux
+        parameters:
             freq_width: 100_000_000
             freq_step: 500_000
             bias_width: 0.20
@@ -317,10 +322,10 @@ Here is the runcard:
 
     actions:
 
-        - id: t1
-          priority: 0
-          operation: t1
-          parameters:
+      - id: t1
+        priority: 0
+        operation: t1
+        parameters:
             delay_before_readout_end: 200000
             delay_before_readout_start: 50
             delay_before_readout_step: 1000
@@ -347,10 +352,10 @@ denoted with :math:`\\T_2` and can be estimated through a Ramsey experiment.
 
     actions:
 
-        - id: ramsey detuned
-          priority: 0
-          operation: ramsey
-          parameters:
+      - id: ramsey detuned
+        priority: 0
+        operation: ramsey
+        parameters:
             delay_between_pulses_end: 40000
             delay_between_pulses_start: 100
             delay_between_pulses_step: 1000
@@ -384,10 +389,10 @@ after having prepared  :math:`\ket{Y}`.
 
     actions:
 
-        - id: readout characterization
-          priority: 0
-          operation: readout_characterization
-          parameters:
+      - id: readout characterization
+        priority: 0
+        operation: readout_characterization
+        parameters:
             nshots: 5000
 
 .. image:: ../protocols/ro_characterization.png
@@ -407,10 +412,10 @@ randomized benchmarking.
 
     actions:
 
-        - id: standard rb bootstrap
-          priority: 0
-          operation: standard_rb
-          parameters:
+      - id: standard rb bootstrap
+        priority: 0
+        operation: standard_rb
+        parameters:
             depths: [10, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500]
             n_bootstrap: 10
             niter: 256
