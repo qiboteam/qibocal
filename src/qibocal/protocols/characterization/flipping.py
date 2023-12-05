@@ -120,11 +120,9 @@ def _acquisition(
                 FlippingType,
                 (qubit),
                 dict(
-
                     flips=[flips],
                     prob=prob.tolist(),
                     error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
-
                 ),
             )
 
