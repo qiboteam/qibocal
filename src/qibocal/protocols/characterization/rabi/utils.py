@@ -188,5 +188,5 @@ def extract_rabi(data):
     if "RabiAmplitude" in data.__class__.__name__:
         return "amp", "Amplitude (dimensionless)", rabi_amplitude_function
     elif "RabiLength" in data.__class__.__name__:
-        return "length", "Time (ns)", rabi_length_function
+        return "length", "Time [ns]", rabi_length_function
     raise RuntimeError("Data has to be a data structure of the Rabi routines.")
