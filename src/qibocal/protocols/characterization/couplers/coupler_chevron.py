@@ -76,7 +76,7 @@ def _aquisition(
 
         fq_pulse = native_gate[1]
         fx_pulse = native_gate[0]
-        
+
         fq_pulse.start = sequence.finish + params.dt
         fx_pulse.start = sequence.finish + params.dt
 
