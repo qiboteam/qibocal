@@ -2603,32 +2603,27 @@ tabulate = ">=0.9.0,<0.10.0"
 
 [[package]]
 name = "qibolab"
-version = "0.1.4"
+version = "0.1.3"
 description = "Quantum hardware module and drivers for Qibo"
 optional = false
 python-versions = ">=3.9,<3.12"
-files = []
-develop = false
+files = [
+    {file = "qibolab-0.1.3-py3-none-any.whl", hash = "sha256:cdc49cd1e787a34584c57c783a26babf3c152ec88374c4ab00b3669e02fb9dc9"},
+    {file = "qibolab-0.1.3.tar.gz", hash = "sha256:cdf4d551acfb1efdb7579334aec91ec8327f907bd4694a61d30fccc693f55f14"},
+]
 
 [package.dependencies]
-more-itertools = "^9.1.0"
-networkx = "^3.0"
-numpy = "==1.24.4"
-pyyaml = "^6.0"
-qibo = ">=0.2.3"
+more-itertools = ">=9.1.0,<10.0.0"
+networkx = ">=3.0,<4.0"
+numpy = "1.24.4"
+pyyaml = ">=6.0,<7.0"
+qibo = ">=0.2.2"
 
 [package.extras]
-los = ["qcodes (>=0.37.0,<0.38.0)", "qcodes_contrib_drivers (==0.18.0)"]
 qblox = ["pyvisa-py (==0.5.3)", "qblox-instruments (==0.11.0)", "qcodes (>=0.37.0,<0.38.0)", "qcodes_contrib_drivers (==0.18.0)"]
-qm = ["qm-qua (==1.1.1)", "qualang-tools (==0.14.0)"]
-rfsoc = ["qibosoq (>=0.0.4,<0.2)"]
-zh = ["laboneq (==2.20.1)"]
-
-[package.source]
-type = "git"
-url = "https://github.com/qiboteam/qibolab.git"
-reference = "HEAD"
-resolved_reference = "ef111646565dd51eced74b51ab6ffaf91c125277"
+qm = ["qm-qua (==1.1.1)", "qualang-tools (==0.14.0)", "setuptools (>67.0.0)"]
+rfsoc = ["qcodes (>=0.37.0,<0.38.0)", "qcodes_contrib_drivers (==0.18.0)", "qibosoq (>=0.0.4,<0.2)"]
+zh = ["laboneq (>=2.12.0)"]
 
 [[package]]
 name = "recommonmark"
@@ -3572,4 +3567,4 @@ viz = ["pydot"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "130c853ce25660c2e3cf59c34bbd3bfe2f35e9f2e0664974340d7e1c799dd703"
+content-hash = "932fc92bc9987d97e71a3c7dc8d11a9753ebbb3a873db4b1f7bc7a4598d616eb"
