@@ -156,6 +156,7 @@ class Task:
                 ] = platform.settings.relaxation_time
             operation: Routine = self.operation
             parameters = self.parameters
+
         except (RuntimeError, AttributeError):
             operation = dummy_operation
             parameters = DummyPars()
