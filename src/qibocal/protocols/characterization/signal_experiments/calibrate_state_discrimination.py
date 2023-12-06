@@ -4,7 +4,6 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from laboneq.analysis import calculate_integration_kernels
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
@@ -88,9 +87,6 @@ def _acquisition(
 
     # FIXME: Multiplex Raw acquisition may not work properly ???
     for qubit in qubits:
-        # create 2 sequences of pulses for the experiment:
-        # sequence_0: I  - MZ
-        # sequence_1: RX - MZ
         sequence_0 = PulseSequence()
         sequence_1 = PulseSequence()
         ro_pulses = {}
@@ -148,14 +144,24 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
     for qubit in qubits:
         traces = []
         for i in range(2):
+            # This is due to a device limitation on the number of samples
             trace = (
                 data[qubit, i]["i"][: (len(data[qubit, i]["i"]) // 16) * 16]
                 + 1j * data[qubit, i]["q"][: (len(data[qubit, i]["i"]) // 16) * 16]
             )
             traces.append(trace)
+        """
+        This is a simplified version from laboneq.analysis.calculate_integration_kernels
+        for our use case where we only want to discirminate between state 0 and 1
+        """
+        # Calculate the optimal kernel
+        kernel = np.conj(traces[0] - traces[1])
 
-        kernels = calculate_integration_kernels(traces)
-        kernel_state_zero[qubit] = kernels[0].samples
+        # Normalize the kernel
+        max_abs_weight = max(np.abs(kernel))
+        kernel *= 1 / max_abs_weight
+
+        kernel_state_zero[qubit] = kernel
 
     return CalibrateStateDiscriminationResults(data=kernel_state_zero)
 
