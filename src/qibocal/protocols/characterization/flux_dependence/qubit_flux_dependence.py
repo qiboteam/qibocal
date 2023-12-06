@@ -280,7 +280,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     0
                 ]  # Corresponding flux matrix element.
 
-                frequency[qubit] = f_qs * HZ_TO_GHZ
+                frequency[qubit] = f_qs
                 sweetspot[qubit] = popt[0]
                 fitted_parameters[qubit] = {
                     "Xi": popt[1],
