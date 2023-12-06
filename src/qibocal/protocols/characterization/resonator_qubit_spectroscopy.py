@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
+from qibolab.pulses import DrivePulse, PulseSequence, Rectangular
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
@@ -71,6 +71,7 @@ class ResonatorQubitSpectroscopyData(Data):
         """Store output for single qubit."""
         size = len(resonator_freq) * len(qubit_freq)
         r_freq, q_freq = np.meshgrid(resonator_freq, qubit_freq)
+        # q_freq, r_freq = np.meshgrid(qubit_freq, resonator_freq)
         ar = np.empty(size, dtype=ResonatorQubitSpectroscopyType)
         ar["resonator_freq"] = r_freq.ravel()
         ar["qubit_freq"] = q_freq.ravel()
@@ -88,27 +89,61 @@ def _acquisition(
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
+    ro_initialisation_pulses = {}
     ro_pulses = {}
+    qd_initialisation_pulses = {}  #
     qd_pulses = {}
-    for qubit in qubits:
-        qd_pulses[qubit] = []
-        qd_pulse_start = 0
-        for _ in range(10):
-            qd_pulse = platform.create_qubit_drive_pulse(
-                qubit, start=qd_pulse_start, duration=params.drive_duration
-            )
-            if params.drive_amplitude is not None:
-                qd_pulse.amplitude = params.drive_amplitude
-            qd_pulses[qubit] += [qd_pulse]
-            qd_pulse_start += params.drive_duration
-            sequence.add(qd_pulse)
 
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulse.finish
+    for qubit in qubits:
+        ro_initialisation_pulses[qubit] = []
+        qd_initialisation_pulses[qubit] = []  #
+        pulse_duration = 8000
+        pulse_start = 0
+        for _ in range(80):
+            ro_pulse_sample = platform.create_qubit_readout_pulse(qubit, start=0)
+            if params.readout_amplitude is not None:
+                ro_pulse_sample.amplitude = params.readout_amplitude
+
+            ro_initialisation_pulse = DrivePulse(
+                start=pulse_start,
+                duration=pulse_duration,
+                amplitude=ro_pulse_sample.amplitude,
+                frequency=ro_pulse_sample.frequency,
+                relative_phase=ro_pulse_sample.relative_phase,
+                shape=ro_pulse_sample.shape,
+                channel=ro_pulse_sample.channel,
+                qubit=qubit,
+            )
+            ro_initialisation_pulses[qubit] += [ro_initialisation_pulse]
+
+            qd_initialisation_pulse = platform.create_qubit_drive_pulse(
+                qubit, start=pulse_start, duration=pulse_duration
+            )  #
+            qd_initialisation_pulse.shape = Rectangular()
+            if params.drive_amplitude is not None:
+                qd_initialisation_pulse.amplitude = params.drive_amplitude
+            qd_initialisation_pulses[qubit] += [qd_initialisation_pulse]  #
+
+            pulse_start += pulse_duration
+            sequence.add(ro_initialisation_pulse)
+            sequence.add(qd_initialisation_pulse)  #
+
+        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
+            qubit,
+            start=pulse_start - params.drive_duration,
+            duration=params.drive_duration,
         )
+        if params.drive_amplitude is not None:
+            qd_pulses[qubit].amplitude = params.drive_amplitude
+
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=pulse_start)
         if params.readout_amplitude is not None:
             ro_pulses[qubit].amplitude = params.readout_amplitude
+
+        # sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
+
+    # sequence.plot('debug.png')
 
     # define the parameter to sweep and its range:
     drive_delta_frequency_range = np.arange(
@@ -124,13 +159,15 @@ def _acquisition(
     qubit_freq_sweeper = Sweeper(
         Parameter.frequency,
         drive_delta_frequency_range,
-        pulses=[p for qubit in qubits for p in qd_pulses[qubit]],
+        pulses=[p for qubit in qubits for p in qd_initialisation_pulses[qubit]],
+        # pulses=[qd_pulses[qubit] for qubit in qubits],
         type=SweeperType.OFFSET,
     )
     resonator_freq_sweeper = Sweeper(
         Parameter.frequency,
         readout_delta_frequency_range,
-        pulses=[ro_pulses[qubit] for qubit in qubits],
+        pulses=[p for qubit in qubits for p in ro_initialisation_pulses[qubit]]
+        + [ro_pulses[qubit] for qubit in qubits],
         type=SweeperType.OFFSET,
     )
 
@@ -159,7 +196,7 @@ def _acquisition(
             msr=result.magnitude,
             phase=result.phase,
             resonator_freq=readout_delta_frequency_range + ro_pulses[qubit].frequency,
-            qubit_freq=drive_delta_frequency_range + qd_pulses[qubit][0].frequency,
+            qubit_freq=drive_delta_frequency_range + qd_pulses[qubit].frequency,
         )
     return data
 
