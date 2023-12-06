@@ -218,13 +218,13 @@ def _fit(data: ChevronData) -> ChevronResults:
         times = np.unique(data[pair].length)
 
         for qubit in pair:
-            msr = data[pair].prob_low if pair[0] == qubit else data[pair].prob_high
-            msr_matrix = msr.reshape(len(times), len(amps)).T
+            signal = data[pair].prob_low if pair[0] == qubit else data[pair].prob_high
+            signal_matrix = signal.reshape(len(times), len(amps)).T
 
             # guess amplitude computing FFT
-            amplitude, index, delta = fit_flux_amplitude(msr_matrix, amps, times)
+            amplitude, index, delta = fit_flux_amplitude(signal_matrix, amps, times)
             # estimate duration by rabi curve at amplitude previously estimated
-            y = msr_matrix[index, :].ravel()
+            y = signal_matrix[index, :].ravel()
 
             popt, _ = curve_fit(cos, times, y, p0=[delta, 0, np.mean(y), np.mean(y)])
 
@@ -307,7 +307,7 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
     fig.update_layout(
         xaxis_title="Duration [ns]",
         xaxis2_title="Duration [ns]",
-        yaxis_title="Amplitude [dimensionless]",
+        yaxis_title="Amplitude [a.u.]",
         legend=dict(orientation="h"),
     )
     fig.update_layout(

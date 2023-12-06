@@ -155,7 +155,7 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["Best assignment fidelity", "TWPA Power"],
+                ["Best assignment fidelity", "TWPA Power [dBm]"],
                 [
                     np.round(fit.best_fidelities[qubit], 3),
                     np.round(fit.best_powers[qubit], 3),
@@ -167,7 +167,6 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
 
         fig.update_layout(
             showlegend=True,
-            uirevision="0",  # ``uirevision`` allows zooming while live plotting
             xaxis_title="TWPA Power [dB]",
             yaxis_title="Assignment Fidelity",
         )

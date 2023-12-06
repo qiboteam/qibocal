@@ -45,9 +45,9 @@ class ResCrosstalkData(ResonatorFluxData):
     )
     """Raw data acquired for (qubit, qubit_flux) pairs saved in nested dictionaries."""
 
-    def register_qubit(self, qubit, flux_qubit, freq, bias, msr, phase):
+    def register_qubit(self, qubit, flux_qubit, freq, bias, signal, phase):
         """Store output for single qubit."""
-        ar = utils.create_data_array(freq, bias, msr, phase, dtype=ResFluxType)
+        ar = utils.create_data_array(freq, bias, signal, phase, dtype=ResFluxType)
         if (qubit, flux_qubit) in self.data:
             self.data[qubit, flux_qubit] = np.rec.array(
                 np.concatenate((self.data[qubit, flux_qubit], ar))
@@ -134,7 +134,7 @@ def _acquisition(
             data.register_qubit(
                 qubit,
                 flux_qubit,
-                msr=result.magnitude,
+                signal=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + ro_pulses[qubit].frequency,
                 bias=delta_bias_range + sweetspot,

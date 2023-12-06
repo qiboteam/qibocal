@@ -10,31 +10,31 @@ from qibolab.qubits import QubitId
 from qibocal import update
 from qibocal.auto.operation import Qubits, Routine
 
-from ..utils import V_TO_UV, table_dict, table_html
+from ..utils import table_dict, table_html
 from . import spin_echo
-from .t1_msr import CoherenceType, T1MSRData
+from .t1_signal import CoherenceType, T1SignalData
 from .utils import exp_decay, exponential_fit
 
 
 @dataclass
-class SpinEchoMSRParameters(spin_echo.SpinEchoParameters):
-    """SpinEcho MSR runcard inputs."""
+class SpinEchoSignalParameters(spin_echo.SpinEchoParameters):
+    """SpinEcho Signal runcard inputs."""
 
 
 @dataclass
-class SpinEchoMSRResults(spin_echo.SpinEchoResults):
-    """SpinEchoMSR outputs."""
+class SpinEchoSignalResults(spin_echo.SpinEchoResults):
+    """SpinEchoSignal outputs."""
 
 
-class SpinEchoMSRData(T1MSRData):
+class SpinEchoSignalData(T1SignalData):
     """SpinEcho acquisition outputs."""
 
 
 def _acquisition(
-    params: SpinEchoMSRParameters,
+    params: SpinEchoSignalParameters,
     platform: Platform,
     qubits: Qubits,
-) -> SpinEchoMSRData:
+) -> SpinEchoSignalData:
     """Data acquisition for SpinEcho"""
     # create a sequence of pulses for the experiment:
     # Spin Echo 3 Pulses: RX(pi/2) - wait t(rotates z) - RX(pi) - wait t(rotates z) - RX(pi/2) - readout
@@ -67,7 +67,7 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
-    data = SpinEchoMSRData()
+    data = SpinEchoSignalData()
 
     # sweep the parameter
     for wait in ro_wait_range:
@@ -96,21 +96,21 @@ def _acquisition(
                 (qubit),
                 dict(
                     wait=np.array([wait]),
-                    msr=np.array([result.magnitude]),
+                    signal=np.array([result.magnitude]),
                     phase=np.array([result.phase]),
                 ),
             )
     return data
 
 
-def _fit(data: SpinEchoMSRData) -> SpinEchoMSRResults:
+def _fit(data: SpinEchoSignalData) -> SpinEchoSignalResults:
     """Post-processing for SpinEcho."""
     t2Echos, fitted_parameters = exponential_fit(data)
 
-    return SpinEchoMSRResults(t2Echos, fitted_parameters)
+    return SpinEchoSignalResults(t2Echos, fitted_parameters)
 
 
-def _plot(data: SpinEchoMSRData, qubit, fit: SpinEchoMSRResults = None):
+def _plot(data: SpinEchoSignalData, qubit, fit: SpinEchoSignalResults = None):
     """Plotting for SpinEcho"""
 
     figures = []
@@ -125,11 +125,11 @@ def _plot(data: SpinEchoMSRData, qubit, fit: SpinEchoMSRResults = None):
     fig.add_trace(
         go.Scatter(
             x=waits,
-            y=qubit_data.msr * V_TO_UV,
+            y=qubit_data.signal,
             opacity=1,
-            name="Voltage",
+            name="Signal",
             showlegend=True,
-            legendgroup="Voltage",
+            legendgroup="Signal",
         ),
     )
 
@@ -157,9 +157,8 @@ def _plot(data: SpinEchoMSRData, qubit, fit: SpinEchoMSRResults = None):
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Time (ns)",
-        yaxis_title="MSR (uV)",
+        xaxis_title="Time [ns]",
+        yaxis_title="Signal [a.u.]",
     )
 
     figures.append(fig)
@@ -167,9 +166,9 @@ def _plot(data: SpinEchoMSRData, qubit, fit: SpinEchoMSRResults = None):
     return figures, fitting_report
 
 
-def _update(results: SpinEchoMSRResults, platform: Platform, qubit: QubitId):
+def _update(results: SpinEchoSignalResults, platform: Platform, qubit: QubitId):
     update.t2_spin_echo(results.t2_spin_echo[qubit], platform, qubit)
 
 
-spin_echo_msr = Routine(_acquisition, _fit, _plot, _update)
+spin_echo_sequence = Routine(_acquisition, _fit, _plot, _update)
 """SpinEcho Routine object."""

@@ -32,7 +32,7 @@ class RabiAmplitudeVoltResults(RabiAmplitudeResults):
 
 
 RabiAmpVoltType = np.dtype(
-    [("amp", np.float64), ("msr", np.float64), ("phase", np.float64)]
+    [("amp", np.float64), ("signal", np.float64), ("phase", np.float64)]
 )
 """Custom dtype for rabi amplitude."""
 
@@ -102,7 +102,7 @@ def _acquisition(
             (qubit),
             dict(
                 amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
-                msr=result.magnitude,
+                signal=result.magnitude,
                 phase=result.phase,
             ),
         )
@@ -120,7 +120,7 @@ def _fit(data: RabiAmplitudeVoltData) -> RabiAmplitudeVoltResults:
         qubit_data = data[qubit]
 
         rabi_parameter = qubit_data.amp
-        voltages = qubit_data.msr
+        voltages = qubit_data.signal
 
         y_min = np.min(voltages)
         y_max = np.max(voltages)
@@ -179,5 +179,5 @@ def _update(results: RabiAmplitudeVoltResults, platform: Platform, qubit: QubitI
     update.drive_amplitude(results.amplitude[qubit], platform, qubit)
 
 
-rabi_amplitude_msr = Routine(_acquisition, _fit, _plot, _update)
+rabi_amplitude_signal = Routine(_acquisition, _fit, _plot, _update)
 """RabiAmplitude Routine object."""

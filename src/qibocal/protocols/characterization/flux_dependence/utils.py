@@ -4,28 +4,20 @@ from plotly.subplots import make_subplots
 from scipy.special import mathieu_a, mathieu_b
 from sklearn.linear_model import Ridge
 
-from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV, table_dict, table_html
+from ..utils import HZ_TO_GHZ, table_dict, table_html
 
 FLUX_PARAMETERS = {
     "Xi": "Constant to map flux to bias [V]",
     "d": "Junction asymmetry",
-    "Ec": "Charge energy Ec [GHz]",
-    "Ej": "Josephson energy Ej [GHz]",
-    "f_q_offset": "Qubit frequency offset [GHz]",
-    "C_ii": "Flux matrix element C_ii [GHz/V]",
+    "Ec": "Charge energy Ec [Hz]",
+    "Ej": "Josephson energy Ej [Hz]",
+    "f_q_offset": "Qubit frequency offset [Hz]",
+    "C_ii": "Flux matrix element C_ii [Hz/V]",
     "g": "Readout coupling",
-    "bare_resonator_frequency": "Bare resonator frequency [GHz]",
-    "f_qs": "Qubit frequency [GHz]",
-    "f_r_offset": "Resonator frequency offset [GHz]",
+    "bare_resonator_frequency": "Bare resonator frequency [Hz]",
+    "f_qs": "Qubit frequency [Hz]",
+    "f_r_offset": "Resonator frequency offset [Hz]",
 }
-FREQUENCY_PARAMETERS = [
-    "Ec",
-    "Ej",
-    "f_q_offset",
-    "bare_resonator_frequency",
-    "f_qs",
-    "f_r_offset",
-]
 
 
 def is_crosstalk(data):
@@ -33,14 +25,14 @@ def is_crosstalk(data):
     return all(isinstance(key, tuple) for key in data.data.keys())
 
 
-def create_data_array(freq, bias, msr, phase, dtype):
+def create_data_array(freq, bias, signal, phase, dtype):
     """Create custom dtype array for acquired data."""
     size = len(freq) * len(bias)
     ar = np.empty(size, dtype=dtype)
     frequency, biases = np.meshgrid(freq, bias)
     ar["freq"] = frequency.ravel()
     ar["bias"] = biases.ravel()
-    ar["msr"] = msr.ravel()
+    ar["signal"] = signal.ravel()
     ar["phase"] = phase.ravel()
     return np.rec.array(ar)
 
@@ -53,12 +45,12 @@ def flux_dependence_plot(data, fit, qubit):
 
     if not data.__class__.__name__ == "CouplerSpectroscopyData":
         subplot_titles = (
-            "MSR [V]",
+            "Signal [a.u.]",
             "Phase [rad]",
         )
     else:
         subplot_titles = (
-            "MSR [V] Qubit" + str(qubit),
+            "Signal [a.u.] Qubit" + str(qubit),
             "Phase [rad] Qubit" + str(qubit),
         )
 
@@ -70,26 +62,28 @@ def flux_dependence_plot(data, fit, qubit):
         subplot_titles=subplot_titles,
     )
     frequencies = qubit_data.freq * HZ_TO_GHZ
-    msr = qubit_data.msr
+    signal = qubit_data.signal
     if data.__class__.__name__ == "ResonatorFluxData":
-        msr_mask = 0.5
+        signal_mask = 0.5
         if data.resonator_type == "3D":
-            msr = -msr
+            signal = -signal
     elif (
         data.__class__.__name__ == "QubitFluxData"
         or data.__class__.__name__ == "CouplerSpectroscopyData"
     ):
-        msr_mask = 0.3
+        signal_mask = 0.3
         if data.resonator_type == "2D":
-            msr = -msr
+            signal = -signal
 
-    frequencies1, biases1 = image_to_curve(frequencies, qubit_data.bias, msr, msr_mask)
+    frequencies1, biases1 = image_to_curve(
+        frequencies, qubit_data.bias, signal, signal_mask
+    )
 
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
             y=qubit_data.bias,
-            z=qubit_data.msr * V_TO_UV,
+            z=qubit_data.signal,
             colorbar_x=0.46,
         ),
         row=1,
@@ -117,7 +111,7 @@ def flux_dependence_plot(data, fit, qubit):
         fitting_report_label = "Frequency"
         if fit.frequency[qubit] != 0:
             if data.__class__.__name__ == "ResonatorFluxData":
-                fitting_report_label = "Resonator Frequency [GHz]"
+                fitting_report_label = "Resonator Frequency [Hz]"
                 if all(param in params for param in ["Ec", "Ej"]):
                     popt = [
                         params["bare_resonator_frequency"],
@@ -128,7 +122,7 @@ def flux_dependence_plot(data, fit, qubit):
                         params["Ec"],
                         params["Ej"],
                     ]
-                    freq_fit = freq_r_mathieu(biases1, *popt) * HZ_TO_GHZ
+                    freq_fit = freq_r_mathieu(biases1, *popt)
                 else:
                     popt = [
                         fit.sweetspot[qubit],
@@ -138,9 +132,9 @@ def flux_dependence_plot(data, fit, qubit):
                         params["g"],
                         params["bare_resonator_frequency"],
                     ]
-                    freq_fit = freq_r_transmon(biases1, *popt) * HZ_TO_GHZ
+                    freq_fit = freq_r_transmon(biases1, *popt)
             elif data.__class__.__name__ == "QubitFluxData":
-                fitting_report_label = "Qubit Frequency [GHz]"
+                fitting_report_label = "Qubit Frequency [Hz]"
                 if all(param in params for param in ["Ec", "Ej"]):
                     popt = [
                         fit.sweetspot[qubit],
@@ -149,15 +143,15 @@ def flux_dependence_plot(data, fit, qubit):
                         params["Ec"],
                         params["Ej"],
                     ]
-                    freq_fit = freq_q_mathieu(biases1, *popt) * HZ_TO_GHZ
+                    freq_fit = freq_q_mathieu(biases1, *popt)
                 else:
                     popt = [
                         fit.sweetspot[qubit],
                         params["Xi"],
                         params["d"],
-                        fit.frequency[qubit] * GHZ_TO_HZ,
+                        fit.frequency[qubit],
                     ]
-                    freq_fit = freq_q_transmon(biases1, *popt) * HZ_TO_GHZ
+                    freq_fit = freq_q_transmon(biases1, *popt)
 
             fig.add_trace(
                 go.Scatter(
@@ -174,8 +168,6 @@ def flux_dependence_plot(data, fit, qubit):
             values = []
 
             for key, value in fit.fitted_parameters[qubit].items():
-                if key in FREQUENCY_PARAMETERS:  # Select frequency parameters
-                    value *= HZ_TO_GHZ
                 values.append(np.round(value, 5))
                 parameters.append(FLUX_PARAMETERS[key])
 
@@ -187,14 +179,14 @@ def flux_dependence_plot(data, fit, qubit):
             fitting_report = table_html(table_dict(qubit, parameters, values))
 
     fig.update_xaxes(
-        title_text=f"Frequency (GHz)",
+        title_text=f"Frequency [GHz]",
         row=1,
         col=1,
     )
     if not data.__class__.__name__ == "CouplerSpectroscopyData":
-        fig.update_yaxes(title_text="Bias (V)", row=1, col=1)
+        fig.update_yaxes(title_text="Bias [V]", row=1, col=1)
     else:
-        fig.update_yaxes(title_text="Pulse Amplitude", row=1, col=1)
+        fig.update_yaxes(title_text="Pulse Amplitude [a.u.]", row=1, col=1)
 
     fig.add_trace(
         go.Heatmap(
@@ -207,21 +199,20 @@ def flux_dependence_plot(data, fit, qubit):
         col=2,
     )
     fig.update_xaxes(
-        title_text=f"Frequency (GHz)",
+        title_text=f"Frequency [GHz]",
         row=1,
         col=2,
     )
 
     if not data.__class__.__name__ == "CouplerSpectroscopyData":
-        fig.update_yaxes(title_text="Bias (V)", row=1, col=2)
+        fig.update_yaxes(title_text="Bias [V]", row=1, col=2)
     else:
-        fig.update_yaxes(title_text="Pulse Amplitude", row=1, col=2)
+        fig.update_yaxes(title_text="Pulse Amplitude [a.u.]", row=1, col=2)
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         legend=dict(orientation="h"),
     )
 
@@ -245,39 +236,38 @@ def flux_crosstalk_plot(data, qubit):
         cols=len(all_qubit_data),
         horizontal_spacing=0.3 / len(all_qubit_data),
         vertical_spacing=0.1,
-        subplot_titles=len(all_qubit_data) * ("MSR [V]",),
+        subplot_titles=len(all_qubit_data) * ("Signal [a.u.]",),
     )
     for col, (flux_qubit, qubit_data) in enumerate(all_qubit_data.items()):
         frequencies = qubit_data.freq * HZ_TO_GHZ
-        msr = qubit_data.msr
+        signal = qubit_data.signal
         if data.resonator_type == "2D":
-            msr = -msr
+            signal = -signal
 
         fig.add_trace(
             go.Heatmap(
                 x=frequencies,
                 y=qubit_data.bias,
-                z=qubit_data.msr * V_TO_UV,
+                z=qubit_data.signal,
             ),
             row=1,
             col=col + 1,
         )
 
         fig.update_xaxes(
-            title_text="Frequency (GHz)",
+            title_text="Frequency [GHz]",
             row=1,
             col=col + 1,
         )
 
         fig.update_yaxes(
-            title_text=f"Qubit {flux_qubit[1]}: Bias (V)", row=1, col=col + 1
+            title_text=f"Qubit {flux_qubit[1]}: Bias [V]", row=1, col=col + 1
         )
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
     fig.update_traces(showscale=False)  # disable colorbar
     fig.update_layout(
         showlegend=False,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
     )
 
     figures.append(fig)
@@ -444,14 +434,14 @@ def feature(x, order=3):
     return np.power(x, np.arange(order + 1).reshape(1, -1))
 
 
-def image_to_curve(x, y, z, msr_mask=0.5, alpha=1e-5, order=50):
+def image_to_curve(x, y, z, signal_mask=0.5, alpha=1e-5, order=50):
     """
     Extracts a feature characterized by min(z(x, y)). It considers all the data and applies Ridge regression on a polynomial ansatz in x. This allows obtaining a set of points describing the feature as y vs x.
 
     Args:
         x (ndarray) frequencies
         y (ndarray) bias
-        z (ndarray) msr
+        z (ndarray) signal
 
     Returns:
         y_pred (ndarray) frequencies
@@ -474,7 +464,7 @@ def image_to_curve(x, y, z, msr_mask=0.5, alpha=1e-5, order=50):
     znorm = (z - zmin) / (zmax - zmin)
 
     # Mask out region
-    mask = znorm < msr_mask
+    mask = znorm < signal_mask
     z = np.argwhere(mask)
     weights = znorm[mask] / float(znorm.max())
     # Column indices
