@@ -96,7 +96,7 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
 
 
 def lorentzian_fit(data, resonator_type=None, fit=None):
-    frequencies = data.freq * HZ_TO_GHZ
+    frequencies = data.freq
     voltages = data.signal
 
     # Guess parameters for Lorentzian max or min
@@ -128,17 +128,20 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
     ]
     # fit the model with the data and guessed parameters
     try:
-        fit_parameters, _ = curve_fit(
+        fit_parameters, perr = curve_fit(
             lorentzian,
             frequencies,
             voltages,
             p0=model_parameters,
+            sigma=data.error_signal,
         )
+        perr = np.sqrt(np.diag(perr)).tolist()
         model_parameters = list(fit_parameters)
     except RuntimeError:
         log.warning("lorentzian_fit: the fitting was not successful")
+        perr = [1] * 4
 
-    return model_parameters[1] * GHZ_TO_HZ, model_parameters
+    return model_parameters[1], model_parameters, perr
 
 
 def spectroscopy_plot(data, qubit, fit: Results = None):
@@ -241,8 +244,13 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
             fitting_report = table_html(
                 table_dict(
                     qubit,
-                    [label, "amplitude"],
-                    [np.round(freq[qubit], 0), fit.amplitude[qubit]],
+                    [label, "amplitude", "chi2 reduced"],
+                    [
+                        (freq[qubit], fit.error_fit_pars[qubit][1]),
+                        (fit.amplitude[qubit], fit.error_fit_pars[qubit][0]),
+                        fit.chi2_reduced[qubit],
+                    ],
+                    display_error=True,
                 )
             )
 
@@ -253,6 +261,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                         qubit,
                         [label, "attenuation"],
                         [np.round(freq[qubit], 0), fit.attenuation[qubit]],
+                        display_error=True,
                     )
                 )
 

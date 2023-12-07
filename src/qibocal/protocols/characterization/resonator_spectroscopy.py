@@ -12,7 +12,13 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from .utils import PowerLevel, lorentzian_fit, spectroscopy_plot
+from .utils import (
+    PowerLevel,
+    chi2_reduced,
+    lorentzian,
+    lorentzian_fit,
+    spectroscopy_plot,
+)
 
 
 @dataclass
@@ -39,22 +45,28 @@ class ResonatorSpectroscopyParameters(Parameters):
 class ResonatorSpectroscopyResults(Results):
     """ResonatorSpectroscopy outputs."""
 
-    frequency: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
+    frequency: dict[QubitId, float]
     """Readout frequency [GHz] for each qubit."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitted parameters."""
     bare_frequency: Optional[dict[QubitId, float]] = field(
-        default_factory=dict, metadata=dict(update="bare_resonator_frequency")
+        default_factory=dict,
     )
     """Bare resonator frequency [GHz] for each qubit."""
     amplitude: Optional[dict[QubitId, float]] = field(
-        default_factory=dict, metadata=dict(update="readout_amplitude")
+        default_factory=dict,
     )
     """Readout amplitude for each qubit."""
     attenuation: Optional[dict[QubitId, int]] = field(
-        default_factory=dict, metadata=dict(update="readout_attenuation")
+        default_factory=dict,
     )
     """Readout attenuation [dB] for each qubit."""
+    error_fit_pars: dict[QubitId, list] = field(default_factory=dict)
+    """Errors of the fit parameters."""
+    chi2_reduced: dict[QubitId, tuple[float, Optional[float]]] = field(
+        default_factory=dict
+    )
+    """Chi2 reduced."""
 
 
 ResSpecType = np.dtype(
@@ -163,8 +175,10 @@ def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
     bare_frequency = {}
     frequency = {}
     fitted_parameters = {}
+    error_fit_pars = {}
+    chi2 = {}
     for qubit in qubits:
-        freq, fitted_params = lorentzian_fit(
+        freq, fitted_params, perr = lorentzian_fit(
             data[qubit], resonator_type=data.resonator_type, fit="resonator"
         )
         if data.power_level is PowerLevel.high:
@@ -172,19 +186,33 @@ def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
 
         frequency[qubit] = freq
         fitted_parameters[qubit] = fitted_params
+        error_fit_pars[qubit] = perr
+        chi2[qubit] = (
+            chi2_reduced(
+                data[qubit].freq,
+                lorentzian(data[qubit].freq, *fitted_params),
+                data[qubit].error_signal,
+            ),
+            np.sqrt(2 / len(data[qubit].freq)),
+        )
 
+    print("DDDD", error_fit_pars)
     if data.power_level is PowerLevel.high:
         return ResonatorSpectroscopyResults(
             frequency=frequency,
             fitted_parameters=fitted_parameters,
             bare_frequency=bare_frequency,
             amplitude=data.amplitudes,
+            error_fit_pars=error_fit_pars,
+            chi2_reduced=chi2,
         )
     else:
         return ResonatorSpectroscopyResults(
             frequency=frequency,
             fitted_parameters=fitted_parameters,
             amplitude=data.amplitudes,
+            error_fit_pars=error_fit_pars,
+            chi2_reduced=chi2,
         )
 
 

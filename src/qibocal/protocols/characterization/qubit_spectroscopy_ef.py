@@ -50,7 +50,6 @@ def _fit_ef(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
     }
     params = asdict(results)
     params.update({"anharmonicity": anharmoncities})
-
     return QubitSpectroscopyEFResults(**params)
 
 
@@ -160,12 +159,19 @@ def _plot(data: QubitSpectroscopyEFData, qubit, fit: QubitSpectroscopyEFResults)
         report = table_html(
             table_dict(
                 qubit,
-                ["Frequency 1->2 [Hz]", "Amplitude [a.u.]", "Anharmonicity [Hz]"],
                 [
-                    np.round(fit.frequency[qubit], 0),
-                    fit.amplitude[qubit],
-                    np.round(fit.anharmonicity[qubit], 0),
+                    "Frequency 1->2 [Hz]",
+                    "Amplitude [a.u.]",
+                    "Anharmonicity [Hz]",
+                    "Chi2 reduced",
                 ],
+                [
+                    (fit.frequency[qubit], fit.error_fit_pars[qubit][1]),
+                    (fit.amplitude[qubit], fit.error_fit_pars[qubit][0]),
+                    (fit.anharmonicity[qubit], fit.error_fit_pars[qubit][2]),
+                    fit.chi2_reduced[qubit],
+                ],
+                display_error=True,
             )
         )
 

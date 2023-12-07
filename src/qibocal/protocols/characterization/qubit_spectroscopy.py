@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
@@ -12,7 +12,7 @@ from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
 from .resonator_spectroscopy import ResonatorSpectroscopyData, ResSpecType
-from .utils import lorentzian_fit, spectroscopy_plot
+from .utils import chi2_reduced, lorentzian, lorentzian_fit, spectroscopy_plot
 
 
 @dataclass
@@ -39,6 +39,12 @@ class QubitSpectroscopyResults(Results):
     """Input drive amplitude. Same for all qubits."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
+    chi2_reduced: dict[QubitId, tuple[float, Optional[float]]] = field(
+        default_factory=dict
+    )
+    """Chi2 reduced."""
+    error_fit_pars: dict[QubitId, list] = field(default_factory=dict)
+    """Errors of the fit parameters."""
 
 
 class QubitSpectroscopyData(ResonatorSpectroscopyData):
@@ -122,17 +128,29 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     qubits = data.qubits
     frequency = {}
     fitted_parameters = {}
+    error_fit_pars = {}
+    chi2 = {}
     for qubit in qubits:
-        freq, fitted_params = lorentzian_fit(
+        freq, fitted_params, perr = lorentzian_fit(
             data[qubit], resonator_type=data.resonator_type, fit="qubit"
         )
         frequency[qubit] = freq
         fitted_parameters[qubit] = fitted_params
-
+        error_fit_pars[qubit] = perr
+        chi2[qubit] = (
+            chi2_reduced(
+                data[qubit].freq,
+                lorentzian(data[qubit].freq, *fitted_params),
+                data[qubit].error_signal,
+            ),
+            np.sqrt(2 / len(data[qubit].freq)),
+        )
     return QubitSpectroscopyResults(
         frequency=frequency,
         fitted_parameters=fitted_parameters,
         amplitude=data.amplitudes,
+        error_fit_pars=error_fit_pars,
+        chi2_reduced=chi2,
     )
 
 
