@@ -58,7 +58,13 @@ class ResonatorSpectroscopyResults(Results):
 
 
 ResSpecType = np.dtype(
-    [("freq", np.float64), ("signal", np.float64), ("phase", np.float64)]
+    [
+        ("freq", np.float64),
+        ("signal", np.float64),
+        ("phase", np.float64),
+        ("error_signal", np.float64),
+        ("error_phase", np.float64),
+    ]
 )
 """Custom dtype for resonator spectroscopy."""
 
@@ -128,7 +134,7 @@ def _acquisition(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
+            averaging_mode=AveragingMode.SINGLESHOT,
         ),
         sweeper,
     )
@@ -141,9 +147,11 @@ def _acquisition(
             ResSpecType,
             (qubit),
             dict(
-                signal=result.magnitude,
-                phase=result.phase,
+                signal=result.average.voltage,
+                phase=np.mean(result.phase),
                 freq=delta_frequency_range + ro_pulses[qubit].frequency,
+                error_signal=result.average.std,
+                error_phase=np.std(result.phase, ddof=1),
             ),
         )
     return data

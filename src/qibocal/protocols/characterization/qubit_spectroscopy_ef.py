@@ -130,7 +130,7 @@ def _acquisition(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
+            averaging_mode=AveragingMode.SINGLESHOT,
         ),
         sweeper,
     )
@@ -143,9 +143,11 @@ def _acquisition(
             ResSpecType,
             (qubit),
             dict(
-                signal=result.magnitude,
-                phase=result.phase,
+                signal=result.average.voltage,
+                phase=np.mean(result.phase),
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
+                error_signal=result.average.std,
+                error_phase=np.std(result.phase, ddof=1),
             ),
         )
     return data

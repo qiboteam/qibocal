@@ -153,10 +153,14 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
     fitting_report = ""
 
     frequencies = qubit_data.freq * HZ_TO_GHZ
+    signal = qubit_data.signal
+    errors_signal = qubit_data.error_signal
+    errors_phase = qubit_data.error_phase
+    phase = qubit_data.phase
     fig.add_trace(
         go.Scatter(
             x=frequencies,
-            y=qubit_data.signal,
+            y=signal,
             opacity=1,
             name="Frequency",
             showlegend=True,
@@ -167,8 +171,21 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
     )
     fig.add_trace(
         go.Scatter(
+            x=np.concatenate((frequencies, frequencies[::-1])),
+            y=np.concatenate((signal + errors_signal, (signal - errors_signal)[::-1])),
+            fill="toself",
+            fillcolor=COLORBAND,
+            line=dict(color=COLORBAND_LINE),
+            showlegend=True,
+            name="Errors",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
             x=frequencies,
-            y=qubit_data.phase,
+            y=phase,
             opacity=1,
             name="Phase",
             showlegend=True,
@@ -177,7 +194,19 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         row=1,
         col=2,
     )
-
+    fig.add_trace(
+        go.Scatter(
+            x=np.concatenate((frequencies, frequencies[::-1])),
+            y=np.concatenate((phase + errors_phase, (phase - errors_phase)[::-1])),
+            fill="toself",
+            fillcolor=COLORBAND,
+            line=dict(color=COLORBAND_LINE),
+            showlegend=True,
+            name="Errors",
+        ),
+        row=1,
+        col=2,
+    )
     freqrange = np.linspace(
         min(frequencies),
         max(frequencies),
