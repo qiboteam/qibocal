@@ -155,7 +155,9 @@ def _fit(data: RabiAmplitudeVoltData) -> RabiAmplitudeVoltResults:
                 popt[2] * (x_max - x_min),
                 popt[3] - 2 * np.pi * x_min / (x_max - x_min) / popt[2],
             ]
-            pi_pulse_parameter = np.abs((translated_popt[2]) / 2)
+            pi_pulse_parameter = utils.correct_period(
+                period=translated_popt[2], phase=translated_popt[3]
+            )
 
         except:
             log.warning("rabi_fit: the fitting was not succesful")

@@ -12,7 +12,7 @@ def rabi_amplitude_function(x, offset, amplitude, period, phase):
     Args:
         x: Input data.
     """
-    return offset + amplitude * np.sin(2 * np.pi * x / period + phase)
+    return offset + amplitude * np.cos(2 * np.pi * x / period + phase)
 
 
 def rabi_length_function(x, offset, amplitude, period, phase, t2_inv):
@@ -190,3 +190,17 @@ def extract_rabi(data):
     if "RabiLength" in data.__class__.__name__:
         return "length", "Time [ns]", rabi_length_function
     raise RuntimeError("Data has to be a data structure of the Rabi routines.")
+
+
+def correct_period(period: float, phase: float):
+    """Correct period by taking phase into account.
+
+    https://github.com/qiboteam/qibocal/issues/656
+    """
+
+    naive_half_period = period / 2
+    # solution of cos (2 pi x / period + phase) = +/- 1 for k in [-2,2]
+    solutions = [naive_half_period * (k - phase / np.pi) for k in [-2, -1, 0, 1, 2]]
+    # chose solution closest to naive_half period
+
+    return solutions[np.argmin(np.abs(solutions - naive_half_period))]
