@@ -53,10 +53,11 @@ from .resonator_spectroscopy_attenuation import resonator_spectroscopy_attenuati
 from .resonator_twpa_freq import resonator_twpa_freq
 from .resonator_twpa_pow import resonator_twpa_pow
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
+from .spurious_identification import spurious_identification
 from .t1_t2_vs_temperature import t1_t2_vs_temperature
+from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtualz
 from .two_qubit_interaction.chevron import chevron
 from .two_qubit_interaction.cz_virtualz import cz_virtualz
-from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtualz
 
 
 class Operation(Enum):
@@ -118,3 +119,4 @@ class Operation(Enum):
     dispersive_shift_qutrit = dispersive_shift_qutrit
     coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
     coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
+    spurious_identification = spurious_identification
