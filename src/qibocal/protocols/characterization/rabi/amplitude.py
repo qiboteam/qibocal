@@ -165,7 +165,11 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
                 sigma=qubit_data.error,
             )
             perr = np.sqrt(np.diag(perr))
-            pi_pulse_parameter = utils.correct_period(period=popt[2], phase=popt[3])
+            pi_pulse_parameter = (
+                popt[2]
+                / 2
+                * utils.period_correction_factor(period=popt[2], phase=popt[3])
+            )
 
         except:
             log.warning("rabi_fit: the fitting was not succesful")

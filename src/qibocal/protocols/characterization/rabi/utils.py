@@ -192,15 +192,11 @@ def extract_rabi(data):
     raise RuntimeError("Data has to be a data structure of the Rabi routines.")
 
 
-def correct_period(period: float, phase: float):
+def period_correction_factor(phase: float):
     """Correct period by taking phase into account.
 
     https://github.com/qiboteam/qibocal/issues/656
     """
-
-    naive_half_period = period / 2
-    # solution of cos (2 pi x / period + phase) = +/- 1 for k in [-2,2]
-    solutions = [naive_half_period * (k - phase / np.pi) for k in [-2, -1, 0, 1, 2]]
-    # chose solution closest to naive_half period
-
-    return solutions[np.argmin(np.abs(solutions - naive_half_period))]
+    # solution of cos (2 pi x / period + phase) = +/- 1 for k in [-2,-1,0,1,2]
+    # with k that gets correction closest to period
+    return np.round(phase / np.pi + 1) - phase / np.pi
