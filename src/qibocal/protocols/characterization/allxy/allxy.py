@@ -112,7 +112,7 @@ def _acquisition(
             else:
                 z_proj = 2 * results[ig][serial].probability(0) - 1
             data.register_qubit(
-                AllXYType, (qubit), dict(prob=np.array(z_proj), gate=np.array([gate]))
+                AllXYType, (qubit), dict(prob=np.array([z_proj]), gate=np.array([gate]))
             )
 
     # finally, save the remaining data
