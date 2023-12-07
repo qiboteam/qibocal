@@ -5,7 +5,10 @@ from pathlib import Path
 import numpy as np
 import numpy.typing as npt
 
-from qibocal.protocols.characterization.utils import cumulative
+from qibocal.protocols.characterization.utils import (
+    cumulative,
+    effective_qubit_temperature,
+)
 
 
 def constructor(_hyperparams):
@@ -71,6 +74,7 @@ class QubitFit:
     fidelity: float = None
     assignment_fidelity: float = None
     probability_error: float = None
+    effective_qubit_temperature: float = None
 
     def fit(self, iq_coordinates: list, states: list):
         r"""Evaluate the model's parameters given the
@@ -112,6 +116,17 @@ class QubitFit:
         predictions = self.predict(iq_coordinates)
         self.probability_error = np.sum(np.absolute(states - predictions)) / len(
             predictions
+        )
+
+    def effective_temperature(self, predictions, qubit_frequency: float):
+        """Calculate effective qubit temperature."""
+        prob_1 = np.count_nonzero(predictions) / len(predictions)
+        prob_0 = 1 - prob_1
+        return effective_qubit_temperature(
+            prob_0=prob_0,
+            prob_1=prob_1,
+            qubit_frequency=qubit_frequency,
+            nshots=len(predictions),
         )
 
     def rotate(self, v):

@@ -27,13 +27,13 @@ class QubitFluxParameters(Parameters):
     """QubitFlux runcard inputs."""
 
     freq_width: int
-    """Width for frequency sweep relative to the qubit frequency (Hz)."""
+    """Width for frequency sweep relative to the qubit frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
     bias_width: float
     """Width for bias sweep [V]."""
     bias_step: float
-    """Bias step for sweep (V)."""
+    """Bias step for sweep [a.u.]."""
     drive_amplitude: Optional[float] = None
     """Drive amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
@@ -61,7 +61,7 @@ QubitFluxType = np.dtype(
     [
         ("freq", np.float64),
         ("bias", np.float64),
-        ("msr", np.float64),
+        ("signal", np.float64),
         ("phase", np.float64),
     ]
 )
@@ -85,10 +85,10 @@ class QubitFluxData(Data):
     data: dict[QubitId, npt.NDArray[QubitFluxType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, freq, bias, msr, phase):
+    def register_qubit(self, qubit, freq, bias, signal, phase):
         """Store output for single qubit."""
         self.data[qubit] = utils.create_data_array(
-            freq, bias, msr, phase, dtype=QubitFluxType
+            freq, bias, signal, phase, dtype=QubitFluxType
         )
 
 
@@ -166,7 +166,7 @@ def _acquisition(
             sweetspot = qubits[qubit].sweetspot
             data.register_qubit(
                 qubit,
-                msr=result.magnitude,
+                signal=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
                 bias=delta_bias_range + sweetspot,
@@ -205,13 +205,13 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
         biases = qubit_data.bias
         frequencies = qubit_data.freq
-        msr = qubit_data.msr
+        signal = qubit_data.signal
 
         if data.resonator_type == "2D":
-            msr = -msr
+            signal = -signal
 
         frequencies, biases = utils.image_to_curve(
-            frequencies, biases, msr, msr_mask=0.3
+            frequencies, biases, signal, signal_mask=0.3
         )
         max_c = biases[np.argmax(frequencies)]
         min_c = biases[np.argmin(frequencies)]

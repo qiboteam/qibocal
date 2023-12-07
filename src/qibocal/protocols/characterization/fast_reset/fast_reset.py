@@ -168,7 +168,7 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
         vertical_spacing=0.1,
         subplot_titles=(
             "Fast Reset",
-            "Relaxation Time",
+            "Relaxation Time [ns]",
         ),
     )
 
@@ -221,9 +221,8 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
     # last part
     fig.update_layout(
         showlegend=False,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="State prepared",
-        yaxis_title="State read",
+        yaxis_title="State measured",
     )
 
     figures.append(fig)

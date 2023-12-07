@@ -3,8 +3,7 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-import plotly.figure_factory as ff
-import plotly.graph_objects as go
+import plotly.express as px
 from qibo import gates
 from qibo.models import Circuit
 from qibolab import ExecutionParameters
@@ -27,7 +26,7 @@ class ReadoutMitigationMatrixParameters(Parameters):
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
+    """Relaxation time [ns]."""
 
 
 @dataclass
@@ -172,30 +171,28 @@ def _plot(
 ):
     """Plotting function for readout mitigation matrix."""
     fitting_report = ""
-    fig = go.Figure()
-
+    figs = []
     if fit is not None:
         computational_basis = [
             format(i, f"0{len(qubit)}b") for i in range(2 ** len(qubit))
         ]
+        z = fit.measurement_matrix[tuple(qubit)]
 
-        x = computational_basis
-        y = computational_basis[::-1]
-
-        [X, Y] = np.meshgrid(x, y)
-
-        Z = fit.measurement_matrix[tuple(qubit)]
-
-        fig = ff.create_annotated_heatmap(Z, showscale=True)
-        fig.update_layout(
-            uirevision="0",  # ``uirevision`` allows zooming while live plotting
-            xaxis_title="State prepared",
-            yaxis_title="State measured",
+        fig = px.imshow(
+            z,
+            x=computational_basis,
+            y=computational_basis[::-1],
+            text_auto=True,
+            labels={
+                "x": "Prepeared States",
+                "y": "Measured States",
+                "color": "Probabilities",
+            },
             width=700,
             height=700,
         )
-
-    return [fig], None
+        figs.append(fig)
+    return figs, fitting_report
 
 
 readout_mitigation_matrix = Routine(_acquisition, _fit, _plot)

@@ -1,0 +1,15 @@
+platform: <platform_name>
+
+qubits: [0]
+
+actions:
+  - id: resonator_spectroscopy low power
+    priority: 0
+    operation: resonator_spectroscopy
+    parameters:
+        freq_width: 60_000_000
+        freq_step: 200_000
+        amplitude: 0.03
+        power_level: low
+        nshots: 1024
+        relaxation_time: 100000

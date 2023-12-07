@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -10,7 +11,7 @@ from qibolab.qubits import QubitId
 from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
-from ..utils import table_dict, table_html
+from ..utils import chi2_reduced, table_dict, table_html
 from . import t1, utils
 
 
@@ -36,6 +37,8 @@ class ZenoResults(Results):
     """T1 for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    chi2: dict[QubitId, tuple[float, Optional[float]]]
+    """Chi squared estimate mean value and error."""
 
 
 def _acquisition(
@@ -110,8 +113,18 @@ def _fit(data: ZenoData) -> ZenoResults:
             y = p_0-p_1 e^{-x p_2}.
     """
     t1s, fitted_parameters = utils.exponential_fit_probability(data)
-
-    return ZenoResults(t1s, fitted_parameters)
+    chi2 = {
+        qubit: (
+            chi2_reduced(
+                data[qubit].prob,
+                utils.exp_decay(data[qubit].wait, *fitted_parameters[qubit]),
+                data[qubit].error,
+            ),
+            np.sqrt(2 / len(data[qubit].prob)),
+        )
+        for qubit in data.qubits
+    }
+    return ZenoResults(t1s, fitted_parameters, chi2)
 
 
 def _plot(data: ZenoData, fit: ZenoResults, qubit):
@@ -166,10 +179,11 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["T1 [ns]", "Readout Pulse [ns]"],
+                ["T1 [ns]", "Readout Pulse [ns]", "chi2 reduced"],
                 [
                     fit.zeno_t1[qubit],
                     np.array(fit.zeno_t1[qubit]) * data.readout_duration[qubit],
+                    fit.chi2[qubit],
                 ],
                 display_error=True,
             )

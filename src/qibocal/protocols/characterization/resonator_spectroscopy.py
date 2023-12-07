@@ -20,9 +20,9 @@ class ResonatorSpectroscopyParameters(Parameters):
     """ResonatorSpectroscopy runcard inputs."""
 
     freq_width: int
-    """Width for frequency sweep relative  to the readout frequency (Hz)."""
+    """Width for frequency sweep relative  to the readout frequency [Hz]."""
     freq_step: int
-    """Frequency step for sweep (Hz)."""
+    """Frequency step for sweep [Hz]."""
     power_level: PowerLevel
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
@@ -41,7 +41,7 @@ class ResonatorSpectroscopyResults(Results):
 
     frequency: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency [GHz] for each qubit."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
+    fitted_parameters: dict[QubitId, list[float]]
     """Raw fitted parameters."""
     bare_frequency: Optional[dict[QubitId, float]] = field(
         default_factory=dict, metadata=dict(update="bare_resonator_frequency")
@@ -58,7 +58,7 @@ class ResonatorSpectroscopyResults(Results):
 
 
 ResSpecType = np.dtype(
-    [("freq", np.float64), ("msr", np.float64), ("phase", np.float64)]
+    [("freq", np.float64), ("signal", np.float64), ("phase", np.float64)]
 )
 """Custom dtype for resonator spectroscopy."""
 
@@ -135,14 +135,13 @@ def _acquisition(
 
     # retrieve the results for every qubit
     for qubit in qubits:
-        # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         # store the results
         data.register_qubit(
             ResSpecType,
             (qubit),
             dict(
-                msr=result.magnitude,
+                signal=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + ro_pulses[qubit].frequency,
             ),
