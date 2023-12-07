@@ -156,7 +156,7 @@ def _fit(data: RabiAmplitudeVoltData) -> RabiAmplitudeVoltResults:
                 popt[3] - 2 * np.pi * x_min / (x_max - x_min) / popt[2],
             ]
             pi_pulse_parameter = utils.period_correction_factor(
-                period=translated_popt[2], phase=translated_popt[3]
+                phase=translated_popt[3]
             )
 
         except:

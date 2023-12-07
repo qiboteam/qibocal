@@ -166,9 +166,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
             )
             perr = np.sqrt(np.diag(perr))
             pi_pulse_parameter = (
-                popt[2]
-                / 2
-                * utils.period_correction_factor(period=popt[2], phase=popt[3])
+                popt[2] / 2 * utils.period_correction_factor(phase=popt[3])
             )
 
         except:
