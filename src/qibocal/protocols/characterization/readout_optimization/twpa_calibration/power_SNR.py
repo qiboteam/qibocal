@@ -12,8 +12,8 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-
 from qibocal.protocols.characterization.utils import HZ_TO_GHZ, V_TO_UV
+
 
 @dataclass
 class ResonatorTWPAPowerParameters(Parameters):
