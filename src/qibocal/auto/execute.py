@@ -7,11 +7,15 @@ from qibolab.platform import Platform
 
 from qibocal.config import log
 
+from ..config import raise_error
 from .graph import Graph
 from .history import History
 from .runcard import Id, Runcard
 from .status import Failure
 from .task import Qubits, Task
+
+MAX_ITERATIONS = 5
+"""Maximum number of iteration for single task."""
 
 
 @dataclass
@@ -93,7 +97,6 @@ class Executor:
 
         """
         candidates = self.successors(self.current)
-
         if len(candidates) == 0:
             candidates.extend([])
 
@@ -134,6 +137,12 @@ class Executor:
         while self.head is not None:
             task = self.current
             log.info(f"Executing mode {mode.name} on {task.id}.")
+
+            if self.history.iteration_counter(task.id) > MAX_ITERATIONS:
+                raise_error(
+                    ValueError,
+                    f"Maximum number of iterations {MAX_ITERATIONS} reached!",
+                )
             completed = task.run(
                 platform=self.platform,
                 qubits=self.qubits,
@@ -141,11 +150,21 @@ class Executor:
                 mode=mode,
             )
             self.history.push(completed)
-            if isinstance(completed.status, Failure) and mode.name == "autocalibration":
-                log.warning("Stopping execution due to error in validation.")
-                yield task.uid
-                break
             self.head = self.next()
+
+            if isinstance(completed.status, Failure) and mode.name == "autocalibration":
+                if task.action.handler is None:
+                    log.warning("Stopping execution due to error in validation.")
+                    yield completed.task.uid
+                    break
+                else:
+                    log.info(
+                        f"Handling validation error by executing node {task.action.handler.id}"
+                    )
+
+                    self.head = task.action.handler.id
+                    yield completed.task.uid
+
             update = self.update and task.update
             if (
                 mode.name in ["autocalibration", "fit"]
@@ -153,4 +172,5 @@ class Executor:
                 and update
             ):
                 task.update_platform(results=completed.results, platform=self.platform)
-            yield task.uid
+
+            yield completed.task.uid

@@ -9,6 +9,7 @@ from qibo.backends import Backend, GlobalBackend
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
+from .handlers import Handler
 from .operation import OperationId
 from .validation import Validator
 
@@ -38,6 +39,8 @@ class Action:
     """Runcard update mechanism."""
     validator: Optional[Validator] = None
     """Define validation scheme and parameters."""
+    handler: Optional[Handler] = None
+    """Define handler and parameters."""
     parameters: Optional[dict[str, Any]] = None
     """Input parameters, either values or provider reference."""
 

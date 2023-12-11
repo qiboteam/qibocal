@@ -27,4 +27,7 @@ class Validator:
             f"Performing validation in qubit {qubit} of {results.__class__.__name__} using {self.scheme} scheme."
         )
         validator = VALIDATORS[self.scheme]
-        return validator(results, qubit, **self.parameters)
+
+        if self.parameters is not None:
+            return validator(results, qubit, **self.parameters)
+        return validator(results, qubit)
