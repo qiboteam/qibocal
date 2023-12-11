@@ -191,8 +191,8 @@ def _acquisition(
                 sequence.add(RX_pulses[qubit])
                 sequence.add(ro_pulses[qubit])
 
-            sequences.append(sequence)
-            all_ro_pulses.append(ro_pulses)
+        sequences.append(sequence)
+        all_ro_pulses.append(ro_pulses)
 
     data = SingleShotClassificationData(
         nshots=params.nshots,
