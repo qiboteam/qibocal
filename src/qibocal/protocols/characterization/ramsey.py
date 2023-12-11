@@ -225,7 +225,6 @@ def _acquisition(
                 if params.unrolling:
                     result = results[serial][0]
                 else:
-                    # FIXME: Crash
                     result = results[ig][serial]
                 prob = result.probability()
                 error = np.sqrt(prob * (1 - prob) / params.nshots)
