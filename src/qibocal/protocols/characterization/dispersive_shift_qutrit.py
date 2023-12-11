@@ -14,7 +14,6 @@ from qibocal.auto.operation import Qubits, Results, Routine
 from qibocal.protocols.characterization.utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
-    V_TO_UV,
     lorentzian,
     lorentzian_fit,
     table_dict,
@@ -40,11 +39,11 @@ class DispersiveShiftQutritResults(Results):
     """State one frequency."""
     frequency_state_two: dict[QubitId, float]
     """State two frequency."""
-    fitted_parameters_state_zero: dict[QubitId, dict[str, float]]
+    fitted_parameters_state_zero: dict[QubitId, list[float]]
     """Fitted parameters state zero."""
-    fitted_parameters_state_one: dict[QubitId, dict[str, float]]
+    fitted_parameters_state_one: dict[QubitId, list[float]]
     """Fitted parameters state one."""
-    fitted_parameters_state_two: dict[QubitId, dict[str, float]]
+    fitted_parameters_state_two: dict[QubitId, list[float]]
     """Fitted parameters state one."""
 
     @property
@@ -139,7 +138,7 @@ def _acquisition(
                 dict(
                     freq=sequence.get_qubit_pulses(qubit).ro_pulses[0].frequency
                     + delta_frequency_range,
-                    msr=result.magnitude,
+                    signal=result.magnitude,
                     phase=result.phase,
                 ),
             )
@@ -193,8 +192,8 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=(
-            "MSR (uV)",
-            "phase (rad)",
+            "Signal [a.u.]",
+            "phase [rad]",
         ),
     )
     # iterate over multiple data folders
@@ -220,7 +219,7 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
         fig.add_trace(
             go.Scatter(
                 x=frequencies,
-                y=q_data.msr * V_TO_UV,
+                y=q_data.signal,
                 opacity=opacity,
                 name=f"{label}",
                 showlegend=True,
@@ -259,7 +258,7 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
             fig.add_trace(
                 go.Scatter(
                     x=freqrange,
-                    y=lorentzian(freqrange, **params),
+                    y=lorentzian(freqrange, *params),
                     name=f"{label} Fit",
                     line=go.scatter.Line(dash="dot"),
                 ),
@@ -287,10 +286,10 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
         )
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Frequency (GHz)",
-        yaxis_title="MSR (uV)",
-        xaxis2_title="Frequency (GHz)",
-        yaxis2_title="Phase (rad)",
+        xaxis_title="Frequency [GHz]",
+        yaxis_title="Signal [a.u.]",
+        xaxis2_title="Frequency [GHz]",
+        yaxis2_title="Phase [rad]",
     )
 
     figures.append(fig)

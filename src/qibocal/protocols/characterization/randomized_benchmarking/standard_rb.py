@@ -496,7 +496,6 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",
         xaxis_title="Circuit depth",
         yaxis_title="Survival Probability",
     )

@@ -32,7 +32,7 @@ class RabiLengthVoltResults(RabiLengthResults):
 
 
 RabiLenVoltType = np.dtype(
-    [("length", np.float64), ("msr", np.float64), ("phase", np.float64)]
+    [("length", np.float64), ("signal", np.float64), ("phase", np.float64)]
 )
 """Custom dtype for rabi amplitude."""
 
@@ -107,7 +107,7 @@ def _acquisition(
             (qubit),
             dict(
                 length=qd_pulse_duration_range,
-                msr=result.magnitude,
+                signal=result.magnitude,
                 phase=result.phase,
             ),
         )
@@ -124,14 +124,14 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         rabi_parameter = qubit_data.length
-        voltages = qubit_data.msr
+        voltages = qubit_data.signal
 
         y_min = np.min(voltages)
         y_max = np.max(voltages)
         x_min = np.min(rabi_parameter)
         x_max = np.max(rabi_parameter)
         x = (rabi_parameter - x_min) / (x_max - x_min)
-        y = (voltages - y_min) / (y_max - y_min)
+        y = (voltages - y_min) / (y_max - y_min) - 1 / 2
 
         # Guessing period using fourier transform
         ft = np.fft.rfft(y)
@@ -141,21 +141,21 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
         # 0.5 hardcoded guess for less than one oscillation
         f = x[index] / (x[1] - x[0]) if index is not None else 0.5
 
-        pguess = [0.5, 0.5, 1 / f, np.pi / 2, 0]
+        pguess = [0, np.sign(y[0]) * 0.5, 1 / f, 0, 0]
         try:
             popt, _ = curve_fit(
-                utils.rabi_length_fit,
+                utils.rabi_amplitude_function,
                 x,
                 y,
                 p0=pguess,
                 maxfev=100000,
                 bounds=(
-                    [0, 0, 0, -np.pi, 0],
+                    [0, -1, 0, -np.pi, 0],
                     [1, 1, np.inf, np.pi, np.inf],
                 ),
             )
             translated_popt = [  # change it according to the fit function
-                (y_max - y_min) * popt[0] + y_min,
+                (y_max - y_min) * (popt[0] + 1 / 2) + y_min,
                 (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
                 popt[2] * (x_max - x_min),
                 popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
@@ -166,7 +166,6 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
             log.warning("rabi_fit: the fitting was not succesful")
             pi_pulse_parameter = 0
             translated_popt = [0, 0, 1, 0, 0]
-
         durations[qubit] = pi_pulse_parameter
         fitted_parameters[qubit] = translated_popt
 
@@ -182,5 +181,5 @@ def _plot(data: RabiLengthVoltData, fit: RabiLengthVoltResults, qubit):
     return utils.plot(data, qubit, fit)
 
 
-rabi_length_msr = Routine(_acquisition, _fit, _plot, _update)
+rabi_length_signal = Routine(_acquisition, _fit, _plot, _update)
 """RabiLength Routine object."""
