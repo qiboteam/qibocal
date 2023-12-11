@@ -380,19 +380,20 @@ actions:
     priority: 0
     operation: ramsey_signal
     parameters:
+      unrolling: False
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
       nshots: 10
 
-  - id: ramsey detuned sequences
+  - id: ramsey_signal_detuned
     priority: 0
-    operation: ramsey_sequences
+    operation: ramsey_signal
     parameters:
+      unrolling: True
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
-      n_osc: 2
       nshots: 10
 
   - id: ramsey
