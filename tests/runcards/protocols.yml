@@ -432,7 +432,7 @@ actions:
       beta_param: null
       nshots: 10
 
-  - id: allXY
+  - id: allXY unrolling
     priority: 0
     operation: allxy
     parameters:
