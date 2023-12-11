@@ -36,7 +36,6 @@ from .rabi.length import rabi_length
 from .rabi.length_sequences import rabi_length_sequences
 from .rabi.length_signal import rabi_length_signal
 from .ramsey import ramsey
-from .ramsey_sequences import ramsey_sequences
 from .ramsey_signal import ramsey_signal
 from .randomized_benchmarking.standard_rb import standard_rb
 from .readout_characterization import readout_characterization
@@ -72,7 +71,6 @@ class Operation(Enum):
     rabi_length_signal = rabi_length_signal
     ramsey = ramsey
     ramsey_signal = ramsey_signal
-    ramsey_sequences = ramsey_sequences
     t1 = t1
     t1_signal = t1_signal
     t1_sequences = t1_sequences
