@@ -177,8 +177,7 @@ def _acquisition(
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequences, all_ro_pulses = [], []
     for state in [0, 1]:
-        sequences.append(PulseSequence())
-        all_ro_pulses.append({})
+        sequence = PulseSequence()
         RX_pulses = {}
         ro_pulses = {}
         for qubit in qubits:
@@ -187,12 +186,13 @@ def _acquisition(
                 qubit, start=RX_pulses[qubit].finish
             )
             if state == 0:
-                sequences[-1].add(ro_pulses[qubit])
-                all_ro_pulses[-1][qubit] = ro_pulses[qubit]
+                sequence.add(ro_pulses[qubit])
             elif state == 1:
-                sequences[-1].add(RX_pulses[qubit])
-                sequences[-1].add(ro_pulses[qubit])
-                all_ro_pulses[-1][qubit] = ro_pulses[qubit]
+                sequence.add(RX_pulses[qubit])
+                sequence.add(ro_pulses[qubit])
+
+            sequences.append(sequence)
+            all_ro_pulses.append(ro_pulses)
 
     data = SingleShotClassificationData(
         nshots=params.nshots,
