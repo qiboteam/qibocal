@@ -215,7 +215,7 @@ def _acquisition(
             platform = None
 
         noise_model = getattr(noisemodels, params.noise_model)(params.noise_params)
-        params.noise_params = list(noise_model.params)
+        params.noise_params = noise_model.params.tolist()
 
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     nqubits = platform.nqubits if platform else max(qubits) + 1
