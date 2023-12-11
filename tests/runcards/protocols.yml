@@ -409,6 +409,14 @@ actions:
     priority: 0
     operation: single_shot_classification
     parameters:
+      unrolling: False
+      nshots: 10
+
+  - id: single shot classification
+    priority: 0
+    operation: single_shot_classification
+    parameters:
+      unrolling: False
       nshots: 10
 
   - id: single shot classification with classifiers
