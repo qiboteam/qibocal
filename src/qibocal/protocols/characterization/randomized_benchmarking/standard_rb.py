@@ -263,8 +263,6 @@ def _fit(data: RBData) -> StandardRBResult:
             )
 
         # Fit the initial data and compute error bars
-        # If bootstrap was not performed, y_estimates can be inhomogeneous
-        # samples + bootstrap ???
         error_bars = data_uncertainties(
             samples,
             uncertainties,
@@ -319,7 +317,6 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     fig = go.Figure()
     fitting_report = ""
 
-    # Find a better way of recover signals for qubit and depths
     x = data.depths
     y = data.samples_to_p0s(qubit, x)
 
@@ -407,5 +404,4 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     return [fig], fitting_report
 
 
-# Build the routine object which is used by qq-auto.
 standard_rb = Routine(_acquisition, _fit, _plot)
