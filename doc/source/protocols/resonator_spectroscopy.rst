@@ -136,5 +136,5 @@ and also here:
 .. rubric:: References
 
 .. bibliography::
-   :cited:
+   :filter: docname in docnames
    :style: plain

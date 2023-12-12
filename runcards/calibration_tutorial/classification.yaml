@@ -1,0 +1,10 @@
+platform: <platform_name>
+
+qubits: [0]
+
+actions:
+  - id: single shot classification 1
+    priority: 0
+    operation: single_shot_classification
+    parameters:
+        nshots: 5000
