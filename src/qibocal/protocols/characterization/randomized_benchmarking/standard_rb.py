@@ -1,4 +1,3 @@
-from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, TypedDict, Union
 
@@ -137,8 +136,48 @@ def resample_p0(data, sample_size=100, homogeneous: bool = True):
     return resampled_data
 
 
-def setup_scan(
-    params: StandardRBParameters, qubits: Union[Qubits, list[QubitId]], nqubits: int
+# def setup_scan(
+#     params: StandardRBParameters, qubits: Union[Qubits, list[QubitId]], nqubits: int
+# ) -> Iterable:
+#     """Returns an iterator of single-qubit random self-inverting Clifford circuits.
+
+#     Args:
+#         params (StandardRBParameters): Parameters of the RB protocol.
+#         qubits (dict[int, Union[str, int]] or list[Union[str, int]]):
+#             list of qubits the circuit is executed on.
+#         nqubits (int, optional): Number of qubits of the resulting circuits.
+#             If ``None``, sets ``len(qubits)``. Defaults to ``None``.
+
+#     Returns:
+#         Iterable: The iterator of circuits.
+#     """
+
+#     qubit_ids = list(qubits) if isinstance(qubits, dict) else qubits
+
+#     def make_circuit(depth):
+#         """Returns a random Clifford circuit with inverse of ``depth``."""
+
+#         # This function is needed so that the inside of the layer_circuit function layer_gen()
+#         # can be called for each layer of the circuit, and it returns a random layer of
+#         # Clifford gates. Could also be a generator, it just has to be callable.
+#         def layer_gen():
+#             """Returns a circuit with a random single-qubit clifford unitary."""
+#             return random_clifford(len(qubit_ids), params.seed)
+
+#         circuit = layer_circuit(layer_gen, depth)
+#         add_inverse_layer(circuit)
+#         add_measurement_layer(circuit)
+
+#         return embed_circuit(circuit, nqubits, qubit_ids)
+
+#     return map(make_circuit, params.depths * params.niter)
+
+
+def random_circuit(
+    depth: int,
+    params: StandardRBParameters,
+    qubits: Union[Qubits, list[QubitId]],
+    nqubits: int,
 ) -> Iterable:
     """Returns an iterator of single-qubit random self-inverting Clifford circuits.
 
@@ -171,7 +210,7 @@ def setup_scan(
 
         return embed_circuit(circuit, nqubits, qubit_ids)
 
-    return map(make_circuit, params.depths * params.niter)
+    return map(make_circuit, depth * params.niter)
 
 
 def _acquisition(
@@ -195,10 +234,10 @@ def _acquisition(
     """
 
     from qibo.backends import GlobalBackend
-    
+
     GlobalBackend.set_backend("qibolab", platform)
     backend = GlobalBackend()
-    
+
     # For simulations, a noise model can be added.
     noise_model = None
     if params.noise_model:
@@ -224,42 +263,58 @@ def _acquisition(
 
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     nqubits = platform.nqubits if platform else max(qubits) + 1
-    scan = setup_scan(params, qubits, nqubits)
-
-    # 2. Execute the scan.
     data = RBData(params=params.__dict__, depths=list(set(params.depths)))
     circuits = []
-    samples = defaultdict(list)
-    # Iterate through the scan and execute each circuit.
-    for circuit in scan:
-        # The inverse and measurement gate don't count for the depth.
-        if noise_model is not None:
-            circuit = noise_model.apply(circuit)
+
+    # # 2. Execute the scan.
+
+    # samples = defaultdict(list)
+    # scan = setup_scan(params, qubits, nqubits)
+    # # Iterate through the scan and execute each circuit.
+    # for circuit in scan:
+    #     # The inverse and measurement gate don't count for the depth.
+    #     if noise_model is not None:
+    #         circuit = noise_model.apply(circuit)
+    #     circuits.append(circuit)
+
+    # multiple_sample =  backend.execute_circuits(circuits, nshots=params.nshots)
+    # for sample, circuit in zip(multiple_sample, circuits):
+    #     depth = (circuit.depth - 2) if circuit.depth > 1 else 0
+    #     sample = sample.samples()
+    #     # Every executed circuit gets a row where the data is stored.
+    #     # TODO: Try to get register qubit here
+    #     samples[depth].append(sample.tolist())
+
+    # new_samples = defaultdict(list)
+    # for qn, q in enumerate(qubits):
+    #     for d in params.depths:
+    #         for i in range(params.niter):
+    #             for n in range(params.nshots):
+    #                 new_samples[q, d].append(samples[d][i][n][qn])
+
+    # for key in list(new_samples.keys()):
+    #     data.register_qubit(
+    #         RBType,
+    #         key,
+    #         dict(
+    #             samples=new_samples[key[0], key[1]],
+    #         ),
+    #     )
+
+    for d in params.depths:
+        circuit = random_circuit(d, params, qubits, nqubits)
         circuits.append(circuit)
-        
-    multiple_sample =  backend.execute_circuits(circuits, nshots=params.nshots)
-    for sample, circuit in zip(multiple_sample, circuits):
-        depth = (circuit.depth - 2) if circuit.depth > 1 else 0
-        sample = sample.samples()
-        # Every executed circuit gets a row where the data is stored.
-        # TODO: Try to get register qubit here
-        samples[depth].append(sample.tolist())
+    executed_circuits = backend.execute_circuits(circuits, nshots=params.nshots)
 
-    new_samples = defaultdict(list)
-    for qn, q in enumerate(qubits):
-        for d in params.depths:
-            for i in range(params.niter):
-                for n in range(params.nshots):
-                    new_samples[q, d].append(samples[d][i][n][qn])
-
-    for key in list(new_samples.keys()):
-        data.register_qubit(
-            RBType,
-            key,
-            dict(
-                samples=new_samples[key[0], key[1]],
-            ),
-        )
+    for executed_circuit in executed_circuits:
+        for qn, q in enumerate(qubits):
+            data.register_qubit(
+                RBType,
+                (q, d),
+                dict(
+                    samples=executed_circuit.samples()[qn],
+                ),
+            )
 
     #     # signals = defaultdict(list)
     #     # for key, value in samples.items():
