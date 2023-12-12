@@ -137,23 +137,27 @@ class AbstractData:
             json.dumps(serialize(self.global_params), indent=4)
         )
 
-    @classmethod
-    def load(cls, path, npz_file, json_file):
-        with open(path / npz_file) as f:
-            raw_data_dict = dict(np.load(path / npz_file))
-            data_dict = {}
+    @staticmethod
+    def load_data(path, npz_file):
+        if (path / npz_file).is_file():
+            with open(path / npz_file) as f:
+                raw_data_dict = dict(np.load(path / npz_file))
+                data_dict = {}
 
-            for data_key, array in raw_data_dict.items():
-                data_dict[load(data_key)] = np.rec.array(array)
+                for data_key, array in raw_data_dict.items():
+                    data_dict[load(data_key)] = np.rec.array(array)
+
+            return data_dict
+        return 0
+
+    @staticmethod
+    def load_params(path, json_file):
         if (path / json_file).is_file():
             params = json.loads((path / json_file).read_text())
 
             params = deserialize(params)
-            obj = cls(data=data_dict, **params)
-        else:
-            obj = cls(data=data_dict)
-
-        return obj
+            return params
+        return 0
 
 
 class Data(AbstractData):
@@ -196,7 +200,11 @@ class Data(AbstractData):
 
     @classmethod
     def load(cls, path, npz_file=DATAFILE, json_file=JSONFILE):
-        return super().load(path, npz_file, json_file)
+        data_dict = super().load_data(path, npz_file)
+        params = super().load_params(path, json_file)
+        if params == 0:
+            return cls(data=data_dict)
+        return cls(data=data_dict, **params)
 
 
 @dataclass
@@ -231,7 +239,11 @@ class Results(AbstractData):
 
     @classmethod
     def load(cls, path, npz_file=RESULTSFILE_DATA, json_file=RESULTSFILE):
-        return super().load(path, npz_file, json_file)
+        data_dict = super().load_data(path, npz_file)
+        params = super().load_params(path, json_file)
+        if data_dict == 0:
+            return cls(**params)
+        return cls(data=data_dict, **params)
 
 
 # Internal types, in particular `_ParametersT` is used to address function
