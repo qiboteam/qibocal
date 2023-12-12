@@ -138,7 +138,7 @@ class AbstractData:
             )
 
     def _to_json(self, path):
-        """Helper function to dump to json in RESULTSFILE path."""
+        """Helper function to dump to json."""
         (path / self.json_file).write_text(
             json.dumps(serialize(self.global_params), indent=4)
         )
