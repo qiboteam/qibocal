@@ -212,46 +212,34 @@ def _fit(data: RBData) -> StandardRBResult:
     """
     qubits = data.qubits
 
-    fidelity = {}
-    pulse_fidelity = {}
-    popts = {}
-    perrs = {}
+    fidelity, pulse_fidelity = {}, {}
+    popts, perrs = {}, {}
     error_barss = {}
 
     for qubit in qubits:
         # Extract depths and probabilities
         x = data.depths
-        y_scatter = data.samples_to_p0s(qubit, x)
+        y = data.samples_to_p0s(qubit, x)
 
-        # TODO: Remove this extra list needed to work
-        special_y = []
-        for y in y_scatter:
-            special_y.append([y])
-        # TODO: Remove this extra list needed to work
-        y_scatter = [y_scatter]
-
-        y_estimates = []
+        samples = []
         for depth in x:
-            y_estimates.append(data.data[qubit, depth])
+            samples.append(data.data[qubit, depth])
 
         """This is when you sample a depth more than once"""
-        homogeneous = all(len(y_estimates[0]) == len(row) for row in y_estimates)
+        homogeneous = all(len(samples[0]) == len(row) for row in samples)
         if homogeneous is False:
             raise NotImplementedError
-        y_estimates = np.array(y_estimates)
 
         # Extract fitting and bootstrap parameters if given
         uncertainties = data.params["uncertainties"]
         n_bootstrap = data.params["n_bootstrap"]
 
         popt_estimates = []
-
         # FIXME: Check if working correctly
-        # n_bootstrap = None
         if uncertainties and n_bootstrap:
             # Non-parametric bootstrap resampling
             bootstrap_y = bootstrap(
-                special_y,
+                samples,
                 n_bootstrap,
                 homogeneous=homogeneous,
                 seed=data.params["seed"],
@@ -263,7 +251,7 @@ def _fit(data: RBData) -> StandardRBResult:
             )
 
             # Compute y and popt estimates for each bootstrap iteration
-            y_estimates = (
+            samples = (
                 np.mean(bootstrap_y, axis=1)
                 if homogeneous
                 else [np.mean(y_iter, axis=0) for y_iter in bootstrap_y]
@@ -271,28 +259,19 @@ def _fit(data: RBData) -> StandardRBResult:
             popt_estimates = np.apply_along_axis(
                 lambda y_iter: fit_exp1B_func(x, y_iter, bounds=[0, 1])[0],
                 axis=0,
-                arr=np.array(y_estimates),
+                arr=np.array(samples),
             )
 
         # Fit the initial data and compute error bars
-        # y = [np.mean(y_row) for y_row in y_scatter]
         # If bootstrap was not performed, y_estimates can be inhomogeneous
         # samples + bootstrap ???
-        # y_estimates = []
-        # for depth in x:
-        #     y_estimates.append(data.data[qubit, depth])
-        # y_estimates = np.array(y_estimates)
-
-        # FIXME: Check if working correctly
         error_bars = data_uncertainties(
-            y_estimates,
+            samples,
             uncertainties,
-            data_median=y_scatter,
+            data_median=y,
             homogeneous=(homogeneous or n_bootstrap != 0),
         )
 
-        # Generate symmetric non-zero uncertainty of y for the fit
-        # are they overeestimating uncertanties for the fit ???
         sigma = None
         if error_bars is not None:
             sigma = (
@@ -301,9 +280,7 @@ def _fit(data: RBData) -> StandardRBResult:
                 else error_bars
             ) + 0.1
 
-        popt, perr = fit_exp1B_func(x, y_scatter, sigma=sigma, bounds=[0, 1])
-
-        popts[qubit] = popt
+        popt, perr = fit_exp1B_func(x, y, sigma=sigma, bounds=[0, 1])
 
         # Compute fit uncertainties
         if len(popt_estimates):
@@ -317,12 +294,11 @@ def _fit(data: RBData) -> StandardRBResult:
 
         # conversion from np.array to list/tuple
         error_bars = error_bars.tolist() if error_bars is not None else error_bars
-        error_barss[qubit] = error_bars
-
         perr = perr if isinstance(perr, tuple) else perr.tolist()
-        perrs[qubit] = perr
 
-        # Store in dicts the values
+        error_barss[qubit] = error_bars
+        perrs[qubit] = perr
+        popts[qubit] = popt
 
     return StandardRBResult(fidelity, pulse_fidelity, popts, perrs, error_barss)
 
