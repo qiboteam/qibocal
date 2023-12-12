@@ -40,7 +40,7 @@ class Task:
     action: Action
     """Action object parsed from Runcard."""
     iteration: int = 0
-    """Task iteration (to be used for the ExceptionalFlow)."""
+    """Task iteration."""
     qubits: list[QubitId, QubitPairId] = field(default_factory=list)
     """List of QubitIds or QubitPairIds for task."""
 

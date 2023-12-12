@@ -33,10 +33,9 @@ class History(dict[tuple[Id, int], Completed]):
 
     def push(self, completed: Completed):
         """Adding completed task to history."""
-        iteration = self.iteration_counter(completed.task.id)
-        self[(completed.task.id, iteration)] = completed
+        self[completed.task.uid] = completed
 
-    def iteration_counter(self, task_id: Id):
+    def iterations(self, task_id: Id):
         """Count task id present in history."""
         counter = 0
         for task, _ in self:

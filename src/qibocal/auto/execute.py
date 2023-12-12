@@ -136,13 +136,15 @@ class Executor:
         self.head = self.graph.start
         while self.head is not None:
             task = self.current
-            log.info(f"Executing mode {mode.name} on {task.id}.")
-
-            if self.history.iteration_counter(task.id) > MAX_ITERATIONS:
+            task.iteration = self.history.iterations(task.id)
+            if self.history.iterations(task.id) > MAX_ITERATIONS:
                 raise_error(
                     ValueError,
                     f"Maximum number of iterations {MAX_ITERATIONS} reached!",
                 )
+            log.info(
+                f"Executing mode {mode.name} on {task.id} iteration {task.iteration}."
+            )
             completed = task.run(
                 platform=self.platform,
                 qubits=self.qubits,
@@ -171,6 +173,8 @@ class Executor:
                 and self.platform is not None
                 and update
             ):
-                task.update_platform(results=completed.results, platform=self.platform)
+                completed.task.update_platform(
+                    results=completed.results, platform=self.platform
+                )
 
             yield completed.task.uid
