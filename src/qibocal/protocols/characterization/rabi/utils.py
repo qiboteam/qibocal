@@ -193,10 +193,24 @@ def extract_rabi(data):
 
 
 def period_correction_factor(phase: float):
-    """Correct period by taking phase into account.
+    r"""Correct period by taking phase into account.
 
     https://github.com/qiboteam/qibocal/issues/656
+
+    We want to find the first maximum or minimum which will
+    correspond to an exchange of population between 0 and 1.
+    To find it we need to solve the following equation
+    :math:`\cos(2 \pi x / T + \phi) = \pm 1` which will give us
+    the following solution
+
+    .. math::
+
+        x = ( k - \phi / \pi) T / 2
+
+
+    for integer :math:`k`, which is chosen such that we get the smallest
+    correction compared to :math:`T/2`.
+
     """
-    # solution of cos (2 pi x / period + phase) = +/- 1 for k in [-2,-1,0,1,2]
-    # with k that gets correction closest to period
+
     return 1 - np.modf(phase / np.pi)[0]
