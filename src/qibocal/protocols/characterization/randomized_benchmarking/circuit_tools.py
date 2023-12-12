@@ -8,7 +8,7 @@ from qibo.gates.abstract import Gate
 from qibo.models import Circuit
 
 
-def embed_circuit(circuit: Circuit, nqubits: int, qubits: list) -> Circuit:
+def embed_circuit(circuit: Circuit, nqubits: int, qubit_ids: list) -> Circuit:
     """Embeds `circuit` into a larger circuit of size `nqubits` on the qubits specified by `qubits`.
 
     Args:
@@ -27,11 +27,11 @@ def embed_circuit(circuit: Circuit, nqubits: int, qubits: list) -> Circuit:
     # Instantiate embedding circuit
     large_circuit = Circuit(**circuit_init_kwargs)
     # Place gates from from original circuit into embedding circuit
-    large_circuit.add(circuit.on_qubits(*qubits))
+    large_circuit.add(circuit.on_qubits(*qubit_ids))
     return large_circuit
 
 
-def layer_circuit(layer_gen: Callable, depth: int) -> Circuit:
+def layer_circuit(layer_gen: Callable, depth: int, nqubit_ids, seed) -> Circuit:
     """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`.
 
     Args:
@@ -48,7 +48,7 @@ def layer_circuit(layer_gen: Callable, depth: int) -> Circuit:
     # Build each layer, there will be depth many in the final circuit.
     for _ in range(depth):
         # Generate a layer.
-        new_layer = layer_gen()
+        new_layer = layer_gen(nqubit_ids, seed)
         # Ensure new_layer is a circuit
         if isinstance(new_layer, Gate):
             new_circuit = Circuit(max(new_layer.qubits) + 1)

@@ -47,6 +47,6 @@ class RBData(Data):
 
         # FIXME: Let's work directly with a list for now
         if data_keys in self.data:
-            self.data[data_keys] += data_dict["samples"]
+            self.data[data_keys] = np.append(self.data[data_keys], data_dict["samples"])
         else:
             self.data[data_keys] = data_dict["samples"]

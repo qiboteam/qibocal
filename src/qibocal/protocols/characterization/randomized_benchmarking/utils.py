@@ -128,3 +128,53 @@ def number_to_str(
         return f"{value:.{precision}f} \u00B1 {uncertainty[0]:.{precision}f}"
 
     return f"{value:.{precision}f} +{uncertainty[1]:.{precision}f} / -{uncertainty[0]:.{precision}f}"
+
+
+def samples_to_p0(samples_list):
+    """Computes the probabilitiy of 0 from the list of samples.
+
+    Args:
+        samples_list (list or np.ndarray): 3d array with ``ncircuits`` rows containing
+            ``nshots`` lists with ``nqubits`` amount of ``0`` and ``1`` samples.
+            e.g. ``samples_list`` for 1 circuit, 3 shots and 2 qubits looks like
+            ``[[[0, 0], [0, 1], [1, 0]]]`` and ``p0=1/3``.
+
+    Returns:
+        list: list of probabilities corresponding to each row.
+    """
+
+    ground = np.array([0] * len(samples_list[0][0]))
+    return np.count_nonzero((samples_list == ground).all(axis=2), axis=1) / len(
+        samples_list[0]
+    )
+
+
+def resample_p0(data, sample_size=100, homogeneous: bool = True):
+    """Preforms parametric resampling of shots with binomial distribution
+        and returns a list of "corrected" probabilites.
+
+    Args:
+        data (list or np.ndarray): list of probabilities for the binomial distribution.
+        nshots (int): sample size for one probability distribution.
+
+    Returns:
+        list: resampled probabilities.
+    """
+    if homogeneous:
+        return np.apply_along_axis(
+            lambda p: samples_to_p0(
+                np.random.binomial(n=1, p=1 - p, size=(1, sample_size, len(p))).T
+            ),
+            0,
+            data,
+        )
+
+    resampled_data = []
+    for row in data:
+        resampled_data.append([])
+        for p in row:
+            samples_corrected = np.random.binomial(
+                n=1, p=1 - p, size=(1, sample_size, *p.shape)
+            ).T
+            resampled_data[-1].append(samples_to_p0(samples_corrected))
+    return resampled_data
