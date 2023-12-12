@@ -7,7 +7,7 @@ from typing import Optional, Union
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
-from ..config import raise_error
+from ..config import log, raise_error
 from ..protocols.characterization import Operation
 from ..utils import (
     allocate_qubits_pairs,
@@ -253,3 +253,15 @@ class Completed:
         if self.task.update:
             for qubit in self.task.qubits:
                 self.task.operation.update(self.results, platform, qubit)
+
+    def validate(self) -> TaskId:
+        """Check status of completed and handle Failure using handler."""
+        if isinstance(self.status, Failure):
+            try:
+                return self.task.action.handler.id
+            except AttributeError:
+                log.error(
+                    "Stopping execution because of error in validation without handler"
+                )
+                return None
+        return self.task.id

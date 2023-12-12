@@ -10,7 +10,6 @@ from qibocal.config import log
 from .graph import Graph
 from .history import History
 from .runcard import Id, Runcard
-from .status import Failure
 from .task import Qubits, Task
 
 
@@ -144,19 +143,8 @@ class Executor:
             )
             self.history.push(completed)
             self.head = self.next()
-
-            if isinstance(completed.status, Failure) and mode.name == "autocalibration":
-                if task.action.handler is None:
-                    log.warning("Stopping execution due to error in validation.")
-                    yield completed.task.uid
-                    break
-                else:
-                    log.info(
-                        f"Handling validation error by executing node {task.action.handler.id}"
-                    )
-
-                    self.head = task.action.handler.id
-                    yield completed.task.uid
+            if mode.name == "autocalibration":
+                self.head = completed.validate()
 
             update = self.update and task.update
             if (
