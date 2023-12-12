@@ -248,7 +248,6 @@ def _plot(
             )
         )
         figures.append(fig2)
-
     return figures, fitting_report
 
 
