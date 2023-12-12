@@ -101,10 +101,16 @@ class Parameters:
 
 
 class AbstractData:
+    """
+    Abstract data class.
+    """
+
     data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray]
     """Data object to store arrays"""
     npz_file: str
+    """File where data is stored."""
     json_file: str
+    """File where the parameters are stored."""
 
     def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
         """Access data attribute member."""
@@ -139,6 +145,9 @@ class AbstractData:
 
     @staticmethod
     def load_data(path, npz_file):
+        """
+        Load data stored in a npz file.
+        """
         if (path / npz_file).is_file():
             with open(path / npz_file) as f:
                 raw_data_dict = dict(np.load(path / npz_file))
@@ -152,6 +161,9 @@ class AbstractData:
 
     @staticmethod
     def load_params(path, json_file):
+        """
+        Load parameters stored in a json file.
+        """
         if (path / json_file).is_file():
             params = json.loads((path / json_file).read_text())
 
@@ -200,6 +212,9 @@ class Data(AbstractData):
 
     @classmethod
     def load(cls, path, npz_file=DATAFILE, json_file=JSONFILE):
+        """
+        Load data and parameters.
+        """
         data_dict = super().load_data(path, npz_file)
         params = super().load_params(path, json_file)
         if params == 0:
@@ -209,24 +224,8 @@ class Data(AbstractData):
 
 @dataclass
 class Results(AbstractData):
-    """Generic runcard update.
-
-    As for the case of :class:`Parameters` the explicit structure is only useful
-    to fill the specific update, but in this case there should be a generic way
-
-    Each field might be annotated with an ``update`` metadata field, in order
-    to mark them for later use in the runcard::
-
-        @dataclass
-        class Cmd1Res(Results):
-            res: str = field(metadata=dict(update="myres"))
-            num: int
-
-    .. todo::
-
-        Implement them as ``source: dest``, where ``source`` will be the field
-        name in the class, corresponding to the same field in ``Result``
-
+    """
+    Generic runcard update.
     """
 
     def __post_init__(self):
@@ -239,6 +238,9 @@ class Results(AbstractData):
 
     @classmethod
     def load(cls, path, npz_file=RESULTSFILE_DATA, json_file=RESULTSFILE):
+        """
+        Load data and parameters.
+        """
         data_dict = super().load_data(path, npz_file)
         params = super().load_params(path, json_file)
         if data_dict == 0:
