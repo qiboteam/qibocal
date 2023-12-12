@@ -209,7 +209,7 @@ def period_correction_factor(phase: float):
 
 
     for integer :math:`k`, which is chosen such that we get the smallest
-    correction compared to :math:`T/2`.
+    multiplicative correction compared to :math:`T/2`.
 
     """
 
