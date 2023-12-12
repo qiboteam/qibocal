@@ -195,10 +195,10 @@ def _acquisition(
     """
 
     from qibo.backends import GlobalBackend
-    
+
     GlobalBackend.set_backend("qibolab", platform)
     backend = GlobalBackend()
-    
+
     # For simulations, a noise model can be added.
     noise_model = None
     if params.noise_model:
@@ -236,8 +236,8 @@ def _acquisition(
         if noise_model is not None:
             circuit = noise_model.apply(circuit)
         circuits.append(circuit)
-        
-    multiple_sample =  backend.execute_circuits(circuits, nshots=params.nshots)
+
+    multiple_sample = backend.execute_circuits(circuits, nshots=params.nshots)
     for sample, circuit in zip(multiple_sample, circuits):
         depth = (circuit.depth - 2) if circuit.depth > 1 else 0
         sample = sample.samples()

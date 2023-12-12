@@ -29,8 +29,8 @@ def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
             (100 - method) / 2,
             (100 + method) / 2,
         ]
-        
-        #FIXME: Unused code it seems
+
+        # FIXME: Unused code it seems
         # if data_median is None:
         #     data_median = (
         #         np.median(data, axis=1)
