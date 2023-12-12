@@ -194,6 +194,11 @@ def _acquisition(
         RBData: The depths, samples and ground state probability of each experiment in the scan.
     """
 
+    from qibo.backends import GlobalBackend
+    
+    GlobalBackend.set_backend("qibolab", platform)
+    backend = GlobalBackend()
+    
     # For simulations, a noise model can be added.
     noise_model = None
     if params.noise_model:
@@ -222,15 +227,20 @@ def _acquisition(
     scan = setup_scan(params, qubits, nqubits)
 
     # 2. Execute the scan.
-    data = RBData(params=params.__dict__)
+    data = RBData(params=params.__dict__, depths=list(set(params.depths)))
+    circuits = []
     samples = defaultdict(list)
     # Iterate through the scan and execute each circuit.
     for circuit in scan:
         # The inverse and measurement gate don't count for the depth.
-        depth = (circuit.depth - 2) if circuit.depth > 1 else 0
         if noise_model is not None:
             circuit = noise_model.apply(circuit)
-        sample = circuit.execute(nshots=params.nshots).samples()
+        circuits.append(circuit)
+        
+    multiple_sample =  backend.execute_circuits(circuits, nshots=params.nshots)
+    for sample, circuit in zip(multiple_sample, circuits):
+        depth = (circuit.depth - 2) if circuit.depth > 1 else 0
+        sample = sample.samples()
         # Every executed circuit gets a row where the data is stored.
         # TODO: Try to get register qubit here
         samples[depth].append(sample.tolist())
@@ -281,7 +291,6 @@ def _fit(data: RBData) -> StandardRBResult:
     Returns:
         StandardRBResult: Aggregated and processed data.
     """
-
     qubits = data.qubits
 
     fidelity = {}
