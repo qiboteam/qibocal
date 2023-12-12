@@ -130,7 +130,8 @@ def number_to_str(
     return f"{value:.{precision}f} +{uncertainty[1]:.{precision}f} / -{uncertainty[0]:.{precision}f}"
 
 
-def samples_to_p0(samples_list):
+# FIXME: This one is wrong
+def samples_to_p0(samples_list, parallel):
     """Computes the probabilitiy of 0 from the list of samples.
 
     Args:
@@ -143,13 +144,24 @@ def samples_to_p0(samples_list):
         list: list of probabilities corresponding to each row.
     """
 
-    ground = np.array([0] * len(samples_list[0][0]))
-    return np.count_nonzero((samples_list == ground).all(axis=2), axis=1) / len(
-        samples_list[0]
-    )
+    if parallel:
+        samples_l = []
+        for samples in samples_list:
+            ground = np.array([0] * len(samples_list[0][0]))
+            samples_l.append(
+                np.count_nonzero((samples == ground).all(axis=2), axis=1)
+                / len(samples[0])
+            )
+
+        return samples_l
+    else:
+        ground = np.array([0] * len(samples_list[0][0]))
+        return np.count_nonzero((samples_list == ground).all(axis=2), axis=1) / len(
+            samples_list[0]
+        )
 
 
-def resample_p0(data, sample_size=100, homogeneous: bool = True):
+def resample_p0(data, sample_size=100, homogeneous: bool = True, parallel: bool = True):
     """Preforms parametric resampling of shots with binomial distribution
         and returns a list of "corrected" probabilites.
 
@@ -163,7 +175,8 @@ def resample_p0(data, sample_size=100, homogeneous: bool = True):
     if homogeneous:
         return np.apply_along_axis(
             lambda p: samples_to_p0(
-                np.random.binomial(n=1, p=1 - p, size=(1, sample_size, len(p))).T
+                np.random.binomial(n=1, p=1 - p, size=(1, sample_size, len(p))).T,
+                parallel,
             ),
             0,
             data,
@@ -176,5 +189,5 @@ def resample_p0(data, sample_size=100, homogeneous: bool = True):
             samples_corrected = np.random.binomial(
                 n=1, p=1 - p, size=(1, sample_size, *p.shape)
             ).T
-            resampled_data[-1].append(samples_to_p0(samples_corrected))
+            resampled_data[-1].append(samples_to_p0(samples_corrected, parallel))
     return resampled_data

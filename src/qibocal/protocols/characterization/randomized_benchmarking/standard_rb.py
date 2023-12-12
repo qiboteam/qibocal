@@ -53,7 +53,7 @@ class StandardRBParameters(Parameters):
     seed: Optional[int] = None
     """A fixed seed to initialize ``np.random.Generator``. If ``None``, uses a random seed.
     Defaults is ``None``."""
-    parallel: bool = False
+    parallel: bool = True
     """Marginalize data to get several RBs from a big circuit"""
     noise_model: str = ""
     """For simulation purposes, string has to match what is in
@@ -245,9 +245,16 @@ def _fit(data: RBData) -> StandardRBResult:
                 seed=data.params["seed"],
             )
 
+            import pdb
+
+            pdb.set_trace()
+
             # Parametric bootstrap resampling of "corrected" probabilites from binomial distribution
             bootstrap_y = resample_p0(
-                bootstrap_y, data.params["nshots"], homogeneous=homogeneous
+                bootstrap_y,
+                data.params["nshots"],
+                homogeneous=homogeneous,
+                parallel=data.params["parallel"],
             )
 
             # Compute y and popt estimates for each bootstrap iteration
