@@ -7,15 +7,11 @@ from qibolab.platform import Platform
 
 from qibocal.config import log
 
-from ..config import raise_error
 from .graph import Graph
 from .history import History
 from .runcard import Id, Runcard
 from .status import Failure
 from .task import Qubits, Task
-
-MAX_ITERATIONS = 5
-"""Maximum number of iteration for single task."""
 
 
 @dataclass
@@ -137,11 +133,6 @@ class Executor:
         while self.head is not None:
             task = self.current
             task.iteration = self.history.iterations(task.id)
-            if self.history.iterations(task.id) > MAX_ITERATIONS:
-                raise_error(
-                    ValueError,
-                    f"Maximum number of iterations {MAX_ITERATIONS} reached!",
-                )
             log.info(
                 f"Executing mode {mode.name} on {task.id} iteration {task.iteration}."
             )
@@ -173,8 +164,6 @@ class Executor:
                 and self.platform is not None
                 and update
             ):
-                completed.task.update_platform(
-                    results=completed.results, platform=self.platform
-                )
+                completed.update_platform(platform=self.platform)
 
             yield completed.task.uid

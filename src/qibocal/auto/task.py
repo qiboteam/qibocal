@@ -7,6 +7,7 @@ from typing import Optional, Union
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
+from ..config import raise_error
 from ..protocols.characterization import Operation
 from ..utils import (
     allocate_qubits_pairs,
@@ -30,7 +31,8 @@ from .status import Failure, Normal, Status
 
 MAX_PRIORITY = int(1e9)
 """A number bigger than whatever will be manually typed. But not so insanely big not to fit in a native integer."""
-
+MAX_ITERATIONS = 5
+"""Maximum number of iteration for single task."""
 TaskId = tuple[Id, int]
 """Unique identifier for executed tasks."""
 
@@ -132,12 +134,6 @@ class Task:
         """Local update parameter."""
         return self.action.update
 
-    def update_platform(self, results: Results, platform: Platform):
-        """Perform update on platform' parameters by looping over qubits or pairs."""
-        if self.update:
-            for qubit in self.qubits:
-                self.operation.update(results, platform, qubit)
-
     def run(
         self,
         platform: Platform = None,
@@ -145,6 +141,12 @@ class Task:
         mode: ExecutionMode = None,
         folder: Path = None,
     ):
+        if self.iteration > MAX_ITERATIONS:
+            raise_error(
+                ValueError,
+                f"Maximum number of iterations {MAX_ITERATIONS} reached!",
+            )
+
         completed = Completed(self, Normal(), folder)
         task_qubits = self._allocate_local_qubits(qubits, platform)
         try:
@@ -201,6 +203,9 @@ class Completed:
     results_time: float = 0
     """Fitting output."""
 
+    def __post_init__(self):
+        self.task = copy.deepcopy(self.task)
+
     @property
     def datapath(self):
         """Path contaning data and results file for task."""
@@ -243,5 +248,8 @@ class Completed:
         self._data = data
         self._data.save(self.datapath)
 
-    def __post_init__(self):
-        self.task = copy.deepcopy(self.task)
+    def update_platform(self, platform: Platform):
+        """Perform update on platform' parameters by looping over qubits or pairs."""
+        if self.task.update:
+            for qubit in self.task.qubits:
+                self.task.operation.update(self.results, platform, qubit)
