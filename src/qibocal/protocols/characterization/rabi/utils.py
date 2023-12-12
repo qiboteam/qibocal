@@ -199,4 +199,4 @@ def period_correction_factor(phase: float):
     """
     # solution of cos (2 pi x / period + phase) = +/- 1 for k in [-2,-1,0,1,2]
     # with k that gets correction closest to period
-    return np.round(phase / np.pi + 1) - phase / np.pi
+    return 1 - np.modf(phase / np.pi)[0]
