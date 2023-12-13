@@ -3,10 +3,10 @@ Resonator punchout
 
 
 With the resonator spectroscopy at high power we found the bare resonator frequency
-(also called high power frequency), but this is not the frequency that will be used in measurements.
+(also called high power frequency), but this is not the frequency that will be used to perform measurements.
 We need to find the frequency in the low power regime, where the resonator is actually coupled
 to the qubit. To do that, we first have to find the correct amplitude of the readout pulse.
-Also this experiment can be initially performed with a VNA, to check everything is
+This experiment can be initially performed with a VNA, to check that everything is
 working and to obtain a rough estimation of the parameters to be used by the control devices.
 We do again a resonator spectroscopy experiment, measuring at different frequencies,
 but this time scanning in a narrow frequency span and also for different pulse amplitudes.
@@ -42,9 +42,9 @@ Eventually, we want to have a plot like the one below:
 
 .. image:: resonator_punchout.png
 
-This experiment is the first one where we actually are "seeing" the qubit and it's
+This experiment is the first one where we are actually "seeing" the qubit and it's
 extremely important also to check that the qubit is working properly.
-During a characterization, various experimental problems can happen and can lead the experimenter
+During characterization, various experimental problems can happen and can lead experimentalists
 to believe that the qubit is no longer working: this experiment gives us an easy way to check it.
 
 Compared to a low power resonator spectroscopy, with punchout we can see the shift in the resonator frequency
