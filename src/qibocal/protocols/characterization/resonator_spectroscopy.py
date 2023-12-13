@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -40,7 +40,7 @@ class ResonatorSpectroscopyParameters(Parameters):
     """Width for frequency sweep relative  to the readout frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
-    power_level: PowerLevel
+    power_level: Union[PowerLevel, str]
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
     amplitude: Optional[float] = None
@@ -51,7 +51,8 @@ class ResonatorSpectroscopyParameters(Parameters):
     Otherwise the default attenuation defined on the platform runcard will be used"""
 
     def __post_init__(self):
-        self.power_level = PowerLevel(self.power_level)
+        if isinstance(self.power_level, str):
+            self.power_level = PowerLevel(self.power_level)
 
 
 @dataclass
