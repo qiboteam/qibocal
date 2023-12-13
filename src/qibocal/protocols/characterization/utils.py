@@ -128,14 +128,24 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
     ]
     # fit the model with the data and guessed parameters
     try:
-        fit_parameters, perr = curve_fit(
-            lorentzian,
-            frequencies,
-            voltages,
-            p0=model_parameters,
-            sigma=data.error_signal,
-        )
-        perr = np.sqrt(np.diag(perr)).tolist()
+        if hasattr(data, "error_signal"):
+            fit_parameters, perr = curve_fit(
+                lorentzian,
+                frequencies,
+                voltages,
+                p0=model_parameters,
+                sigma=data.error_signal,
+            )
+            perr = np.sqrt(np.diag(perr)).tolist()
+
+        else:
+            fit_parameters, perr = curve_fit(
+                lorentzian,
+                frequencies,
+                voltages,
+                p0=model_parameters,
+            )
+            perr = [0] * 4
         model_parameters = list(fit_parameters)
     except RuntimeError:
         log.warning("lorentzian_fit: the fitting was not successful")
