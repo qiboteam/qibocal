@@ -101,9 +101,7 @@ class Parameters:
 
 
 class AbstractData:
-    """
-    Abstract data class.
-    """
+    """Abstract data class."""
 
     data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray]
     """Data object to store arrays"""
@@ -145,9 +143,7 @@ class AbstractData:
 
     @staticmethod
     def load_data(path, npz_file):
-        """
-        Load data stored in a npz file.
-        """
+        """Load data stored in a npz file."""
         if (path / npz_file).is_file():
             with open(path / npz_file) as f:
                 raw_data_dict = dict(np.load(path / npz_file))
@@ -157,19 +153,15 @@ class AbstractData:
                     data_dict[load(data_key)] = np.rec.array(array)
 
             return data_dict
-        return 0
 
     @staticmethod
     def load_params(path, json_file):
-        """
-        Load parameters stored in a json file.
-        """
+        """Load parameters stored in a json file."""
         if (path / json_file).is_file():
             params = json.loads((path / json_file).read_text())
 
             params = deserialize(params)
             return params
-        return 0
 
 
 class Data(AbstractData):
@@ -212,21 +204,17 @@ class Data(AbstractData):
 
     @classmethod
     def load(cls, path, npz_file=DATAFILE, json_file=JSONFILE):
-        """
-        Load data and parameters.
-        """
+        """Load data and parameters."""
         data_dict = super().load_data(path, npz_file)
         params = super().load_params(path, json_file)
-        if params == 0:
+        if params is None:
             return cls(data=data_dict)
         return cls(data=data_dict, **params)
 
 
 @dataclass
 class Results(AbstractData):
-    """
-    Generic runcard update.
-    """
+    """Generic runcard update."""
 
     def __post_init__(self):
         if "data" not in self.__dict__:
@@ -238,12 +226,10 @@ class Results(AbstractData):
 
     @classmethod
     def load(cls, path, npz_file=RESULTSFILE_DATA, json_file=RESULTSFILE):
-        """
-        Load data and parameters.
-        """
+        """Load data and parameters."""
         data_dict = super().load_data(path, npz_file)
         params = super().load_params(path, json_file)
-        if data_dict == 0:
+        if data_dict is None:
             return cls(**params)
         return cls(data=data_dict, **params)
 
