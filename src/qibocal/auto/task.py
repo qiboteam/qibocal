@@ -31,8 +31,6 @@ from .status import Failure, Normal, Status
 
 MAX_PRIORITY = int(1e9)
 """A number bigger than whatever will be manually typed. But not so insanely big not to fit in a native integer."""
-MAX_ITERATIONS = 5
-"""Maximum number of iteration for single task."""
 TaskId = tuple[Id, int]
 """Unique identifier for executed tasks."""
 
@@ -136,15 +134,16 @@ class Task:
 
     def run(
         self,
+        max_iterations: int,
         platform: Platform = None,
         qubits: Union[Qubits, QubitsPairs] = dict,
         mode: ExecutionMode = None,
         folder: Path = None,
     ):
-        if self.iteration > MAX_ITERATIONS:
+        if self.iteration > max_iterations:
             raise_error(
                 ValueError,
-                f"Maximum number of iterations {MAX_ITERATIONS} reached!",
+                f"Maximum number of iterations {max_iterations} reached!",
             )
 
         completed = Completed(self, Normal(), folder)

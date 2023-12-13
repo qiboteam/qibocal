@@ -27,6 +27,8 @@ class Executor:
     """Qubits to be calibrated."""
     platform: Platform
     """Qubits' platform."""
+    max_iterations: int
+    """Maximum number of iterations."""
     update: bool = True
     """Runcard update mechanism."""
     head: Optional[Id] = None
@@ -49,6 +51,7 @@ class Executor:
         return cls(
             graph=Graph.from_actions(card.actions),
             history=History({}),
+            max_iterations=card.max_iterations,
             output=output,
             platform=platform,
             qubits=qubits,
@@ -136,6 +139,7 @@ class Executor:
                 f"Executing mode {mode.name} on {task.id} iteration {task.iteration}."
             )
             completed = task.run(
+                max_iterations=self.max_iterations,
                 platform=self.platform,
                 qubits=self.qubits,
                 folder=self.output,
