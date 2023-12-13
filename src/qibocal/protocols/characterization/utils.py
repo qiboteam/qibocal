@@ -254,16 +254,20 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                 )
             )
 
-        if data.__class__.__name__ == "ResonatorSpectroscopyAttenuationData":
-            if fit.attenuation[qubit] is not None and fit.attenuation[qubit] != 0:
-                fitting_report = table_html(
-                    table_dict(
-                        qubit,
-                        [label, "attenuation"],
-                        [np.round(freq[qubit], 0), fit.attenuation[qubit]],
-                        display_error=True,
-                    )
+        if fit.attenuation[qubit] is not None and fit.attenuation[qubit] != 0:
+            fitting_report = table_html(
+                table_dict(
+                    qubit,
+                    [label, "amplitude", "attenuation", "chi2 reduced"],
+                    [
+                        (freq[qubit], fit.error_fit_pars[qubit][1]),
+                        (fit.amplitude[qubit], fit.error_fit_pars[qubit][0]),
+                        (fit.attenuation[qubit], 0),
+                        fit.chi2_reduced[qubit],
+                    ],
+                    display_error=True,
                 )
+            )
 
     fig.update_layout(
         showlegend=True,
@@ -690,6 +694,7 @@ def table_dict(
             qubit = [qubit] * len(names)
 
         if display_error:
+            print(values)
             rounded_values, rounded_errors = round_report(values)
 
             return {
