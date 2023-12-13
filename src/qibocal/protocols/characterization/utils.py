@@ -253,21 +253,21 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                     display_error=True,
                 )
             )
-
-        if fit.attenuation[qubit] is not None and fit.attenuation[qubit] != 0:
-            fitting_report = table_html(
-                table_dict(
-                    qubit,
-                    [label, "amplitude", "attenuation", "chi2 reduced"],
-                    [
-                        (freq[qubit], fit.error_fit_pars[qubit][1]),
-                        (fit.amplitude[qubit], fit.error_fit_pars[qubit][0]),
-                        (fit.attenuation[qubit], 0),
-                        fit.chi2_reduced[qubit],
-                    ],
-                    display_error=True,
+        if hasattr(fit, "attenuation"):
+            if fit.attenuation[qubit] is not None:
+                fitting_report = table_html(
+                    table_dict(
+                        qubit,
+                        [label, "amplitude", "attenuation", "chi2 reduced"],
+                        [
+                            (freq[qubit], fit.error_fit_pars[qubit][1]),
+                            (fit.amplitude[qubit], fit.error_fit_pars[qubit][0]),
+                            (fit.attenuation[qubit], 0),
+                            fit.chi2_reduced[qubit],
+                        ],
+                        display_error=True,
+                    )
                 )
-            )
 
     fig.update_layout(
         showlegend=True,
