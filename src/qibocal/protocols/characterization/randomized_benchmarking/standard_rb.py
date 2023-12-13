@@ -21,7 +21,7 @@ from .circuit_tools import (
 )
 from .data import RBData, RBType
 from .fitting import exp1B_func, fit_exp1B_func
-from .utils import number_to_str, random_clifford, resample_p0
+from .utils import number_to_str, random_clifford, resample_p0, samples_to_p0s
 
 NPULSES_PER_CLIFFORD = 1.875
 
@@ -219,11 +219,8 @@ def _fit(data: RBData) -> StandardRBResult:
     for qubit in qubits:
         # Extract depths and probabilities
         x = data.depths
-        y = data.samples_to_p0s(qubit, x)
-
-        samples = []
-        for depth in x:
-            samples.append(data.data[qubit, depth])
+        y = samples_to_p0s(data.data, qubit)
+        samples = [data.data[qubit, depth].tolist() for depth in x]
 
         """This is when you sample a depth more than once"""
         homogeneous = all(len(samples[0]) == len(row) for row in samples)
@@ -250,8 +247,9 @@ def _fit(data: RBData) -> StandardRBResult:
             pdb.set_trace()
 
             # Parametric bootstrap resampling of "corrected" probabilites from binomial distribution
+            # FIXME:
             bootstrap_y = resample_p0(
-                bootstrap_y,
+                bootstrap_y.tolist(),
                 data.params["nshots"],
                 homogeneous=homogeneous,
                 parallel=data.params["parallel"],
@@ -325,7 +323,7 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     fitting_report = ""
 
     x = data.depths
-    y = data.samples_to_p0s(qubit, x)
+    y = samples_to_p0s(data.data, qubit)
 
     fig.add_trace(
         go.Scatter(

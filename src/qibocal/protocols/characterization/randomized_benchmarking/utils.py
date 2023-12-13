@@ -131,7 +131,7 @@ def number_to_str(
 
 
 # FIXME: This one is wrong
-def samples_to_p0(samples_list, parallel):
+def samples_to_p0(samples_list):
     """Computes the probabilitiy of 0 from the list of samples.
 
     Args:
@@ -144,21 +144,10 @@ def samples_to_p0(samples_list, parallel):
         list: list of probabilities corresponding to each row.
     """
 
-    if parallel:
-        samples_l = []
-        for samples in samples_list:
-            ground = np.array([0] * len(samples_list[0][0]))
-            samples_l.append(
-                np.count_nonzero((samples == ground).all(axis=2), axis=1)
-                / len(samples[0])
-            )
-
-        return samples_l
-    else:
-        ground = np.array([0] * len(samples_list[0][0]))
-        return np.count_nonzero((samples_list == ground).all(axis=2), axis=1) / len(
-            samples_list[0]
-        )
+    ground = np.array([0] * len(samples_list[0][0]))
+    return np.count_nonzero((samples_list == ground).all(axis=2), axis=1) / len(
+        samples_list[0]
+    )
 
 
 def resample_p0(data, sample_size=100, homogeneous: bool = True, parallel: bool = True):
@@ -176,7 +165,6 @@ def resample_p0(data, sample_size=100, homogeneous: bool = True, parallel: bool 
         return np.apply_along_axis(
             lambda p: samples_to_p0(
                 np.random.binomial(n=1, p=1 - p, size=(1, sample_size, len(p))).T,
-                parallel,
             ),
             0,
             data,
@@ -191,3 +179,11 @@ def resample_p0(data, sample_size=100, homogeneous: bool = True, parallel: bool 
             ).T
             resampled_data[-1].append(samples_to_p0(samples_corrected, parallel))
     return resampled_data
+
+
+def samples_to_p0s(data, qubit):
+    p0s = []
+    qubit_keys = [key for key in list(data.keys()) if key[0] == qubit]
+    for key in qubit_keys:
+        p0s.append(1 - np.count_nonzero(np.array(data[key])) / len(data[key]))
+    return p0s
