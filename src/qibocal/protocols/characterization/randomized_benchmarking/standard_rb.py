@@ -233,10 +233,8 @@ def _fit(data: RBData) -> StandardRBResult:
         n_bootstrap = data.params["n_bootstrap"]
 
         popt_estimates = []
-        # FIXME: Check if working correctly
         if uncertainties and n_bootstrap:
             # Non-parametric bootstrap resampling
-
             bootstrap_y = bootstrap(
                 samples,
                 n_bootstrap,
@@ -245,7 +243,6 @@ def _fit(data: RBData) -> StandardRBResult:
             )
 
             # Parametric bootstrap resampling of "corrected" probabilites from binomial distribution
-            # FIXME:
             bootstrap_y = resample_p0(
                 bootstrap_y,
                 data.params["nshots"],
