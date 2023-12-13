@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
+import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -9,7 +10,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 from .utils import (
     PowerLevel,
@@ -18,6 +19,17 @@ from .utils import (
     lorentzian_fit,
     spectroscopy_plot,
 )
+
+ResSpecType = np.dtype(
+    [
+        ("freq", np.float64),
+        ("signal", np.float64),
+        ("phase", np.float64),
+        ("error_signal", np.float64),
+        ("error_phase", np.float64),
+    ]
+)
+"""Custom dtype for resonator spectroscopy."""
 
 
 @dataclass
