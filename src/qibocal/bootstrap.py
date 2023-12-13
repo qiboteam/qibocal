@@ -22,6 +22,8 @@ def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
         np.ndarray: uncertainties of the data.
     """
 
+    # I removed some code not being used with a typo that was never run
+
     if method == "std":
         return np.std(data, axis=1) if homogeneous else [np.std(row) for row in data]
     if isinstance(method, (int, float)) and 0 <= method <= 100:

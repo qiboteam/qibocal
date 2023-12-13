@@ -223,10 +223,6 @@ def _fit(data: RBData) -> StandardRBResult:
         y = samples_to_p0s(data.data, qubit)
         samples = [data.data[qubit, depth].samples.tolist() for depth in x]
 
-        import pdb
-
-        pdb.set_trace()
-
         """This is when you sample a depth more than once"""
         homogeneous = all(len(samples[0]) == len(row) for row in samples)
         if homogeneous is False:
@@ -247,10 +243,6 @@ def _fit(data: RBData) -> StandardRBResult:
                 homogeneous=homogeneous,
                 seed=data.params["seed"],
             )
-
-            import pdb
-
-            pdb.set_trace()
 
             # Parametric bootstrap resampling of "corrected" probabilites from binomial distribution
             # FIXME:

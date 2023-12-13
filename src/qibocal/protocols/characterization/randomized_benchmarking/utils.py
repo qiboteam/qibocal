@@ -150,6 +150,7 @@ def samples_to_p0(samples_list):
     )
 
 
+# FIXME: Go for either samples_to_p0 or samples_to_p0s depending on parallel
 def resample_p0(data, sample_size=100, homogeneous: bool = True, parallel: bool = True):
     """Preforms parametric resampling of shots with binomial distribution
         and returns a list of "corrected" probabilites.
