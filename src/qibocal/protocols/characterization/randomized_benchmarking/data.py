@@ -8,7 +8,7 @@ from qibocal.auto.operation import Data
 
 RBType = np.dtype(
     [
-        ("samples", np.float64),
+        ("samples", np.int32),
     ]
 )
 """Custom dtype for RB."""

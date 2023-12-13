@@ -181,16 +181,17 @@ def _acquisition(
         circuits.extend(circuits_depth)
 
     # TODO: Check circuits being random properly
-
     executed_circuits = backend.execute_circuits(circuits, nshots=params.nshots)
     for executed_circuit, circuit in zip(executed_circuits, circuits):
         depth = (circuit.depth - 2) if circuit.depth > 1 else 0
         for nqubit, qubit_id in enumerate(qubits):
+            samples = executed_circuit.samples()
+            samples = samples.T[nqubit]
             data.register_qubit(
                 RBType,
                 (qubit_id, depth),
                 dict(
-                    samples=executed_circuit.samples()[nqubit],
+                    samples=samples,
                 ),
             )
 
@@ -220,7 +221,11 @@ def _fit(data: RBData) -> StandardRBResult:
         # Extract depths and probabilities
         x = data.depths
         y = samples_to_p0s(data.data, qubit)
-        samples = [data.data[qubit, depth].tolist() for depth in x]
+        samples = [data.data[qubit, depth].samples.tolist() for depth in x]
+
+        import pdb
+
+        pdb.set_trace()
 
         """This is when you sample a depth more than once"""
         homogeneous = all(len(samples[0]) == len(row) for row in samples)
@@ -235,6 +240,7 @@ def _fit(data: RBData) -> StandardRBResult:
         # FIXME: Check if working correctly
         if uncertainties and n_bootstrap:
             # Non-parametric bootstrap resampling
+
             bootstrap_y = bootstrap(
                 samples,
                 n_bootstrap,
@@ -249,7 +255,7 @@ def _fit(data: RBData) -> StandardRBResult:
             # Parametric bootstrap resampling of "corrected" probabilites from binomial distribution
             # FIXME:
             bootstrap_y = resample_p0(
-                bootstrap_y.tolist(),
+                bootstrap_y,
                 data.params["nshots"],
                 homogeneous=homogeneous,
                 parallel=data.params["parallel"],
