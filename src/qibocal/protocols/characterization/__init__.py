@@ -57,8 +57,6 @@ from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 from .spurious_identification import spurious_identification
 from .t1_t2_vs_temperature import t1_t2_vs_temperature
 from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtualz
-from .two_qubit_interaction.chevron import chevron
-from .two_qubit_interaction.cz_virtualz import cz_virtualz
 
 
 class Operation(Enum):

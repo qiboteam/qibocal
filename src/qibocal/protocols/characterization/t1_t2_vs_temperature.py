@@ -279,15 +279,15 @@ def _acquisition(
         platform: Platform,
         qubits: Qubits,
     ) -> dict[QubitId, float]:
-        from qibocal.protocols.characterization.coherence.t1_msr import (
-            T1MSRData,
-            T1MSRParameters,
-            T1MSRResults,
-            t1_msr,
+        from qibocal.protocols.characterization.coherence.t1_signal import (
+            T1SignalData,
+            T1SignalParameters,
+            T1SignalResults,
+            t1_signal,
         )
 
-        operation: Routine = t1_msr
-        t1_params: T1MSRParameters = T1MSRParameters.load(
+        operation: Routine = t1_signal
+        t1_params: T1SignalParameters = T1SignalParameters.load(
             {
                 "delay_before_readout_start": 4,
                 "delay_before_readout_end": 10_000,
@@ -296,8 +296,8 @@ def _acquisition(
                 "relaxation_time": params.relaxation_time,
             }
         )
-        t1_data: T1MSRData
-        t1_results: T1MSRResults
+        t1_data: T1SignalData
+        t1_results: T1SignalResults
 
         t1_data, time = operation.acquisition(
             t1_params, platform=platform, qubits=qubits
@@ -316,15 +316,15 @@ def _acquisition(
         platform: Platform,
         qubits: Qubits,
     ) -> dict[QubitId, float]:
-        from qibocal.protocols.characterization.coherence.t2_msr import (
-            T2MSRData,
-            T2MSRParameters,
-            T2MSRResults,
-            t2_msr,
+        from qibocal.protocols.characterization.coherence.t2_signal import (
+            T2SignalData,
+            T2SignalParameters,
+            T2SignalResults,
+            t2_signal,
         )
 
-        operation: Routine = t2_msr
-        t2_params: T2MSRParameters = T2MSRParameters.load(
+        operation: Routine = t2_signal
+        t2_params: T2SignalParameters = T2SignalParameters.load(
             {
                 "delay_between_pulses_start": 4,
                 "delay_between_pulses_end": 6_000,
@@ -333,8 +333,8 @@ def _acquisition(
                 "relaxation_time": params.relaxation_time,
             }
         )
-        t2_data: T2MSRData
-        t2_results: T2MSRResults
+        t2_data: T2SignalData
+        t2_results: T2SignalResults
 
         t2_data, time = operation.acquisition(
             t2_params, platform=platform, qubits=qubits
