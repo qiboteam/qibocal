@@ -412,11 +412,11 @@ actions:
       unrolling: False
       nshots: 10
 
-  - id: single shot classification
+  - id: single shot classification with unrolling
     priority: 0
     operation: single_shot_classification
     parameters:
-      unrolling: False
+      unrolling: True
       nshots: 10
 
   - id: single shot classification with classifiers
