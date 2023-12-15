@@ -185,11 +185,9 @@ def _acquisition(
             ro_pulses[qubit] = platform.create_qubit_readout_pulse(
                 qubit, start=RX_pulses[qubit].finish
             )
-            if state == 0:
-                sequence.add(ro_pulses[qubit])
-            elif state == 1:
+            if state == 1:
                 sequence.add(RX_pulses[qubit])
-                sequence.add(ro_pulses[qubit])
+            sequence.add(ro_pulses[qubit])
 
         sequences.append(sequence)
         all_ro_pulses.append(ro_pulses)
