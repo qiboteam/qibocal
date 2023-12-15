@@ -61,9 +61,12 @@ def autocalibrate(runcard, folder, force, update):
     for _ in executor.run(mode=ExecutionMode.autocalibration):
         report = ReportBuilder(path, qubits, executor, meta, executor.history)
         report.run(path)
-
-    e = datetime.datetime.now(datetime.timezone.utc)
-    meta["end-time"] = e.strftime("%H:%M:%S")
+        # meta needs to be updated after each report to show correct end-time
+        e = datetime.datetime.now(datetime.timezone.utc)
+        meta["end-time"] = e.strftime("%H:%M:%S")
+        # dump updated meta
+        meta = add_timings_to_meta(meta, executor.history)
+        (path / META).write_text(json.dumps(meta, indent=4))
 
     # stop and disconnect platform
     if platform is not None:
@@ -73,7 +76,3 @@ def autocalibrate(runcard, folder, force, update):
     # dump updated runcard
     if platform is not None:
         dump_runcard(platform, path / UPDATED_PLATFORM)
-
-    # dump updated meta
-    meta = add_timings_to_meta(meta, executor.history)
-    (path / META).write_text(json.dumps(meta, indent=4))
