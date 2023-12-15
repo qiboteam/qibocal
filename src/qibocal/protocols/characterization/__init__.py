@@ -106,7 +106,6 @@ class Operation(Enum):
     resonator_twpa_pow = resonator_twpa_pow
     resonator_twpa_freq = resonator_twpa_freq
     resonator_qubit_spectroscopy = resonator_qubit_spectroscopy
-    zeno_msr = zeno_msr
     zeno_signal = zeno_signal
     chsh_pulses = chsh_pulses
     chsh_circuits = chsh_circuits
