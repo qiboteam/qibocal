@@ -17,7 +17,7 @@ from .qubit_spectroscopy import (
     _fit,
 )
 from .resonator_spectroscopy import ResSpecType
-from .utils import GHZ_TO_HZ, HZ_TO_GHZ, spectroscopy_plot, table_dict, table_html
+from .utils import spectroscopy_plot, table_dict, table_html
 
 DEFAULT_ANHARMONICITY = 300e6
 """Initial guess for anharmonicity."""
@@ -45,7 +45,7 @@ class QubitSpectroscopyEFData(QubitSpectroscopyData):
 def _fit_ef(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
     results = _fit(data)
     anharmoncities = {
-        qubit: data.drive_frequencies[qubit] * HZ_TO_GHZ - results.frequency[qubit]
+        qubit: data.drive_frequencies[qubit] - results.frequency[qubit]
         for qubit in data.qubits
     }
     params = asdict(results)
@@ -158,11 +158,11 @@ def _plot(data: QubitSpectroscopyEFData, qubit, fit: QubitSpectroscopyEFResults)
         report = table_html(
             table_dict(
                 qubit,
-                ["Frequency 1->2", "Amplitude", "Anharmonicity"],
+                ["Frequency 1->2 [Hz]", "Amplitude [a.u.]", "Anharmonicity [Hz]"],
                 [
-                    np.round(fit.frequency[qubit] * GHZ_TO_HZ, 0),
+                    np.round(fit.frequency[qubit], 0),
                     fit.amplitude[qubit],
-                    np.round(fit.anharmonicity[qubit] * GHZ_TO_HZ, 0),
+                    np.round(fit.anharmonicity[qubit], 0),
                 ],
             )
         )

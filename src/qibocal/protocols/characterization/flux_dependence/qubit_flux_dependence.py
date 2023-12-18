@@ -27,13 +27,13 @@ class QubitFluxParameters(Parameters):
     """QubitFlux runcard inputs."""
 
     freq_width: int
-    """Width for frequency sweep relative to the qubit frequency (Hz)."""
+    """Width for frequency sweep relative to the qubit frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
     bias_width: float
     """Width for bias sweep [V]."""
     bias_step: float
-    """Bias step for sweep (V)."""
+    """Bias step for sweep [a.u.]."""
     drive_amplitude: Optional[float] = None
     """Drive amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
@@ -280,7 +280,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     0
                 ]  # Corresponding flux matrix element.
 
-                frequency[qubit] = f_qs * HZ_TO_GHZ
+                frequency[qubit] = f_qs
                 sweetspot[qubit] = popt[0]
                 fitted_parameters[qubit] = {
                     "Xi": popt[1],

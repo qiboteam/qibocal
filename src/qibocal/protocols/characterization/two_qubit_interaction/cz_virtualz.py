@@ -393,11 +393,11 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
                 table_dict(
                     [target, target, qubits[1], qubit[1], control],
                     [
-                        "CZ angle",
-                        "Virtual Z phase",
-                        "Flux pulse amplitude",
-                        "Flux pulse duration",
-                        "Leakage",
+                        "CZ angle [rad]",
+                        "Virtual Z phase [rad]",
+                        "Flux pulse amplitude [a.u.]",
+                        "Flux pulse duration [ns]",
+                        "Leakage [a.u.]",
                     ],
                     [
                         np.round(fit.cz_angle[target, control], 4),

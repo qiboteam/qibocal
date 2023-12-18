@@ -37,7 +37,7 @@ class QubitSpectroscopyResults(Results):
     """Drive frequecy [GHz] for each qubit."""
     amplitude: dict[QubitId, float]
     """Input drive amplitude. Same for all qubits."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
+    fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
 
 

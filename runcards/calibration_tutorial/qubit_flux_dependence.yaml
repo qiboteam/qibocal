@@ -1,0 +1,16 @@
+platform: <platform_name>
+
+qubits: [0]
+
+actions:
+  - id: qubit flux dependence
+    priority: 0
+    operation: qubit_flux
+    parameters:
+        freq_width: 100_000_000
+        freq_step: 500_000
+        bias_width: 0.20
+        bias_step:  0.01
+        drive_amplitude: 0.1
+        nshots: 1024
+        relaxation_time: 20_000
