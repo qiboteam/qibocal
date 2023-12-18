@@ -50,18 +50,6 @@ RamseySignalType = np.dtype([("wait", np.float64), ("signal", np.float64)])
 class RamseySignalData(RamseyData):
     """Ramsey acquisition outputs."""
 
-    def register_qubit(self, qubit, wait, signal):
-        """Store output for single qubit."""
-        # to be able to handle the non-sweeper case
-        shape = (1,) if np.isscalar(signal) else signal.shape
-        ar = np.empty(shape, dtype=RamseySignalType)
-        ar["wait"] = wait
-        ar["signal"] = signal
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
-
     @property
     def waits(self):
         """
@@ -136,9 +124,12 @@ def _acquisition(
             result = results[ro_pulses[qubit].serial]
             # The probability errors are the standard errors of the binomial distribution
             data.register_qubit(
-                qubit,
-                wait=waits,
-                signal=result.magnitude,
+                RamseySignalType,
+                (qubit),
+                dict(
+                    wait=waits,
+                    signal=result.magnitude,
+                ),
             )
 
     else:
@@ -167,9 +158,12 @@ def _acquisition(
             for qubit in qubits:
                 result = results[ro_pulses[qubit].serial]
                 data.register_qubit(
-                    qubit,
-                    wait=wait,
-                    signal=result.magnitude,
+                    RamseySignalType,
+                    (qubit),
+                    dict(
+                        wait=np.array([wait]),
+                        signal=np.array([result.magnitude]),
+                    ),
                 )
     return data
 
