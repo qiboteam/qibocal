@@ -20,7 +20,7 @@ class ResonatorSpectroscopyAttenuationParameters(Parameters):
     """ResonatorSpectroscopy runcard inputs."""
 
     freq_width: int
-    """Width for frequency sweep relative  to the readout frequency (Hz)."""
+    """Width for frequency sweep relative  to the readout frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
     power_level: PowerLevel
@@ -44,7 +44,7 @@ class ResonatorSpectroscopyAttenuationResults(Results):
 
     frequency: dict[QubitId, float]
     """Readout frequency [GHz] for each qubit."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
+    fitted_parameters: dict[QubitId, list[float]]
     """Raw fitted parameters."""
     bare_frequency: Optional[dict[QubitId, float]] = field(
         default_factory=dict,
@@ -126,14 +126,13 @@ def _acquisition(
 
     # retrieve the results for every qubit
     for qubit in qubits:
-        # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         # store the results
         data.register_qubit(
             ResSpecType,
             (qubit),
             dict(
-                msr=result.magnitude,
+                signal=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + ro_pulses[qubit].frequency,
             ),

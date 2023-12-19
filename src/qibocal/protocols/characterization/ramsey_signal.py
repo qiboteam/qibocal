@@ -20,16 +20,16 @@ from .ramsey import (
     fitting,
     ramsey_fit,
 )
-from .utils import GHZ_TO_HZ, V_TO_UV, table_dict, table_html
+from .utils import GHZ_TO_HZ, table_dict, table_html
 
 
 @dataclass
-class RamseyMSRParameters(RamseyParameters):
+class RamseySignalParameters(RamseyParameters):
     """Ramsey runcard inputs."""
 
 
 @dataclass
-class RamseyMSRResults(Results):
+class RamseySignalResults(Results):
     """Ramsey outputs."""
 
     frequency: dict[QubitId, tuple[float, Optional[float]]]
@@ -42,21 +42,21 @@ class RamseyMSRResults(Results):
     """Raw fitting output."""
 
 
-RamseyMSRType = np.dtype([("wait", np.float64), ("msr", np.float64)])
+RamseySignalType = np.dtype([("wait", np.float64), ("signal", np.float64)])
 """Custom dtype for coherence routines."""
 
 
 @dataclass
-class RamseyMSRData(RamseyData):
+class RamseySignalData(RamseyData):
     """Ramsey acquisition outputs."""
 
-    def register_qubit(self, qubit, wait, msr):
+    def register_qubit(self, qubit, wait, signal):
         """Store output for single qubit."""
         # to be able to handle the non-sweeper case
-        shape = (1,) if np.isscalar(msr) else msr.shape
-        ar = np.empty(shape, dtype=RamseyMSRType)
+        shape = (1,) if np.isscalar(signal) else signal.shape
+        ar = np.empty(shape, dtype=RamseySignalType)
         ar["wait"] = wait
-        ar["msr"] = msr
+        ar["signal"] = signal
         if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
@@ -72,10 +72,10 @@ class RamseyMSRData(RamseyData):
 
 
 def _acquisition(
-    params: RamseyMSRParameters,
+    params: RamseySignalParameters,
     platform: Platform,
     qubits: Qubits,
-) -> RamseyMSRData:
+) -> RamseySignalData:
     """Data acquisition for Ramsey Experiment (detuned)."""
     # create a sequence of pulses for the experiment
     # RX90 - t - RX90 - MZ
@@ -106,7 +106,7 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
-    data = RamseyMSRData(
+    data = RamseySignalData(
         n_osc=params.n_osc,
         t_max=params.delay_between_pulses_end,
         detuning_sign=+1,
@@ -138,7 +138,7 @@ def _acquisition(
             data.register_qubit(
                 qubit,
                 wait=waits,
-                msr=result.magnitude,
+                signal=result.magnitude,
             )
 
     else:
@@ -169,12 +169,12 @@ def _acquisition(
                 data.register_qubit(
                     qubit,
                     wait=wait,
-                    msr=result.magnitude,
+                    signal=result.magnitude,
                 )
     return data
 
 
-def _fit(data: RamseyMSRData) -> RamseyMSRResults:
+def _fit(data: RamseySignalData) -> RamseySignalResults:
     r"""
     Fitting routine for Ramsey experiment. The used model is
     .. math::
@@ -189,9 +189,9 @@ def _fit(data: RamseyMSRData) -> RamseyMSRResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
-        msr = qubit_data["msr"]
+        signal = qubit_data["signal"]
         try:
-            popt, perr = fitting(waits, msr)
+            popt, perr = fitting(waits, signal)
         except:
             popt = POPT_EXCEPTION
             perr = PERR_EXCEPTION
@@ -213,10 +213,10 @@ def _fit(data: RamseyMSRData) -> RamseyMSRResults:
             popt[2] * GHZ_TO_HZ / (2 * np.pi * data.t_max),
         )
 
-    return RamseyMSRResults(freq_measure, t2_measure, delta_phys_measure, popts)
+    return RamseySignalResults(freq_measure, t2_measure, delta_phys_measure, popts)
 
 
-def _plot(data: RamseyMSRData, qubit, fit: RamseyMSRResults = None):
+def _plot(data: RamseySignalData, qubit, fit: RamseySignalResults = None):
     """Plotting function for Ramsey Experiment."""
 
     figures = []
@@ -225,16 +225,16 @@ def _plot(data: RamseyMSRData, qubit, fit: RamseyMSRResults = None):
 
     qubit_data = data.data[qubit]
     waits = data.waits
-    msr = qubit_data["msr"]
+    signal = qubit_data["signal"]
     fig = go.Figure(
         [
             go.Scatter(
                 x=waits,
-                y=msr * V_TO_UV,
+                y=signal,
                 opacity=1,
-                name="Voltage",
+                name="Signal",
                 showlegend=True,
-                legendgroup="Voltage",
+                legendgroup="Signal",
                 mode="lines",
             ),
         ]
@@ -251,8 +251,7 @@ def _plot(data: RamseyMSRData, qubit, fit: RamseyMSRResults = None):
                     float(fit.fitted_parameters[qubit][2]),
                     float(fit.fitted_parameters[qubit][3]),
                     float(fit.fitted_parameters[qubit][4]),
-                )
-                * V_TO_UV,
+                ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
             )
@@ -275,9 +274,8 @@ def _plot(data: RamseyMSRData, qubit, fit: RamseyMSRResults = None):
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Time (ns)",
-        yaxis_title="MSR [uV]",
+        xaxis_title="Time [ns]",
+        yaxis_title="Signal [a.u.]",
     )
 
     figures.append(fig)
@@ -285,5 +283,5 @@ def _plot(data: RamseyMSRData, qubit, fit: RamseyMSRResults = None):
     return figures, fitting_report
 
 
-ramsey_msr = Routine(_acquisition, _fit, _plot, _update)
+ramsey_signal = Routine(_acquisition, _fit, _plot, _update)
 """Ramsey Routine object."""

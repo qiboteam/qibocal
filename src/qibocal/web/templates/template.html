@@ -63,15 +63,13 @@
               Actions
             </button>
             <div class="collapse show" id="actions-collapse">
-              {% for routine, iteration in report.history %}
-              <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-                <!-- <li><a href="#{{ routine }}" class="link-dark d-inline-flex text-decoration-none rounded">{{
-                    report.routine_name(routine, iteration) }}</a></li> -->
+              {% for task_uid in report.history  %}
                 <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-                  <li><a class="link-dark d-inline-flex text-decoration-none rounded"
-                      href="#{{ routine }}-{{ iteration }}">  {{ report.routine_name(routine, iteration) }}</a></li>
+                  <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
+                    <li><a class="link-dark d-inline-flex text-decoration-none rounded"
+                        href="#{{report.routine_name(*task_uid)}}"> {{report.routine_name(*task_uid)}}</a></li>
+                  </ul>
                 </ul>
-              </ul>
               {% endfor %}
             </div>
           </li>
@@ -132,7 +130,7 @@
 
       {% for task_uid in report.history %}
 
-      <div id="{{ routine }}-{{ iteration}}" style="scroll-margin-top: 4em;">
+      <div id="{{report.routine_name(*task_uid)}}" style="scroll-margin-top: 4em;">
         <h4
           class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
           {{ report.routine_name(*task_uid) }}</h4>

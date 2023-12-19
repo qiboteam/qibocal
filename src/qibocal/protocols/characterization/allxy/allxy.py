@@ -17,6 +17,9 @@ class AllXYParameters(Parameters):
 
     beta_param: float = None
     """Beta parameter for drag pulse."""
+    unrolling: bool = False
+    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
+    Defaults to ``False``."""
 
 
 @dataclass
@@ -80,31 +83,38 @@ def _acquisition(
 
     # repeat the experiment as many times as defined by software_averages
     # for iteration in range(params.software_averages):
+    sequences, all_ro_pulses = [], []
     for gates in gatelist:
-        # create a sequence of pulses
-        ro_pulses = {}
-        sequence = PulseSequence()
+        sequences.append(PulseSequence())
+        all_ro_pulses.append({})
         for qubit in qubits:
-            sequence, ro_pulses[qubit] = add_gate_pair_pulses_to_sequence(
-                platform, gates, qubit, sequence, params.beta_param
+            sequences[-1], all_ro_pulses[-1][qubit] = add_gate_pair_pulses_to_sequence(
+                platform, gates, qubit, sequences[-1], params.beta_param
             )
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                averaging_mode=AveragingMode.CYCLIC,
-            ),
-        )
 
-        # retrieve the results for every qubit
+    # execute the pulse sequence
+    options = ExecutionParameters(
+        nshots=params.nshots, averaging_mode=AveragingMode.CYCLIC
+    )
+    if params.unrolling:
+        results = platform.execute_pulse_sequences(sequences, options)
+    else:
+        results = [
+            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
+        ]
+
+    for ig, (gates, ro_pulses) in enumerate(zip(gatelist, all_ro_pulses)):
+        gate = "-".join(gates)
         for qubit in qubits:
-            z_proj = 2 * results[ro_pulses[qubit].serial].probability(0) - 1
-            # store the results
-            gate = "-".join(gates)
+            serial = ro_pulses[qubit].serial
+            if params.unrolling:
+                z_proj = 2 * results[serial][ig].probability(0) - 1
+            else:
+                z_proj = 2 * results[ig][serial].probability(0) - 1
             data.register_qubit(
                 AllXYType, (qubit), dict(prob=np.array([z_proj]), gate=np.array([gate]))
             )
+
     # finally, save the remaining data
     return data
 
@@ -250,7 +260,6 @@ def _plot(data: AllXYData, qubit, fit: AllXYResults = None):
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Gate sequence number",
         yaxis_title="Expectation value of Z",
     )

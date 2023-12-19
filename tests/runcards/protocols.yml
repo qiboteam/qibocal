@@ -234,9 +234,9 @@ actions:
       step_amp_factor: 0.1
       pulse_length: 30
 
-  - id: rabi msr
+  - id: rabi signal
     priority: 0
-    operation: rabi_amplitude_msr
+    operation: rabi_amplitude_signal
     update: false
     parameters:
       min_amp_factor: 0.0
@@ -268,9 +268,9 @@ actions:
       pulse_amplitude: 0.5
       nshots: 1024
 
-  - id: rabi length msr
+  - id: rabi length signal
     priority: 0
-    operation: rabi_length_msr
+    operation: rabi_length_signal
     parameters:
       pulse_duration_start: 4
       pulse_duration_end: 84
@@ -297,9 +297,9 @@ actions:
       delay_before_readout_step: 2000
       nshots: 1024
 
-  - id: t1_msr
+  - id: t1_signal
     priority: 0
-    operation: t1_msr
+    operation: t1_signal
     parameters:
       delay_before_readout_start: 0
       delay_before_readout_end: 20_000
@@ -322,9 +322,9 @@ actions:
       readouts: 10
       nshots: 10
 
-  - id: zeno_msr
+  - id: zeno_signal
     priority: 00
-    operation: zeno_msr
+    operation: zeno_signal
     parameters:
       readouts: 10
       nshots: 10
@@ -338,9 +338,9 @@ actions:
       delay_between_pulses_step: 100
       nshots: 10
 
-  - id: t2_msr
+  - id: t2_signal
     priority: 0
-    operation: t2_msr
+    operation: t2_signal
     parameters:
       delay_between_pulses_start: 16
       delay_between_pulses_end: 20000
@@ -366,9 +366,9 @@ actions:
       n_osc: 2
       nshots: 10
 
-  - id: ramsey_msr
+  - id: ramsey_signal
     priority: 0
-    operation: ramsey_msr
+    operation: ramsey_signal
     parameters:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
@@ -376,9 +376,9 @@ actions:
       n_osc: 2
       nshots: 10
 
-  - id: ramsey_msr_detuned
+  - id: ramsey_signal_detuned
     priority: 0
-    operation: ramsey_msr
+    operation: ramsey_signal
     parameters:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
@@ -432,6 +432,13 @@ actions:
       beta_param: null
       nshots: 10
 
+  - id: allXY unrolling
+    priority: 0
+    operation: allxy
+    parameters:
+      beta_param: null
+      unrolling: True
+      nshots: 10
 
   - id: allxy_drag_pulse_tuning
     priority: 0
@@ -461,9 +468,9 @@ actions:
       delay_between_pulses_step: 1
       nshots: 10
 
-  - id: spin_echo_msr
+  - id: spin_echo_sequence
     priority: 0
-    operation: spin_echo_msr
+    operation: spin_echo_sequence
     parameters:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 5
@@ -677,3 +684,14 @@ actions:
     parameters:
       nshots: 100
       classifiers_list: ["naive_bayes", "decision_tree"]
+
+  - id: avoided crossing
+    priority: 0
+    operation: avoided_crossing
+    qubits: [[2,1],[0,2]]
+    parameters:
+      freq_width: 100_000_000
+      freq_step: 50_000_000
+      bias_width: 0.2
+      bias_step:  0.05
+      drive_amplitude: 0.5

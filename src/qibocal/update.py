@@ -6,8 +6,6 @@ from qibolab.native import VirtualZPulse
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
-from qibocal.protocols.characterization.utils import GHZ_TO_HZ
-
 CLASSIFICATION_PARAMS = [
     "threshold",
     "iq_angle",
@@ -20,7 +18,7 @@ CLASSIFICATION_PARAMS = [
 def readout_frequency(freq: float, platform: Platform, qubit: QubitId):
     """Update readout frequency value in platform for specific qubit."""
     mz = platform.qubits[qubit].native_gates.MZ
-    freq_hz = int(freq * GHZ_TO_HZ)
+    freq_hz = int(freq)
     mz.frequency = freq_hz
     if mz.if_frequency is not None:
         mz.if_frequency = freq_hz - platform.qubits[qubit].readout.lo_frequency
@@ -29,7 +27,7 @@ def readout_frequency(freq: float, platform: Platform, qubit: QubitId):
 
 def bare_resonator_frequency(freq: float, platform: Platform, qubit: QubitId):
     """Update rbare frequency value in platform for specific qubit."""
-    platform.qubits[qubit].bare_resonator_frequency = int(freq * GHZ_TO_HZ)
+    platform.qubits[qubit].bare_resonator_frequency = int(freq)
 
 
 def readout_amplitude(amp: float, platform: Platform, qubit: QubitId):
@@ -46,7 +44,7 @@ def drive_frequency(freq: Union[float, tuple], platform: Platform, qubit: QubitI
     """Update drive frequency value in platform for specific qubit."""
     if isinstance(freq, tuple):
         freq = freq[0]
-    freq = int(freq * GHZ_TO_HZ)
+    freq = int(freq)
     platform.qubits[qubit].native_gates.RX.frequency = int(freq)
     platform.qubits[qubit].drive_frequency = int(freq)
 
@@ -169,7 +167,7 @@ def sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):
 
 
 def frequency_12_transition(frequency: int, platform: Platform, qubit: QubitId):
-    platform.qubits[qubit].native_gates.RX12.frequency = int(frequency * GHZ_TO_HZ)
+    platform.qubits[qubit].native_gates.RX12.frequency = int(frequency)
 
 
 def drive_12_amplitude(amplitude: float, platform: Platform, qubit: QubitId):
@@ -185,14 +183,14 @@ def twpa_power(power: float, platform: Platform, qubit: QubitId):
 
 
 def anharmonicity(anharmonicity: float, platform: Platform, qubit: QubitId):
-    platform.qubits[qubit].anharmonicity = int(anharmonicity * GHZ_TO_HZ)
+    platform.qubits[qubit].anharmonicity = int(anharmonicity)
 
 
 def bare_resonator_frequency_sweetspot(
     bare_resonator_frequency_sweetspot: float, platform: Platform, qubit: QubitId
 ):
     platform.qubits[qubit].bare_resonator_frequency_sweetspot = int(
-        bare_resonator_frequency_sweetspot * GHZ_TO_HZ
+        bare_resonator_frequency_sweetspot
     )
 
 

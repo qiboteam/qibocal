@@ -14,7 +14,7 @@ from qibocal import update
 from qibocal.auto.operation import Data, Qubits, Results, Routine
 from qibocal.config import log
 
-from ..utils import V_TO_UV, table_dict, table_html
+from ..utils import table_dict, table_html
 from . import allxy_drag_pulse_tuning
 
 
@@ -40,7 +40,7 @@ class DragPulseTuningResults(Results):
     """Raw fitting output."""
 
 
-DragPulseTuningType = np.dtype([("msr", np.float64), ("beta", np.float64)])
+DragPulseTuningType = np.dtype([("signal", np.float64), ("beta", np.float64)])
 
 
 @dataclass
@@ -67,7 +67,6 @@ def _acquisition(
         params.beta_start, params.beta_end, params.beta_step
     ).round(4)
 
-    # create a DataUnits object to store the MSR, phase, i, q and the beta parameter
     data = DragPulseTuningData()
 
     for beta_param in beta_param_range:
@@ -144,8 +143,8 @@ def _acquisition(
                 DragPulseTuningType,
                 (qubit),
                 dict(
-                    msr=r1.magnitude - r2.magnitude,
-                    beta=beta_param,
+                    signal=np.array([r1.magnitude - r2.magnitude]),
+                    beta=np.array([beta_param]),
                 ),
             )
 
@@ -175,7 +174,7 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        voltages = qubit_data.msr * V_TO_UV
+        voltages = qubit_data.signal
         beta_params = qubit_data.beta
 
         try:
@@ -209,7 +208,7 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
     fig.add_trace(
         go.Scatter(
             x=qubit_data.beta,
-            y=qubit_data.msr * V_TO_UV,
+            y=qubit_data.signal,
             mode="markers",
             name="Probability",
             showlegend=True,
@@ -245,9 +244,8 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Beta parameter",
-        yaxis_title="MSR[uV] [Rx(pi/2) - Ry(pi)] - [Ry(pi/2) - Rx(pi)]",
+        yaxis_title="Signal [a.u.] [Rx(pi/2) - Ry(pi)] - [Ry(pi/2) - Rx(pi)]",
     )
 
     figures.append(fig)

@@ -30,7 +30,7 @@ class RabiAmplitudeParameters(Parameters):
     step_amp_factor: float
     """Step amplitude multiplicative factor."""
     pulse_length: Optional[float]
-    """RX pulse duration (ns)."""
+    """RX pulse duration [ns]."""
 
 
 @dataclass
@@ -150,10 +150,10 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         index = local_maxima[0] if len(local_maxima) > 0 else None
         # 0.5 hardcoded guess for less than one oscillation
         f = x[index] / (x[1] - x[0]) if index is not None else 0.5
-        pguess = [0.5, 0.5, 1 / f, np.pi / 2]
+        pguess = [0.5, 0.5, 1 / f, 0]
         try:
             popt, perr = curve_fit(
-                utils.rabi_amplitude_fit,
+                utils.rabi_amplitude_function,
                 x,
                 y,
                 p0=pguess,
@@ -165,7 +165,9 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
                 sigma=qubit_data.error,
             )
             perr = np.sqrt(np.diag(perr))
-            pi_pulse_parameter = np.abs(popt[2] / 2)
+            pi_pulse_parameter = (
+                popt[2] / 2 * utils.period_correction_factor(phase=popt[3])
+            )
 
         except:
             log.warning("rabi_fit: the fitting was not succesful")
@@ -179,7 +181,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         chi2[qubit] = (
             chi2_reduced(
                 y,
-                utils.rabi_amplitude_fit(x, *popt),
+                utils.rabi_amplitude_function(x, *popt),
                 qubit_data.error,
             ),
             np.sqrt(2 / len(y)),

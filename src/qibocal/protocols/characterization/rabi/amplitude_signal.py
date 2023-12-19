@@ -32,7 +32,7 @@ class RabiAmplitudeVoltResults(RabiAmplitudeResults):
 
 
 RabiAmpVoltType = np.dtype(
-    [("amp", np.float64), ("msr", np.float64), ("phase", np.float64)]
+    [("amp", np.float64), ("signal", np.float64), ("phase", np.float64)]
 )
 """Custom dtype for rabi amplitude."""
 
@@ -102,7 +102,7 @@ def _acquisition(
             (qubit),
             dict(
                 amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
-                msr=result.magnitude,
+                signal=result.magnitude,
                 phase=result.phase,
             ),
         )
@@ -120,7 +120,7 @@ def _fit(data: RabiAmplitudeVoltData) -> RabiAmplitudeVoltResults:
         qubit_data = data[qubit]
 
         rabi_parameter = qubit_data.amp
-        voltages = qubit_data.msr
+        voltages = qubit_data.signal
 
         y_min = np.min(voltages)
         y_max = np.max(voltages)
@@ -136,10 +136,10 @@ def _fit(data: RabiAmplitudeVoltData) -> RabiAmplitudeVoltResults:
         index = local_maxima[0] if len(local_maxima) > 0 else None
         # 0.5 hardcoded guess for less than one oscillation
         f = x[index] / (x[1] - x[0]) if index is not None else 0.5
-        pguess = [0.5, 1, 1 / f, np.pi / 2]
+        pguess = [0.5, 1, 1 / f, 0]
         try:
             popt, _ = curve_fit(
-                utils.rabi_amplitude_fit,
+                utils.rabi_amplitude_function,
                 x,
                 y,
                 p0=pguess,
@@ -155,7 +155,11 @@ def _fit(data: RabiAmplitudeVoltData) -> RabiAmplitudeVoltResults:
                 popt[2] * (x_max - x_min),
                 popt[3] - 2 * np.pi * x_min / (x_max - x_min) / popt[2],
             ]
-            pi_pulse_parameter = np.abs((translated_popt[2]) / 2)
+            pi_pulse_parameter = (
+                translated_popt[2]
+                / 2
+                * utils.period_correction_factor(phase=translated_popt[3])
+            )
 
         except:
             log.warning("rabi_fit: the fitting was not succesful")
@@ -179,5 +183,5 @@ def _update(results: RabiAmplitudeVoltResults, platform: Platform, qubit: QubitI
     update.drive_amplitude(results.amplitude[qubit], platform, qubit)
 
 
-rabi_amplitude_msr = Routine(_acquisition, _fit, _plot, _update)
+rabi_amplitude_signal = Routine(_acquisition, _fit, _plot, _update)
 """RabiAmplitude Routine object."""
