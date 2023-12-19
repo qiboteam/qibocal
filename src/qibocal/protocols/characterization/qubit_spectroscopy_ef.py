@@ -142,8 +142,8 @@ def _acquisition(
             ResSpecType,
             (qubit),
             dict(
-                signal=result.average.voltage,
-                phase=np.mean(result.phase),
+                signal=np.abs(result.average.voltage),
+                phase=np.mean(result.phase, axis=0),
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
                 error_signal=result.average.std,
                 error_phase=np.std(result.phase, ddof=1),
