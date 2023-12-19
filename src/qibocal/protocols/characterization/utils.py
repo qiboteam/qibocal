@@ -96,7 +96,7 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
 
 
 def lorentzian_fit(data, resonator_type=None, fit=None):
-    frequencies = data.freq
+    frequencies = data.freq * HZ_TO_GHZ
     voltages = data.signal
 
     # Guess parameters for Lorentzian max or min
@@ -151,7 +151,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         log.warning("lorentzian_fit: the fitting was not successful")
         perr = [1] * 4
 
-    return model_parameters[1], model_parameters, perr
+    return model_parameters[1] * HZ_TO_GHZ, model_parameters, perr
 
 
 def spectroscopy_plot(data, qubit, fit: Results = None):
