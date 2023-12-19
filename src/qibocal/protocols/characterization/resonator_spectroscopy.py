@@ -197,6 +197,7 @@ def _fit(
     fitted_parameters = {}
     error_fit_pars = {}
     chi2 = {}
+    amplitudes = {}
     for qubit in qubits:
         freq, fitted_params, perr = lorentzian_fit(
             data[qubit], resonator_type=data.resonator_type, fit="resonator"
@@ -215,13 +216,14 @@ def _fit(
             ),
             np.sqrt(2 / len(data[qubit].freq)),
         )
+        amplitudes[qubit] = fitted_parameters[qubit][0]
 
     if data.power_level is PowerLevel.high:
         return ResonatorSpectroscopyResults(
             frequency=frequency,
             fitted_parameters=fitted_parameters,
             bare_frequency=bare_frequency,
-            amplitude=data.amplitudes,
+            amplitude=amplitudes,
             error_fit_pars=error_fit_pars,
             chi2_reduced=chi2,
             attenuation=data.attenuations,
@@ -230,7 +232,7 @@ def _fit(
         return ResonatorSpectroscopyResults(
             frequency=frequency,
             fitted_parameters=fitted_parameters,
-            amplitude=data.amplitudes,
+            amplitude=amplitudes,
             error_fit_pars=error_fit_pars,
             chi2_reduced=chi2,
             attenuation=data.attenuations,

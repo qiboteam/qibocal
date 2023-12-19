@@ -137,7 +137,6 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
                 sigma=data.error_signal,
             )
             perr = np.sqrt(np.diag(perr)).tolist()
-
         else:
             fit_parameters, perr = curve_fit(
                 lorentzian,
@@ -146,12 +145,13 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
                 p0=model_parameters,
             )
             perr = [0] * 4
+        # fit_parameters = fit_parameters*GHZ_TO_HZ
+        # fit_parameters[-1] = fit_parameters[-1]*HZ_TO_GHZ
         model_parameters = list(fit_parameters)
     except RuntimeError:
         log.warning("lorentzian_fit: the fitting was not successful")
         perr = [1] * 4
-
-    return model_parameters[1] * HZ_TO_GHZ, model_parameters, perr
+    return model_parameters[1], model_parameters, perr
 
 
 def spectroscopy_plot(data, qubit, fit: Results = None):
@@ -164,7 +164,6 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
     )
     qubit_data = data[qubit]
     fitting_report = ""
-
     frequencies = qubit_data.freq * HZ_TO_GHZ
     signal = qubit_data.signal
     errors_signal = qubit_data.error_signal
@@ -704,7 +703,6 @@ def table_dict(
             qubit = [qubit] * len(names)
 
         if display_error:
-            print(values)
             rounded_values, rounded_errors = round_report(values)
 
             return {
