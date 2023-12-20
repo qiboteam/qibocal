@@ -168,8 +168,8 @@ def _acquisition(
             ResSpecType,
             (qubit),
             dict(
-                signal=result.average.voltage,
-                phase=np.mean(result.phase),
+                signal=np.abs(result.average.voltage),
+                phase=np.mean(result.phase, axis=0),
                 freq=delta_frequency_range + ro_pulses[qubit].frequency,
                 error_signal=result.average.std,
                 error_phase=np.std(result.phase, ddof=1),
@@ -189,6 +189,7 @@ def _fit(
     fitted_parameters = {}
     error_fit_pars = {}
     chi2 = {}
+    amplitudes = {}
     for qubit in qubits:
         freq, fitted_params, perr = lorentzian_fit(
             data[qubit], resonator_type=data.resonator_type, fit="resonator"
@@ -207,6 +208,7 @@ def _fit(
             ),
             np.sqrt(2 / len(data[qubit].freq)),
         )
+        amplitudes[qubit] = fitted_parameters[qubit][0]
 
     if data.power_level is PowerLevel.high:
         return ResonatorSpectroscopyResults(
