@@ -250,34 +250,33 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
             label = "qubit frequency"
             freq = fit.frequency
 
-        if fit.amplitude[qubit] is not None:
+        if data.amplitudes[qubit] is not None:
             fitting_report = table_html(
                 table_dict(
                     qubit,
                     [label, "amplitude", "chi2 reduced"],
                     [
                         (freq[qubit], fit.error_fit_pars[qubit][1]),
-                        (fit.amplitude[qubit], fit.error_fit_pars[qubit][0]),
+                        (data.amplitudes[qubit], 0),
                         fit.chi2_reduced[qubit],
                     ],
                     display_error=True,
                 )
             )
-        if hasattr(fit, "attenuation"):
-            if fit.attenuation[qubit] is not None:
-                fitting_report = table_html(
-                    table_dict(
-                        qubit,
-                        [label, "amplitude", "attenuation", "chi2 reduced"],
-                        [
-                            (freq[qubit], fit.error_fit_pars[qubit][1]),
-                            (fit.amplitude[qubit], fit.error_fit_pars[qubit][0]),
-                            (fit.attenuation[qubit], 0),
-                            fit.chi2_reduced[qubit],
-                        ],
-                        display_error=True,
-                    )
+        if data.attenuations is not None:
+            fitting_report = table_html(
+                table_dict(
+                    qubit,
+                    [label, "amplitude", "attenuation", "chi2 reduced"],
+                    [
+                        (freq[qubit], fit.error_fit_pars[qubit][1]),
+                        (data.amplitudes[qubit], 0),
+                        (data.attenuations[qubit], 0),
+                        fit.chi2_reduced[qubit],
+                    ],
+                    display_error=True,
                 )
+            )
 
     fig.update_layout(
         showlegend=True,
@@ -704,7 +703,6 @@ def table_dict(
             qubit = [qubit] * len(names)
 
         if display_error:
-            print(values)
             rounded_values, rounded_errors = round_report(values)
 
             return {
