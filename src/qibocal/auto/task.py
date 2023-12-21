@@ -64,6 +64,7 @@ class Task:
                 task_qubits = self.qubits
         else:
             task_qubits = qubits
+
         self.qubits = list(task_qubits)
 
         return task_qubits
@@ -147,7 +148,7 @@ class Task:
             )
 
         completed = Completed(self, Normal(), folder)
-        task_qubits = self._allocate_local_qubits(qubits, platform)
+
         try:
             if self.parameters.nshots is None:
                 self.action.parameters["nshots"] = platform.settings.nshots
@@ -164,8 +165,13 @@ class Task:
         if mode.name in ["autocalibration", "acquire"]:
             if operation.platform_dependent and operation.qubits_dependent:
                 completed.data, completed.data_time = operation.acquisition(
-                    parameters, platform=platform, qubits=task_qubits
+                    parameters,
+                    platform=platform,
+                    qubits=self._allocate_local_qubits(qubits, platform),
                 )
+                # need to reassign qubit since when task
+                # is passed it is deepcopied
+                completed.task.qubits = self.qubits
             else:
                 completed.data, completed.data_time = operation.acquisition(
                     parameters, platform=platform
@@ -247,9 +253,9 @@ class Completed:
         self._data = data
         self._data.save(self.datapath)
 
-    def update_platform(self, platform: Platform):
+    def update_platform(self, platform: Platform, update: bool):
         """Perform update on platform' parameters by looping over qubits or pairs."""
-        if self.task.update:
+        if self.task.update and update:
             for qubit in self.task.qubits:
                 self.task.operation.update(self.results, platform, qubit)
 

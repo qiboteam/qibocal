@@ -134,6 +134,8 @@ class Executor:
         self.head = self.graph.start
         while self.head is not None:
             task = self.current
+            print(task.id)
+            print("HEAD", self.head)
             task.iteration = self.history.iterations(task.id)
             log.info(
                 f"Executing mode {mode.name} on {task.id} iteration {task.iteration}."
@@ -145,20 +147,18 @@ class Executor:
                 folder=self.output,
                 mode=mode,
             )
+            print("TASK QUBITS", task.qubits)
+            print("COMPLETED TASK QUBITS", completed.task.qubits)
             self.history.push(completed)
             if mode.name == "autocalibration":
                 new_head = completed.validate()
                 # if head is the same we continue through the graph
                 # else we use the new head given by handler
                 self.head = self.next() if new_head == self.head else new_head
+
             else:
                 self.head = self.next()
-            update = self.update and task.update
-            if (
-                mode.name in ["autocalibration", "fit"]
-                and self.platform is not None
-                and update
-            ):
-                completed.update_platform(platform=self.platform)
+            if mode.name in ["autocalibration", "fit"] and self.platform is not None:
+                completed.update_platform(platform=self.platform, update=self.update)
 
             yield completed.task.uid
