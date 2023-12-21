@@ -146,10 +146,13 @@ class Executor:
                 mode=mode,
             )
             self.history.push(completed)
-            self.head = self.next()
             if mode.name == "autocalibration":
-                self.head = completed.validate()
-
+                new_head = completed.validate()
+                # if head is the same we continue through the graph
+                # else we use the new head given by handler
+                self.head = self.next() if new_head == self.head else new_head
+            else:
+                self.head = self.next()
             update = self.update and task.update
             if (
                 mode.name in ["autocalibration", "fit"]
