@@ -259,7 +259,7 @@ class Completed:
             for qubit in self.task.qubits:
                 self.task.operation.update(self.results, platform, qubit)
 
-    def validate(self) -> TaskId:
+    def validate(self) -> Optional[TaskId]:
         """Check status of completed and handle Failure using handler."""
         if isinstance(self.status, Failure):
             handler = self.task.action.handler
