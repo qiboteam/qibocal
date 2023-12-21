@@ -134,8 +134,6 @@ class Executor:
         self.head = self.graph.start
         while self.head is not None:
             task = self.current
-            print(task.id)
-            print("HEAD", self.head)
             task.iteration = self.history.iterations(task.id)
             log.info(
                 f"Executing mode {mode.name} on {task.id} iteration {task.iteration}."
@@ -147,8 +145,6 @@ class Executor:
                 folder=self.output,
                 mode=mode,
             )
-            print("TASK QUBITS", task.qubits)
-            print("COMPLETED TASK QUBITS", completed.task.qubits)
             self.history.push(completed)
             if mode.name == "autocalibration":
                 new_head = completed.validate()
