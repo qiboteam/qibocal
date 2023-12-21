@@ -87,7 +87,7 @@ class ResonatorSpectroscopyData(Data):
     """Raw data acquired."""
     power_level: Optional[PowerLevel] = None
     """Power regime of the resonator."""
-    attenuations: dict[QubitId, int] = field(default_factory=dict)
+    attenuations: Optional[dict[QubitId, int]] = None
     """Readout attenuation [dB] for each qubit"""
 
     @classmethod
