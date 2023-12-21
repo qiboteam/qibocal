@@ -262,11 +262,11 @@ class Completed:
     def validate(self) -> TaskId:
         """Check status of completed and handle Failure using handler."""
         if isinstance(self.status, Failure):
-            try:
-                return self.task.action.handler.id
-            except AttributeError:
-                log.error(
-                    "Stopping execution because of error in validation without handler"
-                )
-                return None
+            handler = self.task.action.handler
+            if handler is not None:
+                return handler.id
+            log.error(
+                "Stopping execution because of error in validation without handler"
+            )
+            return None
         return self.task.id
