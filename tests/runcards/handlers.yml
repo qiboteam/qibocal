@@ -1,0 +1,38 @@
+max_iterations: 10
+
+qubits: [0]
+
+actions:
+  - id: t1
+    priority: 0
+    operation: t1
+    main: rabi
+    parameters:
+      delay_before_readout_start: 16
+      delay_before_readout_end: 2000
+      delay_before_readout_step: 20
+
+  - id: rabi
+    priority: 0
+    operation: rabi_amplitude
+    main: single shot
+    parameters:
+      min_amp_factor: 0.0
+      max_amp_factor: 2.0
+      step_amp_factor: 0.02
+      pulse_length: 40
+      relaxation_time: 100_000
+      nshots: 1024
+    validator:
+      scheme: chi2
+      parameters:
+        chi2_max_value: 0.01
+    handler:
+      id: t1
+    update: false
+
+  - id: single shot
+    priority: 0
+    operation: single_shot_classification
+    parameters:
+      nshots: 10000
