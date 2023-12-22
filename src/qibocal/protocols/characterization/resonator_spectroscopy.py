@@ -73,6 +73,14 @@ class ResonatorSpectroscopyResults(Results):
         default_factory=dict
     )
     """Chi2 reduced."""
+    amplitude: Optional[dict[QubitId, float]] = field(
+        default_factory=dict,
+    )
+    """Readout amplitude for each qubit."""
+    attenuation: Optional[dict[QubitId, int]] = field(
+        default_factory=dict,
+    )
+    """Readout attenuation [dB] for each qubit."""
 
 
 @dataclass
@@ -217,6 +225,8 @@ def _fit(
             bare_frequency=bare_frequency,
             error_fit_pars=error_fit_pars,
             chi2_reduced=chi2,
+            amplitude=data.amplitudes,
+            attenuation=data.attenuations,
         )
     else:
         return ResonatorSpectroscopyResults(
@@ -224,6 +234,8 @@ def _fit(
             fitted_parameters=fitted_parameters,
             error_fit_pars=error_fit_pars,
             chi2_reduced=chi2,
+            amplitude=data.amplitudes,
+            attenuation=data.attenuations,
         )
 
 

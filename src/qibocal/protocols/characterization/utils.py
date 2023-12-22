@@ -263,7 +263,6 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                 )
             )
         if data.attenuations is not None:
-            print(data.attenuations)
             fitting_report = table_html(
                 table_dict(
                     qubit,
