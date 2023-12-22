@@ -20,6 +20,7 @@ from .dispersive_shift import dispersive_shift
 from .dispersive_shift_qutrit import dispersive_shift_qutrit
 from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
+from .flipping_signal import flipping_signal
 from .flux_dependence.avoided_crossing import avoided_crossing
 from .flux_dependence.qubit_crosstalk import qubit_crosstalk
 from .flux_dependence.qubit_flux_dependence import qubit_flux
@@ -110,3 +111,4 @@ class Operation(Enum):
     dispersive_shift_qutrit = dispersive_shift_qutrit
     coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
     coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
+    flipping_signal = flipping_signal
