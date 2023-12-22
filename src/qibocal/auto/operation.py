@@ -267,9 +267,9 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
         return "platform" in inspect.signature(self.acquisition).parameters
 
     @property
-    def qubits_dependent(self):
+    def targets_dependent(self):
         """Check if acquisition involves qubits."""
-        return "qubits" in inspect.signature(self.acquisition).parameters
+        return "targets" in inspect.signature(self.acquisition).parameters
 
 
 @dataclass

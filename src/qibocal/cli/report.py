@@ -49,9 +49,9 @@ def report(path):
 class ReportBuilder:
     """Builder to produce html report."""
 
-    def __init__(self, path: Path, qubits, executor: Executor, metadata, history=None):
+    def __init__(self, path: Path, targets, executor: Executor, metadata, history=None):
         self.path = self.title = path
-        self.qubits = qubits
+        self.targets = targets
         self.executor = executor
         self.metadata = metadata
         self._history = history
@@ -69,16 +69,16 @@ class ReportBuilder:
         name = routine.replace("_", " ").title()
         return f"{name} - {iteration}"
 
-    def routine_qubits(self, task_id: TaskId):
-        """Get local qubits parameter from Task if available otherwise use global one."""
-        local_qubits = self.history[task_id].task.qubits
-        return local_qubits if len(local_qubits) > 0 else self.qubits
+    def routine_targets(self, task_id: TaskId):
+        """Get local targets parameter from Task if available otherwise use global one."""
+        local_targets = self.history[task_id].task.targets
+        return local_targets if len(local_targets) > 0 else self.targets
 
     def single_qubit_plot(self, task_id: TaskId, qubit: QubitId):
         """Generate single qubit plot."""
         node = self.history[task_id]
         figures, fitting_report = node.task.operation.report(
-            data=node.data, fit=node.results, qubit=qubit
+            data=node.data, fit=node.results, target=qubit
         )
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             html_list = []

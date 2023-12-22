@@ -3,11 +3,10 @@ import os
 from functools import cached_property
 from typing import Any, NewType, Optional, Union
 
-from pydantic import Field
 from pydantic.dataclasses import dataclass
 from qibo.backends import Backend, GlobalBackend
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId
+from qibolab.qubits import QubitId, QubitPairId
 
 from .handlers import Handler
 from .operation import OperationId
@@ -15,6 +14,9 @@ from .validation import Validator
 
 Id = NewType("Id", str)
 """Action identifiers type."""
+
+Targets = Union[list[QubitId], list[QubitPairId], list[list[QubitId]]]
+"""Elements to be calibrated by a single protocol."""
 
 MAX_ITERATIONS = 5
 """Default max iterations."""
@@ -34,9 +36,7 @@ class Action:
     """Alternative subsequent actions, branching from the current one."""
     priority: Optional[int] = None
     """Priority level, determining the execution order."""
-    qubits: Union[
-        list[QubitId], list[tuple[QubitId, QubitId]], list[list[QubitId]]
-    ] = Field(default_factory=list)
+    targets: Optional[Targets] = None
     """Local qubits (optional)."""
     update: bool = True
     """Runcard update mechanism."""
@@ -58,7 +58,7 @@ class Runcard:
 
     actions: list[Action]
     """List of action to be executed."""
-    qubits: Optional[Union[list[QubitId], list[tuple[QubitId, QubitId]]]] = None
+    targets: Optional[Targets] = None
     """Qubits to be calibrated."""
     backend: str = "qibolab"
     """Qibo backend."""

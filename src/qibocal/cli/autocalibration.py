@@ -14,7 +14,6 @@ from .utils import (
     PLATFORM,
     RUNCARD,
     UPDATED_PLATFORM,
-    create_qubits_dict,
     generate_meta,
     generate_output_folder,
 )
@@ -35,7 +34,7 @@ def autocalibrate(runcard, folder, force, update):
     path = generate_output_folder(folder, force)
 
     # allocate qubits
-    qubits = create_qubits_dict(qubits=runcard.qubits, platform=platform)
+    # qubits = create_qubits_dict(qubits=runcard.qubits, platform=platform)
 
     # generate meta
     meta = generate_meta(backend, platform, path)
@@ -49,7 +48,7 @@ def autocalibrate(runcard, folder, force, update):
     (path / META).write_text(json.dumps(meta, indent=4))
 
     # allocate executor
-    executor = Executor.load(runcard, path, platform, qubits, update)
+    executor = Executor.load(runcard, path, platform, runcard.targets, update)
 
     # connect and initialize platform
     if platform is not None:
@@ -59,7 +58,7 @@ def autocalibrate(runcard, folder, force, update):
 
     # run protocols
     for _ in executor.run(mode=ExecutionMode.autocalibration):
-        report = ReportBuilder(path, qubits, executor, meta, executor.history)
+        report = ReportBuilder(path, runcard.targets, executor, meta, executor.history)
         report.run(path)
 
     e = datetime.datetime.now(datetime.timezone.utc)
