@@ -10,6 +10,7 @@ actions:
     parameters:
       nshots: 1024
       readout_amplitude: 0.5
+      sampling_rate: 1_000_000_000
 
   - id: resonator high power high amplitude
     priority: 0

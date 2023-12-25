@@ -21,6 +21,8 @@ class TimeOfFlightReadoutParameters(Parameters):
     """Amplitude of the readout pulse."""
     window_size: Optional[int] = 10
     """Window size for the moving average."""
+    sampling_rate: Optional[int] = None
+    """Sampling rate of the specific driver."""
 
 
 @dataclass
@@ -72,9 +74,10 @@ def _acquisition(
             averaging_mode=AveragingMode.CYCLIC,
         ),
     )
+    sampling_rate = params.sampling_rate if params.sampling_rate else 1e9
 
     data = TimeOfFlightReadoutData(
-        windows_size=params.window_size, sampling_rate=platform.settings.sampling_rate
+        windows_size=params.window_size, sampling_rate=sampling_rate
     )
 
     # retrieve and store the results for every qubit
