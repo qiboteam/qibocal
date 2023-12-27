@@ -10,7 +10,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 
 from ..utils import table_dict, table_html
 from . import utils
@@ -63,7 +63,7 @@ class ZenoResults(Results):
 def _acquisition(
     params: ZenoParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> ZenoData:
     """
     In a T1_Zeno experiment, we measure an excited qubit repeatedly. Due to decoherence processes,
@@ -79,7 +79,7 @@ def _acquisition(
     RX_pulses = {}
     ro_pulses = {}
     ro_pulse_duration = {}
-    for qubit in qubits:
+    for qubit in targets:
         RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         sequence.add(RX_pulses[qubit])
         start = RX_pulses[qubit].finish
@@ -106,7 +106,7 @@ def _acquisition(
     )
 
     # retrieve and store the results for every qubit
-    for qubit in qubits:
+    for qubit in targets:
         for ro_pulse in ro_pulses[qubit]:
             result = results[ro_pulse.serial]
             data.register_qubit(
@@ -129,13 +129,13 @@ def _fit(data: ZenoData) -> ZenoResults:
     return ZenoResults(t1s, fitted_parameters)
 
 
-def _plot(data: ZenoData, fit: ZenoResults, qubit):
+def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
     """Plotting function for T1 experiment."""
     figures = []
     fig = go.Figure()
 
     fitting_report = ""
-    qubit_data = data[qubit]
+    qubit_data = data[target]
     readouts = np.arange(1, len(qubit_data.signal) + 1)
 
     fig.add_trace(
@@ -156,7 +156,7 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
             max(readouts),
             2 * len(qubit_data),
         )
-        params = fit.fitted_parameters[qubit]
+        params = fit.fitted_parameters[target]
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
@@ -167,11 +167,11 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
         )
         fitting_report = table_html(
             table_dict(
-                qubit,
+                target,
                 ["T1", "Readout Pulse"],
                 [
-                    np.round(fit.zeno_t1[qubit]),
-                    np.round(fit.zeno_t1[qubit] * data.readout_duration[qubit]),
+                    np.round(fit.zeno_t1[target]),
+                    np.round(fit.zeno_t1[target] * data.readout_duration[target]),
                 ],
             )
         )

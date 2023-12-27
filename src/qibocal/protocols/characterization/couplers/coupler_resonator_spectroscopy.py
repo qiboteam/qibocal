@@ -4,10 +4,10 @@ import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
+from qibolab.qubits import QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Qubits, Routine
+from qibocal.auto.operation import Routine
 
 from ..flux_dependence.utils import flux_dependence_plot
 from ..two_qubit_interaction.utils import order_pair
@@ -24,7 +24,9 @@ class CouplerSpectroscopyParametersResonator(CouplerSpectroscopyParameters):
 
 
 def _acquisition(
-    params: CouplerSpectroscopyParametersResonator, platform: Platform, qubits: Qubits
+    params: CouplerSpectroscopyParametersResonator,
+    platform: Platform,
+    targets: list[QubitPairId],
 ) -> CouplerSpectroscopyData:
     """
     Data acquisition for CouplerResonator spectroscopy.
@@ -48,8 +50,7 @@ def _acquisition(
     ro_pulses = {}
     fx_pulses = {}
     couplers = []
-
-    for i, pair in enumerate(qubits):
+    for i, pair in enumerate(targets):
         qubit = platform.qubits[params.measured_qubits[i]].name
         # TODO: Qubit pair patch
         ordered_pair = order_pair(pair, platform.qubits)
@@ -107,7 +108,7 @@ def _acquisition(
     )
 
     # retrieve the results for every qubit
-    for i, pair in enumerate(qubits):
+    for i, pair in enumerate(targets):
         # TODO: May measure both qubits on the pair
         qubit = platform.qubits[params.measured_qubits[i]].name
         result = results[ro_pulses[qubit].serial]
@@ -154,21 +155,23 @@ def _fit(data: CouplerSpectroscopyData) -> CouplerSpectroscopyResults:
 
 def _plot(
     data: CouplerSpectroscopyData,
-    qubit,
+    target: QubitPairId,
     fit: CouplerSpectroscopyResults,
 ):
     """
     We may want to measure both qubits on the pair,
     that will require a different plotting that takes both.
     """
-    qubit_pair = qubit  # TODO: Patch for 2q gate routines
+    qubit_pair = target  # TODO: Patch for 2q gate routines
 
     for qubit in qubit_pair:
         if qubit in data.data.keys():
             return flux_dependence_plot(data, fit, qubit)
 
 
-def _update(results: CouplerSpectroscopyResults, platform: Platform, qubit: QubitId):
+def _update(
+    results: CouplerSpectroscopyResults, platform: Platform, target: QubitPairId
+):
     pass
 
 

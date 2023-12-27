@@ -8,7 +8,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import Qubits, Routine
+from qibocal.auto.operation import Routine
 
 from .qubit_spectroscopy import (
     QubitSpectroscopyData,
@@ -55,7 +55,7 @@ def _fit_ef(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
 
 
 def _acquisition(
-    params: QubitSpectroscopyEFParameters, platform: Platform, qubits: Qubits
+    params: QubitSpectroscopyEFParameters, platform: Platform, targets: list[QubitId]
 ) -> QubitSpectroscopyEFData:
     """Data acquisition for qubit spectroscopy ef protocol.
 
@@ -78,7 +78,7 @@ def _acquisition(
     rx_pulses = {}
     amplitudes = {}
     drive_frequencies = {}
-    for qubit in qubits:
+    for qubit in targets:
         rx_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         drive_frequencies[qubit] = rx_pulses[qubit].frequency
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
@@ -113,7 +113,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        pulses=[qd_pulses[qubit] for qubit in qubits],
+        pulses=[qd_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
 
@@ -151,18 +151,20 @@ def _acquisition(
     return data
 
 
-def _plot(data: QubitSpectroscopyEFData, qubit, fit: QubitSpectroscopyEFResults):
+def _plot(
+    data: QubitSpectroscopyEFData, target: QubitId, fit: QubitSpectroscopyEFResults
+):
     """Plotting function for QubitSpectroscopy."""
-    figures, report = spectroscopy_plot(data, qubit, fit)
+    figures, report = spectroscopy_plot(data, target, fit)
     if fit is not None:
         report = table_html(
             table_dict(
-                qubit,
+                target,
                 ["Frequency 1->2 [Hz]", "Amplitude [a.u.]", "Anharmonicity [Hz]"],
                 [
-                    np.round(fit.frequency[qubit], 0),
-                    fit.amplitude[qubit],
-                    np.round(fit.anharmonicity[qubit], 0),
+                    np.round(fit.frequency[target], 0),
+                    fit.amplitude[target],
+                    np.round(fit.anharmonicity[target], 0),
                 ],
             )
         )
@@ -170,10 +172,10 @@ def _plot(data: QubitSpectroscopyEFData, qubit, fit: QubitSpectroscopyEFResults)
     return figures, report
 
 
-def _update(results: QubitSpectroscopyEFResults, platform: Platform, qubit: QubitId):
+def _update(results: QubitSpectroscopyEFResults, platform: Platform, target: QubitId):
     """Update w12 frequency"""
-    update.frequency_12_transition(results.frequency[qubit], platform, qubit)
-    update.anharmonicity(results.anharmonicity[qubit], platform, qubit)
+    update.frequency_12_transition(results.frequency[target], platform, target)
+    update.anharmonicity(results.anharmonicity[target], platform, target)
 
 
 qubit_spectroscopy_ef = Routine(_acquisition, _fit_ef, _plot, _update)

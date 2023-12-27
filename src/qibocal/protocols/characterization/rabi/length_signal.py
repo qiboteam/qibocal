@@ -10,7 +10,7 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal import update
-from qibocal.auto.operation import Qubits, Routine
+from qibocal.auto.operation import Routine
 from qibocal.config import log
 from qibocal.protocols.characterization.rabi.length import (
     RabiLengthData,
@@ -43,7 +43,7 @@ class RabiLengthVoltData(RabiLengthData):
 
 
 def _acquisition(
-    params: RabiLengthVoltParameters, platform: Platform, qubits: Qubits
+    params: RabiLengthVoltParameters, platform: Platform, targets: list[QubitId]
 ) -> RabiLengthVoltData:
     r"""
     Data acquisition for RabiLength Experiment.
@@ -56,7 +56,7 @@ def _acquisition(
     qd_pulses = {}
     ro_pulses = {}
     amplitudes = {}
-    for qubit in qubits:
+    for qubit in targets:
         # TODO: made duration optional for qd pulse?
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.pulse_duration_start
@@ -82,7 +82,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.duration,
         qd_pulse_duration_range,
-        [qd_pulses[qubit] for qubit in qubits],
+        [qd_pulses[qubit] for qubit in targets],
         type=SweeperType.ABSOLUTE,
     )
 
@@ -100,7 +100,7 @@ def _acquisition(
         sweeper,
     )
 
-    for qubit in qubits:
+    for qubit in targets:
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
             RabiLenVoltType,
@@ -172,13 +172,13 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
     return RabiLengthVoltResults(durations, data.amplitudes, fitted_parameters)
 
 
-def _update(results: RabiLengthVoltResults, platform: Platform, qubit: QubitId):
-    update.drive_duration(results.length[qubit], platform, qubit)
+def _update(results: RabiLengthVoltResults, platform: Platform, target: QubitId):
+    update.drive_duration(results.length[target], platform, target)
 
 
-def _plot(data: RabiLengthVoltData, fit: RabiLengthVoltResults, qubit):
+def _plot(data: RabiLengthVoltData, fit: RabiLengthVoltResults, target: QubitId):
     """Plotting function for RabiLength experiment."""
-    return utils.plot(data, qubit, fit)
+    return utils.plot(data, target, fit)
 
 
 rabi_length_signal = Routine(_acquisition, _fit, _plot, _update)

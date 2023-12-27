@@ -10,7 +10,7 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal import update
-from qibocal.auto.operation import Qubits, Routine
+from qibocal.auto.operation import Routine
 from qibocal.config import log
 from qibocal.protocols.characterization.rabi.amplitude import (
     RabiAmplitudeData,
@@ -43,7 +43,7 @@ class RabiAmplitudeVoltData(RabiAmplitudeData):
 
 
 def _acquisition(
-    params: RabiAmplitudeVoltParameters, platform: Platform, qubits: Qubits
+    params: RabiAmplitudeVoltParameters, platform: Platform, targets: list[QubitId]
 ) -> RabiAmplitudeVoltData:
     r"""
     Data acquisition for Rabi experiment sweeping amplitude.
@@ -56,7 +56,7 @@ def _acquisition(
     qd_pulses = {}
     ro_pulses = {}
     durations = {}
-    for qubit in qubits:
+    for qubit in targets:
         qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         if params.pulse_length is not None:
             qd_pulses[qubit].duration = params.pulse_length
@@ -78,7 +78,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.amplitude,
         qd_pulse_amplitude_range,
-        [qd_pulses[qubit] for qubit in qubits],
+        [qd_pulses[qubit] for qubit in targets],
         type=SweeperType.FACTOR,
     )
 
@@ -95,7 +95,7 @@ def _acquisition(
         ),
         sweeper,
     )
-    for qubit in qubits:
+    for qubit in targets:
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
             RabiAmpVoltType,
@@ -170,13 +170,15 @@ def _fit(data: RabiAmplitudeVoltData) -> RabiAmplitudeVoltResults:
     )
 
 
-def _plot(data: RabiAmplitudeVoltData, qubit, fit: RabiAmplitudeVoltResults = None):
+def _plot(
+    data: RabiAmplitudeVoltData, target: QubitId, fit: RabiAmplitudeVoltResults = None
+):
     """Plotting function for RabiAmplitude."""
-    return utils.plot(data, qubit, fit)
+    return utils.plot(data, target, fit)
 
 
-def _update(results: RabiAmplitudeVoltResults, platform: Platform, qubit: QubitId):
-    update.drive_amplitude(results.amplitude[qubit], platform, qubit)
+def _update(results: RabiAmplitudeVoltResults, platform: Platform, target: QubitId):
+    update.drive_amplitude(results.amplitude[target], platform, target)
 
 
 rabi_amplitude_signal = Routine(_acquisition, _fit, _plot, _update)

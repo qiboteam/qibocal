@@ -9,7 +9,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Qubits, Results, Routine
+from qibocal.auto.operation import Results, Routine
 from qibocal.protocols.characterization.flux_dependence.resonator_flux_dependence import (
     ResFluxType,
     ResonatorFluxData,
@@ -57,7 +57,7 @@ class ResCrosstalkData(ResonatorFluxData):
 
 
 def _acquisition(
-    params: ResCrosstalkParameters, platform: Platform, qubits: Qubits
+    params: ResCrosstalkParameters, platform: Platform, targets: list[QubitId]
 ) -> ResonatorFluxData:
     """Data acquisition for ResonatorFlux experiment."""
     # create a sequence of pulses for the experiment:
@@ -70,11 +70,13 @@ def _acquisition(
     Ej = {}
     g = {}
     bare_resonator_frequency = {}
-    for qubit in qubits:
-        Ec[qubit] = qubits[qubit].Ec
-        Ej[qubit] = qubits[qubit].Ej
-        g[qubit] = qubits[qubit].g
-        bare_resonator_frequency[qubit] = qubits[qubit].bare_resonator_frequency
+    for qubit in targets:
+        Ec[qubit] = platform.qubits[qubit].Ec
+        Ej[qubit] = platform.qubits[qubit].Ej
+        g[qubit] = platform.qubits[qubit].g
+        bare_resonator_frequency[qubit] = platform.qubits[
+            qubit
+        ].bare_resonator_frequency
 
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
         sequence.add(ro_pulses[qubit])
@@ -86,7 +88,7 @@ def _acquisition(
     freq_sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        [ro_pulses[qubit] for qubit in qubits],
+        [ro_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
 
@@ -125,10 +127,10 @@ def _acquisition(
     for flux_qubit, bias_sweeper in zip(flux_qubits, bias_sweepers):
         results = platform.sweep(sequence, options, bias_sweeper, freq_sweeper)
         # retrieve the results for every qubit
-        for qubit in qubits:
+        for qubit in targets:
             result = results[ro_pulses[qubit].serial]
             if flux_qubit is None:
-                sweetspot = qubits[qubit].sweetspot
+                sweetspot = platform.qubits[qubit].sweetspot
             else:
                 sweetspot = platform.qubits[flux_qubit].sweetspot
             data.register_qubit(
@@ -147,9 +149,9 @@ def _fit(data: ResCrosstalkData) -> ResCrosstalkResults:
     return ResCrosstalkResults()
 
 
-def _plot(data: ResCrosstalkData, fit: ResCrosstalkResults, qubit):
+def _plot(data: ResCrosstalkData, fit: ResCrosstalkResults, target: QubitId):
     """Plotting function for ResonatorFlux Experiment."""
-    return utils.flux_crosstalk_plot(data, qubit)
+    return utils.flux_crosstalk_plot(data, target)
 
 
 resonator_crosstalk = Routine(_acquisition, _fit, _plot)

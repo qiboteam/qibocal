@@ -26,7 +26,7 @@ def generate_runcard_single_protocol():
     with open(PATH_TO_RUNCARD) as file:
         actions = yaml.safe_load(file)
     for action in actions["actions"]:
-        card = {"actions": [action], "qubits": list(PLATFORM.qubits)}
+        card = {"actions": [action], "targets": list(PLATFORM.qubits)}
         yield card
 
 

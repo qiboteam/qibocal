@@ -83,7 +83,7 @@ actions:
   - id: coupler_resonator_spectroscopy
     priority: 0
     operation: coupler_resonator_spectroscopy
-    qubits: [[1, 2], [0, 2]]
+    targets: [[1, 2], [0, 2]]
     parameters:
       bias_width: 1
       bias_step: 0.1
@@ -108,7 +108,7 @@ actions:
   - id: coupler qubit spectroscopy
     priority: 0
     operation: coupler_qubit_spectroscopy
-    qubits: [[1, 2], [0, 2]]
+    targets: [[1, 2], [0, 2]]
     parameters:
       bias_width: 1
       bias_step: 0.1
@@ -124,7 +124,7 @@ actions:
     priority: 0
     operation: qubit_spectroscopy_ef
     #FIXME: add RX12 for qubit 4
-    qubits: [0, 1, 2, 3]
+    targets: [0, 1, 2, 3]
     parameters:
       drive_amplitude: 0.001
       drive_duration: 1000
@@ -250,7 +250,7 @@ actions:
     priority: 0
     operation: rabi_amplitude_ef
     #FIXME: add RX12 for qubit 4
-    qubits: [0, 1, 2, 3]
+    targets: [0, 1, 2, 3]
     parameters:
       min_amp_factor: 0.0
       max_amp_factor: 1.0
@@ -491,7 +491,7 @@ actions:
     priority: 0
     operation: dispersive_shift_qutrit
     #FIXME: add qubit 4 with new release of Qibolab
-    qubits: [0, 1, 2, 3]
+    targets: [0, 1, 2, 3]
     parameters:
       freq_width: 10_000_000
       freq_step: 100_000
@@ -513,7 +513,7 @@ actions:
   - id: standard rb bootstrap
     priority: 0
     operation: standard_rb
-    qubits: [1]
+    targets: [1]
     parameters:
       depths: [1, 2, 3, 5]
       niter: 5
@@ -524,7 +524,7 @@ actions:
   - id: chevron id
     priority: 0
     operation: chevron
-    qubits: [[0, 2],[1,2],[3,2], [2,3]]
+    targets: [[0, 2],[1,2],[3,2], [2,3]]
     parameters:
       amplitude_min: 0.1
       amplitude_max: 0.6
@@ -538,7 +538,7 @@ actions:
   - id: tune landscape
     priority: 0
     operation: cz_virtualz
-    qubits: [[0, 2],[1,2],[3,2]]
+    targets: [[0, 2],[1,2],[3,2]]
     parameters:
       theta_start: 0
       theta_end: 180
@@ -550,7 +550,7 @@ actions:
   - id: standard rb inhomogeneous
     priority: 0
     operation: standard_rb
-    qubits: [0, 1, 3]
+    targets: [0, 1, 3]
     parameters:
       depths: [1, 3, 3, 5]
       niter: 5
@@ -577,7 +577,7 @@ actions:
   - id: CHSH with pulses
     priority: 0
     operation: chsh_pulses
-    qubits: [[0,2],[1,2],[2,3]]
+    targets: [[0,2],[1,2],[2,3]]
     parameters:
       nshots: 1000
       ntheta: 10
@@ -587,7 +587,7 @@ actions:
   - id: CHSH with natives
     priority: 0
     operation: chsh_circuits
-    qubits: [[0,2],[1,2]]
+    targets: [[0,2],[1,2]]
     parameters:
       nshots: 1000
       ntheta: 10
@@ -599,7 +599,7 @@ actions:
   - id: CHSH with circuits
     priority: 0
     operation: chsh_circuits
-    qubits: [[0,2],[1,2]]
+    targets: [[0,2],[1,2]]
     parameters:
       nshots: 1000
       ntheta: 2
@@ -610,7 +610,7 @@ actions:
   - id: readout_mitigation_matrix pulses
     priority: 0
     operation: readout_mitigation_matrix
-    qubits: [[0,1,2],[1,2]]
+    targets: [[0,1,2],[1,2]]
     parameters:
       nshots: 100
       pulses: True
@@ -618,7 +618,7 @@ actions:
   - id: readout_mitigation_matrix circuits
     priority: 0
     operation: readout_mitigation_matrix
-    qubits: [[0,1,2],[1,2]]
+    targets: [[0,1,2],[1,2]]
     parameters:
       nshots: 100
       pulses: False
@@ -642,7 +642,7 @@ actions:
   - id: twpa frequency power
     priority: 0
     operation: twpa_frequency_power
-    qubits: [0]
+    targets: [0]
     parameters:
       frequency_width: 1_000_000
       frequency_step: 100_000
@@ -658,7 +658,7 @@ actions:
 
   - id: qutrit
     priority: 0
-    qubits: [0,1]
+    targets: [0,1]
     operation: qutrit_classification
     parameters:
       nshots: 100
@@ -667,7 +667,7 @@ actions:
   - id: avoided crossing
     priority: 0
     operation: avoided_crossing
-    qubits: [[2,1],[0,2]]
+    targets: [[2,1],[0,2]]
     parameters:
       freq_width: 100_000_000
       freq_step: 50_000_000

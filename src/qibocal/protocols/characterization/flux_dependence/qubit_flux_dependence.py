@@ -12,7 +12,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.characterization.qubit_spectroscopy_ef import (
     DEFAULT_ANHARMONICITY,
@@ -95,7 +95,7 @@ class QubitFluxData(Data):
 def _acquisition(
     params: QubitFluxParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> QubitFluxData:
     """Data acquisition for QubitFlux Experiment."""
 
@@ -105,17 +105,17 @@ def _acquisition(
     qd_pulses = {}
     Ec = {}
     Ej = {}
-    for qubit in qubits:
-        Ec[qubit] = qubits[qubit].Ec
-        Ej[qubit] = qubits[qubit].Ej
+    for qubit in targets:
+        Ec[qubit] = platform.qubits[qubit].Ec
+        Ej[qubit] = platform.qubits[qubit].Ej
 
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.drive_duration
         )
 
         if params.transition == "02":
-            if qubits[qubit].anharmonicity:
-                qd_pulses[qubit].frequency -= qubits[qubit].anharmonicity / 2
+            if platform.qubits[qubit].anharmonicity:
+                qd_pulses[qubit].frequency -= platform.qubits[qubit].anharmonicity / 2
             else:
                 qd_pulses[qubit].frequency -= DEFAULT_ANHARMONICITY / 2
 
@@ -135,7 +135,7 @@ def _acquisition(
     freq_sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        pulses=[qd_pulses[qubit] for qubit in qubits],
+        pulses=[qd_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
 
@@ -146,7 +146,7 @@ def _acquisition(
         Sweeper(
             Parameter.bias,
             delta_bias_range,
-            qubits=list(qubits.values()),
+            qubits=[platform.qubits[qubit] for qubit in targets],
             type=SweeperType.OFFSET,
         )
     ]
@@ -161,9 +161,9 @@ def _acquisition(
     for bias_sweeper in bias_sweepers:
         results = platform.sweep(sequence, options, bias_sweeper, freq_sweeper)
         # retrieve the results for every qubit
-        for qubit in qubits:
+        for qubit in targets:
             result = results[ro_pulses[qubit].serial]
-            sweetspot = qubits[qubit].sweetspot
+            sweetspot = platform.qubits[qubit].sweetspot
             data.register_qubit(
                 qubit,
                 signal=result.magnitude,
@@ -302,14 +302,14 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     )
 
 
-def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
+def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
     """Plotting function for QubitFlux Experiment."""
-    return utils.flux_dependence_plot(data, fit, qubit)
+    return utils.flux_dependence_plot(data, fit, target)
 
 
-def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
-    update.drive_frequency(results.frequency[qubit], platform, qubit)
-    update.sweetspot(results.sweetspot[qubit], platform, qubit)
+def _update(results: QubitFluxResults, platform: Platform, target: QubitId):
+    update.drive_frequency(results.frequency[target], platform, target)
+    update.sweetspot(results.sweetspot[target], platform, target)
 
 
 qubit_flux = Routine(_acquisition, _fit, _plot, _update)

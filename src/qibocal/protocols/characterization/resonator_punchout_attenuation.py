@@ -12,7 +12,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 
 from .utils import HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
 
@@ -80,7 +80,7 @@ class ResonatorPunchoutAttenuationData(Data):
 def _acquisition(
     params: ResonatorPunchoutAttenuationParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> ResonatorPunchoutAttenuationData:
     """Data acquisition for Punchout over attenuation."""
     # create a sequence of pulses for the experiment:
@@ -90,7 +90,7 @@ def _acquisition(
     sequence = PulseSequence()
 
     ro_pulses = {}
-    for qubit in qubits:
+    for qubit in targets:
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
         sequence.add(ro_pulses[qubit])
 
@@ -102,7 +102,7 @@ def _acquisition(
     freq_sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        [ro_pulses[qubit] for qubit in qubits],
+        [ro_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
 
@@ -111,7 +111,7 @@ def _acquisition(
     att_sweeper = Sweeper(
         Parameter.attenuation,
         attenuation_range,
-        qubits=list(qubits.values()),
+        qubits=[platform.qubits[qubit] for qubit in targets],
         type=SweeperType.ABSOLUTE,
     )
 
@@ -130,7 +130,7 @@ def _acquisition(
     )
 
     # retrieve the results for every qubit
-    for qubit in qubits:
+    for qubit in targets:
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
             qubit,
@@ -158,7 +158,7 @@ def _fit(
 
 def _plot(
     data: ResonatorPunchoutAttenuationData,
-    qubit,
+    target: QubitId,
     fit: ResonatorPunchoutAttenuationResults = None,
 ):
     """Plotting for ResonatorPunchoutAttenuation."""
@@ -176,7 +176,7 @@ def _plot(
         ),
     )
 
-    qubit_data = data[qubit]
+    qubit_data = data[target]
     frequencies = qubit_data.freq * HZ_TO_GHZ
     attenuations = qubit_data.att
     n_att = len(np.unique(qubit_data.att))
@@ -214,10 +214,10 @@ def _plot(
         fig.add_trace(
             go.Scatter(
                 x=[
-                    fit.readout_frequency[qubit] * HZ_TO_GHZ,
+                    fit.readout_frequency[target] * HZ_TO_GHZ,
                 ],
                 y=[
-                    fit.readout_attenuation[qubit],
+                    fit.readout_attenuation[target],
                 ],
                 mode="markers",
                 marker=dict(
@@ -231,16 +231,16 @@ def _plot(
         )
         fitting_report = table_html(
             table_dict(
-                qubit,
+                target,
                 [
                     "Low Power Resonator Frequency [Hz]",
                     "Readout Attenuation [dB]",
                     "High Power Resonator Frequency [Hz]",
                 ],
                 [
-                    np.round(fit.readout_frequency[qubit], 0),
-                    fit.readout_attenuation[qubit],
-                    np.round(fit.bare_frequency[qubit]),
+                    np.round(fit.readout_frequency[target], 0),
+                    fit.readout_attenuation[target],
+                    np.round(fit.bare_frequency[target]),
                 ],
             )
         )
@@ -255,11 +255,11 @@ def _plot(
 
 
 def _update(
-    results: ResonatorPunchoutAttenuationResults, platform: Platform, qubit: QubitId
+    results: ResonatorPunchoutAttenuationResults, platform: Platform, target: QubitId
 ):
-    update.readout_frequency(results.readout_frequency[qubit], platform, qubit)
-    update.bare_resonator_frequency(results.bare_frequency[qubit], platform, qubit)
-    update.readout_attenuation(results.readout_attenuation[qubit], platform, qubit)
+    update.readout_frequency(results.readout_frequency[target], platform, target)
+    update.bare_resonator_frequency(results.bare_frequency[target], platform, target)
+    update.readout_attenuation(results.readout_attenuation[target], platform, target)
 
 
 resonator_punchout_attenuation = Routine(_acquisition, _fit, _plot, _update)

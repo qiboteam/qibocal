@@ -8,9 +8,9 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId
+from qibolab.qubits import QubitId, QubitPairId
 
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 
 from ...readout_mitigation_matrix import (
     ReadoutMitigationMatrixParameters as mitigation_params,
@@ -115,20 +115,19 @@ class CHSHResults(Results):
 def _acquisition_pulses(
     params: CHSHParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[list[QubitId]],
 ) -> CHSHData:
     r"""Data acquisition for CHSH protocol using pulse sequences."""
-
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
     data = CHSHData(bell_states=params.bell_states, thetas=thetas.tolist())
 
     if params.apply_error_mitigation:
         mitigation_data = mitigation_acquisition(
-            mitigation_params(pulses=True, nshots=params.nshots), platform, qubits
+            mitigation_params(pulses=True, nshots=params.nshots), platform, targets
         )
         mitigation_results = mitigation_fit(mitigation_data)
 
-    for pair in qubits:
+    for pair in targets:
         if params.apply_error_mitigation:
             data.mitigation_matrix[pair] = mitigation_results.readout_mitigation_matrix[
                 pair
@@ -153,7 +152,7 @@ def _acquisition_pulses(
 def _acquisition_circuits(
     params: CHSHParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitPairId],
 ) -> CHSHData:
     """Data acquisition for CHSH protocol using circuits."""
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
@@ -164,10 +163,10 @@ def _acquisition_circuits(
 
     if params.apply_error_mitigation:
         mitigation_data = mitigation_acquisition(
-            mitigation_params(pulses=False, nshots=params.nshots), platform, qubits
+            mitigation_params(pulses=False, nshots=params.nshots), platform, targets
         )
         mitigation_results = mitigation_fit(mitigation_data)
-    for pair in qubits:
+    for pair in targets:
         if params.apply_error_mitigation:
             data.mitigation_matrix[pair] = mitigation_results.readout_mitigation_matrix[
                 pair
@@ -189,7 +188,7 @@ def _acquisition_circuits(
     return data
 
 
-def _plot(data: CHSHData, fit: CHSHResults, qubit):
+def _plot(data: CHSHData, fit: CHSHResults, target: QubitPairId):
     """Plotting function for CHSH protocol."""
     figures = []
 
@@ -199,7 +198,7 @@ def _plot(data: CHSHData, fit: CHSHResults, qubit):
             fig.add_trace(
                 go.Scatter(
                     x=data.thetas,
-                    y=fit.chsh[qubit[0], qubit[1], bell_state],
+                    y=fit.chsh[target[0], target[1], bell_state],
                     name="Bare",
                 )
             )
@@ -207,7 +206,7 @@ def _plot(data: CHSHData, fit: CHSHResults, qubit):
                 fig.add_trace(
                     go.Scatter(
                         x=data.thetas,
-                        y=fit.chsh_mitigated[qubit[0], qubit[1], bell_state],
+                        y=fit.chsh_mitigated[target[0], target[1], bell_state],
                         name="Mitigated",
                     )
                 )
@@ -268,7 +267,6 @@ def _fit(data: CHSHData) -> CHSHResults:
                         for j, val in enumerate(matrix @ freq_array):
                             mitigated_freq[format(j, f"0{2}b")].append(float(val))
                     mitigated_freq_list.append(mitigated_freq)
-
             results[pair[0], pair[1], bell_state] = [
                 compute_chsh(freq, bell_state, l) for l in range(len(data.thetas))
             ]

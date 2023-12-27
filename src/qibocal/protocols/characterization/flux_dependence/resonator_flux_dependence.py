@@ -11,7 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ
@@ -99,7 +99,7 @@ class ResonatorFluxData(Data):
 
 
 def _acquisition(
-    params: ResonatorFluxParameters, platform: Platform, qubits: Qubits
+    params: ResonatorFluxParameters, platform: Platform, targets: list[QubitId]
 ) -> ResonatorFluxData:
     """Data acquisition for ResonatorFlux experiment."""
     # create a sequence of pulses for the experiment:
@@ -112,11 +112,13 @@ def _acquisition(
     Ej = {}
     g = {}
     bare_resonator_frequency = {}
-    for qubit in qubits:
-        Ec[qubit] = qubits[qubit].Ec
-        Ej[qubit] = qubits[qubit].Ej
-        g[qubit] = qubits[qubit].g
-        bare_resonator_frequency[qubit] = qubits[qubit].bare_resonator_frequency
+    for qubit in targets:
+        Ec[qubit] = platform.qubits[qubit].Ec
+        Ej[qubit] = platform.qubits[qubit].Ej
+        g[qubit] = platform.qubits[qubit].g
+        bare_resonator_frequency[qubit] = platform.qubits[
+            qubit
+        ].bare_resonator_frequency
 
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
         sequence.add(ro_pulses[qubit])
@@ -128,7 +130,7 @@ def _acquisition(
     freq_sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        [ro_pulses[qubit] for qubit in qubits],
+        [ro_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
 
@@ -139,7 +141,7 @@ def _acquisition(
         Sweeper(
             Parameter.bias,
             delta_bias_range,
-            qubits=list(qubits.values()),
+            qubits=[platform.qubits[qubit] for qubit in targets],
             type=SweeperType.OFFSET,
         )
     ]
@@ -160,9 +162,9 @@ def _acquisition(
     for bias_sweeper in bias_sweepers:
         results = platform.sweep(sequence, options, bias_sweeper, freq_sweeper)
         # retrieve the results for every qubit
-        for qubit in qubits:
+        for qubit in targets:
             result = results[ro_pulses[qubit].serial]
-            sweetspot = qubits[qubit].sweetspot
+            sweetspot = platform.qubits[qubit].sweetspot
             data.register_qubit(
                 qubit,
                 signal=result.magnitude,
@@ -388,22 +390,22 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     )
 
 
-def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
+def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
     """Plotting function for ResonatorFlux Experiment."""
-    return utils.flux_dependence_plot(data, fit, qubit)
+    return utils.flux_dependence_plot(data, fit, target)
 
 
-def _update(results: ResonatorFluxResults, platform: Platform, qubit: QubitId):
-    update.bare_resonator_frequency_sweetspot(results.brf[qubit], platform, qubit)
-    update.readout_frequency(results.frequency[qubit], platform, qubit)
-    update.flux_to_bias(results.flux_to_bias[qubit], platform, qubit)
-    update.asymmetry(results.asymmetry[qubit], platform, qubit)
+def _update(results: ResonatorFluxResults, platform: Platform, target: QubitId):
+    update.bare_resonator_frequency_sweetspot(results.brf[target], platform, target)
+    update.readout_frequency(results.frequency[target], platform, target)
+    update.flux_to_bias(results.flux_to_bias[target], platform, target)
+    update.asymmetry(results.asymmetry[target], platform, target)
     update.ratio_sweetspot_qubit_freq_bare_resonator_freq(
-        results.ssf_brf[qubit], platform, qubit
+        results.ssf_brf[target], platform, target
     )
-    update.charging_energy(results.ECs[qubit], platform, qubit)
-    update.josephson_energy(results.EJs[qubit], platform, qubit)
-    update.coupling(results.Gs[qubit], platform, qubit)
+    update.charging_energy(results.ECs[target], platform, target)
+    update.josephson_energy(results.EJs[target], platform, target)
+    update.coupling(results.Gs[target], platform, target)
 
 
 resonator_flux = Routine(_acquisition, _fit, _plot, _update)

@@ -6,7 +6,7 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from qibocal import update
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Parameters, Results, Routine
 from qibocal.protocols.characterization import classification
 from qibocal.protocols.characterization.utils import table_dict, table_html
 
@@ -54,7 +54,7 @@ class TwpaPowerResults(Results):
 def _acquisition(
     params: TwpaPowerParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> TwpaPowerData:
     r"""
     Data acquisition for TWPA power optmization.
@@ -65,7 +65,7 @@ def _acquisition(
     Args:
         params (:class:`TwpaPowerParameters`): input parameters
         platform (:class:`Platform`): Qibolab's platform
-        qubits (dict): dict of target :class:`Qubit` objects to be characterized
+        targets (list): list of QubitId to be characterized
 
     Returns:
         data (:class:`TwpaFrequencyData`)
@@ -78,14 +78,14 @@ def _acquisition(
     )
 
     initial_twpa_power = {}
-    for qubit in qubits:
+    for qubit in targets:
         initial_twpa_power[qubit] = platform.qubits[qubit].twpa.local_oscillator.power
         data.powers[qubit] = list(
             platform.qubits[qubit].twpa.local_oscillator.power + power_range
         )
 
     for power in power_range:
-        for qubit in qubits:
+        for qubit in targets:
             platform.qubits[qubit].twpa.local_oscillator.power = (
                 initial_twpa_power[qubit] + power
             )
@@ -95,11 +95,11 @@ def _acquisition(
                 {"nshots": params.nshots}
             ),
             platform,
-            qubits,
+            targets,
         )
         classification_result = classification._fit(classification_data)
 
-        for qubit in qubits:
+        for qubit in targets:
             data.register_qubit(
                 TwpaPowerType,
                 (qubit),
@@ -141,7 +141,7 @@ def _fit(data: TwpaPowerData) -> TwpaPowerResults:
     )
 
 
-def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
+def _plot(data: TwpaPowerData, fit: TwpaPowerResults, target: QubitId):
     """Plotting function that shows the assignment fidelity
     for different values of the twpa power for a single qubit."""
 
@@ -149,16 +149,16 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
     fitting_report = ""
 
     if fit is not None:
-        qubit_data = data.data[qubit]
+        qubit_data = data.data[target]
         fidelities = qubit_data["assignment_fidelity"]
         powers = qubit_data["power"]
         fitting_report = table_html(
             table_dict(
-                qubit,
+                target,
                 ["Best assignment fidelity", "TWPA Power [dBm]"],
                 [
-                    np.round(fit.best_fidelities[qubit], 3),
-                    np.round(fit.best_powers[qubit], 3),
+                    np.round(fit.best_fidelities[target], 3),
+                    np.round(fit.best_powers[target], 3),
                 ],
             )
         )
@@ -174,10 +174,10 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
     return figures, fitting_report
 
 
-def _update(results: TwpaPowerResults, platform: Platform, qubit: QubitId):
-    update.twpa_power(results.best_powers[qubit], platform, qubit)
-    update.iq_angle(results.best_angles[qubit], platform, qubit)
-    update.threshold(results.best_thresholds[qubit], platform, qubit)
+def _update(results: TwpaPowerResults, platform: Platform, target: QubitId):
+    update.twpa_power(results.best_powers[target], platform, target)
+    update.iq_angle(results.best_angles[target], platform, target)
+    update.threshold(results.best_thresholds[target], platform, target)
 
 
 twpa_power = Routine(_acquisition, _fit, _plot, _update)

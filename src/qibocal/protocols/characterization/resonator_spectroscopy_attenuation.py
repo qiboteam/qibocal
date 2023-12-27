@@ -9,7 +9,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Parameters, Results, Routine
 
 from .resonator_spectroscopy import ResonatorSpectroscopyData, ResSpecType
 from .utils import PowerLevel, lorentzian_fit, spectroscopy_plot
@@ -70,7 +70,7 @@ class ResonatorSpectroscopyAttenuationData(ResonatorSpectroscopyData):
 def _acquisition(
     params: ResonatorSpectroscopyAttenuationParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> ResonatorSpectroscopyAttenuationData:
     """Data acquisition for resonator spectroscopy attenuation."""
     # create a sequence of pulses for the experiment:
@@ -82,7 +82,7 @@ def _acquisition(
     amplitudes = {}
     attenuations = {}
 
-    for qubit in qubits:
+    for qubit in targets:
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
         if params.amplitude is not None:
             ro_pulses[qubit].amplitude = params.amplitude
@@ -103,7 +103,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        pulses=[ro_pulses[qubit] for qubit in qubits],
+        pulses=[ro_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
     data = ResonatorSpectroscopyAttenuationData(
@@ -125,7 +125,7 @@ def _acquisition(
     )
 
     # retrieve the results for every qubit
-    for qubit in qubits:
+    for qubit in targets:
         result = results[ro_pulses[qubit].serial]
         # store the results
         data.register_qubit(
@@ -177,25 +177,29 @@ def _fit(
 
 def _plot(
     data: ResonatorSpectroscopyAttenuationData,
-    qubit,
+    target: QubitId,
     fit: ResonatorSpectroscopyAttenuationResults,
 ):
     """Plotting function for ResonatorSpectroscopyAttenuation."""
-    return spectroscopy_plot(data, qubit, fit)
+    return spectroscopy_plot(data, target, fit)
 
 
 def _update(
-    results: ResonatorSpectroscopyAttenuationResults, platform: Platform, qubit: QubitId
+    results: ResonatorSpectroscopyAttenuationResults,
+    platform: Platform,
+    target: QubitId,
 ):
-    update.readout_frequency(results.frequency[qubit], platform, qubit)
+    update.readout_frequency(results.frequency[target], platform, target)
 
     # if this condition is satifisfied means that we are in the low power regime
     # therefore we update also the readout amplitude
     if len(results.bare_frequency) == 0:
-        update.readout_amplitude(results.amplitude[qubit], platform, qubit)
-        update.readout_attenuation(results.attenuation[qubit], platform, qubit)
+        update.readout_amplitude(results.amplitude[target], platform, target)
+        update.readout_attenuation(results.attenuation[target], platform, target)
     else:
-        update.bare_resonator_frequency(results.bare_frequency[qubit], platform, qubit)
+        update.bare_resonator_frequency(
+            results.bare_frequency[target], platform, target
+        )
 
 
 resonator_spectroscopy_attenuation = Routine(_acquisition, _fit, _plot, _update)

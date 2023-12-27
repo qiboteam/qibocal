@@ -9,7 +9,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Qubits, Results, Routine
+from qibocal.auto.operation import Results, Routine
 
 from .ramsey import (
     PERR_EXCEPTION,
@@ -74,7 +74,7 @@ class RamseySignalData(RamseyData):
 def _acquisition(
     params: RamseySignalParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> RamseySignalData:
     """Data acquisition for Ramsey Experiment (detuned)."""
     # create a sequence of pulses for the experiment
@@ -84,7 +84,7 @@ def _acquisition(
     RX90_pulses2 = {}
     freqs = {}
     sequence = PulseSequence()
-    for qubit in qubits:
+    for qubit in targets:
         RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
         RX90_pulses2[qubit] = platform.create_RX90_pulse(
             qubit,
@@ -93,7 +93,7 @@ def _acquisition(
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=RX90_pulses2[qubit].finish
         )
-        freqs[qubit] = qubits[qubit].drive_frequency
+        freqs[qubit] = platform.qubits[qubit].drive_frequency
         sequence.add(RX90_pulses1[qubit])
         sequence.add(RX90_pulses2[qubit])
         sequence.add(ro_pulses[qubit])
@@ -117,7 +117,7 @@ def _acquisition(
         sweeper = Sweeper(
             Parameter.start,
             waits,
-            [RX90_pulses2[qubit] for qubit in qubits],
+            [RX90_pulses2[qubit] for qubit in targets],
             type=SweeperType.ABSOLUTE,
         )
 
@@ -132,7 +132,7 @@ def _acquisition(
             ),
             sweeper,
         )
-        for qubit in qubits:
+        for qubit in targets:
             result = results[ro_pulses[qubit].serial]
             # The probability errors are the standard errors of the binomial distribution
             data.register_qubit(
@@ -143,7 +143,7 @@ def _acquisition(
 
     else:
         for wait in waits:
-            for qubit in qubits:
+            for qubit in targets:
                 RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
                 ro_pulses[qubit].start = RX90_pulses2[qubit].finish
                 if params.n_osc != 0:
@@ -164,7 +164,7 @@ def _acquisition(
                 ),
             )
 
-            for qubit in qubits:
+            for qubit in targets:
                 result = results[ro_pulses[qubit].serial]
                 data.register_qubit(
                     qubit,
@@ -216,14 +216,14 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
     return RamseySignalResults(freq_measure, t2_measure, delta_phys_measure, popts)
 
 
-def _plot(data: RamseySignalData, qubit, fit: RamseySignalResults = None):
+def _plot(data: RamseySignalData, target: QubitId, fit: RamseySignalResults = None):
     """Plotting function for Ramsey Experiment."""
 
     figures = []
     fig = go.Figure()
     fitting_report = ""
 
-    qubit_data = data.data[qubit]
+    qubit_data = data.data[target]
     waits = data.waits
     signal = qubit_data["signal"]
     fig = go.Figure(
@@ -246,11 +246,11 @@ def _plot(data: RamseySignalData, qubit, fit: RamseySignalResults = None):
                 x=waits,
                 y=ramsey_fit(
                     waits,
-                    float(fit.fitted_parameters[qubit][0]),
-                    float(fit.fitted_parameters[qubit][1]),
-                    float(fit.fitted_parameters[qubit][2]),
-                    float(fit.fitted_parameters[qubit][3]),
-                    float(fit.fitted_parameters[qubit][4]),
+                    float(fit.fitted_parameters[target][0]),
+                    float(fit.fitted_parameters[target][1]),
+                    float(fit.fitted_parameters[target][2]),
+                    float(fit.fitted_parameters[target][3]),
+                    float(fit.fitted_parameters[target][4]),
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
@@ -258,16 +258,16 @@ def _plot(data: RamseySignalData, qubit, fit: RamseySignalResults = None):
         )
         fitting_report = table_html(
             table_dict(
-                qubit,
+                target,
                 [
                     "Delta Frequency [Hz]",
                     "Drive Frequency [Hz]",
                     "T2* [ns]",
                 ],
                 [
-                    np.round(fit.delta_phys[qubit][0], 3),
-                    np.round(fit.frequency[qubit][0], 3),
-                    np.round(fit.t2[qubit][0], 3),
+                    np.round(fit.delta_phys[target][0], 3),
+                    np.round(fit.frequency[target][0], 3),
+                    np.round(fit.t2[target][0], 3),
                 ],
             )
         )
