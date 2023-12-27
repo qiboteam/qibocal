@@ -12,8 +12,6 @@ from qibocal.auto.mode import ExecutionMode
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import TaskId
 
-from .utils import create_qubits_dict
-
 META = "meta.json"
 RUNCARD = "runcard.yml"
 UPDATED_PLATFORM = "new_platform.yml"
@@ -37,12 +35,11 @@ def report(path):
     GlobalBackend.set_backend(backend=meta["backend"], platform=meta["platform"])
     backend = GlobalBackend()
     platform = backend.platform
-    qubits = create_qubits_dict(qubits=runcard.qubits, platform=platform)
 
     # load executor
-    executor = Executor.load(runcard, path, qubits=qubits)
+    executor = Executor.load(runcard, path, targets=runcard.targets)
     # produce html
-    builder = ReportBuilder(path, qubits, executor, meta)
+    builder = ReportBuilder(path, runcard.targets, executor, meta)
     builder.run(path)
 
 

@@ -38,7 +38,7 @@ def test_execution(card: pathlib.Path, tmp_path):
     executor = Executor.load(
         testcard.runcard,
         output=tmp_path,
-        qubits=testcard.runcard.qubits,
+        targets=testcard.runcard.targets,
     )
     list(executor.run(mode=ExecutionMode.acquire))
 

@@ -34,31 +34,6 @@ class Task:
     iteration: int = 0
     """Task iteration."""
 
-    # def __post_init__(self):
-    #     if len(self.qubits) == 0:
-    #         self.qubits = self.action.qubits
-
-    # def _allocate_local_qubits(self, qubits, platform):
-    #     if len(self.qubits) > 0:
-    #         if platform is not None:
-    #             if any(isinstance(i, tuple) for i in self.qubits):
-    #                 task_qubits = allocate_qubits_pairs(platform, self.qubits)
-    #             elif any(
-    #                 isinstance(i, tuple) or isinstance(i, list) for i in self.qubits
-    #             ):
-    #                 task_qubits = allocate_single_qubits_lists(platform, self.qubits)
-    #             else:
-    #                 task_qubits = allocate_single_qubits(platform, self.qubits)
-    #         else:
-    #             # None platform use just ids
-    #             task_qubits = self.qubits
-    #     else:
-    #         task_qubits = qubits
-
-    #     self.qubits = list(task_qubits)
-
-    #     return task_qubits\
-
     @property
     def targets(self) -> Targets:
         """Protocol targets."""
@@ -88,7 +63,7 @@ class Task:
         if self.action.validator is None:
             return None
         status = {}
-        for qubit in self.qubits:
+        for qubit in self.targets:
             status[qubit] = self.action.validator.__call__(results, qubit)
         # exit if any of the qubit state is Failure
         if any(isinstance(stat, Failure) for stat in status.values()):

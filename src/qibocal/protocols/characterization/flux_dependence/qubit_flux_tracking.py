@@ -173,7 +173,7 @@ def _acquisition(
                     platform.qubits[qubit].Ej,
                 )
                 # modify qubit resonator frequency
-                qubits[qubit].readout_frequency = freq_resonator
+                platform.qubits[qubit].readout_frequency = freq_resonator
             except:
                 raise_error
                 (

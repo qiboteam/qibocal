@@ -8,14 +8,7 @@ from qibolab.serialize import dump_runcard
 from ..auto.execute import Executor
 from ..auto.history import add_timings_to_meta
 from ..auto.mode import ExecutionMode
-from .utils import (
-    META,
-    PLATFORM,
-    RUNCARD,
-    create_qubits_dict,
-    generate_meta,
-    generate_output_folder,
-)
+from .utils import META, PLATFORM, RUNCARD, generate_meta, generate_output_folder
 
 
 def acquire(runcard, folder, force):
@@ -32,9 +25,6 @@ def acquire(runcard, folder, force):
     # generate output folder
     path = generate_output_folder(folder, force)
 
-    # set backend, platform and qubits
-    qubits = create_qubits_dict(qubits=runcard.qubits, platform=platform)
-
     # generate meta
     meta = generate_meta(backend, platform, path)
     # dump platform
@@ -46,7 +36,7 @@ def acquire(runcard, folder, force):
     # dump meta
     (path / META).write_text(json.dumps(meta, indent=4))
 
-    executor = Executor.load(runcard, path, platform, qubits)
+    executor = Executor.load(runcard, path, platform, runcard.targets)
 
     # connect and initialize platform
     if platform is not None:
