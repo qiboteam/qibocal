@@ -1,16 +1,21 @@
 """Validation module."""
-from dataclasses import dataclass
-from typing import NewType, Optional, Union
+from dataclasses import dataclass, field
+from typing import Callable, NewType, Optional, Union
 
 from qibolab.qubits import QubitId, QubitPairId
 
-from ..config import log
+from ..config import raise_error
 from .operation import Results
-from .status import Status
+
+# from .task import TaskId
+from .status import Failure, Normal, Status
 from .validators import VALIDATORS
 
 ValidatorId = NewType("ValidatorId", str)
 """Identifier for validator object."""
+
+Target = Union[QubitId, QubitPairId, list[QubitId]]
+"""Protocol target."""
 
 
 @dataclass
@@ -18,16 +23,29 @@ class Validator:
     """Generic validator object."""
 
     scheme: ValidatorId
-    parameters: Optional[dict] = None
+    """Validator present in validators module."""
+    parameters: Optional[dict] = field(default_factory=dict)
+    """"Validator parameters."""
+    outcomes: Optional[list[tuple[str, dict]]] = field(default_factory=list)
+    """Depending on the validation we jump into one of the possible nodes."""
 
-    def __call__(
-        self, results: Results, qubit: Union[QubitId, QubitPairId, list[QubitId]]
-    ) -> Status:
-        log.info(
-            f"Performing validation in qubit {qubit} of {results.__class__.__name__} using {self.scheme} scheme."
-        )
-        validator = VALIDATORS[self.scheme]
+    # TODO: think of a better name
+    @property
+    def method(self) -> Callable[[Results, Target], Union[Status, str]]:
+        """Validation function."""
+        try:
+            return VALIDATORS[self.scheme]
+        except AttributeError:
+            raise_error(AttributeError, f"Validator {self.scheme} not available.")
 
-        if self.parameters is not None:
-            return validator(results, qubit, **self.parameters)
-        return validator(results, qubit)
+    def validate(self, results: Results, target: Target):
+        index = self.method(results=results, target=target, **self.parameters)
+        # If index is None -> status is Failure
+        # if index is 0 -> Normal Status
+        # else: jump to correspoding outcomes
+        if index is None:
+            raise_error(ValueError, ".")
+            return Failure()
+        elif index is 0:
+            return Normal()
+        return self.outcomes[index - 1][0]

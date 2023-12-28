@@ -2,12 +2,13 @@
 import copy
 from dataclasses import dataclass, field
 from pathlib import Path
+from statistics import mode
 from typing import Optional, Union
 
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
-from ..config import log, raise_error
+from ..config import raise_error
 from ..protocols.characterization import Operation
 from ..utils import (
     allocate_qubits_pairs,
@@ -27,7 +28,7 @@ from .operation import (
     dummy_operation,
 )
 from .runcard import Action, Id
-from .status import Failure, Normal, Status
+from .status import Failure, Normal
 
 MAX_PRIORITY = int(1e9)
 """A number bigger than whatever will be manually typed. But not so insanely big not to fit in a native integer."""
@@ -48,6 +49,7 @@ class Task:
         if len(self.qubits) == 0:
             self.qubits = self.action.qubits
 
+    # TODO: to be removed in https://github.com/qiboteam/qibocal/pull/682
     def _allocate_local_qubits(self, qubits, platform):
         if len(self.qubits) > 0:
             if platform is not None:
@@ -87,19 +89,19 @@ class Task:
 
         return Operation[self.action.operation].value
 
-    def validate(self, results: Results) -> Optional[Status]:
-        """Performs validation only if validator is provided."""
+    # def validate(self, results: Results) -> Union[Failure, TaskId]:
+    #     """Performs validation only if validator is provided."""
 
-        if self.action.validator is None:
-            return None
-        status = {}
-        for qubit in self.qubits:
-            status[qubit] = self.action.validator.__call__(results, qubit)
-        # exit if any of the qubit state is Failure
-        if any(isinstance(stat, Failure) for stat in status.values()):
-            return Failure()
-        else:
-            return Normal()
+    #     if self.action.validator is None:
+    #         return None
+    #     status = {}
+    #     for qubit in self.qubits:
+    #         status[qubit] = self.action.validator.__call__(results, qubit)
+    #     # exit if any of the qubit state is Failure
+    #     if any(isinstance(stat, Failure) for stat in status.values()):
+    #         return Failure()
+    #     else:
+    #         return Normal()
 
     @property
     def main(self):
@@ -147,7 +149,7 @@ class Task:
                 f"Maximum number of iterations {max_iterations} reached!",
             )
 
-        completed = Completed(self, Normal(), folder)
+        completed = Completed(self, folder)
 
         try:
             if self.parameters.nshots is None:
@@ -178,7 +180,6 @@ class Task:
                 )
         if mode.name in ["autocalibration", "fit"]:
             completed.results, completed.results_time = operation.fit(completed.data)
-            completed.status = self.validate(completed.results)
         return completed
 
 
@@ -195,8 +196,6 @@ class Completed:
         be added
 
     """
-    status: Status
-    """Protocol status."""
     folder: Path
     """Folder with data and results."""
     _data: Optional[Data] = None
@@ -261,12 +260,18 @@ class Completed:
 
     def validate(self) -> Optional[TaskId]:
         """Check status of completed and handle Failure using handler."""
-        if isinstance(self.status, Failure):
-            handler = self.task.action.handler
-            if handler is not None:
-                return handler.id
-            log.error(
-                "Stopping execution because of error in validation without handler"
-            )
-            return None
+        if self.task.action.validator is not None:
+            status = []
+            for target in self.task.qubits:
+                # TODO: how to handle multiple targets?
+                # dummy solution for now: take the mode.
+                status.append(self.task.action.validator.validate(self.results, target))
+            output = mode(status)
+            if isinstance(output, Failure):
+                return None
+            elif isinstance(output, Normal):
+                return self.task.id
+            else:
+                return output
+
         return self.task.id

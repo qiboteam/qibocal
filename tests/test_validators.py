@@ -18,7 +18,7 @@ PLATFORM = create_platform("dummy")
 def test_chi2(chi2_max_value, tmp_path):
     """Dummy test only for t1"""
     card = yaml.safe_load(RUNCARD.read_text(encoding="utf-8"))
-    card["actions"][0]["validator"]["parameters"]["chi2_max_value"] = chi2_max_value
+    card["actions"][0]["validator"]["parameters"]["thresholds"] = [chi2_max_value]
     executor = Executor.load(
         Runcard.load(card),
         tmp_path,
