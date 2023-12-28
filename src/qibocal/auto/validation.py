@@ -44,7 +44,7 @@ class Validator:
         # if index is 0 -> Normal Status
         # else: jump to correspoding outcomes
         if index is None:
-            raise_error(ValueError, ".")
+            raise_error(ValueError, "Stopping execution due to error in validation.")
             return Failure()
         elif index is 0:
             return Normal()
