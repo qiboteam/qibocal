@@ -17,7 +17,7 @@ Down below we present how to write a runcard to execute a single protocol using 
 
     platform: <qibolab platform name>
 
-    qubits: <list of qubit ids where all the protocols will be performed.>
+    targets: <list of targets where all protocols will be executed.>
 
 
     actions:
@@ -33,8 +33,8 @@ Here is a description of the global parameters to be specified:
     * ``platform``: QPU where the experiments will be executed. Possible choices
         for TII users are available in this `repository <https://github.com/qiboteam/qibolab_platforms_qrc>`_.
         For non-TII users it is possible a setup a custom platform using  `Qibolab <https://qibo.science/qibolab/stable/tutorials/lab.html>`_.
-    * ``qubits``: list of qubit names for a specific platform. It can also be a list of qubit pairs
-        in the case of protocols for qubit pairs.
+    * ``targets``: list of ``QubitId`` for a specific platform. It can also be a list of ``QubitPairId``
+        in the case of protocols for qubit pairs, or a ``list[list[QubitId]]`` for protocols targeting groups of qubits.
 
 Under ``actions`` are listed the protocols that will be executed.
 

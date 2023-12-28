@@ -10,9 +10,9 @@ presented in :ref:`runcard`, we can use this runcard.
 
 .. code-block:: yaml
 
-    platform: qw5q_gold_qblox
+    platform: qw5q_gold
 
-    qubits: [0]
+    targets: [0]
 
     actions:
         - id: resonator high power high amplitude
