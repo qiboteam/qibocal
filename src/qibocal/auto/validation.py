@@ -6,8 +6,6 @@ from qibolab.qubits import QubitId, QubitPairId
 
 from ..config import raise_error
 from .operation import Results
-
-# from .task import TaskId
 from .status import Failure, Normal, Status
 from .validators import VALIDATORS
 
@@ -42,10 +40,10 @@ class Validator:
         index = self.method(results=results, target=target, **self.parameters)
         # If index is None -> status is Failure
         # if index is 0 -> Normal Status
-        # else: jump to correspoding outcomes
-        if index is None:
+        # else: jump to corresponding outcomes
+        if index == None:
             raise_error(ValueError, "Stopping execution due to error in validation.")
             return Failure()
-        elif index is 0:
+        elif index == 0:
             return Normal()
         return self.outcomes[index - 1][0]

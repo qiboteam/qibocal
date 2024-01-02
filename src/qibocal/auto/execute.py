@@ -147,6 +147,7 @@ class Executor:
             )
             self.history.push(completed)
             if mode.name == "autocalibration":
+                # TODO: find a way to use new parameters
                 new_head = completed.validate()
                 # if head is the same we continue through the graph
                 # else we use the new head given by handler

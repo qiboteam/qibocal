@@ -26,9 +26,8 @@ actions:
     validator:
       scheme: chi2
       parameters:
-        chi2_max_value: 0.01
-    handler:
-      id: t1
+        thresholds: [0.1, 10]
+      outcomes: [["t1", {"nshots" : 100}]]
     update: false
 
   - id: single shot
