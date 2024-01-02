@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from functools import partial
 from typing import Optional
 
 import numpy as np
@@ -13,12 +12,11 @@ from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.config import log
 from qibocal.protocols.characterization.qubit_spectroscopy_ef import (
     DEFAULT_ANHARMONICITY,
 )
 
-from ..utils import GHZ_TO_HZ, HZ_TO_GHZ
+from ..utils import GHZ_TO_HZ
 from . import utils
 
 
@@ -53,6 +51,8 @@ class QubitFluxResults(Results):
     """Sweetspot for each qubit."""
     frequency: dict[QubitId, float]
     """Drive frequency for each qubit."""
+    d: dict[QubitId, float]
+    """Asymmetry."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
@@ -185,119 +185,52 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     qubits = data.qubits
     frequency = {}
     sweetspot = {}
+    d = {}
+    # TODO: add flux matrix element
     fitted_parameters = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        Ec = data.Ec[qubit]
-        Ej = data.Ej[qubit]
-
-        frequency[qubit] = 0
-        sweetspot[qubit] = 0
-        fitted_parameters[qubit] = {
-            "Xi": 0,
-            "d": 0,
-            "Ec": 0,
-            "Ej": 0,
-            "f_q_offset": 0,
-            "C_ii": 0,
-        }
 
         biases = qubit_data.bias
         frequencies = qubit_data.freq
         signal = qubit_data.signal
 
-        if data.resonator_type == "2D":
-            signal = -signal
-
-        frequencies, biases = utils.image_to_curve(
-            frequencies, biases, signal, signal_mask=0.3
+        frequencies, biases = utils.extract_feature(
+            biases,
+            frequencies,
+            signal,
         )
-        max_c = biases[np.argmax(frequencies)]
-        min_c = biases[np.argmin(frequencies)]
-        xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
 
-        # First order approximation: Ec and Ej NOT provided
-        if Ec == 0 and Ej == 0:
-            try:
-                f_q_0 = np.max(
-                    frequencies
-                )  # Initial estimation for qubit frequency at sweet spot.
-                popt = curve_fit(
-                    utils.freq_q_transmon,
-                    biases,
-                    frequencies / GHZ_TO_HZ,
-                    p0=[max_c, xi, 0, f_q_0 / GHZ_TO_HZ],
-                    bounds=((-np.inf, 0, 0, 0), (np.inf, np.inf, np.inf, np.inf)),
-                    maxfev=2000000,
-                )[0]
-                popt[3] *= GHZ_TO_HZ
-                f_qs = popt[3]  # Qubit frequency at sweet spot.
-                f_q_offset = utils.freq_q_transmon(
-                    0, *popt
-                )  # Qubit frequenct at zero current.
-                C_ii = (f_qs - f_q_offset) / popt[
-                    0
-                ]  # Corresponding flux matrix element.
-
-                frequency[qubit] = f_qs * HZ_TO_GHZ
-                sweetspot[qubit] = popt[0]
-                fitted_parameters[qubit] = {
-                    "Xi": popt[1],
-                    "d": abs(popt[2]),
-                    "f_q_offset": f_q_offset,
-                    "C_ii": C_ii,
-                }
-            except:
-                log.warning(
-                    "qubit_flux_fit: The first order approximation fitting was not succesful"
-                )
-
-        # Second order approximation: Ec and Ej provided
-        else:
-            try:
-                freq_q_mathieu1 = partial(utils.freq_q_mathieu, p5=0.4999)
-                popt = curve_fit(
-                    freq_q_mathieu1,
-                    biases,
-                    frequencies / GHZ_TO_HZ,
-                    p0=[max_c, xi, 0, Ec / GHZ_TO_HZ, Ej / GHZ_TO_HZ],
-                    bounds=(
-                        (-np.inf, 0, 0, 0, 0),
-                        (np.inf, np.inf, np.inf, np.inf, np.inf),
-                    ),
-                    maxfev=2000000,
-                )[0]
-                popt[3] *= GHZ_TO_HZ
-                popt[4] *= GHZ_TO_HZ
-                f_qs = utils.freq_q_mathieu(
-                    popt[0], *popt
-                )  # Qubit frequency at sweet spot.
-                f_q_offset = utils.freq_q_mathieu(
-                    0, *popt
-                )  # Qubit frequenct at zero current.
-                C_ii = (f_qs - f_q_offset) / popt[
-                    0
-                ]  # Corresponding flux matrix element.
-
-                frequency[qubit] = f_qs
-                sweetspot[qubit] = popt[0]
-                fitted_parameters[qubit] = {
-                    "Xi": popt[1],
-                    "d": abs(popt[2]),
-                    "Ec": popt[3],
-                    "Ej": popt[4],
-                    "f_q_offset": f_q_offset,
-                    "C_ii": C_ii,
-                }
-            except:
-                log.warning(
-                    "qubit_flux_fit: The second order approximation fitting was not succesful"
-                )
+        popt = curve_fit(
+            utils.transmon_frequency,
+            biases,
+            frequencies / 1e9,
+            bounds=(
+                [
+                    np.mean(qubit_data.freq) / 1e9 - 1,
+                    0,
+                    0,
+                    np.mean(qubit_data.bias) - 0.5,
+                ],
+                [
+                    np.mean(qubit_data.freq) / 1e9 + 1,
+                    1,
+                    np.inf,
+                    np.mean(qubit_data.bias) + 0.5,
+                ],
+            ),
+            maxfev=100000,
+        )[0]
+        fitted_parameters[qubit] = popt.tolist()
+        frequency[qubit] = popt[0] * GHZ_TO_HZ
+        d[qubit] = popt[1]
+        sweetspot[qubit] = popt[3]
 
     return QubitFluxResults(
         frequency=frequency,
         sweetspot=sweetspot,
+        d=d,
         fitted_parameters=fitted_parameters,
     )
 

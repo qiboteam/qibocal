@@ -2,7 +2,6 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy.special import mathieu_a, mathieu_b
-from sklearn.linear_model import Ridge
 
 from ..utils import HZ_TO_GHZ, table_dict, table_html
 
@@ -40,8 +39,8 @@ def create_data_array(freq, bias, signal, phase, dtype):
 def flux_dependence_plot(data, fit, qubit):
     figures = []
     fitting_report = ""
-
     qubit_data = data[qubit]
+    frequencies = qubit_data.freq * HZ_TO_GHZ
 
     if not data.__class__.__name__ == "CouplerSpectroscopyData":
         subplot_titles = (
@@ -61,27 +60,10 @@ def flux_dependence_plot(data, fit, qubit):
         vertical_spacing=0.1,
         subplot_titles=subplot_titles,
     )
-    frequencies = qubit_data.freq * HZ_TO_GHZ
-    signal = qubit_data.signal
-    if data.__class__.__name__ == "ResonatorFluxData":
-        signal_mask = 0.5
-        if data.resonator_type == "3D":
-            signal = -signal
-    elif (
-        data.__class__.__name__ == "QubitFluxData"
-        or data.__class__.__name__ == "CouplerSpectroscopyData"
-    ):
-        signal_mask = 0.3
-        if data.resonator_type == "2D":
-            signal = -signal
-
-    frequencies1, biases1 = image_to_curve(
-        frequencies, qubit_data.bias, signal, signal_mask
-    )
 
     fig.add_trace(
         go.Heatmap(
-            x=frequencies,
+            x=qubit_data.freq * HZ_TO_GHZ,
             y=qubit_data.bias,
             z=qubit_data.signal,
             colorbar_x=0.46,
@@ -90,93 +72,35 @@ def flux_dependence_plot(data, fit, qubit):
         col=1,
     )
 
-    if not data.__class__.__name__ == "CouplerSpectroscopyData":
+    # TODO: This fit is for frequency, can it be reused here, do we even want the fit ?
+    if fit is not None and not data.__class__.__name__ == "CouplerSpectroscopyData":
+        fitting_report = ""
+        params = fit.fitted_parameters[qubit]
+        bias = np.unique(qubit_data.bias)
+
         fig.add_trace(
             go.Scatter(
-                x=frequencies1,
-                y=biases1,
-                mode="markers",
-                marker_color="green",
+                x=transmon_frequency(bias, *params),
+                y=bias,
                 showlegend=True,
-                name="Curve estimation",
+                name="Fit",
+                marker=dict(color="black"),
             ),
             row=1,
             col=1,
         )
 
-    # TODO: This fit is for frequency, can it be reused here, do we even want the fit ?
-    if fit is not None and not data.__class__.__name__ == "CouplerSpectroscopyData":
-        fitting_report = ""
-        params = fit.fitted_parameters[qubit]
-        fitting_report_label = "Frequency"
-        if fit.frequency[qubit] != 0:
-            if data.__class__.__name__ == "ResonatorFluxData":
-                fitting_report_label = "Resonator Frequency [Hz]"
-                if all(param in params for param in ["Ec", "Ej"]):
-                    popt = [
-                        params["bare_resonator_frequency"],
-                        params["g"],
-                        fit.sweetspot[qubit],
-                        params["Xi"],
-                        params["d"],
-                        params["Ec"],
-                        params["Ej"],
-                    ]
-                    freq_fit = freq_r_mathieu(biases1, *popt)
-                else:
-                    popt = [
-                        fit.sweetspot[qubit],
-                        params["Xi"],
-                        params["d"],
-                        params["f_q/bare_resonator_frequency"],
-                        params["g"],
-                        params["bare_resonator_frequency"],
-                    ]
-                    freq_fit = freq_r_transmon(biases1, *popt)
-            elif data.__class__.__name__ == "QubitFluxData":
-                fitting_report_label = "Qubit Frequency [Hz]"
-                if all(param in params for param in ["Ec", "Ej"]):
-                    popt = [
-                        fit.sweetspot[qubit],
-                        params["Xi"],
-                        params["d"],
-                        params["Ec"],
-                        params["Ej"],
-                    ]
-                    freq_fit = freq_q_mathieu(biases1, *popt)
-                else:
-                    popt = [
-                        fit.sweetspot[qubit],
-                        params["Xi"],
-                        params["d"],
-                        fit.frequency[qubit],
-                    ]
-                    freq_fit = freq_q_transmon(biases1, *popt)
-
-            fig.add_trace(
-                go.Scatter(
-                    x=freq_fit,
-                    y=biases1,
-                    showlegend=True,
-                    name="Fit",
-                ),
-                row=1,
-                col=1,
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                ["Sweetspot [V]", "Maximum Frequency [Hz]", "d"],
+                [
+                    np.round(fit.sweetspot[qubit], 2),
+                    np.round(fit.frequency[qubit], 4),
+                    np.round(fit.d[qubit], 4),
+                ],
             )
-
-            parameters = []
-            values = []
-
-            for key, value in fit.fitted_parameters[qubit].items():
-                values.append(np.round(value, 5))
-                parameters.append(FLUX_PARAMETERS[key])
-
-            parameters.extend([fitting_report_label, "Sweetspot"])
-            values.extend(
-                [np.round(fit.frequency[qubit], 5), np.round(fit.sweetspot[qubit], 3)]
-            )
-
-            fitting_report = table_html(table_dict(qubit, parameters, values))
+        )
 
     fig.update_xaxes(
         title_text=f"Frequency [GHz]",
@@ -190,7 +114,7 @@ def flux_dependence_plot(data, fit, qubit):
 
     fig.add_trace(
         go.Heatmap(
-            x=frequencies,
+            x=qubit_data.freq * HZ_TO_GHZ,
             y=qubit_data.bias,
             z=qubit_data.phase,
             colorbar_x=1.01,
@@ -203,11 +127,6 @@ def flux_dependence_plot(data, fit, qubit):
         row=1,
         col=2,
     )
-
-    if not data.__class__.__name__ == "CouplerSpectroscopyData":
-        fig.update_yaxes(title_text="Bias [V]", row=1, col=2)
-    else:
-        fig.update_yaxes(title_text="Pulse Amplitude [a.u.]", row=1, col=2)
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
 
@@ -434,52 +353,68 @@ def feature(x, order=3):
     return np.power(x, np.arange(order + 1).reshape(1, -1))
 
 
-def image_to_curve(x, y, z, signal_mask=0.5, alpha=1e-5, order=50):
-    """
-    Extracts a feature characterized by min(z(x, y)). It considers all the data and applies Ridge regression on a polynomial ansatz in x. This allows obtaining a set of points describing the feature as y vs x.
+def extract_feature(bias, freq, signal, threshold=1.5):
+    mean_signal = np.mean(signal)
+    std_signal = np.std(signal)
+    snr_map = (signal - mean_signal) / std_signal
+    binary_mask = snr_map > threshold
+    if len(binary_mask) == 0:
+        return freq, bias
+    return freq[binary_mask], bias[binary_mask]
 
-    Args:
-        x (ndarray) frequencies
-        y (ndarray) bias
-        z (ndarray) signal
 
-    Returns:
-        y_pred (ndarray) frequencies
-        x_pred (ndarray) bias
-    """
-    max_x = np.max(x)
-    min_x = np.min(x)
-    lenx = int((max_x - min_x) / (x[1] - x[0])) + 1
-    max_y = np.max(y)
-    min_y = np.min(y)
-    leny = int(len(y) / (lenx))
-    z = np.array(z, float)
-    if len(z) != leny * lenx:
-        lenx += 1
-        leny = int(len(y) / (lenx))
-    x = np.linspace(min_x, max_x, lenx)
-    y = np.linspace(min_y, max_y, leny)
-    z = np.reshape(z, (leny, lenx))
-    zmax, zmin = z.max(), z.min()
-    znorm = (z - zmin) / (zmax - zmin)
+def transmon_frequency(x, w_max, d, element, offset):
+    return w_max * (
+        d**2 + (1 - d**2) * (np.cos(np.pi * (x - offset) * element) ** 2) ** 0.25
+    )
 
-    # Mask out region
-    mask = znorm < signal_mask
-    z = np.argwhere(mask)
-    weights = znorm[mask] / float(znorm.max())
-    # Column indices
-    x_fit = y[z[:, 0].reshape(-1, 1)]
-    # Row indices to predict.
-    y_fit = x[z[:, 1]]
 
-    # Ridge regression, i.e., least squares with l2 regularization
-    A = feature(x_fit, order)
-    model = Ridge(alpha=alpha)
-    model.fit(A, y_fit, sample_weight=weights)
-    x_pred = y
-    X_pred = feature(x_pred, order)
-    y_pred = model.predict(X_pred)
-    return y_pred, x_pred
+# def image_to_curve(x, y, z, signal_mask=0.5, alpha=1e-5, order=50):
+#     """
+#     Extracts a feature characterized by min(z(x, y)). It considers all the data and applies Ridge regression on a polynomial ansatz in x. This allows obtaining a set of points describing the feature as y vs x.
+
+#     Args:
+#         x (ndarray) frequencies
+#         y (ndarray) bias
+#         z (ndarray) signal
+
+#     Returns:
+#         y_pred (ndarray) frequencies
+#         x_pred (ndarray) bias
+#     """
+#     max_x = np.max(x)
+#     min_x = np.min(x)
+#     lenx = int((max_x - min_x) / (x[1] - x[0])) + 1
+#     max_y = np.max(y)
+#     min_y = np.min(y)
+#     leny = int(len(y) / (lenx))
+#     z = np.array(z, float)
+#     if len(z) != leny * lenx:
+#         lenx += 1
+#         leny = int(len(y) / (lenx))
+#     x = np.linspace(min_x, max_x, lenx)
+#     y = np.linspace(min_y, max_y, leny)
+#     z = np.reshape(z, (leny, lenx))
+#     zmax, zmin = z.max(), z.min()
+#     znorm = (z - zmin) / (zmax - zmin)
+
+#     # Mask out region
+#     mask = znorm < signal_mask
+#     z = np.argwhere(mask)
+#     weights = znorm[mask] / float(znorm.max())
+#     # Column indices
+#     x_fit = y[z[:, 0].reshape(-1, 1)]
+#     # Row indices to predict.
+#     y_fit = x[z[:, 1]]
+
+#     # Ridge regression, i.e., least squares with l2 regularization
+#     A = feature(x_fit, order)
+#     model = Ridge(alpha=alpha)
+#     model.fit(A, y_fit, sample_weight=weights)
+#     x_pred = y
+#     X_pred = feature(x_pred, order)
+#     y_pred = model.predict(X_pred)
+#     return y_pred, x_pred
 
 
 def get_resonator_freq_flux(
