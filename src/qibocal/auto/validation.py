@@ -30,20 +30,35 @@ class Validator:
     # TODO: think of a better name
     @property
     def method(self) -> Callable[[Results, Target], Union[Status, str]]:
-        """Validation function."""
+        """Validation function in validators module."""
         try:
             return VALIDATORS[self.scheme]
         except AttributeError:
             raise_error(AttributeError, f"Validator {self.scheme} not available.")
 
-    def validate(self, results: Results, target: Target):
+    def validate(
+        self, results: Results, target: Target
+    ) -> tuple[Union[Status, str], Optional[dict]]:
+        """Perform validation of target in results.
+
+        Possible Returns are:
+            - (Failure, None) which stops the execution.
+            - (Normal, None) which corresponds to the normal flow
+            - (task, dict) which moves the head to task using parameters in dict.
+        """
         index = self.method(results=results, target=target, **self.parameters)
         # If index is None -> status is Failure
         # if index is 0 -> Normal Status
         # else: jump to corresponding outcomes
         if index == None:
             raise_error(ValueError, "Stopping execution due to error in validation.")
-            return Failure()
+            return Failure(), None
         elif index == 0:
-            return Normal()
-        return self.outcomes[index - 1][0]
+            # for chi2 (to be generalized for other validators):
+            # if chi2 is less than first threshold the status is normal
+            return Normal(), None
+
+        # else we return outcomes [index-1] since outcomes outcomes[i] is
+        # the output of thresholds[index+1], given that for the first threshold
+        # the status is Normal.
+        return self.outcomes[index - 1]

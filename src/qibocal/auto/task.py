@@ -51,6 +51,7 @@ class Task:
 
     # TODO: to be removed in https://github.com/qiboteam/qibocal/pull/682
     def _allocate_local_qubits(self, qubits, platform):
+        """Create qubits dictionary from QubitIds."""
         if len(self.qubits) > 0:
             if platform is not None:
                 if any(isinstance(i, tuple) for i in self.qubits):
@@ -88,20 +89,6 @@ class Task:
             raise RuntimeError("No operation specified")
 
         return Operation[self.action.operation].value
-
-    # def validate(self, results: Results) -> Union[Failure, TaskId]:
-    #     """Performs validation only if validator is provided."""
-
-    #     if self.action.validator is None:
-    #         return None
-    #     status = {}
-    #     for qubit in self.qubits:
-    #         status[qubit] = self.action.validator.__call__(results, qubit)
-    #     # exit if any of the qubit state is Failure
-    #     if any(isinstance(stat, Failure) for stat in status.values()):
-    #         return Failure()
-    #     else:
-    #         return Normal()
 
     @property
     def main(self):
@@ -258,20 +245,23 @@ class Completed:
             for qubit in self.task.qubits:
                 self.task.operation.update(self.results, platform, qubit)
 
-    def validate(self) -> Optional[TaskId]:
+    def validate(self) -> tuple[Optional[TaskId], Optional[dict]]:
         """Check status of completed and handle Failure using handler."""
         if self.task.action.validator is not None:
             status = []
             for target in self.task.qubits:
                 # TODO: how to handle multiple targets?
                 # dummy solution for now: take the mode.
-                status.append(self.task.action.validator.validate(self.results, target))
+                qubit_status, params = self.task.action.validator.validate(
+                    self.results, target
+                )
+                status.append(qubit_status)
             output = mode(status)
             if isinstance(output, Failure):
-                return None
+                return None, None
             elif isinstance(output, Normal):
-                return self.task.id
+                return self.task.id, None
             else:
-                return output
+                return output, params
 
-        return self.task.id
+        return self.task.id, None

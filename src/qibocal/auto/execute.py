@@ -148,11 +148,16 @@ class Executor:
             self.history.push(completed)
             if mode.name == "autocalibration":
                 # TODO: find a way to use new parameters
-                new_head = completed.validate()
-                # if head is the same we continue through the graph
-                # else we use the new head given by handler
-                self.head = self.next() if new_head == self.head else new_head
+                new_head, new_params = completed.validate()
 
+                if new_params is not None:
+                    # if new_params are present we update the parameters of the
+                    # node pointed by the validator and we move the head
+                    self.graph.task(new_head).action.parameters.update(new_params)
+                    self.head = new_head
+                else:
+                    # normal flow
+                    self.head = self.next()
             else:
                 self.head = self.next()
             if mode.name in ["autocalibration", "fit"] and self.platform is not None:
