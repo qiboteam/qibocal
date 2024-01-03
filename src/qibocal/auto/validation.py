@@ -4,7 +4,7 @@ from typing import Callable, NewType, Optional, Union
 
 from qibolab.qubits import QubitId, QubitPairId
 
-from ..config import raise_error
+from ..config import log, raise_error
 from .operation import Results
 from .status import Failure, Normal, Status
 from .validators import VALIDATORS
@@ -33,8 +33,8 @@ class Validator:
         """Validation function in validators module."""
         try:
             return VALIDATORS[self.scheme]
-        except AttributeError:
-            raise_error(AttributeError, f"Validator {self.scheme} not available.")
+        except KeyError:
+            raise_error(KeyError, f"Validator {self.scheme} not available.")
 
     def validate(
         self, results: Results, target: Target
@@ -51,7 +51,7 @@ class Validator:
         # if index is 0 -> Normal Status
         # else: jump to corresponding outcomes
         if index == None:
-            raise_error(ValueError, "Stopping execution due to error in validation.")
+            log.error("Stopping execution due to error in validation.")
             return Failure(), None
         elif index == 0:
             # for chi2 (to be generalized for other validators):

@@ -14,7 +14,7 @@ CHI2_MAX = 0.05
 def check_chi2(
     results: Results,
     target: Union[QubitId, QubitPairId, list[QubitId]],
-    thresholds: [CHI2_MAX],
+    thresholds: list = [CHI2_MAX],
 ):
     """Performs validation of results using chi2.
 
@@ -29,5 +29,5 @@ def check_chi2(
 
         return None
     except AttributeError:
-        log.warning(f"Chi2 validation not available for {type(results)}")
+        log.error(f"Chi2 validation not available for {type(results)}")
         return None

@@ -7,12 +7,27 @@ import yaml
 from qibolab import create_platform
 
 from qibocal.auto.execute import Executor
+from qibocal.auto.operation import Results
 from qibocal.auto.runcard import Runcard
+from qibocal.auto.validation import Validator
+from qibocal.auto.validators.chi2 import check_chi2
 from qibocal.cli.report import ExecutionMode
 
 RUNCARD_CHI_SQUARED = pathlib.Path(__file__).parent / "runcards/chi_squared.yml"
 RUNCARD_EXCEPTION = pathlib.Path(__file__).parent / "runcards/handlers.yml"
 PLATFORM = create_platform("dummy")
+
+
+def test_error_validator():
+    """Test error with unknown validator."""
+    validator = Validator("unknown")
+    with pytest.raises(KeyError):
+        validator.method(Results(), 0)
+
+
+def test_chi2_error():
+    """Test error when Results don't contain chi2."""
+    assert check_chi2(Results(), 0) == None
 
 
 @pytest.mark.parametrize("chi2_max_value", [1000, 1e-5])
@@ -27,15 +42,9 @@ def test_chi2(chi2_max_value, tmp_path):
         list(PLATFORM.qubits),
     )
 
-    if chi2_max_value == 1e-5:
-        with pytest.raises(ValueError):
-            list(executor.run(mode=ExecutionMode.autocalibration))
-    else:
-        list(executor.run(mode=ExecutionMode.autocalibration))
+    list(executor.run(mode=ExecutionMode.autocalibration))
 
-    # for large chi2 value executor will execute 2 protocols
-    # only 1 with low chi2
-    assert len(executor.history.keys()) == 2 if chi2_max_value == 100 else 1
+    assert len(executor.history.keys()) == 2 if chi2_max_value == 1000 else 1
 
 
 def test_validator_with_exception_handled(tmp_path):
