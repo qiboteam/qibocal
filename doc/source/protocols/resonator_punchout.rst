@@ -51,7 +51,7 @@ Compared to a low power resonator spectroscopy, with punchout we can see the shi
 and thus ensure that we are in the low power regime.
 
 Moreover, from this experiment we can actually already have an estimate of the qubit
-frequency using:
+frequency using :cite:p:`Greene_2014, Gu_2017`:
 
 .. math::
 
@@ -100,3 +100,9 @@ not needed to do a precise measurement, but it is nevertheless very useful to ha
 approximate value, that can later be used to check, in other experiments, that we are
 not exciting the qubit by error (if we see a change in amplitude, then maybe the qubit
 state has changed).
+
+.. rubric:: References
+
+.. bibliography::
+   :cited:
+   :style: plain
