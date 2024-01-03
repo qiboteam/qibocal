@@ -12,7 +12,7 @@ from scipy.optimize import curve_fit
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from ..utils import GHZ_TO_HZ
+from ..utils import GHZ_TO_HZ, table_dict, table_html
 from . import utils
 
 
@@ -39,8 +39,17 @@ class ResonatorFluxResults(Results):
     sweetspot: dict[QubitId, float]
     """Sweetspot for each qubit."""
     d: dict[QubitId, float]
+    """Asymmetry."""
+    bare_frequency: dict[QubitId, float]
+    """Resonator bare frequency."""
+    drive_frequency: dict[QubitId, float]
+    """Qubit frequency at sweetspot."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    g: dict[QubitId, float]
+    """Coupling."""
+    matrix_element: dict[QubitId, float]
+    """C_ii coefficient."""
 
 
 ResFluxType = np.dtype(
@@ -156,8 +165,11 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     frequency = {}
     sweetspot = {}
     d = {}
-
+    bare_frequency = {}
+    drive_frequency = {}
     fitted_parameters = {}
+    matrix_element = {}
+    g = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
@@ -210,31 +222,62 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         frequency[qubit] = utils.transmon_readout_frequency(popt[3], *popt) * GHZ_TO_HZ
         sweetspot[qubit] = popt[3]
         d[qubit] = popt[1]
+        bare_frequency[qubit] = popt[4] * GHZ_TO_HZ
+        drive_frequency[qubit] = popt[0] * GHZ_TO_HZ
+        g[qubit] = popt[5]
+        matrix_element[qubit] = popt[2]
 
     return ResonatorFluxResults(
         frequency=frequency,
         sweetspot=sweetspot,
         d=d,
+        bare_frequency=bare_frequency,
+        drive_frequency=drive_frequency,
+        g=g,
+        matrix_element=matrix_element,
         fitted_parameters=fitted_parameters,
     )
 
 
 def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
     """Plotting function for ResonatorFlux Experiment."""
-    return utils.flux_dependence_plot(data, fit, qubit)
+    figures = utils.flux_dependence_plot(
+        data, fit, qubit, utils.transmon_readout_frequency
+    )
+    if fit is not None:
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                [
+                    "Sweetspot [V]",
+                    "Bare Resonator Frequency [Hz]",
+                    "Readout Frequency [Hz]",
+                    "Qubit Frequency at Sweetspot [Hz]",
+                    "Asymmetry d",
+                    "Coupling g",
+                    "C_ii",
+                ],
+                [
+                    np.round(fit.sweetspot[qubit], 4),
+                    np.round(fit.bare_frequency[qubit], 4),
+                    np.round(fit.frequency[qubit], 4),
+                    np.round(fit.drive_frequency[qubit], 4),
+                    np.round(fit.d[qubit], 4),
+                    np.round(fit.g[qubit], 4),
+                    np.round(fit.matrix_element[qubit], 4),
+                ],
+            )
+        )
+        return figures, fitting_report
+    return figures, ""
 
 
 def _update(results: ResonatorFluxResults, platform: Platform, qubit: QubitId):
-    # update.bare_resonator_frequency_sweetspot(results.brf[qubit], platform, qubit)
+    update.bare_resonator_frequency(results.bare_frequency[qubit], platform, qubit)
     update.readout_frequency(results.frequency[qubit], platform, qubit)
-    # update.flux_to_bias(results.flux_to_bias[qubit], platform, qubit)
+    update.drive_frequency(results.drive_frequency[qubit], platform, qubit)
     update.asymmetry(results.d[qubit], platform, qubit)
-    # update.ratio_sweetspot_qubit_freq_bare_resonator_freq(
-    #     results.ssf_brf[qubit], platform, qubit
-    # )
-    # update.charging_energy(results.ECs[qubit], platform, qubit)
-    # update.josephson_energy(results.EJs[qubit], platform, qubit)
-    # update.coupling(results.Gs[qubit], platform, qubit)
+    update.coupling(results.g[qubit], platform, qubit)
 
 
 resonator_flux = Routine(_acquisition, _fit, _plot, _update)

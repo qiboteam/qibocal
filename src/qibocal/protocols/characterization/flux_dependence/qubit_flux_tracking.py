@@ -161,16 +161,14 @@ def _acquisition(
     for bias in delta_bias_range:
         for qubit in qubits:
             try:
-                freq_resonator = utils.get_resonator_freq_flux(
+                freq_resonator = utils.transmon_readout_frequency(
                     bias,
-                    qubits[qubit].sweetspot,
-                    qubits[qubit].flux_to_bias,
+                    qubits[qubit].drive_frequency,
                     qubits[qubit].asymmetry,
+                    qubits[qubit].Cii,
+                    qubits[qubit].sweetspot,
+                    qubits[qubit].bare_resonator_frequency,
                     qubits[qubit].g,
-                    qubits[qubit].brf,
-                    qubits[qubit].ssf_brf,
-                    qubits[qubit].Ec,
-                    qubits[qubit].Ej,
                 )
                 # modify qubit resonator frequency
                 qubits[qubit].readout_frequency = freq_resonator

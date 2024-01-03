@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy.special import mathieu_a, mathieu_b
 
-from ..utils import HZ_TO_GHZ, table_dict, table_html
+from ..utils import HZ_TO_GHZ
 
 FLUX_PARAMETERS = {
     "Xi": "Constant to map flux to bias [V]",
@@ -36,22 +36,15 @@ def create_data_array(freq, bias, signal, phase, dtype):
     return np.rec.array(ar)
 
 
-def flux_dependence_plot(data, fit, qubit):
+def flux_dependence_plot(data, fit, qubit, fit_function=None):
     figures = []
-    fitting_report = ""
     qubit_data = data[qubit]
     frequencies = qubit_data.freq * HZ_TO_GHZ
 
-    if not data.__class__.__name__ == "CouplerSpectroscopyData":
-        subplot_titles = (
-            "Signal [a.u.]",
-            "Phase [rad]",
-        )
-    else:
-        subplot_titles = (
-            "Signal [a.u.] Qubit" + str(qubit),
-            "Phase [rad] Qubit" + str(qubit),
-        )
+    subplot_titles = (
+        "Signal [a.u.]",
+        "Phase [rad]",
+    )
 
     fig = make_subplots(
         rows=1,
@@ -74,14 +67,8 @@ def flux_dependence_plot(data, fit, qubit):
 
     # TODO: This fit is for frequency, can it be reused here, do we even want the fit ?
     if fit is not None and not data.__class__.__name__ == "CouplerSpectroscopyData":
-        fitting_report = ""
         params = fit.fitted_parameters[qubit]
         bias = np.unique(qubit_data.bias)
-        fit_function = (
-            transmon_frequency
-            if data.__class__.__name__ == "QubitFluxData"
-            else transmon_readout_frequency
-        )
         fig.add_trace(
             go.Scatter(
                 x=fit_function(bias, *params),
@@ -94,27 +81,13 @@ def flux_dependence_plot(data, fit, qubit):
             col=1,
         )
 
-        fitting_report = table_html(
-            table_dict(
-                qubit,
-                ["Sweetspot [V]", "Maximum Frequency [Hz]", "d"],
-                [
-                    np.round(fit.sweetspot[qubit], 4),
-                    np.round(fit.frequency[qubit], 4),
-                    np.round(fit.d[qubit], 4),
-                ],
-            )
-        )
-
     fig.update_xaxes(
         title_text=f"Frequency [GHz]",
         row=1,
         col=1,
     )
-    if not data.__class__.__name__ == "CouplerSpectroscopyData":
-        fig.update_yaxes(title_text="Bias [V]", row=1, col=1)
-    else:
-        fig.update_yaxes(title_text="Pulse Amplitude [a.u.]", row=1, col=1)
+
+    fig.update_yaxes(title_text="Bias [V]", row=1, col=1)
 
     fig.add_trace(
         go.Heatmap(
@@ -141,7 +114,7 @@ def flux_dependence_plot(data, fit, qubit):
 
     figures.append(fig)
 
-    return figures, fitting_report
+    return figures
 
 
 def flux_crosstalk_plot(data, qubit):
@@ -433,6 +406,7 @@ def extract_max_feature(freq, bias, signal, threshold=1.5):
 #     return y_pred, x_pred
 
 
+# FIXME: update with latest version of the code
 def get_resonator_freq_flux(
     bias, sweetspot, flux_to_bias, asymmetry, g, brf, ssf_brf, Ec, Ej
 ):

@@ -16,7 +16,7 @@ from qibocal.protocols.characterization.qubit_spectroscopy_ef import (
     DEFAULT_ANHARMONICITY,
 )
 
-from ..utils import GHZ_TO_HZ
+from ..utils import GHZ_TO_HZ, table_dict, table_html
 from . import utils
 
 
@@ -53,6 +53,8 @@ class QubitFluxResults(Results):
     """Asymmetry."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    matrix_element: dict[QubitId, float]
+    """C_ii coefficient."""
 
 
 QubitFluxType = np.dtype(
@@ -72,13 +74,6 @@ class QubitFluxData(Data):
 
     """Resonator type."""
     resonator_type: str
-
-    """ResonatorFlux acquisition outputs."""
-    Ec: dict[QubitId, float] = field(default_factory=dict)
-    """Qubit Ec provided by the user."""
-
-    Ej: dict[QubitId, float] = field(default_factory=dict)
-    """Qubit Ej provided by the user."""
 
     data: dict[QubitId, npt.NDArray[QubitFluxType]] = field(default_factory=dict)
     """Raw data acquired."""
@@ -101,12 +96,7 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
-    Ec = {}
-    Ej = {}
     for qubit in qubits:
-        Ec[qubit] = qubits[qubit].Ec
-        Ej[qubit] = qubits[qubit].Ej
-
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.drive_duration
         )
@@ -148,7 +138,7 @@ def _acquisition(
             type=SweeperType.OFFSET,
         )
     ]
-    data = QubitFluxData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
+    data = QubitFluxData(resonator_type=platform.resonator_type)
 
     options = ExecutionParameters(
         nshots=params.nshots,
@@ -184,7 +174,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     frequency = {}
     sweetspot = {}
     d = {}
-    # TODO: add flux matrix element
+    matrix_element = {}
     fitted_parameters = {}
 
     for qubit in qubits:
@@ -231,23 +221,48 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         frequency[qubit] = popt[0] * GHZ_TO_HZ
         d[qubit] = popt[1]
         sweetspot[qubit] = popt[3]
+        matrix_element[qubit] = popt[2]
 
     return QubitFluxResults(
         frequency=frequency,
         sweetspot=sweetspot,
         d=d,
+        matrix_element=matrix_element,
         fitted_parameters=fitted_parameters,
     )
 
 
 def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
     """Plotting function for QubitFlux Experiment."""
-    return utils.flux_dependence_plot(data, fit, qubit)
+    figures = utils.flux_dependence_plot(
+        data, fit, qubit, fit_function=utils.transmon_frequency
+    )
+    if fit is not None:
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                [
+                    "Sweetspot [V]",
+                    "Qubit Frequency at Sweetspot [Hz]",
+                    "Asymmetry d",
+                    "C_ii",
+                ],
+                [
+                    np.round(fit.sweetspot[qubit], 4),
+                    np.round(fit.frequency[qubit], 4),
+                    np.round(fit.d[qubit], 4),
+                    np.round(fit.matrix_element[qubit], 4),
+                ],
+            )
+        )
+        return figures, fitting_report
+    return figures, ""
 
 
 def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
     update.drive_frequency(results.frequency[qubit], platform, qubit)
     update.sweetspot(results.sweetspot[qubit], platform, qubit)
+    update.asymmetry(results.d[qubit], platform, qubit)
 
 
 qubit_flux = Routine(_acquisition, _fit, _plot, _update)
