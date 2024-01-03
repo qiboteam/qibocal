@@ -77,10 +77,14 @@ def flux_dependence_plot(data, fit, qubit):
         fitting_report = ""
         params = fit.fitted_parameters[qubit]
         bias = np.unique(qubit_data.bias)
-
+        fit_function = (
+            transmon_frequency
+            if data.__class__.__name__ == "QubitFluxData"
+            else transmon_readout_frequency
+        )
         fig.add_trace(
             go.Scatter(
-                x=transmon_frequency(bias, *params),
+                x=fit_function(bias, *params),
                 y=bias,
                 showlegend=True,
                 name="Fit",
@@ -95,7 +99,7 @@ def flux_dependence_plot(data, fit, qubit):
                 qubit,
                 ["Sweetspot [V]", "Maximum Frequency [Hz]", "d"],
                 [
-                    np.round(fit.sweetspot[qubit], 2),
+                    np.round(fit.sweetspot[qubit], 4),
                     np.round(fit.frequency[qubit], 4),
                     np.round(fit.d[qubit], 4),
                 ],
@@ -194,23 +198,29 @@ def flux_crosstalk_plot(data, qubit):
     return figures, fitting_report
 
 
-def G_f_d(x, p0, p1, p2):
+def G_f_d(x, offset, d, element):
     """
     Auxiliary function to calculate the qubit frequency as a function of bias for the qubit flux spectroscopy. It also determines the flux dependence of :math:`E_J`, :math:`E_J(\\phi)=E_J(0)G_f_d^2`.
 
     Args:
-        p[0] (float): bias offset.
-        p[1] (float): constant to convert flux (:math:`\\phi_0`) to bias (:math:`v_0`). Typically denoted as :math:`\\Xi`. :math:`v_0 = \\Xi \\phi_0`.
-        p[2] (float): asymmetry between the two junctions of the transmon. Typically denoted as :math:`d`. :math:`d = (E_J^1 - E_J^2) / (E_J^1 + E_J^2)`.
+        offset (float): bias offset.
+        matrix_element(float): constant to convert flux (:math:`\\phi_0`) to bias (:math:`v_0`). Typically denoted as :math:`\\Xi`. :math:`v_0 = \\Xi \\phi_0`.
+        d (float): asymmetry between the two junctions of the transmon. Typically denoted as :math:`d`. :math:`d = (E_J^1 - E_J^2) / (E_J^1 + E_J^2)`.
 
     Returns:
         (float)
     """
-    G = np.sqrt(
-        np.cos(np.pi * (x - p0) * p1) ** 2
-        + p2**2 * np.sin(np.pi * (x - p0) * p1) ** 2
+    return (d**2 + (1 - d**2) * np.cos(np.pi * (x - offset) * element) ** 2) ** 0.25
+
+
+def transmon_frequency(x, w_max, d, element, offset):
+    return w_max * G_f_d(x, offset=offset, d=d, element=element)
+
+
+def transmon_readout_frequency(x, w_max, d, element, offset, resonator_freq, g):
+    return resonator_freq + g**2 * G_f_d(x, offset, d, element) / (
+        resonator_freq - transmon_frequency(x, w_max, d, element, offset)
     )
-    return np.sqrt(G)
 
 
 def freq_q_transmon(x, p0, p1, p2, p3):
@@ -325,35 +335,47 @@ def freq_r_mathieu(x, p0, p1, p2, p3, p4, p5, p6, p7=0.499):
     return f_r
 
 
-def line(x, p0, p1):
-    """
-    Linear fit.
+# def line(x, p0, p1):
+#     """
+#     Linear fit.
 
-    Args:
-        p[0] (float): slope.
-        p[1] (float): intercept.
+#     Args:
+#         p[0] (float): slope.
+#         p[1] (float): intercept.
 
-    Returns:
-        (float)
-    """
-    return p0 * x + p1
-
-
-def feature(x, order=3):
-    """
-    Auxilliary function for the function image_to_curve(). It generates a polynomial feature of the form [1, x, x^2, ..., x^order].
-
-    Args:
-        x (ndarray) column vector.
-
-    Returns:
-        (ndarray)
-    """
-    x = x.reshape(-1, 1)
-    return np.power(x, np.arange(order + 1).reshape(1, -1))
+#     Returns:
+#         (float)
+#     """
+#     return p0 * x + p1
 
 
-def extract_feature(bias, freq, signal, threshold=1.5):
+# def feature(x, order=3):
+#     """
+#     Auxilliary function for the function image_to_curve(). It generates a polynomial feature of the form [1, x, x^2, ..., x^order].
+
+#     Args:
+#         x (ndarray) column vector.
+
+#     Returns:
+#         (ndarray)
+#     """
+#     x = x.reshape(-1, 1)
+#     return np.power(x, np.arange(order + 1).reshape(1, -1))
+
+
+def extract_min_feature(freq, bias, signal, threshold=1.5):
+    """Extract min feature using SNR."""
+    mean_signal = np.mean(signal)
+    std_signal = np.std(signal)
+    snr_map = (signal - mean_signal) / std_signal
+    binary_mask = snr_map < -threshold
+    if len(binary_mask) == 0:
+        return freq, bias
+    return freq[binary_mask], bias[binary_mask]
+
+
+def extract_max_feature(freq, bias, signal, threshold=1.5):
+    """Extract max feature using SNR."""
     mean_signal = np.mean(signal)
     std_signal = np.std(signal)
     snr_map = (signal - mean_signal) / std_signal
@@ -361,12 +383,6 @@ def extract_feature(bias, freq, signal, threshold=1.5):
     if len(binary_mask) == 0:
         return freq, bias
     return freq[binary_mask], bias[binary_mask]
-
-
-def transmon_frequency(x, w_max, d, element, offset):
-    return w_max * (
-        d**2 + (1 - d**2) * (np.cos(np.pi * (x - offset) * element) ** 2) ** 0.25
-    )
 
 
 # def image_to_curve(x, y, z, signal_mask=0.5, alpha=1e-5, order=50):

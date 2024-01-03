@@ -38,9 +38,7 @@ class QubitFluxParameters(Parameters):
     transition: Optional[str] = "01"
     """Flux spectroscopy transition type ("01" or "02"). Default value is 01"""
     drive_duration: int = 2000
-    """
-    Duration of the drive pulse.
-    """
+    """Duration of the drive pulse."""
 
 
 @dataclass
@@ -196,11 +194,18 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         frequencies = qubit_data.freq
         signal = qubit_data.signal
 
-        frequencies, biases = utils.extract_feature(
-            biases,
-            frequencies,
-            signal,
-        )
+        if data.resonator_type == "3D":
+            frequencies, biases = utils.extract_min_feature(
+                frequencies,
+                biases,
+                signal,
+            )
+        else:
+            frequencies, biases = utils.extract_max_feature(
+                frequencies,
+                biases,
+                signal,
+            )
 
         popt = curve_fit(
             utils.transmon_frequency,
