@@ -58,6 +58,8 @@ frequency using:
    \omega_{rh} - \omega_{rl} = \chi = \frac{g^2}{\Delta}
 
 Where :math:`\Delta = \omega_{rl} - \omega_q`.
+
+:math:`\omega_{rh}` is the resonator frequency in the high power regime, and :math:`\omega_{rl}` is the resonator frequency at low power.
 So, if we know, maybe from design specifications, the expected value of :math:`g`, we can
 have an estimate of the qubit frequency. If, as in most cases, we don't have information
 on :math:`g`, then we still can infer if the qubit frequency is higher or lower than the resonator
