@@ -145,8 +145,6 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
                 p0=model_parameters,
             )
             perr = [0] * 4
-        # fit_parameters = fit_parameters*GHZ_TO_HZ
-        # fit_parameters[-1] = fit_parameters[-1]*HZ_TO_GHZ
         model_parameters = list(fit_parameters)
     except RuntimeError:
         log.warning("lorentzian_fit: the fitting was not successful")
