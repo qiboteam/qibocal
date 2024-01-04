@@ -170,25 +170,33 @@ def flux_crosstalk_plot(data, qubit):
     return figures, fitting_report
 
 
-def G_f_d(x, offset, d, element):
+def G_f_d(xi, xj, sweetspot, d, matrix_element, crosstalk_element):
     """Auxiliary function to calculate qubit frequency as a function of bias.
 
-    It also determines the flux dependence of :math:`E_J`,:math:`E_J(\\phi)=E_J(0)G_f_d^2`.
+    It also determines the flux dependence of :math:`E_J`,:math:`E_J(\\phi)=E_J(0)G_f_d`.
     For more details see: https://arxiv.org/pdf/cond-mat/0703002.pdf
 
     Args:
-        offset (float): bias offset.
-        matrix_element(float): constant to convert flux (:math:`\\phi_0`) to bias (:math:`v_0`). Typically denoted as :math:`\\Xi`. :math:`v_0 = \\Xi \\phi_0`.
+        xi (float): bias of target qubit
+        xj (float): bias of neighbor qubit
+        sweetspot (float): sweetspot [V].
+        matrix_element(float): diagonal crosstalk matrix element
+        crosstalk_element(float): offdiagonal crosstalk matrix element
         d (float): asymmetry between the two junctions of the transmon.
                    Typically denoted as :math:`d`. :math:`d = (E_J^1 - E_J^2) / (E_J^1 + E_J^2)`.
 
     Returns:
         (float)
     """
-    return (d**2 + (1 - d**2) * np.cos(np.pi * (x - offset) * element) ** 2) ** 0.25
+    return (
+        d**2
+        + (1 - d**2)
+        * np.cos(np.pi * ((xi - sweetspot) * matrix_element - xj * crosstalk_element))
+        ** 2
+    ) ** 0.25
 
 
-def transmon_frequency(x, w_max, d, element, offset):
+def transmon_frequency(xi, xj, w_max, d, matrix_element, sweetspot, crosstalk_element):
     r"""Approximation to transmon frequency.
 
     The formula holds in the transmon regime Ej / Ec >> 1.
@@ -196,20 +204,106 @@ def transmon_frequency(x, w_max, d, element, offset):
     See  https://arxiv.org/pdf/cond-mat/0703002.pdf for the complete formula.
 
     Args:
-         x (float): bias value
-         w_max (float): maximum frequency  :math:`w_{max} = \sqrt{8 E_j E_c}
-         d (float):  d (float): asymmetry between the two junctions of the transmon.
-         element (float): matrix element
-         offset (float): bias corresponding to zero flux (sweetspot).
+        xi (float): bias of target qubit
+        xj (float): bias of neighbor qubit
+        w_max (float): maximum frequency  :math:`w_{max} = \sqrt{8 E_j E_c}
+        sweetspot (float): sweetspot [V].
+        matrix_element(float): diagonal crosstalk matrix element
+        crosstalk_element(float): off-diagonal crosstalk matrix element
+        d (float): asymmetry between the two junctions of the transmon.
+                   Typically denoted as :math:`d`. :math:`d = (E_J^1 - E_J^2) / (E_J^1 + E_J^2)`.
 
      Returns:
          (float): qubit frequency as a function of bias.
     """
-    return w_max * G_f_d(x, offset=offset, d=d, element=element)
+    return w_max * G_f_d(
+        xi,
+        xj,
+        sweetspot=sweetspot,
+        d=d,
+        matrix_element=matrix_element,
+        crosstalk_element=crosstalk_element,
+    )
 
 
-def transmon_readout_frequency(x, w_max, d, element, offset, resonator_freq, g):
+def transmon_frequency_diagonal(x, w_max, d, matrix_element, sweetspot):
+    r"""Approximation to transmon frequency without crosstalk.
+
+    The formula holds in the transmon regime Ej / Ec >> 1.
+
+    See  https://arxiv.org/pdf/cond-mat/0703002.pdf for the complete formula.
+
+    Args:
+        x (float): bias of target qubit
+        w_max (float): maximum frequency  :math:`w_{max} = \sqrt{8 E_j E_c}
+        sweetspot (float): sweetspot [V].
+        matrix_element(float): diagonal crosstalk matrix element
+        d (float): asymmetry between the two junctions of the transmon.
+                   Typically denoted as :math:`d`. :math:`d = (E_J^1 - E_J^2) / (E_J^1 + E_J^2)`.
+
+     Returns:
+         (float): qubit frequency as a function of bias.
+    """
+    return transmon_frequency(
+        xi=x,
+        xj=0,
+        w_max=w_max,
+        d=d,
+        matrix_element=matrix_element,
+        sweetspot=sweetspot,
+        crosstalk_element=0,
+    )
+
+
+def transmon_readout_frequency(
+    xi, xj, w_max, d, matrix_element, crosstalk_element, sweetspot, resonator_freq, g
+):
     r"""Approximation to flux dependent resonator frequency.
+
+    The formula holds in the transmon regime Ej / Ec >> 1.
+
+    See  https://arxiv.org/pdf/cond-mat/0703002.pdf for the complete formula.
+
+    Args:
+         xi (float): bias of target qubit
+         xj (float): bias of neighbor qubit
+         w_max (float): maximum frequency  :math:`w_{max} = \sqrt{8 E_j E_c}
+         sweetspot (float): sweetspot [V].
+         matrix_element(float): diagonal crosstalk matrix element
+         crosstalk_element(float): off-diagonal crosstalk matrix element
+         d (float): asymmetry between the two junctions of the transmon.
+                    Typically denoted as :math:`d`. :math:`d = (E_J^1 - E_J^2) / (E_J^1 + E_J^2)`.
+         resonator_freq (float): bare resonator frequency [GHz]
+         g (float): readout coupling.
+
+     Returns:
+         (float): resonator frequency as a function of bias.
+    """
+    return resonator_freq + g**2 * G_f_d(
+        xi=xi,
+        xj=xj,
+        sweetspot=sweetspot,
+        d=d,
+        matrix_element=matrix_element,
+        crosstalk_element=crosstalk_element,
+    ) / (
+        resonator_freq
+        - transmon_frequency(
+            xi=xi,
+            xj=xj,
+            w_max=w_max,
+            d=d,
+            matrix_element=matrix_element,
+            sweetspot=sweetspot,
+            crosstalk_element=crosstalk_element,
+        )
+    )
+
+
+def transmon_readout_frequency_diagonal(
+    x, w_max, d, matrix_element, sweetspot, resonator_freq, g
+):
+    r"""Approximation to flux dependent resonator frequency without crosstalk.
 
     The formula holds in the transmon regime Ej / Ec >> 1.
 
@@ -219,16 +313,24 @@ def transmon_readout_frequency(x, w_max, d, element, offset, resonator_freq, g):
          x (float): bias value
          w_max (float): maximum frequency  :math:`w_{max} = \sqrt{8 E_j E_c}
          d (float):  d (float): asymmetry between the two junctions of the transmon.
-         element (float): matrix element
-         offset (float): bias corresponding to zero flux (sweetspot).
+         matrix element (float): diagonal crosstalk matrix element
+         phase (float): bias corresponding to zero flux (sweetspot).
          resonator_freq (float): bare resonator frequency [GHz]
          g (float): readout coupling.
 
      Returns:
          (float): resonator frequency as a function of bias.
     """
-    return resonator_freq + g**2 * G_f_d(x, offset, d, element) / (
-        resonator_freq - transmon_frequency(x, w_max, d, element, offset)
+    return transmon_readout_frequency(
+        xi=x,
+        xj=0,
+        w_max=w_max,
+        sweetspot=sweetspot,
+        d=d,
+        matrix_element=matrix_element,
+        crosstalk_element=0,
+        g=g,
+        resonator_freq=resonator_freq,
     )
 
 

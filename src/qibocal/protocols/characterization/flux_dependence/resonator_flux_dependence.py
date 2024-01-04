@@ -192,7 +192,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             )
 
         popt = curve_fit(
-            utils.transmon_readout_frequency,
+            utils.transmon_readout_frequency_diagonal,
             biases,
             frequencies / 1e9,
             bounds=(
@@ -219,13 +219,15 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
         # frequency corresponds to transmon readout frequency
         # at the sweetspot popt[3]
-        frequency[qubit] = utils.transmon_readout_frequency(popt[3], *popt) * GHZ_TO_HZ
+        frequency[qubit] = (
+            utils.transmon_readout_frequency_diagonal(popt[3], *popt) * GHZ_TO_HZ
+        )
         sweetspot[qubit] = popt[3]
         d[qubit] = popt[1]
         bare_frequency[qubit] = popt[4] * GHZ_TO_HZ
         drive_frequency[qubit] = popt[0] * GHZ_TO_HZ
         g[qubit] = popt[5]
-        matrix_element[qubit] = popt[2]
+        matrix_element[qubit] = 1 / popt[2]
 
     return ResonatorFluxResults(
         frequency=frequency,
@@ -242,7 +244,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
     """Plotting function for ResonatorFlux Experiment."""
     figures = utils.flux_dependence_plot(
-        data, fit, qubit, utils.transmon_readout_frequency
+        data, fit, qubit, utils.transmon_readout_frequency_diagonal
     )
     if fit is not None:
         fitting_report = table_html(

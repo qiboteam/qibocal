@@ -198,7 +198,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
             )
 
         popt = curve_fit(
-            utils.transmon_frequency,
+            utils.transmon_frequency_diagonal,
             biases,
             frequencies / 1e9,
             bounds=(
@@ -221,7 +221,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         frequency[qubit] = popt[0] * GHZ_TO_HZ
         d[qubit] = popt[1]
         sweetspot[qubit] = popt[3]
-        matrix_element[qubit] = popt[2]
+        matrix_element[qubit] = 1 / popt[2]
 
     return QubitFluxResults(
         frequency=frequency,
@@ -235,7 +235,10 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
     """Plotting function for QubitFlux Experiment."""
     figures = utils.flux_dependence_plot(
-        data, fit, qubit, fit_function=utils.transmon_frequency
+        data,
+        fit,
+        qubit,
+        fit_function=utils.transmon_frequency_diagonal,
     )
     if fit is not None:
         fitting_report = table_html(
