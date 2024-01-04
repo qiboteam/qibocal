@@ -255,7 +255,7 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
                     "Qubit Frequency at Sweetspot [Hz]",
                     "Asymmetry d",
                     "Coupling g",
-                    "C_ii",
+                    "V_ii [V]",
                 ],
                 [
                     np.round(fit.sweetspot[qubit], 4),

@@ -54,7 +54,7 @@ class QubitFluxResults(Results):
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
     matrix_element: dict[QubitId, float]
-    """C_ii coefficient."""
+    """V_ii coefficient."""
 
 
 QubitFluxType = np.dtype(
@@ -245,7 +245,7 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
                     "Sweetspot [V]",
                     "Qubit Frequency at Sweetspot [Hz]",
                     "Asymmetry d",
-                    "C_ii",
+                    "V_ii [V]",
                 ],
                 [
                     np.round(fit.sweetspot[qubit], 4),
