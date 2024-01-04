@@ -262,4 +262,4 @@ def _update(results: ResonatorSpectroscopyResults, platform: Platform, qubit: Qu
 
 
 resonator_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
-"""ResonatorSpectroscopyAttenuation Routine object."""
+"""ResonatorSpectroscopy Routine object."""
