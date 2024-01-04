@@ -174,7 +174,7 @@ def _plot(
                 text="Phase [rad] Qubit" + str(qubit),
             )
 
-            return fig, ""
+            return [fig], ""
 
 
 def _update(results: CouplerSpectroscopyResults, platform: Platform, qubit: QubitId):
