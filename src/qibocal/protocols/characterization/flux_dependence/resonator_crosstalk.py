@@ -8,7 +8,9 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from scipy.optimize import curve_fit
 
+from qibocal import update
 from qibocal.auto.operation import Qubits, Results, Routine
 from qibocal.protocols.characterization.flux_dependence.resonator_flux_dependence import (
     ResFluxType,
@@ -33,13 +35,28 @@ class ResCrosstalkParameters(ResonatorFluxParameters):
 
 @dataclass
 class ResCrosstalkResults(Results):
-    """Empty fitting outputs for cross talk because fitting is not implemented in this case."""
+    """ResCrosstalk outputs."""
+
+    crosstalk_matrix: dict[QubitId, dict[QubitId, float]] = field(default_factory=dict)
+    """Crosstalk matrix element."""
+    fitted_parameters: dict[tuple[QubitId, QubitId], dict] = field(default_factory=dict)
+    """Fitted parameters for each couple target-flux qubit."""
 
 
 @dataclass
 class ResCrosstalkData(ResonatorFluxData):
-    """QubitFlux acquisition outputs when ``flux_qubits`` are given."""
+    """ResFlux acquisition outputs when ``flux_qubits`` are given."""
 
+    sweetspot: dict[QubitId, float] = field(default_factory=dict)
+    """Sweetspot for each qubit."""
+    d: dict[QubitId, float] = field(default_factory=dict)
+    """Asymmetry for each qubit."""
+    g: dict[QubitId, float] = field(default_factory=dict)
+    """Coupling parameter g for each qubit."""
+    voltage: dict[QubitId, float] = field(default_factory=dict)
+    """Voltage provided to each qubit."""
+    matrix_element: dict[QubitId, float] = field(default_factory=dict)
+    """Diagonal crosstalk matrix element."""
     data: dict[tuple[QubitId, QubitId], npt.NDArray[ResFluxType]] = field(
         default_factory=dict
     )
@@ -58,7 +75,7 @@ class ResCrosstalkData(ResonatorFluxData):
 
 def _acquisition(
     params: ResCrosstalkParameters, platform: Platform, qubits: Qubits
-) -> ResonatorFluxData:
+) -> ResCrosstalkData:
     """Data acquisition for ResonatorFlux experiment."""
     # create a sequence of pulses for the experiment:
     # MZ
@@ -68,12 +85,20 @@ def _acquisition(
     ro_pulses = {}
     bare_resonator_frequency = {}
     qubit_frequency = {}
+    sweetspots = {}
+    d = {}
+    g = {}
+    voltage = {}
+    matrix_element = {}
     for qubit in qubits:
         bare_resonator_frequency[qubit] = platform.qubits[
             qubit
         ].bare_resonator_frequency
         qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
-
+        sweetspots[qubit] = voltage[qubit] = platform.qubits[qubit].sweetspot
+        d[qubit] = platform.qubits[qubit].asymmetry
+        g[qubit] = platform.qubits[qubit].g
+        matrix_element[qubit] = platform.qubits[qubit].crosstalk_matrix[qubit]
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
         sequence.add(ro_pulses[qubit])
 
@@ -110,6 +135,11 @@ def _acquisition(
     data = ResCrosstalkData(
         resonator_type=platform.resonator_type,
         qubit_frequency=qubit_frequency,
+        sweetspot=sweetspots,
+        voltage=voltage,
+        matrix_element=matrix_element,
+        d=d,
+        g=g,
         bare_resonator_frequency=bare_resonator_frequency,
     )
     options = ExecutionParameters(
@@ -140,13 +170,72 @@ def _acquisition(
 
 
 def _fit(data: ResCrosstalkData) -> ResCrosstalkResults:
-    return ResCrosstalkResults()
+    crosstalk_matrix = {qubit: {} for qubit in data.qubit_frequency}
+    fitted_parameters = {}
+    for target_flux_qubit, qubit_data in data.data.items():
+        target_qubit, flux_qubit = target_flux_qubit
+
+        if data.resonator_type == "3D":
+            frequencies, biases = utils.extract_max_feature(
+                qubit_data.freq,
+                qubit_data.bias,
+                qubit_data.signal,
+            )
+        else:
+            frequencies, biases = utils.extract_min_feature(
+                qubit_data.freq,
+                qubit_data.bias,
+                qubit_data.signal,
+            )
+
+        if target_qubit != flux_qubit:
+            # fit function needs to be defined here to pass correct parameters
+            # at runtime
+            def fit_function(x, crosstalk_element):
+                return utils.transmon_readout_frequency(
+                    xi=data.voltage[target_qubit],
+                    xj=x,
+                    w_max=data.qubit_frequency[target_qubit],
+                    d=data.d[target_qubit],
+                    sweetspot=data.sweetspot[target_qubit],
+                    matrix_element=data.matrix_element[target_qubit],
+                    g=data.g[target_qubit],
+                    resonator_freq=data.bare_resonator_frequency[target_qubit],
+                    crosstalk_element=crosstalk_element,
+                )
+
+            popt, _ = curve_fit(
+                fit_function, biases, frequencies / 1e9, bounds=(0, np.inf)
+            )
+            fitted_parameters[target_qubit, flux_qubit] = dict(
+                xi=data.voltage[target_qubit],
+                w_max=data.qubit_frequency[target_qubit],
+                d=data.d[target_qubit],
+                sweetspot=data.sweetspot[target_qubit],
+                matrix_element=data.matrix_element[target_qubit],
+                g=data.g[target_qubit],
+                resonator_freq=data.bare_resonator_frequency[target_qubit],
+                crosstalk_element=float(popt),
+            )
+            crosstalk_matrix[target_qubit][flux_qubit] = 1 / float(popt)
+
+    return ResCrosstalkResults(
+        crosstalk_matrix=crosstalk_matrix, fitted_parameters=fitted_parameters
+    )
 
 
 def _plot(data: ResCrosstalkData, fit: ResCrosstalkResults, qubit):
     """Plotting function for ResonatorFlux Experiment."""
-    return utils.flux_crosstalk_plot(data, qubit, None)
+    return utils.flux_crosstalk_plot(
+        data, qubit, fit, fit_function=utils.transmon_readout_frequency
+    )
 
 
-resonator_crosstalk = Routine(_acquisition, _fit, _plot)
+def _update(results: ResCrosstalkResults, platform: Platform, qubit: QubitId):
+    """Update crosstalk matrix."""
+    for flux_qubit, element in results.crosstalk_matrix[qubit].items():
+        update.crosstalk_matrix(element, platform, qubit, flux_qubit)
+
+
+resonator_crosstalk = Routine(_acquisition, _fit, _plot, _update)
 """Resonator crosstalk Routine object"""

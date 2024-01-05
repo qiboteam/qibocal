@@ -10,18 +10,13 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
+from qibocal import update
 from qibocal.auto.operation import Qubits, Results, Routine
 
-from .... import update
 from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
 from ..utils import HZ_TO_GHZ
 from . import utils
-from .qubit_flux_dependence import (
-    QubitFluxData,
-    QubitFluxParameters,
-    QubitFluxResults,
-    QubitFluxType,
-)
+from .qubit_flux_dependence import QubitFluxData, QubitFluxParameters, QubitFluxType
 
 
 @dataclass
@@ -42,10 +37,15 @@ class QubitCrosstalkData(QubitFluxData):
     """Crosstalk acquisition outputs when ``flux_qubits`` are given."""
 
     sweetspot: dict[QubitId, float] = field(default_factory=dict)
+    """Sweetspot for each qubit."""
     d: dict[QubitId, float] = field(default_factory=dict)
+    """Asymmetry for each qubit."""
     voltage: dict[QubitId, float] = field(default_factory=dict)
+    """Voltage provided to each qubit."""
     matrix_element: dict[QubitId, float] = field(default_factory=dict)
-    drive_frequency: dict[QubitId, float] = field(default_factory=dict)
+    """Diagonal crosstalk matrix element."""
+    qubit_frequency: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit frequency for each qubit."""
     data: dict[tuple[QubitId, QubitId], npt.NDArray[QubitFluxType]] = field(
         default_factory=dict
     )
@@ -63,7 +63,7 @@ class QubitCrosstalkData(QubitFluxData):
 
 
 @dataclass
-class QubitCrosstalkResult(Results):
+class QubitCrosstalkResults(Results):
     """
     Qubit Crosstalk outputs.
     """
@@ -81,7 +81,7 @@ def _acquisition(
 ) -> QubitCrosstalkData:
     """Data acquisition for Crosstalk Experiment."""
 
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
+    # TODO: pass voltage as parameter
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
@@ -89,12 +89,12 @@ def _acquisition(
     d = {}
     voltage = {}
     matrix_element = {}
-    drive_frequency = {}
+    qubit_frequency = {}
     for qubit in qubits:
         sweetspots[qubit] = voltage[qubit] = platform.qubits[qubit].sweetspot
         d[qubit] = platform.qubits[qubit].asymmetry
         matrix_element[qubit] = platform.qubits[qubit].crosstalk_matrix[qubit]
-        drive_frequency[qubit] = platform.qubits[qubit].drive_frequency * HZ_TO_GHZ
+        qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency * HZ_TO_GHZ
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.drive_duration
         )
@@ -148,7 +148,7 @@ def _acquisition(
         voltage=voltage,
         matrix_element=matrix_element,
         d=d,
-        drive_frequency=drive_frequency,
+        qubit_frequency=qubit_frequency,
     )
 
     options = ExecutionParameters(
@@ -178,31 +178,28 @@ def _acquisition(
     return data
 
 
-def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResult:
+def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
     # FIXME: currently this method performs the fit ONLY of the off-diagonal
     # elements. An alternative should be to perform first the fit of the diagonal
     # elements and then use those parameters to perform the fit of the off-diagonal
     # elements.
-    crosstalk_matrix = {qubit: {} for qubit in data.drive_frequency}
+    crosstalk_matrix = {qubit: {} for qubit in data.qubit_frequency}
     fitted_parameters = {}
     for target_flux_qubit, qubit_data in data.data.items():
         target_qubit, flux_qubit = target_flux_qubit
 
-        biases = qubit_data.bias
-        frequencies = qubit_data.freq
-        signal = qubit_data.signal
-
         if data.resonator_type == "3D":
             frequencies, biases = utils.extract_min_feature(
-                frequencies,
-                biases,
-                signal,
+                qubit_data.freq,
+                qubit_data.bias,
+                qubit_data.signal,
             )
         else:
             frequencies, biases = utils.extract_max_feature(
-                frequencies, biases, signal, flux_qubit
+                qubit_data.freq,
+                qubit_data.bias,
+                qubit_data.signal,
             )
-
         if target_qubit != flux_qubit:
             # fit function needs to be defined here to pass correct parameters
             # at runtime
@@ -210,7 +207,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResult:
                 return utils.transmon_frequency(
                     xi=data.voltage[target_qubit],
                     xj=x,
-                    w_max=data.drive_frequency[target_qubit],
+                    w_max=data.qubit_frequency[target_qubit],
                     d=data.d[target_qubit],
                     sweetspot=data.sweetspot[target_qubit],
                     matrix_element=data.matrix_element[target_qubit],
@@ -222,7 +219,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResult:
             )
             fitted_parameters[target_qubit, flux_qubit] = dict(
                 xi=data.voltage[target_qubit],
-                w_max=data.drive_frequency[target_qubit],
+                w_max=data.qubit_frequency[target_qubit],
                 d=data.d[target_qubit],
                 sweetspot=data.sweetspot[target_qubit],
                 matrix_element=data.matrix_element[target_qubit],
@@ -230,17 +227,19 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResult:
             )
             crosstalk_matrix[target_qubit][flux_qubit] = 1 / float(popt)
 
-    return QubitCrosstalkResult(
+    return QubitCrosstalkResults(
         crosstalk_matrix=crosstalk_matrix, fitted_parameters=fitted_parameters
     )
 
 
-def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
+def _plot(data: QubitCrosstalkData, fit: QubitCrosstalkResults, qubit):
     """Plotting function for Crosstalk Experiment."""
-    return utils.flux_crosstalk_plot(data, qubit, fit)
+    return utils.flux_crosstalk_plot(
+        data, qubit, fit, fit_function=utils.transmon_frequency
+    )
 
 
-def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
+def _update(results: QubitCrosstalkResults, platform: Platform, qubit: QubitId):
     """Update crosstalk matrix."""
     for flux_qubit, element in results.crosstalk_matrix[qubit].items():
         update.crosstalk_matrix(element, platform, qubit, flux_qubit)

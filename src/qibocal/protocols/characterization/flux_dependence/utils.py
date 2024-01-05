@@ -103,7 +103,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
     return figures
 
 
-def flux_crosstalk_plot(data, qubit, fit):
+def flux_crosstalk_plot(data, qubit, fit, fit_function):
     figures = []
     fitting_report = ""
     all_qubit_data = {
@@ -111,7 +111,6 @@ def flux_crosstalk_plot(data, qubit, fit):
         for index, data_qubit in data.data.items()
         if index[0] == qubit
     }
-
     fig = make_subplots(
         rows=1,
         cols=len(all_qubit_data),
@@ -132,7 +131,7 @@ def flux_crosstalk_plot(data, qubit, fit):
             if flux_qubit[1] != qubit:
                 fig.add_trace(
                     go.Scatter(
-                        x=transmon_frequency(
+                        x=fit_function(
                             xj=qubit_data.bias, **fit.fitted_parameters[flux_qubit]
                         )
                         * HZ_TO_GHZ,
@@ -148,14 +147,22 @@ def flux_crosstalk_plot(data, qubit, fit):
                     col=col + 1,
                 )
             else:
+                diagonal_params = dict(
+                    w_max=data.qubit_frequency[flux_qubit[0]],
+                    d=data.d[flux_qubit[0]],
+                    matrix_element=data.matrix_element[flux_qubit[0]],
+                    sweetspot=data.sweetspot[flux_qubit[0]],
+                )
+                if fit_function != transmon_frequency:
+                    diagonal_params.update(
+                        g=data.g[flux_qubit[0]],
+                        resonator_freq=data.bare_resonator_frequency[flux_qubit[0]],
+                    )
                 fig.add_trace(
                     go.Scatter(
-                        x=transmon_frequency_diagonal(
+                        x=globals().get(fit_function.__name__ + "_diagonal")(
                             x=qubit_data.bias,
-                            w_max=data.drive_frequency[qubit],
-                            d=data.d[qubit],
-                            matrix_element=data.matrix_element[qubit],
-                            sweetspot=data.sweetspot[qubit],
+                            **diagonal_params,
                         )
                         * HZ_TO_GHZ,
                         y=qubit_data.bias,
