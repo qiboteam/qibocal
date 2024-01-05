@@ -12,6 +12,7 @@ from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Qubits, Results, Routine
 
+from .... import update
 from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
 from ..utils import HZ_TO_GHZ
 from . import utils
@@ -67,7 +68,7 @@ class QubitCrosstalkResult(Results):
     Qubit Crosstalk outputs.
     """
 
-    crosstalk_matrix: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
+    crosstalk_matrix: dict[QubitId, dict[QubitId, float]] = field(default_factory=dict)
     """Crosstalk matrix element."""
     fitted_parameters: dict[tuple[QubitId, QubitId], dict] = field(default_factory=dict)
     """Fitted parameters for each couple target-flux qubit."""
@@ -182,7 +183,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResult:
     # elements. An alternative should be to perform first the fit of the diagonal
     # elements and then use those parameters to perform the fit of the off-diagonal
     # elements.
-    crosstalk_matrix = {}
+    crosstalk_matrix = {qubit: {} for qubit in data.drive_frequency}
     fitted_parameters = {}
     for target_flux_qubit, qubit_data in data.data.items():
         target_qubit, flux_qubit = target_flux_qubit
@@ -199,9 +200,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResult:
             )
         else:
             frequencies, biases = utils.extract_max_feature(
-                frequencies,
-                biases,
-                signal,
+                frequencies, biases, signal, flux_qubit
             )
 
         if target_qubit != flux_qubit:
@@ -229,7 +228,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResult:
                 matrix_element=data.matrix_element[target_qubit],
                 crosstalk_element=float(popt),
             )
-            crosstalk_matrix[target_qubit, flux_qubit] = 1 / float(popt)
+            crosstalk_matrix[target_qubit][flux_qubit] = 1 / float(popt)
 
     return QubitCrosstalkResult(
         crosstalk_matrix=crosstalk_matrix, fitted_parameters=fitted_parameters
@@ -241,5 +240,11 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
     return utils.flux_crosstalk_plot(data, qubit, fit)
 
 
-qubit_crosstalk = Routine(_acquisition, _fit, _plot)
+def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
+    """Update crosstalk matrix."""
+    for flux_qubit, element in results.crosstalk_matrix[qubit].items():
+        update.crosstalk_matrix(element, platform, qubit, flux_qubit)
+
+
+qubit_crosstalk = Routine(_acquisition, _fit, _plot, _update)
 """Qubit crosstalk Routine object"""

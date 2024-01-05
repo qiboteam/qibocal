@@ -128,46 +128,47 @@ def flux_crosstalk_plot(data, qubit, fit):
             row=1,
             col=col + 1,
         )
-        if flux_qubit[1] != qubit:
-            fig.add_trace(
-                go.Scatter(
-                    x=transmon_frequency(
-                        xj=qubit_data.bias, **fit.fitted_parameters[flux_qubit]
-                    )
-                    * HZ_TO_GHZ,
-                    y=qubit_data.bias,
-                    showlegend=not any(
-                        isinstance(trace, go.Scatter) for trace in fig.data
+        if fit is not None:
+            if flux_qubit[1] != qubit:
+                fig.add_trace(
+                    go.Scatter(
+                        x=transmon_frequency(
+                            xj=qubit_data.bias, **fit.fitted_parameters[flux_qubit]
+                        )
+                        * HZ_TO_GHZ,
+                        y=qubit_data.bias,
+                        showlegend=not any(
+                            isinstance(trace, go.Scatter) for trace in fig.data
+                        ),
+                        legendgroup="Fit",
+                        name="Fit",
+                        marker=dict(color="black"),
                     ),
-                    legendgroup="Fit",
-                    name="Fit",
-                    marker=dict(color="black"),
-                ),
-                row=1,
-                col=col + 1,
-            )
-        else:
-            fig.add_trace(
-                go.Scatter(
-                    x=transmon_frequency_diagonal(
-                        x=qubit_data.bias,
-                        w_max=data.drive_frequency[qubit],
-                        d=data.d[qubit],
-                        matrix_element=data.matrix_element[qubit],
-                        sweetspot=data.sweetspot[qubit],
-                    )
-                    * HZ_TO_GHZ,
-                    y=qubit_data.bias,
-                    showlegend=not any(
-                        isinstance(trace, go.Scatter) for trace in fig.data
+                    row=1,
+                    col=col + 1,
+                )
+            else:
+                fig.add_trace(
+                    go.Scatter(
+                        x=transmon_frequency_diagonal(
+                            x=qubit_data.bias,
+                            w_max=data.drive_frequency[qubit],
+                            d=data.d[qubit],
+                            matrix_element=data.matrix_element[qubit],
+                            sweetspot=data.sweetspot[qubit],
+                        )
+                        * HZ_TO_GHZ,
+                        y=qubit_data.bias,
+                        showlegend=not any(
+                            isinstance(trace, go.Scatter) for trace in fig.data
+                        ),
+                        legendgroup="Fit",
+                        name="Fit",
+                        marker=dict(color="black"),
                     ),
-                    legendgroup="Fit",
-                    name="Fit",
-                    marker=dict(color="black"),
-                ),
-                row=1,
-                col=col + 1,
-            )
+                    row=1,
+                    col=col + 1,
+                )
 
         fig.update_xaxes(
             title_text="Frequency [GHz]",

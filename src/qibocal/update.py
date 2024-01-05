@@ -63,6 +63,13 @@ def drive_duration(duration: Union[int, tuple], platform: Platform, qubit: Qubit
     platform.qubits[qubit].native_gates.RX.duration = int(duration)
 
 
+def crosstalk_matrix(
+    matrix_element: float, platform: Platform, qubit: QubitId, flux_qubit: QubitId
+):
+    """Update crosstalk_matrix element."""
+    platform.qubits[qubit].crosstalk_matrix[flux_qubit] = float(matrix_element)
+
+
 def iq_angle(angle: float, platform: Platform, qubit: QubitId):
     """Update iq angle value in platform for specific qubit."""
     platform.qubits[qubit].iq_angle = float(angle)
