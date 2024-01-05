@@ -4,19 +4,6 @@ from plotly.subplots import make_subplots
 
 from ..utils import HZ_TO_GHZ
 
-FLUX_PARAMETERS = {
-    "Xi": "Constant to map flux to bias [V]",
-    "d": "Junction asymmetry",
-    "Ec": "Charge energy Ec [Hz]",
-    "Ej": "Josephson energy Ej [Hz]",
-    "f_q_offset": "Qubit frequency offset [Hz]",
-    "C_ii": "Flux matrix element C_ii [Hz/V]",
-    "g": "Readout coupling",
-    "bare_resonator_frequency": "Bare resonator frequency [Hz]",
-    "f_qs": "Qubit frequency [Hz]",
-    "f_r_offset": "Resonator frequency offset [Hz]",
-}
-
 
 def is_crosstalk(data):
     """Check if keys are tuple which corresponds to crosstalk data structure."""
@@ -116,10 +103,9 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
     return figures
 
 
-def flux_crosstalk_plot(data, qubit):
+def flux_crosstalk_plot(data, qubit, fit):
     figures = []
     fitting_report = ""
-
     all_qubit_data = {
         index: data_qubit
         for index, data_qubit in data.data.items()
@@ -135,19 +121,53 @@ def flux_crosstalk_plot(data, qubit):
     )
     for col, (flux_qubit, qubit_data) in enumerate(all_qubit_data.items()):
         frequencies = qubit_data.freq * HZ_TO_GHZ
-        signal = qubit_data.signal
-        if data.resonator_type == "2D":
-            signal = -signal
-
         fig.add_trace(
             go.Heatmap(
-                x=frequencies,
-                y=qubit_data.bias,
-                z=qubit_data.signal,
+                x=frequencies, y=qubit_data.bias, z=qubit_data.signal, showscale=False
             ),
             row=1,
             col=col + 1,
         )
+        if flux_qubit[1] != qubit:
+            fig.add_trace(
+                go.Scatter(
+                    x=transmon_frequency(
+                        xj=qubit_data.bias, **fit.fitted_parameters[flux_qubit]
+                    )
+                    * HZ_TO_GHZ,
+                    y=qubit_data.bias,
+                    showlegend=not any(
+                        isinstance(trace, go.Scatter) for trace in fig.data
+                    ),
+                    legendgroup="Fit",
+                    name="Fit",
+                    marker=dict(color="black"),
+                ),
+                row=1,
+                col=col + 1,
+            )
+        else:
+            fig.add_trace(
+                go.Scatter(
+                    x=transmon_frequency_diagonal(
+                        x=qubit_data.bias,
+                        w_max=data.drive_frequency[qubit],
+                        d=data.d[qubit],
+                        matrix_element=data.matrix_element[qubit],
+                        sweetspot=data.sweetspot[qubit],
+                    )
+                    * HZ_TO_GHZ,
+                    y=qubit_data.bias,
+                    showlegend=not any(
+                        isinstance(trace, go.Scatter) for trace in fig.data
+                    ),
+                    legendgroup="Fit",
+                    name="Fit",
+                    marker=dict(color="black"),
+                ),
+                row=1,
+                col=col + 1,
+            )
 
         fig.update_xaxes(
             title_text="Frequency [GHz]",
@@ -160,11 +180,9 @@ def flux_crosstalk_plot(data, qubit):
         )
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
-    fig.update_traces(showscale=False)  # disable colorbar
     fig.update_layout(
-        showlegend=False,
+        showlegend=True,
     )
-
     figures.append(fig)
 
     return figures, fitting_report
@@ -181,7 +199,7 @@ def G_f_d(xi, xj, sweetspot, d, matrix_element, crosstalk_element):
         xj (float): bias of neighbor qubit
         sweetspot (float): sweetspot [V].
         matrix_element(float): diagonal crosstalk matrix element
-        crosstalk_element(float): offdiagonal crosstalk matrix element
+        crosstalk_element(float): off-diagonal crosstalk matrix element
         d (float): asymmetry between the two junctions of the transmon.
                    Typically denoted as :math:`d`. :math:`d = (E_J^1 - E_J^2) / (E_J^1 + E_J^2)`.
 

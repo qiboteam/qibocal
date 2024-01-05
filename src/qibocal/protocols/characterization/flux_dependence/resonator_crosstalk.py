@@ -145,7 +145,7 @@ def _fit(data: ResCrosstalkData) -> ResCrosstalkResults:
 
 def _plot(data: ResCrosstalkData, fit: ResCrosstalkResults, qubit):
     """Plotting function for ResonatorFlux Experiment."""
-    return utils.flux_crosstalk_plot(data, qubit)
+    return utils.flux_crosstalk_plot(data, qubit, None)
 
 
 resonator_crosstalk = Routine(_acquisition, _fit, _plot)
