@@ -50,7 +50,7 @@ class Validator:
         # If index is None -> status is Failure
         # if index is 0 -> Normal Status
         # else: jump to corresponding outcomes
-        if index == None:
+        if index is None:
             log.error("Stopping execution due to error in validation.")
             return Failure(), None
         elif index == 0:

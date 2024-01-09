@@ -22,7 +22,7 @@ def check_chi2(
     """
 
     try:
-        chi2 = getattr(results, "chi2")[target][0]
+        chi2 = results.chi2[target][0]
         for threshold in sorted(thresholds):
             if chi2 < threshold:
                 return thresholds.index(threshold)
