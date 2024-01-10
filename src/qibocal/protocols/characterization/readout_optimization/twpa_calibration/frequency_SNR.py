@@ -7,11 +7,16 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
-from qibocal.protocols.characterization import resonator_spectroscopy
 
-from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.protocols.characterization.utils import HZ_TO_GHZ, V_TO_UV, PowerLevel, table_dict, table_html
+from qibocal.protocols.characterization import resonator_spectroscopy
+from qibocal.protocols.characterization.utils import (
+    HZ_TO_GHZ,
+    V_TO_UV,
+    PowerLevel,
+    table_dict,
+    table_html,
+)
 
 
 @dataclass
@@ -45,17 +50,17 @@ class ResonatorTWPAFrequencyResults(Results):
     """ResonatorTWPAFrequency outputs."""
 
     twpa_frequency: dict[QubitId, float] = field(metadata=dict(update="twpa_frequency"))
-    """TWPA frequency [GHz] for each qubit.""" 
+    """TWPA frequency [GHz] for each qubit."""
 
     frequency: Optional[dict[QubitId, float]] = field(
         default_factory=dict, metadata=dict(update="readout_frequency")
     )
-    """Readout frequency [GHz] for each qubit.""" 
+    """Readout frequency [GHz] for each qubit."""
 
     bare_frequency: Optional[dict[QubitId, float]] = field(
-        default_factory=dict, metadata=dict(update="bare_resonator_frequency")   
-    ) 
-    """Bare frequency [GHz] for each qubit.""" 
+        default_factory=dict, metadata=dict(update="bare_resonator_frequency")
+    )
+    """Bare frequency [GHz] for each qubit."""
 
 
 ResonatorTWPAFrequencyType = np.dtype(
@@ -75,7 +80,9 @@ class ResonatorTWPAFrequencyData(Data):
 
     resonator_type: str
     """Resonator type."""
-    data: dict[QubitId, npt.NDArray[ResonatorTWPAFrequencyType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[ResonatorTWPAFrequencyType]] = field(
+        default_factory=dict
+    )
     """Raw data acquired."""
     power_level: Optional[PowerLevel] = None
     """Power regime of the resonator."""
@@ -127,7 +134,6 @@ def _acquisition(
         resonator_type=platform.resonator_type,
     )
 
-
     TWPAFrequency_range = np.arange(
         params.min_twpa_freq, params.max_twpa_freq, params.step_twpa_freq
     )
@@ -142,8 +148,8 @@ def _acquisition(
                     "freq_width": params.freq_width,
                     "freq_step": params.freq_step,
                     "power_level": params.power_level,
-                    "nshots": params.nshots
-                }  
+                    "nshots": params.nshots,
+                }
             ),
             platform,
             qubits,
@@ -152,9 +158,9 @@ def _acquisition(
         for qubit in qubits:
             data.register_qubit(
                 qubit,
-                signal=resonator_spectroscopy_data.data[qubit]['signal'],
-                phase=resonator_spectroscopy_data.data[qubit]['phase'],
-                freq=resonator_spectroscopy_data.data[qubit]['freq'],
+                signal=resonator_spectroscopy_data.data[qubit]["signal"],
+                phase=resonator_spectroscopy_data.data[qubit]["phase"],
+                freq=resonator_spectroscopy_data.data[qubit]["freq"],
                 twpa_freq=_freq,
             )
 
@@ -168,22 +174,22 @@ def _fit(data: ResonatorTWPAFrequencyData) -> ResonatorTWPAFrequencyResults:
     frequency = {}
     twpa_frequency = {}
     for qubit in qubits:
-            data_qubit = data[qubit]
-            if data.resonator_type == "3D":
-                print("3D")
-                index_best_freq = np.argmax(data_qubit["signal"])
-                twpa_frequency[qubit] = data_qubit["twpa_freq"][index_best_freq]
-            else:
-                print("2D")
-                index_best_freq = np.argmin(data_qubit["signal"])
-                twpa_frequency[qubit] = data_qubit["twpa_freq"][index_best_freq]
+        data_qubit = data[qubit]
+        if data.resonator_type == "3D":
+            print("3D")
+            index_best_freq = np.argmax(data_qubit["signal"])
+            twpa_frequency[qubit] = data_qubit["twpa_freq"][index_best_freq]
+        else:
+            print("2D")
+            index_best_freq = np.argmin(data_qubit["signal"])
+            twpa_frequency[qubit] = data_qubit["twpa_freq"][index_best_freq]
 
-            if data.power_level is PowerLevel.high:
-                print("high")
-                bare_frequency[qubit] = data_qubit["freq"][index_best_freq]
-            else:
-                print("low")
-                frequency[qubit] = data_qubit["freq"][index_best_freq]
+        if data.power_level is PowerLevel.high:
+            print("high")
+            bare_frequency[qubit] = data_qubit["freq"][index_best_freq]
+        else:
+            print("low")
+            frequency[qubit] = data_qubit["freq"][index_best_freq]
 
     if data.power_level is PowerLevel.high:
         return ResonatorTWPAFrequencyResults(
@@ -194,7 +200,8 @@ def _fit(data: ResonatorTWPAFrequencyData) -> ResonatorTWPAFrequencyResults:
         return ResonatorTWPAFrequencyResults(
             twpa_frequency=twpa_frequency,
             frequency=frequency,
-        ) 
+        )
+
 
 def _plot(data: ResonatorTWPAFrequencyData, fit: ResonatorTWPAFrequencyResults, qubit):
     """Plotting for ResonatorTWPAFrequency."""
@@ -276,6 +283,7 @@ def _plot(data: ResonatorTWPAFrequencyData, fit: ResonatorTWPAFrequencyResults, 
     figures.append(fig)
 
     return figures, fitting_report
+
 
 twpa_frequency_snr = Routine(_acquisition, _fit, _plot)
 """Resonator TWPA Frequency Routine object."""
