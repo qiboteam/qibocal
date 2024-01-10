@@ -225,5 +225,5 @@ def _plot(
     return figures, fitting_report
 
 
-twpa_power_SNR = Routine(_acquisition, _fit, _plot)
+twpa_power_snr = Routine(_acquisition, _fit, _plot)
 """Resonator TWPA Power Routine object."""
