@@ -433,6 +433,13 @@ actions:
       beta_param: null
       nshots: 10
 
+  - id: allXY unrolling
+    priority: 0
+    operation: allxy
+    parameters:
+      beta_param: null
+      unrolling: True
+      nshots: 10
 
   - id: allxy_drag_pulse_tuning
     priority: 0
