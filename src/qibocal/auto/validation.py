@@ -13,7 +13,7 @@ ValidatorId = NewType("ValidatorId", str)
 """Identifier for validator object."""
 Target = Union[QubitId, QubitPairId, list[QubitId]]
 """Protocol target."""
-Outcome = tuple[str, Optional[dict]]
+Outcome = Union[str, tuple[str, dict]]
 """Validation outcome tuple of nodes with parameters or Status."""
 
 
@@ -51,7 +51,11 @@ class Validator:
             return Normal(), None
         else:
             try:
-                return self.outcomes[index]
+                return (
+                    self.outcomes[index]
+                    if len(self.outcomes[index]) > 1
+                    else (self.outcomes[index], None)
+                )
             except (TypeError, IndexError):
                 # TypeError to handle the case where index is None
                 # IndexError to handle the case where index not in outcomes
