@@ -2,11 +2,12 @@
 import copy
 from dataclasses import dataclass
 from pathlib import Path
+from statistics import mode
 from typing import Optional
 
 from qibolab.platform import Platform
 
-from ..config import log, raise_error
+from ..config import raise_error
 from ..protocols.characterization import Operation
 from .mode import ExecutionMode
 from .operation import (
@@ -19,7 +20,7 @@ from .operation import (
     dummy_operation,
 )
 from .runcard import Action, Id, Targets
-from .status import Failure, Normal, Status
+from .status import Failure, Normal
 
 MAX_PRIORITY = int(1e9)
 """A number bigger than whatever will be manually typed. But not so insanely big not to fit in a native integer."""
@@ -56,20 +57,6 @@ class Task:
             raise RuntimeError("No operation specified")
 
         return Operation[self.action.operation].value
-
-    def validate(self, results: Results) -> Optional[Status]:
-        """Performs validation only if validator is provided."""
-
-        if self.action.validator is None:
-            return None
-        status = {}
-        for qubit in self.targets:
-            status[qubit] = self.action.validator.__call__(results, qubit)
-        # exit if any of the qubit state is Failure
-        if any(isinstance(stat, Failure) for stat in status.values()):
-            return Failure()
-        else:
-            return Normal()
 
     @property
     def main(self):
@@ -120,7 +107,7 @@ class Task:
         if self.targets is None:
             self.action.targets = targets
 
-        completed = Completed(self, Normal(), folder)
+        completed = Completed(self, folder)
 
         try:
             if self.parameters.nshots is None:
@@ -149,7 +136,6 @@ class Task:
                 )
         if mode.name in ["autocalibration", "fit"]:
             completed.results, completed.results_time = operation.fit(completed.data)
-            completed.status = self.validate(completed.results)
         return completed
 
 
@@ -166,8 +152,6 @@ class Completed:
         be added
 
     """
-    status: Status
-    """Protocol status."""
     folder: Path
     """Folder with data and results."""
     _data: Optional[Data] = None
@@ -230,14 +214,23 @@ class Completed:
             for qubit in self.task.targets:
                 self.task.operation.update(self.results, platform, qubit)
 
-    def validate(self) -> Optional[TaskId]:
+    def validate(self) -> tuple[Optional[TaskId], Optional[dict]]:
         """Check status of completed and handle Failure using handler."""
-        if isinstance(self.status, Failure):
-            handler = self.task.action.handler
-            if handler is not None:
-                return handler.id
-            log.error(
-                "Stopping execution because of error in validation without handler"
-            )
-            return None
-        return self.task.id
+        if self.task.action.validator is not None:
+            status = []
+            for target in self.task.targets:
+                # TODO: how to handle multiple targets?
+                # dummy solution for now: take the mode.
+                qubit_status, params = self.task.action.validator.validate(
+                    self.results, target
+                )
+                status.append(qubit_status)
+            output = mode(status)
+            if isinstance(output, Failure):
+                return None, None
+            elif isinstance(output, Normal):
+                return self.task.id, None
+            else:
+                return output, params
+
+        return self.task.id, None
