@@ -47,17 +47,16 @@ class Validator:
         index = self.method(results=results, target=target)
 
         if index == -1:
-            # -1 denotes Normal()
             return Normal(), None
-        else:
-            try:
-                return (
-                    self.outcomes[index]
-                    if len(self.outcomes[index]) > 1
-                    else (self.outcomes[index], None)
-                )
-            except (TypeError, IndexError):
-                # TypeError to handle the case where index is None
-                # IndexError to handle the case where index not in outcomes
-                log.error("Stopping execution due to error in validation.")
-                return Failure(), None
+
+        try:
+            return (
+                self.outcomes[index]
+                if len(self.outcomes[index]) > 1
+                else (self.outcomes[index], None)
+            )
+        except (TypeError, IndexError):
+            # TypeError to handle the case where index is None
+            # IndexError to handle the case where index not in outcomes
+            log.error("Stopping execution due to error in validation.")
+            return Failure(), None
