@@ -5,14 +5,12 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibocal.protocols.characterization import resonator_spectroscopy
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.protocols.characterization.utils import HZ_TO_GHZ, V_TO_UV
+from qibocal.protocols.characterization.utils import HZ_TO_GHZ, PowerLevel, table_dict, table_html
 
 
 @dataclass
@@ -23,30 +21,43 @@ class ResonatorTWPAPowerParameters(Parameters):
     """Width for frequency sweep relative to the readout frequency (Hz)."""
     freq_step: int
     """Frequency step for sweep (Hz)."""
-    min_twpa_pow: int
-    """TPWA power minimum value (dBm)."""
-    max_twpa_pow: int
-    """TPWA power maximum value (dBm)."""
-    step_twpa_pow: int
+    twpa_pow_width: int
+    """Width for TPWA power sweep (dBm)."""
+    twpa_pow_step: int
     """TPWA power step (dBm)."""
+    power_level: PowerLevel
+    """resonator Power regime (low or high)."""    
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
+    def __post_init__(self):
+        self.power_level = PowerLevel(self.power_level)
 
 @dataclass
 class ResonatorTWPAPowerResults(Results):
     """ResonatorTWPAPower outputs."""
 
-    pass
+    twpa_power: dict[QubitId, float] = field(metadata=dict(update="twpa_power"))
+    """TWPA frequency [GHz] for each qubit.""" 
+
+    frequency: Optional[dict[QubitId, float]] = field(
+        default_factory=dict, metadata=dict(update="readout_frequency")
+    )
+    """Readout frequency [GHz] for each qubit.""" 
+
+    bare_frequency: Optional[dict[QubitId, float]] = field(
+        default_factory=dict, metadata=dict(update="bare_resonator_frequency")   
+    ) 
+    """Bare frequency [GHz] for each qubit.""" 
 
 
 ResonatorTWPAPowerType = np.dtype(
     [
         ("freq", np.float64),
-        ("pow", np.float64),
-        ("msr", np.float64),
+        ("twpa_pow", np.float64),
+        ("signal", np.float64),
         ("phase", np.float64),
     ]
 )
@@ -59,18 +70,26 @@ class ResonatorTWPAPowerData(Data):
 
     resonator_type: str
     """Resonator type."""
-    data: dict[QubitId, npt.NDArray[ResonatorTWPAPowerType]] = field(
-        default_factory=dict
-    )
+    data: dict[QubitId, npt.NDArray[ResonatorTWPAPowerType]] = field(default_factory=dict)
     """Raw data acquired."""
+    power_level: Optional[PowerLevel] = None
+    """Power regime of the resonator."""
 
-    def register_qubit(self, qubit, freq, pow, msr, phase):
+    @classmethod
+    def load(cls, path):
+        obj = super().load(path)
+        # Instantiate PowerLevel object
+        if obj.power_level is not None:  # pylint: disable=E1101
+            obj.power_level = PowerLevel(obj.power_level)  # pylint: disable=E1101
+        return obj    
+
+    def register_qubit(self, qubit, freq, twpa_pow, signal, phase):
         """Store output for single qubit."""
         size = len(freq)
         ar = np.empty(size, dtype=ResonatorTWPAPowerType)
         ar["freq"] = freq
-        ar["pow"] = np.array([pow] * size)
-        ar["msr"] = msr
+        ar["twpa_pow"] = np.array([twpa_pow] * size)
+        ar["signal"] = signal
         ar["phase"] = phase
         if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
@@ -85,8 +104,8 @@ def _acquisition(
 ) -> ResonatorTWPAPowerData:
     r"""
     Data acquisition for TWPA power optmization using SNR.
-    This protocol perform a classification protocol for twpa frequencies
-    in the range [twpa_frequency - frequency_width / 2, twpa_frequency + frequency_width / 2]
+    This protocol perform a classification protocol for twpa powers
+    in the range [twpa_power - frequency_width / 2, twpa_power + frequency_width / 2]
     with step frequency_step.
 
     Args:
@@ -97,76 +116,78 @@ def _acquisition(
     Returns:
         data (:class:`ResonatorTWPAPowerData`)
     """
-    # create a sequence of pulses for the experiment:
-    # MZ
-
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
-    sequence = PulseSequence()
-
-    ro_pulses = {}
-    for qubit in qubits:
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
-        sequence.add(ro_pulses[qubit])
-
-    data = ResonatorTWPAPowerData(platform.resonator_type)
-
-    # define the parameters to sweep and their range:
-    # resonator frequency
-    delta_frequency_range = np.arange(
-        -params.freq_width // 2, params.freq_width // 2, params.freq_step
-    )
-    freq_sweeper = Sweeper(
-        Parameter.frequency,
-        delta_frequency_range,
-        [ro_pulses[qubit] for qubit in qubits],
-        type=SweeperType.OFFSET,
+ 
+    data = ResonatorTWPAPowerData(
+        power_level=params.power_level,
+        resonator_type=platform.resonator_type,
     )
 
-    # TWPAPower
     TWPAPower_range = np.arange(
-        params.min_twpa_pow, params.max_twpa_pow, params.step_twpa_pow
+        -params.twpa_pow_width // 2, params.twpa_pow_width // 2, params.twpa_pow_step
     )
 
     for _pow in TWPAPower_range:
         for z in qubits:
             qubits[z].twpa.local_oscillator.power = _pow
 
-        results = platform.sweep(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
+        resonator_spectroscopy_data = resonator_spectroscopy._acquisition(
+            resonator_spectroscopy.ResonatorSpectroscopyParameters.load(
+                {
+                    "freq_width": params.freq_width,
+                    "freq_step": params.freq_step,
+                    "power_level": params.power_level,
+                    "nshots": params.nshots
+                }  
             ),
-            freq_sweeper,
+            platform,
+            qubits,
         )
 
-        # retrieve the results for every qubit
         for qubit in qubits:
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            result = results[ro_pulses[qubit].serial]
             data.register_qubit(
                 qubit,
-                msr=result.magnitude,
-                phase=result.phase,
-                freq=delta_frequency_range + ro_pulses[qubit].frequency,
-                pow=_pow,
+                signal=resonator_spectroscopy_data.data[qubit]['signal'],
+                phase=resonator_spectroscopy_data.data[qubit]['phase'],
+                freq=resonator_spectroscopy_data.data[qubit]['freq'],
+                twpa_pow=_pow,
             )
 
     return data
 
 
 def _fit(data: ResonatorTWPAPowerData, fit_type="att") -> ResonatorTWPAPowerResults:
-    """Fit frequency and TWPAPower at high and low power for a given resonator."""
-    return ResonatorTWPAPowerResults()
+    """Post-processing function for ResonatorTWPASpectroscopy."""  
+    qubits = data.qubits
+    bare_frequency = {}
+    frequency = {}
+    twpa_power = {}
+    for qubit in qubits:
+            data_qubit = data[qubit]
+            if data.resonator_type == "3D":
+                index_best_pow = np.argmax(data_qubit["signal"])
+                twpa_power[qubit] = data_qubit["twpa_pow"][index_best_pow]
+            else:
+                index_best_pow = np.argmin(data_qubit["signal"])
+                twpa_power[qubit] = data_qubit["twpa_pow"][index_best_pow]
+
+            if data.power_level is PowerLevel.high:
+                bare_frequency[qubit] = data_qubit["freq"][index_best_pow]
+            else:
+                frequency[qubit] = data_qubit["freq"][index_best_pow]
+
+    if data.power_level is PowerLevel.high:
+        return ResonatorTWPAPowerResults(
+            twpa_power=twpa_power,
+            bare_frequency=bare_frequency,
+        )
+    else:
+        return ResonatorTWPAPowerResults(
+            twpa_power=twpa_power,
+            frequency=frequency,
+        ) 
 
 
-def _plot(
-    data: ResonatorTWPAPowerData,
-    fit: ResonatorTWPAPowerResults,
-    qubit,
-):
+def _plot(data: ResonatorTWPAPowerData, fit: ResonatorTWPAPowerResults, qubit):
     """Plotting for ResonatorTWPAPower."""
 
     figures = []
@@ -177,26 +198,26 @@ def _plot(
         horizontal_spacing=0.1,
         vertical_spacing=0.2,
         subplot_titles=(
-            "MSR",
-            "phase (rad)",
+            "signal",
+            "phase [rad]",
         ),
     )
 
     qubit_data = data[qubit]
     frequencies = qubit_data.freq * HZ_TO_GHZ
-    powers = qubit_data.pow
+    powers = qubit_data.twpa_pow
 
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
             y=powers,
-            z=qubit_data.msr * V_TO_UV,
+            z=qubit_data.signal,
             colorbar_x=0.46,
         ),
         row=1,
         col=1,
     )
-    fig.update_xaxes(title_text=f"{qubit}: Frequency (Hz)", row=1, col=1)
+    fig.update_xaxes(title_text=f"{qubit}: Frequency [Hz]", row=1, col=1)
     fig.update_yaxes(title_text="TWPA Power", row=1, col=1)
     fig.add_trace(
         go.Heatmap(
@@ -208,22 +229,43 @@ def _plot(
         row=1,
         col=2,
     )
-    fig.update_xaxes(title_text=f"{qubit}/: Frequency (Hz)", row=1, col=2)
+    fig.update_xaxes(title_text=f"{qubit}/: Frequency [Hz]", row=1, col=2)
     fig.update_yaxes(title_text="TWPA Power", row=1, col=2)
 
-    title_text = ""
+    if qubit in fit.bare_frequency:
+        summary = table_dict(
+            qubit,
+            [
+                "High Power Resonator Frequency [Hz]",
+                "TWPA Power",
+            ],
+            [
+                np.round(fit.bare_frequency[qubit]),
+                np.round(fit.twpa_power[qubit]),
+            ],
+        )
+    else:
+        summary = table_dict(
+            qubit,
+            [
+                "Low Power Resonator Frequency [Hz]",
+                "TWPA Power",
+            ],
+            [
+                np.round(fit.frequency[qubit]),
+                np.round(fit.twpa_power[qubit]),
+            ],
+        )
 
-    fitting_report = fitting_report + title_text
+    fitting_report = table_html(summary)
 
     fig.update_layout(
         showlegend=False,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
     )
 
     figures.append(fig)
 
     return figures, fitting_report
-
 
 twpa_power_snr = Routine(_acquisition, _fit, _plot)
 """Resonator TWPA Power Routine object."""

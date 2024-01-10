@@ -9,9 +9,8 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 from qibocal.protocols.characterization import resonator_spectroscopy
 
-from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.protocols.characterization.utils import HZ_TO_GHZ, V_TO_UV, PowerLevel, table_dict, table_html
+from qibocal.protocols.characterization.utils import HZ_TO_GHZ, PowerLevel, table_dict, table_html
 
 
 @dataclass
@@ -22,15 +21,12 @@ class ResonatorTWPAFrequencyParameters(Parameters):
     """Width for frequency sweep relative to the readout frequency (Hz)."""
     freq_step: int
     """Frequency step for sweep (Hz)."""
-    min_twpa_freq: int
-    """TPWA frequency minimum value (Hz)."""
-    max_twpa_freq: int
-    """TPWA frequency maximum value (Hz)."""
-    step_twpa_freq: int
+    twpa_freq_width: int
+    """Width for TPWA frequency sweep (Hz)."""
+    twpa_freq_step: int
     """TPWA frequency step (Hz)."""
     power_level: PowerLevel
-    """Power regime (low or high). If low the readout frequency will be updated.
-    If high both the readout frequency and the bare resonator frequency will be updated."""
+    """resonator Power regime (low or high)."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -127,9 +123,8 @@ def _acquisition(
         resonator_type=platform.resonator_type,
     )
 
-
     TWPAFrequency_range = np.arange(
-        params.min_twpa_freq, params.max_twpa_freq, params.step_twpa_freq
+        -params.twpa_freq_width // 2, params.twpa_freq_width // 2, params.twpa_freq_step
     )
 
     for _freq in TWPAFrequency_range:
@@ -170,19 +165,15 @@ def _fit(data: ResonatorTWPAFrequencyData) -> ResonatorTWPAFrequencyResults:
     for qubit in qubits:
             data_qubit = data[qubit]
             if data.resonator_type == "3D":
-                print("3D")
                 index_best_freq = np.argmax(data_qubit["signal"])
                 twpa_frequency[qubit] = data_qubit["twpa_freq"][index_best_freq]
             else:
-                print("2D")
                 index_best_freq = np.argmin(data_qubit["signal"])
                 twpa_frequency[qubit] = data_qubit["twpa_freq"][index_best_freq]
 
             if data.power_level is PowerLevel.high:
-                print("high")
                 bare_frequency[qubit] = data_qubit["freq"][index_best_freq]
             else:
-                print("low")
                 frequency[qubit] = data_qubit["freq"][index_best_freq]
 
     if data.power_level is PowerLevel.high:
@@ -207,8 +198,8 @@ def _plot(data: ResonatorTWPAFrequencyData, fit: ResonatorTWPAFrequencyResults, 
         horizontal_spacing=0.1,
         vertical_spacing=0.2,
         subplot_titles=(
-            "MSR",
-            "phase (rad)",
+            "signal",
+            "phase [rad]",
         ),
     )
 
@@ -220,13 +211,13 @@ def _plot(data: ResonatorTWPAFrequencyData, fit: ResonatorTWPAFrequencyResults, 
         go.Heatmap(
             x=resonator_frequencies,
             y=twpa_frequencies,
-            z=qubit_data.signal * V_TO_UV,
+            z=qubit_data.signal,
             colorbar_x=0.46,
         ),
         row=1,
         col=1,
     )
-    fig.update_xaxes(title_text=f"{qubit}: Frequency (Hz)", row=1, col=1)
+    fig.update_xaxes(title_text=f"{qubit}: Frequency [Hz]", row=1, col=1)
     fig.update_yaxes(title_text="TWPA Frequency", row=1, col=1)
     fig.add_trace(
         go.Heatmap(
@@ -238,7 +229,7 @@ def _plot(data: ResonatorTWPAFrequencyData, fit: ResonatorTWPAFrequencyResults, 
         row=1,
         col=2,
     )
-    fig.update_xaxes(title_text=f"{qubit}/: Frequency (Hz)", row=1, col=2)
+    fig.update_xaxes(title_text=f"{qubit}/: Frequency [Hz]", row=1, col=2)
     fig.update_yaxes(title_text="TWPA Frequency", row=1, col=2)
 
     if qubit in fit.bare_frequency:
@@ -270,7 +261,6 @@ def _plot(data: ResonatorTWPAFrequencyData, fit: ResonatorTWPAFrequencyResults, 
 
     fig.update_layout(
         showlegend=False,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
     )
 
     figures.append(fig)
