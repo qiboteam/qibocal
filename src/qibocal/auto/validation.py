@@ -4,7 +4,7 @@ from typing import Callable, NewType, Optional, Union
 
 from qibolab.qubits import QubitId, QubitPairId
 
-from ..config import log, raise_error
+from ..config import log
 from .operation import Results
 from .status import Failure, Normal, Status
 from .validators import VALIDATORS
@@ -27,15 +27,12 @@ class Validator:
     """"Validator parameters."""
     outcomes: Optional[list[Outcome]] = field(default_factory=list)
     """Depending on the validation we jump into one of the possible nodes."""
+    method: Callable[[Results, Target], Union[Status, str]] = field(init=False)
+    """Validation method corresponding to the scheme attribute."""
 
-    # TODO: think of a better name
-    @property
-    def method(self) -> Callable[[Results, Target], Union[Status, str]]:
-        """Validation function in validators module."""
-        try:
-            return VALIDATORS[self.scheme]
-        except KeyError:
-            raise_error(KeyError, f"Validator {self.scheme} not available.")
+    def __post_init__(self):
+        # initialize validator method (it will also check parameters with pydantic)
+        self.method = VALIDATORS[self.scheme](**self.parameters)
 
     def validate(
         self, results: Results, target: Target
@@ -47,7 +44,7 @@ class Validator:
             - (Normal, None) which corresponds to the normal flow
             - (task, dict) which moves the head to task using parameters in dict.
         """
-        index = self.method(results=results, target=target, **self.parameters)
+        index = self.method(results=results, target=target)
 
         if index == -1:
             # -1 denotes Normal()

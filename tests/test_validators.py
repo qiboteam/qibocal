@@ -10,7 +10,7 @@ from qibocal.auto.execute import Executor
 from qibocal.auto.operation import Results
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.validation import Validator
-from qibocal.auto.validators.chi2 import check_chi2
+from qibocal.auto.validators.chi2 import Chi2Validator
 from qibocal.cli.report import ExecutionMode
 
 RUNCARD_CHI_SQUARED = pathlib.Path(__file__).parent / "runcards/chi_squared.yml"
@@ -20,14 +20,21 @@ PLATFORM = create_platform("dummy")
 
 def test_error_validator():
     """Test error with unknown validator."""
-    validator = Validator("unknown")
+
     with pytest.raises(KeyError):
-        validator.method(Results(), 0)
+        _ = Validator("unknown")
 
 
 def test_chi2_error():
     """Test error when Results don't contain chi2."""
-    assert check_chi2(Results(), 0) == None
+    assert (
+        Chi2Validator(
+            thresholds=[
+                0,
+            ]
+        )(results=Results(), target=0)
+        == None
+    )
 
 
 @pytest.mark.parametrize("chi2_max_value", [1000, 1e-5])
