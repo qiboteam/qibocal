@@ -11,9 +11,10 @@ from .validators import VALIDATORS
 
 ValidatorId = NewType("ValidatorId", str)
 """Identifier for validator object."""
-
 Target = Union[QubitId, QubitPairId, list[QubitId]]
 """Protocol target."""
+Outcome = tuple[str, Optional[dict]]
+"""Validation outcome tuple of nodes with parameters or Status."""
 
 
 @dataclass
@@ -24,7 +25,7 @@ class Validator:
     """Validator present in validators module."""
     parameters: Optional[dict] = field(default_factory=dict)
     """"Validator parameters."""
-    outcomes: Optional[list[tuple[str, dict]]] = field(default_factory=list)
+    outcomes: Optional[list[Outcome]] = field(default_factory=list)
     """Depending on the validation we jump into one of the possible nodes."""
 
     # TODO: think of a better name
@@ -38,7 +39,7 @@ class Validator:
 
     def validate(
         self, results: Results, target: Target
-    ) -> tuple[Union[Status, str], Optional[dict]]:
+    ) -> Union[Outcome, tuple[Status, None]]:
         """Perform validation of target in results.
 
         Possible Returns are:
@@ -47,18 +48,15 @@ class Validator:
             - (task, dict) which moves the head to task using parameters in dict.
         """
         index = self.method(results=results, target=target, **self.parameters)
-        # If index is None -> status is Failure
-        # if index is 0 -> Normal Status
-        # else: jump to corresponding outcomes
-        if index is None:
-            log.error("Stopping execution due to error in validation.")
-            return Failure(), None
-        elif index == 0:
-            # for chi2 (to be generalized for other validators):
-            # if chi2 is less than first threshold the status is normal
-            return Normal(), None
 
-        # else we return outcomes [index-1] since outcomes outcomes[i] is
-        # the output of thresholds[index+1], given that for the first threshold
-        # the status is Normal.
-        return self.outcomes[index - 1]
+        if index == -1:
+            # -1 denotes Normal()
+            return Normal(), None
+        else:
+            try:
+                return self.outcomes[index]
+            except (TypeError, IndexError):
+                # TypeError to handle the case where index is None
+                # IndexError to handle the case where index not in outcomes
+                log.error("Stopping execution due to error in validation.")
+                return Failure(), None

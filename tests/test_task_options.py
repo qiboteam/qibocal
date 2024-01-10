@@ -7,6 +7,7 @@ from qibolab import create_platform
 from qibocal.auto.execute import Executor
 from qibocal.auto.operation import DEFAULT_PARENT_PARAMETERS
 from qibocal.auto.runcard import Runcard
+from qibocal.auto.task import Task
 from qibocal.cli.report import ExecutionMode
 from qibocal.protocols.characterization.classification import (
     SingleShotClassificationParameters,
@@ -14,10 +15,12 @@ from qibocal.protocols.characterization.classification import (
 from qibocal.protocols.characterization.readout_mitigation_matrix import (
     ReadoutMitigationMatrixParameters,
 )
+from qibocal.utils import allocate_single_qubits
 
 PLATFORM = create_platform("dummy")
 QUBITS = list(PLATFORM.qubits)
 DUMMY_CARD = {
+    "backend": "numpy",
     "qubits": QUBITS,
     "actions": [
         {
@@ -44,22 +47,22 @@ def modify_card(card, qubits=None, update=None):
     return card
 
 
-# @pytest.mark.parametrize("platform", [None, PLATFORM])
-# @pytest.mark.parametrize("local_qubits", [[], [0, 1]])
-# def test_qubits_argument(platform, local_qubits):
-#     """Test possible qubits combinations between global and local."""
-#     runcard = Runcard.load(modify_card(DUMMY_CARD, qubits=local_qubits))
-#     task = Task(runcard.actions[0])
-#     global_qubits = (
-#         allocate_single_qubits(platform, QUBITS) if platform is not None else QUBITS
-#     )
-#     task._allocate_local_qubits(global_qubits, platform)
+@pytest.mark.parametrize("platform", [None, PLATFORM])
+@pytest.mark.parametrize("local_qubits", [[], [0, 1]])
+def test_qubits_argument(platform, local_qubits):
+    """Test possible qubits combinations between global and local."""
+    runcard = Runcard.load(modify_card(DUMMY_CARD, qubits=local_qubits))
+    task = Task(runcard.actions[0])
+    global_qubits = (
+        allocate_single_qubits(platform, QUBITS) if platform is not None else QUBITS
+    )
+    task._allocate_local_qubits(global_qubits, platform)
 
-#     _, _ = task.operation.acquisition(task.parameters, platform, global_qubits)
-#     if local_qubits:
-#         assert task.qubits == local_qubits
-#     else:
-#         assert task.qubits == QUBITS
+    _, _ = task.operation.acquisition(task.parameters, platform, global_qubits)
+    if local_qubits:
+        assert task.qubits == local_qubits
+    else:
+        assert task.qubits == QUBITS
 
 
 UPDATE_CARD = {

@@ -1,6 +1,7 @@
 """Chi2 validation"""
-from typing import Union
+from typing import Optional, Union
 
+import numpy as np
 from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.config import log
@@ -14,20 +15,21 @@ CHI2_MAX = 0.05
 def check_chi2(
     results: Results,
     target: Union[QubitId, QubitPairId, list[QubitId]],
-    thresholds: list = [CHI2_MAX],
-):
+    thresholds: Optional[list] = None,
+) -> Optional[float]:
     """Performs validation of results using chi2.
 
-    It assesses that chi2 is below the chi2_max_value threshold.
+    Find the threshold of the chi2 among thresholds.
     """
+
+    if thresholds is None:
+        thresholds = [CHI2_MAX]
 
     try:
         chi2 = results.chi2[target][0]
-        for threshold in sorted(thresholds):
-            if chi2 < threshold:
-                return thresholds.index(threshold)
+        idx = np.searchsorted(thresholds, chi2)
+        return idx - 1
 
-        return None
     except AttributeError:
         log.error(f"Chi2 validation not available for {type(results)}")
         return None
