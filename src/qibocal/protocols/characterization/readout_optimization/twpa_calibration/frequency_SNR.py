@@ -7,10 +7,15 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
-from qibocal.protocols.characterization import resonator_spectroscopy
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.protocols.characterization.utils import HZ_TO_GHZ, V_TO_UV, PowerLevel, table_dict, table_html
+from qibocal.protocols.characterization import resonator_spectroscopy
+from qibocal.protocols.characterization.utils import (
+    HZ_TO_GHZ,
+    PowerLevel,
+    table_dict,
+    table_html,
+)
 
 
 @dataclass
@@ -165,22 +170,22 @@ def _fit(data: ResonatorTWPAFrequencyData) -> ResonatorTWPAFrequencyResults:
     frequency = {}
     twpa_frequency = {}
     for qubit in qubits:
-            data_qubit = data[qubit]
-            if data.resonator_type == "3D":
-                print("3D")
-                index_best_freq = np.argmax(data_qubit["signal"])
-                twpa_frequency[qubit] = data_qubit["twpa_freq"][index_best_freq]
-            else:
-                print("2D")
-                index_best_freq = np.argmin(data_qubit["signal"])
-                twpa_frequency[qubit] = data_qubit["twpa_freq"][index_best_freq]
+        data_qubit = data[qubit]
+        if data.resonator_type == "3D":
+            print("3D")
+            index_best_freq = np.argmax(data_qubit["signal"])
+            twpa_frequency[qubit] = data_qubit["twpa_freq"][index_best_freq]
+        else:
+            print("2D")
+            index_best_freq = np.argmin(data_qubit["signal"])
+            twpa_frequency[qubit] = data_qubit["twpa_freq"][index_best_freq]
 
-            if data.power_level is PowerLevel.high:
-                print("high")
-                bare_frequency[qubit] = data_qubit["freq"][index_best_freq]
-            else:
-                print("low")
-                frequency[qubit] = data_qubit["freq"][index_best_freq]
+        if data.power_level is PowerLevel.high:
+            print("high")
+            bare_frequency[qubit] = data_qubit["freq"][index_best_freq]
+        else:
+            print("low")
+            frequency[qubit] = data_qubit["freq"][index_best_freq]
 
     if data.power_level is PowerLevel.high:
         return ResonatorTWPAFrequencyResults(
