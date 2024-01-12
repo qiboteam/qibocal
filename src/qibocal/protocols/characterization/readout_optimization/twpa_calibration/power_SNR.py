@@ -45,15 +45,11 @@ class ResonatorTWPAPowerParameters(Parameters):
 class ResonatorTWPAPowerResults(Results):
     """ResonatorTWPAPower outputs."""
 
-    twpa_power: dict[QubitId, float] = field(metadata=dict(update="twpa_power"))
+    twpa_power: dict[QubitId, float] = field(default_factory=dict)
     """TWPA frequency [GHz] for each qubit."""
-    frequency: Optional[dict[QubitId, float]] = field(
-        default_factory=dict, metadata=dict(update="readout_frequency")
-    )
+    frequency: Optional[dict[QubitId, float]] = field(default_factory=dict)
     """Readout frequency [GHz] for each qubit."""
-    bare_frequency: Optional[dict[QubitId, float]] = field(
-        default_factory=dict, metadata=dict(update="bare_resonator_frequency")
-    )
+    bare_frequency: Optional[dict[QubitId, float]] = field(default_factory=dict)
     """Bare frequency [GHz] for each qubit."""
 
 
