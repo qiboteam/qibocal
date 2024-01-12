@@ -45,17 +45,11 @@ class ResonatorTWPAFrequencyParameters(Parameters):
 class ResonatorTWPAFrequencyResults(Results):
     """ResonatorTWPAFrequency outputs."""
 
-    twpa_frequency: dict[QubitId, float] = field(metadata=dict(update="twpa_frequency"))
+    twpa_frequency: dict[QubitId, float] = field(default_factory=dict)
     """TWPA frequency [GHz] for each qubit."""
-
-    frequency: Optional[dict[QubitId, float]] = field(
-        default_factory=dict, metadata=dict(update="readout_frequency")
-    )
+    frequency: Optional[dict[QubitId, float]] = field(default_factory=dict)
     """Readout frequency [GHz] for each qubit."""
-
-    bare_frequency: Optional[dict[QubitId, float]] = field(
-        default_factory=dict, metadata=dict(update="bare_resonator_frequency")
-    )
+    bare_frequency: Optional[dict[QubitId, float]] = field(default_factory=dict)
     """Bare frequency [GHz] for each qubit."""
 
 
@@ -134,9 +128,15 @@ def _acquisition(
         -params.twpa_freq_width // 2, params.twpa_freq_width // 2, params.twpa_freq_step
     )
 
+    initial_twpa_freq = {}
+    for qubit in qubits:
+        initial_twpa_freq[qubit] = float(
+            platform.qubits[qubit].twpa.local_oscillator.frequency
+        )
+
     for _freq in TWPAFrequency_range:
-        for z in qubits:
-            qubits[z].twpa.local_oscillator.frequency = _freq
+        for qubit in qubits:
+            qubits[qubit].twpa.local_oscillator.frequency = ( initial_twpa_freq[qubit] + _freq )
 
         resonator_spectroscopy_data = resonator_spectroscopy._acquisition(
             resonator_spectroscopy.ResonatorSpectroscopyParameters.load(
@@ -154,10 +154,10 @@ def _acquisition(
         for qubit in qubits:
             data.register_qubit(
                 qubit,
-                signal=resonator_spectroscopy_data.data[qubit]["signal"],
-                phase=resonator_spectroscopy_data.data[qubit]["phase"],
-                freq=resonator_spectroscopy_data.data[qubit]["freq"],
-                twpa_freq=_freq,
+                signal=resonator_spectroscopy_data[qubit].signal,
+                phase=resonator_spectroscopy_data[qubit].phase,
+                freq=resonator_spectroscopy_data[qubit].freq,                
+                twpa_freq= _freq + initial_twpa_freq[qubit]
             )
 
     return data
@@ -241,7 +241,7 @@ def _plot(data: ResonatorTWPAFrequencyData, fit: ResonatorTWPAFrequencyResults, 
         row=1,
         col=2,
     )
-    fig.update_xaxes(title_text=f"{qubit}/: Frequency [Hz]", row=1, col=2)
+    fig.update_xaxes(title_text=f"{qubit}: Frequency [Hz]", row=1, col=2)
     fig.update_yaxes(title_text="TWPA Frequency", row=1, col=2)
 
     if qubit in fit.bare_frequency:

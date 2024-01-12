@@ -196,5 +196,5 @@ def _update(results: ResonatorSpectroscopyResults, platform: Platform, qubit: Qu
         update.bare_resonator_frequency(results.bare_frequency[qubit], platform, qubit)
 
 
-resonator_spec = Routine(_acquisition, _fit, _plot, _update)
+resonator_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
 """ResonatorSpectroscopy Routine object."""
