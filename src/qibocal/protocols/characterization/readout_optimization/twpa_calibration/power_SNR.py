@@ -136,7 +136,7 @@ def _acquisition(
 
     for _pow in TWPAPower_range:
         for qubit in qubits:
-            qubits[qubit].twpa.local_oscillator.power =  ( initial_twpa_pow[qubit] + _pow )
+            qubits[qubit].twpa.local_oscillator.power = initial_twpa_pow[qubit] + _pow
 
         resonator_spectroscopy_data = resonator_spectroscopy._acquisition(
             resonator_spectroscopy.ResonatorSpectroscopyParameters.load(
@@ -157,7 +157,7 @@ def _acquisition(
                 signal=resonator_spectroscopy_data.data[qubit].signal,
                 phase=resonator_spectroscopy_data.data[qubit].phase,
                 freq=resonator_spectroscopy_data.data[qubit].freq,
-                twpa_pow=_pow + initial_twpa_pow[qubit]
+                twpa_pow=_pow + initial_twpa_pow[qubit],
             )
 
     return data
