@@ -666,7 +666,7 @@ actions:
       twpa_pow_step: 1
       power_level: low
       nshots: 1000
-      relaxation_time: 2000 
+      relaxation_time: 2000
 
   - id: twpa_frequency_SNR
     priority: 0
