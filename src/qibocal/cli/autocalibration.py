@@ -54,8 +54,6 @@ def autocalibrate(runcard, folder, force, update):
     # connect and initialize platform
     if platform is not None:
         platform.connect()
-        platform.setup()
-        platform.start()
 
     # run protocols
     for _ in executor.run(mode=ExecutionMode.autocalibration):
@@ -70,7 +68,6 @@ def autocalibrate(runcard, folder, force, update):
 
     # stop and disconnect platform
     if platform is not None:
-        platform.stop()
         platform.disconnect()
 
     # dump updated runcard
