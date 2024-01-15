@@ -200,7 +200,6 @@ def _plot(
 
         fig.update_layout(
             showlegend=True,
-            uirevision="0",  # ``uirevision`` allows zooming while live plotting
             xaxis_title="Kernel samples",
             yaxis_title="Kernel absolute value",
         )
