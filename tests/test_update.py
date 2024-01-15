@@ -1,4 +1,5 @@
 """Testing update_* helper functions. """
+import os
 import random
 import re
 
@@ -177,3 +178,7 @@ def test_kernel_update(qubit):
     update.kernel(results, PLATFORM, qubit.name)
 
     assert (np.load(qubit.kernel_path)[str(qubit.name)] == RANDOM_ARRAY).all()
+
+    # Remove the generated files
+    os.remove(qubit.kernel_path)
+    os.rmdir(qubit.kernel_path.parent)
