@@ -12,7 +12,7 @@ def rabi_amplitude_function(x, offset, amplitude, period, phase):
     Args:
         x: Input data.
     """
-    return offset + amplitude * np.sin(2 * np.pi * x / period + phase)
+    return offset + amplitude * np.cos(2 * np.pi * x / period + phase)
 
 
 def rabi_length_function(x, offset, amplitude, period, phase, t2_inv):
@@ -190,3 +190,28 @@ def extract_rabi(data):
     if "RabiLength" in data.__class__.__name__:
         return "length", "Time [ns]", rabi_length_function
     raise RuntimeError("Data has to be a data structure of the Rabi routines.")
+
+
+def period_correction_factor(phase: float):
+    r"""Correct period by taking phase into account.
+
+    https://github.com/qiboteam/qibocal/issues/656
+
+    We want to find the first maximum or minimum which will
+    correspond to an exchange of population between 0 and 1.
+    To find it we need to solve the following equation
+    :math:`\cos(2 \pi x / T + \phi) = \pm 1` which will give us
+    the following solution
+
+    .. math::
+
+        x = ( k - \phi / \pi) T / 2
+
+
+    for integer :math:`k`, which is chosen such that we get the smallest
+    multiplicative correction compared to :math:`T/2`.
+
+    """
+
+    x = phase / np.pi
+    return np.round(1 + x) - x
