@@ -10,7 +10,10 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+
+SAMPLES_FACTOR = 16
 
 
 @dataclass
@@ -46,7 +49,7 @@ CalibrateStateDiscriminationType = np.dtype(
     [
         ("i", np.float64),
         ("q", np.float64),
-        ("msr", np.float64),
+        ("signal", np.float64),
         ("phase", np.float64),
     ]
 )
@@ -126,7 +129,7 @@ def _acquisition(
                 CalibrateStateDiscriminationType,
                 (qubit, i),
                 dict(
-                    msr=result.magnitude,
+                    signal=result.magnitude,
                     phase=result.phase,
                     i=result.voltage_i,
                     q=result.voltage_q,
@@ -145,9 +148,15 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
         traces = []
         for i in range(2):
             # This is due to a device limitation on the number of samples
+            # We want the number of samples to be a factor of 16
             trace = (
-                data[qubit, i]["i"][: (len(data[qubit, i]["i"]) // 16) * 16]
-                + 1j * data[qubit, i]["q"][: (len(data[qubit, i]["i"]) // 16) * 16]
+                data[qubit, i]["i"][
+                    : (len(data[qubit, i]["i"]) // SAMPLES_FACTOR) * SAMPLES_FACTOR
+                ]
+                + 1j
+                * data[qubit, i]["q"][
+                    : (len(data[qubit, i]["i"]) // SAMPLES_FACTOR) * SAMPLES_FACTOR
+                ]
             )
             traces.append(trace)
         """
@@ -212,7 +221,7 @@ def _plot(
 def _update(
     results: CalibrateStateDiscriminationResults, platform: Platform, qubit: QubitId
 ):
-    pass
+    update.kernel(results, platform, qubit)
 
 
 calibrate_state_discrimination = Routine(_acquisition, _fit, _plot, _update)

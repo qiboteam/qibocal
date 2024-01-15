@@ -127,6 +127,15 @@ class AbstractData:
         self._to_json(path)
         self._to_npz(path)
 
+    def to_npz(self, path):
+        """Helper function to use np.savez while converting keys into strings."""
+        if self.data:
+            np.savez(
+                path,
+                **{json.dumps(i): self.data[i] for i in self.data},
+            )
+            print({json.dumps(i): self.data[i] for i in self.data})
+
     def _to_npz(self, path):
         """Helper function to use np.savez while converting keys into strings."""
         if self.data:

@@ -6,6 +6,10 @@ from qibolab.native import VirtualZPulse
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
+from qibocal.protocols.characterization.signal_experiments.calibrate_state_discrimination import (
+    CalibrateStateDiscriminationResults,
+)
+
 CLASSIFICATION_PARAMS = [
     "threshold",
     "iq_angle",
@@ -218,3 +222,10 @@ def josephson_energy(Ej: float, platform: Platform, qubit: QubitId):
 
 def coupling(g: float, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].g = float(g)
+
+
+def kernel(
+    results: CalibrateStateDiscriminationResults, platform: Platform, qubit: QubitId
+):
+    path = platform.qubits[qubit].kernel_path
+    results.to_npz(path=path)
