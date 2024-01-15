@@ -211,6 +211,7 @@ def _plot(data: ResonatorTWPAPowerData, fit: ResonatorTWPAPowerResults, qubit):
         ),
     )
 
+    fitting_report = ""
     qubit_data = data[qubit]
     frequencies = qubit_data.freq * HZ_TO_GHZ
     powers = qubit_data.twpa_pow
@@ -240,32 +241,33 @@ def _plot(data: ResonatorTWPAPowerData, fit: ResonatorTWPAPowerResults, qubit):
     fig.update_xaxes(title_text=f"{qubit}: Frequency [Hz]", row=1, col=2)
     fig.update_yaxes(title_text="TWPA Power", row=1, col=2)
 
-    if qubit in fit.bare_frequency:
-        summary = table_dict(
-            qubit,
-            [
-                "High Power Resonator Frequency [Hz]",
-                "TWPA Power",
-            ],
-            [
-                np.round(fit.bare_frequency[qubit]),
-                np.round(fit.twpa_power[qubit]),
-            ],
-        )
-    else:
-        summary = table_dict(
-            qubit,
-            [
-                "Low Power Resonator Frequency [Hz]",
-                "TWPA Power",
-            ],
-            [
-                np.round(fit.frequency[qubit]),
-                np.round(fit.twpa_power[qubit]),
-            ],
-        )
+    if fit is not None:
+        if qubit in fit.bare_frequency:
+            summary = table_dict(
+                qubit,
+                [
+                    "High Power Resonator Frequency [Hz]",
+                    "TWPA Power",
+                ],
+                [
+                    np.round(fit.bare_frequency[qubit]),
+                    np.round(fit.twpa_power[qubit]),
+                ],
+            )
+        else:
+            summary = table_dict(
+                qubit,
+                [
+                    "Low Power Resonator Frequency [Hz]",
+                    "TWPA Power",
+                ],
+                [
+                    np.round(fit.frequency[qubit]),
+                    np.round(fit.twpa_power[qubit]),
+                ],
+            )
 
-    fitting_report = table_html(summary)
+        fitting_report = table_html(summary)
 
     fig.update_layout(
         showlegend=False,

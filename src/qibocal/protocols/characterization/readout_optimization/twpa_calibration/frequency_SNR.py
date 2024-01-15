@@ -217,6 +217,7 @@ def _plot(data: ResonatorTWPAFrequencyData, fit: ResonatorTWPAFrequencyResults, 
         ),
     )
 
+    fitting_report = ""
     qubit_data = data[qubit]
     resonator_frequencies = qubit_data.freq * HZ_TO_GHZ
     twpa_frequencies = qubit_data.twpa_freq
@@ -246,32 +247,33 @@ def _plot(data: ResonatorTWPAFrequencyData, fit: ResonatorTWPAFrequencyResults, 
     fig.update_xaxes(title_text=f"{qubit}: Frequency [Hz]", row=1, col=2)
     fig.update_yaxes(title_text="TWPA Frequency", row=1, col=2)
 
-    if qubit in fit.bare_frequency:
-        summary = table_dict(
-            qubit,
-            [
-                "High Power Resonator Frequency [Hz]",
-                "TWPA Frequency [Hz]",
-            ],
-            [
-                np.round(fit.bare_frequency[qubit]),
-                np.round(fit.twpa_frequency[qubit]),
-            ],
-        )
-    else:
-        summary = table_dict(
-            qubit,
-            [
-                "Low Power Resonator Frequency [Hz]",
-                "TWPA Frequency [Hz]",
-            ],
-            [
-                np.round(fit.frequency[qubit]),
-                np.round(fit.twpa_frequency[qubit]),
-            ],
-        )
+    if fit is not None:
+        if qubit in fit.bare_frequency:
+            summary = table_dict(
+                qubit,
+                [
+                    "High Power Resonator Frequency [Hz]",
+                    "TWPA Frequency [Hz]",
+                ],
+                [
+                    np.round(fit.bare_frequency[qubit]),
+                    np.round(fit.twpa_frequency[qubit]),
+                ],
+            )
+        else:
+            summary = table_dict(
+                qubit,
+                [
+                    "Low Power Resonator Frequency [Hz]",
+                    "TWPA Frequency [Hz]",
+                ],
+                [
+                    np.round(fit.frequency[qubit]),
+                    np.round(fit.twpa_frequency[qubit]),
+                ],
+            )
 
-    fitting_report = table_html(summary)
+        fitting_report = table_html(summary)
 
     fig.update_layout(
         showlegend=False,
