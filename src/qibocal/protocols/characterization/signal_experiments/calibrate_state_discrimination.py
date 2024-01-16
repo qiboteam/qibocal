@@ -221,7 +221,7 @@ def _plot(
 def _update(
     results: CalibrateStateDiscriminationResults, platform: Platform, qubit: QubitId
 ):
-    update.kernel(results, platform, qubit)
+    update.kernel(results.data[qubit], platform, qubit)
 
 
 calibrate_state_discrimination = Routine(_acquisition, _fit, _plot, _update)
