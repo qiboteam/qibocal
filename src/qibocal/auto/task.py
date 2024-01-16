@@ -210,8 +210,9 @@ class Completed:
     @property
     def results(self):
         """Access task's results."""
-        Results = self.task.operation.results_type
-        self._results = Results.load(self.datapath)
+        if self._results is None:
+            Results = self.task.operation.results_type
+            self._results = Results.load(self.datapath)
         return self._results
 
     @results.setter
@@ -223,8 +224,9 @@ class Completed:
     @property
     def data(self):
         """Access task's data."""
-        Data = self.task.operation.data_type
-        self._data = Data.load(self.datapath)
+        if self._data is None:
+            Data = self.task.operation.data_type
+            self._data = Data.load(self.datapath)
         return self._data
 
     @data.setter

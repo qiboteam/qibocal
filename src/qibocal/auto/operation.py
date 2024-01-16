@@ -103,12 +103,7 @@ class AbstractData:
     def __init__(
         self, data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray] = None
     ):
-        if self.data is None:
-            self.data = {}
-        else:
-            self.data = data
-
-    """Data object to store arrays"""
+        self.data = data if data is not None else {}
 
     def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
         """Access data attribute member."""
@@ -123,7 +118,7 @@ class AbstractData:
         return global_dict
 
     def save(self, path: Path, filename: str):
-        """Store results."""
+        """Dump class to file."""
         self._to_json(path, filename)
         self._to_npz(path, filename)
 
@@ -144,6 +139,7 @@ class AbstractData:
 
     @classmethod
     def load(cls, path: Path, filename: str):
+        """Generic load method."""
         data_dict = cls.load_data(path, filename)
         params = cls.load_params(path, filename)
         if data_dict is not None:
@@ -211,7 +207,8 @@ class Data(AbstractData):
         else:
             self.data[data_keys] = np.rec.array(ar)
 
-    def save(self, path):
+    def save(self, path: Path):
+        """Store data to file."""
         super()._to_json(path, DATAFILE)
         super()._to_npz(path, DATAFILE)
 
@@ -227,10 +224,11 @@ class Results(AbstractData):
 
     @classmethod
     def load(cls, path: Path):
-        """Load data and parameters."""
+        """Load results."""
         return super().load(path, filename=RESULTSFILE)
 
-    def save(self, path):
+    def save(self, path: Path):
+        """Store results to file."""
         super()._to_json(path, RESULTSFILE)
         super()._to_npz(path, RESULTSFILE)
 
