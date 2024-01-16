@@ -4,6 +4,7 @@ import time
 from copy import deepcopy
 from dataclasses import asdict, dataclass
 from functools import wraps
+from pathlib import Path
 from typing import Callable, Generic, NewType, Optional, TypeVar, Union
 
 import numpy as np
@@ -24,14 +25,10 @@ Qubits = dict[QubitId, Qubit]
 QubitsPairs = dict[tuple[QubitId, QubitId], QubitPair]
 
 
-DATAFILE = "data.npz"
-"""Name of the file where data acquired (arrays) by calibration are dumped."""
-JSONFILE = "conf.json"
-"""Name of the file where data acquired (global configuration) by calibration are dumped."""
-RESULTSFILE = "results.json"
+DATAFILE = "data"
+"""Name of the file where data are dumped."""
+RESULTSFILE = "results"
 """Name of the file where results are dumped."""
-RESULTSFILE_DATA = "results.npz"
-"""Name of the file where post_processed data (arrays) are dumped."""
 
 
 def show_logs(func):
@@ -103,81 +100,85 @@ class Parameters:
 class AbstractData:
     """Abstract data class."""
 
-    data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray]
+    def __init__(
+        self, data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray] = None
+    ):
+        if self.data is None:
+            self.data = {}
+        else:
+            self.data = data
+
     """Data object to store arrays"""
-    npz_file: str
-    """File where data is stored."""
-    json_file: str
-    """File where the parameters are stored."""
 
     def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
         """Access data attribute member."""
         return self.data[qubit]
 
     @property
-    def global_params(self) -> dict:
+    def params(self) -> dict:
         """Convert non-arrays attributes into dict."""
         global_dict = asdict(self)
-        if self.data:
+        if hasattr(self, "data"):
             global_dict.pop("data")
         return global_dict
 
-    def save(self, path):
+    def save(self, path: Path, filename: str):
         """Store results."""
-        self._to_json(path)
-        self._to_npz(path)
+        self._to_json(path, filename)
+        self._to_npz(path, filename)
 
-    def to_npz(self, path):
+    def _to_npz(self, path: Path, filename: str):
         """Helper function to use np.savez while converting keys into strings."""
-        if self.data:
+        if hasattr(self, "data"):
             np.savez(
-                path,
+                path / filename,
                 **{json.dumps(i): self.data[i] for i in self.data},
             )
 
-    def _to_npz(self, path):
-        """Helper function to use np.savez while converting keys into strings."""
-        if self.data:
-            np.savez(
-                path / self.npz_file,
-                **{json.dumps(i): self.data[i] for i in self.data},
-            )
-
-    def _to_json(self, path):
+    def _to_json(self, path: Path, filename: str):
         """Helper function to dump to json."""
-        (path / self.json_file).write_text(
-            json.dumps(serialize(self.global_params), indent=4)
-        )
+        if self.params:
+            (path / f"{filename}.json").write_text(
+                json.dumps(serialize(self.params), indent=4)
+            )
+
+    @classmethod
+    def load(cls, path: Path, filename: str):
+        data_dict = cls.load_data(path, filename)
+        params = cls.load_params(path, filename)
+        if data_dict is not None:
+            if params is not None:
+                return cls(data=data_dict, **params)
+            else:
+                return cls(data=data_dict)
+        elif params is not None:
+            return cls(**params)
 
     @staticmethod
-    def load_data(path, npz_file):
+    def load_data(path: Path, filename: str):
         """Load data stored in a npz file."""
-        if (path / npz_file).is_file():
-            with open(path / npz_file) as f:
-                raw_data_dict = dict(np.load(path / npz_file))
-                data_dict = {}
+        file = path / f"{filename}.npz"
+        if file.is_file():
+            raw_data_dict = dict(np.load(file))
+            data_dict = {}
 
-                for data_key, array in raw_data_dict.items():
-                    data_dict[load(data_key)] = np.rec.array(array)
+            for data_key, array in raw_data_dict.items():
+                data_dict[load(data_key)] = np.rec.array(array)
 
             return data_dict
 
     @staticmethod
-    def load_params(path, json_file):
+    def load_params(path: Path, filename: str):
         """Load parameters stored in a json file."""
-        if (path / json_file).is_file():
-            params = json.loads((path / json_file).read_text())
-
+        file = path / f"{filename}.json"
+        if file.is_file():
+            params = json.loads(file.read_text())
             params = deserialize(params)
             return params
 
 
 class Data(AbstractData):
     """Data resulting from acquisition routine."""
-
-    def __post_init__(self):
-        self.npz_file = DATAFILE
-        self.json_file = JSONFILE
 
     @property
     def qubits(self):
@@ -210,36 +211,28 @@ class Data(AbstractData):
         else:
             self.data[data_keys] = np.rec.array(ar)
 
+    def save(self, path):
+        super()._to_json(path, DATAFILE)
+        super()._to_npz(path, DATAFILE)
+
     @classmethod
-    def load(cls, path, npz_file=DATAFILE, json_file=JSONFILE):
+    def load(cls, path: Path):
         """Load data and parameters."""
-        data_dict = super().load_data(path, npz_file)
-        params = super().load_params(path, json_file)
-        if params is None:
-            return cls(data=data_dict)
-        return cls(data=data_dict, **params)
+        return super().load(path, filename=DATAFILE)
 
 
 @dataclass
 class Results(AbstractData):
     """Generic runcard update."""
 
-    def __post_init__(self):
-        if "data" not in self.__dict__:
-            self.data: Optional[
-                dict[Union[tuple[QubitId, int], QubitId], npt.NDArray]
-            ] = {}
-        self.npz_file = RESULTSFILE_DATA
-        self.json_file = RESULTSFILE
-
     @classmethod
-    def load(cls, path, npz_file=RESULTSFILE_DATA, json_file=RESULTSFILE):
+    def load(cls, path: Path):
         """Load data and parameters."""
-        data_dict = super().load_data(path, npz_file)
-        params = super().load_params(path, json_file)
-        if data_dict is None:
-            return cls(**params)
-        return cls(data=data_dict, **params)
+        return super().load(path, filename=RESULTSFILE)
+
+    def save(self, path):
+        super()._to_json(path, RESULTSFILE)
+        super()._to_npz(path, RESULTSFILE)
 
 
 # Internal types, in particular `_ParametersT` is used to address function
