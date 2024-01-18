@@ -43,6 +43,8 @@ class QubitFluxParameters(Parameters):
     """
     Duration of the drive pulse.
     """
+    flux_pulses: bool = False
+    """Use flux pulses instead of sweeping bias."""
 
 
 @dataclass
@@ -142,14 +144,36 @@ def _acquisition(
     delta_bias_range = np.arange(
         -params.bias_width / 2, params.bias_width / 2, params.bias_step
     )
-    bias_sweepers = [
-        Sweeper(
-            Parameter.bias,
-            delta_bias_range,
-            qubits=list(qubits.values()),
-            type=SweeperType.OFFSET,
-        )
-    ]
+    if params.flux_pulses:
+        qf_pulses = {}
+        for qubit in qubits:
+            from qibolab.pulses import FluxPulse
+
+            pulse = FluxPulse(
+                start=0,
+                duration=sequence.duration,
+                amplitude=1,
+                shape="Rectangular",
+                qubit=qubit,
+            )
+            qf_pulses[qubit] = pulse
+        bias_sweepers = [
+            Sweeper(
+                Parameter.amplitude,
+                delta_bias_range,
+                pulses=[qf_pulses[qubit] for qubit in qubits],
+                type=SweeperType.OFFSET,
+            )
+        ]
+    else:
+        bias_sweepers = [
+            Sweeper(
+                Parameter.bias,
+                delta_bias_range,
+                qubits=list(qubits.values()),
+                type=SweeperType.OFFSET,
+            )
+        ]
     data = QubitFluxData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
 
     options = ExecutionParameters(
