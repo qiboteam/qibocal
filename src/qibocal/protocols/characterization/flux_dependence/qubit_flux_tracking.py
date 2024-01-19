@@ -55,11 +55,12 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
+    qubit_frequency = {}
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.drive_duration
         )
-
+        qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
         if params.transition == "02":
             if qubits[qubit].anharmonicity != 0:
                 qd_pulses[qubit].frequency -= qubits[qubit].anharmonicity / 2
@@ -91,7 +92,9 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
-    data = QubitFluxTrackData(resonator_type=platform.resonator_type)
+    data = QubitFluxTrackData(
+        resonator_type=platform.resonator_type, qubit_frequency=qubit_frequency
+    )
 
     for bias in delta_bias_range:
         for qubit in qubits:
