@@ -147,17 +147,9 @@ def _acquisition(
     if params.flux_pulses:
         qf_pulses = {}
         for qubit in qubits:
-            # from qibolab.pulses import FluxPulse
             pulse = platform.create_qubit_flux_pulse(
                 qubit, start=0, duration=sequence.duration
             )
-            # pulse = FluxPulse(
-            #     start=0,
-            #     duration=sequence.duration,
-            #     amplitude=1,
-            #     shape="Rectangular",
-            #     qubit=qubit,
-            # )
             qf_pulses[qubit] = pulse
         bias_sweepers = [
             Sweeper(
