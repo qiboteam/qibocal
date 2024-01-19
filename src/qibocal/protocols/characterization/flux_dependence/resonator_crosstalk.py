@@ -99,15 +99,31 @@ def _acquisition(
     else:
         flux_qubits = params.flux_qubits
 
-    bias_sweepers = [
-        Sweeper(
-            Parameter.bias,
-            delta_bias_range,
-            qubits=[platform.qubits[flux_qubit]],
-            type=SweeperType.OFFSET,
-        )
-        for flux_qubit in flux_qubits
-    ]
+    if params.flux_pulses:
+        qf_pulses = {}
+        for qubit in qubits:
+            pulse = platform.create_qubit_flux_pulse(
+                qubit, start=0, duration=sequence.duration
+            )
+            qf_pulses[qubit] = pulse
+        bias_sweepers = [
+            Sweeper(
+                Parameter.amplitude,
+                delta_bias_range,
+                pulses=[qf_pulses[flux_qubit] for flux_qubit in flux_qubits],
+                type=SweeperType.OFFSET,
+            )
+        ]
+    else:
+        bias_sweepers = [
+            Sweeper(
+                Parameter.bias,
+                delta_bias_range,
+                qubits=[platform.qubits[flux_qubit]],
+                type=SweeperType.OFFSET,
+            )
+            for flux_qubit in flux_qubits
+        ]
 
     data = ResCrosstalkData(
         resonator_type=platform.resonator_type,

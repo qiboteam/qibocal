@@ -30,6 +30,8 @@ class ResonatorFluxParameters(Parameters):
     """Width for bias sweep [V]."""
     bias_step: float
     """Bias step for sweep [a.u.]."""
+    flux_pulses: bool = False
+    """Use flux pulses instead of sweeping bias."""
 
 
 @dataclass
@@ -135,14 +137,30 @@ def _acquisition(
     delta_bias_range = np.arange(
         -params.bias_width / 2, params.bias_width / 2, params.bias_step
     )
-    bias_sweepers = [
-        Sweeper(
-            Parameter.bias,
-            delta_bias_range,
-            qubits=list(qubits.values()),
-            type=SweeperType.OFFSET,
-        )
-    ]
+    if params.flux_pulses:
+        qf_pulses = {}
+        for qubit in qubits:
+            pulse = platform.create_qubit_flux_pulse(
+                qubit, start=0, duration=sequence.duration
+            )
+            qf_pulses[qubit] = pulse
+        bias_sweepers = [
+            Sweeper(
+                Parameter.amplitude,
+                delta_bias_range,
+                pulses=[qf_pulses[qubit] for qubit in qubits],
+                type=SweeperType.OFFSET,
+            )
+        ]
+    else:
+        bias_sweepers = [
+            Sweeper(
+                Parameter.bias,
+                delta_bias_range,
+                qubits=list(qubits.values()),
+                type=SweeperType.OFFSET,
+            )
+        ]
 
     data = ResonatorFluxData(
         resonator_type=platform.resonator_type,
