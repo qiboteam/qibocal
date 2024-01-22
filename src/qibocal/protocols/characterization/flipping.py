@@ -182,7 +182,7 @@ def _fit(data: FlippingData) -> FlippingResults:
             float(
                 pi_pulse_amplitude
                 * np.pi
-                * np.log(np.pi + signed_correction)
+                *1 / (np.pi + signed_correction)**2
                 * perr[2]
                 / 2
             ),
