@@ -101,7 +101,7 @@ approximate value, that can later be used to check, in other experiments, that w
 not exciting the qubit by error (if we see a change in amplitude, then maybe the qubit
 state has changed).
 
-It is also to run the punchout experiment with attenuation:
+It is also possible to run the punchout experiment with attenuation:
 
 .. image:: resonator_punchout_attenuation.png
 
