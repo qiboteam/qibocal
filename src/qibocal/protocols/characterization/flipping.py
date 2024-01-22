@@ -267,7 +267,6 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
     # last part
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Flips (dimensionless)",
         yaxis_title="Probability",
     )
