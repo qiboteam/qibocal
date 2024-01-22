@@ -11,7 +11,6 @@ from qibolab.qubits import QubitId
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.protocols.characterization import resonator_spectroscopy
 from qibocal.protocols.characterization.utils import (
-    HZ_TO_GHZ,
     PowerLevel,
     table_dict,
     table_html,
@@ -239,7 +238,6 @@ def _plot(data: ResonatorTWPAPowerData, fit: ResonatorTWPAPowerResults, qubit):
     )
     fig.update_xaxes(title_text=f"{qubit}: Frequency [Hz]", row=1, col=2)
     fig.update_yaxes(title_text="TWPA Power", row=1, col=2)
-
 
     if fit is not None:
         label_1 = "TWPA Power"
