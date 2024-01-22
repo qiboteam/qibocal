@@ -267,7 +267,7 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
     # last part
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Flips (dimensionless)",
+        xaxis_title="Flips",
         yaxis_title="Probability",
     )
 
