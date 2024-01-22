@@ -10,11 +10,7 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.protocols.characterization import resonator_spectroscopy
-from qibocal.protocols.characterization.utils import (
-    PowerLevel,
-    table_dict,
-    table_html,
-)
+from qibocal.protocols.characterization.utils import PowerLevel, table_dict, table_html
 
 
 @dataclass
