@@ -162,7 +162,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
     )
     qubit_data = data[qubit]
     fitting_report = ""
-    frequencies = qubit_data.freq * HZ_TO_GHZ
+    frequencies = qubit_data.freq
     signal = qubit_data.signal
     errors_signal = qubit_data.error_signal
     errors_phase = qubit_data.error_phase
@@ -277,9 +277,9 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
 
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Frequency [GHz]",
+        xaxis_title="Frequency [Hz]",
         yaxis_title="Signal [a.u.]",
-        xaxis2_title="Frequency [GHz]",
+        xaxis2_title="Frequency [Hz]",
         yaxis2_title="Phase [rad]",
     )
     figures.append(fig)
