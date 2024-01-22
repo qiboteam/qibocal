@@ -55,7 +55,7 @@ def _acquisition(
     a Rx(pi/2) and N flips (Rx(pi) rotations). After fitting we can obtain the delta amplitude to refine pi pulses.
 
     Args:
-        params (:class:`SingleShotClassificationParameters`): input parameters
+        params (:class:`FlippingSignalParameters`): input parameters
         platform (:class:`Platform`): Qibolab's platform
         qubits (dict): dict of target :class:`Qubit` objects to be characterized
 
