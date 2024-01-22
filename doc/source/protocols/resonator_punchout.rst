@@ -4,7 +4,7 @@ Resonator punchout
 
 With the resonator spectroscopy at high power we found the bare resonator frequency
 (also called high power frequency), but this is not the frequency that will be used to perform measurements.
-We need to find the frequency in the low power regime, where the resonator is actually coupled
+We need to find the frequency, where the resonator is actually coupled
 to the qubit. To do that, we first have to find the correct amplitude of the readout pulse.
 This experiment can be initially performed with a VNA, to check that everything is
 working and to obtain a rough estimation of the parameters to be used by the control devices.
@@ -92,7 +92,7 @@ to reach any sensible result. To be sure that, at the given pulse amplitude, we 
 in the transition regime, we can repeat the standard resonator spectroscopy with a finer
 scan, checking if the peak is Lorentzian.
 A resonator spectroscopy is also useful to better check the resonator frequency at low
-power. We can alse write down the maximum value of the peak.
+power. We can also write down the maximum value of the peak.
 Since we are not interacting directly with the qubit, we are effectively measuring the
 amplitude of the ground state and, from now on we will not change the resonator frequency,
 so we expect to always measure this amplitude for the zero state. Here it is
