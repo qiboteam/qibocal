@@ -239,7 +239,6 @@ def _plot(data: ResonatorTWPAPowerData, fit: ResonatorTWPAPowerResults, qubit):
     fig.update_xaxes(title_text=f"{qubit}: Frequency [Hz]", row=1, col=2)
     fig.update_yaxes(title_text="TWPA Power", row=1, col=2)
 
-
     if fit is not None:
         label_1 = "TWPA Power"
         twpa_power = np.round(fit.twpa_power[qubit])
