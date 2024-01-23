@@ -51,8 +51,8 @@ def acquire(runcard, folder, force):
     # connect and initialize platform
     if platform is not None:
         platform.connect()
-        platform.setup()
-        platform.start()
+        # platform.setup()
+        # platform.start()
 
     # run protocols
     list(executor.run(mode=ExecutionMode.acquire))
@@ -62,7 +62,7 @@ def acquire(runcard, folder, force):
 
     # stop and disconnect platform
     if platform is not None:
-        platform.stop()
+        # platform.stop()
         platform.disconnect()
 
     # dump updated meta

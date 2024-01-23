@@ -30,10 +30,14 @@ class QubitFluxParameters(Parameters):
     """Width for frequency sweep relative to the qubit frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
-    bias_width: float
+    bias_width: float = None
     """Width for bias sweep [V]."""
-    bias_step: float
-    """Bias step for sweep [a.u.]."""
+    bias_step: float = None
+    """Bias step for sweep [V]."""
+    flux_amplitude_width: float = None
+    """Amplitude width for flux pulses sweep relative to the qubit sweetspot [a.u.]."""
+    flux_amplitude_step: float = None
+    """Amplitude step for flux pulses sweep [a.u.]."""
     drive_amplitude: Optional[float] = None
     """Drive amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
@@ -43,8 +47,22 @@ class QubitFluxParameters(Parameters):
     """
     Duration of the drive pulse.
     """
-    flux_pulses: bool = False
-    """Use flux pulses instead of sweeping bias."""
+
+    def __post_init__(self):
+        has_bias_params = self.bias_width is not None and self.bias_step is not None
+        has_flux_params = (
+            self.flux_amplitude_width is not None
+            and self.flux_amplitude_step is not None
+        )
+        if not has_bias_params:
+            if has_flux_params:
+                self.flux_pulses = True
+                return
+        if not has_flux_params:
+            if has_bias_params:
+                self.flux_pulses = False
+                return
+        raise ValueError
 
 
 @dataclass
@@ -141,10 +159,12 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
-    delta_bias_range = np.arange(
-        -params.bias_width / 2, params.bias_width / 2, params.bias_step
-    )
     if params.flux_pulses:
+        delta_bias_flux_range = np.arange(
+            -params.flux_amplitude_width / 2,
+            params.flux_amplitude_width / 2,
+            params.flux_amplitude_step,
+        )
         qf_pulses = {}
         for qubit in qubits:
             pulse = platform.create_qubit_flux_pulse(
@@ -154,16 +174,19 @@ def _acquisition(
         bias_sweepers = [
             Sweeper(
                 Parameter.amplitude,
-                delta_bias_range,
+                delta_bias_flux_range,
                 pulses=[qf_pulses[qubit] for qubit in qubits],
                 type=SweeperType.OFFSET,
             )
         ]
     else:
+        delta_bias_flux_range = np.arange(
+            -params.bias_width / 2, params.bias_width / 2, params.bias_step
+        )
         bias_sweepers = [
             Sweeper(
                 Parameter.bias,
-                delta_bias_range,
+                delta_bias_flux_range,
                 qubits=list(qubits.values()),
                 type=SweeperType.OFFSET,
             )
@@ -187,7 +210,7 @@ def _acquisition(
                 signal=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
-                bias=delta_bias_range + sweetspot,
+                bias=delta_bias_flux_range + sweetspot,
             )
 
     return data

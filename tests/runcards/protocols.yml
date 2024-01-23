@@ -133,7 +133,7 @@ actions:
       nshots: 10
 
 
-  - id: resonator flux dependence
+  - id: resonator flux dependence bias
     priority: 0
     operation: resonator_flux
     parameters:
@@ -141,6 +141,17 @@ actions:
       freq_step: 500_000
       bias_width: 0.8
       bias_step:  0.1
+      nshots: 10
+
+
+  - id: resonator flux dependence flux
+    priority: 0
+    operation: resonator_flux
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 500_000
+      flux_amplitude_width: 0.8
+      flux_amplitude_step:  0.1
       nshots: 10
 
 
@@ -157,6 +168,18 @@ actions:
       relaxation_time: 100
 
 
+  - id: resonator flux crosstalk # using ``flux_qubits``
+    priority: 0
+    operation: resonator_crosstalk
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 500_000
+      flux_amplitude_width: 0.8
+      flux_amplitude_step:  0.1
+      flux_qubits: [0, 1, 2, 3]
+      nshots: 10
+      relaxation_time: 100
+
 
   - id: qubit flux dependence #"01" transition
     priority: 0
@@ -170,6 +193,21 @@ actions:
       nshots: 1024
       relaxation_time: 2000
       transition: "01"
+
+
+  - id: qubit flux dependence #"01" transition
+    priority: 0
+    operation: qubit_flux
+    parameters:
+      freq_width: 150_000_000
+      freq_step: 500_000
+      flux_amplitude_width: 0.2
+      flux_amplitude_step:  0.005
+      drive_amplitude: 0.5
+      nshots: 1024
+      relaxation_time: 2000
+      transition: "01"
+
 
   - id: qubit flux dependence 02 #"02" transition
     priority: 0
@@ -207,6 +245,20 @@ actions:
       freq_step: 500_000
       bias_width: 0.2
       bias_step:  0.005
+      drive_amplitude: 0.5
+      flux_qubits: [1, 2]
+      nshots: 1024
+      relaxation_time: 2000
+
+
+  - id: qubit flux crosstalk # using ``flux_qubits``
+    priority: 0
+    operation: qubit_crosstalk
+    parameters:
+      freq_width: 150_000_000
+      freq_step: 500_000
+      flux_amplitude_width: 0.2
+      flux_amplitude_step:  0.005
       drive_amplitude: 0.5
       flux_qubits: [1, 2]
       nshots: 1024
