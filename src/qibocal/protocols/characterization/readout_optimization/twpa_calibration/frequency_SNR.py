@@ -80,20 +80,6 @@ class ResonatorTWPAFrequencyData(Data):
             obj.power_level = PowerLevel(obj.power_level)  # pylint: disable=E1101
         return obj
 
-    def register_qubit(self, qubit, freq, twpa_freq, signal, phase):
-        """Store output for single qubit."""
-        size = len(freq)
-        ar = np.empty(size, dtype=ResonatorTWPAFrequencyType)
-        ar["freq"] = freq
-        ar["twpa_freq"] = np.array([twpa_freq] * size)
-        ar["signal"] = signal
-        ar["phase"] = phase
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
-
-
 def _acquisition(
     params: ResonatorTWPAFrequencyParameters,
     platform: Platform,
@@ -150,11 +136,14 @@ def _acquisition(
 
         for qubit in qubits:
             data.register_qubit(
-                qubit,
-                signal=resonator_spectroscopy_data[qubit].signal,
-                phase=resonator_spectroscopy_data[qubit].phase,
-                freq=resonator_spectroscopy_data[qubit].freq,
-                twpa_freq=_freq + initial_twpa_freq[qubit],
+                ResonatorTWPAFrequencyType,
+                (qubit),
+                dict(
+                    signal=resonator_spectroscopy_data[qubit].signal,
+                    phase=resonator_spectroscopy_data[qubit].phase,
+                    freq=resonator_spectroscopy_data[qubit].freq,
+                    twpa_freq=_freq + initial_twpa_freq[qubit],
+                ),
             )
 
     return data
