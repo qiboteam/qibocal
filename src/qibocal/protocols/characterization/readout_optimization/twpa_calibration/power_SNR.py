@@ -87,19 +87,6 @@ class ResonatorTWPAPowerData(Data):
             obj.power_level = PowerLevel(obj.power_level)  # pylint: disable=E1101
         return obj
 
-    def register_qubit(self, qubit, freq, twpa_pow, signal, phase):
-        """Store output for single qubit."""
-        size = len(freq)
-        ar = np.empty(size, dtype=ResonatorTWPAPowerType)
-        ar["freq"] = freq
-        ar["twpa_pow"] = np.array([twpa_pow] * size)
-        ar["signal"] = signal
-        ar["phase"] = phase
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
-
 
 def _acquisition(
     params: ResonatorTWPAPowerParameters,
@@ -155,11 +142,14 @@ def _acquisition(
 
         for qubit in qubits:
             data.register_qubit(
-                qubit,
-                signal=resonator_spectroscopy_data.data[qubit].signal,
-                phase=resonator_spectroscopy_data.data[qubit].phase,
-                freq=resonator_spectroscopy_data.data[qubit].freq,
-                twpa_pow=_pow + initial_twpa_pow[qubit],
+                ResonatorTWPAPowerType,
+                (qubit),
+                dict(
+                    signal=resonator_spectroscopy_data.data[qubit].signal,
+                    phase=resonator_spectroscopy_data.data[qubit].phase,
+                    freq=resonator_spectroscopy_data.data[qubit].freq,
+                    twpa_pow=_pow + initial_twpa_pow[qubit],
+                ),
             )
 
     return data
@@ -175,10 +165,9 @@ def _fit(data: ResonatorTWPAPowerData, fit_type="att") -> ResonatorTWPAPowerResu
         data_qubit = data[qubit]
         if data.resonator_type == "3D":
             index_best_pow = np.argmax(data_qubit["signal"])
-            twpa_power[qubit] = data_qubit["twpa_pow"][index_best_pow]
         else:
             index_best_pow = np.argmin(data_qubit["signal"])
-            twpa_power[qubit] = data_qubit["twpa_pow"][index_best_pow]
+        twpa_power[qubit] = data_qubit["twpa_pow"][index_best_pow]
 
         if data.power_level is PowerLevel.high:
             bare_frequency[qubit] = data_qubit["freq"][index_best_pow]
@@ -208,8 +197,8 @@ def _plot(data: ResonatorTWPAPowerData, fit: ResonatorTWPAPowerResults, qubit):
         horizontal_spacing=0.1,
         vertical_spacing=0.2,
         subplot_titles=(
-            "signal",
-            "phase [rad]",
+            "Signal [a.u.]",
+            "Phase [rad]",
         ),
     )
 
@@ -228,8 +217,8 @@ def _plot(data: ResonatorTWPAPowerData, fit: ResonatorTWPAPowerResults, qubit):
         row=1,
         col=1,
     )
-    fig.update_xaxes(title_text=f"{qubit}: Frequency [Hz]", row=1, col=1)
-    fig.update_yaxes(title_text="TWPA Power", row=1, col=1)
+    fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=1)
+    fig.update_yaxes(title_text="TWPA Power [dBm]", row=1, col=1)
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
@@ -240,34 +229,30 @@ def _plot(data: ResonatorTWPAPowerData, fit: ResonatorTWPAPowerResults, qubit):
         row=1,
         col=2,
     )
-    fig.update_xaxes(title_text=f"{qubit}: Frequency [Hz]", row=1, col=2)
-    fig.update_yaxes(title_text="TWPA Power", row=1, col=2)
+    fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=2)
+    fig.update_yaxes(title_text="TWPA Power [dBm]", row=1, col=2)
 
     if fit is not None:
+        label_1 = "TWPA Power"
+        twpa_power = np.round(fit.twpa_power[qubit])
         if qubit in fit.bare_frequency:
-            summary = table_dict(
-                qubit,
-                [
-                    "High Power Resonator Frequency [Hz]",
-                    "TWPA Power",
-                ],
-                [
-                    np.round(fit.bare_frequency[qubit]),
-                    np.round(fit.twpa_power[qubit]),
-                ],
-            )
+            label_2 = "High Power Resonator Frequency [Hz]"
+            resonator_frequency = np.round(fit.bare_frequency[qubit])
         else:
-            summary = table_dict(
-                qubit,
-                [
-                    "Low Power Resonator Frequency [Hz]",
-                    "TWPA Power",
-                ],
-                [
-                    np.round(fit.frequency[qubit]),
-                    np.round(fit.twpa_power[qubit]),
-                ],
-            )
+            label_2 = "Low Power Resonator Frequency [Hz]"
+            resonator_frequency = np.round(fit.frequency[qubit])
+
+        summary = table_dict(
+            qubit,
+            [
+                label_2,
+                label_1,
+            ],
+            [
+                resonator_frequency,
+                twpa_power,
+            ],
+        )
 
         fitting_report = table_html(summary)
 
