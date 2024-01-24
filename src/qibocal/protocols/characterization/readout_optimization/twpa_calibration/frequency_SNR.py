@@ -80,6 +80,7 @@ class ResonatorTWPAFrequencyData(Data):
             obj.power_level = PowerLevel(obj.power_level)  # pylint: disable=E1101
         return obj
 
+
 def _acquisition(
     params: ResonatorTWPAFrequencyParameters,
     platform: Platform,

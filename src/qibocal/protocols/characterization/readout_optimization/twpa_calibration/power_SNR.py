@@ -80,6 +80,7 @@ class ResonatorTWPAPowerData(Data):
             obj.power_level = PowerLevel(obj.power_level)  # pylint: disable=E1101
         return obj
 
+
 def _acquisition(
     params: ResonatorTWPAPowerParameters,
     platform: Platform,
@@ -136,7 +137,7 @@ def _acquisition(
             data.register_qubit(
                 ResonatorTWPAPowerType,
                 (qubit),
-                dict (
+                dict(
                     signal=resonator_spectroscopy_data.data[qubit].signal,
                     phase=resonator_spectroscopy_data.data[qubit].phase,
                     freq=resonator_spectroscopy_data.data[qubit].freq,
