@@ -9,7 +9,9 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.protocols.characterization import resonator_spectroscopy
+from qibocal.protocols.characterization.resonator_spectroscopy import (
+    resonator_spectroscopy,
+)
 from qibocal.protocols.characterization.utils import (
     HZ_TO_GHZ,
     PowerLevel,
@@ -138,8 +140,8 @@ def _acquisition(
         for qubit in qubits:
             qubits[qubit].twpa.local_oscillator.power = initial_twpa_pow[qubit] + _pow
 
-        resonator_spectroscopy_data = resonator_spectroscopy._acquisition(
-            resonator_spectroscopy.ResonatorSpectroscopyParameters.load(
+        resonator_spectroscopy_data, _ = resonator_spectroscopy.acquisition(
+            resonator_spectroscopy.parameters_type.load(
                 {
                     "freq_width": params.freq_width,
                     "freq_step": params.freq_step,
