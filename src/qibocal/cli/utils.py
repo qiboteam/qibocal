@@ -44,7 +44,7 @@ def generate_meta(backend, platform, path):
     meta = {}
     meta["title"] = path.name
     meta["backend"] = backend.name
-    meta["platform"] = str(platform)
+    meta["platform"] = platform.name
     meta["date"] = e.strftime("%Y-%m-%d")
     meta["start-time"] = e.strftime("%H:%M:%S")
     meta["end-time"] = e.strftime("%H:%M:%S")

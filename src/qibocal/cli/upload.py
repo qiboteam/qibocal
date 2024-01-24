@@ -91,3 +91,4 @@ def upload_report(path: pathlib.Path, tag: str, author: str):
 
     url = urljoin(ROOT_URL, randname)
     log.info(f"Upload completed. The result is available at:\n{url}")
+    return url

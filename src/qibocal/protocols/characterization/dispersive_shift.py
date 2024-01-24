@@ -292,7 +292,7 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
     if fit is not None:
         fig.add_trace(
             go.Scatter(
-                x=[fit.best_freq[qubit], fit.best_freq[qubit]],
+                x=[fit.best_freq[qubit] * HZ_TO_GHZ, fit.best_freq[qubit] * HZ_TO_GHZ],
                 y=[
                     np.min(np.concatenate((data_0.signal, data_1.signal))),
                     np.max(np.concatenate((data_0.signal, data_1.signal))),
@@ -306,7 +306,7 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
         )
 
         fig.add_vline(
-            x=fit.best_freq[qubit],
+            x=fit.best_freq[qubit] * HZ_TO_GHZ,
             line=dict(color="orange", width=3, dash="dash"),
             row=1,
             col=1,
@@ -317,7 +317,7 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
                 [
                     "State Zero Frequency [Hz]",
                     "State One Frequency [Hz]",
-                    "Chi Best [Hz]",
+                    "Chi [Hz]",
                     "Best Frequency [Hz]",
                 ],
                 np.round(
