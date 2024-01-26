@@ -142,10 +142,10 @@ def samples_to_p0(samples_list):
     Returns:
         list: list of probabilities corresponding to each row.
     """
-
-    ground = np.array([0] * len(samples_list[0][0]))
-    return np.count_nonzero((samples_list == ground).all(axis=2), axis=1) / len(
-        samples_list[0]
+    samples_list = np.array(samples_list)
+    return (
+        np.count_nonzero(np.all(samples_list == 0, axis=2), axis=1)
+        / samples_list.shape[1]
     )
 
 
