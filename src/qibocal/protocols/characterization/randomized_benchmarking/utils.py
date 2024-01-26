@@ -130,7 +130,6 @@ def number_to_str(
     return f"{value:.{precision}f} +{uncertainty[1]:.{precision}f} / -{uncertainty[0]:.{precision}f}"
 
 
-# FIXME: This one is wrong
 def samples_to_p0(samples_list):
     """Computes the probabilitiy of 0 from the list of samples.
 
@@ -150,8 +149,7 @@ def samples_to_p0(samples_list):
     )
 
 
-# FIXME: Go for either samples_to_p0 or samples_to_p0s depending on parallel
-def resample_p0(data, sample_size=100, homogeneous: bool = True, parallel: bool = True):
+def resample_p0(data, sample_size=100, homogeneous: bool = True):
     """Preforms parametric resampling of shots with binomial distribution
         and returns a list of "corrected" probabilites.
 
@@ -178,7 +176,7 @@ def resample_p0(data, sample_size=100, homogeneous: bool = True, parallel: bool 
             samples_corrected = np.random.binomial(
                 n=1, p=1 - p, size=(1, sample_size, *p.shape)
             ).T
-            resampled_data[-1].append(samples_to_p0(samples_corrected, parallel))
+            resampled_data[-1].append(samples_to_p0(samples_corrected))
     return resampled_data
 
 

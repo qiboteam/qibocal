@@ -247,7 +247,6 @@ def _fit(data: RBData) -> StandardRBResult:
                 bootstrap_y,
                 data.params["nshots"],
                 homogeneous=homogeneous,
-                parallel=data.params["parallel"],
             )
 
             # Compute y and popt estimates for each bootstrap iteration
