@@ -113,8 +113,6 @@ def virtual_phases(phases: dict[QubitId, float], platform: Platform, pair: Qubit
 
 def CZ_duration(duration: int, platform: Platform, pair: QubitPairId):
     """Update CZ duration for specific pair."""
-    if pair not in platform.pairs:
-        pair = (pair[1], pair[0])
     for pulse in platform.pairs[pair].native_gates.CZ.pulses:
         if pulse.qubit.name == pair[1]:
             pulse.duration = int(duration)
@@ -122,8 +120,6 @@ def CZ_duration(duration: int, platform: Platform, pair: QubitPairId):
 
 def CZ_amplitude(amp: float, platform: Platform, pair: QubitPairId):
     """Update CZ amplitude for specific pair."""
-    if pair not in platform.pairs:
-        pair = (pair[1], pair[0])
     for pulse in platform.pairs[pair].native_gates.CZ.pulses:
         if pulse.qubit.name == pair[1]:
             pulse.amplitude = float(amp)
