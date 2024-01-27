@@ -105,14 +105,15 @@ def test_virtual_phases_update(pair):
 
 @pytest.mark.parametrize("pair", PAIRS)
 def test_CZ_params_update(pair):
-    update.CZ_amplitude(RANDOM_FLOAT, PLATFORM, pair)
-    update.CZ_duration(RANDOM_INT, PLATFORM, pair)
+    if hasattr(PLATFORM.pairs[pair].native_gates, "CZ"):
+        if PLATFORM.pairs[pair].native_gates.CZ is not None:
+            update.CZ_amplitude(RANDOM_FLOAT, PLATFORM, pair)
+            update.CZ_duration(RANDOM_INT, PLATFORM, pair)
 
-    if PLATFORM.pairs[pair].native_gates.CZ is not None:
-        for pulse in PLATFORM.pairs[pair].native_gates.CZ.pulses:
-            if pulse.qubit.name == pair[1]:
-                assert pulse.duration == RANDOM_INT
-                assert pulse.amplitude == RANDOM_FLOAT
+            for pulse in PLATFORM.pairs[pair].native_gates.CZ.pulses:
+                if pulse.qubit.name == pair[1]:
+                    assert pulse.duration == RANDOM_INT
+                    assert pulse.amplitude == RANDOM_FLOAT
 
 
 @pytest.mark.parametrize("qubit", QUBITS)
