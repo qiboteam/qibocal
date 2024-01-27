@@ -531,7 +531,7 @@ actions:
   - id: chevron id
     priority: 0
     operation: chevron
-    qubits: [[0, 2],[1,2],[3,2], [2,3]]
+    qubits: [[0, 2],[1,2]]
     parameters:
       amplitude_min: 0.1
       amplitude_max: 0.6
