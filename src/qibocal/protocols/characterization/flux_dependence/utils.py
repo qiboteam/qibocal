@@ -403,6 +403,6 @@ def resonator_flux_dependence_fit_bounds(
     left_bound, right_bound = qubit_flux_dependence_fit_bounds(
         qubit_frequency=qubit_frequency, bias=bias
     )
-    left_bound += [bare_resonator_frequency - 0.5, 0]
-    right_bound += [bare_resonator_frequency + 0.5, 1]
+    left_bound += [bare_resonator_frequency * HZ_TO_GHZ - 0.5, 0]
+    right_bound += [bare_resonator_frequency * HZ_TO_GHZ + 0.5, 1]
     return (left_bound, right_bound)
