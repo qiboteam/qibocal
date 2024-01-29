@@ -31,7 +31,7 @@ def embed_circuit(circuit: Circuit, nqubits: int, qubit_ids: list) -> Circuit:
     return large_circuit
 
 
-def layer_circuit(layer_gen: Callable, depth: int, nqubit_ids, seed) -> Circuit:
+def layer_circuit(layer_gen: Callable, depth: int, qubit_ids, seed) -> Circuit:
     """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`.
 
     Args:
@@ -46,15 +46,19 @@ def layer_circuit(layer_gen: Callable, depth: int, nqubit_ids, seed) -> Circuit:
         raise_error(ValueError, "Depth must be type int and positive.")
     full_circuit = None
     # Build each layer, there will be depth many in the final circuit.
+    qubits_str = [str(i) for i in qubit_ids]
     for _ in range(depth):
         # Generate a layer.
-        new_layer = layer_gen(nqubit_ids, seed)
+        new_layer = layer_gen(qubit_ids, seed)
+        print("KKKKKK", new_layer)
         # Ensure new_layer is a circuit
         if isinstance(new_layer, Gate):
-            new_circuit = Circuit(max(new_layer.qubits) + 1)
+            new_circuit = Circuit(len(qubit_ids), wire_names=qubits_str)
             new_circuit.add(new_layer)
         elif all(isinstance(gate, Gate) for gate in new_layer):
-            new_circuit = Circuit(max(max(gate.qubits) for gate in new_layer) + 1)
+            new_circuit = Circuit(
+                max(max(gate.qubits) for gate in new_layer) + 1, wire_names=qubits_str
+            )
             new_circuit.add(new_layer)
         elif isinstance(new_layer, Circuit):
             new_circuit = new_layer
@@ -63,8 +67,10 @@ def layer_circuit(layer_gen: Callable, depth: int, nqubit_ids, seed) -> Circuit:
                 TypeError,
                 f"layer_gen must return type Circuit or Gate, but it is type {type(new_layer)}.",
             )
+        print(new_circuit.draw())
         if full_circuit is None:  # instantiate in first loop
-            full_circuit = Circuit(new_circuit.nqubits)
+            print("SSSSS", new_circuit.nqubits, qubits_str)
+            full_circuit = Circuit(new_circuit.nqubits, wire_names=qubits_str)
         full_circuit = full_circuit + new_circuit
     return full_circuit
 
@@ -77,18 +83,7 @@ def add_inverse_layer(circuit: Circuit, single_qubit=True):
     """
 
     if circuit.depth > 0:
-        if single_qubit:
-            # Build an inverse gate for each qubit out of the unitaries using the light cone
-            # method and take the daggered version of that.
-            for qubit in range(circuit.nqubits):
-                circuit_q = circuit.light_cone(qubit)[0]
-                circuit.add(gates.Unitary(circuit_q.unitary(), qubit).dagger())
-        else:
-            # Build a gate out of the unitary of the whole circuit and
-            # take the daggered version of that as the last gate.
-            circuit.add(
-                gates.Unitary(circuit.unitary(), *range(circuit.nqubits)).dagger()
-            )
+        circuit.add(gates.Unitary(circuit.unitary(), *range(circuit.nqubits)).dagger())
 
 
 def add_measurement_layer(circuit: Circuit):

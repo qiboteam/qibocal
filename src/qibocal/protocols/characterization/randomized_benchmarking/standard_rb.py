@@ -113,7 +113,7 @@ def layer_gen(nqubit_ids, seed):
 def random_circuits(
     depth: int,
     qubit_ids: Union[Qubits, list[QubitId]],
-    nqubits: int,
+    nqubit: int,
     niter,
     seed,
 ) -> Iterable:
@@ -132,10 +132,10 @@ def random_circuits(
 
     circuits = []
     for _ in range(niter):
-        circuit = layer_circuit(layer_gen, depth, len(qubit_ids), seed)
+        circuit = layer_circuit(layer_gen, depth, qubit_ids, seed)
         add_inverse_layer(circuit)
         add_measurement_layer(circuit)
-        circuit = embed_circuit(circuit, nqubits, qubit_ids)
+        circuit = embed_circuit(circuit, nqubit, qubit_ids)
         circuits.append(circuit)
     return circuits
 
@@ -187,9 +187,11 @@ def _acquisition(
     data = RBData(params=params, depths=list(set(params.depths)))
 
     circuits = []
-    qubit_ids = list(qubits)
+    qubits_ids = list(qubits)
     for depth in params.depths:
-        circuits_depth = random_circuits(depth, qubits, params.niter, params.seed)
+        circuits_depth = random_circuits(
+            depth, qubits_ids, nqubits, params.niter, params.seed
+        )  # TODO: is nqubits useful?
         circuits.extend(circuits_depth)
 
     # TODO: Check circuits being random properly
