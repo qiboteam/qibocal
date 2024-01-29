@@ -144,7 +144,7 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
         pguess = [0, np.sign(y[0]) * 0.5, 1 / f, 0, 0]
         try:
             popt, _ = curve_fit(
-                utils.rabi_amplitude_function,
+                utils.rabi_length_function,
                 x,
                 y,
                 p0=pguess,
@@ -161,7 +161,12 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
                 popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
                 popt[4] / (x_max - x_min),
             ]
-            pi_pulse_parameter = np.abs(translated_popt[2] / 2)
+            pi_pulse_parameter = (
+                translated_popt[2]
+                / 2
+                * utils.period_correction_factor(phase=translated_popt[3])
+            )
+
         except:
             log.warning("rabi_fit: the fitting was not succesful")
             pi_pulse_parameter = 0

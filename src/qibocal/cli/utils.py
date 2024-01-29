@@ -10,8 +10,8 @@ from qibocal.config import log, raise_error
 from qibocal.utils import allocate_qubits_pairs, allocate_single_qubits
 
 RUNCARD = "runcard.yml"
-UPDATED_PLATFORM = "new_platform.yml"
-PLATFORM = "platform.yml"
+UPDATED_PLATFORM = "new_platform"
+PLATFORM = "platform"
 META = "meta.json"
 
 
