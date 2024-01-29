@@ -1,4 +1,5 @@
 """Helper functions to update parameters in platform."""
+
 from typing import Union
 
 from qibolab import pulses

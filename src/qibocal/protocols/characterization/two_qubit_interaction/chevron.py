@@ -1,4 +1,5 @@
 """SWAP experiment for two qubit gates, chevron plot."""
+
 from dataclasses import dataclass, field
 from typing import Optional
 

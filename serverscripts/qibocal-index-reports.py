@@ -1,6 +1,7 @@
 """qibocal-index-reports.py
 Generates a JSON index with reports information.
 """
+
 import json
 import pathlib
 import sys

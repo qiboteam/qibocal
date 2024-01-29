@@ -1,6 +1,5 @@
 """Auxiliary functions to run CHSH protocol."""
 
-
 READOUT_BASIS = ["ZZ", "ZX", "XZ", "XX"]
 
 

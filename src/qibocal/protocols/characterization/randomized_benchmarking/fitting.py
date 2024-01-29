@@ -1,6 +1,7 @@
 """In this python script the fitting methods for the gate set protocols are defined.
 They consist mostly of exponential decay fitting.
 """
+
 from typing import Optional, Union
 
 import numpy as np
