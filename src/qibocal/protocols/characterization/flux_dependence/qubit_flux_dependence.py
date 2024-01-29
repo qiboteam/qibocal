@@ -16,7 +16,7 @@ from qibocal.protocols.characterization.qubit_spectroscopy_ef import (
     DEFAULT_ANHARMONICITY,
 )
 
-from ..utils import GHZ_TO_HZ, table_dict, table_html
+from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, table_dict, table_html
 from . import utils
 
 
@@ -72,8 +72,11 @@ QubitFluxType = np.dtype(
 class QubitFluxData(Data):
     """QubitFlux acquisition outputs."""
 
-    """Resonator type."""
     resonator_type: str
+    """Resonator type."""
+
+    qubit_frequency: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit frequencies."""
 
     data: dict[QubitId, npt.NDArray[QubitFluxType]] = field(default_factory=dict)
     """Raw data acquired."""
@@ -96,10 +99,12 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
+    qubit_frequency = {}
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.drive_duration
         )
+        qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
 
         if params.transition == "02":
             if qubits[qubit].anharmonicity:
@@ -138,7 +143,9 @@ def _acquisition(
             type=SweeperType.OFFSET,
         )
     ]
-    data = QubitFluxData(resonator_type=platform.resonator_type)
+    data = QubitFluxData(
+        resonator_type=platform.resonator_type, qubit_frequency=qubit_frequency
+    )
 
     options = ExecutionParameters(
         nshots=params.nshots,
@@ -159,7 +166,6 @@ def _acquisition(
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
                 bias=delta_bias_range + sweetspot,
             )
-
     return data
 
 
@@ -200,20 +206,9 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         popt = curve_fit(
             utils.transmon_frequency_diagonal,
             biases,
-            frequencies / 1e9,
-            bounds=(
-                [
-                    np.mean(qubit_data.freq) / 1e9 - 1,
-                    0,
-                    0,
-                    np.mean(qubit_data.bias) - 0.5,
-                ],
-                [
-                    np.mean(qubit_data.freq) / 1e9 + 1,
-                    1,
-                    np.inf,
-                    np.mean(qubit_data.bias) + 0.5,
-                ],
+            frequencies * HZ_TO_GHZ,
+            bounds=utils.qubit_flux_dependence_fit_bounds(
+                data.qubit_frequency[qubit], qubit_data.bias
             ),
             maxfev=100000,
         )[0]

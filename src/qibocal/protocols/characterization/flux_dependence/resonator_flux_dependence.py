@@ -12,7 +12,7 @@ from scipy.optimize import curve_fit
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from ..utils import GHZ_TO_HZ, table_dict, table_html
+from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, table_dict, table_html
 from . import utils
 
 
@@ -100,6 +100,9 @@ def _acquisition(
     bare_resonator_frequency = {}
     for qubit in qubits:
         qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
+        bare_resonator_frequency[qubit] = platform.qubits[
+            qubit
+        ].bare_resonator_frequency
 
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
         sequence.add(ro_pulses[qubit])
@@ -128,7 +131,9 @@ def _acquisition(
     ]
 
     data = ResonatorFluxData(
-        resonator_type=platform.resonator_type, qubit_frequency=qubit_frequency
+        resonator_type=platform.resonator_type,
+        qubit_frequency=qubit_frequency,
+        bare_resonator_frequency=bare_resonator_frequency,
     )
 
     options = ExecutionParameters(
@@ -194,24 +199,11 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         popt = curve_fit(
             utils.transmon_readout_frequency_diagonal,
             biases,
-            frequencies / 1e9,
-            bounds=(
-                [
-                    data.qubit_frequency[qubit] / 1e9 - 0.5,
-                    0,
-                    0,
-                    np.mean(qubit_data.bias) - 0.5,
-                    np.mean(qubit_data.freq) / 1e9 - 1,
-                    0,
-                ],
-                [
-                    data.qubit_frequency[qubit] / 1e9 + 0.5,
-                    1,
-                    np.inf,
-                    np.mean(qubit_data.bias) + 0.5,
-                    np.mean(qubit_data.freq) / 1e9 + 1,
-                    1,
-                ],
+            frequencies * HZ_TO_GHZ,
+            bounds=utils.resonator_flux_dependence_fit_bounds(
+                data.qubit_frequency[qubit],
+                qubit_data.bias,
+                data.bare_resonator_frequency[qubit],
             ),
             maxfev=100000,
         )[0]
