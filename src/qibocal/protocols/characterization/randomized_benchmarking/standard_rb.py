@@ -2,14 +2,15 @@ from dataclasses import dataclass, field
 from typing import Iterable, Optional, TypedDict, Union
 
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 import qibo
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.bootstrap import bootstrap, data_uncertainties
-from qibocal.config import log, raise_error
+from qibocal.config import log
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
 from ..utils import table_dict, table_html
@@ -19,7 +20,6 @@ from .circuit_tools import (
     embed_circuit,
     layer_circuit,
 )
-from .data import RBData, RBType
 from .fitting import exp1B_func, fit_exp1B_func
 from .utils import number_to_str, random_clifford, resample_p0, samples_to_p0s
 
@@ -68,6 +68,25 @@ class StandardRBParameters(Parameters):
             self.depths = list(
                 range(self.depths["start"], self.depths["stop"], self.depths["step"])
             )
+
+
+RBType = np.dtype(
+    [
+        ("samples", np.int32),
+    ]
+)
+"""Custom dtype for RB."""
+
+
+@dataclass
+class RBData(Data):
+    """A pandas DataFrame bastard child. The output of the acquisition function."""
+
+    # TODO: remove params
+    params: StandardRBParameters
+    depths: list
+    data: dict[QubitId, npt.NDArray[RBType]] = field(default_factory=dict)
+    """Raw data acquired."""
 
 
 @dataclass
@@ -149,12 +168,7 @@ def _acquisition(
     # For simulations, a noise model can be added.
     noise_model = None
     if params.noise_model:
-        if platform and platform.name != "dummy":
-            raise_error(
-                NotImplementedError,
-                f"Backend qibolab ({platform}) does not perform noise models simulation.",
-            )
-        elif platform:
+        if platform:
             log.warning(
                 (
                     "Backend qibolab (%s) does not perform noise models simulation. "
@@ -169,15 +183,13 @@ def _acquisition(
         params.noise_params = noise_model.params.tolist()
 
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
-    nqubits = platform.nqubits if platform else max(qubits) + 1
-    data = RBData(params=params.__dict__, depths=list(set(params.depths)))
+    nqubits = len(qubits)
+    data = RBData(params=params, depths=list(set(params.depths)))
 
     circuits = []
     qubit_ids = list(qubits)
     for depth in params.depths:
-        circuits_depth = random_circuits(
-            depth, qubit_ids, nqubits, params.niter, params.seed
-        )
+        circuits_depth = random_circuits(depth, qubits, params.niter, params.seed)
         circuits.extend(circuits_depth)
 
     # TODO: Check circuits being random properly
@@ -196,7 +208,7 @@ def _acquisition(
             )
 
     # Store the parameters to display them later.
-    data.params = params.__dict__
+    # data.params = params.__dict__
 
     return data
 
@@ -229,8 +241,8 @@ def _fit(data: RBData) -> StandardRBResult:
             raise NotImplementedError
 
         # Extract fitting and bootstrap parameters if given
-        uncertainties = data.params["uncertainties"]
-        n_bootstrap = data.params["n_bootstrap"]
+        uncertainties = data.params.uncertainties
+        n_bootstrap = data.params.n_bootstrap
 
         popt_estimates = []
         if uncertainties and n_bootstrap:
@@ -239,13 +251,13 @@ def _fit(data: RBData) -> StandardRBResult:
                 samples,
                 n_bootstrap,
                 homogeneous=homogeneous,
-                seed=data.params["seed"],
+                seed=data.params.seed,
             )
 
             # Parametric bootstrap resampling of "corrected" probabilites from binomial distribution
             bootstrap_y = resample_p0(
                 bootstrap_y,
-                data.params["nshots"],
+                data.params.nshots,
                 homogeneous=homogeneous,
             )
 
@@ -379,9 +391,9 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
             qubit,
             ["niter", "nshots", "uncertainties", "fidelity", "pulse_fidelity"],
             [
-                data.params["niter"],
-                data.params["nshots"],
-                data.params["uncertainties"],
+                data.params.niter,
+                data.params.nshots,
+                data.params.uncertainties,
                 number_to_str(
                     fit.fidelity[qubit], np.array(fit.fit_uncertainties[qubit][1]) / 2
                 ),
