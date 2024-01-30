@@ -50,7 +50,6 @@ def layer_circuit(layer_gen: Callable, depth: int, qubit_ids, seed) -> Circuit:
     for _ in range(depth):
         # Generate a layer.
         new_layer = layer_gen(qubit_ids, seed)
-        print("KKKKKK", new_layer)
         # Ensure new_layer is a circuit
         if isinstance(new_layer, Gate):
             new_circuit = Circuit(len(qubit_ids), wire_names=qubits_str)
@@ -67,9 +66,7 @@ def layer_circuit(layer_gen: Callable, depth: int, qubit_ids, seed) -> Circuit:
                 TypeError,
                 f"layer_gen must return type Circuit or Gate, but it is type {type(new_layer)}.",
             )
-        print(new_circuit.draw())
         if full_circuit is None:  # instantiate in first loop
-            print("SSSSS", new_circuit.nqubits, qubits_str)
             full_circuit = Circuit(new_circuit.nqubits, wire_names=qubits_str)
         full_circuit = full_circuit + new_circuit
     return full_circuit
