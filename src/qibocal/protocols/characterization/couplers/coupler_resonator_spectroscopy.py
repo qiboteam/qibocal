@@ -165,7 +165,16 @@ def _plot(
 
     for qubit in qubit_pair:
         if qubit in data.data.keys():
-            return flux_dependence_plot(data, fit, qubit)
+            fig = flux_dependence_plot(data, fit, qubit)[0]
+            fig.update_yaxes(title_text="Pulse Amplitude [a.u.]", row=1, col=1)
+            fig.layout.annotations[0].update(
+                text="Signal [a.u.] Qubit" + str(qubit),
+            )
+            fig.layout.annotations[1].update(
+                text="Phase [rad] Qubit" + str(qubit),
+            )
+
+            return [fig], ""
 
 
 def _update(results: CouplerSpectroscopyResults, platform: Platform, qubit: QubitId):

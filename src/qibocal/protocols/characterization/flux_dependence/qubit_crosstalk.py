@@ -71,12 +71,7 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
-    Ec = {}
-    Ej = {}
     for qubit in qubits:
-        Ec[qubit] = qubits[qubit].Ec
-        Ej[qubit] = qubits[qubit].Ej
-
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.drive_duration
         )
@@ -144,7 +139,7 @@ def _acquisition(
             )
             for flux_qubit in flux_qubits
         ]
-    data = QubitCrosstalkData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
+    data = QubitCrosstalkData(resonator_type=platform.resonator_type)
 
     options = ExecutionParameters(
         nshots=params.nshots,
