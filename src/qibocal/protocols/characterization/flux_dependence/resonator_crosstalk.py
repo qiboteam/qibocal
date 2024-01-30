@@ -88,9 +88,6 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
-    delta_bias_range = np.arange(
-        -params.bias_width / 2, params.bias_width / 2, params.bias_step
-    )
     if params.flux_qubits is None:
         flux_qubits = list(platform.qubits.keys())
 
