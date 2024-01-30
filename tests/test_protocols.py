@@ -1,4 +1,5 @@
 """Test routines' acquisition method using dummy platform"""
+
 import pathlib
 
 import pytest
