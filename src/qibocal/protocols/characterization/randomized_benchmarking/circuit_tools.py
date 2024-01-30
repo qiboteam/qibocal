@@ -1,34 +1,10 @@
 """Collection of function to generate qibo circuits."""
-from copy import deepcopy
 from typing import Callable
 
 from qibo import gates
 from qibo.config import raise_error
 from qibo.gates.abstract import Gate
 from qibo.models import Circuit
-
-
-def embed_circuit(circuit: Circuit, nqubits: int, qubit_ids: list) -> Circuit:
-    """Embeds `circuit` into a larger circuit of size `nqubits` on the qubits specified by `qubits`.
-
-    Args:
-        circuit (Circuit): circuit to be embedded.
-        nqubits (int): Number qubits in the large circuit.
-        qubits (list): The qubits indices of larger circuit corresponding to qubits of `circuit.
-
-    Returns:
-        Circuit: Circuit with nqubits many qubits.
-    """
-
-    # get parameters of original circuit
-    circuit_init_kwargs = deepcopy(circuit.init_kwargs)
-    # Adjust the number of qubits number.
-    circuit_init_kwargs["nqubits"] = nqubits
-    # Instantiate embedding circuit
-    large_circuit = Circuit(**circuit_init_kwargs)
-    # Place gates from from original circuit into embedding circuit
-    large_circuit.add(circuit.on_qubits(*qubit_ids))
-    return large_circuit
 
 
 def layer_circuit(layer_gen: Callable, depth: int, qubit_ids, seed) -> Circuit:

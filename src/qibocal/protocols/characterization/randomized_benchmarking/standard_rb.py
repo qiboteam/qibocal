@@ -14,12 +14,7 @@ from qibocal.config import raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
 from ..utils import table_dict, table_html
-from .circuit_tools import (
-    add_inverse_layer,
-    add_measurement_layer,
-    embed_circuit,
-    layer_circuit,
-)
+from .circuit_tools import add_inverse_layer, add_measurement_layer, layer_circuit
 from .fitting import exp1B_func, fit_exp1B_func
 from .utils import number_to_str, random_clifford, resample_p0, samples_to_p0s
 
@@ -55,7 +50,7 @@ class StandardRBParameters(Parameters):
     Defaults is ``None``."""
     parallel: bool = True
     """Marginalize data to get several RBs from a big circuit"""
-    noise_model: str = ""
+    noise_model: Optional[str] = None
     """For simulation purposes, string has to match what is in
     :mod:`qibocal.protocols.characterization.randomized_benchmarking.noisemodels`"""
     noise_params: Optional[list] = field(default_factory=list)
@@ -113,7 +108,6 @@ def layer_gen(nqubit_ids, seed):
 def random_circuits(
     depth: int,
     qubit_ids: Union[Qubits, list[QubitId]],
-    nqubit: int,
     niter,
     seed,
     noise_model=None,
@@ -136,7 +130,6 @@ def random_circuits(
         circuit = layer_circuit(layer_gen, depth, qubit_ids, seed)
         add_inverse_layer(circuit)
         add_measurement_layer(circuit)
-        circuit = embed_circuit(circuit, nqubit, qubit_ids)
         if noise_model is not None:
             circuit = noise_model.apply(circuit)
         circuits.append(circuit)
@@ -165,11 +158,13 @@ def _acquisition(
 
     # GlobalBackend.set_backend("qibolab", platform)
     backend = GlobalBackend()
+    print(backend)
     print(params)
     # For simulations, a noise model can be added.
     noise_model = None
     if params.noise_model is not None:
-        if str(backend) == "qibolab":
+        print("DDDDDD", str(backend))
+        if backend.name == "qibolab":
             raise_error(
                 ValueError,
                 "Backend qibolab (%s) does not perform noise models simulation. "
@@ -189,7 +184,7 @@ def _acquisition(
     qubits_ids = list(qubits)
     for depth in params.depths:
         circuits_depth = random_circuits(
-            depth, qubits_ids, nqubits, params.niter, params.seed, noise_model
+            depth, qubits_ids, params.niter, params.seed, noise_model
         )  # TODO: is nqubits useful?
         circuits.extend(circuits_depth)
 
