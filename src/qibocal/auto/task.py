@@ -30,7 +30,8 @@ from .status import Failure, Normal, Status
 
 MAX_PRIORITY = int(1e9)
 """A number bigger than whatever will be manually typed. But not so insanely big not to fit in a native integer."""
-
+DEFAULT_NSHOTS = 100
+"""Default number on shots when the platform is not provided."""
 TaskId = tuple[Id, int]
 """Unique identifier for executed tasks."""
 
@@ -148,12 +149,16 @@ class Task:
         completed = Completed(self, Normal(), folder)
         task_qubits = self._allocate_local_qubits(qubits, platform)
         try:
-            if self.parameters.nshots is None:
-                self.action.parameters["nshots"] = platform.settings.nshots
-            if self.parameters.relaxation_time is None:
-                self.action.parameters[
-                    "relaxation_time"
-                ] = platform.settings.relaxation_time
+            if platform is not None:
+                if self.parameters.nshots is None:
+                    self.action.parameters["nshots"] = platform.settings.nshots
+                if self.parameters.relaxation_time is None:
+                    self.action.parameters[
+                        "relaxation_time"
+                    ] = platform.settings.relaxation_time
+            else:
+                self.action.parameters["nshots"] = DEFAULT_NSHOTS
+
             operation: Routine = self.operation
             parameters = self.parameters
 

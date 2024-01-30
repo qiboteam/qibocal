@@ -39,6 +39,7 @@ def show_logs(func):
     # necessary to maintain the function signature
     def wrapper(*args, **kwds):
         start = time.perf_counter()
+        print(func)
         out = func(*args, **kwds)
         end = time.perf_counter()
         if end - start < 1:

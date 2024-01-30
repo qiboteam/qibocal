@@ -4,13 +4,13 @@ from typing import Iterable, Optional, TypedDict, Union
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-import qibo
+from qibo.backends import GlobalBackend
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.bootstrap import bootstrap, data_uncertainties
-from qibocal.config import log
+from qibocal.config import raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
 from ..utils import table_dict, table_html
@@ -60,7 +60,7 @@ class StandardRBParameters(Parameters):
     :mod:`qibocal.protocols.characterization.randomized_benchmarking.noisemodels`"""
     noise_params: Optional[list] = field(default_factory=list)
     """With this the noise model will be initialized, if not given random values will be used."""
-    nshots: int = 1
+    nshots: int = 10
     """Just to add the default value"""
 
     def __post_init__(self):
@@ -160,31 +160,27 @@ def _acquisition(
         RBData: The depths, samples and ground state probability of each experiment in the scan.
     """
 
-    from qibo.backends import GlobalBackend
-
-    GlobalBackend.set_backend("qibolab", platform)
+    # GlobalBackend.set_backend("qibolab", platform)
     backend = GlobalBackend()
-
+    print(params)
     # For simulations, a noise model can be added.
     noise_model = None
-    if params.noise_model:
-        if platform:
-            log.warning(
-                (
-                    "Backend qibolab (%s) does not perform noise models simulation. "
-                    "Setting backend to ``NumpyBackend`` instead."
-                ),
-                platform.name,
+    if params.noise_model is not None:
+        if str(backend) == "qibolab":
+            raise_error(
+                ValueError,
+                "Backend qibolab (%s) does not perform noise models simulation. "
+                "Setting backend to ``NumpyBackend`` instead.",
             )
-            qibo.set_backend("numpy")
-            platform = None
 
         noise_model = getattr(noisemodels, params.noise_model)(params.noise_params)
         params.noise_params = noise_model.params.tolist()
 
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     nqubits = len(qubits)
-    data = RBData(params=params, depths=list(set(params.depths)))
+    data = RBData(
+        params=params, depths=list(set(params.depths))
+    )  # TODO: can depths just be a set ?
 
     circuits = []
     qubits_ids = list(qubits)
@@ -199,7 +195,7 @@ def _acquisition(
     for executed_circuit, circuit in zip(executed_circuits, circuits):
         depth = (circuit.depth - 2) if circuit.depth > 1 else 0
         for nqubit, qubit_id in enumerate(qubits):
-            samples = executed_circuit.samples()
+            samples = executed_circuit.samples(binary=True)
             samples = samples.T[nqubit]
             data.register_qubit(
                 RBType,
@@ -208,7 +204,7 @@ def _acquisition(
                     samples=samples,
                 ),
             )
-
+    print(data)
     # Store the parameters to display them later.
     # data.params = params.__dict__
 
