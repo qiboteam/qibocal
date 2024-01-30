@@ -116,6 +116,7 @@ def random_circuits(
     nqubit: int,
     niter,
     seed,
+    noise_model=None,
 ) -> Iterable:
     """Returns single-qubit random self-inverting Clifford circuits.
 
@@ -136,6 +137,8 @@ def random_circuits(
         add_inverse_layer(circuit)
         add_measurement_layer(circuit)
         circuit = embed_circuit(circuit, nqubit, qubit_ids)
+        if noise_model is not None:
+            circuit = noise_model.apply(circuit)
         circuits.append(circuit)
     return circuits
 
@@ -186,14 +189,16 @@ def _acquisition(
     qubits_ids = list(qubits)
     for depth in params.depths:
         circuits_depth = random_circuits(
-            depth, qubits_ids, nqubits, params.niter, params.seed
+            depth, qubits_ids, nqubits, params.niter, params.seed, noise_model
         )  # TODO: is nqubits useful?
         circuits.extend(circuits_depth)
 
     # TODO: Check circuits being random properly
     executed_circuits = backend.execute_circuits(circuits, nshots=params.nshots)
-    for executed_circuit, circuit in zip(executed_circuits, circuits):
-        depth = (circuit.depth - 2) if circuit.depth > 1 else 0
+    for i, (executed_circuit, circuit) in enumerate(zip(executed_circuits, circuits)):
+        depth = params.depths[i // params.niter]
+        # `depth` is the number of gates excluded the noise and measurement ones
+        # WARNING: `depth` does not count the number of physical gates (after compilation)
         for nqubit, qubit_id in enumerate(qubits):
             samples = executed_circuit.samples(binary=True)
             samples = samples.T[nqubit]
@@ -204,7 +209,6 @@ def _acquisition(
                     samples=samples,
                 ),
             )
-    print(data)
     # Store the parameters to display them later.
     # data.params = params.__dict__
 
@@ -231,6 +235,7 @@ def _fit(data: RBData) -> StandardRBResult:
         # Extract depths and probabilities
         x = data.depths
         y = samples_to_p0s(data.data, qubit)
+        print("FFFFFF", x)
         samples = [data.data[qubit, depth].samples.tolist() for depth in x]
 
         """This is when you sample a depth more than once"""
