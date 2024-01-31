@@ -1,4 +1,5 @@
 """Chi2 validation"""
+
 from typing import List, Optional, Union
 
 import numpy as np

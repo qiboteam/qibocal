@@ -31,9 +31,9 @@ class ReadoutMitigationMatrixParameters(Parameters):
 
 @dataclass
 class ReadoutMitigationMatrixResults(Results):
-    readout_mitigation_matrix: dict[
-        tuple[QubitId, ...], npt.NDArray[np.float64]
-    ] = field(default_factory=dict)
+    readout_mitigation_matrix: dict[tuple[QubitId, ...], npt.NDArray[np.float64]] = (
+        field(default_factory=dict)
+    )
     """Readout mitigation matrices (inverse of measurement matrix)."""
     measurement_matrix: dict[tuple[QubitId, ...], npt.NDArray[np.float64]] = field(
         default_factory=dict

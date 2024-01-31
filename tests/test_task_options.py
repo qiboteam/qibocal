@@ -1,4 +1,5 @@
 """Test routines' acquisition method using dummy platform"""
+
 from copy import deepcopy
 
 import pytest

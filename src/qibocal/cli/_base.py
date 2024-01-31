@@ -1,4 +1,5 @@
 """Adds global CLI options."""
+
 import getpass
 import pathlib
 
