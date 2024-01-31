@@ -1,4 +1,5 @@
 """Chi2 validation"""
+
 from typing import Union
 
 from qibolab.qubits import QubitId, QubitPairId

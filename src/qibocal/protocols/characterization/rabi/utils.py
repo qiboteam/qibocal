@@ -213,4 +213,5 @@ def period_correction_factor(phase: float):
 
     """
 
-    return 1 - np.modf(phase / np.pi)[0]
+    x = phase / np.pi
+    return np.round(1 + x) - x
