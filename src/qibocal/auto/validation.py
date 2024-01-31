@@ -1,4 +1,5 @@
 """Validation module."""
+
 from dataclasses import dataclass
 from typing import NewType, Optional, Union
 

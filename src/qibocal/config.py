@@ -1,4 +1,5 @@
 """Custom logger implemenation."""
+
 import logging
 import os
 
