@@ -25,15 +25,20 @@ def layer_circuit(layer_gen: Callable, depth: int, qubit_ids, seed) -> Circuit:
     qubits_str = [str(i) for i in qubit_ids]
     for _ in range(depth):
         # Generate a layer.
-        new_layer = layer_gen(qubit_ids, seed)
+        new_layer = layer_gen(
+            [i for i in range(len(qubit_ids))], seed
+        )  # TODO: find better implementation
         # Ensure new_layer is a circuit
         if isinstance(new_layer, Gate):
             new_circuit = Circuit(len(qubit_ids), wire_names=qubits_str)
             new_circuit.add(new_layer)
         elif all(isinstance(gate, Gate) for gate in new_layer):
-            new_circuit = Circuit(
-                max(max(gate.qubits) for gate in new_layer) + 1, wire_names=qubits_str
-            )
+            new_circuit = Circuit(len(qubit_ids), wire_names=qubits_str)
+            print(new_circuit.draw())
+            print(new_layer)
+            for gate in new_layer:
+                print(gate.target_qubits)
+
             new_circuit.add(new_layer)
         elif isinstance(new_layer, Circuit):
             new_circuit = new_layer
