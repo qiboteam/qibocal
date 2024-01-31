@@ -189,7 +189,9 @@ def _acquisition(
         circuits.extend(circuits_depth)
 
     # TODO: Check circuits being random properly
-    executed_circuits = backend.execute_circuits(circuits, nshots=params.nshots)
+    executed_circuits = backend.execute_circuits(
+        circuits, nshots=params.nshots, transpile=False
+    )
     for i, (executed_circuit, circuit) in enumerate(zip(executed_circuits, circuits)):
         depth = params.depths[i // params.niter]
         # `depth` is the number of gates excluded the noise and measurement ones
