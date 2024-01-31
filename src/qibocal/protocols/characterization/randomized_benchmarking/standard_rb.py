@@ -127,12 +127,14 @@ def random_circuits(
 
     circuits = []
     for _ in range(niter):
-        circuit = layer_circuit(layer_gen, depth, qubit_ids, seed)
-        add_inverse_layer(circuit)
-        add_measurement_layer(circuit)
-        if noise_model is not None:
-            circuit = noise_model.apply(circuit)
-        circuits.append(circuit)
+        for qubit in qubit_ids:
+            print(qubit)
+            circuit = layer_circuit(layer_gen, depth, qubit, seed)
+            add_inverse_layer(circuit)
+            add_measurement_layer(circuit)
+            if noise_model is not None:
+                circuit = noise_model.apply(circuit)
+            circuits.append(circuit)
     return circuits
 
 
@@ -158,12 +160,9 @@ def _acquisition(
 
     # GlobalBackend.set_backend("qibolab", platform)
     backend = GlobalBackend()
-    print(backend)
-    print(params)
     # For simulations, a noise model can be added.
     noise_model = None
     if params.noise_model is not None:
-        print("DDDDDD", str(backend))
         if backend.name == "qibolab":
             raise_error(
                 ValueError,
@@ -186,29 +185,30 @@ def _acquisition(
         circuits_depth = random_circuits(
             depth, qubits_ids, params.niter, params.seed, noise_model
         )  # TODO: is nqubits useful?
+        print(circuits_depth, len(circuits_depth))
         circuits.extend(circuits_depth)
 
     # TODO: Check circuits being random properly
-    executed_circuits = backend.execute_circuits(
-        circuits, nshots=params.nshots, transpile=False
-    )
-    for i, (executed_circuit, circuit) in enumerate(zip(executed_circuits, circuits)):
+    executed_circuits = backend.execute_circuits(circuits, nshots=params.nshots)
+    samples = []
+    for i in executed_circuits:
+        samples.extend(i.samples())
+    nqubits = len(qubits_ids)
+    samples = np.reshape(samples, (-1, params.nshots, nqubits))
+    # import pdb; pdb.set_trace()
+    for i, sample in enumerate(samples):
         depth = params.depths[i // params.niter]
         # `depth` is the number of gates excluded the noise and measurement ones
         # WARNING: `depth` does not count the number of physical gates (after compilation)
+        sample = sample.T
         for nqubit, qubit_id in enumerate(qubits):
-            samples = executed_circuit.samples(binary=True)
-            samples = samples.T[nqubit]
             data.register_qubit(
                 RBType,
                 (qubit_id, depth),
                 dict(
-                    samples=samples,
+                    samples=sample[nqubit],
                 ),
             )
-    # Store the parameters to display them later.
-    # data.params = params.__dict__
-
     return data
 
 
@@ -232,7 +232,6 @@ def _fit(data: RBData) -> StandardRBResult:
         # Extract depths and probabilities
         x = data.depths
         y = samples_to_p0s(data.data, qubit)
-        print("FFFFFF", x)
         samples = [data.data[qubit, depth].samples.tolist() for depth in x]
 
         """This is when you sample a depth more than once"""

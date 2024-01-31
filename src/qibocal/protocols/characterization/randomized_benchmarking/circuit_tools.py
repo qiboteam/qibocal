@@ -7,7 +7,7 @@ from qibo.gates.abstract import Gate
 from qibo.models import Circuit
 
 
-def layer_circuit(layer_gen: Callable, depth: int, qubit_ids, seed) -> Circuit:
+def layer_circuit(layer_gen: Callable, depth: int, qubit, seed) -> Circuit:
     """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`.
 
     Args:
@@ -22,22 +22,16 @@ def layer_circuit(layer_gen: Callable, depth: int, qubit_ids, seed) -> Circuit:
         raise_error(ValueError, "Depth must be type int and positive.")
     full_circuit = None
     # Build each layer, there will be depth many in the final circuit.
-    qubits_str = [str(i) for i in qubit_ids]
+    qubits_str = [str(qubit)]
     for _ in range(depth):
         # Generate a layer.
-        new_layer = layer_gen(
-            [i for i in range(len(qubit_ids))], seed
-        )  # TODO: find better implementation
+        new_layer = layer_gen(1, seed)  # TODO: find better implementation
         # Ensure new_layer is a circuit
         if isinstance(new_layer, Gate):
-            new_circuit = Circuit(len(qubit_ids), wire_names=qubits_str)
+            new_circuit = Circuit(1, wire_names=qubits_str)
             new_circuit.add(new_layer)
         elif all(isinstance(gate, Gate) for gate in new_layer):
-            new_circuit = Circuit(len(qubit_ids), wire_names=qubits_str)
-            print(new_circuit.draw())
-            print(new_layer)
-            for gate in new_layer:
-                print(gate.target_qubits)
+            new_circuit = Circuit(1, wire_names=qubits_str)
 
             new_circuit.add(new_layer)
         elif isinstance(new_layer, Circuit):
