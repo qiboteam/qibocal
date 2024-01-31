@@ -128,7 +128,6 @@ def random_circuits(
     circuits = []
     for _ in range(niter):
         for qubit in qubit_ids:
-            print(qubit)
             circuit = layer_circuit(layer_gen, depth, qubit, seed)
             add_inverse_layer(circuit)
             add_measurement_layer(circuit)
@@ -185,7 +184,6 @@ def _acquisition(
         circuits_depth = random_circuits(
             depth, qubits_ids, params.niter, params.seed, noise_model
         )  # TODO: is nqubits useful?
-        print(circuits_depth, len(circuits_depth))
         circuits.extend(circuits_depth)
 
     # TODO: Check circuits being random properly
