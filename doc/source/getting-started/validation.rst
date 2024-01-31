@@ -4,7 +4,7 @@ Adding validation to protocols
 Validation of a single node
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Validation can be added to a node in the runcard by adding an entry ``validator``.
+The validation step can be added to a node in the runcard by adding an entry ``validator``.
 
 Here is an example of a runcard which validates the results of a T1 experiment
 by checking if the value of the :math:`\chi^2` obtained from the fit is below the
