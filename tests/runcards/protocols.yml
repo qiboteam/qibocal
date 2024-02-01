@@ -356,16 +356,6 @@ actions:
       delay_between_pulses_step: 100
       nshots: 10
 
-  - id: ramsey_detuned
-    priority: 0
-    operation: ramsey
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 50
-      delay_between_pulses_step: 1
-      n_osc: 2
-      nshots: 10
-
   - id: ramsey_signal
     priority: 0
     operation: ramsey_signal
@@ -373,26 +363,28 @@ actions:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
-      n_osc: 2
       nshots: 10
 
   - id: ramsey_signal_detuned
     priority: 0
     operation: ramsey_signal
     parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 50
-      delay_between_pulses_step: 1
-      nshots: 10
-
-  - id: ramsey detuned sequences
-    priority: 0
-    operation: ramsey_sequences
-    parameters:
+      unrolling: False
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
       n_osc: 2
+      nshots: 10
+
+  - id: ramsey_signal_detuned_unrolled
+    priority: 0
+    operation: ramsey_signal
+    parameters:
+      unrolling: True
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 1
+      n_osc: 10
       nshots: 10
 
   - id: ramsey
@@ -404,6 +396,37 @@ actions:
       delay_between_pulses_step: 1
       n_osc: 0
       nshots: 1024
+
+  - id: ramsey_detuned
+    priority: 0
+    operation: ramsey
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 1
+      n_osc: 2
+      nshots: 10
+
+  - id: ramsey_detuned_sequences
+    priority: 0
+    operation: ramsey_sequences
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 1
+      nshots: 10
+      n_osc: 2
+
+  - id: ramsey_unrolled_detuned
+    priority: 0
+    operation: ramsey
+    parameters:
+      unrolling: True
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 1
+      nshots: 10
+      n_osc: 10
 
   - id: single shot classification
     priority: 0
