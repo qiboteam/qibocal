@@ -157,7 +157,8 @@ class Task:
                         "relaxation_time"
                     ] = platform.settings.relaxation_time
             else:
-                self.action.parameters["nshots"] = DEFAULT_NSHOTS
+                if self.parameters.nshots is None:
+                    self.action.parameters["nshots"] = DEFAULT_NSHOTS
 
             operation: Routine = self.operation
             parameters = self.parameters

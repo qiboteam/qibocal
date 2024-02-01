@@ -33,7 +33,7 @@ class Depthsdict(TypedDict):
 class StandardRBParameters(Parameters):
     """Standard Randomized Benchmarking runcard inputs."""
 
-    depths: Union[set, Depthsdict]
+    depths: Union[list, Depthsdict]
     """A list of depths/sequence lengths. If a dictionary is given the list will be build."""
     niter: int
     """Sets how many iterations over the same depth value."""
@@ -60,7 +60,7 @@ class StandardRBParameters(Parameters):
 
     def __post_init__(self):
         if isinstance(self.depths, dict):
-            self.depths = set(
+            self.depths = list(
                 range(self.depths["start"], self.depths["stop"], self.depths["step"])
             )
 
@@ -78,8 +78,12 @@ class RBData(Data):
     """A pandas DataFrame bastard child. The output of the acquisition function."""
 
     # TODO: remove params
-    params: StandardRBParameters
     depths: list
+    uncertainties: Union[str, float]
+    n_bootstrap: int
+    seed: Optional[int]
+    nshots: int
+    niter: int
     data: dict[QubitId, npt.NDArray[RBType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -174,7 +178,12 @@ def _acquisition(
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     nqubits = len(qubits)
     data = RBData(
-        params=params, depths=params.depths
+        depths=params.depths,
+        uncertainties=params.uncertainties,
+        n_bootstrap=params.n_bootstrap,
+        seed=params.seed,
+        nshots=params.nshots,
+        niter=params.niter,
     )  # TODO: can depths just be a set ?
 
     circuits = []
@@ -231,9 +240,13 @@ def _fit(data: RBData) -> StandardRBResult:
         y = samples_to_p0s(data, qubit)
         samples = [data.data[qubit, depth].samples.tolist() for depth in x]
 
+        """This is when you sample a depth more than once"""
+        homogeneous = all(len(samples[0]) == len(row) for row in samples)
+        # if homogeneous is False:
+        #     raise NotImplementedError
         # Extract fitting and bootstrap parameters if given
-        uncertainties = data.params.uncertainties
-        n_bootstrap = data.params.n_bootstrap
+        uncertainties = data.uncertainties
+        n_bootstrap = data.n_bootstrap
 
         popt_estimates = []
         if uncertainties and n_bootstrap:
@@ -242,13 +255,13 @@ def _fit(data: RBData) -> StandardRBResult:
                 samples,
                 n_bootstrap,
                 homogeneous=homogeneous,
-                seed=data.params.seed,
+                seed=data.seed,
             )
 
             # Parametric bootstrap resampling of "corrected" probabilites from binomial distribution
             bootstrap_y = resample_p0(
                 bootstrap_y,
-                data.params.nshots,
+                data.nshots,
                 homogeneous=homogeneous,
             )
 
@@ -376,26 +389,27 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
                     name="error bars",
                 )
             )
-
-    fitting_report = table_html(
-        table_dict(
-            qubit,
-            ["niter", "nshots", "uncertainties", "fidelity", "pulse_fidelity"],
-            [
-                data.params.niter,
-                data.params.nshots,
-                data.params.uncertainties,
-                number_to_str(
-                    fit.fidelity[qubit], np.array(fit.fit_uncertainties[qubit][1]) / 2
-                ),
-                number_to_str(
-                    fit.pulse_fidelity[qubit],
-                    np.array(fit.fit_uncertainties[qubit][1])
-                    / (2 * NPULSES_PER_CLIFFORD),
-                ),
-            ],
+    if fit is not None:
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                ["niter", "nshots", "uncertainties", "fidelity", "pulse_fidelity"],
+                [
+                    data.niter,
+                    data.nshots,
+                    data.uncertainties,
+                    number_to_str(
+                        fit.fidelity[qubit],
+                        np.array(fit.fit_uncertainties[qubit][1]) / 2,
+                    ),
+                    number_to_str(
+                        fit.pulse_fidelity[qubit],
+                        np.array(fit.fit_uncertainties[qubit][1])
+                        / (2 * NPULSES_PER_CLIFFORD),
+                    ),
+                ],
+            )
         )
-    )
 
     fig.update_layout(
         showlegend=True,

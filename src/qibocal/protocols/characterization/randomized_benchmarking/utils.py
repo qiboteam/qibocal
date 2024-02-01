@@ -182,7 +182,7 @@ def resample_p0(data, sample_size=100, homogeneous: bool = True):
 
 def samples_to_p0s(data, qubit):
     p0s = []
-    depths = data.params.depths
+    depths = data.depths
     for depth in depths:
         p0s.append(
             1

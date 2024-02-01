@@ -526,7 +526,6 @@ actions:
       niter: 5
       nshots: 50
       n_bootstrap: 10
-      noise_model: PauliErrorOnAll
 
   - id: chevron id
     priority: 0
@@ -564,8 +563,6 @@ actions:
       nshots: 50
       uncertainties: std
       n_bootstrap: 10
-      noise_model: PauliErrorOnX
-      noise_params: [0.01, 0.01, 0.01]
 
   - id : resonator_frequency
     priority: 0
