@@ -192,7 +192,7 @@ def _acquisition(
         samples.extend(i.samples())
     nqubits = len(qubits_ids)
     samples = np.reshape(samples, (-1, params.nshots, nqubits))
-    # import pdb; pdb.set_trace()
+
     for i, sample in enumerate(samples):
         depth = params.depths[i // params.niter]
         # `depth` is the number of gates excluded the noise and measurement ones
@@ -230,11 +230,6 @@ def _fit(data: RBData) -> StandardRBResult:
         x = data.depths
         y = samples_to_p0s(data, qubit)
         samples = [data.data[qubit, depth].samples.tolist() for depth in x]
-
-        """This is when you sample a depth more than once"""
-        homogeneous = all(len(samples[0]) == len(row) for row in samples)
-        if homogeneous is False:
-            raise NotImplementedError
 
         # Extract fitting and bootstrap parameters if given
         uncertainties = data.params.uncertainties
