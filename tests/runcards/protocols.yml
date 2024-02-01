@@ -389,7 +389,7 @@ actions:
 
   - id: ramsey_detuned_sequences
     priority: 0
-    operation: ramsey_seqeunces
+    operation: ramsey_sequences
     parameters:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
