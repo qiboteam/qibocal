@@ -228,7 +228,7 @@ def _fit(data: RBData) -> StandardRBResult:
     for qubit in qubits:
         # Extract depths and probabilities
         x = data.depths
-        y = samples_to_p0s(data.data, qubit)
+        y = samples_to_p0s(data, qubit)
         samples = [data.data[qubit, depth].samples.tolist() for depth in x]
 
         """This is when you sample a depth more than once"""
@@ -325,7 +325,7 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     fitting_report = ""
 
     x = data.depths
-    y = samples_to_p0s(data.data, qubit)
+    y = samples_to_p0s(data, qubit)
 
     fig.add_trace(
         go.Scatter(

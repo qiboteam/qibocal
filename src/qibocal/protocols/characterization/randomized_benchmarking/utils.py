@@ -182,7 +182,11 @@ def resample_p0(data, sample_size=100, homogeneous: bool = True):
 
 def samples_to_p0s(data, qubit):
     p0s = []
-    qubit_keys = [key for key in list(data.keys()) if key[0] == qubit]
-    for key in qubit_keys:
-        p0s.append(1 - np.count_nonzero(np.array(data[key])) / len(data[key]))
+    depths = data.params.depths
+    for depth in depths:
+        p0s.append(
+            1
+            - np.count_nonzero(np.array(data.data[(qubit, depth)]))
+            / len(data.data[(qubit, depth)])
+        )
     return p0s
