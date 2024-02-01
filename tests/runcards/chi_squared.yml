@@ -6,7 +6,7 @@ actions:
     validator:
       scheme: chi2
       parameters:
-        chi2_max_value: 0
+        thresholds: [0, ]
     parameters:
       delay_before_readout_start: 0
       delay_before_readout_end: 20_000

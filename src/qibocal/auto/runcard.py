@@ -16,6 +16,9 @@ from .validation import Validator
 Id = NewType("Id", str)
 """Action identifiers type."""
 
+MAX_ITERATIONS = 5
+"""Default max iterations."""
+
 
 @dataclass(config=dict(smart_union=True))
 class Action:
@@ -52,9 +55,15 @@ class Runcard:
     """Structure of an execution runcard."""
 
     actions: list[Action]
+    """List of action to be executed."""
     qubits: Optional[Union[list[QubitId], list[tuple[QubitId, QubitId]]]] = None
+    """Qubits to be calibrated."""
     backend: str = "qibolab"
+    """Qibo backend."""
     platform: str = os.environ.get("QIBO_PLATFORM", "dummy")
+    """Qibolab platform."""
+    max_iterations: int = MAX_ITERATIONS
+    """Maximum number of iterations."""
 
     @cached_property
     def backend_obj(self) -> Backend:
