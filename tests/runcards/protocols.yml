@@ -664,6 +664,30 @@ actions:
       power_width: 10
       power_step: 1
 
+  - id: twpa_power_SNR
+    priority: 0
+    operation: twpa_power_SNR
+    parameters:
+      freq_width: 500_000_000
+      freq_step: 50_000_000
+      twpa_pow_width: 4
+      twpa_pow_step: 1
+      power_level: low
+      nshots: 1000
+      relaxation_time: 2000
+
+  - id: twpa_frequency_SNR
+    priority: 0
+    operation: twpa_frequency_SNR
+    parameters:
+      freq_width: 100_000_000
+      freq_step: 20_000_000
+      twpa_freq_width: 1_000_000_000
+      twpa_freq_step: 200_000_000
+      power_level: low
+      nshots: 10
+      relaxation_time: 20
+
   - id: resoantor_amplitude
     priority: 0
     operation: resonator_amplitude
