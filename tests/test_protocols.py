@@ -1,4 +1,5 @@
 """Test routines' acquisition method using dummy platform"""
+
 import pathlib
 
 import pytest
@@ -95,8 +96,9 @@ def test_acquire_command(runcard, backend, platform, tmp_path):
     assert results_report.exit_code == 0
 
 
+@pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_fit_command(runcard, tmp_path):
+def test_fit_command(runcard, update, tmp_path):
     """Test fit builder and report generated."""
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
     runner = CliRunner()
@@ -116,7 +118,7 @@ def test_fit_command(runcard, tmp_path):
     assert results.exit_code == 0
 
     # perform fit
-    results_fit = runner.invoke(command, ["fit", str(tmp_path), "--no-update"])
+    results_fit = runner.invoke(command, ["fit", str(tmp_path), update])
 
     assert not results_fit.exception
     assert results_fit.exit_code == 0
