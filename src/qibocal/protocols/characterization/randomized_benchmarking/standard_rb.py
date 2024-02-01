@@ -33,7 +33,7 @@ class Depthsdict(TypedDict):
 class StandardRBParameters(Parameters):
     """Standard Randomized Benchmarking runcard inputs."""
 
-    depths: Union[list, Depthsdict]
+    depths: Union[set, Depthsdict]
     """A list of depths/sequence lengths. If a dictionary is given the list will be build."""
     niter: int
     """Sets how many iterations over the same depth value."""
@@ -60,7 +60,7 @@ class StandardRBParameters(Parameters):
 
     def __post_init__(self):
         if isinstance(self.depths, dict):
-            self.depths = list(
+            self.depths = set(
                 range(self.depths["start"], self.depths["stop"], self.depths["step"])
             )
 
@@ -157,7 +157,6 @@ def _acquisition(
         RBData: The depths, samples and ground state probability of each experiment in the scan.
     """
 
-    # GlobalBackend.set_backend("qibolab", platform)
     backend = GlobalBackend()
     # For simulations, a noise model can be added.
     noise_model = None
@@ -175,7 +174,7 @@ def _acquisition(
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     nqubits = len(qubits)
     data = RBData(
-        params=params, depths=list(set(params.depths))
+        params=params, depths=params.depths
     )  # TODO: can depths just be a set ?
 
     circuits = []
@@ -183,7 +182,7 @@ def _acquisition(
     for depth in params.depths:
         circuits_depth = random_circuits(
             depth, qubits_ids, params.niter, params.seed, noise_model
-        )  # TODO: is nqubits useful?
+        )
         circuits.extend(circuits_depth)
 
     # TODO: Check circuits being random properly
