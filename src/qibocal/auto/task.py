@@ -152,13 +152,15 @@ class Task:
                     self.action.parameters["nshots"] = DEFAULT_NSHOTS
 
             operation: Routine = self.operation
+            parameters = self.parameters
+
         except (RuntimeError, AttributeError):
             operation = dummy_operation
             parameters = DummyPars()
         if mode.name in ["autocalibration", "acquire"]:
             if operation.platform_dependent and operation.qubits_dependent:
                 completed.data, completed.data_time = operation.acquisition(
-                    self.parameters,
+                    parameters,
                     platform=platform,
                     qubits=self._allocate_local_qubits(qubits, platform),
                 )
