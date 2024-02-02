@@ -4,6 +4,7 @@ import time
 from copy import deepcopy
 from dataclasses import asdict, dataclass
 from functools import wraps
+from pathlib import Path
 from typing import Callable, Generic, NewType, Optional, TypeVar, Union
 
 import numpy as np
@@ -24,11 +25,9 @@ Qubits = dict[QubitId, Qubit]
 QubitsPairs = dict[tuple[QubitId, QubitId], QubitPair]
 
 
-DATAFILE = "data.npz"
-"""Name of the file where data acquired (arrays) by calibration are dumped."""
-JSONFILE = "conf.json"
-"""Name of the file where data acquired (global configuration) by calibration are dumped."""
-RESULTSFILE = "results.json"
+DATAFILE = "data"
+"""Name of the file where data are dumped."""
+RESULTSFILE = "results"
 """Name of the file where results are dumped."""
 
 
@@ -98,11 +97,84 @@ class Parameters:
         return instantiated_class
 
 
-class Data:
-    """Data resulting from acquisition routine."""
+class AbstractData:
+    """Abstract data class."""
 
-    data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray]
-    """Data object to store arrays"""
+    def __init__(
+        self, data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray] = None
+    ):
+        self.data = data if data is not None else {}
+
+    def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
+        """Access data attribute member."""
+        return self.data[qubit]
+
+    @property
+    def params(self) -> dict:
+        """Convert non-arrays attributes into dict."""
+        global_dict = asdict(self)
+        if hasattr(self, "data"):
+            global_dict.pop("data")
+        return global_dict
+
+    def save(self, path: Path, filename: str):
+        """Dump class to file."""
+        self._to_json(path, filename)
+        self._to_npz(path, filename)
+
+    def _to_npz(self, path: Path, filename: str):
+        """Helper function to use np.savez while converting keys into strings."""
+        if hasattr(self, "data"):
+            np.savez(
+                path / f"{filename}.npz",
+                **{json.dumps(i): self.data[i] for i in self.data},
+            )
+
+    def _to_json(self, path: Path, filename: str):
+        """Helper function to dump to json."""
+        if self.params:
+            (path / f"{filename}.json").write_text(
+                json.dumps(serialize(self.params), indent=4)
+            )
+
+    @classmethod
+    def load(cls, path: Path, filename: str):
+        """Generic load method."""
+        data_dict = cls.load_data(path, filename)
+        params = cls.load_params(path, filename)
+        if data_dict is not None:
+            if params is not None:
+                return cls(data=data_dict, **params)
+            else:
+                return cls(data=data_dict)
+        elif params is not None:
+            return cls(**params)
+
+    @staticmethod
+    def load_data(path: Path, filename: str):
+        """Load data stored in a npz file."""
+        file = path / f"{filename}.npz"
+        if file.is_file():
+            raw_data_dict = dict(np.load(file))
+            data_dict = {}
+
+            for data_key, array in raw_data_dict.items():
+                data_dict[load(data_key)] = np.rec.array(array)
+
+            return data_dict
+
+    @staticmethod
+    def load_params(path: Path, filename: str):
+        """Load parameters stored in a json file."""
+        file = path / f"{filename}.json"
+        if file.is_file():
+            params = json.loads(file.read_text())
+            params = deserialize(params)
+            return params
+
+
+class Data(AbstractData):
+    """Data resulting from acquisition routine."""
 
     @property
     def qubits(self):
@@ -115,51 +187,6 @@ class Data:
     def pairs(self):
         """Access qubit pairs ordered alphanumerically from data structure."""
         return list({tuple(sorted(q[:2])) for q in self.data})
-
-    def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
-        """Access data attribute member."""
-        return self.data[qubit]
-
-    @property
-    def global_params(self) -> dict:
-        """Convert non-arrays attributes into dict."""
-        global_dict = asdict(self)
-        global_dict.pop("data")
-        return global_dict
-
-    def save(self, path):
-        """Store results."""
-        self._to_json(path)
-        self._to_npz(path)
-
-    def _to_npz(self, path):
-        """Helper function to use np.savez while converting keys into strings."""
-        np.savez(path / DATAFILE, **{json.dumps(i): self.data[i] for i in self.data})
-
-    def _to_json(self, path):
-        """Helper function to dump to json in JSONFILE path."""
-        if self.global_params:
-            (path / JSONFILE).write_text(
-                json.dumps(serialize(self.global_params), indent=4)
-            )
-
-    @classmethod
-    def load(cls, path):
-        with open(path / DATAFILE) as f:
-            raw_data_dict = dict(np.load(path / DATAFILE))
-            data_dict = {}
-
-            for data_key, array in raw_data_dict.items():
-                data_dict[load(data_key)] = np.rec.array(array)
-        if (path / JSONFILE).is_file():
-            params = json.loads((path / JSONFILE).read_text())
-
-            params = deserialize(params)
-            obj = cls(data=data_dict, **params)
-        else:
-            obj = cls(data=data_dict)
-
-        return obj
 
     def register_qubit(self, dtype, data_keys, data_dict):
         """Store output for single qubit.
@@ -180,38 +207,30 @@ class Data:
         else:
             self.data[data_keys] = np.rec.array(ar)
 
-
-@dataclass
-class Results:
-    """Generic runcard update.
-
-    As for the case of :class:`Parameters` the explicit structure is only useful
-    to fill the specific update, but in this case there should be a generic way
-
-    Each field might be annotated with an ``update`` metadata field, in order
-    to mark them for later use in the runcard::
-
-        @dataclass
-        class Cmd1Res(Results):
-            res: str = field(metadata=dict(update="myres"))
-            num: int
-
-    .. todo::
-
-        Implement them as ``source: dest``, where ``source`` will be the field
-        name in the class, corresponding to the same field in ``Result``
-
-    """
-
-    def save(self, path):
-        """Store results to json."""
-        (path / RESULTSFILE).write_text(json.dumps(serialize(asdict(self))))
+    def save(self, path: Path):
+        """Store data to file."""
+        super()._to_json(path, DATAFILE)
+        super()._to_npz(path, DATAFILE)
 
     @classmethod
-    def load(cls, path):
-        params = json.loads((path / RESULTSFILE).read_text())
-        params = deserialize(params)
-        return cls(**params)
+    def load(cls, path: Path):
+        """Load data and parameters."""
+        return super().load(path, filename=DATAFILE)
+
+
+@dataclass
+class Results(AbstractData):
+    """Generic runcard update."""
+
+    @classmethod
+    def load(cls, path: Path):
+        """Load results."""
+        return super().load(path, filename=RESULTSFILE)
+
+    def save(self, path: Path):
+        """Store results to file."""
+        super()._to_json(path, RESULTSFILE)
+        super()._to_npz(path, RESULTSFILE)
 
 
 # Internal types, in particular `_ParametersT` is used to address function

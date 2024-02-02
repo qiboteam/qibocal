@@ -397,6 +397,12 @@ actions:
       n_osc: 0
       nshots: 1024
 
+  - id: calibrate_state_discrimination
+    priority: 00
+    operation: calibrate_state_discrimination
+    parameters:
+      nshots: 10
+
   - id: ramsey_detuned
     priority: 0
     operation: ramsey

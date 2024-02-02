@@ -18,8 +18,6 @@ from ..utils import (
 )
 from .mode import ExecutionMode
 from .operation import (
-    DATAFILE,
-    RESULTSFILE,
     Data,
     DummyPars,
     Qubits,
@@ -209,9 +207,6 @@ class Completed:
     @property
     def results(self):
         """Access task's results."""
-        if not (self.datapath / RESULTSFILE).is_file():
-            return None
-
         if self._results is None:
             Results = self.task.operation.results_type
             self._results = Results.load(self.datapath)
@@ -226,9 +221,6 @@ class Completed:
     @property
     def data(self):
         """Access task's data."""
-        # FIXME: temporary fix for coverage
-        if not (self.datapath / DATAFILE).is_file():  # pragma: no cover
-            return None
         if self._data is None:
             Data = self.task.operation.data_type
             self._data = Data.load(self.datapath)
