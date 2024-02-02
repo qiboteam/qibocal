@@ -62,9 +62,9 @@ class CalibrateStateDiscriminationData(Data):
 
     resonator_type: str
     """Resonator type."""
-    data: dict[
-        tuple[QubitId, int], npt.NDArray[CalibrateStateDiscriminationType]
-    ] = field(default_factory=dict)
+    data: dict[tuple[QubitId, int], npt.NDArray[CalibrateStateDiscriminationType]] = (
+        field(default_factory=dict)
+    )
 
 
 def _acquisition(
@@ -88,19 +88,18 @@ def _acquisition(
 
     data = CalibrateStateDiscriminationData(resonator_type=platform.resonator_type)
 
-    # FIXME: Multiplex Raw acquisition may not work properly ???
+    # TODO: test if qibolab supports multiplex with raw acquisition
     for qubit in qubits:
         sequence_0 = PulseSequence()
         sequence_1 = PulseSequence()
-        ro_pulses = {}
-        qd_pulses = {}
-        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].duration
+        sequence_1.add(platform.create_RX_pulse(qubit, start=0))
+
+        sequence_0.add(
+            platform.create_qubit_readout_pulse(qubit, start=sequence_0.finish)
         )
-        sequence_0.add(ro_pulses[qubit])
-        sequence_1.add(qd_pulses[qubit])
-        sequence_1.add(ro_pulses[qubit])
+        sequence_1.add(
+            platform.create_qubit_readout_pulse(qubit, start=sequence_1.finish)
+        )
 
         results_0 = platform.execute_pulse_sequence(
             sequence_0,
@@ -122,8 +121,11 @@ def _acquisition(
             ),
         )
 
-        for i, results in enumerate([results_0, results_1]):
-            result = results[ro_pulses[qubit].serial]
+        for i, experiment in enumerate(
+            zip([sequence_0, sequence_1], [results_0, results_1])
+        ):
+            sequence, results = experiment
+            result = results[sequence.ro_pulses[0].serial]
             # store the results
             data.register_qubit(
                 CalibrateStateDiscriminationType,
