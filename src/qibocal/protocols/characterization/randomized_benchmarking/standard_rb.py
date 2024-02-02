@@ -77,13 +77,17 @@ RBType = np.dtype(
 class RBData(Data):
     """A pandas DataFrame bastard child. The output of the acquisition function."""
 
-    # TODO: remove params
     depths: list
+    """Circuits depths."""
     uncertainties: Union[str, float]
+    """Parameters uncertainties."""
     n_bootstrap: int
+    """Number of bootstrap iterations."""
     seed: Optional[int]
     nshots: int
+    """Number of shots."""
     niter: int
+    """Number of iterations for each depth."""
     data: dict[QubitId, npt.NDArray[RBType]] = field(default_factory=dict)
     """Raw data acquired."""
 
