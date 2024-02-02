@@ -548,6 +548,20 @@ actions:
       uncertainties: None
       n_bootstrap: 0
 
+  - id: standard rb unrolling
+    priority: 0
+    operation: standard_rb
+    parameters:
+      depths:
+        start: 1
+        stop: 10
+        step: 2
+      niter: 2
+      nshots: 50
+      unrolling: True
+      uncertainties: None
+      n_bootstrap: 0
+
   - id: standard rb bootstrap
     priority: 0
     operation: standard_rb
