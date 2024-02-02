@@ -126,7 +126,7 @@ class AbstractData:
         """Helper function to use np.savez while converting keys into strings."""
         if hasattr(self, "data"):
             np.savez(
-                path / filename,
+                path / f"{filename}.npz",
                 **{json.dumps(i): self.data[i] for i in self.data},
             )
 
