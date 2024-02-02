@@ -45,6 +45,9 @@ class StandardRBParameters(Parameters):
     """Number of bootstrap iterations for the fit uncertainties and error bars.
     If ``0``, gets the fit uncertainties from the fitting function and the error bars
     from the distribution of the measurements. Defaults to ``100``."""
+    unrolling: bool = False
+    """If ``True`` it uses sequence unrolling to deploy multiple circuits in a single instrument call.
+    Defaults to ``False``."""
     seed: Optional[int] = None
     """A fixed seed to initialize ``np.random.Generator``. If ``None``, uses a random seed.
     Defaults is ``None``."""
@@ -179,6 +182,9 @@ def _acquisition(
         noise_model = getattr(noisemodels, params.noise_model)(params.noise_params)
         params.noise_params = noise_model.params.tolist()
 
+    # Grab activated qibo backend
+    backend = GlobalBackend()
+
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     nqubits = len(qubits)
     data = RBData(
@@ -191,16 +197,22 @@ def _acquisition(
     )  # TODO: can depths just be a set ?
 
     circuits = []
+    samples = []
     qubits_ids = list(qubits)
     for depth in params.depths:
         circuits_depth = random_circuits(
             depth, qubits_ids, params.niter, params.seed, noise_model
         )
         circuits.extend(circuits_depth)
+    # Execute the circuits
+    if params.unrolling:
+        executed_circuits = backend.execute_circuits(circuits, nshots=params.nshots)
+    else:
+        executed_circuits = [
+            backend.execute_circuit(circuit, nshots=params.nshots)
+            for circuit in circuits
+        ]
 
-    # TODO: Check circuits being random properly
-    executed_circuits = backend.execute_circuits(circuits, nshots=params.nshots)
-    samples = []
     for i in executed_circuits:
         samples.extend(i.samples())
     nqubits = len(qubits_ids)

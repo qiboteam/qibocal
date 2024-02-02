@@ -1,4 +1,5 @@
 """Collection of function to generate qibo circuits."""
+
 from typing import Callable
 
 from qibo import gates

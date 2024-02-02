@@ -1,6 +1,8 @@
 """Helper functions to update parameters in platform."""
+
 from typing import Union
 
+import numpy as np
 from qibolab import pulses
 from qibolab.native import VirtualZPulse
 from qibolab.platform import Platform
@@ -188,3 +190,7 @@ def asymmetry(asymmetry: float, platform: Platform, qubit: QubitId):
 
 def coupling(g: float, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].g = float(g)
+
+
+def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):
+    platform.qubits[qubit].kernel = kernel

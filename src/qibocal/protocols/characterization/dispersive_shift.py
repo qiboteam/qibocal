@@ -64,12 +64,12 @@ DispersiveShiftType = np.dtype(
         ("phase", np.float64),
     ]
 )
-"""Custom dtype for rabi amplitude."""
+"""Custom dtype for dispersive shift."""
 
 
 @dataclass
 class DispersiveShiftData(Data):
-    """Dipsersive shift acquisition outputs."""
+    """Dispersive shift acquisition outputs."""
 
     resonator_type: str
     """Resonator type."""
@@ -274,9 +274,11 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
                 2 * len(q_data),
             )
             params = data_fit[
-                "fitted_parameters_state_zero"
-                if i == 0
-                else "fitted_parameters_state_one"
+                (
+                    "fitted_parameters_state_zero"
+                    if i == 0
+                    else "fitted_parameters_state_one"
+                )
             ][qubit]
             fig.add_trace(
                 go.Scatter(

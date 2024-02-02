@@ -1,19 +1,25 @@
 """Testing update_* helper functions. """
+
 import random
 import re
 
+import numpy as np
 import pytest
 from qibolab import create_platform
 from qibolab.native import VirtualZPulse
 from qibolab.pulses import Drag
 
 from qibocal import update
+from qibocal.protocols.characterization.signal_experiments.calibrate_state_discrimination import (
+    CalibrateStateDiscriminationResults,
+)
 
 PLATFORM = create_platform("dummy")
 QUBITS = list(PLATFORM.qubits.values())
 PAIRS = list(PLATFORM.pairs)
 RANDOM_FLOAT = random.random()
 RANDOM_INT = random.randint(0, 10)
+RANDOM_ARRAY = np.random.rand(10)
 
 
 def generate_update_list(length):
@@ -163,3 +169,13 @@ def test_twpa_update(qubit):
 
     assert qubit.twpa.local_oscillator.frequency == RANDOM_INT
     assert qubit.twpa.local_oscillator.power == RANDOM_FLOAT
+
+
+@pytest.mark.parametrize("qubit", QUBITS)
+def test_kernel_update(qubit):
+    kernel = {qubit.name: RANDOM_ARRAY}
+    results = CalibrateStateDiscriminationResults(data=kernel)
+
+    update.kernel(results.data[qubit.name], PLATFORM, qubit.name)
+
+    assert (qubit.kernel == RANDOM_ARRAY).all()

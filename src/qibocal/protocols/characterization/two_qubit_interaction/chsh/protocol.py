@@ -96,9 +96,9 @@ class CHSHData(Data):
         return freqs
 
     @property
-    def global_params(self):
+    def params(self):
         """Convert non-arrays attributes into dict."""
-        data_dict = super().global_params
+        data_dict = super().params
         data_dict.pop("mitigation_matrix")
 
         return data_dict
