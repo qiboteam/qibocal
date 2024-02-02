@@ -1,4 +1,5 @@
 """Testing update_* helper functions. """
+
 import random
 import re
 

@@ -1,4 +1,5 @@
 """Test graph execution."""
+
 import pathlib
 
 import pytest

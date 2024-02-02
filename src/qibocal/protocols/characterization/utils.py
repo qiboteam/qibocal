@@ -597,7 +597,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
                 "accuracy",
                 "testing time [s]",
                 "training time [s]",
-            )
+            ),
             # pylint: disable=E1101
         )
         for i, model in enumerate(models_name):

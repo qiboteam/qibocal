@@ -1,4 +1,5 @@
 """Collection of function to generate qibo circuits."""
+
 from copy import deepcopy
 from typing import Callable
 

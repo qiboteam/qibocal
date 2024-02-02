@@ -1,4 +1,5 @@
 """Upload report to server."""
+
 import base64
 import json
 import pathlib

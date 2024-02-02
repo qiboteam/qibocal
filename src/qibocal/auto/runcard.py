@@ -1,4 +1,5 @@
 """Specify runcard layout, handles (de)serialization."""
+
 import os
 from functools import cached_property
 from typing import Any, NewType, Optional, Union
@@ -15,6 +16,9 @@ from .validation import Validator
 Id = NewType("Id", str)
 """Action identifiers type."""
 
+MAX_ITERATIONS = 5
+"""Default max iterations."""
+
 
 @dataclass(config=dict(smart_union=True))
 class Action:
@@ -30,9 +34,9 @@ class Action:
     """Alternative subsequent actions, branching from the current one."""
     priority: Optional[int] = None
     """Priority level, determining the execution order."""
-    qubits: Union[
-        list[QubitId], list[tuple[QubitId, QubitId]], list[list[QubitId]]
-    ] = Field(default_factory=list)
+    qubits: Union[list[QubitId], list[tuple[QubitId, QubitId]], list[list[QubitId]]] = (
+        Field(default_factory=list)
+    )
     """Local qubits (optional)."""
     update: bool = True
     """Runcard update mechanism."""
@@ -51,9 +55,15 @@ class Runcard:
     """Structure of an execution runcard."""
 
     actions: list[Action]
+    """List of action to be executed."""
     qubits: Optional[Union[list[QubitId], list[tuple[QubitId, QubitId]]]] = None
+    """Qubits to be calibrated."""
     backend: str = "qibolab"
+    """Qibo backend."""
     platform: str = os.environ.get("QIBO_PLATFORM", "dummy")
+    """Qibolab platform."""
+    max_iterations: int = MAX_ITERATIONS
+    """Maximum number of iterations."""
 
     @cached_property
     def backend_obj(self) -> Backend:

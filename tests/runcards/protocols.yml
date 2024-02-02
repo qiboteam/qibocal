@@ -356,16 +356,6 @@ actions:
       delay_between_pulses_step: 100
       nshots: 10
 
-  - id: ramsey_detuned
-    priority: 0
-    operation: ramsey
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 50
-      delay_between_pulses_step: 1
-      n_osc: 2
-      nshots: 10
-
   - id: ramsey_signal
     priority: 0
     operation: ramsey_signal
@@ -373,26 +363,28 @@ actions:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
-      n_osc: 2
       nshots: 10
 
   - id: ramsey_signal_detuned
     priority: 0
     operation: ramsey_signal
     parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 50
-      delay_between_pulses_step: 1
-      nshots: 10
-
-  - id: ramsey detuned sequences
-    priority: 0
-    operation: ramsey_sequences
-    parameters:
+      unrolling: False
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
       n_osc: 2
+      nshots: 10
+
+  - id: ramsey_signal_detuned_unrolled
+    priority: 0
+    operation: ramsey_signal
+    parameters:
+      unrolling: True
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 1
+      n_osc: 10
       nshots: 10
 
   - id: ramsey
@@ -411,10 +403,49 @@ actions:
     parameters:
       nshots: 10
 
+  - id: ramsey_detuned
+    priority: 0
+    operation: ramsey
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 1
+      n_osc: 2
+      nshots: 10
+
+  - id: ramsey_detuned_sequences
+    priority: 0
+    operation: ramsey_sequences
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 1
+      nshots: 10
+      n_osc: 2
+
+  - id: ramsey_unrolled_detuned
+    priority: 0
+    operation: ramsey
+    parameters:
+      unrolling: True
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 1
+      nshots: 10
+      n_osc: 10
+
   - id: single shot classification
     priority: 0
     operation: single_shot_classification
     parameters:
+      unrolling: False
+      nshots: 10
+
+  - id: single shot classification with unrolling
+    priority: 0
+    operation: single_shot_classification
+    parameters:
+      unrolling: True
       nshots: 10
 
   - id: single shot classification with classifiers
@@ -520,6 +551,20 @@ actions:
         step: 2
       niter: 2
       nshots: 50
+      uncertainties: None
+      n_bootstrap: 0
+
+  - id: standard rb unrolling
+    priority: 0
+    operation: standard_rb
+    parameters:
+      depths:
+        start: 1
+        stop: 10
+        step: 2
+      niter: 2
+      nshots: 50
+      unrolling: True
       uncertainties: None
       n_bootstrap: 0
 
@@ -661,6 +706,30 @@ actions:
       frequency_step: 100_000
       power_width: 10
       power_step: 1
+
+  - id: twpa_power_SNR
+    priority: 0
+    operation: twpa_power_SNR
+    parameters:
+      freq_width: 500_000_000
+      freq_step: 50_000_000
+      twpa_pow_width: 4
+      twpa_pow_step: 1
+      power_level: low
+      nshots: 1000
+      relaxation_time: 2000
+
+  - id: twpa_frequency_SNR
+    priority: 0
+    operation: twpa_frequency_SNR
+    parameters:
+      freq_width: 100_000_000
+      freq_step: 20_000_000
+      twpa_freq_width: 1_000_000_000
+      twpa_freq_step: 200_000_000
+      power_level: low
+      nshots: 10
+      relaxation_time: 20
 
   - id: resoantor_amplitude
     priority: 0

@@ -46,6 +46,9 @@ DEFAULT_CLASSIFIER = "qubit_fit"
 class SingleShotClassificationParameters(Parameters):
     """SingleShotClassification runcard inputs."""
 
+    unrolling: bool = False
+    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
+    Defaults to ``False``."""
     classifiers_list: Optional[list[str]] = field(
         default_factory=lambda: [DEFAULT_CLASSIFIER]
     )
@@ -172,20 +175,22 @@ def _acquisition(
     # state1_sequence: RX - MZ
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
-    state0_sequence = PulseSequence()
-    state1_sequence = PulseSequence()
+    sequences, all_ro_pulses = [], []
+    for state in [0, 1]:
+        sequence = PulseSequence()
+        RX_pulses = {}
+        ro_pulses = {}
+        for qubit in qubits:
+            RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+            ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+                qubit, start=RX_pulses[qubit].finish
+            )
+            if state == 1:
+                sequence.add(RX_pulses[qubit])
+            sequence.add(ro_pulses[qubit])
 
-    RX_pulses = {}
-    ro_pulses = {}
-    for qubit in qubits:
-        RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=RX_pulses[qubit].finish
-        )
-
-        state0_sequence.add(ro_pulses[qubit])
-        state1_sequence.add(RX_pulses[qubit])
-        state1_sequence.add(ro_pulses[qubit])
+        sequences.append(sequence)
+        all_ro_pulses.append(ro_pulses)
 
     data = SingleShotClassificationData(
         nshots=params.nshots,
@@ -196,41 +201,35 @@ def _acquisition(
         savedir=params.savedir,
     )
 
-    # execute the first pulse sequence
-    state0_results = platform.execute_pulse_sequence(
-        state0_sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-        ),
+    options = ExecutionParameters(
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
     )
 
-    # retrieve and store the results for every qubit
-    for qubit in qubits:
-        result = state0_results[ro_pulses[qubit].serial]
-        data.register_qubit(
-            ClassificationType,
-            (qubit),
-            dict(i=result.voltage_i, q=result.voltage_q, state=[0] * params.nshots),
-        )
-    # execute the second pulse sequence
-    state1_results = platform.execute_pulse_sequence(
-        state1_sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-        ),
-    )
-    # retrieve and store the results for every qubit
-    for qubit in qubits:
-        result = state1_results[ro_pulses[qubit].serial]
-        data.register_qubit(
-            ClassificationType,
-            (qubit),
-            dict(i=result.voltage_i, q=result.voltage_q, state=[1] * params.nshots),
-        )
+    if params.unrolling:
+        results = platform.execute_pulse_sequences(sequences, options)
+    else:
+        results = [
+            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
+        ]
+
+    for ig, (state, ro_pulses) in enumerate(zip([0, 1], all_ro_pulses)):
+        for qubit in qubits:
+            serial = ro_pulses[qubit].serial
+            if params.unrolling:
+                result = results[serial][ig]
+            else:
+                result = results[ig][serial]
+            data.register_qubit(
+                ClassificationType,
+                (qubit),
+                dict(
+                    i=result.voltage_i,
+                    q=result.voltage_q,
+                    state=[state] * params.nshots,
+                ),
+            )
 
     return data
 
@@ -254,6 +253,8 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     effective_temperature = {}
     for qubit in qubits:
         qubit_data = data.data[qubit]
+        state0_data = qubit_data[qubit_data.state == 0]
+        iq_state0 = state0_data[["i", "q"]]
         benchmark_table, y_test, x_test, models, names, hpars_list = run.train_qubit(
             data, qubit
         )
@@ -264,7 +265,6 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         hpars[qubit] = {}
         y_preds = []
         grid_preds = []
-
         grid = evaluate_grid(qubit_data)
         for i, model_name in enumerate(names):
             hpars[qubit][model_name] = hpars_list[i]
@@ -284,8 +284,9 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
                 mean_exc_states[qubit] = models[i].iq_mean1.tolist()
                 fidelity[qubit] = models[i].fidelity
                 assignment_fidelity[qubit] = models[i].assignment_fidelity
+                predictions_state0 = models[i].predict(iq_state0.tolist())
                 effective_temperature[qubit] = models[i].effective_temperature(
-                    y_preds[-1], data.qubit_frequencies[qubit]
+                    predictions_state0, data.qubit_frequencies[qubit]
                 )
         y_test_predict[qubit] = y_preds
         grid_preds_dict[qubit] = grid_preds

@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import qibo
+from qibo.backends import GlobalBackend
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
@@ -50,6 +51,9 @@ class StandardRBParameters(Parameters):
     """Number of bootstrap iterations for the fit uncertainties and error bars.
     If ``0``, gets the fit uncertainties from the fitting function and the error bars
     from the distribution of the measurements. Defaults to ``100``."""
+    unrolling: bool = False
+    """If ``True`` it uses sequence unrolling to deploy multiple circuits in a single instrument call.
+    Defaults to ``False``."""
     seed: Optional[int] = None
     """A fixed seed to initialize ``np.random.Generator``. If ``None``, uses a random seed.
     Defaults is ``None``."""
@@ -211,21 +215,38 @@ def _acquisition(
         noise_model = getattr(noisemodels, params.noise_model)(params.noise_params)
         params.noise_params = noise_model.params
 
+    # Grab activated qibo backend
+    backend = GlobalBackend()
+
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     nqubits = platform.nqubits if platform else max(qubits) + 1
     scan = setup_scan(params, qubits, nqubits)
 
-    # 2. Execute the scan.
-    data_list = []
-    # Iterate through the scan and execute each circuit.
+    # Iterate through the scan and create circuits
+    circuits = []
+    depths = []
     for circuit in scan:
         # The inverse and measurement gate don't count for the depth.
-        depth = (circuit.depth - 2) if circuit.depth > 1 else 0
+        depths.append((circuit.depth - 2) if circuit.depth > 1 else 0)
         if noise_model is not None:
             circuit = noise_model.apply(circuit)
-        samples = circuit.execute(nshots=params.nshots).samples()
-        # Every executed circuit gets a row where the data is stored.
-        data_list.append({"depth": depth, "samples": samples})
+        circuits.append(circuit)
+
+    # Execute the circuits
+    if params.unrolling:
+        results = backend.execute_circuits(circuits, nshots=params.nshots)
+    else:
+        results = [
+            backend.execute_circuit(circuit, nshots=params.nshots)
+            for circuit in circuits
+        ]
+
+    # Every executed circuit gets a row where the data is stored.
+    data_list = [
+        {"depth": depth, "samples": result.samples()}
+        for depth, result in zip(depths, results)
+    ]
+
     # Build the data object which will be returned and later saved.
     data = pd.DataFrame(data_list)
 
