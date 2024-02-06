@@ -203,20 +203,27 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 signal,
             )
 
-        popt = curve_fit(
-            utils.transmon_frequency,
-            biases,
-            frequencies * HZ_TO_GHZ,
-            bounds=utils.qubit_flux_dependence_fit_bounds(
-                data.qubit_frequency[qubit], qubit_data.bias
-            ),
-            maxfev=100000,
-        )[0]
-        fitted_parameters[qubit] = popt.tolist()
-        frequency[qubit] = popt[0] * GHZ_TO_HZ
-        d[qubit] = popt[1]
-        sweetspot[qubit] = popt[3]
-        matrix_element[qubit] = popt[2]
+        try:
+            popt = curve_fit(
+                utils.transmon_frequency,
+                biases,
+                frequencies * HZ_TO_GHZ,
+                bounds=utils.qubit_flux_dependence_fit_bounds(
+                    data.qubit_frequency[qubit], qubit_data.bias
+                ),
+                maxfev=100000,
+            )[0]
+            fitted_parameters[qubit] = popt.tolist()
+            frequency[qubit] = popt[0] * GHZ_TO_HZ
+            d[qubit] = popt[1]
+            sweetspot[qubit] = popt[3]
+            matrix_element[qubit] = popt[2]
+        except:
+            fitted_parameters[qubit] = [0, 0, 0, 0]
+            frequency[qubit] = 0
+            d[qubit] = 0
+            sweetspot[qubit] = 0
+            matrix_element[qubit] = 0
 
     return QubitFluxResults(
         frequency=frequency,

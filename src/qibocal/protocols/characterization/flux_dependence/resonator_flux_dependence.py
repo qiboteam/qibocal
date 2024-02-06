@@ -196,28 +196,40 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 signal,
             )
 
-        popt = curve_fit(
-            utils.transmon_readout_frequency,
-            biases,
-            frequencies * HZ_TO_GHZ,
-            bounds=utils.resonator_flux_dependence_fit_bounds(
-                data.qubit_frequency[qubit],
-                qubit_data.bias,
-                data.bare_resonator_frequency[qubit],
-            ),
-            maxfev=100000,
-        )[0]
-        fitted_parameters[qubit] = popt.tolist()
+        try:
+            popt = curve_fit(
+                utils.transmon_readout_frequency,
+                biases,
+                frequencies * HZ_TO_GHZ,
+                bounds=utils.resonator_flux_dependence_fit_bounds(
+                    data.qubit_frequency[qubit],
+                    qubit_data.bias,
+                    data.bare_resonator_frequency[qubit],
+                ),
+                maxfev=100000,
+            )[0]
+            fitted_parameters[qubit] = popt.tolist()
 
-        # frequency corresponds to transmon readout frequency
-        # at the sweetspot popt[3]
-        frequency[qubit] = utils.transmon_readout_frequency(popt[3], *popt) * GHZ_TO_HZ
-        sweetspot[qubit] = popt[3]
-        d[qubit] = popt[1]
-        bare_frequency[qubit] = popt[4] * GHZ_TO_HZ
-        drive_frequency[qubit] = popt[0] * GHZ_TO_HZ
-        g[qubit] = popt[5]
-        matrix_element[qubit] = popt[2]
+            # frequency corresponds to transmon readout frequency
+            # at the sweetspot popt[3]
+            frequency[qubit] = (
+                utils.transmon_readout_frequency(popt[3], *popt) * GHZ_TO_HZ
+            )
+            sweetspot[qubit] = popt[3]
+            d[qubit] = popt[1]
+            bare_frequency[qubit] = popt[4] * GHZ_TO_HZ
+            drive_frequency[qubit] = popt[0] * GHZ_TO_HZ
+            g[qubit] = popt[5]
+            matrix_element[qubit] = popt[2]
+        except:
+            frequency[qubit] = 0
+            sweetspot[qubit] = 0
+            d[qubit] = 0
+            bare_frequency[qubit] = 0
+            drive_frequency[qubit] = 0
+            g[qubit] = 0
+            matrix_element[qubit] = 0
+            fitted_parameters[qubit] = [0, 0, 0, 0, 0, 0]
 
     return ResonatorFluxResults(
         frequency=frequency,
