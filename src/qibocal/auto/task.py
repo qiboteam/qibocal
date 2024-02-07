@@ -215,8 +215,9 @@ class Completed:
     @results.setter
     def results(self, results: Results):
         """Set and store results."""
-        self._results = results
-        self._results.save(self.datapath)
+        if self._results is not None:
+            self._results = results
+            self._results.save(self.datapath)
 
     @property
     def data(self):

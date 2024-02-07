@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -11,6 +12,7 @@ from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.config import log
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, table_dict, table_html
 from . import utils
@@ -159,7 +161,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
+def _fit(data: ResonatorFluxData) -> Optional[ResonatorFluxResults]:
     """
     Post-processing for QubitFlux Experiment. See arxiv:0703002
     Fit frequency as a function of current for the flux qubit spectroscopy
@@ -221,15 +223,14 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             drive_frequency[qubit] = popt[0] * GHZ_TO_HZ
             g[qubit] = popt[5]
             matrix_element[qubit] = popt[2]
-        except:
-            frequency[qubit] = 0
-            sweetspot[qubit] = 0
-            d[qubit] = 0
-            bare_frequency[qubit] = 0
-            drive_frequency[qubit] = 0
-            g[qubit] = 0
-            matrix_element[qubit] = 0
-            fitted_parameters[qubit] = [0, 0, 0, 0, 0, 0]
+        except ValueError as e:
+            log.error(
+                f"Error in resonator_flux protocol fit: {e} "
+                "The threshold for the SNR mask is probably too high. "
+                "Lowering the value of `threshold` in `extract_*_feature`"
+                "should fix the problem."
+            )
+            return None
 
     return ResonatorFluxResults(
         frequency=frequency,

@@ -12,6 +12,7 @@ from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.config import log
 from qibocal.protocols.characterization.qubit_spectroscopy_ef import (
     DEFAULT_ANHARMONICITY,
 )
@@ -169,7 +170,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: QubitFluxData) -> QubitFluxResults:
+def _fit(data: QubitFluxData) -> Optional[QubitFluxResults]:
     """
     Post-processing for QubitFlux Experiment. See arxiv:0703002
     Fit frequency as a function of current for the flux qubit spectroscopy
@@ -218,12 +219,14 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
             d[qubit] = popt[1]
             sweetspot[qubit] = popt[3]
             matrix_element[qubit] = popt[2]
-        except:
-            fitted_parameters[qubit] = [0, 0, 0, 0]
-            frequency[qubit] = 0
-            d[qubit] = 0
-            sweetspot[qubit] = 0
-            matrix_element[qubit] = 0
+        except ValueError as e:
+            log.error(
+                f"Error in qubit_flux protocol fit: {e} "
+                "The threshold for the SNR mask is probably too high. "
+                "Lowering the value of `threshold` in `extract_*_feature`"
+                "should fix the problem."
+            )
+            return None
 
     return QubitFluxResults(
         frequency=frequency,
