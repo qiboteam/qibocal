@@ -34,20 +34,28 @@ class ResonatorFluxParameters(Parameters):
     """Amplitude step for flux pulses sweep [a.u.]."""
 
     def __post_init__(self):
-        has_bias_params = self.bias_width is not None and self.bias_step is not None
-        has_flux_params = (
-            self.flux_amplitude_width is not None
-            and self.flux_amplitude_step is not None
-        )
-        if not has_bias_params:
-            if has_flux_params:
+        if not self.has_bias_params:
+            if self.has_flux_params:
                 self.flux_pulses = True
                 return
-        if not has_flux_params:
-            if has_bias_params:
+        if not self.has_flux_params:
+            if self.has_bias_params:
                 self.flux_pulses = False
                 return
         raise ValueError
+
+    @property
+    def has_bias_params(self):
+        """True if both bias_width and bias_step are set."""
+        return self.bias_width is not None and self.bias_step is not None
+
+    @property
+    def has_flux_params(self):
+        """True if both biasflux_amplitude_width_width and flux_amplitude_step are set."""
+        return (
+            self.flux_amplitude_width is not None
+            and self.flux_amplitude_step is not None
+        )
 
 
 @dataclass
