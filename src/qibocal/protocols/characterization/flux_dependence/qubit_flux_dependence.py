@@ -47,11 +47,9 @@ class QubitFluxParameters(Parameters):
     def __post_init__(self):
         if not self.has_bias_params:
             if self.has_flux_params:
-                self.flux_pulses = True
                 return
         if not self.has_flux_params:
             if self.has_bias_params:
-                self.flux_pulses = False
                 return
         raise ValueError
 
@@ -67,6 +65,13 @@ class QubitFluxParameters(Parameters):
             self.flux_amplitude_width is not None
             and self.flux_amplitude_step is not None
         )
+
+    @property
+    def flux_pulses(self):
+        """True if sweeping flux pulses, False if sweeping bias."""
+        if self.has_flux_params:
+            return True
+        return False
 
 
 @dataclass
