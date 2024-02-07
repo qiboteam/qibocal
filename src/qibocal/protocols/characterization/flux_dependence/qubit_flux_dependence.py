@@ -50,8 +50,8 @@ class QubitFluxResults(Results):
     """Sweetspot for each qubit."""
     frequency: dict[QubitId, float]
     """Drive frequency for each qubit."""
-    d: dict[QubitId, float]
-    """Asymmetry."""
+    asymmetry: dict[QubitId, float]
+    """Asymmetry between junctions."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
     matrix_element: dict[QubitId, float]
@@ -180,7 +180,7 @@ def _fit(data: QubitFluxData) -> Optional[QubitFluxResults]:
     qubits = data.qubits
     frequency = {}
     sweetspot = {}
-    d = {}
+    asymmetry = {}
     matrix_element = {}
     fitted_parameters = {}
 
@@ -216,7 +216,7 @@ def _fit(data: QubitFluxData) -> Optional[QubitFluxResults]:
             )[0]
             fitted_parameters[qubit] = popt.tolist()
             frequency[qubit] = popt[0] * GHZ_TO_HZ
-            d[qubit] = popt[1]
+            asymmetry[qubit] = popt[1]
             sweetspot[qubit] = popt[3]
             matrix_element[qubit] = popt[2]
         except ValueError as e:
@@ -231,7 +231,7 @@ def _fit(data: QubitFluxData) -> Optional[QubitFluxResults]:
     return QubitFluxResults(
         frequency=frequency,
         sweetspot=sweetspot,
-        d=d,
+        asymmetry=asymmetry,
         matrix_element=matrix_element,
         fitted_parameters=fitted_parameters,
     )
@@ -255,7 +255,7 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
                 [
                     np.round(fit.sweetspot[qubit], 4),
                     np.round(fit.frequency[qubit], 4),
-                    np.round(fit.d[qubit], 4),
+                    np.round(fit.asymmetry[qubit], 4),
                     np.round(fit.matrix_element[qubit], 4),
                 ],
             )
@@ -267,7 +267,7 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
 def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
     update.drive_frequency(results.frequency[qubit], platform, qubit)
     update.sweetspot(results.sweetspot[qubit], platform, qubit)
-    update.asymmetry(results.d[qubit], platform, qubit)
+    update.asymmetry(results.asymmetry[qubit], platform, qubit)
 
 
 qubit_flux = Routine(_acquisition, _fit, _plot, _update)
