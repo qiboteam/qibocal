@@ -75,15 +75,15 @@ class StandardRBParameters(Parameters):
 class StandardRBResult(Results):
     """Standard RB outputs."""
 
-    fidelity: float
+    fidelity: dict[QubitId, float]
     """The overall fidelity of this qubit."""
-    pulse_fidelity: float
+    pulse_fidelity: dict[QubitId, float]
     """The pulse fidelity of the gates acting on this qubit."""
-    fit_parameters: tuple[float, float, float]
+    fit_parameters: dict[QubitId, tuple[float, float, float]]
     """Raw fitting parameters."""
-    fit_uncertainties: tuple[float, float, float]
+    fit_uncertainties: dict[QubitId, tuple[float, float, float]]
     """Fitting parameters uncertainties."""
-    error_bars: Optional[Union[float, list[float]]] = None
+    error_bars: dict[QubitId, Optional[Union[float, list[float]]]] = None
     """Error bars for y."""
 
 
@@ -270,6 +270,7 @@ def _fit(data: RBData) -> StandardRBResult:
         StandardRBResult: Aggregated and processed data.
     """
     # Extract depths and probabilities
+    print(data)
     x, y_scatter = extract_from_data(data, "signal", "depth", list)
     homogeneous = all(len(y_scatter[0]) == len(row) for row in y_scatter)
 

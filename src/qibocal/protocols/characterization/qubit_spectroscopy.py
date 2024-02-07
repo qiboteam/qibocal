@@ -10,6 +10,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.config import log
 
 from .resonator_spectroscopy import ResonatorSpectroscopyData, ResSpecType
 from .utils import lorentzian_fit, spectroscopy_plot
@@ -121,11 +122,14 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     frequency = {}
     fitted_parameters = {}
     for qubit in qubits:
-        freq, fitted_params = lorentzian_fit(
-            data[qubit], resonator_type=data.resonator_type, fit="qubit"
-        )
-        frequency[qubit] = freq
-        fitted_parameters[qubit] = fitted_params
+        try:
+            freq, fitted_params = lorentzian_fit(
+                data[qubit], resonator_type=data.resonator_type, fit="qubit"
+            )
+            frequency[qubit] = freq
+            fitted_parameters[qubit] = fitted_params
+        except RuntimeError:
+            log.warning(f"Lorentzian fit for qubit {qubit} not successful")
 
     return QubitSpectroscopyResults(
         frequency=frequency,

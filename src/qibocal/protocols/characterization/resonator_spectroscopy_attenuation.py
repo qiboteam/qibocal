@@ -10,6 +10,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.config import log
 
 from .resonator_spectroscopy import ResonatorSpectroscopyData, ResSpecType
 from .utils import PowerLevel, lorentzian_fit, spectroscopy_plot
@@ -150,14 +151,18 @@ def _fit(
     frequency = {}
     fitted_parameters = {}
     for qubit in qubits:
-        freq, fitted_params = lorentzian_fit(
-            data[qubit], resonator_type=data.resonator_type, fit="resonator"
-        )
-        if data.power_level is PowerLevel.high:
-            bare_frequency[qubit] = freq
+        try:
+            freq, fitted_params = lorentzian_fit(
+                data[qubit], resonator_type=data.resonator_type, fit="resonator"
+            )
+            if data.power_level is PowerLevel.high:
+                bare_frequency[qubit] = freq
 
-        frequency[qubit] = freq
-        fitted_parameters[qubit] = fitted_params
+            frequency[qubit] = freq
+            fitted_parameters[qubit] = fitted_params
+        except RuntimeError:
+            log.warning(f"Lorentzian fit for qubit {qubit} not successful")
+
     if data.power_level is PowerLevel.high:
         return ResonatorSpectroscopyAttenuationResults(
             frequency=frequency,

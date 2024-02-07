@@ -12,6 +12,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.config import log
 from qibocal.protocols.characterization.utils import (
     HZ_TO_GHZ,
     lorentzian,
@@ -173,28 +174,33 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
 
     frequency_0 = {}
     frequency_1 = {}
+    best_freqs = {}
     fitted_parameters_0 = {}
     fitted_parameters_1 = {}
 
     for i in range(2):
         for qubit in qubits:
             data_i = data[qubit, i]
-            freq, fitted_params = lorentzian_fit(
-                data_i, resonator_type=data.resonator_type, fit="resonator"
-            )
-            if i == 0:
-                frequency_0[qubit] = freq
-                fitted_parameters_0[qubit] = fitted_params
-            else:
-                frequency_1[qubit] = freq
-                fitted_parameters_1[qubit] = fitted_params
+            try:
+                freq, fitted_params = lorentzian_fit(
+                    data_i, resonator_type=data.resonator_type, fit="resonator"
+                )
+                if i == 0:
+                    frequency_0[qubit] = freq
+                    fitted_parameters_0[qubit] = fitted_params
+                else:
+                    frequency_1[qubit] = freq
+                    fitted_parameters_1[qubit] = fitted_params
+            except RuntimeError:
+                log.warning(f"Lorentzian fit for qubit {qubit} not successful")
+
             i_measures = data_i.i
             q_measures = data_i.q
 
             iq_couples[i].append(np.stack((i_measures, q_measures), axis=-1))
-    # for each qubit find the iq couple of 0-1 states that maximize the distance
+        # for each qubit find the iq couple of 0-1 states that maximize the distance
     iq_couples = np.array(iq_couples)
-    best_freqs = {}
+
     for idx, qubit in enumerate(qubits):
         frequencies = data[qubit, 0].freq
 
@@ -202,6 +208,7 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
             np.linalg.norm(iq_couples[0][idx] - iq_couples[1][idx], axis=-1)
         )
         best_freqs[qubit] = frequencies[max_index]
+
     return DispersiveShiftResults(
         frequency_state_zero=frequency_0,
         frequency_state_one=frequency_1,

@@ -2,7 +2,7 @@ import inspect
 import json
 import time
 from copy import deepcopy
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from functools import wraps
 from pathlib import Path
 from typing import Callable, Generic, NewType, Optional, TypeVar, Union
@@ -221,6 +221,10 @@ class Data(AbstractData):
 @dataclass
 class Results(AbstractData):
     """Generic runcard update."""
+
+    def __contains__(self, qubit: Union[QubitId, QubitPairId]):
+        """Checking if qubit is in Results."""
+        return all(qubit in getattr(self, field.name) for field in fields(self))
 
     @classmethod
     def load(cls, path: Path):

@@ -13,7 +13,6 @@ from scipy.optimize import curve_fit
 from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Results
-from qibocal.config import log
 from qibocal.fitting.classifier import run
 
 GHZ_TO_HZ = 1e9
@@ -127,16 +126,16 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         guess_offset,
     ]
     # fit the model with the data and guessed parameters
-    try:
-        fit_parameters, _ = curve_fit(
-            lorentzian,
-            frequencies,
-            voltages,
-            p0=model_parameters,
-        )
-        model_parameters = list(fit_parameters)
-    except RuntimeError:
-        log.warning("lorentzian_fit: the fitting was not successful")
+    # try:
+    fit_parameters, _ = curve_fit(
+        lorentzian,
+        frequencies,
+        voltages,
+        p0=model_parameters,
+    )
+    model_parameters = list(fit_parameters)
+    # except RuntimeError:
+    #     log.warning("lorentzian_fit: the fitting was not successful")
 
     return model_parameters[1] * GHZ_TO_HZ, model_parameters
 
