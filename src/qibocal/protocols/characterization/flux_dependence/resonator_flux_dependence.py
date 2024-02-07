@@ -230,7 +230,6 @@ def _fit(data: ResonatorFluxData) -> Optional[ResonatorFluxResults]:
                 "Lowering the value of `threshold` in `extract_*_feature`"
                 "should fix the problem."
             )
-            return None
 
     return ResonatorFluxResults(
         frequency=frequency,

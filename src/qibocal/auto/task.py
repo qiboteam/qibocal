@@ -9,7 +9,7 @@ from typing import Optional, Union
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
-from ..config import raise_error
+from ..config import log, raise_error
 from ..protocols.characterization import Operation
 from ..utils import (
     allocate_qubits_pairs,
@@ -215,9 +215,8 @@ class Completed:
     @results.setter
     def results(self, results: Results):
         """Set and store results."""
-        if self._results is not None:
-            self._results = results
-            self._results.save(self.datapath)
+        self._results = results
+        self._results.save(self.datapath)
 
     @property
     def data(self):
@@ -237,7 +236,12 @@ class Completed:
         """Perform update on platform' parameters by looping over qubits or pairs."""
         if self.task.update and update:
             for qubit in self.task.qubits:
-                self.task.operation.update(self.results, platform, qubit)
+                try:
+                    self.task.operation.update(self.results, platform, qubit)
+                except KeyError:
+                    log.warning(
+                        f"Skipping update of qubit {qubit} due to error in fit."
+                    )
 
     def validate(self) -> tuple[Optional[TaskId], Optional[dict]]:
         """Check status of completed and handle Failure using handler."""

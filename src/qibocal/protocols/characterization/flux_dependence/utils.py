@@ -52,7 +52,11 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
     )
 
     # TODO: This fit is for frequency, can it be reused here, do we even want the fit ?
-    if fit is not None and not data.__class__.__name__ == "CouplerSpectroscopyData":
+    if (
+        fit is not None
+        and not data.__class__.__name__ == "CouplerSpectroscopyData"
+        and qubit in fit.fitted_parameters
+    ):
         params = fit.fitted_parameters[qubit]
         bias = np.unique(qubit_data.bias)
         fig.add_trace(

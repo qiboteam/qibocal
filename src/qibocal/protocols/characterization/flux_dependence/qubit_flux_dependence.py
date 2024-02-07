@@ -226,7 +226,6 @@ def _fit(data: QubitFluxData) -> Optional[QubitFluxResults]:
                 "Lowering the value of `threshold` in `extract_*_feature`"
                 "should fix the problem."
             )
-            return None
 
     return QubitFluxResults(
         frequency=frequency,
