@@ -224,6 +224,8 @@ class Results(AbstractData):
 
     def __contains__(self, qubit: Union[QubitId, QubitPairId]):
         """Checking if qubit is in Results."""
+        if isinstance(qubit, list):
+            qubit = tuple(qubit)
         return all(qubit in getattr(self, field.name) for field in fields(self))
 
     @classmethod
