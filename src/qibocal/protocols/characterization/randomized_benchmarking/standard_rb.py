@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import qibo
 from qibo.backends import GlobalBackend
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId, QubitPairId
+from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.bootstrap import bootstrap, data_uncertainties
@@ -87,7 +87,7 @@ class StandardRBResult(Results):
     """Error bars for y."""
 
     # FIXME: fix this after https://github.com/qiboteam/qibocal/pull/597
-    def __contains__(self, qubit: QubitId | QubitPairId):
+    def __contains__(self, qubit: QubitId):
         return True
 
 
