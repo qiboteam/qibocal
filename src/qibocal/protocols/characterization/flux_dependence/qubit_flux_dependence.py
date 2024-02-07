@@ -170,7 +170,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: QubitFluxData) -> Optional[QubitFluxResults]:
+def _fit(data: QubitFluxData) -> QubitFluxResults:
     """
     Post-processing for QubitFlux Experiment. See arxiv:0703002
     Fit frequency as a function of current for the flux qubit spectroscopy

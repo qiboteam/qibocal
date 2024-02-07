@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -161,7 +160,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: ResonatorFluxData) -> Optional[ResonatorFluxResults]:
+def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     """
     Post-processing for QubitFlux Experiment. See arxiv:0703002
     Fit frequency as a function of current for the flux qubit spectroscopy
