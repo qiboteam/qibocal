@@ -28,13 +28,13 @@ class QubitFluxParameters(Parameters):
     """Width for frequency sweep relative to the qubit frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
-    bias_width: float = None
+    bias_width: Optional[float] = None
     """Width for bias sweep [V]."""
-    bias_step: float = None
+    bias_step: Optional[float] = None
     """Bias step for sweep [V]."""
-    flux_amplitude_width: float = None
+    flux_amplitude_width: Optional[float] = None
     """Amplitude width for flux pulses sweep relative to the qubit sweetspot [a.u.]."""
-    flux_amplitude_step: float = None
+    flux_amplitude_step: Optional[float] = None
     """Amplitude step for flux pulses sweep [a.u.]."""
     drive_amplitude: Optional[float] = None
     """Drive amplitude (optional). If defined, same amplitude will be used in all qubits.
