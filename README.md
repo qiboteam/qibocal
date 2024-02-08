@@ -1,7 +1,7 @@
 # Qibocal
-![Tests](https://github.com/qiboteam/qibocal/workflows/Tests/badge.svg)
 [![codecov](https://codecov.io/gh/qiboteam/qibocal/branch/main/graph/badge.svg?token=1EKZKVEVX0)](https://codecov.io/gh/qiboteam/qibocal)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.7662185.svg)](https://doi.org/10.5281/zenodo.7662185)
+![PyPI - Version](https://img.shields.io/pypi/v/qibo)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/qibo)
 
 Qibocal provides Quantum Characterization Validation and Verification protocols using [Qibo](https://github.com/qiboteam/qibo) and [Qibolab](https://github.com/qiboteam/qibolab).
 
@@ -12,6 +12,12 @@ Qibocal key features:
 - Declarative inputs using runcard.
 
 - Generation of a report.
+
+## Documentation
+
+[![docs](https://github.com/qiboteam/qibocal/actions/workflows/publish.yml/badge.svg)](https://qibo.science/qibocal/stable/)
+
+Qibocal documentation is available [here](https://qibo.science/qibocal/stable/).
 
 ## Installation
 
@@ -72,3 +78,9 @@ In order to upload the report to a centralized server, send to the server admini
 Contributions, issues and feature requests are welcome!
 Feel free to check
 <a href="https://github.com/qiboteam/qibocal/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-closed/qiboteam/qibocal"/></a>
+
+## Citation policy
+[![arXiv](https://img.shields.io/badge/arXiv-2303.10397-b31b1b.svg)](https://arxiv.org/abs/2303.10397)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10280112.svg)](https://doi.org/10.5281/zenodo.10280112)
+
+If you use the package please refer to [the documentation](https://qibo.science/qibo/stable/appendix/citing-qibo.html#publications) for citation instructions
