@@ -41,7 +41,10 @@ class ResonatorFluxParameters(Parameters):
         if not self.has_flux_params:
             if self.has_bias_params:
                 return
-        raise ValueError
+        raise ValueError(
+            "Too many arguments provided. Provide either bias_width "
+            "and bias_step or flux_amplitude_width and flux_amplitude_step."
+        )
 
     @property
     def has_bias_params(self):
