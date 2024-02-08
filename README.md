@@ -1,7 +1,7 @@
 # Qibocal
 [![codecov](https://codecov.io/gh/qiboteam/qibocal/branch/main/graph/badge.svg?token=1EKZKVEVX0)](https://codecov.io/gh/qiboteam/qibocal)
-![PyPI - Version](https://img.shields.io/pypi/v/qibo)
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/qibo)
+![PyPI - Version](https://img.shields.io/pypi/v/qibocal)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/qibocal)
 
 Qibocal provides Quantum Characterization Validation and Verification protocols using [Qibo](https://github.com/qiboteam/qibo) and [Qibolab](https://github.com/qiboteam/qibolab).
 
