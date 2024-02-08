@@ -122,7 +122,7 @@ def _fit(data: ZenoData) -> ZenoResults:
             ),
             np.sqrt(2 / len(data[qubit].prob)),
         )
-        for qubit in data.qubits
+        for qubit in fitted_parameters
     }
     return ZenoResults(t1s, fitted_parameters, chi2)
 
