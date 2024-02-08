@@ -11,31 +11,19 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Qubits, Results, Routine
 from qibocal.protocols.characterization.qubit_spectroscopy_ef import (
     DEFAULT_ANHARMONICITY,
 )
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, table_dict, table_html
-from . import utils
+from . import resonator_flux_dependence, utils
 
 
 @dataclass
-class QubitFluxParameters(Parameters):
+class QubitFluxParameters(resonator_flux_dependence.ResonatorFluxParameters):
     """QubitFlux runcard inputs."""
 
-    freq_width: int
-    """Width for frequency sweep relative to the qubit frequency [Hz]."""
-    freq_step: int
-    """Frequency step for sweep [Hz]."""
-    bias_width: Optional[float] = None
-    """Width for bias sweep [V]."""
-    bias_step: Optional[float] = None
-    """Bias step for sweep [V]."""
-    flux_amplitude_width: Optional[float] = None
-    """Amplitude width for flux pulses sweep relative to the qubit sweetspot [a.u.]."""
-    flux_amplitude_step: Optional[float] = None
-    """Amplitude step for flux pulses sweep [a.u.]."""
     drive_amplitude: Optional[float] = None
     """Drive amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
@@ -43,35 +31,6 @@ class QubitFluxParameters(Parameters):
     """Flux spectroscopy transition type ("01" or "02"). Default value is 01"""
     drive_duration: int = 2000
     """Duration of the drive pulse."""
-
-    def __post_init__(self):
-        if not self.has_bias_params:
-            if self.has_flux_params:
-                return
-        if not self.has_flux_params:
-            if self.has_bias_params:
-                return
-        raise ValueError
-
-    @property
-    def has_bias_params(self):
-        """True if both bias_width and bias_step are set."""
-        return self.bias_width is not None and self.bias_step is not None
-
-    @property
-    def has_flux_params(self):
-        """True if both biasflux_amplitude_width_width and flux_amplitude_step are set."""
-        return (
-            self.flux_amplitude_width is not None
-            and self.flux_amplitude_step is not None
-        )
-
-    @property
-    def flux_pulses(self):
-        """True if sweeping flux pulses, False if sweeping bias."""
-        if self.has_flux_params:
-            return True
-        return False
 
 
 @dataclass
