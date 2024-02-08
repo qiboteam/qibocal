@@ -70,15 +70,13 @@ UPDATE_CARD = {
     "qubits": QUBITS,
     "actions": [
         {
-            "id": "resonator frequency",
+            "id": "readout frequency",
             "priority": 0,
-            "operation": "resonator_spectroscopy",
+            "operation": "resonator_frequency",
             "main": "classification",
             "parameters": {
                 "freq_width": 10_000_000,
                 "freq_step": 100_000,
-                "amplitude": 0.4,
-                "power_level": "low",
             },
         },
         {
