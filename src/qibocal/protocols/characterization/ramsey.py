@@ -14,14 +14,10 @@ from scipy.signal import find_peaks
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.config import log
 
 from .utils import GHZ_TO_HZ, chi2_reduced, table_dict, table_html
 
-POPT_EXCEPTION = [0, 0, 0, 0, 0]
-"""Fit parameters output to handle exceptions"""
-PERR_EXCEPTION = [1] * 5
-"""Fit errors to handle exceptions; their choice has no physical meaning
-and is meant to avoid breaking the code."""
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
 
@@ -270,34 +266,34 @@ def _fit(data: RamseyData) -> RamseyResults:
         probs = qubit_data["prob"]
         try:
             popt, perr = fitting(waits, probs, qubit_data.errors)
-        except:
-            popt = POPT_EXCEPTION
-            perr = PERR_EXCEPTION
 
-        delta_fitting = popt[2] / (2 * np.pi)
-        delta_phys = data.detuning_sign * int(
-            (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
-        )
-        corrected_qubit_frequency = int(qubit_freq - delta_phys)
-        t2 = popt[4]
-        freq_measure[qubit] = (
-            corrected_qubit_frequency,
-            perr[2] * GHZ_TO_HZ / (2 * np.pi * data.t_max),
-        )
-        t2_measure[qubit] = (t2, perr[4])
-        popts[qubit] = popt
-        delta_phys_measure[qubit] = (
-            delta_phys,
-            popt[2] * GHZ_TO_HZ / (2 * np.pi * data.t_max),
-        )
-        chi2[qubit] = (
-            chi2_reduced(
-                probs,
-                ramsey_fit(waits, *popts[qubit]),
-                qubit_data.errors,
-            ),
-            np.sqrt(2 / len(probs)),
-        )
+            delta_fitting = popt[2] / (2 * np.pi)
+            delta_phys = data.detuning_sign * int(
+                (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
+            )
+            corrected_qubit_frequency = int(qubit_freq - delta_phys)
+            t2 = popt[4]
+            freq_measure[qubit] = (
+                corrected_qubit_frequency,
+                perr[2] * GHZ_TO_HZ / (2 * np.pi * data.t_max),
+            )
+            t2_measure[qubit] = (t2, perr[4])
+            popts[qubit] = popt
+            delta_phys_measure[qubit] = (
+                delta_phys,
+                popt[2] * GHZ_TO_HZ / (2 * np.pi * data.t_max),
+            )
+            chi2[qubit] = (
+                chi2_reduced(
+                    probs,
+                    ramsey_fit(waits, *popts[qubit]),
+                    qubit_data.errors,
+                ),
+                np.sqrt(2 / len(probs)),
+            )
+        except Exception as e:
+            log.warning(f"Ramsey fitting failed for qubit {qubit} due to {e}.")
+
     return RamseyResults(freq_measure, t2_measure, delta_phys_measure, popts, chi2)
 
 

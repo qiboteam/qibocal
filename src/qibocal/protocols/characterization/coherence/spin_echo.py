@@ -132,7 +132,7 @@ def _fit(data: SpinEchoData) -> SpinEchoResults:
             ),
             np.sqrt(2 / len(data[qubit].prob)),
         )
-        for qubit in data.qubits
+        for qubit in fitted_parameters
     }
 
     return SpinEchoResults(t2Echos, fitted_parameters, chi2)

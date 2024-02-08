@@ -10,16 +10,9 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Qubits, Results, Routine
+from qibocal.config import log
 
-from .ramsey import (
-    PERR_EXCEPTION,
-    POPT_EXCEPTION,
-    RamseyData,
-    RamseyParameters,
-    _update,
-    fitting,
-    ramsey_fit,
-)
+from .ramsey import RamseyData, RamseyParameters, _update, fitting, ramsey_fit
 from .utils import GHZ_TO_HZ, table_dict, table_html
 
 
@@ -229,26 +222,24 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
         signal = qubit_data["signal"]
         try:
             popt, perr = fitting(waits, signal)
-        except:
-            popt = POPT_EXCEPTION
-            perr = PERR_EXCEPTION
-
-        delta_fitting = popt[2] / (2 * np.pi)
-        delta_phys = data.detuning_sign * int(
-            (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
-        )
-        corrected_qubit_frequency = int(qubit_freq - delta_phys)
-        t2 = popt[4]
-        freq_measure[qubit] = (
-            corrected_qubit_frequency,
-            perr[2] * GHZ_TO_HZ / (2 * np.pi * data.t_max),
-        )
-        t2_measure[qubit] = (t2, perr[4])
-        popts[qubit] = popt
-        delta_phys_measure[qubit] = (
-            delta_phys,
-            popt[2] * GHZ_TO_HZ / (2 * np.pi * data.t_max),
-        )
+            delta_fitting = popt[2] / (2 * np.pi)
+            delta_phys = data.detuning_sign * int(
+                (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
+            )
+            corrected_qubit_frequency = int(qubit_freq - delta_phys)
+            t2 = popt[4]
+            freq_measure[qubit] = (
+                corrected_qubit_frequency,
+                perr[2] * GHZ_TO_HZ / (2 * np.pi * data.t_max),
+            )
+            t2_measure[qubit] = (t2, perr[4])
+            popts[qubit] = popt
+            delta_phys_measure[qubit] = (
+                delta_phys,
+                popt[2] * GHZ_TO_HZ / (2 * np.pi * data.t_max),
+            )
+        except Exception as e:
+            log.warning(f"Ramsey fitting failed for qubit {qubit} due to {e}.")
 
     return RamseySignalResults(freq_measure, t2_measure, delta_phys_measure, popts)
 

@@ -51,14 +51,11 @@ def exponential_fit(data, zeno=None):
                 popt[2] * (x_max - x_min),
             ]
             t2 = popt[2]
+            fitted_parameters[qubit] = popt
+            decay[qubit] = t2
 
         except Exception as e:
-            log.warning(f"Exp decay fitting was not succesful. {e}")
-            popt = [0] * 3
-            t2 = 5.0
-
-        fitted_parameters[qubit] = popt
-        decay[qubit] = t2
+            log.warning(f"Exponential decay fit failed for qubit {qubit} due to {e}")
 
     return decay, fitted_parameters
 
@@ -93,14 +90,10 @@ def exponential_fit_probability(data):
             )
             popt = popt.tolist()
             perr = np.sqrt(np.diag(perr))
+            fitted_parameters[qubit] = popt
+            dec = popt[2]
+            decay[qubit] = (dec, perr[2])
         except Exception as e:
-            log.warning(f"Exp decay fitting was not succesful. {e}")
-            popt = [0] * 3
-            dec = 5
-            perr = [1] * 3
-
-        fitted_parameters[qubit] = popt
-        dec = popt[2]
-        decay[qubit] = (dec, perr[2])
+            log.warning(f"Exponential decay fit failed for qubit {qubit} due to {e}")
 
     return decay, fitted_parameters

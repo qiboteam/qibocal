@@ -156,9 +156,6 @@ def _fit(data: ReadoutMitigationMatrixData) -> ReadoutMitigationMatrixResults:
             readout_mitigation_matrix[tuple(qubit)] = np.linalg.inv(matrix).tolist()
         except np.linalg.LinAlgError as e:
             log.warning(f"ReadoutMitigationMatrix: the fitting was not succesful. {e}")
-            readout_mitigation_matrix[tuple(qubit)] = np.zeros(
-                (2 ** len(qubit), 2 ** len(qubit))
-            ).tolist()
 
     return ReadoutMitigationMatrixResults(
         readout_mitigation_matrix=readout_mitigation_matrix,

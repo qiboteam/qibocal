@@ -178,17 +178,15 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
         beta_params = qubit_data.beta
 
         try:
-            popt, pcov = curve_fit(drag_fit, beta_params, voltages)
+            popt, _ = curve_fit(drag_fit, beta_params, voltages)
             smooth_dataset = drag_fit(beta_params, popt[0], popt[1], popt[2], popt[3])
             min_abs_index = np.abs(smooth_dataset).argmin()
             beta_optimal = beta_params[min_abs_index]
-        except:
-            log.warning("drag_tuning_fit: the fitting was not succesful")
-            popt = np.array([0, 0, 1, 0])
-            beta_optimal = 0
+            fitted_parameters[qubit] = popt.tolist()
+            betas_optimal[qubit] = beta_optimal
+        except Exception as e:
+            log.warning(f"Drag fit failed on qubit {qubit} due to {e}.")
 
-        fitted_parameters[qubit] = popt.tolist()
-        betas_optimal[qubit] = beta_optimal
     return DragPulseTuningResults(betas_optimal, fitted_parameters)
 
 

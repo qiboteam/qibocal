@@ -179,31 +179,29 @@ def _fit(data: FlippingData) -> FlippingResults:
                     [1, np.inf, np.inf, 2 * np.pi, np.inf],
                 ),
             )
-        except:
-            log.warning("flipping_fit: the fitting was not succesful")
-            popt = [0, 0, 0, 0]
-
-        translated_popt = [
-            y_min + (y_max - y_min) * popt[0],
-            (y_max - y_min)
-            * popt[1]
-            * np.exp(x_min * popt[4] * 2 * np.pi * f / (x_max - x_min)),
-            popt[2] * 2 * np.pi * f / (x_max - x_min),
-            popt[3] - x_min * 2 * np.pi * f / (x_max - x_min) * popt[2],
-            popt[4] * 2 * np.pi * f / (x_max - x_min),
-        ]
-        if popt[3] > np.pi / 2 and popt[3] < 3 * np.pi / 2:
-            signed_correction = -translated_popt[2] / 2
-        else:
-            signed_correction = translated_popt[2] / 2
-        # The amplitude is directly proportional to the rotation angle
-        corrected_amplitudes[qubit] = (pi_pulse_amplitude * np.pi) / (
-            np.pi + signed_correction
-        )
-        fitted_parameters[qubit] = translated_popt
-        amplitude_correction_factors[qubit] = (
-            signed_correction / np.pi * pi_pulse_amplitude
-        )
+            translated_popt = [
+                y_min + (y_max - y_min) * popt[0],
+                (y_max - y_min)
+                * popt[1]
+                * np.exp(x_min * popt[4] * 2 * np.pi * f / (x_max - x_min)),
+                popt[2] * 2 * np.pi * f / (x_max - x_min),
+                popt[3] - x_min * 2 * np.pi * f / (x_max - x_min) * popt[2],
+                popt[4] * 2 * np.pi * f / (x_max - x_min),
+            ]
+            if popt[3] > np.pi / 2 and popt[3] < 3 * np.pi / 2:
+                signed_correction = -translated_popt[2] / 2
+            else:
+                signed_correction = translated_popt[2] / 2
+            # The amplitude is directly proportional to the rotation angle
+            corrected_amplitudes[qubit] = (pi_pulse_amplitude * np.pi) / (
+                np.pi + signed_correction
+            )
+            fitted_parameters[qubit] = translated_popt
+            amplitude_correction_factors[qubit] = (
+                signed_correction / np.pi * pi_pulse_amplitude
+            )
+        except Exception as e:
+            log.warning(f"Flipping fit failed for qubit{qubit} due to {e}.")
 
     return FlippingResults(
         corrected_amplitudes, amplitude_correction_factors, fitted_parameters

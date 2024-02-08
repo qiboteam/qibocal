@@ -174,8 +174,10 @@ def _fit(data: DispersiveShiftQutritData) -> DispersiveShiftQutritResults:
                 else:
                     frequency_2[qubit] = freq
                     fitted_parameters_2[qubit] = fitted_params
-            except RuntimeError:
-                log.warning(f"Lorentzian fit for qubit {qubit} not successful")
+            except RuntimeError as e:
+                log.warning(
+                    f"Lorentzian fit for qubit {qubit} not successful due to {e}"
+                )
 
     return DispersiveShiftQutritResults(
         frequency_state_zero=frequency_0,

@@ -194,7 +194,7 @@ def _update(
 ):
     update.readout_frequency(results.frequency[qubit], platform, qubit)
 
-    # if this condition is satifisfied means that we are in the low power regime
+    # if this condition is satisfied means that we are in the low power regime
     # therefore we update also the readout amplitude
     if len(results.bare_frequency) == 0:
         update.readout_amplitude(results.amplitude[qubit], platform, qubit)

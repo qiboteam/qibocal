@@ -19,7 +19,7 @@ from .utils import HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
 
 @dataclass
 class ResonatorPunchoutParameters(Parameters):
-    """ "ResonatorPunchout runcard inputs."""
+    """ResonatorPunchout runcard inputs."""
 
     freq_width: int
     """Width for frequency sweep relative  to the readout frequency [Hz]."""
