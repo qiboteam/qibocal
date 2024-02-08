@@ -81,6 +81,8 @@ Feel free to check
 
 ## Citation policy
 [![arXiv](https://img.shields.io/badge/arXiv-2303.10397-b31b1b.svg)](https://arxiv.org/abs/2303.10397)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10280112.svg)](https://doi.org/10.5281/zenodo.10280112)
+[![DOI](https://zenodo.org/badge/511836317.svg)](https://zenodo.org/badge/latestdoi/511836317)
+
+
 
 If you use the package please refer to [the documentation](https://qibo.science/qibo/stable/appendix/citing-qibo.html#publications) for citation instructions
