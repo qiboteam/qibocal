@@ -240,8 +240,8 @@ class Completed:
         if self.task.update and update:
             for qubit in self.task.qubits:
                 self.task.operation.update(self.results, platform, qubit)
-        (self.datapath / "platform").mkdir(parents=True, exist_ok=True)
-        dump_platform(platform, self.datapath / "platform")
+            (self.datapath / "platform").mkdir(parents=True, exist_ok=True)
+            dump_platform(platform, self.datapath / "platform")
 
     def validate(self) -> tuple[Optional[TaskId], Optional[dict]]:
         """Check status of completed and handle Failure using handler."""

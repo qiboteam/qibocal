@@ -40,9 +40,10 @@ def idfn(val):
 @pytest.mark.parametrize("backend", ["qibolab"])
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_auto_command(runcard, update, platform, backend, tmp_path):
+def test_auto_command(runcard, update, platform, backend, tmp_path, request):
     """Test auto command pipeline."""
 
+    protocol = runcard["actions"][0]["id"]
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
     runner = CliRunner()
     results = runner.invoke(
@@ -62,6 +63,9 @@ def test_auto_command(runcard, update, platform, backend, tmp_path):
     )
     assert not results.exception
     assert results.exit_code == 0
+    if update == "--update":
+        assert (tmp_path / "new_platform").is_dir()
+        assert (tmp_path / "data" / f"{protocol}_0" / "platform").is_dir()
 
 
 @pytest.mark.parametrize("platform", ["dummy"])
@@ -69,6 +73,7 @@ def test_auto_command(runcard, update, platform, backend, tmp_path):
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_acquire_command(runcard, backend, platform, tmp_path):
     """Test acquire command pipeline and report generated."""
+    protocol = runcard["actions"][0]["id"]
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
     runner = CliRunner()
 
@@ -89,17 +94,20 @@ def test_acquire_command(runcard, backend, platform, tmp_path):
     )
     assert not results.exception
     assert results.exit_code == 0
+    assert (tmp_path / "data" / f"{protocol}_0").is_dir()
 
     # generate report from acquired data
     results_report = runner.invoke(command, ["report", str(tmp_path)])
     assert not results_report.exception
     assert results_report.exit_code == 0
+    assert (tmp_path / "index.html").is_file()
 
 
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_fit_command(runcard, update, tmp_path):
     """Test fit builder and report generated."""
+    protocol = runcard["actions"][0]["id"]
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
     runner = CliRunner()
 
@@ -123,10 +131,15 @@ def test_fit_command(runcard, update, tmp_path):
     assert not results_fit.exception
     assert results_fit.exit_code == 0
 
+    if update == "--update":
+        assert (tmp_path / "new_platform").is_dir()
+        assert (tmp_path / "data" / f"{protocol}_0" / "platform").is_dir()
+
     # generate report with fit and plot
     results_plot = runner.invoke(command, ["report", str(tmp_path)])
     assert not results_plot.exception
     assert results_plot.exit_code == 0
+    assert (tmp_path / "index.html").is_file()
 
 
 def test_extract_rabi():
