@@ -8,6 +8,7 @@ from typing import Optional, Union
 
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
+from qibolab.serialize import dump_platform
 
 from ..config import raise_error
 from ..protocols.characterization import Operation
@@ -33,6 +34,8 @@ MAX_PRIORITY = int(1e9)
 """A number bigger than whatever will be manually typed. But not so insanely big not to fit in a native integer."""
 TaskId = tuple[Id, int]
 """Unique identifier for executed tasks."""
+PLATFORM_FOLDER = "platform"
+"""Folder where platform will be dumped."""
 
 
 @dataclass
@@ -237,6 +240,8 @@ class Completed:
         if self.task.update and update:
             for qubit in self.task.qubits:
                 self.task.operation.update(self.results, platform, qubit)
+        (self.datapath / "platform").mkdir(parents=True, exist_ok=True)
+        dump_platform(platform, self.datapath / "platform")
 
     def validate(self) -> tuple[Optional[TaskId], Optional[dict]]:
         """Check status of completed and handle Failure using handler."""
