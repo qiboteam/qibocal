@@ -42,7 +42,7 @@ def idfn(val):
 @pytest.mark.parametrize("backend", ["qibolab"])
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_auto_command(runcard, update, platform, backend, tmp_path, request):
+def test_auto_command(runcard, update, platform, backend, tmp_path):
     """Test auto command pipeline."""
 
     protocol = runcard["actions"][0]["id"]
