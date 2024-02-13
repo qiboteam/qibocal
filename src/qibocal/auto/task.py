@@ -8,6 +8,7 @@ from typing import Optional, Union
 
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
+from qibolab.serialize import dump_platform
 
 from ..config import raise_error
 from ..protocols.characterization import Operation
@@ -35,6 +36,8 @@ DEFAULT_NSHOTS = 100
 """Default number on shots when the platform is not provided."""
 TaskId = tuple[Id, int]
 """Unique identifier for executed tasks."""
+PLATFORM_DIR = "platform"
+"""Folder where platform will be dumped."""
 
 
 @dataclass
@@ -244,6 +247,8 @@ class Completed:
         if self.task.update and update:
             for qubit in self.task.qubits:
                 self.task.operation.update(self.results, platform, qubit)
+            (self.datapath / PLATFORM_DIR).mkdir(parents=True, exist_ok=True)
+            dump_platform(platform, self.datapath / PLATFORM_DIR)
 
     def validate(self) -> tuple[Optional[TaskId], Optional[dict]]:
         """Check status of completed and handle Failure using handler."""
