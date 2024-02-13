@@ -15,8 +15,8 @@ actions:
     priority: 0
     operation: resonator_spectroscopy
     parameters:
-      freq_width: 10_000_000 # 20_000_000
-      freq_step: 100_000 # 500_00
+      freq_width: 10_000_000
+      freq_step: 100_000
       amplitude: 0.4
       power_level: high
       nshots: 10

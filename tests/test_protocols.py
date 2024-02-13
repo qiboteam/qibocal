@@ -17,32 +17,43 @@ from qibocal.protocols.characterization.rabi.utils import (
     rabi_length_function,
 )
 
-PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/protocols.yml"
+PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/"
 PLATFORM = create_platform("dummy")
 SINGLE_ACTION_RUNCARD = "action.yml"
+RUNCARDS_NAMES = ["protocols.yml", "rb_noise_protocols.yml"]
 
 
+# @pytest.fixture(params = RUNCARDS_NAMES)
 def generate_runcard_single_protocol():
-    actions = yaml.safe_load(PATH_TO_RUNCARD.read_text(encoding="utf-8"))
-    with open(PATH_TO_RUNCARD) as file:
-        actions = yaml.safe_load(file)
-    for action in actions["actions"]:
-        card = {"actions": [action], "qubits": list(PLATFORM.qubits)}
-        yield card
+    for runcard_name in RUNCARDS_NAMES:
+        complete_path = PATH_TO_RUNCARD / runcard_name
+        actions = yaml.safe_load(complete_path.read_text(encoding="utf-8"))
+        if "backend" not in actions.keys():
+            backend = "qibolab"
+        else:
+            backend = actions["backend"]
+        with open(complete_path) as file:
+            actions = yaml.safe_load(file)
+        for action in actions["actions"]:
+            card = {
+                "actions": [action],
+                "qubits": actions["qubits"],
+                "platform": actions["platform"],
+                "backend": backend,
+            }
+            yield (card, runcard_name)
 
 
 def idfn(val):
     """Helper function to indentify the protocols when testing."""
-    return val["actions"][0]["id"]
+    return val[1] + "-" + val[0]["actions"][0]["id"]
 
 
-@pytest.mark.parametrize("platform", ["dummy"])
-@pytest.mark.parametrize("backend", ["qibolab"])
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_auto_command(runcard, update, platform, backend, tmp_path):
+def test_auto_command(runcard, update, tmp_path):
     """Test auto command pipeline."""
-
+    runcard = runcard[0]
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
     runner = CliRunner()
     results = runner.invoke(
@@ -54,9 +65,9 @@ def test_auto_command(runcard, update, platform, backend, tmp_path):
             f"{str(tmp_path)}",
             "-f",
             "--backend",
-            backend,
+            runcard["backend"],
             "--platform",
-            platform,
+            runcard["platform"],
             update,
         ],
     )
@@ -64,11 +75,10 @@ def test_auto_command(runcard, update, platform, backend, tmp_path):
     assert results.exit_code == 0
 
 
-@pytest.mark.parametrize("platform", ["dummy"])
-@pytest.mark.parametrize("backend", ["qibolab"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_acquire_command(runcard, backend, platform, tmp_path):
+def test_acquire_command(runcard, tmp_path):
     """Test acquire command pipeline and report generated."""
+    runcard = runcard[0]
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
     runner = CliRunner()
 
@@ -82,9 +92,9 @@ def test_acquire_command(runcard, backend, platform, tmp_path):
             f"{str(tmp_path)}",
             "-f",
             "--backend",
-            backend,
+            runcard["backend"],
             "--platform",
-            platform,
+            runcard["platform"],
         ],
     )
     assert not results.exception
@@ -100,6 +110,7 @@ def test_acquire_command(runcard, backend, platform, tmp_path):
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_fit_command(runcard, update, tmp_path):
     """Test fit builder and report generated."""
+    runcard = runcard[0]
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
     runner = CliRunner()
 
