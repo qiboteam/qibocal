@@ -253,9 +253,9 @@ def _fit(data: RBData) -> StandardRBResult:
         samples = [data.data[qubit, depth].samples.tolist() for depth in x]
 
         """This is when you sample a depth more than once"""
-        homogeneous = all(len(samples[0]) == len(row) for row in samples)
-        # if homogeneous is False:
-        #     raise NotImplementedError
+        homogeneous = all(
+            len(samples[0]) == len(row) for row in samples
+        )  # TODO: Do we really need it?
         # Extract fitting and bootstrap parameters if given
         uncertainties = data.uncertainties
         n_bootstrap = data.n_bootstrap
