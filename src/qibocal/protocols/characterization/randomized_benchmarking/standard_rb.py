@@ -51,8 +51,6 @@ class StandardRBParameters(Parameters):
     seed: Optional[int] = None
     """A fixed seed to initialize ``np.random.Generator``. If ``None``, uses a random seed.
     Defaults is ``None``."""
-    parallel: bool = True
-    """Marginalize data to get several RBs from a big circuit"""
     noise_model: Optional[str] = None
     """For simulation purposes, string has to match what is in
     :mod:`qibocal.protocols.characterization.randomized_benchmarking.noisemodels`"""
