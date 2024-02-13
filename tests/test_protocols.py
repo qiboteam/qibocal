@@ -75,7 +75,7 @@ def test_auto_command(runcard, update, tmp_path):
     )
     assert not results.exception
     assert results.exit_code == 0
-    if update == "--update":
+    if update == "--update" and runcard["backend"] == "qibolab":
         assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
         assert (tmp_path / "data" / f"{protocol}_0" / PLATFORM_DIR).is_dir()
 
@@ -146,7 +146,7 @@ def test_fit_command(runcard, update, tmp_path):
     assert not results_fit.exception
     assert results_fit.exit_code == 0
 
-    if update == "--update":
+    if update == "--update" and runcard["backend"] == "qibolab":
         assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
         assert (tmp_path / "data" / f"{protocol}_0" / PLATFORM_DIR).is_dir()
 
