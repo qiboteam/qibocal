@@ -175,15 +175,11 @@ def _acquisition(
         if backend.name == "qibolab":
             raise_error(
                 ValueError,
-                "Backend qibolab (%s) does not perform noise models simulation. "
-                "Setting backend to ``NumpyBackend`` instead.",
+                "Backend qibolab (%s) does not perform noise models simulation. ",
             )
 
         noise_model = getattr(noisemodels, params.noise_model)(params.noise_params)
         params.noise_params = noise_model.params.tolist()
-
-    # Grab activated qibo backend
-    backend = GlobalBackend()
 
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     nqubits = len(qubits)
