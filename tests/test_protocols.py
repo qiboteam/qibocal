@@ -23,7 +23,6 @@ SINGLE_ACTION_RUNCARD = "action.yml"
 RUNCARDS_NAMES = ["protocols.yml", "rb_noise_protocols.yml"]
 
 
-# @pytest.fixture(params = RUNCARDS_NAMES)
 def generate_runcard_single_protocol():
     for runcard_name in RUNCARDS_NAMES:
         complete_path = PATH_TO_RUNCARD / runcard_name
