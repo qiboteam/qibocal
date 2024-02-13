@@ -34,7 +34,7 @@ MAX_PRIORITY = int(1e9)
 """A number bigger than whatever will be manually typed. But not so insanely big not to fit in a native integer."""
 TaskId = tuple[Id, int]
 """Unique identifier for executed tasks."""
-PLATFORM_FOLDER = "platform"
+PLATFORM_DIR = "platform"
 """Folder where platform will be dumped."""
 
 
@@ -240,8 +240,8 @@ class Completed:
         if self.task.update and update:
             for qubit in self.task.qubits:
                 self.task.operation.update(self.results, platform, qubit)
-            (self.datapath / PLATFORM_FOLDER).mkdir(parents=True, exist_ok=True)
-            dump_platform(platform, self.datapath / PLATFORM_FOLDER)
+            (self.datapath / PLATFORM_DIR).mkdir(parents=True, exist_ok=True)
+            dump_platform(platform, self.datapath / PLATFORM_DIR)
 
     def validate(self) -> tuple[Optional[TaskId], Optional[dict]]:
         """Check status of completed and handle Failure using handler."""
