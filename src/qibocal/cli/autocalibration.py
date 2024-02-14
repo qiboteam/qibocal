@@ -3,7 +3,7 @@ import json
 from dataclasses import asdict
 
 import yaml
-from qibolab.serialize import dump_runcard
+from qibolab.serialize import dump_platform
 
 from ..auto.execute import Executor
 from ..auto.history import add_timings_to_meta
@@ -41,7 +41,8 @@ def autocalibrate(runcard, folder, force, update):
     meta = generate_meta(backend, platform, path)
     # dump platform
     if backend.name == "qibolab":
-        dump_runcard(platform, path / PLATFORM)
+        (path / PLATFORM).mkdir(parents=True, exist_ok=True)
+        dump_platform(platform, path / PLATFORM)
 
     # dump action runcard
     (path / RUNCARD).write_text(yaml.safe_dump(asdict(runcard)))
@@ -54,8 +55,6 @@ def autocalibrate(runcard, folder, force, update):
     # connect and initialize platform
     if platform is not None:
         platform.connect()
-        platform.setup()
-        platform.start()
 
     # run protocols
     for _ in executor.run(mode=ExecutionMode.autocalibration):
@@ -70,9 +69,9 @@ def autocalibrate(runcard, folder, force, update):
 
     # stop and disconnect platform
     if platform is not None:
-        platform.stop()
         platform.disconnect()
 
     # dump updated runcard
     if platform is not None:
-        dump_runcard(platform, path / UPDATED_PLATFORM)
+        (path / UPDATED_PLATFORM).mkdir(parents=True, exist_ok=True)
+        dump_platform(platform, path / UPDATED_PLATFORM)

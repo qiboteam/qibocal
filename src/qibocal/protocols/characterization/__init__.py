@@ -46,7 +46,9 @@ from .readout_optimization.resonator_amplitude import resonator_amplitude
 from .readout_optimization.resonator_frequency import resonator_frequency
 from .readout_optimization.twpa_calibration.frequency import twpa_frequency
 from .readout_optimization.twpa_calibration.frequency_power import twpa_frequency_power
+from .readout_optimization.twpa_calibration.frequency_SNR import twpa_frequency_snr
 from .readout_optimization.twpa_calibration.power import twpa_power
+from .readout_optimization.twpa_calibration.power_SNR import twpa_power_snr
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_qubit_spectroscopy import resonator_qubit_spectroscopy
@@ -54,6 +56,9 @@ from .resonator_spectroscopy import resonator_spectroscopy
 from .resonator_spectroscopy_attenuation import resonator_spectroscopy_attenuation
 from .resonator_twpa_freq import resonator_twpa_freq
 from .resonator_twpa_pow import resonator_twpa_pow
+from .signal_experiments.calibrate_state_discrimination import (
+    calibrate_state_discrimination,
+)
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 from .spurious_identification import spurious_identification
 from .t1_t2_vs_temperature import t1_t2_vs_temperature
@@ -111,7 +116,9 @@ class Operation(Enum):
     chsh_circuits = chsh_circuits
     readout_mitigation_matrix = readout_mitigation_matrix
     twpa_frequency = twpa_frequency
+    twpa_frequency_SNR = twpa_frequency_snr
     twpa_power = twpa_power
+    twpa_power_SNR = twpa_power_snr
     twpa_frequency_power = twpa_frequency_power
     rabi_amplitude_ef = rabi_amplitude_ef
     qubit_spectroscopy_ef = qubit_spectroscopy_ef
@@ -122,3 +129,4 @@ class Operation(Enum):
     coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
     coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
     spurious_identification = spurious_identification
+    calibrate_state_discrimination = calibrate_state_discrimination
