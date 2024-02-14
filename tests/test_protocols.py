@@ -37,9 +37,10 @@ def generate_runcard_single_protocol():
             card = {
                 "actions": [action],
                 "qubits": actions["qubits"],
-                "platform": actions["platform"],
                 "backend": backend,
             }
+            if "platform" in actions:
+                card["platform"] = actions["platform"]
             yield (card, runcard_name)
 
 
@@ -64,10 +65,6 @@ def test_auto_command(runcard, update, tmp_path):
             "-o",
             f"{str(tmp_path)}",
             "-f",
-            "--backend",
-            runcard["backend"],
-            "--platform",
-            runcard["platform"],
             update,
         ],
     )
@@ -96,10 +93,6 @@ def test_acquire_command(runcard, tmp_path):
             "-o",
             f"{str(tmp_path)}",
             "-f",
-            "--backend",
-            runcard["backend"],
-            "--platform",
-            runcard["platform"],
         ],
     )
     assert not results.exception
