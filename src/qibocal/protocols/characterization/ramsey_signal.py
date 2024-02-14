@@ -205,7 +205,7 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
             (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
         )
         corrected_qubit_frequency = int(qubit_freq - delta_phys)
-        t2 = popt[4]
+        t2 = 1 / popt[4]  # to check
         freq_measure[qubit] = (
             corrected_qubit_frequency,
             perr[2] * GHZ_TO_HZ / (2 * np.pi * data.t_max),
@@ -271,7 +271,8 @@ def _plot(data: RamseySignalData, qubit, fit: RamseySignalResults = None):
                 [
                     np.round(fit.delta_phys[qubit][0], 3),
                     np.round(fit.frequency[qubit][0], 3),
-                    np.round(fit.t2[qubit][0], 3),
+                    fit.t2[qubit][0],
+                    # np.round(fit.t2[qubit][0], 3),
                 ],
             )
         )
