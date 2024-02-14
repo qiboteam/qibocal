@@ -33,8 +33,6 @@ def generate_runcard_single_protocol():
             backend = "qibolab"
         else:
             backend = actions["backend"]
-        with open(complete_path) as file:
-            actions = yaml.safe_load(file)
         for action in actions["actions"]:
             card = {
                 "actions": [action],
