@@ -29,7 +29,7 @@ def generate_runcard_single_protocol():
     for runcard_name in RUNCARDS_NAMES:
         complete_path = PATH_TO_RUNCARD / runcard_name
         actions = yaml.safe_load(complete_path.read_text(encoding="utf-8"))
-        if "backend" not in actions.keys():
+        if "backend" not in actions:
             backend = "qibolab"
         else:
             backend = actions["backend"]
