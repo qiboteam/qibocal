@@ -163,6 +163,7 @@ class Classifier:
 @dataclass
 class BenchmarkResults:
     r"""Class that stores the models information."""
+
     accuracy: float
     testing_time: float
     training_time: float

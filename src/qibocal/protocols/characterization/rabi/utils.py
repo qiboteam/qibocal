@@ -5,36 +5,30 @@ from plotly.subplots import make_subplots
 from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
 
 
-def rabi_amplitude_fit(x, p0, p1, p2, p3):
-    # A fit to Superconducting Qubit Rabi Oscillation
-    #   Offset                       : p[0]
-    #   Oscillation amplitude        : p[1]
-    #   Period    T                  : 1/p[2]
-    #   Phase                        : p[3]
-    #   Arbitrary parameter T_2      : 1/p[4]
-    return p0 + p1 * np.sin(2 * np.pi * x / p2 + p3)
+def rabi_amplitude_function(x, offset, amplitude, period, phase):
+    """
+    Fit function of Rabi amplitude signal experiment.
+
+    Args:
+        x: Input data.
+    """
+    return offset + amplitude * np.cos(2 * np.pi * x / period + phase)
 
 
-def rabi_length_fit(x, p0, p1, p2, p3, p4):
-    # A fit to Superconducting Qubit Rabi Oscillation
-    #   Offset                       : p[0]
-    #   Oscillation amplitude        : p[1]
-    #   Period    T                  : 1/p[2]
-    #   Phase                        : p[3]
-    #   Arbitrary parameter T_2      : 1/p[4]
-    return p0 + p1 * np.sin(2 * np.pi * x / p2 + p3) * np.exp(-x * p4)
+def rabi_length_function(x, offset, amplitude, period, phase, t2_inv):
+    """
+    Fit function of Rabi length signal experiment.
+
+    Args:
+        x: Input data.
+    """
+    return offset + amplitude * np.cos(2 * np.pi * x / period + phase) * np.exp(
+        -x * t2_inv
+    )
 
 
 def plot(data, qubit, fit):
-    if "RabiAmplitude" in data.__class__.__name__:
-        quantity = "amp"
-        title = "Amplitude [a.u.]"
-        fitting = rabi_amplitude_fit
-    elif data.__class__.__name__ == "RabiLengthVoltData":
-        quantity = "length"
-        title = "Time [ns]"
-        fitting = rabi_length_fit
-
+    quantity, title, fitting = extract_rabi(data)
     figures = []
     fitting_report = ""
 
@@ -118,15 +112,7 @@ def plot(data, qubit, fit):
 
 
 def plot_probabilities(data, qubit, fit):
-    if data.__class__.__name__ == "RabiAmplitudeData":
-        quantity = "amp"
-        title = "Amplitude [a.u.]"
-        fitting = rabi_amplitude_fit
-    elif data.__class__.__name__ == "RabiLengthData":
-        quantity = "length"
-        title = "Time [ns]"
-        fitting = rabi_length_fit
-
+    quantity, title, fitting = extract_rabi(data)
     figures = []
     fitting_report = ""
 
@@ -193,3 +179,39 @@ def plot_probabilities(data, qubit, fit):
     figures.append(fig)
 
     return figures, fitting_report
+
+
+def extract_rabi(data):
+    """
+    Extract Rabi fit info.
+    """
+    if "RabiAmplitude" in data.__class__.__name__:
+        return "amp", "Amplitude [dimensionless]", rabi_amplitude_function
+    if "RabiLength" in data.__class__.__name__:
+        return "length", "Time [ns]", rabi_length_function
+    raise RuntimeError("Data has to be a data structure of the Rabi routines.")
+
+
+def period_correction_factor(phase: float):
+    r"""Correct period by taking phase into account.
+
+    https://github.com/qiboteam/qibocal/issues/656
+
+    We want to find the first maximum or minimum which will
+    correspond to an exchange of population between 0 and 1.
+    To find it we need to solve the following equation
+    :math:`\cos(2 \pi x / T + \phi) = \pm 1` which will give us
+    the following solution
+
+    .. math::
+
+        x = ( k - \phi / \pi) T / 2
+
+
+    for integer :math:`k`, which is chosen such that we get the smallest
+    multiplicative correction compared to :math:`T/2`.
+
+    """
+
+    x = phase / np.pi
+    return np.round(1 + x) - x

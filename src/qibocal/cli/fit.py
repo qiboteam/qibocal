@@ -47,7 +47,9 @@ def fit(path, update):
     # dump updated runcard
     if platform is not None and update:  # pragma: no cover
         # cannot test update since dummy may produce wrong values and trigger errors
+        (path / UPDATED_PLATFORM).mkdir(parents=True, exist_ok=True)
         dump_runcard(platform, path / UPDATED_PLATFORM)
 
     # dump json
+
     (path / META).write_text(json.dumps(meta, indent=4))

@@ -1,0 +1,15 @@
+platform: <platform_name>
+
+qubits: [0]
+
+actions:
+
+  - id: t1
+    priority: 0
+    operation: t1
+    parameters:
+        delay_before_readout_end: 200000
+        delay_before_readout_start: 50
+        delay_before_readout_step: 1000
+        nshots: 1024
+        relaxation_time: 300000

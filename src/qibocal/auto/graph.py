@@ -1,4 +1,5 @@
 """Execution graph and navigation utilities."""
+
 import networkx as nx
 
 from .runcard import Action, Id

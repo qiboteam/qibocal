@@ -1,4 +1,5 @@
 """Drawing utilities for execution graphs."""
+
 from typing import Set
 
 import networkx as nx

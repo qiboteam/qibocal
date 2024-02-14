@@ -1,0 +1,10 @@
+platform: <platform_name>
+
+qubits: [0]
+
+actions:
+  - id: readout characterization
+    priority: 0
+    operation: readout_characterization
+    parameters:
+        nshots: 5000

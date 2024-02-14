@@ -66,15 +66,13 @@ def _acquisition(
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
     ro_pulses = {}
-    Ec = {}
-    Ej = {}
-    g = {}
     bare_resonator_frequency = {}
+    qubit_frequency = {}
     for qubit in qubits:
-        Ec[qubit] = qubits[qubit].Ec
-        Ej[qubit] = qubits[qubit].Ej
-        g[qubit] = qubits[qubit].g
-        bare_resonator_frequency[qubit] = qubits[qubit].bare_resonator_frequency
+        bare_resonator_frequency[qubit] = platform.qubits[
+            qubit
+        ].bare_resonator_frequency
+        qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
 
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
         sequence.add(ro_pulses[qubit])
@@ -111,9 +109,7 @@ def _acquisition(
 
     data = ResCrosstalkData(
         resonator_type=platform.resonator_type,
-        Ec=Ec,
-        Ej=Ej,
-        g=g,
+        qubit_frequency=qubit_frequency,
         bare_resonator_frequency=bare_resonator_frequency,
     )
     options = ExecutionParameters(

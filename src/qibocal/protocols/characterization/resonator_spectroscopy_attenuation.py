@@ -90,9 +90,9 @@ def _acquisition(
         amplitudes[qubit] = ro_pulses[qubit].amplitude
 
         if params.attenuation is not None:
-            platform.set_attenuation(qubit, params.attenuation)
+            qubits[qubit].readout.attenuation = params.attenuation
 
-        attenuations[qubit] = platform.get_attenuation(qubit)
+        attenuations[qubit] = qubits[qubit].readout.attenuation
 
         sequence.add(ro_pulses[qubit])
 
