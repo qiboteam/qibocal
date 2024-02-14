@@ -215,7 +215,7 @@ def _acquisition(
     for i, sample in enumerate(samples):
         depth = params.depths[i // params.niter]
         # `depth` is the number of gates excluded the noise and measurement ones
-        # WARNING: `depth` does not count the number of physical gates (after compilation)
+        # WARNING: `depth` does not count the number of physical pulses (after compilation)
         sample = sample.T
         for nqubit, qubit_id in enumerate(qubits):
             data.register_qubit(
