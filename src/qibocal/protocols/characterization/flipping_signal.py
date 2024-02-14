@@ -66,7 +66,7 @@ def _acquisition(
     data = FlippingSignalData(
         resonator_type=platform.resonator_type,
         pi_pulse_amplitudes={
-            qubit: qubits[qubit].native_gates.RX.frequency for qubit in qubits
+            qubit: qubits[qubit].native_gates.RX.amplitude for qubit in qubits
         },
     )
     # sweep the parameter
@@ -121,7 +121,7 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
 
     .. math::
 
-        y = p_0 sin\Big(\frac{2 \pi x}{p_2} + p_3\Big) + p_1.
+        y = p_0 sin\Big(\frac{2 \pi x}{p_2} + p_3\Big)*\exp{-x*p4} + p_1.
     """
     qubits = data.qubits
     corrected_amplitudes = {}
@@ -201,7 +201,6 @@ def _plot(data: FlippingSignalData, qubit, fit: FlippingSignalResults = None):
 
     figures = []
     fig = go.Figure()
-
     fitting_report = ""
     qubit_data = data[qubit]
 
