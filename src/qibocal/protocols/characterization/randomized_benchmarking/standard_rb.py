@@ -76,7 +76,7 @@ RBType = np.dtype(
 
 @dataclass
 class RBData(Data):
-    """A pandas DataFrame bastard child. The output of the acquisition function."""
+    """The output of the acquisition function."""
 
     depths: list
     """Circuits depths."""
