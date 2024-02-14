@@ -15,7 +15,7 @@ from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.characterization.utils import table_dict, table_html
 
-from .utils import COLORBAND, COLORBAND_LINE
+from .utils import COLORBAND, COLORBAND_LINE, chi2_reduced
 
 
 @dataclass
@@ -38,6 +38,8 @@ class FlippingResults(Results):
     """Drive amplitude correction factor for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
+    """Chi squared estimate mean value and error. """
 
 
 FlippingType = np.dtype(
@@ -146,6 +148,7 @@ def _fit(data: FlippingData) -> FlippingResults:
     corrected_amplitudes = {}
     fitted_parameters = {}
     amplitude_correction_factors = {}
+    chi2 = {}
     for qubit in qubits:
         qubit_data = data[qubit]
         pi_pulse_amplitude = data.pi_pulse_amplitudes[qubit]
@@ -193,8 +196,17 @@ def _fit(data: FlippingData) -> FlippingResults:
             float(signed_correction / np.pi * pi_pulse_amplitude),
             float(perr[2] * pi_pulse_amplitude / np.pi / 2),
         )
+        chi2[qubit] = (
+            chi2_reduced(
+                y,
+                flipping_fit(x, *popt),
+                qubit_data.error,
+            ),
+            np.sqrt(2 / len(x)),
+        )
+
     return FlippingResults(
-        corrected_amplitudes, amplitude_correction_factors, fitted_parameters
+        corrected_amplitudes, amplitude_correction_factors, fitted_parameters, chi2
     )
 
 
@@ -257,10 +269,15 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["Amplitude correction factor", "Corrected amplitude [a.u.]"],
+                [
+                    "Amplitude correction factor",
+                    "Corrected amplitude [a.u.]",
+                    "chi2 reduced",
+                ],
                 [
                     np.round(fit.amplitude_factors[qubit], 4),
                     np.round(fit.amplitude[qubit], 4),
+                    fit.chi2[qubit],
                 ],
                 display_error=True,
             )
