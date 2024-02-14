@@ -188,7 +188,7 @@ def _acquisition(
         seed=params.seed,
         nshots=params.nshots,
         niter=params.niter,
-    )  # TODO: can depths just be a set ?
+    )
 
     circuits = []
     samples = []
@@ -341,9 +341,26 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
 
     fig = go.Figure()
     fitting_report = ""
-
     x = data.depths
     y = samples_to_p0s(data, qubit)
+    raw_depths = []
+    raw_data = []
+    for depth in x:
+        new_data = np.reshape(
+            data.data[(qubit, depth)].tolist(), (data.niter, data.nshots)
+        )
+        raw_depths.append([depth] * data.niter)
+        raw_data.append(np.average(new_data, axis=1))
+    fig.add_trace(
+        go.Scatter(
+            x=np.hstack(raw_depths),
+            y=np.hstack(raw_data),
+            line=dict(color="#6597aa"),
+            mode="markers",
+            marker={"opacity": 0.2, "symbol": "square"},
+            name="iterations",
+        )
+    )
 
     fig.add_trace(
         go.Scatter(
