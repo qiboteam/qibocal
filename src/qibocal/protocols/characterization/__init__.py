@@ -32,6 +32,7 @@ from .qutrit_classification import qutrit_classification
 from .rabi.amplitude import rabi_amplitude
 from .rabi.amplitude_signal import rabi_amplitude_signal
 from .rabi.ef import rabi_amplitude_ef
+from .rabi.frequency_length_signal import rabi_frequency_length_signal
 from .rabi.length import rabi_length
 from .rabi.length_sequences import rabi_length_sequences
 from .rabi.length_signal import rabi_length_signal
@@ -75,6 +76,7 @@ class Operation(Enum):
     rabi_length_sequences = rabi_length_sequences
     rabi_amplitude_signal = rabi_amplitude_signal
     rabi_length_signal = rabi_length_signal
+    rabi_frequency_length_signal = rabi_frequency_length_signal
     ramsey = ramsey
     ramsey_signal = ramsey_signal
     ramsey_sequences = ramsey_sequences
