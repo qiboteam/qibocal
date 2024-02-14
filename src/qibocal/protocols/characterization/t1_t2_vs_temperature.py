@@ -45,9 +45,10 @@ qubits_record_type = np.dtype(
 )
 
 """Custom dtypes to store experiment data."""
-
-folder = Path("t1_t2_vs_temperature_data") / Path("data")
-folder.mkdir(exist_ok=True)
+folder = Path("t1_t2_vs_temperature_data")
+if folder.is_dir():
+    folder = folder / Path("data")
+    folder.mkdir(exist_ok=True)
 
 
 @dataclass
