@@ -80,7 +80,7 @@ def _acquisition(
     data = FlippingData(
         resonator_type=platform.resonator_type,
         pi_pulse_amplitudes={
-            qubit: qubits[qubit].native_gates.RX.frequency for qubit in qubits
+            qubit: qubits[qubit].native_gates.RX.amplitude for qubit in qubits
         },
     )
     # sweep the parameter
@@ -262,6 +262,7 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
                     np.round(fit.amplitude_factors[qubit], 4),
                     np.round(fit.amplitude[qubit], 4),
                 ],
+                display_error=True,
             )
         )
 
