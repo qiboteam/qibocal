@@ -601,17 +601,6 @@ actions:
       dt: 0
       parking: True
 
-  - id: standard rb inhomogeneous
-    priority: 0
-    operation: standard_rb
-    qubits: [0, 1, 3]
-    parameters:
-      depths: [1, 3, 3, 5]
-      niter: 5
-      nshots: 50
-      uncertainties: std
-      n_bootstrap: 10
-
   - id : resonator_frequency
     priority: 0
     operation: resonator_frequency
