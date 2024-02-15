@@ -5,7 +5,6 @@ from typing import List
 import pandas as pd
 import plotly.graph_objects as go
 import yaml
-from plotly.subplots import make_subplots
 from qibo.backends import GlobalBackend
 from qibolab.qubits import QubitId
 
@@ -111,24 +110,17 @@ class CompareReportBuilder:
             tables.append(table)
             plots.append(figures)
 
-        final_table = {}
-        final_plot = {}
         merged_table = pd.read_html(tables[0])[0].rename(columns={"Values": "Values_0"})
         for i, table in enumerate(tables[1:]):
             a = pd.read_html(table)[0]
             merged_table = pd.merge(merged_table, a, on=["Qubit", "Parameters"]).rename(
                 columns={"Values": f"Values_{i + 1}"}
             )
-        sub_fig = make_subplots(
-            rows=1, cols=2, shared_xaxes=True, vertical_spacing=0.02
-        )
         merged_plot_data = plots[0][0].data
-        for i, plot in enumerate(plots[1:]):
+        for plot in plots[1:]:
             merged_plot_data = merged_plot_data + plot[0].data
         merged_plot = go.Figure(data=merged_plot_data, layout=plot[0].layout)
-        final_table = merged_table
-        final_plot = merged_plot
-        return final_plot.to_html(), final_table.to_html(
+        return merged_plot.to_html(), merged_table.to_html(
             classes="fitting-table", index=False, border=0, escape=False
         )
 
