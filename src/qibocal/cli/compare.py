@@ -1,5 +1,4 @@
 import json
-from pathlib import Path
 
 # import tempfile
 from typing import List
@@ -15,10 +14,10 @@ from qibocal.auto.execute import Executor
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import TaskId
 from qibocal.cli.report import META, RUNCARD, ReportBuilder
-from qibocal.cli.utils import create_qubits_dict
+from qibocal.cli.utils import create_qubits_dict, generate_output_folder
 
 
-def compare_reports(path_1, path_2):
+def compare_reports(folder, path_1, path_2, force):
     """Report comparison generation.
 
     Currently only two reports can be combined together. Only tasks with the same id can be merged.
@@ -30,6 +29,7 @@ def compare_reports(path_1, path_2):
         path_2 (pathlib.Paht): path of the second report to be compared.
 
     """
+    combined_report_path = generate_output_folder(folder, force)
     paths = [path_1, path_2]
     builders = []
     for path in paths:
@@ -50,7 +50,7 @@ def compare_reports(path_1, path_2):
         builder = ReportBuilder(path, qubits, executor, meta)
         builders.append(builder)
     comparison_report = CompareReportBuilder(builders)
-    comparison_report.run(Path.home())
+    comparison_report.run(combined_report_path)
 
 
 class CompareReportBuilder:

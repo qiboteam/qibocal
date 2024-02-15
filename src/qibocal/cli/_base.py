@@ -189,5 +189,17 @@ def upload(path, tag, author):
     metavar="RUNCARD_2_PATH",
     type=click.Path(exists=True, path_type=pathlib.Path),
 )
-def compare(report_1_path, report_2_path):
-    compare_reports(report_1_path, report_2_path)
+@click.option(
+    "folder",
+    "-o",
+    type=click.Path(path_type=pathlib.Path),
+    help="Output folder. If not provided a standard name will generated.",
+)
+@click.option(
+    "force",
+    "-f",
+    is_flag=True,
+    help="Use --force option to overwrite the output folder.",
+)
+def compare(report_1_path, report_2_path, folder, force):
+    compare_reports(folder, report_1_path, report_2_path, force)
