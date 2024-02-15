@@ -18,14 +18,8 @@ from qibocal.cli.report import META, RUNCARD, ReportBuilder
 from qibocal.cli.utils import create_qubits_dict
 
 
-def exp_reports(paths):
-    """Report generation
-
-    Arguments:
-
-    - FOLDER: input folder.
-
-    """
+def compare_reports(path_1, path_2):
+    paths = [path_1, path_2]
     builders = []
     for path in paths:
         # load meta
@@ -44,13 +38,7 @@ def exp_reports(paths):
         # produce html
         builder = ReportBuilder(path, qubits, executor, meta)
         builders.append(builder)
-    return CompareReportBuilder(builders)
-
-
-def compare_reports(report_1_path, report_2_path):
-    report_paths = [report_1_path, report_2_path]
-
-    comparison_report = exp_reports(report_paths)
+    comparison_report = CompareReportBuilder(builders)
     comparison_report.run(Path.home())
 
 
