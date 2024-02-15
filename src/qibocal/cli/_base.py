@@ -9,6 +9,7 @@ import yaml
 from ..auto.runcard import Runcard
 from .acquisition import acquire as acquisition
 from .autocalibration import autocalibrate
+from .compare import compare_reports
 from .fit import fit as fitting
 from .report import report as reporting
 from .upload import upload_report
@@ -175,3 +176,18 @@ def upload(path, tag, author):
     - FOLDER: input folder.
     """
     upload_report(path, tag, author)
+
+
+@command.command(context_settings=CONTEXT_SETTINGS)
+@click.argument(
+    "report_1_path",
+    metavar="RUNCARD_1_PATH",
+    type=click.Path(exists=True, path_type=pathlib.Path),
+)
+@click.argument(
+    "report_2_path",
+    metavar="RUNCARD_2_PATH",
+    type=click.Path(exists=True, path_type=pathlib.Path),
+)
+def compare(report_1_path, report_2_path):
+    compare_reports(report_1_path, report_2_path)
