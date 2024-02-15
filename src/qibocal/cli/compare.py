@@ -1,6 +1,5 @@
 import json
-
-# import tempfile
+from pathlib import Path
 from typing import List
 
 import pandas as pd
@@ -17,7 +16,7 @@ from qibocal.cli.report import META, RUNCARD, ReportBuilder
 from qibocal.cli.utils import create_qubits_dict, generate_output_folder
 
 
-def compare_reports(folder, path_1, path_2, force):
+def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
     """Report comparison generation.
 
     Currently only two reports can be combined together. Only tasks with the same id can be merged.
@@ -25,8 +24,10 @@ def compare_reports(folder, path_1, path_2, force):
     Plots display data from both reports.
 
     Args:
-        path_1 (pathlib.Paht): path of the first report to be compared.
-        path_2 (pathlib.Paht): path of the second report to be compared.
+        folder (pathlib.Path): path of the folder containing the combined report.
+        path_1 (pathlib.Path): path of the first report to be compared.
+        path_2 (pathlib.Path): path of the second report to be compared.
+        force (bool): if set to true, overwrites folder (if it already exists).
 
     """
     combined_report_path = generate_output_folder(folder, force)
