@@ -106,6 +106,7 @@ def _acquisition(
                 qubit, start=0, duration=sequence.duration
             )
             qf_pulses[qubit] = pulse
+            sequence.add(pulse)
         bias_sweepers = [
             Sweeper(
                 Parameter.amplitude,
