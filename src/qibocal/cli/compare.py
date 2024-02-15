@@ -19,6 +19,17 @@ from qibocal.cli.utils import create_qubits_dict
 
 
 def compare_reports(path_1, path_2):
+    """Report comparison generation.
+
+    Currently only two reports can be combined together. Only tasks with the same id can be merged.
+    Tables display data from both reports side by side.
+    Plots display data from both reports.
+
+    Args:
+        path_1 (pathlib.Paht): path of the first report to be compared.
+        path_2 (pathlib.Paht): path of the second report to be compared.
+
+    """
     paths = [path_1, path_2]
     builders = []
     for path in paths:
