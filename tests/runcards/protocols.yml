@@ -516,9 +516,18 @@ actions:
     priority: 0
     operation: flipping
     parameters:
-      nflips_max: 5
+      nflips_max: 10
       nflips_step: 1
-      nshots: 10
+      nshots: 50
+
+  - id: flipping_signal
+    priority: 0
+    operation: flipping_signal
+    parameters:
+      nflips_max: 10
+      nflips_step: 1
+      nshots: 50
+
 
   - id: dispersive shift
     priority: 0
