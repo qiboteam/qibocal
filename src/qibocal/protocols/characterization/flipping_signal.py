@@ -167,7 +167,7 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
             )
         except:
             log.warning("flipping_fit: the fitting was not succesful")
-            popt = [0, 0, 0, 0]
+            popt = [0] * 5
 
         translated_popt = [
             y_min + (y_max - y_min) * popt[0],
@@ -178,7 +178,7 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
             popt[3] - x_min * 2 * np.pi * f / (x_max - x_min) * popt[2],
             popt[4] * 2 * np.pi * f / (x_max - x_min),
         ]
-        if popt[3] > np.pi / 2 and popt[3] < 3 * np.pi / 2:
+        if translated_popt[3] > np.pi / 2 and translated_popt[3] < 3 * np.pi / 2:
             signed_correction = -translated_popt[2] / 2
         else:
             signed_correction = translated_popt[2] / 2
