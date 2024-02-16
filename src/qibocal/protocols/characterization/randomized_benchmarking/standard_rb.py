@@ -222,7 +222,7 @@ def _acquisition(
                 RBType,
                 (qubit_id, depth),
                 dict(
-                    samples=sample[nqubit],
+                    samples=1 - sample[nqubit],
                 ),
             )
     return data
@@ -287,11 +287,16 @@ def _fit(data: RBData) -> StandardRBResult:
                 arr=np.array(samples),
             )
 
+        median = [np.mean(samples_row) for samples_row in samples]
+
+        # TODO: Error bars are wrong in the no bootstrap case
+        # Probably related with the resample_p0 function and samples_to_p0s
+
         # Fit the initial data and compute error bars
         error_bars = data_uncertainties(
             samples,
             uncertainties,
-            data_median=y,
+            data_median=median,
             homogeneous=(homogeneous or n_bootstrap != 0),
         )
 

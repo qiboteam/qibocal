@@ -39,7 +39,7 @@ def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
         )
         return uncertainties
 
-    return None
+    return None  # TODO: # Raise an error on invalid method
 
 
 def bootstrap(
