@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, TypedDict, Union
 
@@ -222,7 +223,10 @@ def _acquisition(
                 RBType,
                 (qubit_id, depth),
                 dict(
-                    samples=1 - sample[nqubit],
+                    samples=1
+                    - sample[
+                        nqubit
+                    ],  # We will invert the sample as we care about the survival probability
                 ),
             )
     return data
@@ -248,7 +252,16 @@ def _fit(data: RBData) -> StandardRBResult:
         # Extract depths and probabilities
         x = data.depths
         y = samples_to_p0s(data, qubit)
+
         samples = [data.data[qubit, depth].samples.tolist() for depth in x]
+
+        # TODO: Trying to fix the samples
+        samples = np.array(samples)
+        samples_fixed = defaultdict(list)
+        for depth, sample in zip(x, samples):
+            sample = sample.reshape(-1, data.nshots)
+            for s in sample:
+                samples_fixed[depth].append(s)
 
         """This is when you sample a depth more than once"""
         homogeneous = all(
@@ -287,14 +300,23 @@ def _fit(data: RBData) -> StandardRBResult:
                 arr=np.array(samples),
             )
 
-        median = [np.mean(samples_row) for samples_row in samples]
+        # samples = np.mean(samples, axis=1)
+
+        import pdb
+
+        pdb.set_trace()
+
+        samples_mean = [
+            np.mean(samples_fixed[depth], axis=1) for depth in x
+        ]  # Why does it crash ?
+        median = [np.median(samples_row) for samples_row in samples_mean]
 
         # TODO: Error bars are wrong in the no bootstrap case
         # Probably related with the resample_p0 function and samples_to_p0s
 
         # Fit the initial data and compute error bars
         error_bars = data_uncertainties(
-            samples,
+            samples_mean,
             uncertainties,
             data_median=median,
             homogeneous=(homogeneous or n_bootstrap != 0),
