@@ -12,6 +12,7 @@ from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.config import log
 from qibocal.protocols.characterization.qubit_spectroscopy_ef import (
     DEFAULT_ANHARMONICITY,
 )
@@ -49,8 +50,8 @@ class QubitFluxResults(Results):
     """Sweetspot for each qubit."""
     frequency: dict[QubitId, float]
     """Drive frequency for each qubit."""
-    d: dict[QubitId, float]
-    """Asymmetry."""
+    asymmetry: dict[QubitId, float]
+    """Asymmetry between junctions."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
     matrix_element: dict[QubitId, float]
@@ -179,7 +180,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     qubits = data.qubits
     frequency = {}
     sweetspot = {}
-    d = {}
+    asymmetry = {}
     matrix_element = {}
     fitted_parameters = {}
 
@@ -203,25 +204,33 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 signal,
             )
 
-        popt = curve_fit(
-            utils.transmon_frequency,
-            biases,
-            frequencies * HZ_TO_GHZ,
-            bounds=utils.qubit_flux_dependence_fit_bounds(
-                data.qubit_frequency[qubit], qubit_data.bias
-            ),
-            maxfev=100000,
-        )[0]
-        fitted_parameters[qubit] = popt.tolist()
-        frequency[qubit] = popt[0] * GHZ_TO_HZ
-        d[qubit] = popt[1]
-        sweetspot[qubit] = popt[3]
-        matrix_element[qubit] = popt[2]
+        try:
+            popt = curve_fit(
+                utils.transmon_frequency,
+                biases,
+                frequencies * HZ_TO_GHZ,
+                bounds=utils.qubit_flux_dependence_fit_bounds(
+                    data.qubit_frequency[qubit], qubit_data.bias
+                ),
+                maxfev=100000,
+            )[0]
+            fitted_parameters[qubit] = popt.tolist()
+            frequency[qubit] = popt[0] * GHZ_TO_HZ
+            asymmetry[qubit] = popt[1]
+            sweetspot[qubit] = popt[3]
+            matrix_element[qubit] = popt[2]
+        except ValueError as e:
+            log.error(
+                f"Error in qubit_flux protocol fit: {e} "
+                "The threshold for the SNR mask is probably too high. "
+                "Lowering the value of `threshold` in `extract_*_feature`"
+                "should fix the problem."
+            )
 
     return QubitFluxResults(
         frequency=frequency,
         sweetspot=sweetspot,
-        d=d,
+        asymmetry=asymmetry,
         matrix_element=matrix_element,
         fitted_parameters=fitted_parameters,
     )
@@ -245,7 +254,7 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
                 [
                     np.round(fit.sweetspot[qubit], 4),
                     np.round(fit.frequency[qubit], 4),
-                    np.round(fit.d[qubit], 4),
+                    np.round(fit.asymmetry[qubit], 4),
                     np.round(fit.matrix_element[qubit], 4),
                 ],
             )
@@ -257,7 +266,7 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
 def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
     update.drive_frequency(results.frequency[qubit], platform, qubit)
     update.sweetspot(results.sweetspot[qubit], platform, qubit)
-    update.asymmetry(results.d[qubit], platform, qubit)
+    update.asymmetry(results.asymmetry[qubit], platform, qubit)
 
 
 qubit_flux = Routine(_acquisition, _fit, _plot, _update)
