@@ -83,7 +83,7 @@ def random_clifford(qubits, seed=None):
         SINGLE_QUBIT_CLIFFORDS[p](q) for p, q in zip(random_indexes, qubits)
     ]
 
-    return clifford_gates
+    return clifford_gates, random_indexes
 
 
 def number_to_str(
@@ -190,3 +190,11 @@ def samples_to_p0s(data, qubit):
             / len(data.data[(qubit, depth)])
         )
     return p0s
+
+
+def circ_to_json(circuit):
+    circ_json = []
+    for gate in circuit.queue:
+        if not isinstance(gate, gates.M) and not isinstance(gate, gates.Unitary):
+            circ_json.append(gate.to_json())
+    return circ_json

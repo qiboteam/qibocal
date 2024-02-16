@@ -2,6 +2,7 @@
 
 from typing import Callable
 
+import numpy as np
 from qibo import gates
 from qibo.config import raise_error
 from qibo.gates.abstract import Gate
@@ -24,9 +25,11 @@ def layer_circuit(layer_gen: Callable, depth: int, qubit, seed) -> Circuit:
     full_circuit = None
     # Build each layer, there will be depth many in the final circuit.
     qubits_str = [str(qubit)]
+    random_indexes = []
     for _ in range(depth):
         # Generate a layer.
-        new_layer = layer_gen(1, seed)  # TODO: find better implementation
+        new_layer, random_index = layer_gen(1, seed)  # TODO: find better implementation
+        random_indexes.append(random_index[0])
         # Ensure new_layer is a circuit
         if isinstance(new_layer, Gate):
             new_circuit = Circuit(1, wire_names=qubits_str)
@@ -45,6 +48,10 @@ def layer_circuit(layer_gen: Callable, depth: int, qubit, seed) -> Circuit:
         if full_circuit is None:  # instantiate in first loop
             full_circuit = Circuit(new_circuit.nqubits, wire_names=qubits_str)
         full_circuit = full_circuit + new_circuit
+
+    with open("random_indexes.csv", "a") as file:
+        np.savetxt(file, np.asarray([random_indexes]), delimiter=",", fmt="%d")
+
     return full_circuit
 
 

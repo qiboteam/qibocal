@@ -3,6 +3,7 @@ from typing import Iterable, Optional, TypedDict, Union
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import plotly.graph_objects as go
 from qibo.backends import GlobalBackend
 from qibolab.platform import Platform
@@ -16,7 +17,13 @@ from qibocal.protocols.characterization.randomized_benchmarking import noisemode
 from ..utils import table_dict, table_html
 from .circuit_tools import add_inverse_layer, add_measurement_layer, layer_circuit
 from .fitting import exp1B_func, fit_exp1B_func
-from .utils import number_to_str, random_clifford, resample_p0, samples_to_p0s
+from .utils import (
+    circ_to_json,
+    number_to_str,
+    random_clifford,
+    resample_p0,
+    samples_to_p0s,
+)
 
 NPULSES_PER_CLIFFORD = 1.875
 
@@ -166,6 +173,10 @@ def _acquisition(
         RBData: The depths, samples and ground state probability of each experiment in the scan.
     """
 
+    # Create an empty CSV file
+    with open("random_indexes.csv", "w") as file:
+        file.write("RB" + "\n")
+
     backend = GlobalBackend()
     # For simulations, a noise model can be added.
     noise_model = None
@@ -211,6 +222,12 @@ def _acquisition(
         samples.extend(i.samples())
     nqubits = len(qubits_ids)
     samples = np.reshape(samples, (-1, params.nshots, nqubits))
+
+    save_copy = pd.DataFrame(columns=["circuit"], dtype="object")
+    for index, circuit in enumerate(circuits):
+        save_copy.at[index, "circuit"] = circ_to_json(circuit)
+
+    save_copy.to_json("circs.json", default_handler=str)
 
     for i, sample in enumerate(samples):
         depth = params.depths[i // params.niter]
