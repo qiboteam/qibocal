@@ -1,4 +1,3 @@
-from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, TypedDict, Union
 
@@ -144,6 +143,7 @@ def random_circuits(
             if noise_model is not None:
                 circuit = noise_model.apply(circuit)
             circuits.append(circuit)
+
     return circuits
 
 
@@ -195,6 +195,7 @@ def _acquisition(
     samples = []
     qubits_ids = list(qubits)
     for depth in params.depths:
+        # TODO: This does not generate multi qubit circuits
         circuits_depth = random_circuits(
             depth, qubits_ids, params.niter, params.seed, noise_model
         )
@@ -208,27 +209,23 @@ def _acquisition(
             for circuit in circuits
         ]
 
-    for i in executed_circuits:
-        samples.extend(i.samples())
-    nqubits = len(qubits_ids)
-    samples = np.reshape(samples, (-1, params.nshots, nqubits))
+    for circ in executed_circuits:
+        samples.extend(circ.samples())
+    samples = np.reshape(samples, (params.nshots, -1, nqubits))
 
-    for i, sample in enumerate(samples):
-        depth = params.depths[i // params.niter]
-        # `depth` is the number of gates excluded the noise and measurement ones
-        # WARNING: `depth` does not count the number of physical pulses (after compilation)
-        sample = sample.T
+    for i, depth in enumerate(params.depths):
+        index = (i * params.niter, (i + 1) * params.niter - 1)
         for nqubit, qubit_id in enumerate(qubits):
+            samples_iters = samples.T[nqubit][:][index[0] : index[1]]
             data.register_qubit(
                 RBType,
                 (qubit_id, depth),
                 dict(
                     samples=1
-                    - sample[
-                        nqubit
-                    ],  # We will invert the sample as we care about the survival probability
+                    - samples_iters,  # We will invert the sample as we care about the survival probability
                 ),
             )
+
     return data
 
 
@@ -252,16 +249,7 @@ def _fit(data: RBData) -> StandardRBResult:
         # Extract depths and probabilities
         x = data.depths
         y = samples_to_p0s(data, qubit)
-
         samples = [data.data[qubit, depth].samples.tolist() for depth in x]
-
-        # TODO: Trying to fix the samples
-        samples = np.array(samples)
-        samples_fixed = defaultdict(list)
-        for depth, sample in zip(x, samples):
-            sample = sample.reshape(-1, data.nshots)
-            for s in sample:
-                samples_fixed[depth].append(s)
 
         """This is when you sample a depth more than once"""
         homogeneous = all(
@@ -300,19 +288,8 @@ def _fit(data: RBData) -> StandardRBResult:
                 arr=np.array(samples),
             )
 
-        # samples = np.mean(samples, axis=1)
-
-        import pdb
-
-        pdb.set_trace()
-
-        samples_mean = [
-            np.mean(samples_fixed[depth], axis=1) for depth in x
-        ]  # Why does it crash ?
+        samples_mean = [np.mean(samples[depth], axis=1) for depth in range(len(x))]
         median = [np.median(samples_row) for samples_row in samples_mean]
-
-        # TODO: Error bars are wrong in the no bootstrap case
-        # Probably related with the resample_p0 function and samples_to_p0s
 
         # Fit the initial data and compute error bars
         error_bars = data_uncertainties(
@@ -374,10 +351,11 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     raw_data = []
     for depth in x:
         new_data = np.reshape(
-            data.data[(qubit, depth)].tolist(), (data.niter, data.nshots)
+            data.data[(qubit, depth)].tolist(), (data.niter - 1, data.nshots)
         )
         raw_depths.append([depth] * data.niter)
         raw_data.append(np.average(new_data, axis=1))
+
     fig.add_trace(
         go.Scatter(
             x=np.hstack(raw_depths),

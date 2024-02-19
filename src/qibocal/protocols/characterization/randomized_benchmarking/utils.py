@@ -186,6 +186,6 @@ def samples_to_p0s(data, qubit):
     for depth in depths:
         p0s.append(
             np.count_nonzero(np.array(data.data[(qubit, depth)]))
-            / len(data.data[(qubit, depth)])
+            / data.data[(qubit, depth)].size
         )
     return p0s
