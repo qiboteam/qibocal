@@ -18,7 +18,7 @@ from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from ..utils import GHZ_TO_HZ, chi2_reduced, table_dict, table_html
 from .utils import ramsey_fit, ramsey_sequence
 
-POPT_EXCEPTION = [0, 0, 0, 0, 0]
+POPT_EXCEPTION = [0, 0, 0, 0, 1]
 """Fit parameters output to handle exceptions"""
 PERR_EXCEPTION = [1] * 5
 """Fit errors to handle exceptions; their choice has no physical meaning
@@ -224,13 +224,13 @@ def _fit(data: RamseyData) -> RamseyResults:
         # TODO: check sign
         delta_phys = int(delta_fitting * GHZ_TO_HZ - data.detuning)
         corrected_qubit_frequency = int(qubit_freq - delta_phys)
-        t2 = popt[4]
+        t2 = 1 / popt[4]
         # TODO: check error formula
         freq_measure[qubit] = (
             corrected_qubit_frequency,
             perr[2] * GHZ_TO_HZ / (2 * np.pi),
         )
-        t2_measure[qubit] = (t2, perr[4])
+        t2_measure[qubit] = (t2, perr[4] * (t2**2))
         popts[qubit] = popt
         # TODO: check error formula
         delta_phys_measure[qubit] = (

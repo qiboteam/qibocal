@@ -185,7 +185,7 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
         delta_fitting = popt[2] / (2 * np.pi)
         delta_phys = int(delta_fitting * GHZ_TO_HZ - data.detuning)
         corrected_qubit_frequency = int(qubit_freq - delta_phys)
-        t2 = popt[4]
+        t2 = 1 / popt[4]
         freq_measure[qubit] = (
             corrected_qubit_frequency,
             perr[2] * GHZ_TO_HZ / (2 * np.pi),
