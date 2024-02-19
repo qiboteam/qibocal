@@ -53,12 +53,14 @@ class Task:
         """Create qubits dictionary from QubitIds."""
         if len(self.qubits) > 0:
             if platform is not None:
-                if any(isinstance(i, tuple) for i in self.qubits):
-                    task_qubits = allocate_qubits_pairs(platform, self.qubits)
-                elif any(
-                    isinstance(i, tuple) or isinstance(i, list) for i in self.qubits
-                ):
-                    task_qubits = allocate_single_qubits_lists(platform, self.qubits)
+                if all(isinstance(i, tuple) for i in self.qubits):
+                    if self.operation.two_qubit_gates:
+                        task_qubits = allocate_qubits_pairs(platform, self.qubits)
+                    else:
+                        task_qubits = allocate_single_qubits_lists(
+                            platform, self.qubits
+                        )
+
                 else:
                     task_qubits = allocate_single_qubits(platform, self.qubits)
             else:
@@ -150,6 +152,7 @@ class Task:
         except (RuntimeError, AttributeError):
             operation = dummy_operation
             parameters = DummyPars()
+
         if mode.name in ["autocalibration", "acquire"]:
             if operation.platform_dependent and operation.qubits_dependent:
                 completed.data, completed.data_time = operation.acquisition(

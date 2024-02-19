@@ -224,8 +224,6 @@ class Results(AbstractData):
 
     def __contains__(self, qubit: Union[QubitId, QubitPairId]):
         """Checking if qubit is in Results."""
-        if isinstance(qubit, list):
-            qubit = tuple(qubit)
         return all(qubit in getattr(self, field.name) for field in fields(self))
 
     @classmethod
@@ -282,7 +280,7 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
 
     @property
     def results_type(self):
-        """ "Results object type return by data acquisition."""
+        """Results object type return by data acquisition."""
         return inspect.signature(self.fit).return_annotation
 
     # TODO: I don't like these properties but it seems to work
