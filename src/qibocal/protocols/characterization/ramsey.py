@@ -218,7 +218,7 @@ def _acquisition(
                 for sequence in sequences
             ]
 
-        # We dont need ig as everty serial is different
+        # We dont need ig as every serial is different
         for ig, (wait, ro_pulses) in enumerate(zip(waits, all_ro_pulses)):
             for qubit in qubits:
                 serial = ro_pulses[qubit].serial
