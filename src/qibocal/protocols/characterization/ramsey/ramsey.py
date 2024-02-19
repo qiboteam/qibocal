@@ -15,7 +15,8 @@ from scipy.signal import find_peaks
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from .utils import GHZ_TO_HZ, chi2_reduced, table_dict, table_html
+from ..utils import GHZ_TO_HZ, chi2_reduced, table_dict, table_html
+from .utils import ramsey_fit, ramsey_sequence
 
 POPT_EXCEPTION = [0, 0, 0, 0, 0]
 """Fit parameters output to handle exceptions"""
@@ -36,8 +37,8 @@ class RamseyParameters(Parameters):
     """Final delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_step: int
     """Step delay between RX(pi/2) pulses in ns."""
-    n_osc: Optional[int] = 0
-    """Number of oscillations to induce detuning (optional).
+    detuning: Optional[int] = 0
+    """Frequency detuning [Hz] (optional).
         If 0 standard Ramsey experiment is performed."""
     unrolling: bool = False
     """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
@@ -70,12 +71,8 @@ RamseyType = np.dtype(
 class RamseyData(Data):
     """Ramsey acquisition outputs."""
 
-    n_osc: int
-    """Number of oscillations for detuning."""
-    t_max: int
-    """Final delay between RX(pi/2) pulses in ns."""
-    detuning_sign: int
-    """Sign for induced detuning."""
+    detuning: int
+    """Frequency detuning [Hz]."""
     qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
     """Qubit freqs for each qubit."""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
@@ -113,37 +110,26 @@ def _acquisition(
         averaging_mode=AveragingMode.SINGLESHOT,
     )
 
-    if params.n_osc == 0:
-        ro_pulses = {}
-        RX90_pulses1 = {}
-        RX90_pulses2 = {}
-        freqs = {}
+    sequence = PulseSequence()
+
+    data = RamseyData(
+        detuning=params.detuning,
+        qubit_freqs={
+            qubit: platform.qubits[qubit].native_gates.RX.frequency for qubit in qubits
+        },
+    )
+
+    if params.detuning == 0:
         sequence = PulseSequence()
         for qubit in qubits:
-            RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
-            RX90_pulses2[qubit] = platform.create_RX90_pulse(
-                qubit,
-                start=RX90_pulses1[qubit].finish,
-            )
-            ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-                qubit, start=RX90_pulses2[qubit].finish
-            )
-            freqs[qubit] = qubits[qubit].drive_frequency
-            sequence.add(RX90_pulses1[qubit])
-            sequence.add(RX90_pulses2[qubit])
-            sequence.add(ro_pulses[qubit])
-
-        data = RamseyData(
-            n_osc=params.n_osc,
-            t_max=params.delay_between_pulses_end,
-            detuning_sign=+1,
-            qubit_freqs=freqs,
-        )
+            sequence += ramsey_sequence(platform=platform, qubit=qubit)
 
         sweeper = Sweeper(
             Parameter.start,
             waits,
-            [RX90_pulses2[qubit] for qubit in qubits],
+            [
+                sequence.get_qubit_pulses(qubit).qd_pulses[-1] for qubit in qubits
+            ],  # TODO: check if it is correct
             type=SweeperType.ABSOLUTE,
         )
 
@@ -166,48 +152,18 @@ def _acquisition(
                     errors=errors,
                 ),
             )
-    if params.n_osc != 0:
+
+    if params.detuning != 0:
         sequences, all_ro_pulses = [], []
         for wait in waits:
-            ro_pulses = {}
-            RX90_pulses1 = {}
-            RX90_pulses2 = {}
-            freqs = {}
             sequence = PulseSequence()
             for qubit in qubits:
-                RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
-                RX90_pulses2[qubit] = platform.create_RX90_pulse(
-                    qubit,
-                    start=RX90_pulses1[qubit].finish,
+                sequence += ramsey_sequence(
+                    platform=platform, qubit=qubit, wait=wait, detuning=params.detuning
                 )
-                ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-                    qubit, start=RX90_pulses2[qubit].finish
-                )
-
-                RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
-                ro_pulses[qubit].start = RX90_pulses2[qubit].finish
-
-                RX90_pulses2[qubit].relative_phase = (
-                    RX90_pulses2[qubit].start
-                    * (-2 * np.pi)
-                    * (params.n_osc)
-                    / params.delay_between_pulses_end
-                )
-
-                freqs[qubit] = qubits[qubit].drive_frequency
-                sequence.add(RX90_pulses1[qubit])
-                sequence.add(RX90_pulses2[qubit])
-                sequence.add(ro_pulses[qubit])
 
             sequences.append(sequence)
-            all_ro_pulses.append(ro_pulses)
-
-        data = RamseyData(
-            n_osc=params.n_osc,
-            t_max=params.delay_between_pulses_end,
-            detuning_sign=+1,
-            qubit_freqs=freqs,
-        )
+            all_ro_pulses.append(sequence.ro_pulses)
 
         if params.unrolling:
             results = platform.execute_pulse_sequences(sequences, options)
@@ -218,7 +174,7 @@ def _acquisition(
                 for sequence in sequences
             ]
 
-        # We dont need ig as everty serial is different
+        # We dont need ig as every serial is different
         for ig, (wait, ro_pulses) in enumerate(zip(waits, all_ro_pulses)):
             for qubit in qubits:
                 serial = ro_pulses[qubit].serial
@@ -239,16 +195,6 @@ def _acquisition(
                 )
 
     return data
-
-
-def ramsey_fit(x, p0, p1, p2, p3, p4):
-    # A fit to Superconducting Qubit Rabi Oscillation
-    #   Offset                       : p[0]
-    #   Oscillation amplitude        : p[1]
-    #   DeltaFreq                    : p[2]
-    #   Phase                        : p[3]
-    #   Arbitrary parameter T_2      : 1/p[4]
-    return p0 + p1 * np.sin(x * p2 + p3) * np.exp(-x * p4)
 
 
 def _fit(data: RamseyData) -> RamseyResults:
@@ -275,20 +221,21 @@ def _fit(data: RamseyData) -> RamseyResults:
             perr = PERR_EXCEPTION
 
         delta_fitting = popt[2] / (2 * np.pi)
-        delta_phys = data.detuning_sign * int(
-            (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
-        )
+        # TODO: check sign
+        delta_phys = int(delta_fitting * GHZ_TO_HZ - data.detuning)
         corrected_qubit_frequency = int(qubit_freq - delta_phys)
         t2 = popt[4]
+        # TODO: check error formula
         freq_measure[qubit] = (
             corrected_qubit_frequency,
-            perr[2] * GHZ_TO_HZ / (2 * np.pi * data.t_max),
+            perr[2] * GHZ_TO_HZ / (2 * np.pi),
         )
         t2_measure[qubit] = (t2, perr[4])
         popts[qubit] = popt
+        # TODO: check error formula
         delta_phys_measure[qubit] = (
             delta_phys,
-            popt[2] * GHZ_TO_HZ / (2 * np.pi * data.t_max),
+            popt[2] * GHZ_TO_HZ / (2 * np.pi),
         )
         chi2[qubit] = (
             chi2_reduced(

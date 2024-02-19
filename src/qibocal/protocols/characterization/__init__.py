@@ -36,9 +36,9 @@ from .rabi.ef import rabi_amplitude_ef
 from .rabi.length import rabi_length
 from .rabi.length_sequences import rabi_length_sequences
 from .rabi.length_signal import rabi_length_signal
-from .ramsey import ramsey
-from .ramsey_sequences import ramsey_sequences
-from .ramsey_signal import ramsey_signal
+from .ramsey.ramsey import ramsey
+from .ramsey.ramsey_sequences import ramsey_sequences
+from .ramsey.ramsey_signal import ramsey_signal
 from .randomized_benchmarking.standard_rb import standard_rb
 from .readout_characterization import readout_characterization
 from .readout_mitigation_matrix import readout_mitigation_matrix

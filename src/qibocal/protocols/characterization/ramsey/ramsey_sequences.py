@@ -6,6 +6,7 @@ from qibolab.pulses import PulseSequence
 from qibocal.auto.operation import Qubits, Routine
 
 from .ramsey import RamseyData, RamseyParameters, RamseyType, _fit, _plot, _update
+from .utils import ramsey_sequence
 
 
 def _acquisition(
@@ -16,24 +17,6 @@ def _acquisition(
     """Data acquisition for Ramsey Experiment (detuned)."""
     # create a sequence of pulses for the experiment
     # RX90 - t - RX90 - MZ
-    ro_pulses = {}
-    RX90_pulses1 = {}
-    RX90_pulses2 = {}
-    freqs = {}
-    sequence = PulseSequence()
-    for qubit in qubits:
-        RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
-        RX90_pulses2[qubit] = platform.create_RX90_pulse(
-            qubit,
-            start=RX90_pulses1[qubit].finish,
-        )
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=RX90_pulses2[qubit].finish
-        )
-        freqs[qubit] = qubits[qubit].drive_frequency
-        sequence.add(RX90_pulses1[qubit])
-        sequence.add(RX90_pulses2[qubit])
-        sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
     waits = np.arange(
@@ -44,27 +27,19 @@ def _acquisition(
     )
 
     data = RamseyData(
-        n_osc=params.n_osc,
-        t_max=params.delay_between_pulses_end,
-        detuning_sign=+1,
-        qubit_freqs=freqs,
+        detuning=params.detuning,
+        qubit_freqs={
+            qubit: platform.qubits[qubit].native_gates.RX.frequency for qubit in qubits
+        },
     )
 
     # sweep the parameter
     for wait in waits:
+        sequence = PulseSequence()
         for qubit in qubits:
-            RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
-            ro_pulses[qubit].start = RX90_pulses2[qubit].finish
-            if params.n_osc != 0:
-                # FIXME: qblox will induce a positive detuning with minus sign
-                RX90_pulses2[qubit].relative_phase = (
-                    RX90_pulses2[qubit].start
-                    * data.detuning_sign
-                    * 2
-                    * np.pi
-                    * (params.n_osc)
-                    / params.delay_between_pulses_end
-                )
+            sequence += ramsey_sequence(
+                platform=platform, qubit=qubit, wait=wait, detuning=params.detuning
+            )
         # execute the pulse sequence
         results = platform.execute_pulse_sequence(
             sequence,
