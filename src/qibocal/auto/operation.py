@@ -222,9 +222,9 @@ class Data(AbstractData):
 class Results(AbstractData):
     """Generic runcard update."""
 
-    def __contains__(self, target: Union[QubitId, QubitPairId, tuple[QubitId, ...]]):
+    def __contains__(self, key: Union[QubitId, QubitPairId, tuple[QubitId, ...]]):
         """Checking if qubit is in Results."""
-        return all(target in getattr(self, field.name) for field in fields(self))
+        return all(key in getattr(self, field.name) for field in fields(self))
 
     @classmethod
     def load(cls, path: Path):
