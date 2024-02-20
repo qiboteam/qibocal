@@ -240,11 +240,11 @@ def _fit(data: RamseyData) -> RamseyResults:
         # TODO: check error formula
         delta_phys_measure[qubit] = (
             delta_phys,
-            popt[2] * GHZ_TO_HZ / (2 * np.pi),
+            perr[2] * GHZ_TO_HZ / (2 * np.pi),
         )
         delta_fitting_measure[qubit] = (
             delta_fitting * GHZ_TO_HZ,
-            popt[2] * GHZ_TO_HZ / (2 * np.pi),
+            perr[2] * GHZ_TO_HZ / (2 * np.pi),
         )
         chi2[qubit] = (
             chi2_reduced(

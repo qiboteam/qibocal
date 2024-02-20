@@ -187,11 +187,11 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
         popts[qubit] = popt
         delta_phys_measure[qubit] = (
             delta_phys,
-            popt[2] * GHZ_TO_HZ / (2 * np.pi),
+            perr[2] * GHZ_TO_HZ / (2 * np.pi),
         )
         delta_fitting_measure[qubit] = (
             delta_fitting * GHZ_TO_HZ,
-            popt[2] * GHZ_TO_HZ / (2 * np.pi),
+            perr[2] * GHZ_TO_HZ / (2 * np.pi),
         )
 
     return RamseySignalResults(
