@@ -191,6 +191,7 @@ def _fit(data: FlippingData) -> FlippingResults:
                 / 2
             ),
         )
+        print(corrected_amplitudes)
         fitted_parameters[qubit] = popt
         amplitude_correction_factors[qubit] = (
             float(signed_correction / np.pi * pi_pulse_amplitude),

@@ -178,10 +178,11 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
             popt[3] - x_min * 2 * np.pi * f / (x_max - x_min) * popt[2],
             popt[4] * 2 * np.pi * f / (x_max - x_min),
         ]
-        if translated_popt[3] > np.pi / 2 and translated_popt[3] < 3 * np.pi / 2:
-            signed_correction = -translated_popt[2] / 2
-        else:
+        # TODO: this might be related to the resonator type
+        if popt[3] > np.pi / 2 and popt[3] < 3 * np.pi / 2:
             signed_correction = translated_popt[2] / 2
+        else:
+            signed_correction = -translated_popt[2] / 2
         # The amplitude is directly proportional to the rotation angle
         corrected_amplitudes[qubit] = (pi_pulse_amplitude * np.pi) / (
             np.pi + signed_correction
@@ -190,7 +191,6 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
         amplitude_correction_factors[qubit] = (
             signed_correction / np.pi * pi_pulse_amplitude
         )
-
     return FlippingSignalResults(
         corrected_amplitudes, amplitude_correction_factors, fitted_parameters
     )
