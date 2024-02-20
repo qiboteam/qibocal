@@ -65,6 +65,7 @@ def _acquisition(
     # create a sequence of pulses for the experiment
     # RX90 - t - RX90 - MZ
     # define the parameter to sweep and its range:
+
     waits = np.arange(
         # wait time between RX90 pulses
         params.delay_between_pulses_start,
@@ -175,7 +176,9 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
             perr = PERR_EXCEPTION
 
         delta_fitting = popt[2] / (2 * np.pi)
-        delta_phys = int(delta_fitting * GHZ_TO_HZ - data.detuning)
+        delta_phys = int(
+            np.sign(data.detuning) * (delta_fitting * GHZ_TO_HZ - np.abs(data.detuning))
+        )
         corrected_qubit_frequency = int(qubit_freq - delta_phys)
         t2 = 1 / popt[4]
         freq_measure[qubit] = (

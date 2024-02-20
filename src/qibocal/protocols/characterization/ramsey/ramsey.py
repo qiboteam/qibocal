@@ -230,7 +230,9 @@ def _fit(data: RamseyData) -> RamseyResults:
 
         delta_fitting = popt[2] / (2 * np.pi)
         # TODO: check sign
-        delta_phys = int(delta_fitting * GHZ_TO_HZ - data.detuning)
+        delta_phys = int(
+            np.sign(data.detuning) * (delta_fitting * GHZ_TO_HZ - np.abs(data.detuning))
+        )
         corrected_qubit_frequency = int(qubit_freq - delta_phys)
         t2 = 1 / popt[4]
         # TODO: check error formula
