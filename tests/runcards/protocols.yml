@@ -411,16 +411,6 @@ actions:
       detuning: 2_000_000
       nshots: 10
 
-  - id: ramsey_detuned_sequences
-    priority: 0
-    operation: ramsey_sequences
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 50
-      delay_between_pulses_step: 1
-      nshots: 10
-      detuning: 2_000_000
-
   - id: ramsey_unrolled_detuned
     priority: 0
     operation: ramsey
