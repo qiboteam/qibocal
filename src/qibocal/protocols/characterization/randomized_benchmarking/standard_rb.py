@@ -281,7 +281,7 @@ def _fit(data: RBData) -> StandardRBResult:
                 samples_bts, axis=2
             )  # We average on the bootstrap iterations
             # TODO: Should we use the median or the mean?
-            median = [np.mean(samples_row) for samples_row in samples_bts_mean]
+            median = [np.median(samples_row) for samples_row in samples_bts_mean]
 
             # TODO: Add the non homogeneous case
             samp = np.apply_along_axis(
@@ -305,14 +305,17 @@ def _fit(data: RBData) -> StandardRBResult:
 
         elif uncertainties and n_bootstrap is None:
 
-            samples_mean = [np.mean(samples[depth], axis=1) for depth in range(len(x))]
-            # TODO: Should we use the median or the mean?
-            median = [np.mean(samples_row) for samples_row in samples_mean]
+            samples_mean = np.mean(samples, axis=2)
 
+            # samples_mean = [np.mean(samples[depth], axis=1) for depth in range(len(x))]
+            # TODO: Should we use the median or the mean?
+            median = [np.median(samples_row) for samples_row in samples_mean]
+
+            # TODO: This comes up with huge error bars
             # Compute error bars using the samples we calculate the mean with
             error_bars = data_uncertainties(
-                samples,
-                uncertainties,
+                samples_mean,
+                method="std",
                 data_median=median,
                 homogeneous=homogeneous,
             )
