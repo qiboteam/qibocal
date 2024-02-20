@@ -12,7 +12,6 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.config import log
 from qibocal.protocols.characterization.utils import (
     HZ_TO_GHZ,
     lorentzian,
@@ -181,18 +180,14 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     for i in range(2):
         for qubit in qubits:
             data_i = data[qubit, i]
-            try:
-                freq, fitted_params = lorentzian_fit(
-                    data_i, resonator_type=data.resonator_type, fit="resonator"
-                )
+            fit_result = lorentzian_fit(
+                data_i, resonator_type=data.resonator_type, fit="resonator"
+            )
+            if fit_result is not None:
                 if i == 0:
-                    frequency_0[qubit] = freq
-                    fitted_parameters_0[qubit] = fitted_params
+                    frequency_0[qubit], fitted_parameters_0[qubit] = fit_result
                 else:
-                    frequency_1[qubit] = freq
-                    fitted_parameters_1[qubit] = fitted_params
-            except RuntimeError:
-                log.warning(f"Lorentzian fit for qubit {qubit} not successful")
+                    frequency_1[qubit], fitted_parameters_1[qubit] = fit_result
 
             i_measures = data_i.i
             q_measures = data_i.q
