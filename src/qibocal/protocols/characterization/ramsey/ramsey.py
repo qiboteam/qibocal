@@ -130,17 +130,17 @@ def _acquisition(
         },
     )
 
-    if params.detuning == 0:
+    if not params.unrolling:
         sequence = PulseSequence()
         for qubit in qubits:
-            sequence += ramsey_sequence(platform=platform, qubit=qubit)
+            sequence += ramsey_sequence(
+                platform=platform, qubit=qubit, detuning=params.detuning
+            )
 
         sweeper = Sweeper(
             Parameter.start,
             waits,
-            [
-                sequence.get_qubit_pulses(qubit).qd_pulses[-1] for qubit in qubits
-            ],  # TODO: check if it is correct
+            [sequence.get_qubit_pulses(qubit).qd_pulses[-1] for qubit in qubits],
             type=SweeperType.ABSOLUTE,
         )
 
@@ -164,7 +164,7 @@ def _acquisition(
                 ),
             )
 
-    if params.detuning != 0:
+    if params.unrolling:
         sequences, all_ro_pulses = [], []
         for wait in waits:
             sequence = PulseSequence()
@@ -176,14 +176,7 @@ def _acquisition(
             sequences.append(sequence)
             all_ro_pulses.append(sequence.ro_pulses)
 
-        if params.unrolling:
-            results = platform.execute_pulse_sequences(sequences, options)
-
-        elif not params.unrolling:
-            results = [
-                platform.execute_pulse_sequence(sequence, options)
-                for sequence in sequences
-            ]
+        results = platform.execute_pulse_sequences(sequences, options)
 
         # We dont need ig as every serial is different
         for ig, (wait, ro_pulses) in enumerate(zip(waits, all_ro_pulses)):
