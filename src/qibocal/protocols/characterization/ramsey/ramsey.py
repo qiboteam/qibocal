@@ -9,20 +9,13 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
-from scipy.optimize import curve_fit
-from scipy.signal import find_peaks
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 from ..utils import GHZ_TO_HZ, chi2_reduced, table_dict, table_html
-from .utils import ramsey_fit, ramsey_sequence
+from .utils import PERR_EXCEPTION, POPT_EXCEPTION, fitting, ramsey_fit, ramsey_sequence
 
-POPT_EXCEPTION = [0, 0, 0, 0, 1]
-"""Fit parameters output to handle exceptions"""
-PERR_EXCEPTION = [1] * 5
-"""Fit errors to handle exceptions; their choice has no physical meaning
-and is meant to avoid breaking the code."""
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
 
@@ -334,63 +327,3 @@ def _update(results: RamseyResults, platform: Platform, qubit: QubitId):
 
 ramsey = Routine(_acquisition, _fit, _plot, _update)
 """Ramsey Routine object."""
-
-
-def fitting(x: list, y: list, errors: list = None) -> list:
-    """
-    Given the inputs list `x` and outputs one `y`, this function fits the
-    `ramsey_fit` function and returns a list with the fit parameters.
-    """
-    y_max = np.max(y)
-    y_min = np.min(y)
-    x_max = np.max(x)
-    x_min = np.min(x)
-    delta_y = y_max - y_min
-    delta_x = x_max - x_min
-    y = (y - y_min) / delta_y
-    x = (x - x_min) / delta_x
-    err = errors / delta_y if errors is not None else None
-    ft = np.fft.rfft(y)
-    freqs = np.fft.rfftfreq(len(y), x[1] - x[0])
-    mags = abs(ft)
-    local_maxima = find_peaks(mags, threshold=10)[0]
-    index = local_maxima[0] if len(local_maxima) > 0 else None
-    # 0.5 hardcoded guess for less than one oscillation
-    f = freqs[index] * 2 * np.pi if index is not None else 0.5
-    p0 = [
-        0.5,
-        0.5,
-        f,
-        0,
-        1,
-    ]
-    popt, perr = curve_fit(
-        ramsey_fit,
-        x,
-        y,
-        p0=p0,
-        maxfev=5000,
-        bounds=(
-            [0, 0, 0, -np.pi, 0],
-            [1, 1, np.inf, np.pi, np.inf],
-        ),
-        sigma=err,
-    )
-    popt = [
-        delta_y * popt[0] + y_min,
-        delta_y * popt[1] * np.exp(x_min * popt[4] / delta_x),
-        popt[2] / delta_x,
-        popt[3] - x_min * popt[2] / delta_x,
-        popt[4] / delta_x,
-    ]
-    perr = np.sqrt(np.diag(perr))
-    perr = [
-        delta_y * perr[0],
-        delta_y
-        * np.exp(x_min * popt[4] / delta_x)
-        * np.sqrt(perr[1] ** 2 + (popt[1] * x_min * perr[4] / delta_x) ** 2),
-        perr[2] / delta_x,
-        np.sqrt(perr[3] ** 2 + (perr[2] * x_min / delta_x) ** 2),
-        perr[4] / delta_x,
-    ]
-    return popt, perr

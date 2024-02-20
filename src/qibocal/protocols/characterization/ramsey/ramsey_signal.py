@@ -12,15 +12,8 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal.auto.operation import Qubits, Results, Routine
 
 from ..utils import GHZ_TO_HZ, table_dict, table_html
-from .ramsey import (
-    PERR_EXCEPTION,
-    POPT_EXCEPTION,
-    RamseyData,
-    RamseyParameters,
-    _update,
-    fitting,
-)
-from .utils import ramsey_fit, ramsey_sequence
+from .ramsey import RamseyData, RamseyParameters, _update
+from .utils import PERR_EXCEPTION, POPT_EXCEPTION, fitting, ramsey_fit, ramsey_sequence
 
 
 @dataclass
@@ -97,7 +90,6 @@ def _acquisition(
         sequence = PulseSequence()
         for qubit in qubits:
             sequence += ramsey_sequence(platform=platform, qubit=qubit)
-
         sweeper = Sweeper(
             Parameter.start,
             waits,
@@ -190,7 +182,7 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
             corrected_qubit_frequency,
             perr[2] * GHZ_TO_HZ / (2 * np.pi),
         )
-        t2_measure[qubit] = (t2, perr[4])
+        t2_measure[qubit] = (t2, perr[4] * (t2**2))
         popts[qubit] = popt
         delta_phys_measure[qubit] = (
             delta_phys,
