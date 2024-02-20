@@ -48,6 +48,9 @@ class RamseyResults(Results):
     """T2 for each qubit [ns]."""
     delta_phys: dict[QubitId, tuple[float, Optional[float]]]
     """Drive frequency [Hz] correction for each qubit."""
+    delta_fitting: dict[QubitId, tuple[float, Optional[float]]]
+    """Raw drive frequency [Hz] correction for each qubit.
+       including the detuning."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
     chi2: dict[QubitId, tuple[float, Optional[float]]]
@@ -217,6 +220,7 @@ def _fit(data: RamseyData) -> RamseyResults:
     freq_measure = {}
     t2_measure = {}
     delta_phys_measure = {}
+    delta_fitting_measure = {}
     chi2 = {}
     for qubit in qubits:
         qubit_data = data[qubit]
@@ -229,10 +233,8 @@ def _fit(data: RamseyData) -> RamseyResults:
             perr = PERR_EXCEPTION
 
         delta_fitting = popt[2] / (2 * np.pi)
-        # TODO: check sign
-        delta_phys = int(
-            np.sign(data.detuning) * (delta_fitting * GHZ_TO_HZ - np.abs(data.detuning))
-        )
+        sign = np.sign(data.detuning) if data.detuning != 0 else 1
+        delta_phys = int(sign * (delta_fitting * GHZ_TO_HZ - np.abs(data.detuning)))
         corrected_qubit_frequency = int(qubit_freq - delta_phys)
         t2 = 1 / popt[4]
         # TODO: check error formula
@@ -247,6 +249,10 @@ def _fit(data: RamseyData) -> RamseyResults:
             delta_phys,
             popt[2] * GHZ_TO_HZ / (2 * np.pi),
         )
+        delta_fitting_measure[qubit] = (
+            delta_fitting * GHZ_TO_HZ,
+            popt[2] * GHZ_TO_HZ / (2 * np.pi),
+        )
         chi2[qubit] = (
             chi2_reduced(
                 probs,
@@ -255,7 +261,14 @@ def _fit(data: RamseyData) -> RamseyResults:
             ),
             np.sqrt(2 / len(probs)),
         )
-    return RamseyResults(freq_measure, t2_measure, delta_phys_measure, popts, chi2)
+    return RamseyResults(
+        frequency=freq_measure,
+        t2=t2_measure,
+        delta_phys=delta_phys_measure,
+        delta_fitting=delta_fitting_measure,
+        fitted_parameters=popts,
+        chi2=chi2,
+    )
 
 
 def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
@@ -313,12 +326,14 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
                 qubit,
                 [
                     "Delta Frequency [Hz]",
+                    "Delta Frequency (with detuning) [Hz]",
                     "Drive Frequency [Hz]",
                     "T2* [ns]",
                     "chi2 reduced",
                 ],
                 [
                     fit.delta_phys[qubit],
+                    fit.delta_fitting[qubit],
                     fit.frequency[qubit],
                     fit.t2[qubit],
                     fit.chi2[qubit],

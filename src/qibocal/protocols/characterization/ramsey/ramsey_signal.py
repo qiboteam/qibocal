@@ -31,6 +31,9 @@ class RamseySignalResults(Results):
     """T2 for each qubit [ns]."""
     delta_phys: dict[QubitId, tuple[float, Optional[float]]]
     """Drive frequency [Hz] correction for each qubit."""
+    delta_fitting: dict[QubitId, tuple[float, Optional[float]]]
+    """Raw drive frequency [Hz] correction for each qubit.
+       including the detuning."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
 
@@ -165,6 +168,7 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
     freq_measure = {}
     t2_measure = {}
     delta_phys_measure = {}
+    delta_fitting_measure = {}
     for qubit in qubits:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
@@ -176,9 +180,8 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
             perr = PERR_EXCEPTION
 
         delta_fitting = popt[2] / (2 * np.pi)
-        delta_phys = int(
-            np.sign(data.detuning) * (delta_fitting * GHZ_TO_HZ - np.abs(data.detuning))
-        )
+        sign = np.sign(data.detuning) if data.detuning != 0 else 1
+        delta_phys = int(sign * (delta_fitting * GHZ_TO_HZ - np.abs(data.detuning)))
         corrected_qubit_frequency = int(qubit_freq - delta_phys)
         t2 = 1 / popt[4]
         freq_measure[qubit] = (
@@ -191,8 +194,18 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
             delta_phys,
             popt[2] * GHZ_TO_HZ / (2 * np.pi),
         )
+        delta_fitting_measure[qubit] = (
+            delta_fitting * GHZ_TO_HZ,
+            popt[2] * GHZ_TO_HZ / (2 * np.pi),
+        )
 
-    return RamseySignalResults(freq_measure, t2_measure, delta_phys_measure, popts)
+    return RamseySignalResults(
+        frequency=freq_measure,
+        t2=t2_measure,
+        delta_phys=delta_phys_measure,
+        delta_fitting=delta_fitting_measure,
+        fitted_parameters=popts,
+    )
 
 
 def _plot(data: RamseySignalData, qubit, fit: RamseySignalResults = None):
@@ -240,11 +253,13 @@ def _plot(data: RamseySignalData, qubit, fit: RamseySignalResults = None):
                 qubit,
                 [
                     "Delta Frequency [Hz]",
+                    "Delta Frequency (with detuning) [Hz]",
                     "Drive Frequency [Hz]",
                     "T2* [ns]",
                 ],
                 [
                     np.round(fit.delta_phys[qubit][0], 3),
+                    np.round(fit.delta_fitting[qubit][0], 3),
                     np.round(fit.frequency[qubit][0], 3),
                     np.round(fit.t2[qubit][0], 3),
                 ],
