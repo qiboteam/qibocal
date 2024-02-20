@@ -150,7 +150,7 @@ def samples_to_p0(samples_list):
 
 
 def resample_p0(data, sample_size=100, homogeneous: bool = True):
-    """Preforms parametric resampling of shots with binomial distribution
+    """Performs parametric resampling of shots with binomial distribution
         and returns a list of "corrected" probabilites.
 
     Args:
@@ -165,8 +165,8 @@ def resample_p0(data, sample_size=100, homogeneous: bool = True):
             lambda p: samples_to_p0(
                 np.random.binomial(n=1, p=1 - p, size=(1, sample_size, len(p))).T,
             ),
-            0,
-            data,
+            axis=0,
+            arr=data,
         )
 
     resampled_data = []

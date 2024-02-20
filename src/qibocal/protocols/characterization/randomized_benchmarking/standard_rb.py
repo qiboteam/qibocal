@@ -276,28 +276,46 @@ def _fit(data: RBData) -> StandardRBResult:
                 homogeneous=homogeneous,
             )
 
-            # Compute y and popt estimates for each bootstrap iteration
-            samples = (
-                np.mean(bootstrap_y, axis=1)
-                if homogeneous
-                else [np.mean(y_iter, axis=0) for y_iter in bootstrap_y]
-            )
+            samples_bts = np.mean(bootstrap_y, axis=3)  # We average on the shots
+            samples_bts_mean = np.mean(
+                samples_bts, axis=2
+            )  # We average on the bootstrap iterations
+            # TODO: Should we use the median or the mean?
+            median = [np.mean(samples_row) for samples_row in samples_bts_mean]
+
+            # TODO: Add the non homogeneous case
+            samp = np.apply_along_axis(
+                np.sum, 1, np.apply_along_axis(np.count_nonzero, -1, bootstrap_y)
+            ) / (bootstrap_y.shape[-1] * bootstrap_y.shape[1])
+
+            # Fit the initial data and compute error bars
             popt_estimates = np.apply_along_axis(
                 lambda y_iter: fit_exp1B_func(x, y_iter, bounds=[0, 1])[0],
                 axis=0,
-                arr=np.array(samples),
+                arr=samp,
             )
 
-        samples_mean = [np.mean(samples[depth], axis=1) for depth in range(len(x))]
-        median = [np.median(samples_row) for samples_row in samples_mean]
+            # Using bootstrap of the mean estimate
+            error_bars = data_uncertainties(
+                samples_bts_mean,
+                uncertainties,
+                data_median=median,
+                homogeneous=(homogeneous or n_bootstrap != 0),
+            )
 
-        # Fit the initial data and compute error bars
-        error_bars = data_uncertainties(
-            samples_mean,
-            uncertainties,
-            data_median=median,
-            homogeneous=(homogeneous or n_bootstrap != 0),
-        )
+        elif uncertainties and n_bootstrap is None:
+
+            samples_mean = [np.mean(samples[depth], axis=1) for depth in range(len(x))]
+            # TODO: Should we use the median or the mean?
+            median = [np.mean(samples_row) for samples_row in samples_mean]
+
+            # Compute error bars using the samples we calculate the mean with
+            error_bars = data_uncertainties(
+                samples,
+                uncertainties,
+                data_median=median,
+                homogeneous=homogeneous,
+            )
 
         sigma = None
         if error_bars is not None:
