@@ -23,13 +23,23 @@ def ramsey_sequence(
     wait: Optional[int] = 0,
     detuning: Optional[int] = 0,
 ):
-    """Pulse sequence used in Ramsey experiments."""
+    """Pulse sequence used in Ramsey (detuned) experiments.
+
+    The pulse sequence is the following:
+
+    RX90 -- wait -- RX90 -- MZ
+
+    If detuning is specified the RX90 pulses will be sent to
+    frequency = drive_frequency + detuning
+    """
 
     sequence = PulseSequence()
     first_pi_half_pulse = platform.create_RX90_pulse(qubit, start=0)
     second_pi_half_pulse = platform.create_RX90_pulse(
         qubit, start=first_pi_half_pulse.finish + wait
     )
+
+    # apply detuning:
     first_pi_half_pulse.frequency += detuning
     second_pi_half_pulse.frequency += detuning
     readout_pulse = platform.create_qubit_readout_pulse(
@@ -41,7 +51,7 @@ def ramsey_sequence(
 
 
 def ramsey_fit(x, offset, amplitude, delta, phase, decay):
-    """ "Dumped sinusoidal fit."""
+    """Dumped sinusoidal fit."""
     return offset + amplitude * np.sin(x * delta + phase) * np.exp(-x * decay)
 
 

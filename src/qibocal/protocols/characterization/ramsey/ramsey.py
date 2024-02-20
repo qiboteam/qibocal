@@ -43,7 +43,7 @@ class RamseyResults(Results):
     """Ramsey outputs."""
 
     frequency: dict[QubitId, tuple[float, Optional[float]]]
-    """Drive frequency [GHz] for each qubit."""
+    """Drive frequency [Hz] for each qubit."""
     t2: dict[QubitId, tuple[float, Optional[float]]]
     """T2 for each qubit [ns]."""
     delta_phys: dict[QubitId, tuple[float, Optional[float]]]
@@ -85,10 +85,25 @@ def _acquisition(
     platform: Platform,
     qubits: Qubits,
 ) -> RamseyData:
-    """Data acquisition for Ramsey Experiment (detuned)."""
-    # create a sequence of pulses for the experiment
-    # RX90 - t - RX90 - MZ
-    # define the parameter to sweep and its range:
+    """Data acquisition for Ramsey Experiment (detuned).
+
+    The protocol consists in applying the following pulse sequence
+    RX90 - wait - RX90 - MZ
+    for different waiting times `wait`.
+    The range of waiting times is defined through the attributes
+    `delay_between_pulses_*` available in `RamseyParameters`. The final range
+    will be constructed using `np.arange`.
+    It is possible to detune the drive frequency using the parameter `detuning` in
+    RamseyParameters which will increment the drive frequency accordingly.
+    Currently when `detuning==0` it will be performed a sweep over the waiting values
+    if `detuning` is not zero, all sequences with different waiting value will be
+    executed sequentially. By providing the option `unrolling=True` in RamseyParameters
+    the sequences will be unrolled when the frequency is detuned.
+    The following protocol will display on the y-axis the probability of finding the ground
+    state, therefore it is advise to execute it only after having performed the single
+    shot classification. Error bars are provided as binomial distribution error.
+    """
+
     waits = np.arange(
         # wait time between RX90 pulses
         params.delay_between_pulses_start,
