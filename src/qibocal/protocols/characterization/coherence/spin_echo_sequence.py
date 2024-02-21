@@ -74,8 +74,8 @@ def _acquisition(
         # save data as often as defined by points
 
         for qubit in qubits:
-            RX_pulses[qubit].start = RX90_pulses1[qubit].finish + wait
-            RX90_pulses2[qubit].start = RX_pulses[qubit].finish + wait
+            RX_pulses[qubit].start = RX90_pulses1[qubit].finish + wait // 2
+            RX90_pulses2[qubit].start = RX_pulses[qubit].finish + wait // 2
             ro_pulses[qubit].start = RX90_pulses2[qubit].finish
 
         # execute the pulse sequence
