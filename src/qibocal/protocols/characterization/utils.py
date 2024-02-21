@@ -260,7 +260,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                     display_error=True,
                 )
             )
-        if data.attenuations is not None:
+        if data.attenuations[qubit] is not None:
             fitting_report = table_html(
                 table_dict(
                     qubit,
@@ -392,6 +392,7 @@ def round_report(
     """
     rounded_values = []
     rounded_errors = []
+    print(measure)
     for value, error in measure:
         if value:
             magnitude = eval_magnitude(value)

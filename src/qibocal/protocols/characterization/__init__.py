@@ -52,6 +52,9 @@ from .readout_optimization.twpa_calibration.power_SNR import twpa_power_snr
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
+from .signal_experiments.calibrate_state_discrimination import (
+    calibrate_state_discrimination,
+)
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtualz
 
