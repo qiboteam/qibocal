@@ -195,8 +195,8 @@ def _fit(data: FlippingData) -> FlippingResults:
             popt = popt.tolist()
         except:
             log.warning("flipping_fit: the fitting was not succesful")
-            popt = [0] * 4
-            perr = [1] * 4
+            popt = [0] * 5
+            perr = [1] * 5
 
         if popt[3] > np.pi / 2 and popt[3] < 3 * np.pi / 2:
             signed_correction = -popt[2] / 2
