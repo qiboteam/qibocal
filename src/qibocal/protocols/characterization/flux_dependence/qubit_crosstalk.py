@@ -108,7 +108,7 @@ def _acquisition(
         flux_qubits = params.flux_qubits
     if params.flux_pulses:
         delta_bias_flux_range = np.arange(
-            -params.flux_amplitude_start,
+            params.flux_amplitude_start,
             params.flux_amplitude_end,
             params.flux_amplitude_step,
         )
