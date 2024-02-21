@@ -150,7 +150,8 @@ actions:
     parameters:
       freq_width: 10_000_000
       freq_step: 500_000
-      flux_amplitude_width: 0.8
+      flux_amplitude_start: -0.4
+      flux_amplitude_end: 0.4
       flux_amplitude_step:  0.1
       nshots: 10
 
@@ -174,7 +175,8 @@ actions:
     parameters:
       freq_width: 10_000_000
       freq_step: 500_000
-      flux_amplitude_width: 0.8
+      flux_amplitude_start: -0.4
+      flux_amplitude_end: 0.4
       flux_amplitude_step:  0.1
       flux_qubits: [0, 1, 2, 3]
       nshots: 10
@@ -201,7 +203,8 @@ actions:
     parameters:
       freq_width: 150_000_000
       freq_step: 500_000
-      flux_amplitude_width: 0.2
+      flux_amplitude_start: -0.1
+      flux_amplitude_end: 0.1
       flux_amplitude_step:  0.005
       drive_amplitude: 0.5
       nshots: 1024
@@ -257,7 +260,8 @@ actions:
     parameters:
       freq_width: 150_000_000
       freq_step: 500_000
-      flux_amplitude_width: 0.2
+      flux_amplitude_start: -0.1
+      flux_amplitude_end: 0.1
       flux_amplitude_step:  0.005
       drive_amplitude: 0.5
       flux_qubits: [1, 2]

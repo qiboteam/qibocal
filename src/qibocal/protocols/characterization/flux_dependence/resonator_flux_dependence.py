@@ -29,8 +29,10 @@ class ResonatorFluxParameters(Parameters):
     """Width for bias sweep [V]."""
     bias_step: Optional[float] = None
     """Bias step for sweep [a.u.]."""
-    flux_amplitude_width: Optional[float] = None
-    """Amplitude width for flux pulses sweep relative to the qubit sweetspot [a.u.]."""
+    flux_amplitude_start: Optional[float] = None
+    """Amplitude start value for flux pulses sweep relative to the qubit sweetspot [a.u.]."""
+    flux_amplitude_end: Optional[float] = None
+    """Amplitude end value for flux pulses sweep relative to the qubit sweetspot [a.u.]."""
     flux_amplitude_step: Optional[float] = None
     """Amplitude step for flux pulses sweep [a.u.]."""
 
@@ -55,7 +57,8 @@ class ResonatorFluxParameters(Parameters):
     def has_flux_params(self):
         """True if both biasflux_amplitude_width_width and flux_amplitude_step are set."""
         return (
-            self.flux_amplitude_width is not None
+            self.flux_amplitude_start is not None
+            and self.flux_amplitude_end is not None
             and self.flux_amplitude_step is not None
         )
 
@@ -157,8 +160,8 @@ def _acquisition(
 
     if params.flux_pulses:
         delta_bias_flux_range = np.arange(
-            -params.flux_amplitude_width / 2,
-            params.flux_amplitude_width / 2,
+            -params.flux_amplitude_start,
+            params.flux_amplitude_end,
             params.flux_amplitude_step,
         )
         qf_pulses = {}
@@ -173,7 +176,7 @@ def _acquisition(
                 Parameter.amplitude,
                 delta_bias_flux_range,
                 pulses=[qf_pulses[qubit] for qubit in qubits],
-                type=SweeperType.OFFSET,
+                type=SweeperType.ABSOLUTE,
             )
         ]
     else:

@@ -108,8 +108,8 @@ def _acquisition(
         flux_qubits = params.flux_qubits
     if params.flux_pulses:
         delta_bias_flux_range = np.arange(
-            -params.flux_amplitude_width / 2,
-            params.flux_amplitude_width / 2,
+            -params.flux_amplitude_start,
+            params.flux_amplitude_end,
             params.flux_amplitude_step,
         )
         qf_pulses = {}
@@ -124,7 +124,7 @@ def _acquisition(
                 Parameter.amplitude,
                 delta_bias_flux_range,
                 pulses=[qf_pulses[flux_qubit] for flux_qubit in flux_qubits],
-                type=SweeperType.OFFSET,
+                type=SweeperType.ABSOLUTE,
             )
         ]
     else:
