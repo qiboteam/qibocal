@@ -69,8 +69,18 @@ def _acquisition(
             qubit: qubits[qubit].native_gates.RX.amplitude for qubit in qubits
         },
     )
+
+    options = ExecutionParameters(
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
+    )
+
     # sweep the parameter
-    for flips in range(0, params.nflips_max, params.nflips_step):
+    sequences, all_ro_pulses = [], []
+    flips_sweep = range(0, params.nflips_max, params.nflips_step)
+    for flips in flips_sweep:
         # create a sequence of pulses for the experiment
         sequence = PulseSequence()
         ro_pulses = {}
@@ -90,18 +100,26 @@ def _acquisition(
             # add ro pulse at the end of the sequence
             ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=start1)
             sequence.add(ro_pulses[qubit])
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
-            ),
-        )
+
+        sequences.append(sequence)
+        all_ro_pulses.append(ro_pulses)
+
+    # execute the pulse sequence
+    if params.unrolling:
+        results = platform.execute_pulse_sequences(sequences, options)
+
+    elif not params.unrolling:
+        results = [
+            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
+        ]
+
+    for ig, (flips, ro_pulses) in enumerate(zip(flips_sweep, all_ro_pulses)):
         for qubit in qubits:
-            result = results[ro_pulses[qubit].serial]
+            serial = ro_pulses[qubit].serial
+            if params.unrolling:
+                result = results[serial][0]
+            else:
+                result = results[ig][serial]
             data.register_qubit(
                 FlippingType,
                 (qubit),

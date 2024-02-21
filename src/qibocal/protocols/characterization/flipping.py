@@ -26,6 +26,9 @@ class FlippingParameters(Parameters):
     """Maximum number of flips ([RX(pi) - RX(pi)] sequences). """
     nflips_step: int
     """Flip step."""
+    unrolling: bool = False
+    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
+    Defaults to ``False``."""
 
 
 @dataclass
@@ -85,8 +88,18 @@ def _acquisition(
             qubit: qubits[qubit].native_gates.RX.amplitude for qubit in qubits
         },
     )
+
+    options = ExecutionParameters(
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
+    )
+
     # sweep the parameter
-    for flips in range(0, params.nflips_max, params.nflips_step):
+    sequences, all_ro_pulses = [], []
+    flips_sweep = range(0, params.nflips_max, params.nflips_step)
+    for flips in flips_sweep:
         # create a sequence of pulses for the experiment
         sequence = PulseSequence()
         ro_pulses = {}
@@ -106,25 +119,35 @@ def _acquisition(
             # add ro pulse at the end of the sequence
             ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=start1)
             sequence.add(ro_pulses[qubit])
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.DISCRIMINATION,
-                averaging_mode=AveragingMode.SINGLESHOT,
-            ),
-        )
+
+        sequences.append(sequence)
+        all_ro_pulses.append(ro_pulses)
+
+    # execute the pulse sequence
+    if params.unrolling:
+        results = platform.execute_pulse_sequences(sequences, options)
+
+    elif not params.unrolling:
+        results = [
+            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
+        ]
+
+    for ig, (flips, ro_pulses) in enumerate(zip(flips_sweep, all_ro_pulses)):
         for qubit in qubits:
-            prob = results[qubit].probability(state=1)
+            serial = ro_pulses[qubit].serial
+            if params.unrolling:
+                result = results[serial][0]
+            else:
+                result = results[ig][serial]
+            prob = result.probability(state=1)
+            error = np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
                 FlippingType,
                 (qubit),
                 dict(
-                    flips=[flips],
-                    prob=prob.tolist(),
-                    error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
+                    flips=np.array([flips]),
+                    prob=np.array([prob]),
+                    error=np.array([error]),
                 ),
             )
 
