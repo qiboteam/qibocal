@@ -1,4 +1,5 @@
 """Testing cli utils."""
+
 from qibolab import create_platform
 
 from qibocal.cli.utils import create_qubits_dict

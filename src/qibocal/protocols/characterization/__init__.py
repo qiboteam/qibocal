@@ -20,6 +20,7 @@ from .dispersive_shift import dispersive_shift
 from .dispersive_shift_qutrit import dispersive_shift_qutrit
 from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
+from .flipping_signal import flipping_signal
 from .flux_dependence.avoided_crossing import avoided_crossing
 from .flux_dependence.qubit_crosstalk import qubit_crosstalk
 from .flux_dependence.qubit_flux_dependence import qubit_flux
@@ -45,7 +46,9 @@ from .readout_optimization.resonator_amplitude import resonator_amplitude
 from .readout_optimization.resonator_frequency import resonator_frequency
 from .readout_optimization.twpa_calibration.frequency import twpa_frequency
 from .readout_optimization.twpa_calibration.frequency_power import twpa_frequency_power
+from .readout_optimization.twpa_calibration.frequency_SNR import twpa_frequency_snr
 from .readout_optimization.twpa_calibration.power import twpa_power
+from .readout_optimization.twpa_calibration.power_SNR import twpa_power_snr
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
@@ -98,7 +101,9 @@ class Operation(Enum):
     chsh_circuits = chsh_circuits
     readout_mitigation_matrix = readout_mitigation_matrix
     twpa_frequency = twpa_frequency
+    twpa_frequency_SNR = twpa_frequency_snr
     twpa_power = twpa_power
+    twpa_power_SNR = twpa_power_snr
     twpa_frequency_power = twpa_frequency_power
     rabi_amplitude_ef = rabi_amplitude_ef
     qubit_spectroscopy_ef = qubit_spectroscopy_ef
@@ -108,3 +113,5 @@ class Operation(Enum):
     dispersive_shift_qutrit = dispersive_shift_qutrit
     coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
     coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
+    flipping_signal = flipping_signal
+    calibrate_state_discrimination = calibrate_state_discrimination

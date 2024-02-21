@@ -39,6 +39,9 @@ class RamseyParameters(Parameters):
     n_osc: Optional[int] = 0
     """Number of oscillations to induce detuning (optional).
         If 0 standard Ramsey experiment is performed."""
+    unrolling: bool = False
+    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
+    Defaults to ``False``."""
 
 
 @dataclass
@@ -95,25 +98,6 @@ def _acquisition(
     """Data acquisition for Ramsey Experiment (detuned)."""
     # create a sequence of pulses for the experiment
     # RX90 - t - RX90 - MZ
-    ro_pulses = {}
-    RX90_pulses1 = {}
-    RX90_pulses2 = {}
-    freqs = {}
-    sequence = PulseSequence()
-    for qubit in qubits:
-        RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
-        RX90_pulses2[qubit] = platform.create_RX90_pulse(
-            qubit,
-            start=RX90_pulses1[qubit].finish,
-        )
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=RX90_pulses2[qubit].finish
-        )
-        freqs[qubit] = qubits[qubit].drive_frequency
-        sequence.add(RX90_pulses1[qubit])
-        sequence.add(RX90_pulses2[qubit])
-        sequence.add(ro_pulses[qubit])
-
     # define the parameter to sweep and its range:
     waits = np.arange(
         # wait time between RX90 pulses
@@ -122,14 +106,40 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
-    data = RamseyData(
-        n_osc=params.n_osc,
-        t_max=params.delay_between_pulses_end,
-        detuning_sign=+1,
-        qubit_freqs=freqs,
+    options = ExecutionParameters(
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
 
     if params.n_osc == 0:
+        ro_pulses = {}
+        RX90_pulses1 = {}
+        RX90_pulses2 = {}
+        freqs = {}
+        sequence = PulseSequence()
+        for qubit in qubits:
+            RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
+            RX90_pulses2[qubit] = platform.create_RX90_pulse(
+                qubit,
+                start=RX90_pulses1[qubit].finish,
+            )
+            ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+                qubit, start=RX90_pulses2[qubit].finish
+            )
+            freqs[qubit] = qubits[qubit].drive_frequency
+            sequence.add(RX90_pulses1[qubit])
+            sequence.add(RX90_pulses2[qubit])
+            sequence.add(ro_pulses[qubit])
+
+        data = RamseyData(
+            n_osc=params.n_osc,
+            t_max=params.delay_between_pulses_end,
+            detuning_sign=+1,
+            qubit_freqs=freqs,
+        )
+
         sweeper = Sweeper(
             Parameter.start,
             waits,
@@ -140,12 +150,7 @@ def _acquisition(
         # execute the sweep
         results = platform.sweep(
             sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.DISCRIMINATION,
-                averaging_mode=AveragingMode.SINGLESHOT,
-            ),
+            options,
             sweeper,
         )
         for qubit in qubits:
@@ -161,31 +166,67 @@ def _acquisition(
                     errors=errors,
                 ),
             )
-    else:
+    if params.n_osc != 0:
+        sequences, all_ro_pulses = [], []
         for wait in waits:
+            ro_pulses = {}
+            RX90_pulses1 = {}
+            RX90_pulses2 = {}
+            freqs = {}
+            sequence = PulseSequence()
             for qubit in qubits:
+                RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
+                RX90_pulses2[qubit] = platform.create_RX90_pulse(
+                    qubit,
+                    start=RX90_pulses1[qubit].finish,
+                )
+                ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+                    qubit, start=RX90_pulses2[qubit].finish
+                )
+
                 RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
                 ro_pulses[qubit].start = RX90_pulses2[qubit].finish
-                if params.n_osc != 0:
-                    RX90_pulses2[qubit].relative_phase = (
-                        RX90_pulses2[qubit].start
-                        * (-2 * np.pi)
-                        * (params.n_osc)
-                        / params.delay_between_pulses_end
-                    )
 
-            results = platform.execute_pulse_sequence(
-                sequence,
-                ExecutionParameters(
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=(AveragingMode.SINGLESHOT),
-                ),
-            )
+                RX90_pulses2[qubit].relative_phase = (
+                    RX90_pulses2[qubit].start
+                    * (-2 * np.pi)
+                    * (params.n_osc)
+                    / params.delay_between_pulses_end
+                )
 
+                freqs[qubit] = qubits[qubit].drive_frequency
+                sequence.add(RX90_pulses1[qubit])
+                sequence.add(RX90_pulses2[qubit])
+                sequence.add(ro_pulses[qubit])
+
+            sequences.append(sequence)
+            all_ro_pulses.append(ro_pulses)
+
+        data = RamseyData(
+            n_osc=params.n_osc,
+            t_max=params.delay_between_pulses_end,
+            detuning_sign=+1,
+            qubit_freqs=freqs,
+        )
+
+        if params.unrolling:
+            results = platform.execute_pulse_sequences(sequences, options)
+
+        elif not params.unrolling:
+            results = [
+                platform.execute_pulse_sequence(sequence, options)
+                for sequence in sequences
+            ]
+
+        # We dont need ig as everty serial is different
+        for ig, (wait, ro_pulses) in enumerate(zip(waits, all_ro_pulses)):
             for qubit in qubits:
-                prob = results[qubit].probability()
+                serial = ro_pulses[qubit].serial
+                if params.unrolling:
+                    result = results[serial][0]
+                else:
+                    result = results[ig][serial]
+                prob = result.probability()
                 error = np.sqrt(prob * (1 - prob) / params.nshots)
                 data.register_qubit(
                     RamseyType,
@@ -196,6 +237,7 @@ def _acquisition(
                         errors=np.array([error]),
                     ),
                 )
+
     return data
 
 
