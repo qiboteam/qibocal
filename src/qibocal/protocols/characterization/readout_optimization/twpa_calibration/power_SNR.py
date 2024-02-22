@@ -8,7 +8,7 @@ from plotly.subplots import make_subplots
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.protocols.characterization.resonator_spectroscopy import (
     resonator_spectroscopy,
 )
@@ -91,7 +91,7 @@ class ResonatorTWPAPowerData(Data):
 def _acquisition(
     params: ResonatorTWPAPowerParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> ResonatorTWPAPowerData:
     r"""
     Data acquisition for TWPA power optmization using SNR.
@@ -118,14 +118,16 @@ def _acquisition(
     )
 
     initial_twpa_pow = {}
-    for qubit in qubits:
+    for qubit in targets:
         initial_twpa_pow[qubit] = float(
             platform.qubits[qubit].twpa.local_oscillator.power
         )
 
     for _pow in TWPAPower_range:
-        for qubit in qubits:
-            qubits[qubit].twpa.local_oscillator.power = initial_twpa_pow[qubit] + _pow
+        for qubit in targets:
+            platform.qubits[qubit].twpa.local_oscillator.power = (
+                initial_twpa_pow[qubit] + _pow
+            )
 
         resonator_spectroscopy_data, _ = resonator_spectroscopy.acquisition(
             resonator_spectroscopy.parameters_type.load(
@@ -137,10 +139,10 @@ def _acquisition(
                 }
             ),
             platform,
-            qubits,
+            targets,
         )
 
-        for qubit in qubits:
+        for qubit in targets:
             data.register_qubit(
                 ResonatorTWPAPowerType,
                 (qubit),
@@ -186,7 +188,7 @@ def _fit(data: ResonatorTWPAPowerData, fit_type="att") -> ResonatorTWPAPowerResu
         )
 
 
-def _plot(data: ResonatorTWPAPowerData, fit: ResonatorTWPAPowerResults, qubit):
+def _plot(data: ResonatorTWPAPowerData, fit: ResonatorTWPAPowerResults, target):
     """Plotting for ResonatorTWPAPower."""
 
     figures = []
@@ -203,7 +205,7 @@ def _plot(data: ResonatorTWPAPowerData, fit: ResonatorTWPAPowerResults, qubit):
     )
 
     fitting_report = ""
-    qubit_data = data[qubit]
+    qubit_data = data[target]
     frequencies = qubit_data.freq * HZ_TO_GHZ
     powers = qubit_data.twpa_pow
 
@@ -234,16 +236,16 @@ def _plot(data: ResonatorTWPAPowerData, fit: ResonatorTWPAPowerResults, qubit):
 
     if fit is not None:
         label_1 = "TWPA Power"
-        twpa_power = np.round(fit.twpa_power[qubit])
-        if qubit in fit.bare_frequency:
+        twpa_power = np.round(fit.twpa_power[target])
+        if target in fit.bare_frequency:
             label_2 = "High Power Resonator Frequency [Hz]"
-            resonator_frequency = np.round(fit.bare_frequency[qubit])
+            resonator_frequency = np.round(fit.bare_frequency[target])
         else:
             label_2 = "Low Power Resonator Frequency [Hz]"
-            resonator_frequency = np.round(fit.frequency[qubit])
+            resonator_frequency = np.round(fit.frequency[target])
 
         summary = table_dict(
-            qubit,
+            target,
             [
                 label_2,
                 label_1,

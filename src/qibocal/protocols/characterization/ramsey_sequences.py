@@ -2,8 +2,9 @@ import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Qubits, Routine
+from qibocal.auto.operation import Routine
 
 from .ramsey import RamseyData, RamseyParameters, RamseyType, _fit, _plot, _update
 
@@ -11,7 +12,7 @@ from .ramsey import RamseyData, RamseyParameters, RamseyType, _fit, _plot, _upda
 def _acquisition(
     params: RamseyParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> RamseyData:
     """Data acquisition for Ramsey Experiment (detuned)."""
     # create a sequence of pulses for the experiment
@@ -21,7 +22,7 @@ def _acquisition(
     RX90_pulses2 = {}
     freqs = {}
     sequence = PulseSequence()
-    for qubit in qubits:
+    for qubit in targets:
         RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
         RX90_pulses2[qubit] = platform.create_RX90_pulse(
             qubit,
@@ -30,7 +31,7 @@ def _acquisition(
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=RX90_pulses2[qubit].finish
         )
-        freqs[qubit] = qubits[qubit].drive_frequency
+        freqs[qubit] = platform.qubits[qubit].drive_frequency
         sequence.add(RX90_pulses1[qubit])
         sequence.add(RX90_pulses2[qubit])
         sequence.add(ro_pulses[qubit])
@@ -52,7 +53,7 @@ def _acquisition(
 
     # sweep the parameter
     for wait in waits:
-        for qubit in qubits:
+        for qubit in targets:
             RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
             ro_pulses[qubit].start = RX90_pulses2[qubit].finish
             if params.n_osc != 0:
@@ -76,7 +77,7 @@ def _acquisition(
             ),
         )
 
-        for qubit in qubits:
+        for qubit in targets:
             prob = results[qubit].probability()
             error = np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
