@@ -9,7 +9,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.protocols.characterization.utils import (
     effective_qubit_temperature,
     format_error_single_cell,
@@ -64,13 +64,15 @@ class ReadoutCharacterizationData(Data):
 
 
 def _acquisition(
-    params: ReadoutCharacterizationParameters, platform: Platform, qubits: Qubits
+    params: ReadoutCharacterizationParameters,
+    platform: Platform,
+    targets: list[QubitId],
 ) -> ReadoutCharacterizationData:
     """Data acquisition for resonator spectroscopy."""
 
     data = ReadoutCharacterizationData(
         qubit_frequencies={
-            qubit: platform.qubits[qubit].drive_frequency for qubit in qubits
+            qubit: platform.qubits[qubit].drive_frequency for qubit in targets
         }
     )
 
@@ -82,7 +84,7 @@ def _acquisition(
             RX_pulses = {}
         ro_pulses = {}
         sequence = PulseSequence()
-        for qubit in qubits:
+        for qubit in targets:
             start = 0
             if state == 1:
                 RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
@@ -113,7 +115,7 @@ def _acquisition(
         )
 
         # Save the data
-        for qubit in qubits:
+        for qubit in targets:
             for i, ro_pulse in enumerate(ro_pulses[qubit]):
                 result = results[ro_pulse.serial]
                 data.register_qubit(
@@ -195,7 +197,9 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
 
 
 def _plot(
-    data: ReadoutCharacterizationData, fit: ReadoutCharacterizationResults, qubit
+    data: ReadoutCharacterizationData,
+    fit: ReadoutCharacterizationResults,
+    target: QubitId,
 ):
     """Plotting function for ReadoutCharacterization."""
 
@@ -206,7 +210,7 @@ def _plot(
     fig = go.Figure()
     for state in range(2):
         for measure in range(2):
-            shots = data.data[qubit, state, measure]
+            shots = data.data[target, state, measure]
 
             fig.add_trace(
                 go.Scatter(
@@ -225,12 +229,12 @@ def _plot(
 
         fig2.add_trace(
             go.Heatmap(
-                z=fit.Lambda_M[qubit],
+                z=fit.Lambda_M[target],
             )
         )
         fitting_report = table_html(
             table_dict(
-                qubit,
+                target,
                 [
                     "Assignment Fidelity",
                     "Fidelity",
@@ -238,11 +242,11 @@ def _plot(
                     "Effective Qubit Temperature [K]",
                 ],
                 [
-                    np.round(fit.assignment_fidelity[qubit], 6),
-                    np.round(fit.fidelity[qubit], 6),
-                    np.round(fit.qnd[qubit], 6),
+                    np.round(fit.assignment_fidelity[target], 6),
+                    np.round(fit.fidelity[target], 6),
+                    np.round(fit.qnd[target], 6),
                     format_error_single_cell(
-                        round_report([fit.effective_temperature[qubit]])
+                        round_report([fit.effective_temperature[target]])
                     ),
                 ],
             )
@@ -252,10 +256,10 @@ def _plot(
 
 
 def _update(
-    results: ReadoutCharacterizationResults, platform: Platform, qubit: QubitId
+    results: ReadoutCharacterizationResults, platform: Platform, target: QubitId
 ):
-    update.readout_fidelity(results.fidelity[qubit], platform, qubit)
-    update.assignment_fidelity(results.assignment_fidelity[qubit], platform, qubit)
+    update.readout_fidelity(results.fidelity[target], platform, target)
+    update.assignment_fidelity(results.assignment_fidelity[target], platform, target)
 
 
 readout_characterization = Routine(_acquisition, _fit, _plot, _update)

@@ -11,7 +11,7 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal import update
-from qibocal.auto.operation import Qubits, Routine
+from qibocal.auto.operation import Routine
 from qibocal.config import log
 from qibocal.protocols.characterization.flipping import (
     FlippingData,
@@ -46,7 +46,7 @@ class FlippingSignalData(FlippingData):
 def _acquisition(
     params: FlippingSignalParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> FlippingSignalData:
     r"""
     Data acquisition for flipping.
@@ -66,7 +66,7 @@ def _acquisition(
     data = FlippingSignalData(
         resonator_type=platform.resonator_type,
         pi_pulse_amplitudes={
-            qubit: qubits[qubit].native_gates.RX.amplitude for qubit in qubits
+            qubit: platform.qubits[qubit].native_gates.RX.amplitude for qubit in targets
         },
     )
 
@@ -84,7 +84,7 @@ def _acquisition(
         # create a sequence of pulses for the experiment
         sequence = PulseSequence()
         ro_pulses = {}
-        for qubit in qubits:
+        for qubit in targets:
             RX90_pulse = platform.create_RX90_pulse(qubit, start=0)
             sequence.add(RX90_pulse)
             # execute sequence RX(pi/2) - [RX(pi) - RX(pi)] from 0...flips times - RO
@@ -114,7 +114,7 @@ def _acquisition(
         ]
 
     for ig, (flips, ro_pulses) in enumerate(zip(flips_sweep, all_ro_pulses)):
-        for qubit in qubits:
+        for qubit in targets:
             serial = ro_pulses[qubit].serial
             if params.unrolling:
                 result = results[serial][0]
@@ -214,13 +214,13 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
     )
 
 
-def _plot(data: FlippingSignalData, qubit, fit: FlippingSignalResults = None):
+def _plot(data: FlippingSignalData, target, fit: FlippingSignalResults = None):
     """Plotting function for Flipping."""
 
     figures = []
     fig = go.Figure()
     fitting_report = ""
-    qubit_data = data[qubit]
+    qubit_data = data[target]
 
     fig.add_trace(
         go.Scatter(
@@ -245,11 +245,11 @@ def _plot(data: FlippingSignalData, qubit, fit: FlippingSignalResults = None):
                 x=flips_range,
                 y=flipping_fit(
                     flips_range,
-                    float(fit.fitted_parameters[qubit][0]),
-                    float(fit.fitted_parameters[qubit][1]),
-                    float(fit.fitted_parameters[qubit][2]),
-                    float(fit.fitted_parameters[qubit][3]),
-                    float(fit.fitted_parameters[qubit][4]),
+                    float(fit.fitted_parameters[target][0]),
+                    float(fit.fitted_parameters[target][1]),
+                    float(fit.fitted_parameters[target][2]),
+                    float(fit.fitted_parameters[target][3]),
+                    float(fit.fitted_parameters[target][4]),
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
@@ -257,11 +257,11 @@ def _plot(data: FlippingSignalData, qubit, fit: FlippingSignalResults = None):
         )
         fitting_report = table_html(
             table_dict(
-                qubit,
+                target,
                 ["Amplitude correction factor", "Corrected amplitude [a.u.]"],
                 [
-                    np.round(fit.amplitude_factors[qubit], 4),
-                    np.round(fit.amplitude[qubit], 4),
+                    np.round(fit.amplitude_factors[target], 4),
+                    np.round(fit.amplitude[target], 4),
                 ],
             )
         )

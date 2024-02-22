@@ -11,7 +11,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 
 SAMPLES_FACTOR = 16
 
@@ -68,7 +68,9 @@ class CalibrateStateDiscriminationData(Data):
 
 
 def _acquisition(
-    params: CalibrateStateDiscriminationParameters, platform: Platform, qubits: Qubits
+    params: CalibrateStateDiscriminationParameters,
+    platform: Platform,
+    targets: list[QubitId],
 ) -> CalibrateStateDiscriminationData:
     r"""
     Data acquisition for Calibrate State Discrimination experiment.
@@ -89,7 +91,7 @@ def _acquisition(
     data = CalibrateStateDiscriminationData(resonator_type=platform.resonator_type)
 
     # TODO: test if qibolab supports multiplex with raw acquisition
-    for qubit in qubits:
+    for qubit in targets:
         sequence_0 = PulseSequence()
         sequence_1 = PulseSequence()
         sequence_1.add(platform.create_RX_pulse(qubit, start=0))
@@ -179,7 +181,7 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
 
 def _plot(
     data: CalibrateStateDiscriminationData,
-    qubit,
+    target,
     fit: CalibrateStateDiscriminationResults,
 ):
     """Plotting function for Calibrate State Discrimination."""
@@ -198,8 +200,8 @@ def _plot(
 
         fig.add_trace(
             go.Scatter(
-                x=np.arange(len(fit.data[qubit])),
-                y=np.abs(fit.data[qubit]),
+                x=np.arange(len(fit.data[target])),
+                y=np.abs(fit.data[target]),
                 opacity=1,
                 name="kernel state 0",
                 showlegend=True,

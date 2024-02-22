@@ -8,7 +8,7 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 
 
 @dataclass
@@ -68,7 +68,7 @@ gatelist = [
 def _acquisition(
     params: AllXYParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> AllXYData:
     r"""
     Data acquisition for allXY experiment.
@@ -87,7 +87,7 @@ def _acquisition(
     for gates in gatelist:
         sequences.append(PulseSequence())
         all_ro_pulses.append({})
-        for qubit in qubits:
+        for qubit in targets:
             sequences[-1], all_ro_pulses[-1][qubit] = add_gate_pair_pulses_to_sequence(
                 platform, gates, qubit, sequences[-1], params.beta_param
             )
@@ -105,7 +105,7 @@ def _acquisition(
 
     for ig, (gates, ro_pulses) in enumerate(zip(gatelist, all_ro_pulses)):
         gate = "-".join(gates)
-        for qubit in qubits:
+        for qubit in targets:
             serial = ro_pulses[qubit].serial
             if params.unrolling:
                 z_proj = 2 * results[serial][ig].probability(0) - 1
@@ -216,14 +216,14 @@ def _fit(_data: AllXYData) -> AllXYResults:
 
 
 # allXY
-def _plot(data: AllXYData, qubit, fit: AllXYResults = None):
+def _plot(data: AllXYData, target: QubitId, fit: AllXYResults = None):
     """Plotting function for allXY."""
 
     figures = []
     fitting_report = ""
     fig = go.Figure()
 
-    qubit_data = data[qubit]
+    qubit_data = data[target]
 
     fig.add_trace(
         go.Scatter(
