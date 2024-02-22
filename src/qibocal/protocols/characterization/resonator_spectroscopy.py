@@ -95,7 +95,7 @@ class ResonatorSpectroscopyData(Data):
     """Raw data acquired."""
     power_level: Optional[PowerLevel] = None
     """Power regime of the resonator."""
-    attenuations: Optional[dict[QubitId, int]] = None
+    attenuations: Optional[dict[QubitId, int]] = field(default_factory=dict)
     """Readout attenuation [dB] for each qubit"""
 
     @classmethod
@@ -139,7 +139,7 @@ def _acquisition(
         except AttributeError:
             attenuation = None
 
-        attenuation[qubit] = attenuation
+        attenuations[qubit] = attenuation
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:

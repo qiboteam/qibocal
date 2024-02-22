@@ -263,20 +263,21 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                     display_error=True,
                 )
             )
-        if data.attenuations[qubit] is not None:
-            fitting_report = table_html(
-                table_dict(
-                    qubit,
-                    [label, "amplitude", "attenuation", "chi2 reduced"],
-                    [
-                        (freq[qubit], fit.error_fit_pars[qubit][1]),
-                        (data.amplitudes[qubit], 0),
-                        (data.attenuations[qubit], 0),
-                        fit.chi2_reduced[qubit],
-                    ],
-                    display_error=True,
+        if data.attenuations:
+            if data.attenuations[qubit] is not None:
+                fitting_report = table_html(
+                    table_dict(
+                        qubit,
+                        [label, "amplitude", "attenuation", "chi2 reduced"],
+                        [
+                            (freq[qubit], fit.error_fit_pars[qubit][1]),
+                            (data.amplitudes[qubit], 0),
+                            (data.attenuations[qubit], 0),
+                            fit.chi2_reduced[qubit],
+                        ],
+                        display_error=True,
+                    )
                 )
-            )
 
     fig.update_layout(
         showlegend=True,
@@ -395,7 +396,6 @@ def round_report(
     """
     rounded_values = []
     rounded_errors = []
-    print(measure)
     for value, error in measure:
         if value:
             magnitude = eval_magnitude(value)
