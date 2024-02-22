@@ -2,8 +2,9 @@ import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Qubits, Routine
+from qibocal.auto.operation import Routine
 
 from .length_signal import (
     RabiLengthVoltData,
@@ -16,7 +17,7 @@ from .length_signal import (
 
 
 def _acquisition(
-    params: RabiLengthVoltParameters, platform: Platform, qubits: Qubits
+    params: RabiLengthVoltParameters, platform: Platform, targets: list[QubitId]
 ) -> RabiLengthVoltData:
     r"""
     Data acquisition for RabiLength Experiment.
@@ -29,7 +30,7 @@ def _acquisition(
     qd_pulses = {}
     ro_pulses = {}
     amplitudes = {}
-    for qubit in qubits:
+    for qubit in targets:
         # TODO: made duration optional for qd pulse?
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
         if params.pulse_amplitude is not None:
@@ -54,7 +55,7 @@ def _acquisition(
 
     # sweep the parameter
     for duration in qd_pulse_duration_range:
-        for qubit in qubits:
+        for qubit in targets:
             qd_pulses[qubit].duration = duration
             ro_pulses[qubit].start = qd_pulses[qubit].finish
 
@@ -69,7 +70,7 @@ def _acquisition(
             ),
         )
 
-        for qubit in qubits:
+        for qubit in targets:
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
                 RabiLenVoltType,

@@ -11,7 +11,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 
 from ..utils import GHZ_TO_HZ, chi2_reduced, table_dict, table_html
 from .utils import PERR_EXCEPTION, POPT_EXCEPTION, fitting, ramsey_fit, ramsey_sequence
@@ -86,7 +86,7 @@ class RamseyData(Data):
 def _acquisition(
     params: RamseyParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> RamseyData:
     """Data acquisition for Ramsey Experiment (detuned).
 
@@ -126,13 +126,13 @@ def _acquisition(
     data = RamseyData(
         detuning=params.detuning,
         qubit_freqs={
-            qubit: platform.qubits[qubit].native_gates.RX.frequency for qubit in qubits
+            qubit: platform.qubits[qubit].native_gates.RX.frequency for qubit in targets
         },
     )
 
     if not params.unrolling:
         sequence = PulseSequence()
-        for qubit in qubits:
+        for qubit in targets:
             sequence += ramsey_sequence(
                 platform=platform, qubit=qubit, detuning=params.detuning
             )
@@ -140,7 +140,7 @@ def _acquisition(
         sweeper = Sweeper(
             Parameter.start,
             waits,
-            [sequence.get_qubit_pulses(qubit).qd_pulses[-1] for qubit in qubits],
+            [sequence.get_qubit_pulses(qubit).qd_pulses[-1] for qubit in targets],
             type=SweeperType.ABSOLUTE,
         )
 
@@ -150,7 +150,7 @@ def _acquisition(
             options,
             sweeper,
         )
-        for qubit in qubits:
+        for qubit in targets:
             probs = results[qubit].probability()
             # The probability errors are the standard errors of the binomial distribution
             errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
@@ -168,7 +168,7 @@ def _acquisition(
         sequences, all_ro_pulses = [], []
         for wait in waits:
             sequence = PulseSequence()
-            for qubit in qubits:
+            for qubit in targets:
                 sequence += ramsey_sequence(
                     platform=platform, qubit=qubit, wait=wait, detuning=params.detuning
                 )
@@ -180,7 +180,7 @@ def _acquisition(
 
         # We dont need ig as every serial is different
         for ig, (wait, ro_pulses) in enumerate(zip(waits, all_ro_pulses)):
-            for qubit in qubits:
+            for qubit in targets:
                 serial = ro_pulses[qubit].serial
                 if params.unrolling:
                     result = results[serial][0]
@@ -264,14 +264,14 @@ def _fit(data: RamseyData) -> RamseyResults:
     )
 
 
-def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
+def _plot(data: RamseyData, target: QubitId, fit: RamseyResults = None):
     """Plotting function for Ramsey Experiment."""
 
     figures = []
     fig = go.Figure()
     fitting_report = ""
 
-    qubit_data = data.data[qubit]
+    qubit_data = data.data[target]
     waits = data.waits
     probs = qubit_data["prob"]
     error_bars = qubit_data["errors"]
@@ -304,11 +304,11 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
                 x=waits,
                 y=ramsey_fit(
                     waits,
-                    float(fit.fitted_parameters[qubit][0]),
-                    float(fit.fitted_parameters[qubit][1]),
-                    float(fit.fitted_parameters[qubit][2]),
-                    float(fit.fitted_parameters[qubit][3]),
-                    float(fit.fitted_parameters[qubit][4]),
+                    float(fit.fitted_parameters[target][0]),
+                    float(fit.fitted_parameters[target][1]),
+                    float(fit.fitted_parameters[target][2]),
+                    float(fit.fitted_parameters[target][3]),
+                    float(fit.fitted_parameters[target][4]),
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
@@ -316,7 +316,7 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
         )
         fitting_report = table_html(
             table_dict(
-                qubit,
+                target,
                 [
                     "Delta Frequency [Hz]",
                     "Delta Frequency (with detuning) [Hz]",
@@ -325,11 +325,11 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
                     "chi2 reduced",
                 ],
                 [
-                    fit.delta_phys[qubit],
-                    fit.delta_fitting[qubit],
-                    fit.frequency[qubit],
-                    fit.t2[qubit],
-                    fit.chi2[qubit],
+                    fit.delta_phys[target],
+                    fit.delta_fitting[target],
+                    fit.frequency[target],
+                    fit.t2[target],
+                    fit.chi2[target],
                 ],
                 display_error=True,
             )
@@ -346,8 +346,8 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
     return figures, fitting_report
 
 
-def _update(results: RamseyResults, platform: Platform, qubit: QubitId):
-    update.drive_frequency(results.frequency[qubit][0], platform, qubit)
+def _update(results: RamseyResults, platform: Platform, target: QubitId):
+    update.drive_frequency(results.frequency[target][0], platform, target)
 
 
 ramsey = Routine(_acquisition, _fit, _plot, _update)
