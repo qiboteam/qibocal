@@ -117,7 +117,7 @@ def _acquisition(
                 phase=np.mean(result.phase, axis=0),
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
                 error_signal=result.average.std,
-                error_phase=np.std(result.phase, ddof=1),
+                error_phase=np.std(result.phase, axis=0, ddof=1),
             ),
         )
     return data

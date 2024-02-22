@@ -124,20 +124,22 @@ def _acquisition(
 
     for qubit in qubits:
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
+
         if params.amplitude is not None:
             ro_pulses[qubit].amplitude = params.amplitude
 
         amplitudes[qubit] = ro_pulses[qubit].amplitude
 
         if params.attenuation is not None:
-            platform.set_attenuation(qubit, params.attenuation)
+            qubits[qubit].readout.attenuation = params.attenuation
 
         try:
-            attenuation = platform.get_attenuation(qubit)
+
+            attenuation = qubits[qubit].readout.attenuation
         except AttributeError:
             attenuation = None
 
-        attenuations[qubit] = attenuation
+        attenuation[qubit] = attenuation
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
@@ -180,7 +182,7 @@ def _acquisition(
                 phase=np.mean(result.phase, axis=0),
                 freq=delta_frequency_range + ro_pulses[qubit].frequency,
                 error_signal=result.average.std,
-                error_phase=np.std(result.phase, ddof=1),
+                error_phase=np.std(result.phase, axis=0, ddof=1),
             ),
         )
     # finally, save the remaining data
