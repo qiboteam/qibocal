@@ -11,7 +11,7 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal import update
-from qibocal.auto.operation import Qubits, Routine
+from qibocal.auto.operation import Routine
 from qibocal.config import log
 from qibocal.protocols.characterization.flipping import (
     FlippingData,
@@ -46,7 +46,7 @@ class FlippingSignalData(FlippingData):
 def _acquisition(
     params: FlippingSignalParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> FlippingSignalData:
     r"""
     Data acquisition for flipping.
@@ -66,15 +66,25 @@ def _acquisition(
     data = FlippingSignalData(
         resonator_type=platform.resonator_type,
         pi_pulse_amplitudes={
-            qubit: qubits[qubit].native_gates.RX.amplitude for qubit in qubits
+            qubit: platform.qubits[qubit].native_gates.RX.amplitude for qubit in targets
         },
     )
+
+    options = ExecutionParameters(
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
+    )
+
     # sweep the parameter
-    for flips in range(0, params.nflips_max, params.nflips_step):
+    sequences, all_ro_pulses = [], []
+    flips_sweep = range(0, params.nflips_max, params.nflips_step)
+    for flips in flips_sweep:
         # create a sequence of pulses for the experiment
         sequence = PulseSequence()
         ro_pulses = {}
-        for qubit in qubits:
+        for qubit in targets:
             RX90_pulse = platform.create_RX90_pulse(qubit, start=0)
             sequence.add(RX90_pulse)
             # execute sequence RX(pi/2) - [RX(pi) - RX(pi)] from 0...flips times - RO
@@ -90,18 +100,26 @@ def _acquisition(
             # add ro pulse at the end of the sequence
             ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=start1)
             sequence.add(ro_pulses[qubit])
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
-            ),
-        )
-        for qubit in qubits:
-            result = results[ro_pulses[qubit].serial]
+
+        sequences.append(sequence)
+        all_ro_pulses.append(ro_pulses)
+
+    # execute the pulse sequence
+    if params.unrolling:
+        results = platform.execute_pulse_sequences(sequences, options)
+
+    elif not params.unrolling:
+        results = [
+            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
+        ]
+
+    for ig, (flips, ro_pulses) in enumerate(zip(flips_sweep, all_ro_pulses)):
+        for qubit in targets:
+            serial = ro_pulses[qubit].serial
+            if params.unrolling:
+                result = results[serial][0]
+            else:
+                result = results[ig][serial]
             data.register_qubit(
                 FlippingType,
                 (qubit),
@@ -167,7 +185,7 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
             )
         except:
             log.warning("flipping_fit: the fitting was not succesful")
-            popt = [0, 0, 0, 0]
+            popt = [0] * 5
 
         translated_popt = [
             y_min + (y_max - y_min) * popt[0],
@@ -178,10 +196,11 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
             popt[3] - x_min * 2 * np.pi * f / (x_max - x_min) * popt[2],
             popt[4] * 2 * np.pi * f / (x_max - x_min),
         ]
+        # TODO: this might be related to the resonator type
         if popt[3] > np.pi / 2 and popt[3] < 3 * np.pi / 2:
-            signed_correction = -translated_popt[2] / 2
-        else:
             signed_correction = translated_popt[2] / 2
+        else:
+            signed_correction = -translated_popt[2] / 2
         # The amplitude is directly proportional to the rotation angle
         corrected_amplitudes[qubit] = (pi_pulse_amplitude * np.pi) / (
             np.pi + signed_correction
@@ -190,19 +209,18 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
         amplitude_correction_factors[qubit] = (
             signed_correction / np.pi * pi_pulse_amplitude
         )
-
     return FlippingSignalResults(
         corrected_amplitudes, amplitude_correction_factors, fitted_parameters
     )
 
 
-def _plot(data: FlippingSignalData, qubit, fit: FlippingSignalResults = None):
+def _plot(data: FlippingSignalData, target, fit: FlippingSignalResults = None):
     """Plotting function for Flipping."""
 
     figures = []
     fig = go.Figure()
     fitting_report = ""
-    qubit_data = data[qubit]
+    qubit_data = data[target]
 
     fig.add_trace(
         go.Scatter(
@@ -227,11 +245,11 @@ def _plot(data: FlippingSignalData, qubit, fit: FlippingSignalResults = None):
                 x=flips_range,
                 y=flipping_fit(
                     flips_range,
-                    float(fit.fitted_parameters[qubit][0]),
-                    float(fit.fitted_parameters[qubit][1]),
-                    float(fit.fitted_parameters[qubit][2]),
-                    float(fit.fitted_parameters[qubit][3]),
-                    float(fit.fitted_parameters[qubit][4]),
+                    float(fit.fitted_parameters[target][0]),
+                    float(fit.fitted_parameters[target][1]),
+                    float(fit.fitted_parameters[target][2]),
+                    float(fit.fitted_parameters[target][3]),
+                    float(fit.fitted_parameters[target][4]),
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
@@ -239,11 +257,11 @@ def _plot(data: FlippingSignalData, qubit, fit: FlippingSignalResults = None):
         )
         fitting_report = table_html(
             table_dict(
-                qubit,
+                target,
                 ["Amplitude correction factor", "Corrected amplitude [a.u.]"],
                 [
-                    np.round(fit.amplitude_factors[qubit], 4),
-                    np.round(fit.amplitude[qubit], 4),
+                    np.round(fit.amplitude_factors[target], 4),
+                    np.round(fit.amplitude[target], 4),
                 ],
             )
         )

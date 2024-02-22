@@ -10,7 +10,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, table_dict, table_html
@@ -88,7 +88,7 @@ class ResonatorFluxData(Data):
 
 
 def _acquisition(
-    params: ResonatorFluxParameters, platform: Platform, qubits: Qubits
+    params: ResonatorFluxParameters, platform: Platform, targets: list[QubitId]
 ) -> ResonatorFluxData:
     """Data acquisition for ResonatorFlux experiment."""
     # create a sequence of pulses for the experiment:
@@ -99,7 +99,7 @@ def _acquisition(
     ro_pulses = {}
     qubit_frequency = {}
     bare_resonator_frequency = {}
-    for qubit in qubits:
+    for qubit in targets:
         qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
         bare_resonator_frequency[qubit] = platform.qubits[
             qubit
@@ -115,7 +115,7 @@ def _acquisition(
     freq_sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        [ro_pulses[qubit] for qubit in qubits],
+        [ro_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
 
@@ -126,7 +126,7 @@ def _acquisition(
         Sweeper(
             Parameter.bias,
             delta_bias_range,
-            qubits=list(qubits.values()),
+            qubits=[platform.qubits[qubit] for qubit in targets],
             type=SweeperType.OFFSET,
         )
     ]
@@ -146,9 +146,9 @@ def _acquisition(
     for bias_sweeper in bias_sweepers:
         results = platform.sweep(sequence, options, bias_sweeper, freq_sweeper)
         # retrieve the results for every qubit
-        for qubit in qubits:
+        for qubit in targets:
             result = results[ro_pulses[qubit].serial]
-            sweetspot = qubits[qubit].sweetspot
+            sweetspot = platform.qubits[qubit].sweetspot
             data.register_qubit(
                 qubit,
                 signal=result.magnitude,
@@ -242,15 +242,15 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     )
 
 
-def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
+def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
     """Plotting function for ResonatorFlux Experiment."""
     figures = utils.flux_dependence_plot(
-        data, fit, qubit, utils.transmon_readout_frequency
+        data, fit, target, utils.transmon_readout_frequency
     )
     if fit is not None:
         fitting_report = table_html(
             table_dict(
-                qubit,
+                target,
                 [
                     "Sweetspot [V]",
                     "Bare Resonator Frequency [Hz]",
@@ -261,13 +261,13 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
                     "V_ii [V]",
                 ],
                 [
-                    np.round(fit.sweetspot[qubit], 4),
-                    np.round(fit.bare_frequency[qubit], 4),
-                    np.round(fit.frequency[qubit], 4),
-                    np.round(fit.drive_frequency[qubit], 4),
-                    np.round(fit.asymmetry[qubit], 4),
-                    np.round(fit.coupling[qubit], 4),
-                    np.round(fit.matrix_element[qubit], 4),
+                    np.round(fit.sweetspot[target], 4),
+                    np.round(fit.bare_frequency[target], 4),
+                    np.round(fit.frequency[target], 4),
+                    np.round(fit.drive_frequency[target], 4),
+                    np.round(fit.asymmetry[target], 4),
+                    np.round(fit.coupling[target], 4),
+                    np.round(fit.matrix_element[target], 4),
                 ],
             )
         )
