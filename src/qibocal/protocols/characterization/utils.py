@@ -151,7 +151,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         perr = [1] * 4
     for i in range(len(model_parameters) - 1):
         model_parameters[i] *= GHZ_TO_HZ
-        perr *= GHZ_TO_HZ
+        perr[i] *= GHZ_TO_HZ
     return model_parameters[1], model_parameters, perr
 
 
