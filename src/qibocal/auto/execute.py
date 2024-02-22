@@ -10,8 +10,8 @@ from qibocal.config import log
 
 from .graph import Graph
 from .history import History
-from .runcard import Id, Runcard
-from .task import Qubits, Task
+from .runcard import Id, Runcard, Targets
+from .task import Task
 
 
 @dataclass
@@ -24,8 +24,8 @@ class Executor:
     """The execution history, with results and exit states."""
     output: Path
     """Output path."""
-    qubits: Qubits
-    """Qubits to be calibrated."""
+    targets: Targets
+    """Qubits/Qubit Pairs to be calibrated."""
     platform: Platform
     """Qubits' platform."""
     max_iterations: int
@@ -44,7 +44,7 @@ class Executor:
         card: Runcard,
         output: Path,
         platform: Platform = None,
-        qubits: Qubits = None,
+        targets: Targets = None,
         update: bool = True,
     ):
         """Load execution graph and associated executor from a runcard."""
@@ -55,7 +55,7 @@ class Executor:
             max_iterations=card.max_iterations,
             output=output,
             platform=platform,
-            qubits=qubits,
+            targets=targets,
             update=update,
         )
 
@@ -142,7 +142,7 @@ class Executor:
             completed = task.run(
                 max_iterations=self.max_iterations,
                 platform=self.platform,
-                qubits=self.qubits,
+                targets=self.targets,
                 folder=self.output,
                 mode=mode,
             )

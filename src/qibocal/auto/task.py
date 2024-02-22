@@ -1,33 +1,19 @@
 """Action execution tracker."""
 
 import copy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from statistics import mode
-from typing import Optional, Union
+from typing import Optional
 
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId, QubitPairId
 from qibolab.serialize import dump_platform
 
 from ..config import log, raise_error
 from ..protocols.characterization import Operation
-from ..utils import (
-    allocate_qubits_pairs,
-    allocate_single_qubits,
-    allocate_single_qubits_lists,
-)
 from .mode import ExecutionMode
-from .operation import (
-    Data,
-    DummyPars,
-    Qubits,
-    QubitsPairs,
-    Results,
-    Routine,
-    dummy_operation,
-)
-from .runcard import Action, Id
+from .operation import Data, DummyPars, Results, Routine, dummy_operation
+from .runcard import Action, Id, Targets
 from .status import Failure, Normal
 
 MAX_PRIORITY = int(1e9)
@@ -44,37 +30,11 @@ class Task:
     """Action object parsed from Runcard."""
     iteration: int = 0
     """Task iteration."""
-    qubits: list[QubitId, QubitPairId] = field(default_factory=list)
-    """List of QubitIds or QubitPairIds for task."""
 
-    def __post_init__(self):
-        if len(self.qubits) == 0:
-            self.qubits = self.action.qubits
-
-    # TODO: to be removed in https://github.com/qiboteam/qibocal/pull/682
-    def _allocate_local_qubits(self, qubits, platform):
-        """Create qubits dictionary from QubitIds."""
-        if len(self.qubits) > 0:
-            if platform is not None:
-                if all(isinstance(i, tuple) for i in self.qubits):
-                    if self.operation.two_qubit_gates:
-                        task_qubits = allocate_qubits_pairs(platform, self.qubits)
-                    else:
-                        task_qubits = allocate_single_qubits_lists(
-                            platform, self.qubits
-                        )
-
-                else:
-                    task_qubits = allocate_single_qubits(platform, self.qubits)
-            else:
-                # None platform use just ids
-                task_qubits = self.qubits
-        else:
-            task_qubits = qubits
-
-        self.qubits = list(task_qubits)
-
-        return task_qubits
+    @property
+    def targets(self) -> Targets:
+        """Protocol targets."""
+        return self.action.targets
 
     @property
     def id(self) -> Id:
@@ -130,7 +90,7 @@ class Task:
         self,
         max_iterations: int,
         platform: Platform = None,
-        qubits: Union[Qubits, QubitsPairs] = dict,
+        targets: Targets = list,
         mode: ExecutionMode = None,
         folder: Path = None,
     ):
@@ -139,6 +99,9 @@ class Task:
                 ValueError,
                 f"Maximum number of iterations {max_iterations} reached!",
             )
+
+        if self.targets is None:
+            self.action.targets = targets
 
         completed = Completed(self, folder)
 
@@ -157,15 +120,13 @@ class Task:
             parameters = DummyPars()
 
         if mode.name in ["autocalibration", "acquire"]:
-            if operation.platform_dependent and operation.qubits_dependent:
+            if operation.platform_dependent and operation.targets_dependent:
                 completed.data, completed.data_time = operation.acquisition(
                     parameters,
                     platform=platform,
-                    qubits=self._allocate_local_qubits(qubits, platform),
+                    targets=self.targets,
                 )
-                # need to reassign qubit since when task
-                # is passed it is deepcopied
-                completed.task.qubits = self.qubits
+
             else:
                 completed.data, completed.data_time = operation.acquisition(
                     parameters, platform=platform
@@ -241,7 +202,7 @@ class Completed:
     def update_platform(self, platform: Platform, update: bool):
         """Perform update on platform' parameters by looping over qubits or pairs."""
         if self.task.update and update:
-            for qubit in self.task.qubits:
+            for qubit in self.task.targets:
                 try:
                     self.task.operation.update(self.results, platform, qubit)
                 except KeyError:
@@ -255,7 +216,7 @@ class Completed:
         """Check status of completed and handle Failure using handler."""
         if self.task.action.validator is not None:
             status = []
-            for target in self.task.qubits:
+            for target in self.task.targets:
                 # TODO: how to handle multiple targets?
                 # dummy solution for now: take the mode.
                 qubit_status, params = self.task.action.validator.validate(
