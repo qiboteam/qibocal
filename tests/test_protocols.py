@@ -1,4 +1,5 @@
 """Test routines' acquisition method using dummy platform"""
+
 import pathlib
 
 import pytest
@@ -6,6 +7,8 @@ import yaml
 from click.testing import CliRunner
 from qibolab import create_platform
 
+from qibocal.auto.task import PLATFORM_DIR
+from qibocal.cli import utils
 from qibocal.cli._base import command
 from qibocal.protocols.characterization.rabi.amplitude import RabiAmplitudeData
 from qibocal.protocols.characterization.rabi.ef import RabiAmplitudeEFData
@@ -26,7 +29,7 @@ def generate_runcard_single_protocol():
     with open(PATH_TO_RUNCARD) as file:
         actions = yaml.safe_load(file)
     for action in actions["actions"]:
-        card = {"actions": [action], "qubits": list(PLATFORM.qubits)}
+        card = {"actions": [action], "targets": list(PLATFORM.qubits)}
         yield card
 
 
@@ -42,6 +45,7 @@ def idfn(val):
 def test_auto_command(runcard, update, platform, backend, tmp_path):
     """Test auto command pipeline."""
 
+    protocol = runcard["actions"][0]["id"]
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
     runner = CliRunner()
     results = runner.invoke(
@@ -61,6 +65,9 @@ def test_auto_command(runcard, update, platform, backend, tmp_path):
     )
     assert not results.exception
     assert results.exit_code == 0
+    if update == "--update":
+        assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
+        assert (tmp_path / "data" / f"{protocol}_0" / PLATFORM_DIR).is_dir()
 
 
 @pytest.mark.parametrize("platform", ["dummy"])
@@ -68,6 +75,7 @@ def test_auto_command(runcard, update, platform, backend, tmp_path):
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_acquire_command(runcard, backend, platform, tmp_path):
     """Test acquire command pipeline and report generated."""
+    protocol = runcard["actions"][0]["id"]
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
     runner = CliRunner()
 
@@ -88,17 +96,20 @@ def test_acquire_command(runcard, backend, platform, tmp_path):
     )
     assert not results.exception
     assert results.exit_code == 0
+    assert (tmp_path / "data" / f"{protocol}_0").is_dir()
 
     # generate report from acquired data
     results_report = runner.invoke(command, ["report", str(tmp_path)])
     assert not results_report.exception
     assert results_report.exit_code == 0
+    assert (tmp_path / "index.html").is_file()
 
 
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_fit_command(runcard, update, tmp_path):
     """Test fit builder and report generated."""
+    protocol = runcard["actions"][0]["id"]
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
     runner = CliRunner()
 
@@ -122,10 +133,15 @@ def test_fit_command(runcard, update, tmp_path):
     assert not results_fit.exception
     assert results_fit.exit_code == 0
 
+    if update == "--update":
+        assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
+        assert (tmp_path / "data" / f"{protocol}_0" / PLATFORM_DIR).is_dir()
+
     # generate report with fit and plot
     results_plot = runner.invoke(command, ["report", str(tmp_path)])
     assert not results_plot.exception
     assert results_plot.exit_code == 0
+    assert (tmp_path / "index.html").is_file()
 
 
 def test_extract_rabi():

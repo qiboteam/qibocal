@@ -11,7 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Qubits, Results, Routine
+from qibocal.auto.operation import Results, Routine
 
 from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
 from ..utils import HZ_TO_GHZ
@@ -77,7 +77,7 @@ class QubitCrosstalkResults(Results):
 def _acquisition(
     params: QubitCrosstalkParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> QubitCrosstalkData:
     """Data acquisition for Crosstalk Experiment."""
 
@@ -90,7 +90,7 @@ def _acquisition(
     voltage = {}
     matrix_element = {}
     qubit_frequency = {}
-    for qubit in qubits:
+    for qubit in targets:
         sweetspots[qubit] = voltage[qubit] = platform.qubits[qubit].sweetspot
         d[qubit] = platform.qubits[qubit].asymmetry
         matrix_element[qubit] = platform.qubits[qubit].crosstalk_matrix[qubit]
@@ -100,8 +100,8 @@ def _acquisition(
         )
 
         if params.transition == "02":
-            if qubits[qubit].anharmonicity:
-                qd_pulses[qubit].frequency -= qubits[qubit].anharmonicity / 2
+            if platform.qubits[qubit].anharmonicity:
+                qd_pulses[qubit].frequency -= platform.qubits[qubit].anharmonicity / 2
             else:
                 qd_pulses[qubit].frequency -= DEFAULT_ANHARMONICITY / 2
 
@@ -121,7 +121,7 @@ def _acquisition(
     freq_sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        pulses=[qd_pulses[qubit] for qubit in qubits],
+        pulses=[qd_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
 
@@ -160,10 +160,10 @@ def _acquisition(
     for flux_qubit, bias_sweeper in zip(flux_qubits, bias_sweepers):
         results = platform.sweep(sequence, options, bias_sweeper, freq_sweeper)
         # retrieve the results for every qubit
-        for qubit in qubits:
+        for qubit in targets:
             result = results[ro_pulses[qubit].serial]
             if flux_qubit is None:
-                sweetspot = qubits[qubit].sweetspot
+                sweetspot = platform.qubits[qubit].sweetspot
             else:
                 sweetspot = platform.qubits[flux_qubit].sweetspot
             data.register_qubit(
@@ -232,10 +232,10 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
     )
 
 
-def _plot(data: QubitCrosstalkData, fit: QubitCrosstalkResults, qubit):
+def _plot(data: QubitCrosstalkData, fit: QubitCrosstalkResults, target: QubitId):
     """Plotting function for Crosstalk Experiment."""
     return utils.flux_crosstalk_plot(
-        data, qubit, fit, fit_function=utils.transmon_frequency
+        data, target, fit, fit_function=utils.transmon_frequency
     )
 
 

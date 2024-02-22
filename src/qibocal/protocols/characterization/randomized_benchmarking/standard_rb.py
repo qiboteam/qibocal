@@ -5,10 +5,11 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import qibo
+from qibo.backends import GlobalBackend
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Parameters, Results, Routine
 from qibocal.bootstrap import bootstrap, data_uncertainties
 from qibocal.config import log, raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
@@ -50,6 +51,9 @@ class StandardRBParameters(Parameters):
     """Number of bootstrap iterations for the fit uncertainties and error bars.
     If ``0``, gets the fit uncertainties from the fitting function and the error bars
     from the distribution of the measurements. Defaults to ``100``."""
+    unrolling: bool = False
+    """If ``True`` it uses sequence unrolling to deploy multiple circuits in a single instrument call.
+    Defaults to ``False``."""
     seed: Optional[int] = None
     """A fixed seed to initialize ``np.random.Generator``. If ``None``, uses a random seed.
     Defaults is ``None``."""
@@ -133,13 +137,13 @@ def resample_p0(data, sample_size=100, homogeneous: bool = True):
 
 
 def setup_scan(
-    params: StandardRBParameters, qubits: Union[Qubits, list[QubitId]], nqubits: int
+    params: StandardRBParameters, targets: list[QubitId], nqubits: int
 ) -> Iterable:
     """Returns an iterator of single-qubit random self-inverting Clifford circuits.
 
     Args:
         params (StandardRBParameters): Parameters of the RB protocol.
-        qubits (dict[int, Union[str, int]] or list[Union[str, int]]):
+        targets (list[QubitId]):
             list of qubits the circuit is executed on.
         nqubits (int, optional): Number of qubits of the resulting circuits.
             If ``None``, sets ``len(qubits)``. Defaults to ``None``.
@@ -147,8 +151,6 @@ def setup_scan(
     Returns:
         Iterable: The iterator of circuits.
     """
-
-    qubit_ids = list(qubits) if isinstance(qubits, dict) else qubits
 
     def make_circuit(depth):
         """Returns a random Clifford circuit with inverse of ``depth``."""
@@ -158,12 +160,12 @@ def setup_scan(
         # Clifford gates. Could also be a generator, it just has to be callable.
         def layer_gen():
             """Returns a circuit with a random single-qubit clifford unitary."""
-            return random_clifford(len(qubit_ids), params.seed)
+            return random_clifford(len(targets), params.seed)
 
         circuit = layer_circuit(layer_gen, depth)
         add_inverse_layer(circuit)
         add_measurement_layer(circuit)
-        return embed_circuit(circuit, nqubits, qubit_ids)
+        return embed_circuit(circuit, nqubits, targets)
 
     return map(make_circuit, params.depths * params.niter)
 
@@ -171,7 +173,7 @@ def setup_scan(
 def _acquisition(
     params: StandardRBParameters,
     platform: Platform,
-    qubits: Union[Qubits, list[QubitId]],
+    targets: list[QubitId],
 ) -> RBData:
     """The data acquisition stage of Standard Randomized Benchmarking.
 
@@ -211,21 +213,38 @@ def _acquisition(
         noise_model = getattr(noisemodels, params.noise_model)(params.noise_params)
         params.noise_params = noise_model.params
 
-    # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
-    nqubits = platform.nqubits if platform else max(qubits) + 1
-    scan = setup_scan(params, qubits, nqubits)
+    # Grab activated qibo backend
+    backend = GlobalBackend()
 
-    # 2. Execute the scan.
-    data_list = []
-    # Iterate through the scan and execute each circuit.
+    # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
+    nqubits = platform.nqubits if platform else max(targets) + 1
+    scan = setup_scan(params, targets, nqubits)
+
+    # Iterate through the scan and create circuits
+    circuits = []
+    depths = []
     for circuit in scan:
         # The inverse and measurement gate don't count for the depth.
-        depth = (circuit.depth - 2) if circuit.depth > 1 else 0
+        depths.append((circuit.depth - 2) if circuit.depth > 1 else 0)
         if noise_model is not None:
             circuit = noise_model.apply(circuit)
-        samples = circuit.execute(nshots=params.nshots).samples()
-        # Every executed circuit gets a row where the data is stored.
-        data_list.append({"depth": depth, "samples": samples})
+        circuits.append(circuit)
+
+    # Execute the circuits
+    if params.unrolling:
+        results = backend.execute_circuits(circuits, nshots=params.nshots)
+    else:
+        results = [
+            backend.execute_circuit(circuit, nshots=params.nshots)
+            for circuit in circuits
+        ]
+
+    # Every executed circuit gets a row where the data is stored.
+    data_list = [
+        {"depth": depth, "samples": result.samples()}
+        for depth, result in zip(depths, results)
+    ]
+
     # Build the data object which will be returned and later saved.
     data = pd.DataFrame(data_list)
 
@@ -320,14 +339,16 @@ def _fit(data: RBData) -> StandardRBResult:
     return StandardRBResult(fidelity, pulse_fidelity, popt, perr, error_bars)
 
 
-def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], str]:
+def _plot(
+    data: RBData, fit: StandardRBResult, target: QubitId
+) -> tuple[list[go.Figure], str]:
     """Builds the table for the qq pipe, calls the plot function of the result object
     and returns the figure es list.
 
     Args:
         data (RBData): Data object used for the table.
         fit (StandardRBResult): Is called for the plot.
-        qubit (_type_): Not used yet.
+        target (_type_): Not used yet.
 
     Returns:
         tuple[list[go.Figure], str]:

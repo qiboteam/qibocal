@@ -1,4 +1,5 @@
 """Helper functions for the cli module"""
+
 import datetime
 import getpass
 import json
