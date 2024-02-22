@@ -249,12 +249,14 @@ def _plot(
                 2 * len(q_data),
             )
             params = data_fit[
-                "fitted_parameters_state_zero"
-                if i == 0
-                else (
-                    "fitted_parameters_state_one"
-                    if i == 1
-                    else "fitted_parameters_state_two"
+                (
+                    "fitted_parameters_state_zero"
+                    if i == 0
+                    else (
+                        "fitted_parameters_state_one"
+                        if i == 1
+                        else "fitted_parameters_state_two"
+                    )
                 )
             ][target]
             fig.add_trace(

@@ -1,4 +1,5 @@
 """Specify runcard layout, handles (de)serialization."""
+
 import os
 from functools import cached_property
 from typing import Any, NewType, Optional, Union
@@ -14,7 +15,7 @@ from .validation import Validator
 Id = NewType("Id", str)
 """Action identifiers type."""
 
-Targets = Union[list[QubitId], list[QubitPairId], list[list[QubitId]]]
+Targets = Union[list[QubitId], list[QubitPairId], list[tuple[QubitId, ...]]]
 """Elements to be calibrated by a single protocol."""
 
 MAX_ITERATIONS = 5

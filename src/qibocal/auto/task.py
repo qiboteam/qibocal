@@ -1,4 +1,5 @@
 """Action execution tracker."""
+
 import copy
 from dataclasses import dataclass
 from pathlib import Path
@@ -6,19 +7,12 @@ from statistics import mode
 from typing import Optional
 
 from qibolab.platform import Platform
+from qibolab.serialize import dump_platform
 
-from ..config import raise_error
+from ..config import log, raise_error
 from ..protocols.characterization import Operation
 from .mode import ExecutionMode
-from .operation import (
-    DATAFILE,
-    RESULTSFILE,
-    Data,
-    DummyPars,
-    Results,
-    Routine,
-    dummy_operation,
-)
+from .operation import Data, DummyPars, Results, Routine, dummy_operation
 from .runcard import Action, Id, Targets
 from .status import Failure, Normal
 
@@ -26,6 +20,8 @@ MAX_PRIORITY = int(1e9)
 """A number bigger than whatever will be manually typed. But not so insanely big not to fit in a native integer."""
 TaskId = tuple[Id, int]
 """Unique identifier for executed tasks."""
+PLATFORM_DIR = "platform"
+"""Folder where platform will be dumped."""
 
 
 @dataclass
@@ -113,9 +109,9 @@ class Task:
             if self.parameters.nshots is None:
                 self.action.parameters["nshots"] = platform.settings.nshots
             if self.parameters.relaxation_time is None:
-                self.action.parameters[
-                    "relaxation_time"
-                ] = platform.settings.relaxation_time
+                self.action.parameters["relaxation_time"] = (
+                    platform.settings.relaxation_time
+                )
             operation: Routine = self.operation
             parameters = self.parameters
 
@@ -177,9 +173,6 @@ class Completed:
     @property
     def results(self):
         """Access task's results."""
-        if not (self.datapath / RESULTSFILE).is_file():
-            return None
-
         if self._results is None:
             Results = self.task.operation.results_type
             self._results = Results.load(self.datapath)
@@ -194,9 +187,6 @@ class Completed:
     @property
     def data(self):
         """Access task's data."""
-        # FIXME: temporary fix for coverage
-        if not (self.datapath / DATAFILE).is_file():  # pragma: no cover
-            return None
         if self._data is None:
             Data = self.task.operation.data_type
             self._data = Data.load(self.datapath)
@@ -212,7 +202,14 @@ class Completed:
         """Perform update on platform' parameters by looping over qubits or pairs."""
         if self.task.update and update:
             for qubit in self.task.targets:
-                self.task.operation.update(self.results, platform, qubit)
+                try:
+                    self.task.operation.update(self.results, platform, qubit)
+                except KeyError:
+                    log.warning(
+                        f"Skipping update of qubit {qubit} due to error in fit."
+                    )
+            (self.datapath / PLATFORM_DIR).mkdir(parents=True, exist_ok=True)
+            dump_platform(platform, self.datapath / PLATFORM_DIR)
 
     def validate(self) -> tuple[Optional[TaskId], Optional[dict]]:
         """Check status of completed and handle Failure using handler."""

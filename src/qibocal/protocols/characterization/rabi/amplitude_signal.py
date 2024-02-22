@@ -136,7 +136,7 @@ def _fit(data: RabiAmplitudeVoltData) -> RabiAmplitudeVoltResults:
         index = local_maxima[0] if len(local_maxima) > 0 else None
         # 0.5 hardcoded guess for less than one oscillation
         f = x[index] / (x[1] - x[0]) if index is not None else 0.5
-        pguess = [0.5, 1, 1 / f, np.pi / 2]
+        pguess = [0.5, 1, 1 / f, 0]
         try:
             popt, _ = curve_fit(
                 utils.rabi_amplitude_function,
@@ -155,7 +155,11 @@ def _fit(data: RabiAmplitudeVoltData) -> RabiAmplitudeVoltResults:
                 popt[2] * (x_max - x_min),
                 popt[3] - 2 * np.pi * x_min / (x_max - x_min) / popt[2],
             ]
-            pi_pulse_parameter = np.abs((translated_popt[2]) / 2)
+            pi_pulse_parameter = (
+                translated_popt[2]
+                / 2
+                * utils.period_correction_factor(phase=translated_popt[3])
+            )
 
         except:
             log.warning("rabi_fit: the fitting was not succesful")
