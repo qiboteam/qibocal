@@ -10,7 +10,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 
 from .utils import (
     PowerLevel,
@@ -108,9 +108,7 @@ class ResonatorSpectroscopyData(Data):
 
 
 def _acquisition(
-    params: ResonatorSpectroscopyParameters,
-    platform: Platform,
-    qubits: Qubits,
+    params: ResonatorSpectroscopyParameters, platform: Platform, targets: list[QubitId]
 ) -> ResonatorSpectroscopyData:
     """Data acquisition for resonator spectroscopy."""
     # create a sequence of pulses for the experiment:
@@ -122,7 +120,7 @@ def _acquisition(
     amplitudes = {}
     attenuations = {}
 
-    for qubit in qubits:
+    for qubit in targets:
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
 
         if params.amplitude is not None:
@@ -148,7 +146,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        pulses=[ro_pulses[qubit] for qubit in qubits],
+        pulses=[ro_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
     data = ResonatorSpectroscopyData(
@@ -170,7 +168,7 @@ def _acquisition(
     )
 
     # retrieve the results for every qubit
-    for qubit in qubits:
+    for qubit in targets:
         result = results[ro_pulses[qubit].serial]
         # store the results
         data.register_qubit(
@@ -192,6 +190,7 @@ def _fit(
     data: ResonatorSpectroscopyData,
 ) -> ResonatorSpectroscopyResults:
     """Post-processing function for ResonatorSpectroscopy."""
+    # TODO: change data.qubits
     qubits = data.qubits
     bare_frequency = {}
     frequency = {}
@@ -241,25 +240,25 @@ def _fit(
 
 
 def _plot(
-    data: ResonatorSpectroscopyData,
-    qubit,
-    fit: ResonatorSpectroscopyResults,
+    data: ResonatorSpectroscopyData, target: QubitId, fit: ResonatorSpectroscopyResults
 ):
-    """Plotting function for ResonatorSpectroscopyAttenuation."""
-    return spectroscopy_plot(data, qubit, fit)
+    """Plotting function for ResonatorSpectroscopy."""
+    return spectroscopy_plot(data, target, fit)
 
 
-def _update(results: ResonatorSpectroscopyResults, platform: Platform, qubit: QubitId):
-    update.readout_frequency(results.frequency[qubit], platform, qubit)
+def _update(results: ResonatorSpectroscopyResults, platform: Platform, target: QubitId):
+    update.readout_frequency(results.frequency[target], platform, target)
 
     # if this condition is satifisfied means that we are in the low power regime
     # therefore we update also the readout amplitude
     if len(results.bare_frequency) == 0:
-        update.readout_amplitude(results.amplitude[qubit], platform, qubit)
-        if results.attenuation[qubit] is not None:
-            update.readout_attenuation(results.attenuation[qubit], platform, qubit)
+        update.readout_amplitude(results.amplitude[target], platform, target)
+        if results.attenuation[target] is not None:
+            update.readout_attenuation(results.attenuation[target], platform, qubit)
     else:
-        update.bare_resonator_frequency(results.bare_frequency[qubit], platform, qubit)
+        update.bare_resonator_frequency(
+            results.bare_frequency[target], platform, target
+        )
 
 
 resonator_spectroscopy = Routine(_acquisition, _fit, _plot, _update)

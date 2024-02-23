@@ -9,7 +9,7 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.protocols.characterization.utils import S_TO_NS, table_dict, table_html
 
 
@@ -46,7 +46,7 @@ class TimeOfFlightReadoutData(Data):
 
 
 def _acquisition(
-    params: TimeOfFlightReadoutParameters, platform: Platform, qubits: Qubits
+    params: TimeOfFlightReadoutParameters, platform: Platform, targets: list[QubitId]
 ) -> TimeOfFlightReadoutData:
     """Data acquisition for time of flight experiment."""
 
@@ -54,7 +54,7 @@ def _acquisition(
 
     RX_pulses = {}
     ro_pulses = {}
-    for qubit in qubits:
+    for qubit in targets:
         RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=RX_pulses[qubit].finish
@@ -78,7 +78,7 @@ def _acquisition(
     )
 
     # retrieve and store the results for every qubit
-    for qubit in qubits:
+    for qubit in targets:
         samples = results[ro_pulses[qubit].serial].magnitude
         # store the results
         data.register_qubit(TimeOfFlightReadoutType, (qubit), dict(samples=samples))
@@ -110,13 +110,15 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
     return TimeOfFlightReadoutResults(fitted_parameters)
 
 
-def _plot(data: TimeOfFlightReadoutData, qubit, fit: TimeOfFlightReadoutResults):
+def _plot(
+    data: TimeOfFlightReadoutData, target: QubitId, fit: TimeOfFlightReadoutResults
+):
     """Plotting function for TimeOfFlightReadout."""
 
     figures = []
     fitting_report = ""
     fig = go.Figure()
-    qubit_data = data[qubit]
+    qubit_data = data[target]
     sampling_rate = data.sampling_rate
     y = qubit_data.samples
 
@@ -137,14 +139,14 @@ def _plot(data: TimeOfFlightReadoutData, qubit, fit: TimeOfFlightReadoutResults)
     )
     if fit is not None:
         fig.add_vline(
-            x=fit.fitted_parameters[qubit] * sampling_rate,
+            x=fit.fitted_parameters[target] * sampling_rate,
             line_width=2,
             line_dash="dash",
             line_color="grey",
         )
         fitting_report = table_html(
             table_dict(
-                qubit, "Time of flights [ns]", fit.fitted_parameters[qubit] * S_TO_NS
+                target, "Time of flights [ns]", fit.fitted_parameters[target] * S_TO_NS
             )
         )
     fig.update_layout(
