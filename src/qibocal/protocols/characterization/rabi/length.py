@@ -12,7 +12,7 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 
 from ..utils import chi2_reduced
@@ -24,11 +24,11 @@ class RabiLengthParameters(Parameters):
     """RabiLength runcard inputs."""
 
     pulse_duration_start: float
-    """Initial pi pulse duration (ns)."""
+    """Initial pi pulse duration [ns]."""
     pulse_duration_end: float
-    """Final pi pulse duration (ns)."""
+    """Final pi pulse duration [ns]."""
     pulse_duration_step: float
-    """Step pi pulse duration (ns)."""
+    """Step pi pulse duration [ns]."""
     pulse_amplitude: Optional[float] = None
     """Pi pulse amplitude. Same for all qubits."""
 
@@ -63,7 +63,7 @@ class RabiLengthData(Data):
 
 
 def _acquisition(
-    params: RabiLengthParameters, platform: Platform, qubits: Qubits
+    params: RabiLengthParameters, platform: Platform, targets: list[QubitId]
 ) -> RabiLengthData:
     r"""
     Data acquisition for RabiLength Experiment.
@@ -76,7 +76,7 @@ def _acquisition(
     qd_pulses = {}
     ro_pulses = {}
     amplitudes = {}
-    for qubit in qubits:
+    for qubit in targets:
         # TODO: made duration optional for qd pulse?
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.pulse_duration_start
@@ -102,7 +102,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.duration,
         qd_pulse_duration_range,
-        [qd_pulses[qubit] for qubit in qubits],
+        [qd_pulses[qubit] for qubit in targets],
         type=SweeperType.ABSOLUTE,
     )
 
@@ -120,7 +120,7 @@ def _acquisition(
         sweeper,
     )
 
-    for qubit in qubits:
+    for qubit in targets:
         prob = results[qubit].probability(state=1)
         data.register_qubit(
             RabiLenType,
@@ -154,10 +154,10 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         index = local_maxima[0] if len(local_maxima) > 0 else None
         # 0.5 hardcoded guess for less than one oscillation
         f = x[index] / (x[1] - x[0]) if index is not None else 0.5
-        pguess = [0.5, 0.5, np.max(x) / f, np.pi / 2, 0]
+        pguess = [0.5, 0.5, np.max(x) / f, 0, 0]
         try:
             popt, perr = curve_fit(
-                utils.rabi_length_fit,
+                utils.rabi_length_function,
                 x,
                 y,
                 p0=pguess,
@@ -169,7 +169,9 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
                 sigma=qubit_data.error,
             )
             perr = np.sqrt(np.diag(perr))
-            pi_pulse_parameter = np.abs(popt[2] / 2)
+            pi_pulse_parameter = (
+                popt[2] / 2 * utils.period_correction_factor(phase=popt[3])
+            )
         except:
             log.warning("rabi_fit: the fitting was not succesful")
             pi_pulse_parameter = 0
@@ -180,7 +182,7 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         chi2[qubit] = (
             chi2_reduced(
                 y,
-                utils.rabi_length_fit(x, *popt),
+                utils.rabi_length_function(x, *popt),
                 qubit_data.error,
             ),
             np.sqrt(2 / len(y)),
@@ -188,13 +190,13 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
     return RabiLengthResults(durations, amplitudes, fitted_parameters, chi2)
 
 
-def _update(results: RabiLengthResults, platform: Platform, qubit: QubitId):
-    update.drive_duration(results.length[qubit], platform, qubit)
+def _update(results: RabiLengthResults, platform: Platform, target: QubitId):
+    update.drive_duration(results.length[target], platform, target)
 
 
-def _plot(data: RabiLengthData, fit: RabiLengthResults, qubit):
+def _plot(data: RabiLengthData, fit: RabiLengthResults, target: QubitId):
     """Plotting function for RabiLength experiment."""
-    return utils.plot_probabilities(data, qubit, fit)
+    return utils.plot_probabilities(data, target, fit)
 
 
 rabi_length = Routine(_acquisition, _fit, _plot, _update)

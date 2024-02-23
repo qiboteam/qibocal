@@ -33,9 +33,14 @@ class History(dict[tuple[Id, int], Completed]):
 
     def push(self, completed: Completed):
         """Adding completed task to history."""
-        self[(completed.task.id, completed.task.iteration)] = completed
+        self[completed.task.uid] = completed
 
-        # TODO: re-implement this
-        # completed.task.iteration += 1
+    def iterations(self, task_id: Id):
+        """Count task id present in history."""
+        counter = 0
+        for task, _ in self:
+            if task == task_id:
+                counter += 1
+        return counter
 
     # TODO: implemet time_travel()

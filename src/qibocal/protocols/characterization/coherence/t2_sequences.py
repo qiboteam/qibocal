@@ -2,8 +2,9 @@ import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Qubits, Routine
+from qibocal.auto.operation import Routine
 
 from .t1_signal import CoherenceType
 from .t2_signal import T2SignalData, T2SignalParameters, _fit, _plot, _update
@@ -12,7 +13,7 @@ from .t2_signal import T2SignalData, T2SignalParameters, _fit, _plot, _update
 def _acquisition(
     params: T2SignalParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> T2SignalData:
     """Data acquisition for Ramsey Experiment (detuned)."""
     # create a sequence of pulses for the experiment
@@ -21,7 +22,7 @@ def _acquisition(
     RX90_pulses1 = {}
     RX90_pulses2 = {}
     sequence = PulseSequence()
-    for qubit in qubits:
+    for qubit in targets:
         RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
         RX90_pulses2[qubit] = platform.create_RX90_pulse(
             qubit,
@@ -46,7 +47,7 @@ def _acquisition(
 
     # sweep the parameter
     for wait in waits:
-        for qubit in qubits:
+        for qubit in targets:
             RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
             ro_pulses[qubit].start = RX90_pulses2[qubit].finish
 
@@ -60,7 +61,7 @@ def _acquisition(
                 averaging_mode=AveragingMode.CYCLIC,
             ),
         )
-        for qubit in qubits:
+        for qubit in targets:
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
                 CoherenceType,

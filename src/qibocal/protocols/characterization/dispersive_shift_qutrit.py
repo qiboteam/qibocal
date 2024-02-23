@@ -10,7 +10,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Qubits, Results, Routine
+from qibocal.auto.operation import Results, Routine
 from qibocal.protocols.characterization.utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
@@ -39,11 +39,11 @@ class DispersiveShiftQutritResults(Results):
     """State one frequency."""
     frequency_state_two: dict[QubitId, float]
     """State two frequency."""
-    fitted_parameters_state_zero: dict[QubitId, dict[str, float]]
+    fitted_parameters_state_zero: dict[QubitId, list[float]]
     """Fitted parameters state zero."""
-    fitted_parameters_state_one: dict[QubitId, dict[str, float]]
+    fitted_parameters_state_one: dict[QubitId, list[float]]
     """Fitted parameters state one."""
-    fitted_parameters_state_two: dict[QubitId, dict[str, float]]
+    fitted_parameters_state_two: dict[QubitId, list[float]]
     """Fitted parameters state one."""
 
     @property
@@ -68,7 +68,7 @@ class DispersiveShiftQutritData(DispersiveShiftData):
 
 
 def _acquisition(
-    params: DispersiveShiftParameters, platform: Platform, qubits: Qubits
+    params: DispersiveShiftParameters, platform: Platform, targets: list[QubitId]
 ) -> DispersiveShiftQutritData:
     r"""
     Data acquisition for dispersive shift experiment.
@@ -78,7 +78,7 @@ def _acquisition(
     Args:
         params (DispersiveShiftParameters): experiment's parameters
         platform (Platform): Qibolab platform object
-        qubits (dict): list of target qubits to perform the action
+        targets (list): list of target qubits to perform the action
 
     """
 
@@ -92,7 +92,7 @@ def _acquisition(
     sequence_1 = PulseSequence()
     sequence_2 = PulseSequence()
 
-    for qubit in qubits:
+    for qubit in targets:
         rx_pulse = platform.create_RX_pulse(qubit, start=0)
         rx_12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish)
         ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
@@ -129,7 +129,7 @@ def _acquisition(
             sweeper,
         )
 
-        for qubit in qubits:
+        for qubit in targets:
             result = results[qubit]
             # store the results
             data.register_qubit(
@@ -183,7 +183,9 @@ def _fit(data: DispersiveShiftQutritData) -> DispersiveShiftQutritResults:
     )
 
 
-def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResults):
+def _plot(
+    data: DispersiveShiftQutritData, target: QubitId, fit: DispersiveShiftQutritResults
+):
     """Plotting function for dispersive shift."""
     figures = []
     fig = make_subplots(
@@ -193,16 +195,16 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
         vertical_spacing=0.1,
         subplot_titles=(
             "Signal [a.u.]",
-            "phase (rad)",
+            "phase [rad]",
         ),
     )
     # iterate over multiple data folders
 
     fitting_report = ""
 
-    data_0 = data[qubit, 0]
-    data_1 = data[qubit, 1]
-    data_2 = data[qubit, 2]
+    data_0 = data[target, 0]
+    data_1 = data[target, 1]
+    data_2 = data[target, 2]
     fit_data_0 = fit.state_zero if fit is not None else None
     fit_data_1 = fit.state_one if fit is not None else None
     fit_data_2 = fit.state_two if fit is not None else None
@@ -247,18 +249,20 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
                 2 * len(q_data),
             )
             params = data_fit[
-                "fitted_parameters_state_zero"
-                if i == 0
-                else (
-                    "fitted_parameters_state_one"
-                    if i == 1
-                    else "fitted_parameters_state_two"
+                (
+                    "fitted_parameters_state_zero"
+                    if i == 0
+                    else (
+                        "fitted_parameters_state_one"
+                        if i == 1
+                        else "fitted_parameters_state_two"
+                    )
                 )
-            ][qubit]
+            ][target]
             fig.add_trace(
                 go.Scatter(
                     x=freqrange,
-                    y=lorentzian(freqrange, **params),
+                    y=lorentzian(freqrange, *params),
                     name=f"{label} Fit",
                     line=go.scatter.Line(dash="dot"),
                 ),
@@ -269,7 +273,7 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
     if fit is not None:
         fitting_report = table_html(
             table_dict(
-                qubit,
+                target,
                 [
                     "State Zero Frequency [Hz]",
                     "State One Frequency [Hz]",
@@ -277,19 +281,19 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
                 ],
                 np.round(
                     [
-                        fit_data_0["frequency_state_zero"][qubit] * GHZ_TO_HZ,
-                        fit_data_1["frequency_state_one"][qubit] * GHZ_TO_HZ,
-                        fit_data_2["frequency_state_two"][qubit] * GHZ_TO_HZ,
+                        fit_data_0["frequency_state_zero"][target] * GHZ_TO_HZ,
+                        fit_data_1["frequency_state_one"][target] * GHZ_TO_HZ,
+                        fit_data_2["frequency_state_two"][target] * GHZ_TO_HZ,
                     ]
                 ),
             )
         )
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Frequency (GHz)",
+        xaxis_title="Frequency [GHz]",
         yaxis_title="Signal [a.u.]",
-        xaxis2_title="Frequency (GHz)",
-        yaxis2_title="Phase (rad)",
+        xaxis2_title="Frequency [GHz]",
+        yaxis2_title="Phase [rad]",
     )
 
     figures.append(fig)

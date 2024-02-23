@@ -12,7 +12,7 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 
 from ..utils import chi2_reduced
@@ -30,7 +30,7 @@ class RabiAmplitudeParameters(Parameters):
     step_amp_factor: float
     """Step amplitude multiplicative factor."""
     pulse_length: Optional[float]
-    """RX pulse duration (ns)."""
+    """RX pulse duration [ns]."""
 
 
 @dataclass
@@ -63,7 +63,7 @@ class RabiAmplitudeData(Data):
 
 
 def _acquisition(
-    params: RabiAmplitudeParameters, platform: Platform, qubits: Qubits
+    params: RabiAmplitudeParameters, platform: Platform, targets: list[QubitId]
 ) -> RabiAmplitudeData:
     r"""
     Data acquisition for Rabi experiment sweeping amplitude.
@@ -76,7 +76,7 @@ def _acquisition(
     qd_pulses = {}
     ro_pulses = {}
     durations = {}
-    for qubit in qubits:
+    for qubit in targets:
         qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         if params.pulse_length is not None:
             qd_pulses[qubit].duration = params.pulse_length
@@ -98,7 +98,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.amplitude,
         qd_pulse_amplitude_range,
-        [qd_pulses[qubit] for qubit in qubits],
+        [qd_pulses[qubit] for qubit in targets],
         type=SweeperType.FACTOR,
     )
 
@@ -115,7 +115,7 @@ def _acquisition(
         ),
         sweeper,
     )
-    for qubit in qubits:
+    for qubit in targets:
         prob = results[qubit].probability(state=1)
         data.register_qubit(
             RabiAmpType,
@@ -150,10 +150,10 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         index = local_maxima[0] if len(local_maxima) > 0 else None
         # 0.5 hardcoded guess for less than one oscillation
         f = x[index] / (x[1] - x[0]) if index is not None else 0.5
-        pguess = [0.5, 0.5, 1 / f, np.pi / 2]
+        pguess = [0.5, 0.5, 1 / f, 0]
         try:
             popt, perr = curve_fit(
-                utils.rabi_amplitude_fit,
+                utils.rabi_amplitude_function,
                 x,
                 y,
                 p0=pguess,
@@ -165,7 +165,9 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
                 sigma=qubit_data.error,
             )
             perr = np.sqrt(np.diag(perr))
-            pi_pulse_parameter = np.abs(popt[2] / 2)
+            pi_pulse_parameter = (
+                popt[2] / 2 * utils.period_correction_factor(phase=popt[3])
+            )
 
         except:
             log.warning("rabi_fit: the fitting was not succesful")
@@ -179,7 +181,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         chi2[qubit] = (
             chi2_reduced(
                 y,
-                utils.rabi_amplitude_fit(x, *popt),
+                utils.rabi_amplitude_function(x, *popt),
                 qubit_data.error,
             ),
             np.sqrt(2 / len(y)),
@@ -187,13 +189,13 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
     return RabiAmplitudeResults(pi_pulse_amplitudes, durations, fitted_parameters, chi2)
 
 
-def _plot(data: RabiAmplitudeData, qubit, fit: RabiAmplitudeResults = None):
+def _plot(data: RabiAmplitudeData, target: QubitId, fit: RabiAmplitudeResults = None):
     """Plotting function for RabiAmplitude."""
-    return utils.plot_probabilities(data, qubit, fit)
+    return utils.plot_probabilities(data, target, fit)
 
 
-def _update(results: RabiAmplitudeResults, platform: Platform, qubit: QubitId):
-    update.drive_amplitude(results.amplitude[qubit], platform, qubit)
+def _update(results: RabiAmplitudeResults, platform: Platform, target: QubitId):
+    update.drive_amplitude(results.amplitude[target], platform, target)
 
 
 rabi_amplitude = Routine(_acquisition, _fit, _plot, _update)

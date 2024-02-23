@@ -1,4 +1,5 @@
 """Helper functions for the cli module"""
+
 import datetime
 import getpass
 import json
@@ -10,8 +11,8 @@ from qibocal.config import log, raise_error
 from qibocal.utils import allocate_qubits_pairs, allocate_single_qubits
 
 RUNCARD = "runcard.yml"
-UPDATED_PLATFORM = "new_platform.yml"
-PLATFORM = "platform.yml"
+UPDATED_PLATFORM = "new_platform"
+PLATFORM = "platform"
 META = "meta.json"
 
 
@@ -44,7 +45,7 @@ def generate_meta(backend, platform, path):
     meta = {}
     meta["title"] = path.name
     meta["backend"] = backend.name
-    meta["platform"] = str(platform)
+    meta["platform"] = platform.name
     meta["date"] = e.strftime("%Y-%m-%d")
     meta["start-time"] = e.strftime("%H:%M:%S")
     meta["end-time"] = e.strftime("%H:%M:%S")

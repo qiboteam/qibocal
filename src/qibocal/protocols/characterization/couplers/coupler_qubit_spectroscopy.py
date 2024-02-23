@@ -4,9 +4,10 @@ import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Qubits, Routine
+from qibocal.auto.operation import Routine
 
 from ..two_qubit_interaction.utils import order_pair
 from .coupler_resonator_spectroscopy import _fit, _plot, _update
@@ -19,7 +20,9 @@ class CouplerSpectroscopyParametersQubit(CouplerSpectroscopyParameters):
 
 
 def _acquisition(
-    params: CouplerSpectroscopyParametersQubit, platform: Platform, qubits: Qubits
+    params: CouplerSpectroscopyParametersQubit,
+    platform: Platform,
+    targets: list[QubitPairId],
 ) -> CouplerSpectroscopyData:
     """
     Data acquisition for CouplerQubit spectroscopy.
@@ -43,10 +46,10 @@ def _acquisition(
     ro_pulses = {}
     qd_pulses = {}
     couplers = []
-    for i, pair in enumerate(qubits):
+    for i, pair in enumerate(targets):
         qubit = platform.qubits[params.measured_qubits[i]].name
         # TODO: Qubit pair patch
-        ordered_pair = order_pair(pair, platform.qubits)
+        ordered_pair = order_pair(pair, platform)
         couplers.append(platform.pairs[tuple(sorted(ordered_pair))].coupler)
 
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
@@ -103,7 +106,7 @@ def _acquisition(
     )
 
     # retrieve the results for every qubit
-    for i, pair in enumerate(qubits):
+    for i, pair in enumerate(targets):
         # TODO: May measure both qubits on the pair
         qubit = platform.qubits[params.measured_qubits[i]].name
         result = results[ro_pulses[qubit].serial]

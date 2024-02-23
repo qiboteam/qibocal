@@ -8,7 +8,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import Qubits, Routine
+from qibocal.auto.operation import Routine
 
 from . import amplitude_signal, utils
 
@@ -29,7 +29,7 @@ class RabiAmplitudeEFData(amplitude_signal.RabiAmplitudeVoltData):
 
 
 def _acquisition(
-    params: RabiAmplitudeEFParameters, platform: Platform, qubits: Qubits
+    params: RabiAmplitudeEFParameters, platform: Platform, targets: list[QubitId]
 ) -> RabiAmplitudeEFData:
     r"""
     Data acquisition for Rabi EF experiment sweeping amplitude.
@@ -46,7 +46,7 @@ def _acquisition(
     ro_pulses = {}
     rx_pulses = {}
     durations = {}
-    for qubit in qubits:
+    for qubit in targets:
         rx_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         qd_pulses[qubit] = platform.create_RX_pulse(
             qubit, start=rx_pulses[qubit].finish
@@ -72,7 +72,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.amplitude,
         qd_pulse_amplitude_range,
-        [qd_pulses[qubit] for qubit in qubits],
+        [qd_pulses[qubit] for qubit in targets],
         type=SweeperType.FACTOR,
     )
 
@@ -89,7 +89,7 @@ def _acquisition(
         ),
         sweeper,
     )
-    for qubit in qubits:
+    for qubit in targets:
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
             amplitude_signal.RabiAmpVoltType,
@@ -103,17 +103,19 @@ def _acquisition(
     return data
 
 
-def _plot(data: RabiAmplitudeEFData, qubit, fit: RabiAmplitudeEFResults = None):
+def _plot(
+    data: RabiAmplitudeEFData, target: QubitId, fit: RabiAmplitudeEFResults = None
+):
     """Plotting function for RabiAmplitude."""
-    figures, report = utils.plot(data, qubit, fit)
+    figures, report = utils.plot(data, target, fit)
     if report is not None:
         report = report.replace("Pi pulse", "Pi pulse 12")
     return figures, report
 
 
-def _update(results: RabiAmplitudeEFResults, platform: Platform, qubit: QubitId):
+def _update(results: RabiAmplitudeEFResults, platform: Platform, target: QubitId):
     """Update RX2 amplitude_signal"""
-    update.drive_12_amplitude(results.amplitude[qubit], platform, qubit)
+    update.drive_12_amplitude(results.amplitude[target], platform, target)
 
 
 rabi_amplitude_ef = Routine(_acquisition, amplitude_signal._fit, _plot, _update)

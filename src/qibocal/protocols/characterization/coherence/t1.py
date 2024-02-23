@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -10,9 +11,9 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 
-from ..utils import table_dict, table_html
+from ..utils import chi2_reduced, table_dict, table_html
 from . import utils
 
 COLORBAND = "rgba(0,100,80,0.2)"
@@ -24,11 +25,11 @@ class T1Parameters(Parameters):
     """T1 runcard inputs."""
 
     delay_before_readout_start: int
-    """Initial delay before readout (ns)."""
+    """Initial delay before readout [ns]."""
     delay_before_readout_end: int
-    """Final delay before readout (ns)."""
+    """Final delay before readout [ns]."""
     delay_before_readout_step: int
-    """Step delay before readout (ns)."""
+    """Step delay before readout [ns]."""
 
 
 @dataclass
@@ -39,6 +40,10 @@ class T1Results(Results):
     """T1 for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    chi2: Optional[dict[QubitId, tuple[float, Optional[float]]]] = field(
+        default_factory=dict
+    )
+    """Chi squared estimate mean value and error."""
 
 
 CoherenceProbType = np.dtype(
@@ -55,7 +60,9 @@ class T1Data(Data):
     """Raw data acquired."""
 
 
-def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1Data:
+def _acquisition(
+    params: T1Parameters, platform: Platform, targets: list[QubitId]
+) -> T1Data:
     r"""Data acquisition for T1 experiment.
     In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
     (e.g. amplitude damping channel), it is possible that, at the time of measurement, after the delay,
@@ -66,7 +73,7 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
     Args:
         params:
         platform (Platform): Qibolab platform object
-        qubits (list): list of target qubits to perform the action
+        targets (list): list of target qubits to perform the action
         delay_before_readout_start (int): Initial time delay before ReadOut
         delay_before_readout_end (list): Maximum time delay before ReadOut
         delay_before_readout_step (int): Scan range step for the delay before ReadOut
@@ -79,7 +86,7 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
     qd_pulses = {}
     ro_pulses = {}
     sequence = PulseSequence()
-    for qubit in qubits:
+    for qubit in targets:
         qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].duration
@@ -98,7 +105,7 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
     sweeper = Sweeper(
         Parameter.start,
         ro_wait_range,
-        [ro_pulses[qubit] for qubit in qubits],
+        [ro_pulses[qubit] for qubit in targets],
         type=SweeperType.ABSOLUTE,
     )
 
@@ -117,7 +124,7 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
         sweeper,
     )
 
-    for qubit in qubits:
+    for qubit in targets:
         probs = results[ro_pulses[qubit].serial].probability(state=1)
         errors = np.sqrt(probs * (1 - probs) / params.nshots)
         data.register_qubit(
@@ -138,15 +145,27 @@ def _fit(data: T1Data) -> T1Results:
             y = p_0-p_1 e^{-x p_2}.
     """
     t1s, fitted_parameters = utils.exponential_fit_probability(data)
-    return T1Results(t1s, fitted_parameters)
+    chi2 = {
+        qubit: (
+            chi2_reduced(
+                data[qubit].prob,
+                utils.exp_decay(data[qubit].wait, *fitted_parameters[qubit]),
+                data[qubit].error,
+            ),
+            np.sqrt(2 / len(data[qubit].prob)),
+        )
+        for qubit in data.qubits
+    }
+
+    return T1Results(t1s, fitted_parameters, chi2)
 
 
-def _plot(data: T1Data, qubit, fit: T1Results = None):
+def _plot(data: T1Data, target: QubitId, fit: T1Results = None):
     """Plotting function for T1 experiment."""
 
     figures = []
     fitting_report = ""
-    qubit_data = data[qubit]
+    qubit_data = data[target]
     waits = qubit_data.wait
     probs = qubit_data.prob
     error_bars = qubit_data.error
@@ -181,7 +200,7 @@ def _plot(data: T1Data, qubit, fit: T1Results = None):
             2 * len(qubit_data),
         )
 
-        params = fit.fitted_parameters[qubit]
+        params = fit.fitted_parameters[target]
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
@@ -191,12 +210,20 @@ def _plot(data: T1Data, qubit, fit: T1Results = None):
             )
         )
         fitting_report = table_html(
-            table_dict(qubit, ["T1 [ns]"], [fit.t1[qubit]], display_error=True)
+            table_dict(
+                target,
+                [
+                    "T1 [ns]",
+                    "chi2 reduced",
+                ],
+                [fit.t1[target], fit.chi2[target]],
+                display_error=True,
+            )
         )
     # last part
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Time (ns)",
+        xaxis_title="Time [ns]",
         yaxis_title="Probability of State 1",
     )
 
@@ -205,8 +232,8 @@ def _plot(data: T1Data, qubit, fit: T1Results = None):
     return figures, fitting_report
 
 
-def _update(results: T1Results, platform: Platform, qubit: QubitId):
-    update.t1(results.t1[qubit], platform, qubit)
+def _update(results: T1Results, platform: Platform, target: QubitId):
+    update.t1(results.t1[target], platform, target)
 
 
 t1 = Routine(_acquisition, _fit, _plot, _update)

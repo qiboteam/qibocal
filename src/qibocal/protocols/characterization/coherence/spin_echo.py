@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -8,9 +9,9 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal import update
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Parameters, Results, Routine
 
-from ..utils import table_dict, table_html
+from ..utils import chi2_reduced, table_dict, table_html
 from . import t1
 from .utils import exp_decay, exponential_fit_probability
 
@@ -24,7 +25,7 @@ class SpinEchoParameters(Parameters):
     delay_between_pulses_end: int
     """Final delay between pulses [ns]."""
     delay_between_pulses_step: int
-    """Step delay between pulses (ns)."""
+    """Step delay between pulses [ns]."""
 
 
 @dataclass
@@ -35,6 +36,10 @@ class SpinEchoResults(Results):
     """T2 echo for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    chi2: Optional[dict[QubitId, tuple[float, Optional[float]]]] = field(
+        default_factory=dict
+    )
+    """Chi squared estimate mean value and error."""
 
 
 class SpinEchoData(t1.T1Data):
@@ -44,7 +49,7 @@ class SpinEchoData(t1.T1Data):
 def _acquisition(
     params: SpinEchoParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> SpinEchoData:
     """Data acquisition for SpinEcho"""
     # create a sequence of pulses for the experiment:
@@ -54,7 +59,7 @@ def _acquisition(
     RX_pulses = {}
     RX90_pulses2 = {}
     sequence = PulseSequence()
-    for qubit in qubits:
+    for qubit in targets:
         RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
         RX_pulses[qubit] = platform.create_RX_pulse(
             qubit, start=RX90_pulses1[qubit].finish
@@ -79,12 +84,12 @@ def _acquisition(
     )
 
     data = SpinEchoData()
-    probs = {qubit: [] for qubit in qubits}
+    probs = {qubit: [] for qubit in targets}
     # sweep the parameter
     for wait in ro_wait_range:
         # save data as often as defined by points
 
-        for qubit in qubits:
+        for qubit in targets:
             RX_pulses[qubit].start = RX90_pulses1[qubit].finish + wait
             RX90_pulses2[qubit].start = RX_pulses[qubit].finish + wait
             ro_pulses[qubit].start = RX90_pulses2[qubit].finish
@@ -100,11 +105,11 @@ def _acquisition(
             ),
         )
 
-        for qubit in qubits:
+        for qubit in targets:
             prob = results[ro_pulses[qubit].serial].probability(state=0)
             probs[qubit].append(prob)
 
-    for qubit in qubits:
+    for qubit in targets:
         errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs[qubit]]
         data.register_qubit(
             t1.CoherenceProbType,
@@ -118,18 +123,29 @@ def _acquisition(
 def _fit(data: SpinEchoData) -> SpinEchoResults:
     """Post-processing for SpinEcho."""
     t2Echos, fitted_parameters = exponential_fit_probability(data)
+    chi2 = {
+        qubit: (
+            chi2_reduced(
+                data[qubit].prob,
+                exp_decay(data[qubit].wait, *fitted_parameters[qubit]),
+                data[qubit].error,
+            ),
+            np.sqrt(2 / len(data[qubit].prob)),
+        )
+        for qubit in data.qubits
+    }
 
-    return SpinEchoResults(t2Echos, fitted_parameters)
+    return SpinEchoResults(t2Echos, fitted_parameters, chi2)
 
 
-def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
+def _plot(data: SpinEchoData, target: QubitId, fit: SpinEchoResults = None):
     """Plotting for SpinEcho"""
 
     figures = []
     # iterate over multiple data folders
     fitting_report = ""
 
-    qubit_data = data[qubit]
+    qubit_data = data[target]
     waits = qubit_data.wait
     probs = qubit_data.prob
     error_bars = qubit_data.error
@@ -164,7 +180,7 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
             max(waits),
             2 * len(qubit_data),
         )
-        params = fit.fitted_parameters[qubit]
+        params = fit.fitted_parameters[target]
 
         fig.add_trace(
             go.Scatter(
@@ -176,16 +192,16 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
         )
         fitting_report = table_html(
             table_dict(
-                qubit,
-                ["T2 Spin Echo [ns]"],
-                [fit.t2_spin_echo[qubit]],
+                target,
+                ["T2 Spin Echo [ns]", "chi2 reduced"],
+                [fit.t2_spin_echo[target], fit.chi2[target]],
                 display_error=True,
             )
         )
 
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Time (ns)",
+        xaxis_title="Time [ns]",
         yaxis_title="Probability of State 0",
     )
 
@@ -194,8 +210,8 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
     return figures, fitting_report
 
 
-def _update(results: SpinEchoResults, platform: Platform, qubit: QubitId):
-    update.t2_spin_echo(results.t2_spin_echo[qubit], platform, qubit)
+def _update(results: SpinEchoResults, platform: Platform, target: QubitId):
+    update.t2_spin_echo(results.t2_spin_echo[target], platform, target)
 
 
 spin_echo = Routine(_acquisition, _fit, _plot, _update)
