@@ -57,7 +57,9 @@ class Runcard:
     actions: list[Action]
     """List of action to be executed."""
     targets: Optional[Targets] = None
-    """Qubits to be calibrated."""
+    """Qubits to be calibrated.
+       If `None` the protocols will be executed on all qubits
+       available in the platform."""
     backend: str = "qibolab"
     """Qibo backend."""
     platform: str = os.environ.get("QIBO_PLATFORM", "dummy")
