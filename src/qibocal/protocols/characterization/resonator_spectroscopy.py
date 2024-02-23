@@ -112,7 +112,7 @@ def _acquisition(
     platform: Platform,
     qubits: Qubits,
 ) -> ResonatorSpectroscopyData:
-    """Data acquisition for resonator spectroscopy attenuation."""
+    """Data acquisition for resonator spectroscopy."""
     # create a sequence of pulses for the experiment:
     # MZ
 
