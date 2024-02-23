@@ -60,13 +60,13 @@ class ResonatorSpectroscopyResults(Results):
     """ResonatorSpectroscopy outputs."""
 
     frequency: dict[QubitId, float]
-    """Readout frequency [GHz] for each qubit."""
+    """Readout frequency [Hz] for each qubit."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitted parameters."""
     bare_frequency: Optional[dict[QubitId, float]] = field(
         default_factory=dict,
     )
-    """Bare resonator frequency [GHz] for each qubit."""
+    """Bare resonator frequency [Hz] for each qubit."""
     error_fit_pars: dict[QubitId, list] = field(default_factory=dict)
     """Errors of the fit parameters."""
     chi2_reduced: dict[QubitId, tuple[float, Optional[float]]] = field(
