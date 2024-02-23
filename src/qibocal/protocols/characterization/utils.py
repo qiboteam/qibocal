@@ -165,7 +165,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
     )
     qubit_data = data[qubit]
     fitting_report = ""
-    frequencies = qubit_data.freq
+    frequencies = qubit_data.freq * HZ_TO_GHZ
     signal = qubit_data.signal
     errors_signal = qubit_data.error_signal
     errors_phase = qubit_data.error_phase
@@ -184,7 +184,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
     )
     fig.add_trace(
         go.Scatter(
-            x=np.concatenate((frequencies, frequencies[::-1]))*HZ_TO_GHZ,
+            x=np.concatenate((frequencies, frequencies[::-1])),
             y=np.concatenate((signal + errors_signal, (signal - errors_signal)[::-1])),
             fill="toself",
             fillcolor=COLORBAND,
@@ -232,7 +232,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
-                y=lorentzian(freqrange, *params),
+                y=lorentzian(freqrange * GHZ_TO_HZ, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
             ),
@@ -256,7 +256,10 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                     qubit,
                     [label, "amplitude", "chi2 reduced"],
                     [
-                        (freq[qubit], fit.error_fit_pars[qubit][1]),
+                        (
+                            freq[qubit] * HZ_TO_GHZ,
+                            fit.error_fit_pars[qubit][1] * HZ_TO_GHZ,
+                        ),
                         (data.amplitudes[qubit], 0),
                         fit.chi2_reduced[qubit],
                     ],
@@ -270,7 +273,10 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                         qubit,
                         [label, "amplitude", "attenuation", "chi2 reduced"],
                         [
-                            (freq[qubit], fit.error_fit_pars[qubit][1]),
+                            (
+                                freq[qubit] * HZ_TO_GHZ,
+                                fit.error_fit_pars[qubit][1] * HZ_TO_GHZ,
+                            ),
                             (data.amplitudes[qubit], 0),
                             (data.attenuations[qubit], 0),
                             fit.chi2_reduced[qubit],
