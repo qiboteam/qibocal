@@ -274,8 +274,8 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                         [label, "amplitude", "attenuation", "chi2 reduced"],
                         [
                             (
-                                freq[qubit] * HZ_TO_GHZ,
-                                fit.error_fit_pars[qubit][1] * HZ_TO_GHZ,
+                                freq[qubit],
+                                fit.error_fit_pars[qubit][1],
                             ),
                             (data.amplitudes[qubit], 0),
                             (data.attenuations[qubit], 0),
