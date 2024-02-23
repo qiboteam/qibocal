@@ -161,17 +161,17 @@ def _plot(
         report = table_html(
             table_dict(
                 target,
-                ["Frequency 1->2 [Hz]", "Amplitude [a.u.]", "Anharmonicity [Hz]"],
                 [
-                    np.round(fit.frequency[target], 0),
-                    fit.amplitude[target],
-                    np.round(fit.anharmonicity[target], 0),
+                    "Frequency 1->2 [Hz]",
+                    "Amplitude [a.u.]",
+                    "Anharmonicity [Hz]",
+                    "Chi2",
                 ],
                 [
-                    (fit.frequency[qubit], fit.error_fit_pars[qubit][1]),
-                    (fit.amplitude[qubit], fit.error_fit_pars[qubit][0]),
-                    (fit.anharmonicity[qubit], fit.error_fit_pars[qubit][2]),
-                    fit.chi2_reduced[qubit],
+                    (fit.frequency[target], fit.error_fit_pars[target][1]),
+                    (fit.amplitude[target], fit.error_fit_pars[target][0]),
+                    (fit.anharmonicity[target], fit.error_fit_pars[target][2]),
+                    fit.chi2_reduced[target],
                 ],
                 display_error=True,
             )

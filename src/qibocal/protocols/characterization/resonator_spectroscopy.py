@@ -129,10 +129,10 @@ def _acquisition(
         amplitudes[qubit] = ro_pulses[qubit].amplitude
 
         if params.attenuation is not None:
-            qubits[qubit].readout.attenuation = params.attenuation
+            platform.qubits[qubit].readout.attenuation = params.attenuation
 
         try:
-            attenuation = qubits[qubit].readout.attenuation
+            attenuation = platform.qubits[qubit].readout.attenuation
         except AttributeError:
             attenuation = None
 
@@ -254,7 +254,7 @@ def _update(results: ResonatorSpectroscopyResults, platform: Platform, target: Q
     if len(results.bare_frequency) == 0:
         update.readout_amplitude(results.amplitude[target], platform, target)
         if results.attenuation[target] is not None:
-            update.readout_attenuation(results.attenuation[target], platform, qubit)
+            update.readout_attenuation(results.attenuation[target], platform, target)
     else:
         update.bare_resonator_frequency(
             results.bare_frequency[target], platform, target
