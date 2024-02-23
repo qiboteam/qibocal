@@ -11,7 +11,7 @@ from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Data, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Results, Routine
 from qibocal.config import log
 
 from ..utils import table_dict, table_html
@@ -59,7 +59,7 @@ class DragPulseTuningData(Data):
 def _acquisition(
     params: DragPulseTuningParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> DragPulseTuningData:
     r"""
     Data acquisition for drag pulse tuning experiment.
@@ -76,7 +76,7 @@ def _acquisition(
     for beta_param in beta_param_range:
         ro_pulses = {}
         sequence = PulseSequence()
-        for qubit in qubits:
+        for qubit in targets:
             RX90_drag_pulse = platform.create_RX90_drag_pulse(
                 qubit, start=0, beta=beta_param
             )
@@ -109,7 +109,7 @@ def _acquisition(
         )
 
         # retrieve the results for every qubit
-        for qubit in qubits:
+        for qubit in targets:
             prob = result[qubit].probability(state=0)
             # store the results
             data.register_qubit(
@@ -153,7 +153,7 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
     return DragPulseTuningResults(betas_optimal, fitted_parameters)
 
 
-def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
+def _plot(data: DragPulseTuningData, target: QubitId, fit: DragPulseTuningResults):
     """Plotting function for DragPulseTuning."""
 
     figures = []
@@ -165,7 +165,7 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
         horizontal_spacing=0.01,
         vertical_spacing=0.01,
     )
-    qubit_data = data[qubit]
+    qubit_data = data[target]
     fig.add_trace(
         go.Scatter(
             x=qubit_data.beta,
@@ -188,13 +188,13 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
         fig.add_trace(
             go.Scatter(
                 x=beta_range,
-                y=drag_fit(beta_range, *fit.fitted_parameters[qubit]),
+                y=drag_fit(beta_range, *fit.fitted_parameters[target]),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
             ),
         )
         fitting_report = table_html(
-            table_dict(qubit, "Optimal Beta Param", np.round(fit.betas[qubit], 4))
+            table_dict(target, "Optimal Beta Param", np.round(fit.betas[target], 4))
         )
 
     fig.update_layout(
@@ -208,8 +208,8 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
     return figures, fitting_report
 
 
-def _update(results: DragPulseTuningResults, platform: Platform, qubit: QubitId):
-    update.drag_pulse_beta(results.betas[qubit], platform, qubit)
+def _update(results: DragPulseTuningResults, platform: Platform, target: QubitId):
+    update.drag_pulse_beta(results.betas[target], platform, target)
 
 
 drag_pulse_tuning = Routine(_acquisition, _fit, _plot, _update)

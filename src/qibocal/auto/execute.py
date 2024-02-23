@@ -1,4 +1,5 @@
 """Tasks execution."""
+
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, Set
@@ -9,9 +10,8 @@ from qibocal.config import log
 
 from .graph import Graph
 from .history import History
-from .runcard import Id, Runcard
-from .status import Failure
-from .task import Qubits, Task
+from .runcard import Id, Runcard, Targets
+from .task import Task
 
 
 @dataclass
@@ -24,10 +24,12 @@ class Executor:
     """The execution history, with results and exit states."""
     output: Path
     """Output path."""
-    qubits: Qubits
-    """Qubits to be calibrated."""
+    targets: Targets
+    """Qubits/Qubit Pairs to be calibrated."""
     platform: Platform
     """Qubits' platform."""
+    max_iterations: int
+    """Maximum number of iterations."""
     update: bool = True
     """Runcard update mechanism."""
     head: Optional[Id] = None
@@ -42,7 +44,7 @@ class Executor:
         card: Runcard,
         output: Path,
         platform: Platform = None,
-        qubits: Qubits = None,
+        targets: Targets = None,
         update: bool = True,
     ):
         """Load execution graph and associated executor from a runcard."""
@@ -50,9 +52,10 @@ class Executor:
         return cls(
             graph=Graph.from_actions(card.actions),
             history=History({}),
+            max_iterations=card.max_iterations,
             output=output,
             platform=platform,
-            qubits=qubits,
+            targets=targets,
             update=update,
         )
 
@@ -93,7 +96,6 @@ class Executor:
 
         """
         candidates = self.successors(self.current)
-
         if len(candidates) == 0:
             candidates.extend([])
 
@@ -133,24 +135,33 @@ class Executor:
         self.head = self.graph.start
         while self.head is not None:
             task = self.current
-            log.info(f"Executing mode {mode.name} on {task.id}.")
+            task.iteration = self.history.iterations(task.id)
+            log.info(
+                f"Executing mode {mode.name} on {task.id} iteration {task.iteration}."
+            )
             completed = task.run(
+                max_iterations=self.max_iterations,
                 platform=self.platform,
-                qubits=self.qubits,
+                targets=self.targets,
                 folder=self.output,
                 mode=mode,
             )
             self.history.push(completed)
-            if isinstance(completed.status, Failure) and mode.name == "autocalibration":
-                log.warning("Stopping execution due to error in validation.")
-                yield task.uid
-                break
-            self.head = self.next()
-            update = self.update and task.update
-            if (
-                mode.name in ["autocalibration", "fit"]
-                and self.platform is not None
-                and update
-            ):
-                task.update_platform(results=completed.results, platform=self.platform)
-            yield task.uid
+            if mode.name == "autocalibration":
+                # TODO: find a way to use new parameters
+                new_head, new_params = completed.validate()
+
+                if new_params is not None:
+                    # if new_params are present we update the parameters of the
+                    # node pointed by the validator and we move the head
+                    self.graph.task(new_head).action.parameters.update(new_params)
+                    self.head = new_head
+                else:
+                    # normal flow
+                    self.head = self.next()
+            else:
+                self.head = self.next()
+            if mode.name in ["autocalibration", "fit"] and self.platform is not None:
+                completed.update_platform(platform=self.platform, update=self.update)
+
+            yield completed.task.uid

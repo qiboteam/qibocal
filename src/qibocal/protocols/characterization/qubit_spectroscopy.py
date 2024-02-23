@@ -9,7 +9,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Parameters, Results, Routine
 
 from .resonator_spectroscopy import ResonatorSpectroscopyData, ResSpecType
 from .utils import lorentzian_fit, spectroscopy_plot
@@ -46,7 +46,7 @@ class QubitSpectroscopyData(ResonatorSpectroscopyData):
 
 
 def _acquisition(
-    params: QubitSpectroscopyParameters, platform: Platform, qubits: Qubits
+    params: QubitSpectroscopyParameters, platform: Platform, targets: list[QubitId]
 ) -> QubitSpectroscopyData:
     """Data acquisition for qubit spectroscopy."""
     # create a sequence of pulses for the experiment:
@@ -57,7 +57,7 @@ def _acquisition(
     ro_pulses = {}
     qd_pulses = {}
     amplitudes = {}
-    for qubit in qubits:
+    for qubit in targets:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.drive_duration
         )
@@ -79,7 +79,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        pulses=[qd_pulses[qubit] for qubit in qubits],
+        pulses=[qd_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
 
@@ -134,13 +134,13 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     )
 
 
-def _plot(data: QubitSpectroscopyData, qubit, fit: QubitSpectroscopyResults):
+def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyResults):
     """Plotting function for QubitSpectroscopy."""
-    return spectroscopy_plot(data, qubit, fit)
+    return spectroscopy_plot(data, target, fit)
 
 
-def _update(results: QubitSpectroscopyResults, platform: Platform, qubit: QubitId):
-    update.drive_frequency(results.frequency[qubit], platform, qubit)
+def _update(results: QubitSpectroscopyResults, platform: Platform, target: QubitId):
+    update.drive_frequency(results.frequency[target], platform, target)
 
 
 qubit_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
