@@ -184,7 +184,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
     )
     fig.add_trace(
         go.Scatter(
-            x=np.concatenate((frequencies, frequencies[::-1])),
+            x=np.concatenate((frequencies, frequencies[::-1]))*HZ_TO_GHZ,
             y=np.concatenate((signal + errors_signal, (signal - errors_signal)[::-1])),
             fill="toself",
             fillcolor=COLORBAND,
