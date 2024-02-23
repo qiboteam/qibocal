@@ -134,7 +134,6 @@ def _acquisition(
             qubits[qubit].readout.attenuation = params.attenuation
 
         try:
-
             attenuation = qubits[qubit].readout.attenuation
         except AttributeError:
             attenuation = None
