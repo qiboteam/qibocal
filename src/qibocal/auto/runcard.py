@@ -65,6 +65,10 @@ class Runcard:
     max_iterations: int = MAX_ITERATIONS
     """Maximum number of iterations."""
 
+    def __post_init__(self):
+        if self.targets is None and self.platform_obj is not None:
+            self.targets = list(self.platform_obj.qubits)
+
     @cached_property
     def backend_obj(self) -> Backend:
         """Allocate backend."""
