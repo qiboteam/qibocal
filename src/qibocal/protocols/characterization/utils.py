@@ -281,7 +281,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
 
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Frequency [Hz]",
+        xaxis_title="Frequency [GHz]",
         yaxis_title="Signal [a.u.]",
         xaxis2_title="Frequency [Hz]",
         yaxis2_title="Phase [rad]",
