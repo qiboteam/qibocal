@@ -11,7 +11,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.characterization.utils import HZ_TO_GHZ, table_dict, table_html
 
@@ -66,7 +66,7 @@ class ResonatorFrequencyData(Data):
 
 
 def _acquisition(
-    params: ResonatorFrequencyParameters, platform: Platform, qubits: Qubits
+    params: ResonatorFrequencyParameters, platform: Platform, targets: list[QubitId]
 ) -> ResonatorFrequencyData:
     r"""
     Data acquisition for readout frequency optimization.
@@ -78,7 +78,7 @@ def _acquisition(
     Args:
         params (ResonatorFrequencyParameters): experiment's parameters
         platform (Platform): Qibolab platform object
-        qubits (dict): list of target qubits to perform the action
+        qubits (list): list of target qubits to perform the action
 
     """
 
@@ -91,7 +91,7 @@ def _acquisition(
     sequence_1 = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
-    for qubit in qubits:
+    for qubit in targets:
         qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
@@ -109,7 +109,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        pulses=[ro_pulses[qubit] for qubit in qubits],
+        pulses=[ro_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
 
@@ -134,7 +134,7 @@ def _acquisition(
     )
 
     # retrieve the results for every qubit
-    for qubit in qubits:
+    for qubit in targets:
         for k, freq in enumerate(delta_frequency_range):
             i_values = []
             q_values = []
@@ -183,10 +183,12 @@ def _fit(data: ResonatorFrequencyData) -> ResonatorFrequencyResults:
     )
 
 
-def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
+def _plot(
+    data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, target: QubitId
+):
     """Plotting function for Optimization RO frequency."""
     figures = []
-    freqs = data[qubit]["freq"]
+    freqs = data[target]["freq"]
     opacity = 1
     fitting_report = ""
     fig = make_subplots(
@@ -197,7 +199,7 @@ def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
         fig.add_trace(
             go.Scatter(
                 x=freqs,
-                y=data[qubit]["assignment_fidelity"],
+                y=data[target]["assignment_fidelity"],
                 opacity=opacity,
                 showlegend=True,
             ),
@@ -207,9 +209,9 @@ def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
 
         fitting_report = table_html(
             table_dict(
-                qubit,
+                target,
                 "Best Resonator Frequency [Hz]",
-                np.round(fit.best_freq[qubit], 4),
+                np.round(fit.best_freq[target], 4),
             )
         )
 
@@ -224,10 +226,10 @@ def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
     return figures, fitting_report
 
 
-def _update(results: ResonatorFrequencyResults, platform: Platform, qubit: QubitId):
-    update.readout_frequency(results.best_freq[qubit], platform, qubit)
-    update.threshold(results.best_threshold[qubit], platform, qubit)
-    update.iq_angle(results.best_angle[qubit], platform, qubit)
+def _update(results: ResonatorFrequencyResults, platform: Platform, target: QubitId):
+    update.readout_frequency(results.best_freq[target], platform, target)
+    update.threshold(results.best_threshold[target], platform, target)
+    update.iq_angle(results.best_angle[target], platform, target)
 
 
 resonator_frequency = Routine(_acquisition, _fit, _plot, _update)

@@ -9,7 +9,7 @@ from ..auto.execute import Executor
 from ..auto.history import add_timings_to_meta
 from ..auto.mode import ExecutionMode
 from ..auto.runcard import Runcard
-from .utils import META, RUNCARD, UPDATED_PLATFORM, create_qubits_dict
+from .utils import META, RUNCARD, UPDATED_PLATFORM
 
 
 def fit(path, update):
@@ -29,11 +29,10 @@ def fit(path, update):
     GlobalBackend.set_backend(backend=meta["backend"], platform=meta["platform"])
     backend = GlobalBackend()
     platform = backend.platform
-    qubits = create_qubits_dict(qubits=runcard.qubits, platform=platform)
 
     # load executor
     executor = Executor.load(
-        runcard, path, update=update, platform=platform, qubits=qubits
+        runcard, path, update=update, platform=platform, targets=runcard.targets
     )
 
     # perform post-processing
@@ -47,7 +46,9 @@ def fit(path, update):
     # dump updated runcard
     if platform is not None and update:  # pragma: no cover
         # cannot test update since dummy may produce wrong values and trigger errors
+        (path / UPDATED_PLATFORM).mkdir(parents=True, exist_ok=True)
         dump_runcard(platform, path / UPDATED_PLATFORM)
 
     # dump json
+
     (path / META).write_text(json.dumps(meta, indent=4))

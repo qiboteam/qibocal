@@ -1,4 +1,5 @@
 """CZ virtual correction experiment for two qubit gates, tune landscape."""
+
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -7,8 +8,9 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab.platform import Platform
+from qibolab.qubits import QubitPairId
 
-from qibocal.auto.operation import Data, Parameters, QubitsPairs, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 
 from .cz_virtualz import cz_virtualz
 
@@ -89,7 +91,7 @@ class TuneLandscapeData(Data):
 def _acquisition(
     params: TuneLandscapeParameters,
     platform: Platform,
-    qubits: QubitsPairs,
+    targets: list[QubitPairId],
 ) -> TuneLandscapeData:
     r"""
     Acquisition for tune landscape.
@@ -123,11 +125,11 @@ def _acquisition(
                     )
                 ),
                 platform=platform,
-                qubits=qubits,
+                targets=targets,
             )
             cz_fit, _ = cz_virtualz.fit(cz_data)
 
-            for pair in qubits:
+            for pair in targets:
                 for target_q, control_q in (
                     pair,
                     list(pair)[::-1],
@@ -151,8 +153,8 @@ def _fit(
     return TuneLandscapeResults()
 
 
-def _plot(data: TuneLandscapeData, fit: TuneLandscapeResults, qubit):
-    pair_data = data[qubit]
+def _plot(data: TuneLandscapeData, fit: TuneLandscapeResults, target: QubitPairId):
+    pair_data = data[target]
     qubits = next(iter(pair_data))[:2]
     fig1 = make_subplots(
         rows=1,

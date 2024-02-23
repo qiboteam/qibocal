@@ -1,12 +1,14 @@
 """CZ virtual correction experiment for two qubit gates, tune landscape."""
+
 from dataclasses import dataclass
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
+from qibolab.qubits import QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import QubitsPairs, Routine
+from qibocal.auto.operation import Routine
 from qibocal.protocols.characterization.two_qubit_interaction.chevron import order_pair
 
 from .cz_virtualz import (
@@ -41,7 +43,7 @@ class CZVirtualZSignalData(CZVirtualZData):
 def _acquisition(
     params: CZVirtualZSignalParameters,
     platform: Platform,
-    qubits: QubitsPairs,
+    targets: list[QubitPairId],
 ) -> CZVirtualZSignalData:
     r"""
     Acquisition for CZVirtualZ.
@@ -62,9 +64,9 @@ def _acquisition(
 
     theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
     data = CZVirtualZData(thetas=theta_absolute.tolist())
-    for pair in qubits:
+    for pair in targets:
         # order the qubits so that the low frequency one is the first
-        ord_pair = order_pair(pair, platform.qubits)
+        ord_pair = order_pair(pair, platform)
 
         for target_q, control_q in (
             (ord_pair[0], ord_pair[1]),
@@ -124,9 +126,11 @@ def _acquisition(
     return data
 
 
-def _plot(data: CZVirtualZSignalData, fit: CZVirtualZSignalResults, qubit):
+def _plot(
+    data: CZVirtualZSignalData, fit: CZVirtualZSignalResults, target: QubitPairId
+):
     """Plot routine for CZVirtualZ."""
-    figs, fitting_report = _plot_prob(data, fit, qubit)
+    figs, fitting_report = _plot_prob(data, fit, target)
 
     for fig in figs:
         fig.update_layout(

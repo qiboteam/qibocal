@@ -1,4 +1,5 @@
 """SWAP experiment for two qubit gates, chevron plot."""
+
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -14,7 +15,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.protocols.characterization.utils import table_dict, table_html
 
 from .utils import fit_flux_amplitude, order_pair
@@ -86,7 +87,7 @@ class ChevronData(Data):
 def _aquisition(
     params: ChevronParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitPairId],
 ) -> ChevronData:
     r"""
     Perform an iSWAP/CZ experiment between pairs of qubits by changing its frequency.
@@ -94,7 +95,7 @@ def _aquisition(
     Args:
         platform: Platform to use.
         params: Experiment parameters.
-        qubits: Qubits to use.
+        targets (list): List of pairs to use sequentially.
 
     Returns:
         ChevronData: Acquisition data.
@@ -102,10 +103,10 @@ def _aquisition(
 
     # create a DataUnits object to store the results,
     data = ChevronData()
-    for pair in qubits:
+    for pair in targets:
         # order the qubits so that the low frequency one is the first
         sequence = PulseSequence()
-        ordered_pair = order_pair(pair, platform.qubits)
+        ordered_pair = order_pair(pair, platform)
         # initialize in system in 11 state
         initialize_lowfreq = platform.create_RX_pulse(
             ordered_pair[0], start=0, relative_phase=0
@@ -126,9 +127,7 @@ def _aquisition(
         # Patch to get the coupler until the routines use QubitPair
         if platform.couplers:
             sequence.add(
-                cz.coupler_pulses(
-                    platform.pairs[tuple(sorted(ordered_pair))].coupler.name
-                )
+                cz.coupler_pulses(platform.pairs[tuple(ordered_pair)].coupler.name)
             )
 
         if params.parking:
@@ -230,21 +229,21 @@ def _fit(data: ChevronData) -> ChevronResults:
     return ChevronResults(amplitude=amplitudes, duration=durations)
 
 
-def _plot(data: ChevronData, fit: ChevronResults, qubit):
+def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     """Plot the experiment result for a single pair."""
 
     # reverse qubit order if not found in data
-    if qubit not in data.data:
-        qubit = (qubit[1], qubit[0])
+    if target not in data.data:
+        target = (target[1], target[0])
 
-    pair_data = data[qubit]
+    pair_data = data[target]
 
     fig = make_subplots(
         rows=1,
         cols=2,
         subplot_titles=(
-            f"Qubit {qubit[0]} - Low Frequency",
-            f"Qubit {qubit[1]} - High Frequency",
+            f"Qubit {target[0]} - Low Frequency",
+            f"Qubit {target[1]} - High Frequency",
         ),
     )
     fitting_report = ""
@@ -271,15 +270,15 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
         col=2,
     )
 
-    for measured_qubit in qubit:
+    for measured_qubit in target:
         if fit is not None:
             fig.add_trace(
                 go.Scatter(
                     x=[
-                        fit.duration[qubit],
+                        fit.duration[target],
                     ],
                     y=[
-                        fit.amplitude[qubit],
+                        fit.amplitude[target],
                     ],
                     mode="markers",
                     marker=dict(
@@ -288,11 +287,11 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
                         symbol="cross",
                     ),
                     name="CZ estimate",
-                    showlegend=True if measured_qubit == qubit[0] else False,
+                    showlegend=True if measured_qubit == target[0] else False,
                     legendgroup="Voltage",
                 ),
                 row=1,
-                col=1 if measured_qubit == qubit[0] else 2,
+                col=1 if measured_qubit == target[0] else 2,
             )
 
     fig.update_layout(
@@ -309,20 +308,20 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
     if fit is not None:
         fitting_report = table_html(
             table_dict(
-                qubit[1],
+                target[1],
                 ["CZ amplitude", "CZ duration"],
-                [fit.amplitude[qubit], fit.duration[qubit]],
+                [fit.amplitude[target], fit.duration[target]],
             )
         )
 
     return [fig], fitting_report
 
 
-def _update(results: ChevronResults, platform: Platform, qubit_pair: QubitPairId):
-    if qubit_pair not in results.duration:
-        qubit_pair = (qubit_pair[1], qubit_pair[0])
-    update.CZ_duration(results.duration[qubit_pair], platform, qubit_pair)
-    update.CZ_amplitude(results.amplitude[qubit_pair], platform, qubit_pair)
+def _update(results: ChevronResults, platform: Platform, target: QubitPairId):
+    if target not in results.duration:
+        target = (target[1], target[0])
+    update.CZ_duration(results.duration[target], platform, target)
+    update.CZ_amplitude(results.amplitude[target], platform, target)
 
 
 chevron = Routine(_aquisition, _fit, _plot, _update, two_qubit_gates=True)

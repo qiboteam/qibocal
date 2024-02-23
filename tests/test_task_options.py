@@ -1,4 +1,5 @@
 """Test routines' acquisition method using dummy platform"""
+
 from copy import deepcopy
 
 import pytest
@@ -15,11 +16,11 @@ from qibocal.protocols.characterization.classification import (
 from qibocal.protocols.characterization.readout_mitigation_matrix import (
     ReadoutMitigationMatrixParameters,
 )
-from qibocal.utils import allocate_single_qubits
 
 PLATFORM = create_platform("dummy")
 QUBITS = list(PLATFORM.qubits)
 DUMMY_CARD = {
+    "backend": "numpy",
     "qubits": QUBITS,
     "actions": [
         {
@@ -36,32 +37,35 @@ DUMMY_CARD = {
 }
 
 
-def modify_card(card, qubits=None, update=None):
-    """Modify runcard to change local qubits or update."""
+def modify_card(card, targets=None, update=None):
+    """Modify runcard to change local targets or update."""
     for action in card["actions"]:
-        if qubits is not None:
-            action["qubits"] = qubits
+        if targets is not None:
+            action["targets"] = targets
         elif update is not None:
             action["update"] = update
     return card
 
 
 @pytest.mark.parametrize("platform", [None, PLATFORM])
-@pytest.mark.parametrize("local_qubits", [[], [0, 1]])
-def test_qubits_argument(platform, local_qubits):
+@pytest.mark.parametrize("local_targets", [None, [0, 1]])
+def test_qubits_argument(platform, local_targets, tmp_path):
     """Test possible qubits combinations between global and local."""
-    runcard = Runcard.load(modify_card(DUMMY_CARD, qubits=local_qubits))
+    runcard = Runcard.load(modify_card(DUMMY_CARD, targets=local_targets))
+    print(runcard)
     task = Task(runcard.actions[0])
-    global_qubits = (
-        allocate_single_qubits(platform, QUBITS) if platform is not None else QUBITS
-    )
-    task._allocate_local_qubits(global_qubits, platform)
 
-    _, _ = task.operation.acquisition(task.parameters, platform, global_qubits)
-    if local_qubits:
-        assert task.qubits == local_qubits
+    completed = task.run(
+        max_iterations=1,
+        platform=platform,
+        targets=list(QUBITS),
+        mode=ExecutionMode.acquire,
+        folder=tmp_path,
+    )
+    if local_targets:
+        assert completed.task.targets == local_targets
     else:
-        assert task.qubits == QUBITS
+        assert completed.task.targets == list(QUBITS)
 
 
 UPDATE_CARD = {
@@ -93,27 +97,28 @@ UPDATE_CARD = {
 @pytest.mark.parametrize("local_update", [True, False])
 def test_update_argument(global_update, local_update, tmp_path):
     """Test possible update combinations between global and local."""
-    platform = deepcopy(create_platform("dummy"))
-    old_readout_frequency = platform.qubits[0].readout_frequency
-    old_iq_angle = platform.qubits[1].iq_angle
-    NEW_CARD = modify_card(deepcopy(UPDATE_CARD), update=local_update)
+    platform = create_platform("dummy")
+    NEW_CARD = modify_card(UPDATE_CARD, update=local_update)
     executor = Executor.load(
         Runcard.load(NEW_CARD),
         tmp_path,
         platform,
         platform.qubits,
-        global_update,
+        update=global_update,
     )
+
+    old_readout_frequency = executor.platform.qubits[0].readout_frequency
+    old_iq_angle = executor.platform.qubits[1].iq_angle
 
     list(executor.run(mode=ExecutionMode.autocalibration))
 
     if local_update and global_update:
-        assert old_readout_frequency != platform.qubits[0].readout_frequency
-        assert old_iq_angle != platform.qubits[1].iq_angle
+        assert old_readout_frequency != executor.platform.qubits[0].readout_frequency
+        assert old_iq_angle != executor.platform.qubits[1].iq_angle
 
     else:
-        assert old_readout_frequency == platform.qubits[0].readout_frequency
-        assert old_iq_angle == platform.qubits[1].iq_angle
+        assert old_readout_frequency == executor.platform.qubits[0].readout_frequency
+        assert old_iq_angle == executor.platform.qubits[1].iq_angle
 
 
 @pytest.mark.parametrize(
