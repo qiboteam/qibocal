@@ -24,7 +24,7 @@ actions:
 
   - id: resonator high power low attenuation
     priority: 0
-    operation: resonator_spectroscopy_attenuation
+    operation: resonator_spectroscopy
     parameters:
       freq_width: 10_000_000 # 20_000_000
       freq_step: 100_000 # 500_00
@@ -35,7 +35,7 @@ actions:
 
   - id: resonator low power high attenuation
     priority: 0
-    operation: resonator_spectroscopy_attenuation
+    operation: resonator_spectroscopy
     parameters:
       freq_width: 10_000_000 # 20_000_000
       freq_step: 100_000 # 500_00
