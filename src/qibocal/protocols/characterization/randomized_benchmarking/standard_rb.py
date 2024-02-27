@@ -293,6 +293,7 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     fitting_report = ""
     x = data.depths
     raw_data = data.extract_probabilities(qubit)
+    y = np.mean(raw_data, axis=1)
     raw_depths = [[depth] * data.niter for depth in data.depths]
 
     fig.add_trace(
@@ -309,7 +310,7 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     fig.add_trace(
         go.Scatter(
             x=x,
-            y=np.mean(raw_data, axis=1),
+            y=y,
             line=dict(color="#aa6464"),
             mode="markers",
             name="average",
@@ -353,7 +354,7 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
             fig.add_trace(
                 go.Scatter(
                     x=x,
-                    y=np.mean(raw_data, axis=1),  # TODO: move this
+                    y=y,
                     error_y=error_y_dict,
                     line={"color": "#aa6464"},
                     mode="markers",
