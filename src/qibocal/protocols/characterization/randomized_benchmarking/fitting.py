@@ -125,7 +125,6 @@ def fit_exp1B_func(
                 ydata,
                 **kwargs,
             )
-            print("PCOV", xdata, ydata, pcov)
             popt = tuple(popt)
             perr = tuple(np.sqrt(np.diag(pcov)))
         except Exception as e:
