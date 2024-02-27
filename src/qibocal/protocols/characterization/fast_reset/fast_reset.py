@@ -9,7 +9,7 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.protocols.characterization.utils import table_dict, table_html
 
 # TODO: IBM Fast Reset until saturation loop
@@ -52,7 +52,7 @@ class FastResetData(Data):
 
 
 def _acquisition(
-    params: FastResetParameters, platform: Platform, qubits: Qubits
+    params: FastResetParameters, platform: Platform, targets: list[QubitId]
 ) -> FastResetData:
     """Data acquisition for resonator spectroscopy."""
 
@@ -64,7 +64,7 @@ def _acquisition(
                 RX_pulses = {}
             ro_pulses = {}
             sequence = PulseSequence()
-            for qubit in qubits:
+            for qubit in targets:
                 if state == 1:
                     RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
                     ro_pulses[qubit] = platform.create_qubit_readout_pulse(
@@ -154,7 +154,7 @@ def _fit(data: FastResetData) -> FastResetResults:
     return FastResetResults(fidelity_nfr, Lambda_M_nfr, fidelity_fr, Lambda_M_fr)
 
 
-def _plot(data: FastResetData, fit: FastResetResults, qubit):
+def _plot(data: FastResetData, fit: FastResetResults, target: QubitId):
     """Plotting function for FastReset."""
 
     # Maybe the plot can just be something like a confusion matrix between 0s and 1s ???
@@ -175,7 +175,7 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
     if fit is not None:
         fig.add_trace(
             go.Heatmap(
-                z=fit.Lambda_M_fr[qubit],
+                z=fit.Lambda_M_fr[target],
                 coloraxis="coloraxis",
             ),
             row=1,
@@ -183,18 +183,18 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
         )
         fitting_report = table_html(
             table_dict(
-                qubit,
+                target,
                 ["Fidelity [Fast Reset]", "Fidelity [Relaxation Time]"],
                 [
-                    np.round(fit.fidelity_fr[qubit], 6),
-                    np.round(fit.fidelity_nfr[qubit], 6),
+                    np.round(fit.fidelity_fr[target], 6),
+                    np.round(fit.fidelity_nfr[target], 6),
                 ],
             )
         )
 
         fig.add_trace(
             go.Heatmap(
-                z=fit.Lambda_M_nfr[qubit],
+                z=fit.Lambda_M_nfr[target],
                 coloraxis="coloraxis",
             ),
             row=1,
@@ -202,7 +202,7 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
         )
 
     fig.update_xaxes(
-        title_text=f"{qubit}: Fast Reset",
+        title_text=f"{target}: Fast Reset",
         row=1,
         col=1,
     )

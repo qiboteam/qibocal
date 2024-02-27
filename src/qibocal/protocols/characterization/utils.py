@@ -128,17 +128,31 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
     ]
     # fit the model with the data and guessed parameters
     try:
-        fit_parameters, _ = curve_fit(
-            lorentzian,
-            frequencies,
-            voltages,
-            p0=model_parameters,
-        )
+        if hasattr(data, "error_signal"):
+            fit_parameters, perr = curve_fit(
+                lorentzian,
+                frequencies,
+                voltages,
+                p0=model_parameters,
+                sigma=data.error_signal,
+            )
+            perr = np.sqrt(np.diag(perr)).tolist()
+        else:
+            fit_parameters, perr = curve_fit(
+                lorentzian,
+                frequencies,
+                voltages,
+                p0=model_parameters,
+            )
+            perr = [0] * 4
         model_parameters = list(fit_parameters)
     except RuntimeError:
         log.warning("lorentzian_fit: the fitting was not successful")
-
-    return model_parameters[1] * GHZ_TO_HZ, model_parameters
+        perr = [1] * 4
+    for i in range(len(model_parameters) - 1):
+        model_parameters[i] *= GHZ_TO_HZ
+        perr[i] *= GHZ_TO_HZ
+    return model_parameters[1], model_parameters, perr
 
 
 def spectroscopy_plot(data, qubit, fit: Results = None):
@@ -151,12 +165,15 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
     )
     qubit_data = data[qubit]
     fitting_report = ""
-
     frequencies = qubit_data.freq * HZ_TO_GHZ
+    signal = qubit_data.signal
+    errors_signal = qubit_data.error_signal
+    errors_phase = qubit_data.error_phase
+    phase = qubit_data.phase
     fig.add_trace(
         go.Scatter(
             x=frequencies,
-            y=qubit_data.signal,
+            y=signal,
             opacity=1,
             name="Frequency",
             showlegend=True,
@@ -167,8 +184,21 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
     )
     fig.add_trace(
         go.Scatter(
+            x=np.concatenate((frequencies, frequencies[::-1])),
+            y=np.concatenate((signal + errors_signal, (signal - errors_signal)[::-1])),
+            fill="toself",
+            fillcolor=COLORBAND,
+            line=dict(color=COLORBAND_LINE),
+            showlegend=True,
+            name="Signal Errors",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
             x=frequencies,
-            y=qubit_data.phase,
+            y=phase,
             opacity=1,
             name="Phase",
             showlegend=True,
@@ -177,7 +207,19 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         row=1,
         col=2,
     )
-
+    fig.add_trace(
+        go.Scatter(
+            x=np.concatenate((frequencies, frequencies[::-1])),
+            y=np.concatenate((phase + errors_phase, (phase - errors_phase)[::-1])),
+            fill="toself",
+            fillcolor=COLORBAND,
+            line=dict(color=COLORBAND_LINE),
+            showlegend=True,
+            name="Phase Errors",
+        ),
+        row=1,
+        col=2,
+    )
     freqrange = np.linspace(
         min(frequencies),
         max(frequencies),
@@ -190,7 +232,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
-                y=lorentzian(freqrange, *params),
+                y=lorentzian(freqrange * GHZ_TO_HZ, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
             ),
@@ -199,31 +241,47 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         )
 
         if data.power_level is PowerLevel.low:
-            label = "readout frequency"
+            label = "readout frequency[Hz]"
             freq = fit.frequency
         elif data.power_level is PowerLevel.high:
-            label = "bare resonator frequency"
+            label = "bare resonator frequency[Hz]"
             freq = fit.bare_frequency
         else:
-            label = "qubit frequency"
+            label = "qubit frequency[Hz]"
             freq = fit.frequency
 
-        if fit.amplitude[qubit] is not None:
+        if data.amplitudes[qubit] is not None:
             fitting_report = table_html(
                 table_dict(
                     qubit,
-                    [label, "amplitude"],
-                    [np.round(freq[qubit], 0), fit.amplitude[qubit]],
+                    [label, "amplitude", "chi2 reduced"],
+                    [
+                        (
+                            freq[qubit],
+                            fit.error_fit_pars[qubit][1],
+                        ),
+                        (data.amplitudes[qubit], 0),
+                        fit.chi2_reduced[qubit],
+                    ],
+                    display_error=True,
                 )
             )
-
-        if data.__class__.__name__ == "ResonatorSpectroscopyAttenuationData":
-            if fit.attenuation[qubit] is not None and fit.attenuation[qubit] != 0:
+        if data.attenuations:
+            if data.attenuations[qubit] is not None:
                 fitting_report = table_html(
                     table_dict(
                         qubit,
-                        [label, "attenuation"],
-                        [np.round(freq[qubit], 0), fit.attenuation[qubit]],
+                        [label, "amplitude", "attenuation", "chi2 reduced"],
+                        [
+                            (
+                                freq[qubit],
+                                fit.error_fit_pars[qubit][1],
+                            ),
+                            (data.amplitudes[qubit], 0),
+                            (data.attenuations[qubit], 0),
+                            fit.chi2_reduced[qubit],
+                        ],
+                        display_error=True,
                     )
                 )
 

@@ -36,7 +36,7 @@ def generate_runcard_single_protocol():
         for action in actions["actions"]:
             card = {
                 "actions": [action],
-                "qubits": actions["qubits"],
+                "targets": list(PLATFORM.qubits),
                 "backend": backend,
             }
             if "platform" in actions:

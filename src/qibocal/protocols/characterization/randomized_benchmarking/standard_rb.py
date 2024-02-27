@@ -8,7 +8,7 @@ from qibo.backends import GlobalBackend
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.bootstrap import data_uncertainties
 from qibocal.config import raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
@@ -111,14 +111,14 @@ class StandardRBResult(Results):
     """Error bars for y."""
 
 
-def layer_gen(nqubit_ids, seed):
+def layer_gen(targets, seed):
     """Returns a circuit with a random single-qubit clifford unitary."""
-    return random_clifford(nqubit_ids, seed)
+    return random_clifford(targets, seed)
 
 
 def random_circuits(
     depth: int,
-    qubit_ids: Union[Qubits, list[QubitId]],
+    targets: list[QubitId],
     niter,
     seed,
     noise_model=None,
@@ -127,7 +127,7 @@ def random_circuits(
 
     Args:
         params (StandardRBParameters): Parameters of the RB protocol.
-        qubits (dict[int, Union[str, int]] or list[Union[str, int]]):
+        targets (list[QubitId]):
             list of qubits the circuit is executed on.
         nqubits (int, optional): Number of qubits of the resulting circuits.
             If ``None``, sets ``len(qubits)``. Defaults to ``None``.
@@ -138,8 +138,8 @@ def random_circuits(
 
     circuits = []
     for _ in range(niter):
-        for qubit in qubit_ids:
-            circuit = layer_circuit(layer_gen, depth, qubit, seed)
+        for target in targets:
+            circuit = layer_circuit(layer_gen, depth, target, seed)
             add_inverse_layer(circuit)
             add_measurement_layer(circuit)
             if noise_model is not None:
@@ -152,7 +152,7 @@ def random_circuits(
 def _acquisition(
     params: StandardRBParameters,
     platform: Platform,
-    qubits: Union[Qubits, list[QubitId]],
+    targets: list[QubitId],
 ) -> RBData:
     """The data acquisition stage of Standard Randomized Benchmarking.
 
@@ -182,7 +182,7 @@ def _acquisition(
         noise_model = getattr(noisemodels, params.noise_model)(params.noise_params)
         params.noise_params = noise_model.params.tolist()
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
-    nqubits = len(qubits)
+    nqubits = len(targets)
     data = RBData(
         depths=params.depths,
         uncertainties=params.uncertainties,
@@ -193,7 +193,7 @@ def _acquisition(
 
     circuits = []
     samples = []
-    qubits_ids = list(qubits)
+    qubits_ids = targets
     for depth in params.depths:
         # TODO: This does not generate multi qubit circuits
         circuits_depth = random_circuits(
@@ -214,7 +214,7 @@ def _acquisition(
     samples = np.reshape(samples, (-1, nqubits, params.nshots))
     for i, depth in enumerate(params.depths):
         index = (i * params.niter, (i + 1) * params.niter)
-        for nqubit, qubit_id in enumerate(qubits):
+        for nqubit, qubit_id in enumerate(targets):
             data.register_qubit(
                 RBType,
                 (qubit_id, depth),
@@ -275,19 +275,22 @@ def _fit(data: RBData) -> StandardRBResult:
     return StandardRBResult(fidelity, pulse_fidelity, popts, perrs, error_barss)
 
 
-def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], str]:
+def _plot(
+    data: RBData, fit: StandardRBResult, target: QubitId
+) -> tuple[list[go.Figure], str]:
     """Builds the table for the qq pipe, calls the plot function of the result object
     and returns the figure es list.
 
     Args:
         data (RBData): Data object used for the table.
         fit (StandardRBResult): Is called for the plot.
-        qubit (_type_): Not used yet.
+        target (_type_): Not used yet.
 
     Returns:
         tuple[list[go.Figure], str]:
     """
 
+    qubit = target
     fig = go.Figure()
     fitting_report = ""
     x = data.depths
