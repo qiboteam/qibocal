@@ -85,6 +85,15 @@ class RBData(Data):
     data: dict[QubitId, npt.NDArray[RBType]] = field(default_factory=dict)
     """Raw data acquired."""
 
+    def extract_probabilities(self, qubit):
+        """Extract the probabilities given `qubit`"""
+        probs = []
+        for depth in self.depths:
+            data_list = np.array(self.data[qubit, depth].tolist())
+            data_list = data_list.reshape((-1, self.nshots))
+            probs.append(np.count_nonzero(1 - data_list, axis=1) / data_list.shape[1])
+        return probs
+
 
 @dataclass
 class StandardRBResult(Results):
@@ -236,12 +245,7 @@ def _fit(data: RBData) -> StandardRBResult:
     for qubit in qubits:
         # Extract depths and probabilities
         x = data.depths
-        probs = []
-        for depth in data.depths:
-
-            data_list = np.array(data.data[qubit, depth].tolist())
-            data_list = data_list.reshape((-1, data.nshots))
-            probs.append(np.count_nonzero(1 - data_list, axis=1) / data_list.shape[1])
+        probs = data.extract_probabilities(qubit)
         samples_mean = np.mean(probs, axis=1)
         # TODO: Should we use the median or the mean?
         median = np.median(probs, axis=1)
@@ -288,15 +292,8 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     fig = go.Figure()
     fitting_report = ""
     x = data.depths
-    raw_depths = []
-    raw_data = []
-    for depth in x:
-        # TODO: Make function
-        data_list = np.array(data.data[qubit, depth].tolist())
-        data_list = data_list.reshape((-1, data.nshots))
-        raw_data.append(np.count_nonzero(1 - data_list, axis=1) / data_list.shape[1])
-
-        raw_depths.append([depth] * data.niter)
+    raw_data = data.extract_probabilities(qubit)
+    raw_depths = [[depth] * data.niter for depth in data.depths]
 
     fig.add_trace(
         go.Scatter(
