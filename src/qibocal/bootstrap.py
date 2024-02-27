@@ -9,10 +9,10 @@ def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
     Args:
         data (list or np.ndarray): 2d array with rows containing data points
             from which the median value is extracted.
-        method (str or int or float, optional): method of computing the method.
-            If ``"std"``, computes the standard deviation. If number between 0 and 100,
+        method (float, optional): method of computing the method.
+            If it is `None`, computes the standard deviation, otherwise it
             computes the corresponding confidence interval using ``np.percentile``.
-            Otherwise, returns ``None``. Defaults to ``None``.
+            Defaults to ``None``.
         data_median (list or np.ndarray, optional): 1d array for computing the errors from the
             confidence interval. If ``None``, the median values are computed from ``data``.
         homogeneous (bool): if ``True``, assumes that all rows in ``data`` are of the same size
@@ -22,11 +22,9 @@ def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
         np.ndarray: uncertainties of the data.
     """
 
-    if method == "std":
+    if method is None:
         return np.std(data, axis=1) if homogeneous else [np.std(row) for row in data]
 
-    if isinstance(method, (int, float)) and not 0 <= method <= 100:
-        raise ValueError("Uncertainties must be a number between 0 and 100 or 'std'.")
     else:
 
         if data_median is None:
@@ -40,13 +38,11 @@ def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
             (100 - method) / 2,
             (100 + method) / 2,
         ]
-        print(data)
         percentile_inteval = (
             np.percentile(data, percentiles, axis=1)
             if homogeneous
             else np.array([np.percentile(row, percentiles) for row in data]).T
         )
-        print(data_median, percentile_inteval)
         uncertainties = np.abs(
             np.vstack([data_median, data_median]) - percentile_inteval
         )

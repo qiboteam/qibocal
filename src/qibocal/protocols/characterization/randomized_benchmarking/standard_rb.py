@@ -16,7 +16,7 @@ from qibocal.protocols.characterization.randomized_benchmarking import noisemode
 from ..utils import table_dict, table_html
 from .circuit_tools import add_inverse_layer, add_measurement_layer, layer_circuit
 from .fitting import exp1B_func, fit_exp1B_func
-from .utils import number_to_str, random_clifford, samples_to_p0s
+from .utils import number_to_str, random_clifford
 
 NPULSES_PER_CLIFFORD = 1.875
 
@@ -37,7 +37,7 @@ class StandardRBParameters(Parameters):
     """A list of depths/sequence lengths. If a dictionary is given the list will be build."""
     niter: int
     """Sets how many iterations over the same depth value."""
-    uncertainties: Union[str, float] = 95
+    uncertainties: Optional[float] = None  # TODO: Change docstring
     """Method of computing the error bars of the signal and uncertainties of the fit. If ``None``,
     does not compute them. If ``"std"``, computes the standard deviation. If ``float`` or ``int``
     between 0 and 100, computes the corresponding confidence interval. Defaults to ``95``."""
@@ -167,7 +167,7 @@ def _acquisition(
         RBData: The depths, samples and ground state probability of each experiment in the scan.
     """
 
-    print(qubits)
+    # print(qubits)
     backend = GlobalBackend()
     # For simulations, a noise model can be added.
     noise_model = None
@@ -212,11 +212,11 @@ def _acquisition(
 
     for circ in executed_circuits:
         samples.extend(circ.samples())
-    print(np.concatenate(samples))
+    # print(np.concatenate(samples))
     samples = np.reshape(samples, (-1, nqubits, params.nshots))
     # samples = np.reshape(samples, (params.nshots, -1, nqubits))
     # samples = np.reshape(samples, (-1, params.nshots, nqubits))
-    print(samples, nqubits)
+    # print(samples, nqubits)
     for i, depth in enumerate(params.depths):
         index = (i * params.niter, (i + 1) * params.niter)
         for nqubit, qubit_id in enumerate(qubits):
@@ -251,7 +251,7 @@ def _fit(data: RBData) -> StandardRBResult:
     fidelity, pulse_fidelity = {}, {}
     popts, perrs = {}, {}
     error_barss = {}
-    print(data.data)
+    # print(data.data)
     for qubit in qubits:
         # Extract depths and probabilities
         x = data.depths
@@ -260,7 +260,7 @@ def _fit(data: RBData) -> StandardRBResult:
         n_bootstrap = data.n_bootstrap
 
         popt_estimates = []
-        error_bars = None
+        # error_bars = None
         probs = []
         for depth in data.depths:
 
@@ -321,19 +321,25 @@ def _fit(data: RBData) -> StandardRBResult:
         #     )
 
         # elif uncertainties and n_bootstrap is None:
-        print("probs", probs)
+        # print("probs", probs)
         samples_mean = np.mean(probs, axis=1)
-        print(samples_mean)
+        # print(samples_mean)
 
         # samples_mean = [np.mean(samples[depth], axis=1) for depth in range(len(x))]
         # TODO: Should we use the median or the mean?
         median = np.median(probs, axis=1)
-        print(median)
+        # print(median)
         # TODO: This comes up with huge error bars
         # Compute error bars using the samples we calculate the mean with
+        error_bars = data_uncertainties(
+            probs,
+            method=data.uncertainties,
+            data_median=median,
+        )
+        # Evaluate std for the fitting
         sigma = data_uncertainties(
             probs,
-            method="std",
+            method=None,
             data_median=median,
         )
 
@@ -344,13 +350,18 @@ def _fit(data: RBData) -> StandardRBResult:
         #         if isinstance(error_bars[0], Iterable)
         #         else error_bars
         #     ) + 0.1
+        print("JUANNNN", sigma)
+        print(x, samples_mean)
+        popt, perr = fit_exp1B_func(x, samples_mean, sigma=sigma, bounds=[0, 1])
+        print(perr)
+        # perr = np.sqrt(np.diag(perr)).tolist()
+        print("PERRRRRRRRRR", perr)
 
-        popt, perr = fit_exp1B_func(x, probs, sigma=sigma, bounds=[0, 1])
-        print("FITTTTTTTTTTTT", perr)
+        # print("FITTTTTTTTTTTT", perr)
         # Compute fit uncertainties
-        if len(popt_estimates):
-            perr = data_uncertainties(popt_estimates, uncertainties, data_median=popt)
-            perr = perr.T if perr is not None else (0,) * len(popt)
+        # if len(popt_estimates):
+        #     perr = data_uncertainties(popt_estimates, uncertainties, data_median=popt)
+        #     perr = perr.T if perr is not None else (0,) * len(popt)
 
         # Compute the fidelities
         infidelity = (1 - popt[1]) / 2
@@ -358,8 +369,9 @@ def _fit(data: RBData) -> StandardRBResult:
         pulse_fidelity[qubit] = 1 - infidelity / NPULSES_PER_CLIFFORD
 
         # conversion from np.array to list/tuple
-        error_bars = error_bars.tolist() if error_bars is not None else error_bars
-        perr = perr if isinstance(perr, tuple) else perr.tolist()
+        error_bars = (
+            error_bars.tolist()
+        )  # perr = perr if isinstance(perr, tuple) else perr.tolist()
 
         error_barss[qubit] = error_bars
         perrs[qubit] = perr
@@ -384,14 +396,18 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     fig = go.Figure()
     fitting_report = ""
     x = data.depths
-    y = samples_to_p0s(data, qubit)
+    # y = samples_to_p0s(data, qubit)
     raw_depths = []
     raw_data = []
     for depth in x:
-        print(data.data[(qubit, depth)])
-        new_data = data.data[(qubit, depth)].tolist()
+        # TODO: Make function
+        data_list = np.array(data.data[qubit, depth].tolist())
+        # print(data_list)
+        data_list = data_list.reshape((-1, data.nshots))
+        # print(data_list)
+        raw_data.append(np.count_nonzero(1 - data_list, axis=1) / data_list.shape[1])
+
         raw_depths.append([depth] * data.niter)
-        raw_data.append(np.average(new_data, axis=1))
 
     fig.add_trace(
         go.Scatter(
@@ -407,7 +423,7 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     fig.add_trace(
         go.Scatter(
             x=x,
-            y=y,
+            y=np.mean(raw_data, axis=1),
             line=dict(color="#aa6464"),
             mode="markers",
             name="average",
@@ -434,6 +450,7 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
         )
         if fit.error_bars is not None:
             error_bars = fit.error_bars[qubit]
+            print("MMMMMM", error_bars)
             # Constant error bars
             if isinstance(error_bars, Iterable) is False:
                 error_y_dict = {"type": "constant", "value": error_bars}
@@ -451,7 +468,7 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
             fig.add_trace(
                 go.Scatter(
                     x=x,
-                    y=y,
+                    y=np.mean(raw_data, axis=1),  # TODO: move this
                     error_y=error_y_dict,
                     line={"color": "#aa6464"},
                     mode="markers",
