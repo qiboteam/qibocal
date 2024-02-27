@@ -11,12 +11,12 @@ from qibocal.protocols.characterization.utils import significant_digit
 SINGLE_QUBIT_CLIFFORDS = {
     # Virtual gates
     0: gates.I,
-    1: gates.Z,
+    1: lambda q: gates.U3(q, 0, np.pi / 2, np.pi / 2),  # Z,
     2: lambda q: gates.RZ(q, np.pi / 2),
     3: lambda q: gates.RZ(q, -np.pi / 2),
     # pi rotations
-    4: gates.X,  # U3(q, np.pi, 0, np.pi),
-    5: gates.Y,  # U3(q, np.pi, 0, 0),
+    4: lambda q: gates.U3(q, np.pi, 0, np.pi),  # X,
+    5: lambda q: gates.U3(q, np.pi, 0, 0),  # Y,
     # pi/2 rotations
     6: lambda q: gates.RX(q, np.pi / 2),  # U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),
     7: lambda q: gates.RX(q, -np.pi / 2),  # U3(q, -np.pi / 2, -np.pi / 2, np.pi / 2),
