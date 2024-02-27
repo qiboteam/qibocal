@@ -236,9 +236,6 @@ def _fit(data: RBData) -> StandardRBResult:
     for qubit in qubits:
         # Extract depths and probabilities
         x = data.depths
-        uncertainties = data.uncertainties
-
-        popt_estimates = []
         probs = []
         for depth in data.depths:
 
