@@ -40,10 +40,6 @@ class StandardRBParameters(Parameters):
     uncertainties: Optional[float] = None  # TODO: Change docstring
     """Method of computing the error bars of the signal and uncertainties of the fit. If ``None``,
     it computes the standard deviation. Otherwise it computes the corresponding confidence interval. Defaults `None`."""
-    n_bootstrap: int = 100
-    """Number of bootstrap iterations for the fit uncertainties and error bars.
-    If ``0``, gets the fit uncertainties from the fitting function and the error bars
-    from the distribution of the measurements. Defaults to ``100``."""
     unrolling: bool = False
     """If ``True`` it uses sequence unrolling to deploy multiple circuits in a single instrument call.
     Defaults to ``False``."""
@@ -81,8 +77,6 @@ class RBData(Data):
     """Circuits depths."""
     uncertainties: Union[str, float]
     """Parameters uncertainties."""
-    n_bootstrap: int
-    """Number of bootstrap iterations."""
     seed: Optional[int]
     nshots: int
     """Number of shots."""
@@ -185,7 +179,6 @@ def _acquisition(
     data = RBData(
         depths=params.depths,
         uncertainties=params.uncertainties,
-        n_bootstrap=params.n_bootstrap,
         seed=params.seed,
         nshots=params.nshots,
         niter=params.niter,
@@ -256,7 +249,6 @@ def _fit(data: RBData) -> StandardRBResult:
         x = data.depths
         # y = samples_to_p0s(data, qubit)
         uncertainties = data.uncertainties
-        n_bootstrap = data.n_bootstrap
 
         popt_estimates = []
         # error_bars = None
