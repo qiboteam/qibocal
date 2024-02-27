@@ -1,7 +1,6 @@
 """Specify runcard layout, handles (de)serialization."""
 
 import os
-from functools import cached_property
 from typing import Any, NewType, Optional, Union
 
 from pydantic.dataclasses import dataclass
@@ -71,7 +70,7 @@ class Runcard:
         if self.targets is None and self.platform_obj is not None:
             self.targets = list(self.platform_obj.qubits)
 
-    @cached_property
+    @property
     def backend_obj(self) -> Backend:
         """Allocate backend."""
         GlobalBackend.set_backend(self.backend, self.platform)
