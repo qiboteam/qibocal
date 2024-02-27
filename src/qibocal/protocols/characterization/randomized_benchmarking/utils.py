@@ -147,34 +147,3 @@ def samples_to_p0(samples_list):
         np.count_nonzero(np.all(samples_list == 0, axis=2), axis=1)
         / samples_list.shape[1]
     )
-
-
-def resample_p0(data, sample_size=100, homogeneous: bool = True):
-    """Performs parametric resampling of shots with binomial distribution
-        and returns a list of "corrected" probabilites.
-
-    Args:
-        data (list or np.ndarray): list of probabilities for the binomial distribution.
-        nshots (int): sample size for one probability distribution.
-
-    Returns:
-        list: resampled probabilities.
-    """
-    if homogeneous:
-        return np.apply_along_axis(
-            lambda p: samples_to_p0(
-                np.random.binomial(n=1, p=1 - p, size=(1, sample_size, len(p))).T,
-            ),
-            axis=0,
-            arr=data,
-        )
-
-    resampled_data = []
-    for row in data:
-        resampled_data.append([])
-        for p in row:
-            samples_corrected = np.random.binomial(
-                n=1, p=1 - p, size=(1, sample_size, *p.shape)
-            ).T
-            resampled_data[-1].append(samples_to_p0(samples_corrected))
-    return resampled_data
