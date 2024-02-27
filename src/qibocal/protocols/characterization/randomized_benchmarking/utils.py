@@ -178,14 +178,3 @@ def resample_p0(data, sample_size=100, homogeneous: bool = True):
             ).T
             resampled_data[-1].append(samples_to_p0(samples_corrected))
     return resampled_data
-
-
-def samples_to_p0s(data, qubit):
-    p0s = []
-    depths = data.depths
-    for depth in depths:
-        p0s.append(
-            np.count_nonzero(np.array(data.data[(qubit, depth)]))
-            / data.data[(qubit, depth)].size
-        )
-    return p0s
