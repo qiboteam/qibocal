@@ -192,7 +192,7 @@ def _acquisition(
 
     circuits = []
     samples = []
-    qubits_ids = list(qubits)
+    qubits_ids = targets
     for depth in params.depths:
         circuits_depth = random_circuits(
             depth, qubits_ids, params.niter, params.seed, noise_model
@@ -217,7 +217,7 @@ def _acquisition(
         # `depth` is the number of gates excluded the noise and measurement ones
         # WARNING: `depth` does not count the number of physical pulses (after compilation)
         sample = sample.T
-        for nqubit, qubit_id in enumerate(qubits):
+        for nqubit, qubit_id in enumerate(targets):
             data.register_qubit(
                 RBType,
                 (qubit_id, depth),
@@ -341,6 +341,7 @@ def _plot(
         tuple[list[go.Figure], str]:
     """
 
+    qubit = target
     fig = go.Figure()
     fitting_report = ""
     x = data.depths
