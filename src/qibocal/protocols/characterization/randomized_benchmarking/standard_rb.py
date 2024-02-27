@@ -39,8 +39,7 @@ class StandardRBParameters(Parameters):
     """Sets how many iterations over the same depth value."""
     uncertainties: Optional[float] = None  # TODO: Change docstring
     """Method of computing the error bars of the signal and uncertainties of the fit. If ``None``,
-    does not compute them. If ``"std"``, computes the standard deviation. If ``float`` or ``int``
-    between 0 and 100, computes the corresponding confidence interval. Defaults to ``95``."""
+    it computes the standard deviation. Otherwise it computes the corresponding confidence interval. Defaults `None`."""
     n_bootstrap: int = 100
     """Number of bootstrap iterations for the fit uncertainties and error bars.
     If ``0``, gets the fit uncertainties from the fitting function and the error bars
