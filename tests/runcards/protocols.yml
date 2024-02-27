@@ -548,8 +548,6 @@ actions:
         step: 2
       niter: 2
       nshots: 50
-      uncertainties: None
-      n_bootstrap: 0
 
   - id: standard rb unrolling
     priority: 0
@@ -562,8 +560,6 @@ actions:
       niter: 2
       nshots: 50
       unrolling: True
-      uncertainties: None
-      n_bootstrap: 0
 
   - id: standard rb bootstrap
     priority: 0
@@ -573,7 +569,6 @@ actions:
       depths: [1, 2, 3, 5]
       niter: 5
       nshots: 50
-      n_bootstrap: 10
 
   - id: chevron id
     priority: 0

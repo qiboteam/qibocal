@@ -37,7 +37,7 @@ class StandardRBParameters(Parameters):
     """A list of depths/sequence lengths. If a dictionary is given the list will be build."""
     niter: int
     """Sets how many iterations over the same depth value."""
-    uncertainties: Optional[float] = None  # TODO: Change docstring
+    uncertainties: Optional[float] = None
     """Method of computing the error bars of the signal and uncertainties of the fit. If ``None``,
     it computes the standard deviation. Otherwise it computes the corresponding confidence interval. Defaults `None`."""
     unrolling: bool = False
@@ -75,7 +75,7 @@ class RBData(Data):
 
     depths: list
     """Circuits depths."""
-    uncertainties: Union[str, float]
+    uncertainties: Optional[float]
     """Parameters uncertainties."""
     seed: Optional[int]
     nshots: int
@@ -181,7 +181,6 @@ def _acquisition(
 
         noise_model = getattr(noisemodels, params.noise_model)(params.noise_params)
         params.noise_params = noise_model.params.tolist()
-
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     nqubits = len(qubits)
     data = RBData(

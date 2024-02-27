@@ -33,7 +33,6 @@ def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
                 if homogeneous
                 else [np.median(row) for row in data]
             )
-
         percentiles = [
             (100 - method) / 2,
             (100 + method) / 2,
