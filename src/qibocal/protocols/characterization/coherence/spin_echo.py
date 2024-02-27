@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -26,6 +27,9 @@ class SpinEchoParameters(Parameters):
     """Final delay between pulses [ns]."""
     delay_between_pulses_step: int
     """Step delay between pulses [ns]."""
+    unrolling: bool = False
+    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
+    Defaults to ``False``."""
 
 
 @dataclass
@@ -83,8 +87,15 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
+    options = ExecutionParameters(
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
+    )
+
     data = SpinEchoData()
-    probs = {qubit: [] for qubit in targets}
+    sequences, all_ro_pulses = [], []
     # sweep the parameter
     for wait in ro_wait_range:
         # save data as often as defined by points
@@ -94,28 +105,35 @@ def _acquisition(
             RX90_pulses2[qubit].start = RX_pulses[qubit].finish + wait // 2
             ro_pulses[qubit].start = RX90_pulses2[qubit].finish
 
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.DISCRIMINATION,
-                averaging_mode=AveragingMode.SINGLESHOT,
-            ),
-        )
+        sequences.append(deepcopy(sequence))
+        all_ro_pulses.append(deepcopy(sequence).ro_pulses)
 
+    if params.unrolling:
+        results = platform.execute_pulse_sequences(sequences, options)
+
+    elif not params.unrolling:
+        results = [
+            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
+        ]
+
+    for ig, (wait, ro_pulses) in enumerate(zip(ro_wait_range, all_ro_pulses)):
         for qubit in targets:
-            prob = results[ro_pulses[qubit].serial].probability(state=0)
-            probs[qubit].append(prob)
-
-    for qubit in targets:
-        errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs[qubit]]
-        data.register_qubit(
-            t1.CoherenceProbType,
-            (qubit),
-            dict(wait=ro_wait_range, prob=probs[qubit], error=errors),
-        )
+            serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
+            if params.unrolling:
+                result = results[serial][0]
+            else:
+                result = results[ig][serial]
+            prob = result.probability(state=0)
+            error = np.sqrt(prob * (1 - prob) / params.nshots)
+            data.register_qubit(
+                t1.CoherenceProbType,
+                (qubit),
+                dict(
+                    wait=np.array([wait]),
+                    prob=np.array([prob]),
+                    error=np.array([error]),
+                ),
+            )
 
     return data
 

@@ -503,14 +503,35 @@ actions:
       delay_between_pulses_step: 1
       nshots: 10
 
-  - id: spin_echo_sequence
+  - id: spin_echo unrolling
     priority: 0
-    operation: spin_echo_sequence
+    operation: spin_echo
     parameters:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 5
       delay_between_pulses_step: 1
       nshots: 10
+      unrolling: true
+
+  - id: spin_echo_signal
+    priority: 0
+    operation: spin_echo_signal
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 5
+      delay_between_pulses_step: 1
+      nshots: 10
+
+  - id: spin_echo_signal unrolling
+    priority: 0
+    operation: spin_echo_signal
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 5
+      delay_between_pulses_step: 1
+      nshots: 10
+      unrolling: true
+
 
   - id: flipping
     priority: 0
