@@ -5,7 +5,7 @@ from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
 from .allxy.drag_pulse_tuning import drag_pulse_tuning
 from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
-from .coherence.spin_echo_sequence import spin_echo_sequence
+from .coherence.spin_echo_signal import spin_echo_signal
 from .coherence.t1 import t1
 from .coherence.t1_sequences import t1_sequences
 from .coherence.t1_signal import t1_signal
@@ -20,6 +20,7 @@ from .dispersive_shift import dispersive_shift
 from .dispersive_shift_qutrit import dispersive_shift_qutrit
 from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
+from .flipping_signal import flipping_signal
 from .flux_dependence.avoided_crossing import avoided_crossing
 from .flux_dependence.qubit_crosstalk import qubit_crosstalk
 from .flux_dependence.qubit_flux_dependence import qubit_flux
@@ -51,7 +52,6 @@ from .readout_optimization.twpa_calibration.power_SNR import twpa_power_snr
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
-from .resonator_spectroscopy_attenuation import resonator_spectroscopy_attenuation
 from .signal_experiments.calibrate_state_discrimination import (
     calibrate_state_discrimination,
 )
@@ -61,7 +61,6 @@ from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtu
 
 class Operation(Enum):
     resonator_spectroscopy = resonator_spectroscopy
-    resonator_spectroscopy_attenuation = resonator_spectroscopy_attenuation
     resonator_punchout = resonator_punchout
     resonator_punchout_attenuation = resonator_punchout_attenuation
     resonator_flux = resonator_flux
@@ -87,7 +86,7 @@ class Operation(Enum):
     time_of_flight_readout = time_of_flight_readout
     single_shot_classification = single_shot_classification
     spin_echo = spin_echo
-    spin_echo_sequence = spin_echo_sequence
+    spin_echo_signal = spin_echo_signal
     allxy = allxy
     allxy_drag_pulse_tuning = allxy_drag_pulse_tuning
     drag_pulse_tuning = drag_pulse_tuning
@@ -117,4 +116,5 @@ class Operation(Enum):
     dispersive_shift_qutrit = dispersive_shift_qutrit
     coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
     coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
+    flipping_signal = flipping_signal
     calibrate_state_discrimination = calibrate_state_discrimination

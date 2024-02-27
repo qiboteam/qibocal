@@ -1,20 +1,21 @@
 """Specify runcard layout, handles (de)serialization."""
 
 import os
-from functools import cached_property
 from typing import Any, NewType, Optional, Union
 
-from pydantic import Field
 from pydantic.dataclasses import dataclass
 from qibo.backends import Backend, GlobalBackend
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId
+from qibolab.qubits import QubitId, QubitPairId
 
 from .operation import OperationId
 from .validation import Validator
 
 Id = NewType("Id", str)
 """Action identifiers type."""
+
+Targets = Union[list[QubitId], list[QubitPairId], list[tuple[QubitId, ...]]]
+"""Elements to be calibrated by a single protocol."""
 
 MAX_ITERATIONS = 5
 """Default max iterations."""
@@ -34,9 +35,7 @@ class Action:
     """Alternative subsequent actions, branching from the current one."""
     priority: Optional[int] = None
     """Priority level, determining the execution order."""
-    qubits: Union[list[QubitId], list[tuple[QubitId, QubitId]], list[list[QubitId]]] = (
-        Field(default_factory=list)
-    )
+    targets: Optional[Targets] = None
     """Local qubits (optional)."""
     update: bool = True
     """Runcard update mechanism."""
@@ -56,8 +55,10 @@ class Runcard:
 
     actions: list[Action]
     """List of action to be executed."""
-    qubits: Optional[Union[list[QubitId], list[tuple[QubitId, QubitId]]]] = None
-    """Qubits to be calibrated."""
+    targets: Optional[Targets] = None
+    """Qubits to be calibrated.
+       If `None` the protocols will be executed on all qubits
+       available in the platform."""
     backend: str = "qibolab"
     """Qibo backend."""
     platform: str = os.environ.get("QIBO_PLATFORM", "dummy")
@@ -65,7 +66,11 @@ class Runcard:
     max_iterations: int = MAX_ITERATIONS
     """Maximum number of iterations."""
 
-    @cached_property
+    def __post_init__(self):
+        if self.targets is None and self.platform_obj is not None:
+            self.targets = list(self.platform_obj.qubits)
+
+    @property
     def backend_obj(self) -> Backend:
         """Allocate backend."""
         GlobalBackend.set_backend(self.backend, self.platform)

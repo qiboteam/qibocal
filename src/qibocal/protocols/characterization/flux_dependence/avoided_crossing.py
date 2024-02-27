@@ -8,9 +8,9 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId
+from qibolab.qubits import QubitId, QubitPairId
 
-from qibocal.auto.operation import Data, QubitsPairs, Results, Routine
+from qibocal.auto.operation import Data, Results, Routine
 from qibocal.protocols.characterization.two_qubit_interaction.utils import order_pair
 from qibocal.protocols.characterization.utils import HZ_TO_GHZ, table_dict, table_html
 
@@ -57,7 +57,7 @@ class AvoidedCrossingData(Data):
 def _acquisition(
     params: AvoidedCrossingParameters,
     platform: Platform,
-    qubits: QubitsPairs,  # qubit pairs
+    targets: list[QubitPairId],  # qubit pairs
 ) -> AvoidedCrossingData:
     """
     Data acquisition for avoided crossing.
@@ -70,8 +70,7 @@ def _acquisition(
         platform (Platform): Qibolab platform object.
         qubits (dict): list of targets qubit pairs to perform the action.
     """
-    qubit_pairs = list(qubits.keys())
-    order_pairs = np.array([order_pair(pair, platform.qubits) for pair in qubit_pairs])
+    order_pairs = np.array([order_pair(pair, platform.qubits) for pair in targets])
     data = AvoidedCrossingData(qubit_pairs=order_pairs.tolist())
     # Extract the qubits in the qubits pairs and evaluate their flux dep
     unique_qubits = np.unique(
@@ -84,7 +83,7 @@ def _acquisition(
         data_transition = flux_acquisition(
             params=params,
             platform=platform,
-            qubits=new_qubits,
+            targets=new_qubits,
         )
         for qubit in unique_qubits:
             qubit_data = data_transition.data[qubit]
@@ -155,16 +154,21 @@ def _fit(data: AvoidedCrossingData) -> AvoidedCrossingResults:
     return AvoidedCrossingResults(curves, fits, cz, iswap)
 
 
-def _plot(data: AvoidedCrossingData, fit: Optional[AvoidedCrossingResults], qubit):
+def _plot(
+    data: AvoidedCrossingData,
+    fit: Optional[AvoidedCrossingResults],
+    target: QubitPairId,
+):
     """Plotting function for avoided crossing"""
     fitting_report = ""
     figures = []
-    order_pair = tuple(index(data.qubit_pairs, qubit))
+    order_pair = tuple(index(data.qubit_pairs, target))
     heatmaps = make_subplots(
         rows=1,
         cols=2,
         subplot_titles=[
-            f"{i} transition qubit {qubit[0]}" for i in [Excitations.ge, Excitations.gf]
+            f"{i} transition qubit {target[0]}"
+            for i in [Excitations.ge, Excitations.gf]
         ],
     )
     parabolas = make_subplots(rows=1, cols=1, subplot_titles=["Parabolas"])
@@ -207,7 +211,7 @@ def _plot(data: AvoidedCrossingData, fit: Optional[AvoidedCrossingResults], qubi
         figures.append(parabolas)
         fitting_report = table_html(
             table_dict(
-                qubit,
+                target,
                 ["CZ bias", "iSwap bias"],
                 [np.round(cz[:, 0], 3), np.round(iswap[:, 0], 3)],
             )

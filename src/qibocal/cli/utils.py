@@ -8,7 +8,6 @@ import shutil
 from pathlib import Path
 
 from qibocal.config import log, raise_error
-from qibocal.utils import allocate_qubits_pairs, allocate_single_qubits
 
 RUNCARD = "runcard.yml"
 UPDATED_PLATFORM = "new_platform"
@@ -20,16 +19,6 @@ def dump_report(meta, path):
     e = datetime.datetime.now(datetime.timezone.utc)
     meta["end-time"] = e.strftime("%H:%M:%S")
     (path / META).write_text(json.dumps(meta, indent=4))
-
-
-def create_qubits_dict(qubits, platform):
-    if platform is not None:
-        if qubits is not None:
-            if any(isinstance(i, list) for i in qubits):
-                return allocate_qubits_pairs(platform, qubits)
-            return allocate_single_qubits(platform, qubits)
-        return allocate_single_qubits(platform, list(platform.qubits))
-    return qubits
 
 
 def generate_meta(backend, platform, path):
@@ -45,7 +34,7 @@ def generate_meta(backend, platform, path):
     meta = {}
     meta["title"] = path.name
     meta["backend"] = backend.name
-    meta["platform"] = str(backend.platform)
+    meta["platform"] = str(platform)
     meta["date"] = e.strftime("%Y-%m-%d")
     meta["start-time"] = e.strftime("%H:%M:%S")
     meta["end-time"] = e.strftime("%H:%M:%S")
