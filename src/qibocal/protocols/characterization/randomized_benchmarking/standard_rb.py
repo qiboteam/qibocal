@@ -9,14 +9,14 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.bootstrap import bootstrap, data_uncertainties
+from qibocal.bootstrap import data_uncertainties
 from qibocal.config import raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
 from ..utils import table_dict, table_html
 from .circuit_tools import add_inverse_layer, add_measurement_layer, layer_circuit
 from .fitting import exp1B_func, fit_exp1B_func
-from .utils import number_to_str, random_clifford, resample_p0, samples_to_p0s
+from .utils import number_to_str, random_clifford, samples_to_p0s
 
 NPULSES_PER_CLIFFORD = 1.875
 
@@ -167,6 +167,7 @@ def _acquisition(
         RBData: The depths, samples and ground state probability of each experiment in the scan.
     """
 
+    print(qubits)
     backend = GlobalBackend()
     # For simulations, a noise model can be added.
     noise_model = None
@@ -211,18 +212,24 @@ def _acquisition(
 
     for circ in executed_circuits:
         samples.extend(circ.samples())
-    samples = np.reshape(samples, (params.nshots, -1, nqubits))
-
+    print(np.concatenate(samples))
+    samples = np.reshape(samples, (-1, nqubits, params.nshots))
+    # samples = np.reshape(samples, (params.nshots, -1, nqubits))
+    # samples = np.reshape(samples, (-1, params.nshots, nqubits))
+    print(samples, nqubits)
     for i, depth in enumerate(params.depths):
-        index = (i * params.niter, (i + 1) * params.niter - 1)
+        index = (i * params.niter, (i + 1) * params.niter)
         for nqubit, qubit_id in enumerate(qubits):
-            samples_iters = samples.T[nqubit][:][index[0] : index[1]]
+            # print(samples[index[0] : index[1]])
+            # print("pppp", samples[index[0] : index[1]][:,nqubit], index)
+            # samples_iters = samples[index[0] : index[1]][nqubit]
             data.register_qubit(
                 RBType,
                 (qubit_id, depth),
                 dict(
-                    samples=1
-                    - samples_iters,  # We will invert the sample as we care about the survival probability
+                    samples=samples[index[0] : index[1]][
+                        :, nqubit
+                    ],  # We will invert the sample as we care about the survival probability
                 ),
             )
 
@@ -244,92 +251,102 @@ def _fit(data: RBData) -> StandardRBResult:
     fidelity, pulse_fidelity = {}, {}
     popts, perrs = {}, {}
     error_barss = {}
-
+    print(data.data)
     for qubit in qubits:
         # Extract depths and probabilities
         x = data.depths
-        y = samples_to_p0s(data, qubit)
-        samples = [data.data[qubit, depth].samples.tolist() for depth in x]
-
-        """This is when you sample a depth more than once"""
-        homogeneous = all(
-            len(samples[0]) == len(row) for row in samples
-        )  # TODO: Do we really need it?
-        # Extract fitting and bootstrap parameters if given
+        # y = samples_to_p0s(data, qubit)
         uncertainties = data.uncertainties
         n_bootstrap = data.n_bootstrap
 
         popt_estimates = []
-        if uncertainties and n_bootstrap:
-            # Non-parametric bootstrap resampling
-            bootstrap_y = bootstrap(
-                samples,
-                n_bootstrap,
-                homogeneous=homogeneous,
-                seed=data.seed,
-            )
+        error_bars = None
+        probs = []
+        for depth in data.depths:
 
-            # Parametric bootstrap resampling of "corrected" probabilites from binomial distribution
-            bootstrap_y = resample_p0(
-                bootstrap_y,
-                data.nshots,
-                homogeneous=homogeneous,
-            )
+            data_list = np.array(data.data[qubit, depth].tolist())
+            # print(data_list)
+            data_list = data_list.reshape((-1, data.nshots))
+            # print(data_list)
+            probs.append(np.count_nonzero(1 - data_list, axis=1) / data_list.shape[1])
+        # print(y)
+        # samples = [data.gccdata[qubit, depth].samples.tolist() for depth in x]
 
-            samples_bts = np.mean(bootstrap_y, axis=3)  # We average on the shots
-            samples_bts_mean = np.mean(
-                samples_bts, axis=2
-            )  # We average on the bootstrap iterations
-            # TODO: Should we use the median or the mean?
-            median = [np.median(samples_row) for samples_row in samples_bts_mean]
+        # """This is when you sample a depth more than once"""
+        # homogeneous = all(
+        #     len(samples[0]) == len(row) for row in samples
+        # )  # TODO: Do we really need it?
+        # Extract fitting and bootstrap parameters if given
+        # if uncertainties and n_bootstrap:
+        #     # Non-parametric bootstrap resampling
+        #     bootstrap_y = bootstrap(
+        #         samples,
+        #         n_bootstrap,
+        #         homogeneous=homogeneous,
+        #         seed=data.seed,
+        #     )
 
-            # TODO: Add the non homogeneous case
-            samp = np.apply_along_axis(
-                np.sum, 1, np.apply_along_axis(np.count_nonzero, -1, bootstrap_y)
-            ) / (bootstrap_y.shape[-1] * bootstrap_y.shape[1])
+        #     # Parametric bootstrap resampling of "corrected" probabilites from binomial distribution
+        #     bootstrap_y = resample_p0(
+        #         bootstrap_y,
+        #         data.nshots,
+        #         homogeneous=homogeneous,
+        #     )
 
-            # Fit the initial data and compute error bars
-            popt_estimates = np.apply_along_axis(
-                lambda y_iter: fit_exp1B_func(x, y_iter, bounds=[0, 1])[0],
-                axis=0,
-                arr=samp,
-            )
+        #     samples_bts = np.mean(bootstrap_y, axis=3)  # We average on the shots
+        #     samples_bts_mean = np.mean(
+        #         samples_bts, axis=2
+        #     )  # We average on the bootstrap iterations
+        #     # TODO: Should we use the median or the mean?
+        #     median = [np.median(samples_row) for samples_row in samples_bts_mean]
 
-            # Using bootstrap of the mean estimate
-            error_bars = data_uncertainties(
-                samples_bts_mean,
-                uncertainties,
-                data_median=median,
-                homogeneous=(homogeneous or n_bootstrap != 0),
-            )
+        #     # TODO: Add the non homogeneous case
+        #     samp = np.apply_along_axis(
+        #         np.sum, 1, np.apply_along_axis(np.count_nonzero, -1, bootstrap_y)
+        #     ) / (bootstrap_y.shape[-1] * bootstrap_y.shape[1])
 
-        elif uncertainties and n_bootstrap is None:
+        #     # Fit the initial data and compute error bars
+        #     popt_estimates = np.apply_along_axis(
+        #         lambda y_iter: fit_exp1B_func(x, y_iter, bounds=[0, 1])[0],
+        #         axis=0,
+        #         arr=samp,
+        #     )
 
-            samples_mean = np.mean(samples, axis=2)
+        #     # Using bootstrap of the mean estimate
+        #     error_bars = data_uncertainties(
+        #         samples_bts_mean,
+        #         uncertainties,
+        #         data_median=median,
+        #         homogeneous=(homogeneous or n_bootstrap != 0),
+        #     )
 
-            # samples_mean = [np.mean(samples[depth], axis=1) for depth in range(len(x))]
-            # TODO: Should we use the median or the mean?
-            median = [np.median(samples_row) for samples_row in samples_mean]
+        # elif uncertainties and n_bootstrap is None:
+        print("probs", probs)
+        samples_mean = np.mean(probs, axis=1)
+        print(samples_mean)
 
-            # TODO: This comes up with huge error bars
-            # Compute error bars using the samples we calculate the mean with
-            error_bars = data_uncertainties(
-                samples_mean,
-                method="std",
-                data_median=median,
-                homogeneous=homogeneous,
-            )
+        # samples_mean = [np.mean(samples[depth], axis=1) for depth in range(len(x))]
+        # TODO: Should we use the median or the mean?
+        median = np.median(probs, axis=1)
+        print(median)
+        # TODO: This comes up with huge error bars
+        # Compute error bars using the samples we calculate the mean with
+        sigma = data_uncertainties(
+            probs,
+            method="std",
+            data_median=median,
+        )
 
-        sigma = None
-        if error_bars is not None:
-            sigma = (
-                np.max(error_bars, axis=0)
-                if isinstance(error_bars[0], Iterable)
-                else error_bars
-            ) + 0.1
+        # sigma = None
+        # if error_bars is not None:
+        #     sigma = (
+        #         np.max(error_bars, axis=0)
+        #         if isinstance(error_bars[0], Iterable)
+        #         else error_bars
+        #     ) + 0.1
 
-        popt, perr = fit_exp1B_func(x, y, sigma=sigma, bounds=[0, 1])
-
+        popt, perr = fit_exp1B_func(x, probs, sigma=sigma, bounds=[0, 1])
+        print("FITTTTTTTTTTTT", perr)
         # Compute fit uncertainties
         if len(popt_estimates):
             perr = data_uncertainties(popt_estimates, uncertainties, data_median=popt)
@@ -371,9 +388,8 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     raw_depths = []
     raw_data = []
     for depth in x:
-        new_data = np.reshape(
-            data.data[(qubit, depth)].tolist(), (data.niter - 1, data.nshots)
-        )
+        print(data.data[(qubit, depth)])
+        new_data = data.data[(qubit, depth)].tolist()
         raw_depths.append([depth] * data.niter)
         raw_data.append(np.average(new_data, axis=1))
 

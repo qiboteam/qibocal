@@ -40,11 +40,13 @@ def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
             (100 - method) / 2,
             (100 + method) / 2,
         ]
+        print(data)
         percentile_inteval = (
             np.percentile(data, percentiles, axis=1)
             if homogeneous
             else np.array([np.percentile(row, percentiles) for row in data]).T
         )
+        print(data_median, percentile_inteval)
         uncertainties = np.abs(
             np.vstack([data_median, data_median]) - percentile_inteval
         )
