@@ -74,7 +74,7 @@ RBType = np.dtype(
 class RBData(Data):
     """The output of the acquisition function."""
 
-    depths: list
+    depths: list[int]
     """Circuits depths."""
     uncertainties: Optional[float]
     """Parameters uncertainties."""
@@ -85,7 +85,7 @@ class RBData(Data):
     """Number of iterations for each depth."""
     data: dict[QubitId, npt.NDArray[RBType]] = field(default_factory=dict)
     """Raw data acquired."""
-    circuits: Circuit = None
+    circuits: dict[(QubitId, int), dict] = None
     """Circuits executed."""
 
     def extract_probabilities(self, qubit):
@@ -194,6 +194,7 @@ def _acquisition(
         niter=params.niter,
     )
 
+    circuits_dict = {}
     circuits = []
     samples = []
     qubits_ids = targets
@@ -202,6 +203,22 @@ def _acquisition(
         circuits_depth = random_circuits(
             depth, qubits_ids, params.niter, params.seed, noise_model
         )
+
+        # TODO: This removes the U and Measurament gates from the circuits
+        circuits_raw = []
+        for circ in circuits_depth:
+            c = Circuit(circ.nqubits)
+            c.queue = circ.queue[:-2]
+            c_raw = c.raw
+            del c_raw["density_matrix"]
+            del c_raw["qibo_version"]
+            circuits_raw.append(c_raw)
+
+        for i, target in enumerate(targets):
+            circuits_dict[target, depth] = circuits_raw[
+                i * params.niter : (i + 1) * params.niter
+            ]
+
         circuits.extend(circuits_depth)
     # Execute the circuits
     if params.unrolling:
@@ -225,6 +242,10 @@ def _acquisition(
                     samples=samples[index[0] : index[1]][:, nqubit],
                 ),
             )
+
+    # TODO: We can't save the noise gates using .raw to .json
+    if params.noise_model is None:
+        data.circuits = circuits_dict
 
     return data
 
