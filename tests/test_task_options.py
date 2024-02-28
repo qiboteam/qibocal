@@ -21,7 +21,7 @@ PLATFORM = create_platform("dummy")
 QUBITS = list(PLATFORM.qubits)
 DUMMY_CARD = {
     "backend": "numpy",
-    "qubits": QUBITS,
+    "targets": QUBITS,
     "actions": [
         {
             "id": "standard rb",
@@ -49,7 +49,7 @@ def modify_card(card, targets=None, update=None):
 
 @pytest.mark.parametrize("platform", [None, PLATFORM])
 @pytest.mark.parametrize("local_targets", [None, [0, 1]])
-def test_qubits_argument(platform, local_targets, tmp_path):
+def test_targets_argument(platform, local_targets, tmp_path):
     """Test possible qubits combinations between global and local."""
     runcard = Runcard.load(modify_card(DUMMY_CARD, targets=local_targets))
     print(runcard)
@@ -66,10 +66,11 @@ def test_qubits_argument(platform, local_targets, tmp_path):
         assert completed.task.targets == local_targets
     else:
         assert completed.task.targets == list(QUBITS)
+        assert runcard.targets == list(QUBITS)
 
 
 UPDATE_CARD = {
-    "qubits": QUBITS,
+    "targets": QUBITS,
     "actions": [
         {
             "id": "readout frequency",

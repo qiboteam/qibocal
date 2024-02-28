@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
@@ -12,7 +12,7 @@ from qibocal import update
 from qibocal.auto.operation import Parameters, Results, Routine
 
 from .resonator_spectroscopy import ResonatorSpectroscopyData, ResSpecType
-from .utils import lorentzian_fit, spectroscopy_plot
+from .utils import chi2_reduced, lorentzian, lorentzian_fit, spectroscopy_plot
 
 
 @dataclass
@@ -39,6 +39,12 @@ class QubitSpectroscopyResults(Results):
     """Input drive amplitude. Same for all qubits."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
+    chi2_reduced: dict[QubitId, tuple[float, Optional[float]]] = field(
+        default_factory=dict
+    )
+    """Chi2 reduced."""
+    error_fit_pars: dict[QubitId, list] = field(default_factory=dict)
+    """Errors of the fit parameters."""
 
 
 class QubitSpectroscopyData(ResonatorSpectroscopyData):
@@ -94,7 +100,7 @@ def _acquisition(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
+            averaging_mode=AveragingMode.SINGLESHOT,
         ),
         sweeper,
     )
@@ -107,9 +113,11 @@ def _acquisition(
             ResSpecType,
             (qubit),
             dict(
-                signal=result.magnitude,
-                phase=result.phase,
+                signal=np.abs(result.average.voltage),
+                phase=np.mean(result.phase, axis=0),
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
+                error_signal=result.average.std,
+                error_phase=np.std(result.phase, axis=0, ddof=1),
             ),
         )
     return data
@@ -120,17 +128,30 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     qubits = data.qubits
     frequency = {}
     fitted_parameters = {}
+    error_fit_pars = {}
+    chi2 = {}
     for qubit in qubits:
         fit_result = lorentzian_fit(
             data[qubit], resonator_type=data.resonator_type, fit="qubit"
         )
         if fit_result is not None:
-            frequency[qubit], fitted_parameters[qubit] = fit_result
-
+            frequency[qubit], fitted_parameters[qubit], error_fit_pars[qubit] = (
+                fit_result
+            )
+            chi2[qubit] = (
+                chi2_reduced(
+                    data[qubit].freq,
+                    lorentzian(data[qubit].freq, *fitted_parameters[qubit]),
+                    data[qubit].error_signal,
+                ),
+                np.sqrt(2 / len(data[qubit].freq)),
+            )
     return QubitSpectroscopyResults(
         frequency=frequency,
         fitted_parameters=fitted_parameters,
         amplitude=data.amplitudes,
+        error_fit_pars=error_fit_pars,
+        chi2_reduced=chi2,
     )
 
 

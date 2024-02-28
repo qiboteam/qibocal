@@ -185,9 +185,9 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
             )
             if fit_result is not None:
                 if i == 0:
-                    frequency_0[qubit], fitted_parameters_0[qubit] = fit_result
+                    frequency_0[qubit], fitted_parameters_0[qubit], _ = fit_result
                 else:
-                    frequency_1[qubit], fitted_parameters_1[qubit] = fit_result
+                    frequency_1[qubit], fitted_parameters_1[qubit], _ = fit_result
 
             i_measures = data_i.i
             q_measures = data_i.q

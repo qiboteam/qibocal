@@ -67,7 +67,10 @@ def exponential_fit_probability(data):
     fitted_parameters = {}
 
     for qubit in qubits:
-        x = data[qubit].wait
+        times = data[qubit].wait
+        x_max = np.max(times)
+        x_min = np.min(times)
+        x = (times - x_min) / (x_max - x_min)
         probability = data[qubit].prob
         p0 = [
             0.5,
@@ -88,7 +91,11 @@ def exponential_fit_probability(data):
                 ),
                 sigma=data[qubit].error,
             )
-            popt = popt.tolist()
+            popt = [
+                popt[0],
+                popt[1] * np.exp(x_min * popt[2] / (x_max - x_min)),
+                popt[2] * (x_max - x_min),
+            ]
             perr = np.sqrt(np.diag(perr))
             fitted_parameters[qubit] = popt
             dec = popt[2]

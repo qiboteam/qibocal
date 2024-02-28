@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass
 
 import numpy as np
@@ -67,30 +68,43 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
+    options = ExecutionParameters(
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
+    )
+
     data = SpinEchoSignalData()
+    sequences, all_ro_pulses = [], []
 
     # sweep the parameter
     for wait in ro_wait_range:
         # save data as often as defined by points
 
         for qubit in targets:
-            RX_pulses[qubit].start = RX90_pulses1[qubit].finish + wait
-            RX90_pulses2[qubit].start = RX_pulses[qubit].finish + wait
+            RX_pulses[qubit].start = RX90_pulses1[qubit].finish + wait // 2
+            RX90_pulses2[qubit].start = RX_pulses[qubit].finish + wait // 2
             ro_pulses[qubit].start = RX90_pulses2[qubit].finish
 
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
-            ),
-        )
+        sequences.append(deepcopy(sequence))
+        all_ro_pulses.append(deepcopy(sequence).ro_pulses)
 
+    if params.unrolling:
+        results = platform.execute_pulse_sequences(sequences, options)
+
+    elif not params.unrolling:
+        results = [
+            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
+        ]
+
+    for ig, (wait, ro_pulses) in enumerate(zip(ro_wait_range, all_ro_pulses)):
         for qubit in targets:
-            result = results[ro_pulses[qubit].serial]
+            serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
+            if params.unrolling:
+                result = results[serial][0]
+            else:
+                result = results[ig][serial]
             data.register_qubit(
                 CoherenceType,
                 (qubit),
@@ -100,6 +114,7 @@ def _acquisition(
                     phase=np.array([result.phase]),
                 ),
             )
+
     return data
 
 
@@ -170,5 +185,5 @@ def _update(results: SpinEchoSignalResults, platform: Platform, target: QubitId)
     update.t2_spin_echo(results.t2_spin_echo[target], platform, target)
 
 
-spin_echo_sequence = Routine(_acquisition, _fit, _plot, _update)
+spin_echo_signal = Routine(_acquisition, _fit, _plot, _update)
 """SpinEcho Routine object."""

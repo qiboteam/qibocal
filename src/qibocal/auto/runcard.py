@@ -1,7 +1,6 @@
 """Specify runcard layout, handles (de)serialization."""
 
 import os
-from functools import cached_property
 from typing import Any, NewType, Optional, Union
 
 from pydantic.dataclasses import dataclass
@@ -57,7 +56,9 @@ class Runcard:
     actions: list[Action]
     """List of action to be executed."""
     targets: Optional[Targets] = None
-    """Qubits to be calibrated."""
+    """Qubits to be calibrated.
+       If `None` the protocols will be executed on all qubits
+       available in the platform."""
     backend: str = "qibolab"
     """Qibo backend."""
     platform: str = os.environ.get("QIBO_PLATFORM", "dummy")
@@ -65,7 +66,11 @@ class Runcard:
     max_iterations: int = MAX_ITERATIONS
     """Maximum number of iterations."""
 
-    @cached_property
+    def __post_init__(self):
+        if self.targets is None and self.platform_obj is not None:
+            self.targets = list(self.platform_obj.qubits)
+
+    @property
     def backend_obj(self) -> Backend:
         """Allocate backend."""
         GlobalBackend.set_backend(self.backend, self.platform)
