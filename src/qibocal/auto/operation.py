@@ -293,7 +293,7 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
 
     @property
     def results_type(self):
-        """Results object type return by data acquisition."""
+        """Results object type returned by data acquisition."""
         return inspect.signature(self.fit).return_annotation
 
     # TODO: I don't like these properties but it seems to work
