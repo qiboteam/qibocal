@@ -5,6 +5,7 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from qibo.backends import GlobalBackend
+from qibo.models import Circuit
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
@@ -37,7 +38,7 @@ class StandardRBParameters(Parameters):
     """A list of depths/sequence lengths. If a dictionary is given the list will be build."""
     niter: int
     """Sets how many iterations over the same depth value."""
-    uncertainties: Optional[float] = None
+    uncertainties: Optional[float] = 95
     """Method of computing the error bars of the signal and uncertainties of the fit. If ``None``,
     it computes the standard deviation. Otherwise it computes the corresponding confidence interval. Defaults `None`."""
     unrolling: bool = False
@@ -84,6 +85,8 @@ class RBData(Data):
     """Number of iterations for each depth."""
     data: dict[QubitId, npt.NDArray[RBType]] = field(default_factory=dict)
     """Raw data acquired."""
+    circuits: Circuit = None
+    """Circuits executed."""
 
     def extract_probabilities(self, qubit):
         """Extract the probabilities given `qubit`"""
@@ -248,16 +251,15 @@ def _fit(data: RBData) -> StandardRBResult:
         samples_mean = np.mean(probs, axis=1)
         # TODO: Should we use the median or the mean?
         median = np.median(probs, axis=1)
+
         error_bars = data_uncertainties(
             probs,
             method=data.uncertainties,
             data_median=median,
         )
-        # Evaluate std for the fitting
-        sigma = data_uncertainties(
-            probs,
-            method=None,
-            data_median=median,
+
+        sigma = (
+            np.max(error_bars, axis=0) if data.uncertainties is not None else error_bars
         )
 
         popt, perr = fit_exp1B_func(x, samples_mean, sigma=sigma, bounds=[0, 1])

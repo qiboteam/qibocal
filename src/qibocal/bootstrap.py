@@ -25,27 +25,15 @@ def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
     if method is None:
         return np.std(data, axis=1) if homogeneous else [np.std(row) for row in data]
 
-    else:
+    percentiles = [
+        (100 - method) / 2,
+        (100 + method) / 2,
+    ]
+    percentile_interval = np.percentile(data, percentiles, axis=1)
 
-        if data_median is None:
-            data_median = (
-                np.median(data, axis=1)
-                if homogeneous
-                else [np.median(row) for row in data]
-            )
-        percentiles = [
-            (100 - method) / 2,
-            (100 + method) / 2,
-        ]
-        percentile_inteval = (
-            np.percentile(data, percentiles, axis=1)
-            if homogeneous
-            else np.array([np.percentile(row, percentiles) for row in data]).T
-        )
-        uncertainties = np.abs(
-            np.vstack([data_median, data_median]) - percentile_inteval
-        )
-        return uncertainties
+    uncertainties = np.abs(np.vstack([data_median, data_median]) - percentile_interval)
+
+    return uncertainties
 
 
 def bootstrap(
