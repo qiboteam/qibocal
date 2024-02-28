@@ -75,6 +75,8 @@ class ReportBuilder:
         """Generate single qubit plot."""
         node = self.history[task_id]
         fit = node.results if node.results and qubit in node.results else None
+        # the fit is shown only if fitted parameters for the corresponding
+        # key are in Results.
         figures, fitting_report = node.task.operation.report(
             data=node.data, fit=fit, target=qubit
         )

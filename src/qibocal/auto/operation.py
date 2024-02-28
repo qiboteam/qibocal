@@ -225,14 +225,9 @@ class Results(AbstractData):
     def __contains__(self, key: Union[QubitId, QubitPairId, tuple[QubitId, ...]]):
         """Checking if qubit is in Results.
 
-        Used by the ReportBuilder to check whether an instance of Results
-        contains the fitted parameters for a specific qubit. This check is necessary
-        because if there are no fitted parameters for a certain qubit they will not be shown
-        in the html report.
-        Currently given that `Results` usually is composed by dictionary of the form
-        `dict[type(key), ...]` this method checks if `key` is present in all dict attributes.
-        If the user wants to perform an inheritance of `Results` this method needs to
-        be updated accordingly."""
+        If key is not present means that fitting failed or
+        was not performed.
+        """
         return all(
             key in getattr(self, field.name)
             for field in fields(self)
