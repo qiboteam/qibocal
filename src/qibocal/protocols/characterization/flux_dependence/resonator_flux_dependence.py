@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import List, Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -29,16 +29,17 @@ class ResonatorFluxParameters(Parameters):
     """Width for bias sweep [V]."""
     bias_step: Optional[float] = None
     """Bias step for sweep [a.u.]."""
-    flux_amplitude_start: Optional[float] = None
-    """Amplitude start value for flux pulses sweep relative to the qubit sweetspot [a.u.]."""
-    flux_amplitude_end: Optional[float] = None
-    """Amplitude end value for flux pulses sweep relative to the qubit sweetspot [a.u.]."""
-    flux_amplitude_step: Optional[float] = None
-    """Amplitude step for flux pulses sweep [a.u.]."""
+    flux_amplitude_start: Optional[Union[float, List[float]]] = None
+    """Amplitude start value(s) for flux pulses sweep relative to the qubit sweetspot [a.u.]."""
+    flux_amplitude_end: Optional[Union[float, List[float]]] = None
+    """Amplitude end value(s) for flux pulses sweep relative to the qubit sweetspot [a.u.]."""
+    flux_amplitude_step: Optional[Union[float, List[float]]] = None
+    """Amplitude step(s) for flux pulses sweep [a.u.]."""
 
     def __post_init__(self):
         if not self.has_bias_params:
             if self.has_flux_params:
+                self.check_flux_params()
                 return
         if not self.has_flux_params:
             if self.has_bias_params:
@@ -46,6 +47,28 @@ class ResonatorFluxParameters(Parameters):
         raise ValueError(
             "Too many arguments provided. Provide either bias_width "
             "and bias_step or flux_amplitude_width and flux_amplitude_step."
+        )
+
+    def check_flux_params(self):
+        """All flux params must be either all float or all lists with the same length.
+
+        This function does not check if the lenght of the lists is equal to the number
+        of qubits in the experiment.
+        """
+        flux_params = (
+            self.flux_amplitude_start,
+            self.flux_amplitude_end,
+            self.flux_amplitude_step,
+        )
+        if all(isinstance(param, float) for param in flux_params):
+            return
+
+        if all(isinstance(param, list) for param in flux_params):
+            if all(len(param) == len(flux_params[0]) for param in flux_params):
+                return
+            raise ValueError("Flux lists do not have the same length.")
+        raise ValueError(
+            "flux parameters have the wrong type. Expected one of (float, list)."
         )
 
     @property
@@ -159,13 +182,21 @@ def _acquisition(
     )
 
     if params.flux_pulses:
-        delta_bias_flux_range = np.arange(
-            params.flux_amplitude_start,
-            params.flux_amplitude_end,
-            params.flux_amplitude_step,
-        )
         qf_pulses = {}
-        for qubit in qubits:
+        for i, qubit in enumerate(qubits):
+            if isinstance(params.flux_amplitude_start, List):
+                flux_amplitude_start = params.flux_amplitude_start[i]
+                flux_amplitude_end = params.flux_amplitude_end[i]
+                flux_amplitude_step = params.flux_amplitude_step[i]
+            else:
+                flux_amplitude_start = params.flux_amplitude_start
+                flux_amplitude_end = params.flux_amplitude_end
+                flux_amplitude_step = params.flux_amplitude_step
+            delta_bias_flux_range = np.arange(
+                flux_amplitude_start,
+                flux_amplitude_end,
+                flux_amplitude_step,
+            )
             pulse = platform.create_qubit_flux_pulse(
                 qubit, start=0, duration=sequence.duration
             )
