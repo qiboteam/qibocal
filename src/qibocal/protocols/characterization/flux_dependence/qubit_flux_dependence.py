@@ -125,13 +125,21 @@ def _acquisition(
     )
 
     if params.flux_pulses:
-        delta_bias_flux_range = np.arange(
-            params.flux_amplitude_start,
-            params.flux_amplitude_end,
-            params.flux_amplitude_step,
-        )
         qf_pulses = {}
         for qubit in qubits:
+            if isinstance(params.flux_amplitude_start, List):
+                flux_amplitude_start = params.flux_amplitude_start[i]
+                flux_amplitude_end = params.flux_amplitude_end[i]
+                flux_amplitude_step = params.flux_amplitude_step[i]
+            else:
+                flux_amplitude_start = params.flux_amplitude_start
+                flux_amplitude_end = params.flux_amplitude_end
+                flux_amplitude_step = params.flux_amplitude_step
+            delta_bias_flux_range = np.arange(
+                flux_amplitude_start,
+                flux_amplitude_end,
+                flux_amplitude_step,
+            )
             pulse = platform.create_qubit_flux_pulse(
                 qubit, start=0, duration=sequence.duration
             )
