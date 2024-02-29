@@ -304,6 +304,16 @@ actions:
       delay_before_readout_step: 2000
       nshots: 1024
 
+  - id: t1_signal
+    priority: 0
+    operation: t1_signal
+    parameters:
+      delay_before_readout_start: 0
+      delay_before_readout_end: 20_000
+      delay_before_readout_step: 2000
+      single_shot: True
+      nshots: 1024
+
   - id: t1 sequences
     priority: 0
     operation: t1_sequences
@@ -343,6 +353,16 @@ actions:
       delay_between_pulses_start: 16
       delay_between_pulses_end: 20000
       delay_between_pulses_step: 100
+      nshots: 10
+
+  - id: t2_signal
+    priority: 0
+    operation: t2_signal
+    parameters:
+      delay_between_pulses_start: 16
+      delay_between_pulses_end: 20000
+      delay_between_pulses_step: 100
+      single_shot: True
       nshots: 10
 
   - id: t2 sequences
@@ -510,6 +530,16 @@ actions:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 5
       delay_between_pulses_step: 1
+      nshots: 10
+
+  - id: spin_echo_signal
+    priority: 0
+    operation: spin_echo_signal
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 5
+      delay_between_pulses_step: 1
+      single_shot: True
       nshots: 10
 
   - id: spin_echo_signal unrolling
