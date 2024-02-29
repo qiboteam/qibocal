@@ -10,6 +10,12 @@ CoherenceType = np.dtype(
 
 
 def average_single_shots(data_type, single_shots):
+    """Convert single shot acquisition results of signal routines to averaged.
+
+    Args:
+        data_type: Type of produced data object (eg. ``T1SignalData``, ``T2SignalData`` etc.).
+        single_shots (dict): Dictionary containing acquired single shot data.
+    """
     data = data_type()
     for qubit, values in single_shots.items():
         data.register_qubit(

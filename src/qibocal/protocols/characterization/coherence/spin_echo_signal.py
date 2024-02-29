@@ -14,12 +14,15 @@ from qibocal.auto.operation import Routine
 from ..utils import table_dict, table_html
 from . import spin_echo
 from .t1_signal import CoherenceType, T1SignalData
-from .utils import exp_decay, exponential_fit
+from .utils import average_single_shots, exp_decay, exponential_fit
 
 
 @dataclass
 class SpinEchoSignalParameters(spin_echo.SpinEchoParameters):
     """SpinEcho Signal runcard inputs."""
+
+    single_shot: bool = False
+    """If ``True`` save single shot signal data."""
 
 
 @dataclass
@@ -29,6 +32,14 @@ class SpinEchoSignalResults(spin_echo.SpinEchoResults):
 
 class SpinEchoSignalData(T1SignalData):
     """SpinEcho acquisition outputs."""
+
+
+class SpinEchoSignalSingleShotData(SpinEchoSignalData):
+    """T1 single shot acquisition outputs."""
+
+    @property
+    def average(self):
+        return average_single_shots(SpinEchoSignalData, self.data)
 
 
 def _acquisition(
@@ -72,10 +83,11 @@ def _acquisition(
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
-        averaging_mode=AveragingMode.CYCLIC,
+        averaging_mode=(
+            AveragingMode.SINGLESHOT if params.single_shot else AveragingMode.CYCLIC
+        ),
     )
 
-    data = SpinEchoSignalData()
     sequences, all_ro_pulses = [], []
 
     # sweep the parameter
@@ -98,6 +110,9 @@ def _acquisition(
             platform.execute_pulse_sequence(sequence, options) for sequence in sequences
         ]
 
+    data = (
+        SpinEchoSignalSingleShotData() if params.single_shot else SpinEchoSignalData()
+    )
     for ig, (wait, ro_pulses) in enumerate(zip(ro_wait_range, all_ro_pulses)):
         for qubit in targets:
             serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
@@ -105,21 +120,34 @@ def _acquisition(
                 result = results[serial][0]
             else:
                 result = results[ig][serial]
+            if params.single_shot:
+                _wait = np.array(len(result.magnitude) * [wait])
+            else:
+                _wait = np.array([wait])
             data.register_qubit(
                 CoherenceType,
                 (qubit),
                 dict(
-                    wait=np.array([wait]),
+                    wait=_wait,
                     signal=np.array([result.magnitude]),
                     phase=np.array([result.phase]),
                 ),
             )
+
+    if params.single_shot:
+        data.data = {
+            qubit: values.reshape((len(ro_wait_range), params.nshots)).T
+            for qubit, values in data.data.items()
+        }
 
     return data
 
 
 def _fit(data: SpinEchoSignalData) -> SpinEchoSignalResults:
     """Post-processing for SpinEcho."""
+    if isinstance(data, SpinEchoSignalSingleShotData):
+        data = data.average
+
     t2Echos, fitted_parameters = exponential_fit(data)
 
     return SpinEchoSignalResults(t2Echos, fitted_parameters)
@@ -127,6 +155,8 @@ def _fit(data: SpinEchoSignalData) -> SpinEchoSignalResults:
 
 def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults = None):
     """Plotting for SpinEcho"""
+    if isinstance(data, SpinEchoSignalSingleShotData):
+        data = data.average
 
     figures = []
     fig = go.Figure()
