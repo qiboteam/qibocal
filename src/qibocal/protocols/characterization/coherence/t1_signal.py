@@ -13,22 +13,20 @@ from qibocal.auto.operation import Data, Routine
 
 from ..utils import table_dict, table_html
 from . import t1, utils
+from .utils import CoherenceType
 
 
 @dataclass
 class T1SignalParameters(t1.T1Parameters):
     """T1 Signal runcard inputs."""
 
+    single_shot: bool = False
+    """If ``True`` save single shot signal data."""
+
 
 @dataclass
 class T1SignalResults(t1.T1Results):
     """T1 Signal outputs."""
-
-
-CoherenceType = np.dtype(
-    [("wait", np.float64), ("signal", np.float64), ("phase", np.float64)]
-)
-"""Custom dtype for coherence routines."""
 
 
 @dataclass
@@ -37,6 +35,14 @@ class T1SignalData(Data):
 
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
+
+
+class T1SignalSingleShotData(T1SignalData):
+    """T1 single shot acquisition outputs."""
+
+    @property
+    def average(self):
+        return utils.average_single_shots(T1SignalData, self.data)
 
 
 def _acquisition(
@@ -88,8 +94,6 @@ def _acquisition(
         type=SweeperType.ABSOLUTE,
     )
 
-    data = T1SignalData()
-
     # sweep the parameter
     # execute the pulse sequence
     results = platform.sweep(
@@ -98,17 +102,24 @@ def _acquisition(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
+            averaging_mode=(
+                AveragingMode.SINGLESHOT if params.single_shot else AveragingMode.CYCLIC
+            ),
         ),
         sweeper,
     )
 
+    data = T1SignalSingleShotData() if params.single_shot else T1SignalData()
     for qubit in targets:
         result = results[ro_pulses[qubit].serial]
+        if params.single_shot:
+            _waits = np.array(len(result.magnitude) * [ro_wait_range])
+        else:
+            _waits = ro_wait_range
         data.register_qubit(
             CoherenceType,
             (qubit),
-            dict(wait=ro_wait_range, signal=result.magnitude, phase=result.phase),
+            dict(wait=_waits, signal=result.magnitude, phase=result.phase),
         )
 
     return data
@@ -122,6 +133,9 @@ def _fit(data: T1SignalData) -> T1SignalResults:
 
             y = p_0-p_1 e^{-x p_2}.
     """
+    if isinstance(data, T1SignalSingleShotData):
+        data = data.average
+
     t1s, fitted_parameters = utils.exponential_fit(data)
 
     return T1SignalResults(t1s, fitted_parameters)
@@ -129,6 +143,8 @@ def _fit(data: T1SignalData) -> T1SignalResults:
 
 def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
     """Plotting function for T1 experiment."""
+    if isinstance(data, T1SignalSingleShotData):
+        data = data.average
 
     figures = []
     fig = go.Figure()
