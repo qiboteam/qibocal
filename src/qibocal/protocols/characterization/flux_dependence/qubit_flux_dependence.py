@@ -127,7 +127,7 @@ def _acquisition(
     if params.flux_pulses:
         qf_pulses = {}
         for qubit in qubits:
-            if isinstance(params.flux_amplitude_start, List):
+            if isinstance(params.flux_amplitude_start, list):
                 flux_amplitude_start = params.flux_amplitude_start[i]
                 flux_amplitude_end = params.flux_amplitude_end[i]
                 flux_amplitude_step = params.flux_amplitude_step[i]
