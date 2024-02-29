@@ -118,6 +118,7 @@ class Task:
         except (RuntimeError, AttributeError):
             operation = dummy_operation
             parameters = DummyPars()
+
         if mode.name in ["autocalibration", "acquire"]:
             if operation.platform_dependent and operation.targets_dependent:
                 completed.data, completed.data_time = operation.acquisition(

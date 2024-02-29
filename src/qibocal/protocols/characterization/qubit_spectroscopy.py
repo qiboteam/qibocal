@@ -131,20 +131,21 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     error_fit_pars = {}
     chi2 = {}
     for qubit in qubits:
-        freq, fitted_params, perr = lorentzian_fit(
+        fit_result = lorentzian_fit(
             data[qubit], resonator_type=data.resonator_type, fit="qubit"
         )
-        frequency[qubit] = freq
-        fitted_parameters[qubit] = fitted_params
-        error_fit_pars[qubit] = perr
-        chi2[qubit] = (
-            chi2_reduced(
-                data[qubit].freq,
-                lorentzian(data[qubit].freq, *fitted_params),
-                data[qubit].error_signal,
-            ),
-            np.sqrt(2 / len(data[qubit].freq)),
-        )
+        if fit_result is not None:
+            frequency[qubit], fitted_parameters[qubit], error_fit_pars[qubit] = (
+                fit_result
+            )
+            chi2[qubit] = (
+                chi2_reduced(
+                    data[qubit].freq,
+                    lorentzian(data[qubit].freq, *fitted_parameters[qubit]),
+                    data[qubit].error_signal,
+                ),
+                np.sqrt(2 / len(data[qubit].freq)),
+            )
     return QubitSpectroscopyResults(
         frequency=frequency,
         fitted_parameters=fitted_parameters,

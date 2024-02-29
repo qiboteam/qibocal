@@ -74,8 +74,11 @@ class ReportBuilder:
     def single_qubit_plot(self, task_id: TaskId, qubit: QubitId):
         """Generate single qubit plot."""
         node = self.history[task_id]
+        fit = node.results if node.results and qubit in node.results else None
+        # the fit is shown only if fitted parameters for the corresponding
+        # key are in Results.
         figures, fitting_report = node.task.operation.report(
-            data=node.data, fit=node.results, target=qubit
+            data=node.data, fit=fit, target=qubit
         )
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             html_list = []

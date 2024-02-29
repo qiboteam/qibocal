@@ -125,7 +125,7 @@ def _fit(data: T2Data) -> T2Results:
             ),
             np.sqrt(2 / len(data[qubit].prob)),
         )
-        for qubit in data.qubits
+        for qubit in fitted_parameters
     }
     return T2Results(t2s, fitted_parameters, chi2)
 

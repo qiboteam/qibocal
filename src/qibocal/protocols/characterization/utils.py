@@ -55,6 +55,7 @@ def effective_qubit_temperature(
     """
     error_prob_0 = np.sqrt(prob_0 * (1 - prob_0) / nshots)
     error_prob_1 = np.sqrt(prob_1 * (1 - prob_1) / nshots)
+    # TODO: find way to handle this exception
     try:
         temp = -HBAR * qubit_frequency / (np.log(prob_1 / prob_0) * KB)
         dT_dp0 = temp / prob_0 / np.log(prob_1 / prob_0)
@@ -146,13 +147,9 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
             )
             perr = [0] * 4
         model_parameters = list(fit_parameters)
-    except RuntimeError:
-        log.warning("lorentzian_fit: the fitting was not successful")
-        perr = [1] * 4
-    for i in range(len(model_parameters) - 1):
-        model_parameters[i] *= GHZ_TO_HZ
-        perr[i] *= GHZ_TO_HZ
-    return model_parameters[1], model_parameters, perr
+        return model_parameters[1] * GHZ_TO_HZ, model_parameters, perr
+    except RuntimeError as e:
+        log.warning(f"Lorentzian fit not successful due to {e}")
 
 
 def spectroscopy_plot(data, qubit, fit: Results = None):

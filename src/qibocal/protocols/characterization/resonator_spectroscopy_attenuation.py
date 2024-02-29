@@ -1,8 +1,7 @@
 from dataclasses import dataclass, field
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
-import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -10,37 +9,21 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Parameters, Results, Routine
 
-from .utils import (
-    PowerLevel,
-    chi2_reduced,
-    lorentzian,
-    lorentzian_fit,
-    spectroscopy_plot,
-)
-
-ResSpecType = np.dtype(
-    [
-        ("freq", np.float64),
-        ("signal", np.float64),
-        ("phase", np.float64),
-        ("error_signal", np.float64),
-        ("error_phase", np.float64),
-    ]
-)
-"""Custom dtype for resonator spectroscopy."""
+from .resonator_spectroscopy import ResonatorSpectroscopyData, ResSpecType
+from .utils import PowerLevel, lorentzian_fit, spectroscopy_plot
 
 
 @dataclass
-class ResonatorSpectroscopyParameters(Parameters):
+class ResonatorSpectroscopyAttenuationParameters(Parameters):
     """ResonatorSpectroscopy runcard inputs."""
 
     freq_width: int
     """Width for frequency sweep relative  to the readout frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
-    power_level: Union[PowerLevel, str]
+    power_level: PowerLevel
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
     amplitude: Optional[float] = None
@@ -51,28 +34,22 @@ class ResonatorSpectroscopyParameters(Parameters):
     Otherwise the default attenuation defined on the platform runcard will be used"""
 
     def __post_init__(self):
-        if isinstance(self.power_level, str):
-            self.power_level = PowerLevel(self.power_level)
+        # TODO: ask Alessandro if there is a proper way to pass Enum to class
+        self.power_level = PowerLevel(self.power_level)
 
 
 @dataclass
-class ResonatorSpectroscopyResults(Results):
+class ResonatorSpectroscopyAttenuationResults(Results):
     """ResonatorSpectroscopy outputs."""
 
     frequency: dict[QubitId, float]
-    """Readout frequency [Hz] for each qubit."""
+    """Readout frequency [GHz] for each qubit."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitted parameters."""
     bare_frequency: Optional[dict[QubitId, float]] = field(
         default_factory=dict,
     )
-    """Bare resonator frequency [Hz] for each qubit."""
-    error_fit_pars: dict[QubitId, list] = field(default_factory=dict)
-    """Errors of the fit parameters."""
-    chi2_reduced: dict[QubitId, tuple[float, Optional[float]]] = field(
-        default_factory=dict
-    )
-    """Chi2 reduced."""
+    """Bare resonator frequency [GHz] for each qubit."""
     amplitude: Optional[dict[QubitId, float]] = field(
         default_factory=dict,
     )
@@ -84,33 +61,18 @@ class ResonatorSpectroscopyResults(Results):
 
 
 @dataclass
-class ResonatorSpectroscopyData(Data):
+class ResonatorSpectroscopyAttenuationData(ResonatorSpectroscopyData):
     """Data structure for resonator spectroscopy with attenuation."""
 
-    resonator_type: str
-    """Resonator type."""
-    amplitudes: dict[QubitId, float]
-    """Amplitudes provided by the user."""
-    data: dict[QubitId, npt.NDArray[ResSpecType]] = field(default_factory=dict)
-    """Raw data acquired."""
-    power_level: Optional[PowerLevel] = None
-    """Power regime of the resonator."""
-    attenuations: Optional[dict[QubitId, int]] = field(default_factory=dict)
-    """Readout attenuation [dB] for each qubit"""
-
-    @classmethod
-    def load(cls, path):
-        obj = super().load(path)
-        # Instantiate PowerLevel object
-        if obj.power_level is not None:  # pylint: disable=E1101
-            obj.power_level = PowerLevel(obj.power_level)  # pylint: disable=E1101
-        return obj
+    attenuations: dict[QubitId, int] = field(default_factory=dict)
 
 
 def _acquisition(
-    params: ResonatorSpectroscopyParameters, platform: Platform, targets: list[QubitId]
-) -> ResonatorSpectroscopyData:
-    """Data acquisition for resonator spectroscopy."""
+    params: ResonatorSpectroscopyAttenuationParameters,
+    platform: Platform,
+    targets: list[QubitId],
+) -> ResonatorSpectroscopyAttenuationData:
+    """Data acquisition for resonator spectroscopy attenuation."""
     # create a sequence of pulses for the experiment:
     # MZ
 
@@ -122,7 +84,6 @@ def _acquisition(
 
     for qubit in targets:
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
-
         if params.amplitude is not None:
             ro_pulses[qubit].amplitude = params.amplitude
 
@@ -131,12 +92,8 @@ def _acquisition(
         if params.attenuation is not None:
             platform.qubits[qubit].readout.attenuation = params.attenuation
 
-        try:
-            attenuation = platform.qubits[qubit].readout.attenuation
-        except AttributeError:
-            attenuation = None
+        attenuations[qubit] = platform.qubits[qubit].readout.attenuation
 
-        attenuations[qubit] = attenuation
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
@@ -149,7 +106,7 @@ def _acquisition(
         pulses=[ro_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
-    data = ResonatorSpectroscopyData(
+    data = ResonatorSpectroscopyAttenuationData(
         resonator_type=platform.resonator_type,
         power_level=params.power_level,
         amplitudes=amplitudes,
@@ -162,7 +119,7 @@ def _acquisition(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
+            averaging_mode=AveragingMode.CYCLIC,
         ),
         sweeper,
     )
@@ -175,11 +132,9 @@ def _acquisition(
             ResSpecType,
             (qubit),
             dict(
-                signal=np.abs(result.average.voltage),
-                phase=np.mean(result.phase, axis=0),
+                signal=result.magnitude,
+                phase=result.phase,
                 freq=delta_frequency_range + ro_pulses[qubit].frequency,
-                error_signal=result.average.std,
-                error_phase=np.std(result.phase, axis=0, ddof=1),
             ),
         )
     # finally, save the remaining data
@@ -187,80 +142,65 @@ def _acquisition(
 
 
 def _fit(
-    data: ResonatorSpectroscopyData,
-) -> ResonatorSpectroscopyResults:
+    data: ResonatorSpectroscopyAttenuationData,
+) -> ResonatorSpectroscopyAttenuationResults:
     """Post-processing function for ResonatorSpectroscopy."""
-    # TODO: change data.qubits
     qubits = data.qubits
     bare_frequency = {}
     frequency = {}
     fitted_parameters = {}
-    error_fit_pars = {}
-    chi2 = {}
-    amplitudes = {}
     for qubit in qubits:
         fit_result = lorentzian_fit(
             data[qubit], resonator_type=data.resonator_type, fit="resonator"
         )
-
         if fit_result is not None:
-            frequency[qubit], fitted_parameters[qubit], error_fit_pars[qubit] = (
-                fit_result
-            )
+            frequency[qubit], fitted_parameters[qubit] = fit_result
             if data.power_level is PowerLevel.high:
                 bare_frequency[qubit] = frequency[qubit]
-            chi2[qubit] = (
-                chi2_reduced(
-                    data[qubit].freq,
-                    lorentzian(data[qubit].freq, *fitted_parameters[qubit]),
-                    data[qubit].error_signal,
-                ),
-                np.sqrt(2 / len(data[qubit].freq)),
-            )
-            amplitudes[qubit] = fitted_parameters[qubit][0]
 
     if data.power_level is PowerLevel.high:
-        return ResonatorSpectroscopyResults(
+        return ResonatorSpectroscopyAttenuationResults(
             frequency=frequency,
             fitted_parameters=fitted_parameters,
             bare_frequency=bare_frequency,
-            error_fit_pars=error_fit_pars,
-            chi2_reduced=chi2,
             amplitude=data.amplitudes,
             attenuation=data.attenuations,
         )
     else:
-        return ResonatorSpectroscopyResults(
+        return ResonatorSpectroscopyAttenuationResults(
             frequency=frequency,
             fitted_parameters=fitted_parameters,
-            error_fit_pars=error_fit_pars,
-            chi2_reduced=chi2,
             amplitude=data.amplitudes,
             attenuation=data.attenuations,
         )
 
 
 def _plot(
-    data: ResonatorSpectroscopyData, target: QubitId, fit: ResonatorSpectroscopyResults
+    data: ResonatorSpectroscopyAttenuationData,
+    target: QubitId,
+    fit: ResonatorSpectroscopyAttenuationResults,
 ):
-    """Plotting function for ResonatorSpectroscopy."""
+    """Plotting function for ResonatorSpectroscopyAttenuation."""
     return spectroscopy_plot(data, target, fit)
 
 
-def _update(results: ResonatorSpectroscopyResults, platform: Platform, target: QubitId):
+def _update(
+    results: ResonatorSpectroscopyAttenuationResults,
+    platform: Platform,
+    target: QubitId,
+):
     update.readout_frequency(results.frequency[target], platform, target)
 
-    # if this condition is satifisfied means that we are in the low power regime
+    # if this condition is satisfied means that we are in the low power regime
     # therefore we update also the readout amplitude
     if len(results.bare_frequency) == 0:
         update.readout_amplitude(results.amplitude[target], platform, target)
-        if results.attenuation[target] is not None:
-            update.readout_attenuation(results.attenuation[target], platform, target)
+        update.readout_attenuation(results.attenuation[target], platform, target)
     else:
         update.bare_resonator_frequency(
             results.bare_frequency[target], platform, target
         )
 
 
-resonator_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
-"""ResonatorSpectroscopy Routine object."""
+resonator_spectroscopy_attenuation = Routine(_acquisition, _fit, _plot, _update)
+"""ResonatorSpectroscopyAttenuation Routine object."""

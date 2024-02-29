@@ -12,9 +12,10 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.config import log
 
 from ..utils import GHZ_TO_HZ, chi2_reduced, table_dict, table_html
-from .utils import PERR_EXCEPTION, POPT_EXCEPTION, fitting, ramsey_fit, ramsey_sequence
+from .utils import fitting, ramsey_fit, ramsey_sequence
 
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
@@ -221,39 +222,38 @@ def _fit(data: RamseyData) -> RamseyResults:
         probs = qubit_data["prob"]
         try:
             popt, perr = fitting(waits, probs, qubit_data.errors)
-        except:
-            popt = POPT_EXCEPTION
-            perr = PERR_EXCEPTION
 
-        delta_fitting = popt[2] / (2 * np.pi)
-        sign = np.sign(data.detuning) if data.detuning != 0 else 1
-        delta_phys = int(sign * (delta_fitting * GHZ_TO_HZ - np.abs(data.detuning)))
-        corrected_qubit_frequency = int(qubit_freq - delta_phys)
-        t2 = 1 / popt[4]
-        # TODO: check error formula
-        freq_measure[qubit] = (
-            corrected_qubit_frequency,
-            perr[2] * GHZ_TO_HZ / (2 * np.pi),
-        )
-        t2_measure[qubit] = (t2, perr[4] * (t2**2))
-        popts[qubit] = popt
-        # TODO: check error formula
-        delta_phys_measure[qubit] = (
-            delta_phys,
-            perr[2] * GHZ_TO_HZ / (2 * np.pi),
-        )
-        delta_fitting_measure[qubit] = (
-            delta_fitting * GHZ_TO_HZ,
-            perr[2] * GHZ_TO_HZ / (2 * np.pi),
-        )
-        chi2[qubit] = (
-            chi2_reduced(
-                probs,
-                ramsey_fit(waits, *popts[qubit]),
-                qubit_data.errors,
-            ),
-            np.sqrt(2 / len(probs)),
-        )
+            delta_fitting = popt[2] / (2 * np.pi)
+            sign = np.sign(data.detuning) if data.detuning != 0 else 1
+            delta_phys = int(sign * (delta_fitting * GHZ_TO_HZ - np.abs(data.detuning)))
+            corrected_qubit_frequency = int(qubit_freq - delta_phys)
+            t2 = 1 / popt[4]
+            # TODO: check error formula
+            freq_measure[qubit] = (
+                corrected_qubit_frequency,
+                perr[2] * GHZ_TO_HZ / (2 * np.pi),
+            )
+            t2_measure[qubit] = (t2, perr[4] * (t2**2))
+            popts[qubit] = popt
+            # TODO: check error formula
+            delta_phys_measure[qubit] = (
+                delta_phys,
+                perr[2] * GHZ_TO_HZ / (2 * np.pi),
+            )
+            delta_fitting_measure[qubit] = (
+                delta_fitting * GHZ_TO_HZ,
+                perr[2] * GHZ_TO_HZ / (2 * np.pi),
+            )
+            chi2[qubit] = (
+                chi2_reduced(
+                    probs,
+                    ramsey_fit(waits, *popts[qubit]),
+                    qubit_data.errors,
+                ),
+                np.sqrt(2 / len(probs)),
+            )
+        except Exception as e:
+            log.warning(f"Ramsey fitting failed for qubit {qubit} due to {e}.")
     return RamseyResults(
         frequency=freq_measure,
         t2=t2_measure,
