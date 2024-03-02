@@ -3,15 +3,6 @@ from enum import Enum
 from .allxy.allxy import allxy
 from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
 from .allxy.drag_pulse_tuning import drag_pulse_tuning
-from .alvaro.frequency_length_signal import rabi_frequency_length_signal
-from .alvaro.ramsey_signal import ramsey_signal_alvaro
-from .alvaro.resonator_qubit_spectroscopy import resonator_qubit_spectroscopy
-from .alvaro.resonator_twpa_freq import resonator_twpa_freq
-from .alvaro.resonator_twpa_pow import resonator_twpa_pow
-from .alvaro.spurious_identification import spurious_identification
-from .alvaro.t1_t2_vs_temperature import t1_t2_vs_temperature
-from .alvaro.t2 import t2_alvaro
-from .alvaro.t2_signal import t2_signal_alvaro
 from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
 from .coherence.spin_echo_signal import spin_echo_signal
@@ -65,6 +56,15 @@ from .signal_experiments.calibrate_state_discrimination import (
 )
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtualz
+from .z.frequency_length_signal import rabi_frequency_length_signal
+from .z.ramsey_signal import ramsey_signal
+from .z.resonator_qubit_spectroscopy import resonator_qubit_spectroscopy
+from .z.resonator_twpa_freq import resonator_twpa_freq
+from .z.resonator_twpa_pow import resonator_twpa_pow
+from .z.spurious_identification import spurious_identification
+from .z.t1_t2_vs_temperature import t1_t2_vs_temperature
+from .z.t2 import t2
+from .z.t2_signal import t2_signal
 
 
 class Operation(Enum):
@@ -82,7 +82,6 @@ class Operation(Enum):
     rabi_length_sequences = rabi_length_sequences
     rabi_amplitude_signal = rabi_amplitude_signal
     rabi_length_signal = rabi_length_signal
-    rabi_frequency_length_signal = rabi_frequency_length_signal
     ramsey = ramsey
     ramsey_signal = ramsey_signal
     t1 = t1
@@ -107,10 +106,6 @@ class Operation(Enum):
     resonator_frequency = resonator_frequency
     fast_reset = fast_reset
     zeno = zeno
-    t1_t2_vs_temperature = t1_t2_vs_temperature
-    resonator_twpa_pow = resonator_twpa_pow
-    resonator_twpa_freq = resonator_twpa_freq
-    resonator_qubit_spectroscopy = resonator_qubit_spectroscopy
     zeno_signal = zeno_signal
     chsh_pulses = chsh_pulses
     chsh_circuits = chsh_circuits
@@ -128,6 +123,12 @@ class Operation(Enum):
     dispersive_shift_qutrit = dispersive_shift_qutrit
     coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
     coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
-    spurious_identification = spurious_identification
     flipping_signal = flipping_signal
     calibrate_state_discrimination = calibrate_state_discrimination
+
+    rabi_frequency_length_signal = rabi_frequency_length_signal
+    resonator_qubit_spectroscopy = resonator_qubit_spectroscopy
+    resonator_twpa_pow = resonator_twpa_pow
+    resonator_twpa_freq = resonator_twpa_freq
+    spurious_identification = spurious_identification
+    t1_t2_vs_temperature = t1_t2_vs_temperature
