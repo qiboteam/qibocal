@@ -9,7 +9,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Data, Qubits, Routine
+from qibocal.auto.operation import Data, Routine
 
 from ..utils import table_dict, table_html
 from . import t1, utils
@@ -40,7 +40,7 @@ class T1SignalData(Data):
 
 
 def _acquisition(
-    params: T1SignalParameters, platform: Platform, qubits: Qubits
+    params: T1SignalParameters, platform: Platform, targets: list[QubitId]
 ) -> T1SignalData:
     r"""Data acquisition for T1 experiment.
     In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
@@ -52,7 +52,7 @@ def _acquisition(
     Args:
         params:
         platform (Platform): Qibolab platform object
-        qubits (list): list of target qubits to perform the action
+        targets (list): list of target qubits to perform the action
         delay_before_readout_start (int): Initial time delay before ReadOut
         delay_before_readout_end (list): Maximum time delay before ReadOut
         delay_before_readout_step (int): Scan range step for the delay before ReadOut
@@ -65,7 +65,7 @@ def _acquisition(
     qd_pulses = {}
     ro_pulses = {}
     sequence = PulseSequence()
-    for qubit in qubits:
+    for qubit in targets:
         qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].duration
@@ -84,7 +84,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.start,
         ro_wait_range,
-        [ro_pulses[qubit] for qubit in qubits],
+        [ro_pulses[qubit] for qubit in targets],
         type=SweeperType.ABSOLUTE,
     )
 
@@ -103,7 +103,7 @@ def _acquisition(
         sweeper,
     )
 
-    for qubit in qubits:
+    for qubit in targets:
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
             CoherenceType,
@@ -127,14 +127,14 @@ def _fit(data: T1SignalData) -> T1SignalResults:
     return T1SignalResults(t1s, fitted_parameters)
 
 
-def _plot(data: T1SignalData, qubit, fit: T1SignalResults = None):
+def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
     """Plotting function for T1 experiment."""
 
     figures = []
     fig = go.Figure()
 
     fitting_report = None
-    qubit_data = data[qubit]
+    qubit_data = data[target]
     waits = qubit_data.wait
 
     fig.add_trace(
@@ -155,7 +155,7 @@ def _plot(data: T1SignalData, qubit, fit: T1SignalResults = None):
             2 * len(qubit_data),
         )
 
-        params = fit.fitted_parameters[qubit]
+        params = fit.fitted_parameters[target]
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
@@ -165,7 +165,7 @@ def _plot(data: T1SignalData, qubit, fit: T1SignalResults = None):
             )
         )
         fitting_report = table_html(
-            table_dict(qubit, "T1 [ns]", np.round(fit.t1[qubit]))
+            table_dict(target, "T1 [ns]", np.round(fit.t1[target]))
         )
 
     # last part

@@ -7,7 +7,7 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.protocols.characterization import classification
 from qibocal.protocols.characterization.readout_optimization.resonator_frequency import (
     ResonatorFrequencyType,
@@ -50,7 +50,7 @@ class TwpaFrequencyResults(Results):
 def _acquisition(
     params: TwpaFrequencyParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> TwpaFrequencyData:
     r"""
     Data acquisition for TWPA power optmization.
@@ -74,7 +74,7 @@ def _acquisition(
     ).astype(int)
 
     initial_twpa_freq = {}
-    for qubit in qubits:
+    for qubit in targets:
         initial_twpa_freq[qubit] = float(
             platform.qubits[qubit].twpa.local_oscillator.frequency
         )
@@ -83,7 +83,7 @@ def _acquisition(
         )
 
     for freq in freq_range:
-        for qubit in qubits:
+        for qubit in targets:
             platform.qubits[qubit].twpa.local_oscillator.frequency = (
                 initial_twpa_freq[qubit] + freq
             )
@@ -93,10 +93,10 @@ def _acquisition(
                 {"nshots": params.nshots}
             ),
             platform,
-            qubits,
+            targets,
         )
         classification_result = classification._fit(classification_data)
-        for qubit in qubits:
+        for qubit in targets:
             data.register_qubit(
                 ResonatorFrequencyType,
                 (qubit),
@@ -137,23 +137,23 @@ def _fit(data: TwpaFrequencyData) -> TwpaFrequencyResults:
     )
 
 
-def _plot(data: TwpaFrequencyData, fit: TwpaFrequencyResults, qubit):
+def _plot(data: TwpaFrequencyData, fit: TwpaFrequencyResults, target: QubitId):
     """Plotting function that shows the assignment fidelity
     for different values of the twpa frequency for a single qubit"""
 
     figures = []
     fitting_report = ""
     if fit is not None:
-        qubit_data = data.data[qubit]
+        qubit_data = data.data[target]
         fidelities = qubit_data["assignment_fidelity"]
         frequencies = qubit_data["freq"]
         fitting_report = table_html(
             table_dict(
-                qubit,
+                target,
                 ["Best assignment fidelity", "TWPA Frequency [Hz]"],
                 [
-                    np.round(fit.best_fidelities[qubit], 3),
-                    fit.best_freqs[qubit],
+                    np.round(fit.best_fidelities[target], 3),
+                    fit.best_freqs[target],
                 ],
             )
         )
@@ -172,10 +172,10 @@ def _plot(data: TwpaFrequencyData, fit: TwpaFrequencyResults, qubit):
     return figures, fitting_report
 
 
-def _update(results: TwpaFrequencyResults, platform: Platform, qubit: QubitId):
-    update.twpa_frequency(results.best_freqs[qubit], platform, qubit)
-    update.iq_angle(results.best_angles[qubit], platform, qubit)
-    update.threshold(results.best_thresholds[qubit], platform, qubit)
+def _update(results: TwpaFrequencyResults, platform: Platform, target: QubitId):
+    update.twpa_frequency(results.best_freqs[target], platform, target)
+    update.iq_angle(results.best_angles[target], platform, target)
+    update.threshold(results.best_thresholds[target], platform, target)
 
 
 twpa_frequency = Routine(_acquisition, _fit, _plot, _update)

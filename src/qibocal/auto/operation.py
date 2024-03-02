@@ -2,7 +2,7 @@ import inspect
 import json
 import time
 from copy import deepcopy
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, fields
 from functools import wraps
 from pathlib import Path
 from typing import Callable, Generic, NewType, Optional, TypeVar, Union
@@ -222,6 +222,18 @@ class Data(AbstractData):
 class Results(AbstractData):
     """Generic runcard update."""
 
+    def __contains__(self, key: Union[QubitId, QubitPairId, tuple[QubitId, ...]]):
+        """Checking if qubit is in Results.
+
+        If key is not present means that fitting failed or
+        was not performed.
+        """
+        return all(
+            key in getattr(self, field.name)
+            for field in fields(self)
+            if isinstance(getattr(self, field.name), dict)
+        )
+
     @classmethod
     def load(cls, path: Path):
         """Load results."""
@@ -276,7 +288,7 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
 
     @property
     def results_type(self):
-        """ "Results object type return by data acquisition."""
+        """Results object type returned by data acquisition."""
         return inspect.signature(self.fit).return_annotation
 
     # TODO: I don't like these properties but it seems to work
@@ -286,9 +298,9 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
         return "platform" in inspect.signature(self.acquisition).parameters
 
     @property
-    def qubits_dependent(self):
+    def targets_dependent(self):
         """Check if acquisition involves qubits."""
-        return "qubits" in inspect.signature(self.acquisition).parameters
+        return "targets" in inspect.signature(self.acquisition).parameters
 
 
 @dataclass

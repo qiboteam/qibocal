@@ -11,7 +11,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.characterization.utils import table_dict, table_html
 
@@ -65,7 +65,7 @@ class ResonatorAmplitudeResults(Results):
 def _acquisition(
     params: ResonatorAmplitudeParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> ResonatorAmplitudeData:
     r"""
     Data acquisition for resoantor amplitude optmization.
@@ -76,14 +76,14 @@ def _acquisition(
     Args:
         params (:class:`ResonatorAmplitudeParameters`): input parameters
         platform (:class:`Platform`): Qibolab's platform
-        qubits (dict): dict of target :class:`Qubit` objects to be characterized
+        targets (list): list of QubitIds to be characterized
 
     Returns:
         data (:class:`ResonatorAmplitudeData`)
     """
 
     data = ResonatorAmplitudeData()
-    for qubit in qubits:
+    for qubit in targets:
         error = 1
         old_amp = platform.qubits[qubit].native_gates.MZ.amplitude
         new_amp = params.amplitude_start
@@ -160,7 +160,9 @@ def _fit(data: ResonatorAmplitudeData) -> ResonatorAmplitudeResults:
     return ResonatorAmplitudeResults(lowest_err, best_amps, best_angle, best_threshold)
 
 
-def _plot(data: ResonatorAmplitudeData, fit: ResonatorAmplitudeResults, qubit):
+def _plot(
+    data: ResonatorAmplitudeData, fit: ResonatorAmplitudeResults, target: QubitId
+):
     """Plotting function for Optimization RO amplitude."""
     figures = []
     opacity = 1
@@ -172,8 +174,8 @@ def _plot(data: ResonatorAmplitudeData, fit: ResonatorAmplitudeResults, qubit):
     if fit is not None:
         fig.add_trace(
             go.Scatter(
-                x=data[qubit]["amp"],
-                y=data[qubit]["error"],
+                x=data[target]["amp"],
+                y=data[target]["error"],
                 opacity=opacity,
                 showlegend=True,
                 mode="lines+markers",
@@ -184,9 +186,9 @@ def _plot(data: ResonatorAmplitudeData, fit: ResonatorAmplitudeResults, qubit):
 
         fitting_report = table_html(
             table_dict(
-                qubit,
+                target,
                 "Best Readout Amplitude [a.u.]",
-                np.round(fit.best_amp[qubit], 4),
+                np.round(fit.best_amp[target], 4),
             )
         )
 
@@ -201,10 +203,10 @@ def _plot(data: ResonatorAmplitudeData, fit: ResonatorAmplitudeResults, qubit):
     return figures, fitting_report
 
 
-def _update(results: ResonatorAmplitudeResults, platform: Platform, qubit: QubitId):
-    update.readout_amplitude(results.best_amp[qubit], platform, qubit)
-    update.iq_angle(results.best_angle[qubit], platform, qubit)
-    update.threshold(results.best_threshold[qubit], platform, qubit)
+def _update(results: ResonatorAmplitudeResults, platform: Platform, target: QubitId):
+    update.readout_amplitude(results.best_amp[target], platform, target)
+    update.iq_angle(results.best_angle[target], platform, target)
+    update.threshold(results.best_threshold[target], platform, target)
 
 
 resonator_amplitude = Routine(_acquisition, _fit, _plot, _update)

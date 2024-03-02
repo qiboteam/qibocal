@@ -12,7 +12,7 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 
 from ..utils import chi2_reduced
@@ -63,7 +63,7 @@ class RabiLengthData(Data):
 
 
 def _acquisition(
-    params: RabiLengthParameters, platform: Platform, qubits: Qubits
+    params: RabiLengthParameters, platform: Platform, targets: list[QubitId]
 ) -> RabiLengthData:
     r"""
     Data acquisition for RabiLength Experiment.
@@ -76,7 +76,7 @@ def _acquisition(
     qd_pulses = {}
     ro_pulses = {}
     amplitudes = {}
-    for qubit in qubits:
+    for qubit in targets:
         # TODO: made duration optional for qd pulse?
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.pulse_duration_start
@@ -102,7 +102,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.duration,
         qd_pulse_duration_range,
-        [qd_pulses[qubit] for qubit in qubits],
+        [qd_pulses[qubit] for qubit in targets],
         type=SweeperType.ABSOLUTE,
     )
 
@@ -120,7 +120,7 @@ def _acquisition(
         sweeper,
     )
 
-    for qubit in qubits:
+    for qubit in targets:
         prob = results[qubit].probability(state=1)
         data.register_qubit(
             RabiLenType,
@@ -172,31 +172,30 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
             pi_pulse_parameter = (
                 popt[2] / 2 * utils.period_correction_factor(phase=popt[3])
             )
-        except:
-            log.warning("rabi_fit: the fitting was not succesful")
-            pi_pulse_parameter = 0
-            popt = [0] * 4 + [1]
-        durations[qubit] = (pi_pulse_parameter, perr[2] / 2)
-        fitted_parameters[qubit] = popt.tolist()
-        amplitudes = {key: (value, 0) for key, value in data.amplitudes.items()}
-        chi2[qubit] = (
-            chi2_reduced(
-                y,
-                utils.rabi_length_function(x, *popt),
-                qubit_data.error,
-            ),
-            np.sqrt(2 / len(y)),
-        )
+            durations[qubit] = (pi_pulse_parameter, perr[2] / 2)
+            fitted_parameters[qubit] = popt.tolist()
+            amplitudes = {key: (value, 0) for key, value in data.amplitudes.items()}
+            chi2[qubit] = (
+                chi2_reduced(
+                    y,
+                    utils.rabi_length_function(x, *popt),
+                    qubit_data.error,
+                ),
+                np.sqrt(2 / len(y)),
+            )
+        except Exception as e:
+            log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
+
     return RabiLengthResults(durations, amplitudes, fitted_parameters, chi2)
 
 
-def _update(results: RabiLengthResults, platform: Platform, qubit: QubitId):
-    update.drive_duration(results.length[qubit], platform, qubit)
+def _update(results: RabiLengthResults, platform: Platform, target: QubitId):
+    update.drive_duration(results.length[target], platform, target)
 
 
-def _plot(data: RabiLengthData, fit: RabiLengthResults, qubit):
+def _plot(data: RabiLengthData, fit: RabiLengthResults, target: QubitId):
     """Plotting function for RabiLength experiment."""
-    return utils.plot_probabilities(data, qubit, fit)
+    return utils.plot_probabilities(data, target, fit)
 
 
 rabi_length = Routine(_acquisition, _fit, _plot, _update)
