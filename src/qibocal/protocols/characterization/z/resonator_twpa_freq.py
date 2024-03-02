@@ -13,7 +13,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from .utils import HZ_TO_GHZ, V_TO_UV
+from ..utils import HZ_TO_GHZ, V_TO_UV
 
 
 @dataclass

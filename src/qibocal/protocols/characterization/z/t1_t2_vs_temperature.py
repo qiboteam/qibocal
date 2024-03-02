@@ -14,7 +14,9 @@ from plotly.colors import DEFAULT_PLOTLY_COLORS
 from plotly.subplots import make_subplots
 from qibo.config import log
 from qibolab import AcquisitionType, ExecutionParameters
-from qibolab.instruments.bluefors import TemperatureController
+
+# from qibolab.instruments.bluefors import TemperatureController
+TemperatureController = None
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId

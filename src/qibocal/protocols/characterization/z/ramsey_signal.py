@@ -11,15 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Qubits, Results, Routine
 
-from ..ramsey import (
-    PERR_EXCEPTION,
-    POPT_EXCEPTION,
-    RamseyData,
-    RamseyParameters,
-    _update,
-    fitting,
-    ramsey_fit,
-)
+from ..ramsey.ramsey import RamseyData, RamseyParameters, _update, fitting, ramsey_fit
 from ..utils import GHZ_TO_HZ, table_dict, table_html
 
 
@@ -194,11 +186,7 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
         signal = qubit_data["signal"]
-        try:
-            popt, perr = fitting(waits, signal)
-        except:
-            popt = POPT_EXCEPTION
-            perr = PERR_EXCEPTION
+        popt, perr = fitting(waits, signal)
 
         delta_fitting = popt[2] / (2 * np.pi)
         delta_phys = data.detuning_sign * int(

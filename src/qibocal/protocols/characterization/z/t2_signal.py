@@ -11,8 +11,8 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Qubits, Routine
 
+from ..coherence import t1_signal, t2, utils
 from ..utils import table_dict, table_html
-from . import t1_signal, t2, utils
 
 
 @dataclass

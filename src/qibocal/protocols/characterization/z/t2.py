@@ -12,8 +12,8 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
+from ..coherence import t1, utils
 from ..utils import chi2_reduced, table_dict, table_html
-from . import t1, utils
 
 
 @dataclass
