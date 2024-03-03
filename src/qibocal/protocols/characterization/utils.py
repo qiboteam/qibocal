@@ -225,11 +225,10 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
 
     if fit is not None:
         params = fit.fitted_parameters[qubit]
-
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
-                y=lorentzian(freqrange * GHZ_TO_HZ, *params),
+                y=lorentzian(freqrange, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
             ),
