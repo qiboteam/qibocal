@@ -9,15 +9,14 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal import update
-from qibocal.auto.operation import Parameters, Results, Routine
+from qibocal.auto.operation import Routine
 
 from ..utils import chi2_reduced, table_dict, table_html
-from . import t1, utils
+from . import t1, t2_signal, utils
 
 
 @dataclass
-class T2Parameters(Parameters):
+class T2Parameters(t2_signal.T2SignalParameters):
     """T2 runcard inputs."""
 
     delay_between_pulses_start: int
@@ -29,13 +28,9 @@ class T2Parameters(Parameters):
 
 
 @dataclass
-class T2Results(Results):
+class T2Results(t2_signal.T2SignalResults):
     """T2 outputs."""
 
-    t2: dict[QubitId, float]
-    """T2 for each qubit [ns]."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitting output."""
     chi2: Optional[dict[QubitId, tuple[float, Optional[float]]]] = field(
         default_factory=dict
     )
@@ -205,9 +200,5 @@ def _plot(data: T2Data, target: QubitId, fit: T2Results = None):
     return figures, fitting_report
 
 
-def _update(results: T2Results, platform: Platform, target: QubitId):
-    update.t2(results.t2[target], platform, target)
-
-
-t2 = Routine(_acquisition, _fit, _plot, _update)
+t2 = Routine(_acquisition, _fit, _plot, t2_signal._update)
 """T2 Routine object."""

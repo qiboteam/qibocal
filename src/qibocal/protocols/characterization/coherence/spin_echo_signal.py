@@ -9,22 +9,36 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal import update
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import Parameters, Results, Routine
 
 from ..utils import table_dict, table_html
-from . import spin_echo
 from .t1_signal import CoherenceType, T1SignalData
 from .utils import exp_decay, exponential_fit
 
 
 @dataclass
-class SpinEchoSignalParameters(spin_echo.SpinEchoParameters):
+class SpinEchoSignalParameters(Parameters):
     """SpinEcho Signal runcard inputs."""
+
+    delay_between_pulses_start: int
+    """Initial delay between pulses [ns]."""
+    delay_between_pulses_end: int
+    """Final delay between pulses [ns]."""
+    delay_between_pulses_step: int
+    """Step delay between pulses [ns]."""
+    unrolling: bool = False
+    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
+    Defaults to ``False``."""
 
 
 @dataclass
-class SpinEchoSignalResults(spin_echo.SpinEchoResults):
+class SpinEchoSignalResults(Results):
     """SpinEchoSignal outputs."""
+
+    t2_spin_echo: dict[QubitId, float]
+    """T2 echo for each qubit."""
+    fitted_parameters: dict[QubitId, dict[str, float]]
+    """Raw fitting output."""
 
 
 class SpinEchoSignalData(T1SignalData):

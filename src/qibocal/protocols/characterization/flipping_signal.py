@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -11,34 +12,47 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal import update
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
-from qibocal.protocols.characterization.flipping import (
-    FlippingData,
-    FlippingParameters,
-    FlippingResults,
-    flipping_fit,
-)
 from qibocal.protocols.characterization.utils import table_dict, table_html
 
 
 @dataclass
-class FlippingSignalParameters(FlippingParameters):
+class FlippingSignalParameters(Parameters):
     """Flipping runcard inputs."""
+
+    nflips_max: int
+    """Maximum number of flips ([RX(pi) - RX(pi)] sequences). """
+    nflips_step: int
+    """Flip step."""
+    unrolling: bool = False
+    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
+    Defaults to ``False``."""
 
 
 @dataclass
-class FlippingSignalResults(FlippingResults):
+class FlippingSignalResults(Results):
     """Flipping outputs."""
+
+    amplitude: dict[QubitId, tuple[float, Optional[float]]]
+    """Drive amplitude for each qubit."""
+    amplitude_factors: dict[QubitId, tuple[float, Optional[float]]]
+    """Drive amplitude correction factor for each qubit."""
+    fitted_parameters: dict[QubitId, dict[str, float]]
+    """Raw fitting output."""
 
 
 FlippingType = np.dtype([("flips", np.float64), ("signal", np.float64)])
 
 
 @dataclass
-class FlippingSignalData(FlippingData):
+class FlippingSignalData(Data):
     """Flipping acquisition outputs."""
 
+    resonator_type: str
+    """Resonator type."""
+    pi_pulse_amplitudes: dict[QubitId, float]
+    """Pi pulse amplitudes for each qubit."""
     data: dict[QubitId, npt.NDArray[FlippingType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -130,6 +144,10 @@ def _acquisition(
             )
 
     return data
+
+
+def flipping_fit(x, offset, amplitude, omega, phase, gamma):
+    return np.sin(x * omega + phase) * amplitude * np.exp(-x * gamma) + offset
 
 
 def _fit(data: FlippingSignalData) -> FlippingSignalResults:
