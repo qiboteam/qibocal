@@ -9,27 +9,43 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import Parameters, Results, Routine
 
 from ..utils import table_dict, table_html
 from . import t1_signal, t2, utils
 
 
 @dataclass
-class T2SignalParameters(t2.T2Parameters):
+class T2SignalParameters(Parameters):
     """T2Signal runcard inputs."""
 
+    delay_between_pulses_start: int
+    """Initial delay between RX(pi/2) pulses in ns."""
+    delay_between_pulses_end: int
+    """Final delay between RX(pi/2) pulses in ns."""
+    delay_between_pulses_step: int
+    """Step delay between RX(pi/2) pulses in ns."""
     single_shot: bool = False
     """If ``True`` save single shot signal data."""
 
 
 @dataclass
-class T2SignalResults(t2.T2Results):
+class T2SignalResults(Results):
     """T2Signal outputs."""
+
+    t2: dict[QubitId, float]
+    """T2 for each qubit [ns]."""
+    fitted_parameters: dict[QubitId, dict[str, float]]
+    """Raw fitting output."""
 
 
 class T2SignalData(t1_signal.T1SignalData):
     """T2Signal acquisition outputs."""
+
+    t2: dict[QubitId, float]
+    """T2 for each qubit [ns]."""
+    fitted_parameters: dict[QubitId, dict[str, float]]
+    """Raw fitting output."""
 
 
 class T2SignalSingleShotData(T2SignalData):
@@ -102,7 +118,7 @@ def _acquisition(
         else:
             _waits = waits
         data.register_qubit(
-            t1_signal.CoherenceType,
+            utils.CoherenceType,
             (qubit),
             dict(wait=_waits, signal=result.magnitude, phase=result.phase),
         )

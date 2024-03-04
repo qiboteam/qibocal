@@ -12,37 +12,23 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Routine
 from qibocal.config import log
 
 from ..utils import chi2_reduced
 from . import utils
+from .amplitude_signal import RabiAmplitudeVoltParameters, RabiAmplitudeVoltResults
 
 
 @dataclass
-class RabiAmplitudeParameters(Parameters):
+class RabiAmplitudeParameters(RabiAmplitudeVoltParameters):
     """RabiAmplitude runcard inputs."""
 
-    min_amp_factor: float
-    """Minimum amplitude multiplicative factor."""
-    max_amp_factor: float
-    """Maximum amplitude multiplicative factor."""
-    step_amp_factor: float
-    """Step amplitude multiplicative factor."""
-    pulse_length: Optional[float]
-    """RX pulse duration [ns]."""
-
 
 @dataclass
-class RabiAmplitudeResults(Results):
+class RabiAmplitudeResults(RabiAmplitudeVoltResults):
     """RabiAmplitude outputs."""
 
-    amplitude: dict[QubitId, tuple[float, Optional[float]]]
-    """Drive amplitude for each qubit."""
-    length: dict[QubitId, tuple[float, Optional[float]]]
-    """Drive pulse duration. Same for all qubits."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitted parameters."""
     chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
 
 
@@ -182,12 +168,12 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
 
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
-
     return RabiAmplitudeResults(pi_pulse_amplitudes, durations, fitted_parameters, chi2)
 
 
 def _plot(data: RabiAmplitudeData, target: QubitId, fit: RabiAmplitudeResults = None):
     """Plotting function for RabiAmplitude."""
+    print(fit)
     return utils.plot_probabilities(data, target, fit)
 
 

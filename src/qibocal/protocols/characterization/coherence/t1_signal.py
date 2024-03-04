@@ -9,24 +9,35 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Data, Routine
+from qibocal import update
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 
 from ..utils import table_dict, table_html
-from . import t1, utils
-from .utils import CoherenceType
+from . import utils
 
 
 @dataclass
-class T1SignalParameters(t1.T1Parameters):
-    """T1 Signal runcard inputs."""
+class T1SignalParameters(Parameters):
+    """T1 runcard inputs."""
 
+    delay_before_readout_start: int
+    """Initial delay before readout [ns]."""
+    delay_before_readout_end: int
+    """Final delay before readout [ns]."""
+    delay_before_readout_step: int
+    """Step delay before readout [ns]."""
     single_shot: bool = False
     """If ``True`` save single shot signal data."""
 
 
 @dataclass
-class T1SignalResults(t1.T1Results):
+class T1SignalResults(Results):
     """T1 Signal outputs."""
+
+    t1: dict[QubitId, tuple[float]]
+    """T1 for each qubit."""
+    fitted_parameters: dict[QubitId, dict[str, float]]
+    """Raw fitting output."""
 
 
 @dataclass
@@ -117,7 +128,7 @@ def _acquisition(
         else:
             _waits = ro_wait_range
         data.register_qubit(
-            CoherenceType,
+            utils.CoherenceType,
             (qubit),
             dict(wait=_waits, signal=result.magnitude, phase=result.phase),
         )
@@ -196,5 +207,9 @@ def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
     return figures, fitting_report
 
 
-t1_signal = Routine(_acquisition, _fit, _plot, t1._update)
+def _update(results: T1SignalResults, platform: Platform, target: QubitId):
+    update.t1(results.t1[target], platform, target)
+
+
+t1_signal = Routine(_acquisition, _fit, _plot, _update)
 """T1 Signal Routine object."""
