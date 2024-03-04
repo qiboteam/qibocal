@@ -304,7 +304,7 @@ actions:
       delay_before_readout_step: 2000
       nshots: 1024
 
-  - id: t1_signal
+  - id: t1_signal_single_shot
     priority: 0
     operation: t1_signal
     parameters:
@@ -355,7 +355,7 @@ actions:
       delay_between_pulses_step: 100
       nshots: 10
 
-  - id: t2_signal
+  - id: t2_signal_single_shot
     priority: 0
     operation: t2_signal
     parameters:
@@ -532,7 +532,7 @@ actions:
       delay_between_pulses_step: 1
       nshots: 10
 
-  - id: spin_echo_signal
+  - id: spin_echo_signal_single_shot
     priority: 0
     operation: spin_echo_signal
     parameters:

@@ -48,7 +48,7 @@ class SpinEchoSignalData(T1SignalData):
 
 
 class SpinEchoSignalSingleShotData(SpinEchoSignalData):
-    """T1 single shot acquisition outputs."""
+    """SpinEcho single shot acquisition outputs."""
 
     @property
     def average(self):
