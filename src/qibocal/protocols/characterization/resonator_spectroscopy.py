@@ -219,7 +219,7 @@ def _fit(
                 bare_frequency[qubit] = frequency[qubit]
             chi2[qubit] = (
                 chi2_reduced(
-                    data[qubit].freq,
+                    data[qubit].signal,
                     lorentzian(data[qubit].freq, *fitted_parameters[qubit]),
                     data[qubit].error_signal,
                 ),

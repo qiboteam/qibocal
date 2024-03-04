@@ -173,7 +173,6 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
 
 def _plot(data: RabiAmplitudeData, target: QubitId, fit: RabiAmplitudeResults = None):
     """Plotting function for RabiAmplitude."""
-    print(fit)
     return utils.plot_probabilities(data, target, fit)
 
 
