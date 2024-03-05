@@ -2,7 +2,7 @@ import inspect
 import json
 import time
 from copy import deepcopy
-from dataclasses import asdict, dataclass, field, fields
+from dataclasses import asdict, dataclass, fields
 from functools import wraps
 from pathlib import Path
 from typing import Callable, Generic, NewType, Optional, TypeVar, Union
