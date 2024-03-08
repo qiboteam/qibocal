@@ -200,7 +200,12 @@ def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults 
         )
 
         fitting_report = table_html(
-            table_dict(target, "T2 Spin Echo [ns]", np.round(fit.t2_spin_echo[target]))
+            table_dict(
+                target,
+                ["T2 Spin Echo [ns]"],
+                [np.round(fit.t2_spin_echo[target])],
+                display_error=True,
+            )
         )
 
     fig.update_layout(

@@ -189,7 +189,9 @@ def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
             )
         )
         fitting_report = table_html(
-            table_dict(target, "T1 [ns]", np.round(fit.t1[target]))
+            table_dict(
+                target, ["T1 [ns]"], [np.round(fit.t1[target])], display_error=True
+            )
         )
 
     # last part
