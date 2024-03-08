@@ -132,7 +132,7 @@ def _fit(data: T1Data) -> T1Results:
 
             y = p_0-p_1 e^{-x p_2}.
     """
-    t1s, fitted_parameters = utils.exponential_fit_probability(data)
+    t1s, fitted_parameters, pcov = utils.exponential_fit_probability(data)
     chi2 = {
         qubit: (
             chi2_reduced(
@@ -145,7 +145,7 @@ def _fit(data: T1Data) -> T1Results:
         for qubit in data.qubits
     }
 
-    return T1Results(t1s, fitted_parameters, chi2)
+    return T1Results(t1s, fitted_parameters, pcov, chi2)
 
 
 def _plot(data: T1Data, target: QubitId, fit: T1Results = None):

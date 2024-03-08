@@ -33,12 +33,10 @@ class T2SignalParameters(Parameters):
 class T2SignalResults(Results):
     """T2Signal outputs."""
 
-    t2: dict[QubitId, float]
+    t2: dict[QubitId, tuple[float]]
     """T2 for each qubit [ns]."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
-    t2_error: dict[QubitId, float]
-    """One standard deviation error in T2."""
     pcov: dict[QubitId, list[float]]
     """Approximate covariance of fitted parameters."""
 
@@ -129,8 +127,8 @@ def _fit(data: T2SignalData) -> T2SignalResults:
     """
     data = data.average
 
-    t2s, fitted_parameters, t2error, pcovs = utils.exponential_fit(data)
-    return T2SignalResults(t2s, fitted_parameters, t2error, pcovs)
+    t2s, fitted_parameters, pcovs = utils.exponential_fit(data)
+    return T2SignalResults(t2s, fitted_parameters, pcovs)
 
 
 def _plot(data: T2SignalData, target: QubitId, fit: T2SignalResults = None):

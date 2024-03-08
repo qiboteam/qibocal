@@ -13,7 +13,7 @@ from qibocal.auto.operation import Parameters, Results, Routine
 
 from ..utils import table_dict, table_html
 from .t1_signal import T1SignalData
-from .utils import CoherenceType, average_single_shots, exp_decay, exponential_fit
+from .utils import CoherenceType, exp_decay, exponential_fit
 
 
 @dataclass
@@ -37,26 +37,16 @@ class SpinEchoSignalParameters(Parameters):
 class SpinEchoSignalResults(Results):
     """SpinEchoSignal outputs."""
 
-    t2_spin_echo: dict[QubitId, float]
+    t2_spin_echo: dict[QubitId, tuple[float]]
     """T2 echo for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
-    t2_spin_echo_error: dict[QubitId, float]
-    """One standard deviation error in T2 echo."""
     pcov: dict[QubitId, list[float]]
     """Approximate covariance of fitted parameters."""
 
 
 class SpinEchoSignalData(T1SignalData):
     """SpinEcho acquisition outputs."""
-
-
-class SpinEchoSignalSingleShotData(SpinEchoSignalData):
-    """SpinEcho single shot acquisition outputs."""
-
-    @property
-    def average(self):
-        return average_single_shots(SpinEchoSignalData, self.data)
 
 
 def _acquisition(
@@ -162,9 +152,9 @@ def _fit(data: SpinEchoSignalData) -> SpinEchoSignalResults:
     """Post-processing for SpinEcho."""
     data = data.average
 
-    t2echos, fitted_parameters, t2error, pcovs = exponential_fit(data)
+    t2echos, fitted_parameters, pcov = exponential_fit(data)
 
-    return SpinEchoSignalResults(t2echos, fitted_parameters, t2error, pcovs)
+    return SpinEchoSignalResults(t2echos, fitted_parameters, pcov)
 
 
 def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults = None):
