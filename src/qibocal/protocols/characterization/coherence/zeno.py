@@ -8,19 +8,16 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
-from qibocal import update
-from qibocal.auto.operation import Parameters, Results, Routine
+from qibocal.auto.operation import Routine
 
 from ..utils import chi2_reduced, table_dict, table_html
 from . import t1, utils
+from .zeno_signal import ZenoSignalParameters, ZenoSignalResults, _update
 
 
 @dataclass
-class ZenoParameters(Parameters):
+class ZenoParameters(ZenoSignalParameters):
     """Zeno runcard inputs."""
-
-    readouts: int
-    "Number of readout pulses"
 
 
 @dataclass
@@ -30,13 +27,9 @@ class ZenoData(t1.T1Data):
 
 
 @dataclass
-class ZenoResults(Results):
+class ZenoResults(ZenoSignalResults):
     """Zeno outputs."""
 
-    zeno_t1: dict[QubitId, int]
-    """T1 for each qubit."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitting output."""
     chi2: dict[QubitId, tuple[float, Optional[float]]]
     """Chi squared estimate mean value and error."""
 
@@ -200,10 +193,6 @@ def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
     figures.append(fig)
 
     return figures, fitting_report
-
-
-def _update(results: ZenoResults, platform: Platform, target: QubitId):
-    update.t1(results.zeno_t1[target], platform, target)
 
 
 zeno = Routine(_acquisition, _fit, _plot, _update)

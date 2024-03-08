@@ -1,6 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
+import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -10,25 +12,36 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal import update
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
-from qibocal.protocols.characterization.rabi.amplitude import (
-    RabiAmplitudeData,
-    RabiAmplitudeParameters,
-    RabiAmplitudeResults,
-)
 
 from . import utils
 
 
 @dataclass
-class RabiAmplitudeVoltParameters(RabiAmplitudeParameters):
+class RabiAmplitudeVoltParameters(Parameters):
     """RabiAmplitude runcard inputs."""
+
+    min_amp_factor: float
+    """Minimum amplitude multiplicative factor."""
+    max_amp_factor: float
+    """Maximum amplitude multiplicative factor."""
+    step_amp_factor: float
+    """Step amplitude multiplicative factor."""
+    pulse_length: Optional[float]
+    """RX pulse duration [ns]."""
 
 
 @dataclass
-class RabiAmplitudeVoltResults(RabiAmplitudeResults):
+class RabiAmplitudeVoltResults(Results):
     """RabiAmplitude outputs."""
+
+    amplitude: dict[QubitId, tuple[float, Optional[float]]]
+    """Drive amplitude for each qubit."""
+    length: dict[QubitId, tuple[float, Optional[float]]]
+    """Drive pulse duration. Same for all qubits."""
+    fitted_parameters: dict[QubitId, dict[str, float]]
+    """Raw fitted parameters."""
 
 
 RabiAmpVoltType = np.dtype(
@@ -38,8 +51,13 @@ RabiAmpVoltType = np.dtype(
 
 
 @dataclass
-class RabiAmplitudeVoltData(RabiAmplitudeData):
-    """RabiAmplitude data acquisition."""
+class RabiAmplitudeVoltData(Data):
+    """RabiAmplitudeVolt data acquisition."""
+
+    durations: dict[QubitId, float] = field(default_factory=dict)
+    """Pulse durations provided by the user."""
+    data: dict[QubitId, npt.NDArray[RabiAmpVoltType]] = field(default_factory=dict)
+    """Raw data acquired."""
 
 
 def _acquisition(

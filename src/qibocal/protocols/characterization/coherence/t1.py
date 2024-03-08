@@ -10,36 +10,24 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Routine
 
 from ..utils import chi2_reduced, table_dict, table_html
-from . import utils
+from . import t1_signal, utils
 
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
 
 
 @dataclass
-class T1Parameters(Parameters):
+class T1Parameters(t1_signal.T1SignalParameters):
     """T1 runcard inputs."""
-
-    delay_before_readout_start: int
-    """Initial delay before readout [ns]."""
-    delay_before_readout_end: int
-    """Final delay before readout [ns]."""
-    delay_before_readout_step: int
-    """Step delay before readout [ns]."""
 
 
 @dataclass
-class T1Results(Results):
+class T1Results(t1_signal.T1SignalResults):
     """T1 outputs."""
 
-    t1: dict[QubitId, tuple[float]]
-    """T1 for each qubit."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitting output."""
     chi2: Optional[dict[QubitId, tuple[float, Optional[float]]]] = field(
         default_factory=dict
     )
@@ -232,9 +220,5 @@ def _plot(data: T1Data, target: QubitId, fit: T1Results = None):
     return figures, fitting_report
 
 
-def _update(results: T1Results, platform: Platform, target: QubitId):
-    update.t1(results.t1[target], platform, target)
-
-
-t1 = Routine(_acquisition, _fit, _plot, _update)
+t1 = Routine(_acquisition, _fit, _plot, t1_signal._update)
 """T1 Routine object."""

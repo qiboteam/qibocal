@@ -140,7 +140,7 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
             )
             chi2[qubit] = (
                 chi2_reduced(
-                    data[qubit].freq,
+                    data[qubit].signal,
                     lorentzian(data[qubit].freq, *fitted_parameters[qubit]),
                     data[qubit].error_signal,
                 ),
