@@ -38,6 +38,10 @@ class T1SignalResults(Results):
     """T1 for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    t1_error: dict[QubitId, float]
+    """One standard deviation error in T1."""
+    pcov: dict[QubitId, list[float]]
+    """Approximate covariance of fitted parameters."""
 
 
 @dataclass
@@ -47,13 +51,11 @@ class T1SignalData(Data):
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
-
-class T1SignalSingleShotData(T1SignalData):
-    """T1 single shot acquisition outputs."""
-
     @property
     def average(self):
-        return utils.average_single_shots(T1SignalData, self.data)
+        if len(next(iter(self.data.values())).shape) > 1:
+            return utils.average_single_shots(self.__class__, self.data)
+        return self
 
 
 def _acquisition(
@@ -120,7 +122,7 @@ def _acquisition(
         sweeper,
     )
 
-    data = T1SignalSingleShotData() if params.single_shot else T1SignalData()
+    data = T1SignalData()
     for qubit in targets:
         result = results[ro_pulses[qubit].serial]
         if params.single_shot:
@@ -144,18 +146,15 @@ def _fit(data: T1SignalData) -> T1SignalResults:
 
             y = p_0-p_1 e^{-x p_2}.
     """
-    if isinstance(data, T1SignalSingleShotData):
-        data = data.average
+    data = data.average
+    t1s, fitted_parameters, t1_error, pcovs = utils.exponential_fit(data)
 
-    t1s, fitted_parameters = utils.exponential_fit(data)
-
-    return T1SignalResults(t1s, fitted_parameters)
+    return T1SignalResults(t1s, fitted_parameters, t1_error, pcovs)
 
 
 def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
     """Plotting function for T1 experiment."""
-    if isinstance(data, T1SignalSingleShotData):
-        data = data.average
+    data = data.average
 
     figures = []
     fig = go.Figure()

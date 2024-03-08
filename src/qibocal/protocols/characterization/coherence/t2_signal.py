@@ -37,6 +37,10 @@ class T2SignalResults(Results):
     """T2 for each qubit [ns]."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    t2_error: dict[QubitId, float]
+    """One standard deviation error in T2."""
+    pcov: dict[QubitId, list[float]]
+    """Approximate covariance of fitted parameters."""
 
 
 class T2SignalData(t1_signal.T1SignalData):
@@ -46,14 +50,6 @@ class T2SignalData(t1_signal.T1SignalData):
     """T2 for each qubit [ns]."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
-
-
-class T2SignalSingleShotData(T2SignalData):
-    """T2Signal single shot acquisition outputs."""
-
-    @property
-    def average(self):
-        return utils.average_single_shots(T2SignalData, self.data)
 
 
 def _acquisition(
@@ -110,7 +106,7 @@ def _acquisition(
         sweeper,
     )
 
-    data = T2SignalSingleShotData() if params.single_shot else T2SignalData()
+    data = T2SignalData()
     for qubit in targets:
         result = results[ro_pulses[qubit].serial]
         if params.single_shot:
@@ -131,17 +127,15 @@ def _fit(data: T2SignalData) -> T2SignalResults:
     .. math::
         y = p_0 - p_1 e^{-x p_2}.
     """
-    if isinstance(data, T2SignalSingleShotData):
-        data = data.average
+    data = data.average
 
-    t2s, fitted_parameters = utils.exponential_fit(data)
-    return T2SignalResults(t2s, fitted_parameters)
+    t2s, fitted_parameters, t2error, pcovs = utils.exponential_fit(data)
+    return T2SignalResults(t2s, fitted_parameters, t2error, pcovs)
 
 
 def _plot(data: T2SignalData, target: QubitId, fit: T2SignalResults = None):
     """Plotting function for Ramsey Experiment."""
-    if isinstance(data, T2SignalSingleShotData):
-        data = data.average
+    data = data.average
 
     figures = []
     fig = go.Figure()

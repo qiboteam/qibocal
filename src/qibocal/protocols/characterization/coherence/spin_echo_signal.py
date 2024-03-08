@@ -41,6 +41,10 @@ class SpinEchoSignalResults(Results):
     """T2 echo for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    t2_spin_echo_error: dict[QubitId, float]
+    """One standard deviation error in T2 echo."""
+    pcov: dict[QubitId, list[float]]
+    """Approximate covariance of fitted parameters."""
 
 
 class SpinEchoSignalData(T1SignalData):
@@ -123,9 +127,7 @@ def _acquisition(
             platform.execute_pulse_sequence(sequence, options) for sequence in sequences
         ]
 
-    data = (
-        SpinEchoSignalSingleShotData() if params.single_shot else SpinEchoSignalData()
-    )
+    data = SpinEchoSignalData()
     for ig, (wait, ro_pulses) in enumerate(zip(ro_wait_range, all_ro_pulses)):
         for qubit in targets:
             serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
@@ -158,18 +160,16 @@ def _acquisition(
 
 def _fit(data: SpinEchoSignalData) -> SpinEchoSignalResults:
     """Post-processing for SpinEcho."""
-    if isinstance(data, SpinEchoSignalSingleShotData):
-        data = data.average
+    data = data.average
 
-    t2Echos, fitted_parameters = exponential_fit(data)
+    t2echos, fitted_parameters, t2error, pcovs = exponential_fit(data)
 
-    return SpinEchoSignalResults(t2Echos, fitted_parameters)
+    return SpinEchoSignalResults(t2echos, fitted_parameters, t2error, pcovs)
 
 
 def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults = None):
     """Plotting for SpinEcho"""
-    if isinstance(data, SpinEchoSignalSingleShotData):
-        data = data.average
+    data = data.average
 
     figures = []
     fig = go.Figure()
