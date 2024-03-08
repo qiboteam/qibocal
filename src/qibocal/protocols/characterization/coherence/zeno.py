@@ -105,7 +105,7 @@ def _fit(data: ZenoData) -> ZenoResults:
 
             y = p_0-p_1 e^{-x p_2}.
     """
-    t1s, fitted_parameters = utils.exponential_fit_probability(data)
+    t1s, fitted_parameters, _ = utils.exponential_fit_probability(data)
     chi2 = {
         qubit: (
             chi2_reduced(
