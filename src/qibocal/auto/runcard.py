@@ -8,6 +8,8 @@ from qibo.backends import Backend, GlobalBackend
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
+from qibocal.config import log
+
 from .operation import OperationId
 
 Id = NewType("Id", str)
@@ -19,6 +21,9 @@ Targets = Union[list[QubitId], list[QubitPairId], list[tuple[QubitId, ...]]]
 MAX_ITERATIONS = 5
 """Default max iterations."""
 
+OUTDATED_ACTION_ATTRS = ["priority", "main", "next"]
+"""Leftover attributes of Action to be removed after dropping DAG."""
+
 
 @dataclass(config=dict(smart_union=True))
 class Action:
@@ -28,12 +33,25 @@ class Action:
     """Action unique identifier."""
     operation: Optional[OperationId] = None
     """Operation to be performed by the executor."""
+    main: Optional[Id] = None
+    """Main subsequent for action in normal flow (OUTDATED)."""
+    next: Optional[Union[list[Id], Id]] = None
+    """Alternative subsequent actions, branching from the current one (OUTDATED)."""
+    priority: Optional[int] = None
+    """Priority level, determining the execution order (OUTDATED)."""
     targets: Optional[Targets] = None
     """Local qubits (optional)."""
     update: bool = True
     """Runcard update mechanism."""
     parameters: Optional[dict[str, Any]] = None
     """Input parameters, either values or provider reference."""
+
+    def __post_init__(self):
+        for i in OUTDATED_ACTION_ATTRS:
+            if getattr(self, i) is not None:
+                log.warning(
+                    f"Action attribute {i} is no longer supported and it will be ignored, Qibocal supports only sequential execution."
+                )
 
     def __hash__(self) -> int:
         """Each action is uniquely identified by its id."""
