@@ -140,7 +140,6 @@ def _acquisition(
             - ada_boost
             - gaussian_process
             - naive_bayes
-            - nn
             - qubit_fit
             - random_forest
             - rbf_svm
