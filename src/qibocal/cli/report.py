@@ -18,6 +18,19 @@ UPDATED_PLATFORM = "new_platform.yml"
 PLATFORM = "platform.yml"
 
 
+def generate_figures_and_report(node, target):
+    """Returns figures and table for report."""
+    if node.results is None:
+        # plot acquisition data
+        return node.task.operation.report(data=node.data, fit=None, target=target)
+    if target not in node.results:
+        # plot acquisition data and message for unsuccessful fit
+        figures = node.task.operation.report(data=node.data, fit=None, target=target)[0]
+        return figures, "An error occurred when performing the fit."
+    # plot acquisition and fit
+    return node.task.operation.report(data=node.data, fit=node.results, target=target)
+
+
 def report(path):
     """Report generation
 
@@ -74,28 +87,8 @@ class ReportBuilder:
     def single_qubit_plot(self, task_id: TaskId, qubit: QubitId):
         """Generate single qubit plot."""
         node = self.history[task_id]
-        fit = node.results if node.results and qubit in node.results else None
-        # the fit is shown only if fitted parameters for the corresponding
-        # key are in Results.
-        figures, fitting_report = node.task.operation.report(
-            data=node.data, fit=fit, target=qubit
-        )
-        with tempfile.NamedTemporaryFile(delete=False) as temp:
-            html_list = []
-            for figure in figures:
-                figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
-                temp.seek(0)
-                fightml = temp.read().decode("utf-8")
-                html_list.append(fightml)
 
-        all_html = "".join(html_list)
-        return all_html, fitting_report
-
-    def plot(self, task_id: TaskId):
-        """Generate plot when only acquisition data are provided."""
-        node = self.history[task_id]
-        data = node.task.data
-        figures, fitting_report = node.task.operation.report(data)
+        figures, fitting_report = generate_figures_and_report(node, qubit)
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             html_list = []
             for figure in figures:
