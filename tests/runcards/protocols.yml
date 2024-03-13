@@ -144,7 +144,7 @@ actions:
       nshots: 10
 
 
-  - id: resonator flux dependence flux
+  - id: resonator flux dependence flux single value
     priority: 0
     operation: resonator_flux
     parameters:
@@ -156,7 +156,7 @@ actions:
       nshots: 10
 
 
-  - id: resonator flux dependence flux
+  - id: resonator flux dependence flux several values
     priority: 0
     operation: resonator_flux
     qubits: [0, 1]
