@@ -9,37 +9,23 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
-from qibocal import update
-from qibocal.auto.operation import Parameters, Results, Routine
+from qibocal.auto.operation import Routine
 
 from ..utils import chi2_reduced, table_dict, table_html
 from . import t1
+from .spin_echo_signal import SpinEchoSignalParameters, SpinEchoSignalResults, _update
 from .utils import exp_decay, exponential_fit_probability
 
 
 @dataclass
-class SpinEchoParameters(Parameters):
+class SpinEchoParameters(SpinEchoSignalParameters):
     """SpinEcho runcard inputs."""
-
-    delay_between_pulses_start: int
-    """Initial delay between pulses [ns]."""
-    delay_between_pulses_end: int
-    """Final delay between pulses [ns]."""
-    delay_between_pulses_step: int
-    """Step delay between pulses [ns]."""
-    unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
-    Defaults to ``False``."""
 
 
 @dataclass
-class SpinEchoResults(Results):
+class SpinEchoResults(SpinEchoSignalResults):
     """SpinEcho outputs."""
 
-    t2_spin_echo: dict[QubitId, float]
-    """T2 echo for each qubit."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitting output."""
     chi2: Optional[dict[QubitId, tuple[float, Optional[float]]]] = field(
         default_factory=dict
     )
@@ -150,7 +136,7 @@ def _fit(data: SpinEchoData) -> SpinEchoResults:
             ),
             np.sqrt(2 / len(data[qubit].prob)),
         )
-        for qubit in data.qubits
+        for qubit in fitted_parameters
     }
 
     return SpinEchoResults(t2Echos, fitted_parameters, chi2)
@@ -226,10 +212,6 @@ def _plot(data: SpinEchoData, target: QubitId, fit: SpinEchoResults = None):
     figures.append(fig)
 
     return figures, fitting_report
-
-
-def _update(results: SpinEchoResults, platform: Platform, target: QubitId):
-    update.t2_spin_echo(results.t2_spin_echo[target], platform, target)
 
 
 spin_echo = Routine(_acquisition, _fit, _plot, _update)

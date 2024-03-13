@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Optional, Union
 
 import numpy as np
@@ -81,6 +81,14 @@ class ResonatorSpectroscopyResults(Results):
         default_factory=dict,
     )
     """Readout attenuation [dB] for each qubit."""
+
+    def __contains__(self, key: QubitId):
+        return all(
+            key in getattr(self, field.name)
+            for field in fields(self)
+            if isinstance(getattr(self, field.name), dict)
+            and field.name != "bare_frequency"
+        )
 
 
 @dataclass
@@ -199,24 +207,25 @@ def _fit(
     chi2 = {}
     amplitudes = {}
     for qubit in qubits:
-        freq, fitted_params, perr = lorentzian_fit(
+        fit_result = lorentzian_fit(
             data[qubit], resonator_type=data.resonator_type, fit="resonator"
         )
-        if data.power_level is PowerLevel.high:
-            bare_frequency[qubit] = freq
 
-        frequency[qubit] = freq
-        fitted_parameters[qubit] = fitted_params
-        error_fit_pars[qubit] = perr
-        chi2[qubit] = (
-            chi2_reduced(
-                data[qubit].freq,
-                lorentzian(data[qubit].freq, *fitted_params),
-                data[qubit].error_signal,
-            ),
-            np.sqrt(2 / len(data[qubit].freq)),
-        )
-        amplitudes[qubit] = fitted_parameters[qubit][0]
+        if fit_result is not None:
+            frequency[qubit], fitted_parameters[qubit], error_fit_pars[qubit] = (
+                fit_result
+            )
+            if data.power_level is PowerLevel.high:
+                bare_frequency[qubit] = frequency[qubit]
+            chi2[qubit] = (
+                chi2_reduced(
+                    data[qubit].signal,
+                    lorentzian(data[qubit].freq, *fitted_parameters[qubit]),
+                    data[qubit].error_signal,
+                ),
+                np.sqrt(2 / len(data[qubit].freq)),
+            )
+            amplitudes[qubit] = fitted_parameters[qubit][0]
 
     if data.power_level is PowerLevel.high:
         return ResonatorSpectroscopyResults(

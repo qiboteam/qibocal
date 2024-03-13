@@ -12,37 +12,23 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Routine
 from qibocal.config import log
 
 from ..utils import chi2_reduced
 from . import utils
+from .amplitude_signal import RabiAmplitudeVoltParameters, RabiAmplitudeVoltResults
 
 
 @dataclass
-class RabiAmplitudeParameters(Parameters):
+class RabiAmplitudeParameters(RabiAmplitudeVoltParameters):
     """RabiAmplitude runcard inputs."""
 
-    min_amp_factor: float
-    """Minimum amplitude multiplicative factor."""
-    max_amp_factor: float
-    """Maximum amplitude multiplicative factor."""
-    step_amp_factor: float
-    """Step amplitude multiplicative factor."""
-    pulse_length: Optional[float]
-    """RX pulse duration [ns]."""
-
 
 @dataclass
-class RabiAmplitudeResults(Results):
+class RabiAmplitudeResults(RabiAmplitudeVoltResults):
     """RabiAmplitude outputs."""
 
-    amplitude: dict[QubitId, tuple[float, Optional[float]]]
-    """Drive amplitude for each qubit."""
-    length: dict[QubitId, tuple[float, Optional[float]]]
-    """Drive pulse duration. Same for all qubits."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitted parameters."""
     chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
 
 
@@ -168,24 +154,20 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
             pi_pulse_parameter = (
                 popt[2] / 2 * utils.period_correction_factor(phase=popt[3])
             )
+            pi_pulse_amplitudes[qubit] = (pi_pulse_parameter, perr[2] / 2)
+            fitted_parameters[qubit] = popt.tolist()
+            durations = {key: (value, 0) for key, value in data.durations.items()}
+            chi2[qubit] = (
+                chi2_reduced(
+                    y,
+                    utils.rabi_amplitude_function(x, *popt),
+                    qubit_data.error,
+                ),
+                np.sqrt(2 / len(y)),
+            )
 
-        except:
-            log.warning("rabi_fit: the fitting was not succesful")
-            pi_pulse_parameter = 0
-            popt = [0] * 4
-            perr = [1] * 4
-
-        pi_pulse_amplitudes[qubit] = (pi_pulse_parameter, perr[2] / 2)
-        fitted_parameters[qubit] = popt.tolist()
-        durations = {key: (value, 0) for key, value in data.durations.items()}
-        chi2[qubit] = (
-            chi2_reduced(
-                y,
-                utils.rabi_amplitude_function(x, *popt),
-                qubit_data.error,
-            ),
-            np.sqrt(2 / len(y)),
-        )
+        except Exception as e:
+            log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
     return RabiAmplitudeResults(pi_pulse_amplitudes, durations, fitted_parameters, chi2)
 
 

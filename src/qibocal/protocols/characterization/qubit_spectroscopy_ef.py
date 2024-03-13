@@ -47,6 +47,7 @@ def _fit_ef(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
     anharmoncities = {
         qubit: data.drive_frequencies[qubit] - results.frequency[qubit]
         for qubit in data.qubits
+        if qubit in results
     }
     params = asdict(results)
     params.update({"anharmonicity": anharmoncities})

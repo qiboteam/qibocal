@@ -10,16 +10,22 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
 
-from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Routine
 from qibocal.config import log
 from qibocal.protocols.characterization.utils import table_dict, table_html
 
+from .flipping_signal import (
+    FlippingSignalData,
+    FlippingSignalParameters,
+    FlippingSignalResults,
+    _update,
+    flipping_fit,
+)
 from .utils import COLORBAND, COLORBAND_LINE, chi2_reduced
 
 
 @dataclass
-class FlippingParameters(Parameters):
+class FlippingParameters(FlippingSignalParameters):
     """Flipping runcard inputs."""
 
     nflips_max: int
@@ -32,15 +38,9 @@ class FlippingParameters(Parameters):
 
 
 @dataclass
-class FlippingResults(Results):
+class FlippingResults(FlippingSignalResults):
     """Flipping outputs."""
 
-    amplitude: dict[QubitId, tuple[float, Optional[float]]]
-    """Drive amplitude for each qubit."""
-    amplitude_factors: dict[QubitId, tuple[float, Optional[float]]]
-    """Drive amplitude correction factor for each qubit."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitting output."""
     chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
     """Chi squared estimate mean value and error. """
 
@@ -51,12 +51,9 @@ FlippingType = np.dtype(
 
 
 @dataclass
-class FlippingData(Data):
+class FlippingData(FlippingSignalData):
     """Flipping acquisition outputs."""
 
-    resonator_type: str
-    """Resonator type."""
-    pi_pulse_amplitudes: dict[QubitId, float]
     """Pi pulse amplitudes for each qubit."""
     data: dict[QubitId, npt.NDArray[FlippingType]] = field(default_factory=dict)
     """Raw data acquired."""
@@ -152,10 +149,6 @@ def _acquisition(
             )
 
     return data
-
-
-def flipping_fit(x, offset, amplitude, omega, phase, gamma):
-    return np.sin(x * omega + phase) * amplitude * np.exp(-x * gamma) + offset
 
 
 def _fit(data: FlippingData) -> FlippingResults:
@@ -316,10 +309,6 @@ def _plot(data: FlippingData, target: QubitId, fit: FlippingResults = None):
     figures.append(fig)
 
     return figures, fitting_report
-
-
-def _update(results: FlippingResults, platform: Platform, target: QubitId):
-    update.drive_amplitude(results.amplitude[target], platform, target)
 
 
 flipping = Routine(_acquisition, _fit, _plot, _update)

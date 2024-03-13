@@ -113,6 +113,10 @@ class StandardRBResult(Results):
     error_bars: dict[QubitId, Optional[Union[float, list[float]]]] = None
     """Error bars for y."""
 
+    # FIXME: fix this after https://github.com/qiboteam/qibocal/pull/597
+    def __contains__(self, qubit: QubitId):
+        return True
+
 
 def layer_gen(targets, seed):
     """Returns a circuit with a random single-qubit clifford unitary."""
