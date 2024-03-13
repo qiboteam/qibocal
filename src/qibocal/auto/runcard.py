@@ -64,7 +64,7 @@ class Runcard:
     @property
     def backend_obj(self) -> Backend:
         """Allocate backend."""
-        GlobalBackend.set_backend(self.backend, self.platform)
+        GlobalBackend.set_backend(self.backend, platform=self.platform)
         return GlobalBackend()
 
     @property
