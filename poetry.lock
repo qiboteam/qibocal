@@ -2687,8 +2687,8 @@ zh = ["laboneq (==2.25.0)"]
 [package.source]
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
-reference = "unfix_numpy"
-resolved_reference = "47d1832966a21649c984c32fe5088ba144dad296"
+reference = "main"
+resolved_reference = "c9a0fd1b1056a53d2b8d458db9ef6a58d58ec8f3"
 
 [[package]]
 name = "recommonmark"
@@ -3596,4 +3596,4 @@ viz = ["pydot"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "8bb6750f50881910e373f01d7e3d7037d57ccc250eb01bb3629146fb2fcf2b32"
+content-hash = "b2e927487d4e1be6e1c3b2ae11ccde947fee0049a06a14d8f837fee5e8a9a380"
