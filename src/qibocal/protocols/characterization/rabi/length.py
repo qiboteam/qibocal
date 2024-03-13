@@ -12,8 +12,12 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Parameters, Routine
 from qibocal.config import log
+from qibocal.protocols.characterization.rabi.length_signal import (
+    RabiLengthVoltData,
+    RabiLengthVoltResults,
+)
 
 from ..utils import chi2_reduced
 from . import utils
@@ -34,15 +38,9 @@ class RabiLengthParameters(Parameters):
 
 
 @dataclass
-class RabiLengthResults(Results):
+class RabiLengthResults(RabiLengthVoltResults):
     """RabiLength outputs."""
 
-    length: dict[QubitId, tuple[int, Optional[float]]]
-    """Pi pulse duration for each qubit."""
-    amplitude: dict[QubitId, tuple[float, Optional[float]]]
-    """Pi pulse amplitude. Same for all qubits."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitting output."""
     chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
 
 
@@ -53,11 +51,9 @@ RabiLenType = np.dtype(
 
 
 @dataclass
-class RabiLengthData(Data):
+class RabiLengthData(RabiLengthVoltData):
     """RabiLength acquisition outputs."""
 
-    amplitudes: dict[QubitId, float] = field(default_factory=dict)
-    """Pulse durations provided by the user."""
     data: dict[QubitId, npt.NDArray[RabiLenType]] = field(default_factory=dict)
     """Raw data acquired."""
 
