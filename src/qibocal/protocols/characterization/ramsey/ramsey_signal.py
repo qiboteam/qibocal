@@ -1,7 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
@@ -9,17 +10,30 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Results, Routine
+from qibocal import update
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 
 from ..utils import GHZ_TO_HZ, table_dict, table_html
-from .ramsey import RamseyData, RamseyParameters, _update
 from .utils import fitting, ramsey_fit, ramsey_sequence
 
 
 @dataclass
-class RamseySignalParameters(RamseyParameters):
+class RamseySignalParameters(Parameters):
     """Ramsey runcard inputs."""
+
+    delay_between_pulses_start: int
+    """Initial delay between RX(pi/2) pulses in ns."""
+    delay_between_pulses_end: int
+    """Final delay between RX(pi/2) pulses in ns."""
+    delay_between_pulses_step: int
+    """Step delay between RX(pi/2) pulses in ns."""
+    detuning: Optional[int] = 0
+    """Frequency detuning [Hz] (optional).
+        If 0 standard Ramsey experiment is performed."""
+    unrolling: bool = False
+    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
+    Defaults to ``False``."""
 
 
 @dataclass
@@ -44,20 +58,23 @@ RamseySignalType = np.dtype([("wait", np.float64), ("signal", np.float64)])
 
 
 @dataclass
-class RamseySignalData(RamseyData):
+class RamseySignalData(Data):
     """Ramsey acquisition outputs."""
 
-    def register_qubit(self, qubit, wait, signal):
-        """Store output for single qubit."""
-        # to be able to handle the non-sweeper case
-        shape = (1,) if np.isscalar(signal) else signal.shape
-        ar = np.empty(shape, dtype=RamseySignalType)
-        ar["wait"] = wait
-        ar["signal"] = signal
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
+    detuning: int
+    """Frequency detuning [Hz]."""
+    qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit freqs for each qubit."""
+    data: dict[QubitId, npt.NDArray[RamseySignalType]] = field(default_factory=dict)
+    """Raw data acquired."""
+
+    @property
+    def waits(self):
+        """
+        Return a list with the waiting times without repetitions.
+        """
+        qubit = next(iter(self.data))
+        return np.unique(self.data[qubit].wait)
 
 
 def _acquisition(
@@ -116,9 +133,12 @@ def _acquisition(
             result = results[sequence.get_qubit_pulses(qubit).ro_pulses[0].serial]
             # The probability errors are the standard errors of the binomial distribution
             data.register_qubit(
-                qubit,
-                wait=waits,
-                signal=result.magnitude,
+                RamseySignalType,
+                (qubit),
+                dict(
+                    wait=waits,
+                    signal=result.magnitude,
+                ),
             )
 
     else:
@@ -144,9 +164,12 @@ def _acquisition(
                 else:
                     result = results[ig][serial]
                 data.register_qubit(
-                    qubit,
-                    wait=wait,
-                    signal=result.magnitude,
+                    RamseySignalType,
+                    (qubit),
+                    dict(
+                        wait=np.array([wait]),
+                        signal=np.array([result.magnitude]),
+                    ),
                 )
 
     return data
@@ -269,6 +292,10 @@ def _plot(data: RamseySignalData, target: QubitId, fit: RamseySignalResults = No
     figures.append(fig)
 
     return figures, fitting_report
+
+
+def _update(results: RamseySignalResults, platform: Platform, target: QubitId):
+    update.drive_frequency(results.frequency[target][0], platform, target)
 
 
 ramsey_signal = Routine(_acquisition, _fit, _plot, _update)

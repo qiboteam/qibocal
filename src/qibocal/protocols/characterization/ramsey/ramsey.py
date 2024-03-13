@@ -10,11 +10,16 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Routine
 from qibocal.config import log
 
 from ..utils import GHZ_TO_HZ, chi2_reduced, table_dict, table_html
+from .ramsey_signal import (
+    RamseySignalData,
+    RamseySignalParameters,
+    RamseySignalResults,
+    _update,
+)
 from .utils import fitting, ramsey_fit, ramsey_sequence
 
 COLORBAND = "rgba(0,100,80,0.2)"
@@ -22,38 +27,14 @@ COLORBAND_LINE = "rgba(255,255,255,0)"
 
 
 @dataclass
-class RamseyParameters(Parameters):
+class RamseyParameters(RamseySignalParameters):
     """Ramsey runcard inputs."""
-
-    delay_between_pulses_start: int
-    """Initial delay between RX(pi/2) pulses in ns."""
-    delay_between_pulses_end: int
-    """Final delay between RX(pi/2) pulses in ns."""
-    delay_between_pulses_step: int
-    """Step delay between RX(pi/2) pulses in ns."""
-    detuning: Optional[int] = 0
-    """Frequency detuning [Hz] (optional).
-        If 0 standard Ramsey experiment is performed."""
-    unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
-    Defaults to ``False``."""
 
 
 @dataclass
-class RamseyResults(Results):
+class RamseyResults(RamseySignalResults):
     """Ramsey outputs."""
 
-    frequency: dict[QubitId, tuple[float, Optional[float]]]
-    """Drive frequency [Hz] for each qubit."""
-    t2: dict[QubitId, tuple[float, Optional[float]]]
-    """T2 for each qubit [ns]."""
-    delta_phys: dict[QubitId, tuple[float, Optional[float]]]
-    """Drive frequency [Hz] correction for each qubit."""
-    delta_fitting: dict[QubitId, tuple[float, Optional[float]]]
-    """Raw drive frequency [Hz] correction for each qubit.
-       including the detuning."""
-    fitted_parameters: dict[QubitId, list[float]]
-    """Raw fitting output."""
     chi2: dict[QubitId, tuple[float, Optional[float]]]
     """Chi squared estimate mean value and error. """
 
@@ -65,23 +46,11 @@ RamseyType = np.dtype(
 
 
 @dataclass
-class RamseyData(Data):
+class RamseyData(RamseySignalData):
     """Ramsey acquisition outputs."""
 
-    detuning: int
-    """Frequency detuning [Hz]."""
-    qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
-    """Qubit freqs for each qubit."""
-    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[RamseyType]] = field(default_factory=dict)
     """Raw data acquired."""
-
-    @property
-    def waits(self):
-        """
-        Return a list with the waiting times without repetitions.
-        """
-        qubit = next(iter(self.data))
-        return np.unique(self.data[qubit].wait)
 
 
 def _acquisition(
@@ -344,10 +313,6 @@ def _plot(data: RamseyData, target: QubitId, fit: RamseyResults = None):
     figures.append(fig)
 
     return figures, fitting_report
-
-
-def _update(results: RamseyResults, platform: Platform, target: QubitId):
-    update.drive_frequency(results.frequency[target][0], platform, target)
 
 
 ramsey = Routine(_acquisition, _fit, _plot, _update)
