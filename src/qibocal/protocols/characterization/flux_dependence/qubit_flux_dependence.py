@@ -125,7 +125,10 @@ def _acquisition(
     )
     drive_readout_duration = sequence.duration
     if params.flux_pulses:
-        sweepers = resonator_flux_dependence.create_flux_pulse_sweepers(
+        (
+            delta_bias_flux_range,
+            sweepers,
+        ) = resonator_flux_dependence.create_flux_pulse_sweepers(
             params, platform, qubits, drive_readout_duration
         )
     else:

@@ -190,7 +190,7 @@ def create_flux_pulse_sweepers(
             type=SweeperType.ABSOLUTE,
         )
     ]
-    return sweepers
+    return delta_bias_flux_range, sweepers
 
 
 def _acquisition(
@@ -226,7 +226,7 @@ def _acquisition(
     )
     drive_readout_duration = sequence.duration
     if params.flux_pulses:
-        sweepers = create_flux_pulse_sweepers(
+        delta_bias_flux_range, sweepers = create_flux_pulse_sweepers(
             params, platform, qubits, drive_readout_duration
         )
     else:
