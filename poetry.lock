@@ -1513,13 +1513,13 @@ files = [
 
 [[package]]
 name = "markdown"
-version = "3.5.2"
+version = "3.6"
 description = "Python implementation of John Gruber's Markdown."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "Markdown-3.5.2-py3-none-any.whl", hash = "sha256:d43323865d89fc0cb9b20c75fc8ad313af307cc087e84b657d9eec768eddeadd"},
-    {file = "Markdown-3.5.2.tar.gz", hash = "sha256:e1ac7b3dc550ee80e602e71c1d168002f062e49f1b11e26a36264dafd4df2ef8"},
+    {file = "Markdown-3.6-py3-none-any.whl", hash = "sha256:48f276f4d8cfb8ce6527c8f79e2ee29708508bf4d40aa410fbc3b4ee832c850f"},
+    {file = "Markdown-3.6.tar.gz", hash = "sha256:ed4f41f6daecbeeb96e576ce414c41d2d876daa9a16cb35fa8ed8c2ddfad0224"},
 ]
 
 [package.dependencies]
@@ -2638,29 +2638,25 @@ version = "0.2.6"
 description = "A framework for quantum computing with hardware acceleration."
 optional = false
 python-versions = ">=3.9,<3.12"
-files = []
-develop = false
+files = [
+    {file = "qibo-0.2.6-py3-none-any.whl", hash = "sha256:7878cf890ea8f7946d74580359022277848da33213865617f6ed143a0d2b3602"},
+    {file = "qibo-0.2.6.tar.gz", hash = "sha256:145f2ab3137100746c132ee5f9e8f5c8746908e6ee025484202022172e3ec5a3"},
+]
 
 [package.dependencies]
-cma = "^3.3.0"
-hyperopt = "^0.2.7"
-joblib = "^1.2.0"
-networkx = "^3.2.1"
-numpy = "^1.26.4"
+cma = ">=3.3.0,<4.0.0"
+hyperopt = ">=0.2.7,<0.3.0"
+joblib = ">=1.2.0,<2.0.0"
+networkx = ">=3.2.1,<4.0.0"
+numpy = ">=1.26.4,<2.0.0"
 openqasm3 = {version = ">=0.5.0", extras = ["parser"]}
-scipy = "^1.10.1"
-sympy = "^1.11.1"
-tabulate = "^0.9.0"
+scipy = ">=1.10.1,<2.0.0"
+sympy = ">=1.11.1,<2.0.0"
+tabulate = ">=0.9.0,<0.10.0"
 
 [package.extras]
 qinfo = ["cvxpy (>=1.4.2,<2.0.0)"]
 tensorflow = ["tensorflow (>=2.14.1,<2.16)"]
-
-[package.source]
-type = "git"
-url = "https://github.com/qiboteam/qibo.git"
-reference = "fix_qibolab"
-resolved_reference = "fafc75f05d72cb1c1297b35df9d3c63cd77d67f4"
 
 [[package]]
 name = "qibolab"
@@ -3596,4 +3592,4 @@ viz = ["pydot"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "b2e927487d4e1be6e1c3b2ae11ccde947fee0049a06a14d8f837fee5e8a9a380"
+content-hash = "6318696dc2f373d34d6e79ef35472efadc3ff8a06687c3d17a30707daa563c8e"
