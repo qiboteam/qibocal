@@ -23,16 +23,15 @@ actions:
 
   - id: readout characterization
     priority: 20
-    # main: standard rb bootstrap
+    # main: standard rb
     operation: readout_characterization
     parameters:
       nshots: 5000
 
-  # - id: standard rb bootstrap
+  # - id: standard rb
   #   priority: 40
   #   operation: standard_rb
   #   parameters:
   #     depths: [10, 100, 150, 200, 250, 300]
   #     niter: 8
   #     nshots: 256
-  #     n_bootstrap: 10

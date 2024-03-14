@@ -28,7 +28,7 @@ actions:
       nshots: 50
       unrolling: True
 
-  - id: standard rb bootstrap
+  - id: standard rb
     priority: 0
     operation: standard_rb
     qubits: [1]

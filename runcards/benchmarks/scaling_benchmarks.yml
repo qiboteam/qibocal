@@ -256,31 +256,29 @@ actions:
 
 # Circuits
 
- - id: standard rb bootstrap 1
+ - id: standard rb 1
    priority: 0
    operation: standard_rb
-   main: standard rb bootstrap 10
+   main: standard rb 10
    qubits: [0]
    parameters:
      depths: [10]
      niter: 1
      nshots: 128
-     n_bootstrap: 10
      seed: 420
 
- - id: standard rb bootstrap 10
+ - id: standard rb 10
    priority: 0
    operation: standard_rb
-   main: standard rb bootstrap 100
+   main: standard rb 100
    qubits: [0]
    parameters:
      depths: [10]
      niter: 10
      nshots: 128
-     n_bootstrap: 10
      seed: 420
 
- - id: standard rb bootstrap 100
+ - id: standard rb 100
    priority: 0
    operation: standard_rb
    qubits: [0]
@@ -288,5 +286,4 @@ actions:
      depths: [10]
      niter: 100
      nshots: 128
-     n_bootstrap: 10
      seed: 420
