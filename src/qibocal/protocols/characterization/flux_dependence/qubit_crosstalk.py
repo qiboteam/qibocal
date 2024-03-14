@@ -155,7 +155,7 @@ def _acquisition(
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    for flux_qubit, bias_sweeper in zip(flux_qubits, bias_sweepers):
+    for flux_qubit, bias_sweeper in zip(flux_qubits, sweepers):
         results = platform.sweep(sequence, options, bias_sweeper, freq_sweeper)
         # retrieve the results for every qubit
         for qubit in qubits:
