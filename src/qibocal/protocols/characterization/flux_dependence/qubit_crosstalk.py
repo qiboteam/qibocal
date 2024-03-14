@@ -18,8 +18,8 @@ from .qubit_flux_dependence import (
     QubitFluxParameters,
     QubitFluxResults,
     QubitFluxType,
-    create_flux_pulse_sweepers,
 )
+from .resonator_flux_dependence import create_flux_pulse_sweepers
 
 
 @dataclass

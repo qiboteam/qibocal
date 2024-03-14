@@ -149,6 +149,50 @@ class ResonatorFluxData(Data):
         )
 
 
+def create_flux_pulse_sweepers(
+    params: ResonatorFluxParameters,
+    platform: Platform,
+    qubits: Qubits,
+    drive_readout_duration: int,
+) -> list[Sweeper]:
+    """Create a list of sweepers containing flux pulses.
+
+    Args:
+        params (ResonatorFluxParameters): parameters of the experiment (here flux amplitude is used).
+        platform (Platform): platform on which to run the experiment.
+        qubits (Qubits): qubits on which to run the experiment.
+        drive_readout_duration (int): duration in ns of the drive-readout sequence.
+    """
+    qf_pulses = {}
+    for i, qubit in enumerate(qubits):
+        if isinstance(params.flux_amplitude_start, list):
+            flux_amplitude_start = params.flux_amplitude_start[i]
+            flux_amplitude_end = params.flux_amplitude_end[i]
+            flux_amplitude_step = params.flux_amplitude_step[i]
+        else:
+            flux_amplitude_start = params.flux_amplitude_start
+            flux_amplitude_end = params.flux_amplitude_end
+            flux_amplitude_step = params.flux_amplitude_step
+        delta_bias_flux_range = np.arange(
+            flux_amplitude_start,
+            flux_amplitude_end,
+            flux_amplitude_step,
+        )
+        pulse = platform.create_qubit_flux_pulse(
+            qubit, start=0, duration=drive_readout_duration
+        )
+        qf_pulses[qubit] = pulse
+    sweepers = [
+        Sweeper(
+            Parameter.amplitude,
+            delta_bias_flux_range,
+            pulses=[qf_pulses[qubit] for qubit in qubits],
+            type=SweeperType.ABSOLUTE,
+        )
+    ]
+    return sweepers
+
+
 def _acquisition(
     params: ResonatorFluxParameters, platform: Platform, qubits: Qubits
 ) -> ResonatorFluxData:
@@ -180,35 +224,11 @@ def _acquisition(
         [ro_pulses[qubit] for qubit in qubits],
         type=SweeperType.OFFSET,
     )
-
+    drive_readout_duration = sequence.duration
     if params.flux_pulses:
-        qf_pulses = {}
-        for i, qubit in enumerate(qubits):
-            if isinstance(params.flux_amplitude_start, list):
-                flux_amplitude_start = params.flux_amplitude_start[i]
-                flux_amplitude_end = params.flux_amplitude_end[i]
-                flux_amplitude_step = params.flux_amplitude_step[i]
-            else:
-                flux_amplitude_start = params.flux_amplitude_start
-                flux_amplitude_end = params.flux_amplitude_end
-                flux_amplitude_step = params.flux_amplitude_step
-            delta_bias_flux_range = np.arange(
-                flux_amplitude_start,
-                flux_amplitude_end,
-                flux_amplitude_step,
-            )
-            pulse = platform.create_qubit_flux_pulse(
-                qubit, start=0, duration=sequence.duration
-            )
-            qf_pulses[qubit] = pulse
-        sweepers = [
-            Sweeper(
-                Parameter.amplitude,
-                delta_bias_flux_range,
-                pulses=[qf_pulses[qubit] for qubit in qubits],
-                type=SweeperType.ABSOLUTE,
-            )
-        ]
+        sweepers = create_flux_pulse_sweepers(
+            params, platform, qubits, drive_readout_duration
+        )
     else:
         delta_bias_flux_range = np.arange(
             -params.bias_width / 2, params.bias_width / 2, params.bias_step
