@@ -10,14 +10,13 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
-from qibocal.bootstrap import data_uncertainties
 from qibocal.config import raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
 from ..utils import table_dict, table_html
 from .circuit_tools import add_inverse_layer, add_measurement_layer, layer_circuit
 from .fitting import exp1B_func, fit_exp1B_func
-from .utils import number_to_str, random_clifford
+from .utils import data_uncertainties, number_to_str, random_clifford
 
 NPULSES_PER_CLIFFORD = 1.875
 
