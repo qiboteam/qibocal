@@ -1,5 +1,3 @@
-from typing import Optional, Union
-
 import numpy as np
 
 
@@ -34,43 +32,3 @@ def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
     uncertainties = np.abs(np.vstack([data_median, data_median]) - percentile_interval)
 
     return uncertainties
-
-
-def bootstrap(
-    data: Union[np.ndarray, list],
-    n_bootstrap: int,
-    homogeneous: bool = True,
-    sample_size: Optional[int] = None,
-    seed: Optional[int] = None,
-):
-    """Non-parametric bootstrap resampling.
-
-    Args:
-        data (list or np.ndarray): 2d array with rows containing samples.
-        n_bootstrap (int): number of bootstrap iterations.
-        homogeneous (bool): if ``True``, assumes that all rows in ``data`` are of the same size
-            and returns ``np.ndarray``. If ``False``, returns a list of lists. Default is ``True``.
-        sample_size (int, optional): number of samples per row in ``data``. If ``None``,
-            defaults to ``len(row)`` from ``data``.
-        seed (int, optional): A fixed seed to initialize ``np.random.Generator``. If ``None``,
-            initializes a generator with a random seed. Defaults is ``None``.
-
-    Returns:
-        list or np.ndarray: resampled data of shape (len(data), sample_size, n_bootstrap)
-    """
-
-    random_generator = np.random.default_rng(seed)
-
-    if homogeneous:
-        sample_size = sample_size or len(data[0])
-        random_inds = random_generator.integers(
-            0, sample_size, size=(sample_size, n_bootstrap)
-        )
-        return np.array(data)[:, random_inds]
-
-    bootstrap_y_scatter = []
-    for row in data:
-        bootstrap_y_scatter.append(
-            random_generator.choice(row, size=((sample_size or len(row)), n_bootstrap))
-        )
-    return bootstrap_y_scatter
