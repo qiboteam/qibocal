@@ -144,7 +144,7 @@ def _acquisition(
                 qubit, start=0, duration=sequence.duration
             )
             qf_pulses[qubit] = pulse
-        bias_sweepers = [
+        sweepers = [
             Sweeper(
                 Parameter.amplitude,
                 delta_bias_flux_range,
@@ -156,7 +156,7 @@ def _acquisition(
         delta_bias_flux_range = np.arange(
             -params.bias_width / 2, params.bias_width / 2, params.bias_step
         )
-        bias_sweepers = [
+        sweepers = [
             Sweeper(
                 Parameter.bias,
                 delta_bias_flux_range,
