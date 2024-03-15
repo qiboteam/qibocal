@@ -156,7 +156,7 @@ def test_resonator_flux_bias():
     flux_step = 0.1
     ResonatorFluxParameters(freq_width, freq_step, bias_width, bias_step)
     ResonatorFluxParameters(freq_width, freq_step, flux_start, flux_end, flux_step)
-    try:
+    with pytest.raises(ValueError):
         ResonatorFluxParameters(
             freq_width,
             freq_step,
@@ -166,9 +166,6 @@ def test_resonator_flux_bias():
             flux_end,
             flux_step,
         )
-    except ValueError:
-        # Cannot initialize both bias and flux amplitude sweeps
-        pass
 
 
 # TODO: compare report by calling qq report
