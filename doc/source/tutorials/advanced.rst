@@ -275,8 +275,8 @@ In the acquisition function we are going to perform the experiment.
 Result class
 ^^^^^^^^^^^^
 
-Here we decided to code a generic `Result` that contains the fitted
-parameters for each quibt.
+Here we decided to code a generic `Results` that contains the fitted
+parameters for each qubit.
 
 .. code-block:: python
 
@@ -286,6 +286,13 @@ parameters for each quibt.
     class RotationResults(Results):
         """Results object for data"""
         fitted_parameters: dict[QubitId, list] = field(default_factory=dict)
+
+.. note::
+
+    To check whether fitted parameters for a specific ``Qubit`` it might
+    be necessary to re-write the ``__contains__`` method if the ``Results``
+    inheritance include non-dictionary attributes.
+
 
 Fit function
 ^^^^^^^^^^^^

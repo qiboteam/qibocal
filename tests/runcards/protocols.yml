@@ -24,7 +24,7 @@ actions:
 
   - id: resonator high power low attenuation
     priority: 0
-    operation: resonator_spectroscopy_attenuation
+    operation: resonator_spectroscopy
     parameters:
       freq_width: 10_000_000 # 20_000_000
       freq_step: 100_000 # 500_00
@@ -35,7 +35,7 @@ actions:
 
   - id: resonator low power high attenuation
     priority: 0
-    operation: resonator_spectroscopy_attenuation
+    operation: resonator_spectroscopy
     parameters:
       freq_width: 10_000_000 # 20_000_000
       freq_step: 100_000 # 500_00
@@ -371,7 +371,7 @@ actions:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
-      n_osc: 2
+      detuning: 1_000_000
       nshots: 10
 
   - id: ramsey_signal_detuned_unrolled
@@ -382,7 +382,7 @@ actions:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
-      n_osc: 10
+      detuning: 1_000_000
       nshots: 10
 
   - id: ramsey
@@ -392,7 +392,7 @@ actions:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 20
       delay_between_pulses_step: 1
-      n_osc: 0
+      detuning: 0
       nshots: 1024
 
   - id: calibrate_state_discrimination
@@ -408,18 +408,8 @@ actions:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
-      n_osc: 2
+      detuning: 2_000_000
       nshots: 10
-
-  - id: ramsey_detuned_sequences
-    priority: 0
-    operation: ramsey_sequences
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 50
-      delay_between_pulses_step: 1
-      nshots: 10
-      n_osc: 2
 
   - id: ramsey_unrolled_detuned
     priority: 0
@@ -430,7 +420,7 @@ actions:
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
       nshots: 10
-      n_osc: 10
+      detuning: 1_000_000
 
   - id: single shot classification
     priority: 0
@@ -503,14 +493,35 @@ actions:
       delay_between_pulses_step: 1
       nshots: 10
 
-  - id: spin_echo_sequence
+  - id: spin_echo unrolling
     priority: 0
-    operation: spin_echo_sequence
+    operation: spin_echo
     parameters:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 5
       delay_between_pulses_step: 1
       nshots: 10
+      unrolling: true
+
+  - id: spin_echo_signal
+    priority: 0
+    operation: spin_echo_signal
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 5
+      delay_between_pulses_step: 1
+      nshots: 10
+
+  - id: spin_echo_signal unrolling
+    priority: 0
+    operation: spin_echo_signal
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 5
+      delay_between_pulses_step: 1
+      nshots: 10
+      unrolling: true
+
 
   - id: flipping
     priority: 0

@@ -166,13 +166,11 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
                 / 2
                 * utils.period_correction_factor(phase=translated_popt[3])
             )
+            durations[qubit] = pi_pulse_parameter
+            fitted_parameters[qubit] = translated_popt
 
-        except:
-            log.warning("rabi_fit: the fitting was not succesful")
-            pi_pulse_parameter = 0
-            translated_popt = [0, 0, 1, 0, 0]
-        durations[qubit] = pi_pulse_parameter
-        fitted_parameters[qubit] = translated_popt
+        except Exception as e:
+            log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
     return RabiLengthVoltResults(durations, data.amplitudes, fitted_parameters)
 
