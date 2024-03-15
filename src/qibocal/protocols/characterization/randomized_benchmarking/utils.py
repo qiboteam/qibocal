@@ -11,8 +11,8 @@ SINGLE_QUBIT_CLIFFORDS = {
     # Virtual gates
     0: gates.I,
     1: lambda q: gates.U3(q, 0, np.pi / 2, np.pi / 2),  # Z,
-    2: lambda q: gates.U3(q, np.pi / 2, 0, 0),  # gates.RZ(q, np.pi / 2),
-    3: lambda q: gates.U3(q, -np.pi / 2, 0, 0),  # gates.RZ(q, -np.pi / 2),
+    2: lambda q: gates.U3(q, 0, np.pi / 2, 0),  # gates.RZ(q, np.pi / 2),
+    3: lambda q: gates.U3(q, 0, -np.pi / 2, 0),  # gates.RZ(q, -np.pi / 2),
     # pi rotations
     4: lambda q: gates.U3(q, np.pi, 0, np.pi),  # X,
     5: lambda q: gates.U3(q, np.pi, 0, 0),  # Y,
