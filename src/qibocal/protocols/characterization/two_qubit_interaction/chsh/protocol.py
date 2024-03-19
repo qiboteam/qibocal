@@ -225,35 +225,58 @@ def _plot(data: CHSHData, fit: CHSHResults, target: QubitPairId):
                     )
                 )
 
-        # classical bounds
-        fig.add_hline(
-            y=2,
-            line_width=2,
-            line_color="red",
-        )
-        fig.add_hline(
-            y=-2,
-            line_width=2,
-            line_color="red",
+        fig.add_trace(
+            go.Scatter(
+                mode="lines",
+                x=data.thetas,
+                y=[2] * len(data.thetas),
+                line_color="gray",
+                name="Classical limit",
+                line_dash="dash",
+                legendgroup="classic",
+            )
         )
 
-        # maximum values
-        fig.add_hline(
-            y=2 * np.sqrt(2),
-            line_width=2,
-            line_dash="dash",
-            line_color="grey",
+        fig.add_trace(
+            go.Scatter(
+                mode="lines",
+                x=data.thetas,
+                y=[-2] * len(data.thetas),
+                line_color="gray",
+                name="Classical limit",
+                legendgroup="classic",
+                line_dash="dash",
+                showlegend=False,
+            )
         )
-        fig.add_hline(
-            y=-2 * np.sqrt(2),
-            line_width=2,
-            line_dash="dash",
-            line_color="grey",
+
+        fig.add_trace(
+            go.Scatter(
+                mode="lines",
+                x=data.thetas,
+                y=[+2 * np.sqrt(2)] * len(data.thetas),
+                line_color="gray",
+                name="Quantum limit",
+                legendgroup="quantum",
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                mode="lines",
+                x=data.thetas,
+                y=[-2 * np.sqrt(2)] * len(data.thetas),
+                line_color="gray",
+                name="Quantum limit",
+                legendgroup="quantum",
+                showlegend=False,
+            )
         )
 
         fig.update_layout(
             xaxis_title="Theta [rad]",
             yaxis_title="CHSH value",
+            xaxis=dict(range=[min(data.thetas), max(data.thetas)]),
         )
         figures.append(fig)
 
