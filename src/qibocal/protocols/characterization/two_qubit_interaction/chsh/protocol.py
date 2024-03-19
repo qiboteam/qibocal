@@ -47,6 +47,8 @@ class CHSHParameters(Parameters):
 
 @dataclass
 class CHSHData(Data):
+    """CHSH Data structure."""
+
     bell_states: list
     """Bell states list."""
     thetas: list
@@ -106,10 +108,22 @@ class CHSHData(Data):
 
 @dataclass
 class CHSHResults(Results):
-    chsh: dict[tuple[QubitId, QubitId, int], float] = field(default_factory=dict)
-    chsh_mitigated: dict[tuple[QubitId, QubitId, int], float] = field(
-        default_factory=dict
-    )
+    """CHSH Results class."""
+
+    chsh: dict[tuple[QubitPairId, int], float] = field(default_factory=dict)
+    """Raw CHSH value."""
+    chsh_mitigated: dict[tuple[QubitPairId, int], float] = field(default_factory=dict)
+    """Mitigated CHSH value."""
+
+    def __contains__(self, key: QubitPairId):
+        """Check if key is in class.
+
+        While key is a QubitPairId both chsh and chsh_mitigated contain
+        an additional key which represents the basis chosen.
+
+        """
+
+        return key in [(target, control) for target, control, _ in self.chsh]
 
 
 def _acquisition_pulses(
@@ -243,7 +257,7 @@ def _plot(data: CHSHData, fit: CHSHResults, target: QubitPairId):
         )
         figures.append(fig)
 
-    return figures, None
+    return figures, ""
 
 
 def _fit(data: CHSHData) -> CHSHResults:
