@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Optional, Union
 
 import numpy as np
@@ -81,6 +81,14 @@ class ResonatorSpectroscopyResults(Results):
         default_factory=dict,
     )
     """Readout attenuation [dB] for each qubit."""
+
+    def __contains__(self, key: QubitId):
+        return all(
+            key in getattr(self, field.name)
+            for field in fields(self)
+            if isinstance(getattr(self, field.name), dict)
+            and field.name != "bare_frequency"
+        )
 
 
 @dataclass
@@ -211,7 +219,7 @@ def _fit(
                 bare_frequency[qubit] = frequency[qubit]
             chi2[qubit] = (
                 chi2_reduced(
-                    data[qubit].freq,
+                    data[qubit].signal,
                     lorentzian(data[qubit].freq, *fitted_parameters[qubit]),
                     data[qubit].error_signal,
                 ),

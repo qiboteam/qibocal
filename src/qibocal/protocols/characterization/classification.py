@@ -124,7 +124,7 @@ class SingleShotClassificationResults(Results):
         asdict_class = asdict(self)
         asdict_class.pop("models")
         asdict_class.pop("classifiers_hpars")
-        (path / RESULTSFILE).write_text(json.dumps(serialize(asdict_class)))
+        (path / f"{RESULTSFILE}.json").write_text(json.dumps(serialize(asdict_class)))
 
 
 def _acquisition(
@@ -140,7 +140,6 @@ def _acquisition(
             - ada_boost
             - gaussian_process
             - naive_bayes
-            - nn
             - qubit_fit
             - random_forest
             - rbf_svm
