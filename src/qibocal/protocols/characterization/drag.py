@@ -76,24 +76,25 @@ def _acquisition(
         ro_pulses = {}
         sequence = PulseSequence()
         for qubit in targets:
-            RX90_drag_pulse = platform.create_RX90_drag_pulse(
+            RX_drag_pulse = platform.create_RX_drag_pulse(
                 qubit, start=0, beta=beta_param
             )
-
-            # TODO: Is this X_{-pi/2}?
-            RXm90_drag_pulse = platform.create_RX90_drag_pulse(
-                qubit, start=RX90_drag_pulse.finish, beta=beta_param
+            RX_drag_pulse_minus = platform.create_RX_drag_pulse(
+                qubit, start=RX_drag_pulse.finish, beta=beta_param, relative_phase=np.pi
             )
-            RXm90_drag_pulse.amplitude = -RXm90_drag_pulse.amplitude
 
             # RO pulse
             ro_pulses[qubit] = platform.create_qubit_readout_pulse(
                 qubit,
-                start=RXm90_drag_pulse.finish,
+                start=RX_drag_pulse_minus.finish,
             )
-            # RX(pi/2) - RX(-pi/2) - RO
-            sequence.add(RX90_drag_pulse)
-            sequence.add(RXm90_drag_pulse)
+            # RX(pi)
+            sequence.add(RX_drag_pulse)
+
+            # RX(-pi)
+            sequence.add(RX_drag_pulse_minus)
+
+            # RO
             sequence.add(ro_pulses[qubit])
 
         # execute the pulse sequences
@@ -140,6 +141,7 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
 
         try:
             popt, _ = curve_fit(drag_fit, beta_params, prob)
+            fitted_parameters[qubit] = popt.tolist()
             predicted_prob = drag_fit(beta_params, *popt)
             betas_optimal[qubit] = beta_params[np.argmax(predicted_prob)]
         except Exception as e:
