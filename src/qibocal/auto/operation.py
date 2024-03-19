@@ -115,10 +115,13 @@ class AbstractData:
         global_dict = asdict(self)
         if hasattr(self, "data"):
             global_dict.pop("data")
+        if hasattr(self, "circuits"):
+            global_dict.pop("circuits")
         return global_dict
 
     def save(self, path: Path, filename: str):
         """Dump class to file."""
+        self._to_circs_raw(path, filename)
         self._to_json(path, filename)
         self._to_npz(path, filename)
 
@@ -135,6 +138,13 @@ class AbstractData:
         if self.params:
             (path / f"{filename}.json").write_text(
                 json.dumps(serialize(self.params), indent=4)
+            )
+
+    def _to_circs_raw(self, path: Path, filename: str):
+        """Helper function to use np.savez while converting keys into strings."""
+        if hasattr(self, "circuits"):
+            (path / f"{filename}_circs.json").write_text(
+                json.dumps(serialize(self.circuits), indent=4)
             )
 
     @classmethod
@@ -209,6 +219,7 @@ class Data(AbstractData):
 
     def save(self, path: Path):
         """Store data to file."""
+        super()._to_circs_raw(path, DATAFILE)
         super()._to_json(path, DATAFILE)
         super()._to_npz(path, DATAFILE)
 
