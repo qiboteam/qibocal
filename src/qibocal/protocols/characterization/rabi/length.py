@@ -12,8 +12,12 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Parameters, Routine
 from qibocal.config import log
+from qibocal.protocols.characterization.rabi.length_signal import (
+    RabiLengthVoltData,
+    RabiLengthVoltResults,
+)
 
 from ..utils import chi2_reduced
 from . import utils
@@ -34,15 +38,9 @@ class RabiLengthParameters(Parameters):
 
 
 @dataclass
-class RabiLengthResults(Results):
+class RabiLengthResults(RabiLengthVoltResults):
     """RabiLength outputs."""
 
-    length: dict[QubitId, tuple[int, Optional[float]]]
-    """Pi pulse duration for each qubit."""
-    amplitude: dict[QubitId, tuple[float, Optional[float]]]
-    """Pi pulse amplitude. Same for all qubits."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitting output."""
     chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
 
 
@@ -53,11 +51,9 @@ RabiLenType = np.dtype(
 
 
 @dataclass
-class RabiLengthData(Data):
+class RabiLengthData(RabiLengthVoltData):
     """RabiLength acquisition outputs."""
 
-    amplitudes: dict[QubitId, float] = field(default_factory=dict)
-    """Pulse durations provided by the user."""
     data: dict[QubitId, npt.NDArray[RabiLenType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -140,13 +136,17 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
     qubits = data.qubits
     fitted_parameters = {}
     durations = {}
+    amplitudes = {}
     chi2 = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        x = qubit_data.length
+        raw_x = qubit_data.length
+        min_x = np.min(raw_x)
+        max_x = np.max(raw_x)
         y = qubit_data.prob
 
+        x = (raw_x - min_x) / (max_x - min_x)
         # Guessing period using fourier transform
         ft = np.fft.rfft(y)
         mags = abs(ft)
@@ -154,7 +154,8 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         index = local_maxima[0] if len(local_maxima) > 0 else None
         # 0.5 hardcoded guess for less than one oscillation
         f = x[index] / (x[1] - x[0]) if index is not None else 0.5
-        pguess = [0.5, 0.5, np.max(x) / f, 0, 0]
+        pguess = [0.5, 0.5, 1 / f, 0, 0]
+
         try:
             popt, perr = curve_fit(
                 utils.rabi_length_function,
@@ -168,17 +169,28 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
                 ),
                 sigma=qubit_data.error,
             )
+
+            translated_popt = [
+                popt[0],
+                popt[1] * np.exp(min_x * popt[4] / (max_x - min_x)),
+                popt[2] * (max_x - min_x),
+                popt[3] - 2 * np.pi * min_x / popt[2] / (max_x - min_x),
+                popt[4] / (max_x - min_x),
+            ]
+
             perr = np.sqrt(np.diag(perr))
             pi_pulse_parameter = (
-                popt[2] / 2 * utils.period_correction_factor(phase=popt[3])
+                translated_popt[2]
+                / 2
+                * utils.period_correction_factor(phase=translated_popt[3])
             )
-            durations[qubit] = (pi_pulse_parameter, perr[2] / 2)
-            fitted_parameters[qubit] = popt.tolist()
+            durations[qubit] = (pi_pulse_parameter, perr[2] * (max_x - min_x) / 2)
+            fitted_parameters[qubit] = translated_popt
             amplitudes = {key: (value, 0) for key, value in data.amplitudes.items()}
             chi2[qubit] = (
                 chi2_reduced(
                     y,
-                    utils.rabi_length_function(x, *popt),
+                    utils.rabi_length_function(raw_x, *translated_popt),
                     qubit_data.error,
                 ),
                 np.sqrt(2 / len(y)),
