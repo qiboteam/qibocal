@@ -47,10 +47,10 @@ def _fit_ef(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
     anharmoncities = {
         qubit: data.drive_frequencies[qubit] - results.frequency[qubit]
         for qubit in data.qubits
+        if qubit in results
     }
     params = asdict(results)
     params.update({"anharmonicity": anharmoncities})
-
     return QubitSpectroscopyEFResults(**params)
 
 
@@ -130,7 +130,7 @@ def _acquisition(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
+            averaging_mode=AveragingMode.SINGLESHOT,
         ),
         sweeper,
     )
@@ -143,9 +143,11 @@ def _acquisition(
             ResSpecType,
             (qubit),
             dict(
-                signal=result.magnitude,
-                phase=result.phase,
+                signal=np.abs(result.average.voltage),
+                phase=np.mean(result.phase, axis=0),
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
+                error_signal=result.average.std,
+                error_phase=np.std(result.phase, axis=0, ddof=1),
             ),
         )
     return data
@@ -160,12 +162,19 @@ def _plot(
         report = table_html(
             table_dict(
                 target,
-                ["Frequency 1->2 [Hz]", "Amplitude [a.u.]", "Anharmonicity [Hz]"],
                 [
-                    np.round(fit.frequency[target], 0),
-                    fit.amplitude[target],
-                    np.round(fit.anharmonicity[target], 0),
+                    "Frequency 1->2 [Hz]",
+                    "Amplitude [a.u.]",
+                    "Anharmonicity [Hz]",
+                    "Chi2",
                 ],
+                [
+                    (fit.frequency[target], fit.error_fit_pars[target][1]),
+                    (fit.amplitude[target], fit.error_fit_pars[target][0]),
+                    (fit.anharmonicity[target], fit.error_fit_pars[target][2]),
+                    fit.chi2_reduced[target],
+                ],
+                display_error=True,
             )
         )
 
