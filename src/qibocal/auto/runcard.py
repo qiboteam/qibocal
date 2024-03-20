@@ -9,7 +9,6 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
 from .operation import OperationId
-from .validation import Validator
 
 Id = NewType("Id", str)
 """Action identifiers type."""
@@ -29,18 +28,10 @@ class Action:
     """Action unique identifier."""
     operation: Optional[OperationId] = None
     """Operation to be performed by the executor."""
-    main: Optional[Id] = None
-    """Main subsequent for action in normal flow."""
-    next: Optional[Union[list[Id], Id]] = None
-    """Alternative subsequent actions, branching from the current one."""
-    priority: Optional[int] = None
-    """Priority level, determining the execution order."""
     targets: Optional[Targets] = None
     """Local qubits (optional)."""
     update: bool = True
     """Runcard update mechanism."""
-    validator: Optional[Validator] = None
-    """Define validation scheme and parameters."""
     parameters: Optional[dict[str, Any]] = None
     """Input parameters, either values or provider reference."""
 

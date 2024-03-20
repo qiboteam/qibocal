@@ -11,7 +11,5 @@ your quantum hardware.
     installation
     interface
     runcard
-    autoruncard
-    validation
     protocols
     example
