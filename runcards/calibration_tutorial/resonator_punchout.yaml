@@ -4,7 +4,7 @@ qubits: [0]
 
 actions:
   - id: resonator punchout
-    priority: 0
+
     operation: resonator_punchout
     parameters:
         freq_width: 40_000_000
