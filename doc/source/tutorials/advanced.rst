@@ -459,7 +459,7 @@ To launch the protocol a possible runcard could be the following one:
 
     actions:
         - id: rotate
-          priority: 0
+
           operation: rotation
           parameters:
             theta_start: 0
