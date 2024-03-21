@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -17,23 +16,20 @@ from . import utils
 
 
 @dataclass
-class ZenoParameters(Parameters):
+class ZenoSignalParameters(Parameters):
     """Zeno runcard inputs."""
 
     readouts: int
     "Number of readout pulses"
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time [ns]."""
 
 
-ZenoType = np.dtype([("signal", np.float64), ("phase", np.float64)])
+ZenoSignalType = np.dtype([("signal", np.float64), ("phase", np.float64)])
 """Custom dtype for Zeno."""
 
 
 @dataclass
-class ZenoData(Data):
+class ZenoSignalData(Data):
+
     readout_duration: dict[QubitId, float] = field(default_factory=dict)
     """Readout durations for each qubit"""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
@@ -41,7 +37,7 @@ class ZenoData(Data):
 
     def register_qubit(self, qubit, signal, phase):
         """Store output for single qubit."""
-        ar = np.empty((1,), dtype=ZenoType)
+        ar = np.empty((1,), dtype=ZenoSignalType)
         ar["signal"] = signal
         ar["phase"] = phase
         if qubit in self.data:
@@ -51,7 +47,7 @@ class ZenoData(Data):
 
 
 @dataclass
-class ZenoResults(Results):
+class ZenoSignalResults(Results):
     """Zeno outputs."""
 
     zeno_t1: dict[QubitId, int]
@@ -61,10 +57,10 @@ class ZenoResults(Results):
 
 
 def _acquisition(
-    params: ZenoParameters,
+    params: ZenoSignalParameters,
     platform: Platform,
     targets: list[QubitId],
-) -> ZenoData:
+) -> ZenoSignalData:
     """
     In a T1_Zeno experiment, we measure an excited qubit repeatedly. Due to decoherence processes,
     it is possible that, at the time of measurement, the qubit will not be excited anymore.
@@ -92,7 +88,7 @@ def _acquisition(
         ro_pulse_duration[qubit] = ro_pulse.duration
 
     # create a DataUnits object to store the results
-    data = ZenoData(readout_duration=ro_pulse_duration)
+    data = ZenoSignalData(readout_duration=ro_pulse_duration)
 
     # execute the first pulse sequence
     results = platform.execute_pulse_sequence(
@@ -115,7 +111,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: ZenoData) -> ZenoResults:
+def _fit(data: ZenoSignalData) -> ZenoSignalResults:
     """
     Fitting routine for T1 experiment. The used model is
 
@@ -126,10 +122,10 @@ def _fit(data: ZenoData) -> ZenoResults:
 
     t1s, fitted_parameters = utils.exponential_fit(data, zeno=True)
 
-    return ZenoResults(t1s, fitted_parameters)
+    return ZenoSignalResults(t1s, fitted_parameters)
 
 
-def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
+def _plot(data: ZenoSignalData, fit: ZenoSignalResults, target: QubitId):
     """Plotting function for T1 experiment."""
     figures = []
     fig = go.Figure()
@@ -189,7 +185,7 @@ def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
     return figures, fitting_report
 
 
-def _update(results: ZenoResults, platform: Platform, qubit: QubitId):
+def _update(results: ZenoSignalResults, platform: Platform, qubit: QubitId):
     update.t1(results.zeno_t1[qubit], platform, qubit)
 
 

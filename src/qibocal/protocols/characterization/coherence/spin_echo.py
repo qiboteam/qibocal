@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -8,34 +9,23 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
-from qibocal import update
-from qibocal.auto.operation import Parameters, Results, Routine
+from qibocal.auto.operation import Routine
 
 from ..utils import chi2_reduced, table_dict, table_html
 from . import t1
+from .spin_echo_signal import SpinEchoSignalParameters, SpinEchoSignalResults, _update
 from .utils import exp_decay, exponential_fit_probability
 
 
 @dataclass
-class SpinEchoParameters(Parameters):
+class SpinEchoParameters(SpinEchoSignalParameters):
     """SpinEcho runcard inputs."""
-
-    delay_between_pulses_start: int
-    """Initial delay between pulses [ns]."""
-    delay_between_pulses_end: int
-    """Final delay between pulses [ns]."""
-    delay_between_pulses_step: int
-    """Step delay between pulses [ns]."""
 
 
 @dataclass
-class SpinEchoResults(Results):
+class SpinEchoResults(SpinEchoSignalResults):
     """SpinEcho outputs."""
 
-    t2_spin_echo: dict[QubitId, float]
-    """T2 echo for each qubit."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitting output."""
     chi2: Optional[dict[QubitId, tuple[float, Optional[float]]]] = field(
         default_factory=dict
     )
@@ -83,39 +73,53 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
+    options = ExecutionParameters(
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
+    )
+
     data = SpinEchoData()
-    probs = {qubit: [] for qubit in targets}
+    sequences, all_ro_pulses = [], []
     # sweep the parameter
     for wait in ro_wait_range:
         # save data as often as defined by points
 
         for qubit in targets:
-            RX_pulses[qubit].start = RX90_pulses1[qubit].finish + wait
-            RX90_pulses2[qubit].start = RX_pulses[qubit].finish + wait
+            RX_pulses[qubit].start = RX90_pulses1[qubit].finish + wait // 2
+            RX90_pulses2[qubit].start = RX_pulses[qubit].finish + wait // 2
             ro_pulses[qubit].start = RX90_pulses2[qubit].finish
 
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.DISCRIMINATION,
-                averaging_mode=AveragingMode.SINGLESHOT,
-            ),
-        )
+        sequences.append(deepcopy(sequence))
+        all_ro_pulses.append(deepcopy(sequence).ro_pulses)
 
+    if params.unrolling:
+        results = platform.execute_pulse_sequences(sequences, options)
+
+    elif not params.unrolling:
+        results = [
+            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
+        ]
+
+    for ig, (wait, ro_pulses) in enumerate(zip(ro_wait_range, all_ro_pulses)):
         for qubit in targets:
-            prob = results[ro_pulses[qubit].serial].probability(state=0)
-            probs[qubit].append(prob)
-
-    for qubit in targets:
-        errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs[qubit]]
-        data.register_qubit(
-            t1.CoherenceProbType,
-            (qubit),
-            dict(wait=ro_wait_range, prob=probs[qubit], error=errors),
-        )
+            serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
+            if params.unrolling:
+                result = results[serial][0]
+            else:
+                result = results[ig][serial]
+            prob = result.probability(state=0)
+            error = np.sqrt(prob * (1 - prob) / params.nshots)
+            data.register_qubit(
+                t1.CoherenceProbType,
+                (qubit),
+                dict(
+                    wait=np.array([wait]),
+                    prob=np.array([prob]),
+                    error=np.array([error]),
+                ),
+            )
 
     return data
 
@@ -132,7 +136,7 @@ def _fit(data: SpinEchoData) -> SpinEchoResults:
             ),
             np.sqrt(2 / len(data[qubit].prob)),
         )
-        for qubit in data.qubits
+        for qubit in fitted_parameters
     }
 
     return SpinEchoResults(t2Echos, fitted_parameters, chi2)
@@ -208,10 +212,6 @@ def _plot(data: SpinEchoData, target: QubitId, fit: SpinEchoResults = None):
     figures.append(fig)
 
     return figures, fitting_report
-
-
-def _update(results: SpinEchoResults, platform: Platform, target: QubitId):
-    update.t2_spin_echo(results.t2_spin_echo[target], platform, target)
 
 
 spin_echo = Routine(_acquisition, _fit, _plot, _update)

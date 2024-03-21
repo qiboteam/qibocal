@@ -5,14 +5,12 @@ targets: [0,1]
 actions:
 
   - id: time of flight
-    priority: 0
     operation: time_of_flight_readout
     parameters:
       nshots: 1024
       readout_amplitude: 0.5
 
   - id: resonator high power high amplitude
-    priority: 0
     operation: resonator_spectroscopy
     parameters:
       freq_width: 10_000_000 # 20_000_000
@@ -23,8 +21,7 @@ actions:
 
 
   - id: resonator high power low attenuation
-    priority: 0
-    operation: resonator_spectroscopy_attenuation
+    operation: resonator_spectroscopy
     parameters:
       freq_width: 10_000_000 # 20_000_000
       freq_step: 100_000 # 500_00
@@ -34,8 +31,7 @@ actions:
 
 
   - id: resonator low power high attenuation
-    priority: 0
-    operation: resonator_spectroscopy_attenuation
+    operation: resonator_spectroscopy
     parameters:
       freq_width: 10_000_000 # 20_000_000
       freq_step: 100_000 # 500_00
@@ -45,7 +41,6 @@ actions:
 
 
   - id: resonator punchout
-    priority: 0
     operation: resonator_punchout
     parameters:
       freq_width: 10_000_000
@@ -58,7 +53,6 @@ actions:
 
 
   - id: resonator_punchout_attenuation
-    priority: 0
     operation: resonator_punchout_attenuation
     parameters:
       freq_width: 10_000_000
@@ -71,7 +65,6 @@ actions:
 
 
   - id: resonator spectroscopy low power
-    priority: 0
     operation: resonator_spectroscopy
     parameters:
       freq_width: 10_000_000
@@ -81,7 +74,6 @@ actions:
       nshots: 10
 
   - id: coupler_resonator_spectroscopy
-    priority: 0
     operation: coupler_resonator_spectroscopy
     targets: [[1, 2], [0, 2]]
     parameters:
@@ -96,7 +88,6 @@ actions:
 
 
   - id: qubit spectroscopy
-    priority: 0
     operation: qubit_spectroscopy
     parameters:
       drive_amplitude: 0.001
@@ -106,7 +97,6 @@ actions:
       nshots: 10
 
   - id: coupler qubit spectroscopy
-    priority: 0
     operation: coupler_qubit_spectroscopy
     targets: [[1, 2], [0, 2]]
     parameters:
@@ -121,7 +111,6 @@ actions:
 
 
   - id: qubit spectroscopy ef
-    priority: 0
     operation: qubit_spectroscopy_ef
     #FIXME: add RX12 for qubit 4
     targets: [0, 1, 2, 3]
@@ -134,7 +123,6 @@ actions:
 
 
   - id: resonator flux dependence
-    priority: 0
     operation: resonator_flux
     parameters:
       freq_width: 10_000_000
@@ -145,7 +133,6 @@ actions:
 
 
   - id: resonator flux crosstalk # using ``flux_qubits``
-    priority: 0
     operation: resonator_crosstalk
     parameters:
       freq_width: 10_000_000
@@ -159,7 +146,6 @@ actions:
 
 
   - id: qubit flux dependence #"01" transition
-    priority: 0
     operation: qubit_flux
     parameters:
       freq_width: 150_000_000
@@ -172,7 +158,6 @@ actions:
       transition: "01"
 
   - id: qubit flux dependence 02 #"02" transition
-    priority: 0
     operation: qubit_flux
     parameters:
       freq_width: 150_000_000
@@ -186,7 +171,6 @@ actions:
 
 
   - id: qubit flux dependence tracking
-    priority: 0 #50
     operation: qubit_flux_tracking
     parameters:
       freq_width: 150_000_000
@@ -200,7 +184,6 @@ actions:
 
 
   - id: qubit flux crosstalk # using ``flux_qubits``
-    priority: 0
     operation: qubit_crosstalk
     parameters:
       freq_width: 150_000_000
@@ -215,7 +198,6 @@ actions:
 
 
   - id: rabi
-    priority: 0
     operation: rabi_amplitude
     parameters:
       min_amp_factor: 0.0
@@ -225,7 +207,6 @@ actions:
       nshots: 1024
 
   - id: rabi without nshots
-    priority: 0
     operation: rabi_amplitude
     parameters:
       min_amp_factor: 0.0
@@ -234,7 +215,6 @@ actions:
       pulse_length: 30
 
   - id: rabi signal
-    priority: 0
     operation: rabi_amplitude_signal
     parameters:
       min_amp_factor: 0.0
@@ -245,7 +225,6 @@ actions:
 
 
   - id: rabi_ef
-    priority: 0
     operation: rabi_amplitude_ef
     #FIXME: add RX12 for qubit 4
     targets: [0, 1, 2, 3]
@@ -257,7 +236,6 @@ actions:
       nshots: 1024
 
   - id: rabi length
-    priority: 0
     operation: rabi_length
     parameters:
       pulse_duration_start: 4
@@ -267,7 +245,6 @@ actions:
       nshots: 1024
 
   - id: rabi length signal
-    priority: 0
     operation: rabi_length_signal
     parameters:
       pulse_duration_start: 4
@@ -277,7 +254,6 @@ actions:
       nshots: 1024
 
   - id: rabi length sequences
-    priority: 0
     operation: rabi_length_sequences
     parameters:
       pulse_duration_start: 4
@@ -287,7 +263,6 @@ actions:
       nshots: 1024
 
   - id: t1
-    priority: 0
     operation: t1
     parameters:
       delay_before_readout_start: 0
@@ -296,7 +271,6 @@ actions:
       nshots: 1024
 
   - id: t1_signal
-    priority: 0
     operation: t1_signal
     parameters:
       delay_before_readout_start: 0
@@ -305,7 +279,6 @@ actions:
       nshots: 1024
 
   - id: t1 sequences
-    priority: 0
     operation: t1_sequences
     parameters:
       delay_before_readout_start: 0
@@ -314,21 +287,18 @@ actions:
       nshots: 10
 
   - id: zeno
-    priority: 00
     operation: zeno
     parameters:
       readouts: 10
       nshots: 10
 
   - id: zeno_signal
-    priority: 00
     operation: zeno_signal
     parameters:
       readouts: 10
       nshots: 10
 
   - id: t2
-    priority: 0
     operation: t2
     parameters:
       delay_between_pulses_start: 16
@@ -337,7 +307,6 @@ actions:
       nshots: 10
 
   - id: t2_signal
-    priority: 0
     operation: t2_signal
     parameters:
       delay_between_pulses_start: 16
@@ -346,7 +315,6 @@ actions:
       nshots: 10
 
   - id: t2 sequences
-    priority: 0
     operation: t2_sequences
     parameters:
       delay_between_pulses_start: 16
@@ -355,7 +323,6 @@ actions:
       nshots: 10
 
   - id: ramsey_signal
-    priority: 0
     operation: ramsey_signal
     parameters:
       delay_between_pulses_start: 0
@@ -364,65 +331,49 @@ actions:
       nshots: 10
 
   - id: ramsey_signal_detuned
-    priority: 0
     operation: ramsey_signal
     parameters:
       unrolling: False
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
-      n_osc: 2
+      detuning: 1_000_000
       nshots: 10
 
   - id: ramsey_signal_detuned_unrolled
-    priority: 0
     operation: ramsey_signal
     parameters:
       unrolling: True
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
-      n_osc: 10
+      detuning: 1_000_000
       nshots: 10
 
   - id: ramsey
-    priority: 0
     operation: ramsey
     parameters:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 20
       delay_between_pulses_step: 1
-      n_osc: 0
+      detuning: 0
       nshots: 1024
 
   - id: calibrate_state_discrimination
-    priority: 00
     operation: calibrate_state_discrimination
     parameters:
       nshots: 10
 
   - id: ramsey_detuned
-    priority: 0
     operation: ramsey
     parameters:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
-      n_osc: 2
+      detuning: 2_000_000
       nshots: 10
-
-  - id: ramsey_detuned_sequences
-    priority: 0
-    operation: ramsey_sequences
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 50
-      delay_between_pulses_step: 1
-      nshots: 10
-      n_osc: 2
 
   - id: ramsey_unrolled_detuned
-    priority: 0
     operation: ramsey
     parameters:
       unrolling: True
@@ -430,24 +381,21 @@ actions:
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
       nshots: 10
-      n_osc: 10
+      detuning: 1_000_000
 
   - id: single shot classification
-    priority: 0
     operation: single_shot_classification
     parameters:
       unrolling: False
       nshots: 10
 
   - id: single shot classification with unrolling
-    priority: 0
     operation: single_shot_classification
     parameters:
       unrolling: True
       nshots: 10
 
   - id: single shot classification with classifiers
-    priority: 0
     operation: single_shot_classification
     parameters:
       nshots: 10
@@ -455,20 +403,17 @@ actions:
       classifiers_list: ["qubit_fit","naive_bayes", "linear_svm"]
 
   - id: readout characterization
-    priority: 0
     operation: readout_characterization
     parameters:
       nshots: 10
 
   - id: allXY
-    priority: 0
     operation: allxy
     parameters:
       beta_param: null
       nshots: 10
 
   - id: allXY unrolling
-    priority: 0
     operation: allxy
     parameters:
       beta_param: null
@@ -476,7 +421,6 @@ actions:
       nshots: 10
 
   - id: allxy_drag_pulse_tuning
-    priority: 0
     operation: allxy_drag_pulse_tuning
     parameters:
       beta_start: 0
@@ -486,7 +430,6 @@ actions:
 
 
   - id: drag_pulse_tuning
-    priority: 0
     operation: drag_pulse_tuning
     parameters:
       beta_start: 0
@@ -495,7 +438,6 @@ actions:
       nshots: 10
 
   - id: spin_echo
-    priority: 0
     operation: spin_echo
     parameters:
       delay_between_pulses_start: 0
@@ -503,17 +445,34 @@ actions:
       delay_between_pulses_step: 1
       nshots: 10
 
-  - id: spin_echo_sequence
-    priority: 0
-    operation: spin_echo_sequence
+  - id: spin_echo unrolling
+    operation: spin_echo
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 5
+      delay_between_pulses_step: 1
+      nshots: 10
+      unrolling: true
+
+  - id: spin_echo_signal
+    operation: spin_echo_signal
     parameters:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 5
       delay_between_pulses_step: 1
       nshots: 10
 
+  - id: spin_echo_signal unrolling
+    operation: spin_echo_signal
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 5
+      delay_between_pulses_step: 1
+      nshots: 10
+      unrolling: true
+
+
   - id: flipping
-    priority: 0
     operation: flipping
     parameters:
       nflips_max: 10
@@ -521,7 +480,6 @@ actions:
       nshots: 50
 
   - id: flipping_signal
-    priority: 0
     operation: flipping_signal
     parameters:
       nflips_max: 10
@@ -529,7 +487,6 @@ actions:
       nshots: 50
 
   - id: flipping unrolling
-    priority: 0
     operation: flipping
     parameters:
       nflips_max: 10
@@ -538,7 +495,6 @@ actions:
       unrolling: True
 
   - id: flipping_signal unrolling
-    priority: 0
     operation: flipping_signal
     parameters:
       nflips_max: 10
@@ -548,7 +504,6 @@ actions:
 
 
   - id: dispersive shift
-    priority: 0
     operation: dispersive_shift
     parameters:
       freq_width: 10_000_000
@@ -556,7 +511,6 @@ actions:
       nshots: 10
 
   - id: dispersive shift qutrit
-    priority: 0
     operation: dispersive_shift_qutrit
     #FIXME: add qubit 4 with new release of Qibolab
     targets: [0, 1, 2, 3]
@@ -566,7 +520,6 @@ actions:
       nshots: 10
 
   - id: standard rb no error
-    priority: 0
     operation: standard_rb
     parameters:
       depths:
@@ -579,7 +532,6 @@ actions:
       n_bootstrap: 0
 
   - id: standard rb unrolling
-    priority: 0
     operation: standard_rb
     parameters:
       depths:
@@ -593,7 +545,6 @@ actions:
       n_bootstrap: 0
 
   - id: standard rb bootstrap
-    priority: 0
     operation: standard_rb
     targets: [1]
     parameters:
@@ -604,7 +555,6 @@ actions:
       noise_model: PauliErrorOnAll
 
   - id: chevron id
-    priority: 0
     operation: chevron
     targets: [[0, 2],[1,2]]
     parameters:
@@ -618,7 +568,6 @@ actions:
       parking: True
 
   - id: tune landscape
-    priority: 0
     operation: cz_virtualz
     targets: [[0, 2],[1,2],[3,2]]
     parameters:
@@ -630,7 +579,6 @@ actions:
       parking: True
 
   - id: standard rb inhomogeneous
-    priority: 0
     operation: standard_rb
     targets: [0, 1, 3]
     parameters:
@@ -643,7 +591,6 @@ actions:
       noise_params: [0.01, 0.01, 0.01]
 
   - id : resonator_frequency
-    priority: 0
     operation: resonator_frequency
     parameters:
       freq_width: 200.e+6
@@ -651,13 +598,11 @@ actions:
       nshots: 1000
 
   - id: fast reset
-    priority: 0
     operation: fast_reset
     parameters:
       nshots: 1024
 
   - id: CHSH with pulses
-    priority: 0
     operation: chsh_pulses
     targets: [[0,2],[1,2],[2,3]]
     parameters:
@@ -667,7 +612,6 @@ actions:
       apply_error_mitigation: True
 
   - id: CHSH with natives
-    priority: 0
     operation: chsh_circuits
     targets: [[0,2],[1,2]]
     parameters:
@@ -679,7 +623,6 @@ actions:
 
   #FIXME: cannot add pair [0,3]
   - id: CHSH with circuits
-    priority: 0
     operation: chsh_circuits
     targets: [[0,2],[1,2]]
     parameters:
@@ -690,7 +633,6 @@ actions:
       apply_error_mitigation: True
 
   - id: readout_mitigation_matrix pulses
-    priority: 0
     operation: readout_mitigation_matrix
     targets: [[0,1,2],[1,2]]
     parameters:
@@ -698,7 +640,6 @@ actions:
       pulses: True
 
   - id: readout_mitigation_matrix circuits
-    priority: 0
     operation: readout_mitigation_matrix
     targets: [[0,1,2],[1,2]]
     parameters:
@@ -706,7 +647,6 @@ actions:
       pulses: False
 
   - id: twpa frequency
-    priority: 0
     operation: twpa_frequency
     parameters:
       nshots: 10
@@ -714,7 +654,6 @@ actions:
       frequency_step: 100_000
 
   - id: twpa power
-    priority: 0
     operation: twpa_power
     parameters:
       nshots: 10
@@ -722,7 +661,6 @@ actions:
       power_step: 1
 
   - id: twpa frequency power
-    priority: 0
     operation: twpa_frequency_power
     targets: [0]
     parameters:
@@ -732,7 +670,6 @@ actions:
       power_step: 1
 
   - id: twpa_power_SNR
-    priority: 0
     operation: twpa_power_SNR
     parameters:
       freq_width: 500_000_000
@@ -744,7 +681,6 @@ actions:
       relaxation_time: 2000
 
   - id: twpa_frequency_SNR
-    priority: 0
     operation: twpa_frequency_SNR
     parameters:
       freq_width: 100_000_000
@@ -756,14 +692,12 @@ actions:
       relaxation_time: 20
 
   - id: resoantor_amplitude
-    priority: 0
     operation: resonator_amplitude
     parameters:
       amplitude_step: 0.1
       amplitude_stop: 0.5
 
   - id: qutrit
-    priority: 0
     targets: [0,1]
     operation: qutrit_classification
     parameters:
@@ -771,7 +705,6 @@ actions:
       classifiers_list: ["naive_bayes", "decision_tree"]
 
   - id: avoided crossing
-    priority: 0
     operation: avoided_crossing
     targets: [[2,1],[0,2]]
     parameters:

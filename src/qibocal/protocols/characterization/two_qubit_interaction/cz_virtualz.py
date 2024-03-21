@@ -258,7 +258,7 @@ def _fit(
             pguess = [
                 np.max(target_data) - np.min(target_data),
                 np.mean(target_data),
-                3.14,
+                np.pi,
             ]
 
             try:
@@ -271,21 +271,23 @@ def _fit(
                 )
                 fitted_parameters[target, control, setup] = popt.tolist()
 
-            except:
-                log.warning("landscape_fit: the fitting was not succesful")
-                fitted_parameters[target, control, setup] = [0] * 3
+            except Exception as e:
+                log.warning(f"CZ fit failed for pair ({target, control}) due to {e}.")
 
-        for target_q, control_q in (
-            pair,
-            list(pair)[::-1],
-        ):
-            cz_angle[target_q, control_q] = abs(
-                fitted_parameters[target_q, control_q, "X"][2]
-                - fitted_parameters[target_q, control_q, "I"][2]
-            )
-            virtual_phase[pair][target_q] = -fitted_parameters[
-                target_q, control_q, "I"
-            ][2]
+        try:
+            for target_q, control_q in (
+                pair,
+                list(pair)[::-1],
+            ):
+                cz_angle[target_q, control_q] = abs(
+                    fitted_parameters[target_q, control_q, "X"][2]
+                    - fitted_parameters[target_q, control_q, "I"][2]
+                )
+                virtual_phase[pair][target_q] = -fitted_parameters[
+                    target_q, control_q, "I"
+                ][2]
+        except KeyError:
+            log.warning(f"CZ fit failed for pair ({target_q, control_q}).")
 
     return CZVirtualZResults(
         cz_angle=cz_angle,
