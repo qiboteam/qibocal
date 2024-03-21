@@ -9,6 +9,7 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
+from scipy.signal import find_peaks
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
@@ -125,8 +126,8 @@ def _acquisition(
     return data
 
 
-def drag_fit(x, offset, amplitude, frequency, phase):
-    return offset + amplitude * np.cos(2 * np.pi * x * frequency + phase)
+def drag_fit(x, offset, amplitude, period, phase):
+    return offset + amplitude * np.cos(2 * np.pi * x / period + phase)
 
 
 def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
@@ -136,13 +137,46 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        prob = qubit_data.prob
         beta_params = qubit_data.beta
+        prob = qubit_data.prob
+
+        beta_min = np.min(beta_params)
+        beta_max = np.max(beta_params)
+        normalized_beta = (beta_params - beta_min) / (beta_max - beta_min)
+
+        # Guessing period using fourier transform
+        ft = np.fft.rfft(prob)
+        mags = abs(ft)
+        local_maxima = find_peaks(mags, threshold=1)[0]
+        index = local_maxima[0] if len(local_maxima) > 0 else None
+        # 0.5 hardcoded guess for less than one oscillation
+        f = (
+            beta_params[index] / (beta_params[1] - beta_params[0])
+            if index is not None
+            else 0.5
+        )
+        pguess = [0.5, 0.5, 1 / f, 0]
 
         try:
-            popt, _ = curve_fit(drag_fit, beta_params, prob)
-            fitted_parameters[qubit] = popt.tolist()
-            predicted_prob = drag_fit(beta_params, *popt)
+            popt, _ = curve_fit(
+                drag_fit,
+                normalized_beta,
+                prob,
+                p0=pguess,
+                maxfev=100000,
+                bounds=(
+                    [0, 0, 0, -np.pi],
+                    [1, 1, np.inf, np.pi],
+                ),
+            )
+            translated_popt = [
+                popt[0],
+                popt[1],
+                popt[2] * (beta_max - beta_min),
+                popt[3] - 2 * np.pi * beta_min / popt[2] / (beta_max - beta_min),
+            ]
+            fitted_parameters[qubit] = translated_popt
+            predicted_prob = drag_fit(beta_params, *translated_popt)
             betas_optimal[qubit] = beta_params[np.argmax(predicted_prob)]
         except Exception as e:
             log.warning(f"drag_tuning_fit failed for qubit {qubit} due to {e}.")
