@@ -124,13 +124,12 @@ def _acquisition(
         pulses=[qd_pulses[qubit] for qubit in qubits],
         type=SweeperType.OFFSET,
     )
-    drive_readout_duration = sequence.duration
     if params.flux_pulses:
         (
             delta_bias_flux_range,
             sweepers,
         ) = resonator_flux_dependence.create_flux_pulse_sweepers(
-            params, platform, qubits, drive_readout_duration
+            params, platform, qubits, sequence
         )
     else:
         delta_bias_flux_range = np.arange(

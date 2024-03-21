@@ -94,10 +94,9 @@ def _acquisition(
 
     else:
         flux_qubits = params.flux_qubits
-    drive_readout_duration = sequence.duration
     if params.flux_pulses:
         delta_bias_flux_range, sweepers = create_flux_pulse_sweepers(
-            params, platform, qubits, drive_readout_duration
+            params, platform, qubits, sequence
         )
     else:
         delta_bias_flux_range = np.arange(

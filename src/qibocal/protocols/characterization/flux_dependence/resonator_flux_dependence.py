@@ -153,15 +153,15 @@ def create_flux_pulse_sweepers(
     params: ResonatorFluxParameters,
     platform: Platform,
     qubits: Qubits,
-    drive_readout_duration: int,
-) -> list[Sweeper]:
+    sequence: PulseSequence,
+) -> tuple[np.ndarray, list[Sweeper]]:
     """Create a list of sweepers containing flux pulses.
 
     Args:
         params (ResonatorFluxParameters): parameters of the experiment (here flux amplitude is used).
         platform (Platform): platform on which to run the experiment.
         qubits (Qubits): qubits on which to run the experiment.
-        drive_readout_duration (int): duration in ns of the drive-readout sequence.
+        sequence (PulseSequence): pulse sequence of the experiment (updated with flux pulses).
     """
     qf_pulses = {}
     for i, qubit in enumerate(qubits):
@@ -179,9 +179,10 @@ def create_flux_pulse_sweepers(
             flux_amplitude_step,
         )
         pulse = platform.create_qubit_flux_pulse(
-            qubit, start=0, duration=drive_readout_duration
+            qubit, start=0, duration=sequence.duration
         )
         qf_pulses[qubit] = pulse
+        sequence.add(pulse)
     sweepers = [
         Sweeper(
             Parameter.amplitude,
@@ -224,10 +225,9 @@ def _acquisition(
         [ro_pulses[qubit] for qubit in qubits],
         type=SweeperType.OFFSET,
     )
-    drive_readout_duration = sequence.duration
     if params.flux_pulses:
         delta_bias_flux_range, sweepers = create_flux_pulse_sweepers(
-            params, platform, qubits, drive_readout_duration
+            params, platform, qubits, sequence
         )
     else:
         delta_bias_flux_range = np.arange(
@@ -267,7 +267,6 @@ def _acquisition(
                 freq=delta_frequency_range + ro_pulses[qubit].frequency,
                 bias=delta_bias_flux_range + sweetspot,
             )
-
     return data
 
 
