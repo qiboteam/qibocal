@@ -5,7 +5,7 @@ qubits: [0]
 actions:
 
   - id: rabi
-    priority: 0
+
     operation: rabi_amplitude_signal
     parameters:
         min_amp_factor: 0
