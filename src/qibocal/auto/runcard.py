@@ -5,6 +5,7 @@ from typing import Any, NewType, Optional, Union
 
 from pydantic.dataclasses import dataclass
 from qibo.backends import Backend, GlobalBackend
+from qibo.transpiler.pipeline import Passes
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
@@ -65,7 +66,11 @@ class Runcard:
     def backend_obj(self) -> Backend:
         """Allocate backend."""
         GlobalBackend.set_backend(self.backend, platform=self.platform)
-        return GlobalBackend()
+        backend = GlobalBackend()
+        # FIXME: remove this latin abomination
+        backend.transpiler = Passes(connectivity=backend.platform.topology)
+        backend.transpiler.passes = backend.transpiler.passes[-1:]
+        return backend
 
     @property
     def platform_obj(self) -> Platform:
