@@ -52,7 +52,6 @@ def modify_card(card, targets=None, update=None):
 def test_targets_argument(platform, local_targets, tmp_path):
     """Test possible qubits combinations between global and local."""
     runcard = Runcard.load(modify_card(DUMMY_CARD, targets=local_targets))
-    print(runcard)
     task = Task(runcard.actions[0])
 
     completed = task.run(
