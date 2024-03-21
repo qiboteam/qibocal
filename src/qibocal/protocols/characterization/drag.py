@@ -31,6 +31,9 @@ class DragPulseTuningParameters(Parameters):
     """DRAG pulse beta end sweep parameter."""
     beta_step: float
     """DRAG pulse beta sweep step parameter."""
+    unrolling: bool = False
+    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
+    Defaults to ``False``."""
 
 
 @dataclass
@@ -73,9 +76,10 @@ def _acquisition(
 
     data = DragPulseTuningData()
 
+    sequences, all_ro_pulses = [], []
     for beta_param in beta_param_range:
-        ro_pulses = {}
         sequence = PulseSequence()
+        ro_pulses = {}
         for qubit in targets:
             RX_drag_pulse = platform.create_RX_drag_pulse(
                 qubit, start=0, beta=beta_param
@@ -83,35 +87,39 @@ def _acquisition(
             RX_drag_pulse_minus = platform.create_RX_drag_pulse(
                 qubit, start=RX_drag_pulse.finish, beta=beta_param, relative_phase=np.pi
             )
-
-            # RO pulse
             ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-                qubit,
-                start=RX_drag_pulse_minus.finish,
+                qubit, start=RX_drag_pulse_minus.finish
             )
-            # RX(pi)
+
             sequence.add(RX_drag_pulse)
-
-            # RX(-pi)
             sequence.add(RX_drag_pulse_minus)
-
-            # RO
             sequence.add(ro_pulses[qubit])
+        sequences.append(sequence)
+        all_ro_pulses.append(ro_pulses)
 
-        # execute the pulse sequences
-        result = platform.execute_pulse_sequence(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.DISCRIMINATION,
-                averaging_mode=AveragingMode.SINGLESHOT,
-            ),
-        )
+    options = ExecutionParameters(
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
+    )
+    # execute the pulse sequence
+    if params.unrolling:
+        results = platform.execute_pulse_sequences(sequences, options)
 
-        # retrieve the results for every qubit
+    elif not params.unrolling:
+        results = [
+            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
+        ]
+
+    for ig, (beta, ro_pulses) in enumerate(zip(beta_param_range, all_ro_pulses)):
         for qubit in targets:
-            prob = result[qubit].probability(state=0)
+            serial = ro_pulses[qubit].serial
+            if params.unrolling:
+                result = results[serial][0]
+            else:
+                result = results[ig][serial]
+            prob = result.probability(state=0)
             # store the results
             data.register_qubit(
                 DragPulseTuningType,
@@ -119,7 +127,7 @@ def _acquisition(
                 dict(
                     prob=np.array([prob]),
                     error=np.array([np.sqrt(prob * (1 - prob) / params.nshots)]),
-                    beta=np.array([beta_param]),
+                    beta=np.array([beta]),
                 ),
             )
 
