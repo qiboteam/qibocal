@@ -18,10 +18,11 @@ from qibocal.protocols.characterization.qubit_spectroscopy_ef import (
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, table_dict, table_html
 from . import resonator_flux_dependence, utils
+from .resonator_flux_dependence import ResonatorFluxParameters
 
 
 @dataclass
-class QubitFluxParameters(resonator_flux_dependence.ResonatorFluxParameters):
+class QubitFluxParameters(ResonatorFluxParameters):
     """QubitFlux runcard inputs."""
 
     drive_amplitude: Optional[float] = None
