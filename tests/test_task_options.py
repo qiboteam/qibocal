@@ -18,6 +18,7 @@ from qibocal.protocols.characterization.readout_mitigation_matrix import (
 )
 
 # FIRST COMMIT
+# SECOND COMMIT
 PLATFORM = create_platform("dummy")
 QUBITS = list(PLATFORM.qubits)
 DUMMY_CARD = {
