@@ -23,7 +23,7 @@ actions:
       nshots: 5000
 
   # - id: standard rb bootstrap
-  #   priority: 40
+
   #   operation: standard_rb
   #   parameters:
   #     depths: [10, 100, 150, 200, 250, 300]

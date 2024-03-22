@@ -17,15 +17,12 @@ from qibocal.protocols.characterization.readout_mitigation_matrix import (
     ReadoutMitigationMatrixParameters,
 )
 
-PLATFORM = create_platform("dummy")
-QUBITS = list(PLATFORM.qubits)
+TARGETS = [0, 1, 2]
 DUMMY_CARD = {
-    "backend": "numpy",
-    "targets": QUBITS,
+    "targets": TARGETS,
     "actions": [
         {
             "id": "standard rb",
-            "priority": 0,
             "operation": "standard_rb",
             "parameters": {
                 "depths": [1, 5, 10],
@@ -37,8 +34,9 @@ DUMMY_CARD = {
 }
 
 
-def modify_card(card, targets=None, update=None):
+def modify_card(card, targets=None, update=None, backend="qibolab"):
     """Modify runcard to change local targets or update."""
+    card["backend"] = backend
     for action in card["actions"]:
         if targets is not None:
             action["targets"] = targets
@@ -47,36 +45,35 @@ def modify_card(card, targets=None, update=None):
     return card
 
 
-@pytest.mark.parametrize("platform", [None, PLATFORM])
+@pytest.mark.parametrize("backend", ["numpy", "qibolab"])
 @pytest.mark.parametrize("local_targets", [None, [0, 1]])
-def test_targets_argument(platform, local_targets, tmp_path):
+def test_targets_argument(backend, local_targets, tmp_path):
     """Test possible qubits combinations between global and local."""
-    runcard = Runcard.load(modify_card(DUMMY_CARD, targets=local_targets))
-    print(runcard)
+    runcard = Runcard.load(
+        modify_card(DUMMY_CARD, targets=local_targets, backend=backend)
+    )
     task = Task(runcard.actions[0])
 
     completed = task.run(
         max_iterations=1,
-        platform=platform,
-        targets=list(QUBITS),
+        platform=runcard.platform,
+        targets=TARGETS,
         mode=ExecutionMode.acquire,
         folder=tmp_path,
     )
     if local_targets:
         assert completed.task.targets == local_targets
     else:
-        assert completed.task.targets == list(QUBITS)
-        assert runcard.targets == list(QUBITS)
+        assert completed.task.targets == TARGETS
+        assert runcard.targets == TARGETS
 
 
 UPDATE_CARD = {
-    "targets": QUBITS,
+    "targets": TARGETS,
     "actions": [
         {
             "id": "readout frequency",
-            "priority": 0,
             "operation": "resonator_frequency",
-            "main": "classification",
             "parameters": {
                 "freq_width": 10_000_000,
                 "freq_step": 100_000,
@@ -84,7 +81,6 @@ UPDATE_CARD = {
         },
         {
             "id": "classification",
-            "priority": 0,
             "operation": "single_shot_classification",
             "parameters": {"nshots": 100},
         },
@@ -102,7 +98,7 @@ def test_update_argument(global_update, local_update, tmp_path):
         Runcard.load(NEW_CARD),
         tmp_path,
         platform,
-        platform.qubits,
+        list(platform.qubits),
         update=global_update,
     )
 

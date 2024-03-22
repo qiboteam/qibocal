@@ -54,6 +54,16 @@ class CZVirtualZResults(Results):
     leakage: dict[QubitPairId, dict[QubitId, float]]
     """Leakage on control qubit for pair."""
 
+    def __contains__(self, key: QubitPairId):
+        """Check if key is in class.
+        While key is a QubitPairId both chsh and chsh_mitigated contain
+        an additional key which represents the basis chosen.
+        """
+
+        return key in [
+            (target, control) for target, control, _ in self.fitted_parameters
+        ]
+
 
 CZVirtualZType = np.dtype([("target", np.float64), ("control", np.float64)])
 
@@ -335,7 +345,7 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, target: QubitPairId):
             f"Qubit {qubits[1]}",
         ),
     )
-    reports = []
+    fitting_report = set()
     fig2 = make_subplots(
         rows=1,
         cols=2,
@@ -345,7 +355,6 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, target: QubitPairId):
         ),
     )
 
-    fitting_report = ""
     thetas = data.thetas
     for target_q, control_q, setup in pair_data:
         target_prob = pair_data[target_q, control_q, setup].target
@@ -389,23 +398,27 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, target: QubitPairId):
                 col=1 if fig == fig1 else 2,
             )
 
-            fitting_report = table_html(
-                table_dict(
-                    [target_q, target_q, qubits[1], qubits[1], control_q],
-                    [
-                        "CZ angle [rad]",
-                        "Virtual Z phase [rad]",
-                        "Flux pulse amplitude [a.u.]",
-                        "Flux pulse duration [ns]",
-                        "Leakage [a.u.]",
-                    ],
-                    [
-                        np.round(fit.cz_angle[target_q, control_q], 4),
-                        np.round(fit.virtual_phase[tuple(sorted(target))][target_q], 4),
-                        np.round(data.amplitudes[qubits]),
-                        np.round(data.durations[qubits]),
-                        np.round(fit.leakage[tuple(sorted(target))][control_q], 4),
-                    ],
+            fitting_report.add(
+                table_html(
+                    table_dict(
+                        [target_q, target_q, qubits[1], qubits[1], control_q],
+                        [
+                            "CZ angle [rad]",
+                            "Virtual Z phase [rad]",
+                            "Flux pulse amplitude [a.u.]",
+                            "Flux pulse duration [ns]",
+                            "Leakage [a.u.]",
+                        ],
+                        [
+                            np.round(fit.cz_angle[target_q, control_q], 4),
+                            np.round(
+                                fit.virtual_phase[tuple(sorted(target))][target_q], 4
+                            ),
+                            np.round(data.amplitudes[qubits]),
+                            np.round(data.durations[qubits]),
+                            np.round(fit.leakage[tuple(sorted(target))][control_q], 4),
+                        ],
+                    )
                 )
             )
 
@@ -425,7 +438,7 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, target: QubitPairId):
         yaxis_title="Probability of State 0",
     )
 
-    return [fig1, fig2], fitting_report
+    return [fig1, fig2], "".join(fitting_report)  # target and control qubit
 
 
 def _update(results: CZVirtualZResults, platform: Platform, target: QubitPairId):
