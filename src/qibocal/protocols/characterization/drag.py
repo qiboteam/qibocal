@@ -256,7 +256,12 @@ def _plot(data: DragPulseTuningData, target: QubitId, fit: DragPulseTuningResult
             ),
         )
         fitting_report = table_html(
-            table_dict(target, "Optimal Beta Param", np.round(fit.betas[target], 4))
+            table_dict(
+                target,
+                ["Optimal Beta Param", "Chi2 reduced"],
+                [(np.round(fit.betas[target], 4), 0), fit.chi2[target]],
+                display_error=True,
+            )
         )
 
     fig.update_layout(

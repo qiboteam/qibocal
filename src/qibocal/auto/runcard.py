@@ -67,7 +67,7 @@ class Runcard:
         """Allocate backend."""
         GlobalBackend.set_backend(self.backend, platform=self.platform)
         backend = GlobalBackend()
-        # FIXME: remove this latin abomination
+        # FIXME: remove transpiler lines
         backend.transpiler = Passes(connectivity=backend.platform.topology)
         backend.transpiler.passes = backend.transpiler.passes[-1:]
         return backend
