@@ -9,9 +9,9 @@ actions:
 
   # - id: resonator spectroscopy 1
   #   # ideal 0.0184
-  #   priority: 00
+
   #   operation: resonator_spectroscopy
-  #   main: resonator spectroscopy 10
+
   #   parameters:
   #     freq_width: 10_000
   #     freq_step: 10_000
@@ -22,9 +22,9 @@ actions:
 
   # - id: resonator spectroscopy 10
   #   # ideal 0.1013
-  #   priority: 00
+
   #   operation: resonator_spectroscopy
-  #   main: resonator spectroscopy 100
+
   #   parameters:
   #     freq_width: 100_000_000
   #     freq_step: 10_000_000
@@ -35,9 +35,9 @@ actions:
 
   # - id: resonator spectroscopy 100
   #   # ideal 0.93
-  #   priority: 00
+
   #   operation: resonator_spectroscopy
-  #   main: resonator spectroscopy 1000
+
   #   parameters:
   #     freq_width: 100_000_000
   #     freq_step: 1_000_000
@@ -48,7 +48,7 @@ actions:
 
   # - id: resonator spectroscopy 1000
   #   # ideal 9.22
-  #   priority: 00
+
   #   operation: resonator_spectroscopy
   #   parameters:
   #     freq_width: 100_000_000
@@ -62,9 +62,9 @@ actions:
 
 #  - id: qubit spectroscopy 1
 #    # ideal 0.0286
-#    priority: 00
+
 #    operation: qubit_spectroscopy
-#    main: qubit spectroscopy 10
+
 #    parameters:
 #      drive_amplitude: 0.001
 #      drive_duration: 5000
@@ -75,9 +75,9 @@ actions:
 
 #  - id: qubit spectroscopy 10
 #    # ideal 0.157
-#    priority: 00
+
 #    operation: qubit_spectroscopy
-#    main: qubit spectroscopy 100
+
 #    parameters:
 #      drive_amplitude: 0.001
 #      drive_duration: 5000
@@ -88,9 +88,9 @@ actions:
 
 #  - id: qubit spectroscopy 100
 #    # ideal 1.44
-#    priority: 00
+
 #    operation: qubit_spectroscopy
-#    main: qubit spectroscopy 1000
+
 #    parameters:
 #      drive_amplitude: 0.001
 #      drive_duration: 5000
@@ -101,7 +101,7 @@ actions:
 
 #  - id: qubit spectroscopy 1000
 #    # ideal 14.35
-#    priority: 00
+
 #    operation: qubit_spectroscopy
 #    parameters:
 #      drive_amplitude: 0.001
@@ -114,9 +114,9 @@ actions:
 # Pulse amplitude
 
 #  - id: rabi amplitude 1
-#    priority: 00
+
 #    operation: rabi_amplitude
-#    main: rabi amplitude 10
+
 #    parameters:
 #      min_amp_factor: 0
 #      max_amp_factor: 1.1
@@ -126,9 +126,9 @@ actions:
 #      nshots: 1000
 
 #  - id: rabi amplitude 10
-#    priority: 00
+
 #    operation: rabi_amplitude
-#    main: rabi amplitude 100
+
 #    parameters:
 #      min_amp_factor: 0.0
 #      max_amp_factor: 1.0000
@@ -138,9 +138,9 @@ actions:
 #      nshots: 1000
 
 #  - id: rabi amplitude 100
-#    priority: 00
+
 #    operation: rabi_amplitude
-#    main: rabi amplitude 1000
+
 #    parameters:
 #      min_amp_factor: 0.0
 #      max_amp_factor: 1.0000
@@ -150,7 +150,7 @@ actions:
 #      nshots: 1000
 
 #  - id: rabi amplitude 1000
-#    priority: 00
+
 #    operation: rabi_amplitude
 #    parameters:
 #      min_amp_factor: 0.0
@@ -163,9 +163,9 @@ actions:
 # Pulse duration
 
 #  - id: rabi lenght 1
-#    priority: 00
+
 #    operation: rabi_length
-#    main: rabi lenght 10
+
 #    parameters:
 #      pulse_duration_start: 20
 #      pulse_duration_end: 120
@@ -175,9 +175,9 @@ actions:
 #      nshots: 1000
 
 #  - id: rabi lenght 10
-#    priority: 00
+
 #    operation: rabi_length
-#    main: rabi lenght 100
+
 #    parameters:
 #      pulse_duration_start: 20
 #      pulse_duration_end: 120
@@ -187,9 +187,9 @@ actions:
 #      nshots: 1000
 
 #  - id: rabi lenght 100
-#    priority: 00
+
 #    operation: rabi_length
-#   #  main: rabi lenght 1000
+
 #    parameters:
 #      pulse_duration_start: 20
 #      pulse_duration_end: 120
@@ -199,7 +199,7 @@ actions:
 #      nshots: 1000
 
 #  - id: rabi lenght 1000
-#    priority: 00
+
 #    operation: rabi_length
 #    parameters:
 #      pulse_duration_start: 20
@@ -212,9 +212,9 @@ actions:
 # Pulse start
 
 #  - id: t1 1
-#    priority: 00
+
 #    operation: t1
-#    main: t1 10
+
 #    parameters:
 #      delay_before_readout_start: 0
 #      delay_before_readout_end: 3_00
@@ -223,9 +223,9 @@ actions:
 #      nshots: 1000
 
 #  - id: t1 10
-#    priority: 00
+
 #    operation: t1
-#    main: t1 100
+
 #    parameters:
 #      delay_before_readout_start: 0
 #      delay_before_readout_end: 30_00
@@ -234,9 +234,9 @@ actions:
 #      nshots: 1000
 
 #  - id: t1 100
-#    priority: 00
+
 #    operation: t1
-#    main: t1 1000
+
 #    parameters:
 #      delay_before_readout_start: 0
 #      delay_before_readout_end: 300_00
@@ -245,7 +245,7 @@ actions:
 #      nshots: 1000
 
 #  - id: t1 1000
-#    priority: 00
+
 #    operation: t1
 #    parameters:
 #      delay_before_readout_start: 0
@@ -257,9 +257,7 @@ actions:
 # Circuits
 
  - id: standard rb 1
-   priority: 0
    operation: standard_rb
-   main: standard rb 10
    qubits: [0]
    parameters:
      depths: [10]
@@ -268,9 +266,7 @@ actions:
      seed: 420
 
  - id: standard rb 10
-   priority: 0
    operation: standard_rb
-   main: standard rb 100
    qubits: [0]
    parameters:
      depths: [10]
@@ -279,7 +275,6 @@ actions:
      seed: 420
 
  - id: standard rb 100
-   priority: 0
    operation: standard_rb
    qubits: [0]
    parameters:
