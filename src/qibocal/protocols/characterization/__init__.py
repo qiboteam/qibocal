@@ -62,6 +62,7 @@ from .two_qubit_interaction import (
     cz_virtualz,
     cz_virtualz_signal,
     tune_landscape,
+    tune_landscape_snz,
 )
 
 
@@ -123,5 +124,6 @@ class Operation(Enum):
     coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
     cz_virtualz_signal = cz_virtualz_signal
     tune_landscape = tune_landscape
+    tune_landscape_snz = tune_landscape_snz
     flipping_signal = flipping_signal
     calibrate_state_discrimination = calibrate_state_discrimination

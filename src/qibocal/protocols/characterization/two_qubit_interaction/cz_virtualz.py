@@ -35,6 +35,8 @@ class CZVirtualZParameters(Parameters):
     """Amplitude of flux pulse implementing CZ."""
     flux_pulse_duration: Optional[float] = None
     """Duration of flux pulse implementing CZ."""
+    idling_time: Optional[float] = None
+    """Only available for SNZ pulse."""
     dt: Optional[float] = 20
     """Time delay between flux pulses and readout."""
     parking: bool = True
@@ -92,10 +94,7 @@ def create_sequence(
     target_qubit: QubitId,
     control_qubit: QubitId,
     ordered_pair: list[QubitId, QubitId],
-    parking: bool,
-    dt: float,
-    amplitude: float = None,
-    duration: float = None,
+    params: CZVirtualZParameters,
 ) -> tuple[
     PulseSequence,
     dict[QubitId, Pulse],
@@ -117,20 +116,23 @@ def create_sequence(
         start=max(Y90_pulse.finish, RX_pulse_start.finish),
     )
 
-    if amplitude is not None:
-        cz.get_qubit_pulses(ordered_pair[1])[0].amplitude = amplitude
+    if params.flux_pulse_amplitude is not None:
+        cz.get_qubit_pulses(ordered_pair[1])[0].amplitude = params.flux_pulse_amplitude
 
-    if duration is not None:
-        cz.get_qubit_pulses(ordered_pair[1])[0].duration = duration
+    if params.flux_pulse_duration is not None:
+        cz.get_qubit_pulses(ordered_pair[1])[0].duration = params.flux_pulse_duration
+
+    if params.idling_time is not None:
+        cz.get_qubit_pulses(ordered_pair[1])[0].shape.idling_time = params.idling_time
 
     theta_pulse = platform.create_RX90_pulse(
         target_qubit,
-        start=cz.finish + dt,
+        start=cz.finish + params.dt,
         relative_phase=virtual_z_phase[target_qubit],
     )
     RX_pulse_end = platform.create_RX_pulse(
         control_qubit,
-        start=cz.finish + dt,
+        start=cz.finish + params.dt,
         relative_phase=virtual_z_phase[control_qubit],
     )
     measure_target = platform.create_qubit_readout_pulse(
@@ -154,7 +156,7 @@ def create_sequence(
             RX_pulse_end,
         )
 
-    if parking:
+    if params.parking:
         for pulse in cz:
             if pulse.qubit not in ordered_pair:
                 pulse.duration = theta_pulse.finish
@@ -214,9 +216,7 @@ def _acquisition(
                     target_q,
                     control_q,
                     ord_pair,
-                    params.dt,
-                    params.parking,
-                    params.flux_pulse_amplitude,
+                    params,
                 )
                 data.vphases[ord_pair] = dict(virtual_z_phase)
                 theta = np.arange(
