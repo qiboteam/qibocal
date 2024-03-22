@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -15,7 +15,7 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 
-from .utils import table_dict, table_html
+from .utils import COLORBAND, COLORBAND_LINE, chi2_reduced, table_dict, table_html
 
 # TODO: implement unrolling
 # TODO: add errors in fitting
@@ -44,6 +44,8 @@ class DragPulseTuningResults(Results):
     """Optimal beta paramter for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
+    """Chi2 calculation."""
 
 
 DragPulseTuningType = np.dtype(
@@ -142,6 +144,7 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
     qubits = data.qubits
     betas_optimal = {}
     fitted_parameters = {}
+    chi2 = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
@@ -176,6 +179,7 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
                     [0, 0, 0, -np.pi],
                     [1, 1, np.inf, np.pi],
                 ),
+                sigma=qubit_data.error,
             )
             translated_popt = [
                 popt[0],
@@ -186,10 +190,18 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
             fitted_parameters[qubit] = translated_popt
             predicted_prob = drag_fit(beta_params, *translated_popt)
             betas_optimal[qubit] = beta_params[np.argmax(predicted_prob)]
+            chi2[qubit] = (
+                chi2_reduced(
+                    prob,
+                    predicted_prob,
+                    qubit_data.error,
+                ),
+                np.sqrt(2 / len(prob)),
+            )
         except Exception as e:
             log.warning(f"drag_tuning_fit failed for qubit {qubit} due to {e}.")
 
-    return DragPulseTuningResults(betas_optimal, fitted_parameters)
+    return DragPulseTuningResults(betas_optimal, fitted_parameters, chi2=chi2)
 
 
 def _plot(data: DragPulseTuningData, target: QubitId, fit: DragPulseTuningResults):
@@ -198,22 +210,33 @@ def _plot(data: DragPulseTuningData, target: QubitId, fit: DragPulseTuningResult
     figures = []
     fitting_report = ""
 
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.01,
-        vertical_spacing=0.01,
-    )
     qubit_data = data[target]
-    fig.add_trace(
-        go.Scatter(
-            x=qubit_data.beta,
-            y=qubit_data.prob,
-            mode="markers",
-            name="Probability",
-            showlegend=True,
-            legendgroup="group1",
-        ),
+    fig = go.Figure(
+        [
+            go.Scatter(
+                x=qubit_data.beta,
+                y=qubit_data.prob,
+                opacity=1,
+                mode="lines",
+                name="Probability",
+                showlegend=True,
+                legendgroup="Probability",
+            ),
+            go.Scatter(
+                x=np.concatenate((qubit_data.beta, qubit_data.beta[::-1])),
+                y=np.concatenate(
+                    (
+                        qubit_data.prob + qubit_data.error,
+                        (qubit_data.prob - qubit_data.error)[::-1],
+                    )
+                ),
+                fill="toself",
+                fillcolor=COLORBAND,
+                line=dict(color=COLORBAND_LINE),
+                showlegend=True,
+                name="Errors",
+            ),
+        ]
     )
 
     # add fitting traces
