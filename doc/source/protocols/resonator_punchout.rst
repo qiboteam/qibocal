@@ -26,7 +26,7 @@ This is and example of a runcard for a resonator punchout:
     actions:
 
       - id: resonator punchout
-        priority: 0
+
         operation: resonator_punchout
         parameters:
           freq_width: 40_000_000
@@ -116,7 +116,7 @@ This is and example of a runcard for a resonator punchout with attenuation:
     actions:
 
       - id: resonator_punchout_attenuation
-        priority: 0
+
         operation: resonator_punchout_attenuation
         parameters:
           freq_width: 10_000_000
