@@ -632,6 +632,29 @@ actions:
       native: False
       apply_error_mitigation: True
 
+  - id: Mermin with pulses
+    operation: mermin_pulses
+    targets: [0,2,1]
+    parameters:
+      nshots: 1000
+      apply_error_mitigation: True
+
+  - id: Mermin with natives
+    operation: mermin_circuits
+    targets: [0,2,1]
+    parameters:
+      nshots: 1000
+      native: True
+      apply_error_mitigation: True
+
+  - id: Mermin with circuits
+    operation: mermin_circuits
+    targets: [0,2,1]
+    parameters:
+      nshots: 1000
+      native: False
+      apply_error_mitigation: True
+
   - id: readout_mitigation_matrix pulses
     operation: readout_mitigation_matrix
     targets: [[0,1,2],[1,2]]
