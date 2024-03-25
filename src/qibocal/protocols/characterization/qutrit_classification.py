@@ -5,8 +5,9 @@ import numpy as np
 from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Qubits, Routine
+from qibocal.auto.operation import Routine
 from qibocal.fitting.classifier import run
 from qibocal.protocols.characterization.classification import (
     ClassificationType,
@@ -48,7 +49,7 @@ class QutritClassificationData(SingleShotClassificationData):
 def _acquisition(
     params: QutritClassificationParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> QutritClassificationData:
     """
     This Routine prepares the qubits in 0,1 and 2 states and measures their
@@ -70,7 +71,7 @@ def _acquisition(
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     states_sequences = [PulseSequence() for _ in range(3)]
     ro_pulses = {}
-    for qubit in qubits:
+    for qubit in targets:
         rx_pulse = platform.create_RX_pulse(qubit, start=0)
         rx12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish)
         drive_pulses = [rx_pulse, rx12_pulse]
@@ -101,7 +102,7 @@ def _acquisition(
             )
         )
 
-    for qubit in qubits:
+    for qubit in targets:
         for state, state_result in enumerate(states_results):
             result = state_result[ro_pulses[qubit][state].serial]
             data.register_qubit(
@@ -165,8 +166,12 @@ def _fit(data: QutritClassificationData) -> SingleShotClassificationResults:
     )
 
 
-def _plot(data: QutritClassificationData, qubit, fit: SingleShotClassificationResults):
-    figures = plot_results(data, qubit, 3, fit)
+def _plot(
+    data: QutritClassificationData,
+    target: QubitId,
+    fit: SingleShotClassificationResults,
+):
+    figures = plot_results(data, target, 3, fit)
     fitting_report = ""
     return figures, fitting_report
 

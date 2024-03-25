@@ -38,7 +38,7 @@ with qibocal it is sufficient to write the following action:
 .. code-block:: yaml
 
     - id: resonator_spectroscopy high power
-      priority: 0
+
       operation: resonator_spectroscopy
       parameters:
           freq_width: 60_000_000
@@ -70,7 +70,7 @@ power we observe this shift it is possible to run a resonator punchout using the
 .. code-block:: yaml
 
     - id: resonator punchout
-      priority: 0
+
       operation: resonator_punchout
       parameters:
           freq_width: 40_000_000
@@ -99,7 +99,7 @@ Here is an example of a runcard.
 .. code-block:: yaml
 
     - id: resonator_spectroscopy low power
-      priority: 0
+
       operation: resonator_spectroscopy
       parameters:
           freq_width: 60_000_000
@@ -136,7 +136,7 @@ Here is an example runcard:
 .. code-block:: yaml
 
     - id: qubit spectroscopy 01
-      priority: 0
+
       operation: qubit_spectroscopy
       parameters:
           drive_amplitude: 0.5
@@ -179,7 +179,7 @@ the following runcard:
 .. code-block:: yaml
 
       - id: rabi
-        priority: 0
+
         operation: rabi_amplitude_signal
         parameters:
             min_amp_factor: 0
@@ -208,7 +208,7 @@ The simplest model can be trained by running the following experiment:
 .. code-block:: yaml
 
     - id: single shot classification 1
-      priority: 0
+
       operation: single_shot_classification
       parameters:
           nshots: 5000
@@ -236,7 +236,7 @@ We can study the flux dependence of the qubit using the following runcard:
 .. code-block:: yaml
 
     - id: qubit flux dependence
-      priority: 0
+
       operation: qubit_flux
       parameters:
           freq_width: 100_000_000
@@ -277,7 +277,7 @@ Here is the runcard:
 .. code-block:: yaml
 
     - id: t1
-      priority: 0
+
       operation: t1
       parameters:
           delay_before_readout_end: 200000
@@ -301,7 +301,7 @@ denoted with :math:`\\T_2` and can be estimated through a Ramsey experiment.
 .. code-block:: yaml
 
     - id: ramsey detuned
-      priority: 0
+
       operation: ramsey
       parameters:
           delay_between_pulses_end: 40000
@@ -332,7 +332,7 @@ after having prepared  :math:`\ket{Y}`.
 .. code-block:: yaml
 
     - id: readout characterization
-      priority: 0
+
       operation: readout_characterization
       parameters:
           nshots: 5000
@@ -349,7 +349,7 @@ randomized benchmarking.
 .. code-block:: yaml
 
     - id: standard rb bootstrap
-      priority: 0
+
       operation: standard_rb
       parameters:
           depths: [10, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500]

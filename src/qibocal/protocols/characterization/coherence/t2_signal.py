@@ -9,30 +9,47 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import Qubits, Routine
+from qibocal.auto.operation import Parameters, Results, Routine
 
 from ..utils import table_dict, table_html
 from . import t1_signal, t2, utils
 
 
 @dataclass
-class T2SignalParameters(t2.T2Parameters):
+class T2SignalParameters(Parameters):
     """T2Signal runcard inputs."""
+
+    delay_between_pulses_start: int
+    """Initial delay between RX(pi/2) pulses in ns."""
+    delay_between_pulses_end: int
+    """Final delay between RX(pi/2) pulses in ns."""
+    delay_between_pulses_step: int
+    """Step delay between RX(pi/2) pulses in ns."""
 
 
 @dataclass
-class T2SignalResults(t2.T2Results):
+class T2SignalResults(Results):
     """T2Signal outputs."""
+
+    t2: dict[QubitId, float]
+    """T2 for each qubit [ns]."""
+    fitted_parameters: dict[QubitId, dict[str, float]]
+    """Raw fitting output."""
 
 
 class T2SignalData(t1_signal.T1SignalData):
     """T2Signal acquisition outputs."""
 
+    t2: dict[QubitId, float]
+    """T2 for each qubit [ns]."""
+    fitted_parameters: dict[QubitId, dict[str, float]]
+    """Raw fitting output."""
+
 
 def _acquisition(
     params: T2SignalParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> T2SignalData:
     """Data acquisition for Ramsey Experiment (detuned)."""
     # create a sequence of pulses for the experiment
@@ -41,7 +58,7 @@ def _acquisition(
     RX90_pulses1 = {}
     RX90_pulses2 = {}
     sequence = PulseSequence()
-    for qubit in qubits:
+    for qubit in targets:
         RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
         RX90_pulses2[qubit] = platform.create_RX90_pulse(
             qubit,
@@ -67,7 +84,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.start,
         waits,
-        [RX90_pulses2[qubit] for qubit in qubits],
+        [RX90_pulses2[qubit] for qubit in targets],
         type=SweeperType.ABSOLUTE,
     )
 
@@ -83,7 +100,7 @@ def _acquisition(
         sweeper,
     )
 
-    for qubit in qubits:
+    for qubit in targets:
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
             t1_signal.CoherenceType,
@@ -103,14 +120,14 @@ def _fit(data: T2SignalData) -> T2SignalResults:
     return T2SignalResults(t2s, fitted_parameters)
 
 
-def _plot(data: T2SignalData, qubit, fit: T2SignalResults = None):
+def _plot(data: T2SignalData, target: QubitId, fit: T2SignalResults = None):
     """Plotting function for Ramsey Experiment."""
 
     figures = []
     fig = go.Figure()
     fitting_report = None
 
-    qubit_data = data[qubit]
+    qubit_data = data[target]
 
     fig.add_trace(
         go.Scatter(
@@ -131,7 +148,7 @@ def _plot(data: T2SignalData, qubit, fit: T2SignalResults = None):
             2 * len(qubit_data),
         )
 
-        params = fit.fitted_parameters[qubit]
+        params = fit.fitted_parameters[target]
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
@@ -144,7 +161,7 @@ def _plot(data: T2SignalData, qubit, fit: T2SignalResults = None):
             )
         )
         fitting_report = table_html(
-            table_dict(qubit, "T2 [ns]", np.round(fit.t2[qubit]))
+            table_dict(target, "T2 [ns]", np.round(fit.t2[target]))
         )
 
     fig.update_layout(
@@ -158,8 +175,8 @@ def _plot(data: T2SignalData, qubit, fit: T2SignalResults = None):
     return figures, fitting_report
 
 
-def _update(results: T2SignalResults, platform: Platform, qubit: QubitId):
-    update.t2(results.t2[qubit], platform, qubit)
+def _update(results: T2SignalResults, platform: Platform, target: QubitId):
+    update.t2(results.t2[target], platform, target)
 
 
 t2_signal = Routine(_acquisition, _fit, _plot, _update)

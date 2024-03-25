@@ -1,6 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
+import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -10,25 +12,36 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal import update
-from qibocal.auto.operation import Qubits, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
-from qibocal.protocols.characterization.rabi.length import (
-    RabiLengthData,
-    RabiLengthParameters,
-    RabiLengthResults,
-)
 
 from . import utils
 
 
 @dataclass
-class RabiLengthVoltParameters(RabiLengthParameters):
-    """RabiLength runcard inputs."""
+class RabiLengthVoltParameters(Parameters):
+    """RabiLengthVolt runcard inputs."""
+
+    pulse_duration_start: float
+    """Initial pi pulse duration [ns]."""
+    pulse_duration_end: float
+    """Final pi pulse duration [ns]."""
+    pulse_duration_step: float
+    """Step pi pulse duration [ns]."""
+    pulse_amplitude: Optional[float] = None
+    """Pi pulse amplitude. Same for all qubits."""
 
 
 @dataclass
-class RabiLengthVoltResults(RabiLengthResults):
-    """RabiLength outputs."""
+class RabiLengthVoltResults(Results):
+    """RabiLengthVolt outputs."""
+
+    length: dict[QubitId, tuple[int, Optional[float]]]
+    """Pi pulse duration for each qubit."""
+    amplitude: dict[QubitId, tuple[float, Optional[float]]]
+    """Pi pulse amplitude. Same for all qubits."""
+    fitted_parameters: dict[QubitId, dict[str, float]]
+    """Raw fitting output."""
 
 
 RabiLenVoltType = np.dtype(
@@ -38,12 +51,17 @@ RabiLenVoltType = np.dtype(
 
 
 @dataclass
-class RabiLengthVoltData(RabiLengthData):
+class RabiLengthVoltData(Data):
     """RabiLength acquisition outputs."""
+
+    amplitudes: dict[QubitId, float] = field(default_factory=dict)
+    """Pulse durations provided by the user."""
+    data: dict[QubitId, npt.NDArray[RabiLenVoltType]] = field(default_factory=dict)
+    """Raw data acquired."""
 
 
 def _acquisition(
-    params: RabiLengthVoltParameters, platform: Platform, qubits: Qubits
+    params: RabiLengthVoltParameters, platform: Platform, targets: list[QubitId]
 ) -> RabiLengthVoltData:
     r"""
     Data acquisition for RabiLength Experiment.
@@ -56,7 +74,7 @@ def _acquisition(
     qd_pulses = {}
     ro_pulses = {}
     amplitudes = {}
-    for qubit in qubits:
+    for qubit in targets:
         # TODO: made duration optional for qd pulse?
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.pulse_duration_start
@@ -82,7 +100,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.duration,
         qd_pulse_duration_range,
-        [qd_pulses[qubit] for qubit in qubits],
+        [qd_pulses[qubit] for qubit in targets],
         type=SweeperType.ABSOLUTE,
     )
 
@@ -100,7 +118,7 @@ def _acquisition(
         sweeper,
     )
 
-    for qubit in qubits:
+    for qubit in targets:
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
             RabiLenVoltType,
@@ -166,24 +184,22 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
                 / 2
                 * utils.period_correction_factor(phase=translated_popt[3])
             )
+            durations[qubit] = pi_pulse_parameter
+            fitted_parameters[qubit] = translated_popt
 
-        except:
-            log.warning("rabi_fit: the fitting was not succesful")
-            pi_pulse_parameter = 0
-            translated_popt = [0, 0, 1, 0, 0]
-        durations[qubit] = pi_pulse_parameter
-        fitted_parameters[qubit] = translated_popt
+        except Exception as e:
+            log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
     return RabiLengthVoltResults(durations, data.amplitudes, fitted_parameters)
 
 
-def _update(results: RabiLengthVoltResults, platform: Platform, qubit: QubitId):
-    update.drive_duration(results.length[qubit], platform, qubit)
+def _update(results: RabiLengthVoltResults, platform: Platform, target: QubitId):
+    update.drive_duration(results.length[target], platform, target)
 
 
-def _plot(data: RabiLengthVoltData, fit: RabiLengthVoltResults, qubit):
+def _plot(data: RabiLengthVoltData, fit: RabiLengthVoltResults, target: QubitId):
     """Plotting function for RabiLength experiment."""
-    return utils.plot(data, qubit, fit)
+    return utils.plot(data, target, fit)
 
 
 rabi_length_signal = Routine(_acquisition, _fit, _plot, _update)

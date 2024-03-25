@@ -4,9 +4,10 @@ import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Qubits, Routine
+from qibocal.auto.operation import Routine
 from qibocal.config import raise_error
 
 from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
@@ -45,7 +46,7 @@ class QubitFluxTrackData(qubit_flux_dependence.QubitFluxData):
 def _acquisition(
     params: QubitFluxTrackResults,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> QubitFluxTrackData:
     """Data acquisition for QubitFlux Experiment."""
     # create a sequence of pulses for the experiment:
@@ -56,14 +57,14 @@ def _acquisition(
     ro_pulses = {}
     qd_pulses = {}
     qubit_frequency = {}
-    for qubit in qubits:
+    for qubit in targets:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.drive_duration
         )
         qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
         if params.transition == "02":
-            if qubits[qubit].anharmonicity != 0:
-                qd_pulses[qubit].frequency -= qubits[qubit].anharmonicity / 2
+            if platform.qubits[qubit].anharmonicity != 0:
+                qd_pulses[qubit].frequency -= platform.qubits[qubit].anharmonicity / 2
             else:
                 qd_pulses[qubit].frequency -= DEFAULT_ANHARMONICITY / 2
 
@@ -88,7 +89,7 @@ def _acquisition(
     freq_sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        pulses=[qd_pulses[qubit] for qubit in qubits],
+        pulses=[qd_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
 
@@ -99,19 +100,19 @@ def _acquisition(
     )
 
     for bias in delta_bias_range:
-        for qubit in qubits:
+        for qubit in targets:
             try:
                 freq_resonator = utils.transmon_readout_frequency(
                     bias,
-                    qubits[qubit].drive_frequency,
-                    qubits[qubit].asymmetry,
-                    qubits[qubit].Cii,
-                    qubits[qubit].sweetspot,
-                    qubits[qubit].bare_resonator_frequency,
-                    qubits[qubit].g,
+                    platform.qubits[qubit].drive_frequency,
+                    platform.qubits[qubit].asymmetry,
+                    platform.qubits[qubit].crosstalk_matrix[qubit],
+                    platform.qubits[qubit].sweetspot,
+                    platform.qubits[qubit].bare_resonator_frequency,
+                    platform.qubits[qubit].g,
                 )
                 # modify qubit resonator frequency
-                qubits[qubit].readout_frequency = freq_resonator
+                platform.qubits[qubit].readout_frequency = freq_resonator
             except:
                 raise_error
                 (
@@ -120,7 +121,7 @@ def _acquisition(
                 )
 
             # modify qubit flux
-            qubits[qubit].flux.offset = bias
+            platform.qubits[qubit].flux.offset = bias
 
             # execute pulse sequence sweeping only qubit resonator
             results = platform.sweep(
@@ -135,14 +136,14 @@ def _acquisition(
             )
 
         # retrieve the results for every qubit
-        for qubit in qubits:
+        for qubit in targets:
             result = results[ro_pulses[qubit].serial]
             data.register_qubit_track(
                 qubit,
                 signal=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
-                bias=bias + qubits[qubit].sweetspot,
+                bias=bias + platform.qubits[qubit].sweetspot,
             )
 
     return data

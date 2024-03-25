@@ -11,7 +11,8 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.config import log
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, table_dict, table_html
 from . import utils
@@ -101,16 +102,16 @@ class ResonatorFluxResults(Results):
     """Readout frequency for each qubit."""
     sweetspot: dict[QubitId, float]
     """Sweetspot for each qubit."""
-    d: dict[QubitId, float]
-    """Asymmetry."""
+    asymmetry: dict[QubitId, float]
+    """Asymmetry between junctions."""
     bare_frequency: dict[QubitId, float]
     """Resonator bare frequency."""
     drive_frequency: dict[QubitId, float]
     """Qubit frequency at sweetspot."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
-    g: dict[QubitId, float]
-    """Coupling."""
+    coupling: dict[QubitId, float]
+    """Qubit-resonator coupling."""
     matrix_element: dict[QubitId, float]
     """C_ii coefficient."""
 
@@ -198,7 +199,7 @@ def create_flux_pulse_sweepers(
 
 
 def _acquisition(
-    params: ResonatorFluxParameters, platform: Platform, qubits: Qubits
+    params: ResonatorFluxParameters, platform: Platform, targets: list[QubitId]
 ) -> ResonatorFluxData:
     """Data acquisition for ResonatorFlux experiment."""
     # create a sequence of pulses for the experiment:
@@ -209,7 +210,7 @@ def _acquisition(
     ro_pulses = {}
     qubit_frequency = {}
     bare_resonator_frequency = {}
-    for qubit in qubits:
+    for qubit in targets:
         qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
         bare_resonator_frequency[qubit] = platform.qubits[
             qubit
@@ -225,7 +226,7 @@ def _acquisition(
     freq_sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        [ro_pulses[qubit] for qubit in qubits],
+        [ro_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
     if params.flux_pulses:
@@ -261,9 +262,9 @@ def _acquisition(
     for bias_sweeper in sweepers:
         results = platform.sweep(sequence, options, bias_sweeper, freq_sweeper)
         # retrieve the results for every qubit
-        for qubit in qubits:
+        for qubit in targets:
             result = results[ro_pulses[qubit].serial]
-            sweetspot = qubits[qubit].sweetspot
+            sweetspot = platform.qubits[qubit].sweetspot
             data.register_qubit(
                 qubit,
                 signal=result.magnitude,
@@ -284,12 +285,12 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     qubits = data.qubits
     frequency = {}
     sweetspot = {}
-    d = {}
+    asymmetry = {}
     bare_frequency = {}
     drive_frequency = {}
     fitted_parameters = {}
     matrix_element = {}
-    g = {}
+    coupling = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
@@ -311,45 +312,55 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 signal,
             )
 
-        popt = curve_fit(
-            utils.transmon_readout_frequency,
-            biases,
-            frequencies * HZ_TO_GHZ,
-            bounds=utils.resonator_flux_dependence_fit_bounds(
-                data.qubit_frequency[qubit],
-                qubit_data.bias,
-                data.bare_resonator_frequency[qubit],
-            ),
-            maxfev=100000,
-        )[0]
-        fitted_parameters[qubit] = popt.tolist()
+        try:
+            popt = curve_fit(
+                utils.transmon_readout_frequency,
+                biases,
+                frequencies * HZ_TO_GHZ,
+                bounds=utils.resonator_flux_dependence_fit_bounds(
+                    data.qubit_frequency[qubit],
+                    qubit_data.bias,
+                    data.bare_resonator_frequency[qubit],
+                ),
+                maxfev=100000,
+            )[0]
+            fitted_parameters[qubit] = popt.tolist()
 
-        # frequency corresponds to transmon readout frequency
-        # at the sweetspot popt[3]
-        frequency[qubit] = utils.transmon_readout_frequency(popt[3], *popt) * GHZ_TO_HZ
-        sweetspot[qubit] = popt[3]
-        d[qubit] = popt[1]
-        bare_frequency[qubit] = popt[4] * GHZ_TO_HZ
-        drive_frequency[qubit] = popt[0] * GHZ_TO_HZ
-        g[qubit] = popt[5]
-        matrix_element[qubit] = popt[2]
+            # frequency corresponds to transmon readout frequency
+            # at the sweetspot popt[3]
+            frequency[qubit] = (
+                utils.transmon_readout_frequency(popt[3], *popt) * GHZ_TO_HZ
+            )
+            sweetspot[qubit] = popt[3]
+            asymmetry[qubit] = popt[1]
+            bare_frequency[qubit] = popt[4] * GHZ_TO_HZ
+            drive_frequency[qubit] = popt[0] * GHZ_TO_HZ
+            coupling[qubit] = popt[5]
+            matrix_element[qubit] = popt[2]
+        except ValueError as e:
+            log.error(
+                f"Error in resonator_flux protocol fit: {e} "
+                "The threshold for the SNR mask is probably too high. "
+                "Lowering the value of `threshold` in `extract_*_feature`"
+                "should fix the problem."
+            )
 
     return ResonatorFluxResults(
         frequency=frequency,
         sweetspot=sweetspot,
-        d=d,
+        asymmetry=asymmetry,
         bare_frequency=bare_frequency,
         drive_frequency=drive_frequency,
-        g=g,
+        coupling=coupling,
         matrix_element=matrix_element,
         fitted_parameters=fitted_parameters,
     )
 
 
-def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
+def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
     """Plotting function for ResonatorFlux Experiment."""
     figures = utils.flux_dependence_plot(
-        data, fit, qubit, utils.transmon_readout_frequency
+        data, fit, target, utils.transmon_readout_frequency
     )
     if data.flux_pulses:
         bias_flux_unit = "a.u."
@@ -358,7 +369,7 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
     if fit is not None:
         fitting_report = table_html(
             table_dict(
-                qubit,
+                target,
                 [
                     f"Sweetspot [{bias_flux_unit}]",
                     "Bare Resonator Frequency [Hz]",
@@ -369,13 +380,13 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
                     "V_ii [V]",
                 ],
                 [
-                    np.round(fit.sweetspot[qubit], 4),
-                    np.round(fit.bare_frequency[qubit], 4),
-                    np.round(fit.frequency[qubit], 4),
-                    np.round(fit.drive_frequency[qubit], 4),
-                    np.round(fit.d[qubit], 4),
-                    np.round(fit.g[qubit], 4),
-                    np.round(fit.matrix_element[qubit], 4),
+                    np.round(fit.sweetspot[target], 4),
+                    np.round(fit.bare_frequency[target], 4),
+                    np.round(fit.frequency[target], 4),
+                    np.round(fit.drive_frequency[target], 4),
+                    np.round(fit.asymmetry[target], 4),
+                    np.round(fit.coupling[target], 4),
+                    np.round(fit.matrix_element[target], 4),
                 ],
             )
         )
@@ -387,8 +398,8 @@ def _update(results: ResonatorFluxResults, platform: Platform, qubit: QubitId):
     update.bare_resonator_frequency(results.bare_frequency[qubit], platform, qubit)
     update.readout_frequency(results.frequency[qubit], platform, qubit)
     update.drive_frequency(results.drive_frequency[qubit], platform, qubit)
-    update.asymmetry(results.d[qubit], platform, qubit)
-    update.coupling(results.g[qubit], platform, qubit)
+    update.asymmetry(results.asymmetry[qubit], platform, qubit)
+    update.coupling(results.coupling[qubit], platform, qubit)
 
 
 resonator_flux = Routine(_acquisition, _fit, _plot, _update)
