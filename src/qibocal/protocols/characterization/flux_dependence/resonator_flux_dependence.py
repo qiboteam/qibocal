@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass, field
 from typing import List, Optional, Union
 
@@ -133,6 +134,9 @@ class ResonatorFluxData(Data):
     """Resonator type."""
     resonator_type: str
 
+    flux_pulses: bool
+    """True if sweeping flux pulses, False if sweeping bias."""
+
     qubit_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
 
@@ -244,6 +248,7 @@ def _acquisition(
 
     data = ResonatorFluxData(
         resonator_type=platform.resonator_type,
+        flux_pulses=params.flux_pulses,
         qubit_frequency=qubit_frequency,
         bare_resonator_frequency=bare_resonator_frequency,
     )
@@ -347,12 +352,22 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
     figures = utils.flux_dependence_plot(
         data, fit, qubit, utils.transmon_readout_frequency
     )
+    if data.flux_pulses:
+        bias_flux_unit = "a.u."
+        for figure in figures:
+            yaxis_title = figure.layout.yaxis.title["text"]
+            updated_yaxis_title = re.sub(
+                r"\[[a-zA-Z]\]", "[a.u.]", yaxis_title, flags=re.M
+            )
+            figure.update_layout(yaxis_title=updated_yaxis_title)
+    else:
+        bias_flux_unit = "V"
     if fit is not None:
         fitting_report = table_html(
             table_dict(
                 qubit,
                 [
-                    "Sweetspot [V]",
+                    f"Sweetspot [{bias_flux_unit}]",
                     "Bare Resonator Frequency [Hz]",
                     "Readout Frequency [Hz]",
                     "Qubit Frequency at Sweetspot [Hz]",
