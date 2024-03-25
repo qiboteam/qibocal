@@ -143,7 +143,7 @@ def _acquisition(
             Sweeper(
                 Parameter.bias,
                 delta_bias_flux_range,
-                qubits=list(targets.values()),
+                qubits=targets,
                 type=SweeperType.OFFSET,
             )
         ]
