@@ -131,8 +131,8 @@ ResFluxType = np.dtype(
 class ResonatorFluxData(Data):
     """ResonatorFlux acquisition outputs."""
 
-    """Resonator type."""
     resonator_type: str
+    """Resonator type."""
 
     flux_pulses: bool
     """True if sweeping flux pulses, False if sweeping bias."""
