@@ -93,7 +93,9 @@ def _acquisition(
     )
 
     data = QubitFluxTrackData(
-        resonator_type=platform.resonator_type, qubit_frequency=qubit_frequency
+        resonator_type=platform.resonator_type,
+        flux_pulses=params.flux_pulses,
+        qubit_frequency=qubit_frequency,
     )
 
     for bias in delta_bias_range:

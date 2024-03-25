@@ -1,4 +1,3 @@
-import re
 from dataclasses import dataclass, field
 from typing import List, Optional, Union
 
@@ -354,12 +353,6 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
     )
     if data.flux_pulses:
         bias_flux_unit = "a.u."
-        for figure in figures:
-            yaxis_title = figure.layout.yaxis.title["text"]
-            updated_yaxis_title = re.sub(
-                r"\[[a-zA-Z]\]", "[a.u.]", yaxis_title, flags=re.M
-            )
-            figure.update_layout(yaxis_title=updated_yaxis_title)
     else:
         bias_flux_unit = "V"
     if fit is not None:

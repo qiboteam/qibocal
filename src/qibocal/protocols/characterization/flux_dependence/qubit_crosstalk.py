@@ -124,7 +124,9 @@ def _acquisition(
             )
             for flux_qubit in flux_qubits
         ]
-    data = QubitCrosstalkData(resonator_type=platform.resonator_type)
+    data = QubitCrosstalkData(
+        resonator_type=platform.resonator_type, flux_pulses=params.flux_pulses
+    )
 
     options = ExecutionParameters(
         nshots=params.nshots,

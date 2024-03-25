@@ -68,6 +68,9 @@ class QubitFluxData(Data):
     resonator_type: str
     """Resonator type."""
 
+    flux_pulses: bool
+    """True if sweeping flux pulses, False if sweeping bias."""
+
     qubit_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
 
@@ -144,7 +147,9 @@ def _acquisition(
             )
         ]
     data = QubitFluxData(
-        resonator_type=platform.resonator_type, qubit_frequency=qubit_frequency
+        resonator_type=platform.resonator_type,
+        flux_pulses=params.flux_pulses,
+        qubit_frequency=qubit_frequency,
     )
 
     options = ExecutionParameters(
@@ -232,12 +237,16 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
     figures = utils.flux_dependence_plot(
         data, fit, qubit, fit_function=utils.transmon_frequency
     )
+    if data.flux_pulses:
+        bias_flux_unit = "a.u."
+    else:
+        bias_flux_unit = "V"
     if fit is not None:
         fitting_report = table_html(
             table_dict(
                 qubit,
                 [
-                    "Sweetspot [V]",
+                    f"Sweetspot [{bias_flux_unit}]",
                     "Qubit Frequency at Sweetspot [Hz]",
                     "Asymmetry d",
                     "V_ii [V]",

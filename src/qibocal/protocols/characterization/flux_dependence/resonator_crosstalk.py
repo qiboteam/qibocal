@@ -114,6 +114,7 @@ def _acquisition(
 
     data = ResCrosstalkData(
         resonator_type=platform.resonator_type,
+        flux_pulses=params.flux_pulses,
         qubit_frequency=qubit_frequency,
         bare_resonator_frequency=bare_resonator_frequency,
     )
