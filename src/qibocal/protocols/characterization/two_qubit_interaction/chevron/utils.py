@@ -41,17 +41,11 @@ def chevron_sequence(
     sequence.add(cz.get_qubit_pulses(ordered_pair[0]))
     sequence.add(cz.get_qubit_pulses(ordered_pair[1]))
 
-    # Patch to get the coupler until the routines use QubitPair
-    if platform.couplers:
-        sequence.add(
-            cz.coupler_pulses(platform.pairs[tuple(ordered_pair)].coupler.name)
-        )
-
     if parking:
         for pulse in cz:
             if pulse.qubit not in ordered_pair:
-                pulse.start = 0
-                pulse.duration = 100
+                pulse.start = COUPLER_PULSE_START
+                pulse.duration = COUPLER_PULSE_DURATION
                 sequence.add(pulse)
 
     # add readout
