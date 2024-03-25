@@ -11,7 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, table_dict, table_html
@@ -231,7 +231,7 @@ def _acquisition(
     )
     if params.flux_pulses:
         delta_bias_flux_range, sweepers = create_flux_pulse_sweepers(
-            params, platform, qubits, sequence
+            params, platform, targets, sequence
         )
     else:
         delta_bias_flux_range = np.arange(
@@ -241,7 +241,7 @@ def _acquisition(
             Sweeper(
                 Parameter.bias,
                 delta_bias_flux_range,
-                qubits=list(qubits.values()),
+                qubits=list(targets.values()),
                 type=SweeperType.OFFSET,
             )
         ]

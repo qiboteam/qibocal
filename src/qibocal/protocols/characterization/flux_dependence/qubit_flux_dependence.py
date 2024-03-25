@@ -133,7 +133,7 @@ def _acquisition(
             delta_bias_flux_range,
             sweepers,
         ) = resonator_flux_dependence.create_flux_pulse_sweepers(
-            params, platform, qubits, sequence
+            params, platform, targets, sequence
         )
     else:
         delta_bias_flux_range = np.arange(
@@ -143,7 +143,7 @@ def _acquisition(
             Sweeper(
                 Parameter.bias,
                 delta_bias_flux_range,
-                qubits=list(qubits.values()),
+                qubits=list(targets.values()),
                 type=SweeperType.OFFSET,
             )
         ]
