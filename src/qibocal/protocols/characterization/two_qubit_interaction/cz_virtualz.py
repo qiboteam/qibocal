@@ -17,8 +17,9 @@ from scipy.optimize import curve_fit
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
-from qibocal.protocols.characterization.two_qubit_interaction.chevron import order_pair
 from qibocal.protocols.characterization.utils import table_dict, table_html
+
+from .utils import order_pair
 
 
 @dataclass
