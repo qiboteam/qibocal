@@ -218,7 +218,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
             frequency[qubit] = popt[0] * GHZ_TO_HZ
             asymmetry[qubit] = popt[1]
             sweetspot[qubit] = popt[3]
-            matrix_element[qubit] = 1 / popt[2]
+            matrix_element[qubit] = popt[2]
         except ValueError as e:
             log.error(
                 f"Error in qubit_flux protocol fit: {e} "

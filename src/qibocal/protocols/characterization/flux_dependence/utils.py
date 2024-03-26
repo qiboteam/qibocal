@@ -132,6 +132,7 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
             col=col + 1,
         )
         if fit is not None:
+
             if flux_qubit[1] != qubit:
                 fig.add_trace(
                     go.Scatter(
@@ -151,12 +152,7 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
                     col=col + 1,
                 )
             else:
-                diagonal_params = dict(
-                    w_max=data.qubit_frequency[flux_qubit[0]],
-                    d=data.d[flux_qubit[0]],
-                    matrix_element=data.matrix_element[flux_qubit[0]],
-                    sweetspot=data.sweetspot[flux_qubit[0]],
-                )
+                diagonal_params = fit.fitted_parameters[qubit, qubit]
                 if fit_function != transmon_frequency:
                     diagonal_params.update(
                         g=data.g[flux_qubit[0]],
@@ -165,10 +161,9 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
                 fig.add_trace(
                     go.Scatter(
                         x=globals().get(fit_function.__name__ + "_diagonal")(
-                            x=qubit_data.bias,
-                            **diagonal_params,
-                        )
-                        * HZ_TO_GHZ,
+                            qubit_data.bias,
+                            *fit.fitted_parameters[qubit, qubit],
+                        ),
                         y=qubit_data.bias,
                         showlegend=not any(
                             isinstance(trace, go.Scatter) for trace in fig.data
@@ -192,6 +187,8 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
         )
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
+    fig.update_layout(xaxis2=dict(range=[np.min(frequencies), np.max(frequencies)]))
+    fig.update_layout(xaxis3=dict(range=[np.min(frequencies), np.max(frequencies)]))
     fig.update_layout(
         showlegend=True,
     )
