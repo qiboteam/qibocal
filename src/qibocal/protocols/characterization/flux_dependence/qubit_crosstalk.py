@@ -12,6 +12,7 @@ from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import Results, Routine
+from qibocal.config import log
 
 from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
 from ..utils import HZ_TO_GHZ
@@ -63,13 +64,21 @@ class QubitCrosstalkData(QubitFluxData):
             self.data[qubit, flux_qubit] = ar
 
     @property
-    def diagonal(self):
+    def diagonal(self) -> Optional[QubitFluxData]:
         instance = QubitFluxData(
             resonator_type=self.resonator_type, qubit_frequency=self.qubit_frequency
         )
         for qubit in self.qubits:
-            instance.data[qubit] = self.data[qubit, qubit]
-        return instance
+            try:
+                instance.data[qubit] = self.data[qubit, qubit]
+            except KeyError:
+                log.info(
+                    f"Diagonal acquisition not found for qubit {qubit}. Runcard values will be used to perform the off-diagonal fit."
+                )
+
+        if len(instance.data) > 0:
+            return instance
+        return QubitFluxData()
 
 
 @dataclass
@@ -105,10 +114,11 @@ def _acquisition(
     matrix_element = {}
     qubit_frequency = {}
     for qubit in targets:
-        sweetspots[qubit] = voltage[qubit] = platform.qubits[qubit].sweetspot
-        d[qubit] = platform.qubits[qubit].asymmetry
-        matrix_element[qubit] = platform.qubits[qubit].crosstalk_matrix[qubit]
-        qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency * HZ_TO_GHZ
+        if qubit not in params.flux_qubits:
+            sweetspots[qubit] = voltage[qubit] = platform.qubits[qubit].sweetspot
+            d[qubit] = platform.qubits[qubit].asymmetry
+            matrix_element[qubit] = platform.qubits[qubit].crosstalk_matrix[qubit]
+            qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.drive_duration
         )
@@ -144,7 +154,7 @@ def _acquisition(
     )
     # TODO : abstract common lines with qubit flux dep routine
     if params.flux_qubits is None:
-        flux_qubits = list(platform.qubits.keys())
+        flux_qubits = list(platform.qubits)
     else:
         flux_qubits = params.flux_qubits
     bias_sweepers = [
@@ -193,14 +203,31 @@ def _acquisition(
 
 
 def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
-    # FIXME: currently this method performs the fit ONLY of the off-diagonal
-    # elements. An alternative should be to perform first the fit of the diagonal
-    # elements and then use those parameters to perform the fit of the off-diagonal
-    # elements.
+
     crosstalk_matrix = {qubit: {} for qubit in data.qubit_frequency}
     fitted_parameters = {}
 
+    voltage = {}
+    asymmetry = {}
+    sweetspot = {}
+    matrix_element = {}
+    qubit_frequency = {}
+
     diagonal = diagonal_fit(data.diagonal)
+
+    for qubit in data.qubits:
+        condition = qubit in diagonal
+        voltage[qubit] = diagonal.sweetspot[qubit] if condition else data.voltage[qubit]
+        asymmetry[qubit] = diagonal.asymmetry[qubit] if condition else data.d[qubit]
+        sweetspot[qubit] = (
+            diagonal.sweetspot[qubit] if condition else data.sweetspot[qubit]
+        )
+        matrix_element[qubit] = (
+            diagonal.matrix_element[qubit] if condition else data.matrix_element[qubit]
+        )
+        qubit_frequency[qubit] = (
+            diagonal.frequency[qubit] if condition else data.matrix_element[qubit]
+        )
 
     for target_flux_qubit, qubit_data in data.data.items():
 
@@ -224,12 +251,12 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
             # at runtime
             def fit_function(x, crosstalk_element):
                 return utils.transmon_frequency(
-                    xi=data.voltage[target_qubit],
+                    xi=voltage[target_qubit],
                     xj=x,
-                    w_max=diagonal.frequency[target_qubit] * HZ_TO_GHZ,
-                    d=diagonal.asymmetry[target_qubit],
-                    sweetspot=diagonal.sweetspot[target_qubit],
-                    matrix_element=diagonal.matrix_element[target_qubit],
+                    w_max=qubit_frequency[target_qubit] * HZ_TO_GHZ,
+                    d=asymmetry[target_qubit],
+                    sweetspot=sweetspot[target_qubit],
+                    matrix_element=matrix_element[target_qubit],
                     crosstalk_element=crosstalk_element,
                 )
 
@@ -238,11 +265,11 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
             )
 
             fitted_parameters[target_qubit, flux_qubit] = dict(
-                xi=data.voltage[target_qubit],
-                w_max=data.qubit_frequency[target_qubit],
-                d=diagonal.asymmetry[target_qubit],
-                sweetspot=diagonal.sweetspot[target_qubit],
-                matrix_element=data.matrix_element[target_qubit],
+                xi=voltage[target_qubit],
+                w_max=qubit_frequency[target_qubit],
+                d=asymmetry[target_qubit],
+                sweetspot=sweetspot[target_qubit],
+                matrix_element=matrix_element[target_qubit],
                 crosstalk_element=float(popt),
             )
             crosstalk_matrix[target_qubit][flux_qubit] = float(popt)
@@ -250,6 +277,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
             fitted_parameters[target_qubit, flux_qubit] = diagonal.fitted_parameters[
                 target_qubit
             ]
+
     return QubitCrosstalkResults(
         crosstalk_matrix=crosstalk_matrix, fitted_parameters=fitted_parameters
     )
