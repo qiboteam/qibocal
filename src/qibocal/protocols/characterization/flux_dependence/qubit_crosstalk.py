@@ -11,13 +11,18 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Results, Routine
+from qibocal.auto.operation import Routine
 from qibocal.config import log
 
 from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
-from ..utils import HZ_TO_GHZ
+from ..utils import HZ_TO_GHZ, table_dict, table_html
 from . import utils
-from .qubit_flux_dependence import QubitFluxData, QubitFluxParameters, QubitFluxType
+from .qubit_flux_dependence import (
+    QubitFluxData,
+    QubitFluxParameters,
+    QubitFluxResults,
+    QubitFluxType,
+)
 from .qubit_flux_dependence import _fit as diagonal_fit
 
 
@@ -82,14 +87,14 @@ class QubitCrosstalkData(QubitFluxData):
 
 
 @dataclass
-class QubitCrosstalkResults(Results):
+class QubitCrosstalkResults(QubitFluxResults):
     """
     Qubit Crosstalk outputs.
     """
 
-    crosstalk_matrix: dict[QubitId, dict[QubitId, float]] = field(default_factory=dict)
+    crosstalk_matrix: dict[QubitId, dict[QubitId, float]]
     """Crosstalk matrix element."""
-    fitted_parameters: dict[tuple[QubitId, QubitId], dict] = field(default_factory=dict)
+    fitted_parameters: dict[tuple[QubitId, QubitId], dict]
     """Fitted parameters for each couple target-flux qubit."""
 
     def __contains__(self, key: QubitId):
@@ -277,21 +282,52 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
             fitted_parameters[target_qubit, flux_qubit] = diagonal.fitted_parameters[
                 target_qubit
             ]
+            crosstalk_matrix[target_qubit][flux_qubit] = matrix_element[target_qubit]
 
     return QubitCrosstalkResults(
-        crosstalk_matrix=crosstalk_matrix, fitted_parameters=fitted_parameters
+        frequency=qubit_frequency,
+        sweetspot=sweetspot,
+        asymmetry=asymmetry,
+        matrix_element=matrix_element,
+        crosstalk_matrix=crosstalk_matrix,
+        fitted_parameters=fitted_parameters,
     )
 
 
 def _plot(data: QubitCrosstalkData, fit: QubitCrosstalkResults, target: QubitId):
     """Plotting function for Crosstalk Experiment."""
-    return utils.flux_crosstalk_plot(
+
+    figures, fitting_report = utils.flux_crosstalk_plot(
         data, target, fit, fit_function=utils.transmon_frequency
     )
+    if fit is not None:
+        labels = ["Sweetspot [V]", "Qubit Frequency at Sweetspot [Hz]", "Asymmetry d"]
+        values = [
+            np.round(fit.sweetspot[target], 4),
+            np.round(fit.frequency[target], 4),
+            np.round(fit.asymmetry[target], 4),
+        ]
+        for flux_qubit in fit.crosstalk_matrix[target]:
+            if flux_qubit != target:
+                labels.append(f"Crosstalk with qubit {flux_qubit}")
+            else:
+                labels.append(f"Flux dependence")
+            values.append(np.round(fit.crosstalk_matrix[target][flux_qubit], 4))
+        fitting_report = table_html(
+            table_dict(
+                target,
+                labels,
+                values,
+            )
+        )
+        return figures, fitting_report
 
 
 def _update(results: QubitCrosstalkResults, platform: Platform, qubit: QubitId):
     """Update crosstalk matrix."""
+    update.drive_frequency(results.frequency[qubit], platform, qubit)
+    update.sweetspot(results.sweetspot[qubit], platform, qubit)
+    update.asymmetry(results.asymmetry[qubit], platform, qubit)
     for flux_qubit, element in results.crosstalk_matrix[qubit].items():
         update.crosstalk_matrix(element, platform, qubit, flux_qubit)
 
