@@ -83,7 +83,9 @@ class QubitCrosstalkData(QubitFluxData):
 
         if len(instance.data) > 0:
             return instance
-        return QubitFluxData()
+        return QubitFluxData(
+            resonator_type=self.resonator_type, qubit_frequency=self.qubit_frequency
+        )
 
 
 @dataclass
