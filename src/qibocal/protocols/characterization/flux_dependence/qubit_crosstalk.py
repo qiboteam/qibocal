@@ -322,7 +322,7 @@ def _plot(data: QubitCrosstalkData, fit: QubitCrosstalkResults, target: QubitId)
                 values,
             )
         )
-        return figures, fitting_report
+    return figures, fitting_report
 
 
 def _update(results: QubitCrosstalkResults, platform: Platform, qubit: QubitId):
