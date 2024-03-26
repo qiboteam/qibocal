@@ -147,7 +147,6 @@ def _acquisition(
     data = QubitFluxData(
         resonator_type=platform.resonator_type, qubit_frequency=qubit_frequency
     )
-
     options = ExecutionParameters(
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
