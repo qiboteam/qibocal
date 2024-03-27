@@ -121,6 +121,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
 
     pi_pulse_amplitudes = {}
     fitted_parameters = {}
+    durations = {}
     chi2 = {}
 
     for qubit in qubits:

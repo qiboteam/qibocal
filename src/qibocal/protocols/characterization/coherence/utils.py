@@ -3,6 +3,8 @@ from scipy.optimize import curve_fit
 
 from qibocal.config import log
 
+from ..utils import chi2_reduced
+
 
 def exp_decay(x, *p):
     return p[0] - p[1] * np.exp(-1 * x / p[2])
@@ -65,6 +67,7 @@ def exponential_fit_probability(data):
 
     decay = {}
     fitted_parameters = {}
+    chi2 = {}
 
     for qubit in qubits:
         times = data[qubit].wait
@@ -100,7 +103,16 @@ def exponential_fit_probability(data):
             fitted_parameters[qubit] = popt
             dec = popt[2]
             decay[qubit] = (dec, perr[2])
+            chi2[qubit] = (
+                chi2_reduced(
+                    data[qubit].prob,
+                    exp_decay(data[qubit].wait, *fitted_parameters[qubit]),
+                    data[qubit].error,
+                ),
+                np.sqrt(2 / len(data[qubit].prob)),
+            )
+
         except Exception as e:
             log.warning(f"Exponential decay fit failed for qubit {qubit} due to {e}")
 
-    return decay, fitted_parameters
+    return decay, fitted_parameters, chi2
