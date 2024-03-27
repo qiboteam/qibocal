@@ -281,7 +281,7 @@ actions:
       delay_before_readout_start: 0
       delay_before_readout_end: 20_000
       delay_before_readout_step: 2000
-      nshots: 10
+      nshots: 1024
 
   - id: t1_signal
     operation: t1_signal
@@ -289,7 +289,7 @@ actions:
       delay_before_readout_start: 0
       delay_before_readout_end: 20_000
       delay_before_readout_step: 2000
-      nshots: 10
+      nshots: 1024
 
   - id: t1 sequences
     operation: t1_sequences
@@ -297,7 +297,7 @@ actions:
       delay_before_readout_start: 0
       delay_before_readout_end: 20_000
       delay_before_readout_step: 2000
-      nshots: 10
+      nshots: 1024
 
   - id: zeno
     operation: zeno
