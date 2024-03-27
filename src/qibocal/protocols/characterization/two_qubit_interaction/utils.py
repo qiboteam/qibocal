@@ -1,16 +1,20 @@
 from statistics import median_high
 
 import numpy as np
-from qibolab.qubits import Qubit, QubitId
+from qibolab.platform import Platform
+from qibolab.qubits import QubitId, QubitPairId
 from scipy.signal import find_peaks
 
 RANDOM_HIGH_VALUE = 1e6
 """High value to avoid None when computing FFT."""
 
 
-def order_pair(pair: list[QubitId, QubitId], qubits: dict[QubitId, Qubit]) -> tuple:
+def order_pair(pair: QubitPairId, platform: Platform) -> tuple[QubitId, QubitId]:
     """Order a pair of qubits by drive frequency."""
-    if qubits[pair[0]].drive_frequency > qubits[pair[1]].drive_frequency:
+    if (
+        platform.qubits[pair[0]].drive_frequency
+        > platform.qubits[pair[1]].drive_frequency
+    ):
         return pair[1], pair[0]
     return pair[0], pair[1]
 

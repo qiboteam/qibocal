@@ -53,7 +53,7 @@ def _acquisition(
     for i, pair in enumerate(targets):
         qubit = platform.qubits[params.measured_qubits[i]].name
         # TODO: Qubit pair patch
-        ordered_pair = order_pair(pair, platform.qubits)
+        ordered_pair = order_pair(pair, platform)
         coupler = platform.pairs[tuple(sorted(ordered_pair))].coupler
         couplers.append(coupler)
 

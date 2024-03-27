@@ -70,7 +70,7 @@ def _acquisition(
         platform (Platform): Qibolab platform object.
         qubits (dict): list of targets qubit pairs to perform the action.
     """
-    order_pairs = np.array([order_pair(pair, platform.qubits) for pair in targets])
+    order_pairs = np.array([order_pair(pair, platform) for pair in targets])
     data = AvoidedCrossingData(qubit_pairs=order_pairs.tolist())
     # Extract the qubits in the qubits pairs and evaluate their flux dep
     unique_qubits = np.unique(
