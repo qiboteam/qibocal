@@ -28,7 +28,7 @@ class ChevronCouplersData(ChevronData):
 def _aquisition(
     params: ChevronCouplersParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: Qubits,
 ) -> ChevronData:
     r"""
     Routine to find the optimal coupler flux pulse amplitude and duration for a CZ/iSWAP gate.
@@ -61,7 +61,7 @@ def _aquisition(
     # create a DataUnits object to store the results,
     data = ChevronData()
     # sort high and low frequency qubit
-    for pair in qubits:
+    for pair in targets:
         sequence = PulseSequence()
 
         ordered_pair = order_pair(pair, platform.qubits)
