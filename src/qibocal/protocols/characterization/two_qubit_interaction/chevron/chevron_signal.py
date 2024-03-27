@@ -101,11 +101,17 @@ def _aquisition(
             parking=params.parking,
             dt=params.dt,
         )
+
+        data.cz_amplitude[ordered_pair] = (
+            sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0].amplitude
+        )
+        data.sweetspot[ordered_pair] = platform.qubits[ordered_pair[1]].sweetspot
+
         sweeper_amplitude = Sweeper(
             Parameter.amplitude,
             params.amplitude_range,
             pulses=[sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
-            type=SweeperType.ABSOLUTE,
+            type=SweeperType.FACTOR,
         )
         sweeper_duration = Sweeper(
             Parameter.duration,

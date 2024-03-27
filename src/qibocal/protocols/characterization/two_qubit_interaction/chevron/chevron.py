@@ -25,11 +25,11 @@ from .utils import COLORAXIS, chevron_fit, chevron_sequence
 class ChevronParameters(Parameters):
     """CzFluxTime runcard inputs."""
 
-    amplitude_min: float
+    amplitude_min_factor: float
     """Amplitude minimum."""
-    amplitude_max: float
+    amplitude_max_factor: float
     """Amplitude maximum."""
-    amplitude_step: float
+    amplitude_step_factor: float
     """Amplitude step."""
     duration_min: float
     """Duration minimum."""
@@ -45,9 +45,9 @@ class ChevronParameters(Parameters):
     @property
     def amplitude_range(self):
         return np.arange(
-            self.amplitude_min,
-            self.amplitude_max,
-            self.amplitude_step,
+            self.amplitude_min_factor,
+            self.amplitude_max_factor,
+            self.amplitude_step_factor,
         )
 
     @property
@@ -68,6 +68,9 @@ class ChevronResults(Results):
     duration: dict[QubitPairId, int]
     """Virtual Z phase correction."""
 
+    def __contains__(self, key: QubitPairId):
+        return super().__contains__(key) | super().__contains__((key[1], key[0]))
+
 
 ChevronType = np.dtype(
     [
@@ -84,6 +87,10 @@ ChevronType = np.dtype(
 class ChevronData(Data):
     """Chevron acquisition outputs."""
 
+    cz_amplitude: dict[QubitPairId, float] = field(default_factory=dict)
+    """CZ platform amplitude for qubit pair."""
+    sweetspot: dict[QubitPairId, float] = field(default_factory=dict)
+    """Sweetspot value for high frequency qubit."""
     data: dict[QubitPairId, npt.NDArray[ChevronType]] = field(default_factory=dict)
 
     def register_qubit(self, low_qubit, high_qubit, length, amp, prob_low, prob_high):
@@ -147,8 +154,13 @@ def _aquisition(
             Parameter.amplitude,
             params.amplitude_range,
             pulses=[sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
-            type=SweeperType.ABSOLUTE,
+            type=SweeperType.FACTOR,
         )
+
+        data.cz_amplitude[ordered_pair] = (
+            sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0].amplitude
+        )
+        data.sweetspot[ordered_pair] = platform.qubits[ordered_pair[1]].sweetspot
         sweeper_duration = Sweeper(
             Parameter.duration,
             params.duration_range,
@@ -170,7 +182,7 @@ def _aquisition(
             ordered_pair[0],
             ordered_pair[1],
             params.duration_range,
-            params.amplitude_range,
+            params.amplitude_range * data.cz_amplitude[ordered_pair],
             results[ordered_pair[0]].probability(state=1),
             results[ordered_pair[1]].probability(state=1),
         )
@@ -294,8 +306,12 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
         fitting_report = table_html(
             table_dict(
                 target[1],
-                ["CZ amplitude", "CZ duration"],
-                [fit.amplitude[target], fit.duration[target]],
+                ["CZ amplitude", "CZ duration", "Bias point"],
+                [
+                    fit.amplitude[target],
+                    fit.duration[target],
+                    fit.amplitude[target] + data.sweetspot[target],
+                ],
             )
         )
 
