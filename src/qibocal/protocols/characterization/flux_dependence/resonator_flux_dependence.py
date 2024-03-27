@@ -35,21 +35,21 @@ class ResonatorFluxParameters(Parameters):
 class ResonatorFluxResults(Results):
     """ResonatoFlux outputs."""
 
-    frequency: dict[QubitId, float]
+    frequency: dict[QubitId, float] = field(default_factory=dict)
     """Readout frequency for each qubit."""
-    sweetspot: dict[QubitId, float]
+    sweetspot: dict[QubitId, float] = field(default_factory=dict)
     """Sweetspot for each qubit."""
-    asymmetry: dict[QubitId, float]
+    asymmetry: dict[QubitId, float] = field(default_factory=dict)
     """Asymmetry between junctions."""
-    bare_frequency: dict[QubitId, float]
+    bare_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Resonator bare frequency."""
-    drive_frequency: dict[QubitId, float]
+    drive_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequency at sweetspot."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]] = field(default_factory=dict)
     """Raw fitting output."""
-    coupling: dict[QubitId, float]
+    coupling: dict[QubitId, float] = field(default_factory=dict)
     """Qubit-resonator coupling."""
-    matrix_element: dict[QubitId, float]
+    matrix_element: dict[QubitId, float] = field(default_factory=dict)
     """C_ii coefficient."""
 
 
@@ -68,12 +68,10 @@ ResFluxType = np.dtype(
 class ResonatorFluxData(Data):
     """ResonatorFlux acquisition outputs."""
 
-    """Resonator type."""
     resonator_type: str
-
+    """Resonator type."""
     qubit_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
-
     bare_resonator_frequency: dict[QubitId, int] = field(default_factory=dict)
     """Qubit bare resonator frequency power provided by the user."""
 
@@ -199,7 +197,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
         try:
             popt = curve_fit(
-                utils.transmon_readout_frequency,
+                utils.transmon_readout_frequency_diagonal,
                 biases,
                 frequencies * HZ_TO_GHZ,
                 bounds=utils.resonator_flux_dependence_fit_bounds(
@@ -214,7 +212,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             # frequency corresponds to transmon readout frequency
             # at the sweetspot popt[3]
             frequency[qubit] = (
-                utils.transmon_readout_frequency(popt[3], *popt) * GHZ_TO_HZ
+                utils.transmon_readout_frequency_diagonal(popt[3], *popt) * GHZ_TO_HZ
             )
             sweetspot[qubit] = popt[3]
             asymmetry[qubit] = popt[1]
@@ -245,7 +243,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
     """Plotting function for ResonatorFlux Experiment."""
     figures = utils.flux_dependence_plot(
-        data, fit, target, utils.transmon_readout_frequency
+        data, fit, target, utils.transmon_readout_frequency_diagonal
     )
     if fit is not None:
         fitting_report = table_html(

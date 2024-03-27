@@ -147,7 +147,6 @@ def _acquisition(
     data = QubitFluxData(
         resonator_type=platform.resonator_type, qubit_frequency=qubit_frequency
     )
-
     options = ExecutionParameters(
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
@@ -206,7 +205,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
         try:
             popt = curve_fit(
-                utils.transmon_frequency,
+                utils.transmon_frequency_diagonal,
                 biases,
                 frequencies * HZ_TO_GHZ,
                 bounds=utils.qubit_flux_dependence_fit_bounds(
@@ -239,7 +238,10 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
     """Plotting function for QubitFlux Experiment."""
     figures = utils.flux_dependence_plot(
-        data, fit, target, fit_function=utils.transmon_frequency
+        data,
+        fit,
+        target,
+        fit_function=utils.transmon_frequency_diagonal,
     )
     if fit is not None:
         fitting_report = table_html(
@@ -267,6 +269,7 @@ def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
     update.drive_frequency(results.frequency[qubit], platform, qubit)
     update.sweetspot(results.sweetspot[qubit], platform, qubit)
     update.asymmetry(results.asymmetry[qubit], platform, qubit)
+    update.crosstalk_matrix(results.matrix_element[qubit], platform, qubit, qubit)
 
 
 qubit_flux = Routine(_acquisition, _fit, _plot, _update)
