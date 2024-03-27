@@ -146,23 +146,18 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
                         ),
                         legendgroup="Fit",
                         name="Fit",
-                        marker=dict(color="black"),
+                        marker=dict(color="white"),
                     ),
                     row=1,
                     col=col + 1,
                 )
             else:
                 diagonal_params = fit.fitted_parameters[qubit, qubit]
-                if fit_function != transmon_frequency:
-                    diagonal_params.update(
-                        g=data.g[flux_qubit[0]],
-                        resonator_freq=data.bare_resonator_frequency[flux_qubit[0]],
-                    )
                 fig.add_trace(
                     go.Scatter(
                         x=globals().get(fit_function.__name__ + "_diagonal")(
                             qubit_data.bias,
-                            *fit.fitted_parameters[qubit, qubit],
+                            *diagonal_params,
                         ),
                         y=qubit_data.bias,
                         showlegend=not any(
@@ -170,7 +165,7 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
                         ),
                         legendgroup="Fit",
                         name="Fit",
-                        marker=dict(color="black"),
+                        marker=dict(color="white"),
                     ),
                     row=1,
                     col=col + 1,
@@ -218,7 +213,10 @@ def G_f_d(xi, xj, sweetspot, d, matrix_element, crosstalk_element):
     return (
         d**2
         + (1 - d**2)
-        * np.cos(np.pi * ((xi - sweetspot) * matrix_element - xj * crosstalk_element))
+        * np.cos(
+            np.pi
+            * ((xi - sweetspot) * matrix_element + (xj - sweetspot) * crosstalk_element)
+        )
         ** 2
     ) ** 0.25
 

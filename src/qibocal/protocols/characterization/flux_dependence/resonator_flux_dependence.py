@@ -35,21 +35,21 @@ class ResonatorFluxParameters(Parameters):
 class ResonatorFluxResults(Results):
     """ResonatoFlux outputs."""
 
-    frequency: dict[QubitId, float]
+    frequency: dict[QubitId, float] = field(default_factory=dict)
     """Readout frequency for each qubit."""
-    sweetspot: dict[QubitId, float]
+    sweetspot: dict[QubitId, float] = field(default_factory=dict)
     """Sweetspot for each qubit."""
-    asymmetry: dict[QubitId, float]
+    asymmetry: dict[QubitId, float] = field(default_factory=dict)
     """Asymmetry between junctions."""
-    bare_frequency: dict[QubitId, float]
+    bare_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Resonator bare frequency."""
-    drive_frequency: dict[QubitId, float]
+    drive_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequency at sweetspot."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]] = field(default_factory=dict)
     """Raw fitting output."""
-    coupling: dict[QubitId, float]
+    coupling: dict[QubitId, float] = field(default_factory=dict)
     """Qubit-resonator coupling."""
-    matrix_element: dict[QubitId, float]
+    matrix_element: dict[QubitId, float] = field(default_factory=dict)
     """C_ii coefficient."""
 
 
@@ -68,12 +68,10 @@ ResFluxType = np.dtype(
 class ResonatorFluxData(Data):
     """ResonatorFlux acquisition outputs."""
 
-    """Resonator type."""
     resonator_type: str
-
+    """Resonator type."""
     qubit_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
-
     bare_resonator_frequency: dict[QubitId, int] = field(default_factory=dict)
     """Qubit bare resonator frequency power provided by the user."""
 
@@ -221,7 +219,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             bare_frequency[qubit] = popt[4] * GHZ_TO_HZ
             drive_frequency[qubit] = popt[0] * GHZ_TO_HZ
             coupling[qubit] = popt[5]
-            matrix_element[qubit] = 1 / popt[2]
+            matrix_element[qubit] = popt[2]
         except ValueError as e:
             log.error(
                 f"Error in resonator_flux protocol fit: {e} "

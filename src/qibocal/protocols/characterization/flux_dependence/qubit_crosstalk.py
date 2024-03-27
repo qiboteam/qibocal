@@ -267,19 +267,28 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
                     crosstalk_element=crosstalk_element,
                 )
 
-            popt, _ = curve_fit(
-                fit_function, biases, frequencies * HZ_TO_GHZ, bounds=(0, np.inf)
-            )
+            try:
+                popt, _ = curve_fit(
+                    fit_function,
+                    biases,
+                    frequencies * HZ_TO_GHZ,
+                    bounds=(-np.inf, np.inf),
+                )
 
-            fitted_parameters[target_qubit, flux_qubit] = dict(
-                xi=voltage[target_qubit],
-                w_max=qubit_frequency[target_qubit],
-                d=asymmetry[target_qubit],
-                sweetspot=sweetspot[target_qubit],
-                matrix_element=matrix_element[target_qubit],
-                crosstalk_element=float(popt),
-            )
-            crosstalk_matrix[target_qubit][flux_qubit] = float(popt)
+                fitted_parameters[target_qubit, flux_qubit] = dict(
+                    xi=voltage[target_qubit],
+                    w_max=qubit_frequency[target_qubit],
+                    d=asymmetry[target_qubit],
+                    sweetspot=sweetspot[target_qubit],
+                    matrix_element=matrix_element[target_qubit],
+                    crosstalk_element=float(popt),
+                )
+                crosstalk_matrix[target_qubit][flux_qubit] = float(popt)
+            except ValueError as e:
+                log.error(
+                    f"Off-diagonal flux fit failed for qubit {flux_qubit} due to {e}."
+                )
+
         else:
             fitted_parameters[target_qubit, flux_qubit] = diagonal.fitted_parameters[
                 target_qubit
@@ -298,7 +307,6 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
 
 def _plot(data: QubitCrosstalkData, fit: QubitCrosstalkResults, target: QubitId):
     """Plotting function for Crosstalk Experiment."""
-
     figures, fitting_report = utils.flux_crosstalk_plot(
         data, target, fit, fit_function=utils.transmon_frequency
     )
