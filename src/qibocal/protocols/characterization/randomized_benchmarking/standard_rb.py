@@ -37,7 +37,7 @@ class StandardRBParameters(Parameters):
     """A list of depths/sequence lengths. If a dictionary is given the list will be build."""
     niter: int
     """Sets how many iterations over the same depth value."""
-    uncertainties: Optional[float] = 95
+    uncertainties: Optional[float] = None
     """Method of computing the error bars of the signal and uncertainties of the fit. If ``None``,
     it computes the standard deviation. Otherwise it computes the corresponding confidence interval. Defaults `None`."""
     unrolling: bool = False

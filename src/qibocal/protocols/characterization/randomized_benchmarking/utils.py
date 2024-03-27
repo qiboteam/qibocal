@@ -148,7 +148,6 @@ def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
     Returns:
         np.ndarray: uncertainties of the data.
     """
-
     if method is None:
         return np.std(data, axis=1) if homogeneous else [np.std(row) for row in data]
 
