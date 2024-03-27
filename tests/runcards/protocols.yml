@@ -136,7 +136,7 @@ actions:
       dt: 5
       nshots: 10
 
-    - id: coupler chevron iSWAP
+  - id: coupler chevron iSWAP
     priority: 0
     operation: coupler_chevron
     targets: [[1, 2]]
