@@ -6,8 +6,8 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Routine
 
-from .t1_signal import CoherenceType
 from .t2_signal import T2SignalData, T2SignalParameters, _fit, _plot, _update
+from .utils import CoherenceType
 
 
 def _acquisition(
