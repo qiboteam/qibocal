@@ -143,6 +143,17 @@ actions:
       flux_amplitude_step:  0.1
       nshots: 10
 
+  - id: resonator flux dependence flux single value int
+    priority: 0
+    operation: resonator_flux
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 500_000
+      flux_amplitude_start: 0
+      flux_amplitude_end: 0.4
+      flux_amplitude_step:  0.1
+      nshots: 10
+
 
   - id: resonator flux dependence flux several values
     priority: 0
@@ -151,7 +162,7 @@ actions:
     parameters:
       freq_width: 10_000_000
       freq_step: 500_000
-      flux_amplitude_start: [-0.4, -0.3]
+      flux_amplitude_start: [-0.4, 0]
       flux_amplitude_end: [0.4, 0.4]
       flux_amplitude_step:  [0.1, 0.1]
       nshots: 10
