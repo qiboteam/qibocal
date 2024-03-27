@@ -18,7 +18,6 @@ CLS_MODULES = [
     "ada_boost",
     "gaussian_process",
     "naive_bayes",
-    "nn",
     "qubit_fit",
     "random_forest",
     "rbf_svm",
@@ -31,7 +30,6 @@ PRETTY_NAME = [
     "Ada Boost",
     "Gaussian Process",
     "Naive Bayes",
-    "Neural Network",
     "Qubit Fit",
     "Random Forest",
     "RBF SVM",
@@ -163,6 +161,7 @@ class Classifier:
 @dataclass
 class BenchmarkResults:
     r"""Class that stores the models information."""
+
     accuracy: float
     testing_time: float
     training_time: float

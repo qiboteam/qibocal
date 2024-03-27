@@ -5,7 +5,7 @@ qubits: [0]
 actions:
 
   - id: resonator_spectroscopy high power
-    priority: 0
+
     operation: resonator_spectroscopy
     parameters:
         freq_width: 60_000_000

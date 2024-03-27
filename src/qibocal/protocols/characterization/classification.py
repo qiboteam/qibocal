@@ -14,14 +14,7 @@ from qibolab.qubits import QubitId
 from sklearn.metrics import roc_auc_score, roc_curve
 
 from qibocal import update
-from qibocal.auto.operation import (
-    RESULTSFILE,
-    Data,
-    Parameters,
-    Qubits,
-    Results,
-    Routine,
-)
+from qibocal.auto.operation import RESULTSFILE, Data, Parameters, Results, Routine
 from qibocal.auto.serialize import serialize
 from qibocal.fitting.classifier import run
 from qibocal.protocols.characterization.utils import (
@@ -46,6 +39,9 @@ DEFAULT_CLASSIFIER = "qubit_fit"
 class SingleShotClassificationParameters(Parameters):
     """SingleShotClassification runcard inputs."""
 
+    unrolling: bool = False
+    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
+    Defaults to ``False``."""
     classifiers_list: Optional[list[str]] = field(
         default_factory=lambda: [DEFAULT_CLASSIFIER]
     )
@@ -128,13 +124,13 @@ class SingleShotClassificationResults(Results):
         asdict_class = asdict(self)
         asdict_class.pop("models")
         asdict_class.pop("classifiers_hpars")
-        (path / RESULTSFILE).write_text(json.dumps(serialize(asdict_class)))
+        (path / f"{RESULTSFILE}.json").write_text(json.dumps(serialize(asdict_class)))
 
 
 def _acquisition(
     params: SingleShotClassificationParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> SingleShotClassificationData:
     """
     Args:
@@ -144,7 +140,6 @@ def _acquisition(
             - ada_boost
             - gaussian_process
             - naive_bayes
-            - nn
             - qubit_fit
             - random_forest
             - rbf_svm
@@ -158,7 +153,6 @@ def _acquisition(
         .. code-block:: yaml
 
             - id: single_shot_classification_1
-                priority: 0
                 operation: single_shot_classification
                 parameters:
                 nshots: 5000
@@ -172,65 +166,61 @@ def _acquisition(
     # state1_sequence: RX - MZ
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
-    state0_sequence = PulseSequence()
-    state1_sequence = PulseSequence()
+    sequences, all_ro_pulses = [], []
+    for state in [0, 1]:
+        sequence = PulseSequence()
+        RX_pulses = {}
+        ro_pulses = {}
+        for qubit in targets:
+            RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+            ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+                qubit, start=RX_pulses[qubit].finish
+            )
+            if state == 1:
+                sequence.add(RX_pulses[qubit])
+            sequence.add(ro_pulses[qubit])
 
-    RX_pulses = {}
-    ro_pulses = {}
-    for qubit in qubits:
-        RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=RX_pulses[qubit].finish
-        )
-
-        state0_sequence.add(ro_pulses[qubit])
-        state1_sequence.add(RX_pulses[qubit])
-        state1_sequence.add(ro_pulses[qubit])
+        sequences.append(sequence)
+        all_ro_pulses.append(ro_pulses)
 
     data = SingleShotClassificationData(
         nshots=params.nshots,
         qubit_frequencies={
-            qubit: platform.qubits[qubit].drive_frequency for qubit in qubits
+            qubit: platform.qubits[qubit].drive_frequency for qubit in targets
         },
         classifiers_list=params.classifiers_list,
         savedir=params.savedir,
     )
 
-    # execute the first pulse sequence
-    state0_results = platform.execute_pulse_sequence(
-        state0_sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-        ),
+    options = ExecutionParameters(
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
     )
 
-    # retrieve and store the results for every qubit
-    for qubit in qubits:
-        result = state0_results[ro_pulses[qubit].serial]
-        data.register_qubit(
-            ClassificationType,
-            (qubit),
-            dict(i=result.voltage_i, q=result.voltage_q, state=[0] * params.nshots),
-        )
-    # execute the second pulse sequence
-    state1_results = platform.execute_pulse_sequence(
-        state1_sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-        ),
-    )
-    # retrieve and store the results for every qubit
-    for qubit in qubits:
-        result = state1_results[ro_pulses[qubit].serial]
-        data.register_qubit(
-            ClassificationType,
-            (qubit),
-            dict(i=result.voltage_i, q=result.voltage_q, state=[1] * params.nshots),
-        )
+    if params.unrolling:
+        results = platform.execute_pulse_sequences(sequences, options)
+    else:
+        results = [
+            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
+        ]
+
+    for ig, (state, ro_pulses) in enumerate(zip([0, 1], all_ro_pulses)):
+        for qubit in targets:
+            serial = ro_pulses[qubit].serial
+            if params.unrolling:
+                result = results[serial][ig]
+            else:
+                result = results[ig][serial]
+            data.register_qubit(
+                ClassificationType,
+                (qubit),
+                dict(
+                    i=result.voltage_i,
+                    q=result.voltage_q,
+                    state=[state] * params.nshots,
+                ),
+            )
 
     return data
 
@@ -254,6 +244,8 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     effective_temperature = {}
     for qubit in qubits:
         qubit_data = data.data[qubit]
+        state0_data = qubit_data[qubit_data.state == 0]
+        iq_state0 = state0_data[["i", "q"]]
         benchmark_table, y_test, x_test, models, names, hpars_list = run.train_qubit(
             data, qubit
         )
@@ -264,7 +256,6 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         hpars[qubit] = {}
         y_preds = []
         grid_preds = []
-
         grid = evaluate_grid(qubit_data)
         for i, model_name in enumerate(names):
             hpars[qubit][model_name] = hpars_list[i]
@@ -284,8 +275,9 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
                 mean_exc_states[qubit] = models[i].iq_mean1.tolist()
                 fidelity[qubit] = models[i].fidelity
                 assignment_fidelity[qubit] = models[i].assignment_fidelity
+                predictions_state0 = models[i].predict(iq_state0.tolist())
                 effective_temperature[qubit] = models[i].effective_temperature(
-                    y_preds[-1], data.qubit_frequencies[qubit]
+                    predictions_state0, data.qubit_frequencies[qubit]
                 )
         y_test_predict[qubit] = y_preds
         grid_preds_dict[qubit] = grid_preds
@@ -310,14 +302,16 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
 
 
 def _plot(
-    data: SingleShotClassificationData, qubit, fit: SingleShotClassificationResults
+    data: SingleShotClassificationData,
+    target: QubitId,
+    fit: SingleShotClassificationResults,
 ):
     fitting_report = ""
     models_name = data.classifiers_list
-    figures = plot_results(data, qubit, 2, fit)
+    figures = plot_results(data, target, 2, fit)
     if fit is not None:
-        y_test = fit.y_tests[qubit]
-        y_pred = fit.y_preds[qubit]
+        y_test = fit.y_tests[target]
+        y_pred = fit.y_preds[target]
 
         if len(models_name) != 1:
             # Evaluate the ROC curve
@@ -326,7 +320,7 @@ def _plot(
                 type="line", line=dict(dash="dash"), x0=0.0, x1=1.0, y0=0.0, y1=1.0
             )
             for i, model in enumerate(models_name):
-                y_pred = fit.y_preds[qubit][i]
+                y_pred = fit.y_preds[target][i]
                 fpr, tpr, _ = roc_curve(y_test, y_pred)
                 auc_score = roc_auc_score(y_test, y_pred)
                 name = f"{model} (AUC={auc_score:.2f})"
@@ -358,7 +352,7 @@ def _plot(
         if "qubit_fit" in models_name:
             fitting_report = table_html(
                 table_dict(
-                    qubit,
+                    target,
                     [
                         "Average State 0",
                         "Average State 1",
@@ -369,14 +363,14 @@ def _plot(
                         "Effective Qubit Temperature [K]",
                     ],
                     [
-                        np.round(fit.mean_gnd_states[qubit], 3),
-                        np.round(fit.mean_exc_states[qubit], 3),
-                        np.round(fit.rotation_angle[qubit], 3),
-                        np.round(fit.threshold[qubit], 6),
-                        np.round(fit.fidelity[qubit], 3),
-                        np.round(fit.assignment_fidelity[qubit], 3),
+                        np.round(fit.mean_gnd_states[target], 3),
+                        np.round(fit.mean_exc_states[target], 3),
+                        np.round(fit.rotation_angle[target], 3),
+                        np.round(fit.threshold[target], 6),
+                        np.round(fit.fidelity[target], 3),
+                        np.round(fit.assignment_fidelity[target], 3),
                         format_error_single_cell(
-                            round_report([fit.effective_temperature[qubit]])
+                            round_report([fit.effective_temperature[target]])
                         ),
                     ],
                 )
@@ -386,14 +380,14 @@ def _plot(
 
 
 def _update(
-    results: SingleShotClassificationResults, platform: Platform, qubit: QubitId
+    results: SingleShotClassificationResults, platform: Platform, target: QubitId
 ):
-    update.iq_angle(results.rotation_angle[qubit], platform, qubit)
-    update.threshold(results.threshold[qubit], platform, qubit)
-    update.mean_gnd_states(results.mean_gnd_states[qubit], platform, qubit)
-    update.mean_exc_states(results.mean_exc_states[qubit], platform, qubit)
-    update.readout_fidelity(results.fidelity[qubit], platform, qubit)
-    update.assignment_fidelity(results.assignment_fidelity[qubit], platform, qubit)
+    update.iq_angle(results.rotation_angle[target], platform, target)
+    update.threshold(results.threshold[target], platform, target)
+    update.mean_gnd_states(results.mean_gnd_states[target], platform, target)
+    update.mean_exc_states(results.mean_exc_states[target], platform, target)
+    update.readout_fidelity(results.fidelity[target], platform, target)
+    update.assignment_fidelity(results.assignment_fidelity[target], platform, target)
 
 
 single_shot_classification = Routine(_acquisition, _fit, _plot, _update)

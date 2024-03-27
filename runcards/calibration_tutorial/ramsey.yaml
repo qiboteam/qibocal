@@ -4,7 +4,7 @@ qubits: [0]
 
 actions:
   - id: ramsey detuned
-    priority: 0
+
     operation: ramsey
     parameters:
         delay_between_pulses_end: 40000

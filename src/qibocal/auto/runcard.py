@@ -1,19 +1,24 @@
 """Specify runcard layout, handles (de)serialization."""
+
 import os
-from functools import cached_property
 from typing import Any, NewType, Optional, Union
 
-from pydantic import Field
 from pydantic.dataclasses import dataclass
 from qibo.backends import Backend, GlobalBackend
+from qibo.transpiler.pipeline import Passes
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId
+from qibolab.qubits import QubitId, QubitPairId
 
 from .operation import OperationId
-from .validation import Validator
 
 Id = NewType("Id", str)
 """Action identifiers type."""
+
+Targets = Union[list[QubitId], list[QubitPairId], list[tuple[QubitId, ...]]]
+"""Elements to be calibrated by a single protocol."""
+
+MAX_ITERATIONS = 5
+"""Default max iterations."""
 
 
 @dataclass(config=dict(smart_union=True))
@@ -24,20 +29,10 @@ class Action:
     """Action unique identifier."""
     operation: Optional[OperationId] = None
     """Operation to be performed by the executor."""
-    main: Optional[Id] = None
-    """Main subsequent for action in normal flow."""
-    next: Optional[Union[list[Id], Id]] = None
-    """Alternative subsequent actions, branching from the current one."""
-    priority: Optional[int] = None
-    """Priority level, determining the execution order."""
-    qubits: Union[
-        list[QubitId], list[tuple[QubitId, QubitId]], list[list[QubitId]]
-    ] = Field(default_factory=list)
+    targets: Optional[Targets] = None
     """Local qubits (optional)."""
     update: bool = True
     """Runcard update mechanism."""
-    validator: Optional[Validator] = None
-    """Define validation scheme and parameters."""
     parameters: Optional[dict[str, Any]] = None
     """Input parameters, either values or provider reference."""
 
@@ -51,15 +46,31 @@ class Runcard:
     """Structure of an execution runcard."""
 
     actions: list[Action]
-    qubits: Optional[Union[list[QubitId], list[tuple[QubitId, QubitId]]]] = None
+    """List of action to be executed."""
+    targets: Optional[Targets] = None
+    """Qubits to be calibrated.
+       If `None` the protocols will be executed on all qubits
+       available in the platform."""
     backend: str = "qibolab"
+    """Qibo backend."""
     platform: str = os.environ.get("QIBO_PLATFORM", "dummy")
+    """Qibolab platform."""
+    max_iterations: int = MAX_ITERATIONS
+    """Maximum number of iterations."""
 
-    @cached_property
+    def __post_init__(self):
+        if self.targets is None and self.platform_obj is not None:
+            self.targets = list(self.platform_obj.qubits)
+
+    @property
     def backend_obj(self) -> Backend:
         """Allocate backend."""
-        GlobalBackend.set_backend(self.backend, self.platform)
-        return GlobalBackend()
+        GlobalBackend.set_backend(self.backend, platform=self.platform)
+        backend = GlobalBackend()
+        # FIXME: remove this latin abomination
+        backend.transpiler = Passes(connectivity=backend.platform.topology)
+        backend.transpiler.passes = backend.transpiler.passes[-1:]
+        return backend
 
     @property
     def platform_obj(self) -> Platform:

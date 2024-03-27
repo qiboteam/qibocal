@@ -165,7 +165,7 @@ def create_sequence(
 def _acquisition(
     params: VirtualZParameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: Qubits,
 ) -> VirtualZData:
     r"""
     Acquisition for VirtualZ.
@@ -187,7 +187,7 @@ def _acquisition(
     theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
 
     data = VirtualZData(thetas=theta_absolute.tolist())
-    for pair in qubits:
+    for pair in targets:
         # order the qubits so that the low frequency one is the first
         ord_pair = order_pair(pair, platform.qubits)
 
@@ -316,13 +316,13 @@ def _fit(
 def _plot(data: VirtualZData, fit: VirtualZResults, qubit):
     """Plot routine for VirtualZ."""
     pair_data = data[qubit]
-    qubits = next(iter(pair_data))[:2]
+    targets = next(iter(pair_data))[:2]
     fig1 = make_subplots(
         rows=1,
         cols=2,
         subplot_titles=(
-            f"Qubit {qubits[0]}",
-            f"Qubit {qubits[1]}",
+            f"Qubit {targets[0]}",
+            f"Qubit {targets[1]}",
         ),
     )
     reports = []
@@ -330,8 +330,8 @@ def _plot(data: VirtualZData, fit: VirtualZResults, qubit):
         rows=1,
         cols=2,
         subplot_titles=(
-            f"Qubit {qubits[0]}",
-            f"Qubit {qubits[1]}",
+            f"Qubit {targets[0]}",
+            f"Qubit {targets[1]}",
         ),
     )
 
@@ -340,10 +340,10 @@ def _plot(data: VirtualZData, fit: VirtualZResults, qubit):
     for target, control, setup in pair_data:
         target_prob = pair_data[target, control, setup].target
         control_prob = pair_data[target, control, setup].control
-        fig = fig1 if (target, control) == qubits else fig2
+        fig = fig1 if (target, control) == targets else fig2
         fig.add_trace(
             go.Scatter(
-                x=np.array(thetas) + data.vphases[qubits][target],
+                x=np.array(thetas) + data.vphases[targets][target],
                 y=target_prob,
                 name=f"{setup} sequence",
                 legendgroup=setup,
@@ -354,7 +354,7 @@ def _plot(data: VirtualZData, fit: VirtualZResults, qubit):
 
         fig.add_trace(
             go.Scatter(
-                x=np.array(thetas) + data.vphases[qubits][control],
+                x=np.array(thetas) + data.vphases[targets][control],
                 y=control_prob,
                 name=f"{setup} sequence",
                 legendgroup=setup,
@@ -367,9 +367,9 @@ def _plot(data: VirtualZData, fit: VirtualZResults, qubit):
             fitted_parameters = fit.fitted_parameters[target, control, setup]
             fig.add_trace(
                 go.Scatter(
-                    x=angle_range + data.vphases[qubits][target],
+                    x=angle_range + data.vphases[targets][target],
                     y=fit_function(
-                        angle_range + data.vphases[qubits][target],
+                        angle_range + data.vphases[targets][target],
                         *fitted_parameters,
                     ),
                     name="Fit",
@@ -381,18 +381,18 @@ def _plot(data: VirtualZData, fit: VirtualZResults, qubit):
 
             fitting_report = table_html(
                 table_dict(
-                    [target, target, qubits[1]],
+                    [target, target, targets[1]],
                     [" angle", "Virtual Z phase", "Flux pulse amplitude"],
                     [
                         np.round(fit.native_gate_angle[target, control], 4),
                         np.round(fit.virtual_phase[tuple(sorted(qubit))][target], 4),
-                        np.round(data.amplitudes[qubits]),
+                        np.round(data.amplitudes[targets]),
                     ],
                 )
             )
 
     fig1.update_layout(
-        title_text=f"Phase correction Qubit {qubits[0]}",
+        title_text=f"Phase correction Qubit {targets[0]}",
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis1_title="theta [rad] + virtual phase[rad]",
@@ -401,7 +401,7 @@ def _plot(data: VirtualZData, fit: VirtualZResults, qubit):
     )
 
     fig2.update_layout(
-        title_text=f"Phase correction Qubit {qubits[1]}",
+        title_text=f"Phase correction Qubit {targets[1]}",
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis1_title="theta [rad] + virtual phase[rad]",
