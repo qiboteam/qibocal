@@ -100,12 +100,12 @@ def _aquisition(
         sweeper_amplitude = Sweeper(
             Parameter.amplitude,
             delta_amplitude_range,
-            pulses=[native_gate.coupler_pulses(*pair)],
+            pulses=[p for p in native_gate.coupler_pulses(*pair)][:1],
         )
         sweeper_duration = Sweeper(
             Parameter.duration,
             delta_duration_range,
-            pulses=[native_gate.coupler_pulses(*pair)],
+            pulses=[p for p in native_gate.coupler_pulses(*pair)],
         )
 
         # repeat the experiment as many times as defined by nshots
@@ -143,8 +143,8 @@ def _fit(data: ChevronCouplersData) -> ChevronCouplersResults:
     return ChevronCouplersResults()
 
 
-def plot(data: ChevronCouplersData, fit: ChevronCouplersResults, qubit):
-    return _plot(data, None, qubit)
+def plot(data: ChevronCouplersData, fit: ChevronCouplersResults, target):
+    return _plot(data, None, target)
 
 
 coupler_chevron = Routine(_aquisition, _fit, plot, two_qubit_gates=True)
