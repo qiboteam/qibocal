@@ -414,8 +414,8 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, target: QubitPairId):
                             np.round(
                                 fit.virtual_phase[tuple(sorted(target))][target_q], 4
                             ),
-                            np.round(data.amplitudes[qubits]),
-                            np.round(data.durations[qubits]),
+                            np.round(data.amplitudes[qubits], 4),
+                            np.round(data.durations[qubits], 4),
                             np.round(fit.leakage[tuple(sorted(target))][control_q], 4),
                         ],
                     )
