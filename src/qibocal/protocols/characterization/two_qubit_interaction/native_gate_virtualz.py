@@ -314,9 +314,9 @@ def _fit(
 
 
 # TODO: remove str
-def _plot(data: VirtualZData, fit: VirtualZResults, qubit):
+def _plot(data: VirtualZData, fit: VirtualZResults, target):
     """Plot routine for VirtualZ."""
-    pair_data = data[qubit]
+    pair_data = data[target]
     targets = next(iter(pair_data))[:2]
     fig1 = make_subplots(
         rows=1,
@@ -386,7 +386,7 @@ def _plot(data: VirtualZData, fit: VirtualZResults, qubit):
                     [" angle", "Virtual Z phase", "Flux pulse amplitude"],
                     [
                         np.round(fit.native_gate_angle[target, control], 4),
-                        np.round(fit.virtual_phase[tuple(sorted(qubit))][target], 4),
+                        np.round(fit.virtual_phase[tuple(sorted(target))][target], 4),
                         np.round(data.amplitudes[targets]),
                     ],
                 )

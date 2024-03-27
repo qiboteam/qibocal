@@ -49,7 +49,7 @@ actions:
       min_amp_factor: 0.005
       max_amp_factor: 0.3
       step_amp_factor: 0.005
-      nshots: 100
+      nshots: 10
 
 
   - id: resonator_punchout_attenuation
@@ -60,7 +60,7 @@ actions:
       min_att: 4
       max_att: 60
       step_att: 4
-      nshots: 1000
+      nshots: 10
 
 
   - id: resonator spectroscopy low power
@@ -124,18 +124,17 @@ actions:
   - id: coupler chevron
     priority: 0
     operation: coupler_chevron
-    qubits: [[1, 2]]
+    targets: [[1, 2]]
     parameters:
       amplitude_min: -0.5
       amplitude_max: -0.0
-      amplitude_step: 0.05
+      amplitude_step: 0.1
       duration_min: 50
-      duration_max: 200
-      duration_step: 4
+      duration_max: 100
+      duration_step: 10
       native_gate: "CZ"
       dt: 5
-      nshots: 1024
-      relaxation_time: 100_000
+      nshots: 10
 
   - id: resonator flux dependence
     operation: resonator_flux
@@ -211,7 +210,6 @@ actions:
       relaxation_time: 2000
 
 
-
   - id: rabi
     operation: rabi_amplitude
     parameters:
@@ -266,7 +264,7 @@ actions:
       pulse_duration_end: 84
       pulse_duration_step: 8
       pulse_amplitude: 0.5
-      nshots: 1024
+      nshots: 10
 
   - id: rabi length sequences
     operation: rabi_length_sequences
@@ -275,7 +273,7 @@ actions:
       pulse_duration_end: 84
       pulse_duration_step: 8
       pulse_amplitude: 0.5
-      nshots: 1024
+      nshots: 10
 
   - id: t1
     operation: t1
@@ -283,7 +281,7 @@ actions:
       delay_before_readout_start: 0
       delay_before_readout_end: 20_000
       delay_before_readout_step: 2000
-      nshots: 1024
+      nshots: 10
 
   - id: t1_signal
     operation: t1_signal
@@ -291,7 +289,7 @@ actions:
       delay_before_readout_start: 0
       delay_before_readout_end: 20_000
       delay_before_readout_step: 2000
-      nshots: 1024
+      nshots: 10
 
   - id: t1 sequences
     operation: t1_sequences
@@ -575,11 +573,11 @@ actions:
     parameters:
       amplitude_min: 0.1
       amplitude_max: 0.6
-      amplitude_step: 0.01
+      amplitude_step: 0.1
       duration_min: 10
       duration_max: 50
-      duration_step: 1
-      nshots: 1000
+      duration_step: 10
+      nshots: 10
       parking: True
 
   - id: CZ tune landscape
@@ -597,7 +595,7 @@ actions:
   - id: iSWAP tune landscape
     priority: 0
     operation: native_gate_virtualz
-    qubits: [[0, 2],[1,2],[3,2]]
+    targets: [[0, 2],[1,2],[3,2]]
     parameters:
       theta_start: 0
       theta_end: 180
@@ -624,18 +622,18 @@ actions:
     parameters:
       freq_width: 200.e+6
       freq_step: 25.e+6
-      nshots: 1000
+      nshots: 10
 
   - id: fast reset
     operation: fast_reset
     parameters:
-      nshots: 1024
+      nshots: 10
 
   - id: CHSH with pulses
     operation: chsh_pulses
     targets: [[0,2],[1,2],[2,3]]
     parameters:
-      nshots: 1000
+      nshots: 10
       ntheta: 10
       bell_states: [0,1,2,3]
       apply_error_mitigation: True
@@ -644,7 +642,7 @@ actions:
     operation: chsh_circuits
     targets: [[0,2],[1,2]]
     parameters:
-      nshots: 1000
+      nshots: 1024
       ntheta: 10
       bell_states: [0,1,2,3]
       native: True
@@ -655,7 +653,7 @@ actions:
     operation: chsh_circuits
     targets: [[0,2],[1,2]]
     parameters:
-      nshots: 1000
+      nshots: 10
       ntheta: 2
       bell_states: [0,1,2,3]
       native: False
@@ -665,14 +663,14 @@ actions:
     operation: readout_mitigation_matrix
     targets: [[0,1,2],[1,2]]
     parameters:
-      nshots: 100
+      nshots: 10
       pulses: True
 
   - id: readout_mitigation_matrix circuits
     operation: readout_mitigation_matrix
     targets: [[0,1,2],[1,2]]
     parameters:
-      nshots: 100
+      nshots: 10
       pulses: False
 
   - id: twpa frequency
@@ -706,7 +704,7 @@ actions:
       twpa_pow_width: 4
       twpa_pow_step: 1
       power_level: low
-      nshots: 1000
+      nshots: 10
       relaxation_time: 2000
 
   - id: twpa_frequency_SNR
@@ -730,7 +728,7 @@ actions:
     targets: [0,1]
     operation: qutrit_classification
     parameters:
-      nshots: 100
+      nshots: 1000
       classifiers_list: ["naive_bayes", "decision_tree"]
 
   - id: avoided crossing
