@@ -633,7 +633,7 @@ actions:
     operation: chsh_pulses
     targets: [[0,2],[1,2],[2,3]]
     parameters:
-      nshots: 10
+      nshots: 1000
       ntheta: 10
       bell_states: [0,1,2,3]
       apply_error_mitigation: True
@@ -642,7 +642,7 @@ actions:
     operation: chsh_circuits
     targets: [[0,2],[1,2]]
     parameters:
-      nshots: 1024
+      nshots: 1000
       ntheta: 10
       bell_states: [0,1,2,3]
       native: True
@@ -653,7 +653,7 @@ actions:
     operation: chsh_circuits
     targets: [[0,2],[1,2]]
     parameters:
-      nshots: 10
+      nshots: 1000
       ntheta: 2
       bell_states: [0,1,2,3]
       native: False
