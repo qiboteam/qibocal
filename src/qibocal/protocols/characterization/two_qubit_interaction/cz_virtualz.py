@@ -227,9 +227,9 @@ def _acquisition(
                 )
                 sweeper = Sweeper(
                     Parameter.relative_phase,
-                    theta,
+                    theta - data.vphases[pair][target_q],
                     pulses=[theta_pulse],
-                    type=SweeperType.OFFSET,
+                    type=SweeperType.ABSOLUTE,
                 )
                 results = platform.sweep(
                     sequence,
@@ -290,7 +290,7 @@ def _fit(
             try:
                 popt, _ = curve_fit(
                     fit_function,
-                    np.array(data.thetas) + data.vphases[pair][target],
+                    np.array(data.thetas) - data.vphases[pair][target],
                     target_data,
                     p0=pguess,
                     bounds=(
@@ -311,10 +311,9 @@ def _fit(
                 fitted_parameters[target_q, control_q, "X"][2]
                 - fitted_parameters[target_q, control_q, "I"][2]
             )
-            virtual_phase[pair][target_q] = (
-                fitted_parameters[target_q, control_q, "I"][2]
-                + data.vphases[pair][target_q]
-            )
+            virtual_phase[pair][target_q] = fitted_parameters[target_q, control_q, "I"][
+                2
+            ]
 
             # leakage estimate: L = m /2
             # See NZ paper from Di Carlo
@@ -390,7 +389,7 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, target: QubitPairId):
                 go.Scatter(
                     x=angle_range + data.vphases[qubits][target_q],
                     y=fit_function(
-                        angle_range + data.vphases[qubits][target_q],
+                        angle_range - data.vphases[qubits][target_q],
                         *fitted_parameters,
                     ),
                     name="Fit",
