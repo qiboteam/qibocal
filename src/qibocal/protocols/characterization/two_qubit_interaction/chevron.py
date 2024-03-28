@@ -135,9 +135,10 @@ def _aquisition(
 
         # Patch to get the coupler until the routines use QubitPair
         if platform.couplers:
-            sequence.add(
-                cz.coupler_pulses(platform.pairs[tuple(ordered_pair)].coupler.name)
+            coupler_pulse = cz.coupler_pulses(
+                platform.pairs[tuple(ordered_pair)].coupler.name
             )
+            sequence.add(coupler_pulse)
 
         if params.parking:
             for pulse in cz:
@@ -146,14 +147,15 @@ def _aquisition(
                     pulse.duration = 100
                     sequence.add(pulse)
 
+        delay_measurement = max(params.duration_max, coupler_pulse.duration)
         # add readout
         measure_lowfreq = platform.create_qubit_readout_pulse(
             ordered_pair[0],
-            start=initialize_lowfreq.finish + params.duration_max + params.dt,
+            start=initialize_lowfreq.finish + delay_measurement + params.dt,
         )
         measure_highfreq = platform.create_qubit_readout_pulse(
             ordered_pair[1],
-            start=initialize_highfreq.finish + params.duration_max + params.dt,
+            start=initialize_highfreq.finish + delay_measurement + params.dt,
         )
 
         sequence.add(measure_lowfreq)
