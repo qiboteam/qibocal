@@ -90,7 +90,7 @@ def _acquisition(
 
     data = CouplerSpectroscopyData(
         resonator_type=platform.resonator_type,
-        flux_pulses=params.flux_pulses,
+        flux_pulses=params.has_flux_params,
     )
 
     for bias_sweeper in sweepers:
