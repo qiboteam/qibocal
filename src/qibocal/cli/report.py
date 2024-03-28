@@ -11,6 +11,7 @@ from qibocal.auto.execute import Executor
 from qibocal.auto.mode import ExecutionMode
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import TaskId
+from qibocal.config import log
 
 META = "meta.json"
 RUNCARD = "runcard.yml"
@@ -39,6 +40,8 @@ def report(path):
     - FOLDER: input folder.
 
     """
+    if path.exists():
+        log.warning(f"Regenerating {path}/index.html")
     # load meta
     meta = json.loads((path / META).read_text())
     # load runcard
