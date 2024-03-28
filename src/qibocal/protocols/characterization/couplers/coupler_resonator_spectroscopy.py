@@ -11,6 +11,7 @@ from qibocal.auto.operation import Routine
 
 from ..flux_dependence.utils import flux_dependence_plot
 from ..two_qubit_interaction.utils import order_pair
+from ..utils import table_dict, table_html
 from .utils import (
     CouplerSpectroscopyData,
     CouplerSpectroscopyParameters,
@@ -167,7 +168,7 @@ def _plot(
     for qubit in qubit_pair:
         if qubit in data.data.keys():
             fig = flux_dependence_plot(data, fit, qubit)[0]
-            fig.update_yaxes(title_text="Pulse Amplitude [a.u.]", row=1, col=1)
+
             fig.layout.annotations[0].update(
                 text="Signal [a.u.] Qubit" + str(qubit),
             )
@@ -175,7 +176,27 @@ def _plot(
                 text="Phase [rad] Qubit" + str(qubit),
             )
 
-            return [fig], ""
+            if data.flux_pulses:
+                bias_flux_unit = "a.u."
+            else:
+                bias_flux_unit = "V"
+
+            if fit is not None:
+                fitting_report = table_html(
+                    table_dict(
+                        target,
+                        [
+                            f"Coupler activation [{bias_flux_unit}]",
+                            f"Coupler sweetspot [{bias_flux_unit}]",
+                        ],
+                        [
+                            np.round(fit.pulse_amp[target], 4),
+                            np.round(fit.sweetspot[target], 4),
+                        ],
+                    )
+                )
+            return [fig], fitting_report
+    return [fig], ""
 
 
 def _update(
