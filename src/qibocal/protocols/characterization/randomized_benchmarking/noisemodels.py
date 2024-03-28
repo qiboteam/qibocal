@@ -26,7 +26,7 @@ class PauliErrorOnAll(NoiseModel):
             # Assign random values to params.
             self.params = np.random.uniform(0, 0.25, size=3).round(3)
         elif len(probabilities) == 3:
-            self.params = probabilities
+            self.params = np.array(probabilities)
         else:
             # Raise ValueError if given paramters are wrong.
             raise_error(

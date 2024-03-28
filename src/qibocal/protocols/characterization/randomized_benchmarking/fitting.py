@@ -166,7 +166,9 @@ def fit_exp1_func(
 
 
 def fit_expn_func(
-    xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], n: int = 2, **kwargs
+    xdata: Union[np.ndarray, list],
+    ydata: Union[np.ndarray, list],
+    n: int = 2,
 ) -> tuple[tuple, tuple]:
     """Calculate n exponentials on top of each other, fit to the given ydata.
     No linear offset, the ESPRIT algorithm is used to identify ``n`` exponential decays.
@@ -189,7 +191,8 @@ def fit_expn_func(
 
 
 def fit_exp2_func(
-    xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], **kwargs
+    xdata: Union[np.ndarray, list],
+    ydata: Union[np.ndarray, list],
 ) -> tuple[tuple, tuple]:
     """Calculate 2 exponentials on top of each other, fit to the given ydata.
 

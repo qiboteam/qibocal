@@ -67,9 +67,9 @@ class Runcard:
         """Allocate backend."""
         GlobalBackend.set_backend(self.backend, platform=self.platform)
         backend = GlobalBackend()
-        # FIXME: remove this latin abomination
-        backend.transpiler = Passes(connectivity=backend.platform.topology)
-        backend.transpiler.passes = backend.transpiler.passes[-1:]
+        if backend.platform is not None:
+            backend.transpiler = Passes(connectivity=backend.platform.topology)
+            backend.transpiler.passes = backend.transpiler.passes[-1:]
         return backend
 
     @property
