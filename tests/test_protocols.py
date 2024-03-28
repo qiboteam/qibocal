@@ -1,4 +1,4 @@
-"""Test routines' acquisition method using dummy platform"""
+"""Test routines' acquisition method using dummy_couplers platform"""
 
 import pathlib
 
@@ -23,7 +23,7 @@ from qibocal.protocols.characterization.rabi.utils import (
 )
 
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/protocols.yml"
-PLATFORM = create_platform("dummy")
+PLATFORM = create_platform("dummy_couplers")
 SINGLE_ACTION_RUNCARD = "action.yml"
 
 
@@ -41,7 +41,7 @@ def idfn(val):
     return val["actions"][0]["id"]
 
 
-@pytest.mark.parametrize("platform", ["dummy"])
+@pytest.mark.parametrize("platform", ["dummy_couplers"])
 @pytest.mark.parametrize("backend", ["qibolab"])
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
@@ -73,7 +73,7 @@ def test_auto_command(runcard, update, platform, backend, tmp_path):
         assert (tmp_path / "data" / f"{protocol}_0" / PLATFORM_DIR).is_dir()
 
 
-@pytest.mark.parametrize("platform", ["dummy"])
+@pytest.mark.parametrize("platform", ["dummy_couplers"])
 @pytest.mark.parametrize("backend", ["qibolab"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_acquire_command(runcard, backend, platform, tmp_path):
