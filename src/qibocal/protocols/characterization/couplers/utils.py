@@ -119,6 +119,8 @@ class CouplerSpectroscopyData(Data):
 
     resonator_type: str
     """Resonator type."""
+    flux_pulses: bool
+    """True if sweeping flux pulses, False if sweeping bias."""
     data: dict[QubitId, npt.NDArray[CouplerSpecType]] = field(default_factory=dict)
     """Raw data acquired."""
 
