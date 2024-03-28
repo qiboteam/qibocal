@@ -49,21 +49,12 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     couplers = []
-
-    qd_pulses = {}
-
     for i, pair in enumerate(targets):
         qubit = platform.qubits[params.measured_qubits[i]].name
         # TODO: Qubit pair patch
         ordered_pair = order_pair(pair, platform.qubits)
         coupler = platform.pairs[tuple(sorted(ordered_pair))].coupler
         couplers.append(coupler)
-
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit,
-            start=0,
-            duration=1000,
-        )
         # TODO: May measure both qubits on the pair
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=params.readout_delay
@@ -71,7 +62,6 @@ def _acquisition(
         if params.amplitude is not None:
             ro_pulses[qubit].amplitude = params.amplitude
 
-        sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
