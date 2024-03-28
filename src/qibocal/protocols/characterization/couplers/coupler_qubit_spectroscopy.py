@@ -75,7 +75,7 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
-    if params.flux_pulses:
+    if params.has_flux_params:
         (
             delta_bias_flux_range,
             sweepers,
