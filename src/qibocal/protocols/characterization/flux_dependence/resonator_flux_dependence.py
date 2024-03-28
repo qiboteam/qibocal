@@ -31,11 +31,11 @@ class ResonatorFluxParameters(Parameters):
     """Width for bias sweep [V]."""
     bias_step: Optional[float] = None
     """Bias step for sweep [a.u.]."""
-    flux_amplitude_start: Optional[Union[float, List[float]]] = None
+    flux_amplitude_start: Optional[Union[int, float, List[float]]] = None
     """Amplitude start value(s) for flux pulses sweep relative to the qubit sweetspot [a.u.]."""
-    flux_amplitude_end: Optional[Union[float, List[float]]] = None
+    flux_amplitude_end: Optional[Union[int, float, List[float]]] = None
     """Amplitude end value(s) for flux pulses sweep relative to the qubit sweetspot [a.u.]."""
-    flux_amplitude_step: Optional[Union[float, List[float]]] = None
+    flux_amplitude_step: Optional[Union[int, float, List[float]]] = None
     """Amplitude step(s) for flux pulses sweep [a.u.]."""
 
     def __post_init__(self):
@@ -62,7 +62,7 @@ class ResonatorFluxParameters(Parameters):
             self.flux_amplitude_end,
             self.flux_amplitude_step,
         )
-        if all(isinstance(param, float) for param in flux_params):
+        if all(isinstance(param, (int, float)) for param in flux_params):
             return
 
         if all(isinstance(param, list) for param in flux_params):
@@ -70,7 +70,7 @@ class ResonatorFluxParameters(Parameters):
                 return
             raise ValueError("Flux lists do not have the same length.")
         raise ValueError(
-            "flux parameters have the wrong type. Expected one of (float, list)."
+            "flux parameters have the wrong type. Expected one of (int, float, list)."
         )
 
     @property
