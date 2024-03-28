@@ -1,4 +1,3 @@
-from typing import Optional
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
@@ -19,13 +18,8 @@ from .utils import (
 )
 
 
-class CouplerSpectroscopyParametersResonator(CouplerSpectroscopyParameters):
-    readout_delay: Optional[int] = 1000
-    """Readout delay before the measurement is done to let the flux coupler pulse act"""
-
-
 def _acquisition(
-    params: CouplerSpectroscopyParametersResonator,
+    params: CouplerSpectroscopyParameters,
     platform: Platform,
     targets: list[QubitPairId],
 ) -> CouplerSpectroscopyData:
@@ -56,9 +50,7 @@ def _acquisition(
         coupler = platform.pairs[tuple(sorted(ordered_pair))].coupler
         couplers.append(coupler)
         # TODO: May measure both qubits on the pair
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=params.readout_delay
-        )
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
         if params.amplitude is not None:
             ro_pulses[qubit].amplitude = params.amplitude
 
