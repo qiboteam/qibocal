@@ -86,6 +86,20 @@ actions:
       nshots: 10
       relaxation_time: 3_000
 
+  - id: coupler_resonator_spectroscopy pulses
+    operation: coupler_resonator_spectroscopy
+    targets: [[1, 2], [0, 2]]
+    parameters:
+      flux_amplitude_start: 0.0
+      flux_amplitude_end: 0.5
+      flux_amplitude_step:  0.1
+      freq_width: 10_000_000
+      freq_step: 1_000_000
+      measured_qubits: [1, 0]
+      amplitude: .3
+      nshots: 10
+      relaxation_time: 3_000
+
 
   - id: qubit spectroscopy
     operation: qubit_spectroscopy
@@ -102,6 +116,20 @@ actions:
     parameters:
       bias_width: 1
       bias_step: 0.1
+      freq_width: 10_000_000
+      freq_step: 1_000_000
+      measured_qubits: [1, 0]
+      amplitude: .1
+      nshots: 10
+      relaxation_time: 3_000
+
+  - id: coupler qubit spectroscopy pulses
+    operation: coupler_qubit_spectroscopy
+    targets: [[1, 2], [0, 2]]
+    parameters:
+      flux_amplitude_start: 0.0
+      flux_amplitude_end: 0.5
+      flux_amplitude_step:  0.1
       freq_width: 10_000_000
       freq_step: 1_000_000
       measured_qubits: [1, 0]
