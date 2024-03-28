@@ -20,10 +20,10 @@ class CouplerSpectroscopyParameters(Parameters):
     """Frequency step for frequency sweep [Hz]."""
     measured_qubits: list[QubitId]
     """Qubit to measure from the pair"""
-    amplitude: Optional[float] = None
+    amplitude: Optional[Union[int, float]] = None
     """Readout or qubit drive amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
-    bias_width: Optional[float] = None
+    bias_width: Optional[Union[int, float]] = None
     """Width for bias sweep [V]."""
     bias_step: Optional[float] = None
     """Bias step for sweep [a.u.]."""
@@ -82,7 +82,6 @@ class CouplerSpectroscopyParameters(Parameters):
             and self.flux_amplitude_step is not None
         )
 
-    @property
     def flux_pulses(self):
         """True if sweeping flux pulses, False if sweeping bias."""
         if self.has_flux_params:

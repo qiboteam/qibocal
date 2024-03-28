@@ -94,7 +94,6 @@ def _acquisition(
     )
 
     for bias_sweeper in sweepers:
-        print(bias_sweeper)
         results = platform.sweep(
             sequence,
             ExecutionParameters(
