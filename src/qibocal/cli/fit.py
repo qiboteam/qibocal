@@ -37,12 +37,11 @@ def fit(input_path, update, output_path, force):
             else:
                 raise_error(RuntimeError, f"Directory {output_path} already exists.")
         else:
-            path = output_path
+            path = shutil.copytree(input_path, output_path)
     else:
         if len(list(input_path.glob(f"**/{RESULTSFILE}.json"))) > 0:
             if force:
                 log.warning(f"Overwriting fit in {input_path}.")
-                path = input_path
             else:
                 raise_error(
                     RuntimeError, f"Directory {input_path} contains fitting results."
