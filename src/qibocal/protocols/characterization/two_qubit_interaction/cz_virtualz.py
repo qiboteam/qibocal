@@ -220,8 +220,8 @@ def _acquisition(
                 )
                 data.vphases[ord_pair] = dict(virtual_z_phase)
                 theta = np.arange(
-                    virtual_z_phase[target_q] + params.theta_start,
-                    virtual_z_phase[target_q] + params.theta_end,
+                    params.theta_start,
+                    params.theta_end,
                     params.theta_step,
                     dtype=float,
                 )
@@ -229,7 +229,7 @@ def _acquisition(
                     Parameter.relative_phase,
                     theta,
                     pulses=[theta_pulse],
-                    type=SweeperType.ABSOLUTE,
+                    type=SweeperType.OFFSET,
                 )
                 results = platform.sweep(
                     sequence,
@@ -294,7 +294,7 @@ def _fit(
                     target_data,
                     p0=pguess,
                     bounds=(
-                        (-np.max(target_data), -np.max(target_data), 0),
+                        (0, -np.max(target_data), 0),
                         (np.max(target_data), np.max(target_data), 2 * np.pi),
                     ),
                 )
@@ -311,9 +311,11 @@ def _fit(
                 fitted_parameters[target_q, control_q, "X"][2]
                 - fitted_parameters[target_q, control_q, "I"][2]
             )
-            virtual_phase[pair][target_q] = -fitted_parameters[
-                target_q, control_q, "I"
-            ][2]
+            virtual_phase[pair][target_q] = (
+                fitted_parameters[target_q, control_q, "I"][2]
+                + data.vphases[pair][target_q]
+            )
+
             # leakage estimate: L = m /2
             # See NZ paper from Di Carlo
             # approximation which does not need qutrits
@@ -425,16 +427,16 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, target: QubitPairId):
     fig1.update_layout(
         title_text=f"Phase correction Qubit {qubits[0]}",
         showlegend=True,
-        xaxis1_title="theta [rad] + virtual phase[rad]",
-        xaxis2_title="theta [rad] + virtual phase [rad]",
+        xaxis1_title="Virtual phase[rad]",
+        xaxis2_title="Virtual phase [rad]",
         yaxis_title="Probability of State 0",
     )
 
     fig2.update_layout(
         title_text=f"Phase correction Qubit {qubits[1]}",
         showlegend=True,
-        xaxis1_title="theta [rad] + virtual phase[rad]",
-        xaxis2_title="theta [rad] + virtual phase[rad]",
+        xaxis1_title="Virtual phase[rad]",
+        xaxis2_title="Virtual phase[rad]",
         yaxis_title="Probability of State 0",
     )
 
@@ -444,7 +446,6 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, target: QubitPairId):
 def _update(results: CZVirtualZResults, platform: Platform, target: QubitPairId):
     # FIXME: quick fix for qubit order
     qubit_pair = tuple(sorted(target))
-    # FIXME: the virtual phase should be corrected with a negative sign?
     target = tuple(sorted(target))
     update.virtual_phases(results.virtual_phase[target], platform, target)
 
