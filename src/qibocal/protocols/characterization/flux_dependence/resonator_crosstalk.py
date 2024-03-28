@@ -14,6 +14,7 @@ from qibocal.protocols.characterization.flux_dependence.resonator_flux_dependenc
     ResFluxType,
     ResonatorFluxData,
     ResonatorFluxParameters,
+    create_flux_pulse_sweepers,
 )
 
 from . import utils
@@ -88,27 +89,32 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
-    delta_bias_range = np.arange(
-        -params.bias_width / 2, params.bias_width / 2, params.bias_step
-    )
     if params.flux_qubits is None:
         flux_qubits = list(platform.qubits.keys())
 
     else:
         flux_qubits = params.flux_qubits
-
-    bias_sweepers = [
-        Sweeper(
-            Parameter.bias,
-            delta_bias_range,
-            qubits=[platform.qubits[flux_qubit]],
-            type=SweeperType.OFFSET,
+    if params.flux_pulses:
+        delta_bias_flux_range, sweepers = create_flux_pulse_sweepers(
+            params, platform, targets, sequence
         )
-        for flux_qubit in flux_qubits
-    ]
+    else:
+        delta_bias_flux_range = np.arange(
+            -params.bias_width / 2, params.bias_width / 2, params.bias_step
+        )
+        sweepers = [
+            Sweeper(
+                Parameter.bias,
+                delta_bias_flux_range,
+                qubits=[platform.qubits[flux_qubit]],
+                type=SweeperType.OFFSET,
+            )
+            for flux_qubit in flux_qubits
+        ]
 
     data = ResCrosstalkData(
         resonator_type=platform.resonator_type,
+        flux_pulses=params.flux_pulses,
         qubit_frequency=qubit_frequency,
         bare_resonator_frequency=bare_resonator_frequency,
     )
@@ -118,7 +124,7 @@ def _acquisition(
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    for flux_qubit, bias_sweeper in zip(flux_qubits, bias_sweepers):
+    for flux_qubit, bias_sweeper in zip(flux_qubits, sweepers):
         results = platform.sweep(sequence, options, bias_sweeper, freq_sweeper)
         # retrieve the results for every qubit
         for qubit in targets:
@@ -133,7 +139,7 @@ def _acquisition(
                 signal=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + ro_pulses[qubit].frequency,
-                bias=delta_bias_range + sweetspot,
+                bias=delta_bias_flux_range + sweetspot,
             )
 
     return data
