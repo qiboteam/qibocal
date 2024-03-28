@@ -34,7 +34,8 @@ def generate_runcard_single_protocol():
     for action in actions["actions"]:
         card = {"actions": [action], "targets": list(PLATFORM.qubits)}
         yield card
-        
+
+
 def generate_runcard_single_protocol_couplers():
     actions = yaml.safe_load(PATH_TO_RUNCARD_COUPLERS.read_text(encoding="utf-8"))
     with open(PATH_TO_RUNCARD_COUPLERS) as file:
@@ -84,7 +85,9 @@ def test_auto_command(runcard, update, platform, backend, tmp_path):
 @pytest.mark.parametrize("platform", ["dummy_couplers"])
 @pytest.mark.parametrize("backend", ["qibolab"])
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
-@pytest.mark.parametrize("runcard", generate_runcard_single_protocol_couplers(), ids=idfn)
+@pytest.mark.parametrize(
+    "runcard", generate_runcard_single_protocol_couplers(), ids=idfn
+)
 def test_auto_command_couplers(runcard, update, platform, backend, tmp_path):
     """Test auto command pipeline."""
 
