@@ -9,9 +9,9 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Routine
 
+from ..flux_dependence import resonator_flux_dependence
 from ..flux_dependence.utils import flux_dependence_plot
 from ..two_qubit_interaction.utils import order_pair
-from ..utils import table_dict, table_html
 from .utils import (
     CouplerSpectroscopyData,
     CouplerSpectroscopyParameters,
@@ -41,7 +41,6 @@ def _acquisition(
     """
 
     # TODO: Do we  want to measure both qubits on the pair ?
-    # Different acquisition, for now only measure one and reduce possible crosstalk.
 
     # create a sequence of pulses for the experiment:
     # Coupler pulse while MZ
@@ -49,8 +48,10 @@ def _acquisition(
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
     ro_pulses = {}
-    fx_pulses = {}
     couplers = []
+
+    qd_pulses = {}
+
     for i, pair in enumerate(targets):
         qubit = platform.qubits[params.measured_qubits[i]].name
         # TODO: Qubit pair patch
@@ -58,6 +59,11 @@ def _acquisition(
         coupler = platform.pairs[tuple(sorted(ordered_pair))].coupler
         couplers.append(coupler)
 
+        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
+            qubit,
+            start=0,
+            duration=1000,
+        )
         # TODO: May measure both qubits on the pair
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=params.readout_delay
@@ -65,6 +71,7 @@ def _acquisition(
         if params.amplitude is not None:
             ro_pulses[qubit].amplitude = params.amplitude
 
+        sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
@@ -79,34 +86,45 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
-    # define the parameter to sweep and its range:
-    delta_bias_range = np.arange(
-        -params.bias_width / 2, params.bias_width / 2, params.bias_step
-    )
-
-    # This sweeper is implemented in the flux pulse amplitude and we need it to be that way.
-    sweeper_bias = Sweeper(
-        Parameter.bias,
-        delta_bias_range,
-        couplers=couplers,
-        type=SweeperType.ABSOLUTE,
-    )
+    if params.flux_pulses:
+        # TODO: Add delay
+        (
+            delta_bias_flux_range,
+            sweepers,
+        ) = resonator_flux_dependence.create_flux_pulse_sweepers(
+            params, platform, couplers, sequence
+        )
+    else:
+        delta_bias_flux_range = np.arange(
+            -params.bias_width / 2, params.bias_width / 2, params.bias_step
+        )
+        sweepers = [
+            Sweeper(
+                Parameter.bias,
+                delta_bias_flux_range,
+                qubits=couplers,
+                type=SweeperType.OFFSET,
+            )
+        ]
 
     data = CouplerSpectroscopyData(
         resonator_type=platform.resonator_type,
+        flux_pulses=params.flux_pulses,
     )
 
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
-        sweeper_bias,
-        sweeper_freq,
-    )
+    for bias_sweeper in sweepers:
+        print(bias_sweeper)
+        results = platform.sweep(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+            bias_sweeper,
+            sweeper_freq,
+        )
 
     # retrieve the results for every qubit
     for i, pair in enumerate(targets):
@@ -119,7 +137,7 @@ def _acquisition(
             signal=result.magnitude,
             phase=result.phase,
             freq=delta_frequency_range + ro_pulses[qubit].frequency,
-            bias=delta_bias_range,
+            bias=delta_bias_flux_range,
         )
     return data
 
@@ -145,7 +163,7 @@ def _fit(data: CouplerSpectroscopyData) -> CouplerSpectroscopyResults:
 
         sweetspot[qubit] = 0
         pulse_amp[qubit] = 0
-        fitted_parameters[qubit] = {}
+        fitted_parameters[qubit] = None
 
     return CouplerSpectroscopyResults(
         pulse_amp=pulse_amp,
@@ -176,26 +194,26 @@ def _plot(
                 text="Phase [rad] Qubit" + str(qubit),
             )
 
-            if data.flux_pulses:
-                bias_flux_unit = "a.u."
-            else:
-                bias_flux_unit = "V"
+            # if data.flux_pulses:
+            #     bias_flux_unit = "a.u."
+            # else:
+            #     bias_flux_unit = "V"
 
-            if fit is not None:
-                fitting_report = table_html(
-                    table_dict(
-                        target,
-                        [
-                            f"Coupler activation [{bias_flux_unit}]",
-                            f"Coupler sweetspot [{bias_flux_unit}]",
-                        ],
-                        [
-                            np.round(fit.pulse_amp[target], 4),
-                            np.round(fit.sweetspot[target], 4),
-                        ],
-                    )
-                )
-            return [fig], fitting_report
+            # if fit is not None:
+            #     fitting_report = table_html(
+            #         table_dict(
+            #             target,
+            #             [
+            #                 f"Coupler activation [{bias_flux_unit}]",
+            #                 f"Coupler sweetspot [{bias_flux_unit}]",
+            #             ],
+            #             [
+            #                 np.round(fit.pulse_amp[target], 4),
+            #                 np.round(fit.sweetspot[target], 4),
+            #             ],
+            #         )
+            #     )
+            # return [fig], fitting_report
     return [fig], ""
 
 

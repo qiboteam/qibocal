@@ -184,8 +184,12 @@ def create_flux_pulse_sweepers(
             flux_amplitude_step,
         )
         if isinstance(qubit, Coupler):
+            # FIXME: Missmatch with create_coupler_pulse and create_qubit_flux_pulse
             pulse = platform.create_coupler_pulse(
-                qubit.name, start=0, duration=sequence.duration
+                qubit.name,
+                start=0,
+                duration=sequence.duration,
+                amplitude=1,
             )
             qubit = qubit.name
         else:
