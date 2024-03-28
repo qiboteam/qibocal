@@ -129,8 +129,3 @@ class CouplerSpectroscopyData(Data):
         self.data[qubit] = create_data_array(
             freq, bias, signal, phase, dtype=CouplerSpecType
         )
-
-    @property
-    def flux_pulses(self):
-        """Return False because the experiment only supports bias."""
-        return False

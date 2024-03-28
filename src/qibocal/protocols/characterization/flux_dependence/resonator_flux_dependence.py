@@ -4,6 +4,7 @@ from typing import List, Optional, Union
 import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.couplers import Coupler
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
@@ -182,16 +183,29 @@ def create_flux_pulse_sweepers(
             flux_amplitude_end,
             flux_amplitude_step,
         )
-        pulse = platform.create_qubit_flux_pulse(
-            qubit, start=0, duration=sequence.duration
-        )
+        if isinstance(qubit, Coupler):
+            pulse = platform.create_coupler_pulse(
+                qubit.name, start=0, duration=sequence.duration
+            )
+            qubit = qubit.name
+        else:
+            pulse = platform.create_qubit_flux_pulse(
+                qubit, start=0, duration=sequence.duration
+            )
         qf_pulses[qubit] = pulse
         sequence.add(pulse)
+
+    # FIXME: This is a patch to fix couplers/qubits
+    if isinstance(qubits[0], Coupler):
+        pulses = [qf_pulses[qubit.name] for qubit in qubits]
+    else:
+        pulses = [qf_pulses[qubit] for qubit in qubits]
+
     sweepers = [
         Sweeper(
             Parameter.amplitude,
             delta_bias_flux_range,
-            pulses=[qf_pulses[qubit] for qubit in qubits],
+            pulses=pulses,
             type=SweeperType.ABSOLUTE,
         )
     ]
