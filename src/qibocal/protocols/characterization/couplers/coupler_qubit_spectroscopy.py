@@ -84,7 +84,7 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
-    if params.has_flux_params:
+    if params.flux_pulses:
         (
             delta_bias_flux_range,
             sweepers,
@@ -106,7 +106,7 @@ def _acquisition(
 
     data = CouplerSpectroscopyData(
         resonator_type=platform.resonator_type,
-        flux_pulses=params.has_flux_params,
+        flux_pulses=params.flux_pulses,
     )
 
     for bias_sweeper in sweepers:
