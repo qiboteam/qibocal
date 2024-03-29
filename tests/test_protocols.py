@@ -19,8 +19,9 @@ from qibocal.protocols.characterization.rabi.utils import (
     rabi_length_function,
 )
 
-PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/"
 SINGLE_ACTION_RUNCARD = "action.yml"
+PLATFORM = create_platform("dummy")
+PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/"
 RUNCARDS_NAMES = ["protocols.yml", "rb_noise_protocols.yml", "protocols_couplers.yml"]
 
 
@@ -38,6 +39,7 @@ def generate_runcard_single_protocol():
             for action in actions["actions"]:
                 card = {
                     "actions": [action],
+                    "targets": list(PLATFORM.qubits),
                     "backend": backend,
                 }
                 if "platform" in actions:
