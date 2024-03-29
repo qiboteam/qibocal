@@ -44,9 +44,10 @@ def _acquisition(
     couplers = []
     for i, pair in enumerate(targets):
         ordered_pair = order_pair(pair, platform.qubits)
-        measured_qubit = params.measured_qubits[i]
         if params.measured_qubits is None:
             measured_qubit = ordered_pair[0]
+        else:
+            measured_qubit = params.measured_qubits[i]
 
         qubit = platform.qubits[measured_qubit].name
         coupler = platform.pairs[tuple(sorted(ordered_pair))].coupler
