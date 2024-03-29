@@ -17,6 +17,7 @@ from qibocal.protocols.characterization.rabi.utils import (
     rabi_amplitude_function,
     rabi_length_function,
 )
+from qibolab import create_platform
 
 SINGLE_ACTION_RUNCARD = "action.yml"
 PLATFORM = create_platform("dummy")
