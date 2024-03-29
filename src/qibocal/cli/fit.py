@@ -22,7 +22,7 @@ def fit(input_path, update, output_path, force):
 
     Arguments:
 
-    - path: input folder.
+    - input_path: input folder.
     - update: perform platform update
     - output_path: new folder with data and fit
     """

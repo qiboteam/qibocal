@@ -5,7 +5,7 @@ from click.testing import CliRunner
 
 from qibocal.cli._base import command
 
-DUMMY_ACTION = pathlib.Path(__file__).parent / "runcards/dummy_action.yml"
+DUMMY_ACTION = pathlib.Path(__file__).parent / "runcards" / "dummy_action.yml"
 
 
 def test_fit_command(tmp_path):
