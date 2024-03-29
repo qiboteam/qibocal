@@ -357,17 +357,15 @@ actions:
 #       niter: 2
 #       nshots: 50
 #       uncertainties: None
-#       n_bootstrap: 0
 
 
-#   - id: standard rb bootstrap
+#   - id: standard rb
 #     operation: standard_rb
 #     targets: [1]
 #     parameters:
 #       depths: [1, 2, 3, 5]
 #       niter: 5
 #       nshots: 50
-#       n_bootstrap: 10
 #       noise_model: PauliErrorOnAll
 
 
@@ -379,7 +377,6 @@ actions:
 #       niter: 5
 #       nshots: 50
 #       uncertainties: std
-#       n_bootstrap: 10
 #       noise_model: PauliErrorOnX
 #       noise_params: [0.01, 0.01, 0.01]
 
