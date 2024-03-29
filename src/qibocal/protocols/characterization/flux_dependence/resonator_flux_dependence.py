@@ -79,7 +79,7 @@ class ResonatorFluxParameters(Parameters):
 
     @property
     def has_flux_params(self):
-        """True if both biasflux_amplitude_width_width and flux_amplitude_step are set."""
+        """True if both all flux amplitude parameters are set."""
         return (
             self.flux_amplitude_start is not None
             and self.flux_amplitude_end is not None
