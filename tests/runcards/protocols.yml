@@ -519,6 +519,18 @@ actions:
       freq_step: 100_000
       nshots: 10
 
+  - id: standard rb percentile
+    operation: standard_rb
+    parameters:
+      depths:
+        start: 1
+        stop: 10
+        step: 2
+      niter: 2
+      uncertainties: 95
+      nshots: 50
+
+
   - id: standard rb no error
     operation: standard_rb
     parameters:
