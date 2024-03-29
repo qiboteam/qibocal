@@ -13,8 +13,8 @@ actions:
   - id: resonator high power high amplitude
     operation: resonator_spectroscopy
     parameters:
-      freq_width: 10_000_000 # 20_000_000
-      freq_step: 100_000 # 500_00
+      freq_width: 10_000_000
+      freq_step: 100_000
       amplitude: 0.4
       power_level: high
       nshots: 10
@@ -518,6 +518,18 @@ actions:
       freq_step: 100_000
       nshots: 10
 
+  - id: standard rb percentile
+    operation: standard_rb
+    parameters:
+      depths:
+        start: 1
+        stop: 10
+        step: 2
+      niter: 2
+      uncertainties: 95
+      nshots: 50
+
+
   - id: standard rb no error
     operation: standard_rb
     parameters:
@@ -527,8 +539,6 @@ actions:
         step: 2
       niter: 2
       nshots: 50
-      uncertainties: None
-      n_bootstrap: 0
 
   - id: standard rb unrolling
     operation: standard_rb
@@ -540,18 +550,15 @@ actions:
       niter: 2
       nshots: 50
       unrolling: True
-      uncertainties: None
-      n_bootstrap: 0
 
-  - id: standard rb bootstrap
+
+  - id: standard rb
     operation: standard_rb
     targets: [1]
     parameters:
       depths: [1, 2, 3, 5]
       niter: 5
       nshots: 50
-      n_bootstrap: 10
-      noise_model: PauliErrorOnAll
 
   - id: chevron id
     operation: chevron
@@ -590,18 +597,6 @@ actions:
       native_gate: "iSWAP"
       dt: 0
       parking: False
-
-  - id: standard rb inhomogeneous
-    operation: standard_rb
-    targets: [0, 1, 3]
-    parameters:
-      depths: [1, 3, 3, 5]
-      niter: 5
-      nshots: 50
-      uncertainties: std
-      n_bootstrap: 10
-      noise_model: PauliErrorOnX
-      noise_params: [0.01, 0.01, 0.01]
 
   - id : resonator_frequency
     operation: resonator_frequency

@@ -9,7 +9,6 @@ from qibocal.protocols.characterization.randomized_benchmarking import (
     noisemodels,
 )
 from qibocal.protocols.characterization.randomized_benchmarking.utils import (
-    extract_from_data,
     number_to_str,
     random_clifford,
 )
@@ -182,20 +181,4 @@ def test_number_to_str(value):
     assert number_to_str(value, [0.203, 0.001]) == f"{value:.4f} +0.0010 / -0.2030"
     assert (
         number_to_str(value, [float("inf"), float("inf")]) == f"{value:.3f} \u00B1 inf"
-    )
-
-
-def test_extract_from_data():
-    data = [
-        {"group": 1, "output": 3},
-        {"group": 1, "output": 4},
-        {"group": 2, "output": 5},
-    ]
-    assert np.allclose(extract_from_data(data, "output"), [3, 4, 5])
-    assert extract_from_data(data, "output", agg_type="count") == 3
-    assert np.allclose(
-        extract_from_data(data, "output", "group"), ([1, 1, 2], [3, 4, 5])
-    )
-    assert np.allclose(
-        extract_from_data(data, "output", "group", "count"), ([1, 2], [2, 1])
     )

@@ -1,0 +1,39 @@
+backend: numpy
+
+qubits: [0,1]
+
+actions:
+
+
+  - id: standard rb no error
+    priority: 0
+    operation: standard_rb
+    parameters:
+      depths:
+        start: 1
+        stop: 10
+        step: 2
+      niter: 2
+      nshots: 50
+
+  - id: standard rb unrolling
+    priority: 0
+    operation: standard_rb
+    parameters:
+      depths:
+        start: 1
+        stop: 10
+        step: 2
+      niter: 2
+      nshots: 50
+      unrolling: True
+      noise_model: PauliErrorOnAll
+
+  - id: standard rb
+    priority: 0
+    operation: standard_rb
+    qubits: [1]
+    parameters:
+      depths: [1, 2, 3, 5]
+      niter: 5
+      nshots: 50
