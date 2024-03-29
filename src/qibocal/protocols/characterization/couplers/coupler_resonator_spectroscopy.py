@@ -43,9 +43,11 @@ def _acquisition(
     ro_pulses = {}
     couplers = []
     for i, pair in enumerate(targets):
-        qubit = platform.qubits[params.measured_qubits[i]].name
-        # TODO: Qubit pair patch
         ordered_pair = order_pair(pair, platform.qubits)
+        if params.measured_qubits is None:
+            measured_qubit = ordered_pair[0]
+
+        qubit = platform.qubits[measured_qubit].name
         coupler = platform.pairs[tuple(sorted(ordered_pair))].coupler
         couplers.append(coupler)
         # TODO: May measure both qubits on the pair
