@@ -63,7 +63,6 @@ actions:
       nshots: 1000
 
 
-
   - id: resonator spectroscopy low power
     operation: resonator_spectroscopy
     parameters:

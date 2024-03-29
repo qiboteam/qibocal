@@ -1,4 +1,4 @@
-platform: dummy
+platform: dummy_couplers
 
 targets: [0,1]
 
