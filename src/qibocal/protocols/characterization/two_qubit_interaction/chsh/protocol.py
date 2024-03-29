@@ -1,6 +1,8 @@
 """Protocol for CHSH experiment using both circuits and pulses."""
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -28,6 +30,10 @@ CLASSICAL_BOUND = 2
 """Classical limit of CHSH,"""
 QUANTUM_BOUND = 2 * np.sqrt(2)
 """Quantum limit of CHSH."""
+
+
+MITIGATION_MATRIX_FILE = "mitigation_matrix"
+"""File where readout mitigation matrix is stored."""
 
 
 @dataclass
@@ -64,6 +70,29 @@ class CHSHData(Data):
         default_factory=dict
     )
     """Mitigation matrix computed using the readout_mitigation_matrix protocol."""
+
+    def save(self, path: Path):
+        """Saving data including mitigation matrix."""
+
+        np.savez(
+            path / f"{MITIGATION_MATRIX_FILE}.npz",
+            **{
+                json.dumps((control, target)): self.mitigation_matrix[control, target]
+                for control, target, _, _, _ in self.data
+            },
+        )
+        super().save(path=path)
+
+    @classmethod
+    def load(cls, path: Path):
+        """Custom loading to acco   modate mitigation matrix"""
+        instance = super().load(path=path)
+        # load readout mitigation matrix
+        mitigation_matrix = super().load_data(
+            path=path, filename=MITIGATION_MATRIX_FILE
+        )
+        instance.mitigation_matrix = mitigation_matrix
+        return instance
 
     def register_basis(self, pair, bell_state, basis, frequencies):
         """Store output for single qubit."""
