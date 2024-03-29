@@ -227,7 +227,7 @@ def _acquisition(
                 )
                 sweeper = Sweeper(
                     Parameter.relative_phase,
-                    theta - data.vphases[pair][target_q],
+                    theta - data.vphases[ord_pair][target_q],
                     pulses=[theta_pulse],
                     type=SweeperType.ABSOLUTE,
                 )
@@ -303,27 +303,30 @@ def _fit(
             except Exception as e:
                 log.warning(f"CZ fit failed for pair ({target, control}) due to {e}.")
 
-        for target_q, control_q in (
-            pair,
-            list(pair)[::-1],
-        ):
-            cz_angle[target_q, control_q] = abs(
-                fitted_parameters[target_q, control_q, "X"][2]
-                - fitted_parameters[target_q, control_q, "I"][2]
-            )
-            virtual_phase[pair][target_q] = fitted_parameters[target_q, control_q, "I"][
-                2
-            ]
-
-            # leakage estimate: L = m /2
-            # See NZ paper from Di Carlo
-            # approximation which does not need qutrits
-            leakage[pair][control_q] = 0.5 * float(
-                np.mean(
-                    data[pair][target_q, control_q, "X"].control
-                    - data[pair][target_q, control_q, "I"].control
+        try:
+            for target_q, control_q in (
+                pair,
+                list(pair)[::-1],
+            ):
+                cz_angle[target_q, control_q] = abs(
+                    fitted_parameters[target_q, control_q, "X"][2]
+                    - fitted_parameters[target_q, control_q, "I"][2]
                 )
-            )
+                virtual_phase[pair][target_q] = fitted_parameters[
+                    target_q, control_q, "I"
+                ][2]
+
+                # leakage estimate: L = m /2
+                # See NZ paper from Di Carlo
+                # approximation which does not need qutrits
+                leakage[pair][control_q] = 0.5 * float(
+                    np.mean(
+                        data[pair][target_q, control_q, "X"].control
+                        - data[pair][target_q, control_q, "I"].control
+                    )
+                )
+        except KeyError:
+            pass  # exception covered above
 
     return CZVirtualZResults(
         cz_angle=cz_angle,

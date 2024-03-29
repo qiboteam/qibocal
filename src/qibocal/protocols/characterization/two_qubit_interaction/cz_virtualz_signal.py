@@ -91,14 +91,14 @@ def _acquisition(
                 )
                 data.vphases[ord_pair] = dict(virtual_z_phase)
                 theta = np.arange(
-                    virtual_z_phase[target_q] + params.theta_start,
-                    virtual_z_phase[target_q] + params.theta_end,
+                    params.theta_start,
+                    params.theta_end,
                     params.theta_step,
                     dtype=float,
                 )
                 sweeper = Sweeper(
                     Parameter.relative_phase,
-                    theta,
+                    theta - data.vphases[ord_pair][target_q],
                     pulses=[theta_pulse],
                     type=SweeperType.ABSOLUTE,
                 )
