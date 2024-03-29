@@ -140,7 +140,6 @@ def _acquisition(
             - ada_boost
             - gaussian_process
             - naive_bayes
-            - nn
             - qubit_fit
             - random_forest
             - rbf_svm
@@ -154,7 +153,6 @@ def _acquisition(
         .. code-block:: yaml
 
             - id: single_shot_classification_1
-                priority: 0
                 operation: single_shot_classification
                 parameters:
                 nshots: 5000

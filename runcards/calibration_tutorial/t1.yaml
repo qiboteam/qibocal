@@ -5,7 +5,7 @@ qubits: [0]
 actions:
 
   - id: t1
-    priority: 0
+
     operation: t1
     parameters:
         delay_before_readout_end: 200000

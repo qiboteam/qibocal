@@ -2,7 +2,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     systems.url = "github:nix-systems/default";
-    devenv.url = "github:cachix/devenv";
+    devenv = {
+      url = "github:cachix/devenv";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     nixpkgs-python = {
       url = "github:cachix/nixpkgs-python";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -37,7 +40,7 @@
 
           modules = [
             {
-              packages = with pkgs; [pre-commit poethepoet stdenv.cc.cc.lib];
+              packages = with pkgs; [pre-commit poethepoet];
 
               languages.python = {
                 enable = true;
