@@ -1,6 +1,8 @@
+platform: dummy
+
 backend: numpy
 
-qubits: [0,1]
+targets: [0,1]
 
 actions:
 
