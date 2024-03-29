@@ -29,15 +29,12 @@ def fit(input_path, update, output_path, force):
 
     if output_path is not None:
         if output_path.exists():
-            if force:
-                # overwrite output_path
-                log.warning(f"Deleting previous directory {output_path}.")
-                shutil.rmtree(os.path.join(os.getcwd(), output_path))
-                path = shutil.copytree(input_path, output_path)
-            else:
+            if force is False:
                 raise_error(RuntimeError, f"Directory {output_path} already exists.")
-        else:
-            path = shutil.copytree(input_path, output_path)
+            # overwrite output_path
+            log.warning(f"Deleting previous directory {output_path}.")
+            shutil.rmtree(pathlib.Path.cwd() / output_path)
+        path = shutil.copytree(input_path, output_path)
     else:
         if len(list(input_path.glob(f"**/{RESULTSFILE}.json"))) > 0:
             if force:
