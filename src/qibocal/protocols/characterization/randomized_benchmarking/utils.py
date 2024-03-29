@@ -83,7 +83,7 @@ def random_clifford(qubits, seed=None):
         SINGLE_QUBIT_CLIFFORDS[p](q) for p, q in zip(random_indexes, qubits)
     ]
 
-    return clifford_gates
+    return clifford_gates, random_indexes
 
 
 def number_to_str(

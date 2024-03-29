@@ -64,6 +64,7 @@ class StandardRBParameters(Parameters):
 RBType = np.dtype(
     [
         ("samples", np.int32),
+        ("random_indexes", np.int32),
     ]
 )
 """Custom dtype for RB."""
@@ -145,14 +146,14 @@ def random_circuits(
     circuits = []
     for _ in range(niter):
         for target in targets:
-            circuit = layer_circuit(layer_gen, depth, target, seed)
+            circuit, random_indexes = layer_circuit(layer_gen, depth, target, seed)
             add_inverse_layer(circuit)
             add_measurement_layer(circuit)
             if noise_model is not None:
                 circuit = noise_model.apply(circuit)
             circuits.append(circuit)
 
-    return circuits
+    return circuits, random_indexes
 
 
 def _acquisition(
@@ -202,7 +203,7 @@ def _acquisition(
     qubits_ids = targets
     for depth in params.depths:
         # TODO: This does not generate multi qubit circuits
-        circuits_depth = random_circuits(
+        circuits_depth, random_indexes = random_circuits(
             depth, qubits_ids, params.niter, params.seed, noise_model
         )
         circuits.extend(circuits_depth)
@@ -226,6 +227,7 @@ def _acquisition(
                 (qubit_id, depth),
                 dict(
                     samples=samples[index[0] : index[1]][:, nqubit],
+                    random_indexes=random_indexes,  # Plus some indexes
                 ),
             )
 

@@ -24,7 +24,9 @@ def layer_circuit(layer_gen: Callable, depth: int, qubit, seed) -> Circuit:
     qubits_str = [str(qubit)]
     for _ in range(depth):
         # Generate a layer.
-        new_layer = layer_gen(1, seed)  # TODO: find better implementation
+        new_layer, random_indexes = layer_gen(
+            1, seed
+        )  # TODO: find better implementation
         # Ensure new_layer is a circuit
         if isinstance(new_layer, Gate):
             new_circuit = Circuit(1, wire_names=qubits_str)
@@ -43,7 +45,7 @@ def layer_circuit(layer_gen: Callable, depth: int, qubit, seed) -> Circuit:
         if full_circuit is None:  # instantiate in first loop
             full_circuit = Circuit(new_circuit.nqubits, wire_names=qubits_str)
         full_circuit = full_circuit + new_circuit
-    return full_circuit
+    return full_circuit, random_indexes
 
 
 def add_inverse_layer(circuit: Circuit, single_qubit=True):
