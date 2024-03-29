@@ -55,7 +55,13 @@ from .signal_experiments.calibrate_state_discrimination import (
     calibrate_state_discrimination,
 )
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
-from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtualz
+from .two_qubit_interaction import (
+    chevron,
+    chsh_circuits,
+    chsh_pulses,
+    cryoscope,
+    cz_virtualz,
+)
 
 
 class Operation(Enum):
@@ -116,3 +122,4 @@ class Operation(Enum):
     coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
     flipping_signal = flipping_signal
     calibrate_state_discrimination = calibrate_state_discrimination
+    cryoscope = cryoscope
