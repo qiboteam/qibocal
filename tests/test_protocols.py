@@ -55,30 +55,26 @@ def idfn(val):
 def test_auto_command(runcard, update, tmp_path):
     """Test auto command pipeline."""
     runcard = runcard[0]
-    if isinstance(runcard["platform"], str):
-        runcard["platform"] = [runcard["platform"]]
-    for platform in runcard["platform"]:
-        runcard["platform"] = platform
-        protocol = runcard["actions"][0]["id"]
+    protocol = runcard["actions"][0]["id"]
 
-        (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
-        runner = CliRunner()
-        results = runner.invoke(
-            command,
-            [
-                "auto",
-                str(tmp_path / SINGLE_ACTION_RUNCARD),
-                "-o",
-                f"{str(tmp_path)}",
-                "-f",
-                update,
-            ],
-        )
-        assert not results.exception
-        assert results.exit_code == 0
-        if update == "--update" and runcard["backend"] == "qibolab":
-            assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
-            assert (tmp_path / "data" / f"{protocol}_0" / PLATFORM_DIR).is_dir()
+    (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
+    runner = CliRunner()
+    results = runner.invoke(
+        command,
+        [
+            "auto",
+            str(tmp_path / SINGLE_ACTION_RUNCARD),
+            "-o",
+            f"{str(tmp_path)}",
+            "-f",
+            update,
+        ],
+    )
+    assert not results.exception
+    assert results.exit_code == 0
+    if update == "--update" and runcard["backend"] == "qibolab":
+        assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
+        assert (tmp_path / "data" / f"{protocol}_0" / PLATFORM_DIR).is_dir()
 
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
