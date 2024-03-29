@@ -569,16 +569,30 @@ actions:
       dt: 0
       nshots: 100
 
-  - id: tune landscape
-    operation: cz_virtualz
+  - id: CZ tune landscape
+    operation: native_gate_virtualz
     targets: [[0, 2],[1,2],[3,2]]
     parameters:
       theta_start: 0
       theta_end: 180
       theta_step: 10
       flux_pulse_amplitude: 0.5
+      native_gate: "CZ"
       dt: 0
       parking: True
+
+  - id: iSWAP tune landscape
+    priority: 0
+    operation: native_gate_virtualz
+    targets: [[0, 2],[1,2],[3,2]]
+    parameters:
+      theta_start: 0
+      theta_end: 180
+      theta_step: 10
+      flux_pulse_amplitude: 0.5
+      native_gate: "iSWAP"
+      dt: 0
+      parking: False
 
   - id : resonator_frequency
     operation: resonator_frequency
