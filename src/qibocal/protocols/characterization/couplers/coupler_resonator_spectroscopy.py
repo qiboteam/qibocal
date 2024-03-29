@@ -183,26 +183,6 @@ def _plot(
                 text="Phase [rad] Qubit" + str(qubit),
             )
 
-            # if data.flux_pulses:
-            #     bias_flux_unit = "a.u."
-            # else:
-            #     bias_flux_unit = "V"
-
-            # if fit is not None:
-            #     fitting_report = table_html(
-            #         table_dict(
-            #             target,
-            #             [
-            #                 f"Coupler activation [{bias_flux_unit}]",
-            #                 f"Coupler sweetspot [{bias_flux_unit}]",
-            #             ],
-            #             [
-            #                 np.round(fit.pulse_amp[target], 4),
-            #                 np.round(fit.sweetspot[target], 4),
-            #             ],
-            #         )
-            #     )
-            # return [fig], fitting_report
     return [fig], ""
 
 
