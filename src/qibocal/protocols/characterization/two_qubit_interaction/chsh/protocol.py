@@ -24,6 +24,11 @@ from .utils import READOUT_BASIS, compute_chsh
 
 COMPUTATIONAL_BASIS = ["00", "01", "10", "11"]
 
+CLASSICAL_BOUND = 2
+"""Classical limit of CHSH,"""
+QUANTUM_BOUND = 2 * np.sqrt(2)
+"""Quantum limit of CHSH."""
+
 
 @dataclass
 class CHSHParameters(Parameters):
@@ -229,7 +234,7 @@ def _plot(data: CHSHData, fit: CHSHResults, target: QubitPairId):
             go.Scatter(
                 mode="lines",
                 x=data.thetas,
-                y=[2] * len(data.thetas),
+                y=[+CLASSICAL_BOUND] * len(data.thetas),
                 line_color="gray",
                 name="Classical limit",
                 line_dash="dash",
@@ -241,7 +246,7 @@ def _plot(data: CHSHData, fit: CHSHResults, target: QubitPairId):
             go.Scatter(
                 mode="lines",
                 x=data.thetas,
-                y=[-2] * len(data.thetas),
+                y=[-CLASSICAL_BOUND] * len(data.thetas),
                 line_color="gray",
                 name="Classical limit",
                 legendgroup="classic",
@@ -254,7 +259,7 @@ def _plot(data: CHSHData, fit: CHSHResults, target: QubitPairId):
             go.Scatter(
                 mode="lines",
                 x=data.thetas,
-                y=[+2 * np.sqrt(2)] * len(data.thetas),
+                y=[+QUANTUM_BOUND] * len(data.thetas),
                 line_color="gray",
                 name="Quantum limit",
                 legendgroup="quantum",
@@ -265,7 +270,7 @@ def _plot(data: CHSHData, fit: CHSHResults, target: QubitPairId):
             go.Scatter(
                 mode="lines",
                 x=data.thetas,
-                y=[-2 * np.sqrt(2)] * len(data.thetas),
+                y=[-QUANTUM_BOUND] * len(data.thetas),
                 line_color="gray",
                 name="Quantum limit",
                 legendgroup="quantum",
