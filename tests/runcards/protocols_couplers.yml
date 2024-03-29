@@ -1,4 +1,4 @@
-platform: dummy
+platform: dummy_couplers
 
 targets: [0,1]
 
@@ -63,6 +63,7 @@ actions:
       nshots: 1000
 
 
+
   - id: resonator spectroscopy low power
     operation: resonator_spectroscopy
     parameters:
@@ -72,6 +73,20 @@ actions:
       power_level: low
       nshots: 10
 
+  - id: coupler_resonator_spectroscopy
+    operation: coupler_resonator_spectroscopy
+    targets: [[1, 2], [0, 2]]
+    parameters:
+      bias_width: 1
+      bias_step: 0.1
+      freq_width: 10_000_000
+      freq_step: 1_000_000
+      measured_qubits: [1, 0]
+      amplitude: .3
+      nshots: 10
+      relaxation_time: 3_000
+
+
   - id: qubit spectroscopy
     operation: qubit_spectroscopy
     parameters:
@@ -80,6 +95,20 @@ actions:
       freq_width: 2_000_000
       freq_step: 500_000
       nshots: 10
+
+  - id: coupler qubit spectroscopy
+    operation: coupler_qubit_spectroscopy
+    targets: [[1, 2], [0, 2]]
+    parameters:
+      bias_width: 1
+      bias_step: 0.1
+      freq_width: 10_000_000
+      freq_step: 1_000_000
+      measured_qubits: [1, 0]
+      amplitude: .1
+      nshots: 10
+      relaxation_time: 3_000
+
 
   - id: qubit spectroscopy ef
     operation: qubit_spectroscopy_ef
@@ -93,49 +122,13 @@ actions:
       nshots: 10
 
 
-  - id: resonator flux dependence bias
+  - id: resonator flux dependence
     operation: resonator_flux
     parameters:
       freq_width: 10_000_000
       freq_step: 500_000
       bias_width: 0.8
       bias_step:  0.1
-      nshots: 10
-
-
-  - id: resonator flux dependence flux single value
-    priority: 0
-    operation: resonator_flux
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 500_000
-      flux_amplitude_start: -0.4
-      flux_amplitude_end: 0.4
-      flux_amplitude_step:  0.1
-      nshots: 10
-
-  - id: resonator flux dependence flux single value int
-    priority: 0
-    operation: resonator_flux
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 500_000
-      flux_amplitude_start: 0
-      flux_amplitude_end: 0.4
-      flux_amplitude_step:  0.1
-      nshots: 10
-
-
-  - id: resonator flux dependence flux several values
-    priority: 0
-    operation: resonator_flux
-    targets: [0, 1]
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 500_000
-      flux_amplitude_start: [-0.4, 0]
-      flux_amplitude_end: [0.4, 0.4]
-      flux_amplitude_step:  [0.1, 0.1]
       nshots: 10
 
 
@@ -150,19 +143,6 @@ actions:
       nshots: 10
       relaxation_time: 100
 
-
-  - id: resonator flux crosstalk # using ``flux_qubits``
-    priority: 0
-    operation: resonator_crosstalk
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 500_000
-      flux_amplitude_start: -0.4
-      flux_amplitude_end: 0.4
-      flux_amplitude_step:  0.1
-      flux_qubits: [0, 1, 2, 3]
-      nshots: 10
-      relaxation_time: 100
 
 
   - id: qubit flux dependence #"01" transition
@@ -176,22 +156,6 @@ actions:
       nshots: 1024
       relaxation_time: 2000
       transition: "01"
-
-
-  - id: qubit flux dependence #"01" transition
-    priority: 0
-    operation: qubit_flux
-    parameters:
-      freq_width: 150_000_000
-      freq_step: 500_000
-      flux_amplitude_start: -0.1
-      flux_amplitude_end: 0.1
-      flux_amplitude_step:  0.005
-      drive_amplitude: 0.5
-      nshots: 1024
-      relaxation_time: 2000
-      transition: "01"
-
 
   - id: qubit flux dependence 02 #"02" transition
     operation: qubit_flux
@@ -226,21 +190,6 @@ actions:
       freq_step: 500_000
       bias_width: 0.2
       bias_step:  0.005
-      drive_amplitude: 0.5
-      flux_qubits: [1, 2]
-      nshots: 1024
-      relaxation_time: 2000
-
-
-  - id: qubit flux crosstalk # using ``flux_qubits``
-    priority: 0
-    operation: qubit_crosstalk
-    parameters:
-      freq_width: 150_000_000
-      freq_step: 500_000
-      flux_amplitude_start: -0.1
-      flux_amplitude_end: 0.1
-      flux_amplitude_step:  0.005
       drive_amplitude: 0.5
       flux_qubits: [1, 2]
       nshots: 1024
@@ -595,16 +544,6 @@ actions:
       uncertainties: None
       n_bootstrap: 0
 
-  - id: standard rb bootstrap
-    operation: standard_rb
-    targets: [1]
-    parameters:
-      depths: [1, 2, 3, 5]
-      niter: 5
-      nshots: 50
-      n_bootstrap: 10
-      noise_model: PauliErrorOnAll
-
   - id: chevron id
     operation: chevron
     targets: [[0, 2],[1,2]]
@@ -628,18 +567,6 @@ actions:
       flux_pulse_amplitude: 0.5
       dt: 0
       parking: True
-
-  - id: standard rb inhomogeneous
-    operation: standard_rb
-    targets: [0, 1, 3]
-    parameters:
-      depths: [1, 3, 3, 5]
-      niter: 5
-      nshots: 50
-      uncertainties: std
-      n_bootstrap: 10
-      noise_model: PauliErrorOnX
-      noise_params: [0.01, 0.01, 0.01]
 
   - id : resonator_frequency
     operation: resonator_frequency
