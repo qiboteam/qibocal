@@ -20,29 +20,34 @@ from qibocal.protocols.characterization.rabi.utils import (
 )
 
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/protocols.yml"
-PLATFORM = create_platform("dummy_couplers")
+PATH_TO_RUNCARD_COUPLERS = (
+    pathlib.Path(__file__).parent / "runcards/protocols_couplers.yml"
+)
+PLATFORM = create_platform("dummy")
 SINGLE_ACTION_RUNCARD = "action.yml"
 
 
 def generate_runcard_single_protocol():
-    actions = yaml.safe_load(PATH_TO_RUNCARD.read_text(encoding="utf-8"))
-    with open(PATH_TO_RUNCARD) as file:
-        actions = yaml.safe_load(file)
-    for action in actions["actions"]:
-        card = {"actions": [action], "targets": list(PLATFORM.qubits)}
-        yield card
+    for runcard in [PATH_TO_RUNCARD_COUPLERS, PATH_TO_RUNCARD]:
+        actions = yaml.safe_load(runcard.read_text(encoding="utf-8"))
+        for action in actions["actions"]:
+            card = {
+                "platform": actions["platform"],
+                "actions": [action],
+                "targets": list(PLATFORM.qubits),
+            }
+            yield card
 
 
 def idfn(val):
     """Helper function to indentify the protocols when testing."""
-    return val["actions"][0]["id"]
+    return f'{val["platform"]}_{val["actions"][0]["id"]}'
 
 
-@pytest.mark.parametrize("platform", ["dummy_couplers"])
 @pytest.mark.parametrize("backend", ["qibolab"])
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_auto_command(runcard, update, platform, backend, tmp_path):
+def test_auto_command(runcard, update, backend, tmp_path):
     """Test auto command pipeline."""
 
     protocol = runcard["actions"][0]["id"]
@@ -58,8 +63,6 @@ def test_auto_command(runcard, update, platform, backend, tmp_path):
             "-f",
             "--backend",
             backend,
-            "--platform",
-            platform,
             update,
         ],
     )
@@ -70,10 +73,9 @@ def test_auto_command(runcard, update, platform, backend, tmp_path):
         assert (tmp_path / "data" / f"{protocol}_0" / PLATFORM_DIR).is_dir()
 
 
-@pytest.mark.parametrize("platform", ["dummy_couplers"])
 @pytest.mark.parametrize("backend", ["qibolab"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_acquire_command(runcard, backend, platform, tmp_path):
+def test_acquire_command(runcard, backend, tmp_path):
     """Test acquire command pipeline and report generated."""
     protocol = runcard["actions"][0]["id"]
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
@@ -90,8 +92,6 @@ def test_acquire_command(runcard, backend, platform, tmp_path):
             "-f",
             "--backend",
             backend,
-            "--platform",
-            platform,
         ],
     )
     assert not results.exception
