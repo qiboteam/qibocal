@@ -33,23 +33,6 @@ def exp2_func(x: np.ndarray, A1: float, A2: float, f1: float, f2: float) -> np.n
     return A1 * f1**x + A2 * f2**x
 
 
-def expn_func(x: Union[np.ndarray, list], *args) -> np.ndarray:
-    """Compute the sum of exponentials :math:`\\sum A_i\\cdot f_i^x`
-
-    Args:
-        x (np.ndarray | list): list of exponents.
-        *args: Parameters of type `float` in the order
-            :math:`A_1`, :math:`A_2`, :math:`f_1`, :math:`f_2`,...
-
-    Returns:
-        The resulting sum of exponentials.
-    """
-    A_list = np.array(args[: len(args) // 2], dtype=complex)
-    f_list = np.array(args[len(args) // 2 :], dtype=complex)
-    sum_of_exponentials = np.vectorize(lambda m: np.sum(A_list * (f_list**m)))
-    return sum_of_exponentials(np.real(x))
-
-
 def esprit(
     xdata: np.ndarray,
     ydata: np.ndarray,

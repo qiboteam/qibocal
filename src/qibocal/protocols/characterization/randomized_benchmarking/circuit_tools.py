@@ -19,8 +19,6 @@ def layer_circuit(layer_gen: Callable, depth: int, qubit, seed) -> Circuit:
         Circuit: with `depth` many layers.
     """
 
-    if not isinstance(depth, int) or depth <= 0:
-        raise_error(ValueError, "Depth must be type int and positive.")
     full_circuit = None
     # Build each layer, there will be depth many in the final circuit.
     qubits_str = [str(qubit)]
