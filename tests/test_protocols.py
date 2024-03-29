@@ -22,9 +22,9 @@ from qibocal.protocols.characterization.rabi.utils import (
     rabi_length_function,
 )
 
-PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/protocols.yml"
+PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards" / "protocols.yml"
 PATH_TO_RUNCARD_COUPLERS = (
-    pathlib.Path(__file__).parent / "runcards/protocols_couplers.yml"
+    pathlib.Path(__file__).parent / "runcards" / "protocols_couplers.yml"
 )
 PLATFORM = create_platform("dummy")
 SINGLE_ACTION_RUNCARD = "action.yml"
