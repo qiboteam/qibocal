@@ -5,7 +5,6 @@ import pathlib
 import pytest
 import yaml
 from click.testing import CliRunner
-from qibolab import create_platform
 
 from qibocal.auto.task import PLATFORM_DIR
 from qibocal.cli import utils
