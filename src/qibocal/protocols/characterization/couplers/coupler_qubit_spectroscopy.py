@@ -63,6 +63,11 @@ def _acquisition(
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
+    if params.measured_qubits is None:
+        params.measured_qubits = [
+            order_pair(pair, platform.qubits)[0] for pair in targets
+        ]
+
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
         -params.freq_width // 2, params.freq_width // 2, params.freq_step
