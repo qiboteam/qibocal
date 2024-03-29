@@ -27,6 +27,7 @@ actions:
       niter: 2
       nshots: 50
       unrolling: True
+      noise_model: PauliErrorOnAll
 
   - id: standard rb
     priority: 0
