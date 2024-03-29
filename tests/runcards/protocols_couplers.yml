@@ -554,8 +554,24 @@ actions:
       duration_min: 10
       duration_max: 50
       duration_step: 1
-      nshots: 1000
+      nshots: 100
       parking: True
+
+
+  - id: coupler chevron
+    priority: 0
+    operation: coupler_chevron
+    targets: [[1, 2]]
+    parameters:
+      amplitude_min: 0.4
+      amplitude_max: 0.0
+      amplitude_step: 0.1
+      duration_min: 50
+      duration_max: 100
+      duration_step: 10
+      native_gate: "CZ"
+      dt: 0
+      nshots: 100
 
   - id: tune landscape
     operation: cz_virtualz
