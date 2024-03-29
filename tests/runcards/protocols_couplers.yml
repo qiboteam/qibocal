@@ -1,4 +1,4 @@
-platform: dummy
+platform: dummy_couplers
 
 targets: [0,1]
 
@@ -13,8 +13,8 @@ actions:
   - id: resonator high power high amplitude
     operation: resonator_spectroscopy
     parameters:
-      freq_width: 10_000_000
-      freq_step: 100_000
+      freq_width: 10_000_000 # 20_000_000
+      freq_step: 100_000 # 500_00
       amplitude: 0.4
       power_level: high
       nshots: 10
@@ -63,6 +63,7 @@ actions:
       nshots: 1000
 
 
+
   - id: resonator spectroscopy low power
     operation: resonator_spectroscopy
     parameters:
@@ -72,6 +73,20 @@ actions:
       power_level: low
       nshots: 10
 
+  - id: coupler_resonator_spectroscopy
+    operation: coupler_resonator_spectroscopy
+    targets: [[1, 2], [0, 2]]
+    parameters:
+      bias_width: 1
+      bias_step: 0.1
+      freq_width: 10_000_000
+      freq_step: 1_000_000
+      measured_qubits: [1, 0]
+      amplitude: .3
+      nshots: 10
+      relaxation_time: 3_000
+
+
   - id: qubit spectroscopy
     operation: qubit_spectroscopy
     parameters:
@@ -80,6 +95,20 @@ actions:
       freq_width: 2_000_000
       freq_step: 500_000
       nshots: 10
+
+  - id: coupler qubit spectroscopy
+    operation: coupler_qubit_spectroscopy
+    targets: [[1, 2], [0, 2]]
+    parameters:
+      bias_width: 1
+      bias_step: 0.1
+      freq_width: 10_000_000
+      freq_step: 1_000_000
+      measured_qubits: [1, 0]
+      amplitude: .1
+      nshots: 10
+      relaxation_time: 3_000
+
 
   - id: qubit spectroscopy ef
     operation: qubit_spectroscopy_ef
@@ -490,18 +519,6 @@ actions:
       freq_step: 100_000
       nshots: 10
 
-  - id: standard rb percentile
-    operation: standard_rb
-    parameters:
-      depths:
-        start: 1
-        stop: 10
-        step: 2
-      niter: 2
-      uncertainties: 95
-      nshots: 50
-
-
   - id: standard rb no error
     operation: standard_rb
     parameters:
@@ -511,6 +528,8 @@ actions:
         step: 2
       niter: 2
       nshots: 50
+      uncertainties: None
+      n_bootstrap: 0
 
   - id: standard rb unrolling
     operation: standard_rb
@@ -522,15 +541,8 @@ actions:
       niter: 2
       nshots: 50
       unrolling: True
-
-
-  - id: standard rb
-    operation: standard_rb
-    targets: [1]
-    parameters:
-      depths: [1, 2, 3, 5]
-      niter: 5
-      nshots: 50
+      uncertainties: None
+      n_bootstrap: 0
 
   - id: chevron id
     operation: chevron

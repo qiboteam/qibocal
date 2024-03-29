@@ -22,7 +22,7 @@ from qibocal.protocols.characterization.rabi.utils import (
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/"
 PLATFORM = create_platform("dummy")
 SINGLE_ACTION_RUNCARD = "action.yml"
-RUNCARDS_NAMES = ["protocols.yml", "rb_noise_protocols.yml"]
+RUNCARDS_NAMES = ["protocols.yml", "rb_noise_protocols.yml", "protocols_couplers.yml"]
 
 
 def generate_runcard_single_protocol():
