@@ -29,24 +29,27 @@ def generate_runcard_single_protocol():
     for runcard_name in RUNCARDS_NAMES:
         complete_path = PATH_TO_RUNCARD / runcard_name
         actions = yaml.safe_load(complete_path.read_text(encoding="utf-8"))
-        if "backend" not in actions:
-            backend = "qibolab"
-        else:
-            backend = actions["backend"]
-        for action in actions["actions"]:
-            card = {
-                "actions": [action],
-                "targets": list(PLATFORM.qubits),
-                "backend": backend,
-            }
-            if "platform" in actions:
-                card["platform"] = actions["platform"]
-            yield (card, runcard_name)
+        if isinstance(actions["platform"], str):
+            actions["platform"] = [actions["platform"]]
+        for platform in actions["platform"]:
+            if "backend" not in actions:
+                backend = "qibolab"
+            else:
+                backend = actions["backend"]
+            for action in actions["actions"]:
+                card = {
+                    "actions": [action],
+                    "targets": list(PLATFORM.qubits),
+                    "backend": backend,
+                }
+                if "platform" in actions:
+                    card["platform"] = platform
+                yield (card, runcard_name)
 
 
 def idfn(val):
     """Helper function to indentify the protocols when testing."""
-    return val[1] + "-" + val[0]["actions"][0]["id"]
+    return val[0]["platform"] + "-" + val[1] + "-" + val[0]["actions"][0]["id"]
 
 
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
@@ -54,25 +57,30 @@ def idfn(val):
 def test_auto_command(runcard, update, tmp_path):
     """Test auto command pipeline."""
     runcard = runcard[0]
-    protocol = runcard["actions"][0]["id"]
-    (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
-    runner = CliRunner()
-    results = runner.invoke(
-        command,
-        [
-            "auto",
-            str(tmp_path / SINGLE_ACTION_RUNCARD),
-            "-o",
-            f"{str(tmp_path)}",
-            "-f",
-            update,
-        ],
-    )
-    assert not results.exception
-    assert results.exit_code == 0
-    if update == "--update" and runcard["backend"] == "qibolab":
-        assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
-        assert (tmp_path / "data" / f"{protocol}_0" / PLATFORM_DIR).is_dir()
+    if isinstance(runcard["platform"], str):
+        runcard["platform"] = [runcard["platform"]]
+    for platform in runcard["platform"]:
+        runcard["platform"] = platform
+        protocol = runcard["actions"][0]["id"]
+
+        (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
+        runner = CliRunner()
+        results = runner.invoke(
+            command,
+            [
+                "auto",
+                str(tmp_path / SINGLE_ACTION_RUNCARD),
+                "-o",
+                f"{str(tmp_path)}",
+                "-f",
+                update,
+            ],
+        )
+        assert not results.exception
+        assert results.exit_code == 0
+        if update == "--update" and runcard["backend"] == "qibolab":
+            assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
+            assert (tmp_path / "data" / f"{protocol}_0" / PLATFORM_DIR).is_dir()
 
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
