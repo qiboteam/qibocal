@@ -5,6 +5,7 @@ import pathlib
 import pytest
 import yaml
 from click.testing import CliRunner
+from qibolab import create_platform
 
 from qibocal.auto.task import PLATFORM_DIR
 from qibocal.cli import utils
@@ -17,7 +18,6 @@ from qibocal.protocols.characterization.rabi.utils import (
     rabi_amplitude_function,
     rabi_length_function,
 )
-from qibolab import create_platform
 
 SINGLE_ACTION_RUNCARD = "action.yml"
 PLATFORM = create_platform("dummy")
