@@ -81,8 +81,8 @@ def _aquisition(
     Perform an iSWAP/CZ experiment between pairs of qubits by changing its frequency.
 
     Args:
-        platform: Platform to use.
         params: Experiment parameters.
+        platform: Platform to use.
         targets (list): List of pairs to use sequentially.
 
     Returns:
