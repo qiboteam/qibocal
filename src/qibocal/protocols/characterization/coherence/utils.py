@@ -3,6 +3,8 @@ from scipy.optimize import curve_fit
 
 from qibocal.config import log
 
+from ..utils import chi2_reduced
+
 CoherenceType = np.dtype(
     [("wait", np.float64), ("signal", np.float64), ("phase", np.float64)]
 )
@@ -88,7 +90,7 @@ def exponential_fit_probability(data):
 
     decay = {}
     fitted_parameters = {}
-    pcovs = {}
+    chi2 = {}
 
     for qubit in qubits:
         times = data[qubit].wait
@@ -120,12 +122,20 @@ def exponential_fit_probability(data):
                 popt[1] * np.exp(x_min * popt[2] / (x_max - x_min)),
                 popt[2] * (x_max - x_min),
             ]
-            pcovs[qubit] = perr.tolist()
             perr = np.sqrt(np.diag(perr))
             fitted_parameters[qubit] = popt
             dec = popt[2]
             decay[qubit] = (dec, perr[2])
+            chi2[qubit] = (
+                chi2_reduced(
+                    data[qubit].prob,
+                    exp_decay(data[qubit].wait, *fitted_parameters[qubit]),
+                    data[qubit].error,
+                ),
+                np.sqrt(2 / len(data[qubit].prob)),
+            )
+
         except Exception as e:
             log.warning(f"Exponential decay fit failed for qubit {qubit} due to {e}")
 
-    return decay, fitted_parameters, pcovs
+    return decay, fitted_parameters, chi2

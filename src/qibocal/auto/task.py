@@ -14,10 +14,11 @@ from ..protocols.characterization import Operation
 from .mode import ExecutionMode
 from .operation import Data, DummyPars, Results, Routine, dummy_operation
 from .runcard import Action, Id, Targets
-from .status import Failure, Normal
 
 MAX_PRIORITY = int(1e9)
 """A number bigger than whatever will be manually typed. But not so insanely big not to fit in a native integer."""
+DEFAULT_NSHOTS = 100
+"""Default number on shots when the platform is not provided."""
 TaskId = tuple[Id, int]
 """Unique identifier for executed tasks."""
 PLATFORM_DIR = "platform"
@@ -55,28 +56,6 @@ class Task:
         return Operation[self.action.operation].value
 
     @property
-    def main(self):
-        """Main node to be executed next."""
-        return self.action.main
-
-    @property
-    def next(self) -> list[Id]:
-        """Node unlocked after the execution of this task."""
-        if self.action.next is None:
-            return []
-        if isinstance(self.action.next, str):
-            return [self.action.next]
-
-        return self.action.next
-
-    @property
-    def priority(self):
-        """Priority level."""
-        if self.action.priority is None:
-            return MAX_PRIORITY
-        return self.action.priority
-
-    @property
     def parameters(self):
         """Inputs parameters for self.operation."""
         return self.operation.parameters_type.load(self.action.parameters)
@@ -106,12 +85,17 @@ class Task:
         completed = Completed(self, folder)
 
         try:
-            if self.parameters.nshots is None:
-                self.action.parameters["nshots"] = platform.settings.nshots
-            if self.parameters.relaxation_time is None:
-                self.action.parameters["relaxation_time"] = (
-                    platform.settings.relaxation_time
-                )
+            if platform is not None:
+                if self.parameters.nshots is None:
+                    self.action.parameters["nshots"] = platform.settings.nshots
+                if self.parameters.relaxation_time is None:
+                    self.action.parameters["relaxation_time"] = (
+                        platform.settings.relaxation_time
+                    )
+            else:
+                if self.parameters.nshots is None:
+                    self.action.parameters["nshots"] = DEFAULT_NSHOTS
+
             operation: Routine = self.operation
             parameters = self.parameters
 
@@ -211,24 +195,3 @@ class Completed:
                     )
             (self.datapath / PLATFORM_DIR).mkdir(parents=True, exist_ok=True)
             dump_platform(platform, self.datapath / PLATFORM_DIR)
-
-    def validate(self) -> tuple[Optional[TaskId], Optional[dict]]:
-        """Check status of completed and handle Failure using handler."""
-        if self.task.action.validator is not None:
-            status = []
-            for target in self.task.targets:
-                # TODO: how to handle multiple targets?
-                # dummy solution for now: take the mode.
-                qubit_status, params = self.task.action.validator.validate(
-                    self.results, target
-                )
-                status.append(qubit_status)
-            output = mode(status)
-            if isinstance(output, Failure):
-                return None, None
-            elif isinstance(output, Normal):
-                return self.task.id, None
-            else:
-                return output, params
-
-        return self.task.id, None

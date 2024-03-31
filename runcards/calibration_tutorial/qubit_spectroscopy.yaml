@@ -4,7 +4,7 @@ qubits: [0]
 
 actions:
   - id: qubit spectroscopy 01
-    priority: 0
+
     operation: qubit_spectroscopy
     parameters:
         drive_amplitude: 0.5

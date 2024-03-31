@@ -16,7 +16,6 @@ presented in :ref:`runcard`, we can use this runcard.
 
     actions:
         - id: resonator high power high amplitude
-          priority: 0
           operation: resonator_spectroscopy
           parameters:
               freq_width: 10_000_000
