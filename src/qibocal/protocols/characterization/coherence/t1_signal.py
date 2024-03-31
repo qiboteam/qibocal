@@ -26,6 +26,8 @@ class T1SignalParameters(Parameters):
     """Final delay before readout [ns]."""
     delay_before_readout_step: int
     """Step delay before readout [ns]."""
+    single_shot: bool = False
+    """If ``True`` save single shot signal data."""
 
 
 @dataclass
@@ -36,12 +38,8 @@ class T1SignalResults(Results):
     """T1 for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
-
-
-CoherenceType = np.dtype(
-    [("wait", np.float64), ("signal", np.float64), ("phase", np.float64)]
-)
-"""Custom dtype for coherence routines."""
+    pcov: dict[QubitId, list[float]]
+    """Approximate covariance of fitted parameters."""
 
 
 @dataclass
@@ -50,6 +48,12 @@ class T1SignalData(Data):
 
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
+
+    @property
+    def average(self):
+        if len(next(iter(self.data.values())).shape) > 1:
+            return utils.average_single_shots(self.__class__, self.data)
+        return self
 
 
 def _acquisition(
@@ -101,8 +105,6 @@ def _acquisition(
         type=SweeperType.ABSOLUTE,
     )
 
-    data = T1SignalData()
-
     # sweep the parameter
     # execute the pulse sequence
     results = platform.sweep(
@@ -111,17 +113,24 @@ def _acquisition(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
+            averaging_mode=(
+                AveragingMode.SINGLESHOT if params.single_shot else AveragingMode.CYCLIC
+            ),
         ),
         sweeper,
     )
 
+    data = T1SignalData()
     for qubit in targets:
         result = results[ro_pulses[qubit].serial]
+        if params.single_shot:
+            _waits = np.array(len(result.magnitude) * [ro_wait_range])
+        else:
+            _waits = ro_wait_range
         data.register_qubit(
-            CoherenceType,
+            utils.CoherenceType,
             (qubit),
-            dict(wait=ro_wait_range, signal=result.magnitude, phase=result.phase),
+            dict(wait=_waits, signal=result.magnitude, phase=result.phase),
         )
 
     return data
@@ -135,13 +144,15 @@ def _fit(data: T1SignalData) -> T1SignalResults:
 
             y = p_0-p_1 e^{-x p_2}.
     """
-    t1s, fitted_parameters = utils.exponential_fit(data)
+    data = data.average
+    t1s, fitted_parameters, pcovs = utils.exponential_fit(data)
 
-    return T1SignalResults(t1s, fitted_parameters)
+    return T1SignalResults(t1s, fitted_parameters, pcovs)
 
 
 def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
     """Plotting function for T1 experiment."""
+    data = data.average
 
     figures = []
     fig = go.Figure()
@@ -178,7 +189,9 @@ def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
             )
         )
         fitting_report = table_html(
-            table_dict(target, "T1 [ns]", np.round(fit.t1[target]))
+            table_dict(
+                target, ["T1 [ns]"], [np.round(fit.t1[target])], display_error=True
+            )
         )
 
     # last part

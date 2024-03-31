@@ -7,6 +7,7 @@ from qibolab.qubits import QubitId
 from qibocal.auto.operation import Routine
 
 from . import t1_signal
+from .utils import CoherenceType
 
 
 def _acquisition(
@@ -72,7 +73,7 @@ def _acquisition(
         for qubit in targets:
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
-                t1_signal.CoherenceType,
+                CoherenceType,
                 (qubit),
                 dict(
                     wait=np.array([wait]),
