@@ -50,8 +50,7 @@ def _fit_ef(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
         if qubit in results
     }
     params = asdict(results)
-    params.update({"anharmonicity": anharmoncities})
-    return QubitSpectroscopyEFResults(**params)
+    return QubitSpectroscopyEFResults(anharmonicity=anharmoncities, **params)
 
 
 def _acquisition(
@@ -70,7 +69,6 @@ def _acquisition(
     """
     # create a sequence of pulses for the experiment:
     # long drive probing pulse - MZ
-
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
     ro_pulses = {}
