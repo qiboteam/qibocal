@@ -42,7 +42,7 @@ SINGLE_QUBIT_CLIFFORDS = {
 }
 
 
-def random_clifford(qubits, seed=None):
+def random_clifford(qubits, random_indexes_gen):
     """Generates random Clifford operator(s).
 
     Args:
@@ -71,14 +71,11 @@ def random_clifford(qubits, seed=None):
     if isinstance(qubits, (list, np.ndarray)) and any(q < 0 for q in qubits):
         raise_error(ValueError, "qubit indexes must be non-negative integers.")
 
-    local_state = (
-        np.random.default_rng(seed) if seed is None or isinstance(seed, int) else seed
-    )
-
     if isinstance(qubits, int):
         qubits = list(range(qubits))
 
-    random_indexes = local_state.integers(0, len(SINGLE_QUBIT_CLIFFORDS), len(qubits))
+    random_indexes = random_indexes_gen(SINGLE_QUBIT_CLIFFORDS, qubits)
+
     clifford_gates = [
         SINGLE_QUBIT_CLIFFORDS[p](q) for p, q in zip(random_indexes, qubits)
     ]

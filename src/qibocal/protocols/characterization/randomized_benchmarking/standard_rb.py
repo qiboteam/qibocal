@@ -118,16 +118,30 @@ class StandardRBResult(Results):
         return True
 
 
-def layer_gen(targets, seed):
-    """Returns a circuit with a random single-qubit clifford unitary."""
-    return random_clifford(targets, seed)
+class RB_Generator:
+
+    def __init__(self, seed, nqubits):
+        self.seed = seed
+        self.local_state = (
+            np.random.default_rng(seed)
+            if seed is None or isinstance(seed, int)
+            else seed
+        )
+        self.nqubits = nqubits
+
+    def random_indexes(self, gate_list, qubits):
+        return self.local_state.integers(0, len(gate_list), len(qubits))
+
+    def layer_gen(self):
+        """Returns a circuit with a random single-qubit clifford unitary."""
+        return random_clifford(self.nqubits, self.random_indexes)
 
 
 def random_circuits(
     depth: int,
     targets: list[QubitId],
     niter,
-    seed,
+    rb_gen,
     noise_model=None,
 ) -> Iterable:
     """Returns single-qubit random self-inverting Clifford circuits.
@@ -147,7 +161,7 @@ def random_circuits(
     indexes = defaultdict(list)
     for _ in range(niter):
         for target in targets:
-            circuit, random_indexes = layer_circuit(layer_gen, depth, target, seed)
+            circuit, random_indexes = layer_circuit(rb_gen, depth, target)
             add_inverse_layer(circuit)
             add_measurement_layer(circuit)
             if noise_model is not None:
@@ -202,16 +216,14 @@ def _acquisition(
     )
 
     circuits = []
-    # indexes = {qubit: [] for qubit in targets}
-    from collections import defaultdict
-
     indexes = {}
     samples = []
     qubits_ids = targets
+    rb_gen = RB_Generator(params.seed, nqubits)
     for depth in params.depths:
         # TODO: This does not generate multi qubit circuits
         circuits_depth, random_indexes = random_circuits(
-            depth, qubits_ids, params.niter, params.seed, noise_model
+            depth, qubits_ids, params.niter, rb_gen, noise_model
         )
         circuits.extend(circuits_depth)
         for qubit in random_indexes.keys():
