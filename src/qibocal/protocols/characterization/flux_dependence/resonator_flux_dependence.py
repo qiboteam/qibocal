@@ -299,18 +299,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         frequencies = qubit_data.freq
         signal = qubit_data.signal
 
-        if data.resonator_type == "3D":
-            frequencies, biases = utils.extract_max_feature(
-                frequencies,
-                biases,
-                signal,
-            )
-        else:
-            frequencies, biases = utils.extract_min_feature(
-                frequencies,
-                biases,
-                signal,
-            )
+        frequencies, biases = utils.extract_feature(frequencies, biases, signal, "min")
 
         try:
             popt = curve_fit(
