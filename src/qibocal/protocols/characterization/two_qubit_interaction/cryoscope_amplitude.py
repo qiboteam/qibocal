@@ -24,22 +24,24 @@ from qibocal.auto.operation import Data, Parameters, Results, Routine
 class CryoscopeParameters(Parameters):
     """Cryoscope runcard inputs."""
 
-    # amplitude_min: float
-    # """Minimum flux pulse amplitude."""
-    # amplitude_max: float
-    # """Maximum flux pulse amplitude."""
-    # amplitude_step: float
-    # """Flux pulse amplitude step."""
-
-    duration_min: int
-    """Minimum flux pulse duration."""
-    duration_max: int
-    """Maximum flux duration start."""
-    duration_step: int
-    """Flux pulse duration step."""
-
+    amplitude_min: float
+    """Minimum flux pulse amplitude."""
+    amplitude_max: float
+    """Maximum flux pulse amplitude."""
+    amplitude_step: float
+    """Flux pulse amplitude step."""
     flux_pulse_amplitude: float
-    """Flux pulse amplitude."""
+    """Flux pulse duration."""
+
+    # duration_min: int
+    # """Minimum flux pulse duration."""
+    # duration_max: int
+    # """Maximum flux duration start."""
+    # duration_step: int
+    # """Flux pulse duration step."""
+
+    flux_pulse_duration: float
+    """Flux pulse duration."""
     padding: int = 20
     """Time padding before and after flux pulse."""
     dt: int = 0
@@ -63,7 +65,7 @@ class CryoscopeResults(Results):
 #    [("amp", np.float64), ("duration", np.float64), ("prob", np.float64)]
 # )
 CryoscopeType = np.dtype(
-    [("duration", int), ("voltage_i", np.float64), ("voltage_q", np.float64)]
+    [("amplitude", float), ("voltage_i", np.float64), ("voltage_q", np.float64)]
 )
 """Custom dtype for Cryoscope."""
 
@@ -80,7 +82,7 @@ class CryoscopeData(Data):
         self,
         qubit: QubitId,
         tag: str,
-        durs: npt.NDArray[np.int32],
+        amps: npt.NDArray[np.int32],
         voltage_i: npt.NDArray[np.float64],
         voltage_q: npt.NDArray[np.float64],
     ):
@@ -88,11 +90,11 @@ class CryoscopeData(Data):
         # size = len(amps) * len(durs)
         # amplitudes, durations = np.meshgrid(amps, durs)
 
-        size = len(durs)
-        durations = durs
+        size = len(amps)
+        # durations = amps
 
         ar = np.empty(size, dtype=CryoscopeType)
-        ar["duration"] = durations.ravel()
+        ar["amplitude"] = amps.ravel()
         ar["voltage_i"] = voltage_i.ravel()
         ar["voltage_q"] = voltage_q.ravel()
 
@@ -140,7 +142,7 @@ def _acquisition(
         # apply a detuning flux pulse
         flux_pulses[qubit] = FluxPulse(
             start=flux_start,
-            duration=params.duration_min,
+            duration=params.flux_pulse_duration,
             amplitude=params.flux_pulse_amplitude,
             shape=flux_pulse_shape,
             channel=platform.qubits[qubit].flux.name,
@@ -181,26 +183,26 @@ def _acquisition(
             ro_pulses[qubit],
         )
 
-    # amplitude_range = np.arange(
-    #    params.amplitude_min, params.amplitude_max, params.amplitude_step
-    # )
-    duration_range = np.arange(
-        params.duration_min, params.duration_max, params.duration_step
+    amplitude_range = np.arange(
+        params.amplitude_min, params.amplitude_max, params.amplitude_step
     )
-
-    # amp_sweeper = Sweeper(
-    #    Parameter.amplitude,
-    #    amplitude_range,
-    #    pulses=list(flux_pulses.values()),
-    #    type=SweeperType.ABSOLUTE,
+    # duration_range = np.arange(
+    #     params.duration_min, params.duration_max, params.duration_step
     # )
 
-    dur_sweeper = Sweeper(
-        Parameter.duration,
-        duration_range,
+    amp_sweeper = Sweeper(
+        Parameter.amplitude,
+        amplitude_range,
         pulses=list(flux_pulses.values()),
-        type=SweeperType.ABSOLUTE,
+        type=SweeperType.FACTOR,
     )
+
+    # dur_sweeper = Sweeper(
+    #     Parameter.duration,
+    #     duration_range,
+    #     pulses=list(flux_pulses.values()),
+    #     type=SweeperType.ABSOLUTE,
+    # )
 
     options = ExecutionParameters(
         nshots=params.nshots,
@@ -211,12 +213,16 @@ def _acquisition(
     data = CryoscopeData()
     for sequence, tag in [(sequence_x, "MX"), (sequence_y, "MY")]:
         # results = platform.sweep(sequence, options, amp_sweeper, dur_sweeper)
-        results = platform.sweep(sequence, options, dur_sweeper)
+        results = platform.sweep(sequence, options, amp_sweeper)
         for qubit in targets:
             result = results[ro_pulses[qubit].serial]
             # data.register_qubit(qubit, tag, amplitude_range, duration_range, result.voltage_i, result.voltage_q)
             data.register_qubit(
-                qubit, tag, duration_range, result.voltage_i, result.voltage_q
+                qubit,
+                tag,
+                amplitude_range * params.flux_pulse_amplitude,
+                result.voltage_i,
+                result.voltage_q,
             )
 
     return data
@@ -244,7 +250,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     qubit_Y_data = data[(target, "MY")]
     fig.add_trace(
         go.Scatter(
-            x=qubit_X_data.duration,
+            x=qubit_X_data.amplitude,
             y=np.sqrt(qubit_X_data.voltage_i**2 + qubit_X_data.voltage_q**2),
             name="X",
             legendgroup="X",
@@ -255,7 +261,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
 
     fig.add_trace(
         go.Scatter(
-            x=qubit_Y_data.duration,
+            x=qubit_Y_data.amplitude,
             y=np.sqrt(qubit_Y_data.voltage_i**2 + qubit_Y_data.voltage_q**2),
             name="Y",
             legendgroup="Y",
@@ -266,7 +272,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
 
     fig.add_trace(
         go.Scatter(
-            x=qubit_X_data.duration,
+            x=qubit_X_data.amplitude,
             y=np.unwrap(
                 np.angle(qubit_X_data.voltage_i + 1.0j * qubit_X_data.voltage_q)
             ),
@@ -278,7 +284,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     )
     fig.add_trace(
         go.Scatter(
-            x=qubit_Y_data.duration,
+            x=qubit_Y_data.amplitude,
             y=np.unwrap(
                 np.angle(qubit_Y_data.voltage_i + 1.0j * qubit_Y_data.voltage_q)
             ),
@@ -290,12 +296,12 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     )
 
     fig.update_layout(
-        xaxis1_title="Flux pulse duration [ns]",
-        xaxis2_title="Flux pulse duration [ns]",
+        xaxis1_title="Flux pulse amplitude [a.u.]",
+        xaxis2_title="Flux pulse amplitude [a.u.]",
         yaxis1_title="Signal [a.u.]",
         yaxis2_title="Phase [rad]",
     )
     return [fig], fitting_report
 
 
-cryoscope = Routine(_acquisition, _fit, _plot)
+cryoscope_amplitude = Routine(_acquisition, _fit, _plot)

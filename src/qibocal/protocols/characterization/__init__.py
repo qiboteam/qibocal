@@ -60,6 +60,7 @@ from .two_qubit_interaction import (
     chsh_circuits,
     chsh_pulses,
     cryoscope,
+    cryoscope_amplitude,
     cz_virtualz,
 )
 
@@ -123,3 +124,4 @@ class Operation(Enum):
     flipping_signal = flipping_signal
     calibrate_state_discrimination = calibrate_state_discrimination
     cryoscope = cryoscope
+    cryoscope_amplitude = cryoscope_amplitude
