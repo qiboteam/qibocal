@@ -10,6 +10,9 @@ from qibolab import create_platform
 from qibocal.auto.task import PLATFORM_DIR
 from qibocal.cli import utils
 from qibocal.cli._base import command
+from qibocal.protocols.characterization.flux_dependence.resonator_flux_dependence import (
+    ResonatorFluxParameters,
+)
 from qibocal.protocols.characterization.rabi.amplitude import RabiAmplitudeData
 from qibocal.protocols.characterization.rabi.ef import RabiAmplitudeEFData
 from qibocal.protocols.characterization.rabi.length import RabiLengthData
@@ -165,6 +168,28 @@ def test_extract_rabi():
     )
     with pytest.raises(RuntimeError):
         extract_rabi(RabiAmplitudeEFData)
+
+
+def test_resonator_flux_bias():
+    freq_width = 100_000
+    freq_step = 10_000
+    bias_width = 1
+    bias_step = 0.2
+    flux_start = -0.5
+    flux_end = 0.4
+    flux_step = 0.1
+    ResonatorFluxParameters(freq_width, freq_step, bias_width, bias_step)
+    ResonatorFluxParameters(freq_width, freq_step, flux_start, flux_end, flux_step)
+    with pytest.raises(ValueError):
+        ResonatorFluxParameters(
+            freq_width,
+            freq_step,
+            bias_width,
+            bias_step,
+            flux_start,
+            flux_end,
+            flux_step,
+        )
 
 
 # TODO: compare report by calling qq report

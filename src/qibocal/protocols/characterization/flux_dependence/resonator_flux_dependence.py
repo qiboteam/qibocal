@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import List, Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -10,7 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, table_dict, table_html
@@ -25,10 +26,72 @@ class ResonatorFluxParameters(Parameters):
     """Width for frequency sweep relative to the readout frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
-    bias_width: float
+    bias_width: Optional[float] = None
     """Width for bias sweep [V]."""
-    bias_step: float
+    bias_step: Optional[float] = None
     """Bias step for sweep [a.u.]."""
+    flux_amplitude_start: Optional[Union[int, float, List[float]]] = None
+    """Amplitude start value(s) for flux pulses sweep relative to the qubit sweetspot [a.u.]."""
+    flux_amplitude_end: Optional[Union[int, float, List[float]]] = None
+    """Amplitude end value(s) for flux pulses sweep relative to the qubit sweetspot [a.u.]."""
+    flux_amplitude_step: Optional[Union[int, float, List[float]]] = None
+    """Amplitude step(s) for flux pulses sweep [a.u.]."""
+
+    def __post_init__(self):
+        if not self.has_bias_params:
+            if self.has_flux_params:
+                self.check_flux_params()
+                return
+        if not self.has_flux_params:
+            if self.has_bias_params:
+                return
+        raise ValueError(
+            "Too many arguments provided. Provide either bias_width "
+            "and bias_step or flux_amplitude_width and flux_amplitude_step."
+        )
+
+    def check_flux_params(self):
+        """All flux params must be either all float or all lists with the same length.
+
+        This function does not check if the lenght of the lists is equal to the number
+        of qubits in the experiment.
+        """
+        flux_params = (
+            self.flux_amplitude_start,
+            self.flux_amplitude_end,
+            self.flux_amplitude_step,
+        )
+        if all(isinstance(param, (int, float)) for param in flux_params):
+            return
+
+        if all(isinstance(param, list) for param in flux_params):
+            if all(len(param) == len(flux_params[0]) for param in flux_params):
+                return
+            raise ValueError("Flux lists do not have the same length.")
+        raise ValueError(
+            "flux parameters have the wrong type. Expected one of (int, float, list)."
+        )
+
+    @property
+    def has_bias_params(self):
+        """True if both bias_width and bias_step are set."""
+        return self.bias_width is not None and self.bias_step is not None
+
+    @property
+    def has_flux_params(self):
+        """True if both all flux amplitude parameters are set."""
+        return (
+            self.flux_amplitude_start is not None
+            and self.flux_amplitude_end is not None
+            and self.flux_amplitude_step is not None
+        )
+
+    @property
+    def flux_pulses(self):
+        """True if sweeping flux pulses, False if sweeping bias."""
+        if self.has_flux_params:
+            return True
+        return False
 
 
 @dataclass
@@ -68,8 +131,11 @@ ResFluxType = np.dtype(
 class ResonatorFluxData(Data):
     """ResonatorFlux acquisition outputs."""
 
-    """Resonator type."""
     resonator_type: str
+    """Resonator type."""
+
+    flux_pulses: bool
+    """True if sweeping flux pulses, False if sweeping bias."""
 
     qubit_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
@@ -85,6 +151,51 @@ class ResonatorFluxData(Data):
         self.data[qubit] = utils.create_data_array(
             freq, bias, signal, phase, dtype=ResFluxType
         )
+
+
+def create_flux_pulse_sweepers(
+    params: ResonatorFluxParameters,
+    platform: Platform,
+    qubits: Qubits,
+    sequence: PulseSequence,
+) -> tuple[np.ndarray, list[Sweeper]]:
+    """Create a list of sweepers containing flux pulses.
+
+    Args:
+        params (ResonatorFluxParameters): parameters of the experiment (here flux amplitude is used).
+        platform (Platform): platform on which to run the experiment.
+        qubits (Qubits): qubits on which to run the experiment.
+        sequence (PulseSequence): pulse sequence of the experiment (updated with flux pulses).
+    """
+    qf_pulses = {}
+    for i, qubit in enumerate(qubits):
+        if isinstance(params.flux_amplitude_start, list):
+            flux_amplitude_start = params.flux_amplitude_start[i]
+            flux_amplitude_end = params.flux_amplitude_end[i]
+            flux_amplitude_step = params.flux_amplitude_step[i]
+        else:
+            flux_amplitude_start = params.flux_amplitude_start
+            flux_amplitude_end = params.flux_amplitude_end
+            flux_amplitude_step = params.flux_amplitude_step
+        delta_bias_flux_range = np.arange(
+            flux_amplitude_start,
+            flux_amplitude_end,
+            flux_amplitude_step,
+        )
+        pulse = platform.create_qubit_flux_pulse(
+            qubit, start=0, duration=sequence.duration
+        )
+        qf_pulses[qubit] = pulse
+        sequence.add(pulse)
+    sweepers = [
+        Sweeper(
+            Parameter.amplitude,
+            delta_bias_flux_range,
+            pulses=[qf_pulses[qubit] for qubit in qubits],
+            type=SweeperType.ABSOLUTE,
+        )
+    ]
+    return delta_bias_flux_range, sweepers
 
 
 def _acquisition(
@@ -118,21 +229,26 @@ def _acquisition(
         [ro_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
-
-    delta_bias_range = np.arange(
-        -params.bias_width / 2, params.bias_width / 2, params.bias_step
-    )
-    bias_sweepers = [
-        Sweeper(
-            Parameter.bias,
-            delta_bias_range,
-            qubits=[platform.qubits[qubit] for qubit in targets],
-            type=SweeperType.OFFSET,
+    if params.flux_pulses:
+        delta_bias_flux_range, sweepers = create_flux_pulse_sweepers(
+            params, platform, targets, sequence
         )
-    ]
+    else:
+        delta_bias_flux_range = np.arange(
+            -params.bias_width / 2, params.bias_width / 2, params.bias_step
+        )
+        sweepers = [
+            Sweeper(
+                Parameter.bias,
+                delta_bias_flux_range,
+                qubits=[platform.qubits[qubit] for qubit in targets],
+                type=SweeperType.OFFSET,
+            )
+        ]
 
     data = ResonatorFluxData(
         resonator_type=platform.resonator_type,
+        flux_pulses=params.flux_pulses,
         qubit_frequency=qubit_frequency,
         bare_resonator_frequency=bare_resonator_frequency,
     )
@@ -143,7 +259,7 @@ def _acquisition(
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    for bias_sweeper in bias_sweepers:
+    for bias_sweeper in sweepers:
         results = platform.sweep(sequence, options, bias_sweeper, freq_sweeper)
         # retrieve the results for every qubit
         for qubit in targets:
@@ -154,9 +270,8 @@ def _acquisition(
                 signal=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + ro_pulses[qubit].frequency,
-                bias=delta_bias_range + sweetspot,
+                bias=delta_bias_flux_range + sweetspot,
             )
-
     return data
 
 
@@ -247,12 +362,16 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
     figures = utils.flux_dependence_plot(
         data, fit, target, utils.transmon_readout_frequency
     )
+    if data.flux_pulses:
+        bias_flux_unit = "a.u."
+    else:
+        bias_flux_unit = "V"
     if fit is not None:
         fitting_report = table_html(
             table_dict(
                 target,
                 [
-                    "Sweetspot [V]",
+                    f"Sweetspot [{bias_flux_unit}]",
                     "Bare Resonator Frequency [Hz]",
                     "Readout Frequency [Hz]",
                     "Qubit Frequency at Sweetspot [Hz]",

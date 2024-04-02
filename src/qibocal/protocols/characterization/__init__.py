@@ -56,12 +56,7 @@ from .signal_experiments.calibrate_state_discrimination import (
     calibrate_state_discrimination,
 )
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
-from .two_qubit_interaction import (
-    chevron,
-    chsh_circuits,
-    chsh_pulses,
-    native_gate_virtualz,
-)
+from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtualz
 
 
 class Operation(Enum):
@@ -97,7 +92,7 @@ class Operation(Enum):
     flipping = flipping
     dispersive_shift = dispersive_shift
     chevron = chevron
-    native_gate_virtualz = native_gate_virtualz
+    cz_virtualz = cz_virtualz
     standard_rb = standard_rb
     readout_characterization = readout_characterization
     resonator_frequency = resonator_frequency
