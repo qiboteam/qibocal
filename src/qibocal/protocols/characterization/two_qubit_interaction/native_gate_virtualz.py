@@ -1,4 +1,4 @@
-"""CZ virtual correction experiment for two qubit gates, tune landscape."""
+"""Virtual correction experiment for two qubit gates, tune landscape."""
 
 from dataclasses import dataclass, field
 from typing import Optional
@@ -15,15 +15,15 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.characterization.two_qubit_interaction.chevron import order_pair
 from qibocal.protocols.characterization.utils import table_dict, table_html
 
 
 @dataclass
-class CZVirtualZParameters(Parameters):
-    """CzVirtualZ runcard inputs."""
+class VirtualZParameters(Parameters):
+    """VirtualZ runcard inputs."""
 
     theta_start: float
     """Initial angle for the low frequency qubit measurement in radians."""
@@ -33,6 +33,8 @@ class CZVirtualZParameters(Parameters):
     """Step size for the theta sweep in radians."""
     flux_pulse_amplitude: Optional[float] = None
     """Amplitude of flux pulse implementing CZ."""
+    native_gate: Optional[str] = "CZ"
+    """Native gate to implement, CZ or iSWAP."""
     dt: Optional[float] = 20
     """Time delay between flux pulses and readout."""
     parking: bool = True
@@ -40,38 +42,34 @@ class CZVirtualZParameters(Parameters):
 
 
 @dataclass
-class CZVirtualZResults(Results):
+class VirtualZResults(Results):
     """CzVirtualZ outputs when fitting will be done."""
 
     fitted_parameters: dict[tuple[str, QubitId],]
     """Fitted parameters"""
-    cz_angle: dict[QubitPairId, float]
-    """CZ angle."""
+    native_gate_angle: dict[QubitPairId, float]
+    """Angle."""
     virtual_phase: dict[QubitPairId, dict[QubitId, float]]
     """Virtual Z phase correction."""
 
-    def __contains__(self, key: QubitPairId):
-        """Check if key is in class.
-        While key is a QubitPairId both chsh and chsh_mitigated contain
-        an additional key which represents the basis chosen.
-        """
 
-        return key in [
-            (target, control) for target, control, _ in self.fitted_parameters
-        ]
-
-
-CZVirtualZType = np.dtype([("target", np.float64), ("control", np.float64)])
+VirtualZType = np.dtype([("target", np.float64), ("control", np.float64)])
 
 
 @dataclass
-class CZVirtualZData(Data):
-    """CZVirtualZ data."""
+class VirtualZData(Data):
+    """VirtualZ data."""
 
-    data: dict[tuple, npt.NDArray[CZVirtualZType]] = field(default_factory=dict)
+    data: dict[tuple, npt.NDArray[VirtualZType]] = field(default_factory=dict)
     thetas: list = field(default_factory=list)
     vphases: dict[QubitPairId, dict[QubitId, float]] = field(default_factory=dict)
     amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
+
+    def register_qubit(self, target, control, setup, prob_target, prob_control):
+        ar = np.empty(prob_target.shape, dtype=VirtualZType)
+        ar["target"] = prob_target
+        ar["control"] = prob_control
+        self.data[target, control, setup] = np.rec.array(ar)
 
     def __getitem__(self, pair):
         return {
@@ -87,6 +85,7 @@ def create_sequence(
     target_qubit: QubitId,
     control_qubit: QubitId,
     ordered_pair: list[QubitId, QubitId],
+    gate,
     parking: bool,
     dt: float,
     amplitude: float = None,
@@ -102,22 +101,30 @@ def create_sequence(
     )
     RX_pulse_start = platform.create_RX_pulse(control_qubit, start=0, relative_phase=0)
 
-    cz, virtual_z_phase = platform.create_CZ_pulse_sequence(
-        (ordered_pair[1], ordered_pair[0]),
-        start=max(Y90_pulse.finish, RX_pulse_start.finish),
-    )
+    if gate == "CZ":
+        native_gate, virtual_z_phase = platform.create_CZ_pulse_sequence(
+            (ordered_pair[1], ordered_pair[0]),
+            start=max(Y90_pulse.finish, RX_pulse_start.finish),
+        )
+    elif gate == "iSWAP":
+        native_gate, virtual_z_phase = platform.create_iSWAP_pulse_sequence(
+            (ordered_pair[1], ordered_pair[0]),
+            start=max(Y90_pulse.finish, RX_pulse_start.finish),
+        )
 
+    # TODO: Do we need an independent amplitude similar for coupler amplitude ?
     if amplitude is not None:
-        cz.get_qubit_pulses(ordered_pair[1])[0].amplitude = amplitude
+        native_gate.get_qubit_pulses(ordered_pair[1])[0].amplitude = amplitude
 
     theta_pulse = platform.create_RX90_pulse(
         target_qubit,
-        start=cz.finish + dt,
+        start=native_gate.finish + dt,
         relative_phase=virtual_z_phase[target_qubit],
     )
+
     RX_pulse_end = platform.create_RX_pulse(
         control_qubit,
-        start=cz.finish + dt,
+        start=native_gate.finish + dt,
         relative_phase=virtual_z_phase[control_qubit],
     )
     measure_target = platform.create_qubit_readout_pulse(
@@ -129,7 +136,7 @@ def create_sequence(
 
     sequence.add(
         Y90_pulse,
-        cz.get_qubit_pulses(ordered_pair[1]),
+        native_gate.get_qubit_pulses(ordered_pair[1]),
         theta_pulse,
         measure_target,
         measure_control,
@@ -142,26 +149,27 @@ def create_sequence(
         )
 
     if parking:
-        for pulse in cz:
+        for pulse in native_gate:
             if pulse.qubit not in ordered_pair:
                 pulse.duration = theta_pulse.finish
                 sequence.add(pulse)
 
+    # TODO: Do we need an independent amplitude similar for coupler amplitude ?
     return (
         sequence,
         virtual_z_phase,
         theta_pulse,
-        cz.get_qubit_pulses(ordered_pair[1])[0].amplitude,
+        native_gate.get_qubit_pulses(ordered_pair[1])[0].amplitude,
     )
 
 
 def _acquisition(
-    params: CZVirtualZParameters,
+    params: VirtualZParameters,
     platform: Platform,
-    targets: list[QubitPairId],
-) -> CZVirtualZData:
+    targets: Qubits,
+) -> VirtualZData:
     r"""
-    Acquisition for CZVirtualZ.
+    Acquisition for VirtualZ.
 
     Check the two-qubit landscape created by a flux pulse of a given duration
     and amplitude.
@@ -171,14 +179,15 @@ def _acquisition(
     is undone in the high frequency qubit and a theta90 pulse is applied to the low
     frequency qubit before measurement. That is, a pi-half pulse around the relative phase
     parametereized by the angle theta.
-    Measurements on the low frequency qubit yield the 2Q-phase of the gate and the
+    Measurements on the low frequency qubit yield the the 2Q-phase of the gate and the
     remnant single qubit Z phase aquired during the execution to be corrected.
     Population of the high frequency qubit yield the leakage to the non-computational states
     during the execution of the flux pulse.
     """
 
     theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
-    data = CZVirtualZData(thetas=theta_absolute.tolist())
+
+    data = VirtualZData(thetas=theta_absolute.tolist())
     for pair in targets:
         # order the qubits so that the low frequency one is the first
         ord_pair = order_pair(pair, platform.qubits)
@@ -199,6 +208,7 @@ def _acquisition(
                     target_q,
                     control_q,
                     ord_pair,
+                    params.native_gate,
                     params.dt,
                     params.parking,
                     params.flux_pulse_amplitude,
@@ -230,12 +240,11 @@ def _acquisition(
                 result_control = results[control_q].magnitude
 
                 data.register_qubit(
-                    CZVirtualZType,
-                    (target_q, control_q, setup),
-                    dict(
-                        target=result_target,
-                        control=result_control,
-                    ),
+                    target=target_q,
+                    control=control_q,
+                    setup=setup,
+                    prob_target=result_target,
+                    prob_control=result_control,
                 )
     return data
 
@@ -247,8 +256,8 @@ def fit_function(x, p0, p1, p2):
 
 
 def _fit(
-    data: CZVirtualZData,
-) -> CZVirtualZResults:
+    data: VirtualZData,
+) -> VirtualZResults:
     r"""Fitting routine for the experiment.
 
     The used model is
@@ -260,7 +269,7 @@ def _fit(
     fitted_parameters = {}
     pairs = data.pairs
     virtual_phase = {}
-    cz_angle = {}
+    native_gate_angle = {}
     for pair in pairs:
         virtual_phase[pair] = {}
         for target, control, setup in data[pair]:
@@ -268,7 +277,7 @@ def _fit(
             pguess = [
                 np.max(target_data) - np.min(target_data),
                 np.mean(target_data),
-                np.pi,
+                3.14,
             ]
 
             try:
@@ -281,62 +290,61 @@ def _fit(
                 )
                 fitted_parameters[target, control, setup] = popt.tolist()
 
-            except Exception as e:
-                log.warning(f"CZ fit failed for pair ({target, control}) due to {e}.")
+            except:
+                log.warning("landscape_fit: the fitting was not succesful")
+                fitted_parameters[target, control, setup] = [0] * 3
 
-        try:
-            for target_q, control_q in (
-                pair,
-                list(pair)[::-1],
-            ):
-                cz_angle[target_q, control_q] = abs(
-                    fitted_parameters[target_q, control_q, "X"][2]
-                    - fitted_parameters[target_q, control_q, "I"][2]
-                )
-                virtual_phase[pair][target_q] = -fitted_parameters[
-                    target_q, control_q, "I"
-                ][2]
-        except KeyError:
-            log.warning(f"CZ fit failed for pair ({target_q, control_q}).")
+        for target_q, control_q in (
+            pair,
+            list(pair)[::-1],
+        ):
+            native_gate_angle[target_q, control_q] = abs(
+                fitted_parameters[target_q, control_q, "X"][2]
+                - fitted_parameters[target_q, control_q, "I"][2]
+            )
+            virtual_phase[pair][target_q] = -fitted_parameters[
+                target_q, control_q, "I"
+            ][2]
 
-    return CZVirtualZResults(
-        cz_angle=cz_angle,
+    return VirtualZResults(
+        native_gate_angle=native_gate_angle,
         virtual_phase=virtual_phase,
         fitted_parameters=fitted_parameters,
     )
 
 
 # TODO: remove str
-def _plot(data: CZVirtualZData, fit: CZVirtualZResults, target: QubitPairId):
-    """Plot routine for CZVirtualZ."""
+def _plot(data: VirtualZData, fit: VirtualZResults, target):
+    """Plot routine for VirtualZ."""
     pair_data = data[target]
-    qubits = next(iter(pair_data))[:2]
+    targets = next(iter(pair_data))[:2]
     fig1 = make_subplots(
         rows=1,
         cols=2,
         subplot_titles=(
-            f"Qubit {qubits[0]}",
-            f"Qubit {qubits[1]}",
+            f"Qubit {targets[0]}",
+            f"Qubit {targets[1]}",
         ),
     )
-    fitting_report = set()
+    reports = []
     fig2 = make_subplots(
         rows=1,
         cols=2,
         subplot_titles=(
-            f"Qubit {qubits[0]}",
-            f"Qubit {qubits[1]}",
+            f"Qubit {targets[0]}",
+            f"Qubit {targets[1]}",
         ),
     )
 
+    fitting_report = ""
     thetas = data.thetas
-    for target_q, control_q, setup in pair_data:
-        target_prob = pair_data[target_q, control_q, setup].target
-        control_prob = pair_data[target_q, control_q, setup].control
-        fig = fig1 if (target_q, control_q) == qubits else fig2
+    for target, control, setup in pair_data:
+        target_prob = pair_data[target, control, setup].target
+        control_prob = pair_data[target, control, setup].control
+        fig = fig1 if (target, control) == targets else fig2
         fig.add_trace(
             go.Scatter(
-                x=np.array(thetas) + data.vphases[qubits][target_q],
+                x=np.array(thetas) + data.vphases[targets][target],
                 y=target_prob,
                 name=f"{setup} sequence",
                 legendgroup=setup,
@@ -347,7 +355,7 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, target: QubitPairId):
 
         fig.add_trace(
             go.Scatter(
-                x=np.array(thetas) + data.vphases[qubits][control_q],
+                x=np.array(thetas) + data.vphases[targets][control],
                 y=control_prob,
                 name=f"{setup} sequence",
                 legendgroup=setup,
@@ -357,12 +365,12 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, target: QubitPairId):
         )
         if fit is not None:
             angle_range = np.linspace(thetas[0], thetas[-1], 100)
-            fitted_parameters = fit.fitted_parameters[target_q, control_q, setup]
+            fitted_parameters = fit.fitted_parameters[target, control, setup]
             fig.add_trace(
                 go.Scatter(
-                    x=angle_range + data.vphases[qubits][target_q],
+                    x=angle_range + data.vphases[targets][target],
                     y=fit_function(
-                        angle_range + data.vphases[qubits][target_q],
+                        angle_range + data.vphases[targets][target],
                         *fitted_parameters,
                     ),
                     name="Fit",
@@ -372,50 +380,44 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, target: QubitPairId):
                 col=1 if fig == fig1 else 2,
             )
 
-            fitting_report.add(
-                table_html(
-                    table_dict(
-                        [target_q, target_q, qubits[1]],
-                        [
-                            "CZ angle [rad]",
-                            "Virtual Z phase [rad]",
-                            "Flux pulse amplitude [a.u.]",
-                        ],
-                        [
-                            np.round(fit.cz_angle[target_q, control_q], 4),
-                            np.round(
-                                fit.virtual_phase[tuple(sorted(target))][target_q], 4
-                            ),
-                            np.round(data.amplitudes[qubits]),
-                        ],
-                    )
+            fitting_report = table_html(
+                table_dict(
+                    [target, target, targets[1]],
+                    [" angle", "Virtual Z phase", "Flux pulse amplitude"],
+                    [
+                        np.round(fit.native_gate_angle[target, control], 4),
+                        np.round(fit.virtual_phase[tuple(sorted(target))][target], 4),
+                        np.round(data.amplitudes[targets]),
+                    ],
                 )
             )
 
     fig1.update_layout(
-        title_text=f"Phase correction Qubit {qubits[0]}",
+        title_text=f"Phase correction Qubit {targets[0]}",
         showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis1_title="theta [rad] + virtual phase[rad]",
         xaxis2_title="theta [rad] + virtual phase [rad]",
-        yaxis_title="Signal [a.u.]",
+        yaxis_title="MSR[V]",
     )
 
     fig2.update_layout(
-        title_text=f"Phase correction Qubit {qubits[1]}",
+        title_text=f"Phase correction Qubit {targets[1]}",
         showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis1_title="theta [rad] + virtual phase[rad]",
         xaxis2_title="theta [rad] + virtual phase[rad]",
-        yaxis_title="Signal [a.u.]",
+        yaxis_title="MSR[V]",
     )
 
-    return [fig1, fig2], "".join(fitting_report)  # target and control qubit
+    return [fig1, fig2], fitting_report
 
 
-def _update(results: CZVirtualZResults, platform: Platform, target: QubitPairId):
-    # FIXME: quick fix for qubit order
-    target = tuple(sorted(target))
-    update.virtual_phases(results.virtual_phase[target], platform, target)
+def _update(results: VirtualZResults, platform: Platform, qubit_pair: QubitPairId):
+    if qubit_pair[0] > qubit_pair[1]:
+        qubit_pair = (qubit_pair[1], qubit_pair[0])
+    update.virtual_phases(results.virtual_phase[qubit_pair], platform, qubit_pair)
 
 
-cz_virtualz = Routine(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
-"""CZ virtual Z correction routine."""
+native_gate_virtualz = Routine(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
+"""virtual Z correction routine."""
