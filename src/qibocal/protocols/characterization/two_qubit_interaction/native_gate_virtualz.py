@@ -32,7 +32,7 @@ class VirtualZParameters(Parameters):
     theta_step: float
     """Step size for the theta sweep in radians."""
     flux_pulse_amplitude: Optional[float] = None
-    """Amplitude of flux pulse implementing CZ."""
+    """Amplitude of flux pulse implementing native gate."""
     native_gate: Optional[str] = "CZ"
     """Native gate to implement, CZ or iSWAP."""
     dt: Optional[float] = 20
@@ -43,7 +43,7 @@ class VirtualZParameters(Parameters):
 
 @dataclass
 class VirtualZResults(Results):
-    """CzVirtualZ outputs when fitting will be done."""
+    """VirtualZ outputs when fitting will be done."""
 
     fitted_parameters: dict[tuple[str, QubitId],]
     """Fitted parameters"""
@@ -154,7 +154,6 @@ def create_sequence(
                 pulse.duration = theta_pulse.finish
                 sequence.add(pulse)
 
-    # TODO: Do we need an independent amplitude similar for coupler amplitude ?
     return (
         sequence,
         virtual_z_phase,
