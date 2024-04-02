@@ -26,7 +26,6 @@ def layer_circuit(rb_gen: Callable, depth: int, qubit) -> tuple[Circuit, dict]:
 
     for _ in range(depth):
         # Generate a layer.
-        # new_layer, random_index = layer_gen(1, seed)
         new_layer, random_index = rb_gen.layer_gen()
         # Ensure new_layer is a circuit
         if isinstance(new_layer, Gate):
