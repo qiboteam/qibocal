@@ -83,6 +83,9 @@ def random_clifford(qubits, seed=None):
         SINGLE_QUBIT_CLIFFORDS[p](q) for p, q in zip(random_indexes, qubits)
     ]
 
+    # To allow json serialization
+    random_indexes = [float(r) for r in random_indexes]
+
     return clifford_gates, random_indexes
 
 

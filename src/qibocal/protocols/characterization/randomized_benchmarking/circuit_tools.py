@@ -8,7 +8,7 @@ from qibo.gates.abstract import Gate
 from qibo.models import Circuit
 
 
-def layer_circuit(layer_gen: Callable, depth: int, qubit, seed) -> Circuit:
+def layer_circuit(layer_gen: Callable, depth: int, qubit, seed) -> tuple[Circuit, dict]:
     """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`.
 
     Args:
@@ -20,21 +20,24 @@ def layer_circuit(layer_gen: Callable, depth: int, qubit, seed) -> Circuit:
     """
 
     full_circuit = None
+    random_indexes = {qubit: []}
     # Build each layer, there will be depth many in the final circuit.
     qubits_str = [str(qubit)]
+
     for _ in range(depth):
         # Generate a layer.
-        new_layer, random_indexes = layer_gen(
-            1, seed
-        )  # TODO: find better implementation
+        new_layer, random_index = layer_gen(1, seed)
         # Ensure new_layer is a circuit
         if isinstance(new_layer, Gate):
             new_circuit = Circuit(1, wire_names=qubits_str)
             new_circuit.add(new_layer)
+
+        # We are only using this for the RB we have right now
         elif all(isinstance(gate, Gate) for gate in new_layer):
             new_circuit = Circuit(1, wire_names=qubits_str)
-
             new_circuit.add(new_layer)
+            random_indexes[qubit].extend([r for r in random_index])
+
         elif isinstance(new_layer, Circuit):
             new_circuit = new_layer
         else:

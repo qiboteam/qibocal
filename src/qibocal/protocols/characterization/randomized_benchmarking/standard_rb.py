@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, TypedDict, Union
 
@@ -5,7 +6,6 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from qibo.backends import GlobalBackend
-from qibo.models import Circuit
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
@@ -85,8 +85,8 @@ class RBData(Data):
     """Number of iterations for each depth."""
     data: dict[QubitId, npt.NDArray[RBType]] = field(default_factory=dict)
     """Raw data acquired."""
-    circuits: Circuit = None
-    """Circuits executed."""
+    circuits: dict[QubitId, int] = field(default_factory=dict)
+    """Clifford gate indexes executed."""
 
     def extract_probabilities(self, qubit):
         """Extract the probabilities given `qubit`"""
@@ -144,6 +144,7 @@ def random_circuits(
     """
 
     circuits = []
+    indexes = defaultdict(list)
     for _ in range(niter):
         for target in targets:
             circuit, random_indexes = layer_circuit(layer_gen, depth, target, seed)
@@ -152,8 +153,10 @@ def random_circuits(
             if noise_model is not None:
                 circuit = noise_model.apply(circuit)
             circuits.append(circuit)
+            for qubit in random_indexes.keys():
+                indexes[qubit].append(random_indexes[qubit])
 
-    return circuits, random_indexes
+    return circuits, indexes
 
 
 def _acquisition(
@@ -199,6 +202,10 @@ def _acquisition(
     )
 
     circuits = []
+    # indexes = {qubit: [] for qubit in targets}
+    from collections import defaultdict
+
+    indexes = {}
     samples = []
     qubits_ids = targets
     for depth in params.depths:
@@ -207,6 +214,8 @@ def _acquisition(
             depth, qubits_ids, params.niter, params.seed, noise_model
         )
         circuits.extend(circuits_depth)
+        for qubit in random_indexes.keys():
+            indexes[(qubit, depth)] = random_indexes[qubit]
     # Execute the circuits
     if params.unrolling:
         executed_circuits = backend.execute_circuits(circuits, nshots=params.nshots)
@@ -219,6 +228,7 @@ def _acquisition(
     for circ in executed_circuits:
         samples.extend(circ.samples())
     samples = np.reshape(samples, (-1, nqubits, params.nshots))
+
     for i, depth in enumerate(params.depths):
         index = (i * params.niter, (i + 1) * params.niter)
         for nqubit, qubit_id in enumerate(targets):
@@ -227,9 +237,9 @@ def _acquisition(
                 (qubit_id, depth),
                 dict(
                     samples=samples[index[0] : index[1]][:, nqubit],
-                    random_indexes=random_indexes,  # Plus some indexes
                 ),
             )
+    data.circuits = indexes
 
     return data
 
