@@ -11,8 +11,8 @@ from qibolab.qubits import QubitId
 from qibocal.auto.execute import Executor
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import TaskId
-from qibocal.cli.report import META, RUNCARD, ReportBuilder
-from qibocal.cli.utils import create_qubits_dict, generate_output_folder
+from qibocal.cli.report import META, RUNCARD, ReportBuilder, generate_figures_and_report
+from qibocal.cli.utils import generate_output_folder
 
 
 def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
@@ -40,14 +40,11 @@ def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
 
         # set backend, platform and qubits
         GlobalBackend.set_backend(backend=meta["backend"], platform=meta["platform"])
-        backend = GlobalBackend()
-        platform = backend.platform
-        qubits = create_qubits_dict(qubits=runcard.qubits, platform=platform)
 
         # load executor
-        executor = Executor.load(runcard, path, qubits=qubits)
+        executor = Executor.load(runcard, path, targets=runcard.targets)
         # produce html
-        builder = ReportBuilder(path, qubits, executor, meta)
+        builder = ReportBuilder(path, runcard.targets, executor, meta)
         builders.append(builder)
     comparison_report = CompareReportBuilder(builders)
     comparison_report.run(combined_report_path)
@@ -59,7 +56,7 @@ class CompareReportBuilder:
         self.report_builders = report_builders
         self.metadata = report_builders[0].metadata
         self.path = self.title = report_builders[0].path
-        self.qubits = report_builders[0].qubits
+        self.targets = report_builders[0].targets
         self.executor = report_builders[0].executor
 
     def history_uids(self):
@@ -91,11 +88,11 @@ class CompareReportBuilder:
         name = routine.replace("_", " ").title()
         return f"{name} - {iteration}"
 
-    def routine_qubits(self, task_id: TaskId):  # ????
-        """Get local qubits parameter from Task if available otherwise use global one."""
-        # local_qubits = self.history[task_id].task.qubits
-        # return local_qubits if len(local_qubits) > 0 else self.qubits
-        return self.qubits
+    def routine_targets(self, task_id: TaskId):  # ????
+        """Get local targets parameter from Task if available otherwise use global one."""
+        # local_qubits = self.history[task_id].task.targets
+        # return local_qubits if len(local_qubits) > 0 else self.targets
+        return self.targets
 
     def single_qubit_plot(self, task_id: TaskId, qubit: QubitId):
         """Generate single qubit plot."""
@@ -104,9 +101,7 @@ class CompareReportBuilder:
         for report_builder in self.report_builders:
             _, table = report_builder.single_qubit_plot(task_id, qubit)
             node = report_builder.history[task_id]
-            figures, _ = node.task.operation.report(
-                data=node.data, fit=node.results, qubit=qubit
-            )
+            figures, _ = generate_figures_and_report(node, qubit)
             tables.append(table)
             plots.append(figures)
 
