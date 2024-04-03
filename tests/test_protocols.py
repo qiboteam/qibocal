@@ -1,4 +1,4 @@
-"""Test routines' acquisition method using dummy_couplers platform"""
+"""Test routines' acquisition method using dummy and dummy_couplers platforms."""
 
 import pathlib
 
