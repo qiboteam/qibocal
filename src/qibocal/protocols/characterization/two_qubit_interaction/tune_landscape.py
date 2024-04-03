@@ -218,6 +218,5 @@ def _plot(data: TuneLandscapeData, fit: TuneLandscapeResults, target: QubitPairI
     return [fig1, fig2], ""
 
 
-
 tune_landscape = Routine(_acquisition, _fit, _plot, two_qubit_gates=True)
 """CZ virtual Z correction routine."""
