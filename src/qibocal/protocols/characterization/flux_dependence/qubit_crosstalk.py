@@ -49,7 +49,7 @@ class QubitCrosstalkData(QubitFluxData):
     d: dict[QubitId, float] = field(default_factory=dict)
     """Asymmetry for each qubit."""
     voltage: dict[QubitId, float] = field(default_factory=dict)
-    """Voltage provided to each qubit."""
+    """Voltage applied to each flux line."""
     matrix_element: dict[QubitId, float] = field(default_factory=dict)
     """Diagonal crosstalk matrix element."""
     qubit_frequency: dict[QubitId, float] = field(default_factory=dict)
