@@ -9,26 +9,37 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Data, Qubits, Routine
+from qibocal import update
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 
 from ..utils import table_dict, table_html
-from . import t1, utils
+from . import utils
 
 
 @dataclass
-class T1SignalParameters(t1.T1Parameters):
-    """T1 Signal runcard inputs."""
+class T1SignalParameters(Parameters):
+    """T1 runcard inputs."""
+
+    delay_before_readout_start: int
+    """Initial delay before readout [ns]."""
+    delay_before_readout_end: int
+    """Final delay before readout [ns]."""
+    delay_before_readout_step: int
+    """Step delay before readout [ns]."""
+    single_shot: bool = False
+    """If ``True`` save single shot signal data."""
 
 
 @dataclass
-class T1SignalResults(t1.T1Results):
+class T1SignalResults(Results):
     """T1 Signal outputs."""
 
-
-CoherenceType = np.dtype(
-    [("wait", np.float64), ("signal", np.float64), ("phase", np.float64)]
-)
-"""Custom dtype for coherence routines."""
+    t1: dict[QubitId, tuple[float]]
+    """T1 for each qubit."""
+    fitted_parameters: dict[QubitId, dict[str, float]]
+    """Raw fitting output."""
+    pcov: dict[QubitId, list[float]]
+    """Approximate covariance of fitted parameters."""
 
 
 @dataclass
@@ -38,9 +49,15 @@ class T1SignalData(Data):
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
+    @property
+    def average(self):
+        if len(next(iter(self.data.values())).shape) > 1:
+            return utils.average_single_shots(self.__class__, self.data)
+        return self
+
 
 def _acquisition(
-    params: T1SignalParameters, platform: Platform, qubits: Qubits
+    params: T1SignalParameters, platform: Platform, targets: list[QubitId]
 ) -> T1SignalData:
     r"""Data acquisition for T1 experiment.
     In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
@@ -52,7 +69,7 @@ def _acquisition(
     Args:
         params:
         platform (Platform): Qibolab platform object
-        qubits (list): list of target qubits to perform the action
+        targets (list): list of target qubits to perform the action
         delay_before_readout_start (int): Initial time delay before ReadOut
         delay_before_readout_end (list): Maximum time delay before ReadOut
         delay_before_readout_step (int): Scan range step for the delay before ReadOut
@@ -65,7 +82,7 @@ def _acquisition(
     qd_pulses = {}
     ro_pulses = {}
     sequence = PulseSequence()
-    for qubit in qubits:
+    for qubit in targets:
         qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].duration
@@ -84,11 +101,9 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.start,
         ro_wait_range,
-        [ro_pulses[qubit] for qubit in qubits],
+        [ro_pulses[qubit] for qubit in targets],
         type=SweeperType.ABSOLUTE,
     )
-
-    data = T1SignalData()
 
     # sweep the parameter
     # execute the pulse sequence
@@ -98,17 +113,24 @@ def _acquisition(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
+            averaging_mode=(
+                AveragingMode.SINGLESHOT if params.single_shot else AveragingMode.CYCLIC
+            ),
         ),
         sweeper,
     )
 
-    for qubit in qubits:
+    data = T1SignalData()
+    for qubit in targets:
         result = results[ro_pulses[qubit].serial]
+        if params.single_shot:
+            _waits = np.array(len(result.magnitude) * [ro_wait_range])
+        else:
+            _waits = ro_wait_range
         data.register_qubit(
-            CoherenceType,
+            utils.CoherenceType,
             (qubit),
-            dict(wait=ro_wait_range, signal=result.magnitude, phase=result.phase),
+            dict(wait=_waits, signal=result.magnitude, phase=result.phase),
         )
 
     return data
@@ -122,19 +144,21 @@ def _fit(data: T1SignalData) -> T1SignalResults:
 
             y = p_0-p_1 e^{-x p_2}.
     """
-    t1s, fitted_parameters = utils.exponential_fit(data)
+    data = data.average
+    t1s, fitted_parameters, pcovs = utils.exponential_fit(data)
 
-    return T1SignalResults(t1s, fitted_parameters)
+    return T1SignalResults(t1s, fitted_parameters, pcovs)
 
 
-def _plot(data: T1SignalData, qubit, fit: T1SignalResults = None):
+def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
     """Plotting function for T1 experiment."""
+    data = data.average
 
     figures = []
     fig = go.Figure()
 
     fitting_report = None
-    qubit_data = data[qubit]
+    qubit_data = data[target]
     waits = qubit_data.wait
 
     fig.add_trace(
@@ -155,7 +179,7 @@ def _plot(data: T1SignalData, qubit, fit: T1SignalResults = None):
             2 * len(qubit_data),
         )
 
-        params = fit.fitted_parameters[qubit]
+        params = fit.fitted_parameters[target]
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
@@ -165,7 +189,9 @@ def _plot(data: T1SignalData, qubit, fit: T1SignalResults = None):
             )
         )
         fitting_report = table_html(
-            table_dict(qubit, "T1 [ns]", np.round(fit.t1[qubit]))
+            table_dict(
+                target, ["T1 [ns]"], [np.round(fit.t1[target])], display_error=True
+            )
         )
 
     # last part
@@ -180,5 +206,9 @@ def _plot(data: T1SignalData, qubit, fit: T1SignalResults = None):
     return figures, fitting_report
 
 
-t1_signal = Routine(_acquisition, _fit, _plot, t1._update)
+def _update(results: T1SignalResults, platform: Platform, target: QubitId):
+    update.t1(results.t1[target], platform, target)
+
+
+t1_signal = Routine(_acquisition, _fit, _plot, _update)
 """T1 Signal Routine object."""

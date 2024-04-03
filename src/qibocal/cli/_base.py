@@ -133,7 +133,21 @@ def report(folder):
 
 @command.command(context_settings=CONTEXT_SETTINGS)
 @click.argument(
-    "folder", metavar="folder", type=click.Path(exists=True, path_type=pathlib.Path)
+    "input_folder",
+    metavar="input_folder",
+    type=click.Path(exists=True, path_type=pathlib.Path),
+)
+@click.option(
+    "output_folder",
+    "-o",
+    type=click.Path(path_type=pathlib.Path),
+    help="Output folder where fit is generated.",
+)
+@click.option(
+    "force",
+    "-f",
+    is_flag=True,
+    help="Use --force option to overwrite the output folder.",
 )
 @click.option(
     "--update/--no-update",
@@ -141,7 +155,9 @@ def report(folder):
     help="Use --no-update option to avoid updating iteratively the platform."
     "With this option the new runcard will not be produced.",
 )
-def fit(folder: pathlib.Path, update):
+def fit(
+    input_folder: pathlib.Path, update: bool, output_folder: pathlib.Path, force: bool
+):
     """Post-processing analysis
 
     Arguments:
@@ -149,7 +165,7 @@ def fit(folder: pathlib.Path, update):
     - FOLDER: input folder.
 
     """
-    fitting(folder, update)
+    fitting(input_folder, update, output_folder, force)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)

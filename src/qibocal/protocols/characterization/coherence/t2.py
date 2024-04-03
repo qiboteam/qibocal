@@ -9,15 +9,14 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal import update
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Routine
 
-from ..utils import chi2_reduced, table_dict, table_html
-from . import t1, utils
+from ..utils import table_dict, table_html
+from . import t1, t2_signal, utils
 
 
 @dataclass
-class T2Parameters(Parameters):
+class T2Parameters(t2_signal.T2SignalParameters):
     """T2 runcard inputs."""
 
     delay_between_pulses_start: int
@@ -29,13 +28,9 @@ class T2Parameters(Parameters):
 
 
 @dataclass
-class T2Results(Results):
+class T2Results(t2_signal.T2SignalResults):
     """T2 outputs."""
 
-    t2: dict[QubitId, float]
-    """T2 for each qubit [ns]."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitting output."""
     chi2: Optional[dict[QubitId, tuple[float, Optional[float]]]] = field(
         default_factory=dict
     )
@@ -49,7 +44,7 @@ class T2Data(t1.T1Data):
 def _acquisition(
     params: T2Parameters,
     platform: Platform,
-    qubits: Qubits,
+    targets: list[QubitId],
 ) -> T2Data:
     """Data acquisition for Ramsey Experiment (detuned)."""
     # create a sequence of pulses for the experiment
@@ -58,7 +53,7 @@ def _acquisition(
     RX90_pulses1 = {}
     RX90_pulses2 = {}
     sequence = PulseSequence()
-    for qubit in qubits:
+    for qubit in targets:
         RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
         RX90_pulses2[qubit] = platform.create_RX90_pulse(
             qubit,
@@ -84,7 +79,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.start,
         waits,
-        [RX90_pulses2[qubit] for qubit in qubits],
+        [RX90_pulses2[qubit] for qubit in targets],
         type=SweeperType.ABSOLUTE,
     )
 
@@ -100,7 +95,7 @@ def _acquisition(
         sweeper,
     )
 
-    for qubit in qubits:
+    for qubit in targets:
         probs = results[ro_pulses[qubit].serial].probability(state=1)
         errors = np.sqrt(probs * (1 - probs) / params.nshots)
         data.register_qubit(
@@ -115,27 +110,16 @@ def _fit(data: T2Data) -> T2Results:
     .. math::
         y = p_0 - p_1 e^{-x p_2}.
     """
-    t2s, fitted_parameters = utils.exponential_fit_probability(data)
-    chi2 = {
-        qubit: (
-            chi2_reduced(
-                data[qubit].prob,
-                utils.exp_decay(data[qubit].wait, *fitted_parameters[qubit]),
-                data[qubit].error,
-            ),
-            np.sqrt(2 / len(data[qubit].prob)),
-        )
-        for qubit in data.qubits
-    }
+    t2s, fitted_parameters, chi2 = utils.exponential_fit_probability(data)
     return T2Results(t2s, fitted_parameters, chi2)
 
 
-def _plot(data: T2Data, qubit, fit: T2Results = None):
+def _plot(data: T2Data, target: QubitId, fit: T2Results = None):
     """Plotting function for Ramsey Experiment."""
 
     figures = []
     fitting_report = ""
-    qubit_data = data[qubit]
+    qubit_data = data[target]
     waits = qubit_data.wait
     probs = qubit_data.prob
     error_bars = qubit_data.error
@@ -171,7 +155,7 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
             2 * len(qubit_data),
         )
 
-        params = fit.fitted_parameters[qubit]
+        params = fit.fitted_parameters[target]
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
@@ -185,12 +169,12 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
         )
         fitting_report = table_html(
             table_dict(
-                qubit,
+                target,
                 [
                     "T2 [ns]",
                     "chi2 reduced",
                 ],
-                [fit.t2[qubit], fit.chi2[qubit]],
+                [fit.t2[target], fit.chi2[target]],
                 display_error=True,
             )
         )
@@ -205,9 +189,5 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
     return figures, fitting_report
 
 
-def _update(results: T2Results, platform: Platform, qubit: QubitId):
-    update.t2(results.t2[qubit], platform, qubit)
-
-
-t2 = Routine(_acquisition, _fit, _plot, _update)
+t2 = Routine(_acquisition, _fit, _plot, t2_signal._update)
 """T2 Routine object."""

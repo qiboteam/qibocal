@@ -34,7 +34,7 @@ The bare resonator frequency can be found setting a large value for the amplitud
     actions:
 
       - id: resonator_spectroscopy high power
-        priority: 0
+
         operation: resonator_spectroscopy
         parameters:
             freq_width: 60_000_000
@@ -57,7 +57,7 @@ Lowering the amplitude we can see a shift in the peak, e.g.:
     actions:
 
       - id: resonator_spectroscopy low power
-        priority: 0
+
         operation: resonator_spectroscopy
         parameters:
             freq_width: 60_000_000

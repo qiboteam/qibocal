@@ -2,14 +2,16 @@ import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Qubits, Routine
+from qibocal.auto.operation import Routine
 
-from . import t1, t1_signal
+from . import t1_signal
+from .utils import CoherenceType
 
 
 def _acquisition(
-    params: t1_signal.T1SignalParameters, platform: Platform, qubits: Qubits
+    params: t1_signal.T1SignalParameters, platform: Platform, targets: list[QubitId]
 ) -> t1_signal.T1SignalData:
     r"""Data acquisition for T1 experiment.
     In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
@@ -21,7 +23,7 @@ def _acquisition(
     Args:
         params:
         platform (Platform): Qibolab platform object
-        qubits (list): list of target qubits to perform the action
+        targets (list): list of target qubits to perform the action
         delay_before_readout_start (int): Initial time delay before ReadOut
         delay_before_readout_end (list): Maximum time delay before ReadOut
         delay_before_readout_step (int): Scan range step for the delay before ReadOut
@@ -34,7 +36,7 @@ def _acquisition(
     qd_pulses = {}
     ro_pulses = {}
     sequence = PulseSequence()
-    for qubit in qubits:
+    for qubit in targets:
         qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].duration
@@ -55,7 +57,7 @@ def _acquisition(
     # repeat the experiment as many times as defined by software_averages
     # sweep the parameter
     for wait in ro_wait_range:
-        for qubit in qubits:
+        for qubit in targets:
             ro_pulses[qubit].start = qd_pulses[qubit].duration + wait
 
         # execute the pulse sequence
@@ -68,10 +70,10 @@ def _acquisition(
                 averaging_mode=AveragingMode.CYCLIC,
             ),
         )
-        for qubit in qubits:
+        for qubit in targets:
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
-                t1_signal.CoherenceType,
+                CoherenceType,
                 (qubit),
                 dict(
                     wait=np.array([wait]),
@@ -82,5 +84,5 @@ def _acquisition(
     return data
 
 
-t1_sequences = Routine(_acquisition, t1_signal._fit, t1_signal._plot, t1._update)
+t1_sequences = Routine(_acquisition, t1_signal._fit, t1_signal._plot, t1_signal._update)
 """T1 Routine object."""
