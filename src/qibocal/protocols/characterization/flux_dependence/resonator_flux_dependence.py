@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import List, Optional, Union
 
@@ -11,7 +12,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, table_dict, table_html
@@ -137,6 +138,8 @@ class ResonatorFluxData(Data):
     """True if sweeping flux pulses, False if sweeping bias."""
     qubit_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
+    offset: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit bias offset."""
     bare_resonator_frequency: dict[QubitId, int] = field(default_factory=dict)
     """Qubit bare resonator frequency power provided by the user."""
 
@@ -153,9 +156,10 @@ class ResonatorFluxData(Data):
 def create_flux_pulse_sweepers(
     params: ResonatorFluxParameters,
     platform: Platform,
-    qubits: Qubits,
+    qubits: list[QubitId],
     sequence: PulseSequence,
-) -> tuple[np.ndarray, list[Sweeper]]:
+    crosstalk: bool = False,
+) -> tuple[np.ndarray, list[Sweeper], list[PulseSequence]]:
     """Create a list of sweepers containing flux pulses.
 
     Args:
@@ -163,8 +167,10 @@ def create_flux_pulse_sweepers(
         platform (Platform): platform on which to run the experiment.
         qubits (Qubits): qubits on which to run the experiment.
         sequence (PulseSequence): pulse sequence of the experiment (updated with flux pulses).
+        crosstalk (bool): if True it will split amplitude sweepers (necessary for crosstalk protocol)
     """
     qf_pulses = {}
+    sequences = [deepcopy(sequence) for _ in range(len(qubits))]
     for i, qubit in enumerate(qubits):
         if isinstance(params.flux_amplitude_start, list):
             flux_amplitude_start = params.flux_amplitude_start[i]
@@ -180,19 +186,35 @@ def create_flux_pulse_sweepers(
             flux_amplitude_step,
         )
         pulse = platform.create_qubit_flux_pulse(
-            qubit, start=0, duration=sequence.duration
+            qubit, start=0, duration=sequence.duration, amplitude=0.5
         )
         qf_pulses[qubit] = pulse
-        sequence.add(pulse)
-    sweepers = [
-        Sweeper(
-            Parameter.amplitude,
-            delta_bias_flux_range,
-            pulses=[qf_pulses[qubit] for qubit in qubits],
-            type=SweeperType.ABSOLUTE,
-        )
-    ]
-    return delta_bias_flux_range, sweepers
+        if crosstalk:
+            sequences[i].add(pulse)
+        else:
+            sequence.add(pulse)
+
+    if crosstalk:
+        sweepers = [
+            Sweeper(
+                Parameter.amplitude,
+                delta_bias_flux_range * 0.5,
+                pulses=[qf_pulses[qubit]],
+                type=SweeperType.ABSOLUTE,
+            )
+            for qubit in qubits
+        ]
+        return delta_bias_flux_range, sweepers, sequences
+    else:
+        sweepers = [
+            Sweeper(
+                Parameter.amplitude,
+                delta_bias_flux_range * 0.5,
+                pulses=[qf_pulses[qubit] for qubit in qubits],
+                type=SweeperType.ABSOLUTE,
+            )
+        ]
+        return delta_bias_flux_range, sweepers, [sequence]
 
 
 def _acquisition(
@@ -207,12 +229,13 @@ def _acquisition(
     ro_pulses = {}
     qubit_frequency = {}
     bare_resonator_frequency = {}
+    offset = {}
     for qubit in targets:
         qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
         bare_resonator_frequency[qubit] = platform.qubits[
             qubit
         ].bare_resonator_frequency
-
+        offset[qubit] = platform.qubits[qubit].sweetspot
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
         sequence.add(ro_pulses[qubit])
 
@@ -227,9 +250,10 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
     if params.flux_pulses:
-        delta_bias_flux_range, sweepers = create_flux_pulse_sweepers(
+        delta_bias_flux_range, sweepers, sequences = create_flux_pulse_sweepers(
             params, platform, targets, sequence
         )
+        sequence = sequences[0]
     else:
         delta_bias_flux_range = np.arange(
             -params.bias_width / 2, params.bias_width / 2, params.bias_step
@@ -247,6 +271,7 @@ def _acquisition(
         resonator_type=platform.resonator_type,
         flux_pulses=params.flux_pulses,
         qubit_frequency=qubit_frequency,
+        offset=offset,
         bare_resonator_frequency=bare_resonator_frequency,
     )
 

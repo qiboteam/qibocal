@@ -128,11 +128,11 @@ def _acquisition(
     for qubit in targets:
         sweetspots[qubit] = voltage[qubit] = platform.qubits[qubit].sweetspot
         d[qubit] = platform.qubits[qubit].asymmetry
-        matrix_element[qubit] = platform.qubits[qubit].crosstalk_matrix[qubit]
         qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.drive_duration
         )
+        matrix_element[qubit] = platform.qubits[qubit].crosstalk_matrix[qubit]
 
         if params.transition == "02":
             if platform.qubits[qubit].anharmonicity:
@@ -165,13 +165,14 @@ def _acquisition(
     else:
         flux_qubits = params.flux_qubits
     if params.flux_pulses:
-        delta_bias_flux_range, sweepers = create_flux_pulse_sweepers(
-            params, platform, targets, sequence
+        delta_bias_flux_range, sweepers, sequences = create_flux_pulse_sweepers(
+            params, platform, flux_qubits, sequence, crosstalk=True
         )
     else:
         delta_bias_flux_range = np.arange(
             -params.bias_width / 2, params.bias_width / 2, params.bias_step
         )
+        sequences = [sequence]
         sweepers = [
             Sweeper(
                 Parameter.bias,
@@ -197,7 +198,7 @@ def _acquisition(
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    for flux_qubit, bias_sweeper in zip(flux_qubits, sweepers):
+    for flux_qubit, bias_sweeper, sequence in zip(flux_qubits, sweepers, sequences):
         results = platform.sweep(sequence, options, bias_sweeper, freq_sweeper)
         # retrieve the results for every qubit
         for qubit in targets:
@@ -259,7 +260,6 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
                 qubit_data.bias,
                 qubit_data.signal,
             )
-
         target_qubit, flux_qubit = target_flux_qubit
 
         if target_qubit != flux_qubit:

@@ -75,6 +75,9 @@ class QubitFluxData(Data):
     qubit_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
 
+    offset: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit bias offset."""
+
     data: dict[QubitId, npt.NDArray[QubitFluxType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -97,11 +100,13 @@ def _acquisition(
     ro_pulses = {}
     qd_pulses = {}
     qubit_frequency = {}
+    offset = {}
     for qubit in targets:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.drive_duration
         )
         qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
+        offset[qubit] = platform.qubits[qubit].sweetspot
 
         if params.transition == "02":
             if platform.qubits[qubit].anharmonicity:
@@ -129,12 +134,12 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
     if params.flux_pulses:
-        (
-            delta_bias_flux_range,
-            sweepers,
-        ) = resonator_flux_dependence.create_flux_pulse_sweepers(
-            params, platform, targets, sequence
+        (delta_bias_flux_range, sweepers, sequences) = (
+            resonator_flux_dependence.create_flux_pulse_sweepers(
+                params, platform, targets, sequence
+            )
         )
+        sequence = sequences[0]
     else:
         delta_bias_flux_range = np.arange(
             -params.bias_width / 2, params.bias_width / 2, params.bias_step
@@ -151,6 +156,7 @@ def _acquisition(
         resonator_type=platform.resonator_type,
         flux_pulses=params.flux_pulses,
         qubit_frequency=qubit_frequency,
+        offset=offset,
     )
     options = ExecutionParameters(
         nshots=params.nshots,
