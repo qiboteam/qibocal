@@ -127,11 +127,10 @@ def _acquisition(
     voltage = {}
     matrix_element = {}
     for qubit in targets:
-        if qubit not in params.flux_qubits:
-            sweetspots[qubit] = voltage[qubit] = platform.qubits[qubit].sweetspot
-            asymmetry[qubit] = platform.qubits[qubit].asymmetry
-            coupling[qubit] = platform.qubits[qubit].g
-            matrix_element[qubit] = platform.qubits[qubit].crosstalk_matrix[qubit]
+        sweetspots[qubit] = voltage[qubit] = platform.qubits[qubit].sweetspot
+        asymmetry[qubit] = platform.qubits[qubit].asymmetry
+        coupling[qubit] = platform.qubits[qubit].g
+        matrix_element[qubit] = platform.qubits[qubit].crosstalk_matrix[qubit]
         bare_resonator_frequency[qubit] = platform.qubits[
             qubit
         ].bare_resonator_frequency
@@ -210,7 +209,6 @@ def _acquisition(
                 freq=delta_frequency_range + ro_pulses[qubit].frequency,
                 bias=delta_bias_flux_range + sweetspot,
             )
-
     return data
 
 

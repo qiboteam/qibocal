@@ -126,10 +126,9 @@ def _acquisition(
     matrix_element = {}
     qubit_frequency = {}
     for qubit in targets:
-        if qubit not in params.flux_qubits:
-            sweetspots[qubit] = voltage[qubit] = platform.qubits[qubit].sweetspot
-            d[qubit] = platform.qubits[qubit].asymmetry
-            matrix_element[qubit] = platform.qubits[qubit].crosstalk_matrix[qubit]
+        sweetspots[qubit] = voltage[qubit] = platform.qubits[qubit].sweetspot
+        d[qubit] = platform.qubits[qubit].asymmetry
+        matrix_element[qubit] = platform.qubits[qubit].crosstalk_matrix[qubit]
         qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.drive_duration
