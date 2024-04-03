@@ -266,7 +266,7 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
                     f"Sweetspot [{bias_flux_unit}]",
                     "Qubit Frequency at Sweetspot [Hz]",
                     "Asymmetry d",
-                    "V_ii [V]",
+                    "Flux dependence",
                 ],
                 [
                     np.round(fit.sweetspot[target], 4),
