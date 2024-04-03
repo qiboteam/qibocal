@@ -6,7 +6,7 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
-from qibocal.auto.operation import Qubits, Results, Routine
+from qibocal.auto.operation import Results, Routine
 
 from ..two_qubit_interaction.chevron import ChevronData, ChevronParameters, _plot
 from ..two_qubit_interaction.utils import order_pair
@@ -28,7 +28,7 @@ class ChevronCouplersData(ChevronData):
 def _aquisition(
     params: ChevronCouplersParameters,
     platform: Platform,
-    targets: Qubits,
+    targets: list[QubitPairId],
 ) -> ChevronData:
     r"""
     Perform an CZ experiment between pairs of qubits by changing the coupler state,
