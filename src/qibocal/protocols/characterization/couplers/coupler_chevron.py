@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
@@ -15,6 +16,10 @@ from ..two_qubit_interaction.utils import order_pair
 
 @dataclass
 class ChevronCouplersParameters(ChevronParameters):
+
+    native_gate: Optional[str] = "CZ"
+    """Native gate to implement, CZ or iSWAP."""
+
     """ChevronCouplers protocol parameters.
 
     Amplitude and duration are referred to the coupler pulse.
