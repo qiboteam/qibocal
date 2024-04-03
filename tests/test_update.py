@@ -129,9 +129,9 @@ def test_coherence_params_update(qubit):
     update.t2(RANDOM_INT, PLATFORM, qubit.name)
     update.t2_spin_echo(RANDOM_INT, PLATFORM, qubit.name)
 
-    assert qubit.t1 == RANDOM_INT
-    assert qubit.t2 == RANDOM_INT
-    assert qubit.t2_spin_echo == RANDOM_INT
+    assert qubit.T1 == RANDOM_INT
+    assert qubit.T2 == RANDOM_INT
+    assert qubit.T2_spin_echo == RANDOM_INT
 
 
 @pytest.mark.parametrize("qubit", QUBITS)
