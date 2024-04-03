@@ -218,11 +218,6 @@ def _plot(data: TuneLandscapeData, fit: TuneLandscapeResults, target: QubitPairI
     return [fig1, fig2], ""
 
 
-# def _update(results: CZVirtualZResults, platform: Platform, qubit_pair: QubitPairId):
-#     # FIXME: quick fix for qubit order
-#     qubit_pair = tuple(sorted(qubit_pair))
-#     update.virtual_phases(results.virtual_phase[qubit_pair], platform, qubit_pair)
-
 
 tune_landscape = Routine(_acquisition, _fit, _plot, two_qubit_gates=True)
 """CZ virtual Z correction routine."""
