@@ -6,7 +6,7 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
-from qibocal.auto.operation import Qubits, Results, Routine
+from qibocal.auto.operation import Results, Routine
 
 from ..two_qubit_interaction.chevron import ChevronData, ChevronParameters, _plot
 from ..two_qubit_interaction.utils import order_pair
