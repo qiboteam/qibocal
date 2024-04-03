@@ -186,7 +186,9 @@ def create_flux_pulse_sweepers(
             flux_amplitude_step,
         )
         pulse = platform.create_qubit_flux_pulse(
-            qubit, start=0, duration=sequence.duration, amplitude=0.5
+            qubit,
+            start=0,
+            duration=sequence.duration,
         )
         qf_pulses[qubit] = pulse
         if crosstalk:
@@ -198,7 +200,7 @@ def create_flux_pulse_sweepers(
         sweepers = [
             Sweeper(
                 Parameter.amplitude,
-                delta_bias_flux_range * 0.5,
+                delta_bias_flux_range,
                 pulses=[qf_pulses[qubit]],
                 type=SweeperType.ABSOLUTE,
             )
@@ -209,7 +211,7 @@ def create_flux_pulse_sweepers(
         sweepers = [
             Sweeper(
                 Parameter.amplitude,
-                delta_bias_flux_range * 0.5,
+                delta_bias_flux_range,
                 pulses=[qf_pulses[qubit] for qubit in qubits],
                 type=SweeperType.ABSOLUTE,
             )

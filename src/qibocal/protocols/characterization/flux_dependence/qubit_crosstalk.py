@@ -172,7 +172,7 @@ def _acquisition(
         delta_bias_flux_range = np.arange(
             -params.bias_width / 2, params.bias_width / 2, params.bias_step
         )
-        sequences = [sequence]
+        sequences = [sequence] * len(flux_qubits)
         sweepers = [
             Sweeper(
                 Parameter.bias,
