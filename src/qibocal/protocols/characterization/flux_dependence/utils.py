@@ -69,7 +69,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
                 y=bias - data.offset[qubit] if data.flux_pulses else bias,
                 showlegend=True,
                 name="Fit",
-                marker=dict(color="black"),
+                marker=dict(color="green"),
             ),
             row=1,
             col=1,
@@ -154,13 +154,17 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
                             xj=qubit_data.bias, **fit.fitted_parameters[flux_qubit]
                         )
                         * HZ_TO_GHZ,
-                        y=qubit_data.bias - data.voltage[qubit],
+                        y=(
+                            qubit_data.bias - data.voltage[qubit]
+                            if data.flux_pulses
+                            else qubit_data.bias
+                        ),
                         showlegend=not any(
                             isinstance(trace, go.Scatter) for trace in fig.data
                         ),
                         legendgroup="Fit",
                         name="Fit",
-                        marker=dict(color="white"),
+                        marker=dict(color="green"),
                     ),
                     row=1,
                     col=col + 1,
@@ -183,7 +187,7 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
                         ),
                         legendgroup="Fit",
                         name="Fit",
-                        marker=dict(color="white"),
+                        marker=dict(color="green"),
                     ),
                     row=1,
                     col=col + 1,
