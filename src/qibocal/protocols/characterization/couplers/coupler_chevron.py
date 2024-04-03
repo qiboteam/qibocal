@@ -31,22 +31,16 @@ def _aquisition(
     targets: Qubits,
 ) -> ChevronData:
     r"""
-    Routine to find the optimal coupler flux pulse amplitude and duration for a CZ/iSWAP gate.
-
-    The qubits must be at specific frequencies such that the high frequency qubit
-    1 to 2 (CZ) / 0 to 1 (iSWAP) transition is at the same frequency as the low frequency qubit 0 to 1 transition.
-    At this avoided crossing, the coupling can be turned on and off by applying a flux pulse on the coupler.
-    The amplitude of this flux pluse changes the frequency of the coupler. The
-    closer the coupler frequency is to the avoided crossing, the stronger the coupling.
-    A strong interaction allows for a faster controlled gate.
+    Perform an CZ experiment between pairs of qubits by changing the coupler state,
+    qubits need to be pulses into their interaction point.
 
     Args:
         platform: Platform to use.
         params: Experiment parameters.
-        qubits: Dict of QubitPairs.
+        targets (list): List of pairs to use sequentially.
 
     Returns:
-        DataUnits: Acquisition data.
+        ChevronCouplersData: Acquisition data.
     """
     # define the parameter to sweep and its range:
     delta_amplitude_range = np.arange(
