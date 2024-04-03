@@ -29,3 +29,34 @@ actions:
       amplitude: .1
       nshots: 10
       relaxation_time: 3_000
+
+
+  - id: coupler chevron CZ
+    priority: 0
+    operation: coupler_chevron
+    targets: [[1, 2]]
+    parameters:
+      amplitude_min: -0.5
+      amplitude_max: -0.0
+      amplitude_step: 0.1
+      duration_min: 50
+      duration_max: 100
+      duration_step: 10
+      native_gate: "CZ"
+      dt: 5
+      nshots: 10
+
+  - id: coupler chevron iSWAP
+    priority: 0
+    operation: coupler_chevron
+    targets: [[1, 2]]
+    parameters:
+      amplitude_min: -0.5
+      amplitude_max: -0.0
+      amplitude_step: 0.1
+      duration_min: 50
+      duration_max: 100
+      duration_step: 10
+      native_gate: "iSWAP"
+      dt: 5
+      nshots: 10

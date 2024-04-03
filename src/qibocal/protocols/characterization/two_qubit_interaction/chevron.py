@@ -90,7 +90,7 @@ def _aquisition(
     targets: list[QubitPairId],
 ) -> ChevronData:
     r"""
-    Perform an iSWAP/CZ experiment between pairs of qubits by changing its frequency.
+    Perform an CZ experiment between pairs of qubits by changing its frequency.
 
     Args:
         platform: Platform to use.
@@ -107,15 +107,17 @@ def _aquisition(
         # order the qubits so that the low frequency one is the first
         sequence = PulseSequence()
         ordered_pair = order_pair(pair, platform.qubits)
-        # initialize in system in 11 state
+
         initialize_lowfreq = platform.create_RX_pulse(
             ordered_pair[0], start=0, relative_phase=0
         )
+        sequence.add(initialize_lowfreq)
+
         initialize_highfreq = platform.create_RX_pulse(
             ordered_pair[1], start=0, relative_phase=0
         )
         sequence.add(initialize_highfreq)
-        sequence.add(initialize_lowfreq)
+
         cz, _ = platform.create_CZ_pulse_sequence(
             qubits=(ordered_pair[1], ordered_pair[0]),
             start=initialize_highfreq.finish,
@@ -124,11 +126,14 @@ def _aquisition(
         sequence.add(cz.get_qubit_pulses(ordered_pair[0]))
         sequence.add(cz.get_qubit_pulses(ordered_pair[1]))
 
+        delay_measurement = params.duration_max
         # Patch to get the coupler until the routines use QubitPair
         if platform.couplers:
-            sequence.add(
-                cz.coupler_pulses(platform.pairs[tuple(ordered_pair)].coupler.name)
+            coupler_pulse = cz.coupler_pulses(
+                platform.pairs[tuple(ordered_pair)].coupler.name
             )
+            sequence.add(coupler_pulse)
+            delay_measurement = max(params.duration_max, coupler_pulse.duration)
 
         if params.parking:
             for pulse in cz:
@@ -140,11 +145,11 @@ def _aquisition(
         # add readout
         measure_lowfreq = platform.create_qubit_readout_pulse(
             ordered_pair[0],
-            start=initialize_lowfreq.finish + params.duration_max + params.dt,
+            start=initialize_lowfreq.finish + delay_measurement + params.dt,
         )
         measure_highfreq = platform.create_qubit_readout_pulse(
             ordered_pair[1],
-            start=initialize_highfreq.finish + params.duration_max + params.dt,
+            start=initialize_highfreq.finish + delay_measurement + params.dt,
         )
 
         sequence.add(measure_lowfreq)
@@ -286,7 +291,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
                         color="black",
                         symbol="cross",
                     ),
-                    name="CZ estimate",
+                    name="CZ estimate",  #  Change name from the params
                     showlegend=True if measured_qubit == target[0] else False,
                     legendgroup="Voltage",
                 ),
@@ -309,7 +314,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
         fitting_report = table_html(
             table_dict(
                 target[1],
-                ["CZ amplitude", "CZ duration"],
+                ["CZ amplitude", "CZ duration"],  #  Change name from the params
                 [fit.amplitude[target], fit.duration[target]],
             )
         )
