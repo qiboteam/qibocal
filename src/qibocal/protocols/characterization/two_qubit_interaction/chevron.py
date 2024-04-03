@@ -118,9 +118,6 @@ def _aquisition(
         )
         sequence.add(initialize_highfreq)
 
-        # TODO: Is this the best way to assume you have a 2q gate on the runcard
-        # instead of using platform.create_flux_pulse and platform.create_coupler_pulse ?
-
         cz, _ = platform.create_CZ_pulse_sequence(
             qubits=(ordered_pair[1], ordered_pair[0]),
             start=initialize_highfreq.finish,
