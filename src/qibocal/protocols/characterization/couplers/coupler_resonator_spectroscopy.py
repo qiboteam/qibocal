@@ -38,16 +38,17 @@ def _acquisition(
     # create a sequence of pulses for the experiment:
     # Coupler pulse while MZ
 
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
+    if params.measured_qubits is None:
+        params.measured_qubits = [
+            order_pair(pair, platform.qubits)[0] for pair in targets
+        ]
+
     sequence = PulseSequence()
     ro_pulses = {}
     couplers = []
     for i, pair in enumerate(targets):
         ordered_pair = order_pair(pair, platform.qubits)
-        if params.measured_qubits is None:
-            measured_qubit = ordered_pair[0]
-        else:
-            measured_qubit = params.measured_qubits[i]
+        measured_qubit = params.measured_qubits[i]
 
         qubit = platform.qubits[measured_qubit].name
         coupler = platform.pairs[tuple(sorted(ordered_pair))].coupler
@@ -58,11 +59,6 @@ def _acquisition(
             ro_pulses[qubit].amplitude = params.amplitude
 
         sequence.add(ro_pulses[qubit])
-
-    if params.measured_qubits is None:
-        params.measured_qubits = [
-            order_pair(pair, platform.qubits)[0] for pair in targets
-        ]
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
@@ -138,21 +134,11 @@ def _fit(data: CouplerSpectroscopyData) -> CouplerSpectroscopyResults:
     sweetspot = {}
     fitted_parameters = {}
 
-    for qubit in qubits:
-        # TODO: Implement fit
-        """It should get two things:
-        Coupler sweetspot: the value that makes both features centered and symmetric
-        Pulse_amp: That turn on the feature taking into account the shift introduced by the coupler sweetspot
-
-        Issues:  Coupler sweetspot it measured in volts while pulse_amp is a pulse amplitude, this routine just sweeps pulse amplitude
-        and relies on manual shifting of that sweetspot by repeated scans as current chips are already symmetric for this feature.
-        Maybe another routine sweeping the bias in volts would be needed and that sweeper implement on Zurich driver.
-        """
-        # spot, amp, fitted_params = coupler_fit(data[qubit])
-
-        sweetspot[qubit] = 0
-        pulse_amp[qubit] = 0
-        fitted_parameters[qubit] = None
+    # TODO: Implement fit
+    """It should get two things:
+    Coupler sweetspot: the value that makes both features centered and symmetric
+    Pulse_amp: That turn on the feature taking into account the shift introduced by the coupler sweetspot
+    """
 
     return CouplerSpectroscopyResults(
         pulse_amp=pulse_amp,

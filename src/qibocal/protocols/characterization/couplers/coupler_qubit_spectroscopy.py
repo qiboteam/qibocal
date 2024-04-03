@@ -41,16 +41,19 @@ def _acquisition(
 
     # create a sequence of pulses for the experiment:
     # Coupler pulse while Drive pulse - MZ
+
+    if params.measured_qubits is None:
+        params.measured_qubits = [
+            order_pair(pair, platform.qubits)[0] for pair in targets
+        ]
+
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
     couplers = []
     for i, pair in enumerate(targets):
         ordered_pair = order_pair(pair, platform.qubits)
-        if params.measured_qubits is None:
-            measured_qubit = ordered_pair[0]
-        else:
-            measured_qubit = params.measured_qubits[i]
+        measured_qubit = params.measured_qubits[i]
 
         qubit = platform.qubits[measured_qubit].name
         couplers.append(platform.pairs[tuple(sorted(ordered_pair))].coupler)
@@ -66,11 +69,6 @@ def _acquisition(
 
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
-
-    if params.measured_qubits is None:
-        params.measured_qubits = [
-            order_pair(pair, platform.qubits)[0] for pair in targets
-        ]
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
