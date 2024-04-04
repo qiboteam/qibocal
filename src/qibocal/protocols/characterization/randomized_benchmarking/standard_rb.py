@@ -84,7 +84,7 @@ class RBData(Data):
     """Number of iterations for each depth."""
     data: dict[QubitId, npt.NDArray[RBType]] = field(default_factory=dict)
     """Raw data acquired."""
-    circuits: dict[QubitId, int] = field(default_factory=dict)
+    circuits: dict[QubitId, list[list[int]]] = field(default_factory=dict)
     """Clifford gate indexes executed."""
 
     def extract_probabilities(self, qubit):
@@ -118,6 +118,9 @@ class StandardRBResult(Results):
 
 
 class RB_Generator:
+    """
+    This class generates random single qubit cliffords for randomized benchmarking.
+    """
 
     def __init__(self, seed):
         self.seed = seed
@@ -128,10 +131,22 @@ class RB_Generator:
         )
 
     def random_index(self, gate_list):
+        """
+        Generates a random index within the range of the given gate list.
+
+        Parameters:
+        - gate_list (list): Dict of gates.
+
+        Returns:
+        - int: Random index.
+        """
         return self.local_state.integers(0, len(gate_list), 1)
 
     def layer_gen(self):
-        """Returns a circuit with a random single-qubit clifford unitary."""
+        """
+        Returns:
+        - Gate: Random single-qubit clifford .
+        """
         return random_clifford(self.random_index)
 
 

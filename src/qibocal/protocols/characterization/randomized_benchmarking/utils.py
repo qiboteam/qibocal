@@ -56,9 +56,9 @@ def random_clifford(random_index_gen):
     """
 
     random_index = int(random_index_gen(SINGLE_QUBIT_CLIFFORDS))
-    clifford_gates = SINGLE_QUBIT_CLIFFORDS[random_index](0)
+    clifford_gate = SINGLE_QUBIT_CLIFFORDS[random_index](0)
 
-    return clifford_gates, random_index
+    return clifford_gate, random_index
 
 
 def number_to_str(
