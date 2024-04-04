@@ -9,7 +9,8 @@ from qibo.models import Circuit
 
 
 def layer_circuit(rb_gen: Callable, depth: int, qubit) -> tuple[Circuit, dict]:
-    """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`.
+    """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`
+    and a dictionary with random indexes used to select the clifford gates.
 
     Args:
         layer_gen (Callable): Should return gates or a full circuit specifying a layer.
