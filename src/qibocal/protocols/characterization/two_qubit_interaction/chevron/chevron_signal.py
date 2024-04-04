@@ -102,7 +102,7 @@ def _aquisition(
             dt=params.dt,
         )
 
-        data.cz_amplitude[ordered_pair] = (
+        data.native_amplitude[ordered_pair] = (
             sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0].amplitude
         )
         data.sweetspot[ordered_pair] = platform.qubits[ordered_pair[1]].sweetspot
@@ -133,7 +133,7 @@ def _aquisition(
             ordered_pair[0],
             ordered_pair[1],
             params.duration_range,
-            params.amplitude_range,
+            params.amplitude_range * data.native_amplitude[ordered_pair],
             results[ordered_pair[0]].magnitude,
             results[ordered_pair[1]].magnitude,
         )

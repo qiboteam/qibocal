@@ -87,7 +87,7 @@ ChevronType = np.dtype(
 class ChevronData(Data):
     """Chevron acquisition outputs."""
 
-    cz_amplitude: dict[QubitPairId, float] = field(default_factory=dict)
+    native_amplitude: dict[QubitPairId, float] = field(default_factory=dict)
     """CZ platform amplitude for qubit pair."""
     sweetspot: dict[QubitPairId, float] = field(default_factory=dict)
     """Sweetspot value for high frequency qubit."""
@@ -125,7 +125,7 @@ def _aquisition(
     targets: list[QubitPairId],
 ) -> ChevronData:
     r"""
-    Perform an iSWAP/CZ experiment between pairs of qubits by changing its frequency.
+    Perform an CZ experiment between pairs of qubits by changing its frequency.
 
     Args:
         platform: Platform to use.
@@ -157,7 +157,7 @@ def _aquisition(
             type=SweeperType.FACTOR,
         )
 
-        data.cz_amplitude[ordered_pair] = (
+        data.native_amplitude[ordered_pair] = (
             sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0].amplitude
         )
         data.sweetspot[ordered_pair] = platform.qubits[ordered_pair[1]].sweetspot
@@ -182,7 +182,7 @@ def _aquisition(
             ordered_pair[0],
             ordered_pair[1],
             params.duration_range,
-            params.amplitude_range * data.cz_amplitude[ordered_pair],
+            params.amplitude_range * data.native_amplitude[ordered_pair],
             results[ordered_pair[0]].probability(state=1),
             results[ordered_pair[1]].probability(state=1),
         )
@@ -283,7 +283,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
                         color="black",
                         symbol="cross",
                     ),
-                    name="CZ estimate",
+                    name="CZ estimate",  #  Change name from the params
                     showlegend=True if measured_qubit == target[0] else False,
                     legendgroup="Voltage",
                 ),

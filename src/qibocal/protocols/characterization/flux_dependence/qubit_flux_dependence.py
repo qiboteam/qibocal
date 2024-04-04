@@ -11,28 +11,21 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.characterization.qubit_spectroscopy_ef import (
     DEFAULT_ANHARMONICITY,
 )
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, table_dict, table_html
-from . import utils
+from . import resonator_flux_dependence, utils
+from .resonator_flux_dependence import ResonatorFluxParameters
 
 
 @dataclass
-class QubitFluxParameters(Parameters):
+class QubitFluxParameters(ResonatorFluxParameters):
     """QubitFlux runcard inputs."""
 
-    freq_width: int
-    """Width for frequency sweep relative to the qubit frequency [Hz]."""
-    freq_step: int
-    """Frequency step for sweep [Hz]."""
-    bias_width: float
-    """Width for bias sweep [V]."""
-    bias_step: float
-    """Bias step for sweep [a.u.]."""
     drive_amplitude: Optional[float] = None
     """Drive amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
@@ -75,6 +68,9 @@ class QubitFluxData(Data):
 
     resonator_type: str
     """Resonator type."""
+
+    flux_pulses: bool
+    """True if sweeping flux pulses, False if sweeping bias."""
 
     qubit_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
@@ -132,20 +128,29 @@ def _acquisition(
         pulses=[qd_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
-
-    delta_bias_range = np.arange(
-        -params.bias_width / 2, params.bias_width / 2, params.bias_step
-    )
-    bias_sweepers = [
-        Sweeper(
-            Parameter.bias,
-            delta_bias_range,
-            qubits=[platform.qubits[qubit] for qubit in targets],
-            type=SweeperType.OFFSET,
+    if params.flux_pulses:
+        (
+            delta_bias_flux_range,
+            sweepers,
+        ) = resonator_flux_dependence.create_flux_pulse_sweepers(
+            params, platform, targets, sequence
         )
-    ]
+    else:
+        delta_bias_flux_range = np.arange(
+            -params.bias_width / 2, params.bias_width / 2, params.bias_step
+        )
+        sweepers = [
+            Sweeper(
+                Parameter.bias,
+                delta_bias_flux_range,
+                qubits=[platform.qubits[qubit] for qubit in targets],
+                type=SweeperType.OFFSET,
+            )
+        ]
     data = QubitFluxData(
-        resonator_type=platform.resonator_type, qubit_frequency=qubit_frequency
+        resonator_type=platform.resonator_type,
+        flux_pulses=params.flux_pulses,
+        qubit_frequency=qubit_frequency,
     )
 
     options = ExecutionParameters(
@@ -154,7 +159,7 @@ def _acquisition(
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    for bias_sweeper in bias_sweepers:
+    for bias_sweeper in sweepers:
         results = platform.sweep(sequence, options, bias_sweeper, freq_sweeper)
         # retrieve the results for every qubit
         for qubit in targets:
@@ -165,7 +170,7 @@ def _acquisition(
                 signal=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
-                bias=delta_bias_range + sweetspot,
+                bias=delta_bias_flux_range + sweetspot,
             )
     return data
 
@@ -241,12 +246,16 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
     figures = utils.flux_dependence_plot(
         data, fit, target, fit_function=utils.transmon_frequency
     )
+    if data.flux_pulses:
+        bias_flux_unit = "a.u."
+    else:
+        bias_flux_unit = "V"
     if fit is not None:
         fitting_report = table_html(
             table_dict(
                 target,
                 [
-                    "Sweetspot [V]",
+                    f"Sweetspot [{bias_flux_unit}]",
                     "Qubit Frequency at Sweetspot [Hz]",
                     "Asymmetry d",
                     "V_ii [V]",

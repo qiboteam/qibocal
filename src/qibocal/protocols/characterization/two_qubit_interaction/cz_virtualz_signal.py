@@ -46,7 +46,7 @@ def _acquisition(
     targets: list[QubitPairId],
 ) -> CZVirtualZSignalData:
     r"""
-    Acquisition for CZVirtualZ.
+    Acquisition for CZVirtualZ. See https://arxiv.org/pdf/1904.06560.pdf
 
     Check the two-qubit landscape created by a flux pulse of a given duration
     and amplitude.
@@ -91,14 +91,14 @@ def _acquisition(
                 )
                 data.vphases[ord_pair] = dict(virtual_z_phase)
                 theta = np.arange(
-                    virtual_z_phase[target_q] + params.theta_start,
-                    virtual_z_phase[target_q] + params.theta_end,
+                    params.theta_start,
+                    params.theta_end,
                     params.theta_step,
                     dtype=float,
                 )
                 sweeper = Sweeper(
                     Parameter.relative_phase,
-                    theta,
+                    theta - data.vphases[ord_pair][target_q],
                     pulses=[theta_pulse],
                     type=SweeperType.ABSOLUTE,
                 )

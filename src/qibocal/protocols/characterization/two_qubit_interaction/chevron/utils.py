@@ -41,6 +41,15 @@ def chevron_sequence(
     sequence.add(cz.get_qubit_pulses(ordered_pair[0]))
     sequence.add(cz.get_qubit_pulses(ordered_pair[1]))
 
+    delay_measurement = duration_max
+
+    if platform.couplers:
+        coupler_pulse = cz.coupler_pulses(
+            platform.pairs[tuple(ordered_pair)].coupler.name
+        )
+        sequence.add(coupler_pulse)
+        delay_measurement = max(duration_max, coupler_pulse.duration)
+
     if parking:
         for pulse in cz:
             if pulse.qubit not in ordered_pair:
@@ -51,11 +60,11 @@ def chevron_sequence(
     # add readout
     measure_lowfreq = platform.create_qubit_readout_pulse(
         ordered_pair[0],
-        start=initialize_lowfreq.finish + duration_max + dt,
+        start=initialize_lowfreq.finish + delay_measurement + dt,
     )
     measure_highfreq = platform.create_qubit_readout_pulse(
         ordered_pair[1],
-        start=initialize_highfreq.finish + duration_max + dt,
+        start=initialize_highfreq.finish + delay_measurement + dt,
     )
 
     sequence.add(measure_lowfreq)
