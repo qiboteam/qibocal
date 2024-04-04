@@ -1,37 +1,25 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
 from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Data, Parameters, Results
+from qibocal.auto.operation import Data, Results
 
+from ..flux_dependence.resonator_flux_dependence import ResonatorFluxParameters
 from ..flux_dependence.utils import create_data_array
 
 
 @dataclass
-class CouplerSpectroscopyParameters(Parameters):
+class CouplerSpectroscopyParameters(ResonatorFluxParameters):
     """CouplerResonatorSpectroscopy and CouplerQubitSpectroscopy runcard inputs."""
 
-    bias_width: int
-    """Width for bias [a.u.]."""
-    bias_step: int
-    """Frequency step for bias sweep [a.u.]."""
-    freq_width: int
-    """Width for frequency sweep relative  to the readout frequency [Hz]."""
-    freq_step: int
-    """Frequency step for frequency sweep [Hz]."""
-    # TODO: It may be better not to use readout multiplex to avoid readout crosstalk
-    measured_qubits: list[QubitId]
-    """Qubit to readout from the pair"""
-    amplitude: Optional[float] = None
+    measured_qubits: Optional[list[QubitId]] = None
+    """Qubit to measure from the pair"""
+    amplitude: Optional[Union[int, float]] = None
     """Readout or qubit drive amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time [ns]."""
 
 
 CouplerSpecType = np.dtype(
@@ -63,6 +51,8 @@ class CouplerSpectroscopyData(Data):
 
     resonator_type: str
     """Resonator type."""
+    flux_pulses: bool
+    """True if sweeping flux pulses, False if sweeping bias."""
     data: dict[QubitId, npt.NDArray[CouplerSpecType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -71,8 +61,3 @@ class CouplerSpectroscopyData(Data):
         self.data[qubit] = create_data_array(
             freq, bias, signal, phase, dtype=CouplerSpecType
         )
-
-    @property
-    def flux_pulses(self):
-        """Return False because the experiment only supports bias."""
-        return False

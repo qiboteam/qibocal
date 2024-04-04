@@ -1,5 +1,3 @@
-from typing import Optional
-
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
@@ -9,6 +7,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Routine
 
+from ..flux_dependence import resonator_flux_dependence
 from ..flux_dependence.utils import flux_dependence_plot
 from ..two_qubit_interaction.utils import order_pair
 from .utils import (
@@ -18,13 +17,8 @@ from .utils import (
 )
 
 
-class CouplerSpectroscopyParametersResonator(CouplerSpectroscopyParameters):
-    readout_delay: Optional[int] = 1000
-    """Readout delay before the measurement is done to let the flux coupler pulse act"""
-
-
 def _acquisition(
-    params: CouplerSpectroscopyParametersResonator,
+    params: CouplerSpectroscopyParameters,
     platform: Platform,
     targets: list[QubitPairId],
 ) -> CouplerSpectroscopyData:
@@ -40,27 +34,27 @@ def _acquisition(
     """
 
     # TODO: Do we  want to measure both qubits on the pair ?
-    # Different acquisition, for now only measure one and reduce possible crosstalk.
 
     # create a sequence of pulses for the experiment:
     # Coupler pulse while MZ
 
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
+    if params.measured_qubits is None:
+        params.measured_qubits = [
+            order_pair(pair, platform.qubits)[0] for pair in targets
+        ]
+
     sequence = PulseSequence()
     ro_pulses = {}
-    fx_pulses = {}
     couplers = []
     for i, pair in enumerate(targets):
-        qubit = platform.qubits[params.measured_qubits[i]].name
-        # TODO: Qubit pair patch
         ordered_pair = order_pair(pair, platform.qubits)
+        measured_qubit = params.measured_qubits[i]
+
+        qubit = platform.qubits[measured_qubit].name
         coupler = platform.pairs[tuple(sorted(ordered_pair))].coupler
         couplers.append(coupler)
-
         # TODO: May measure both qubits on the pair
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=params.readout_delay
-        )
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
         if params.amplitude is not None:
             ro_pulses[qubit].amplitude = params.amplitude
 
@@ -78,34 +72,44 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
-    # define the parameter to sweep and its range:
-    delta_bias_range = np.arange(
-        -params.bias_width / 2, params.bias_width / 2, params.bias_step
-    )
-
-    # This sweeper is implemented in the flux pulse amplitude and we need it to be that way.
-    sweeper_bias = Sweeper(
-        Parameter.bias,
-        delta_bias_range,
-        couplers=couplers,
-        type=SweeperType.ABSOLUTE,
-    )
+    if params.flux_pulses:
+        # TODO: Add delay
+        (
+            delta_bias_flux_range,
+            sweepers,
+        ) = resonator_flux_dependence.create_flux_pulse_sweepers(
+            params, platform, couplers, sequence
+        )
+    else:
+        delta_bias_flux_range = np.arange(
+            -params.bias_width / 2, params.bias_width / 2, params.bias_step
+        )
+        sweepers = [
+            Sweeper(
+                Parameter.bias,
+                delta_bias_flux_range,
+                qubits=couplers,
+                type=SweeperType.OFFSET,
+            )
+        ]
 
     data = CouplerSpectroscopyData(
         resonator_type=platform.resonator_type,
+        flux_pulses=params.flux_pulses,
     )
 
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
-        sweeper_bias,
-        sweeper_freq,
-    )
+    for bias_sweeper in sweepers:
+        results = platform.sweep(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+            bias_sweeper,
+            sweeper_freq,
+        )
 
     # retrieve the results for every qubit
     for i, pair in enumerate(targets):
@@ -118,7 +122,7 @@ def _acquisition(
             signal=result.magnitude,
             phase=result.phase,
             freq=delta_frequency_range + ro_pulses[qubit].frequency,
-            bias=delta_bias_range,
+            bias=delta_bias_flux_range,
         )
     return data
 
@@ -130,21 +134,11 @@ def _fit(data: CouplerSpectroscopyData) -> CouplerSpectroscopyResults:
     sweetspot = {}
     fitted_parameters = {}
 
-    for qubit in qubits:
-        # TODO: Implement fit
-        """It should get two things:
-        Coupler sweetspot: the value that makes both features centered and symmetric
-        Pulse_amp: That turn on the feature taking into account the shift introduced by the coupler sweetspot
-
-        Issues:  Coupler sweetspot it measured in volts while pulse_amp is a pulse amplitude, this routine just sweeps pulse amplitude
-        and relies on manual shifting of that sweetspot by repeated scans as current chips are already symmetric for this feature.
-        Maybe another routine sweeping the bias in volts would be needed and that sweeper implement on Zurich driver.
-        """
-        # spot, amp, fitted_params = coupler_fit(data[qubit])
-
-        sweetspot[qubit] = 0
-        pulse_amp[qubit] = 0
-        fitted_parameters[qubit] = {}
+    # TODO: Implement fit
+    """It should get two things:
+    Coupler sweetspot: the value that makes both features centered and symmetric
+    Pulse_amp: That turn on the feature taking into account the shift introduced by the coupler sweetspot
+    """
 
     return CouplerSpectroscopyResults(
         pulse_amp=pulse_amp,
@@ -167,7 +161,7 @@ def _plot(
     for qubit in qubit_pair:
         if qubit in data.data.keys():
             fig = flux_dependence_plot(data, fit, qubit)[0]
-            fig.update_yaxes(title_text="Pulse Amplitude [a.u.]", row=1, col=1)
+
             fig.layout.annotations[0].update(
                 text="Signal [a.u.] Qubit" + str(qubit),
             )
@@ -175,7 +169,7 @@ def _plot(
                 text="Phase [rad] Qubit" + str(qubit),
             )
 
-            return [fig], ""
+    return [fig], ""
 
 
 def _update(
