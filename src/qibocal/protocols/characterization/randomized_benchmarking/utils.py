@@ -75,9 +75,9 @@ def random_clifford(qubits, random_indexes_gen):
         qubits = list(range(qubits))
 
     random_indexes = random_indexes_gen(SINGLE_QUBIT_CLIFFORDS, qubits)
-
+    
     clifford_gates = [
-        SINGLE_QUBIT_CLIFFORDS[p](q) for p, q in zip(random_indexes, qubits)
+        SINGLE_QUBIT_CLIFFORDS[p](0) for p in random_indexes
     ]
 
     # To allow json serialization
