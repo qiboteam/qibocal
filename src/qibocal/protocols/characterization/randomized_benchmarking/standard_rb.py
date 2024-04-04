@@ -1,5 +1,7 @@
+import json
 from collections import defaultdict
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Iterable, Optional, TypedDict, Union
 
 import numpy as np
@@ -10,6 +12,7 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.serialize import serialize
 from qibocal.config import raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
@@ -96,6 +99,17 @@ class RBData(Data):
             data_list = data_list.reshape((-1, self.nshots))
             probs.append(np.count_nonzero(1 - data_list, axis=1) / data_list.shape[1])
         return probs
+
+    def _to_json(self, path: Path, filename: str):
+        """Helper function to dump to json."""
+        if self.circuits:
+            (path / f"{filename}.json").write_text(
+                json.dumps(serialize(self.circuts), indent=4)
+            )
+        if self.params:
+            (path / f"{filename}.json").write_text(
+                json.dumps(serialize(self.params), indent=4)
+            )
 
 
 @dataclass
