@@ -9,6 +9,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Routine
 
+from ..flux_dependence import resonator_flux_dependence
 from ..two_qubit_interaction.utils import order_pair
 from .coupler_resonator_spectroscopy import _fit, _plot, _update
 from .utils import CouplerSpectroscopyData, CouplerSpectroscopyParameters
@@ -37,20 +38,26 @@ def _acquisition(
     """
 
     # TODO: Do we  want to measure both qubits on the pair ?
-    # Different acquisition, for now only measure one and reduce possible crosstalk.
 
     # create a sequence of pulses for the experiment:
     # Coupler pulse while Drive pulse - MZ
 
+    if params.measured_qubits is None:
+        params.measured_qubits = [order_pair(pair, platform)[0] for pair in targets]
+
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
+    offset = {}
     couplers = []
     for i, pair in enumerate(targets):
-        qubit = platform.qubits[params.measured_qubits[i]].name
-        # TODO: Qubit pair patch
-        ordered_pair = order_pair(pair, platform.qubits)
-        couplers.append(platform.pairs[tuple(sorted(ordered_pair))].coupler)
+        ordered_pair = order_pair(pair, platform)
+        measured_qubit = params.measured_qubits[i]
+
+        qubit = platform.qubits[measured_qubit].name
+        offset[qubit] = platform.pairs[tuple(sorted(ordered_pair))].coupler.sweetspot
+        coupler = platform.pairs[tuple(sorted(ordered_pair))].coupler.name
+        couplers.append(coupler)
 
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=params.drive_duration
@@ -76,34 +83,46 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
-    # define the parameter to sweep and its range:
-    delta_bias_range = np.arange(
-        -params.bias_width / 2, params.bias_width / 2, params.bias_step
-    )
-
-    # This sweeper is implemented in the flux pulse amplitude and we need it to be that way.
-    sweeper_bias = Sweeper(
-        Parameter.bias,
-        delta_bias_range,
-        couplers=couplers,
-        type=SweeperType.ABSOLUTE,
-    )
+    if params.flux_pulses:
+        (
+            delta_bias_flux_range,
+            sweepers,
+            sequences,
+        ) = resonator_flux_dependence.create_flux_pulse_sweepers(
+            params, platform, couplers, sequence
+        )
+        sequence = sequences[0]
+    else:
+        delta_bias_flux_range = np.arange(
+            -params.bias_width / 2, params.bias_width / 2, params.bias_step
+        )
+        sweepers = [
+            Sweeper(
+                Parameter.bias,
+                delta_bias_flux_range,
+                qubits=couplers,
+                type=SweeperType.OFFSET,
+            )
+        ]
 
     data = CouplerSpectroscopyData(
         resonator_type=platform.resonator_type,
+        flux_pulses=params.flux_pulses,
+        offset=offset,
     )
 
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
-        sweeper_bias,
-        sweeper_freq,
-    )
+    for bias_sweeper in sweepers:
+        results = platform.sweep(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+            bias_sweeper,
+            sweeper_freq,
+        )
 
     # retrieve the results for every qubit
     for i, pair in enumerate(targets):
@@ -116,7 +135,7 @@ def _acquisition(
             signal=result.magnitude,
             phase=result.phase,
             freq=delta_frequency_range + qd_pulses[qubit].frequency,
-            bias=delta_bias_range,
+            bias=delta_bias_flux_range,
         )
     return data
 

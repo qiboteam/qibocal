@@ -14,6 +14,7 @@ from .coherence.t2_sequences import t2_sequences
 from .coherence.t2_signal import t2_signal
 from .coherence.zeno import zeno
 from .coherence.zeno_signal import zeno_signal
+from .couplers.coupler_chevron import coupler_chevron
 from .couplers.coupler_qubit_spectroscopy import coupler_qubit_spectroscopy
 from .couplers.coupler_resonator_spectroscopy import coupler_resonator_spectroscopy
 from .dispersive_shift import dispersive_shift
@@ -55,7 +56,13 @@ from .signal_experiments.calibrate_state_discrimination import (
     calibrate_state_discrimination,
 )
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
-from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtualz
+from .two_qubit_interaction import (
+    chevron,
+    chsh_circuits,
+    chsh_pulses,
+    cz_virtualz,
+    cz_virtualz_signal,
+)
 
 
 class Operation(Enum):
@@ -114,5 +121,7 @@ class Operation(Enum):
     dispersive_shift_qutrit = dispersive_shift_qutrit
     coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
     coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
+    cz_virtualz_signal = cz_virtualz_signal
+    coupler_chevron = coupler_chevron
     flipping_signal = flipping_signal
     calibrate_state_discrimination = calibrate_state_discrimination

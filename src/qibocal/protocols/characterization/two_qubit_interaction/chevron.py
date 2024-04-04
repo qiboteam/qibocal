@@ -27,11 +27,11 @@ COLORAXIS = ["coloraxis2", "coloraxis1"]
 class ChevronParameters(Parameters):
     """CzFluxTime runcard inputs."""
 
-    amplitude_min: float
+    amplitude_min_factor: float
     """Amplitude minimum."""
-    amplitude_max: float
+    amplitude_max_factor: float
     """Amplitude maximum."""
-    amplitude_step: float
+    amplitude_step_factor: float
     """Amplitude step."""
     duration_min: float
     """Duration minimum."""
@@ -54,6 +54,9 @@ class ChevronResults(Results):
     duration: dict[QubitPairId, int]
     """Virtual Z phase correction."""
 
+    def __contains__(self, key: QubitPairId):
+        return super().__contains__(key) | super().__contains__((key[1], key[0]))
+
 
 ChevronType = np.dtype(
     [
@@ -70,6 +73,10 @@ ChevronType = np.dtype(
 class ChevronData(Data):
     """Chevron acquisition outputs."""
 
+    native_amplitude: dict[QubitPairId, float] = field(default_factory=dict)
+    """CZ platform amplitude for qubit pair."""
+    sweetspot: dict[QubitPairId, float] = field(default_factory=dict)
+    """Sweetspot value for high frequency qubit."""
     data: dict[QubitPairId, npt.NDArray[ChevronType]] = field(default_factory=dict)
 
     def register_qubit(self, low_qubit, high_qubit, length, amp, prob_low, prob_high):
@@ -90,7 +97,7 @@ def _aquisition(
     targets: list[QubitPairId],
 ) -> ChevronData:
     r"""
-    Perform an iSWAP/CZ experiment between pairs of qubits by changing its frequency.
+    Perform an CZ experiment between pairs of qubits by changing its frequency.
 
     Args:
         platform: Platform to use.
@@ -106,16 +113,19 @@ def _aquisition(
     for pair in targets:
         # order the qubits so that the low frequency one is the first
         sequence = PulseSequence()
-        ordered_pair = order_pair(pair, platform.qubits)
+
+        ordered_pair = order_pair(pair, platform)
         # initialize in system in 11 state
         initialize_lowfreq = platform.create_RX_pulse(
             ordered_pair[0], start=0, relative_phase=0
         )
+        sequence.add(initialize_lowfreq)
+
         initialize_highfreq = platform.create_RX_pulse(
             ordered_pair[1], start=0, relative_phase=0
         )
         sequence.add(initialize_highfreq)
-        sequence.add(initialize_lowfreq)
+
         cz, _ = platform.create_CZ_pulse_sequence(
             qubits=(ordered_pair[1], ordered_pair[0]),
             start=initialize_highfreq.finish,
@@ -124,11 +134,14 @@ def _aquisition(
         sequence.add(cz.get_qubit_pulses(ordered_pair[0]))
         sequence.add(cz.get_qubit_pulses(ordered_pair[1]))
 
+        delay_measurement = params.duration_max
         # Patch to get the coupler until the routines use QubitPair
         if platform.couplers:
-            sequence.add(
-                cz.coupler_pulses(platform.pairs[tuple(ordered_pair)].coupler.name)
+            coupler_pulse = cz.coupler_pulses(
+                platform.pairs[tuple(ordered_pair)].coupler.name
             )
+            sequence.add(coupler_pulse)
+            delay_measurement = max(params.duration_max, coupler_pulse.duration)
 
         if params.parking:
             for pulse in cz:
@@ -140,11 +153,11 @@ def _aquisition(
         # add readout
         measure_lowfreq = platform.create_qubit_readout_pulse(
             ordered_pair[0],
-            start=initialize_lowfreq.finish + params.duration_max + params.dt,
+            start=initialize_lowfreq.finish + delay_measurement + params.dt,
         )
         measure_highfreq = platform.create_qubit_readout_pulse(
             ordered_pair[1],
-            start=initialize_highfreq.finish + params.duration_max + params.dt,
+            start=initialize_highfreq.finish + delay_measurement + params.dt,
         )
 
         sequence.add(measure_lowfreq)
@@ -152,9 +165,9 @@ def _aquisition(
 
         # define the parameter to sweep and its range:
         delta_amplitude_range = np.arange(
-            params.amplitude_min,
-            params.amplitude_max,
-            params.amplitude_step,
+            params.amplitude_min_factor,
+            params.amplitude_max_factor,
+            params.amplitude_step_factor,
         )
         delta_duration_range = np.arange(
             params.duration_min, params.duration_max, params.duration_step
@@ -164,8 +177,13 @@ def _aquisition(
             Parameter.amplitude,
             delta_amplitude_range,
             pulses=[cz.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
-            type=SweeperType.ABSOLUTE,
+            type=SweeperType.FACTOR,
         )
+
+        data.native_amplitude[ordered_pair] = (
+            cz.get_qubit_pulses(ordered_pair[1]).qf_pulses[0].amplitude
+        )
+        data.sweetspot[ordered_pair] = platform.qubits[ordered_pair[1]].sweetspot
         sweeper_duration = Sweeper(
             Parameter.duration,
             delta_duration_range,
@@ -186,7 +204,7 @@ def _aquisition(
             ordered_pair[0],
             ordered_pair[1],
             delta_duration_range,
-            delta_amplitude_range,
+            delta_amplitude_range * data.native_amplitude[ordered_pair],
             results[ordered_pair[0]].magnitude,
             results[ordered_pair[1]].magnitude,
         )
@@ -286,7 +304,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
                         color="black",
                         symbol="cross",
                     ),
-                    name="CZ estimate",
+                    name="CZ estimate",  #  Change name from the params
                     showlegend=True if measured_qubit == target[0] else False,
                     legendgroup="Voltage",
                 ),
@@ -309,8 +327,12 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
         fitting_report = table_html(
             table_dict(
                 target[1],
-                ["CZ amplitude", "CZ duration"],
-                [fit.amplitude[target], fit.duration[target]],
+                ["CZ amplitude", "CZ duration", "Bias point"],
+                [
+                    fit.amplitude[target],
+                    fit.duration[target],
+                    fit.amplitude[target] + data.sweetspot[target],
+                ],
             )
         )
 

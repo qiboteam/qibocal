@@ -185,11 +185,19 @@ def create_flux_pulse_sweepers(
             flux_amplitude_end,
             flux_amplitude_step,
         )
-        pulse = platform.create_qubit_flux_pulse(
-            qubit,
-            start=0,
-            duration=sequence.duration,
-        )
+
+        if qubit not in platform.qubits:
+            # FIXME: Missmatch with create_coupler_pulse and create_qubit_flux_pulse
+            pulse = platform.create_coupler_pulse(
+                qubit,
+                start=0,
+                duration=sequence.duration,
+                amplitude=1,
+            )
+        else:
+            pulse = platform.create_qubit_flux_pulse(
+                qubit, start=0, duration=sequence.duration
+            )
         qf_pulses[qubit] = pulse
         if crosstalk:
             sequences[i].add(pulse)
