@@ -6,7 +6,7 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitPairId
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Results, Routine
 
@@ -50,9 +50,9 @@ def _aquisition(
     """
     # define the parameter to sweep and its range:
     delta_amplitude_range = np.arange(
-        params.amplitude_min,
-        params.amplitude_max,
-        params.amplitude_step,
+        params.amplitude_min_factor,
+        params.amplitude_max_factor,
+        params.amplitude_step_factor,
     )
     delta_duration_range = np.arange(
         params.duration_min, params.duration_max, params.duration_step
@@ -64,7 +64,7 @@ def _aquisition(
     for pair in targets:
         sequence = PulseSequence()
 
-        ordered_pair = order_pair(pair, platform.qubits)
+        ordered_pair = order_pair(pair, platform)
 
         # initialize in system in 11(CZ) or 10(iSWAP) state
         if params.native_gate == "CZ":
@@ -85,7 +85,9 @@ def _aquisition(
                 (ordered_pair[1], ordered_pair[0]),
                 start=sequence.finish + params.dt,
             )
-
+        data.native_amplitude[ordered_pair] = getattr(
+            native_gate.coupler_pulses(*pair)[:1][0], "amplitude"
+        )
         sequence.add(native_gate)
 
         ro_pulse1 = platform.create_MZ_pulse(
@@ -101,6 +103,7 @@ def _aquisition(
             Parameter.amplitude,
             delta_amplitude_range,
             pulses=[p for p in native_gate.coupler_pulses(*pair)][:1],
+            type=SweeperType.FACTOR,
         )
         sweeper_duration = Sweeper(
             Parameter.duration,
@@ -125,7 +128,7 @@ def _aquisition(
             ordered_pair[0],
             ordered_pair[1],
             delta_duration_range,
-            delta_amplitude_range,
+            delta_amplitude_range * data.native_amplitude[ordered_pair],
             results[ordered_pair[0]].magnitude,
             results[ordered_pair[1]].magnitude,
         )

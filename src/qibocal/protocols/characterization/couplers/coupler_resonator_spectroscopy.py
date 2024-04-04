@@ -39,15 +39,13 @@ def _acquisition(
     # Coupler pulse while MZ
 
     if params.measured_qubits is None:
-        params.measured_qubits = [
-            order_pair(pair, platform.qubits)[0] for pair in targets
-        ]
+        params.measured_qubits = [order_pair(pair, platform)[0] for pair in targets]
 
     sequence = PulseSequence()
     ro_pulses = {}
     couplers = []
     for i, pair in enumerate(targets):
-        ordered_pair = order_pair(pair, platform.qubits)
+        ordered_pair = order_pair(pair, platform)
         measured_qubit = params.measured_qubits[i]
 
         qubit = platform.qubits[measured_qubit].name

@@ -88,9 +88,9 @@ actions:
     operation: coupler_chevron
     targets: [[1, 2]]
     parameters:
-      amplitude_min: -0.5
-      amplitude_max: -0.0
-      amplitude_step: 0.1
+      amplitude_min_factor: -0.5
+      amplitude_max_factor: -0.0
+      amplitude_step_factor: 0.1
       duration_min: 50
       duration_max: 100
       duration_step: 10
@@ -103,9 +103,9 @@ actions:
     operation: coupler_chevron
     targets: [[1, 2]]
     parameters:
-      amplitude_min: -0.5
-      amplitude_max: -0.0
-      amplitude_step: 0.1
+      amplitude_min_factor: -0.5
+      amplitude_max_factor: -0.0
+      amplitude_step_factor: 0.1
       duration_min: 50
       duration_max: 100
       duration_step: 10
