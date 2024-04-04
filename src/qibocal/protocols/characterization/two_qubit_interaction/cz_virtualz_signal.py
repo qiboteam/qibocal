@@ -9,7 +9,6 @@ from qibolab.qubits import QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Routine
-from qibocal.protocols.characterization.two_qubit_interaction.chevron import order_pair
 
 from .cz_virtualz import (
     CZVirtualZData,
@@ -20,6 +19,7 @@ from .cz_virtualz import (
 )
 from .cz_virtualz import _plot as _plot_prob
 from .cz_virtualz import _update, create_sequence
+from .utils import order_pair
 
 
 @dataclass

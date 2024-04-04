@@ -10,7 +10,11 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Results, Routine
 
-from ..two_qubit_interaction.chevron import ChevronData, ChevronParameters, _plot
+from ..two_qubit_interaction.chevron.chevron import (
+    ChevronData,
+    ChevronParameters,
+    _plot,
+)
 from ..two_qubit_interaction.utils import order_pair
 
 

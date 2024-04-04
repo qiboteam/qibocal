@@ -9,7 +9,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
@@ -18,9 +17,8 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.protocols.characterization.utils import table_dict, table_html
 
-from .utils import fit_flux_amplitude, order_pair
-
-COLORAXIS = ["coloraxis2", "coloraxis1"]
+from ..utils import fit_flux_amplitude, order_pair
+from .utils import COLORAXIS, chevron_fit, chevron_sequence
 
 
 @dataclass
@@ -43,6 +41,22 @@ class ChevronParameters(Parameters):
     """Time delay between flux pulses and readout."""
     parking: bool = True
     """Wether to park non interacting qubits or not."""
+
+    @property
+    def amplitude_range(self):
+        return np.arange(
+            self.amplitude_min_factor,
+            self.amplitude_max_factor,
+            self.amplitude_step_factor,
+        )
+
+    @property
+    def duration_range(self):
+        return np.arange(
+            self.duration_min,
+            self.duration_max,
+            self.duration_step,
+        )
 
 
 @dataclass
@@ -90,6 +104,20 @@ class ChevronData(Data):
         ar["prob_high"] = prob_high.ravel()
         self.data[low_qubit, high_qubit] = np.rec.array(ar)
 
+    def amplitudes(self, pair):
+        """Unique pair amplitudes"""
+        return np.unique(self[pair].amp)
+
+    def durations(self, pair):
+        """Unique pair durations."""
+        return np.unique(self[pair].length)
+
+    def low_frequency(self, pair):
+        return self[pair].prob_low
+
+    def high_frequency(self, pair):
+        return self[pair].prob_high
+
 
 def _aquisition(
     params: ChevronParameters,
@@ -112,89 +140,39 @@ def _aquisition(
     data = ChevronData()
     for pair in targets:
         # order the qubits so that the low frequency one is the first
-        sequence = PulseSequence()
-
+        sequence = chevron_sequence(
+            platform=platform,
+            pair=pair,
+            duration_max=params.duration_max,
+            parking=params.parking,
+            dt=params.dt,
+        )
         ordered_pair = order_pair(pair, platform)
-        # initialize in system in 11 state
-        initialize_lowfreq = platform.create_RX_pulse(
-            ordered_pair[0], start=0, relative_phase=0
-        )
-        sequence.add(initialize_lowfreq)
 
-        initialize_highfreq = platform.create_RX_pulse(
-            ordered_pair[1], start=0, relative_phase=0
-        )
-        sequence.add(initialize_highfreq)
-
-        cz, _ = platform.create_CZ_pulse_sequence(
-            qubits=(ordered_pair[1], ordered_pair[0]),
-            start=initialize_highfreq.finish,
-        )
-
-        sequence.add(cz.get_qubit_pulses(ordered_pair[0]))
-        sequence.add(cz.get_qubit_pulses(ordered_pair[1]))
-
-        delay_measurement = params.duration_max
-        # Patch to get the coupler until the routines use QubitPair
-        if platform.couplers:
-            coupler_pulse = cz.coupler_pulses(
-                platform.pairs[tuple(ordered_pair)].coupler.name
-            )
-            sequence.add(coupler_pulse)
-            delay_measurement = max(params.duration_max, coupler_pulse.duration)
-
-        if params.parking:
-            for pulse in cz:
-                if pulse.qubit not in ordered_pair:
-                    pulse.start = 0
-                    pulse.duration = 100
-                    sequence.add(pulse)
-
-        # add readout
-        measure_lowfreq = platform.create_qubit_readout_pulse(
-            ordered_pair[0],
-            start=initialize_lowfreq.finish + delay_measurement + params.dt,
-        )
-        measure_highfreq = platform.create_qubit_readout_pulse(
-            ordered_pair[1],
-            start=initialize_highfreq.finish + delay_measurement + params.dt,
-        )
-
-        sequence.add(measure_lowfreq)
-        sequence.add(measure_highfreq)
-
-        # define the parameter to sweep and its range:
-        delta_amplitude_range = np.arange(
-            params.amplitude_min_factor,
-            params.amplitude_max_factor,
-            params.amplitude_step_factor,
-        )
-        delta_duration_range = np.arange(
-            params.duration_min, params.duration_max, params.duration_step
-        )
-
+        # TODO: move in function to avoid code duplications
         sweeper_amplitude = Sweeper(
             Parameter.amplitude,
-            delta_amplitude_range,
-            pulses=[cz.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
+            params.amplitude_range,
+            pulses=[sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
             type=SweeperType.FACTOR,
         )
 
         data.native_amplitude[ordered_pair] = (
-            cz.get_qubit_pulses(ordered_pair[1]).qf_pulses[0].amplitude
+            sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0].amplitude
         )
         data.sweetspot[ordered_pair] = platform.qubits[ordered_pair[1]].sweetspot
         sweeper_duration = Sweeper(
             Parameter.duration,
-            delta_duration_range,
-            pulses=[cz.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
+            params.duration_range,
+            pulses=[sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
             type=SweeperType.ABSOLUTE,
         )
+
         results = platform.sweep(
             sequence,
             ExecutionParameters(
                 nshots=params.nshots,
-                acquisition_type=AcquisitionType.INTEGRATION,
+                acquisition_type=AcquisitionType.DISCRIMINATION,
                 averaging_mode=AveragingMode.CYCLIC,
             ),
             sweeper_duration,
@@ -203,17 +181,12 @@ def _aquisition(
         data.register_qubit(
             ordered_pair[0],
             ordered_pair[1],
-            delta_duration_range,
-            delta_amplitude_range * data.native_amplitude[ordered_pair],
-            results[ordered_pair[0]].magnitude,
-            results[ordered_pair[1]].magnitude,
+            params.duration_range,
+            params.amplitude_range * data.native_amplitude[ordered_pair],
+            results[ordered_pair[0]].probability(state=1),
+            results[ordered_pair[1]].probability(state=1),
         )
     return data
-
-
-# fitting function for single row in chevron plot (rabi-like curve)
-def cos(x, omega, phase, amplitude, offset):
-    return amplitude * np.cos(x * omega + phase) + offset
 
 
 def _fit(data: ChevronData) -> ChevronResults:
@@ -222,11 +195,15 @@ def _fit(data: ChevronData) -> ChevronResults:
     for pair in data.data:
         pair_amplitude = []
         pair_duration = []
-        amps = np.unique(data[pair].amp)
-        times = np.unique(data[pair].length)
+        amps = data.amplitudes(pair)
+        times = data.durations(pair)
 
         for qubit in pair:
-            signal = data[pair].prob_low if pair[0] == qubit else data[pair].prob_high
+            signal = (
+                data.low_frequency(pair)
+                if pair[0] == qubit
+                else data.high_frequency(pair)
+            )
             signal_matrix = signal.reshape(len(times), len(amps)).T
 
             # guess amplitude computing FFT
@@ -234,7 +211,9 @@ def _fit(data: ChevronData) -> ChevronResults:
             # estimate duration by rabi curve at amplitude previously estimated
             y = signal_matrix[index, :].ravel()
 
-            popt, _ = curve_fit(cos, times, y, p0=[delta, 0, np.mean(y), np.mean(y)])
+            popt, _ = curve_fit(
+                chevron_fit, times, y, p0=[delta, 0, np.mean(y), np.mean(y)]
+            )
 
             # duration can be estimated as the period of the oscillation
             duration = 1 / (popt[0] / 2 / np.pi)
@@ -270,7 +249,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
         go.Heatmap(
             x=pair_data.length,
             y=pair_data.amp,
-            z=pair_data.prob_low,
+            z=data.low_frequency(target),
             coloraxis=COLORAXIS[0],
         ),
         row=1,
@@ -281,7 +260,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
         go.Heatmap(
             x=pair_data.length,
             y=pair_data.amp,
-            z=pair_data.prob_high,
+            z=data.high_frequency(target),
             coloraxis=COLORAXIS[1],
         ),
         row=1,
