@@ -17,13 +17,12 @@ from qibocal.config import log
 
 from .utils import COLORBAND, COLORBAND_LINE, chi2_reduced, table_dict, table_html
 
-# TODO: implement unrolling
 # TODO: add errors in fitting
 
 
 @dataclass
-class DragPulseTuningParameters(Parameters):
-    """DragPulseTuning runcard inputs."""
+class DragTuningParameters(Parameters):
+    """DragTuning runcard inputs."""
 
     beta_start: float
     """DRAG pulse beta start sweep parameter."""
@@ -37,8 +36,8 @@ class DragPulseTuningParameters(Parameters):
 
 
 @dataclass
-class DragPulseTuningResults(Results):
-    """DragPulseTuning outputs."""
+class DragTuningResults(Results):
+    """DragTuning outputs."""
 
     betas: dict[QubitId, float]
     """Optimal beta paramter for each qubit."""
@@ -48,24 +47,24 @@ class DragPulseTuningResults(Results):
     """Chi2 calculation."""
 
 
-DragPulseTuningType = np.dtype(
+DragTuningType = np.dtype(
     [("prob", np.float64), ("error", np.float64), ("beta", np.float64)]
 )
 
 
 @dataclass
-class DragPulseTuningData(Data):
-    """DragPulseTuning acquisition outputs."""
+class DragTuningData(Data):
+    """DragTuning acquisition outputs."""
 
-    data: dict[QubitId, npt.NDArray[DragPulseTuningType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[DragTuningType]] = field(default_factory=dict)
     """Raw data acquired."""
 
 
 def _acquisition(
-    params: DragPulseTuningParameters,
+    params: DragTuningParameters,
     platform: Platform,
     targets: list[QubitId],
-) -> DragPulseTuningData:
+) -> DragTuningData:
     r"""
     Data acquisition for drag pulse tuning experiment.
     See https://arxiv.org/pdf/1504.06597.pdf Fig. 2 (c).
@@ -76,7 +75,7 @@ def _acquisition(
         params.beta_start, params.beta_end, params.beta_step
     ).round(4)
 
-    data = DragPulseTuningData()
+    data = DragTuningData()
 
     sequences, all_ro_pulses = [], []
     for beta_param in beta_param_range:
@@ -118,13 +117,13 @@ def _acquisition(
         for qubit in targets:
             serial = ro_pulses[qubit].serial
             if params.unrolling:
-                result = results[serial][0]
+                result = results[serial][ig]
             else:
                 result = results[ig][serial]
             prob = result.probability(state=0)
             # store the results
             data.register_qubit(
-                DragPulseTuningType,
+                DragTuningType,
                 (qubit),
                 dict(
                     prob=np.array([prob]),
@@ -140,7 +139,7 @@ def drag_fit(x, offset, amplitude, period, phase):
     return offset + amplitude * np.cos(2 * np.pi * x / period + phase)
 
 
-def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
+def _fit(data: DragTuningData) -> DragTuningResults:
     qubits = data.qubits
     betas_optimal = {}
     fitted_parameters = {}
@@ -201,11 +200,11 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
         except Exception as e:
             log.warning(f"drag_tuning_fit failed for qubit {qubit} due to {e}.")
 
-    return DragPulseTuningResults(betas_optimal, fitted_parameters, chi2=chi2)
+    return DragTuningResults(betas_optimal, fitted_parameters, chi2=chi2)
 
 
-def _plot(data: DragPulseTuningData, target: QubitId, fit: DragPulseTuningResults):
-    """Plotting function for DragPulseTuning."""
+def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
+    """Plotting function for DragTuning."""
 
     figures = []
     fitting_report = ""
@@ -275,9 +274,9 @@ def _plot(data: DragPulseTuningData, target: QubitId, fit: DragPulseTuningResult
     return figures, fitting_report
 
 
-def _update(results: DragPulseTuningResults, platform: Platform, target: QubitId):
+def _update(results: DragTuningResults, platform: Platform, target: QubitId):
     update.drag_pulse_beta(results.betas[target], platform, target)
 
 
-drag_pulse_tuning = Routine(_acquisition, _fit, _plot, _update)
-"""DragPulseTuning Routine object."""
+drag_tuning = Routine(_acquisition, _fit, _plot, _update)
+"""DragTuning Routine object."""
