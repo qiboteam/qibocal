@@ -42,7 +42,7 @@ SINGLE_QUBIT_CLIFFORDS = {
 }
 
 
-def random_clifford(qubits, random_indexes_gen):
+def random_clifford(qubits, random_index_gen):
     """Generates random Clifford operator(s).
 
     Args:
@@ -74,14 +74,10 @@ def random_clifford(qubits, random_indexes_gen):
     if isinstance(qubits, int):
         qubits = list(range(qubits))
 
-    random_indexes = random_indexes_gen(SINGLE_QUBIT_CLIFFORDS, qubits)
+    random_index = int(random_index_gen(SINGLE_QUBIT_CLIFFORDS))
+    clifford_gates = SINGLE_QUBIT_CLIFFORDS[random_index](0)
 
-    clifford_gates = [SINGLE_QUBIT_CLIFFORDS[p](0) for p in random_indexes]
-
-    # To allow json serialization
-    random_indexes = [float(r) for r in random_indexes]
-
-    return clifford_gates, random_indexes
+    return clifford_gates, random_index
 
 
 def number_to_str(

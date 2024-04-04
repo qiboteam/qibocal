@@ -20,7 +20,7 @@ def layer_circuit(rb_gen: Callable, depth: int, qubit) -> tuple[Circuit, dict]:
     """
 
     full_circuit = None
-    random_indexes = {qubit: []}
+    random_indexes = []
     # Build each layer, there will be depth many in the final circuit.
     qubits_str = [str(qubit)]
 
@@ -31,12 +31,13 @@ def layer_circuit(rb_gen: Callable, depth: int, qubit) -> tuple[Circuit, dict]:
         if isinstance(new_layer, Gate):
             new_circuit = Circuit(1, wire_names=qubits_str)
             new_circuit.add(new_layer)
+            random_indexes.append(random_index)
 
         # We are only using this for the RB we have right now
         elif all(isinstance(gate, Gate) for gate in new_layer):
             new_circuit = Circuit(1, wire_names=qubits_str)
             new_circuit.add(new_layer)
-            random_indexes[qubit].extend([r for r in random_index])
+            random_indexes.append(random_index)
 
         elif isinstance(new_layer, Circuit):
             new_circuit = new_layer

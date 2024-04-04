@@ -129,12 +129,12 @@ class RB_Generator:
         )
         self.nqubits = nqubits
 
-    def random_indexes(self, gate_list, qubits):
-        return self.local_state.integers(0, len(gate_list), len(qubits))
+    def random_index(self, gate_list):
+        return self.local_state.integers(0, len(gate_list), 1)
 
     def layer_gen(self):
         """Returns a circuit with a random single-qubit clifford unitary."""
-        return random_clifford(self.nqubits, self.random_indexes)
+        return random_clifford(self.nqubits, self.random_index)
 
 
 def random_circuits(
@@ -161,14 +161,13 @@ def random_circuits(
     indexes = defaultdict(list)
     for _ in range(niter):
         for target in targets:
-            circuit, random_indexes = layer_circuit(rb_gen, depth, target)
+            circuit, random_index = layer_circuit(rb_gen, depth, target)
             add_inverse_layer(circuit)
             add_measurement_layer(circuit)
             if noise_model is not None:
                 circuit = noise_model.apply(circuit)
             circuits.append(circuit)
-            for qubit in random_indexes.keys():
-                indexes[qubit].append(random_indexes[qubit])
+            indexes[target].append(random_index)
 
     return circuits, indexes
 
