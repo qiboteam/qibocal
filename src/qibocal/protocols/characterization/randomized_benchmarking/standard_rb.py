@@ -120,21 +120,20 @@ class StandardRBResult(Results):
 
 class RB_Generator:
 
-    def __init__(self, seed, nqubits):
+    def __init__(self, seed):
         self.seed = seed
         self.local_state = (
             np.random.default_rng(seed)
             if seed is None or isinstance(seed, int)
             else seed
         )
-        self.nqubits = nqubits
 
     def random_index(self, gate_list):
         return self.local_state.integers(0, len(gate_list), 1)
 
     def layer_gen(self):
         """Returns a circuit with a random single-qubit clifford unitary."""
-        return random_clifford(self.nqubits, self.random_index)
+        return random_clifford(self.random_index)
 
 
 def random_circuits(
@@ -218,7 +217,7 @@ def _acquisition(
     indexes = {}
     samples = []
     qubits_ids = targets
-    rb_gen = RB_Generator(params.seed, nqubits)
+    rb_gen = RB_Generator(params.seed)
     for depth in params.depths:
         # TODO: This does not generate multi qubit circuits
         circuits_depth, random_indexes = random_circuits(
