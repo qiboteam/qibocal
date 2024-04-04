@@ -1,6 +1,8 @@
 """Protocol for CHSH experiment using both circuits and pulses."""
 
+import json
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -23,6 +25,15 @@ from .pulses import create_chsh_sequences
 from .utils import READOUT_BASIS, compute_chsh
 
 COMPUTATIONAL_BASIS = ["00", "01", "10", "11"]
+
+CLASSICAL_BOUND = 2
+"""Classical limit of CHSH,"""
+QUANTUM_BOUND = 2 * np.sqrt(2)
+"""Quantum limit of CHSH."""
+
+
+MITIGATION_MATRIX_FILE = "mitigation_matrix"
+"""File where readout mitigation matrix is stored."""
 
 
 @dataclass
@@ -47,6 +58,8 @@ class CHSHParameters(Parameters):
 
 @dataclass
 class CHSHData(Data):
+    """CHSH Data structure."""
+
     bell_states: list
     """Bell states list."""
     thetas: list
@@ -57,6 +70,29 @@ class CHSHData(Data):
         default_factory=dict
     )
     """Mitigation matrix computed using the readout_mitigation_matrix protocol."""
+
+    def save(self, path: Path):
+        """Saving data including mitigation matrix."""
+
+        np.savez(
+            path / f"{MITIGATION_MATRIX_FILE}.npz",
+            **{
+                json.dumps((control, target)): self.mitigation_matrix[control, target]
+                for control, target, _, _, _ in self.data
+            },
+        )
+        super().save(path=path)
+
+    @classmethod
+    def load(cls, path: Path):
+        """Custom loading to acco   modate mitigation matrix"""
+        instance = super().load(path=path)
+        # load readout mitigation matrix
+        mitigation_matrix = super().load_data(
+            path=path, filename=MITIGATION_MATRIX_FILE
+        )
+        instance.mitigation_matrix = mitigation_matrix
+        return instance
 
     def register_basis(self, pair, bell_state, basis, frequencies):
         """Store output for single qubit."""
@@ -106,10 +142,22 @@ class CHSHData(Data):
 
 @dataclass
 class CHSHResults(Results):
-    chsh: dict[tuple[QubitId, QubitId, int], float] = field(default_factory=dict)
-    chsh_mitigated: dict[tuple[QubitId, QubitId, int], float] = field(
-        default_factory=dict
-    )
+    """CHSH Results class."""
+
+    chsh: dict[tuple[QubitPairId, int], float] = field(default_factory=dict)
+    """Raw CHSH value."""
+    chsh_mitigated: dict[tuple[QubitPairId, int], float] = field(default_factory=dict)
+    """Mitigated CHSH value."""
+
+    def __contains__(self, key: QubitPairId):
+        """Check if key is in class.
+
+        While key is a QubitPairId both chsh and chsh_mitigated contain
+        an additional key which represents the basis chosen.
+
+        """
+
+        return key in [(target, control) for target, control, _ in self.chsh]
 
 
 def _acquisition_pulses(
@@ -211,39 +259,62 @@ def _plot(data: CHSHData, fit: CHSHResults, target: QubitPairId):
                     )
                 )
 
-        # classical bounds
-        fig.add_hline(
-            y=2,
-            line_width=2,
-            line_color="red",
-        )
-        fig.add_hline(
-            y=-2,
-            line_width=2,
-            line_color="red",
+        fig.add_trace(
+            go.Scatter(
+                mode="lines",
+                x=data.thetas,
+                y=[+CLASSICAL_BOUND] * len(data.thetas),
+                line_color="gray",
+                name="Classical limit",
+                line_dash="dash",
+                legendgroup="classic",
+            )
         )
 
-        # maximum values
-        fig.add_hline(
-            y=2 * np.sqrt(2),
-            line_width=2,
-            line_dash="dash",
-            line_color="grey",
+        fig.add_trace(
+            go.Scatter(
+                mode="lines",
+                x=data.thetas,
+                y=[-CLASSICAL_BOUND] * len(data.thetas),
+                line_color="gray",
+                name="Classical limit",
+                legendgroup="classic",
+                line_dash="dash",
+                showlegend=False,
+            )
         )
-        fig.add_hline(
-            y=-2 * np.sqrt(2),
-            line_width=2,
-            line_dash="dash",
-            line_color="grey",
+
+        fig.add_trace(
+            go.Scatter(
+                mode="lines",
+                x=data.thetas,
+                y=[+QUANTUM_BOUND] * len(data.thetas),
+                line_color="gray",
+                name="Quantum limit",
+                legendgroup="quantum",
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                mode="lines",
+                x=data.thetas,
+                y=[-QUANTUM_BOUND] * len(data.thetas),
+                line_color="gray",
+                name="Quantum limit",
+                legendgroup="quantum",
+                showlegend=False,
+            )
         )
 
         fig.update_layout(
             xaxis_title="Theta [rad]",
             yaxis_title="CHSH value",
+            xaxis=dict(range=[min(data.thetas), max(data.thetas)]),
         )
         figures.append(fig)
 
-    return figures, None
+    return figures, ""
 
 
 def _fit(data: CHSHData) -> CHSHResults:

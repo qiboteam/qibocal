@@ -1,4 +1,4 @@
-platform: dummy
+platform: [dummy, dummy_couplers]
 
 targets: [0,1]
 
@@ -13,8 +13,8 @@ actions:
   - id: resonator high power high amplitude
     operation: resonator_spectroscopy
     parameters:
-      freq_width: 10_000_000 # 20_000_000
-      freq_step: 100_000 # 500_00
+      freq_width: 10_000_000
+      freq_step: 100_000
       amplitude: 0.4
       power_level: high
       nshots: 10
@@ -49,7 +49,7 @@ actions:
       min_amp_factor: 0.005
       max_amp_factor: 0.3
       step_amp_factor: 0.005
-      nshots: 100
+      nshots: 10
 
 
   - id: resonator_punchout_attenuation
@@ -60,9 +60,7 @@ actions:
       min_att: 4
       max_att: 60
       step_att: 4
-      nshots: 1000
-
-
+      nshots: 10
 
   - id: resonator spectroscopy low power
     operation: resonator_spectroscopy
@@ -73,20 +71,6 @@ actions:
       power_level: low
       nshots: 10
 
-  - id: coupler_resonator_spectroscopy
-    operation: coupler_resonator_spectroscopy
-    targets: [[1, 2], [0, 2]]
-    parameters:
-      bias_width: 1
-      bias_step: 0.1
-      freq_width: 10_000_000
-      freq_step: 1_000_000
-      measured_qubits: [1, 0]
-      amplitude: .3
-      nshots: 10
-      relaxation_time: 3_000
-
-
   - id: qubit spectroscopy
     operation: qubit_spectroscopy
     parameters:
@@ -95,20 +79,6 @@ actions:
       freq_width: 2_000_000
       freq_step: 500_000
       nshots: 10
-
-  - id: coupler qubit spectroscopy
-    operation: coupler_qubit_spectroscopy
-    targets: [[1, 2], [0, 2]]
-    parameters:
-      bias_width: 1
-      bias_step: 0.1
-      freq_width: 10_000_000
-      freq_step: 1_000_000
-      measured_qubits: [1, 0]
-      amplitude: .1
-      nshots: 10
-      relaxation_time: 3_000
-
 
   - id: qubit spectroscopy ef
     operation: qubit_spectroscopy_ef
@@ -122,13 +92,49 @@ actions:
       nshots: 10
 
 
-  - id: resonator flux dependence
+  - id: resonator flux dependence bias
     operation: resonator_flux
     parameters:
       freq_width: 10_000_000
       freq_step: 500_000
       bias_width: 0.8
       bias_step:  0.1
+      nshots: 10
+
+
+  - id: resonator flux dependence flux single value
+    priority: 0
+    operation: resonator_flux
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 500_000
+      flux_amplitude_start: -0.4
+      flux_amplitude_end: 0.4
+      flux_amplitude_step:  0.1
+      nshots: 10
+
+  - id: resonator flux dependence flux single value int
+    priority: 0
+    operation: resonator_flux
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 500_000
+      flux_amplitude_start: 0
+      flux_amplitude_end: 0.4
+      flux_amplitude_step:  0.1
+      nshots: 10
+
+
+  - id: resonator flux dependence flux several values
+    priority: 0
+    operation: resonator_flux
+    targets: [0, 1]
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 500_000
+      flux_amplitude_start: [-0.4, 0]
+      flux_amplitude_end: [0.4, 0.4]
+      flux_amplitude_step:  [0.1, 0.1]
       nshots: 10
 
 
@@ -144,6 +150,19 @@ actions:
       relaxation_time: 100
 
 
+  - id: resonator flux crosstalk # using ``flux_qubits``
+    priority: 0
+    operation: resonator_crosstalk
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 500_000
+      flux_amplitude_start: -0.4
+      flux_amplitude_end: 0.4
+      flux_amplitude_step:  0.1
+      flux_qubits: [0, 1, 2, 3]
+      nshots: 10
+      relaxation_time: 100
+
 
   - id: qubit flux dependence #"01" transition
     operation: qubit_flux
@@ -156,6 +175,22 @@ actions:
       nshots: 1024
       relaxation_time: 2000
       transition: "01"
+
+
+  - id: qubit flux dependence #"01" transition
+    priority: 0
+    operation: qubit_flux
+    parameters:
+      freq_width: 150_000_000
+      freq_step: 500_000
+      flux_amplitude_start: -0.1
+      flux_amplitude_end: 0.1
+      flux_amplitude_step:  0.005
+      drive_amplitude: 0.5
+      nshots: 1024
+      relaxation_time: 2000
+      transition: "01"
+
 
   - id: qubit flux dependence 02 #"02" transition
     operation: qubit_flux
@@ -190,6 +225,21 @@ actions:
       freq_step: 500_000
       bias_width: 0.2
       bias_step:  0.005
+      drive_amplitude: 0.5
+      flux_qubits: [1, 2]
+      nshots: 1024
+      relaxation_time: 2000
+
+
+  - id: qubit flux crosstalk # using ``flux_qubits``
+    priority: 0
+    operation: qubit_crosstalk
+    parameters:
+      freq_width: 150_000_000
+      freq_step: 500_000
+      flux_amplitude_start: -0.1
+      flux_amplitude_end: 0.1
+      flux_amplitude_step:  0.005
       drive_amplitude: 0.5
       flux_qubits: [1, 2]
       nshots: 1024
@@ -251,7 +301,7 @@ actions:
       pulse_duration_end: 84
       pulse_duration_step: 8
       pulse_amplitude: 0.5
-      nshots: 1024
+      nshots: 10
 
   - id: rabi length sequences
     operation: rabi_length_sequences
@@ -260,7 +310,7 @@ actions:
       pulse_duration_end: 84
       pulse_duration_step: 8
       pulse_amplitude: 0.5
-      nshots: 1024
+      nshots: 10
 
   - id: t1
     operation: t1
@@ -278,13 +328,23 @@ actions:
       delay_before_readout_step: 2000
       nshots: 1024
 
+  - id: t1_signal_single_shot
+    priority: 0
+    operation: t1_signal
+    parameters:
+      delay_before_readout_start: 0
+      delay_before_readout_end: 20_000
+      delay_before_readout_step: 2000
+      single_shot: True
+      nshots: 1024
+
   - id: t1 sequences
     operation: t1_sequences
     parameters:
       delay_before_readout_start: 0
       delay_before_readout_end: 20_000
       delay_before_readout_step: 2000
-      nshots: 10
+      nshots: 1024
 
   - id: zeno
     operation: zeno
@@ -312,6 +372,16 @@ actions:
       delay_between_pulses_start: 16
       delay_between_pulses_end: 20000
       delay_between_pulses_step: 100
+      nshots: 10
+
+  - id: t2_signal_single_shot
+    priority: 0
+    operation: t2_signal
+    parameters:
+      delay_between_pulses_start: 16
+      delay_between_pulses_end: 20000
+      delay_between_pulses_step: 100
+      single_shot: True
       nshots: 10
 
   - id: t2 sequences
@@ -462,6 +532,16 @@ actions:
       delay_between_pulses_step: 1
       nshots: 10
 
+  - id: spin_echo_signal_single_shot
+    priority: 0
+    operation: spin_echo_signal
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 5
+      delay_between_pulses_step: 1
+      single_shot: True
+      nshots: 10
+
   - id: spin_echo_signal unrolling
     operation: spin_echo_signal
     parameters:
@@ -519,6 +599,18 @@ actions:
       freq_step: 100_000
       nshots: 10
 
+  - id: standard rb percentile
+    operation: standard_rb
+    parameters:
+      depths:
+        start: 1
+        stop: 10
+        step: 2
+      niter: 2
+      uncertainties: 95
+      nshots: 50
+
+
   - id: standard rb no error
     operation: standard_rb
     parameters:
@@ -528,8 +620,6 @@ actions:
         step: 2
       niter: 2
       nshots: 50
-      uncertainties: None
-      n_bootstrap: 0
 
   - id: standard rb unrolling
     operation: standard_rb
@@ -541,66 +631,64 @@ actions:
       niter: 2
       nshots: 50
       unrolling: True
-      uncertainties: None
-      n_bootstrap: 0
 
-  - id: standard rb bootstrap
+
+  - id: standard rb
     operation: standard_rb
     targets: [1]
     parameters:
       depths: [1, 2, 3, 5]
       niter: 5
       nshots: 50
-      n_bootstrap: 10
-      noise_model: PauliErrorOnAll
 
   - id: chevron id
     operation: chevron
     targets: [[0, 2],[1,2]]
     parameters:
-      amplitude_min: 0.1
-      amplitude_max: 0.6
-      amplitude_step: 0.01
+      amplitude_min_factor: 0.1
+      amplitude_max_factor: 0.6
+      amplitude_step_factor: 0.01
       duration_min: 10
       duration_max: 50
-      duration_step: 1
-      nshots: 1000
+      duration_step: 10
+      nshots: 10
       parking: True
 
-  - id: tune landscape
+  - id: cz
     operation: cz_virtualz
-    targets: [[0, 2],[1,2],[3,2]]
+    targets: [[0, 2],[1,2]]
     parameters:
       theta_start: 0
       theta_end: 180
       theta_step: 10
       flux_pulse_amplitude: 0.5
+      flux_pulse_duration: 10
       dt: 0
       parking: True
 
-  - id: standard rb inhomogeneous
-    operation: standard_rb
-    targets: [0, 1, 3]
+  - id: cz signal
+    operation: cz_virtualz_signal
+    targets: [[0, 2],[1,2]]
     parameters:
-      depths: [1, 3, 3, 5]
-      niter: 5
-      nshots: 50
-      uncertainties: std
-      n_bootstrap: 10
-      noise_model: PauliErrorOnX
-      noise_params: [0.01, 0.01, 0.01]
+      theta_start: 0
+      theta_end: 180
+      theta_step: 10
+      flux_pulse_amplitude: 0.5
+      flux_pulse_duration: 10
+      dt: 0
+      parking: True
 
   - id : resonator_frequency
     operation: resonator_frequency
     parameters:
       freq_width: 200.e+6
       freq_step: 25.e+6
-      nshots: 1000
+      nshots: 10
 
   - id: fast reset
     operation: fast_reset
     parameters:
-      nshots: 1024
+      nshots: 10
 
   - id: CHSH with pulses
     operation: chsh_pulses
@@ -636,14 +724,14 @@ actions:
     operation: readout_mitigation_matrix
     targets: [[0,1,2],[1,2]]
     parameters:
-      nshots: 100
+      nshots: 10
       pulses: True
 
   - id: readout_mitigation_matrix circuits
     operation: readout_mitigation_matrix
     targets: [[0,1,2],[1,2]]
     parameters:
-      nshots: 100
+      nshots: 10
       pulses: False
 
   - id: twpa frequency
@@ -677,7 +765,7 @@ actions:
       twpa_pow_width: 4
       twpa_pow_step: 1
       power_level: low
-      nshots: 1000
+      nshots: 10
       relaxation_time: 2000
 
   - id: twpa_frequency_SNR
@@ -691,7 +779,7 @@ actions:
       nshots: 10
       relaxation_time: 20
 
-  - id: resoantor_amplitude
+  - id: resonator_amplitude
     operation: resonator_amplitude
     parameters:
       amplitude_step: 0.1
@@ -701,7 +789,7 @@ actions:
     targets: [0,1]
     operation: qutrit_classification
     parameters:
-      nshots: 100
+      nshots: 1000
       classifiers_list: ["naive_bayes", "decision_tree"]
 
   - id: avoided crossing

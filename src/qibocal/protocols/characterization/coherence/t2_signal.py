@@ -25,16 +25,20 @@ class T2SignalParameters(Parameters):
     """Final delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_step: int
     """Step delay between RX(pi/2) pulses in ns."""
+    single_shot: bool = False
+    """If ``True`` save single shot signal data."""
 
 
 @dataclass
 class T2SignalResults(Results):
     """T2Signal outputs."""
 
-    t2: dict[QubitId, float]
+    t2: dict[QubitId, tuple[float]]
     """T2 for each qubit [ns]."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    pcov: dict[QubitId, list[float]]
+    """Approximate covariance of fitted parameters."""
 
 
 class T2SignalData(t1_signal.T1SignalData):
@@ -79,8 +83,6 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
-    data = T2SignalData()
-
     sweeper = Sweeper(
         Parameter.start,
         waits,
@@ -95,17 +97,24 @@ def _acquisition(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
+            averaging_mode=(
+                AveragingMode.SINGLESHOT if params.single_shot else AveragingMode.CYCLIC
+            ),
         ),
         sweeper,
     )
 
+    data = T2SignalData()
     for qubit in targets:
         result = results[ro_pulses[qubit].serial]
+        if params.single_shot:
+            _waits = np.array(len(result.magnitude) * [waits])
+        else:
+            _waits = waits
         data.register_qubit(
-            t1_signal.CoherenceType,
+            utils.CoherenceType,
             (qubit),
-            dict(wait=waits, signal=result.magnitude, phase=result.phase),
+            dict(wait=_waits, signal=result.magnitude, phase=result.phase),
         )
     return data
 
@@ -116,12 +125,15 @@ def _fit(data: T2SignalData) -> T2SignalResults:
     .. math::
         y = p_0 - p_1 e^{-x p_2}.
     """
-    t2s, fitted_parameters = utils.exponential_fit(data)
-    return T2SignalResults(t2s, fitted_parameters)
+    data = data.average
+
+    t2s, fitted_parameters, pcovs = utils.exponential_fit(data)
+    return T2SignalResults(t2s, fitted_parameters, pcovs)
 
 
 def _plot(data: T2SignalData, target: QubitId, fit: T2SignalResults = None):
     """Plotting function for Ramsey Experiment."""
+    data = data.average
 
     figures = []
     fig = go.Figure()
@@ -161,7 +173,9 @@ def _plot(data: T2SignalData, target: QubitId, fit: T2SignalResults = None):
             )
         )
         fitting_report = table_html(
-            table_dict(target, "T2 [ns]", np.round(fit.t2[target]))
+            table_dict(
+                target, ["T2 [ns]"], [np.round(fit.t2[target])], display_error=True
+            )
         )
 
     fig.update_layout(

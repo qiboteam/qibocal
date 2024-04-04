@@ -11,6 +11,7 @@ from qibocal.auto.execute import Executor
 from qibocal.auto.mode import ExecutionMode
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import TaskId
+from qibocal.config import log
 
 META = "meta.json"
 RUNCARD = "runcard.yml"
@@ -20,6 +21,7 @@ PLATFORM = "platform.yml"
 
 def generate_figures_and_report(node, target):
     """Returns figures and table for report."""
+
     if node.results is None:
         # plot acquisition data
         return node.task.operation.report(data=node.data, fit=None, target=target)
@@ -39,6 +41,8 @@ def report(path):
     - FOLDER: input folder.
 
     """
+    if path.exists():
+        log.warning(f"Regenerating {path}/index.html")
     # load meta
     meta = json.loads((path / META).read_text())
     # load runcard
@@ -87,7 +91,6 @@ class ReportBuilder:
     def single_qubit_plot(self, task_id: TaskId, qubit: QubitId):
         """Generate single qubit plot."""
         node = self.history[task_id]
-
         figures, fitting_report = generate_figures_and_report(node, qubit)
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             html_list = []
