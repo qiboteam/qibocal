@@ -8,6 +8,9 @@ from qibocal.protocols.characterization.randomized_benchmarking import (
     fitting,
     noisemodels,
 )
+from qibocal.protocols.characterization.randomized_benchmarking.standard_rb import (
+    RB_Generator,
+)
 from qibocal.protocols.characterization.randomized_benchmarking.utils import (
     number_to_str,
     random_clifford,
@@ -143,15 +146,8 @@ def test_PauliErrors():
 @pytest.mark.parametrize("seed", [10])
 @pytest.mark.parametrize("qubits", [1, 2, [0, 1], np.array([0, 1])])
 def test_random_clifford(qubits, seed):
-    with pytest.raises(TypeError):
-        q = "1"
-        random_clifford(q)
-    with pytest.raises(ValueError):
-        q = -1
-        random_clifford(q)
-    with pytest.raises(ValueError):
-        q = [0, 1, -3]
-        random_clifford(q)
+
+    rb_gen = RB_Generator(seed)
 
     result_single = np.array([[1j, -1j], [-1j, -1j]]) / np.sqrt(2)
 
@@ -164,9 +160,15 @@ def test_random_clifford(qubits, seed):
         ]
     )
 
-    result = result_single if (isinstance(qubits, int) and qubits == 1) else result_two
+    result = result_single if isinstance(qubits, int) else result_two
 
-    gates = random_clifford(qubits, seed=seed)
+    if isinstance(qubits, int):
+        qubits = [qubits]
+    gates = []
+    for qubit in qubits:
+        gate, index = random_clifford(rb_gen.random_index)
+        gates.append(gate)
+
     matrix = reduce(np.kron, [gate.matrix() for gate in gates])
     assert np.allclose(matrix, result)
 

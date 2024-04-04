@@ -8,8 +8,9 @@ from qibo.gates.abstract import Gate
 from qibo.models import Circuit
 
 
-def layer_circuit(layer_gen: Callable, depth: int, qubit, seed) -> Circuit:
-    """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`.
+def layer_circuit(rb_gen: Callable, depth: int, qubit) -> tuple[Circuit, dict]:
+    """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`
+    and a dictionary with random indexes used to select the clifford gates.
 
     Args:
         layer_gen (Callable): Should return gates or a full circuit specifying a layer.
@@ -20,19 +21,25 @@ def layer_circuit(layer_gen: Callable, depth: int, qubit, seed) -> Circuit:
     """
 
     full_circuit = None
+    random_indexes = []
     # Build each layer, there will be depth many in the final circuit.
     qubits_str = [str(qubit)]
+
     for _ in range(depth):
         # Generate a layer.
-        new_layer = layer_gen(1, seed)  # TODO: find better implementation
+        new_layer, random_index = rb_gen.layer_gen()
         # Ensure new_layer is a circuit
         if isinstance(new_layer, Gate):
             new_circuit = Circuit(1, wire_names=qubits_str)
             new_circuit.add(new_layer)
+            random_indexes.append(random_index)
+
+        # We are only using this for the RB we have right now
         elif all(isinstance(gate, Gate) for gate in new_layer):
             new_circuit = Circuit(1, wire_names=qubits_str)
-
             new_circuit.add(new_layer)
+            random_indexes.append(random_index)
+
         elif isinstance(new_layer, Circuit):
             new_circuit = new_layer
         else:
@@ -43,7 +50,7 @@ def layer_circuit(layer_gen: Callable, depth: int, qubit, seed) -> Circuit:
         if full_circuit is None:  # instantiate in first loop
             full_circuit = Circuit(new_circuit.nqubits, wire_names=qubits_str)
         full_circuit = full_circuit + new_circuit
-    return full_circuit
+    return full_circuit, random_indexes
 
 
 def add_inverse_layer(circuit: Circuit, single_qubit=True):

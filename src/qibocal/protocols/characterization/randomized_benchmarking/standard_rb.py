@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, TypedDict, Union
 
@@ -5,7 +6,6 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from qibo.backends import GlobalBackend
-from qibo.models import Circuit
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
@@ -84,8 +84,8 @@ class RBData(Data):
     """Number of iterations for each depth."""
     data: dict[QubitId, npt.NDArray[RBType]] = field(default_factory=dict)
     """Raw data acquired."""
-    circuits: Circuit = None
-    """Circuits executed."""
+    circuits: dict[QubitId, list[list[int]]] = field(default_factory=dict)
+    """Clifford gate indexes executed."""
 
     def extract_probabilities(self, qubit):
         """Extract the probabilities given `qubit`"""
@@ -117,16 +117,44 @@ class StandardRBResult(Results):
         return True
 
 
-def layer_gen(targets, seed):
-    """Returns a circuit with a random single-qubit clifford unitary."""
-    return random_clifford(targets, seed)
+class RB_Generator:
+    """
+    This class generates random single qubit cliffords for randomized benchmarking.
+    """
+
+    def __init__(self, seed):
+        self.seed = seed
+        self.local_state = (
+            np.random.default_rng(seed)
+            if seed is None or isinstance(seed, int)
+            else seed
+        )
+
+    def random_index(self, gate_list):
+        """
+        Generates a random index within the range of the given gate list.
+
+        Parameters:
+        - gate_list (list): Dict of gates.
+
+        Returns:
+        - int: Random index.
+        """
+        return self.local_state.integers(0, len(gate_list), 1)
+
+    def layer_gen(self):
+        """
+        Returns:
+        - Gate: Random single-qubit clifford .
+        """
+        return random_clifford(self.random_index)
 
 
 def random_circuits(
     depth: int,
     targets: list[QubitId],
     niter,
-    seed,
+    rb_gen,
     noise_model=None,
 ) -> Iterable:
     """Returns single-qubit random self-inverting Clifford circuits.
@@ -143,16 +171,18 @@ def random_circuits(
     """
 
     circuits = []
+    indexes = defaultdict(list)
     for _ in range(niter):
         for target in targets:
-            circuit = layer_circuit(layer_gen, depth, target, seed)
+            circuit, random_index = layer_circuit(rb_gen, depth, target)
             add_inverse_layer(circuit)
             add_measurement_layer(circuit)
             if noise_model is not None:
                 circuit = noise_model.apply(circuit)
             circuits.append(circuit)
+            indexes[target].append(random_index)
 
-    return circuits
+    return circuits, indexes
 
 
 def _acquisition(
@@ -198,14 +228,18 @@ def _acquisition(
     )
 
     circuits = []
+    indexes = {}
     samples = []
     qubits_ids = targets
+    rb_gen = RB_Generator(params.seed)
     for depth in params.depths:
         # TODO: This does not generate multi qubit circuits
-        circuits_depth = random_circuits(
-            depth, qubits_ids, params.niter, params.seed, noise_model
+        circuits_depth, random_indexes = random_circuits(
+            depth, qubits_ids, params.niter, rb_gen, noise_model
         )
         circuits.extend(circuits_depth)
+        for qubit in random_indexes.keys():
+            indexes[(qubit, depth)] = random_indexes[qubit]
     # Execute the circuits
     if params.unrolling:
         executed_circuits = backend.execute_circuits(circuits, nshots=params.nshots)
@@ -218,6 +252,7 @@ def _acquisition(
     for circ in executed_circuits:
         samples.extend(circ.samples())
     samples = np.reshape(samples, (-1, nqubits, params.nshots))
+
     for i, depth in enumerate(params.depths):
         index = (i * params.niter, (i + 1) * params.niter)
         for nqubit, qubit_id in enumerate(targets):
@@ -228,6 +263,7 @@ def _acquisition(
                     samples=samples[index[0] : index[1]][:, nqubit],
                 ),
             )
+    data.circuits = indexes
 
     return data
 
