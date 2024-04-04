@@ -319,6 +319,7 @@ def _fit(
                 # leakage estimate: L = m /2
                 # See NZ paper from Di Carlo
                 # approximation which does not need qutrits
+                # https://arxiv.org/pdf/1903.02492.pdf
                 leakage[pair][control_q] = 0.5 * float(
                     np.mean(
                         data[pair][target_q, control_q, "X"].control
@@ -405,12 +406,10 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, target: QubitPairId):
             fitting_report.add(
                 table_html(
                     table_dict(
-                        [target_q, target_q, qubits[1], qubits[1], control_q],
+                        [target_q, target_q, control_q],
                         [
                             "CZ angle [rad]",
                             "Virtual Z phase [rad]",
-                            "Flux pulse amplitude [a.u.]",
-                            "Flux pulse duration [ns]",
                             "Leakage [a.u.]",
                         ],
                         [
@@ -418,20 +417,33 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, target: QubitPairId):
                             np.round(
                                 fit.virtual_phase[tuple(sorted(target))][target_q], 4
                             ),
-                            np.round(data.amplitudes[qubits], 4),
-                            np.round(data.durations[qubits], 4),
                             np.round(fit.leakage[tuple(sorted(target))][control_q], 4),
                         ],
                     )
                 )
             )
+    fitting_report.add(
+        table_html(
+            table_dict(
+                [qubits[1], qubits[1]],
+                [
+                    "Flux pulse amplitude [a.u.]",
+                    "Flux pulse duration [ns]",
+                ],
+                [
+                    np.round(data.amplitudes[qubits], 4),
+                    np.round(data.durations[qubits], 4),
+                ],
+            )
+        )
+    )
 
     fig1.update_layout(
         title_text=f"Phase correction Qubit {qubits[0]}",
         showlegend=True,
         xaxis1_title="Virtual phase[rad]",
         xaxis2_title="Virtual phase [rad]",
-        yaxis_title="Probability of State 0",
+        yaxis_title="State 0 Probability",
     )
 
     fig2.update_layout(
@@ -439,7 +451,7 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, target: QubitPairId):
         showlegend=True,
         xaxis1_title="Virtual phase[rad]",
         xaxis2_title="Virtual phase[rad]",
-        yaxis_title="Probability of State 0",
+        yaxis_title="State 0 Probability",
     )
 
     return [fig1, fig2], "".join(fitting_report)  # target and control qubit

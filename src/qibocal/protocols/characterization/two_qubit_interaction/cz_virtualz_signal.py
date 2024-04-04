@@ -46,7 +46,7 @@ def _acquisition(
     targets: list[QubitPairId],
 ) -> CZVirtualZSignalData:
     r"""
-    Acquisition for CZVirtualZ.
+    Acquisition for CZVirtualZ. See https://arxiv.org/pdf/1904.06560.pdf
 
     Check the two-qubit landscape created by a flux pulse of a given duration
     and amplitude.
