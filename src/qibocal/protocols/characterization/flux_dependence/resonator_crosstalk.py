@@ -127,10 +127,14 @@ def _acquisition(
     voltage = {}
     matrix_element = {}
     for qubit in targets:
-        sweetspots[qubit] = voltage[qubit] = platform.qubits[qubit].sweetspot
-        asymmetry[qubit] = platform.qubits[qubit].asymmetry
-        coupling[qubit] = platform.qubits[qubit].g
-        matrix_element[qubit] = platform.qubits[qubit].crosstalk_matrix[qubit]
+        try:
+            sweetspots[qubit] = voltage[qubit] = platform.qubits[qubit].sweetspot
+            asymmetry[qubit] = platform.qubits[qubit].asymmetry
+            coupling[qubit] = platform.qubits[qubit].g
+            matrix_element[qubit] = platform.qubits[qubit].crosstalk_matrix[qubit]
+        except KeyError:
+            log.warning(f"Missing flux parameters for qubit {qubit}.")
+
         bare_resonator_frequency[qubit] = platform.qubits[
             qubit
         ].bare_resonator_frequency
