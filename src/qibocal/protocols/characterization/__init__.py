@@ -1,8 +1,6 @@
 from enum import Enum
 
 from .allxy.allxy import allxy
-from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
-from .allxy.drag_pulse_tuning import drag_pulse_tuning
 from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
 from .coherence.spin_echo_signal import spin_echo_signal
@@ -19,6 +17,7 @@ from .couplers.coupler_qubit_spectroscopy import coupler_qubit_spectroscopy
 from .couplers.coupler_resonator_spectroscopy import coupler_resonator_spectroscopy
 from .dispersive_shift import dispersive_shift
 from .dispersive_shift_qutrit import dispersive_shift_qutrit
+from .drag import drag_tuning
 from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
 from .flipping_signal import flipping_signal
@@ -94,8 +93,7 @@ class Operation(Enum):
     spin_echo = spin_echo
     spin_echo_signal = spin_echo_signal
     allxy = allxy
-    allxy_drag_pulse_tuning = allxy_drag_pulse_tuning
-    drag_pulse_tuning = drag_pulse_tuning
+    drag_tuning = drag_tuning
     flipping = flipping
     dispersive_shift = dispersive_shift
     chevron = chevron
