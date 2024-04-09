@@ -10,7 +10,7 @@ from qibolab.qubits import QubitId, QubitPairId
 from qibolab.serialize import dump_platform
 
 from qibocal.auto.operation import Data, Results
-from qibocal.config import log
+from qibocal.config import log, raise_error
 from qibocal.protocols.characterization import Operation
 
 Id = NewType("Id", str)
@@ -242,14 +242,14 @@ class Pending(State):
         self.experiment.switch(Acquired(data))
 
     def fit(self) -> None:
-        log.info(f"Performing fit {self.experiment.id} on stored data.")
-        self.experiment.switch(Acquired())
+        raise_error(
+            ValueError, "Cannot perform fit on state Pending, switch to Acquired."
+        )
 
     def update_platform(self, platform) -> None:
-        log.info(
-            f"Cannot update platform without running fitting on protocol {self.experiment.id}"
+        raise_error(
+            ValueError, "Cannot perform update on state Pending, switch to Fitted."
         )
-        self.experiment.switch(Updated(platform))
 
 
 @dataclass
@@ -280,10 +280,9 @@ class Acquired(State):
         self.experiment.switch(Fitted(results))
 
     def update_platform(self, platform) -> None:
-        log.info(
-            f"Performing update on platform for protocol {self.experiment.id} using stored fitted data."
+        raise_error(
+            ValueError, "Cannot perform update on state Acquired, switch to Fitted."
         )
-        self.experiment.switch(Updated(platform))
 
 
 @dataclass
@@ -309,7 +308,7 @@ class Fitted(State):
         log.info(f"Acquisition for {self.experiment.id} already performed.")
 
     def fit(self) -> None:
-        print("Fitting already performed")
+        log.info(f"Fit for {self.experiment.id} already performed.")
 
     def update_platform(self, platform: Platform) -> None:
         """Platform update."""
