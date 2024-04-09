@@ -7,7 +7,7 @@ import yaml
 from click.testing import CliRunner
 from qibolab import create_platform
 
-from qibocal.auto.task import PLATFORM_DIR
+from qibocal.auto.experiment import PLATFORM_DIR
 from qibocal.cli import utils
 from qibocal.cli._base import command
 from qibocal.protocols.characterization.flux_dependence.resonator_flux_dependence import (

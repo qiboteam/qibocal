@@ -1,7 +1,6 @@
 """Track execution history."""
 
-from .runcard import Id
-from .task import Completed
+from .experiment import Experiment, ExperimentId, Id
 
 
 def add_timings_to_meta(meta, history):
@@ -22,7 +21,7 @@ def add_timings_to_meta(meta, history):
     return meta
 
 
-class History(dict[tuple[Id, int], Completed]):
+class History(dict[ExperimentId, Experiment]):
     """Execution history.
 
     This is not only used for logging and debugging, but it is an actual part
@@ -31,15 +30,15 @@ class History(dict[tuple[Id, int], Completed]):
 
     """
 
-    def push(self, completed: Completed):
+    def push(self, exp: Experiment):
         """Adding completed task to history."""
-        self[completed.task.uid] = completed
+        self[exp.uid] = exp
 
-    def iterations(self, task_id: Id):
+    def iterations(self, exp_id: Id):
         """Count task id present in history."""
         counter = 0
-        for task, _ in self:
-            if task == task_id:
+        for exp, _ in self:
+            if exp == exp_id:
                 counter += 1
         return counter
 

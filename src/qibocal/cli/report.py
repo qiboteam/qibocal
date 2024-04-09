@@ -5,12 +5,12 @@ from pathlib import Path
 
 import yaml
 from qibo.backends import GlobalBackend
-from qibolab.qubits import QubitId
 
 from qibocal.auto.execute import Executor
 from qibocal.auto.mode import ExecutionMode
 from qibocal.auto.runcard import Runcard
-from qibocal.auto.task import TaskId
+
+# from qibocal.auto.task import TaskId
 from qibocal.config import log
 
 META = "meta.json"
@@ -24,13 +24,13 @@ def generate_figures_and_report(node, target):
 
     if node.results is None:
         # plot acquisition data
-        return node.task.operation.report(data=node.data, fit=None, target=target)
+        return node.protocol.report(data=node.data, fit=None, target=target)
     if target not in node.results:
         # plot acquisition data and message for unsuccessful fit
-        figures = node.task.operation.report(data=node.data, fit=None, target=target)[0]
+        figures = node.protocol.report(data=node.data, fit=None, target=target)[0]
         return figures, "An error occurred when performing the fit."
     # plot acquisition and fit
-    return node.task.operation.report(data=node.data, fit=node.results, target=target)
+    return node.protocol.report(data=node.data, fit=node.results, target=target)
 
 
 def report(path):
@@ -83,14 +83,14 @@ class ReportBuilder:
         name = routine.replace("_", " ").title()
         return f"{name} - {iteration}"
 
-    def routine_targets(self, task_id: TaskId):
+    def routine_targets(self, experiment_id):
         """Get local targets parameter from Task if available otherwise use global one."""
-        local_targets = self.history[task_id].task.targets
+        local_targets = self.history[experiment_id].targets
         return local_targets if len(local_targets) > 0 else self.targets
 
-    def single_qubit_plot(self, task_id: TaskId, qubit: QubitId):
+    def single_qubit_plot(self, experiment_id, qubit):
         """Generate single qubit plot."""
-        node = self.history[task_id]
+        node = self.history[experiment_id]
         figures, fitting_report = generate_figures_and_report(node, qubit)
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             html_list = []

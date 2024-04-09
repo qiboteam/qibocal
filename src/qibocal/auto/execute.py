@@ -7,16 +7,17 @@ from qibolab.platform import Platform
 
 from qibocal.config import log
 
+from .experiment import Experiment
 from .history import History
-from .runcard import Action, Runcard, Targets
-from .task import Task
+from .mode import ExecutionMode
+from .runcard import Runcard, Targets
 
 
 @dataclass
 class Executor:
     """Execute a tasks' graph and tracks its history."""
 
-    actions: list[Action]
+    actions: list[Experiment]
     """List of actions."""
     history: History
     """The execution history, with results and exit states."""
@@ -60,22 +61,25 @@ class Executor:
         - self.update is True and task.update is None
         - task.update is True
         """
-        for action in self.actions:
-            task = Task(action)
-            task.iteration = self.history.iterations(task.id)
+        for experiment in self.actions:
+
+            experiment.iteration = self.history.iterations(experiment.id)
             log.info(
-                f"Executing mode {mode.name} on {task.id} iteration {task.iteration}."
+                f"Executing mode {mode.name} on {experiment.id} iteration {experiment.iteration}."
             )
-            completed = task.run(
-                max_iterations=self.max_iterations,
-                platform=self.platform,
-                targets=self.targets,
-                folder=self.output,
-                mode=mode,
-            )
-            self.history.push(completed)
 
-            if mode.name in ["autocalibration", "fit"] and self.platform is not None:
-                completed.update_platform(platform=self.platform, update=self.update)
+            if mode in [ExecutionMode.acquire, ExecutionMode.autocalibration]:
+                experiment.acquire(self.platform, self.targets)
+                experiment.dump(self.output)
 
-            yield completed.task.uid
+            if mode in [ExecutionMode.fit, ExecutionMode.autocalibration]:
+                experiment.fit()
+                experiment.dump(self.output)
+
+                if experiment.update:
+                    experiment.update_platform(self.platform)
+                    experiment.dump(self.output)
+
+            self.history.push(experiment)
+
+            yield experiment.uid

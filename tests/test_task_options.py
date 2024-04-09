@@ -6,9 +6,9 @@ import pytest
 from qibolab import create_platform
 
 from qibocal.auto.execute import Executor
+from qibocal.auto.experiment import Task
 from qibocal.auto.operation import DEFAULT_PARENT_PARAMETERS
 from qibocal.auto.runcard import Runcard
-from qibocal.auto.task import Task
 from qibocal.cli.report import ExecutionMode
 from qibocal.protocols.characterization.classification import (
     SingleShotClassificationParameters,

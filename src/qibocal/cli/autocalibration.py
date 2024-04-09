@@ -1,6 +1,5 @@
 import datetime
 import json
-from dataclasses import asdict
 
 import yaml
 from qibolab.serialize import dump_platform
@@ -41,7 +40,7 @@ def autocalibrate(runcard, folder, force, update):
         dump_platform(platform, path / PLATFORM)
 
     # dump action runcard
-    (path / RUNCARD).write_text(yaml.safe_dump(asdict(runcard)))
+    (path / RUNCARD).write_text(yaml.safe_dump(runcard.raw))
     # dump meta
     (path / META).write_text(json.dumps(meta, indent=4))
 
