@@ -14,7 +14,11 @@ def test_fit_command(tmp_path):
     tmp_dir_1 = tmp_path / "temp_dir_1"
     tmp_dir_2 = tmp_path / "temp_dir_2"
     runner = CliRunner()
-    runner.invoke(command, ["acquire", str(DUMMY_ACTION), "-o", str(tmp_dir_1), "-f"])
+    runner.invoke(
+        command,
+        ["acquire", str(DUMMY_ACTION), "-o", str(tmp_dir_1), "-f"],
+        catch_exceptions=False,
+    )
 
     # fit after acquisition same folder
     runner.invoke(command, ["fit", str(tmp_dir_1)], catch_exceptions=False)

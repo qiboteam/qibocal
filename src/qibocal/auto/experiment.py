@@ -57,9 +57,9 @@ class Experiment:
     """Reference to state object."""
 
     def __post_init__(self) -> None:
-        self.transition_to(Pending())
+        self.switch(Pending())
 
-    def transition_to(self, state: State):
+    def switch(self, state: State):
         """Change experiment state:"""
 
         log.info(f"Experiment: Transition to {type(state).__name__}")
@@ -77,13 +77,13 @@ class Experiment:
 
     @property
     def results(self):
-        self.transition_to(Fitted())
+        self.switch(Fitted())
         # FIXME: re-introduce pylint
         return self._state.results  # pylint: disable=E1101
 
     @property
     def data(self):
-        self.transition_to(Acquired())
+        self.switch(Acquired())
         # FIXME: re-introduce pylint
         return self._state.data  # pylint: disable=E1101
 
@@ -239,17 +239,17 @@ class Pending(State):
         data, self.experiment.data_time = self.experiment.protocol.acquisition(
             self.parameters, platform, targets
         )
-        self.experiment.transition_to(Acquired(data))
+        self.experiment.switch(Acquired(data))
 
-    def fit(self) -> Results:
+    def fit(self) -> None:
         log.info(f"Performing fit {self.experiment.id} on stored data.")
-        self.experiment.transition_to(Acquired())
+        self.experiment.switch(Acquired())
 
     def update_platform(self, platform) -> None:
         log.info(
             f"Cannot update platform without running fitting on protocol {self.experiment.id}"
         )
-        self.experiment.transition_to(Updated(platform))
+        self.experiment.switch(Updated(platform))
 
 
 @dataclass
@@ -277,13 +277,13 @@ class Acquired(State):
     def fit(self) -> Results:
         log.info(f"Starting fitting on protocol {self.experiment.id}")
         results, self.experiment.results_time = self.experiment.protocol.fit(self.data)
-        self.experiment.transition_to(Fitted(results))
+        self.experiment.switch(Fitted(results))
 
     def update_platform(self, platform) -> None:
         log.info(
             f"Performing update on platform for protocol {self.experiment.id} using stored fitted data."
         )
-        self.experiment.transition_to(Updated(platform))
+        self.experiment.switch(Updated(platform))
 
 
 @dataclass
@@ -319,7 +319,7 @@ class Fitted(State):
                 self.experiment.protocol.update(self.results, platform, target)
             except KeyError:
                 log.warning(f"Skipping update of qubit {target} due to error in fit.")
-        self.experiment.transition_to(Updated(platform))
+        self.experiment.switch(Updated(platform))
 
 
 @dataclass

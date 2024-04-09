@@ -6,7 +6,6 @@ import pytest
 from qibolab import create_platform
 
 from qibocal.auto.execute import Executor
-from qibocal.auto.experiment import Task
 from qibocal.auto.operation import DEFAULT_PARENT_PARAMETERS
 from qibocal.auto.runcard import Runcard
 from qibocal.cli.report import ExecutionMode
@@ -52,19 +51,14 @@ def test_targets_argument(backend, local_targets, tmp_path):
     runcard = Runcard.load(
         modify_card(DUMMY_CARD, targets=local_targets, backend=backend)
     )
-    task = Task(runcard.actions[0])
+    exp = runcard.actions[0]
 
-    completed = task.run(
-        max_iterations=1,
-        platform=runcard.platform,
-        targets=TARGETS,
-        mode=ExecutionMode.acquire,
-        folder=tmp_path,
-    )
+    exp.acquire(platform=runcard.platform_obj, targets=TARGETS)
+
     if local_targets:
-        assert completed.task.targets == local_targets
+        assert exp.targets == local_targets
     else:
-        assert completed.task.targets == TARGETS
+        assert exp.targets == TARGETS
         assert runcard.targets == TARGETS
 
 

@@ -7,7 +7,7 @@ from qibolab.platform import Platform
 
 from qibocal.config import log
 
-from .experiment import Experiment
+from .experiment import Acquired, Experiment
 from .history import History
 from .mode import ExecutionMode
 from .runcard import Runcard, Targets
@@ -78,13 +78,13 @@ class Executor:
                 experiment.dump(self.output)
 
             if mode in [ExecutionMode.fit, ExecutionMode.autocalibration]:
+                experiment.switch(Acquired())
                 experiment.fit()
                 experiment.dump(self.output)
 
                 # TODO: improve this check
                 if experiment.update and self.update:
                     experiment.update_platform(self.platform)
-                    print(self.output)
                     experiment.dump(self.output)
 
             self.history.push(experiment)
