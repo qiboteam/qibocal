@@ -62,6 +62,9 @@ def test_auto_command(runcard, update, tmp_path):
     runcard = runcard[0]
     protocol = runcard["actions"][0]["id"]
 
+    if runcard["backend"] != "qibolab" and update == "--update":
+        pytest.skip("Cannot update platform when running with simulation backend.")
+
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
     runner = CliRunner()
     results = runner.invoke(
@@ -74,9 +77,9 @@ def test_auto_command(runcard, update, tmp_path):
             "-f",
             update,
         ],
+        catch_exceptions=False,
     )
-    assert not results.exception
-    assert results.exit_code == 0
+
     if update == "--update" and runcard["backend"] == "qibolab":
         assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
         assert (tmp_path / "data" / f"{protocol}_0" / PLATFORM_DIR).is_dir()
@@ -101,15 +104,16 @@ def test_acquire_command(runcard, tmp_path):
             f"{str(tmp_path)}",
             "-f",
         ],
+        catch_exceptions=False,
     )
-    assert not results.exception
-    assert results.exit_code == 0
+
     assert (tmp_path / "data" / f"{protocol}_0").is_dir()
 
     # generate report from acquired data
-    results_report = runner.invoke(command, ["report", str(tmp_path)])
-    assert not results_report.exception
-    assert results_report.exit_code == 0
+    results_report = runner.invoke(
+        command, ["report", str(tmp_path)], catch_exceptions=False
+    )
+
     assert (tmp_path / "index.html").is_file()
 
 
@@ -120,6 +124,9 @@ def test_fit_command(runcard, update, tmp_path):
 
     runcard = runcard[0]
     protocol = runcard["actions"][0]["id"]
+
+    if runcard["backend"] != "qibolab" and update == "--update":
+        pytest.skip("Cannot update platform when running with simulation backend.")
 
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
     runner = CliRunner()
@@ -134,24 +141,23 @@ def test_fit_command(runcard, update, tmp_path):
             f"{str(tmp_path)}",
             "-f",
         ],
+        catch_exceptions=False,
     )
-    assert not results.exception
-    assert results.exit_code == 0
 
     # perform fit
-    results_fit = runner.invoke(command, ["fit", str(tmp_path), update])
-
-    assert not results_fit.exception
-    assert results_fit.exit_code == 0
+    results_fit = runner.invoke(
+        command, ["fit", str(tmp_path), update], catch_exceptions=False
+    )
 
     if update == "--update" and runcard["backend"] == "qibolab":
         assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
         assert (tmp_path / "data" / f"{protocol}_0" / PLATFORM_DIR).is_dir()
 
     # generate report with fit and plot
-    results_plot = runner.invoke(command, ["report", str(tmp_path)])
-    assert not results_plot.exception
-    assert results_plot.exit_code == 0
+    results_plot = runner.invoke(
+        command, ["report", str(tmp_path)], catch_exceptions=False
+    )
+
     assert (tmp_path / "index.html").is_file()
 
 

@@ -7,6 +7,7 @@ from typing import Any, NewType, Union
 
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
+from qibolab.serialize import dump_platform
 
 from qibocal.auto.operation import Data, Results
 from qibocal.config import log
@@ -14,12 +15,14 @@ from qibocal.protocols.characterization import Operation
 
 Id = NewType("Id", str)
 """Action identifiers type."""
-
 Targets = Union[list[QubitId], list[QubitPairId], list[tuple[QubitId, ...]]]
+"""Possible targets for protocol: list of qubits, qubit pairs or nested lists."""
 ExperimentId = tuple[Id, int]
+"""UID for experiment."""
 PLATFORM_DIR = "platform"
-
-from qibolab.serialize import dump_platform
+"""Directory where platform is dumped."""
+DEFAULT_NSHOTS = 100
+"""Default number on shots when the platform is not provided."""
 
 
 @dataclass
@@ -49,8 +52,9 @@ class Experiment:
     """Dicti with protocol parameters."""
 
     _path: Path = None
-    """Reference to state object."""
+    """Path where data and results are stored."""
     _state: State = None
+    """Reference to state object."""
 
     def __post_init__(self) -> None:
         self.transition_to(Pending())
@@ -95,13 +99,11 @@ class Experiment:
         Returns:
             pathlib.Path: path
         """
-        if self._path is None:
-            return Path(f"data/self.id")
         return self._path
 
     @path.setter
     def path(self, new_path: Path):
-        self._path = new_path
+        self._path = new_path / f"data/{self.id}_{self.iteration}"
 
     @property
     def protocol(self):
@@ -119,9 +121,10 @@ class Experiment:
             platform (Platform): Qibolab platform
             targets (Targets): Experiment' targets
         """
-        self.targets = targets
+        if self.targets is None:
+            self.targets = targets
         # TODO: check how to handle local and global target
-        return self._state.acquire(platform=platform, targets=targets)
+        return self._state.acquire(platform=platform, targets=self.targets)
 
     def fit(self) -> None:
         """Protocol post-processing step"""
@@ -137,7 +140,6 @@ class Experiment:
         Returns:
             _type_: _description_
         """
-        self.path = path / Path(f"data/{self.id}")
         if not self.path.is_dir():
             self.path.mkdir(parents=True)
 
@@ -221,6 +223,18 @@ class Pending(State):
     def acquire(self, platform: Platform, targets: Targets) -> None:
         """Perform acquisition"""
         log.info(f"Performing acquisition for protocol {self.experiment.id}")
+
+        if platform is not None:
+            if self.parameters.nshots is None:
+                self.experiment.parameters["nshots"] = platform.settings.nshots
+            if self.parameters.relaxation_time is None:
+                self.experiment.parameters["relaxation_time"] = (
+                    platform.settings.relaxation_time
+                )
+        else:
+            if self.parameters.nshots is None:
+                self.experiment.parameters["nshots"] = DEFAULT_NSHOTS
+
         # TODO: fix data_time
         data, self.experiment.data_time = self.experiment.protocol.acquisition(
             self.parameters, platform, targets
@@ -267,8 +281,9 @@ class Acquired(State):
 
     def update_platform(self, platform) -> None:
         log.info(
-            f"Cannot update platform without running fitting on protocol {self.experiment.id}"
+            f"Performing update on platform for protocol {self.experiment.id} using stored fitted data."
         )
+        self.experiment.transition_to(Updated(platform))
 
 
 @dataclass
@@ -291,7 +306,7 @@ class Fitted(State):
 
     def acquire(self) -> None:
         """Perform acquisition"""
-        print("Cannot perform acquisition")
+        log.info(f"Acquisition for {self.experiment.id} already performed.")
 
     def fit(self) -> None:
         print("Fitting already performed")
@@ -316,6 +331,5 @@ class Updated(State):
 
     def dump(self, path: Path):
         log.info("Dumping update platform.")
-
         (path / PLATFORM_DIR).mkdir(parents=True, exist_ok=True)
         dump_platform(self.platform, path / PLATFORM_DIR)

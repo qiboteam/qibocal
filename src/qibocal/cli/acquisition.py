@@ -1,12 +1,13 @@
 import datetime
 import json
 
+import yaml
 from qibolab.serialize import dump_platform
 
 from ..auto.execute import Executor
 from ..auto.history import add_timings_to_meta
 from ..auto.mode import ExecutionMode
-from .utils import META, PLATFORM, generate_meta, generate_output_folder
+from .utils import META, PLATFORM, RUNCARD, generate_meta, generate_output_folder
 
 
 def acquire(runcard, folder, force):
@@ -31,8 +32,7 @@ def acquire(runcard, folder, force):
         dump_platform(platform, path / PLATFORM)
 
     # dump action runcard
-    print(runcard)
-    # (path / RUNCARD).write_text(yaml.safe_dump(asdict(runcard)))
+    (path / RUNCARD).write_text(yaml.safe_dump(runcard.raw))
     # dump meta
     (path / META).write_text(json.dumps(meta, indent=4))
 

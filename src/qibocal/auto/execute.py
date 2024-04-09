@@ -67,6 +67,11 @@ class Executor:
             log.info(
                 f"Executing mode {mode.name} on {experiment.id} iteration {experiment.iteration}."
             )
+            if experiment.targets is None:
+                experiment.targets = self.targets
+
+            # setting experiment path
+            experiment.path = self.output
 
             if mode in [ExecutionMode.acquire, ExecutionMode.autocalibration]:
                 experiment.acquire(self.platform, self.targets)
@@ -76,8 +81,10 @@ class Executor:
                 experiment.fit()
                 experiment.dump(self.output)
 
-                if experiment.update:
+                # TODO: improve this check
+                if experiment.update and self.update:
                     experiment.update_platform(self.platform)
+                    print(self.output)
                     experiment.dump(self.output)
 
             self.history.push(experiment)

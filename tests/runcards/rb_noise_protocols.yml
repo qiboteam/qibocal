@@ -8,7 +8,6 @@ actions:
 
 
   - id: standard rb no error
-    priority: 0
     operation: standard_rb
     parameters:
       depths:
@@ -19,7 +18,6 @@ actions:
       nshots: 50
 
   - id: standard rb unrolling
-    priority: 0
     operation: standard_rb
     parameters:
       depths:
@@ -32,9 +30,8 @@ actions:
       noise_model: PauliErrorOnAll
 
   - id: standard rb
-    priority: 0
     operation: standard_rb
-    qubits: [1]
+    targets: [1]
     parameters:
       depths: [1, 2, 3, 5]
       niter: 5
