@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from dataclasses import dataclass, field, fields
 from pathlib import Path
-from typing import Any, NewType, Union
+from typing import Any, NewType, Union, Optional
 
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
@@ -35,11 +35,11 @@ class Experiment:
 
     id: Id
     """Experiment Id."""
-    operation: str | None = None
+    operation: Optional[str] = None
     """Operation to be performed."""
     iteration: int = 0
     """Task iteration."""
-    targets: Targets | None = None
+    targets: Optional[Targets] = None
     """Local targets."""
     update: bool = True
     """Local update."""
@@ -48,8 +48,8 @@ class Experiment:
     data_time: int = 0
     results_time: int = 0
 
-    parameters: dict[str, Any] | None = None
-    """Dicti with protocol parameters."""
+    parameters: Optional[dict[str, Any]] = None
+    """Dict with protocol parameters."""
 
     _path: Path = None
     """Path where data and results are stored."""
