@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from dataclasses import dataclass, field, fields
 from pathlib import Path
-from typing import Any, NewType, Union, Optional
+from typing import Any, NewType, Optional, Union
 
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
@@ -29,7 +29,7 @@ DEFAULT_NSHOTS = 100
 class Experiment:
     """Experiment holding a protocol.
 
-    Acts as context for state. Can switch between different state
+    Acts as context for experiment. Can switch between different state
     to perform corresponding methods.
     """
 
@@ -57,10 +57,15 @@ class Experiment:
     """Reference to state object."""
 
     def __post_init__(self) -> None:
+        """Experiment set at pending first."""
         self.switch(Pending())
 
     def switch(self, state: State):
-        """Change experiment state:"""
+        """Switch between different experiment state
+
+        Args:
+            state (State): state to switch to
+        """
 
         log.info(f"Experiment: Transition to {type(state).__name__}")
         self._state = state
@@ -68,6 +73,7 @@ class Experiment:
 
     @property
     def raw(self):
+        """Serialization removing reference to state."""
         data = {
             fld.name: getattr(self, fld.name)
             for fld in fields(self)
@@ -77,19 +83,23 @@ class Experiment:
 
     @property
     def results(self):
-        self.switch(Fitted())
+        """Helper property to retrieve results."""
+        if not isinstance(self._state, Fitted):
+            self.switch(Fitted())
         # FIXME: re-introduce pylint
         return self._state.results  # pylint: disable=E1101
 
     @property
     def data(self):
-        self.switch(Acquired())
+        if not isinstance(self._state, Acquired):
+            self.switch(Acquired())
+        """Helper property to retrieve data."""
         # FIXME: re-introduce pylint
         return self._state.data  # pylint: disable=E1101
 
     @property
     def uid(self) -> ExperimentId:
-        """Task unique Id."""
+        """Experiment unique Id."""
         return (self.id, self.iteration)
 
     @property
@@ -123,14 +133,13 @@ class Experiment:
         """
         if self.targets is None:
             self.targets = targets
-        # TODO: check how to handle local and global target
         return self._state.acquire(platform=platform, targets=self.targets)
 
     def fit(self) -> None:
         """Protocol post-processing step"""
         return self._state.fit()
 
-    def dump(self, path: Path | None = None) -> None:
+    def dump(self, path: Optional[Path] = None) -> None:
         """Dump experiment.
 
         Args:
@@ -178,7 +187,7 @@ class State:
         """Dump current state of experiment."""
 
     @abstractmethod
-    def acquire(self, platform: Platform, targets: Targets) -> Data:
+    def acquire(self, platform: Platform, targets: Targets) -> None:
         """Protocol acquisition step.
 
         Args:
@@ -190,7 +199,7 @@ class State:
         """
 
     @abstractmethod
-    def fit(self) -> Results:
+    def fit(self) -> None:
         """Protocol post-processing step
 
         Returns:
@@ -256,7 +265,7 @@ class Pending(State):
 class Acquired(State):
     """Experiment state after acquiring data."""
 
-    _data: Data | None = None
+    _data: Optional[Data] = None
 
     @property
     def data(self):
@@ -270,16 +279,16 @@ class Acquired(State):
         """Dump data"""
         self.data.save(path)
 
-    def acquire(self) -> None:
+    def acquire(self, platform: Platform, targets: Targets) -> None:
         """Perform acquisition"""
         log.info(f"Acquisition for {self.experiment.id} already performed.")
 
-    def fit(self) -> Results:
+    def fit(self) -> None:
         log.info(f"Starting fitting on protocol {self.experiment.id}")
         results, self.experiment.results_time = self.experiment.protocol.fit(self.data)
         self.experiment.switch(Fitted(results))
 
-    def update_platform(self, platform) -> None:
+    def update_platform(self, platform: Platform) -> None:
         raise_error(
             ValueError, "Cannot perform update on state Acquired, switch to Fitted."
         )
@@ -289,7 +298,7 @@ class Acquired(State):
 class Fitted(State):
     """Experiment state after running fitting."""
 
-    _results: Results | None = None
+    _results: Optional[Results] = None
 
     @property
     def results(self):
@@ -303,7 +312,7 @@ class Fitted(State):
         """Dump results fit."""
         self.results.save(path)
 
-    def acquire(self) -> None:
+    def acquire(self, platform: Platform, targets: Targets) -> None:
         """Perform acquisition"""
         log.info(f"Acquisition for {self.experiment.id} already performed.")
 
