@@ -102,7 +102,7 @@ def _acquisition(
     for bias in delta_bias_range:
         for qubit in targets:
             try:
-                freq_resonator = utils.transmon_readout_frequency(
+                freq_resonator = utils.transmon_readout_frequency_diagonal(
                     bias,
                     platform.qubits[qubit].drive_frequency,
                     platform.qubits[qubit].asymmetry,

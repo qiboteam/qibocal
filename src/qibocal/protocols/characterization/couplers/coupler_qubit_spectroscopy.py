@@ -48,13 +48,16 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
+    offset = {}
     couplers = []
     for i, pair in enumerate(targets):
         ordered_pair = order_pair(pair, platform)
         measured_qubit = params.measured_qubits[i]
 
         qubit = platform.qubits[measured_qubit].name
-        couplers.append(platform.pairs[tuple(sorted(ordered_pair))].coupler)
+        offset[qubit] = platform.pairs[tuple(sorted(ordered_pair))].coupler.sweetspot
+        coupler = platform.pairs[tuple(sorted(ordered_pair))].coupler.name
+        couplers.append(coupler)
 
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=params.drive_duration
@@ -84,9 +87,11 @@ def _acquisition(
         (
             delta_bias_flux_range,
             sweepers,
+            sequences,
         ) = resonator_flux_dependence.create_flux_pulse_sweepers(
             params, platform, couplers, sequence
         )
+        sequence = sequences[0]
     else:
         delta_bias_flux_range = np.arange(
             -params.bias_width / 2, params.bias_width / 2, params.bias_step
@@ -103,6 +108,7 @@ def _acquisition(
     data = CouplerSpectroscopyData(
         resonator_type=platform.resonator_type,
         flux_pulses=params.flux_pulses,
+        offset=offset,
     )
 
     for bias_sweeper in sweepers:
