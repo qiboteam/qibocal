@@ -31,7 +31,7 @@ HBAR = constants.hbar
 """Chi2 output when errors list contains zero elements"""
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
-CONFIDENCE_INTERVAL_FIRST_MASK = 97
+CONFIDENCE_INTERVAL_FIRST_MASK = 99
 """Confidence interval used to mask flux data."""
 CONFIDENCE_INTERVAL_SECOND_MASK = 70
 """Confidence interval used to clean outliers."""
@@ -335,9 +335,13 @@ def fit_punchout(data: Data, fit_type: str):
         amps = getattr(qubit_data, fit_type)
         signal = qubit_data["signal"]
         if data.resonator_type == "3D":
-            mask_freq, mask_amps = extract_feature(freqs, amps, signal, "max")
+            mask_freq, mask_amps = extract_feature(
+                freqs, amps, signal, "max", ci_first_mask=90
+            )
         else:
-            mask_freq, mask_amps = extract_feature(freqs, amps, signal, "min")
+            mask_freq, mask_amps = extract_feature(
+                freqs, amps, signal, "min", ci_first_mask=90
+            )
         if fit_type == "amp":
             best_freq = np.max(mask_freq)
             bare_freq = np.min(mask_freq)
@@ -712,7 +716,14 @@ def table_html(data: dict) -> str:
     )
 
 
-def extract_feature(freq: np.ndarray, bias: np.ndarray, signal: np.ndarray, feat: str):
+def extract_feature(
+    freq: np.ndarray,
+    bias: np.ndarray,
+    signal: np.ndarray,
+    feat: str,
+    ci_first_mask: float = CONFIDENCE_INTERVAL_FIRST_MASK,
+    ci_second_mask: float = CONFIDENCE_INTERVAL_SECOND_MASK,
+):
     """Extract feature using confidence intervals.
 
     A first mask is construct by looking at 99% confidence interval for each bias bin.
@@ -724,7 +735,7 @@ def extract_feature(freq: np.ndarray, bias: np.ndarray, signal: np.ndarray, feat
         signal_fixed_bias = signal[bias == bias_bin]
         min, max = np.percentile(
             signal_fixed_bias,
-            [100 - CONFIDENCE_INTERVAL_FIRST_MASK, CONFIDENCE_INTERVAL_FIRST_MASK],
+            [100 - ci_first_mask, ci_first_mask],
         )
         masks.append(
             signal_fixed_bias < min if feat == "min" else signal_fixed_bias > max
@@ -733,7 +744,7 @@ def extract_feature(freq: np.ndarray, bias: np.ndarray, signal: np.ndarray, feat
     first_mask = np.vstack(masks).ravel()
     min, max = np.percentile(
         signal[first_mask],
-        [100 - CONFIDENCE_INTERVAL_SECOND_MASK, CONFIDENCE_INTERVAL_SECOND_MASK],
+        [100 - ci_second_mask, ci_second_mask],
     )
     second_mask = (
         signal[first_mask] < max if feat == "min" else signal[first_mask] > min
