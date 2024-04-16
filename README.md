@@ -47,10 +47,9 @@ For our purposes, we can use the following:
 ```yml
 platform: tii1q
 
-qubits: [0]
+targets: [0]
 
 - id: resonator spectroscopy high power
-  priority: 0
   operation: resonator_spectroscopy
   parameters:
     freq_width: 10_000_000
@@ -58,7 +57,7 @@ qubits: [0]
     amplitude: 0.4
     power_level: high
     nshots: 1024
-    relaxation_time: 0
+    relaxation_time: 5_000
 
 ```
 ### How to run protocols
