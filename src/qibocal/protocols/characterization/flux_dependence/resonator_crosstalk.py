@@ -14,7 +14,7 @@ from qibocal import update
 from qibocal.auto.operation import Routine
 from qibocal.config import log
 
-from ..utils import HZ_TO_GHZ, table_dict, table_html
+from ..utils import HZ_TO_GHZ, extract_feature, table_dict, table_html
 from . import utils
 from .resonator_flux_dependence import (
     ResFluxType,
@@ -263,18 +263,12 @@ def _fit(data: ResCrosstalkData) -> ResCrosstalkResults:
     for target_flux_qubit, qubit_data in data.data.items():
         target_qubit, flux_qubit = target_flux_qubit
 
-        if data.resonator_type == "3D":
-            frequencies, biases = utils.extract_max_feature(
-                qubit_data.freq,
-                qubit_data.bias,
-                qubit_data.signal,
-            )
-        else:
-            frequencies, biases = utils.extract_min_feature(
-                qubit_data.freq,
-                qubit_data.bias,
-                qubit_data.signal,
-            )
+        frequencies, biases = extract_feature(
+            qubit_data.freq,
+            qubit_data.bias,
+            qubit_data.signal,
+            "min",
+        )
 
         if target_qubit != flux_qubit:
             # fit function needs to be defined here to pass correct parameters
