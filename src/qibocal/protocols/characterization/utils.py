@@ -10,7 +10,6 @@ from plotly.subplots import make_subplots
 from qibolab.qubits import QubitId
 from scipy import constants
 from scipy.optimize import curve_fit
-from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Results
 from qibocal.config import log
@@ -331,45 +330,61 @@ def fit_punchout(data: Data, fit_type: str):
         freqs = np.unique(qubit_data.freq)
         nvalues = len(np.unique(qubit_data[fit_type]))
         nfreq = len(freqs)
-        signals = np.reshape(qubit_data.signal, (nvalues, nfreq))
+        # signals = np.reshape(qubit_data.signal, (nvalues, nfreq))
         if data.resonator_type == "3D":
-            peak_freqs = freqs[np.argmax(signals, axis=1)]
+            # peak_freqs = freqs[np.argmax(signals, axis=1)]
+            mask_freq, mask_amps = extract_feature(freqs, amps, signal, "max")
         else:
-            peak_freqs = freqs[np.argmin(signals, axis=1)]
+            mask_freq, mask_amps = extract_feature(freqs, amps, signal, "min")
+            # peak_freqs = freqs[np.argmin(signals, axis=1)]
+        # print(peak_freqs)
+        max_freq = np.max(mask_freq)
+        min_freq = np.min(mask_freq)
+        # middle_freq = (max_freq + min_freq) / 2
 
-        max_freq = np.max(peak_freqs)
-        min_freq = np.min(peak_freqs)
-        middle_freq = (max_freq + min_freq) / 2
+        # freq_hp = peak_freqs[peak_freqs < middle_freq]
+        # freq_lp = peak_freqs[peak_freqs >= middle_freq]
 
-        freq_hp = peak_freqs[peak_freqs < middle_freq]
-        freq_lp = peak_freqs[peak_freqs >= middle_freq]
-
-        freq_hp = mode(freq_hp, keepdims=True)[0]
-        freq_lp = mode(freq_lp, keepdims=True)[0]
+        # freq_hp = mode(freq_hp, keepdims=True)[0]
+        # freq_lp = mode(freq_lp, keepdims=True)[0]
 
         if fit_type == "amp":
-            if data.resonator_type == "3D":
-                ro_val = getattr(qubit_data, fit_type)[
-                    np.argmax(
-                        qubit_data.signal[np.where(qubit_data.freq == freq_lp)[0]]
-                    )
-                ]
-            else:
-                ro_val = getattr(qubit_data, fit_type)[
-                    np.argmin(
-                        qubit_data.signal[np.where(qubit_data.freq == freq_lp)[0]]
-                    )
-                ]
-        else:
-            high_att_max = np.max(
-                getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_hp)[0]]
-            )
-            high_att_min = np.min(
-                getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_hp)[0]]
-            )
+            best_freq = np.max(mask_freq)
+            best_amp_index = np.argmax(mask_amps[mask_freq == best_freq])
+            ro_val = getattr(qubit_data, fit_type)[best_amp_index]
 
-            ro_val = round((high_att_max + high_att_min) / 2)
-            ro_val = ro_val + (ro_val % 2)
+            #     # ro_val = getattr(qubit_data, fit_type)[
+            #     #     np.argmax(
+            #     #         qubit_data.signal[np.where(qubit_data.freq == freq_lp)[0]]
+            #     #     )
+            #     # ]
+            #     best_amp = np.argmin(
+            #         mask_amps[mask_freq==best_freq]
+            #     )
+            #     ro_val = getattr(qubit_data, fit_type)[best_amp]
+            # else:
+            #     best_amp = np.argmax(
+            #         mask_amps[mask_freq==best_freq]
+            #     )
+            #     ro_val = getattr(qubit_data, fit_type)[best_amp]
+            #     # ro_val = getattr(qubit_data, fit_type)[
+            #     #     np.argmin(
+            #     #         qubit_data.signal[np.where(qubit_data.freq == freq_lp)[0]]
+            #     #     )
+            #     # ]
+        else:
+            best_freq = np.min(mask_freq)
+            best_amp_index = np.argmax(mask_amps[mask_freq == best_freq])
+            ro_val = getattr(qubit_data, fit_type)[best_amp_index]
+            # high_att_max = np.max(
+            #     getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_hp)[0]]
+            # )
+            # high_att_min = np.min(
+            #     getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_hp)[0]]
+            # )
+
+            # ro_val = round((high_att_max + high_att_min) / 2)
+            # ro_val = ro_val + (ro_val % 2)
 
         low_freqs[qubit] = freq_lp.item()
         high_freqs[qubit] = freq_hp[0]

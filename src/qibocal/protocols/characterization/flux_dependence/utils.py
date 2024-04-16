@@ -4,7 +4,7 @@ from plotly.subplots import make_subplots
 
 from ..utils import HZ_TO_GHZ
 
-CONFIDENCE_INTERVAL_FIRST_MASK = 99
+CONFIDENCE_INTERVAL_FIRST_MASK = 97
 """Confidence interval used to mask flux data."""
 CONFIDENCE_INTERVAL_SECOND_MASK = 70
 """Confidence interval used to clean outliers."""
