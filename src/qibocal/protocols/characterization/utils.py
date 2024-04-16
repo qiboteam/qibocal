@@ -31,6 +31,10 @@ HBAR = constants.hbar
 """Chi2 output when errors list contains zero elements"""
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
+CONFIDENCE_INTERVAL_FIRST_MASK = 97
+"""Confidence interval used to mask flux data."""
+CONFIDENCE_INTERVAL_SECOND_MASK = 70
+"""Confidence interval used to clean outliers."""
 
 
 def effective_qubit_temperature(
@@ -327,67 +331,23 @@ def fit_punchout(data: Data, fit_type: str):
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        freqs = np.unique(qubit_data.freq)
-        nvalues = len(np.unique(qubit_data[fit_type]))
-        nfreq = len(freqs)
-        # signals = np.reshape(qubit_data.signal, (nvalues, nfreq))
+        freqs = qubit_data.freq
+        amps = getattr(qubit_data, fit_type)
+        signal = qubit_data["signal"]
         if data.resonator_type == "3D":
-            # peak_freqs = freqs[np.argmax(signals, axis=1)]
             mask_freq, mask_amps = extract_feature(freqs, amps, signal, "max")
         else:
             mask_freq, mask_amps = extract_feature(freqs, amps, signal, "min")
-            # peak_freqs = freqs[np.argmin(signals, axis=1)]
-        # print(peak_freqs)
-        max_freq = np.max(mask_freq)
-        min_freq = np.min(mask_freq)
-        # middle_freq = (max_freq + min_freq) / 2
-
-        # freq_hp = peak_freqs[peak_freqs < middle_freq]
-        # freq_lp = peak_freqs[peak_freqs >= middle_freq]
-
-        # freq_hp = mode(freq_hp, keepdims=True)[0]
-        # freq_lp = mode(freq_lp, keepdims=True)[0]
-
         if fit_type == "amp":
             best_freq = np.max(mask_freq)
-            best_amp_index = np.argmax(mask_amps[mask_freq == best_freq])
-            ro_val = getattr(qubit_data, fit_type)[best_amp_index]
-
-            #     # ro_val = getattr(qubit_data, fit_type)[
-            #     #     np.argmax(
-            #     #         qubit_data.signal[np.where(qubit_data.freq == freq_lp)[0]]
-            #     #     )
-            #     # ]
-            #     best_amp = np.argmin(
-            #         mask_amps[mask_freq==best_freq]
-            #     )
-            #     ro_val = getattr(qubit_data, fit_type)[best_amp]
-            # else:
-            #     best_amp = np.argmax(
-            #         mask_amps[mask_freq==best_freq]
-            #     )
-            #     ro_val = getattr(qubit_data, fit_type)[best_amp]
-            #     # ro_val = getattr(qubit_data, fit_type)[
-            #     #     np.argmin(
-            #     #         qubit_data.signal[np.where(qubit_data.freq == freq_lp)[0]]
-            #     #     )
-            #     # ]
+            bare_freq = np.min(mask_freq)
+            ro_val = np.max(mask_amps[mask_freq == best_freq])
         else:
             best_freq = np.min(mask_freq)
-            best_amp_index = np.argmax(mask_amps[mask_freq == best_freq])
-            ro_val = getattr(qubit_data, fit_type)[best_amp_index]
-            # high_att_max = np.max(
-            #     getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_hp)[0]]
-            # )
-            # high_att_min = np.min(
-            #     getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_hp)[0]]
-            # )
-
-            # ro_val = round((high_att_max + high_att_min) / 2)
-            # ro_val = ro_val + (ro_val % 2)
-
-        low_freqs[qubit] = freq_lp.item()
-        high_freqs[qubit] = freq_hp[0]
+            bare_freq = np.max(mask_freq)
+            ro_val = np.max(mask_amps[mask_freq == best_freq])
+        low_freqs[qubit] = best_freq
+        high_freqs[qubit] = bare_freq
         ro_values[qubit] = ro_val
     return [low_freqs, high_freqs, ro_values]
 
@@ -750,3 +710,32 @@ def table_html(data: dict) -> str:
     return pd.DataFrame(data).to_html(
         classes="fitting-table", index=False, border=0, escape=False
     )
+
+
+def extract_feature(freq: np.ndarray, bias: np.ndarray, signal: np.ndarray, feat: str):
+    """Extract feature using confidence intervals.
+
+    A first mask is construct by looking at 99% confidence interval for each bias bin.
+    A second mask is applied by looking at 70% confidence interval to remove outliers.
+    """
+
+    masks = []
+    for bias_bin in np.unique(bias):
+        signal_fixed_bias = signal[bias == bias_bin]
+        min, max = np.percentile(
+            signal_fixed_bias,
+            [100 - CONFIDENCE_INTERVAL_FIRST_MASK, CONFIDENCE_INTERVAL_FIRST_MASK],
+        )
+        masks.append(
+            signal_fixed_bias < min if feat == "min" else signal_fixed_bias > max
+        )
+
+    first_mask = np.vstack(masks).ravel()
+    min, max = np.percentile(
+        signal[first_mask],
+        [100 - CONFIDENCE_INTERVAL_SECOND_MASK, CONFIDENCE_INTERVAL_SECOND_MASK],
+    )
+    second_mask = (
+        signal[first_mask] < max if feat == "min" else signal[first_mask] > min
+    )
+    return freq[first_mask][second_mask], bias[first_mask][second_mask]
