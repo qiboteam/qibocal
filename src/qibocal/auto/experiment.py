@@ -114,6 +114,8 @@ class Experiment:
     @path.setter
     def path(self, new_path: Path):
         self._path = new_path / f"data/{self.id}_{self.iteration}"
+        if not self._path.is_dir():
+            self._path.mkdir(parents=True)
 
     @property
     def protocol(self):
@@ -149,9 +151,7 @@ class Experiment:
         Returns:
             _type_: _description_
         """
-        if not self.path.is_dir():
-            self.path.mkdir(parents=True)
-
+        self.path = path
         self._state.dump(self.path)
 
     def update_platform(self, platform: Platform):
