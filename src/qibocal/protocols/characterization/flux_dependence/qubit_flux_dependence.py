@@ -17,7 +17,7 @@ from qibocal.protocols.characterization.qubit_spectroscopy_ef import (
     DEFAULT_ANHARMONICITY,
 )
 
-from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, table_dict, table_html
+from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, extract_feature, table_dict, table_html
 from . import resonator_flux_dependence, utils
 from .resonator_flux_dependence import ResonatorFluxParameters
 
@@ -201,7 +201,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         frequencies = qubit_data.freq
         signal = qubit_data.signal
 
-        frequencies, biases = utils.extract_feature(frequencies, biases, signal, "max")
+        frequencies, biases = extract_feature(frequencies, biases, signal, "max")
 
         try:
             popt = curve_fit(
