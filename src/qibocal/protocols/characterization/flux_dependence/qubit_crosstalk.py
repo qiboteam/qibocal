@@ -251,18 +251,12 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
 
     for target_flux_qubit, qubit_data in data.data.items():
 
-        if data.resonator_type == "3D":
-            frequencies, biases = utils.extract_min_feature(
-                qubit_data.freq,
-                qubit_data.bias,
-                qubit_data.signal,
-            )
-        else:
-            frequencies, biases = utils.extract_max_feature(
-                qubit_data.freq,
-                qubit_data.bias,
-                qubit_data.signal,
-            )
+        frequencies, biases = utils.extract_feature(
+            qubit_data.freq,
+            qubit_data.bias,
+            qubit_data.signal,
+            "max",
+        )
         target_qubit, flux_qubit = target_flux_qubit
 
         if target_qubit != flux_qubit:
