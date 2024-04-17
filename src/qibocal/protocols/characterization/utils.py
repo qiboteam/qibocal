@@ -333,7 +333,7 @@ def fit_punchout(data: Data, fit_type: str):
         qubit_data = data[qubit]
         freqs = qubit_data.freq
         amps = getattr(qubit_data, fit_type)
-        signal = qubit_data["signal"]
+        signal = qubit_data.signal
         if data.resonator_type == "3D":
             mask_freq, mask_amps = extract_feature(
                 freqs, amps, signal, "max", ci_first_mask=90
