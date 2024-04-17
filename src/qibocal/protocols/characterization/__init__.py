@@ -38,6 +38,7 @@ from .rabi.length_sequences import rabi_length_sequences
 from .rabi.length_signal import rabi_length_signal
 from .ramsey.ramsey import ramsey
 from .ramsey.ramsey_signal import ramsey_signal
+from .randomized_benchmarking.filtered_rb import filtered_rb
 from .randomized_benchmarking.standard_rb import standard_rb
 from .readout_characterization import readout_characterization
 from .readout_mitigation_matrix import readout_mitigation_matrix
@@ -100,6 +101,13 @@ class Operation(Enum):
     chevron_signal = chevron_signal
     cz_virtualz = cz_virtualz
     standard_rb = standard_rb
+    filtered_rb = filtered_rb
+    readout_characterization = readout_characterization
+    resonator_frequency = resonator_frequency
+    fast_reset = fast_reset
+    zeno = zeno
+    zeno_signal = zeno_signal
+    chsh_pulses = chsh_pulses
     readout_characterization = readout_characterization
     resonator_frequency = resonator_frequency
     fast_reset = fast_reset
