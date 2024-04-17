@@ -207,3 +207,86 @@ def random_circuits(
             indexes[target].append(random_index)
 
     return circuits, indexes
+
+
+def rb_acquisition(
+    params: Parameters,
+    targets: list[QubitId],
+    add_inverse: bool = True,
+) -> RBData:
+    """RB data acquisition function.
+
+    Args:
+        params (FilteredRBParameters): All parameters in one object.
+        targets (dict[int, Union[str, int]] or list[Union[str, int]]): list of qubits the experiment is executed on.
+
+    Returns:
+        RBData: The depths, samples and ground state probability of each experiment in the scan.
+
+    """
+    backend = GlobalBackend()
+    # For simulations, a noise model can be added.
+    noise_model = None
+    if params.noise_model is not None:
+        if backend.name == "qibolab":
+            raise_error(
+                ValueError,
+                "Backend qibolab (%s) does not perform noise models simulation. ",
+            )
+
+        noise_model = getattr(noisemodels, params.noise_model)(params.noise_params)
+        params.noise_params = noise_model.params.tolist()
+    # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
+    nqubits = len(targets)
+    data = RBData(
+        depths=params.depths,
+        uncertainties=params.uncertainties,
+        seed=params.seed,
+        nshots=params.nshots,
+        niter=params.niter,
+    )
+
+    circuits = []
+    indexes = {}
+    samples = []
+    qubits_ids = targets
+    rb_gen = RB_Generator(params.seed)
+    for depth in params.depths:
+        # TODO: This does not generate multi qubit circuits
+        circuits_depth, random_indexes = random_circuits(
+            depth,
+            qubits_ids,
+            params.niter,
+            rb_gen,
+            noise_model,
+            add_inverse,
+        )
+        circuits.extend(circuits_depth)
+        for qubit in random_indexes.keys():
+            indexes[(qubit, depth)] = random_indexes[qubit]
+    # Execute the circuits
+    if params.unrolling:
+        executed_circuits = backend.execute_circuits(circuits, nshots=params.nshots)
+    else:
+        executed_circuits = [
+            backend.execute_circuit(circuit, nshots=params.nshots)
+            for circuit in circuits
+        ]
+
+    for circ in executed_circuits:
+        samples.extend(circ.samples())
+    samples = np.reshape(samples, (-1, nqubits, params.nshots))
+
+    for i, depth in enumerate(params.depths):
+        index = (i * params.niter, (i + 1) * params.niter)
+        for nqubit, qubit_id in enumerate(targets):
+            data.register_qubit(
+                RBType,
+                (qubit_id, depth),
+                dict(
+                    samples=samples[index[0] : index[1]][:, nqubit],
+                ),
+            )
+    data.circuits = indexes
+
+    return data
