@@ -717,36 +717,32 @@ def table_html(data: dict) -> str:
 
 
 def extract_feature(
-    freq: np.ndarray,
-    bias: np.ndarray,
-    signal: np.ndarray,
+    x: np.ndarray,
+    y: np.ndarray,
+    z: np.ndarray,
     feat: str,
     ci_first_mask: float = CONFIDENCE_INTERVAL_FIRST_MASK,
     ci_second_mask: float = CONFIDENCE_INTERVAL_SECOND_MASK,
 ):
     """Extract feature using confidence intervals.
 
-    A first mask is construct by looking at 99% confidence interval for each bias bin.
+    A first mask is construct by looking at 99% confidence interval for each y bin.
     A second mask is applied by looking at 70% confidence interval to remove outliers.
     """
 
     masks = []
-    for bias_bin in np.unique(bias):
-        signal_fixed_bias = signal[bias == bias_bin]
+    for i in np.unique(y):
+        signal_fixed_y = z[y == i]
         min, max = np.percentile(
-            signal_fixed_bias,
+            signal_fixed_y,
             [100 - ci_first_mask, ci_first_mask],
         )
-        masks.append(
-            signal_fixed_bias < min if feat == "min" else signal_fixed_bias > max
-        )
+        masks.append(signal_fixed_y < min if feat == "min" else signal_fixed_y > max)
 
     first_mask = np.vstack(masks).ravel()
     min, max = np.percentile(
-        signal[first_mask],
+        z[first_mask],
         [100 - ci_second_mask, ci_second_mask],
     )
-    second_mask = (
-        signal[first_mask] < max if feat == "min" else signal[first_mask] > min
-    )
-    return freq[first_mask][second_mask], bias[first_mask][second_mask]
+    second_mask = z[first_mask] < max if feat == "min" else z[first_mask] > min
+    return x[first_mask][second_mask], y[first_mask][second_mask]
