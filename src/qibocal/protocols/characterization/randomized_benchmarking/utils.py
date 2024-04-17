@@ -135,3 +135,75 @@ def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
     uncertainties = np.abs(np.vstack([data_median, data_median]) - percentile_interval)
 
     return uncertainties
+
+
+class RB_Generator:
+    """
+    This class generates random single qubit cliffords for randomized benchmarking.
+    """
+
+    def __init__(self, seed):
+        self.seed = seed
+        self.local_state = (
+            np.random.default_rng(seed)
+            if seed is None or isinstance(seed, int)
+            else seed
+        )
+
+    def random_index(self, gate_list):
+        """
+        Generates a random index within the range of the given gate list.
+
+        Parameters:
+        - gate_list (list): Dict of gates.
+
+        Returns:
+        - int: Random index.
+        """
+        return self.local_state.integers(0, len(gate_list), 1)
+
+    def layer_gen(self):
+        """
+        Returns:
+        - Gate: Random single-qubit clifford .
+        """
+        return random_clifford(self.random_index)
+
+
+def random_circuits(
+    depth: int,
+    targets: list[QubitId],
+    niter,
+    rb_gen,
+    noise_model=None,
+    inverse_layer=True,
+) -> Iterable:
+    """Returns single-qubit random self-inverting Clifford circuits.
+
+    Args:
+        params (StandardRBParameters): Parameters of the RB protocol.
+        targets (list[QubitId]):
+            list of qubits the circuit is executed on.
+        nqubits (int, optional): Number of qubits of the resulting circuits.
+            If ``None``, sets ``len(qubits)``. Defaults to ``None``.
+        inverse_layer (bool): If `True` a layer inverting the circuit is added.
+            Default to `True`.
+
+    Returns:
+        Iterable: The iterator of circuits.
+    """
+
+    circuits = []
+    indexes = defaultdict(list)
+    for _ in range(niter):
+        for target in targets:
+            circuit, random_index = layer_circuit(rb_gen, depth, target)
+            if inverse_layer:
+                add_inverse_layer(circuit)
+            add_measurement_layer(circuit)
+            if noise_model is not None:
+                circuit = noise_model.apply(circuit)
+            circuits.append(circuit)
+            indexes[target].append(random_index)
+
+    return circuits, indexes
