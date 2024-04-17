@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import TypedDict
 
 import numpy as np
 import plotly.graph_objects as go
@@ -19,16 +18,6 @@ from .standard_rb import (
     StandardRBResult,
     random_circuits,
 )
-
-NPULSES_PER_CLIFFORD = 1.875
-
-
-class Depthsdict(TypedDict):
-    """dictionary used to build a list of depths as ``range(start, stop, step)``."""
-
-    start: int
-    stop: int
-    step: int
 
 
 @dataclass
@@ -91,7 +80,7 @@ def _acquisition(
     for depth in params.depths:
         # TODO: This does not generate multi qubit circuits
         circuits_depth, random_indexes = random_circuits(
-            depth, qubits_ids, params.niter, rb_gen, noise_model
+            depth, qubits_ids, params.niter, rb_gen, noise_model, inverse_layer=False
         )
         circuits.extend(circuits_depth)
         for qubit in random_indexes.keys():
