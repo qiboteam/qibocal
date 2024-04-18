@@ -211,7 +211,6 @@ def _plot(
         row=1,
         col=2,
     )
-
     if fit is not None:
         fig.add_trace(
             go.Scatter(

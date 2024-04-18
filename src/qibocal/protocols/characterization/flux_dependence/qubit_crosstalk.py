@@ -15,7 +15,7 @@ from qibocal.auto.operation import Routine
 from qibocal.config import log
 
 from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
-from ..utils import HZ_TO_GHZ, table_dict, table_html
+from ..utils import HZ_TO_GHZ, extract_feature, table_dict, table_html
 from . import utils
 from .qubit_flux_dependence import (
     QubitFluxData,
@@ -251,7 +251,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
 
     for target_flux_qubit, qubit_data in data.data.items():
 
-        frequencies, biases = utils.extract_feature(
+        frequencies, biases = extract_feature(
             qubit_data.freq,
             qubit_data.bias,
             qubit_data.signal,
