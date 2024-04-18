@@ -1,25 +1,24 @@
 import json
 import tempfile
-from functools import cached_property
-from pathlib import Path
+from typing import Union
 
 import yaml
+from jinja2 import Environment, FileSystemLoader
 from qibo.backends import GlobalBackend
-from qibolab.qubits import QubitId
+from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.execute import Executor
 from qibocal.auto.mode import ExecutionMode
 from qibocal.auto.runcard import Runcard
-from qibocal.auto.task import TaskId
+from qibocal.auto.task import Completed
+from qibocal.cli.utils import META, RUNCARD
 from qibocal.config import log
-
-META = "meta.json"
-RUNCARD = "runcard.yml"
-UPDATED_PLATFORM = "new_platform.yml"
-PLATFORM = "platform.yml"
+from qibocal.web.report import STYLES, TEMPLATES, Report
 
 
-def generate_figures_and_report(node, target):
+def generate_figures_and_report(
+    node: Completed, target: Union[QubitId, QubitPairId, list[QubitId]]
+):
     """Returns figures and table for report."""
 
     if node.results is None:
@@ -31,6 +30,22 @@ def generate_figures_and_report(node, target):
         return figures, "An error occurred when performing the fit."
     # plot acquisition and fit
     return node.task.operation.report(data=node.data, fit=node.results, target=target)
+
+
+def plotter(node, target: Union[QubitId, QubitPairId, list[QubitId]]):
+    """Generate single target plot."""
+
+    figures, fitting_report = generate_figures_and_report(node, target)
+    with tempfile.NamedTemporaryFile(delete=False) as temp:
+        html_list = []
+        for figure in figures:
+            figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
+            temp.seek(0)
+            fightml = temp.read().decode("utf-8")
+            html_list.append(fightml)
+
+    all_html = "".join(html_list)
+    return all_html, fitting_report
 
 
 def report(path):
@@ -50,61 +65,29 @@ def report(path):
 
     # set backend, platform and qubits
     GlobalBackend.set_backend(backend=meta["backend"], platform=meta["platform"])
-    backend = GlobalBackend()
-    platform = backend.platform
 
     # load executor
     executor = Executor.load(runcard, path, targets=runcard.targets)
     # produce html
-    builder = ReportBuilder(path, runcard.targets, executor, meta)
-    builder.run(path)
+    list(executor.run(mode=ExecutionMode.report))
 
+    with open(STYLES) as file:
+        css_styles = f"<style>\n{file.read()}\n</style>"
 
-class ReportBuilder:
-    """Builder to produce html report."""
+    env = Environment(loader=FileSystemLoader(TEMPLATES))
+    template = env.get_template("template.html")
+    html = template.render(
+        is_static=True,
+        css_styles=css_styles,
+        path=path,
+        title=path.name,
+        report=Report(
+            path=path,
+            targets=executor.targets,
+            history=executor.history,
+            meta=meta,
+            plotter=plotter,
+        ),
+    )
 
-    def __init__(self, path: Path, targets, executor: Executor, metadata, history=None):
-        self.path = self.title = path
-        self.targets = targets
-        self.executor = executor
-        self.metadata = metadata
-        self._history = history
-
-    @cached_property
-    def history(self):
-        if self._history is None:
-            list(self.executor.run(mode=ExecutionMode.report))
-            return self.executor.history
-        else:
-            return self._history
-
-    def routine_name(self, routine, iteration):
-        """Prettify routine's name for report headers."""
-        name = routine.replace("_", " ").title()
-        return f"{name} - {iteration}"
-
-    def routine_targets(self, task_id: TaskId):
-        """Get local targets parameter from Task if available otherwise use global one."""
-        local_targets = self.history[task_id].task.targets
-        return local_targets if len(local_targets) > 0 else self.targets
-
-    def single_qubit_plot(self, task_id: TaskId, qubit: QubitId):
-        """Generate single qubit plot."""
-        node = self.history[task_id]
-        figures, fitting_report = generate_figures_and_report(node, qubit)
-        with tempfile.NamedTemporaryFile(delete=False) as temp:
-            html_list = []
-            for figure in figures:
-                figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
-                temp.seek(0)
-                fightml = temp.read().decode("utf-8")
-                html_list.append(fightml)
-
-        all_html = "".join(html_list)
-        return all_html, fitting_report
-
-    def run(self, path):
-        """Generation of html report."""
-        from qibocal.web.report import create_report
-
-        create_report(path, self)
+    (path / "index.html").write_text(html)
