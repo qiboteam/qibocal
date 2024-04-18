@@ -9,6 +9,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.protocols.characterization.utils import COLORBAND, COLORBAND_LINE
 
 
 @dataclass
@@ -27,7 +28,7 @@ class AllXYResults(Results):
     """AllXY outputs."""
 
 
-AllXYType = np.dtype([("prob", np.float64), ("gate", "<U5")])
+AllXYType = np.dtype([("prob", np.float64), ("gate", "<U5"), ("errors", np.float64)])
 
 
 @dataclass
@@ -108,11 +109,21 @@ def _acquisition(
         for qubit in targets:
             serial = ro_pulses[qubit].serial
             if params.unrolling:
-                z_proj = 2 * results[serial][ig].probability(0) - 1
+                prob = results[serial][ig].probability(0)
+                z_proj = 2 * prob - 1
             else:
-                z_proj = 2 * results[ig][serial].probability(0) - 1
+                prob = results[ig][serial].probability(0)
+                z_proj = 2 * prob - 1
+
+            errors = 2 * np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
-                AllXYType, (qubit), dict(prob=np.array([z_proj]), gate=np.array([gate]))
+                AllXYType,
+                (qubit),
+                dict(
+                    prob=np.array([z_proj]),
+                    gate=np.array([gate]),
+                    errors=np.array([errors]),
+                ),
             )
 
     # finally, save the remaining data
@@ -224,11 +235,14 @@ def _plot(data: AllXYData, target: QubitId, fit: AllXYResults = None):
     fig = go.Figure()
 
     qubit_data = data[target]
+    error_bars = qubit_data["errors"]
+    probs = qubit_data.prob
+    gates = qubit_data.gate
 
     fig.add_trace(
         go.Scatter(
-            x=qubit_data.gate,
-            y=qubit_data.prob,
+            x=gates,
+            y=probs,
             mode="markers",
             text=gatelist,
             textposition="bottom center",
@@ -238,6 +252,17 @@ def _plot(data: AllXYData, target: QubitId, fit: AllXYResults = None):
         ),
     )
 
+    fig.add_trace(
+        go.Scatter(
+            x=np.concatenate((gates, gates[::-1])),
+            y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
+            fill="toself",
+            fillcolor=COLORBAND,
+            line=dict(color=COLORBAND_LINE),
+            showlegend=True,
+            name="Errors",
+        ),
+    )
     fig.add_hline(
         y=0,
         line_width=2,
