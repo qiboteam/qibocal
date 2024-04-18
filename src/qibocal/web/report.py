@@ -25,7 +25,8 @@ class Report:
     plotter: Callable
     """Plotting function to generate html."""
 
-    def routine_name(self, routine, iteration):
+    @staticmethod
+    def routine_name(routine, iteration):
         """Prettify routine's name for report headers."""
         name = routine.replace("_", " ").title()
         return f"{name} - {iteration}"

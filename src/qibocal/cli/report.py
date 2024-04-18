@@ -1,7 +1,9 @@
 import json
+import pathlib
 import tempfile
-from typing import Union
+from typing import Optional, Union
 
+import plotly.graph_objects as go
 import yaml
 from jinja2 import Environment, FileSystemLoader
 from qibo.backends import GlobalBackend
@@ -18,8 +20,16 @@ from qibocal.web.report import STYLES, TEMPLATES, Report
 
 def generate_figures_and_report(
     node: Completed, target: Union[QubitId, QubitPairId, list[QubitId]]
-):
-    """Returns figures and table for report."""
+) -> tuple[str, list[go.Figure]]:
+    """Calling protocol plot by checking if fit has been performed.
+
+    Args:
+        node (Completed): completed node
+        target (Union[QubitId, QubitPairId, list[QubitId]]): protocol target
+
+    Returns:
+        tuple[str, list[go.Figure]]: report outcome
+    """
 
     if node.results is None:
         # plot acquisition data
@@ -32,9 +42,18 @@ def generate_figures_and_report(
     return node.task.operation.report(data=node.data, fit=node.results, target=target)
 
 
-def plotter(node, target: Union[QubitId, QubitPairId, list[QubitId]]):
-    """Generate single target plot."""
+def plotter(
+    node: Completed, target: Union[QubitId, QubitPairId, list[QubitId]]
+) -> tuple[str, str]:
+    """Run plotly pipeline for generating html
 
+    Args:
+        node (Completed): _description_
+        target (Union[QubitId, QubitPairId, list[QubitId]]): _description_
+
+    Returns:
+        tuple[str, str]: plotly figures in html and tables
+    """
     figures, fitting_report = generate_figures_and_report(node, target)
     with tempfile.NamedTemporaryFile(delete=False) as temp:
         html_list = []
@@ -48,14 +67,15 @@ def plotter(node, target: Union[QubitId, QubitPairId, list[QubitId]]):
     return all_html, fitting_report
 
 
-def report(path):
-    """Report generation
+def report(path: pathlib.Path, executor: Optional[Executor] = None):
+    """Report command
 
-    Arguments:
-
-    - FOLDER: input folder.
-
+    Args:
+        path (pathlib.Path): path where qibocal protocol is dumped
+        executor (Optional[Executor], optional): Qibocal executor, if None it is loaded from path.
+                                                 Defaults to None.
     """
+
     if path.exists():
         log.warning(f"Regenerating {path}/index.html")
     # load meta
@@ -67,9 +87,10 @@ def report(path):
     GlobalBackend.set_backend(backend=meta["backend"], platform=meta["platform"])
 
     # load executor
-    executor = Executor.load(runcard, path, targets=runcard.targets)
-    # produce html
-    list(executor.run(mode=ExecutionMode.report))
+    if executor is None:
+        executor = Executor.load(runcard, path, targets=runcard.targets)
+        # produce html
+        list(executor.run(mode=ExecutionMode.report))
 
     with open(STYLES) as file:
         css_styles = f"<style>\n{file.read()}\n</style>"

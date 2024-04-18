@@ -59,9 +59,8 @@ def autocalibrate(runcard, folder, force, update):
         meta["end-time"] = e.strftime("%H:%M:%S")
         # dump updated meta
         meta = add_timings_to_meta(meta, executor.history)
-        report(path)
-
         (path / META).write_text(json.dumps(meta, indent=4))
+        report(path, executor)
 
     # stop and disconnect platform
     if platform is not None:
