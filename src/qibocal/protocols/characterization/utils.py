@@ -725,8 +725,15 @@ def extract_feature(
 ):
     """Extract feature using confidence intervals.
 
-    A first mask is construct by looking at 99% confidence interval for each y bin.
-    A second mask is applied by looking at 70% confidence interval to remove outliers.
+    Given a dataset of the form (x, y, z) where a spike or a valley is expected,
+    this function discriminate the points (x, y) with a signal, from the pure noise
+    and return the first ones.
+
+    A first mask is construct by looking at `ci_first_mask` confidence interval for each y bin.
+    A second mask is applied by looking at `ci_second_mask` confidence interval to remove outliers.
+    `feat` could be `min` or `max`, in the first case the function will look for valleys, otherwise
+    for peaks.
+
     """
 
     masks = []
