@@ -17,18 +17,17 @@ from qibocal.cli.utils import META, RUNCARD
 from qibocal.config import log
 from qibocal.web.report import STYLES, TEMPLATES, Report
 
+ReportOutcome = tuple[str, list[go.Figure]]
+"""Report produced by protocol."""
+
 
 def generate_figures_and_report(
     node: Completed, target: Union[QubitId, QubitPairId, list[QubitId]]
-) -> tuple[str, list[go.Figure]]:
+) -> ReportOutcome:
     """Calling protocol plot by checking if fit has been performed.
 
-    Args:
-        node (Completed): completed node
-        target (Union[QubitId, QubitPairId, list[QubitId]]): protocol target
-
-    Returns:
-        tuple[str, list[go.Figure]]: report outcome
+    It operates on a completed `node` and a specific protocol `target`, generating
+    a report outcome (cf. `ReportOutcome`).
     """
 
     if node.results is None:
@@ -45,14 +44,11 @@ def generate_figures_and_report(
 def plotter(
     node: Completed, target: Union[QubitId, QubitPairId, list[QubitId]]
 ) -> tuple[str, str]:
-    """Run plotly pipeline for generating html
+    """Run plotly pipeline for generating html.
 
-    Args:
-        node (Completed): _description_
-        target (Union[QubitId, QubitPairId, list[QubitId]]): _description_
+    Performs conversions of plotly figures in html rendered code for completed
+    node on specific target.
 
-    Returns:
-        tuple[str, str]: plotly figures in html and tables
     """
     figures, fitting_report = generate_figures_and_report(node, target)
     with tempfile.NamedTemporaryFile(delete=False) as temp:
@@ -68,12 +64,10 @@ def plotter(
 
 
 def report(path: pathlib.Path, executor: Optional[Executor] = None):
-    """Report command
+    """Report generation.
 
-    Args:
-        path (pathlib.Path): path where qibocal protocol is dumped
-        executor (Optional[Executor], optional): Qibocal executor, if None it is loaded from path.
-                                                 Defaults to None.
+    Generates the report for protocol dumped in `path`.
+    Executor can be passed to generate report on the fly.
     """
 
     if path.exists():
@@ -92,8 +86,7 @@ def report(path: pathlib.Path, executor: Optional[Executor] = None):
         # produce html
         list(executor.run(mode=ExecutionMode.report))
 
-    with open(STYLES) as file:
-        css_styles = f"<style>\n{file.read()}\n</style>"
+    css_styles = f"<style>\n{pathlib.Path(STYLES).read_text()}\n</style>"
 
     env = Environment(loader=FileSystemLoader(TEMPLATES))
     template = env.get_template("template.html")
