@@ -234,7 +234,7 @@ def _plot(data: AllXYData, target: QubitId, fit: AllXYResults = None):
     fig = go.Figure()
 
     qubit_data = data[target]
-    error_bars = qubit_data["errors"]
+    error_bars = qubit_data.errors
     probs = qubit_data.prob
     gates = qubit_data.gate
 
