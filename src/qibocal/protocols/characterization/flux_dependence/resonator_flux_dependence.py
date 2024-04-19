@@ -251,7 +251,7 @@ def _acquisition(
 
     # define the parameters to sweep and their range:
     delta_frequency_range = np.arange(
-        -params.freq_width // 2, params.freq_width // 2, params.freq_step
+        -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
     freq_sweeper = Sweeper(
         Parameter.frequency,
