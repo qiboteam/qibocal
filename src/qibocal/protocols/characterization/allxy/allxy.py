@@ -9,7 +9,6 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
-from qibocal.protocols.characterization.utils import COLORBAND, COLORBAND_LINE
 
 
 @dataclass
@@ -243,6 +242,11 @@ def _plot(data: AllXYData, target: QubitId, fit: AllXYResults = None):
         go.Scatter(
             x=gates,
             y=probs,
+            error_y=dict(
+                type="data",
+                array=error_bars,
+                visible=True,
+            ),
             mode="markers",
             text=gatelist,
             textposition="bottom center",
@@ -252,17 +256,6 @@ def _plot(data: AllXYData, target: QubitId, fit: AllXYResults = None):
         ),
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=np.concatenate((gates, gates[::-1])),
-            y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
-            fill="toself",
-            fillcolor=COLORBAND,
-            line=dict(color=COLORBAND_LINE),
-            showlegend=True,
-            name="Errors",
-        ),
-    )
     fig.add_hline(
         y=0,
         line_width=2,
