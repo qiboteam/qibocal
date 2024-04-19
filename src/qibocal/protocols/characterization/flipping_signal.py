@@ -28,6 +28,8 @@ class FlippingSignalParameters(Parameters):
     unrolling: bool = False
     """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
     Defaults to ``False``."""
+    detuning: Optional[float] = 0
+    """Amplitude detuning."""
 
 
 @dataclass
@@ -76,6 +78,9 @@ def _acquisition(
     Returns:
         data (:class:`FlippingSignalData`)
     """
+
+    for qubit in targets:
+        platform.qubits[qubit].native_gates.RX.amplitude += params.detuning
 
     data = FlippingSignalData(
         resonator_type=platform.resonator_type,

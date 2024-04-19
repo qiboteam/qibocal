@@ -29,14 +29,6 @@ from .utils import COLORBAND, COLORBAND_LINE, chi2_reduced
 class FlippingParameters(FlippingSignalParameters):
     """Flipping runcard inputs."""
 
-    nflips_max: int
-    """Maximum number of flips ([RX(pi) - RX(pi)] sequences). """
-    nflips_step: int
-    """Flip step."""
-    unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
-    Defaults to ``False``."""
-
 
 @dataclass
 class FlippingResults(FlippingSignalResults):
@@ -79,6 +71,9 @@ def _acquisition(
     Returns:
         data (:class:`FlippingData`)
     """
+
+    for qubit in targets:
+        platform.qubits[qubit].native_gates.RX.amplitude += params.detuning
 
     data = FlippingData(
         resonator_type=platform.resonator_type,
@@ -217,6 +212,7 @@ def _fit(data: FlippingData) -> FlippingResults:
                     / 2
                 ),
             )
+
             fitted_parameters[qubit] = popt
             amplitude_correction_factors[qubit] = (
                 float(signed_correction / np.pi * pi_pulse_amplitude),

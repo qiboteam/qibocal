@@ -550,6 +550,7 @@ actions:
       nflips_max: 10
       nflips_step: 1
       nshots: 50
+      detuning: 0.1
 
   - id: flipping_signal
     operation: flipping_signal
@@ -557,6 +558,7 @@ actions:
       nflips_max: 10
       nflips_step: 1
       nshots: 50
+      detuning: 0.1
 
   - id: flipping unrolling
     operation: flipping
