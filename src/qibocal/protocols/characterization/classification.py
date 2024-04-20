@@ -175,9 +175,11 @@ def _acquisition(
             ro_pulse = qubit.native_gates.MZ
             rx_pulse = qubit.native_gates.RX
             if state == 1:
-                sequence.add(rx_pulse)
-            sequence.add(Delay(duration=rx_pulse.duration, channel=qubit.readout.name))
-            sequence.add(ro_pulse)
+                sequence.append(rx_pulse)
+            sequence.append(
+                Delay(duration=rx_pulse.duration, channel=qubit.readout.name)
+            )
+            sequence.append(ro_pulse)
             ro_pulses[q] = ro_pulse.id
 
         sequences.append(sequence)
