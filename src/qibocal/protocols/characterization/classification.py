@@ -9,7 +9,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
+from qibolab.pulses import Delay, PulseSequence
 from qibolab.qubits import QubitId
 from sklearn.metrics import roc_auc_score, roc_curve
 
@@ -169,16 +169,16 @@ def _acquisition(
     sequences, all_ro_pulses = [], []
     for state in [0, 1]:
         sequence = PulseSequence()
-        RX_pulses = {}
         ro_pulses = {}
-        for qubit in targets:
-            RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-            ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-                qubit, start=RX_pulses[qubit].finish
-            )
+        for q in targets:
+            qubit = platform.qubits[q]
+            ro_pulse = qubit.native_gates.MZ
+            rx_pulse = qubit.native_gates.RX
             if state == 1:
-                sequence.add(RX_pulses[qubit])
-            sequence.add(ro_pulses[qubit])
+                sequence.add(rx_pulse)
+            sequence.add(Delay(duration=rx_pulse.duration, channel=qubit.readout.name))
+            sequence.add(ro_pulse)
+            ro_pulses[q] = ro_pulse.id
 
         sequences.append(sequence)
         all_ro_pulses.append(ro_pulses)
@@ -207,7 +207,7 @@ def _acquisition(
 
     for ig, (state, ro_pulses) in enumerate(zip([0, 1], all_ro_pulses)):
         for qubit in targets:
-            serial = ro_pulses[qubit].serial
+            serial = ro_pulses[qubit]
             if params.unrolling:
                 result = results[serial][ig]
             else:
