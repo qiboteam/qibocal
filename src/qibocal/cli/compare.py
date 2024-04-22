@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from typing import List
 
+import lxml
 import pandas as pd
 import plotly.graph_objects as go
 import yaml
@@ -94,6 +95,27 @@ class CompareReportBuilder:
         # return local_qubits if len(local_qubits) > 0 else self.targets
         return self.targets
 
+    def merge_plots(self, plots: List[List[go.Figure]]):
+        """Merge plots from different reports.
+
+        Scatter plots are plotted in the same figure.
+        Heatmaps are vertically stacked.
+        """
+        if plots[0][0].data[0].type == "scatter":
+            merged_plot_data = plots[0][0].data
+            for plot in plots[1:]:
+                merged_plot_data = merged_plot_data + plot[0].data
+            fig = go.Figure(data=merged_plot_data, layout=plots[0][0].layout).to_html()
+        elif plots[0][0].data[0].type == "heatmap":
+            html_block = lxml.html.fromstring(plots[0][0].to_html())
+            html_block[1].remove(html_block[1][0])
+            for i, plot in enumerate(plots):
+                single_report_html_block = lxml.html.fromstring(plot[0].to_html())
+                html_block[1].insert(i, single_report_html_block[1][0])
+            fig = lxml.etree.tostring(html_block).decode("ascii")
+
+        return fig
+
     def single_qubit_plot(self, task_id: TaskId, qubit: QubitId):
         """Generate single qubit plot."""
         tables = []
@@ -106,23 +128,26 @@ class CompareReportBuilder:
             plots.append(figures)
 
         try:
-            merged_table = pd.read_html(tables[0])[0].rename(
-                columns={"Values": "Values_0"}
+            merge_columns = {"Qubit", "Parameters"}
+            merged_table = pd.read_html(tables[0])[0]
+            merged_table = merged_table.rename(
+                columns={
+                    col: f"{col}_0" for col in set(merged_table.columns) - merge_columns
+                }
             )
             for i, table in enumerate(tables[1:]):
                 a = pd.read_html(table)[0]
-                merged_table = pd.merge(
-                    merged_table, a, on=["Qubit", "Parameters"]
-                ).rename(columns={"Values": f"Values_{i + 1}"})
+                merged_table = pd.merge(merged_table, a, on=list(merge_columns)).rename(
+                    columns={
+                        col: f"{col}_{i+1}" for col in set(a.columns) - merge_columns
+                    }
+                )
         except ValueError:
             merged_table = pd.DataFrame(
                 [], columns=["An error occurred when performing the fit."]
             )
-        merged_plot_data = plots[0][0].data
-        for plot in plots[1:]:
-            merged_plot_data = merged_plot_data + plot[0].data
-        merged_plot = go.Figure(data=merged_plot_data, layout=plot[0].layout)
-        return merged_plot.to_html(), merged_table.to_html(
+        merged_plot = self.merge_plots(plots)
+        return merged_plot, merged_table.to_html(
             classes="fitting-table", index=False, border=0, escape=False
         )
 
