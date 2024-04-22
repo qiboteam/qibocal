@@ -105,11 +105,18 @@ class CompareReportBuilder:
             tables.append(table)
             plots.append(figures)
 
-        merged_table = pd.read_html(tables[0])[0].rename(columns={"Values": "Values_0"})
-        for i, table in enumerate(tables[1:]):
-            a = pd.read_html(table)[0]
-            merged_table = pd.merge(merged_table, a, on=["Qubit", "Parameters"]).rename(
-                columns={"Values": f"Values_{i + 1}"}
+        try:
+            merged_table = pd.read_html(tables[0])[0].rename(
+                columns={"Values": "Values_0"}
+            )
+            for i, table in enumerate(tables[1:]):
+                a = pd.read_html(table)[0]
+                merged_table = pd.merge(
+                    merged_table, a, on=["Qubit", "Parameters"]
+                ).rename(columns={"Values": f"Values_{i + 1}"})
+        except ValueError:
+            merged_table = pd.DataFrame(
+                [], columns=["An error occurred when performing the fit."]
             )
         merged_plot_data = plots[0][0].data
         for plot in plots[1:]:
