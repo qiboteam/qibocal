@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
+from qibolab.pulses import Delay, PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
@@ -72,22 +72,22 @@ def _acquisition(
     # create a sequence of pulses for the experiment
     sequence = PulseSequence()
     qd_pulses = {}
+    delays = {}
     ro_pulses = {}
     amplitudes = {}
     for qubit in targets:
-        # TODO: made duration optional for qd pulse?
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=params.pulse_duration_start
-        )
+        qd_pulses[qubit] = platform.qubits[qubit].native_gates.RX
         if params.pulse_amplitude is not None:
             qd_pulses[qubit].amplitude = params.pulse_amplitude
         amplitudes[qubit] = qd_pulses[qubit].amplitude
-
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
+        ro_pulses[qubit] = platform.qubits[qubit].native_gates.MZ
+        delays[qubit] = Delay(
+            duration=qd_pulses[qubit].duration, channel=ro_pulses[qubit].channel
         )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
+
+        sequence.append(qd_pulses[qubit])
+        sequence.append(delays[qubit])
+        sequence.append(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
     # qubit drive pulse duration time
@@ -100,7 +100,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.duration,
         qd_pulse_duration_range,
-        [qd_pulses[qubit] for qubit in targets],
+        [qd_pulses[qubit] for qubit in targets] + [delays[qubit] for qubit in targets],
         type=SweeperType.ABSOLUTE,
     )
 
@@ -119,7 +119,7 @@ def _acquisition(
     )
 
     for qubit in targets:
-        result = results[ro_pulses[qubit].serial]
+        result = results[ro_pulses[qubit].id]
         data.register_qubit(
             RabiLenVoltType,
             (qubit),
