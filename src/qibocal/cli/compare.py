@@ -54,6 +54,13 @@ def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
 class CompareReportBuilder:
 
     def __init__(self, report_builders: List[ReportBuilder], path: Path):
+        """Combine two reports.
+
+        Args:
+            report_builders (List[ReportBuilder]): List containing the two ReportBuilder
+                objects to be combined.
+            path (Path): Path of the combined report.
+        """
         self.report_builders = report_builders
         self.metadata = report_builders[0].metadata
         self.path = self.title = path
