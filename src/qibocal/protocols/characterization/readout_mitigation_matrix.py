@@ -121,7 +121,10 @@ def _acquisition(
                     tuple(qubits), state, calculate_frequencies(results, tuple(qubits))
                 )
             else:
-                c = Circuit(platform.nqubits)
+                c = Circuit(
+                    platform.nqubits,
+                    wire_names=[str(i) for i in range(platform.nqubits)],
+                )
                 for q, bit in enumerate(state):
                     if bit == "1":
                         c.add(gates.X(qubits[q]))
