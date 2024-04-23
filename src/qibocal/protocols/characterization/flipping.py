@@ -201,22 +201,24 @@ def _fit(data: FlippingData) -> FlippingResults:
             )
 
             fitted_parameters[qubit] = popt
+
             delta_amplitude_detuned[qubit] = (
-                -detuned_pi_pulse_amplitude
-                * signed_correction
+                -signed_correction
+                * detuned_pi_pulse_amplitude
                 / (np.pi + signed_correction),
-                perr[2]
-                / 2
-                * np.abs(
-                    1
-                    / (np.pi + signed_correction)
-                    * (1 - 1 / (np.pi + signed_correction))
-                ),
+                np.abs(
+                    np.pi
+                    * detuned_pi_pulse_amplitude
+                    * np.power(np.pi + signed_correction, -2)
+                )
+                * perr[2]
+                / 2,
             )
             delta_amplitude[qubit] = (
-                delta_amplitude_detuned[qubit][0] + data.detuning,
+                delta_amplitude_detuned[qubit][0] - data.detuning,
                 delta_amplitude_detuned[qubit][1],
             )
+
             chi2[qubit] = (
                 chi2_reduced(
                     y,
