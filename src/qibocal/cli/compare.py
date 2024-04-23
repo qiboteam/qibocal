@@ -47,16 +47,16 @@ def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
         # produce html
         builder = ReportBuilder(path, runcard.targets, executor, meta)
         builders.append(builder)
-    comparison_report = CompareReportBuilder(builders)
+    comparison_report = CompareReportBuilder(builders, folder)
     comparison_report.run(combined_report_path)
 
 
 class CompareReportBuilder:
 
-    def __init__(self, report_builders: List[ReportBuilder]):
+    def __init__(self, report_builders: List[ReportBuilder], path: Path):
         self.report_builders = report_builders
         self.metadata = report_builders[0].metadata
-        self.path = self.title = report_builders[0].path
+        self.path = self.title = path
         self.targets = report_builders[0].targets
         self.executor = report_builders[0].executor
 
