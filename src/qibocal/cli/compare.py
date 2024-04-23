@@ -62,10 +62,20 @@ class CompareReportBuilder:
             path (Path): Path of the combined report.
         """
         self.report_builders = report_builders
-        self.metadata = report_builders[0].metadata
+        self.metadata = self.combine_metadata(report_builders)
         self.path = self.title = path
         self.targets = report_builders[0].targets
         self.executor = report_builders[0].executor
+
+    @staticmethod
+    def combine_metadata(report_builders):
+        metadata = report_builders[0].metadata
+
+        combined_keys = ["platform", "date", "start-time", "end-time"]
+        for key in combined_keys:
+            report_dates = [report.metadata[key] for report in report_builders]
+            metadata[key] = " | ".join(report_dates)
+        return metadata
 
     def history_uids(self):
         experiment_ids = []
