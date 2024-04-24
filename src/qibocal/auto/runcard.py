@@ -1,11 +1,14 @@
 """Specify runcard layout, handles (de)serialization."""
 
 import os
-from typing import Any, NewType, Optional, Union
+from typing import Any, NewType, Optional, Tuple, Union
 
 from pydantic.dataclasses import dataclass
+from qibo import Circuit
 from qibo.backends import Backend, GlobalBackend
 from qibo.transpiler.pipeline import Passes
+from qibo.transpiler.router import StarConnectivityRouter
+from qibo.transpiler.unroller import NativeGates, Unroller
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
@@ -68,8 +71,15 @@ class Runcard:
         GlobalBackend.set_backend(self.backend, platform=self.platform)
         backend = GlobalBackend()
         if backend.platform is not None:
-            backend.transpiler = Passes(connectivity=backend.platform.topology)
-            backend.transpiler.passes = backend.transpiler.passes[-1:]
+            router = DummyRouter()
+            unroller = Unroller(NativeGates.default())
+            backend.transpiler = Passes(
+                connectivity=backend.platform.topology, passes=[router, unroller]
+            )
+            # define the physical-logical qubit mapping
+            backend.transpiler.initial_layout = {
+                val: i for i, val in enumerate(self.targets)
+            }
         return backend
 
     @property
@@ -81,3 +91,11 @@ class Runcard:
     def load(cls, params: dict):
         """Load a runcard (dict)."""
         return cls(**params)
+
+
+class DummyRouter(StarConnectivityRouter):
+    def __call__(
+        self, circuit: Circuit, initial_layout: dict, *args
+    ) -> Tuple[Circuit, dict]:
+        qubit_map = {int(circuit.wire_names[q]): q for q in range(circuit.nqubits)}
+        return circuit, qubit_map
