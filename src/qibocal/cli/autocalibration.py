@@ -54,13 +54,13 @@ def autocalibrate(runcard, folder, force, update):
 
     # run protocols
     for _ in executor.run(mode=ExecutionMode.autocalibration):
-        report = ReportBuilder(path, runcard.targets, executor, meta, executor.history)
-        report.run(path)
-        # meta needs to be updated after each report to show correct end-time
+        # meta needs to be updated before each report to show correct end-time
         e = datetime.datetime.now(datetime.timezone.utc)
         meta["end-time"] = e.strftime("%H:%M:%S")
         # dump updated meta
         meta = add_timings_to_meta(meta, executor.history)
+        report = ReportBuilder(path, runcard.targets, executor, meta, executor.history)
+        report.run(path)
         (path / META).write_text(json.dumps(meta, indent=4))
 
     # stop and disconnect platform

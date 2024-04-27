@@ -8,8 +8,10 @@ from qibocal.protocols.characterization.randomized_benchmarking import (
     fitting,
     noisemodels,
 )
+from qibocal.protocols.characterization.randomized_benchmarking.standard_rb import (
+    RB_Generator,
+)
 from qibocal.protocols.characterization.randomized_benchmarking.utils import (
-    extract_from_data,
     number_to_str,
     random_clifford,
 )
@@ -144,15 +146,8 @@ def test_PauliErrors():
 @pytest.mark.parametrize("seed", [10])
 @pytest.mark.parametrize("qubits", [1, 2, [0, 1], np.array([0, 1])])
 def test_random_clifford(qubits, seed):
-    with pytest.raises(TypeError):
-        q = "1"
-        random_clifford(q)
-    with pytest.raises(ValueError):
-        q = -1
-        random_clifford(q)
-    with pytest.raises(ValueError):
-        q = [0, 1, -3]
-        random_clifford(q)
+
+    rb_gen = RB_Generator(seed)
 
     result_single = np.array([[1j, -1j], [-1j, -1j]]) / np.sqrt(2)
 
@@ -165,9 +160,15 @@ def test_random_clifford(qubits, seed):
         ]
     )
 
-    result = result_single if (isinstance(qubits, int) and qubits == 1) else result_two
+    result = result_single if isinstance(qubits, int) else result_two
 
-    gates = random_clifford(qubits, seed=seed)
+    if isinstance(qubits, int):
+        qubits = [qubits]
+    gates = []
+    for qubit in qubits:
+        gate, index = random_clifford(rb_gen.random_index)
+        gates.append(gate)
+
     matrix = reduce(np.kron, [gate.matrix() for gate in gates])
     assert np.allclose(matrix, result)
 
@@ -182,20 +183,4 @@ def test_number_to_str(value):
     assert number_to_str(value, [0.203, 0.001]) == f"{value:.4f} +0.0010 / -0.2030"
     assert (
         number_to_str(value, [float("inf"), float("inf")]) == f"{value:.3f} \u00B1 inf"
-    )
-
-
-def test_extract_from_data():
-    data = [
-        {"group": 1, "output": 3},
-        {"group": 1, "output": 4},
-        {"group": 2, "output": 5},
-    ]
-    assert np.allclose(extract_from_data(data, "output"), [3, 4, 5])
-    assert extract_from_data(data, "output", agg_type="count") == 3
-    assert np.allclose(
-        extract_from_data(data, "output", "group"), ([1, 1, 2], [3, 4, 5])
-    )
-    assert np.allclose(
-        extract_from_data(data, "output", "group", "count"), ([1, 2], [2, 1])
     )

@@ -4,75 +4,6 @@ targets: [0,1]
 
 actions:
 
-  - id: time of flight
-    operation: time_of_flight_readout
-    parameters:
-      nshots: 1024
-      readout_amplitude: 0.5
-
-  - id: resonator high power high amplitude
-    operation: resonator_spectroscopy
-    parameters:
-      freq_width: 10_000_000 # 20_000_000
-      freq_step: 100_000 # 500_00
-      amplitude: 0.4
-      power_level: high
-      nshots: 10
-
-
-  - id: resonator high power low attenuation
-    operation: resonator_spectroscopy
-    parameters:
-      freq_width: 10_000_000 # 20_000_000
-      freq_step: 100_000 # 500_00
-      attenuation: 15
-      power_level: high
-      nshots: 10
-
-
-  - id: resonator low power high attenuation
-    operation: resonator_spectroscopy
-    parameters:
-      freq_width: 10_000_000 # 20_000_000
-      freq_step: 100_000 # 500_00
-      attenuation: 60
-      power_level: low
-      nshots: 10
-
-
-  - id: resonator punchout
-    operation: resonator_punchout
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 1_000_000
-      amplitude: 0.04
-      min_amp_factor: 0.005
-      max_amp_factor: 0.3
-      step_amp_factor: 0.005
-      nshots: 100
-
-
-  - id: resonator_punchout_attenuation
-    operation: resonator_punchout_attenuation
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 500_000
-      min_att: 4
-      max_att: 60
-      step_att: 4
-      nshots: 1000
-
-
-
-  - id: resonator spectroscopy low power
-    operation: resonator_spectroscopy
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 50_000
-      amplitude: 0.022
-      power_level: low
-      nshots: 10
-
   - id: coupler_resonator_spectroscopy
     operation: coupler_resonator_spectroscopy
     targets: [[1, 2], [0, 2]]
@@ -86,15 +17,31 @@ actions:
       nshots: 10
       relaxation_time: 3_000
 
-
-  - id: qubit spectroscopy
-    operation: qubit_spectroscopy
+  - id: coupler_resonator_spectroscopy
+    operation: coupler_resonator_spectroscopy
+    targets: [[1, 2], [0, 2]]
     parameters:
-      drive_amplitude: 0.001
-      drive_duration: 1000
-      freq_width: 2_000_000
-      freq_step: 500_000
+      flux_amplitude_start: 0.0
+      flux_amplitude_end: 0.5
+      flux_amplitude_step:  0.05
+      freq_width: 10_000_000
+      freq_step: 1_000_000
+      measured_qubits: [1, 0]
+      amplitude: .3
       nshots: 10
+      relaxation_time: 3_000
+
+  - id: coupler_resonator_spectroscopy
+    operation: coupler_resonator_spectroscopy
+    targets: [[1, 2], [0, 2]]
+    parameters:
+      bias_width: 1
+      bias_step: 0.1
+      freq_width: 10_000_000
+      freq_step: 1_000_000
+      amplitude: .3
+      nshots: 10
+      relaxation_time: 3_000
 
   - id: coupler qubit spectroscopy
     operation: coupler_qubit_spectroscopy
@@ -109,585 +56,59 @@ actions:
       nshots: 10
       relaxation_time: 3_000
 
-
-  - id: qubit spectroscopy ef
-    operation: qubit_spectroscopy_ef
-    #FIXME: add RX12 for qubit 4
-    targets: [0, 1, 2, 3]
+  - id: coupler qubit spectroscopy
+    operation: coupler_qubit_spectroscopy
+    targets: [[1, 2], [0, 2]]
     parameters:
-      drive_amplitude: 0.001
-      drive_duration: 1000
-      freq_width: 2_000_000
-      freq_step: 500_000
-      nshots: 10
-
-
-  - id: resonator flux dependence
-    operation: resonator_flux
-    parameters:
+      flux_amplitude_start: 0.0
+      flux_amplitude_end: 0.5
+      flux_amplitude_step:  0.05
       freq_width: 10_000_000
-      freq_step: 500_000
-      bias_width: 0.8
-      bias_step:  0.1
+      freq_step: 1_000_000
+      measured_qubits: [1, 0]
+      amplitude: .1
       nshots: 10
+      relaxation_time: 3_000
 
-
-  - id: resonator flux crosstalk # using ``flux_qubits``
-    operation: resonator_crosstalk
+  - id: coupler qubit spectroscopy
+    operation: coupler_qubit_spectroscopy
+    targets: [[1, 2], [0, 2]]
     parameters:
+      bias_width: 1
+      bias_step: 0.1
       freq_width: 10_000_000
-      freq_step: 500_000
-      bias_width: 0.8
-      bias_step:  0.1
-      flux_qubits: [0, 1, 2, 3]
+      freq_step: 1_000_000
+      amplitude: .1
       nshots: 10
-      relaxation_time: 100
+      relaxation_time: 3_000
 
 
-
-  - id: qubit flux dependence #"01" transition
-    operation: qubit_flux
+  - id: coupler chevron CZ
+    priority: 0
+    operation: coupler_chevron
+    targets: [[1, 2]]
     parameters:
-      freq_width: 150_000_000
-      freq_step: 500_000
-      bias_width: 0.2
-      bias_step:  0.005
-      drive_amplitude: 0.5
-      nshots: 1024
-      relaxation_time: 2000
-      transition: "01"
-
-  - id: qubit flux dependence 02 #"02" transition
-    operation: qubit_flux
-    parameters:
-      freq_width: 150_000_000
-      freq_step: 500_000
-      bias_width: 0.2
-      bias_step:  0.005
-      drive_amplitude: 0.5
-      nshots: 1024
-      relaxation_time: 2000
-      transition: "02"
-
-
-  - id: qubit flux dependence tracking
-    operation: qubit_flux_tracking
-    parameters:
-      freq_width: 150_000_000
-      freq_step: 500_000
-      bias_width: 0.2
-      bias_step:  0.05
-      drive_duration: 2000
-      nshots: 1024
-      relaxation_time: 2000
-      transition: "01"
-
-
-  - id: qubit flux crosstalk # using ``flux_qubits``
-    operation: qubit_crosstalk
-    parameters:
-      freq_width: 150_000_000
-      freq_step: 500_000
-      bias_width: 0.2
-      bias_step:  0.005
-      drive_amplitude: 0.5
-      flux_qubits: [1, 2]
-      nshots: 1024
-      relaxation_time: 2000
-
-
-
-  - id: rabi
-    operation: rabi_amplitude
-    parameters:
-      min_amp_factor: 0.0
-      max_amp_factor: 4.0
-      step_amp_factor: 0.1
-      pulse_length: 30
-      nshots: 1024
-
-  - id: rabi without nshots
-    operation: rabi_amplitude
-    parameters:
-      min_amp_factor: 0.0
-      max_amp_factor: 4.0
-      step_amp_factor: 0.1
-      pulse_length: 30
-
-  - id: rabi signal
-    operation: rabi_amplitude_signal
-    parameters:
-      min_amp_factor: 0.0
-      max_amp_factor: 4.0
-      step_amp_factor: 0.1
-      pulse_length: 30
-      nshots: 1024
-
-
-  - id: rabi_ef
-    operation: rabi_amplitude_ef
-    #FIXME: add RX12 for qubit 4
-    targets: [0, 1, 2, 3]
-    parameters:
-      min_amp_factor: 0.0
-      max_amp_factor: 1.0
-      step_amp_factor: 0.1
-      pulse_length: 30
-      nshots: 1024
-
-  - id: rabi length
-    operation: rabi_length
-    parameters:
-      pulse_duration_start: 4
-      pulse_duration_end: 84
-      pulse_duration_step: 8
-      pulse_amplitude: 0.5
-      nshots: 1024
-
-  - id: rabi length signal
-    operation: rabi_length_signal
-    parameters:
-      pulse_duration_start: 4
-      pulse_duration_end: 84
-      pulse_duration_step: 8
-      pulse_amplitude: 0.5
-      nshots: 1024
-
-  - id: rabi length sequences
-    operation: rabi_length_sequences
-    parameters:
-      pulse_duration_start: 4
-      pulse_duration_end: 84
-      pulse_duration_step: 8
-      pulse_amplitude: 0.5
-      nshots: 1024
-
-  - id: t1
-    operation: t1
-    parameters:
-      delay_before_readout_start: 0
-      delay_before_readout_end: 20_000
-      delay_before_readout_step: 2000
-      nshots: 1024
-
-  - id: t1_signal
-    operation: t1_signal
-    parameters:
-      delay_before_readout_start: 0
-      delay_before_readout_end: 20_000
-      delay_before_readout_step: 2000
-      nshots: 1024
-
-  - id: t1 sequences
-    operation: t1_sequences
-    parameters:
-      delay_before_readout_start: 0
-      delay_before_readout_end: 20_000
-      delay_before_readout_step: 2000
+      amplitude_min_factor: -0.5
+      amplitude_max_factor: -0.0
+      amplitude_step_factor: 0.1
+      duration_min: 50
+      duration_max: 100
+      duration_step: 10
+      native_gate: "CZ"
+      dt: 5
       nshots: 10
 
-  - id: zeno
-    operation: zeno
+  - id: coupler chevron iSWAP
+    priority: 0
+    operation: coupler_chevron
+    targets: [[1, 2]]
     parameters:
-      readouts: 10
+      amplitude_min_factor: -0.5
+      amplitude_max_factor: -0.0
+      amplitude_step_factor: 0.1
+      duration_min: 50
+      duration_max: 100
+      duration_step: 10
+      native_gate: "iSWAP"
+      dt: 5
       nshots: 10
-
-  - id: zeno_signal
-    operation: zeno_signal
-    parameters:
-      readouts: 10
-      nshots: 10
-
-  - id: t2
-    operation: t2
-    parameters:
-      delay_between_pulses_start: 16
-      delay_between_pulses_end: 20000
-      delay_between_pulses_step: 100
-      nshots: 10
-
-  - id: t2_signal
-    operation: t2_signal
-    parameters:
-      delay_between_pulses_start: 16
-      delay_between_pulses_end: 20000
-      delay_between_pulses_step: 100
-      nshots: 10
-
-  - id: t2 sequences
-    operation: t2_sequences
-    parameters:
-      delay_between_pulses_start: 16
-      delay_between_pulses_end: 20000
-      delay_between_pulses_step: 100
-      nshots: 10
-
-  - id: ramsey_signal
-    operation: ramsey_signal
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 50
-      delay_between_pulses_step: 1
-      nshots: 10
-
-  - id: ramsey_signal_detuned
-    operation: ramsey_signal
-    parameters:
-      unrolling: False
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 50
-      delay_between_pulses_step: 1
-      detuning: 1_000_000
-      nshots: 10
-
-  - id: ramsey_signal_detuned_unrolled
-    operation: ramsey_signal
-    parameters:
-      unrolling: True
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 50
-      delay_between_pulses_step: 1
-      detuning: 1_000_000
-      nshots: 10
-
-  - id: ramsey
-    operation: ramsey
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 20
-      delay_between_pulses_step: 1
-      detuning: 0
-      nshots: 1024
-
-  - id: calibrate_state_discrimination
-    operation: calibrate_state_discrimination
-    parameters:
-      nshots: 10
-
-  - id: ramsey_detuned
-    operation: ramsey
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 50
-      delay_between_pulses_step: 1
-      detuning: 2_000_000
-      nshots: 10
-
-  - id: ramsey_unrolled_detuned
-    operation: ramsey
-    parameters:
-      unrolling: True
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 50
-      delay_between_pulses_step: 1
-      nshots: 10
-      detuning: 1_000_000
-
-  - id: single shot classification
-    operation: single_shot_classification
-    parameters:
-      unrolling: False
-      nshots: 10
-
-  - id: single shot classification with unrolling
-    operation: single_shot_classification
-    parameters:
-      unrolling: True
-      nshots: 10
-
-  - id: single shot classification with classifiers
-    operation: single_shot_classification
-    parameters:
-      nshots: 10
-      savedir: "cls_results"
-      classifiers_list: ["qubit_fit","naive_bayes", "linear_svm"]
-
-  - id: readout characterization
-    operation: readout_characterization
-    parameters:
-      nshots: 10
-
-  - id: allXY
-    operation: allxy
-    parameters:
-      beta_param: null
-      nshots: 10
-
-  - id: allXY unrolling
-    operation: allxy
-    parameters:
-      beta_param: null
-      unrolling: True
-      nshots: 10
-
-  - id: allxy_drag_pulse_tuning
-    operation: allxy_drag_pulse_tuning
-    parameters:
-      beta_start: 0
-      beta_end: 0.04
-      beta_step: 0.01
-      nshots: 10
-
-
-  - id: drag_pulse_tuning
-    operation: drag_pulse_tuning
-    parameters:
-      beta_start: 0
-      beta_end: 0.1
-      beta_step: 0.01
-      nshots: 10
-
-  - id: spin_echo
-    operation: spin_echo
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 5
-      delay_between_pulses_step: 1
-      nshots: 10
-
-  - id: spin_echo unrolling
-    operation: spin_echo
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 5
-      delay_between_pulses_step: 1
-      nshots: 10
-      unrolling: true
-
-  - id: spin_echo_signal
-    operation: spin_echo_signal
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 5
-      delay_between_pulses_step: 1
-      nshots: 10
-
-  - id: spin_echo_signal unrolling
-    operation: spin_echo_signal
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 5
-      delay_between_pulses_step: 1
-      nshots: 10
-      unrolling: true
-
-
-  - id: flipping
-    operation: flipping
-    parameters:
-      nflips_max: 10
-      nflips_step: 1
-      nshots: 50
-
-  - id: flipping_signal
-    operation: flipping_signal
-    parameters:
-      nflips_max: 10
-      nflips_step: 1
-      nshots: 50
-
-  - id: flipping unrolling
-    operation: flipping
-    parameters:
-      nflips_max: 10
-      nflips_step: 1
-      nshots: 50
-      unrolling: True
-
-  - id: flipping_signal unrolling
-    operation: flipping_signal
-    parameters:
-      nflips_max: 10
-      nflips_step: 1
-      nshots: 50
-      unrolling: True
-
-
-  - id: dispersive shift
-    operation: dispersive_shift
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 100_000
-      nshots: 10
-
-  - id: dispersive shift qutrit
-    operation: dispersive_shift_qutrit
-    #FIXME: add qubit 4 with new release of Qibolab
-    targets: [0, 1, 2, 3]
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 100_000
-      nshots: 10
-
-  - id: standard rb no error
-    operation: standard_rb
-    parameters:
-      depths:
-        start: 1
-        stop: 10
-        step: 2
-      niter: 2
-      nshots: 50
-      uncertainties: None
-      n_bootstrap: 0
-
-  - id: standard rb unrolling
-    operation: standard_rb
-    parameters:
-      depths:
-        start: 1
-        stop: 10
-        step: 2
-      niter: 2
-      nshots: 50
-      unrolling: True
-      uncertainties: None
-      n_bootstrap: 0
-
-  - id: chevron id
-    operation: chevron
-    targets: [[0, 2],[1,2]]
-    parameters:
-      amplitude_min: 0.1
-      amplitude_max: 0.6
-      amplitude_step: 0.01
-      duration_min: 10
-      duration_max: 50
-      duration_step: 1
-      nshots: 1000
-      parking: True
-
-  - id: tune landscape
-    operation: cz_virtualz
-    targets: [[0, 2],[1,2],[3,2]]
-    parameters:
-      theta_start: 0
-      theta_end: 180
-      theta_step: 10
-      flux_pulse_amplitude: 0.5
-      dt: 0
-      parking: True
-
-  - id : resonator_frequency
-    operation: resonator_frequency
-    parameters:
-      freq_width: 200.e+6
-      freq_step: 25.e+6
-      nshots: 1000
-
-  - id: fast reset
-    operation: fast_reset
-    parameters:
-      nshots: 1024
-
-  - id: CHSH with pulses
-    operation: chsh_pulses
-    targets: [[0,2],[1,2],[2,3]]
-    parameters:
-      nshots: 1000
-      ntheta: 10
-      bell_states: [0,1,2,3]
-      apply_error_mitigation: True
-
-  - id: CHSH with natives
-    operation: chsh_circuits
-    targets: [[0,2],[1,2]]
-    parameters:
-      nshots: 1000
-      ntheta: 10
-      bell_states: [0,1,2,3]
-      native: True
-      apply_error_mitigation: True
-
-  #FIXME: cannot add pair [0,3]
-  - id: CHSH with circuits
-    operation: chsh_circuits
-    targets: [[0,2],[1,2]]
-    parameters:
-      nshots: 1000
-      ntheta: 2
-      bell_states: [0,1,2,3]
-      native: False
-      apply_error_mitigation: True
-
-  - id: readout_mitigation_matrix pulses
-    operation: readout_mitigation_matrix
-    targets: [[0,1,2],[1,2]]
-    parameters:
-      nshots: 100
-      pulses: True
-
-  - id: readout_mitigation_matrix circuits
-    operation: readout_mitigation_matrix
-    targets: [[0,1,2],[1,2]]
-    parameters:
-      nshots: 100
-      pulses: False
-
-  - id: twpa frequency
-    operation: twpa_frequency
-    parameters:
-      nshots: 10
-      frequency_width: 1_000_000
-      frequency_step: 100_000
-
-  - id: twpa power
-    operation: twpa_power
-    parameters:
-      nshots: 10
-      power_width: 10
-      power_step: 1
-
-  - id: twpa frequency power
-    operation: twpa_frequency_power
-    targets: [0]
-    parameters:
-      frequency_width: 1_000_000
-      frequency_step: 100_000
-      power_width: 10
-      power_step: 1
-
-  - id: twpa_power_SNR
-    operation: twpa_power_SNR
-    parameters:
-      freq_width: 500_000_000
-      freq_step: 50_000_000
-      twpa_pow_width: 4
-      twpa_pow_step: 1
-      power_level: low
-      nshots: 1000
-      relaxation_time: 2000
-
-  - id: twpa_frequency_SNR
-    operation: twpa_frequency_SNR
-    parameters:
-      freq_width: 100_000_000
-      freq_step: 20_000_000
-      twpa_freq_width: 1_000_000_000
-      twpa_freq_step: 200_000_000
-      power_level: low
-      nshots: 10
-      relaxation_time: 20
-
-  - id: resoantor_amplitude
-    operation: resonator_amplitude
-    parameters:
-      amplitude_step: 0.1
-      amplitude_stop: 0.5
-
-  - id: qutrit
-    targets: [0,1]
-    operation: qutrit_classification
-    parameters:
-      nshots: 100
-      classifiers_list: ["naive_bayes", "decision_tree"]
-
-  - id: avoided crossing
-    operation: avoided_crossing
-    targets: [[2,1],[0,2]]
-    parameters:
-      freq_width: 100_000_000
-      freq_step: 50_000_000
-      bias_width: 0.2
-      bias_step:  0.05
-      drive_amplitude: 0.5

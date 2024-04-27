@@ -79,7 +79,7 @@ def _acquisition(
 
     # define the parameters to sweep and their range:
     delta_frequency_range = np.arange(
-        -params.freq_width // 2, params.freq_width // 2, params.freq_step
+        -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
 
     delta_bias_range = np.arange(
@@ -94,13 +94,15 @@ def _acquisition(
     )
 
     data = QubitFluxTrackData(
-        resonator_type=platform.resonator_type, qubit_frequency=qubit_frequency
+        resonator_type=platform.resonator_type,
+        flux_pulses=params.flux_pulses,
+        qubit_frequency=qubit_frequency,
     )
 
     for bias in delta_bias_range:
         for qubit in targets:
             try:
-                freq_resonator = utils.transmon_readout_frequency(
+                freq_resonator = utils.transmon_readout_frequency_diagonal(
                     bias,
                     platform.qubits[qubit].drive_frequency,
                     platform.qubits[qubit].asymmetry,

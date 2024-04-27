@@ -118,12 +118,11 @@ actions:
   #     delay_between_pulses_start: 16 # must be a multiple of 4 incl 0
   #     delay_between_pulses_end: 1000
   #     delay_between_pulses_step: 4 # must be a multiple of 4
-  #     n_osc: 10
 
   # - id: ramsey detuned
   #   operation: ramsey
   #   parameters:
-  #     n_osc: 0
+  #     detuning: 1_000_000
   #     delay_between_pulses_start: 4 # must be a multiple of 4 incl 0
   #     delay_between_pulses_end: 200
   #     delay_between_pulses_step: 4 # must be a multiple of 4
@@ -265,7 +264,7 @@ actions:
 #       delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
 #       delay_between_pulses_end: 5000
 #       delay_between_pulses_step: 500 # must be a multiple of 4
-#       n_osc: 10
+#       detuning: 1_000_000
 #       nshots: 10
 
 
@@ -275,7 +274,7 @@ actions:
 #       delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
 #       delay_between_pulses_end: 5000
 #       delay_between_pulses_step: 500 # must be a multiple of 4
-#       n_osc: 10
+#       detuning: 1_000_000
 #       nshots: 1024
 
 
@@ -285,7 +284,6 @@ actions:
 #       delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
 #       delay_between_pulses_end: 5000
 #       delay_between_pulses_step: 500 # must be a multiple of 4
-#       n_osc: 0
 #       nshots: 1024
 
 
@@ -357,17 +355,15 @@ actions:
 #       niter: 2
 #       nshots: 50
 #       uncertainties: None
-#       n_bootstrap: 0
 
 
-#   - id: standard rb bootstrap
+#   - id: standard rb
 #     operation: standard_rb
 #     targets: [1]
 #     parameters:
 #       depths: [1, 2, 3, 5]
 #       niter: 5
 #       nshots: 50
-#       n_bootstrap: 10
 #       noise_model: PauliErrorOnAll
 
 
@@ -379,7 +375,6 @@ actions:
 #       niter: 5
 #       nshots: 50
 #       uncertainties: std
-#       n_bootstrap: 10
 #       noise_model: PauliErrorOnX
 #       noise_params: [0.01, 0.01, 0.01]
 

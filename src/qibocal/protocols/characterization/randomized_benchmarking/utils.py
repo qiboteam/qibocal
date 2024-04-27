@@ -1,27 +1,25 @@
 from numbers import Number
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
-from pandas import DataFrame
 from qibo import gates
 
-from qibocal.config import raise_error
 from qibocal.protocols.characterization.utils import significant_digit
 
 SINGLE_QUBIT_CLIFFORDS = {
     # Virtual gates
     0: gates.I,
     1: lambda q: gates.U3(q, 0, np.pi / 2, np.pi / 2),  # Z,
-    2: lambda q: gates.RZ(q, np.pi / 2),
-    3: lambda q: gates.RZ(q, -np.pi / 2),
+    2: lambda q: gates.U3(q, 0, np.pi / 2, 0),  # gates.RZ(q, np.pi / 2),
+    3: lambda q: gates.U3(q, 0, -np.pi / 2, 0),  # gates.RZ(q, -np.pi / 2),
     # pi rotations
     4: lambda q: gates.U3(q, np.pi, 0, np.pi),  # X,
     5: lambda q: gates.U3(q, np.pi, 0, 0),  # Y,
     # pi/2 rotations
-    6: lambda q: gates.RX(q, np.pi / 2),  # U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),
-    7: lambda q: gates.RX(q, -np.pi / 2),  # U3(q, -np.pi / 2, -np.pi / 2, np.pi / 2),
-    8: lambda q: gates.RY(q, np.pi / 2),  # U3(q, np.pi / 2, 0, 0),
-    9: lambda q: gates.RY(q, -np.pi / 2),  # U3(q, -np.pi / 2, 0, 0),
+    6: lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),
+    7: lambda q: gates.U3(q, -np.pi / 2, -np.pi / 2, np.pi / 2),
+    8: lambda q: gates.U3(q, np.pi / 2, 0, 0),
+    9: lambda q: gates.U3(q, -np.pi / 2, 0, 0),
     # 2pi/3 rotations
     10: lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, 0),  # Rx(pi/2)Ry(pi/2)
     11: lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, np.pi),  # Rx(pi/2)Ry(-pi/2)
@@ -43,8 +41,8 @@ SINGLE_QUBIT_CLIFFORDS = {
 }
 
 
-def random_clifford(qubits, seed=None):
-    """Generates random Clifford operator(s).
+def random_clifford(random_index_gen):
+    """Generates random Clifford operator.
 
     Args:
         qubits (int or list or ndarray): if ``int``, the number of qubits for the Clifford.
@@ -57,34 +55,10 @@ def random_clifford(qubits, seed=None):
         (list of :class:`qibo.gates.Gate`): Random Clifford operator(s).
     """
 
-    if (
-        not isinstance(qubits, int)
-        and not isinstance(qubits, list)
-        and not isinstance(qubits, np.ndarray)
-    ):
-        raise_error(
-            TypeError,
-            f"qubits must be either type int, list or ndarray, but it is type {type(qubits)}.",
-        )
-    if isinstance(qubits, int) and qubits <= 0:
-        raise_error(ValueError, "qubits must be a positive integer.")
+    random_index = int(random_index_gen(SINGLE_QUBIT_CLIFFORDS))
+    clifford_gate = SINGLE_QUBIT_CLIFFORDS[random_index](0)
 
-    if isinstance(qubits, (list, np.ndarray)) and any(q < 0 for q in qubits):
-        raise_error(ValueError, "qubit indexes must be non-negative integers.")
-
-    local_state = (
-        np.random.default_rng(seed) if seed is None or isinstance(seed, int) else seed
-    )
-
-    if isinstance(qubits, int):
-        qubits = list(range(qubits))
-
-    random_indexes = local_state.integers(0, len(SINGLE_QUBIT_CLIFFORDS), len(qubits))
-    clifford_gates = [
-        SINGLE_QUBIT_CLIFFORDS[p](q) for p, q in zip(random_indexes, qubits)
-    ]
-
-    return clifford_gates
+    return clifford_gate, random_index
 
 
 def number_to_str(
@@ -131,45 +105,33 @@ def number_to_str(
     return f"{value:.{precision}f} +{uncertainty[1]:.{precision}f} / -{uncertainty[0]:.{precision}f}"
 
 
-def extract_from_data(
-    data: Union[list[dict], DataFrame],
-    output_key: str,
-    groupby_key: str = "",
-    agg_type: Union[str, Callable] = "",
-) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
-    """Return wanted values from list of dictionaries via a dataframe and its properties.
-
-    If ``groupby_key`` given, aggregate the dataframe, extract the data by which the frame was
-    grouped, what was calculated given the ``agg_type`` parameter. Two arrays are returned then,
-    the group values and the grouped (aggregated) data. If no ``agg_type`` given use a linear
-    function. If ``groupby_key`` not given, only return the extracted data from given key.
+def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
+    """Compute the uncertainties of the median (or specified) values.
 
     Args:
-        output_key (str): Key name of the wanted output.
-        groupby_key (str): If given, group with that key name.
-        agg_type (str): If given, calcuted aggregation function on groups.
+        data (list or np.ndarray): 2d array with rows containing data points
+            from which the median value is extracted.
+        method (float, optional): method of computing the method.
+            If it is `None`, computes the standard deviation, otherwise it
+            computes the corresponding confidence interval using ``np.percentile``.
+            Defaults to ``None``.
+        data_median (list or np.ndarray, optional): 1d array for computing the errors from the
+            confidence interval. If ``None``, the median values are computed from ``data``.
+        homogeneous (bool): if ``True``, assumes that all rows in ``data`` are of the same size
+            and returns ``np.ndarray``. Default is ``True``.
 
     Returns:
-        Either one or two np.ndarrays. If no grouping wanted, just the data. If grouping
-        wanted, the values after which where grouped and the grouped data.
+        np.ndarray: uncertainties of the data.
     """
-    if isinstance(data, list):
-        data = DataFrame(data)
+    if method is None:
+        return np.std(data, axis=1) if homogeneous else [np.std(row) for row in data]
 
-    # Check what parameters where given.
-    if not groupby_key and not agg_type:
-        # No grouping and no aggreagtion is wanted. Just return the wanted output key.
-        return np.array(data[output_key].to_numpy())
-    if not groupby_key and agg_type:
-        # No grouping wanted, just an aggregational task on all the data.
-        return data[output_key].apply(agg_type)
-    if groupby_key and not agg_type:
-        df = data.get([output_key, groupby_key])
-        # Sort by the output key for making reshaping consistent.
-        df.sort_values(by=output_key)
-        # Grouping is wanted but no aggregation, use a linear function.
-        grouped_df = df.groupby(groupby_key, group_keys=True).apply(lambda x: x)
-        return grouped_df[groupby_key].to_numpy(), grouped_df[output_key].to_numpy()
-    df = data.get([output_key, groupby_key])
-    grouped_df = df.groupby(groupby_key, group_keys=True).agg(agg_type)
-    return grouped_df.index.to_numpy(), grouped_df[output_key].values.tolist()
+    percentiles = [
+        (100 - method) / 2,
+        (100 + method) / 2,
+    ]
+    percentile_interval = np.percentile(data, percentiles, axis=1)
+
+    uncertainties = np.abs(np.vstack([data_median, data_median]) - percentile_interval)
+
+    return uncertainties

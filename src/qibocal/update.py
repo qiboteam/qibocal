@@ -65,6 +65,13 @@ def drive_duration(duration: Union[int, tuple], platform: Platform, qubit: Qubit
     platform.qubits[qubit].native_gates.RX.duration = int(duration)
 
 
+def crosstalk_matrix(
+    matrix_element: float, platform: Platform, qubit: QubitId, flux_qubit: QubitId
+):
+    """Update crosstalk_matrix element."""
+    platform.qubits[qubit].crosstalk_matrix[flux_qubit] = float(matrix_element)
+
+
 def iq_angle(angle: float, platform: Platform, qubit: QubitId):
     """Update iq angle value in platform for specific qubit."""
     platform.qubits[qubit].iq_angle = float(angle)
@@ -130,25 +137,25 @@ def CZ_amplitude(amp: float, platform: Platform, pair: QubitPairId):
 def t1(t1: int, platform: Platform, qubit: QubitId):
     """Update t1 value in platform for specific qubit."""
     if isinstance(t1, tuple):
-        platform.qubits[qubit].t1 = int(t1[0])
+        platform.qubits[qubit].T1 = int(t1[0])
     else:
-        platform.qubits[qubit].t1 = int(t1)
+        platform.qubits[qubit].T1 = int(t1)
 
 
 def t2(t2: int, platform: Platform, qubit: QubitId):
     """Update t2 value in platform for specific qubit."""
     if isinstance(t2, tuple):
-        platform.qubits[qubit].t2 = int(t2[0])
+        platform.qubits[qubit].T2 = int(t2[0])
     else:
-        platform.qubits[qubit].t2 = int(t2)
+        platform.qubits[qubit].T2 = int(t2)
 
 
 def t2_spin_echo(t2_spin_echo: float, platform: Platform, qubit: QubitId):
     """Update t2 echo value in platform for specific qubit."""
     if isinstance(t2_spin_echo, tuple):
-        platform.qubits[qubit].t2_spin_echo = int(t2_spin_echo[0])
+        platform.qubits[qubit].T2_spin_echo = int(t2_spin_echo[0])
     else:
-        platform.qubits[qubit].t2_spin_echo = int(t2_spin_echo)
+        platform.qubits[qubit].T2_spin_echo = int(t2_spin_echo)
 
 
 def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):

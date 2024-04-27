@@ -114,7 +114,7 @@ def _acquisition(
     )
 
     TWPAPower_range = np.arange(
-        -params.twpa_pow_width // 2, params.twpa_pow_width // 2, params.twpa_pow_step
+        -params.twpa_pow_width / 2, params.twpa_pow_width / 2, params.twpa_pow_step
     )
 
     initial_twpa_pow = {}
