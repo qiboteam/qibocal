@@ -1,3 +1,4 @@
+import datetime
 import json
 from pathlib import Path
 from typing import List
@@ -30,7 +31,12 @@ def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
         force (bool): if set to true, overwrites folder (if it already exists).
 
     """
+    combined_meta = json.loads((path_1 / META).read_text())
+    e = datetime.datetime.now(datetime.timezone.utc)
+    combined_meta["start-time"] = e.strftime("%H:%M:%S")
+    combined_meta["date"] = e.strftime("%Y-%m-%d")
     combined_report_path = generate_output_folder(folder, force)
+    combined_meta["title"] = combined_report_path.name
     paths = [path_1, path_2]
     builders = []
     for path in paths:
@@ -49,6 +55,9 @@ def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
         builders.append(builder)
     comparison_report = CompareReportBuilder(builders, folder)
     comparison_report.run(combined_report_path)
+    e = datetime.datetime.now(datetime.timezone.utc)
+    combined_meta["end-time"] = e.strftime("%H:%M:%S")
+    (combined_report_path / META).write_text(json.dumps(combined_meta, indent=4))
 
 
 class CompareReportBuilder:
@@ -112,7 +121,7 @@ class CompareReportBuilder:
         # return local_qubits if len(local_qubits) > 0 else self.targets
         return self.targets
 
-    def merge_plots(self, plots: List[List[go.Figure]]):
+    def merge_plots(self, plots: List[List[go.Figure]]) -> str:
         """Merge plots from different reports.
 
         Scatter plots are plotted in the same figure.
