@@ -108,7 +108,6 @@ def _acquisition(
         data (:class:`FlippingSignalData`)
     """
 
-
     data = FlippingSignalData(
         resonator_type=platform.resonator_type,
         detuning=params.detuning,
