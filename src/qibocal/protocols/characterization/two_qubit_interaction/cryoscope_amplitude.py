@@ -65,7 +65,7 @@ class CryoscopeResults(Results):
 #    [("amp", np.float64), ("duration", np.float64), ("prob", np.float64)]
 # )
 CryoscopeType = np.dtype(
-    [("amplitude", float), ("voltage_i", np.float64), ("voltage_q", np.float64)]
+    [("amplitude", float), ("prob_0", np.float64), ("prob_1", np.float64)]
 )
 """Custom dtype for Cryoscope."""
 
@@ -78,13 +78,16 @@ class CryoscopeData(Data):
         default_factory=dict
     )
 
+    iq_ground_state: dict[QubitId, list] = field(default_factory=dict)
+    iq_excited_state: dict[QubitId, list] = field(default_factory=dict)
+
     def register_qubit(
         self,
         qubit: QubitId,
         tag: str,
         amps: npt.NDArray[np.int32],
-        voltage_i: npt.NDArray[np.float64],
-        voltage_q: npt.NDArray[np.float64],
+        prob_0: npt.NDArray[np.float64],
+        prob_1: npt.NDArray[np.float64],
     ):
         """Store output for a single qubit."""
         # size = len(amps) * len(durs)
@@ -95,8 +98,8 @@ class CryoscopeData(Data):
 
         ar = np.empty(size, dtype=CryoscopeType)
         ar["amplitude"] = amps.ravel()
-        ar["voltage_i"] = voltage_i.ravel()
-        ar["voltage_q"] = voltage_q.ravel()
+        ar["prob_0"] = prob_0.ravel()
+        ar["prob_1"] = prob_1.ravel()
 
         self.data[(qubit, tag)] = np.rec.array(ar)
 
@@ -125,11 +128,8 @@ def _acquisition(
 
     for qubit in targets:
 
-        # most people are using Rx90 pulses and not Ry90
-        # start at |+> by applying a Rx(90)
         initial_pulses[qubit] = platform.create_RX90_pulse(
-            qubit,
-            start=0,
+            qubit, start=0, relative_phase=np.pi / 2
         )
 
         # TODO add support for flux pulse shapes
@@ -173,13 +173,13 @@ def _acquisition(
         sequence_x.add(
             initial_pulses[qubit],
             flux_pulses[qubit],
-            rx90_pulses[qubit],  # rotate around Y to measure X CHECK
+            ry90_pulses[qubit],  # rotate around Y to measure X CHECK
             ro_pulses[qubit],
         )
         sequence_y.add(
             initial_pulses[qubit],
             flux_pulses[qubit],
-            ry90_pulses[qubit],  # rotate around X to measure Y CHECK
+            rx90_pulses[qubit],  # rotate around X to measure Y CHECK
             ro_pulses[qubit],
         )
 
@@ -206,25 +206,31 @@ def _acquisition(
 
     options = ExecutionParameters(
         nshots=params.nshots,
-        acquisition_type=AcquisitionType.INTEGRATION,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    data = CryoscopeData()
+    data = CryoscopeData(
+        iq_ground_state={
+            target: platform.qubits[target].mean_gnd_states for target in targets
+        },
+        iq_excited_state={
+            target: platform.qubits[target].mean_exc_states for target in targets
+        },
+    )
+
     for sequence, tag in [(sequence_x, "MX"), (sequence_y, "MY")]:
         # results = platform.sweep(sequence, options, amp_sweeper, dur_sweeper)
         results = platform.sweep(sequence, options, amp_sweeper)
         for qubit in targets:
             result = results[ro_pulses[qubit].serial]
-            # data.register_qubit(qubit, tag, amplitude_range, duration_range, result.voltage_i, result.voltage_q)
             data.register_qubit(
                 qubit,
                 tag,
                 amplitude_range * params.flux_pulse_amplitude,
-                result.voltage_i,
-                result.voltage_q,
+                result.probability(state=0),
+                result.probability(state=1),
             )
-
     return data
 
 
@@ -239,8 +245,8 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     fitting_report = f"Cryoscope of qubit {target}"
 
     fig = make_subplots(
-        rows=1,
-        cols=2,
+        rows=2,
+        cols=1,
         subplot_titles=(
             # f"Qubit {qubits[0]}",
             # f"Qubit {qubits[1]}",
@@ -251,7 +257,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     fig.add_trace(
         go.Scatter(
             x=qubit_X_data.amplitude,
-            y=np.sqrt(qubit_X_data.voltage_i**2 + qubit_X_data.voltage_q**2),
+            y=qubit_X_data.prob_1,
             name="X",
             legendgroup="X",
         ),
@@ -262,44 +268,91 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     fig.add_trace(
         go.Scatter(
             x=qubit_Y_data.amplitude,
-            y=np.sqrt(qubit_Y_data.voltage_i**2 + qubit_Y_data.voltage_q**2),
+            y=qubit_Y_data.prob_1,
             name="Y",
             legendgroup="Y",
         ),
         row=1,
         col=1,
     )
+
+    # phase_x = np.unwrap(np.angle(qubit_X_data.voltage_i + 1.0j * qubit_X_data.voltage_q))
+    # phase_y = np.unwrap(np.angle(qubit_Y_data.voltage_i + 1.0j * qubit_Y_data.voltage_q))
+    # phase_g = np.angle(data.iq_ground_state[target][0] + 1.0j * data.iq_ground_state[target][1])
+    # phase_e = np.angle(data.iq_excited_state[target][0] + 1.0j * data.iq_excited_state[target][1])
+    # pop_x = (phase_x - phase_g) / (phase_e - phase_g)
+    # pop_y = (phase_y - phase_g) / (phase_e - phase_g)
+
+    # qubit_state = (pop_x *2 - 1) + 1.j *(pop_y*2 -1)
+    # qubit_phase = np.unwrap(np.angle(qubit_state))
+    # detuning = qubit_phase / (2 * np.pi * 20)
+
+    # minus sign for X_exp becuase I get -cos phase
+    X_exp = qubit_X_data.prob_1 - qubit_X_data.prob_0
+    Y_exp = qubit_Y_data.prob_0 - qubit_Y_data.prob_1
 
     fig.add_trace(
         go.Scatter(
             x=qubit_X_data.amplitude,
-            y=np.unwrap(
-                np.angle(qubit_X_data.voltage_i + 1.0j * qubit_X_data.voltage_q)
-            ),
-            name="X",
-            legendgroup="X",
+            y=np.unwrap(np.angle(X_exp + 1.0j * Y_exp)) / 2 / np.pi / 20,
+            name="phase",
         ),
-        row=1,
-        col=2,
+        row=2,
+        col=1,
     )
-    fig.add_trace(
-        go.Scatter(
-            x=qubit_Y_data.amplitude,
-            y=np.unwrap(
-                np.angle(qubit_Y_data.voltage_i + 1.0j * qubit_Y_data.voltage_q)
-            ),
-            name="Y",
-            legendgroup="Y",
-        ),
-        row=1,
-        col=2,
-    )
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_Y_data.amplitude,
+    #         y=np.unwrap(
+    #             np.angle(qubit_Y_data.voltage_i + 1.0j * qubit_Y_data.voltage_q)
+    #         ),
+    #         name="Y",
+    #         legendgroup="Y",
+    #         showlegend=False,
+
+    #     ),
+    #     row=2,
+    #     col=1,
+    # )
+
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_X_data.amplitude,
+    #         y=pop_x,
+    #         legendgroup="X",
+    #         showlegend=False,
+
+    #     ),
+    #     row=2,
+    #     col=1,
+    # )
+
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_Y_data.amplitude,
+    #         y=pop_y,
+    #         legendgroup="Y",
+    #         showlegend=False,
+    #     ),
+    #     row=2,
+    #     col=1,
+    # )
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_X_data.amplitude,
+    #         y=detuning,
+    #         name="detuning",
+    #         legendgroup="Detuning",
+    #     ),
+    #     row=2,
+    #     col=2,
+    # )
 
     fig.update_layout(
         xaxis1_title="Flux pulse amplitude [a.u.]",
-        xaxis2_title="Flux pulse amplitude [a.u.]",
-        yaxis1_title="Signal [a.u.]",
+        yaxis1_title="Prob of 1",
         yaxis2_title="Phase [rad]",
+        yaxis3_title="Detuning [Hz]",
     )
     return [fig], fitting_report
 

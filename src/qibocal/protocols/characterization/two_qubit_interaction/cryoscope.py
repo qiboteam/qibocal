@@ -6,6 +6,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+import scipy
 from plotly.subplots import make_subplots
 from qibolab.execution_parameters import (
     AcquisitionType,
@@ -63,7 +64,7 @@ class CryoscopeResults(Results):
 #    [("amp", np.float64), ("duration", np.float64), ("prob", np.float64)]
 # )
 CryoscopeType = np.dtype(
-    [("duration", int), ("voltage_i", np.float64), ("voltage_q", np.float64)]
+    [("duration", int), ("prob_0", np.float64), ("prob_1", np.float64)]
 )
 """Custom dtype for Cryoscope."""
 
@@ -81,8 +82,8 @@ class CryoscopeData(Data):
         qubit: QubitId,
         tag: str,
         durs: npt.NDArray[np.int32],
-        voltage_i: npt.NDArray[np.float64],
-        voltage_q: npt.NDArray[np.float64],
+        prob_0: npt.NDArray[np.float64],
+        prob_1: npt.NDArray[np.float64],
     ):
         """Store output for a single qubit."""
         # size = len(amps) * len(durs)
@@ -93,8 +94,8 @@ class CryoscopeData(Data):
 
         ar = np.empty(size, dtype=CryoscopeType)
         ar["duration"] = durations.ravel()
-        ar["voltage_i"] = voltage_i.ravel()
-        ar["voltage_q"] = voltage_q.ravel()
+        ar["prob_0"] = prob_0.ravel()
+        ar["prob_1"] = prob_1.ravel()
 
         self.data[(qubit, tag)] = np.rec.array(ar)
 
@@ -128,14 +129,15 @@ def _acquisition(
         initial_pulses[qubit] = platform.create_RX90_pulse(
             qubit,
             start=0,
+            relative_phase=np.pi / 2,
         )
 
         # TODO add support for flux pulse shapes
         # if params.flux_pulse_shapes and len(params.flux_pulse_shapes) == len(qubits):
         #     flux_pulse_shape = eval(params.flux_pulse_shapes[qubit])
         # else:
-        #     flux_pulse_shape = Rectangular()
         flux_pulse_shape = Rectangular()
+        # flux_pulse_shape = GaussianSquare(5, 0.9)
         flux_start = initial_pulses[qubit].finish + params.padding
         # apply a detuning flux pulse
         flux_pulses[qubit] = FluxPulse(
@@ -152,13 +154,13 @@ def _acquisition(
         # rotate around the X axis RX(-pi/2) to measure Y component
         rx90_pulses[qubit] = platform.create_RX90_pulse(
             qubit,
-            start=flux_pulses[qubit].finish + params.padding,
+            start=params.duration_max + params.padding,
             # relative_phase=np.pi,
         )
         # rotate around the Y axis RX(-pi/2) to measure X component
         ry90_pulses[qubit] = platform.create_RX90_pulse(
             qubit,
-            start=flux_pulses[qubit].finish + params.padding,
+            start=params.duration_max + params.padding,
             relative_phase=np.pi / 2,
         )
 
@@ -171,13 +173,13 @@ def _acquisition(
         sequence_x.add(
             initial_pulses[qubit],
             flux_pulses[qubit],
-            rx90_pulses[qubit],  # rotate around Y to measure X CHECK
+            ry90_pulses[qubit],  # rotate around Y to measure X CHECK
             ro_pulses[qubit],
         )
         sequence_y.add(
             initial_pulses[qubit],
             flux_pulses[qubit],
-            ry90_pulses[qubit],  # rotate around X to measure Y CHECK
+            rx90_pulses[qubit],  # rotate around X to measure Y CHECK
             ro_pulses[qubit],
         )
 
@@ -204,7 +206,7 @@ def _acquisition(
 
     options = ExecutionParameters(
         nshots=params.nshots,
-        acquisition_type=AcquisitionType.INTEGRATION,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
 
@@ -216,7 +218,11 @@ def _acquisition(
             result = results[ro_pulses[qubit].serial]
             # data.register_qubit(qubit, tag, amplitude_range, duration_range, result.voltage_i, result.voltage_q)
             data.register_qubit(
-                qubit, tag, duration_range, result.voltage_i, result.voltage_q
+                qubit,
+                tag,
+                duration_range,
+                result.probability(state=0),
+                result.probability(state=1),
             )
 
     return data
@@ -233,8 +239,8 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     fitting_report = f"Cryoscope of qubit {target}"
 
     fig = make_subplots(
-        rows=1,
-        cols=2,
+        rows=3,
+        cols=1,
         subplot_titles=(
             # f"Qubit {qubits[0]}",
             # f"Qubit {qubits[1]}",
@@ -245,7 +251,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     fig.add_trace(
         go.Scatter(
             x=qubit_X_data.duration,
-            y=np.sqrt(qubit_X_data.voltage_i**2 + qubit_X_data.voltage_q**2),
+            y=qubit_X_data.prob_1,
             name="X",
             legendgroup="X",
         ),
@@ -256,44 +262,103 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     fig.add_trace(
         go.Scatter(
             x=qubit_Y_data.duration,
-            y=np.sqrt(qubit_Y_data.voltage_i**2 + qubit_Y_data.voltage_q**2),
+            y=qubit_Y_data.prob_1,
             name="Y",
             legendgroup="Y",
         ),
         row=1,
+        col=1,
+    )
+
+    # phase_x = np.unwrap(np.angle(qubit_X_data.voltage_i + 1.0j * qubit_X_data.voltage_q))
+    # phase_y = np.unwrap(np.angle(qubit_Y_data.voltage_i + 1.0j * qubit_Y_data.voltage_q))
+    # phase_g = np.angle(data.iq_ground_state[target][0] + 1.0j * data.iq_ground_state[target][1])
+    # phase_e = np.angle(data.iq_excited_state[target][0] + 1.0j * data.iq_excited_state[target][1])
+    # pop_x = (phase_x - phase_g) / (phase_e - phase_g)
+    # pop_y = (phase_y - phase_g) / (phase_e - phase_g)
+
+    # qubit_state = (pop_x *2 - 1) + 1.j *(pop_y*2 -1)
+    # qubit_phase = np.unwrap(np.angle(qubit_state))
+    # detuning = qubit_phase / (2 * np.pi * 20)
+
+    # minus sign for X_exp becuase I get -cos phase
+    X_exp = qubit_X_data.prob_1 - qubit_X_data.prob_0
+    Y_exp = qubit_Y_data.prob_0 - qubit_Y_data.prob_1
+    phase = np.unwrap(np.angle(X_exp + 1.0j * Y_exp))
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_X_data.duration,
+            y=phase,
+            name="phase",
+        ),
+        row=2,
         col=1,
     )
 
     fig.add_trace(
         go.Scatter(
             x=qubit_X_data.duration,
-            y=np.unwrap(
-                np.angle(qubit_X_data.voltage_i + 1.0j * qubit_X_data.voltage_q)
+            y=scipy.signal.savgol_filter(
+                phase / 2 / np.pi, 13, 3, deriv=1, delta=0.001
             ),
-            name="X",
-            legendgroup="X",
+            name="detuning",
         ),
-        row=1,
-        col=2,
+        row=3,
+        col=1,
     )
-    fig.add_trace(
-        go.Scatter(
-            x=qubit_Y_data.duration,
-            y=np.unwrap(
-                np.angle(qubit_Y_data.voltage_i + 1.0j * qubit_Y_data.voltage_q)
-            ),
-            name="Y",
-            legendgroup="Y",
-        ),
-        row=1,
-        col=2,
-    )
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_Y_data.amplitude,
+    #         y=np.unwrap(
+    #             np.angle(qubit_Y_data.voltage_i + 1.0j * qubit_Y_data.voltage_q)
+    #         ),
+    #         name="Y",
+    #         legendgroup="Y",
+    #         showlegend=False,
+
+    #     ),
+    #     row=2,
+    #     col=1,
+    # )
+
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_X_data.amplitude,
+    #         y=pop_x,
+    #         legendgroup="X",
+    #         showlegend=False,
+
+    #     ),
+    #     row=2,
+    #     col=1,
+    # )
+
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_Y_data.amplitude,
+    #         y=pop_y,
+    #         legendgroup="Y",
+    #         showlegend=False,
+    #     ),
+    #     row=2,
+    #     col=1,
+    # )
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_X_data.amplitude,
+    #         y=detuning,
+    #         name="detuning",
+    #         legendgroup="Detuning",
+    #     ),
+    #     row=2,
+    #     col=2,
+    # )
 
     fig.update_layout(
-        xaxis1_title="Flux pulse duration [ns]",
-        xaxis2_title="Flux pulse duration [ns]",
-        yaxis1_title="Signal [a.u.]",
+        xaxis3_title="Flux pulse duration [ns]",
+        yaxis1_title="Prob of 1",
         yaxis2_title="Phase [rad]",
+        yaxis3_title="Detuning [Hz]",
     )
     return [fig], fitting_report
 
