@@ -9,6 +9,7 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
+from scipy.signal import find_peaks
 
 from qibocal.auto.operation import Routine
 from qibocal.config import log
@@ -170,7 +171,20 @@ def _fit(data: FlippingData) -> FlippingResults:
         pi_pulse_amplitude = data.pi_pulse_amplitudes[qubit]
         y = qubit_data.prob
         x = qubit_data.flips
-        pguess = [0.5, 0.5, 1, np.pi, 0]
+
+        ft = np.fft.rfft(y)
+        # Remove the zero frequency mode
+        mags = abs(ft)[1:]
+        local_maxima = find_peaks(mags, height=0)
+        peak_heights = local_maxima[1]["peak_heights"]
+        # Select the frequency with the highest peak
+        index = (
+            int(local_maxima[0][np.argmax(peak_heights)] + 1)
+            if len(local_maxima[0]) > 0
+            else None
+        )
+        f = x[index] / (x[1] - x[0]) if index is not None else 1
+        pguess = [0.5, 0.5, 1 / f, np.pi, 0]
         try:
             popt, perr = curve_fit(
                 flipping_fit,
@@ -186,40 +200,38 @@ def _fit(data: FlippingData) -> FlippingResults:
             )
             perr = np.sqrt(np.diag(perr)).tolist()
             popt = popt.tolist()
-        except:
-            log.warning("flipping_fit: the fitting was not succesful")
-            popt = [0] * 5
-            perr = [1] * 5
 
-        if popt[3] > np.pi / 2 and popt[3] < 3 * np.pi / 2:
-            signed_correction = -popt[2] / 2
-        else:
-            signed_correction = popt[2] / 2
-        # The amplitude is directly proportional to the rotation angle
-        corrected_amplitudes[qubit] = (
-            float((pi_pulse_amplitude * np.pi) / (np.pi + signed_correction)),
-            float(
-                pi_pulse_amplitude
-                * np.pi
-                * 1
-                / (np.pi + signed_correction) ** 2
-                * perr[2]
-                / 2
-            ),
-        )
-        fitted_parameters[qubit] = popt
-        amplitude_correction_factors[qubit] = (
-            float(signed_correction / np.pi * pi_pulse_amplitude),
-            float(perr[2] * pi_pulse_amplitude / np.pi / 2),
-        )
-        chi2[qubit] = (
-            chi2_reduced(
-                y,
-                flipping_fit(x, *popt),
-                qubit_data.error,
-            ),
-            np.sqrt(2 / len(x)),
-        )
+            if popt[3] > np.pi / 2 and popt[3] < 3 * np.pi / 2:
+                signed_correction = -popt[2] / 2
+            else:
+                signed_correction = popt[2] / 2
+            # The amplitude is directly proportional to the rotation angle
+            corrected_amplitudes[qubit] = (
+                float((pi_pulse_amplitude * np.pi) / (np.pi + signed_correction)),
+                float(
+                    pi_pulse_amplitude
+                    * np.pi
+                    * 1
+                    / (np.pi + signed_correction) ** 2
+                    * perr[2]
+                    / 2
+                ),
+            )
+            fitted_parameters[qubit] = popt
+            amplitude_correction_factors[qubit] = (
+                float(signed_correction / np.pi * pi_pulse_amplitude),
+                float(perr[2] * pi_pulse_amplitude / np.pi / 2),
+            )
+            chi2[qubit] = (
+                chi2_reduced(
+                    y,
+                    flipping_fit(x, *popt),
+                    qubit_data.error,
+                ),
+                np.sqrt(2 / len(x)),
+            )
+        except Exception as e:
+            log.warning(f"Error in flipping fit for qubit {qubit} due to {e}.")
 
     return FlippingResults(
         corrected_amplitudes, amplitude_correction_factors, fitted_parameters, chi2
