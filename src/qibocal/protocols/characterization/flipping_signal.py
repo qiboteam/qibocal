@@ -108,8 +108,6 @@ def _acquisition(
         data (:class:`FlippingSignalData`)
     """
 
-    # for qubit in targets:
-    #     platform.qubits[qubit].native_gates.RX.amplitude += params.detuning
 
     data = FlippingSignalData(
         resonator_type=platform.resonator_type,
