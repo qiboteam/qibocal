@@ -21,6 +21,7 @@ from .flipping_signal import (
     FlippingSignalResults,
     _update,
     flipping_fit,
+    flipping_sequence,
 )
 from .utils import COLORBAND, COLORBAND_LINE, chi2_reduced
 
@@ -28,14 +29,6 @@ from .utils import COLORBAND, COLORBAND_LINE, chi2_reduced
 @dataclass
 class FlippingParameters(FlippingSignalParameters):
     """Flipping runcard inputs."""
-
-    nflips_max: int
-    """Maximum number of flips ([RX(pi) - RX(pi)] sequences). """
-    nflips_step: int
-    """Flip step."""
-    unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
-    Defaults to ``False``."""
 
 
 @dataclass
@@ -55,7 +48,6 @@ FlippingType = np.dtype(
 class FlippingData(FlippingSignalData):
     """Flipping acquisition outputs."""
 
-    """Pi pulse amplitudes for each qubit."""
     data: dict[QubitId, npt.NDArray[FlippingType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -82,6 +74,7 @@ def _acquisition(
 
     data = FlippingData(
         resonator_type=platform.resonator_type,
+        detuning=params.detuning,
         pi_pulse_amplitudes={
             qubit: platform.qubits[qubit].native_gates.RX.amplitude for qubit in targets
         },
@@ -100,26 +93,13 @@ def _acquisition(
     for flips in flips_sweep:
         # create a sequence of pulses for the experiment
         sequence = PulseSequence()
-        ro_pulses = {}
         for qubit in targets:
-            RX90_pulse = platform.create_RX90_pulse(qubit, start=0)
-            sequence.add(RX90_pulse)
-            # execute sequence RX(pi/2) - [RX(pi) - RX(pi)] from 0...flips times - RO
-            start1 = RX90_pulse.duration
-            for _ in range(flips):
-                RX_pulse1 = platform.create_RX_pulse(qubit, start=start1)
-                start2 = start1 + RX_pulse1.duration
-                RX_pulse2 = platform.create_RX_pulse(qubit, start=start2)
-                sequence.add(RX_pulse1)
-                sequence.add(RX_pulse2)
-                start1 = start2 + RX_pulse2.duration
-
-            # add ro pulse at the end of the sequence
-            ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=start1)
-            sequence.add(ro_pulses[qubit])
+            sequence += flipping_sequence(
+                platform=platform, qubit=qubit, detuning=params.detuning, flips=flips
+            )
 
         sequences.append(sequence)
-        all_ro_pulses.append(ro_pulses)
+        all_ro_pulses.append(sequence.ro_pulses)
 
     # execute the pulse sequence
     if params.unrolling:
@@ -132,7 +112,7 @@ def _acquisition(
 
     for ig, (flips, ro_pulses) in enumerate(zip(flips_sweep, all_ro_pulses)):
         for qubit in targets:
-            serial = ro_pulses[qubit].serial
+            serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
             if params.unrolling:
                 result = results[serial][0]
             else:
@@ -164,11 +144,12 @@ def _fit(data: FlippingData) -> FlippingResults:
     qubits = data.qubits
     corrected_amplitudes = {}
     fitted_parameters = {}
-    amplitude_correction_factors = {}
+    delta_amplitude = {}
+    delta_amplitude_detuned = {}
     chi2 = {}
     for qubit in qubits:
         qubit_data = data[qubit]
-        pi_pulse_amplitude = data.pi_pulse_amplitudes[qubit]
+        detuned_pi_pulse_amplitude = data.pi_pulse_amplitudes[qubit]
         y = qubit_data.prob
         x = qubit_data.flips
 
@@ -185,6 +166,7 @@ def _fit(data: FlippingData) -> FlippingResults:
         )
         f = x[index] / (x[1] - x[0]) if index is not None else 1
         pguess = [0.5, 0.5, 1 / f, np.pi, 0]
+
         try:
             popt, perr = curve_fit(
                 flipping_fit,
@@ -207,9 +189,9 @@ def _fit(data: FlippingData) -> FlippingResults:
                 signed_correction = popt[2] / 2
             # The amplitude is directly proportional to the rotation angle
             corrected_amplitudes[qubit] = (
-                float((pi_pulse_amplitude * np.pi) / (np.pi + signed_correction)),
+                float(detuned_pi_pulse_amplitude * np.pi / (np.pi + signed_correction)),
                 float(
-                    pi_pulse_amplitude
+                    detuned_pi_pulse_amplitude
                     * np.pi
                     * 1
                     / (np.pi + signed_correction) ** 2
@@ -217,11 +199,26 @@ def _fit(data: FlippingData) -> FlippingResults:
                     / 2
                 ),
             )
+
             fitted_parameters[qubit] = popt
-            amplitude_correction_factors[qubit] = (
-                float(signed_correction / np.pi * pi_pulse_amplitude),
-                float(perr[2] * pi_pulse_amplitude / np.pi / 2),
+
+            delta_amplitude[qubit] = (
+                -signed_correction
+                * detuned_pi_pulse_amplitude
+                / (np.pi + signed_correction),
+                np.abs(
+                    np.pi
+                    * detuned_pi_pulse_amplitude
+                    * np.power(np.pi + signed_correction, -2)
+                )
+                * perr[2]
+                / 2,
             )
+            delta_amplitude_detuned[qubit] = (
+                delta_amplitude[qubit][0] - data.detuning,
+                delta_amplitude[qubit][1],
+            )
+
             chi2[qubit] = (
                 chi2_reduced(
                     y,
@@ -234,7 +231,11 @@ def _fit(data: FlippingData) -> FlippingResults:
             log.warning(f"Error in flipping fit for qubit {qubit} due to {e}.")
 
     return FlippingResults(
-        corrected_amplitudes, amplitude_correction_factors, fitted_parameters, chi2
+        corrected_amplitudes,
+        delta_amplitude,
+        delta_amplitude_detuned,
+        fitted_parameters,
+        chi2,
     )
 
 
@@ -243,7 +244,6 @@ def _plot(data: FlippingData, target: QubitId, fit: FlippingResults = None):
 
     figures = []
     fig = go.Figure()
-
     fitting_report = ""
     qubit_data = data[target]
 
@@ -298,13 +298,15 @@ def _plot(data: FlippingData, target: QubitId, fit: FlippingResults = None):
             table_dict(
                 target,
                 [
-                    "Amplitude correction factor",
+                    "Delta amplitude [a.u.]",
+                    "Delta amplitude (with detuning) [a.u.]",
                     "Corrected amplitude [a.u.]",
                     "chi2 reduced",
                 ],
                 [
-                    np.round(fit.amplitude_factors[target], 4),
-                    np.round(fit.amplitude[target], 4),
+                    fit.delta_amplitude[target],
+                    fit.delta_amplitude_detuned[target],
+                    fit.amplitude[target],
                     fit.chi2[target],
                 ],
                 display_error=True,
