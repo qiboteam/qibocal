@@ -241,12 +241,12 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
                 np.pi + signed_correction
             )
             fitted_parameters[qubit] = translated_popt
-            delta_amplitude_detuned[qubit] = (
+            delta_amplitude[qubit] = (
                 -signed_correction
                 * detuned_pi_pulse_amplitude
                 / (np.pi + signed_correction)
             )
-            delta_amplitude[qubit] = delta_amplitude_detuned[qubit] - data.detuning
+            delta_amplitude_detuned[qubit] = delta_amplitude[qubit] - data.detuning
         except Exception as e:
             log.warning(f"Error in flipping fit for qubit {qubit} due to {e}.")
 
