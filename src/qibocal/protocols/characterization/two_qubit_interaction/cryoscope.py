@@ -295,17 +295,31 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
         col=1,
     )
 
+    coeffs = [-9.94466439e00, -5.88747144e-02, 2.31272909e-05]
     fig.add_trace(
         go.Scatter(
             x=qubit_X_data.duration,
             y=scipy.signal.savgol_filter(
-                phase / 2 / np.pi, 13, 3, deriv=1, delta=0.001
+                (phase - phase[-1]) / 2 / np.pi,
+                13,
+                3,
+                deriv=1,
             ),
             name="detuning",
         ),
         row=3,
         col=1,
     )
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_X_data.duration,
+            y=np.polyval(coeffs, (-0.06) * np.ones(len(qubit_X_data.duration))),
+            name="fit",
+        ),
+        row=3,
+        col=1,
+    )
+
     # fig.add_trace(
     #     go.Scatter(
     #         x=qubit_Y_data.amplitude,

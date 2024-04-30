@@ -6,6 +6,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+import scipy
 from plotly.subplots import make_subplots
 from qibolab.execution_parameters import (
     AcquisitionType,
@@ -74,12 +75,10 @@ CryoscopeType = np.dtype(
 class CryoscopeData(Data):
     """Cryoscope acquisition outputs."""
 
+    flux_pulse_duration: int
     data: dict[tuple[QubitId, str], npt.NDArray[CryoscopeType]] = field(
         default_factory=dict
     )
-
-    iq_ground_state: dict[QubitId, list] = field(default_factory=dict)
-    iq_excited_state: dict[QubitId, list] = field(default_factory=dict)
 
     def register_qubit(
         self,
@@ -210,14 +209,7 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    data = CryoscopeData(
-        iq_ground_state={
-            target: platform.qubits[target].mean_gnd_states for target in targets
-        },
-        iq_excited_state={
-            target: platform.qubits[target].mean_exc_states for target in targets
-        },
-    )
+    data = CryoscopeData(flux_pulse_duration=params.flux_pulse_duration)
 
     for sequence, tag in [(sequence_x, "MX"), (sequence_y, "MY")]:
         # results = platform.sweep(sequence, options, amp_sweeper, dur_sweeper)
@@ -245,7 +237,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     fitting_report = f"Cryoscope of qubit {target}"
 
     fig = make_subplots(
-        rows=2,
+        rows=3,
         cols=1,
         subplot_titles=(
             # f"Qubit {qubits[0]}",
@@ -276,83 +268,53 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
         col=1,
     )
 
-    # phase_x = np.unwrap(np.angle(qubit_X_data.voltage_i + 1.0j * qubit_X_data.voltage_q))
-    # phase_y = np.unwrap(np.angle(qubit_Y_data.voltage_i + 1.0j * qubit_Y_data.voltage_q))
-    # phase_g = np.angle(data.iq_ground_state[target][0] + 1.0j * data.iq_ground_state[target][1])
-    # phase_e = np.angle(data.iq_excited_state[target][0] + 1.0j * data.iq_excited_state[target][1])
-    # pop_x = (phase_x - phase_g) / (phase_e - phase_g)
-    # pop_y = (phase_y - phase_g) / (phase_e - phase_g)
-
-    # qubit_state = (pop_x *2 - 1) + 1.j *(pop_y*2 -1)
-    # qubit_phase = np.unwrap(np.angle(qubit_state))
-    # detuning = qubit_phase / (2 * np.pi * 20)
-
     # minus sign for X_exp becuase I get -cos phase
     X_exp = qubit_X_data.prob_1 - qubit_X_data.prob_0
     Y_exp = qubit_Y_data.prob_0 - qubit_Y_data.prob_1
 
+    phase = np.angle(X_exp + 1.0j * Y_exp)
     fig.add_trace(
         go.Scatter(
             x=qubit_X_data.amplitude,
-            y=np.unwrap(np.angle(X_exp + 1.0j * Y_exp)) / 2 / np.pi / 20,
+            y=np.unwrap(phase),
             name="phase",
         ),
         row=2,
         col=1,
     )
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=qubit_Y_data.amplitude,
-    #         y=np.unwrap(
-    #             np.angle(qubit_Y_data.voltage_i + 1.0j * qubit_Y_data.voltage_q)
-    #         ),
-    #         name="Y",
-    #         legendgroup="Y",
-    #         showlegend=False,
+    scipy.signal.savgol_filter(phase / 2 / np.pi, 13, 3, deriv=1, delta=0.001)
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_X_data.amplitude,
+            y=np.unwrap(phase) / 2 / np.pi / data.flux_pulse_duration,
+            name="Detuning [GHz]",
+        ),
+        row=3,
+        col=1,
+    )
 
-    #     ),
-    #     row=2,
-    #     col=1,
-    # )
-
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=qubit_X_data.amplitude,
-    #         y=pop_x,
-    #         legendgroup="X",
-    #         showlegend=False,
-
-    #     ),
-    #     row=2,
-    #     col=1,
-    # )
-
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=qubit_Y_data.amplitude,
-    #         y=pop_y,
-    #         legendgroup="Y",
-    #         showlegend=False,
-    #     ),
-    #     row=2,
-    #     col=1,
-    # )
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=qubit_X_data.amplitude,
-    #         y=detuning,
-    #         name="detuning",
-    #         legendgroup="Detuning",
-    #     ),
-    #     row=2,
-    #     col=2,
-    # )
-
+    pol = np.polyfit(
+        qubit_X_data.amplitude,
+        np.unwrap(phase) / 2 / np.pi / data.flux_pulse_duration,
+        deg=2,
+    )
+    print(pol)
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_X_data.amplitude,
+            y=pol[2]
+            + qubit_X_data.amplitude * pol[1]
+            + qubit_X_data.amplitude**2 * pol[0],
+            name="Fit Detuning [GHz]",
+        ),
+        row=3,
+        col=1,
+    )
     fig.update_layout(
-        xaxis1_title="Flux pulse amplitude [a.u.]",
+        xaxis3_title="Flux pulse amplitude [a.u.]",
         yaxis1_title="Prob of 1",
         yaxis2_title="Phase [rad]",
-        yaxis3_title="Detuning [Hz]",
+        yaxis3_title="Detuning [GHz]",
     )
     return [fig], fitting_report
 
