@@ -28,7 +28,7 @@ class FlippingSignalParameters(Parameters):
     unrolling: bool = False
     """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
     Defaults to ``False``."""
-    detuning: Optional[float] = 0
+    detuning: float = 0
     """Amplitude detuning."""
 
 
