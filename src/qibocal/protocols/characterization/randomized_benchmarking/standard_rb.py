@@ -18,7 +18,7 @@ from .circuit_tools import add_inverse_layer, add_measurement_layer, layer_circu
 from .fitting import exp1B_func, fit_exp1B_func
 from .utils import data_uncertainties, number_to_str, random_clifford
 
-NPULSES_PER_CLIFFORD = 1.875
+NPULSES_PER_CLIFFORD = 23 * 2 / 24  # 1.875
 
 
 class Depthsdict(TypedDict):
@@ -135,7 +135,7 @@ class RB_Generator:
         Generates a random index within the range of the given gate list.
 
         Parameters:
-        - gate_list (list): Dict of gates.
+        - gate_list (list): List of gates.
 
         Returns:
         - int: Random index.
