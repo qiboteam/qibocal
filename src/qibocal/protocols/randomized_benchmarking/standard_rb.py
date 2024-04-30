@@ -12,7 +12,7 @@ from ..utils import table_dict, table_html
 from .fitting import exp1B_func, fit_exp1B_func
 from .utils import RBData, data_uncertainties, number_to_str, rb_acquisition
 
-NPULSES_PER_CLIFFORD = 1.875
+NPULSES_PER_CLIFFORD = 23 * 2 / 24  # 1.875
 
 
 class Depthsdict(TypedDict):
@@ -73,6 +73,74 @@ class StandardRBResult(Results):
     # FIXME: fix this after https://github.com/qiboteam/qibocal/pull/597
     def __contains__(self, qubit: QubitId):
         return True
+
+
+class RB_Generator:
+    """
+    This class generates random single qubit cliffords for randomized benchmarking.
+    """
+
+    def __init__(self, seed):
+        self.seed = seed
+        self.local_state = (
+            np.random.default_rng(seed)
+            if seed is None or isinstance(seed, int)
+            else seed
+        )
+
+    def random_index(self, gate_list):
+        """
+        Generates a random index within the range of the given gate list.
+
+        Parameters:
+        - gate_list (list): List of gates.
+
+        Returns:
+        - int: Random index.
+        """
+        return self.local_state.integers(0, len(gate_list), 1)
+
+    def layer_gen(self):
+        """
+        Returns:
+        - Gate: Random single-qubit clifford .
+        """
+        return random_clifford(self.random_index)
+
+
+def random_circuits(
+    depth: int,
+    targets: list[QubitId],
+    niter,
+    rb_gen,
+    noise_model=None,
+) -> Iterable:
+    """Returns single-qubit random self-inverting Clifford circuits.
+
+    Args:
+        params (StandardRBParameters): Parameters of the RB protocol.
+        targets (list[QubitId]):
+            list of qubits the circuit is executed on.
+        nqubits (int, optional): Number of qubits of the resulting circuits.
+            If ``None``, sets ``len(qubits)``. Defaults to ``None``.
+
+    Returns:
+        Iterable: The iterator of circuits.
+    """
+
+    circuits = []
+    indexes = defaultdict(list)
+    for _ in range(niter):
+        for target in targets:
+            circuit, random_index = layer_circuit(rb_gen, depth, target)
+            add_inverse_layer(circuit)
+            add_measurement_layer(circuit)
+            if noise_model is not None:
+                circuit = noise_model.apply(circuit)
+            circuits.append(circuit)
+            indexes[target].append(random_index)
+
+    return circuits, indexes
 
 
 def _acquisition(
