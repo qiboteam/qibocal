@@ -152,68 +152,68 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
         ),
     )
 
-    fig.add_trace(
-        go.Heatmap(
-            z=fit.density_matrix_real,
-            x=["0", "1"],
-            y=["0", "1"],
-            hoverongaps=False,
-        ),
-        row=1,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Heatmap(
-            z=fit.density_matrix_imag,
-            x=["0", "1"],
-            y=["0", "1"],
-            hoverongaps=False,
-            showlegend=False,
-        ),
-        row=1,
-        col=2,
-    )
-
-    fig.add_trace(
-        go.Heatmap(
-            z=fit.target_density_matrix_real,
-            x=["0", "1"],
-            y=["0", "1"],
-            hoverongaps=False,
-            showlegend=False,
-        ),
-        row=2,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Heatmap(
-            z=fit.target_density_matrix_imag,
-            x=["0", "1"],
-            y=["0", "1"],
-            hoverongaps=False,
-            showlegend=False,
-        ),
-        row=2,
-        col=2,
-    )
-
-    fitting_report = table_html(
-        table_dict(
-            target,
-            [
-                "Fidelity",
-            ],
-            [
-                np.round(fit.fidelity, 4),
-            ],
+    if fit is not None:
+        fig.add_trace(
+            go.Heatmap(
+                z=fit.density_matrix_real,
+                x=["0", "1"],
+                y=["0", "1"],
+                hoverongaps=False,
+            ),
+            row=1,
+            col=1,
         )
-    )
 
-    # fig.add_trace(go.Bar(x=["X", "Y", "Z"], y=samples, name="Hardware"))
-    # fig.update_layout(barmode="group")
-    return [fig], fitting_report
+        fig.add_trace(
+            go.Heatmap(
+                z=fit.density_matrix_imag,
+                x=["0", "1"],
+                y=["0", "1"],
+                hoverongaps=False,
+                showlegend=False,
+            ),
+            row=1,
+            col=2,
+        )
+
+        fig.add_trace(
+            go.Heatmap(
+                z=fit.target_density_matrix_real,
+                x=["0", "1"],
+                y=["0", "1"],
+                hoverongaps=False,
+                showlegend=False,
+            ),
+            row=2,
+            col=1,
+        )
+
+        fig.add_trace(
+            go.Heatmap(
+                z=fit.target_density_matrix_imag,
+                x=["0", "1"],
+                y=["0", "1"],
+                hoverongaps=False,
+                showlegend=False,
+            ),
+            row=2,
+            col=2,
+        )
+
+        fitting_report = table_html(
+            table_dict(
+                target,
+                [
+                    "Fidelity",
+                ],
+                [
+                    np.round(fit.fidelity, 4),
+                ],
+            )
+        )
+
+        return [fig], fitting_report
+    return [], ""
 
 
 state_tomography = Routine(_acquisition, _fit, _plot)
