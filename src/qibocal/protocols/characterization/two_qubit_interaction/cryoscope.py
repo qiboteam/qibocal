@@ -124,12 +124,12 @@ def _acquisition(
 
         rx90_pulses[qubit] = platform.create_RX90_pulse(
             qubit,
-            start=params.duration_max + params.padding,
+            start=initial_pulses[qubit].finish + params.duration_max + params.padding,
         )
 
         ry90_pulses[qubit] = platform.create_RX90_pulse(
             qubit,
-            start=params.duration_max + params.padding,
+            start=initial_pulses[qubit].finish + params.duration_max + params.padding,
             relative_phase=np.pi / 2,
         )
 

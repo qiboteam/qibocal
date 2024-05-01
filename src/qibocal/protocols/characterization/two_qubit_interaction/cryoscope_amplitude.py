@@ -153,13 +153,17 @@ def _acquisition(
         # rotate around the X axis RX(-pi/2) to measure Y component
         rx90_pulses[qubit] = platform.create_RX90_pulse(
             qubit,
-            start=flux_pulses[qubit].finish + params.padding,
+            start=initial_pulses[qubit].finish
+            + flux_pulses[qubit].finish
+            + params.padding,
             # relative_phase=np.pi,
         )
         # rotate around the Y axis RX(-pi/2) to measure X component
         ry90_pulses[qubit] = platform.create_RX90_pulse(
             qubit,
-            start=flux_pulses[qubit].finish + params.padding,
+            start=initial_pulses[qubit].finish
+            + flux_pulses[qubit].finish
+            + params.padding,
             relative_phase=np.pi / 2,
         )
 
