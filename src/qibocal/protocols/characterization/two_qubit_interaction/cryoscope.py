@@ -14,9 +14,8 @@ from qibolab.execution_parameters import (
     ExecutionParameters,
 )
 from qibolab.platform import Platform
-from qibolab.pulses import FluxPulse, PulseSequence, Rectangular
+from qibolab.pulses import Custom, FluxPulse, PulseSequence
 from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 
@@ -33,11 +32,11 @@ class CryoscopeParameters(Parameters):
     """Flux pulse duration step."""
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
-    padding: int = 20
+    padding: int = 0
     """Time padding before and after flux pulse."""
     nshots: Optional[int] = None
     """Number of shots per point."""
-
+    unrolling: bool = False
     # flux_pulse_shapes
     # TODO support different shapes, for now only rectangular
 
@@ -55,35 +54,82 @@ CryoscopeType = np.dtype(
 """Custom dtype for Cryoscope."""
 
 
+def generate_waveform():
+    zeros = np.zeros(4)
+    ones = np.ones(4)
+
+    return np.concatenate(
+        [zeros, ones, ones, zeros, zeros, ones, ones, zeros, ones, zeros]
+    )
+
+
+def generate_sequences(
+    platform: Platform,
+    qubit: QubitId,
+    waveform: np.ndarray,
+    duration: int,
+    params: CryoscopeParameters,
+):
+
+    ry90 = platform.create_RX90_pulse(
+        qubit,
+        start=0,
+        relative_phase=np.pi / 2,
+    )
+
+    # apply a detuning flux pulse
+    flux_pulse = FluxPulse(
+        start=ry90.finish + params.padding,
+        duration=duration,
+        amplitude=params.flux_pulse_amplitude,
+        shape=Custom(waveform[:duration]),
+        channel=platform.qubits[qubit].flux.name,
+        qubit=qubit,
+    )
+
+    rx90 = platform.create_RX90_pulse(
+        qubit,
+        start=ry90.finish + params.duration_max + params.padding,
+    )
+
+    ry90_second = platform.create_RX90_pulse(
+        qubit,
+        start=ry90.finish + params.duration_max + params.padding,
+        relative_phase=np.pi / 2,
+    )
+
+    ro = platform.create_qubit_readout_pulse(
+        qubit, start=max(rx90.finish, ry90_second.finish)
+    )
+
+    # create the sequences
+    sequence_x = PulseSequence(
+        ry90,
+        flux_pulse,
+        ry90_second,
+        ro,
+    )
+
+    sequence_y = PulseSequence(
+        ry90,
+        flux_pulse,
+        rx90,
+        ro,
+    )
+    return sequence_x, sequence_y
+
+
 @dataclass
 class CryoscopeData(Data):
     """Cryoscope acquisition outputs."""
 
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
+    waveform: list
+    """Flux pulse waveform"""
     data: dict[tuple[QubitId, str], npt.NDArray[CryoscopeType]] = field(
         default_factory=dict
     )
-
-    def register_qubit(
-        self,
-        qubit: QubitId,
-        tag: str,
-        durs: npt.NDArray[np.int32],
-        prob_0: npt.NDArray[np.float64],
-        prob_1: npt.NDArray[np.float64],
-    ):
-        """Store output for a single qubit."""
-
-        size = len(durs)
-        durations = durs
-
-        ar = np.empty(size, dtype=CryoscopeType)
-        ar["duration"] = durations.ravel()
-        ar["prob_0"] = prob_0.ravel()
-        ar["prob_1"] = prob_1.ravel()
-
-        self.data[(qubit, tag)] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -92,75 +138,35 @@ def _acquisition(
     targets: list[QubitId],
 ) -> CryoscopeData:
     # define sequences of pulses to be executed
-    sequence_x = PulseSequence()
-    sequence_y = PulseSequence()
+    data = CryoscopeData(
+        flux_pulse_amplitude=params.flux_pulse_amplitude,
+        waveform=generate_waveform().tolist(),
+    )
 
-    initial_pulses = {}
-    flux_pulses = {}
-    rx90_pulses = {}
-    ry90_pulses = {}
-    ro_pulses = {}
-
-    for qubit in targets:
-
-        initial_pulses[qubit] = platform.create_RX90_pulse(
-            qubit,
-            start=0,
-            relative_phase=np.pi / 2,
-        )
-
-        # TODO add support for flux pulse shapes
-        flux_pulse_shape = Rectangular()
-        flux_start = initial_pulses[qubit].finish + params.padding
-        # apply a detuning flux pulse
-        flux_pulses[qubit] = FluxPulse(
-            start=flux_start,
-            duration=params.duration_min,
-            amplitude=params.flux_pulse_amplitude,
-            shape=flux_pulse_shape,
-            channel=platform.qubits[qubit].flux.name,
-            qubit=qubit,
-        )
-
-        rx90_pulses[qubit] = platform.create_RX90_pulse(
-            qubit,
-            start=initial_pulses[qubit].finish + params.duration_max + params.padding,
-        )
-
-        ry90_pulses[qubit] = platform.create_RX90_pulse(
-            qubit,
-            start=initial_pulses[qubit].finish + params.duration_max + params.padding,
-            relative_phase=np.pi / 2,
-        )
-
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=rx90_pulses[qubit].finish  # to be fixed
-        )
-
-        # create the sequences
-        sequence_x.add(
-            initial_pulses[qubit],
-            flux_pulses[qubit],
-            ry90_pulses[qubit],  # rotate around Y to measure X CHECK
-            ro_pulses[qubit],
-        )
-        sequence_y.add(
-            initial_pulses[qubit],
-            flux_pulses[qubit],
-            rx90_pulses[qubit],  # rotate around X to measure Y CHECK
-            ro_pulses[qubit],
-        )
+    sequences_x = []
+    sequences_x_ro_pulses = []
+    sequences_y = []
+    sequences_y_ro_pulses = []
 
     duration_range = np.arange(
         params.duration_min, params.duration_max, params.duration_step
     )
 
-    dur_sweeper = Sweeper(
-        Parameter.duration,
-        duration_range,
-        pulses=list(flux_pulses.values()),
-        type=SweeperType.ABSOLUTE,
-    )
+    for duration in duration_range:
+        sequence_x = PulseSequence()
+        sequence_y = PulseSequence()
+
+        for qubit in targets:
+            qubit_sequence_x, qubit_sequence_y = generate_sequences(
+                platform, qubit, np.array(data.waveform), duration, params
+            )
+            sequence_x += qubit_sequence_x
+            sequence_y += qubit_sequence_y
+
+        sequences_x.append(sequence_x)
+        sequences_y.append(sequence_y)
+        sequences_x_ro_pulses.append(sequence_x.ro_pulses)
+        sequences_y_ro_pulses.append(sequence_y.ro_pulses)
 
     options = ExecutionParameters(
         nshots=params.nshots,
@@ -168,17 +174,54 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    data = CryoscopeData(flux_pulse_amplitude=params.flux_pulse_amplitude)
-    for sequence, tag in [(sequence_x, "MX"), (sequence_y, "MY")]:
-        results = platform.sweep(sequence, options, dur_sweeper)
+    if params.unrolling:
+        results_x = platform.execute_pulse_sequences(sequences_x, options)
+        results_y = platform.execute_pulse_sequences(sequences_y, options)
+    elif not params.unrolling:
+        results_x = [
+            platform.execute_pulse_sequence(sequence, options)
+            for sequence in sequences_x
+        ]
+        results_y = [
+            platform.execute_pulse_sequence(sequence, options)
+            for sequence in sequences_y
+        ]
+
+    for ig, (duration, ro_pulses) in enumerate(
+        zip(duration_range, sequences_x_ro_pulses)
+    ):
         for qubit in targets:
-            result = results[ro_pulses[qubit].serial]
+            serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
+            if params.unrolling:
+                result = results_x[serial][ig]
+            else:
+                result = results_x[ig][serial]
             data.register_qubit(
-                qubit,
-                tag,
-                duration_range,
-                result.probability(state=0),
-                result.probability(state=1),
+                CryoscopeType,
+                (qubit, "MX"),
+                dict(
+                    duration=np.array([duration]),
+                    prob_0=result.probability(state=0),
+                    prob_1=result.probability(state=1),
+                ),
+            )
+    for ig, (duration, ro_pulses) in enumerate(
+        zip(duration_range, sequences_y_ro_pulses)
+    ):
+        for qubit in targets:
+            serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
+            if params.unrolling:
+                result = results_y[serial][ig]
+            else:
+                result = results_y[ig][serial]
+            data.register_qubit(
+                CryoscopeType,
+                (qubit, "MY"),
+                dict(
+                    duration=np.array([duration]),
+                    prob_0=result.probability(state=0),
+                    prob_1=result.probability(state=1),
+                ),
             )
 
     return data
@@ -191,7 +234,6 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     """Cryoscope plots."""
     figures = []
-
     fitting_report = f"Cryoscope of qubit {target}"
 
     fig = make_subplots(
@@ -237,7 +279,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
         col=1,
     )
 
-    coeffs = [-9.94466439e00, -5.88747144e-02, 2.31272909e-05]
+    coeffs = [-9.92541793e00, -5.49829460e-02, 6.79568367e-05]
     fig.add_trace(
         go.Scatter(
             x=qubit_X_data.duration,
@@ -257,7 +299,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
             x=qubit_X_data.duration,
             y=np.polyval(
                 coeffs,
-                (data.flux_pulse_amplitude) * np.ones(len(qubit_X_data.duration)),
+                (data.flux_pulse_amplitude) * np.array(data.waveform),
             ),
             name="fit",
         ),
