@@ -1,6 +1,8 @@
+import json
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -21,8 +23,13 @@ from .utils import table_dict, table_html
 class StateTomographyParameters(Parameters):
     """Tomography input parameters"""
 
-    circuit: Optional[Circuit] = None
+    circuit: Optional[Union[str, Circuit]] = None
     """Circuit to prepare initial state"""
+
+    def __post_init__(self):
+        if isinstance(self.circuit, str):
+            raw = json.loads((Path.cwd() / self.circuit).read_text())
+            self.circuit = Circuit.from_dict(raw)
 
 
 TomographyType = np.dtype(
@@ -77,6 +84,8 @@ def _acquisition(
 
     if params.circuit is None:
         params.circuit = Circuit(len(targets), wire_names=[str(i) for i in targets])
+    else:
+        params.circuit.wire_names = [str(i) for i in targets]
 
     data = StateTomographyData()
 

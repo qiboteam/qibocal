@@ -1,7 +1,5 @@
 platform: [dummy, dummy_couplers]
 
-targets: [0,1]
-
 actions:
 
   - id: time of flight
@@ -811,3 +809,9 @@ actions:
     operation: state_tomography
     parameters:
       nshots: 1024
+
+  - id: tomography from file
+    operation: state_tomography
+    parameters:
+      nshots: 1024
+      circuit: tests/circuit.json
