@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import numpy as np
 import plotly.graph_objects as go
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
@@ -8,6 +9,7 @@ from qibocal.auto.operation import Results, Routine
 from qibocal.protocols.characterization.randomized_benchmarking.utils import (
     rb_acquisition,
 )
+from qibocal.protocols.characterization.utils import table_dict, table_html
 
 from .standard_rb import RBData, StandardRBParameters
 
@@ -106,11 +108,10 @@ def _plot(
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["niter", "nshots", "uncertainties"],
+                ["niter", "nshots"],
                 [
                     data.niter,
                     data.nshots,
-                    data.uncertainties,
                 ],
             )
         )
