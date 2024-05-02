@@ -4,21 +4,21 @@ import plotly.graph_objects as go
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import Results, Routine
 from qibocal.protocols.characterization.randomized_benchmarking.utils import (
     rb_acquisition,
 )
 
-from .standard_rb import FilteredRBResult, RBData, StandardRBResult
+from .standard_rb import RBData, StandardRBParameters
 
 
 @dataclass
-class FilteredRBParameters(StandardRBParamters):
+class FilteredRBParameters(StandardRBParameters):
     """Filtered Randomized Benchmarking runcard inputs."""
 
 
 @dataclass
-class FilteredRBResult(StandardRBResult):
+class FilteredRBResult(Results):
     """Filtered RB outputs."""
 
 
@@ -55,7 +55,7 @@ def _fit(data: RBData) -> FilteredRBResult:
     Returns:
         FilteredRBResult: Aggregated and processed data.
     """
-    pass
+    return FilteredRBResult()
 
 
 def _plot(
@@ -72,7 +72,56 @@ def _plot(
     Returns:
         tuple[list[go.Figure], str]:
     """
-    pass
+
+    qubit = target
+    fig = go.Figure()
+    fitting_report = ""
+    x = data.depths
+    raw_data = data.extract_probabilities(qubit)
+    y = np.mean(raw_data, axis=1)
+    raw_depths = [[depth] * data.niter for depth in data.depths]
+
+    fig.add_trace(
+        go.Scatter(
+            x=np.hstack(raw_depths),
+            y=np.hstack(raw_data),
+            line=dict(color="#6597aa"),
+            mode="markers",
+            marker={"opacity": 0.2, "symbol": "square"},
+            name="iterations",
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=y,
+            line=dict(color="#aa6464"),
+            mode="markers",
+            name="average",
+        )
+    )
+
+    if fit is not None:
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                ["niter", "nshots", "uncertainties"],
+                [
+                    data.niter,
+                    data.nshots,
+                    data.uncertainties,
+                ],
+            )
+        )
+
+    fig.update_layout(
+        showlegend=True,
+        xaxis_title="Circuit depth",
+        yaxis_title="Survival Probability",
+    )
+
+    return [fig], fitting_report
 
 
 filtered_rb = Routine(_acquisition, _fit, _plot)

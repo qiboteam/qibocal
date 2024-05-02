@@ -1,10 +1,18 @@
+from dataclasses import dataclass, field
 from numbers import Number
-from typing import Optional, Union
+from typing import Iterable, Optional, Union
 
 import numpy as np
+import numpy.typing as npt
 from qibo import gates
+from qibo.backends import GlobalBackend
+from qibolab.platform import defaultdict
+from qibolab.qubits import QubitId
 
+from qibocal.auto.operation import Data, Parameters
 from qibocal.protocols.characterization.utils import significant_digit
+
+from .circuit_tools import add_inverse_layer, add_measurement_layer, layer_circuit
 
 SINGLE_QUBIT_CLIFFORDS = {
     # Virtual gates
@@ -209,11 +217,47 @@ def random_circuits(
     return circuits, indexes
 
 
+RBType = np.dtype(
+    [
+        ("samples", np.int32),
+    ]
+)
+"""Custom dtype for RB."""
+
+
+@dataclass
+class RBData(Data):
+    """The output of the acquisition function."""
+
+    depths: list
+    """Circuits depths."""
+    uncertainties: Optional[float]
+    """Parameters uncertainties."""
+    seed: Optional[int]
+    nshots: int
+    """Number of shots."""
+    niter: int
+    """Number of iterations for each depth."""
+    data: dict[QubitId, npt.NDArray[RBType]] = field(default_factory=dict)
+    """Raw data acquired."""
+    circuits: dict[QubitId, list[list[int]]] = field(default_factory=dict)
+    """Clifford gate indexes executed."""
+
+    def extract_probabilities(self, qubit):
+        """Extract the probabilities given `qubit`"""
+        probs = []
+        for depth in self.depths:
+            data_list = np.array(self.data[qubit, depth].tolist())
+            data_list = data_list.reshape((-1, self.nshots))
+            probs.append(np.count_nonzero(1 - data_list, axis=1) / data_list.shape[1])
+        return probs
+
+
 def rb_acquisition(
     params: Parameters,
     targets: list[QubitId],
-    add_inverse: bool = True,
-) -> RBData:
+    add_inverse_layer: bool = True,
+) -> Data:
     """RB data acquisition function.
 
     Args:
@@ -259,7 +303,7 @@ def rb_acquisition(
             params.niter,
             rb_gen,
             noise_model,
-            add_inverse,
+            add_inverse_layer,
         )
         circuits.extend(circuits_depth)
         for qubit in random_indexes.keys():

@@ -2,16 +2,15 @@ from dataclasses import dataclass, field
 from typing import Iterable, Optional, TypedDict, Union
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Parameters, Results, Routine
 
 from ..utils import table_dict, table_html
 from .fitting import exp1B_func, fit_exp1B_func
-from .utils import data_uncertainties, number_to_str, rb_acquisition
+from .utils import RBData, data_uncertainties, number_to_str, rb_acquisition
 
 NPULSES_PER_CLIFFORD = 1.875
 
@@ -54,42 +53,6 @@ class StandardRBParameters(Parameters):
             self.depths = list(
                 range(self.depths["start"], self.depths["stop"], self.depths["step"])
             )
-
-
-RBType = np.dtype(
-    [
-        ("samples", np.int32),
-    ]
-)
-"""Custom dtype for RB."""
-
-
-@dataclass
-class RBData(Data):
-    """The output of the acquisition function."""
-
-    depths: list
-    """Circuits depths."""
-    uncertainties: Optional[float]
-    """Parameters uncertainties."""
-    seed: Optional[int]
-    nshots: int
-    """Number of shots."""
-    niter: int
-    """Number of iterations for each depth."""
-    data: dict[QubitId, npt.NDArray[RBType]] = field(default_factory=dict)
-    """Raw data acquired."""
-    circuits: dict[QubitId, list[list[int]]] = field(default_factory=dict)
-    """Clifford gate indexes executed."""
-
-    def extract_probabilities(self, qubit):
-        """Extract the probabilities given `qubit`"""
-        probs = []
-        for depth in self.depths:
-            data_list = np.array(self.data[qubit, depth].tolist())
-            data_list = data_list.reshape((-1, self.nshots))
-            probs.append(np.count_nonzero(1 - data_list, axis=1) / data_list.shape[1])
-        return probs
 
 
 @dataclass
