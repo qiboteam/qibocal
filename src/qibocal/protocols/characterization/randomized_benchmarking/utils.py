@@ -44,14 +44,13 @@ SINGLE_QUBIT_CLIFFORDS = {
 SINGLE_QUBIT_CLIFFORDS_NAMES = {
     # Virtual gates
     "": gates.I,
-    # Check the Z
-    "sqrtX,sqrtMinusY,sqrtMinusX": lambda q: gates.U3(q, 0, np.pi / 2, np.pi / 2),  # Z,
+    "minusX,minusY": lambda q: gates.U3(q, 0, np.pi / 2, np.pi / 2),  # Z
+    "sqrtX,sqrtMinusY,sqrtMinusX": lambda q: gates.U3(
+        q, 0, -np.pi / 2, 0
+    ),  # gates.RZ(q, np.pi / 2),
     "sqrtX,sqrtY,sqrtMinusX": lambda q: gates.U3(
         q, 0, np.pi / 2, 0
-    ),  # gates.RZ(q, np.pi / 2),
-    "minusX,minusY": lambda q: gates.U3(
-        q, 0, -np.pi / 2, 0
-    ),  # gates.RZ(q, -np.pi / 2),
+    ),  # gates.U3(q, 0, -np.pi / 2, 0),
     # pi rotations (Check the phase from qiskit) RX(π)=−iX; RY(π)=−iY
     "minusX": lambda q: gates.U3(q, np.pi, -np.pi / 2, np.pi),  # X,
     "minusY": lambda q: gates.U3(q, np.pi, -np.pi / 2, 0),  # Y,
