@@ -52,9 +52,9 @@ SINGLE_QUBIT_CLIFFORDS_NAMES = {
     "minusX,minusY": lambda q: gates.U3(
         q, 0, -np.pi / 2, 0
     ),  # gates.RZ(q, -np.pi / 2),
-    # pi rotations
-    "minusX": lambda q: gates.U3(q, np.pi, 0, np.pi),  # X,
-    "minusY": lambda q: gates.U3(q, np.pi, 0, 0),  # Y,
+    # pi rotations (Check the phase from qiskit) RX(π)=−iX; RY(π)=−iY
+    "minusX": lambda q: gates.U3(q, np.pi, -np.pi / 2, np.pi),  # X,
+    "minusY": lambda q: gates.U3(q, np.pi, -np.pi / 2, 0),  # Y,
     # pi/2 rotations (Check the minus)
     "sqrtX": lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),  # Rx(pi/2)
     "sqrtMinusX": lambda q: gates.U3(q, -np.pi / 2, -np.pi / 2, np.pi / 2),  # Rx(-pi/2)

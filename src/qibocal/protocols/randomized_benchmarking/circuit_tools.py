@@ -1,7 +1,7 @@
 """Collection of function to generate qibo circuits."""
 
-from typing import Callable
 import pathlib
+from typing import Callable
 
 import numpy as np
 from qibo import gates
@@ -14,6 +14,7 @@ from qibocal.protocols.characterization.randomized_benchmarking.utils import (
     TWO_QUBIT_CLIFFORDS,
     find_cliffords,
 )
+
 path = pathlib.Path(__file__).parent / "2qubitCliffsInv.npz"
 CLIFFORD_MATRICES_INV = np.load(path)
 
@@ -111,9 +112,9 @@ def add_inverse_2q_layer(circuit: Circuit):
     Args:
         circuit (Circuit): circuit
     """
-    
+
     if circuit.depth > 0:
-        clifford = circuit.unitary().round(3)
+        clifford = circuit.unitary()
         clifford_inv = np.linalg.inv(clifford).round(3)
         try:
             clifford_inv += 0.0 + 0.0j
@@ -121,25 +122,12 @@ def add_inverse_2q_layer(circuit: Circuit):
                 np.array2string(clifford_inv, separator=",")
             ]
         except:
-            clifford_inv -= 2j*clifford_inv.imag
+            clifford_inv -= 2j * clifford_inv.imag
             clifford_inv += 0.0 + 0.0j
             index_inv = CLIFFORD_MATRICES_INV[
                 np.array2string(clifford_inv, separator=",")
             ]
-            # try:
-            #     clifford_inv = -clifford_inv
-            #     clifford_inv += 0.0 + 0.0j
-            #     index_inv = CLIFFORD_MATRICES_INV[
-            #         np.array2string(clifford_inv, separator=",")
-            #     ]
-            # except:
-            #     clifford_inv -= 2j*clifford_inv.imag
-            #     clifford_inv += 0.0 + 0.0j
-            #     index_inv = CLIFFORD_MATRICES_INV[
-            #         np.array2string(clifford_inv, separator=",")
-            #     ]
-        
-            
+
     clifford = TWO_QUBIT_CLIFFORDS[str(index_inv)]
 
     gate_list = clifford.split(",")
