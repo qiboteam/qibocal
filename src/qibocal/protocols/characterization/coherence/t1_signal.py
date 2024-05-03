@@ -5,7 +5,7 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
+from qibolab.pulses import Delay, PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
@@ -80,15 +80,18 @@ def _acquisition(
     # create a sequence of pulses for the experiment
     # RX - wait t - MZ
     qd_pulses = {}
+    delays = {}
     ro_pulses = {}
     sequence = PulseSequence()
     for qubit in targets:
-        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].duration
+        qd_pulses[qubit] = platform.qubits[qubit].native_gates.RX
+        ro_pulses[qubit] = platform.qubits[qubit].native_gates.MZ
+        delays[qubit] = Delay(
+            duration=qd_pulses[qubit].duration, channel=ro_pulses[qubit].channel
         )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
+        sequence.append(qd_pulses[qubit])
+        sequence.append(delays[qubit])
+        sequence.append(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
     # wait time before readout
@@ -99,9 +102,9 @@ def _acquisition(
     )
 
     sweeper = Sweeper(
-        Parameter.start,
+        Parameter.duration,
         ro_wait_range,
-        [ro_pulses[qubit] for qubit in targets],
+        [delays[qubit] for qubit in targets],
         type=SweeperType.ABSOLUTE,
     )
 
@@ -122,7 +125,7 @@ def _acquisition(
 
     data = T1SignalData()
     for qubit in targets:
-        result = results[ro_pulses[qubit].serial]
+        result = results[ro_pulses[qubit].id]
         if params.single_shot:
             _waits = np.array(len(result.magnitude) * [ro_wait_range])
         else:

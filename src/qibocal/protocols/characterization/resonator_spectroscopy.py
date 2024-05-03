@@ -129,7 +129,7 @@ def _acquisition(
     attenuations = {}
 
     for qubit in targets:
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
+        ro_pulses[qubit] = platform.qubits[qubit].native_gates.MZ
 
         if params.amplitude is not None:
             ro_pulses[qubit].amplitude = params.amplitude
@@ -145,7 +145,7 @@ def _acquisition(
             attenuation = None
 
         attenuations[qubit] = attenuation
-        sequence.add(ro_pulses[qubit])
+        sequence.append(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
@@ -177,7 +177,7 @@ def _acquisition(
 
     # retrieve the results for every qubit
     for qubit in targets:
-        result = results[ro_pulses[qubit].serial]
+        result = results[ro_pulses[qubit].id]
         # store the results
         data.register_qubit(
             ResSpecType,

@@ -4,7 +4,7 @@ import numpy as np
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
+from qibolab.pulses import Delay, PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
@@ -59,21 +59,23 @@ def _acquisition(
     # create a sequence of pulses for the experiment
     # RX90 - t - RX90 - MZ
     ro_pulses = {}
-    RX90_pulses1 = {}
-    RX90_pulses2 = {}
+    qd_delays = {}
+    ro_delays = {}
     sequence = PulseSequence()
-    for qubit in targets:
-        RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
-        RX90_pulses2[qubit] = platform.create_RX90_pulse(
-            qubit,
-            start=RX90_pulses1[qubit].finish,
+    for q in targets:
+        qubit = platform.qubits[q]
+        qd_pulse = qubit.native_gates.RX90
+        qd_delays[q] = Delay(duration=16, channel=qubit.drive.name)
+        ro_delays[q] = Delay(duration=16, channel=qubit.readout.name)
+        ro_pulses[q] = qubit.native_gates.MZ
+        sequence.append(qd_pulse)
+        sequence.append(qd_delays[q])
+        sequence.append(qd_pulse)
+        sequence.append(
+            Delay(duration=2 * qd_pulse.duration, channel=qubit.readout.name)
         )
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=RX90_pulses2[qubit].finish
-        )
-        sequence.add(RX90_pulses1[qubit])
-        sequence.add(RX90_pulses2[qubit])
-        sequence.add(ro_pulses[qubit])
+        sequence.append(ro_delays[q])
+        sequence.append(ro_pulses[q])
 
     # define the parameter to sweep and its range:
     waits = np.arange(
@@ -84,9 +86,9 @@ def _acquisition(
     )
 
     sweeper = Sweeper(
-        Parameter.start,
+        Parameter.duration,
         waits,
-        [RX90_pulses2[qubit] for qubit in targets],
+        [qd_delays[q] for q in targets] + [ro_delays[q] for q in targets],
         type=SweeperType.ABSOLUTE,
     )
 
@@ -106,7 +108,7 @@ def _acquisition(
 
     data = T2SignalData()
     for qubit in targets:
-        result = results[ro_pulses[qubit].serial]
+        result = results[ro_pulses[qubit].id]
         if params.single_shot:
             _waits = np.array(len(result.magnitude) * [waits])
         else:

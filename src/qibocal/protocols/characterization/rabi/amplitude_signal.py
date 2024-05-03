@@ -1,11 +1,11 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
+from qibolab.pulses import Delay, PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
@@ -28,7 +28,7 @@ class RabiAmplitudeVoltParameters(Parameters):
     """Maximum amplitude multiplicative factor."""
     step_amp_factor: float
     """Step amplitude multiplicative factor."""
-    pulse_length: Optional[float]
+    pulse_length: Optional[float] = None
     """RX pulse duration [ns]."""
 
 
@@ -75,16 +75,18 @@ def _acquisition(
     ro_pulses = {}
     durations = {}
     for qubit in targets:
-        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+        qd_pulses[qubit] = platform.qubits[qubit].native_gates.RX
         if params.pulse_length is not None:
-            qd_pulses[qubit].duration = params.pulse_length
+            qd_pulses[qubit] = replace(qd_pulses[qubit], duration=params.pulse_length)
 
         durations[qubit] = qd_pulses[qubit].duration
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
+        ro_pulses[qubit] = platform.qubits[qubit].native_gates.MZ
+
+        sequence.append(qd_pulses[qubit])
+        sequence.append(
+            Delay(duration=durations[qubit], channel=ro_pulses[qubit].channel)
         )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
+        sequence.append(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
     # qubit drive pulse amplitude
@@ -114,7 +116,7 @@ def _acquisition(
         sweeper,
     )
     for qubit in targets:
-        result = results[ro_pulses[qubit].serial]
+        result = results[ro_pulses[qubit].id]
         data.register_qubit(
             RabiAmpVoltType,
             (qubit),
