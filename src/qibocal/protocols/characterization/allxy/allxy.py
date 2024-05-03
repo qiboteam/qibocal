@@ -27,7 +27,7 @@ class AllXYResults(Results):
     """AllXY outputs."""
 
 
-AllXYType = np.dtype([("prob", np.float64), ("gate", "<U5")])
+AllXYType = np.dtype([("prob", np.float64), ("gate", "<U5"), ("errors", np.float64)])
 
 
 @dataclass
@@ -108,11 +108,21 @@ def _acquisition(
         for qubit in targets:
             serial = ro_pulses[qubit].serial
             if params.unrolling:
-                z_proj = 2 * results[serial][ig].probability(0) - 1
+                prob = results[serial][ig].probability(0)
+                z_proj = 2 * prob - 1
             else:
-                z_proj = 2 * results[ig][serial].probability(0) - 1
+                prob = results[ig][serial].probability(0)
+                z_proj = 2 * prob - 1
+
+            errors = 2 * np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
-                AllXYType, (qubit), dict(prob=np.array([z_proj]), gate=np.array([gate]))
+                AllXYType,
+                (qubit),
+                dict(
+                    prob=np.array([z_proj]),
+                    gate=np.array([gate]),
+                    errors=np.array([errors]),
+                ),
             )
 
     # finally, save the remaining data
@@ -224,11 +234,19 @@ def _plot(data: AllXYData, target: QubitId, fit: AllXYResults = None):
     fig = go.Figure()
 
     qubit_data = data[target]
+    error_bars = qubit_data.errors
+    probs = qubit_data.prob
+    gates = qubit_data.gate
 
     fig.add_trace(
         go.Scatter(
-            x=qubit_data.gate,
-            y=qubit_data.prob,
+            x=gates,
+            y=probs,
+            error_y=dict(
+                type="data",
+                array=error_bars,
+                visible=True,
+            ),
             mode="markers",
             text=gatelist,
             textposition="bottom center",
