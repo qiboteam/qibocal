@@ -13,6 +13,7 @@ from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
+from ....auto.transpile import dummy_transpiler, execute_transpiled_circuits
 from ..utils import table_dict, table_html
 from .circuit_tools import add_inverse_layer, add_measurement_layer, layer_circuit
 from .fitting import exp1B_func, fit_exp1B_func
@@ -94,6 +95,7 @@ class RBData(Data):
             data_list = np.array(self.data[qubit, depth].tolist())
             data_list = data_list.reshape((-1, self.nshots))
             probs.append(np.count_nonzero(1 - data_list, axis=1) / data_list.shape[1])
+        print(probs, self.depths)
         return probs
 
 
@@ -174,6 +176,7 @@ def random_circuits(
     indexes = defaultdict(list)
     for _ in range(niter):
         for target in targets:
+            print(target)
             circuit, random_index = layer_circuit(rb_gen, depth, target)
             add_inverse_layer(circuit)
             add_measurement_layer(circuit)
@@ -206,6 +209,7 @@ def _acquisition(
     """
 
     backend = GlobalBackend()
+    print(targets)
     # For simulations, a noise model can be added.
     noise_model = None
     if params.noise_model is not None:
@@ -238,11 +242,22 @@ def _acquisition(
             depth, qubits_ids, params.niter, rb_gen, noise_model
         )
         circuits.extend(circuits_depth)
+        print(circuits)
         for qubit in random_indexes.keys():
             indexes[(qubit, depth)] = random_indexes[qubit]
+    print(targets)
+    transpiler = dummy_transpiler(backend)
+    qubit_map = [[i] for i in targets] * (len(params.depths) * params.niter)
+    print("DDDDDDDDDDDDDDDDDDDDDDDDDD", qubit_map, len(qubit_map), len(circuits))
     # Execute the circuits
     if params.unrolling:
-        executed_circuits = backend.execute_circuits(circuits, nshots=params.nshots)
+        executed_circuits = execute_transpiled_circuits(
+            circuits,
+            qubit_maps=qubit_map,
+            backend=backend,
+            nshots=params.nshots,
+            transpiler=transpiler,
+        )  # TODO: fix
     else:
         executed_circuits = [
             backend.execute_circuit(circuit, nshots=params.nshots)
@@ -251,8 +266,9 @@ def _acquisition(
 
     for circ in executed_circuits:
         samples.extend(circ.samples())
+        # print(circ.samples())
     samples = np.reshape(samples, (-1, nqubits, params.nshots))
-
+    print(samples)
     for i, depth in enumerate(params.depths):
         index = (i * params.niter, (i + 1) * params.niter)
         for nqubit, qubit_id in enumerate(targets):
@@ -287,6 +303,7 @@ def _fit(data: RBData) -> StandardRBResult:
         # Extract depths and probabilities
         x = data.depths
         probs = data.extract_probabilities(qubit)
+        print(probs)
         samples_mean = np.mean(probs, axis=1)
         # TODO: Should we use the median or the mean?
         median = np.median(probs, axis=1)
