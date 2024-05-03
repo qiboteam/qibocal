@@ -116,17 +116,14 @@ def add_inverse_2q_layer(circuit: Circuit):
     if circuit.depth > 0:
         clifford = circuit.unitary()
         clifford_inv = np.linalg.inv(clifford).round(3)
-        try:
+
+        global_phases = [1 + 0j, -1 + 0j, 0 + 1j, 0 - 1j]
+        clifford_invs = [clifford_inv * global_phase for global_phase in global_phases]
+        for clifford_inv in clifford_invs:
             clifford_inv += 0.0 + 0.0j
-            index_inv = CLIFFORD_MATRICES_INV[
-                np.array2string(clifford_inv, separator=",")
-            ]
-        except:
-            clifford_inv -= 2j * clifford_inv.imag
-            clifford_inv += 0.0 + 0.0j
-            index_inv = CLIFFORD_MATRICES_INV[
-                np.array2string(clifford_inv, separator=",")
-            ]
+            clifford_inv_str = np.array2string(clifford_inv, separator=",")
+            if clifford_inv_str in CLIFFORD_MATRICES_INV.files:
+                index_inv = CLIFFORD_MATRICES_INV[clifford_inv_str]
 
     clifford = TWO_QUBIT_CLIFFORDS[str(index_inv)]
 
