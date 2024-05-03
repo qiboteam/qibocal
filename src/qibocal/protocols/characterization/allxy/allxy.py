@@ -134,13 +134,15 @@ def add_gate_pair_pulses_to_sequence(
     gates,
     qubit,
     sequence,
+    sequence_delay=0,
+    readout_delay=0,
     beta_param=None,
 ):
     pulse_duration = platform.create_RX_pulse(qubit, start=0).duration
     # All gates have equal pulse duration
 
     sequenceDuration = 0
-    pulse_start = 0
+    pulse_start = sequence_delay
 
     for gate in gates:
         if gate == "I":
@@ -215,7 +217,9 @@ def add_gate_pair_pulses_to_sequence(
         pulse_start = pulse_duration
 
     # RO pulse starting just after pair of gates
-    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=sequenceDuration + 4)
+    ro_pulse = platform.create_qubit_readout_pulse(
+        qubit, start=sequenceDuration + 4 + readout_delay
+    )
     sequence.add(ro_pulse)
     return sequence, ro_pulse
 
