@@ -493,9 +493,9 @@ actions:
   - id: resonator_depletion_tuning
     operation: allxy_resonator_depletion_tuning
     parameters:
-      delay_start: 1000
-      delay_end: 3000
-      delay_step: 1000
+      delay_start: 1000.0
+      delay_end: 3000.0
+      delay_step: 1000.0
       nshots: 10
 
   - id: drag_pulse_tuning
