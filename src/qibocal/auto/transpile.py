@@ -24,7 +24,7 @@ def execute_transpiled_circuits(
     if backend.name == "qibolab":
         nhardware_qubits = backend.platform.nqubits
         for circuit, qubit_map in zip(circuits, qubit_maps):
-            new_circuit = padd_circuit(nhardware_qubits, circuit, qubit_map)
+            new_circuit = pad_circuit(nhardware_qubits, circuit, qubit_map)
             transpiled_circ, _ = transpiler(new_circuit)
             new_circuits.append(transpiled_circ)
     else:
@@ -50,7 +50,7 @@ def execute_transpiled_circuit(
     """
     if backend.name == "qibolab":
         nhardware_qubits = backend.platform.nqubits
-        new_circuit = padd_circuit(nhardware_qubits, circuit, qubit_map)
+        new_circuit = pad_circuit(nhardware_qubits, circuit, qubit_map)
         transpiled_circ, _ = transpiler(new_circuit)
     else:
         transpiled_circ = circuit
@@ -70,7 +70,7 @@ def dummy_transpiler(backend) -> Optional[Passes]:
     return None
 
 
-def padd_circuit(nqubits, circuit: Circuit, qubit_map: list[int]) -> Circuit:
+def pad_circuit(nqubits, circuit: Circuit, qubit_map: list[int]) -> Circuit:
     """
     Pad `circuit` in a new one with `nqubits`qubits, according to `qubit_map`.
     `qubit_map` is a list `[i, j, k, ...]`, where the i-th physical qubit is mapped
