@@ -10,14 +10,14 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
-from qibocal.config import raise_error
-from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
-
-from ....auto.transpile import (
+from qibocal.auto.transpile import (
     dummy_transpiler,
     execute_transpiled_circuit,
     execute_transpiled_circuits,
 )
+from qibocal.config import raise_error
+from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
+
 from ..utils import table_dict, table_html
 from .circuit_tools import add_inverse_layer, add_measurement_layer, layer_circuit
 from .fitting import exp1B_func, fit_exp1B_func
@@ -255,7 +255,7 @@ def _acquisition(
             backend=backend,
             nshots=params.nshots,
             transpiler=transpiler,
-        )  # TODO: fix
+        )
     else:
         executed_circuits = [
             execute_transpiled_circuit(
