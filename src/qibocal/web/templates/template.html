@@ -63,11 +63,11 @@
               Actions
             </button>
             <div class="collapse show" id="actions-collapse">
-              {% for task_uid in report.history  %}
+              {% for task_id in report.history  %}
                 <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                   <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                     <li><a class="link-dark d-inline-flex text-decoration-none rounded"
-                        href="#{{report.routine_name(*task_uid)}}"> {{report.routine_name(*task_uid)}}</a></li>
+                        href="#{{report.routine_name(task_id)}}"> {{report.routine_name(task_id)}}</a></li>
                   </ul>
                 </ul>
               {% endfor %}
@@ -129,19 +129,19 @@
         </h3>
 
 
-      {% for task_uid in report.history %}
-      <div id="{{report.routine_name(*task_uid)}}" style="scroll-margin-top: 4em;">
+      {% for task_id in report.history %}
+      <div id="{{report.routine_name(task_id)}}" style="scroll-margin-top: 4em;">
         <h4
           class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-          {{ report.routine_name(*task_uid) }}</h4>
-        {% for qubit in report.routine_targets(task_uid) %}
+          {{ report.routine_name(task_id) }}</h4>
+        {% for qubit in report.routine_targets(task_id) %}
         <div id="{{ routine }}-{{ iteration }}-{{ qubit }}" style="scroll-margin-top: 4em;">
             <h5
               class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
               {{ header }} - Qubit {{ qubit }}</h5>
 
 
-            {% set figures, fitting_report = report.plotter(report.history[task_uid], qubit) %}
+            {% set figures, fitting_report = report.plotter(report.history[task_id], qubit) %}
             {{ fitting_report }}
             {{ figures }}
 

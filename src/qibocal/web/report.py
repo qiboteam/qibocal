@@ -26,10 +26,9 @@ class Report:
     """Plotting function to generate html."""
 
     @staticmethod
-    def routine_name(routine, iteration):
+    def routine_name(routine):
         """Prettify routine's name for report headers."""
-        name = routine.replace("_", " ").title()
-        return f"{name} - {iteration}"
+        return routine.title()
 
     def routine_targets(self, task_id: TaskId):
         """Get local targets parameter from Task if available otherwise use global one."""
