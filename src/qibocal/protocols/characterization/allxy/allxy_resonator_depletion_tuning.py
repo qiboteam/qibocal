@@ -81,10 +81,11 @@ def _acquisition(
                     gates,
                     qubit,
                     sequence,
-                    sequence_delay=delay_param + sequence.duration,
-                    readout_delay=1000,
+                    sequence_delay=delay_param,
+                    readout_delay=996,  # becuase we already add a +4
                 )
 
+            print(sequence)
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(
                 sequence,
