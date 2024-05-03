@@ -808,3 +808,14 @@ actions:
       bias_width: 0.2
       bias_step:  0.05
       drive_amplitude: 0.5
+
+  - id: cz_sweep
+    operation: cz_sweep
+    targets: [[3,2]]
+    parameters:
+      flux_pulse_amplitude_min: -0.2522
+      flux_pulse_amplitude_max: -0.2518
+      flux_pulse_amplitude_step: 0.00005
+      theta_start: 0
+      theta_end: 14
+      theta_step: 1
