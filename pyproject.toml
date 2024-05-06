@@ -17,8 +17,8 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
-qibolab = { git = "https://github.com/qiboteam/qibolab.git", branch = "fix_execute_circuits"} # TODO: restore this line
-qibo = { git = "https://github.com/qiboteam/qibo.git", branch = "fix_transpiler"} # TODO: restore this line
+qibolab = "^0.1.6"
+qibo = "^0.2.7"
 numpy = "^1.26.4"
 scipy = "^1.10.1"
 pandas = "^1.4.3"
