@@ -249,7 +249,7 @@ def _acquisition(
     qubit_maps = [[i] for i in targets] * (len(params.depths) * params.niter)
     # Execute the circuits
     if params.unrolling:
-        executed_circuits = execute_transpiled_circuits(
+        _, executed_circuits = execute_transpiled_circuits(
             circuits,
             qubit_maps=qubit_maps,
             backend=backend,
@@ -264,7 +264,7 @@ def _acquisition(
                 backend=backend,
                 nshots=params.nshots,
                 transpiler=transpiler,
-            )
+            )[1]
             for circuit, qubit_map in zip(circuits, qubit_maps)
         ]
 

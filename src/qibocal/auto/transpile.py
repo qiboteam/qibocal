@@ -29,7 +29,7 @@ def execute_transpiled_circuits(
             new_circuits.append(transpiled_circ)
     else:
         new_circuits = circuits
-    return backend.execute_circuits(
+    return new_circuits, backend.execute_circuits(
         new_circuits, initial_states=initial_states, nshots=nshots
     )
 
@@ -54,7 +54,7 @@ def execute_transpiled_circuit(
         transpiled_circ, _ = transpiler(new_circuit)
     else:
         transpiled_circ = circuit
-    return backend.execute_circuit(
+    return transpiled_circ, backend.execute_circuit(
         transpiled_circ, initial_state=initial_state, nshots=nshots
     )
 

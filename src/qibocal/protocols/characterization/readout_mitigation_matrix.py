@@ -134,7 +134,7 @@ def _acquisition(
                     if bit == "1":
                         c.add(gates.X(qubits[q]))
                     c.add(gates.M(qubits[q]))
-                results = execute_transpiled_circuit(
+                _, results = execute_transpiled_circuit(
                     c, qubit_map, backend, nshots=params.nshots, transpiler=transpiler
                 )
                 data.add(tuple(qubits), state, dict(results.frequencies()))

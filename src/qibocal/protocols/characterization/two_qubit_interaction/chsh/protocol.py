@@ -233,7 +233,7 @@ def _acquisition_circuits(
                     native=params.native,
                 )
                 for basis, circuit in chsh_circuits.items():
-                    result = execute_transpiled_circuit(
+                    _, result = execute_transpiled_circuit(
                         circuit,
                         nshots=params.nshots,
                         transpiler=transpiler,
