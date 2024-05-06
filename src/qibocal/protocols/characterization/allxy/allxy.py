@@ -141,9 +141,8 @@ def add_gate_pair_pulses_to_sequence(
     pulse_duration = platform.create_RX_pulse(qubit, start=0).duration
     # All gates have equal pulse duration
 
-    print(sequence.duration, sequence_delay)
-    sequence_duration = sequence.duration + sequence_delay
-    pulse_start = sequence.duration + sequence_delay
+    sequence_duration = sequence.get_qubit_pulses(qubit).duration + sequence_delay
+    pulse_start = sequence.get_qubit_pulses(qubit).duration + sequence_delay
 
     for gate in gates:
         if gate == "I":
@@ -210,7 +209,7 @@ def add_gate_pair_pulses_to_sequence(
             sequence.add(RY90_pulse)
 
         sequence_duration = sequence_duration + pulse_duration
-        pulse_start = sequence.duration
+        pulse_start = sequence_duration
 
     # RO pulse starting just after pair of gates
     ro_pulse = platform.create_qubit_readout_pulse(
