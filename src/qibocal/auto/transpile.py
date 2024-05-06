@@ -19,6 +19,7 @@ def execute_transpiled_circuits(
     ones with a number of qubits equal to the one provided by the platform.
     At the end, the circuits are transpiled, executed and the results returned.
     For the qubit map look :func:`dummy_transpiler`.
+    This function returns the list of transpiled circuits and the execution results.
     """
     new_circuits = []
     if backend.name == "qibolab":
@@ -47,6 +48,7 @@ def execute_transpiled_circuit(
     one with a number of qubits equal to the one provided by the platform.
     At the end, the circuit is transpiled, executed and the results returned.
     For the qubit map look :func:`dummy_transpiler`.
+    This function returns the transpiled circuit and the execution results.
     """
     if backend.name == "qibolab":
         nhardware_qubits = backend.platform.nqubits
