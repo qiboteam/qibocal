@@ -81,11 +81,12 @@ def _acquisition(
                     gates,
                     qubit,
                     sequence,
-                    sequence_delay=delay_param,
-                    readout_delay=996,  # becuase we already add a +4
+                    sequence_delay=int(
+                        delay_param
+                    ),  # We need conversion to int due to devices for now
+                    readout_delay=996,  # because we already add a +4
                 )
 
-            print(sequence)
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(
                 sequence,
