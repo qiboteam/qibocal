@@ -104,7 +104,7 @@ def _acquisition(
                 gate = "-".join(gates)
                 data.register_qubit(
                     allxy.AllXYType,
-                    (qubit, delay_param),
+                    (qubit, float(delay_param)),
                     dict(prob=np.array([z_proj]), gate=np.array([gate])),
                 )
     return data
