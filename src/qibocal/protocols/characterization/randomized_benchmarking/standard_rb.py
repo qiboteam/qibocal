@@ -11,7 +11,6 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.auto.transpile import (
-    dummy_transpiler,
     execute_transpiled_circuit,
     execute_transpiled_circuits,
 )
@@ -245,7 +244,6 @@ def _acquisition(
         circuits.extend(circuits_depth)
         for qubit in random_indexes.keys():
             indexes[(qubit, depth)] = random_indexes[qubit]
-    transpiler = dummy_transpiler(backend)
     qubit_maps = [[i] for i in targets] * (len(params.depths) * params.niter)
     # Execute the circuits
     if params.unrolling:
@@ -254,7 +252,6 @@ def _acquisition(
             qubit_maps=qubit_maps,
             backend=backend,
             nshots=params.nshots,
-            transpiler=transpiler,
         )
     else:
         executed_circuits = [
@@ -263,7 +260,6 @@ def _acquisition(
                 qubit_map=qubit_map,
                 backend=backend,
                 nshots=params.nshots,
-                transpiler=transpiler,
             )[1]
             for circuit, qubit_map in zip(circuits, qubit_maps)
         ]
