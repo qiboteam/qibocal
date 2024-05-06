@@ -475,6 +475,7 @@ actions:
   - id: readout characterization
     operation: readout_characterization
     parameters:
+      delay: 1000
       nshots: 10
 
   - id: allXY
@@ -489,7 +490,6 @@ actions:
       beta_param: null
       unrolling: True
       nshots: 10
-
 
   - id: drag_pulse_tuning
     operation: drag_tuning

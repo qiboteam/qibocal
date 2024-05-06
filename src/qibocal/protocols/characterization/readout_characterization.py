@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -22,6 +23,9 @@ from qibocal.protocols.characterization.utils import (
 @dataclass
 class ReadoutCharacterizationParameters(Parameters):
     """ReadoutCharacterization runcard inputs."""
+
+    delay: Optional[float] = None
+    """Delay between readouts, could account for resonator deplation or not [ns]."""
 
 
 @dataclass
@@ -55,6 +59,9 @@ class ReadoutCharacterizationData(Data):
 
     qubit_frequencies: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
+
+    delay: Optional[float] = None
+    """Delay between readouts [ns]."""
     data: dict[tuple, npt.NDArray[ReadoutCharacterizationType]] = field(
         default_factory=dict
     )
@@ -73,7 +80,8 @@ def _acquisition(
     data = ReadoutCharacterizationData(
         qubit_frequencies={
             qubit: platform.qubits[qubit].drive_frequency for qubit in targets
-        }
+        },
+        delay=float(params.delay),
     )
 
     # FIXME: ADD 1st measurament and post_selection for accurate state preparation ?
@@ -93,7 +101,9 @@ def _acquisition(
             ro_pulses[qubit] = []
             for _ in range(2):
                 ro_pulse = platform.create_qubit_readout_pulse(qubit, start=start)
-                start += ro_pulse.duration
+                start += ro_pulse.duration + int(
+                    params.delay
+                )  # device required conversion
                 sequence.add(ro_pulse)
                 ro_pulses[qubit].append(ro_pulse)
 
@@ -236,12 +246,14 @@ def _plot(
             table_dict(
                 target,
                 [
+                    "Delay between readouts [ns]",
                     "Assignment Fidelity",
                     "Fidelity",
                     "QND",
                     "Effective Qubit Temperature [K]",
                 ],
                 [
+                    np.round(data.delay),
                     np.round(fit.assignment_fidelity[target], 6),
                     np.round(fit.fidelity[target], 6),
                     np.round(fit.qnd[target], 6),
