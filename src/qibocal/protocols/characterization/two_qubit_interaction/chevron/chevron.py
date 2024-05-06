@@ -193,35 +193,25 @@ def _fit(data: ChevronData) -> ChevronResults:
     durations = {}
     amplitudes = {}
     for pair in data.data:
-        pair_amplitude = []
-        pair_duration = []
         amps = data.amplitudes(pair)
         times = data.durations(pair)
 
-        for qubit in pair:
-            signal = (
-                data.low_frequency(pair)
-                if pair[0] == qubit
-                else data.high_frequency(pair)
-            )
-            signal_matrix = signal.reshape(len(times), len(amps)).T
+        signal = data.low_frequency(pair)
+        signal_matrix = signal.reshape(len(times), len(amps)).T
 
-            # guess amplitude computing FFT
-            amplitude, index, delta = fit_flux_amplitude(signal_matrix, amps, times)
-            # estimate duration by rabi curve at amplitude previously estimated
-            y = signal_matrix[index, :].ravel()
+        # guess amplitude computing FFT
+        amplitude, index, delta = fit_flux_amplitude(signal_matrix, amps, times)
+        # estimate duration by rabi curve at amplitude previously estimated
+        y = signal_matrix[index, :].ravel()
 
-            popt, _ = curve_fit(
-                chevron_fit, times, y, p0=[delta, 0, np.mean(y), np.mean(y)]
-            )
+        popt, _ = curve_fit(
+            chevron_fit, times, y, p0=[delta, 0, np.mean(y), np.mean(y)]
+        )
 
-            # duration can be estimated as the period of the oscillation
-            duration = 1 / (popt[0] / 2 / np.pi)
-            pair_amplitude.append(amplitude)
-            pair_duration.append(duration)
-
-        amplitudes[pair] = np.mean(pair_amplitude)
-        durations[pair] = int(np.mean(duration))
+        # duration can be estimated as the period of the oscillation
+        duration = 1 / (popt[0] / 2 / np.pi)
+        amplitudes[pair] = amplitude
+        durations[pair] = int(duration)
 
     return ChevronResults(amplitude=amplitudes, duration=durations)
 
@@ -288,7 +278,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
                     legendgroup="Voltage",
                 ),
                 row=1,
-                col=1 if measured_qubit == target[0] else 2,
+                col=1,
             )
 
     fig.update_layout(
