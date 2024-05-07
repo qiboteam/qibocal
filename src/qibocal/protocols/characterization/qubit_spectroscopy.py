@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
@@ -27,6 +26,7 @@ class QubitSpectroscopyParameters(Parameters):
     """Drive pulse duration [ns]. Same for all qubits."""
     drive_amplitude: Optional[float] = None
     """Drive pulse amplitude (optional). Same for all qubits."""
+    average: bool = True
 
 
 @dataclass
@@ -96,12 +96,7 @@ def _acquisition(
 
     results = platform.sweep(
         sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
-        ),
+        params.execution_parameters,
         sweeper,
     )
 
@@ -113,11 +108,11 @@ def _acquisition(
             ResSpecType,
             (qubit),
             dict(
-                signal=np.abs(result.average.voltage),
-                phase=np.mean(result.phase, axis=0),
-                freq=delta_frequency_range + qd_pulses[qubit].frequency,
+                signal=result.average.magnitude,
+                phase=result.average.phase,
+                freq=delta_frequency_range + ro_pulses[qubit].frequency,
                 error_signal=result.average.std,
-                error_phase=np.std(result.phase, axis=0, ddof=1),
+                error_phase=result.phase_std,
             ),
         )
     return data

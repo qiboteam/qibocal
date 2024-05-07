@@ -138,19 +138,14 @@ def _acquisition(
 
     results_1 = platform.sweep(
         sequence_1,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
+        params.execution_parameters,
         sweeper,
     )
 
     # retrieve the results for every qubit
     for qubit in targets:
         for i, results in enumerate([results_0, results_1]):
-            result = results[ro_pulses[qubit].serial]
+            result = results[ro_pulses[qubit].serial].average
             # store the results
             data.register_qubit(
                 DispersiveShiftType,

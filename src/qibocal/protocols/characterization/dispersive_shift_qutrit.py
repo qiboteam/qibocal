@@ -130,7 +130,7 @@ def _acquisition(
         )
 
         for qubit in targets:
-            result = results[qubit]
+            result = results[qubit].average
             # store the results
             data.register_qubit(
                 ResSpecType,
