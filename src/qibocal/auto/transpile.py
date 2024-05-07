@@ -23,9 +23,9 @@ def execute_transpiled_circuits(
     """
     new_circuits = []
     if backend.name == "qibolab":
-        nhardware_qubits = backend.platform.nqubits
+        platform_nqubits = backend.platform.nqubits
         for circuit, qubit_map in zip(circuits, qubit_maps):
-            new_circuit = pad_circuit(nhardware_qubits, circuit, qubit_map)
+            new_circuit = pad_circuit(platform_nqubits, circuit, qubit_map)
             transpiled_circ, _ = transpiler(new_circuit)
             new_circuits.append(transpiled_circ)
     else:
