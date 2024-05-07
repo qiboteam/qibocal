@@ -148,7 +148,6 @@ def _aquisition(
             dt=params.dt,
         )
         ordered_pair = order_pair(pair, platform)
-
         # TODO: move in function to avoid code duplications
         sweeper_amplitude = Sweeper(
             Parameter.amplitude,
@@ -156,7 +155,6 @@ def _aquisition(
             pulses=[sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
             type=SweeperType.FACTOR,
         )
-
         data.native_amplitude[ordered_pair] = (
             sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0].amplitude
         )
@@ -172,6 +170,7 @@ def _aquisition(
             sequence,
             ExecutionParameters(
                 nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
                 acquisition_type=AcquisitionType.DISCRIMINATION,
                 averaging_mode=AveragingMode.CYCLIC,
             ),

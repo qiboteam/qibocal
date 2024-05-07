@@ -190,7 +190,10 @@ def _acquisition_pulses(
                 )
                 for basis, sequence in chsh_sequences.items():
                     results = platform.execute_pulse_sequence(
-                        sequence, ExecutionParameters(nshots=params.nshots)
+                        sequence,
+                        ExecutionParameters(
+                            nshots=params.nshots, relaxation_time=params.relaxation_time
+                        ),
                     )
                     frequencies = calculate_frequencies(results, list(pair))
                     data.register_basis(pair, bell_state, basis, frequencies)

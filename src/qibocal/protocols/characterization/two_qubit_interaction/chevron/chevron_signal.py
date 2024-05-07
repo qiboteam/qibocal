@@ -123,6 +123,7 @@ def _aquisition(
             sequence,
             ExecutionParameters(
                 nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
                 acquisition_type=AcquisitionType.INTEGRATION,
                 averaging_mode=AveragingMode.CYCLIC,
             ),
