@@ -18,6 +18,8 @@ def execute_transpiled_circuits(
     If the `qibolab` backend is used, this function pads the `circuits` in new
     ones with a number of qubits equal to the one provided by the platform.
     At the end, the circuits are transpiled, executed and the results returned.
+    The input `transpiler` is optional, but it should be provided if the backend
+    is `qibolab`.
     For the qubit map look :func:`dummy_transpiler`.
     This function returns the list of transpiled circuits and the execution results.
     """
@@ -47,6 +49,8 @@ def execute_transpiled_circuit(
     If the `qibolab` backend is used, this function pads the `circuit` in new a
     one with a number of qubits equal to the one provided by the platform.
     At the end, the circuit is transpiled, executed and the results returned.
+    The input `transpiler` is optional, but it should be provided if the backend
+    is `qibolab`.
     For the qubit map look :func:`dummy_transpiler`.
     This function returns the transpiled circuit and the execution results.
     """

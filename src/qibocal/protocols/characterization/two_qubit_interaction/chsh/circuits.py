@@ -17,7 +17,7 @@ def create_bell_circuit(nqubits, qubits, theta=np.pi / 4, bell_state=0):
     Native defaults to only using GPI2 and GPI gates.
     """
     p = [0, 0]
-    c = Circuit(nqubits, wire_names=[str(q) for q in range(nqubits)])
+    c = Circuit(nqubits)
     c.add(gates.H(qubits[0]))
     c.add(gates.H(qubits[1]))
     c.add(gates.CZ(qubits[0], qubits[1]))
