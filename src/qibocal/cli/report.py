@@ -1,6 +1,6 @@
+import io
 import json
 import pathlib
-import tempfile
 from typing import Optional, Union
 
 import plotly.graph_objects as go
@@ -51,14 +51,13 @@ def plotter(
 
     """
     figures, fitting_report = generate_figures_and_report(node, target)
-    with tempfile.NamedTemporaryFile(delete=False) as temp:
-        html_list = []
-        for figure in figures:
-            figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
-            temp.seek(0)
-            fightml = temp.read().decode("utf-8")
-            html_list.append(fightml)
-
+    buffer = io.StringIO()
+    html_list = []
+    for figure in figures:
+        figure.write_html(buffer, include_plotlyjs=False, full_html=False)
+        buffer.seek(0)
+        html_list.append(buffer.read())
+    buffer.close()
     all_html = "".join(html_list)
     return all_html, fitting_report
 
