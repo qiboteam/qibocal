@@ -74,7 +74,7 @@ def dummy_transpiler(backend) -> Optional[Passes]:
 
 def pad_circuit(nqubits, circuit: Circuit, qubit_map: list[int]) -> Circuit:
     """
-    Pad `circuit` in a new one with `nqubits`qubits, according to `qubit_map`.
+    Pad `circuit` in a new one with `nqubits` qubits, according to `qubit_map`.
     `qubit_map` is a list `[i, j, k, ...]`, where the i-th physical qubit is mapped
     into the 0th logical qubit and so on.
     """
