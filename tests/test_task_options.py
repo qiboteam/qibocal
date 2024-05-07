@@ -55,7 +55,6 @@ def test_targets_argument(backend, local_targets, tmp_path):
     task = Task(runcard.actions[0])
 
     completed = task.run(
-        max_iterations=1,
         platform=runcard.platform,
         targets=TARGETS,
         mode=ExecutionMode.acquire,
