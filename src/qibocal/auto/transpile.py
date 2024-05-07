@@ -51,8 +51,8 @@ def execute_transpiled_circuit(
     This function returns the transpiled circuit and the execution results.
     """
     if backend.name == "qibolab":
-        nhardware_qubits = backend.platform.nqubits
-        new_circuit = pad_circuit(nhardware_qubits, circuit, qubit_map)
+        platform_nqubits = backend.platform.nqubits
+        new_circuit = pad_circuit(platform_nqubits, circuit, qubit_map)
         transpiled_circ, _ = transpiler(new_circuit)
     else:
         transpiled_circ = circuit
