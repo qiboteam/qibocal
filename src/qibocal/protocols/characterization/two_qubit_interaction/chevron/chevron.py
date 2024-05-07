@@ -15,6 +15,7 @@ from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.config import log
 from qibocal.protocols.characterization.utils import table_dict, table_html
 
 from ..utils import fit_flux_amplitude, order_pair
@@ -203,14 +204,17 @@ def _fit(data: ChevronData) -> ChevronResults:
         # estimate duration by rabi curve at amplitude previously estimated
         y = signal_matrix[index, :].ravel()
 
-        popt, _ = curve_fit(
-            chevron_fit, times, y, p0=[delta, 0, np.mean(y), np.mean(y)]
-        )
+        try:
+            popt, _ = curve_fit(
+                chevron_fit, times, y, p0=[delta, 0, np.mean(y), np.mean(y)]
+            )
 
-        # duration can be estimated as the period of the oscillation
-        duration = 1 / (popt[0] / 2 / np.pi)
-        amplitudes[pair] = amplitude
-        durations[pair] = int(duration)
+            # duration can be estimated as the period of the oscillation
+            duration = 1 / (popt[0] / 2 / np.pi)
+            amplitudes[pair] = amplitude
+            durations[pair] = int(duration)
+        except Exception as e:
+            log.warning(f"Chevron fit failed for pair {pair} due to {e}")
 
     return ChevronResults(amplitude=amplitudes, duration=durations)
 
