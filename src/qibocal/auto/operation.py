@@ -72,10 +72,10 @@ class Parameters:
     """Number of executions on hardware"""
     relaxation_time: float
     """Wait time for the qubit to decohere back to the `gnd` state"""
-    average: bool = False
-
-    # FIXME: this should be AcquisitionType? How to deserialize it?
-    acquisition: str = "integration"
+    averaging_mode: str = "singleshot"
+    """Matches the AveragingMode in Qibolab with lower case."""
+    acquisition_type: str = "integration"
+    """Matches the AcquisitionType in Qibolab with lower case."""
 
     @classmethod
     def load(cls, input_parameters):
@@ -104,14 +104,11 @@ class Parameters:
     @property
     def execution_parameters(self):
         """Default execution parameters."""
-        averaging_mode = (
-            AveragingMode.CYCLIC if self.average else AveragingMode.SINGLESHOT
-        )
         return ExecutionParameters(
             nshots=self.nshots,
             relaxation_time=self.relaxation_time,
-            acquisition_type=getattr(AcquisitionType, self.acquisition.upper()),
-            averaging_mode=averaging_mode,
+            acquisition_type=getattr(AcquisitionType, self.acquisition_type.upper()),
+            averaging_mode=getattr(AveragingMode, self.averaging_mode.upper()),
         )
 
 
@@ -217,10 +214,7 @@ class Data(AbstractData):
         # to be able to handle the non-sweeper case
         ar = np.empty(np.shape(data_dict[list(data_dict)[0]]), dtype=dtype)
         for key, value in data_dict.items():
-            try:
-                ar[key] = value
-            except ValueError:
-                ar[key] = len(ar) * [None]
+            ar[key] = value
 
         if data_keys in self.data:
             self.data[data_keys] = np.rec.array(
