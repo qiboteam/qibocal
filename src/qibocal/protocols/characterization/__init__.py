@@ -2,6 +2,7 @@ from enum import Enum
 
 from .allxy.allxy import allxy
 from .allxy.allxy_resonator_depletion_tuning import allxy_resonator_depletion_tuning
+from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
 from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
 from .coherence.spin_echo_signal import spin_echo_signal
@@ -94,6 +95,7 @@ class Operation(Enum):
     spin_echo = spin_echo
     spin_echo_signal = spin_echo_signal
     allxy = allxy
+    allxy_drag_pulse_tuning = allxy_drag_pulse_tuning
     drag_tuning = drag_tuning
     allxy_resonator_depletion_tuning = allxy_resonator_depletion_tuning
     flipping = flipping
