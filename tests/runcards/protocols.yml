@@ -488,6 +488,14 @@ actions:
       unrolling: True
       nshots: 10
 
+  - id: allXY drag
+    operation: allxy_drag_pulse_tuning
+    parameters:
+      beta_start: 0
+      beta_end: 0.1
+      beta_step: 0.01
+      nshots: 10
+
 
   - id: drag_pulse_tuning
     operation: drag_tuning
@@ -548,6 +556,7 @@ actions:
       nflips_max: 10
       nflips_step: 1
       nshots: 50
+      detuning: 0.1
 
   - id: flipping_signal
     operation: flipping_signal
@@ -555,6 +564,7 @@ actions:
       nflips_max: 10
       nflips_step: 1
       nshots: 50
+      detuning: 0.1
 
   - id: flipping unrolling
     operation: flipping

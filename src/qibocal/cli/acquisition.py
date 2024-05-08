@@ -38,7 +38,6 @@ def acquire(runcard, folder, force):
     (path / META).write_text(json.dumps(meta, indent=4))
 
     executor = Executor.load(runcard, path, platform, runcard.targets)
-
     # connect and initialize platform
     if platform is not None:
         platform.connect()
