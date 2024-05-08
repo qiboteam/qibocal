@@ -213,7 +213,7 @@ def add_gate_pair_pulses_to_sequence(
 
     # RO pulse starting just after pair of gates
     ro_pulse = platform.create_qubit_readout_pulse(
-        qubit, start=sequence_duration + 4 + readout_delay
+        qubit, start=sequence_duration + readout_delay
     )
 
     sequence.add(ro_pulse)

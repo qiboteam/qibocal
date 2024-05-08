@@ -77,7 +77,7 @@ def _acquisition(
                     sequence_delay=int(
                         delay_param
                     ),  # We need conversion to int due to devices for now
-                    readout_delay=996,  # because we already add a +4
+                    readout_delay=1000,
                 )
 
             # execute the pulse sequence
