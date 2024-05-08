@@ -150,25 +150,44 @@ def _plot(
 ):
     """Plotting function for QubitSpectroscopy."""
     figures, report = spectroscopy_plot(data, target, fit)
+    show_error_bars = not np.isnan(qubit_data.error_signal).any()
     if fit is not None:
-        report = table_html(
-            table_dict(
-                target,
-                [
-                    "Frequency 1->2 [Hz]",
-                    "Amplitude [a.u.]",
-                    "Anharmonicity [Hz]",
-                    "Chi2",
-                ],
-                [
-                    (fit.frequency[target], fit.error_fit_pars[target][1]),
-                    (fit.amplitude[target], fit.error_fit_pars[target][0]),
-                    (fit.anharmonicity[target], fit.error_fit_pars[target][2]),
-                    fit.chi2_reduced[target],
-                ],
-                display_error=True,
+        if show_error_bars:
+            report = table_html(
+                table_dict(
+                    target,
+                    [
+                        "Frequency 1->2 [Hz]",
+                        "Amplitude [a.u.]",
+                        "Anharmonicity [Hz]",
+                        "Chi2",
+                    ],
+                    [
+                        (fit.frequency[target], fit.error_fit_pars[target][1]),
+                        (fit.amplitude[target], fit.error_fit_pars[target][0]),
+                        (fit.anharmonicity[target], fit.error_fit_pars[target][2]),
+                        fit.chi2_reduced[target],
+                    ],
+                    display_error=True,
+                )
             )
-        )
+        else:
+            report = table_html(
+                table_dict(
+                    target,
+                    [
+                        "Frequency 1->2 [Hz]",
+                        "Amplitude [a.u.]",
+                        "Anharmonicity [Hz]",
+                    ],
+                    [
+                        fit.frequency[target],
+                        fit.amplitude[target],
+                        fit.anharmonicity[target],
+                    ],
+                    display_error=False,
+                )
+            )
 
     return figures, report
 

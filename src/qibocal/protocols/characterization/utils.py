@@ -259,39 +259,64 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
             freq = fit.frequency
 
         if data.amplitudes[qubit] is not None:
-            fitting_report = table_html(
-                table_dict(
-                    qubit,
-                    [label, "amplitude", "chi2 reduced"],
-                    [
-                        (
-                            freq[qubit],
-                            fit.error_fit_pars[qubit][1],
-                        ),
-                        (data.amplitudes[qubit], 0),
-                        fit.chi2_reduced[qubit],
-                    ],
-                    display_error=True,
-                )
-            )
-        if data.attenuations:
-            if data.attenuations[qubit] is not None:
+            if show_error_bars:
                 fitting_report = table_html(
                     table_dict(
                         qubit,
-                        [label, "amplitude", "attenuation", "chi2 reduced"],
+                        [label, "amplitude", "chi2 reduced"],
                         [
                             (
                                 freq[qubit],
                                 fit.error_fit_pars[qubit][1],
                             ),
                             (data.amplitudes[qubit], 0),
-                            (data.attenuations[qubit], 0),
                             fit.chi2_reduced[qubit],
                         ],
                         display_error=True,
                     )
                 )
+            else:
+                fitting_report = table_html(
+                    table_dict(
+                        qubit,
+                        [label, "amplitude"],
+                        [freq[qubit], data.amplitudes[qubit]],
+                        display_error=False,
+                    )
+                )
+
+        if data.attenuations:
+            if data.attenuations[qubit] is not None:
+                if show_error_bars:
+                    fitting_report = table_html(
+                        table_dict(
+                            qubit,
+                            [label, "amplitude", "attenuation"],
+                            [
+                                (
+                                    freq[qubit],
+                                    fit.error_fit_pars[qubit][1],
+                                ),
+                                (data.amplitudes[qubit], 0),
+                                (data.attenuations[qubit], 0),
+                                fit.chi2_reduced[qubit],
+                            ],
+                            display_error=True,
+                        )
+                    )
+                else:
+                    fitting_report = table_html(
+                        table_dict(
+                            qubit,
+                            [label, "amplitude", "attenuation"],
+                            [
+                                freq[qubit],
+                                data.amplitudes[qubit],
+                                data.attenuations[qubit],
+                            ],
+                            display_error=False,
+                        )
+                    )
 
     fig.update_layout(
         showlegend=True,
