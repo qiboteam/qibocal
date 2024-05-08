@@ -150,7 +150,7 @@ def _plot(
 ):
     """Plotting function for QubitSpectroscopy."""
     figures, report = spectroscopy_plot(data, target, fit)
-    show_error_bars = not np.isnan(qubit_data.error_signal).any()
+    show_error_bars = not np.isnan(data[target].error_signal).any()
     if fit is not None:
         if show_error_bars:
             report = table_html(
