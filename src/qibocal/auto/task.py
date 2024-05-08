@@ -9,7 +9,7 @@ from typing import Optional
 from qibolab.platform import Platform
 from qibolab.serialize import dump_platform
 
-from ..config import log
+from ..config import log, raise_error
 from ..protocols.characterization import Operation
 from .mode import ExecutionMode
 from .operation import Data, DummyPars, Results, Routine, dummy_operation
@@ -29,6 +29,8 @@ PLATFORM_DIR = "platform"
 class Task:
     action: Action
     """Action object parsed from Runcard."""
+    iteration: int = 0
+    """Task iteration."""
 
     @property
     def targets(self) -> Targets:
@@ -39,6 +41,11 @@ class Task:
     def id(self) -> Id:
         """Task Id."""
         return self.action.id
+
+    @property
+    def uid(self) -> TaskId:
+        """Task unique Id."""
+        return (self.action.id, self.iteration)
 
     @property
     def operation(self):
@@ -60,11 +67,17 @@ class Task:
 
     def run(
         self,
+        max_iterations: int,
         platform: Platform = None,
         targets: Targets = list,
         mode: ExecutionMode = None,
         folder: Path = None,
     ):
+        if self.iteration > max_iterations:
+            raise_error(
+                ValueError,
+                f"Maximum number of iterations {max_iterations} reached!",
+            )
 
         if self.targets is None:
             self.action.targets = targets
@@ -137,7 +150,7 @@ class Completed:
     @property
     def datapath(self):
         """Path contaning data and results file for task."""
-        path = self.folder / "data" / f"{self.task.id}"
+        path = self.folder / "data" / f"{self.task.id}_{self.task.iteration}"
         if not path.is_dir():
             path.mkdir(parents=True)
         return path

@@ -28,8 +28,6 @@ class FlippingSignalParameters(Parameters):
     unrolling: bool = False
     """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
     Defaults to ``False``."""
-    detuning: float = 0
-    """Amplitude detuning."""
 
 
 @dataclass
@@ -38,10 +36,8 @@ class FlippingSignalResults(Results):
 
     amplitude: dict[QubitId, tuple[float, Optional[float]]]
     """Drive amplitude for each qubit."""
-    delta_amplitude: dict[QubitId, tuple[float, Optional[float]]]
-    """Difference in amplitude between initial value and fit."""
-    delta_amplitude_detuned: dict[QubitId, tuple[float, Optional[float]]]
-    """Difference in amplitude between detuned value and fit."""
+    amplitude_factors: dict[QubitId, tuple[float, Optional[float]]]
+    """Drive amplitude correction factor for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
@@ -55,37 +51,10 @@ class FlippingSignalData(Data):
 
     resonator_type: str
     """Resonator type."""
-    detuning: float
-    """Amplitude detuning."""
     pi_pulse_amplitudes: dict[QubitId, float]
     """Pi pulse amplitudes for each qubit."""
     data: dict[QubitId, npt.NDArray[FlippingType]] = field(default_factory=dict)
     """Raw data acquired."""
-
-
-def flipping_sequence(platform: Platform, qubit: QubitId, detuning: float, flips: int):
-
-    sequence = PulseSequence()
-    RX90_pulse = platform.create_RX90_pulse(qubit, start=0)
-    sequence.add(RX90_pulse)
-    # execute sequence RX(pi/2) - [RX(pi) - RX(pi)] from 0...flips times - RO
-    start1 = RX90_pulse.duration
-    drive_frequency = platform.qubits[qubit].native_gates.RX.frequency
-    for _ in range(flips):
-        RX_pulse1 = platform.create_RX_pulse(qubit, start=start1)
-        RX_pulse1.frequency = drive_frequency + detuning
-        start2 = start1 + RX_pulse1.duration
-        RX_pulse2 = platform.create_RX_pulse(qubit, start=start2)
-        RX_pulse2.frequency = drive_frequency + detuning
-
-        sequence.add(RX_pulse1)
-        sequence.add(RX_pulse2)
-        start1 = start2 + RX_pulse2.duration
-
-    # add ro pulse at the end of the sequence
-    sequence.add(platform.create_qubit_readout_pulse(qubit, start=start1))
-
-    return sequence
 
 
 def _acquisition(
@@ -110,7 +79,6 @@ def _acquisition(
 
     data = FlippingSignalData(
         resonator_type=platform.resonator_type,
-        detuning=params.detuning,
         pi_pulse_amplitudes={
             qubit: platform.qubits[qubit].native_gates.RX.amplitude for qubit in targets
         },
@@ -129,13 +97,26 @@ def _acquisition(
     for flips in flips_sweep:
         # create a sequence of pulses for the experiment
         sequence = PulseSequence()
+        ro_pulses = {}
         for qubit in targets:
-            sequence += flipping_sequence(
-                platform=platform, qubit=qubit, detuning=params.detuning, flips=flips
-            )
+            RX90_pulse = platform.create_RX90_pulse(qubit, start=0)
+            sequence.add(RX90_pulse)
+            # execute sequence RX(pi/2) - [RX(pi) - RX(pi)] from 0...flips times - RO
+            start1 = RX90_pulse.duration
+            for _ in range(flips):
+                RX_pulse1 = platform.create_RX_pulse(qubit, start=start1)
+                start2 = start1 + RX_pulse1.duration
+                RX_pulse2 = platform.create_RX_pulse(qubit, start=start2)
+                sequence.add(RX_pulse1)
+                sequence.add(RX_pulse2)
+                start1 = start2 + RX_pulse2.duration
+
+            # add ro pulse at the end of the sequence
+            ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=start1)
+            sequence.add(ro_pulses[qubit])
 
         sequences.append(sequence)
-        all_ro_pulses.append(sequence.ro_pulses)
+        all_ro_pulses.append(ro_pulses)
 
     # execute the pulse sequence
     if params.unrolling:
@@ -148,7 +129,7 @@ def _acquisition(
 
     for ig, (flips, ro_pulses) in enumerate(zip(flips_sweep, all_ro_pulses)):
         for qubit in targets:
-            serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
+            serial = ro_pulses[qubit].serial
             if params.unrolling:
                 result = results[serial][0]
             else:
@@ -181,11 +162,10 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
     qubits = data.qubits
     corrected_amplitudes = {}
     fitted_parameters = {}
-    delta_amplitude = {}
-    delta_amplitude_detuned = {}
+    amplitude_correction_factors = {}
     for qubit in qubits:
         qubit_data = data[qubit]
-        detuned_pi_pulse_amplitude = data.pi_pulse_amplitudes[qubit] + data.detuning
+        pi_pulse_amplitude = data.pi_pulse_amplitudes[qubit]
         voltages = qubit_data.signal
         flips = qubit_data.flips
         y_min = np.min(voltages)
@@ -221,40 +201,34 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
                     [1, np.inf, np.inf, 2 * np.pi, np.inf],
                 ),
             )
+        except:
+            log.warning("flipping_fit: the fitting was not succesful")
+            popt = [0] * 5
 
-            translated_popt = [
-                y_min + (y_max - y_min) * popt[0],
-                (y_max - y_min)
-                * popt[1]
-                * np.exp(x_min * popt[4] * 2 * np.pi * f / (x_max - x_min)),
-                popt[2] * 2 * np.pi * f / (x_max - x_min),
-                popt[3] - x_min * 2 * np.pi * f / (x_max - x_min) * popt[2],
-                popt[4] * 2 * np.pi * f / (x_max - x_min),
-            ]
-            # TODO: this might be related to the resonator type
-            if popt[3] > np.pi / 2 and popt[3] < 3 * np.pi / 2:
-                signed_correction = translated_popt[2] / 2
-            else:
-                signed_correction = -translated_popt[2] / 2
-            # The amplitude is directly proportional to the rotation angle
-            corrected_amplitudes[qubit] = (detuned_pi_pulse_amplitude * np.pi) / (
-                np.pi + signed_correction
-            )
-            fitted_parameters[qubit] = translated_popt
-            delta_amplitude[qubit] = (
-                -signed_correction
-                * detuned_pi_pulse_amplitude
-                / (np.pi + signed_correction)
-            )
-            delta_amplitude_detuned[qubit] = delta_amplitude[qubit] - data.detuning
-        except Exception as e:
-            log.warning(f"Error in flipping fit for qubit {qubit} due to {e}.")
-
+        translated_popt = [
+            y_min + (y_max - y_min) * popt[0],
+            (y_max - y_min)
+            * popt[1]
+            * np.exp(x_min * popt[4] * 2 * np.pi * f / (x_max - x_min)),
+            popt[2] * 2 * np.pi * f / (x_max - x_min),
+            popt[3] - x_min * 2 * np.pi * f / (x_max - x_min) * popt[2],
+            popt[4] * 2 * np.pi * f / (x_max - x_min),
+        ]
+        # TODO: this might be related to the resonator type
+        if popt[3] > np.pi / 2 and popt[3] < 3 * np.pi / 2:
+            signed_correction = translated_popt[2] / 2
+        else:
+            signed_correction = -translated_popt[2] / 2
+        # The amplitude is directly proportional to the rotation angle
+        corrected_amplitudes[qubit] = (pi_pulse_amplitude * np.pi) / (
+            np.pi + signed_correction
+        )
+        fitted_parameters[qubit] = translated_popt
+        amplitude_correction_factors[qubit] = (
+            signed_correction / np.pi * pi_pulse_amplitude
+        )
     return FlippingSignalResults(
-        corrected_amplitudes,
-        delta_amplitude,
-        delta_amplitude_detuned,
-        fitted_parameters,
+        corrected_amplitudes, amplitude_correction_factors, fitted_parameters
     )
 
 
@@ -302,14 +276,9 @@ def _plot(data: FlippingSignalData, target, fit: FlippingSignalResults = None):
         fitting_report = table_html(
             table_dict(
                 target,
+                ["Amplitude correction factor", "Corrected amplitude [a.u.]"],
                 [
-                    "Delta amplitude [a.u.]",
-                    "Delta amplitude (with detuning) [a.u.]",
-                    "Corrected amplitude [a.u.]",
-                ],
-                [
-                    np.round(fit.delta_amplitude[target], 4),
-                    np.round(fit.delta_amplitude_detuned[target], 4),
+                    np.round(fit.amplitude_factors[target], 4),
                     np.round(fit.amplitude[target], 4),
                 ],
             )

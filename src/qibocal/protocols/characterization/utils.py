@@ -10,6 +10,7 @@ from plotly.subplots import make_subplots
 from qibolab.qubits import QubitId
 from scipy import constants
 from scipy.optimize import curve_fit
+from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Results
 from qibocal.config import log
@@ -31,10 +32,6 @@ HBAR = constants.hbar
 """Chi2 output when errors list contains zero elements"""
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
-CONFIDENCE_INTERVAL_FIRST_MASK = 99
-"""Confidence interval used to mask flux data."""
-CONFIDENCE_INTERVAL_SECOND_MASK = 70
-"""Confidence interval used to clean outliers."""
 
 
 def effective_qubit_temperature(
@@ -331,26 +328,51 @@ def fit_punchout(data: Data, fit_type: str):
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        freqs = qubit_data.freq
-        amps = getattr(qubit_data, fit_type)
-        signal = qubit_data.signal
+        freqs = np.unique(qubit_data.freq)
+        nvalues = len(np.unique(qubit_data[fit_type]))
+        nfreq = len(freqs)
+        signals = np.reshape(qubit_data.signal, (nvalues, nfreq))
         if data.resonator_type == "3D":
-            mask_freq, mask_amps = extract_feature(
-                freqs, amps, signal, "max", ci_first_mask=90
-            )
+            peak_freqs = freqs[np.argmax(signals, axis=1)]
         else:
-            mask_freq, mask_amps = extract_feature(
-                freqs, amps, signal, "min", ci_first_mask=90
-            )
+            peak_freqs = freqs[np.argmin(signals, axis=1)]
+
+        max_freq = np.max(peak_freqs)
+        min_freq = np.min(peak_freqs)
+        middle_freq = (max_freq + min_freq) / 2
+
+        freq_hp = peak_freqs[peak_freqs < middle_freq]
+        freq_lp = peak_freqs[peak_freqs >= middle_freq]
+
+        freq_hp = mode(freq_hp, keepdims=True)[0]
+        freq_lp = mode(freq_lp, keepdims=True)[0]
+
         if fit_type == "amp":
-            best_freq = np.max(mask_freq)
-            bare_freq = np.min(mask_freq)
+            if data.resonator_type == "3D":
+                ro_val = getattr(qubit_data, fit_type)[
+                    np.argmax(
+                        qubit_data.signal[np.where(qubit_data.freq == freq_lp)[0]]
+                    )
+                ]
+            else:
+                ro_val = getattr(qubit_data, fit_type)[
+                    np.argmin(
+                        qubit_data.signal[np.where(qubit_data.freq == freq_lp)[0]]
+                    )
+                ]
         else:
-            best_freq = np.min(mask_freq)
-            bare_freq = np.max(mask_freq)
-        ro_val = np.max(mask_amps[mask_freq == best_freq])
-        low_freqs[qubit] = best_freq
-        high_freqs[qubit] = bare_freq
+            high_att_max = np.max(
+                getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_hp)[0]]
+            )
+            high_att_min = np.min(
+                getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_hp)[0]]
+            )
+
+            ro_val = round((high_att_max + high_att_min) / 2)
+            ro_val = ro_val + (ro_val % 2)
+
+        low_freqs[qubit] = freq_lp.item()
+        high_freqs[qubit] = freq_hp[0]
         ro_values[qubit] = ro_val
     return [low_freqs, high_freqs, ro_values]
 
@@ -713,42 +735,3 @@ def table_html(data: dict) -> str:
     return pd.DataFrame(data).to_html(
         classes="fitting-table", index=False, border=0, escape=False
     )
-
-
-def extract_feature(
-    x: np.ndarray,
-    y: np.ndarray,
-    z: np.ndarray,
-    feat: str,
-    ci_first_mask: float = CONFIDENCE_INTERVAL_FIRST_MASK,
-    ci_second_mask: float = CONFIDENCE_INTERVAL_SECOND_MASK,
-):
-    """Extract feature using confidence intervals.
-
-    Given a dataset of the form (x, y, z) where a spike or a valley is expected,
-    this function discriminate the points (x, y) with a signal, from the pure noise
-    and return the first ones.
-
-    A first mask is construct by looking at `ci_first_mask` confidence interval for each y bin.
-    A second mask is applied by looking at `ci_second_mask` confidence interval to remove outliers.
-    `feat` could be `min` or `max`, in the first case the function will look for valleys, otherwise
-    for peaks.
-
-    """
-
-    masks = []
-    for i in np.unique(y):
-        signal_fixed_y = z[y == i]
-        min, max = np.percentile(
-            signal_fixed_y,
-            [100 - ci_first_mask, ci_first_mask],
-        )
-        masks.append(signal_fixed_y < min if feat == "min" else signal_fixed_y > max)
-
-    first_mask = np.vstack(masks).ravel()
-    min, max = np.percentile(
-        z[first_mask],
-        [100 - ci_second_mask, ci_second_mask],
-    )
-    second_mask = z[first_mask] < max if feat == "min" else z[first_mask] > min
-    return x[first_mask][second_mask], y[first_mask][second_mask]

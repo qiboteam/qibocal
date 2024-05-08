@@ -5,8 +5,8 @@ from .task import Completed
 
 
 def add_timings_to_meta(meta, history):
-    for task_id in history:
-        completed = history[task_id]
+    for task_id, iteration in history:
+        completed = history[(task_id, iteration)]
         if task_id not in meta:
             meta[task_id] = {}
 
@@ -33,6 +33,14 @@ class History(dict[tuple[Id, int], Completed]):
 
     def push(self, completed: Completed):
         """Adding completed task to history."""
-        self[completed.task.id] = completed
+        self[completed.task.uid] = completed
+
+    def iterations(self, task_id: Id):
+        """Count task id present in history."""
+        counter = 0
+        for task, _ in self:
+            if task == task_id:
+                counter += 1
+        return counter
 
     # TODO: implemet time_travel()

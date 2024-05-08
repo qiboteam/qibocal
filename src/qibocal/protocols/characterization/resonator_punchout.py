@@ -106,7 +106,7 @@ def _acquisition(
     # define the parameters to sweep and their range:
     # resonator frequency
     delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
+        -params.freq_width // 2, params.freq_width // 2, params.freq_step
     )
     freq_sweeper = Sweeper(
         Parameter.frequency,
@@ -211,6 +211,7 @@ def _plot(
         row=1,
         col=2,
     )
+
     if fit is not None:
         fig.add_trace(
             go.Scatter(

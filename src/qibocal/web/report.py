@@ -1,36 +1,29 @@
+import os
 import pathlib
-from dataclasses import dataclass
-from typing import Callable
 
-from qibocal.auto.history import History
-from qibocal.auto.task import TaskId
+from jinja2 import Environment, FileSystemLoader
+
+from qibocal import __version__
+from qibocal.cli.report import ReportBuilder
 
 WEB_DIR = pathlib.Path(__file__).parent
 STYLES = WEB_DIR / "static" / "styles.css"
 TEMPLATES = WEB_DIR / "templates"
 
 
-@dataclass
-class Report:
-    """Report generation class."""
+def create_report(path, report: ReportBuilder):
+    """Creates an HTML report for the data in the given path."""
+    with open(STYLES) as file:
+        css_styles = f"<style>\n{file.read()}\n</style>"
 
-    path: pathlib.Path
-    """Path with calibration data."""
-    targets: list
-    """Global targets."""
-    history: History
-    """History of protocols."""
-    meta: dict
-    """Meta data."""
-    plotter: Callable
-    """Plotting function to generate html."""
+    env = Environment(loader=FileSystemLoader(TEMPLATES))
+    template = env.get_template("template.html")
+    html = template.render(
+        is_static=True,
+        css_styles=css_styles,
+        version=__version__,
+        report=report,
+    )
 
-    @staticmethod
-    def routine_name(routine):
-        """Prettify routine's name for report headers."""
-        return routine.title()
-
-    def routine_targets(self, task_id: TaskId):
-        """Get local targets parameter from Task if available otherwise use global one."""
-        local_targets = self.history[task_id].task.targets
-        return local_targets if len(local_targets) > 0 else self.targets
+    with open(os.path.join(path, "index.html"), "w") as file:
+        file.write(html)
