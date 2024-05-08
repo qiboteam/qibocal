@@ -59,7 +59,7 @@ class ReadoutCharacterizationData(Data):
     qubit_frequencies: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
 
-    delay: float
+    delay: float = 0
     """Delay between readouts [ns]."""
     data: dict[tuple, npt.NDArray[ReadoutCharacterizationType]] = field(
         default_factory=dict
