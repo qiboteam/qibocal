@@ -498,7 +498,7 @@ actions:
       delay_step: 1000.0
       nshots: 10
 
-      
+
   - id: allXY drag
     operation: allxy_drag_pulse_tuning
     parameters:
