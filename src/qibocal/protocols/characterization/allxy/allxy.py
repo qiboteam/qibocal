@@ -208,7 +208,7 @@ def add_gate_pair_pulses_to_sequence(
                 )
             sequence.add(RY90_pulse)
 
-        sequence_duration = sequence_duration + pulse_duration
+        sequence_duration += pulse_duration
         pulse_start = sequence_duration
 
     # RO pulse starting just after pair of gates

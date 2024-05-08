@@ -15,7 +15,7 @@ from . import allxy
 
 
 @dataclass
-class AllXYDragParameters(Parameters):
+class AllXYResonatorParameters(Parameters):
     """AllXYDrag runcard inputs."""
 
     delay_start: float
@@ -27,12 +27,12 @@ class AllXYDragParameters(Parameters):
 
 
 @dataclass
-class AllXYDragResults(Results):
+class AllXYResonatorResults(Results):
     """AllXYDrag outputs."""
 
 
 @dataclass
-class AllXYDragData(Data):
+class AllXYResonatorData(Data):
     """AllXY acquisition outputs."""
 
     delay_param: Optional[float] = None
@@ -49,24 +49,17 @@ class AllXYDragData(Data):
 
 
 def _acquisition(
-    params: AllXYDragParameters,
+    params: AllXYResonatorParameters,
     platform: Platform,
     targets: list[QubitId],
-) -> AllXYDragData:
+) -> AllXYResonatorData:
     r"""
-    Data acquisition for allXY experiment varying delay after a measurement.
-    The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
-    is subjected to two back-to-back single-qubit gates and measured. In each round, we run 21 different gate pairs:
-    ideally, the first 5 return the qubit to |0>, the next 12 drive it to superposition state, and the last 4 put the
-    qubit in |1> state.
-
-    The AllXY iteration method allows the user to execute iteratively the list of gates playing with the drag pulse shape
-    in order to find the optimal drag pulse coefficient for pi pulses.
+    Data acquisition for allXY experiment varying delay after a measurement to characterise resonator depletion time https://arxiv.org/pdf/1604.00916.
     """
 
-    data = AllXYDragData()
+    data = AllXYResonatorData()
 
-    delays = np.arange(params.delay_start, params.delay_end, params.delay_step).round(4)
+    delays = np.arange(params.delay_start, params.delay_end, params.delay_step)
     # sweep the parameters
     for delay_param in delays:
         for gates in allxy.gatelist:
@@ -110,12 +103,12 @@ def _acquisition(
     return data
 
 
-def _fit(_data: AllXYDragData) -> AllXYDragResults:
+def _fit(_data: AllXYResonatorData) -> AllXYResonatorResults:
     """Post-processing for allXYDrag."""
-    return AllXYDragResults()
+    return AllXYResonatorResults()
 
 
-def _plot(data: AllXYDragData, target: QubitId, fit: AllXYDragResults = None):
+def _plot(data: AllXYResonatorData, target: QubitId, fit: AllXYResonatorResults = None):
     """Plotting function for allXYDrag."""
 
     figures = []
