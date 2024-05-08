@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -24,7 +23,7 @@ from qibocal.protocols.characterization.utils import (
 class ReadoutCharacterizationParameters(Parameters):
     """ReadoutCharacterization runcard inputs."""
 
-    delay: Optional[float] = None
+    delay: float = 0
     """Delay between readouts, could account for resonator deplation or not [ns]."""
 
 
@@ -60,7 +59,7 @@ class ReadoutCharacterizationData(Data):
     qubit_frequencies: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
 
-    delay: Optional[float] = None
+    delay: float
     """Delay between readouts [ns]."""
     data: dict[tuple, npt.NDArray[ReadoutCharacterizationType]] = field(
         default_factory=dict
