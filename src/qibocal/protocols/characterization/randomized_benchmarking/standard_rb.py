@@ -98,7 +98,6 @@ def _acquisition(
     return rb_acquisition(params, targets)
 
 
-
 def _fit(data: RBData) -> StandardRBResult:
     """Takes a data frame, extracts the depths and the signal and fits it with an
     exponential function y = Ap^x+B.
