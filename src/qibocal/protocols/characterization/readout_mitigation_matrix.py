@@ -5,6 +5,7 @@ import numpy as np
 import numpy.typing as npt
 import plotly.express as px
 from qibo import gates
+from qibo.backends import GlobalBackend
 from qibo.models import Circuit
 from qibolab import ExecutionParameters
 from qibolab.platform import Platform
@@ -12,6 +13,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
 from qibocal.config import log
 
 from .utils import calculate_frequencies
@@ -95,6 +97,9 @@ def _acquisition(
     data = ReadoutMitigationMatrixData(
         nshots=params.nshots, qubit_list=[list(qq) for qq in targets]
     )
+    backend = GlobalBackend()
+    transpiler = dummy_transpiler(backend)
+    qubit_map = [i for i in range(platform.nqubits)]
     for qubits in targets:
         nqubits = len(qubits)
         for i in range(2**nqubits):
@@ -129,8 +134,9 @@ def _acquisition(
                     if bit == "1":
                         c.add(gates.X(qubits[q]))
                     c.add(gates.M(qubits[q]))
-                results = c(nshots=params.nshots)
-
+                _, results = execute_transpiled_circuit(
+                    c, qubit_map, backend, nshots=params.nshots, transpiler=transpiler
+                )
                 data.add(tuple(qubits), state, dict(results.frequencies()))
     return data
 

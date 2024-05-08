@@ -8,11 +8,13 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+from qibo.backends import GlobalBackend
 from qibolab import ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
 
 from ...readout_mitigation_matrix import (
     ReadoutMitigationMatrixParameters as mitigation_params,
@@ -208,7 +210,9 @@ def _acquisition_circuits(
         bell_states=params.bell_states,
         thetas=thetas.tolist(),
     )
-
+    backend = GlobalBackend()
+    transpiler = dummy_transpiler(backend)
+    qubit_map = [i for i in range(platform.nqubits)]
     if params.apply_error_mitigation:
         mitigation_data = mitigation_acquisition(
             mitigation_params(pulses=False, nshots=params.nshots), platform, targets
@@ -229,7 +233,13 @@ def _acquisition_circuits(
                     native=params.native,
                 )
                 for basis, circuit in chsh_circuits.items():
-                    result = circuit(nshots=params.nshots)
+                    _, result = execute_transpiled_circuit(
+                        circuit,
+                        nshots=params.nshots,
+                        transpiler=transpiler,
+                        backend=backend,
+                        qubit_map=qubit_map,
+                    )
                     frequencies = result.frequencies()
                     data.register_basis(pair, bell_state, basis, frequencies)
 

@@ -144,11 +144,9 @@ def add_gate_pair_pulses_to_sequence(
 
     for gate in gates:
         if gate == "I":
-            # print("Transforming to sequence I gate")
             pass
 
         if gate == "Xp":
-            # print("Transforming to sequence Xp gate")
             if beta_param == None:
                 RX_pulse = platform.create_RX_pulse(
                     qubit,
@@ -163,7 +161,6 @@ def add_gate_pair_pulses_to_sequence(
             sequence.add(RX_pulse)
 
         if gate == "X9":
-            # print("Transforming to sequence X9 gate")
             if beta_param == None:
                 RX90_pulse = platform.create_RX90_pulse(
                     qubit,
@@ -178,7 +175,6 @@ def add_gate_pair_pulses_to_sequence(
             sequence.add(RX90_pulse)
 
         if gate == "Yp":
-            # print("Transforming to sequence Yp gate")
             if beta_param == None:
                 RY_pulse = platform.create_RX_pulse(
                     qubit,
@@ -195,7 +191,6 @@ def add_gate_pair_pulses_to_sequence(
             sequence.add(RY_pulse)
 
         if gate == "Y9":
-            # print("Transforming to sequence Y9 gate")
             if beta_param == None:
                 RY90_pulse = platform.create_RX90_pulse(
                     qubit,
