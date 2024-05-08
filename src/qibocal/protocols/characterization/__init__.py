@@ -69,16 +69,19 @@ from .resonator_spectroscopy_attenuation import (  # will be removed
 # )
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtualz
+from .z.in_progress.mixer_calibration import mixer_calibration
+from .z.in_progress.qubit_spectroscopy_with_lo import qubit_spectroscopy_with_lo
 
 # from .z.frequency_length_signal import rabi_frequency_length_signal
-# from .z.ramsey_signal import ramsey_signal
+from .z.ramsey_signal import ramsey_signal
+
 # from .z.resonator_qubit_spectroscopy import resonator_qubit_spectroscopy
 # from .z.resonator_twpa_freq import resonator_twpa_freq
 # from .z.resonator_twpa_pow import resonator_twpa_pow
 # from .z.spurious_identification import spurious_identification
 # from .z.t1_t2_vs_temperature import t1_t2_vs_temperature
-# from .z.t2 import t2
-# from .z.t2_signal import t2_signal
+from .z.t2 import t2
+from .z.t2_signal import t2_signal
 
 
 class Operation(Enum):
@@ -151,3 +154,6 @@ class Operation(Enum):
     # resonator_twpa_freq = resonator_twpa_freq
     # spurious_identification = spurious_identification
     # t1_t2_vs_temperature = t1_t2_vs_temperature
+
+    mixer_calibration = mixer_calibration
+    qubit_spectroscopy_with_lo = qubit_spectroscopy_with_lo
