@@ -15,7 +15,7 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 
-from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, table_dict, table_html
+from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, extract_feature, table_dict, table_html
 from . import utils
 
 
@@ -251,7 +251,7 @@ def _acquisition(
 
     # define the parameters to sweep and their range:
     delta_frequency_range = np.arange(
-        -params.freq_width // 2, params.freq_width // 2, params.freq_step
+        -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
     freq_sweeper = Sweeper(
         Parameter.frequency,
@@ -331,7 +331,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         frequencies = qubit_data.freq
         signal = qubit_data.signal
 
-        frequencies, biases = utils.extract_feature(frequencies, biases, signal, "min")
+        frequencies, biases = extract_feature(frequencies, biases, signal, "min")
 
         try:
             popt = curve_fit(

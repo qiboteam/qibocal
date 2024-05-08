@@ -4,11 +4,6 @@ from plotly.subplots import make_subplots
 
 from ..utils import HZ_TO_GHZ
 
-CONFIDENCE_INTERVAL_FIRST_MASK = 99
-"""Confidence interval used to mask flux data."""
-CONFIDENCE_INTERVAL_SECOND_MASK = 70
-"""Confidence interval used to clean outliers."""
-
 
 def is_crosstalk(data):
     """Check if keys are tuple which corresponds to crosstalk data structure."""
@@ -391,35 +386,6 @@ def transmon_readout_frequency_diagonal(
         g=g,
         resonator_freq=resonator_freq,
     )
-
-
-def extract_feature(freq: np.ndarray, bias: np.ndarray, signal: np.ndarray, feat: str):
-    """Extract feature using confidence intervals.
-
-    A first mask is construct by looking at 99% confidence interval for each bias bin.
-    A second mask is applied by looking at 70% confidence interval to remove outliers.
-    """
-
-    masks = []
-    for bias_bin in np.unique(bias):
-        signal_fixed_bias = signal[bias == bias_bin]
-        min, max = np.percentile(
-            signal_fixed_bias,
-            [100 - CONFIDENCE_INTERVAL_FIRST_MASK, CONFIDENCE_INTERVAL_FIRST_MASK],
-        )
-        masks.append(
-            signal_fixed_bias < min if feat == "min" else signal_fixed_bias > max
-        )
-
-    first_mask = np.vstack(masks).ravel()
-    min, max = np.percentile(
-        signal[first_mask],
-        [100 - CONFIDENCE_INTERVAL_SECOND_MASK, CONFIDENCE_INTERVAL_SECOND_MASK],
-    )
-    second_mask = (
-        signal[first_mask] < max if feat == "min" else signal[first_mask] > min
-    )
-    return freq[first_mask][second_mask], bias[first_mask][second_mask]
 
 
 def qubit_flux_dependence_fit_bounds(qubit_frequency: float, bias: np.array):
