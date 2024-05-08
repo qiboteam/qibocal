@@ -10,7 +10,7 @@ actions:
       nshots: 1024
       readout_amplitude: 0.5
 
-  - id: resonator high power high amplitude
+  - id: resonator high power high amplitude average
     operation: resonator_spectroscopy
     parameters:
       freq_width: 10_000_000
@@ -18,6 +18,16 @@ actions:
       amplitude: 0.4
       power_level: high
       nshots: 10
+
+  - id: resonator high power high amplitude single shot
+    operation: resonator_spectroscopy
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 100_000
+      amplitude: 0.4
+      power_level: high
+      nshots: 10
+      average: false
 
 
   - id: resonator high power low attenuation
@@ -71,7 +81,7 @@ actions:
       power_level: low
       nshots: 10
 
-  - id: qubit spectroscopy
+  - id: qubit spectroscopy average
     operation: qubit_spectroscopy
     parameters:
       drive_amplitude: 0.001
@@ -80,7 +90,17 @@ actions:
       freq_step: 500_000
       nshots: 10
 
-  - id: qubit spectroscopy ef
+  - id: qubit spectroscopy singleshot
+    operation: qubit_spectroscopy
+    parameters:
+      drive_amplitude: 0.001
+      drive_duration: 1000
+      freq_width: 2_000_000
+      freq_step: 500_000
+      nshots: 10
+      average: false
+
+  - id: qubit spectroscopy ef average
     operation: qubit_spectroscopy_ef
     #FIXME: add RX12 for qubit 4
     targets: [0, 1, 2, 3]
@@ -90,6 +110,18 @@ actions:
       freq_width: 2_000_000
       freq_step: 500_000
       nshots: 10
+
+  - id: qubit spectroscopy ef single shot
+    operation: qubit_spectroscopy_ef
+    #FIXME: add RX12 for qubit 4
+    targets: [0, 1, 2, 3]
+    parameters:
+      drive_amplitude: 0.001
+      drive_duration: 1000
+      freq_width: 2_000_000
+      freq_step: 500_000
+      nshots: 10
+      average: false
 
 
   - id: resonator flux dependence bias
