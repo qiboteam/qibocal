@@ -6,7 +6,9 @@ import plotly.graph_objects as go
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
+
 from qibocal.auto.operation import Parameters, Results, Routine
+
 
 from ..utils import table_dict, table_html
 from .fitting import exp1B_func, fit_exp1B_func
@@ -94,6 +96,7 @@ def _acquisition(
     Returns:
         RBData: The depths, samples and ground state probability of each experiment in the scan.
     """
+
 
     return rb_acquisition(params, targets)
 
