@@ -8,10 +8,8 @@ from qibocal.protocols.characterization.randomized_benchmarking import (
     fitting,
     noisemodels,
 )
-from qibocal.protocols.characterization.randomized_benchmarking.standard_rb import (
-    RB_Generator,
-)
 from qibocal.protocols.characterization.randomized_benchmarking.utils import (
+    RB_Generator,
     number_to_str,
     random_clifford,
 )

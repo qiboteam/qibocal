@@ -10,6 +10,8 @@ from qibolab.platform import defaultdict
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters
+from qibocal.config import raise_error
+from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 from qibocal.protocols.characterization.utils import significant_digit
 
 from .circuit_tools import add_inverse_layer, add_measurement_layer, layer_circuit

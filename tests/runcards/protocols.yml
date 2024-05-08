@@ -633,6 +633,15 @@ actions:
       niter: 5
       nshots: 50
 
+  - id: filtered_rb
+    operation: filtered_rb
+    targets: [1]
+    parameters:
+      depths: [1, 2, 3, 5]
+      niter: 5
+      nshots: 50
+
+
   - id: chevron id
     operation: chevron
     targets: [[0, 2],[1,2]]
