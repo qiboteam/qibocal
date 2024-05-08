@@ -634,6 +634,13 @@ actions:
       nshots: 50
       unrolling: True
 
+  - id: filtered_rb
+    operation: filtered_rb
+    targets: [1]
+    parameters:
+      depths: [1, 2, 3, 5]
+      niter: 5
+      nshots: 50
 
   - id: standard rb
     operation: standard_rb
