@@ -137,7 +137,7 @@ def _acquisition(
             dict(
                 signal=result.average.magnitude,
                 phase=result.average.phase,
-                freq=delta_frequency_range + ro_pulses[qubit].frequency,
+                freq=delta_frequency_range + qd_pulses[qubit].frequency,
                 error_signal=result.average.std,
                 error_phase=result.phase_std,
             ),
