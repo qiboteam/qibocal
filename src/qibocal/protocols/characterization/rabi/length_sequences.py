@@ -72,6 +72,8 @@ def _acquisition(
 
         for qubit in targets:
             result = results[ro_pulses[qubit].serial]
+            print(result.magnitude)
+            print(result.phase)
             data.register_qubit(
                 RabiLenVoltType,
                 (qubit),
