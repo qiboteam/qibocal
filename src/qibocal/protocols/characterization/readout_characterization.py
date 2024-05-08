@@ -40,7 +40,9 @@ class ReadoutCharacterizationResults(Results):
     effective_temperature: dict[QubitId, tuple[float, float]]
     """Effective qubit temperature."""
     Lambda_M: dict[QubitId, float]
-    "Mapping between a given initial state to an outcome adter the measurement"
+    "Mapping between a given initial state to an outcome after the measurement"
+    Lambda_M2: dict[QubitId, float]
+    "Mapping between the outcome after the measurement and it still being that outcame after another measurement"
 
 
 ReadoutCharacterizationType = np.dtype(
@@ -147,6 +149,7 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
     effective_temperature = {}
     qnd = {}
     Lambda_M = {}
+    Lambda_M2 = {}
     for qubit in qubits:
         # 1st measurement (m=1)
         m1_state_1 = data.samples[qubit, 1, 0]
@@ -177,6 +180,12 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
             [state1_count_0_m1 / nshots, state1_count_1_m1 / nshots],
         ]
 
+        # Repeat Lambda and fidelity for each measurement ?
+        Lambda_M2[qubit] = [
+            [state0_count_0_m2 / nshots, state0_count_1_m2 / nshots],
+            [state1_count_0_m2 / nshots, state1_count_1_m2 / nshots],
+        ]
+
         assignment_fidelity[qubit] = (
             1 - (state1_count_0_m1 / nshots + state0_count_1_m1 / nshots) / 2
         )
@@ -201,7 +210,7 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
         )
 
     return ReadoutCharacterizationResults(
-        fidelity, assignment_fidelity, qnd, effective_temperature, Lambda_M
+        fidelity, assignment_fidelity, qnd, effective_temperature, Lambda_M, Lambda_M2
     )
 
 
@@ -235,12 +244,23 @@ def _plot(
     figures.append(fig)
     if fit is not None:
         fig2 = go.Figure()
-
         fig2.add_trace(
             go.Heatmap(
                 z=fit.Lambda_M[target],
             )
         )
+        fig2.update_layout(title="1st measurement statistics")
+        figures.append(fig2)
+
+        fig3 = go.Figure()
+        fig3.add_trace(
+            go.Heatmap(
+                z=fit.Lambda_M2[target],
+            )
+        )
+        fig3.update_layout(title="2nd measurement statistics")
+
+        figures.append(fig3)
         fitting_report = table_html(
             table_dict(
                 target,
@@ -262,7 +282,7 @@ def _plot(
                 ],
             )
         )
-        figures.append(fig2)
+
     return figures, fitting_report
 
 
