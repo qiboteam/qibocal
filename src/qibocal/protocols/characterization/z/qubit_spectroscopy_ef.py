@@ -9,15 +9,18 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
 from qibocal.auto.operation import Qubits, Routine
-
-from .qubit_spectroscopy import (
+from qibocal.protocols.characterization.qubit_spectroscopy import (
     QubitSpectroscopyData,
     QubitSpectroscopyParameters,
     QubitSpectroscopyResults,
     _fit,
 )
-from .resonator_spectroscopy import ResSpecType
-from .utils import spectroscopy_plot, table_dict, table_html
+from qibocal.protocols.characterization.resonator_spectroscopy import ResSpecType
+from qibocal.protocols.characterization.utils import (
+    spectroscopy_plot,
+    table_dict,
+    table_html,
+)
 
 DEFAULT_ANHARMONICITY = 300e6
 """Initial guess for anharmonicity."""

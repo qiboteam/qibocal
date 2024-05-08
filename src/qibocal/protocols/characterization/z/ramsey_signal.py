@@ -10,6 +10,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Qubits, Results, Routine
+from qibocal.protocols.characterization.utils import GHZ_TO_HZ, table_dict, table_html
 
 from .ramsey import (
     PERR_EXCEPTION,
@@ -20,7 +21,6 @@ from .ramsey import (
     fitting,
     ramsey_fit,
 )
-from .utils import GHZ_TO_HZ, table_dict, table_html
 
 
 @dataclass

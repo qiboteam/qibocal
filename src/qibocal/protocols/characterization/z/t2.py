@@ -11,9 +11,16 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-
-from ..utils import chi2_reduced, table_dict, table_html
-from . import t1, utils
+from qibocal.protocols.characterization.coherence import t1
+from qibocal.protocols.characterization.coherence.utils import (
+    exp_decay,
+    exponential_fit_probability,
+)
+from qibocal.protocols.characterization.utils import (
+    chi2_reduced,
+    table_dict,
+    table_html,
+)
 
 
 @dataclass
@@ -142,12 +149,12 @@ def _fit(data: T2Data) -> T2Results:
     .. math::
         y = p_0 - p_1 e^{-x p_2}.
     """
-    t2s, fitted_parameters = utils.exponential_fit_probability(data)
+    t2s, fitted_parameters = exponential_fit_probability(data)
     chi2 = {
         qubit: (
             chi2_reduced(
                 data[qubit].prob,
-                utils.exp_decay(data[qubit].wait, *fitted_parameters[qubit]),
+                exp_decay(data[qubit].wait, *fitted_parameters[qubit]),
                 data[qubit].error,
             ),
             np.sqrt(2 / len(data[qubit].prob)),
@@ -202,7 +209,7 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
-                y=utils.exp_decay(
+                y=exp_decay(
                     waitrange,
                     *params,
                 ),

@@ -10,9 +10,13 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
 from qibocal.auto.operation import Qubits, Routine
-
-from ..utils import table_dict, table_html
-from . import t1_signal, t2, utils
+from qibocal.protocols.characterization.coherence import t1_signal
+from qibocal.protocols.characterization.coherence.utils import (
+    exp_decay,
+    exponential_fit,
+)
+from qibocal.protocols.characterization.utils import table_dict, table_html
+from qibocal.protocols.characterization.z import t2
 
 
 @dataclass
@@ -127,7 +131,7 @@ def _fit(data: T2SignalData) -> T2SignalResults:
     .. math::
         y = p_0 - p_1 e^{-x p_2}.
     """
-    t2s, fitted_parameters = utils.exponential_fit(data)
+    t2s, fitted_parameters = exponential_fit(data)
     return T2SignalResults(t2s, fitted_parameters)
 
 
@@ -163,7 +167,7 @@ def _plot(data: T2SignalData, qubit, fit: T2SignalResults = None):
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
-                y=utils.exp_decay(
+                y=exp_decay(
                     waitrange,
                     *params,
                 ),

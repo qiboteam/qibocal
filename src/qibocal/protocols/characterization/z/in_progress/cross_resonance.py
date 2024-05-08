@@ -12,8 +12,7 @@ from scipy.signal import find_peaks
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
-
-from .. import utils
+from qibocal.protocols.characterization import utils
 
 # 2011 Gambetta - A simple all-microwave entangling gate for fixed-frequency superconducting qubits
 # https://arxiv.org/pdf/1106.0553.pdf

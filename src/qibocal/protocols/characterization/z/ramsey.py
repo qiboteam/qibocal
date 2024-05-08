@@ -14,8 +14,12 @@ from scipy.signal import find_peaks
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-
-from .utils import GHZ_TO_HZ, chi2_reduced, table_dict, table_html
+from qibocal.protocols.characterization.utils import (
+    GHZ_TO_HZ,
+    chi2_reduced,
+    table_dict,
+    table_html,
+)
 
 POPT_EXCEPTION = [0, 0, 0, 0, 0]
 """Fit parameters output to handle exceptions"""

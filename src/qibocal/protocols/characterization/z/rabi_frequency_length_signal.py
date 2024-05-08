@@ -12,8 +12,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-
-from ..utils import HZ_TO_GHZ
+from qibocal.protocols.characterization.utils import HZ_TO_GHZ
 
 
 @dataclass
