@@ -16,9 +16,6 @@ Id = NewType("Id", str)
 Targets = Union[list[QubitId], list[QubitPairId], list[tuple[QubitId, ...]]]
 """Elements to be calibrated by a single protocol."""
 
-MAX_ITERATIONS = 5
-"""Default max iterations."""
-
 
 @dataclass(config=dict(smart_union=True))
 class Action:
@@ -54,8 +51,6 @@ class Runcard:
     """Qibo backend."""
     platform: str = os.environ.get("QIBO_PLATFORM", "dummy")
     """Qibolab platform."""
-    max_iterations: int = MAX_ITERATIONS
-    """Maximum number of iterations."""
 
     def __post_init__(self):
         if self.targets is None and self.platform_obj is not None:

@@ -105,7 +105,7 @@ def _acquisition(
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
-        -params.freq_width // 2, params.freq_width // 2, params.freq_step
+        -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
 
     data = DispersiveShiftQutritData(resonator_type=platform.resonator_type)
