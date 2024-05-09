@@ -94,6 +94,7 @@ def _acquisition(
 
     if params.circuit is None:
         params.circuit = Circuit(len(targets))
+        params.circuit.add(gates.H(i) for i in range(len(targets)))
 
     backend = GlobalBackend()
     transpiler = dummy_transpiler(backend)
@@ -190,24 +191,23 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
         ),
     )
 
-    # computing limits for colorscale
-    min_re, max_re = np.min(fit.target_density_matrix_real), np.max(
-        fit.target_density_matrix_real
-    )
-    min_im, max_im = np.min(fit.target_density_matrix_imag), np.max(
-        fit.target_density_matrix_imag
-    )
-
-    # add offset
-    if np.abs(min_re - max_re) < 1e-5:
-        min_re = min_re - 0.1
-        max_re = max_re + 0.1
-
-    if np.abs(min_im - max_im) < 1e-5:
-        min_im = min_im - 0.1
-        max_im = max_im + 0.1
-
     if fit is not None:
+        # computing limits for colorscale
+        min_re, max_re = np.min(fit.target_density_matrix_real), np.max(
+            fit.target_density_matrix_real
+        )
+        min_im, max_im = np.min(fit.target_density_matrix_imag), np.max(
+            fit.target_density_matrix_imag
+        )
+
+        # add offset
+        if np.abs(min_re - max_re) < 1e-5:
+            min_re = min_re - 0.1
+            max_re = max_re + 0.1
+
+        if np.abs(min_im - max_im) < 1e-5:
+            min_im = min_im - 0.1
+            max_im = max_im + 0.1
         fig.add_trace(
             go.Heatmap(
                 z=fit.density_matrix_real[target],
