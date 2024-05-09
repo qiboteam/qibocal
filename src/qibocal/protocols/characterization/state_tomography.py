@@ -8,13 +8,14 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibo import Circuit, gates
-from qibo.backends import NumpyBackend, matrices
+from qibo.backends import GlobalBackend, NumpyBackend, matrices
 from qibo.quantum_info import fidelity
 from qibo.result import QuantumState
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import DATAFILE, Data, Parameters, Results, Routine
+from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
 
 from .utils import table_dict, table_html
 
@@ -83,9 +84,10 @@ def _acquisition(
     """Acquisition protocol for state tomography."""
 
     if params.circuit is None:
-        params.circuit = Circuit(len(targets), wire_names=[str(i) for i in targets])
-    else:
-        params.circuit.wire_names = [str(i) for i in targets]
+        params.circuit = Circuit(len(targets))
+
+    backend = GlobalBackend()
+    transpiler = dummy_transpiler(backend)
 
     data = StateTomographyData()
 
@@ -100,11 +102,18 @@ def _acquisition(
         for i in range(len(targets)):
             basis_circuit.add(gates.M(i))
         for i, target in enumerate(targets):
+            _, results = execute_transpiled_circuit(
+                basis_circuit,
+                targets,
+                backend,
+                nshots=params.nshots,
+                transpiler=transpiler,
+            )
             data.register_qubit(
                 TomographyType,
                 (target, basis),
                 dict(
-                    samples=basis_circuit(nshots=params.nshots).samples(),
+                    samples=results.samples(),
                 ),
             )
             setattr(
@@ -163,11 +172,12 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
     fig = make_subplots(
         rows=2,
         cols=2,
+        # "$\text{Plot 1}$"
         subplot_titles=(
-            "Re(rho) exp",
-            "Im(rho) exp",
-            "Re(rho) th",
-            "Im(rho) th",
+            "Re(ρ)<sub>measured</sub>",
+            "Im(ρ)<sub>measured</sub>",
+            "Re(ρ)<sub>theory</sub>",
+            "Im(ρ)<sub>theory</sub>",
         ),
     )
 
@@ -178,6 +188,7 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
                 x=["0", "1"],
                 y=["0", "1"],
                 hoverongaps=False,
+                colorscale="Viridis",
             ),
             row=1,
             col=1,
@@ -189,7 +200,8 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
                 x=["0", "1"],
                 y=["0", "1"],
                 hoverongaps=False,
-                showlegend=False,
+                showscale=False,
+                colorscale="Viridis",
             ),
             row=1,
             col=2,
@@ -201,7 +213,8 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
                 x=["0", "1"],
                 y=["0", "1"],
                 hoverongaps=False,
-                showlegend=False,
+                showscale=False,
+                colorscale="Viridis",
             ),
             row=2,
             col=1,
@@ -213,7 +226,8 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
                 x=["0", "1"],
                 y=["0", "1"],
                 hoverongaps=False,
-                showlegend=False,
+                showscale=False,
+                colorscale="Viridis",
             ),
             row=2,
             col=2,
