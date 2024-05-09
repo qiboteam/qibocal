@@ -1,5 +1,3 @@
-import json
-import pathlib
 from numbers import Number
 from typing import Optional, Union
 
@@ -98,10 +96,6 @@ SINGLE_QUBIT_CLIFFORDS_NAMES = {
     ),  # Rx(-pi/2)Ry(pi/2)Rx(-pi/2)
 }
 
-path = pathlib.Path(__file__).parent / "2qubitCliffs.json"
-with open(path) as file:
-    TWO_QUBIT_CLIFFORDS = json.load(file)
-
 
 def random_clifford(random_index_gen):
     """Generates random Clifford operator.
@@ -137,7 +131,7 @@ def find_cliffords(cz_list):
     return clifford_list
 
 
-def random_2q_clifford(random_index_gen):
+def random_2q_clifford(random_index_gen, two_qubit_cliffords):
     """Generates random two qubit Clifford operator.
 
     Args:
@@ -151,8 +145,8 @@ def random_2q_clifford(random_index_gen):
         (list of :class:`qibo.gates.Gate`): Random Clifford operator(s).
     """
 
-    random_index = int(random_index_gen(TWO_QUBIT_CLIFFORDS))
-    clifford = TWO_QUBIT_CLIFFORDS[str(random_index)]
+    random_index = int(random_index_gen(two_qubit_cliffords))
+    clifford = two_qubit_cliffords[str(random_index)]
 
     gate_list = clifford.split(",")
 
