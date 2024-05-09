@@ -135,8 +135,6 @@ def add_inverse_2q_layer(circuit: Circuit):
             if clifford_inv_str in CLIFFORD_MATRICES_INV.files:
                 index_inv = CLIFFORD_MATRICES_INV[clifford_inv_str]
 
-        print(index_inv)
-
         clifford = TWO_QUBIT_CLIFFORDS[str(index_inv)]
 
         gate_list = clifford.split(",")
