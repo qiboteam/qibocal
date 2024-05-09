@@ -72,10 +72,10 @@ class Parameters:
     """Number of executions on hardware"""
     relaxation_time: float
     """Wait time for the qubit to decohere back to the `gnd` state"""
-    averaging_mode: str = "singleshot"
-    """Matches the AveragingMode in Qibolab with lower case."""
-    acquisition_type: str = "integration"
-    """Matches the AcquisitionType in Qibolab with lower case."""
+    hardware_average: bool = False
+    """By default hardware average will be performed."""
+    classify: bool = False
+    """By default shot classification will not be performed."""
 
     @classmethod
     def load(cls, input_parameters):
@@ -104,11 +104,19 @@ class Parameters:
     @property
     def execution_parameters(self):
         """Default execution parameters."""
+        averaging_mode = (
+            AveragingMode.CYCLIC if self.hardware_average else AveragingMode.SINGLESHOT
+        )
+        acquisition_type = (
+            AcquisitionType.DISCRIMINATION
+            if self.classify
+            else AcquisitionType.INTEGRATION
+        )
         return ExecutionParameters(
             nshots=self.nshots,
             relaxation_time=self.relaxation_time,
-            acquisition_type=getattr(AcquisitionType, self.acquisition_type.upper()),
-            averaging_mode=getattr(AveragingMode, self.averaging_mode.upper()),
+            acquisition_type=acquisition_type,
+            averaging_mode=averaging_mode,
         )
 
 

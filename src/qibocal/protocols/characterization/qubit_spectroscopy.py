@@ -26,7 +26,7 @@ class QubitSpectroscopyParameters(Parameters):
     """Drive pulse duration [ns]. Same for all qubits."""
     drive_amplitude: Optional[float] = None
     """Drive pulse amplitude (optional). Same for all qubits."""
-    averaging_mode: str = "cyclic"
+    hardware_average: bool = True
     """By default hardware average will be performed."""
 
 

@@ -48,7 +48,7 @@ class ResonatorSpectroscopyParameters(Parameters):
     attenuation: Optional[int] = None
     """Readout attenuation (optional). If defined, same attenuation will be used in all qubits.
     Otherwise the default attenuation defined on the platform runcard will be used"""
-    averaging_mode: str = "cyclic"
+    hardware_average: bool = True
     """By default hardware average will be performed."""
 
     def __post_init__(self):

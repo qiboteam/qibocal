@@ -27,7 +27,7 @@ actions:
       amplitude: 0.4
       power_level: high
       nshots: 10
-      averaging_mode: cyclic
+      hardware_average: false
 
 
   - id: resonator high power low attenuation
@@ -98,7 +98,7 @@ actions:
       freq_width: 2_000_000
       freq_step: 500_000
       nshots: 10
-      averaging_mode: cyclic
+      hardware_average: false
 
   - id: qubit spectroscopy ef average
     operation: qubit_spectroscopy_ef
@@ -121,7 +121,7 @@ actions:
       freq_width: 2_000_000
       freq_step: 500_000
       nshots: 10
-      averaging_mode: cyclic
+      hardware_average: false
 
 
   - id: resonator flux dependence bias
