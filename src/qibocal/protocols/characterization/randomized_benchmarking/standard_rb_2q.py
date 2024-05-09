@@ -31,7 +31,8 @@ from .circuit_tools import add_inverse_2q_layer, add_measurement_layer, layer_2q
 from .fitting import exp1B_func, fit_exp1B_func
 from .utils import data_uncertainties, number_to_str, random_2q_clifford
 
-NPULSES_PER_CLIFFORD = 3.5  # TODO: Make a function
+NPULSES_PER_CLIFFORD = 8.6
+# NPULSES_PER_CLIFFORD = calculate_pulses_clifford(two_qubit_cliffords)
 
 
 class Depthsdict(TypedDict):

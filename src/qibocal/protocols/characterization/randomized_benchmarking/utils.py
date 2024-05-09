@@ -294,3 +294,45 @@ def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
     uncertainties = np.abs(np.vstack([data_median, data_median]) - percentile_interval)
 
     return uncertainties
+
+
+def clifford_to_pulses(clifford):
+    gate_list = clifford.split(",")
+
+    clifford_list = find_cliffords(gate_list)
+
+    pulses = 0
+    for clifford in clifford_list:
+        # Separate values containing 1
+        values_with_1 = [value for value in clifford if "1" in value]
+        values_with_1 = ",".join(values_with_1)
+
+        # Separate values containing 2
+        values_with_2 = [value for value in clifford if "2" in value]
+        values_with_2 = ",".join(values_with_2)
+
+        # Check if CZ
+        value_with_CZ = [value for value in clifford if "CZ" in value]
+        value_with_CZ = len(value_with_CZ) == 1
+
+        values_with_1 = values_with_1.replace("1", "")
+        values_with_2 = values_with_2.replace("2", "")
+
+        if SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_1](0).name != "id":
+            pulses += 2
+        if SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_2](1).name != "id":
+            pulses += 2
+        if value_with_CZ:
+            pulses += 1
+
+    return pulses
+
+
+def calculate_pulses_clifford(two_qubit_cliffords):
+    pulses = 0
+    for i, clifford in enumerate(two_qubit_cliffords.values()):
+        clifford = two_qubit_cliffords[str(i)]
+        pulses += clifford_to_pulses(clifford)
+
+    pulses_per_clifford = pulses / len(two_qubit_cliffords)
+    return pulses_per_clifford
