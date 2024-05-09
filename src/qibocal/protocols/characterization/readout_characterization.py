@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -241,26 +242,59 @@ def _plot(
                     marker=dict(size=3),
                 )
             )
+    fig.update_layout(
+        title={
+            "text": "IQ Plane",
+            "y": 0.9,
+            "x": 0.5,
+            "xanchor": "center",
+            "yanchor": "top",
+        },
+        xaxis_title="I",
+        yaxis_title="Q",
+    )
+
     figures.append(fig)
     if fit is not None:
-        fig2 = go.Figure()
-        fig2.add_trace(
+
+        fig = make_subplots(
+            rows=1,
+            cols=2,
+            subplot_titles=(
+                "1st measurement statistics",
+                "2nd measurement statistics",
+            ),
+        )
+
+        fig.add_trace(
             go.Heatmap(
                 z=fit.Lambda_M[target],
-            )
+                x=["0", "1"],
+                y=["0", "1"],
+                coloraxis="coloraxis",
+            ),
+            row=1,
+            col=1,
         )
-        fig2.update_layout(title="1st measurement statistics")
-        figures.append(fig2)
 
-        fig3 = go.Figure()
-        fig3.add_trace(
+        fig.add_trace(
             go.Heatmap(
                 z=fit.Lambda_M2[target],
-            )
+                x=["0", "1"],
+                y=["0", "1"],
+                coloraxis="coloraxis",
+            ),
+            row=1,
+            col=2,
         )
-        fig3.update_layout(title="2nd measurement statistics")
 
-        figures.append(fig3)
+        fig.update_xaxes(title_text="Measured state", row=1, col=1)
+        fig.update_xaxes(title_text="Measured state", row=1, col=2)
+        fig.update_yaxes(title_text="Prepared state", row=1, col=1)
+        fig.update_yaxes(title_text="Prepared state", row=1, col=2)
+
+        figures.append(fig)
+
         fitting_report = table_html(
             table_dict(
                 target,
