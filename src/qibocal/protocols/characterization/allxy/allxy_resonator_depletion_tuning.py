@@ -54,7 +54,11 @@ def _acquisition(
     targets: list[QubitId],
 ) -> AllXYResonatorData:
     r"""
-    Data acquisition for allXY experiment varying delay after a measurement to characterise resonator depletion time https://arxiv.org/pdf/1604.00916.
+    Data acquisition for allXY experiment varying delay after a measurement pulse to characterise resonator depletion time: https://arxiv.org/pdf/1604.00916.
+    Passive resonator depletion time: Time it takes the process by which photons inside a resonator dissipate over time without any external intervention.
+    After a measurement is performed, photons remain in the resonator and qubits errors induced if trying to drive the qubit by leftover photons due to the coupling
+    resonator-qubit inducing a shift in the qubit frequency. This experiment is used to characterise the resonator depletion time by waiting an increased delay time
+    until the allXY pattern looks right.
     """
 
     data = AllXYResonatorData()
