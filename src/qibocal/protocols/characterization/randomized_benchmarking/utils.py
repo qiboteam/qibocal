@@ -3,6 +3,7 @@ from typing import Optional, Union
 
 import numpy as np
 from qibo import gates
+from qibo.models import Circuit
 
 from qibocal.protocols.characterization.utils import significant_digit
 
@@ -117,6 +118,7 @@ def random_clifford(random_index_gen):
     return clifford_gate, random_index
 
 
+# TODO: Expand when more entangling gates are calibrated
 def find_cliffords(cz_list):
     clifford_list = []
     clifford = []
@@ -131,23 +133,7 @@ def find_cliffords(cz_list):
     return clifford_list
 
 
-def random_2q_clifford(random_index_gen, two_qubit_cliffords):
-    """Generates random two qubit Clifford operator.
-
-    Args:
-        qubits (int or list or ndarray): if ``int``, the number of qubits for the Clifford.
-            If ``list`` or ``ndarray``, indexes of the qubits for the Clifford to act on.
-        seed (int or ``numpy.random.Generator``, optional): Either a generator of
-            random numbers or a fixed seed to initialize a generator. If ``None``,
-            initializes a generator with a random seed. Default is ``None``.
-
-    Returns:
-        (list of :class:`qibo.gates.Gate`): Random Clifford operator(s).
-    """
-
-    random_index = int(random_index_gen(two_qubit_cliffords))
-    clifford = two_qubit_cliffords[str(random_index)]
-
+def clifford2gates(clifford):
     gate_list = clifford.split(",")
 
     clifford_list = find_cliffords(gate_list)
@@ -175,7 +161,63 @@ def random_2q_clifford(random_index_gen, two_qubit_cliffords):
         if value_with_CZ:
             clifford_gate.append(gates.CZ(0, 1))
 
+    return clifford_gate
+
+
+def random_2q_clifford(random_index_gen, two_qubit_cliffords):
+    """Generates random two qubit Clifford operator.
+
+    Args:
+        qubits (int or list or ndarray): if ``int``, the number of qubits for the Clifford.
+            If ``list`` or ``ndarray``, indexes of the qubits for the Clifford to act on.
+        seed (int or ``numpy.random.Generator``, optional): Either a generator of
+            random numbers or a fixed seed to initialize a generator. If ``None``,
+            initializes a generator with a random seed. Default is ``None``.
+
+    Returns:
+        (list of :class:`qibo.gates.Gate`): Random Clifford operator(s).
+    """
+
+    random_index = int(random_index_gen(two_qubit_cliffords))
+    clifford = two_qubit_cliffords[str(random_index)]
+    clifford_gate = clifford2gates(clifford)
+
     return clifford_gate, random_index
+
+
+def clifford_to_matrix(clifford):
+    clifford_gate = clifford2gates(clifford)
+
+    qubits_str = ["q0", "q1"]
+
+    new_circuit = Circuit(2, wire_names=qubits_str)
+    for gate in clifford_gate:
+        new_circuit.add(gate)
+
+    unitary = new_circuit.unitary()
+
+    return unitary
+
+
+def generate_inv_dict_cliffords_file(two_qubit_cliffords, output_file):
+    clifford_matrices = {}
+    for i, clifford in enumerate(two_qubit_cliffords.values()):
+        clifford = two_qubit_cliffords[str(i)]
+
+        unitary = clifford_to_matrix(clifford)
+        unitary = unitary.round(3)
+        unitary += 0.0 + 0.0j
+
+        clifford_matrices[i] = unitary
+
+    clifford_matrices_inv_np = {}
+    # Convert the arrays to strings and store them as keys in the new dictionary
+    for key, value in clifford_matrices.items():
+        key_str = np.array2string(value, separator=",")
+        clifford_matrices_inv_np[key_str] = key
+
+    # npz file to save the data
+    np.savez(output_file, **clifford_matrices_inv_np)
 
 
 def number_to_str(

@@ -12,6 +12,7 @@ from qibo.models import Circuit
 from qibocal.protocols.characterization.randomized_benchmarking.utils import (
     SINGLE_QUBIT_CLIFFORDS_NAMES,
     find_cliffords,
+    generate_inv_dict_cliffords_file,
 )
 
 GLOBAL_PHASES = [
@@ -119,6 +120,8 @@ def add_inverse_2q_layer(circuit: Circuit, two_qubit_cliffords, file_inv):
     """
 
     path = pathlib.Path(__file__).parent / file_inv
+    if not path.is_file():
+        generate_inv_dict_cliffords_file(two_qubit_cliffords, file_inv)
     clifford_matrices_inv = np.load(path)
 
     if circuit.depth > 0:
