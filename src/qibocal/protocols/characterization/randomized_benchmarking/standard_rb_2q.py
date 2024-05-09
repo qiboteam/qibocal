@@ -1,3 +1,5 @@
+import json
+import pathlib
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, TypedDict, Union
@@ -29,7 +31,7 @@ from .circuit_tools import add_inverse_2q_layer, add_measurement_layer, layer_2q
 from .fitting import exp1B_func, fit_exp1B_func
 from .utils import data_uncertainties, number_to_str, random_2q_clifford
 
-NPULSES_PER_CLIFFORD = 3.5  # CHANGE
+NPULSES_PER_CLIFFORD = 3.5  # TODO: Make a function
 
 
 class Depthsdict(TypedDict):
@@ -38,6 +40,16 @@ class Depthsdict(TypedDict):
     start: int
     stop: int
     step: int
+
+
+@dataclass
+class StandardRB2QParameters(StandardRBParameters):
+    """Parameters for the standard 2q randomized benchmarking protocol."""
+
+    file: str = "2qubitCliffs.json"
+    """File with the cliffords to be used."""
+    file_inv: str = "2qubitCliffsInv.npz"
+    """File with the cliffords to be used in an inverted dict."""
 
 
 @dataclass
@@ -84,13 +96,16 @@ class RB2Q_Generator:
     This class generates random two qubit cliffords for randomized benchmarking.
     """
 
-    def __init__(self, seed):
+    def __init__(self, file, seed):
         self.seed = seed
         self.local_state = (
             np.random.default_rng(seed)
             if seed is None or isinstance(seed, int)
             else seed
         )
+        path = pathlib.Path(__file__).parent / "2qubitCliffs.json"
+        with open(path) as file:
+            self.two_qubit_cliffords = json.load(file)
 
     def random_index(self, gate_dict):
         """
@@ -109,7 +124,7 @@ class RB2Q_Generator:
         Returns:
         - Gate: Random single-qubit clifford .
         """
-        return random_2q_clifford(self.random_index)
+        return random_2q_clifford(self.random_index, self.two_qubit_cliffords)
 
 
 def random_circuits(
@@ -117,6 +132,7 @@ def random_circuits(
     targets: list[QubitPairId],
     niter,
     rb_gen,
+    file_inv,
     noise_model=None,
 ) -> Iterable:
     """Returns single-qubit random self-inverting Clifford circuits.
@@ -137,7 +153,7 @@ def random_circuits(
     for _ in range(niter):
         for target in targets:
             circuit, random_index = layer_2q_circuit(rb_gen, depth, target)
-            add_inverse_2q_layer(circuit)
+            add_inverse_2q_layer(circuit, rb_gen.two_qubit_cliffords, file_inv)
             add_measurement_layer(circuit)
             if noise_model is not None:
                 circuit = noise_model.apply(circuit)
@@ -148,7 +164,7 @@ def random_circuits(
 
 
 def _acquisition(
-    params: StandardRBParameters,
+    params: StandardRB2QParameters,
     platform: Platform,
     targets: list[QubitPairId],
 ) -> RB2QData:
@@ -193,11 +209,11 @@ def _acquisition(
     indexes = {}
     samples = []
     qubits_ids = targets
-    rb_gen = RB2Q_Generator(params.seed)
+    rb_gen = RB2Q_Generator(params.file, params.seed)
     for depth in params.depths:
         # TODO: This does not generate multi qubit circuits
         circuits_depth, random_indexes = random_circuits(
-            depth, qubits_ids, params.niter, rb_gen, noise_model
+            depth, qubits_ids, params.niter, rb_gen, params.file_inv, noise_model
         )
         circuits.extend(circuits_depth)
         for qubit in random_indexes.keys():

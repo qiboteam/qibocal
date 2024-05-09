@@ -11,7 +11,6 @@ from qibo.models import Circuit
 
 from qibocal.protocols.characterization.randomized_benchmarking.utils import (
     SINGLE_QUBIT_CLIFFORDS_NAMES,
-    TWO_QUBIT_CLIFFORDS,
     find_cliffords,
 )
 
@@ -25,10 +24,6 @@ GLOBAL_PHASES = [
     0.707 - 0.707j,
     -0.707 - 0.707j,
 ]
-
-
-path = pathlib.Path(__file__).parent / "2qubitCliffsInv.npz"
-CLIFFORD_MATRICES_INV = np.load(path)
 
 
 def layer_circuit(rb_gen: Callable, depth: int, qubit) -> tuple[Circuit, dict]:
@@ -116,12 +111,15 @@ def add_inverse_layer(circuit: Circuit, single_qubit=True):
         circuit.add(gates.Unitary(circuit.unitary(), *range(circuit.nqubits)).dagger())
 
 
-def add_inverse_2q_layer(circuit: Circuit):
+def add_inverse_2q_layer(circuit: Circuit, two_qubit_cliffords, file_inv):
     """Adds an inverse gate/inverse gates at the end of a circuit (in place).
 
     Args:
         circuit (Circuit): circuit
     """
+
+    path = pathlib.Path(__file__).parent / file_inv
+    clifford_matrices_inv = np.load(path)
 
     if circuit.depth > 0:
         clifford = circuit.unitary()
@@ -132,10 +130,10 @@ def add_inverse_2q_layer(circuit: Circuit):
         for clifford_inv in cliffords_inv:
             clifford_inv += 0.0 + 0.0j
             clifford_inv_str = np.array2string(clifford_inv, separator=",")
-            if clifford_inv_str in CLIFFORD_MATRICES_INV.files:
-                index_inv = CLIFFORD_MATRICES_INV[clifford_inv_str]
+            if clifford_inv_str in clifford_matrices_inv.files:
+                index_inv = clifford_matrices_inv[clifford_inv_str]
 
-        clifford = TWO_QUBIT_CLIFFORDS[str(index_inv)]
+        clifford = two_qubit_cliffords[str(index_inv)]
 
         gate_list = clifford.split(",")
 
