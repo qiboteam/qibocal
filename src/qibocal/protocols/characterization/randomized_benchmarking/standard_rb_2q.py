@@ -53,7 +53,7 @@ class RB2QData(RBData):
         """Extract the probabilities given (`qubit`, `qubit`)"""
         probs = []
         for depth in self.depths:
-            data_list = np.array(self.data[qubits, depth].tolist())
+            data_list = np.array(self.data[qubits[0], qubits[1], depth].tolist())
             data_list = data_list.reshape((-1, self.nshots))
             probs.append(np.count_nonzero(1 - data_list, axis=1) / data_list.shape[1])
         return probs
@@ -201,7 +201,7 @@ def _acquisition(
         )
         circuits.extend(circuits_depth)
         for qubit in random_indexes.keys():
-            indexes[(qubit, depth)] = random_indexes[qubit]
+            indexes[(qubit[0], qubit[1], depth)] = random_indexes[qubit]
 
     backend = GlobalBackend()
     transpiler = dummy_transpiler(backend)
@@ -235,9 +235,10 @@ def _acquisition(
     for i, depth in enumerate(params.depths):
         index = (i * params.niter, (i + 1) * params.niter)
         for nqubit, qubit_id in enumerate(targets):
+
             data.register_qubit(
                 RBType,
-                (qubit_id, depth),
+                (qubit_id[0], qubit_id[1], depth),
                 dict(
                     samples=samples[index[0] : index[1]][:, nqubit],
                 ),
@@ -257,8 +258,7 @@ def _fit(data: RB2QData) -> StandardRB2QResult:
     Returns:
         StandardRBResult: Aggregated and processed data.
     """
-    qubits = data.qubits
-
+    qubits = data.pairs
     fidelity, pulse_fidelity = {}, {}
     popts, perrs = {}, {}
     error_barss = {}
