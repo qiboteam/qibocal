@@ -132,7 +132,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
     ]
     # fit the model with the data and guessed parameters
     try:
-        if hasattr(data, "error_signal"):
+        if not np.isnan(data.error_signal).any():
             fit_parameters, perr = curve_fit(
                 lorentzian,
                 frequencies,
