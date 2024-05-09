@@ -1,4 +1,5 @@
 import json
+import pathlib
 from numbers import Number
 from typing import Optional, Union
 
@@ -97,7 +98,8 @@ SINGLE_QUBIT_CLIFFORDS_NAMES = {
     ),  # Rx(-pi/2)Ry(pi/2)Rx(-pi/2)
 }
 
-with open("2qubitCliffs.json") as file:
+path = pathlib.Path(__file__).parent / "2qubitCliffs.json"
+with open(path) as file:
     TWO_QUBIT_CLIFFORDS = json.load(file)
 
 
