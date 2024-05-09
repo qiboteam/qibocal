@@ -29,7 +29,7 @@ The bare resonator frequency can be found setting a large value for the amplitud
 
     platform: <platform_name>
 
-    qubits: [0]
+    targets: [0]
 
     actions:
 
@@ -44,6 +44,16 @@ The bare resonator frequency can be found setting a large value for the amplitud
             nshots: 1024
             relaxation_time: 100000
 
+.. note::
+    The resonator spectroscopy experiment will be performed by computing
+    the average on hardware. If the user wants to retrieve all the shots
+    and perform the average afterwards it can be done by specifying the
+    entry `hardware_average: false` in the experiment parameters. In this
+    case the plot will include also error bands.
+
+    .. image:: resonator_spectroscopy_error_bars.png
+
+
 .. image:: resonator_spectroscopy_high.png
 
 Lowering the amplitude we can see a shift in the peak, e.g.:
@@ -52,7 +62,7 @@ Lowering the amplitude we can see a shift in the peak, e.g.:
 
     platform: <platform_name>
 
-    qubits: [0]
+    targets: [0]
 
     actions:
 
@@ -130,8 +140,7 @@ and also here:
         single_qubit:
             0:
                 bare_resonator_frequency: <high_power_resonator_frequency>
-                readout_frequency: 5_227_920_060
-                drive_frequency: <low_power_resonator_frequency>
+                readout_frequency: <low_power_resonator_frequency>
 
 .. rubric:: References
 
