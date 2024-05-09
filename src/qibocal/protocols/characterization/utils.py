@@ -132,23 +132,24 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
     ]
     # fit the model with the data and guessed parameters
     try:
-        if not np.isnan(data.error_signal).any():
-            fit_parameters, perr = curve_fit(
-                lorentzian,
-                frequencies,
-                voltages,
-                p0=model_parameters,
-                sigma=data.error_signal,
-            )
-            perr = np.sqrt(np.diag(perr)).tolist()
-        else:
-            fit_parameters, perr = curve_fit(
-                lorentzian,
-                frequencies,
-                voltages,
-                p0=model_parameters,
-            )
-            perr = [0] * 4
+        if hasattr(data, "error_signal"):
+            if not np.isnan(data.error_signal).any():
+                fit_parameters, perr = curve_fit(
+                    lorentzian,
+                    frequencies,
+                    voltages,
+                    p0=model_parameters,
+                    sigma=data.error_signal,
+                )
+                perr = np.sqrt(np.diag(perr)).tolist()
+                return model_parameters[1] * GHZ_TO_HZ, list(model_parameters), perr
+        fit_parameters, perr = curve_fit(
+            lorentzian,
+            frequencies,
+            voltages,
+            p0=model_parameters,
+        )
+        perr = [0] * 4
         model_parameters = list(fit_parameters)
         return model_parameters[1] * GHZ_TO_HZ, model_parameters, perr
     except RuntimeError as e:
@@ -258,65 +259,49 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
             label = "qubit frequency[Hz]"
             freq = fit.frequency
 
-        if data.amplitudes[qubit] is not None:
-            if show_error_bars:
-                fitting_report = table_html(
-                    table_dict(
-                        qubit,
-                        [label, "amplitude", "chi2 reduced"],
-                        [
-                            (
-                                freq[qubit],
-                                fit.error_fit_pars[qubit][1],
-                            ),
-                            (data.amplitudes[qubit], 0),
-                            fit.chi2_reduced[qubit],
-                        ],
-                        display_error=True,
-                    )
-                )
-            else:
-                fitting_report = table_html(
-                    table_dict(
-                        qubit,
-                        [label, "amplitude"],
-                        [freq[qubit], data.amplitudes[qubit]],
-                        display_error=False,
-                    )
-                )
-
         if data.attenuations:
             if data.attenuations[qubit] is not None:
                 if show_error_bars:
-                    fitting_report = table_html(
-                        table_dict(
-                            qubit,
-                            [label, "amplitude", "attenuation", "chi2 reduced"],
-                            [
-                                (
-                                    freq[qubit],
-                                    fit.error_fit_pars[qubit][1],
-                                ),
-                                (data.amplitudes[qubit], 0),
-                                (data.attenuations[qubit], 0),
-                                fit.chi2_reduced[qubit],
-                            ],
-                            display_error=True,
-                        )
-                    )
+                    labels = [label, "amplitude", "attenuation", "chi2 reduced"]
+                    values = [
+                        (
+                            freq[qubit],
+                            fit.error_fit_pars[qubit][1],
+                        ),
+                        (data.amplitudes[qubit], 0),
+                        (data.attenuations[qubit], 0),
+                        fit.chi2_reduced[qubit],
+                    ]
                 else:
-                    fitting_report = table_html(
-                        table_dict(
-                            qubit,
-                            [label, "amplitude", "attenuation"],
-                            [
-                                freq[qubit],
-                                data.amplitudes[qubit],
-                                data.attenuations[qubit],
-                            ],
-                            display_error=False,
-                        )
-                    )
+                    labels = [label, "amplitude", "attenuation"]
+                    values = [
+                        freq[qubit],
+                        data.amplitudes[qubit],
+                        data.attenuations[qubit],
+                    ]
+        if data.amplitudes[qubit] is not None:
+            if show_error_bars:
+                labels = [label, "amplitude", "chi2 reduced"]
+                values = [
+                    (
+                        freq[qubit],
+                        fit.error_fit_pars[qubit][1],
+                    ),
+                    (data.amplitudes[qubit], 0),
+                    fit.chi2_reduced[qubit],
+                ]
+            else:
+                labels = [label, "amplitude"]
+                values = [freq[qubit], data.amplitudes[qubit]]
+
+            fitting_report = table_html(
+                table_dict(
+                    qubit,
+                    labels,
+                    values,
+                    display_error=show_error_bars,
+                )
+            )
 
     fig.update_layout(
         showlegend=True,
