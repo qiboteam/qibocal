@@ -25,7 +25,11 @@ class StateTomographyParameters(Parameters):
     """Tomography input parameters"""
 
     circuit: Optional[Union[str, Circuit]] = None
-    """Circuit to prepare initial state"""
+    """Circuit to prepare initial state.
+
+        It can also be provided the path to a json file containing
+        a serialized circuit.
+    """
 
     def __post_init__(self):
         if isinstance(self.circuit, str):
@@ -72,16 +76,21 @@ class StateTomographyResults(Results):
     """Tomography results"""
 
     density_matrix_real: dict[QubitId, list]
+    """Real part of measured density matrix."""
     density_matrix_imag: dict[QubitId, list]
+    """Imaginary part of measured density matrix."""
     target_density_matrix_real: list
+    """Real part of exact density matrix."""
     target_density_matrix_imag: list
+    """Imaginary part of exact density matrix."""
     fidelity: dict[QubitId, float]
+    """State fidelity."""
 
 
 def _acquisition(
     params: StateTomographyParameters, platform: Platform, targets: list[QubitId]
 ) -> StateTomographyData:
-    """Acquisition protocol for state tomography."""
+    """Acquisition protocol for single qubit state tomography experiment."""
 
     if params.circuit is None:
         params.circuit = Circuit(len(targets))
