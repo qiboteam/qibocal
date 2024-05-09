@@ -10,6 +10,11 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitPairId
 
 from qibocal.auto.operation import Results, Routine
+from qibocal.auto.transpile import (
+    dummy_transpiler,
+    execute_transpiled_circuit,
+    execute_transpiled_circuits,
+)
 from qibocal.config import raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 from qibocal.protocols.characterization.randomized_benchmarking.standard_rb import (
@@ -198,6 +203,30 @@ def _acquisition(
         circuits.extend(circuits_depth)
         for qubit in random_indexes.keys():
             indexes[(qubit, depth)] = random_indexes[qubit]
+
+    transpiler = dummy_transpiler(backend)
+    qubit_maps = [[i] for i in targets] * (len(params.depths) * params.niter)
+    # Execute the circuits
+    if params.unrolling:
+        _, executed_circuits = execute_transpiled_circuits(
+            circuits,
+            qubit_maps=qubit_maps,
+            backend=backend,
+            nshots=params.nshots,
+            transpiler=transpiler,
+        )
+    else:
+        executed_circuits = [
+            execute_transpiled_circuit(
+                circuit,
+                qubit_map=qubit_map,
+                backend=backend,
+                nshots=params.nshots,
+                transpiler=transpiler,
+            )[1]
+            for circuit, qubit_map in zip(circuits, qubit_maps)
+        ]
+
     # Execute the circuits
     if params.unrolling:
         executed_circuits = backend.execute_circuits(circuits, nshots=params.nshots)
