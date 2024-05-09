@@ -204,8 +204,10 @@ def _acquisition(
         for qubit in random_indexes.keys():
             indexes[(qubit, depth)] = random_indexes[qubit]
 
+    backend = GlobalBackend()
     transpiler = dummy_transpiler(backend)
-    qubit_maps = [[i] for i in targets] * (len(params.depths) * params.niter)
+    qubit_maps = [list(i) for i in targets] * (len(params.depths) * params.niter)
+
     # Execute the circuits
     if params.unrolling:
         _, executed_circuits = execute_transpiled_circuits(
@@ -225,15 +227,6 @@ def _acquisition(
                 transpiler=transpiler,
             )[1]
             for circuit, qubit_map in zip(circuits, qubit_maps)
-        ]
-
-    # Execute the circuits
-    if params.unrolling:
-        executed_circuits = backend.execute_circuits(circuits, nshots=params.nshots)
-    else:
-        executed_circuits = [
-            backend.execute_circuit(circuit, nshots=params.nshots)
-            for circuit in circuits
         ]
 
     for circ in executed_circuits:
@@ -394,7 +387,7 @@ def _plot(
     if fit is not None:
         fitting_report = table_html(
             table_dict(
-                qubits,
+                str(qubits),
                 ["niter", "nshots", "uncertainties", "fidelity", "pulse_fidelity"],
                 [
                     data.niter,

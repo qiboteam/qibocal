@@ -91,18 +91,16 @@ def layer_2q_circuit(rb_gen: Callable, depth: int, qubits) -> tuple[Circuit, dic
     full_circuit = None
     random_indexes = []
     # Build each layer, there will be depth many in the final circuit.
-    qubits_str = [str(qubits[0]), str(qubits[1])]
-
     for _ in range(depth):
         # Generate a layer.
         new_layer, random_index = rb_gen.layer_gen()
-        new_circuit = Circuit(2, wire_names=qubits_str)
+        new_circuit = Circuit(2)
         for gate in new_layer:
             new_circuit.add(gate)
         random_indexes.append(random_index)
 
         if full_circuit is None:  # instantiate in first loop
-            full_circuit = Circuit(new_circuit.nqubits, wire_names=qubits_str)
+            full_circuit = Circuit(new_circuit.nqubits)
         full_circuit = full_circuit + new_circuit
     return full_circuit, random_indexes
 
