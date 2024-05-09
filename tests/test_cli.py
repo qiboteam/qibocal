@@ -5,7 +5,9 @@ from click.testing import CliRunner
 
 from qibocal.cli._base import command
 
-DUMMY_ACTION = pathlib.Path(__file__).parent / "runcards" / "dummy_action.yml"
+test_runcards_dir = pathlib.Path(__file__).parent / "runcards"
+DUMMY_ACTION = test_runcards_dir / "dummy_action.yml"
+DUMMY_COMPARE = test_runcards_dir / "dummy_compare.yml"
 
 
 def test_fit_command(tmp_path):
@@ -44,3 +46,18 @@ def test_fit_command(tmp_path):
         catch_exceptions=False,
     )
     # fit after acquisition different folder
+
+
+def test_compare_command(tmp_path):
+    report_dir_1 = tmp_path / "report_dir_1"
+    report_dir_2 = tmp_path / "report_dir_2"
+    compare_dir = tmp_path / "compare_dir"
+
+    runner = CliRunner()
+    runner.invoke(command, ["auto", str(DUMMY_COMPARE), "-o", str(report_dir_1), "-f"])
+    runner.invoke(command, ["auto", str(DUMMY_COMPARE), "-o", str(report_dir_2), "-f"])
+
+    runner.invoke(
+        command,
+        ["compare", str(report_dir_1), str(report_dir_2), "-o", str(compare_dir), "-f"],
+    )
