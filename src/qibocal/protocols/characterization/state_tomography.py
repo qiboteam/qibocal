@@ -181,16 +181,49 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
         ),
     )
 
+    # computing limits for colorscale
+    min_re, max_re = np.min(fit.target_density_matrix_real), np.max(
+        fit.target_density_matrix_real
+    )
+    min_im, max_im = np.min(fit.target_density_matrix_imag), np.max(
+        fit.target_density_matrix_imag
+    )
+
+    # add offset
+    if np.abs(min_re - max_re) < 1e-5:
+        min_re = min_re - 0.1
+        max_re = max_re + 0.1
+
+    if np.abs(min_im - max_im) < 1e-5:
+        min_im = min_im - 0.1
+        max_im = max_im + 0.1
+
     if fit is not None:
         fig.add_trace(
             go.Heatmap(
                 z=fit.density_matrix_real[target],
                 x=["0", "1"],
                 y=["0", "1"],
-                hoverongaps=False,
-                colorscale="Viridis",
+                colorscale="solar",
+                colorbar_x=-0.2,
+                zmin=min_re,
+                zmax=max_re,
             ),
             row=1,
+            col=1,
+        )
+
+        fig.add_trace(
+            go.Heatmap(
+                z=fit.target_density_matrix_real,
+                x=["0", "1"],
+                y=["0", "1"],
+                showscale=False,
+                colorscale="solar",
+                zmin=min_re,
+                zmax=max_re,
+            ),
+            row=2,
             col=1,
         )
 
@@ -199,9 +232,10 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
                 z=fit.density_matrix_imag[target],
                 x=["0", "1"],
                 y=["0", "1"],
-                hoverongaps=False,
-                showscale=False,
-                colorscale="Viridis",
+                colorscale="ice",
+                colorbar_x=1.01,
+                zmin=min_im,
+                zmax=max_im,
             ),
             row=1,
             col=2,
@@ -209,25 +243,13 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
 
         fig.add_trace(
             go.Heatmap(
-                z=fit.target_density_matrix_real,
-                x=["0", "1"],
-                y=["0", "1"],
-                hoverongaps=False,
-                showscale=False,
-                colorscale="Viridis",
-            ),
-            row=2,
-            col=1,
-        )
-
-        fig.add_trace(
-            go.Heatmap(
                 z=fit.target_density_matrix_imag,
                 x=["0", "1"],
                 y=["0", "1"],
-                hoverongaps=False,
+                colorscale="ice",
                 showscale=False,
-                colorscale="Viridis",
+                zmin=min_im,
+                zmax=max_im,
             ),
             row=2,
             col=2,
