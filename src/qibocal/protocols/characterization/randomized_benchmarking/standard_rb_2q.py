@@ -137,7 +137,6 @@ def random_circuits(
     for _ in range(niter):
         for target in targets:
             circuit, random_index = layer_2q_circuit(rb_gen, depth, target)
-            print(random_index)
             add_inverse_2q_layer(circuit)
             add_measurement_layer(circuit)
             if noise_model is not None:
