@@ -645,7 +645,7 @@ actions:
 
   - id: standard rb 2q
     operation: standard_rb_2q
-    targets: [1,2]
+    targets: [[0,2]]
     parameters:
       depths: [1, 2, 3, 5]
       niter: 5
