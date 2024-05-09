@@ -15,6 +15,18 @@ from qibocal.protocols.characterization.randomized_benchmarking.utils import (
     find_cliffords,
 )
 
+GLOBAL_PHASES = [
+    1 + 0j,
+    -1 + 0j,
+    0 + 1j,
+    0 - 1j,
+    0.707 + 0.707j,
+    -0.707 + 0.707j,
+    0.707 - 0.707j,
+    -0.707 - 0.707j,
+]
+
+
 path = pathlib.Path(__file__).parent / "2qubitCliffsInv.npz"
 CLIFFORD_MATRICES_INV = np.load(path)
 
@@ -115,47 +127,49 @@ def add_inverse_2q_layer(circuit: Circuit):
 
     if circuit.depth > 0:
         clifford = circuit.unitary()
-        clifford_inv = np.linalg.inv(clifford).round(3)
 
-        global_phases = [1 + 0j, -1 + 0j, 0 + 1j, 0 - 1j]
-        clifford_invs = [clifford_inv * global_phase for global_phase in global_phases]
-        for clifford_inv in clifford_invs:
+        cliffords = [clifford * global_phase for global_phase in GLOBAL_PHASES]
+        cliffords_inv = [np.linalg.inv(clifford).round(3) for clifford in cliffords]
+
+        for clifford_inv in cliffords_inv:
             clifford_inv += 0.0 + 0.0j
             clifford_inv_str = np.array2string(clifford_inv, separator=",")
             if clifford_inv_str in CLIFFORD_MATRICES_INV.files:
                 index_inv = CLIFFORD_MATRICES_INV[clifford_inv_str]
 
-    clifford = TWO_QUBIT_CLIFFORDS[str(index_inv)]
+        print(index_inv)
 
-    gate_list = clifford.split(",")
+        clifford = TWO_QUBIT_CLIFFORDS[str(index_inv)]
 
-    clifford_list = find_cliffords(gate_list)
+        gate_list = clifford.split(",")
 
-    clifford_gate = []
-    for clifford in clifford_list:
+        clifford_list = find_cliffords(gate_list)
 
-        # Separate values containing 1
-        values_with_1 = [value for value in clifford if "1" in value]
-        values_with_1 = ",".join(values_with_1)
+        clifford_gate = []
+        for clifford in clifford_list:
 
-        # Separate values containing 2
-        values_with_2 = [value for value in clifford if "2" in value]
-        values_with_2 = ",".join(values_with_2)
+            # Separate values containing 1
+            values_with_1 = [value for value in clifford if "1" in value]
+            values_with_1 = ",".join(values_with_1)
 
-        # Check if CZ
-        value_with_CZ = [value for value in clifford if "CZ" in value]
-        value_with_CZ = len(value_with_CZ) == 1
+            # Separate values containing 2
+            values_with_2 = [value for value in clifford if "2" in value]
+            values_with_2 = ",".join(values_with_2)
 
-        values_with_1 = values_with_1.replace("1", "")
-        values_with_2 = values_with_2.replace("2", "")
+            # Check if CZ
+            value_with_CZ = [value for value in clifford if "CZ" in value]
+            value_with_CZ = len(value_with_CZ) == 1
 
-        clifford_gate.append(SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_1](0))
-        clifford_gate.append(SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_2](1))
-        if value_with_CZ:
-            clifford_gate.append(gates.CZ(0, 1))
+            values_with_1 = values_with_1.replace("1", "")
+            values_with_2 = values_with_2.replace("2", "")
 
-    for gate in clifford_gate:
-        circuit.add(gate)
+            clifford_gate.append(SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_1](0))
+            clifford_gate.append(SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_2](1))
+            if value_with_CZ:
+                clifford_gate.append(gates.CZ(0, 1))
+
+        for gate in clifford_gate:
+            circuit.add(gate)
 
 
 def add_measurement_layer(circuit: Circuit):
