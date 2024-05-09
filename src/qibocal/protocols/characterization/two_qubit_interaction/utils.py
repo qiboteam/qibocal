@@ -65,7 +65,7 @@ def fit_flux_amplitude(matrix, amps, times):
         fs.append(2 * np.pi * f)
 
     low_freq_interval = np.where(fs == np.min(fs))
-    amplitude = median_high(amps[low_freq_interval])
+    amplitude = median_high(amps[::-1][low_freq_interval])
     index = int(np.where(np.unique(amps) == amplitude)[0])
     delta = np.min(fs)
     return amplitude, index, delta

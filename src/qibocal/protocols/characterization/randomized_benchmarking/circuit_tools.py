@@ -53,7 +53,7 @@ def layer_circuit(rb_gen: Callable, depth: int, qubit) -> tuple[Circuit, dict]:
         new_layer, random_index = rb_gen.layer_gen()
         # Ensure new_layer is a circuit
         if isinstance(new_layer, Gate):
-            new_circuit = Circuit(1, wire_names=qubits_str)
+            new_circuit = Circuit(1)
             new_circuit.add(new_layer)
             random_indexes.append(random_index)
 
@@ -71,7 +71,7 @@ def layer_circuit(rb_gen: Callable, depth: int, qubit) -> tuple[Circuit, dict]:
                 f"layer_gen must return type Circuit or Gate, but it is type {type(new_layer)}.",
             )
         if full_circuit is None:  # instantiate in first loop
-            full_circuit = Circuit(new_circuit.nqubits, wire_names=qubits_str)
+            full_circuit = Circuit(new_circuit.nqubits)
         full_circuit = full_circuit + new_circuit
     return full_circuit, random_indexes
 

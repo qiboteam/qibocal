@@ -8,7 +8,7 @@ from qibolab.serialize import dump_platform
 from ..auto.execute import Executor
 from ..auto.history import add_timings_to_meta
 from ..auto.mode import ExecutionMode
-from ..cli.report import ReportBuilder
+from .report import report
 from .utils import (
     META,
     PLATFORM,
@@ -59,9 +59,8 @@ def autocalibrate(runcard, folder, force, update):
         meta["end-time"] = e.strftime("%H:%M:%S")
         # dump updated meta
         meta = add_timings_to_meta(meta, executor.history)
-        report = ReportBuilder(path, runcard.targets, executor, meta, executor.history)
-        report.run(path)
         (path / META).write_text(json.dumps(meta, indent=4))
+        report(path, executor)
 
     # stop and disconnect platform
     if platform is not None:
