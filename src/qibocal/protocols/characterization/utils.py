@@ -291,7 +291,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                     fitting_report = table_html(
                         table_dict(
                             qubit,
-                            [label, "amplitude", "attenuation"],
+                            [label, "amplitude", "attenuation", "chi2 reduced"],
                             [
                                 (
                                     freq[qubit],
