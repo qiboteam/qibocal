@@ -813,9 +813,13 @@ actions:
     operation: cz_sweep
     targets: [[3,2]]
     parameters:
-      flux_pulse_amplitude_min: -0.2522
-      flux_pulse_amplitude_max: -0.2518
-      flux_pulse_amplitude_step: 0.00005
+      flux_pulse_amplitude_min: -0.249
+      flux_pulse_amplitude_max: -0.248
+      flux_pulse_amplitude_step: 0.0001
+      duration_max: 32
+      duration_min: 29
+      duration_step: 1
       theta_start: 0
-      theta_end: 14
+      theta_end: 7
       theta_step: 1
+      relaxation_time: 50_000
