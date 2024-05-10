@@ -57,6 +57,7 @@ from .signal_experiments.calibrate_state_discrimination import (
 )
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 from .state_tomography import state_tomography
+from .two_qubit_state_tomography import two_qubit_state_tomography
 from .two_qubit_interaction import (
     chevron,
     chevron_signal,
@@ -129,3 +130,4 @@ class Operation(Enum):
     flipping_signal = flipping_signal
     calibrate_state_discrimination = calibrate_state_discrimination
     state_tomography = state_tomography
+    two_qubit_state_tomography = two_qubit_state_tomography
