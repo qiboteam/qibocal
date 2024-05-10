@@ -1,3 +1,5 @@
+import json
+import pathlib
 from numbers import Number
 from typing import Optional, Union
 
@@ -345,3 +347,16 @@ def calculate_pulses_clifford(two_qubit_cliffords):
 
     pulses_per_clifford = pulses / len(two_qubit_cliffords)
     return pulses_per_clifford
+
+
+def load_inverse_cliffords(file_inv):
+    path = pathlib.Path(__file__).parent / file_inv
+    clifford_matrices_inv = np.load(path)
+    return clifford_matrices_inv
+
+
+def load_cliffords(file):
+    path = pathlib.Path(__file__).parent / "2qubitCliffs.json"
+    with open(path) as file:
+        two_qubit_cliffords = json.load(file)
+    return two_qubit_cliffords

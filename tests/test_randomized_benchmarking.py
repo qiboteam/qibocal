@@ -1,4 +1,3 @@
-import json
 import os
 import pathlib
 from functools import reduce
@@ -16,6 +15,8 @@ from qibocal.protocols.characterization.randomized_benchmarking.standard_rb impo
 )
 from qibocal.protocols.characterization.randomized_benchmarking.utils import (
     generate_inv_dict_cliffords_file,
+    load_cliffords,
+    load_inverse_cliffords,
     random_clifford,
 )
 
@@ -177,22 +178,15 @@ def test_random_clifford(qubits, seed):
 
 
 def test_generate_inv_dict_cliffords_file():
-    path = (
-        pathlib.Path(__file__).parent.parent
-        / "src/qibocal/protocols/characterization/randomized_benchmarking/2qubitCliffs.json"
-    )
-    with open(path) as file:
-        two_qubit_cliffords = json.load(file)
+    file = "2qubitCliffs.json"
+    two_qubit_cliffords = load_cliffords(file)
 
     path_test_inv = pathlib.Path(__file__).parent / "test.npz"
     clifford_inv = generate_inv_dict_cliffords_file(two_qubit_cliffords, path_test_inv)
     clifford_inv = np.load(path_test_inv)
 
-    path_inv = (
-        pathlib.Path(__file__).parent.parent
-        / "src/qibocal/protocols/characterization/randomized_benchmarking/2qubitCliffsInv.npz"
-    )
-    clifford_matrices_inv = np.load(path_inv)
+    file_inv = "2qubitCliffsInv.npz"
+    clifford_matrices_inv = load_inverse_cliffords(file_inv)
 
     assert clifford_inv.files == clifford_matrices_inv.files
 
