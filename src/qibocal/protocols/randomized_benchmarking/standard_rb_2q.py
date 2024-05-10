@@ -36,8 +36,6 @@ from .utils import (
     random_2q_clifford,
 )
 
-# TODO: BOTH measurements in plot and fit ???
-
 
 class Depthsdict(TypedDict):
     """dictionary used to build a list of depths as ``range(start, stop, step)``."""
@@ -258,8 +256,17 @@ def _acquisition(
             for circuit, qubit_map in zip(circuits, qubit_maps)
         ]
 
+    zero_array = np.array([0, 0])
     for circ in executed_circuits:
-        samples.extend(circ.samples())
+        # Post process [0,0] to 0 and [1,0], [0,1], [1,1] to 1
+        converted_samples = []
+        for sample in circ.samples():
+            if np.all(sample == zero_array):
+                converted_samples.append(np.array(0, dtype=np.int32))
+            else:
+                converted_samples.append(np.array(1, dtype=np.int32))
+        samples.extend(converted_samples)
+
     samples = np.reshape(samples, (-1, nqubits, params.nshots))
 
     for i, depth in enumerate(params.depths):
