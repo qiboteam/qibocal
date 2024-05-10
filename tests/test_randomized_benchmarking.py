@@ -1,3 +1,6 @@
+import json
+import os
+import pathlib
 from functools import reduce
 
 import numpy as np
@@ -12,7 +15,7 @@ from qibocal.protocols.characterization.randomized_benchmarking.standard_rb impo
     RB_Generator,
 )
 from qibocal.protocols.characterization.randomized_benchmarking.utils import (
-    number_to_str,
+    generate_inv_dict_cliffords_file,
     random_clifford,
 )
 
@@ -173,14 +176,24 @@ def test_random_clifford(qubits, seed):
     assert np.allclose(matrix, result)
 
 
-@pytest.mark.parametrize("value", [0.555555, 2, -0.1 + 0.1j])
-def test_number_to_str(value):
-    assert number_to_str(value) == f"{value:.3f}"
-    assert number_to_str(value, [None, None]) == f"{value:.3f}"
-    assert number_to_str(value, 0.0123) == f"{value:.3f} \u00B1 0.012"
-    assert number_to_str(value, [0.0123, 0.012]) == f"{value:.3f} \u00B1 0.012"
-    assert number_to_str(value, 0.1 + 0.02j) == f"{value:.3f} \u00B1 0.100+0.020j"
-    assert number_to_str(value, [0.203, 0.001]) == f"{value:.4f} +0.0010 / -0.2030"
-    assert (
-        number_to_str(value, [float("inf"), float("inf")]) == f"{value:.3f} \u00B1 inf"
+def test_generate_inv_dict_cliffords_file():
+    path = (
+        pathlib.Path(__file__).parent.parent
+        / "src/qibocal/protocols/characterization/randomized_benchmarking/2qubitCliffs.json"
     )
+    with open(path) as file:
+        two_qubit_cliffords = json.load(file)
+
+    path_test_inv = pathlib.Path(__file__).parent / "test.npz"
+    clifford_inv = generate_inv_dict_cliffords_file(two_qubit_cliffords, path_test_inv)
+    clifford_inv = np.load(path_test_inv)
+
+    path_inv = (
+        pathlib.Path(__file__).parent.parent
+        / "src/qibocal/protocols/characterization/randomized_benchmarking/2qubitCliffsInv.npz"
+    )
+    clifford_matrices_inv = np.load(path_inv)
+
+    assert clifford_inv.files == clifford_matrices_inv.files
+
+    os.remove(path_test_inv)

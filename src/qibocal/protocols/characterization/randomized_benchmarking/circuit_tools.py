@@ -121,9 +121,12 @@ def add_inverse_2q_layer(circuit: Circuit, two_qubit_cliffords, file_inv):
     """
 
     path = pathlib.Path(__file__).parent / file_inv
-    if not path.is_file():
-        generate_inv_dict_cliffords_file(two_qubit_cliffords, file_inv)
-    clifford_matrices_inv = np.load(path)
+    if file_inv is None and not path.is_file():
+        clifford_matrices_inv = generate_inv_dict_cliffords_file(
+            two_qubit_cliffords, file_inv
+        )
+    else:
+        clifford_matrices_inv = np.load(path)
 
     if circuit.depth > 0:
         clifford = circuit.unitary()

@@ -36,6 +36,8 @@ from .utils import (
     random_2q_clifford,
 )
 
+# TODO: BOTH measurements in plot and fit ???
+
 
 class Depthsdict(TypedDict):
     """dictionary used to build a list of depths as ``range(start, stop, step)``."""
@@ -263,7 +265,6 @@ def _acquisition(
     for i, depth in enumerate(params.depths):
         index = (i * params.niter, (i + 1) * params.niter)
         for nqubit, qubit_id in enumerate(targets):
-
             data.register_qubit(
                 RBType,
                 (qubit_id[0], qubit_id[1], depth),
