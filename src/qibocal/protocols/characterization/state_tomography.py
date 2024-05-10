@@ -10,7 +10,6 @@ from plotly.subplots import make_subplots
 from qibo import Circuit, gates
 from qibo.backends import GlobalBackend, NumpyBackend, matrices
 from qibo.quantum_info import fidelity
-from qibo.result import QuantumState
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
@@ -18,6 +17,11 @@ from qibocal.auto.operation import DATAFILE, Data, Parameters, Results, Routine
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
 
 from .utils import table_dict, table_html
+
+BASIS = ["X", "Y", "Z"]
+"""Single qubit measurement basis."""
+SIMULATED_DENSITY_MATRIX = "ideal"
+"""Filename for simulated density matrix."""
 
 
 @dataclass
@@ -49,24 +53,23 @@ TomographyType = np.dtype(
 class StateTomographyData(Data):
     """Tomography data"""
 
-    x_basis_state: QuantumState = None
-    y_basis_state: QuantumState = None
-    z_basis_state: QuantumState = None
-    data: dict[tuple[QubitId, str], np.float64] = field(default_factory=dict)
+    ideal: dict[tuple[QubitId, str], np.float64] = field(default_factory=dict)
+    """Ideal samples measurements."""
+    data: dict[tuple[QubitId, str], np.int64] = field(default_factory=dict)
+    """Hardware measurements."""
 
     def save(self, path):
-        self.x_basis_state.dump(path / "x.json")
-        self.y_basis_state.dump(path / "y.json")
-        self.z_basis_state.dump(path / "z.json")
         self._to_npz(path, DATAFILE)
+        np.savez(
+            path / f"{SIMULATED_DENSITY_MATRIX}.npz",
+            **{json.dumps(i): self.ideal[i] for i in self.ideal},
+        )
 
     @classmethod
     def load(cls, path):
         instance = cls()
         instance.data = super().load_data(path, DATAFILE)
-        instance.x_basis_state = QuantumState.load(path / "x.json")
-        instance.y_basis_state = QuantumState.load(path / "y.json")
-        instance.z_basis_state = QuantumState.load(path / "z.json")
+        instance.ideal = super().load_data(path, SIMULATED_DENSITY_MATRIX)
 
         return instance
 
@@ -75,13 +78,13 @@ class StateTomographyData(Data):
 class StateTomographyResults(Results):
     """Tomography results"""
 
-    density_matrix_real: dict[QubitId, list]
+    measured_density_matrix_real: dict[QubitId, list]
     """Real part of measured density matrix."""
-    density_matrix_imag: dict[QubitId, list]
+    measured_density_matrix_imag: dict[QubitId, list]
     """Imaginary part of measured density matrix."""
-    target_density_matrix_real: list
+    target_density_matrix_real: dict[QubitId, list]
     """Real part of exact density matrix."""
-    target_density_matrix_imag: list
+    target_density_matrix_imag: dict[QubitId, list]
     """Imaginary part of exact density matrix."""
     fidelity: dict[QubitId, float]
     """State fidelity."""
@@ -94,83 +97,78 @@ def _acquisition(
 
     if params.circuit is None:
         params.circuit = Circuit(len(targets))
-        params.circuit.add(gates.H(i) for i in range(len(targets)))
 
     backend = GlobalBackend()
     transpiler = dummy_transpiler(backend)
 
     data = StateTomographyData()
 
-    for basis in ["X", "Y", "Z"]:
+    for basis in BASIS:
         basis_circuit = deepcopy(params.circuit)
-        # FIXME: basis
+        # FIXME: https://github.com/qiboteam/qibo/issues/1318
         if basis != "Z":
             for i in range(len(targets)):
                 basis_circuit.add(getattr(gates, basis)(i).basis_rotation())
 
-        # basis_circuit.add(gates.M(i, basis=getattr(gates, basis)) for i in targets)
-        for i in range(len(targets)):
-            basis_circuit.add(gates.M(i))
+        basis_circuit.add(gates.M(i) for i in range(len(targets)))
+        _, results = execute_transpiled_circuit(
+            basis_circuit,
+            targets,
+            backend,
+            nshots=params.nshots,
+            transpiler=transpiler,
+        )
         for i, target in enumerate(targets):
-            _, results = execute_transpiled_circuit(
-                basis_circuit,
-                targets,
-                backend,
-                nshots=params.nshots,
-                transpiler=transpiler,
-            )
             data.register_qubit(
                 TomographyType,
                 (target, basis),
                 dict(
-                    samples=results.samples(),
+                    samples=np.array(results.samples()).T[i],
                 ),
             )
-            setattr(
-                data,
-                f"{basis.lower()}_basis_state",
-                NumpyBackend().execute_circuit(basis_circuit),
-            )
+            data.ideal[target, basis] = np.array(
+                NumpyBackend().execute_circuit(basis_circuit, nshots=10000).samples()
+            ).T[i]
     return data
 
 
 def _fit(data: StateTomographyData) -> StateTomographyResults:
     """Post-processing for State tomography."""
-    density_matrix_real = {}
-    density_matrix_imag = {}
+    measured_density_matrix_real = {}
+    measured_density_matrix_imag = {}
+    target_density_matrix_real = {}
+    target_density_matrix_imag = {}
     fid = {}
     for qubit in data.qubits:
         x_exp, y_exp, z_exp = (
-            1 - 2 * np.mean(data[qubit, basis].samples) for basis in ["X", "Y", "Z"]
+            1 - 2 * np.mean(data[qubit, basis].samples) for basis in BASIS
         )
         density_matrix = 0.5 * (
             matrices.I + matrices.X * x_exp + matrices.Y * y_exp + matrices.Z * z_exp
         )
-        density_matrix_real[qubit] = np.real(density_matrix).tolist()
-        density_matrix_imag[qubit] = np.imag(density_matrix).tolist()
+        measured_density_matrix_real[qubit] = np.real(density_matrix).tolist()
+        measured_density_matrix_imag[qubit] = np.imag(density_matrix).tolist()
 
-    x_theory = 1 - 2 * data.x_basis_state.probabilities([0])[1]
-    y_theory = 1 - 2 * data.y_basis_state.probabilities([0])[1]
-    z_theory = 1 - 2 * data.z_basis_state.probabilities([0])[1]
-    target_density_matrix = 0.5 * (
-        matrices.I
-        + matrices.X * x_theory
-        + matrices.Y * y_theory
-        + matrices.Z * z_theory
-    )
-    target_density_matrix_real = np.real(target_density_matrix).tolist()
-    target_density_matrix_imag = np.imag(target_density_matrix).tolist()
-
-    for qubit in data.qubits:
+        x_theory, y_theory, z_theory = (
+            1 - 2 * np.mean(data.ideal[qubit, basis]) for basis in BASIS
+        )
+        target_density_matrix = 0.5 * (
+            matrices.I
+            + matrices.X * x_theory
+            + matrices.Y * y_theory
+            + matrices.Z * z_theory
+        )
+        target_density_matrix_real[qubit] = np.real(target_density_matrix).tolist()
+        target_density_matrix_imag[qubit] = np.imag(target_density_matrix).tolist()
         fid[qubit] = fidelity(
-            np.array(density_matrix_real[qubit])
-            + 1.0j * np.array(density_matrix_imag[qubit]),
+            np.array(measured_density_matrix_real[qubit])
+            + 1.0j * np.array(measured_density_matrix_imag[qubit]),
             target_density_matrix,
         )
 
     return StateTomographyResults(
-        density_matrix_real=density_matrix_real,
-        density_matrix_imag=density_matrix_imag,
+        measured_density_matrix_real=measured_density_matrix_real,
+        measured_density_matrix_imag=measured_density_matrix_imag,
         target_density_matrix_real=target_density_matrix_real,
         target_density_matrix_imag=target_density_matrix_imag,
         fidelity=fid,
@@ -193,11 +191,11 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
 
     if fit is not None:
         # computing limits for colorscale
-        min_re, max_re = np.min(fit.target_density_matrix_real), np.max(
-            fit.target_density_matrix_real
+        min_re, max_re = np.min(fit.target_density_matrix_real[target]), np.max(
+            fit.target_density_matrix_real[target]
         )
-        min_im, max_im = np.min(fit.target_density_matrix_imag), np.max(
-            fit.target_density_matrix_imag
+        min_im, max_im = np.min(fit.target_density_matrix_imag[target]), np.max(
+            fit.target_density_matrix_imag[target]
         )
 
         # add offset
@@ -210,7 +208,7 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
             max_im = max_im + 0.1
         fig.add_trace(
             go.Heatmap(
-                z=fit.density_matrix_real[target],
+                z=fit.measured_density_matrix_real[target],
                 x=["0", "1"],
                 y=["0", "1"],
                 colorscale="ice",
@@ -225,7 +223,7 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
 
         fig.add_trace(
             go.Heatmap(
-                z=fit.target_density_matrix_real,
+                z=fit.target_density_matrix_real[target],
                 x=["0", "1"],
                 y=["0", "1"],
                 showscale=False,
@@ -240,7 +238,7 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
 
         fig.add_trace(
             go.Heatmap(
-                z=fit.density_matrix_imag[target],
+                z=fit.measured_density_matrix_imag[target],
                 x=["0", "1"],
                 y=["0", "1"],
                 colorscale="Burg",
@@ -254,7 +252,7 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
 
         fig.add_trace(
             go.Heatmap(
-                z=fit.target_density_matrix_imag,
+                z=fit.target_density_matrix_imag[target],
                 x=["0", "1"],
                 y=["0", "1"],
                 colorscale="Burg",
