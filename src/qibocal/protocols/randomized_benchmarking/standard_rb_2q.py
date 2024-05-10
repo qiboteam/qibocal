@@ -29,10 +29,12 @@ from qibocal.protocols.characterization.randomized_benchmarking.standard_rb impo
 from ..utils import table_dict, table_html
 from .circuit_tools import add_inverse_2q_layer, add_measurement_layer, layer_2q_circuit
 from .fitting import exp1B_func, fit_exp1B_func
-from .utils import data_uncertainties, number_to_str, random_2q_clifford
-
-NPULSES_PER_CLIFFORD = 8.6
-# NPULSES_PER_CLIFFORD = calculate_pulses_clifford(two_qubit_cliffords)
+from .utils import (
+    calculate_pulses_clifford,
+    data_uncertainties,
+    number_to_str,
+    random_2q_clifford,
+)
 
 
 class Depthsdict(TypedDict):
@@ -61,6 +63,8 @@ class RB2QData(RBData):
     """Raw data acquired."""
     circuits: dict[QubitPairId, list[list[int]]] = field(default_factory=dict)
     """Clifford gate indexes executed."""
+    npulses_per_clifford: float = 8.6  # Assuming U3s and 1 pulse CZ
+    """Number of pulses for an average clifford."""
 
     def extract_probabilities(self, qubits):
         """Extract the probabilities given (`qubit`, `qubit`)"""
@@ -126,6 +130,13 @@ class RB2Q_Generator:
         - Gate: Random single-qubit clifford .
         """
         return random_2q_clifford(self.random_index, self.two_qubit_cliffords)
+
+    def calculate_average_pulses(self):
+        """
+        Returns:
+        -  Average number of pulses per clifford.
+        """
+        return calculate_pulses_clifford(self.two_qubit_cliffords)
 
 
 def random_circuits(
@@ -261,6 +272,7 @@ def _acquisition(
                 ),
             )
     data.circuits = indexes
+    data.npulses_per_clifford = rb_gen.calculate_average_pulses()
 
     return data
 
@@ -301,7 +313,7 @@ def _fit(data: RB2QData) -> StandardRB2QResult:
         # Compute the fidelities
         infidelity = (1 - popt[1]) / 2
         fidelity[qubit] = 1 - infidelity
-        pulse_fidelity[qubit] = 1 - infidelity / NPULSES_PER_CLIFFORD
+        pulse_fidelity[qubit] = 1 - infidelity / data.npulses_per_clifford
 
         # conversion from np.array to list/tuple
         error_bars = error_bars.tolist()
@@ -416,7 +428,7 @@ def _plot(
                     number_to_str(
                         fit.pulse_fidelity[qubits],
                         np.array(fit.fit_uncertainties[qubits][1])
-                        / (2 * NPULSES_PER_CLIFFORD),
+                        / (2 * data.npulses_per_clifford),
                     ),
                 ],
             )
