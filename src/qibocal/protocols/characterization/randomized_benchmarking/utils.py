@@ -44,57 +44,67 @@ SINGLE_QUBIT_CLIFFORDS = {
 SINGLE_QUBIT_CLIFFORDS_NAMES = {
     # Virtual gates
     "": gates.I,
-    "minusX,minusY": lambda q: gates.U3(q, 0, np.pi / 2, np.pi / 2),  # Z
+    # Check the Z
+    "minusX,minusY": lambda q: gates.U3(q, 0, np.pi / 2, np.pi / 2),  # Z, gp:exp(iπ)
     "sqrtX,sqrtMinusY,sqrtMinusX": lambda q: gates.U3(
         q, 0, -np.pi / 2, 0
-    ),  # gates.RZ(q, np.pi / 2),
+    ),  # La U3 esta bien el nombre no ?  # gates.RZ(q, np.pi / 2),  gp:exp(iπ/4)
     "sqrtX,sqrtY,sqrtMinusX": lambda q: gates.U3(
         q, 0, np.pi / 2, 0
-    ),  # gates.U3(q, 0, -np.pi / 2, 0),
-    # pi rotations (Check the phase from qiskit) RX(π)=−iX; RY(π)=−iY
-    "minusX": lambda q: gates.U3(q, np.pi, -np.pi / 2, np.pi),  # X,
-    "minusY": lambda q: gates.U3(q, np.pi, -np.pi / 2, 0),  # Y,
-    # pi/2 rotations (Check the minus)
-    "sqrtX": lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),  # Rx(pi/2)
-    "sqrtMinusX": lambda q: gates.U3(q, -np.pi / 2, -np.pi / 2, np.pi / 2),  # Rx(-pi/2)
-    "sqrtY": lambda q: gates.U3(q, np.pi / 2, 0, 0),  # Ry(pi/2)
-    "sqrtMinusY": lambda q: gates.U3(q, -np.pi / 2, 0, 0),  # Ry(-pi/2)
-    # 2pi/3 rotations
-    "sqrtX,sqrtY": lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, 0),  # Rx(pi/2)Ry(pi/2)
+    ),  # gates.U3(q, 0, -np.pi / 2, 0),  # Esta bien gates.RZ(q, -np.pi / 2),  gp:exp(iπ/4)
+    # pi rotations
+    # 'X': lambda q: gates.U3(q, np.pi, 0, np.pi),  # X,
+    # 'Y': lambda q: gates.U3(q, np.pi, 0, 0),  # Y,
+    # pi rotations (For the minus exp(iπ) global phase) (Check the phase from qiskit) RX(π)=−iX; RY(π)=−iY
+    "minusX": lambda q: gates.U3(q, np.pi, -np.pi, 0),  # X, gp:exp(iπ)
+    "minusY": lambda q: gates.U3(q, np.pi, 0, 0),  # Y, gp:exp(iπ)
+    # pi/2 rotations (Check the minus) RX(π/2)=−exp(i π/4)SX
+    "sqrtX": lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),  # Rx(pi/2) gp:
+    "sqrtMinusX": lambda q: gates.U3(
+        q, -np.pi / 2, -np.pi / 2, np.pi / 2
+    ),  # Rx(-pi/2) gp:
+    "sqrtY": lambda q: gates.U3(q, np.pi / 2, 0, 0),  # Ry(pi/2) gp:
+    "sqrtMinusY": lambda q: gates.U3(q, -np.pi / 2, 0, 0),  # Ry(-pi/2) gp:
+    # 2pi/3 rotations Check the gp
+    "sqrtX,sqrtY": lambda q: gates.U3(
+        q, np.pi / 2, -np.pi / 2, 0
+    ),  # Rx(pi/2)Ry(pi/2) gp:
     "sqrtX,sqrtMinusY": lambda q: gates.U3(
         q, np.pi / 2, -np.pi / 2, np.pi
-    ),  # Rx(pi/2)Ry(-pi/2)
+    ),  # Rx(pi/2)Ry(-pi/2) gp:
     "sqrtMinusX,sqrtY": lambda q: gates.U3(
         q, np.pi / 2, np.pi / 2, 0
-    ),  # Rx(-pi/2)Ry(pi/2)
+    ),  # Rx(-pi/2)Ry(pi/2) gp:
     "sqrtMinusX,sqrtMinusY": lambda q: gates.U3(
         q, np.pi / 2, np.pi / 2, -np.pi
-    ),  # Rx(-pi/2)Ry(-pi/2)
-    "sqrtY,sqrtX": lambda q: gates.U3(q, np.pi / 2, 0, np.pi / 2),  # Ry(pi/2)Rx(pi/2)
+    ),  # Rx(-pi/2)Ry(-pi/2) gp:
+    "sqrtY,sqrtX": lambda q: gates.U3(
+        q, np.pi / 2, 0, np.pi / 2
+    ),  # Ry(pi/2)Rx(pi/2) gp:
     "sqrtY,sqrtMinusX": lambda q: gates.U3(
         q, np.pi / 2, 0, -np.pi / 2
-    ),  # Ry(pi/2)Rx(-pi/2)
+    ),  # Ry(pi/2)Rx(-pi/2) gp:
     "sqrtMinusY,sqrtX": lambda q: gates.U3(
         q, np.pi / 2, -np.pi, np.pi / 2
-    ),  # Ry(-pi/2)Rx(pi/2)
+    ),  # Ry(-pi/2)Rx(pi/2) gp:
     "sqrtMinusY,sqrtMinusX": lambda q: gates.U3(
         q, np.pi / 2, np.pi, -np.pi / 2
-    ),  # Ry(-pi/2)Rx(-pi/2)
-    # Hadamard-like
-    "minusX,sqrtY": lambda q: gates.U3(q, np.pi / 2, -np.pi, 0),  # X Ry(pi/2)
-    "minusX,sqrtMinusY": lambda q: gates.U3(q, np.pi / 2, 0, np.pi),  # X Ry(-pi/2)
+    ),  # Ry(-pi/2)Rx(-pi/2) gp:
+    # Hadamard-like Check the gp
+    "minusX,sqrtY": lambda q: gates.U3(q, np.pi / 2, -np.pi, 0),  # X Ry(pi/2) gp:
+    "minusX,sqrtMinusY": lambda q: gates.U3(q, np.pi / 2, 0, np.pi),  # X Ry(-pi/2) gp:
     "minusY,sqrtX": lambda q: gates.U3(
         q, np.pi / 2, np.pi / 2, np.pi / 2
-    ),  # Y Rx(pi/2)
+    ),  # Y Rx(pi/2) gp:
     "minusY,sqrtMinusX": lambda q: gates.U3(
         q, np.pi / 2, -np.pi / 2, -np.pi / 2
-    ),  # Y Rx(-pi/2)
+    ),  # Y Rx(-pi/2) gp:
     "sqrtX,sqrtY,sqrtX": lambda q: gates.U3(
         q, np.pi, -np.pi / 4, np.pi / 4
-    ),  # Rx(pi/2)Ry(pi/2)Rx(pi/2)
+    ),  # Rx(pi/2)Ry(pi/2)Rx(pi/2) gp:
     "sqrtX,sqrtMinusY,sqrtX": lambda q: gates.U3(
         q, np.pi, np.pi / 4, -np.pi / 4
-    ),  # Rx(-pi/2)Ry(pi/2)Rx(-pi/2)
+    ),  # Rx(-pi/2)Ry(pi/2)Rx(-pi/2) gp:
 }
 
 
@@ -203,6 +213,13 @@ def clifford_to_matrix(clifford):
 
 
 def generate_inv_dict_cliffords_file(two_qubit_cliffords, output_file):
+    """
+    Generate an inverse dictionary of clifford matrices and save it to a npz file.
+
+    Parameters:
+    two_qubit_cliffords (dict): A dictionary of two-qubit cliffords.
+    output_file (str): The path to the output npz file.
+    """
     clifford_matrices = {}
     for i, clifford in enumerate(two_qubit_cliffords.values()):
         clifford = two_qubit_cliffords[str(i)]
@@ -219,8 +236,10 @@ def generate_inv_dict_cliffords_file(two_qubit_cliffords, output_file):
         key_str = np.array2string(value, separator=",")
         clifford_matrices_inv_np[key_str] = key
 
-    # npz file to save the data
-    np.savez(output_file, **clifford_matrices_inv_np)
+    if output_file is not None:
+        np.savez(output_file, **clifford_matrices_inv_np)
+
+    return clifford_matrices_inv_np
 
 
 def number_to_str(
