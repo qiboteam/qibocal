@@ -115,14 +115,10 @@ class Operation(Enum):
     single_shot_classification = single_shot_classification
     spin_echo = spin_echo
     spin_echo_sequence = spin_echo_sequence
-    # spin_echo_signal = spin_echo_signal
     allxy = allxy
     allxy_drag_pulse_tuning = allxy_drag_pulse_tuning
-    drag_pulse_tuning = drag_pulse_tuning
     flipping = flipping
     dispersive_shift = dispersive_shift
-    chevron = chevron
-    cz_virtualz = cz_virtualz
     standard_rb = standard_rb
     readout_characterization = readout_characterization
     resonator_frequency = resonator_frequency
@@ -133,9 +129,7 @@ class Operation(Enum):
     chsh_circuits = chsh_circuits
     readout_mitigation_matrix = readout_mitigation_matrix
     twpa_frequency = twpa_frequency
-    # twpa_frequency_SNR = twpa_frequency_snr
     twpa_power = twpa_power
-    # twpa_power_SNR = twpa_power_snr
     twpa_frequency_power = twpa_frequency_power
     rabi_amplitude_ef = rabi_amplitude_ef
     qubit_spectroscopy_ef = qubit_spectroscopy_ef
@@ -154,6 +148,14 @@ class Operation(Enum):
     # resonator_twpa_freq = resonator_twpa_freq
     # spurious_identification = spurious_identification
     # t1_t2_vs_temperature = t1_t2_vs_temperature
+
+    # compatibility with future changes future_name = current_name
+    spin_echo_signal = spin_echo
+    drag_tuning = drag_pulse_tuning
+    chevron_signal = chevron
+    twpa_power_SNR = twpa_power
+    twpa_frequency_SNR = twpa_frequency
+    cz_virtualz_signal = cz_virtualz
 
     mixer_calibration = mixer_calibration
     qubit_spectroscopy_with_lo = qubit_spectroscopy_with_lo
