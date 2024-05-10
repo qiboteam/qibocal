@@ -1,7 +1,7 @@
 backend: qibolab
 platform: dummy
 
-targets: [0,1]
+targets: [0]
 
 actions:
 

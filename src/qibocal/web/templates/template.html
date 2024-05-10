@@ -117,7 +117,7 @@
         <h1>{{ report.title }}</h1>
         <button class="button-export" id="export-pdf">Export to pdf</button>
       </div>
-      <p>
+      <p id="report_info">
         Platform: {{ report.metadata.get('platform')}}<br>
         Run date: {{ report.metadata.get('date') }}<br>
         Start time (UTC): {{ report.metadata.get('start-time') }}<br>
