@@ -13,6 +13,7 @@ from qibocal.protocols.characterization.randomized_benchmarking.utils import (
     SINGLE_QUBIT_CLIFFORDS_NAMES,
     find_cliffords,
     generate_inv_dict_cliffords_file,
+    separator,
 )
 
 GLOBAL_PHASES = [
@@ -144,22 +145,7 @@ def add_inverse_2q_layer(circuit: Circuit, two_qubit_cliffords, file_inv):
 
         clifford_gate = []
         for clifford in clifford_list:
-
-            # Separate values containing 1
-            values_with_1 = [value for value in clifford if "1" in value]
-            values_with_1 = ",".join(values_with_1)
-
-            # Separate values containing 2
-            values_with_2 = [value for value in clifford if "2" in value]
-            values_with_2 = ",".join(values_with_2)
-
-            # Check if CZ
-            value_with_CZ = [value for value in clifford if "CZ" in value]
-            value_with_CZ = len(value_with_CZ) == 1
-
-            values_with_1 = values_with_1.replace("1", "")
-            values_with_2 = values_with_2.replace("2", "")
-
+            values_with_1, values_with_2, value_with_CZ = separator(clifford)
             clifford_gate.append(SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_1](0))
             clifford_gate.append(SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_2](1))
             if value_with_CZ:
