@@ -12,11 +12,14 @@ from plotly.subplots import make_subplots
 from qibo import Circuit, gates
 from qibo.backends import GlobalBackend, NumpyBackend
 from qibo.quantum_info import fidelity
+from qibo.result import QuantumState
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.operation import DATAFILE, Data, Parameters, Results, Routine
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
+
+from .utils import table_dict, table_html
 
 PAULI_BASIS = ["X", "Y", "Z"]
 OUTCOMES = ["00", "01", "10", "11"]
@@ -52,15 +55,18 @@ class StateTomographyData(Data):
     data: dict[tuple[QubitPairId, tuple[str, str]], TomographyType] = field(
         default_factory=dict
     )
+    target: Optional[QuantumState] = None
 
     def save(self, path):
         self._to_npz(path, DATAFILE)
+        self.target.dump(path / "target.json")
 
     @classmethod
     def load(cls, path):
-        instance = cls()
-        instance.data = super().load_data(path, DATAFILE)
-        return instance
+        return cls(
+            data=super().load_data(path, DATAFILE),
+            target=QuantumState.load(path / "target.json"),
+        )
 
 
 @dataclass
@@ -94,9 +100,11 @@ def _acquisition(
         params.circuit = Circuit(len(qubits))
 
     backend = GlobalBackend()
+    simulator = NumpyBackend()
     transpiler = dummy_transpiler(backend)
 
-    data = StateTomographyData()
+    target_state = simulator.execute_circuit(deepcopy(params.circuit))
+    data = StateTomographyData(target=target_state)
 
     for basis1, basis2 in product(PAULI_BASIS, PAULI_BASIS):
         basis_circuit = deepcopy(params.circuit)
@@ -117,7 +125,7 @@ def _acquisition(
             for i in range(len(targets))
         )
 
-        simulation_result = NumpyBackend().execute_circuit(basis_circuit)
+        simulation_result = simulator.execute_circuit(basis_circuit)
         _, results = execute_transpiled_circuit(
             basis_circuit,
             qubits,
@@ -139,12 +147,6 @@ def _acquisition(
                     "simulation_probabilities": simulation_probabilities,
                 },
             )
-        # TODO: Save state here
-        # setattr(
-        #    data,
-        #    f"{basis1.lower()}{basis2.lower()}_basis_state",
-        #    simulation_result
-        # )
     return data
 
 
@@ -210,7 +212,18 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitP
     fig.update_yaxes(range=[0, 1])
     fig.update_layout(barmode="overlay")  # , height=900)
 
-    return [fig], ""
+    fitting_report = table_html(
+        table_dict(
+            [target, target],
+            [
+                "Target state",
+                "Fidelity",
+            ],
+            [str(data.target), 0.0],
+        )
+    )
+
+    return [fig], fitting_report
 
 
 two_qubit_state_tomography = Routine(_acquisition, _fit, _plot)
