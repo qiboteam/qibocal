@@ -168,7 +168,7 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitP
         cols=3,
         # "$\text{Plot 1}$"
         subplot_titles=tuple(
-            f"{basis1}<sub>1</sub>{basis2}<sub>1</sub>"
+            f"{basis1}<sub>1</sub>{basis2}<sub>2</sub>"
             for basis1, basis2 in product(PAULI_BASIS, PAULI_BASIS)
         ),
     )
