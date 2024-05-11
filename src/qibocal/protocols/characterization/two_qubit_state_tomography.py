@@ -55,31 +55,15 @@ TomographyType = np.dtype(
 class StateTomographyData(Data):
     """Tomography data"""
 
-    #xx_basis_state: QuantumState = None
-    #xy_basis_state: QuantumState = None
-    #xz_basis_state: QuantumState = None
-    #yx_basis_state: QuantumState = None
-    #yy_basis_state: QuantumState = None
-    #yz_basis_state: QuantumState = None
-    #zx_basis_state: QuantumState = None
-    #zy_basis_state: QuantumState = None
-    #zz_basis_state: QuantumState = None
     data: dict[tuple[QubitPairId, tuple[str, str]], TomographyType] = field(default_factory=dict)
 
     def save(self, path):
-        #for basis1, basis2 in product(PAULI_BASIS, PAULI_BASIS):
-        #    b1, b2 = basis1.lower(), basis2.lower()
-        #    getattr(self, f"{b1}{b2}_basis_state").dump(path / f"{b1}{b2}.json")
         self._to_npz(path, DATAFILE)
 
     @classmethod
     def load(cls, path):
         instance = cls()
         instance.data = super().load_data(path, DATAFILE)
-        #for basis1, basis2 in product(PAULI_BASIS, PAULI_BASIS):
-        #    b1, b2 = basis1.lower(), basis2.lower()
-        #    state = QuantumState.load(path / f"{b1}{b2}.json")
-        #    setattr(instance, f"{b1}{b2}_basis_state", state)
         return instance
 
 
@@ -124,21 +108,19 @@ def _acquisition(
         if basis2 != "Z":
             basis_circuit.add(getattr(gates, basis2)(2 * i + 1).basis_rotation() for i in range(len(targets)))
 
-        # TODO: Remove this and access results from what is returned after execution
-        # otherwise we are obtaining the simulation results twice
-        # Check with debugger on what qubit numbers the results are registered
-        results = [basis_circuit.add(gates.M(2 * i, 2 * i + 1)) for i in range(len(targets))]
+        basis_circuit.add(gates.M(2 * i, 2 * i + 1, register_name=f"reg{i}") for i in range(len(targets)))
 
-        _ = execute_transpiled_circuit(
+        simulation_result = NumpyBackend().execute_circuit(basis_circuit)
+        _, results = execute_transpiled_circuit(
             basis_circuit,
             qubits,
             backend,
             nshots=params.nshots,
             transpiler=transpiler,
         )
-        simulation_result = NumpyBackend().execute_circuit(basis_circuit)
-        for i, (target, result) in enumerate(zip(targets, results)):
-            frequencies = result.frequencies()
+        
+        for i, target in enumerate(targets):
+            frequencies = results.frequencies(registers=True)[f"reg{i}"]
             simulation_probabilities = simulation_result.probabilities(qubits=(2 * i, 2 * i + 1))
             data.register_qubit(
                 TomographyType,

@@ -826,11 +826,11 @@ actions:
       nshots: 1024
       circuit: tests/circuit.json
 
-  #- id: two-qubit tomography
-  #  targets: [[0,1],[2,3]]
-  #  operation: two_qubit_state_tomography
-  #  parameters:
-  #    nshots: 1024
+  - id: two-qubit tomography
+    targets: [[0,1],[2,3]]
+    operation: two_qubit_state_tomography
+    parameters:
+      nshots: 1024
 
   - id: two-qubit tomography from file
     targets: [[0,2],[1,3]]
