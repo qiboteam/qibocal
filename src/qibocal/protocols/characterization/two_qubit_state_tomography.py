@@ -52,20 +52,20 @@ TomographyType = np.dtype(
 class StateTomographyData(Data):
     """Tomography data"""
 
-    data: dict[tuple[QubitPairId, tuple[str, str]], TomographyType] = field(
+    data: dict[tuple[QubitPairId, tuple[str, str]], np.int64] = field(
         default_factory=dict
     )
-    target: Optional[QuantumState] = None
+    simulated: Optional[QuantumState] = None
 
     def save(self, path):
         self._to_npz(path, DATAFILE)
-        self.target.dump(path / "target.json")
+        self.simulated.dump(path / "simulated.json")
 
     @classmethod
     def load(cls, path):
         return cls(
             data=super().load_data(path, DATAFILE),
-            target=QuantumState.load(path / "target.json"),
+            simulated=QuantumState.load(path / "simulated.json"),
         )
 
 
@@ -103,8 +103,8 @@ def _acquisition(
     simulator = NumpyBackend()
     transpiler = dummy_transpiler(backend)
 
-    target_state = simulator.execute_circuit(deepcopy(params.circuit))
-    data = StateTomographyData(target=target_state)
+    simulated_state = simulator.execute_circuit(deepcopy(params.circuit))
+    data = StateTomographyData(simulated=simulated_state)
 
     for basis1, basis2 in product(PAULI_BASIS, PAULI_BASIS):
         basis_circuit = deepcopy(params.circuit)
@@ -134,14 +134,14 @@ def _acquisition(
             transpiler=transpiler,
         )
 
-        for i, target in enumerate(targets):
+        for i, (q1, q2) in enumerate(targets):
             frequencies = results.frequencies(registers=True)[f"reg{i}"]
             simulation_probabilities = simulation_result.probabilities(
                 qubits=(2 * i, 2 * i + 1)
             )
             data.register_qubit(
                 TomographyType,
-                (target, (basis1, basis2)),
+                (q1, basis1, q2, basis2),
                 {
                     "frequencies": np.array([frequencies[i] for i in OUTCOMES]),
                     "simulation_probabilities": simulation_probabilities,
@@ -173,12 +173,13 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitP
         ),
     )
 
+    qubit1, qubit2 = target
     color1 = "rgba(0.1, 0.34, 0.7, 0.8)"
     color2 = "rgba(0.7, 0.4, 0.1, 0.6)"
     for i, (basis1, basis2) in enumerate(product(PAULI_BASIS, PAULI_BASIS)):
         row = i // 3 + 1
         col = i % 3 + 1
-        basis_data = data.data[target, (basis1, basis2)]
+        basis_data = data.data[qubit1, basis1, qubit2, basis2]
 
         fig.add_trace(
             go.Bar(
@@ -219,7 +220,7 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitP
                 "Target state",
                 "Fidelity",
             ],
-            [str(data.target), 0.0],
+            [str(data.simulated), 0.0],
         )
     )
 
