@@ -1,29 +1,26 @@
 import json
+from collections import Counter
 from copy import deepcopy
 from dataclasses import dataclass, field
+from itertools import product
 from pathlib import Path
 from typing import Optional, Union
-from itertools import product
-from collections import Counter
 
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibo import Circuit, gates
-from qibo.backends import GlobalBackend, NumpyBackend, matrices
+from qibo.backends import GlobalBackend, NumpyBackend
 from qibo.quantum_info import fidelity
-from qibo.result import QuantumState
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.operation import DATAFILE, Data, Parameters, Results, Routine
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
 
-from .utils import table_dict, table_html
-
-
 PAULI_BASIS = ["X", "Y", "Z"]
 OUTCOMES = ["00", "01", "10", "11"]
+
 
 @dataclass
 class StateTomographyParameters(Parameters):
@@ -43,10 +40,7 @@ class StateTomographyParameters(Parameters):
 
 
 TomographyType = np.dtype(
-    [
-        ("frequencies", np.int64),
-        ("simulation_probabilities", np.float64)
-    ]
+    [("frequencies", np.int64), ("simulation_probabilities", np.float64)]
 )
 """Custom dtype for tomography."""
 
@@ -55,7 +49,9 @@ TomographyType = np.dtype(
 class StateTomographyData(Data):
     """Tomography data"""
 
-    data: dict[tuple[QubitPairId, tuple[str, str]], TomographyType] = field(default_factory=dict)
+    data: dict[tuple[QubitPairId, tuple[str, str]], TomographyType] = field(
+        default_factory=dict
+    )
 
     def save(self, path):
         self._to_npz(path, DATAFILE)
@@ -90,7 +86,9 @@ def _acquisition(
     qubits = [q for pair in targets for q in pair]
     for q, counts in Counter(qubits).items():
         if counts > 1:
-            raise ValueError(f"Qubits can only be measured once, but qubit {q} is measured {counts} times.")
+            raise ValueError(
+                f"Qubits can only be measured once, but qubit {q} is measured {counts} times."
+            )
 
     if params.circuit is None:
         params.circuit = Circuit(len(qubits))
@@ -104,11 +102,20 @@ def _acquisition(
         basis_circuit = deepcopy(params.circuit)
         # FIXME: basis
         if basis1 != "Z":
-            basis_circuit.add(getattr(gates, basis1)(2 * i).basis_rotation() for i in range(len(targets)))
+            basis_circuit.add(
+                getattr(gates, basis1)(2 * i).basis_rotation()
+                for i in range(len(targets))
+            )
         if basis2 != "Z":
-            basis_circuit.add(getattr(gates, basis2)(2 * i + 1).basis_rotation() for i in range(len(targets)))
+            basis_circuit.add(
+                getattr(gates, basis2)(2 * i + 1).basis_rotation()
+                for i in range(len(targets))
+            )
 
-        basis_circuit.add(gates.M(2 * i, 2 * i + 1, register_name=f"reg{i}") for i in range(len(targets)))
+        basis_circuit.add(
+            gates.M(2 * i, 2 * i + 1, register_name=f"reg{i}")
+            for i in range(len(targets))
+        )
 
         simulation_result = NumpyBackend().execute_circuit(basis_circuit)
         _, results = execute_transpiled_circuit(
@@ -118,10 +125,12 @@ def _acquisition(
             nshots=params.nshots,
             transpiler=transpiler,
         )
-        
+
         for i, target in enumerate(targets):
             frequencies = results.frequencies(registers=True)[f"reg{i}"]
-            simulation_probabilities = simulation_result.probabilities(qubits=(2 * i, 2 * i + 1))
+            simulation_probabilities = simulation_result.probabilities(
+                qubits=(2 * i, 2 * i + 1)
+            )
             data.register_qubit(
                 TomographyType,
                 (target, (basis1, basis2)),
@@ -131,11 +140,11 @@ def _acquisition(
                 },
             )
         # TODO: Save state here
-        #setattr(
+        # setattr(
         #    data,
         #    f"{basis1.lower()}{basis2.lower()}_basis_state",
         #    simulation_result
-        #)
+        # )
     return data
 
 
@@ -182,7 +191,7 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitP
             row=row,
             col=col,
         )
-        
+
         frequencies = basis_data["frequencies"]
         fig.add_trace(
             go.Bar(
@@ -199,8 +208,8 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitP
         )
 
     fig.update_yaxes(range=[0, 1])
-    fig.update_layout(barmode="overlay")#, height=900)
-    
+    fig.update_layout(barmode="overlay")  # , height=900)
+
     return [fig], ""
 
 

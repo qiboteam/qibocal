@@ -57,7 +57,6 @@ from .signal_experiments.calibrate_state_discrimination import (
 )
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 from .state_tomography import state_tomography
-from .two_qubit_state_tomography import two_qubit_state_tomography
 from .two_qubit_interaction import (
     chevron,
     chevron_signal,
@@ -66,6 +65,7 @@ from .two_qubit_interaction import (
     cz_virtualz,
     cz_virtualz_signal,
 )
+from .two_qubit_state_tomography import two_qubit_state_tomography
 
 
 class Operation(Enum):
