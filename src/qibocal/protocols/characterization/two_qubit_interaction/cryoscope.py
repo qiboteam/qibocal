@@ -55,12 +55,10 @@ CryoscopeType = np.dtype(
 
 
 def generate_waveform():
-    zeros = np.zeros(4)
-    ones = np.ones(4)
+    zeros = np.zeros(20)
+    ones = np.ones(200)
 
-    return np.concatenate(
-        [zeros, ones, ones, zeros, zeros, ones, ones, zeros, ones, zeros]
-    )
+    return np.concatenate([zeros, ones, zeros])
 
 
 def generate_sequences(
@@ -243,75 +241,234 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     )
     qubit_X_data = data[(target, "MX")]
     qubit_Y_data = data[(target, "MY")]
-    fig.add_trace(
-        go.Scatter(
-            x=qubit_X_data.duration,
-            y=qubit_X_data.prob_1,
-            name="X",
-            legendgroup="X",
-        ),
-        row=1,
-        col=1,
-    )
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_X_data.duration-20,
+    #         y=qubit_X_data.prob_1,
+    #         name="X",
+    #         legendgroup="X",
+    #     ),
+    #     row=1,
+    #     col=1,
+    # )
 
-    fig.add_trace(
-        go.Scatter(
-            x=qubit_Y_data.duration,
-            y=qubit_Y_data.prob_1,
-            name="Y",
-            legendgroup="Y",
-        ),
-        row=1,
-        col=1,
-    )
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_Y_data.duration-20,
+    #         y=qubit_Y_data.prob_1,
+    #         name="Y",
+    #         legendgroup="Y",
+    #     ),
+    #     row=1,
+    #     col=1,
+    # )
 
     # minus sign for X_exp becuase I get -cos phase
     X_exp = qubit_X_data.prob_1 - qubit_X_data.prob_0
     Y_exp = qubit_Y_data.prob_0 - qubit_Y_data.prob_1
     phase = np.unwrap(np.angle(X_exp + 1.0j * Y_exp))
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_X_data.duration-20,
+    #         y=phase,
+    #         name="phase",
+    #     ),
+    #     row=2,
+    #     col=1,
+    # )
+
+    coeffs = [-9.88832526e00, 2.11493650e-03, 2.56720231e-05]
+    detuning = scipy.signal.savgol_filter(
+        (phase - phase[-1]) / 2 / np.pi,
+        13,
+        3,
+        deriv=1,
+        delta=4,  # step
+    )
     fig.add_trace(
         go.Scatter(
-            x=qubit_X_data.duration,
-            y=phase,
-            name="phase",
+            x=qubit_X_data.duration - 20,
+            y=detuning,
+            name="detuning",
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_X_data.duration - 20,
+            y=np.polyval(
+                coeffs,
+                (data.flux_pulse_amplitude) * np.ones(len(np.arange(0, 200, 4))),
+            ),
+            name="fit",
+        ),
+        row=1,
+        col=1,
+    )
+    step_response_freq = detuning / np.average(detuning[-int(200 / 2) :])
+    step_response_volt = np.sqrt(step_response_freq)
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_X_data.duration - 20,
+            y=step_response_volt,
+            name="Volt response",
+        ),
+        row=2,
+        col=1,
+    )
+    from scipy import optimize
+
+    def exponential_decay(x, a, t):
+        """Exponential decay defined as 1 + a * np.exp(-x / t).
+
+        :param x: numpy array for the time vector in ns
+        :param a: float for the exponential amplitude
+        :param t: float for the exponential decay time in ns
+        :return: numpy array for the exponential decay
+        """
+        return 1 + a * np.exp(-x / t)
+
+    [A, tau], _ = optimize.curve_fit(
+        exponential_decay,
+        qubit_X_data.duration - 20,
+        step_response_volt,
+    )
+    xplot = qubit_X_data.duration - 20
+    print(xplot)
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_X_data.duration - 20,
+            y=exponential_decay(xplot, A, tau),
+            name="No filter",
         ),
         row=2,
         col=1,
     )
 
-    coeffs = [-9.92541793e00, -5.49829460e-02, 6.79568367e-05]
-    fig.add_trace(
-        go.Scatter(
-            x=qubit_X_data.duration,
-            y=scipy.signal.savgol_filter(
-                (phase - phase[-1]) / 2 / np.pi,
-                13,
-                3,
-                deriv=1,
-            ),
-            name="detuning",
-        ),
-        row=3,
-        col=1,
+    print(A, tau)
+
+    def exponential_correction(A, tau, Ts=1e-9):
+        """Derive FIR and IIR filter taps based on the exponential coefficients A and tau from 1 + a * np.exp(-x / t).
+
+        :param A: amplitude of the exponential decay.
+        :param tau: decay time of the exponential decay
+        :param Ts: sampling period. Default is 1e-9
+        :return: FIR and IIR taps
+        """
+        tau = tau * Ts
+        k1 = Ts + 2 * tau * (A + 1)
+        k2 = Ts - 2 * tau * (A + 1)
+        c1 = Ts + 2 * tau
+        c2 = Ts - 2 * tau
+        feedback_tap = k2 / k1
+        feedforward_taps = np.array([c1, c2]) / k1
+        return feedforward_taps, feedback_tap
+
+    def filter_calc(exponential):
+        """Derive FIR and IIR filter taps based on a list of exponential coefficients.
+
+        :param exponential: exponential coefficients defined as [(A1, tau1), (A2, tau2)]
+        :return: FIR and IIR taps as [fir], [iir]
+        """
+        # Initialization based on the number of exponential coefficients
+        b = np.zeros((2, len(exponential)))
+        feedback_taps = np.zeros(len(exponential))
+        # Derive feedback tap for each set of exponential coefficients
+        for i, (A, tau) in enumerate(exponential):
+            b[:, i], feedback_taps[i] = exponential_correction(A, tau)
+        # Derive feedback tap for each set of exponential coefficients
+        feedforward_taps = b[:, 0]
+        for i in range(len(exponential) - 1):
+            feedforward_taps = np.convolve(feedforward_taps, b[:, i + 1])
+        # feedforward taps are bounded to +/- 2
+        if np.abs(max(feedforward_taps)) >= 2:
+            feedforward_taps = 2 * feedforward_taps / max(feedforward_taps)
+
+        return feedforward_taps, feedback_taps
+
+    fir, iir = filter_calc(exponential=[(A, tau)])
+    print(f"FIR: {fir}\nIIR: {iir}")
+    from scipy import signal
+
+    no_filter = exponential_decay(xplot, A, tau)
+    print(len(no_filter))
+    step_response_th = np.ones(len(qubit_X_data))
+    with_filter = no_filter * signal.lfilter(
+        fir, [1, iir[0]], np.ones(len(qubit_X_data))
     )
+
     fig.add_trace(
         go.Scatter(
-            x=qubit_X_data.duration,
-            y=np.polyval(
-                coeffs,
-                (data.flux_pulse_amplitude) * np.array(data.waveform),
-            ),
-            name="fit",
+            x=qubit_X_data.duration - 20,
+            y=np.ones(len(qubit_X_data)),
+            name="Theory",
         ),
-        row=3,
+        row=2,
         col=1,
     )
 
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x = xplot,
+    #         y=no_filter,
+    #         name="No filter"
+    #     ),
+    #     row=3,
+    #     col=1,
+    # )
+
+    fig.add_trace(
+        go.Scatter(x=xplot, y=with_filter, name="With filter"),
+        row=2,
+        col=1,
+    )
+
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x = xplot,
+    #         y=np.ones(len(with_filter)),
+    #         name="Theory"
+    #     ),
+    #     row=3,
+    #     col=1,
+    # )
+
+    # detuning = np.abs(np.polyval(
+    #             coeffs,
+    #             (data.flux_pulse_amplitude) * np.array(data.waveform),
+    #         ))
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=np.array(range(len(data.waveform))),
+    #         y=(detuning - np.min(detuning) / (np.max(detuning) - np.min(detuning))),
+    #         name="Waveform",
+    #     ),
+    #     row=4,
+    #     col=1,
+    # )
+
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_X_data.duration,
+    #         y=np.abs(scipy.signal.savgol_filter(
+    #             (phase - phase[-1]) / 2 / np.pi,
+    #             13,
+    #             3,
+    #             deriv=1,
+    #         )),
+    #         name="detuning",
+    #     ),
+    #     row=4,
+    #     col=1,
+    # )
+
     fig.update_layout(
         xaxis3_title="Flux pulse duration [ns]",
-        yaxis1_title="Prob of 1",
-        yaxis2_title="Phase [rad]",
-        yaxis3_title="Detuning [GHz]",
+        yaxis1_title="Detuning [GHz]",
+        yaxis2_title="Waveform",
+        # yaxis3_title="Detuning [GHz]",
     )
     return [fig], fitting_report
 

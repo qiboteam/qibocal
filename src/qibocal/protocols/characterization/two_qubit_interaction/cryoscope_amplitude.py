@@ -314,6 +314,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
         row=3,
         col=1,
     )
+
     fig.update_layout(
         xaxis3_title="Flux pulse amplitude [a.u.]",
         yaxis1_title="Prob of 1",
