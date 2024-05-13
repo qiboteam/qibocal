@@ -235,7 +235,7 @@ def _plot(
                 go.Scatter(
                     x=shots.i,
                     y=shots.q,
-                    name=f"state {state} measure {measure}",
+                    name=f"state {state} measurent number {measure}",
                     mode="markers",
                     showlegend=True,
                     opacity=0.7,
