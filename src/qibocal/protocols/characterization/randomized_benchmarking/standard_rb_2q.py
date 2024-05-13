@@ -1,5 +1,3 @@
-import json
-import pathlib
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, TypedDict, Union
@@ -32,6 +30,7 @@ from .fitting import exp1B_func, fit_exp1B_func
 from .utils import (
     calculate_pulses_clifford,
     data_uncertainties,
+    load_cliffords,
     number_to_str,
     random_2q_clifford,
 )
@@ -108,9 +107,7 @@ class RB2Q_Generator:
             if seed is None or isinstance(seed, int)
             else seed
         )
-        path = pathlib.Path(__file__).parent / "2qubitCliffs.json"
-        with open(path) as file:
-            self.two_qubit_cliffords = json.load(file)
+        self.two_qubit_cliffords = load_cliffords(file)
 
     def random_index(self, gate_dict):
         """
