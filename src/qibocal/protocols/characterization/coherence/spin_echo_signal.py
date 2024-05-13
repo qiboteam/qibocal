@@ -12,8 +12,8 @@ from qibocal import update
 from qibocal.auto.operation import Parameters, Results, Routine
 
 from ..utils import table_dict, table_html
-from .t1_signal import CoherenceType, T1SignalData
-from .utils import exp_decay, exponential_fit
+from .t1_signal import T1SignalData
+from .utils import CoherenceType, exp_decay, exponential_fit
 
 
 @dataclass
@@ -29,16 +29,20 @@ class SpinEchoSignalParameters(Parameters):
     unrolling: bool = False
     """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
     Defaults to ``False``."""
+    single_shot: bool = False
+    """If ``True`` save single shot signal data."""
 
 
 @dataclass
 class SpinEchoSignalResults(Results):
     """SpinEchoSignal outputs."""
 
-    t2_spin_echo: dict[QubitId, float]
+    t2_spin_echo: dict[QubitId, tuple[float]]
     """T2 echo for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    pcov: dict[QubitId, list[float]]
+    """Approximate covariance of fitted parameters."""
 
 
 class SpinEchoSignalData(T1SignalData):
@@ -86,10 +90,11 @@ def _acquisition(
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
-        averaging_mode=AveragingMode.CYCLIC,
+        averaging_mode=(
+            AveragingMode.SINGLESHOT if params.single_shot else AveragingMode.CYCLIC
+        ),
     )
 
-    data = SpinEchoSignalData()
     sequences, all_ro_pulses = [], []
 
     # sweep the parameter
@@ -97,8 +102,8 @@ def _acquisition(
         # save data as often as defined by points
 
         for qubit in targets:
-            RX_pulses[qubit].start = RX90_pulses1[qubit].finish + wait // 2
-            RX90_pulses2[qubit].start = RX_pulses[qubit].finish + wait // 2
+            RX_pulses[qubit].start = RX90_pulses1[qubit].finish + wait / 2
+            RX90_pulses2[qubit].start = RX_pulses[qubit].finish + wait / 2
             ro_pulses[qubit].start = RX90_pulses2[qubit].finish
 
         sequences.append(deepcopy(sequence))
@@ -112,6 +117,7 @@ def _acquisition(
             platform.execute_pulse_sequence(sequence, options) for sequence in sequences
         ]
 
+    data = SpinEchoSignalData()
     for ig, (wait, ro_pulses) in enumerate(zip(ro_wait_range, all_ro_pulses)):
         for qubit in targets:
             serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
@@ -119,28 +125,41 @@ def _acquisition(
                 result = results[serial][0]
             else:
                 result = results[ig][serial]
+            if params.single_shot:
+                _wait = np.array(len(result.magnitude) * [wait])
+            else:
+                _wait = np.array([wait])
             data.register_qubit(
                 CoherenceType,
                 (qubit),
                 dict(
-                    wait=np.array([wait]),
+                    wait=_wait,
                     signal=np.array([result.magnitude]),
                     phase=np.array([result.phase]),
                 ),
             )
+
+    if params.single_shot:
+        data.data = {
+            qubit: values.reshape((len(ro_wait_range), params.nshots)).T
+            for qubit, values in data.data.items()
+        }
 
     return data
 
 
 def _fit(data: SpinEchoSignalData) -> SpinEchoSignalResults:
     """Post-processing for SpinEcho."""
-    t2Echos, fitted_parameters = exponential_fit(data)
+    data = data.average
 
-    return SpinEchoSignalResults(t2Echos, fitted_parameters)
+    t2echos, fitted_parameters, pcov = exponential_fit(data)
+
+    return SpinEchoSignalResults(t2echos, fitted_parameters, pcov)
 
 
 def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults = None):
     """Plotting for SpinEcho"""
+    data = data.average
 
     figures = []
     fig = go.Figure()
@@ -181,7 +200,12 @@ def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults 
         )
 
         fitting_report = table_html(
-            table_dict(target, "T2 Spin Echo [ns]", np.round(fit.t2_spin_echo[target]))
+            table_dict(
+                target,
+                ["T2 Spin Echo [ns]"],
+                [np.round(fit.t2_spin_echo[target])],
+                display_error=True,
+            )
         )
 
     fig.update_layout(

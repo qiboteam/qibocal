@@ -56,7 +56,7 @@ CryoscopeType = np.dtype(
 
 def generate_waveform():
     zeros = np.zeros(20)
-    ones = np.ones(200)
+    ones = np.ones(40)
 
     return np.concatenate([zeros, ones, zeros])
 
@@ -235,55 +235,56 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     fitting_report = f"Cryoscope of qubit {target}"
 
     fig = make_subplots(
-        rows=3,
+        rows=4,
         cols=1,
         subplot_titles=(),
     )
     qubit_X_data = data[(target, "MX")]
     qubit_Y_data = data[(target, "MY")]
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=qubit_X_data.duration-20,
-    #         y=qubit_X_data.prob_1,
-    #         name="X",
-    #         legendgroup="X",
-    #     ),
-    #     row=1,
-    #     col=1,
-    # )
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_X_data.duration,
+            y=qubit_X_data.prob_1,
+            name="X",
+            legendgroup="X",
+        ),
+        row=1,
+        col=1,
+    )
 
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=qubit_Y_data.duration-20,
-    #         y=qubit_Y_data.prob_1,
-    #         name="Y",
-    #         legendgroup="Y",
-    #     ),
-    #     row=1,
-    #     col=1,
-    # )
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_Y_data.duration,
+            y=qubit_Y_data.prob_1,
+            name="Y",
+            legendgroup="Y",
+        ),
+        row=1,
+        col=1,
+    )
 
     # minus sign for X_exp becuase I get -cos phase
     X_exp = qubit_X_data.prob_1 - qubit_X_data.prob_0
     Y_exp = qubit_Y_data.prob_0 - qubit_Y_data.prob_1
     phase = np.unwrap(np.angle(X_exp + 1.0j * Y_exp))
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=qubit_X_data.duration-20,
-    #         y=phase,
-    #         name="phase",
-    #     ),
-    #     row=2,
-    #     col=1,
-    # )
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_X_data.duration - 2,
+            y=phase,
+            name="phase",
+        ),
+        row=2,
+        col=1,
+    )
 
-    coeffs = [-9.88832526e00, 2.11493650e-03, 2.56720231e-05]
+    # coeffs = [-9.88832526e00, 2.11493650e-03, 2.56720231e-05]
+    coeffs = [-0.30368473, 0.00563094, 0.00045716]  # with filters
     detuning = scipy.signal.savgol_filter(
-        (phase - phase[-1]) / 2 / np.pi,
+        (phase[2:] - phase[2]) / 2 / np.pi,
         13,
         3,
         deriv=1,
-        delta=4,  # step
+        delta=1,  # step
     )
     fig.add_trace(
         go.Scatter(
@@ -291,7 +292,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
             y=detuning,
             name="detuning",
         ),
-        row=1,
+        row=3,
         col=1,
     )
 
@@ -304,10 +305,10 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
             ),
             name="fit",
         ),
-        row=1,
+        row=3,
         col=1,
     )
-    step_response_freq = detuning / np.average(detuning[-int(200 / 2) :])
+    step_response_freq = detuning / np.average(detuning[-int(100 / 2) :])
     step_response_volt = np.sqrt(step_response_freq)
     fig.add_trace(
         go.Scatter(
@@ -315,10 +316,9 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
             y=step_response_volt,
             name="Volt response",
         ),
-        row=2,
+        row=4,
         col=1,
     )
-    from scipy import optimize
 
     def exponential_decay(x, a, t):
         """Exponential decay defined as 1 + a * np.exp(-x / t).
@@ -330,84 +330,82 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
         """
         return 1 + a * np.exp(-x / t)
 
-    [A, tau], _ = optimize.curve_fit(
-        exponential_decay,
-        qubit_X_data.duration - 20,
-        step_response_volt,
-    )
-    xplot = qubit_X_data.duration - 20
-    print(xplot)
-    fig.add_trace(
-        go.Scatter(
-            x=qubit_X_data.duration - 20,
-            y=exponential_decay(xplot, A, tau),
-            name="No filter",
-        ),
-        row=2,
-        col=1,
-    )
+    # [A, tau], _ = optimize.curve_fit(
+    #     exponential_decay,
+    #     qubit_X_data.duration - 20,
+    #     step_response_volt,
+    # )
+    # xplot = qubit_X_data.duration - 20
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_X_data.duration - 20,
+    #         y=exponential_decay(xplot, A, tau),
+    #         name="No filter",
+    #     ),
+    #     row=2,
+    #     col=1,
+    # )
 
-    print(A, tau)
+    # print(A, tau)
 
-    def exponential_correction(A, tau, Ts=1e-9):
-        """Derive FIR and IIR filter taps based on the exponential coefficients A and tau from 1 + a * np.exp(-x / t).
+    # def exponential_correction(A, tau, Ts=1e-9):
+    #     """Derive FIR and IIR filter taps based on the exponential coefficients A and tau from 1 + a * np.exp(-x / t).
 
-        :param A: amplitude of the exponential decay.
-        :param tau: decay time of the exponential decay
-        :param Ts: sampling period. Default is 1e-9
-        :return: FIR and IIR taps
-        """
-        tau = tau * Ts
-        k1 = Ts + 2 * tau * (A + 1)
-        k2 = Ts - 2 * tau * (A + 1)
-        c1 = Ts + 2 * tau
-        c2 = Ts - 2 * tau
-        feedback_tap = k2 / k1
-        feedforward_taps = np.array([c1, c2]) / k1
-        return feedforward_taps, feedback_tap
+    #     :param A: amplitude of the exponential decay.
+    #     :param tau: decay time of the exponential decay
+    #     :param Ts: sampling period. Default is 1e-9
+    #     :return: FIR and IIR taps
+    #     """
+    #     tau = tau * Ts
+    #     k1 = Ts + 2 * tau * (A + 1)
+    #     k2 = Ts - 2 * tau * (A + 1)
+    #     c1 = Ts + 2 * tau
+    #     c2 = Ts - 2 * tau
+    #     feedback_tap = k2 / k1
+    #     feedforward_taps = np.array([c1, c2]) / k1
+    #     return feedforward_taps, feedback_tap
 
-    def filter_calc(exponential):
-        """Derive FIR and IIR filter taps based on a list of exponential coefficients.
+    # def filter_calc(exponential):
+    #     """Derive FIR and IIR filter taps based on a list of exponential coefficients.
 
-        :param exponential: exponential coefficients defined as [(A1, tau1), (A2, tau2)]
-        :return: FIR and IIR taps as [fir], [iir]
-        """
-        # Initialization based on the number of exponential coefficients
-        b = np.zeros((2, len(exponential)))
-        feedback_taps = np.zeros(len(exponential))
-        # Derive feedback tap for each set of exponential coefficients
-        for i, (A, tau) in enumerate(exponential):
-            b[:, i], feedback_taps[i] = exponential_correction(A, tau)
-        # Derive feedback tap for each set of exponential coefficients
-        feedforward_taps = b[:, 0]
-        for i in range(len(exponential) - 1):
-            feedforward_taps = np.convolve(feedforward_taps, b[:, i + 1])
-        # feedforward taps are bounded to +/- 2
-        if np.abs(max(feedforward_taps)) >= 2:
-            feedforward_taps = 2 * feedforward_taps / max(feedforward_taps)
+    #     :param exponential: exponential coefficients defined as [(A1, tau1), (A2, tau2)]
+    #     :return: FIR and IIR taps as [fir], [iir]
+    #     """
+    #     # Initialization based on the number of exponential coefficients
+    #     b = np.zeros((2, len(exponential)))
+    #     feedback_taps = np.zeros(len(exponential))
+    #     # Derive feedback tap for each set of exponential coefficients
+    #     for i, (A, tau) in enumerate(exponential):
+    #         b[:, i], feedback_taps[i] = exponential_correction(A, tau)
+    #     # Derive feedback tap for each set of exponential coefficients
+    #     feedforward_taps = b[:, 0]
+    #     for i in range(len(exponential) - 1):
+    #         feedforward_taps = np.convolve(feedforward_taps, b[:, i + 1])
+    #     # feedforward taps are bounded to +/- 2
+    #     if np.abs(max(feedforward_taps)) >= 2:
+    #         feedforward_taps = 2 * feedforward_taps / max(feedforward_taps)
 
-        return feedforward_taps, feedback_taps
+    #     return feedforward_taps, feedback_taps
 
-    fir, iir = filter_calc(exponential=[(A, tau)])
-    print(f"FIR: {fir}\nIIR: {iir}")
-    from scipy import signal
+    # fir, iir = filter_calc(exponential=[(A, tau)])
+    # print(f"FIR: {fir}\nIIR: {iir}")
+    # from scipy import signal
 
-    no_filter = exponential_decay(xplot, A, tau)
-    print(len(no_filter))
-    step_response_th = np.ones(len(qubit_X_data))
-    with_filter = no_filter * signal.lfilter(
-        fir, [1, iir[0]], np.ones(len(qubit_X_data))
-    )
+    # no_filter = exponential_decay(xplot, A, tau)
+    # step_response_th = np.ones(len(qubit_X_data))
+    # with_filter = no_filter * signal.lfilter(
+    #     fir, [1, iir[0]], np.ones(len(qubit_X_data))
+    # )
 
-    fig.add_trace(
-        go.Scatter(
-            x=qubit_X_data.duration - 20,
-            y=np.ones(len(qubit_X_data)),
-            name="Theory",
-        ),
-        row=2,
-        col=1,
-    )
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_X_data.duration - 20,
+    #         y=np.ones(len(qubit_X_data)),
+    #         name="Theory",
+    #     ),
+    #     row=2,
+    #     col=1,
+    # )
 
     # fig.add_trace(
     #     go.Scatter(
@@ -419,11 +417,11 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     #     col=1,
     # )
 
-    fig.add_trace(
-        go.Scatter(x=xplot, y=with_filter, name="With filter"),
-        row=2,
-        col=1,
-    )
+    # fig.add_trace(
+    #     go.Scatter(x=xplot, y=with_filter, name="With filter"),
+    #     row=2,
+    #     col=1,
+    # )
 
     # fig.add_trace(
     #     go.Scatter(

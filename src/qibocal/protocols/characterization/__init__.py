@@ -2,7 +2,6 @@ from enum import Enum
 
 from .allxy.allxy import allxy
 from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
-from .allxy.drag_pulse_tuning import drag_pulse_tuning
 from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
 from .coherence.spin_echo_signal import spin_echo_signal
@@ -14,10 +13,12 @@ from .coherence.t2_sequences import t2_sequences
 from .coherence.t2_signal import t2_signal
 from .coherence.zeno import zeno
 from .coherence.zeno_signal import zeno_signal
+from .couplers.coupler_chevron import coupler_chevron
 from .couplers.coupler_qubit_spectroscopy import coupler_qubit_spectroscopy
 from .couplers.coupler_resonator_spectroscopy import coupler_resonator_spectroscopy
 from .dispersive_shift import dispersive_shift
 from .dispersive_shift_qutrit import dispersive_shift_qutrit
+from .drag import drag_tuning
 from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
 from .flipping_signal import flipping_signal
@@ -57,11 +58,13 @@ from .signal_experiments.calibrate_state_discrimination import (
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 from .two_qubit_interaction import (
     chevron,
+    chevron_signal,
     chsh_circuits,
     chsh_pulses,
     cryoscope,
     cryoscope_amplitude,
     cz_virtualz,
+    cz_virtualz_signal,
 )
 
 
@@ -94,10 +97,11 @@ class Operation(Enum):
     spin_echo_signal = spin_echo_signal
     allxy = allxy
     allxy_drag_pulse_tuning = allxy_drag_pulse_tuning
-    drag_pulse_tuning = drag_pulse_tuning
+    drag_tuning = drag_tuning
     flipping = flipping
     dispersive_shift = dispersive_shift
     chevron = chevron
+    chevron_signal = chevron_signal
     cz_virtualz = cz_virtualz
     standard_rb = standard_rb
     readout_characterization = readout_characterization
@@ -121,6 +125,8 @@ class Operation(Enum):
     dispersive_shift_qutrit = dispersive_shift_qutrit
     coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
     coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
+    cz_virtualz_signal = cz_virtualz_signal
+    coupler_chevron = coupler_chevron
     flipping_signal = flipping_signal
     calibrate_state_discrimination = calibrate_state_discrimination
     cryoscope = cryoscope

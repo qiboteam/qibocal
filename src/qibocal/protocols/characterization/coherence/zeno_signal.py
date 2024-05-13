@@ -120,7 +120,7 @@ def _fit(data: ZenoSignalData) -> ZenoSignalResults:
             y = p_0-p_1 e^{-x p_2}.
     """
 
-    t1s, fitted_parameters = utils.exponential_fit(data, zeno=True)
+    t1s, fitted_parameters, _ = utils.exponential_fit(data, zeno=True)
 
     return ZenoSignalResults(t1s, fitted_parameters)
 

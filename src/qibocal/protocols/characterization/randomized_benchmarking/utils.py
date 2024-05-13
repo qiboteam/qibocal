@@ -4,7 +4,6 @@ from typing import Optional, Union
 import numpy as np
 from qibo import gates
 
-from qibocal.config import raise_error
 from qibocal.protocols.characterization.utils import significant_digit
 
 SINGLE_QUBIT_CLIFFORDS = {
@@ -42,8 +41,8 @@ SINGLE_QUBIT_CLIFFORDS = {
 }
 
 
-def random_clifford(qubits, seed=None):
-    """Generates random Clifford operator(s).
+def random_clifford(random_index_gen):
+    """Generates random Clifford operator.
 
     Args:
         qubits (int or list or ndarray): if ``int``, the number of qubits for the Clifford.
@@ -56,34 +55,10 @@ def random_clifford(qubits, seed=None):
         (list of :class:`qibo.gates.Gate`): Random Clifford operator(s).
     """
 
-    if (
-        not isinstance(qubits, int)
-        and not isinstance(qubits, list)
-        and not isinstance(qubits, np.ndarray)
-    ):
-        raise_error(
-            TypeError,
-            f"qubits must be either type int, list or ndarray, but it is type {type(qubits)}.",
-        )
-    if isinstance(qubits, int) and qubits <= 0:
-        raise_error(ValueError, "qubits must be a positive integer.")
+    random_index = int(random_index_gen(SINGLE_QUBIT_CLIFFORDS))
+    clifford_gate = SINGLE_QUBIT_CLIFFORDS[random_index](0)
 
-    if isinstance(qubits, (list, np.ndarray)) and any(q < 0 for q in qubits):
-        raise_error(ValueError, "qubit indexes must be non-negative integers.")
-
-    local_state = (
-        np.random.default_rng(seed) if seed is None or isinstance(seed, int) else seed
-    )
-
-    if isinstance(qubits, int):
-        qubits = list(range(qubits))
-
-    random_indexes = local_state.integers(0, len(SINGLE_QUBIT_CLIFFORDS), len(qubits))
-    clifford_gates = [
-        SINGLE_QUBIT_CLIFFORDS[p](q) for p, q in zip(random_indexes, qubits)
-    ]
-
-    return clifford_gates
+    return clifford_gate, random_index
 
 
 def number_to_str(
