@@ -27,6 +27,8 @@ class QubitSpectroscopyParameters(Parameters):
     """Drive pulse duration [ns]. Same for all qubits."""
     drive_amplitude: Optional[float] = None
     """Drive pulse amplitude (optional). Same for all qubits."""
+    flux_amplitude: Optional[float] = None
+    """Flux pulse amplitude (optional). Same for all qubits."""
 
 
 @dataclass
@@ -62,6 +64,7 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
+    flux_pulses = {}
     amplitudes = {}
     for qubit in targets:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
@@ -75,12 +78,19 @@ def _acquisition(
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
         )
+
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
+        if params.flux_amplitude is not None:
+            flux_pulses[qubit] = platform.create_qubit_flux_pulse(
+                qubit, start=0, duration=sequence.duration, amplitude=params.flux_amplitude
+            )
+            sequence.add(flux_pulses[qubit])
+
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
+        -params.freq_width // 2, params.freq_width // 2, params.freq_step
     )
     sweeper = Sweeper(
         Parameter.frequency,
