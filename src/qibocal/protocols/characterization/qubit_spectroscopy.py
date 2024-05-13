@@ -84,7 +84,10 @@ def _acquisition(
 
         if params.flux_amplitude is not None:
             flux_pulses[qubit] = platform.create_qubit_flux_pulse(
-                qubit, start=0, duration=sequence.duration, amplitude=params.flux_amplitude
+                qubit,
+                start=0,
+                duration=sequence.duration,
+                amplitude=params.flux_amplitude,
             )
             sequence.add(flux_pulses[qubit])
 
