@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -23,6 +24,9 @@ from qibocal.protocols.characterization.utils import (
 class ReadoutCharacterizationParameters(Parameters):
     """ReadoutCharacterization runcard inputs."""
 
+    delay: float = 0
+    """Delay between readouts, could account for resonator deplation or not [ns]."""
+
 
 @dataclass
 class ReadoutCharacterizationResults(Results):
@@ -37,7 +41,9 @@ class ReadoutCharacterizationResults(Results):
     effective_temperature: dict[QubitId, tuple[float, float]]
     """Effective qubit temperature."""
     Lambda_M: dict[QubitId, float]
-    "Mapping between a given initial state to an outcome adter the measurement"
+    "Mapping between a given initial state to an outcome after the measurement"
+    Lambda_M2: dict[QubitId, float]
+    "Mapping between the outcome after the measurement and it still being that outcame after another measurement"
 
 
 ReadoutCharacterizationType = np.dtype(
@@ -55,6 +61,9 @@ class ReadoutCharacterizationData(Data):
 
     qubit_frequencies: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
+
+    delay: float = 0
+    """Delay between readouts [ns]."""
     data: dict[tuple, npt.NDArray[ReadoutCharacterizationType]] = field(
         default_factory=dict
     )
@@ -73,7 +82,8 @@ def _acquisition(
     data = ReadoutCharacterizationData(
         qubit_frequencies={
             qubit: platform.qubits[qubit].drive_frequency for qubit in targets
-        }
+        },
+        delay=float(params.delay),
     )
 
     # FIXME: ADD 1st measurament and post_selection for accurate state preparation ?
@@ -93,7 +103,9 @@ def _acquisition(
             ro_pulses[qubit] = []
             for _ in range(2):
                 ro_pulse = platform.create_qubit_readout_pulse(qubit, start=start)
-                start += ro_pulse.duration
+                start += ro_pulse.duration + int(
+                    params.delay
+                )  # device required conversion
                 sequence.add(ro_pulse)
                 ro_pulses[qubit].append(ro_pulse)
 
@@ -138,6 +150,7 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
     effective_temperature = {}
     qnd = {}
     Lambda_M = {}
+    Lambda_M2 = {}
     for qubit in qubits:
         # 1st measurement (m=1)
         m1_state_1 = data.samples[qubit, 1, 0]
@@ -168,6 +181,12 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
             [state1_count_0_m1 / nshots, state1_count_1_m1 / nshots],
         ]
 
+        # Repeat Lambda and fidelity for each measurement ?
+        Lambda_M2[qubit] = [
+            [state0_count_0_m2 / nshots, state0_count_1_m2 / nshots],
+            [state1_count_0_m2 / nshots, state1_count_1_m2 / nshots],
+        ]
+
         assignment_fidelity[qubit] = (
             1 - (state1_count_0_m1 / nshots + state0_count_1_m1 / nshots) / 2
         )
@@ -192,7 +211,7 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
         )
 
     return ReadoutCharacterizationResults(
-        fidelity, assignment_fidelity, qnd, effective_temperature, Lambda_M
+        fidelity, assignment_fidelity, qnd, effective_temperature, Lambda_M, Lambda_M2
     )
 
 
@@ -216,32 +235,78 @@ def _plot(
                 go.Scatter(
                     x=shots.i,
                     y=shots.q,
-                    name=f"state {state} measure {measure}",
+                    name=f"Prepared state {state} measurement {measure}",
                     mode="markers",
                     showlegend=True,
                     opacity=0.7,
                     marker=dict(size=3),
                 )
             )
+    fig.update_layout(
+        title={
+            "text": "IQ Plane",
+            "y": 0.9,
+            "x": 0.5,
+            "xanchor": "center",
+            "yanchor": "top",
+        },
+        xaxis_title="I",
+        yaxis_title="Q",
+    )
+
     figures.append(fig)
     if fit is not None:
-        fig2 = go.Figure()
 
-        fig2.add_trace(
+        fig = make_subplots(
+            rows=1,
+            cols=2,
+            subplot_titles=(
+                "1st measurement statistics",
+                "2nd measurement statistics",
+            ),
+        )
+
+        fig.add_trace(
             go.Heatmap(
                 z=fit.Lambda_M[target],
-            )
+                x=["0", "1"],
+                y=["0", "1"],
+                coloraxis="coloraxis",
+            ),
+            row=1,
+            col=1,
         )
+
+        fig.add_trace(
+            go.Heatmap(
+                z=fit.Lambda_M2[target],
+                x=["0", "1"],
+                y=["0", "1"],
+                coloraxis="coloraxis",
+            ),
+            row=1,
+            col=2,
+        )
+
+        fig.update_xaxes(title_text="Measured state", row=1, col=1)
+        fig.update_xaxes(title_text="Measured state", row=1, col=2)
+        fig.update_yaxes(title_text="Prepared state", row=1, col=1)
+        fig.update_yaxes(title_text="Prepared state", row=1, col=2)
+
+        figures.append(fig)
+
         fitting_report = table_html(
             table_dict(
                 target,
                 [
+                    "Delay between readouts [ns]",
                     "Assignment Fidelity",
                     "Fidelity",
                     "QND",
                     "Effective Qubit Temperature [K]",
                 ],
                 [
+                    np.round(data.delay),
                     np.round(fit.assignment_fidelity[target], 6),
                     np.round(fit.fidelity[target], 6),
                     np.round(fit.qnd[target], 6),
@@ -251,7 +316,7 @@ def _plot(
                 ],
             )
         )
-        figures.append(fig2)
+
     return figures, fitting_report
 
 
