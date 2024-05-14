@@ -49,7 +49,8 @@ The bare resonator frequency can be found setting a large value for the amplitud
     the average on hardware. If the user wants to retrieve all the shots
     and perform the average afterwards it can be done by specifying the
     entry `hardware_average: false` in the experiment parameters. In this
-    case the plot will include also error bands.
+    case the fitting procedure will take into account errors and error bands
+    will be included in the plot.
 
     .. image:: resonator_spectroscopy_error_bars.png
 
