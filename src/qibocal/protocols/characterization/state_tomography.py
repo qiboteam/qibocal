@@ -175,17 +175,56 @@ def _fit(data: StateTomographyData) -> StateTomographyResults:
     )
 
 
+def plot_parallelogram(a, e, pos_x, pos_y, **options):
+    """Plotting single histogram in 3d plot."""
+    x, y, z = np.meshgrid(
+        np.linspace(pos_x - a / 4, pos_x + a / 4, 2),
+        np.linspace(pos_y - a / 4, pos_y + a / 4, 2),
+        np.linspace(0, e, 2),
+    )
+    x = x.flatten()
+    y = y.flatten()
+    z = z.flatten()
+    return go.Mesh3d(
+        x=x,
+        y=y,
+        z=z,
+        alphahull=1,
+        flatshading=True,
+        lighting={"diffuse": 0.1, "specular": 2.0, "roughness": 0.5},
+        **options,
+    )
+
+
+def plot_rho(fig, zz, trace_options, figure_options, showlegend=None):
+    """Plot density matrix"""
+    x, y = np.meshgrid(
+        [0, 1],
+        [0, 1],
+    )
+    xx = x.flatten()
+    yy = y.flatten()
+    zz = np.array(zz).ravel()
+    showlegend_temp = False
+    for x, y, z in zip(xx, yy, zz):
+        if showlegend is None:
+            showlegend_temp = bool(x == xx[-1] and y == yy[-1])
+        fig.add_trace(
+            plot_parallelogram(1, z, x, y, showlegend=showlegend_temp, **trace_options),
+            **figure_options,
+        )
+
+
 def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitId):
     """Plotting for state tomography"""
     fig = make_subplots(
-        rows=2,
+        rows=1,
         cols=2,
-        # "$\text{Plot 1}$"
+        start_cell="top-left",
+        specs=[[{"type": "scatter3d"}, {"type": "scatter3d"}]],
         subplot_titles=(
-            "Re(ρ)<sub>measured</sub>",
-            "Im(ρ)<sub>measured</sub>",
-            "Re(ρ)<sub>theory</sub>",
-            "Im(ρ)<sub>theory</sub>",
+            "Re(ρ)",
+            "Im(ρ)",
         ),
     )
 
@@ -206,62 +245,49 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
         if np.abs(min_im - max_im) < 1e-5:
             min_im = min_im - 0.1
             max_im = max_im + 0.1
-        fig.add_trace(
-            go.Heatmap(
-                z=fit.measured_density_matrix_real[target],
-                x=["0", "1"],
-                y=["0", "1"],
-                colorscale="ice",
-                colorbar_x=-0.2,
-                zmin=min_re,
-                zmax=max_re,
-                reversescale=True,
+
+        plot_rho(
+            fig,
+            fit.measured_density_matrix_real[target],
+            trace_options=dict(
+                color="rgba(255,100,0,0.1)", name="experiment", legendgroup="experiment"
             ),
-            row=1,
-            col=1,
+            figure_options=dict(row=1, col=1),
         )
 
-        fig.add_trace(
-            go.Heatmap(
-                z=fit.target_density_matrix_real[target],
-                x=["0", "1"],
-                y=["0", "1"],
-                showscale=False,
-                colorscale="ice",
-                zmin=min_re,
-                zmax=max_re,
-                reversescale=True,
+        plot_rho(
+            fig,
+            fit.target_density_matrix_real[target],
+            trace_options=dict(
+                color="rgba(100,0,100,0.1)", name="simulation", legendgroup="simulation"
             ),
-            row=2,
-            col=1,
+            figure_options=dict(row=1, col=1),
         )
 
-        fig.add_trace(
-            go.Heatmap(
-                z=fit.measured_density_matrix_imag[target],
-                x=["0", "1"],
-                y=["0", "1"],
-                colorscale="Burg",
-                colorbar_x=1.01,
-                zmin=min_im,
-                zmax=max_im,
+        plot_rho(
+            fig,
+            fit.measured_density_matrix_imag[target],
+            trace_options=dict(
+                color="rgba(255,100,0,0.1)", name="experiment", legendgroup="experiment"
             ),
-            row=1,
-            col=2,
+            figure_options=dict(row=1, col=2),
+            showlegend=False,
         )
 
-        fig.add_trace(
-            go.Heatmap(
-                z=fit.target_density_matrix_imag[target],
-                x=["0", "1"],
-                y=["0", "1"],
-                colorscale="Burg",
-                showscale=False,
-                zmin=min_im,
-                zmax=max_im,
+        plot_rho(
+            fig,
+            fit.target_density_matrix_imag[target],
+            trace_options=dict(
+                color="rgba(100,0,100,0.1)", name="simulation", legendgroup="simulation"
             ),
-            row=2,
-            col=2,
+            figure_options=dict(row=1, col=2),
+            showlegend=False,
+        )
+
+        fig.update_scenes(
+            xaxis=dict(tickvals=[0, 1]),
+            yaxis=dict(tickvals=[0, 1]),
+            zaxis=dict(range=[-1, 1]),
         )
 
         fitting_report = table_html(
