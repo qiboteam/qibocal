@@ -75,7 +75,7 @@ class Parameters:
     hardware_average: bool = False
     """By default hardware average will be performed."""
     classify: bool = False
-    """By default shot classification will not be performed."""
+    """By default qubit state classification will not be performed."""
 
     @classmethod
     def load(cls, input_parameters):
