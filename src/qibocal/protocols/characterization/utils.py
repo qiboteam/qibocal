@@ -124,7 +124,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
         guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
 
-    model_parameters = [
+    initial_parameters = [
         guess_amp,
         guess_center,
         guess_sigma,
@@ -138,16 +138,17 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
                     lorentzian,
                     frequencies,
                     voltages,
-                    p0=model_parameters,
+                    p0=initial_parameters,
                     sigma=data.error_signal,
                 )
                 perr = np.sqrt(np.diag(perr)).tolist()
+                model_parameters = list(fit_parameters)
                 return model_parameters[1] * GHZ_TO_HZ, list(model_parameters), perr
         fit_parameters, perr = curve_fit(
             lorentzian,
             frequencies,
             voltages,
-            p0=model_parameters,
+            p0=initial_parameters,
         )
         perr = [0] * 4
         model_parameters = list(fit_parameters)
