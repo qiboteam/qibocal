@@ -18,7 +18,7 @@ from qibocal.protocols.characterization.qubit_spectroscopy_ef import (
 )
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, extract_feature, table_dict, table_html
-from . import resonator_flux_dependence, utils
+from . import utils
 from .resonator_flux_dependence import ResonatorFluxParameters
 
 
@@ -68,9 +68,6 @@ class QubitFluxData(Data):
 
     resonator_type: str
     """Resonator type."""
-
-    flux_pulses: bool
-    """True if sweeping flux pulses, False if sweeping bias."""
 
     qubit_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
@@ -133,28 +130,21 @@ def _acquisition(
         pulses=[qd_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
-    if params.flux_pulses:
-        (delta_bias_flux_range, sweepers, sequences) = (
-            resonator_flux_dependence.create_flux_pulse_sweepers(
-                params, platform, targets, sequence
-            )
+
+    delta_bias_flux_range = np.arange(
+        -params.bias_width / 2, params.bias_width / 2, params.bias_step
+    )
+    sweepers = [
+        Sweeper(
+            Parameter.bias,
+            delta_bias_flux_range,
+            qubits=[platform.qubits[qubit] for qubit in targets],
+            type=SweeperType.OFFSET,
         )
-        sequence = sequences[0]
-    else:
-        delta_bias_flux_range = np.arange(
-            -params.bias_width / 2, params.bias_width / 2, params.bias_step
-        )
-        sweepers = [
-            Sweeper(
-                Parameter.bias,
-                delta_bias_flux_range,
-                qubits=[platform.qubits[qubit] for qubit in targets],
-                type=SweeperType.OFFSET,
-            )
-        ]
+    ]
+
     data = QubitFluxData(
         resonator_type=platform.resonator_type,
-        flux_pulses=params.flux_pulses,
         qubit_frequency=qubit_frequency,
         offset=offset,
     )
@@ -243,16 +233,12 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
         target,
         fit_function=utils.transmon_frequency_diagonal,
     )
-    if data.flux_pulses:
-        bias_flux_unit = "a.u."
-    else:
-        bias_flux_unit = "V"
     if fit is not None:
         fitting_report = table_html(
             table_dict(
                 target,
                 [
-                    f"Sweetspot [{bias_flux_unit}]",
+                    f"Sweetspot [V]",
                     "Qubit Frequency at Sweetspot [Hz]",
                     "Asymmetry d",
                     "Flux dependence",

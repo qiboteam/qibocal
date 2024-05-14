@@ -24,7 +24,6 @@ from .qubit_flux_dependence import (
     QubitFluxType,
 )
 from .qubit_flux_dependence import _fit as diagonal_fit
-from .resonator_flux_dependence import create_flux_pulse_sweepers
 
 
 @dataclass
@@ -73,7 +72,6 @@ class QubitCrosstalkData(QubitFluxData):
     def diagonal(self) -> Optional[QubitFluxData]:
         instance = QubitFluxData(
             resonator_type=self.resonator_type,
-            flux_pulses=self.flux_pulses,
             qubit_frequency=self.qubit_frequency,
         )
         for qubit in self.qubits:
@@ -88,7 +86,6 @@ class QubitCrosstalkData(QubitFluxData):
             return instance
         return QubitFluxData(
             resonator_type=self.resonator_type,
-            flux_pulses=self.flux_pulses,
             qubit_frequency=self.qubit_frequency,
         )
 
@@ -167,24 +164,21 @@ def _acquisition(
         flux_qubits = list(platform.qubits)
     else:
         flux_qubits = params.flux_qubits
-    if params.flux_pulses:
-        delta_bias_flux_range, sweepers, sequences = create_flux_pulse_sweepers(
-            params, platform, flux_qubits, sequence, crosstalk=True
+
+    delta_bias_flux_range = np.arange(
+        -params.bias_width / 2, params.bias_width / 2, params.bias_step
+    )
+    sequences = [sequence] * len(flux_qubits)
+    sweepers = [
+        Sweeper(
+            Parameter.bias,
+            delta_bias_flux_range,
+            qubits=[platform.qubits[flux_qubit]],
+            type=SweeperType.OFFSET,
         )
-    else:
-        delta_bias_flux_range = np.arange(
-            -params.bias_width / 2, params.bias_width / 2, params.bias_step
-        )
-        sequences = [sequence] * len(flux_qubits)
-        sweepers = [
-            Sweeper(
-                Parameter.bias,
-                delta_bias_flux_range,
-                qubits=[platform.qubits[flux_qubit]],
-                type=SweeperType.OFFSET,
-            )
-            for flux_qubit in flux_qubits
-        ]
+        for flux_qubit in flux_qubits
+    ]
+
     data = QubitCrosstalkData(
         resonator_type=platform.resonator_type,
         sweetspot=sweetspots,
@@ -192,7 +186,6 @@ def _acquisition(
         matrix_element=matrix_element,
         d=d,
         qubit_frequency=qubit_frequency,
-        flux_pulses=params.flux_pulses,
     )
 
     options = ExecutionParameters(

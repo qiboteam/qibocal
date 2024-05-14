@@ -51,8 +51,6 @@ class CouplerSpectroscopyData(Data):
 
     resonator_type: str
     """Resonator type."""
-    flux_pulses: bool
-    """True if sweeping flux pulses, False if sweeping bias."""
     offset: dict[QubitId, float] = field(default_factory=dict)
     """Qubit bias offset."""
     data: dict[QubitId, npt.NDArray[CouplerSpecType]] = field(default_factory=dict)

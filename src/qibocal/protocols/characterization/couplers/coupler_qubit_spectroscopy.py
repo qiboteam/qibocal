@@ -9,7 +9,6 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Routine
 
-from ..flux_dependence import resonator_flux_dependence
 from ..two_qubit_interaction.utils import order_pair
 from .coupler_resonator_spectroscopy import _fit, _plot, _update
 from .utils import CouplerSpectroscopyData, CouplerSpectroscopyParameters
@@ -83,31 +82,20 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
-    if params.flux_pulses:
-        (
+    delta_bias_flux_range = np.arange(
+        -params.bias_width / 2, params.bias_width / 2, params.bias_step
+    )
+    sweepers = [
+        Sweeper(
+            Parameter.bias,
             delta_bias_flux_range,
-            sweepers,
-            sequences,
-        ) = resonator_flux_dependence.create_flux_pulse_sweepers(
-            params, platform, couplers, sequence
+            qubits=couplers,
+            type=SweeperType.OFFSET,
         )
-        sequence = sequences[0]
-    else:
-        delta_bias_flux_range = np.arange(
-            -params.bias_width / 2, params.bias_width / 2, params.bias_step
-        )
-        sweepers = [
-            Sweeper(
-                Parameter.bias,
-                delta_bias_flux_range,
-                qubits=couplers,
-                type=SweeperType.OFFSET,
-            )
-        ]
+    ]
 
     data = CouplerSpectroscopyData(
         resonator_type=platform.resonator_type,
-        flux_pulses=params.flux_pulses,
         offset=offset,
     )
 
