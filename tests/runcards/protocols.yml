@@ -823,3 +823,14 @@ actions:
       bias_width: 0.2
       bias_step:  0.05
       drive_amplitude: 0.5
+
+  - id: tomography
+    operation: state_tomography
+    parameters:
+      nshots: 1024
+
+  - id: tomography from file
+    operation: state_tomography
+    parameters:
+      nshots: 1024
+      circuit: tests/circuit.json
