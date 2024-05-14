@@ -21,7 +21,8 @@ from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
 
 from .utils import table_dict, table_html
 
-PAULI_BASIS = ["X", "Y", "Z"]
+SINGLE_QUBIT_BASIS = ["X", "Y", "Z"]
+TWO_QUBIT_BASIS = list(product(SINGLE_QUBIT_BASIS, SINGLE_QUBIT_BASIS))
 OUTCOMES = ["00", "01", "10", "11"]
 SIMULATED_DENSITY_MATRIX = "ideal"
 """Filename for simulated density matrix."""
@@ -54,7 +55,7 @@ TomographyType = np.dtype(
 class StateTomographyData(Data):
     """Tomography data"""
 
-    data: dict[tuple[QubitId, str, QubitId, str], np.int64] = field(
+    data: dict[tuple[QubitId, QubitId, str, str], np.int64] = field(
         default_factory=dict
     )
     ideal: dict[QubitPairId, np.ndarray] = field(default_factory=dict)
@@ -113,7 +114,7 @@ def _acquisition(
 
     simulated_state = simulator.execute_circuit(deepcopy(params.circuit))
     data = StateTomographyData(simulated=simulated_state)
-    for basis1, basis2 in product(PAULI_BASIS, PAULI_BASIS):
+    for basis1, basis2 in TWO_QUBIT_BASIS:
         basis_circuit = deepcopy(params.circuit)
         # FIXME: basis
         if basis1 != "Z":
@@ -141,14 +142,14 @@ def _acquisition(
             transpiler=transpiler,
         )
 
-        for i, (q1, q2) in enumerate(targets):
+        for i, pair in enumerate(targets):
             frequencies = results.frequencies(registers=True)[f"reg{i}"]
             simulation_probabilities = simulation_result.probabilities(
                 qubits=(2 * i, 2 * i + 1)
             )
             data.register_qubit(
                 TomographyType,
-                (q1, basis1, q2, basis2),
+                pair + (basis1, basis2),
                 {
                     "frequencies": np.array([frequencies[i] for i in OUTCOMES]),
                     "simulation_probabilities": simulation_probabilities,
@@ -156,9 +157,11 @@ def _acquisition(
             )
             if basis1 == "Z" and basis2 == "Z":
                 nqubits = basis_circuit.nqubits
-                statevector = simulation_result.state()
-                data.ideal[(q1, q2)] = simulator.partial_trace(
-                    statevector, (2 * i, 2 * i + 1), nqubits
+                traced_qubits = tuple(
+                    q for q in range(nqubits) if q not in (2 * i, 2 * i + 1)
+                )
+                data.ideal[pair] = simulator.partial_trace(
+                    simulation_result.state(), traced_qubits, nqubits
                 )
 
     return data
@@ -179,10 +182,9 @@ def project_psd(matrix):
 
 def _fit(data: StateTomographyData) -> StateTomographyResults:
     """Post-processing for State tomography."""
-    basis_list = list(product(PAULI_BASIS, PAULI_BASIS))
     rotations = [
         np.kron(rotation_matrix(basis1), rotation_matrix(basis2))
-        for basis1, basis2 in basis_list
+        for basis1, basis2 in TWO_QUBIT_BASIS
     ]
 
     # construct the linear transformation from density matrix to Born-probabilities
@@ -197,9 +199,9 @@ def _fit(data: StateTomographyData) -> StateTomographyResults:
 
     # calculate Born-probabilities vector from measurements (frequencies)
     probabilities = defaultdict(lambda: np.empty(measurement.shape[0]))
-    for (qubit1, basis1, qubit2, basis2), value in data.data.items():
+    for (qubit1, qubit2, basis1, basis2), value in data.data.items():
         frequencies = value["frequencies"]
-        ib = basis_list.index((basis1, basis2))
+        ib = TWO_QUBIT_BASIS.index((basis1, basis2))
         probabilities[(qubit1, qubit2)][4 * ib : 4 * (ib + 1)] = frequencies / np.sum(
             frequencies
         )
@@ -210,9 +212,6 @@ def _fit(data: StateTomographyData) -> StateTomographyResults:
     for pair, probs in probabilities.items():
         measured_rho = inverse_measurement.dot(probs).reshape((4, 4))
         measured_rho_proj = project_psd(measured_rho)
-        target_rho = backend.partial_trace(
-            data.simulated.state(), pair, data.simulated.nqubits
-        )
 
         results.measured_density_matrix_real[pair] = measured_rho.real.tolist()
         results.measured_density_matrix_imag[pair] = measured_rho.imag.tolist()
@@ -239,13 +238,13 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitP
         # "$\text{Plot 1}$"
         subplot_titles=tuple(
             f"{basis1}<sub>1</sub>{basis2}<sub>2</sub>"
-            for basis1, basis2 in product(PAULI_BASIS, PAULI_BASIS)
+            for basis1, basis2 in TWO_QUBIT_BASIS
         ),
     )
-    for i, (basis1, basis2) in enumerate(product(PAULI_BASIS, PAULI_BASIS)):
+    for i, (basis1, basis2) in enumerate(TWO_QUBIT_BASIS):
         row = i // 3 + 1
         col = i % 3 + 1
-        basis_data = data.data[qubit1, basis1, qubit2, basis2]
+        basis_data = data.data[qubit1, qubit2, basis1, basis2]
 
         fig1.add_trace(
             go.Bar(
