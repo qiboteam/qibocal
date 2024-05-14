@@ -165,14 +165,14 @@ def _acquisition(
     else:
         flux_qubits = params.flux_qubits
 
-    delta_bias_flux_range = np.arange(
+    delta_bias_range = np.arange(
         -params.bias_width / 2, params.bias_width / 2, params.bias_step
     )
     sequences = [sequence] * len(flux_qubits)
     sweepers = [
         Sweeper(
             Parameter.bias,
-            delta_bias_flux_range,
+            delta_bias_range,
             qubits=[platform.qubits[flux_qubit]],
             type=SweeperType.OFFSET,
         )
@@ -209,7 +209,7 @@ def _acquisition(
                 signal=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
-                bias=delta_bias_flux_range + sweetspot,
+                bias=delta_bias_range + sweetspot,
             )
 
     return data
