@@ -8,6 +8,11 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
 
     resonator_spectroscopy
     resonator_punchout
+    rabi_amplitude
+    rabi_amplitude_signal
+    rabi_length
+    rabi_length_signal
+    rabi_ef
     t1
     t1_signal
     t1_sequences
