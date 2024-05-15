@@ -45,3 +45,5 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     resonator_frequency_optimization
     randomized_benchmarking
     avoided_crossing
+    resonator_flux_dependence
+    qubit_flux_dependence
