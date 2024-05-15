@@ -139,6 +139,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
                 voltages,
                 p0=model_parameters,
                 sigma=data.error_signal,
+                maxfev=20000,
             )
             perr = np.sqrt(np.diag(perr)).tolist()
         else:
@@ -147,6 +148,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
                 frequencies,
                 voltages,
                 p0=model_parameters,
+                maxfev=20000,
             )
             perr = [0] * 4
         model_parameters = list(fit_parameters)
