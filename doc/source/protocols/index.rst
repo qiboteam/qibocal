@@ -42,3 +42,4 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     resonator_amplitude_optimization
     resonator_frequency_optimization
     randomized_benchmarking
+    avoided_crossing
