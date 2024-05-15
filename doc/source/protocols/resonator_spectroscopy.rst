@@ -1,6 +1,8 @@
 Resonator spectroscopy
 ======================
 
+Experiment Description
+----------------------
 
 When calibrating the readout pulse, the first thing to do is finding the resonator frequency.
 At this frequency we will be able to observe a clear difference in the transmitted
@@ -24,6 +26,9 @@ elements to take into consideration:
 * very high amplitudes could damage the components.
 
 The bare resonator frequency can be found setting a large value for the amplitude, e.g.:
+
+Example Runcard
+---------------
 
 .. code-block:: yaml
 
@@ -138,3 +143,13 @@ and also here:
 .. bibliography::
    :filter: docname in docnames
    :style: plain
+
+
+Parameters
+----------
+
+- freq_width: frequency span to be scanned
+- freq_step: frequency step for the scan
+- power_level: if it is "high" it does not change the parameters of the runcard. Otherwise can be "low", where it changes them
+- amplitude: optional parameter to specify amplitude of the measurement pulse
+- attenuation: optional parameter to specify the attenuation of the measurement pulse

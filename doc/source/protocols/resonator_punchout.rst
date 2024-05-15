@@ -1,6 +1,8 @@
 Resonator punchout
 ==================
 
+Experiment Description
+----------------------
 
 With the resonator spectroscopy at high power we found the bare resonator frequency
 (also called high power frequency), but this is not the frequency that will be used to perform measurements.
@@ -16,6 +18,9 @@ transition phase and then be fixed again at a different frequency because of the
 with the qubit.
 
 This is and example of a runcard for a resonator punchout:
+
+Example Runcard
+---------------
 
 .. code-block:: yaml
 
@@ -132,3 +137,12 @@ This is and example of a runcard for a resonator punchout with attenuation:
 .. bibliography::
    :cited:
    :style: plain
+
+Parameters
+----------
+
+- freq_width: frequency span to be scanned
+- freq_step: frequency step for the scan
+- min_amp_factor: minimum multiplicative factor for the measurement pulse
+- max_amp_factor: maximum multiplicative factor for the measurement pulse
+- step_amp_factor: multiplicative factor step for the measurement pulse

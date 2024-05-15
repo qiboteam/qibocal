@@ -8,6 +8,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
 
     resonator_spectroscopy
     resonator_punchout
+    resonator_punchout_attenuation
     rabi_amplitude
     rabi_amplitude_signal
     rabi_length
@@ -21,6 +22,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     t2_sequences
     spin_echo
     spin_echo_signal
+    classification
     zeno
     zeno_signal
     allxy
