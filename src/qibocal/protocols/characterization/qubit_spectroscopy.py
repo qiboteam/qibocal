@@ -32,6 +32,7 @@ class QubitSpectroscopyParameters(Parameters):
     flux_duration: Optional[float] = None
     """Flux pulse duration (optional). Same for all qubits."""
 
+
 @dataclass
 class QubitSpectroscopyResults(Results):
     """QubitSpectroscopy outputs."""
@@ -85,8 +86,14 @@ def _acquisition(
 
         if params.flux_amplitude is not None or params.flux_duration is not None:
             # Define default values if parameters are None
-            flux_amplitude = params.flux_amplitude if params.flux_amplitude is not None else 0
-            flux_duration = params.flux_duration if params.flux_duration is not None else sequence.duration
+            flux_amplitude = (
+                params.flux_amplitude if params.flux_amplitude is not None else 0
+            )
+            flux_duration = (
+                params.flux_duration
+                if params.flux_duration is not None
+                else sequence.duration
+            )
 
             # Create the flux pulse with the specified or default parameters
             flux_pulses[qubit] = platform.create_qubit_flux_pulse(
@@ -96,7 +103,6 @@ def _acquisition(
                 amplitude=flux_amplitude,
             )
             sequence.add(flux_pulses[qubit])
-
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
