@@ -47,3 +47,6 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     avoided_crossing
     resonator_flux_dependence
     qubit_flux_dependence
+    qubit_flux_tracking
+    resonator_crosstalk
+    qubit_crosstalk
