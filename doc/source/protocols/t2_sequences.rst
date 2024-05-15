@@ -15,7 +15,7 @@ Example Runcard
 .. code-block::
 
     - id: t2
-      operation: t2
+      operation: t2_sequences
       parameters:
         delay_between_pulses_start: 16
         delay_between_pulses_end: 20000

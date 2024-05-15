@@ -16,5 +16,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     t2_sequences
     spin_echo
     spin_echo_signal
+    zeno
+    zeno_signal
     allxy
     allxy_drag_pulse_tuning
