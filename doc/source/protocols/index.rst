@@ -36,5 +36,8 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     dispersive_shift_qutrit
     flipping
     flipping_signal
+    fast_reset
     readout_characterization
     readout_mitigation_matrix
+    resonator_amplitude_optimization
+    resonator_frequency_optimization

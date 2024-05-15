@@ -21,7 +21,7 @@ class ResonatorAmplitudeParameters(Parameters):
     """ResonatorAmplitude runcard inputs."""
 
     amplitude_step: float
-    """Amplituude step to be probed."""
+    """Amplitude step to be probed."""
     amplitude_start: float = 0.0
     """Amplitude start."""
     amplitude_stop: float = 1.0

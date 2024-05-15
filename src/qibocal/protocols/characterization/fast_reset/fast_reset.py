@@ -54,7 +54,7 @@ class FastResetData(Data):
 def _acquisition(
     params: FastResetParameters, platform: Platform, targets: list[QubitId]
 ) -> FastResetData:
-    """Data acquisition for resonator spectroscopy."""
+    """Data acquisition for fast reset experiment."""
 
     data = FastResetData()
     for state in [0, 1]:
