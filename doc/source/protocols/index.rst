@@ -27,3 +27,6 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     zeno_signal
     allxy
     allxy_drag_pulse_tuning
+    drag
+    dispersive_shift
+    dispersive_shift_qutrit
