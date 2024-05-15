@@ -9,6 +9,8 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     resonator_spectroscopy
     resonator_punchout
     resonator_punchout_attenuation
+    qubit_spectroscopy
+    qubit_spectroscopy_ef
     rabi_amplitude
     rabi_amplitude_signal
     rabi_length
