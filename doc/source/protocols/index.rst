@@ -6,6 +6,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
 .. toctree::
     :maxdepth: 1
 
+    time_of_flight_readout
     resonator_spectroscopy
     resonator_punchout
     resonator_punchout_attenuation
