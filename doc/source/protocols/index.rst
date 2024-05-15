@@ -26,6 +26,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     spin_echo
     spin_echo_signal
     classification
+    qutrit_classification
     zeno
     zeno_signal
     allxy
@@ -35,3 +36,5 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     dispersive_shift_qutrit
     flipping
     flipping_signal
+    readout_characterization
+    readout_mitigation_matrix
