@@ -22,6 +22,8 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     t1_sequences
     t2
     t2_signal
+    ramsey
+    ramsey_signal
     t2_sequences
     spin_echo
     spin_echo_signal
