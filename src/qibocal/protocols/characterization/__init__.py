@@ -69,15 +69,21 @@ from .resonator_spectroscopy_attenuation import (  # will be removed
 # )
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtualz
-from .z.in_progress.mixer_calibration import mixer_calibration
+from .z.dispersive_shift import dispersive_shift
+from .z.in_progress.qubit_mixer_calibration import qubit_mixer_calibration
 from .z.in_progress.qubit_spectroscopy_with_lo import qubit_spectroscopy_with_lo
+from .z.in_progress.resonator_mixer_calibration import resonator_mixer_calibration
+from .z.in_progress.resonator_spectroscopy_with_lo import resonator_spectroscopy_with_lo
+from .z.in_progress.ro_resonator_amplitude import resonator_amplitude
+from .z.ramsey import ramsey
 
 # from .z.frequency_length_signal import rabi_frequency_length_signal
 from .z.ramsey_signal import ramsey_signal
 
 # from .z.resonator_qubit_spectroscopy import resonator_qubit_spectroscopy
-# from .z.resonator_twpa_freq import resonator_twpa_freq
-# from .z.resonator_twpa_pow import resonator_twpa_pow
+from .z.resonator_twpa_freq import resonator_twpa_freq
+from .z.resonator_twpa_pow import resonator_twpa_pow
+
 # from .z.spurious_identification import spurious_identification
 # from .z.t1_t2_vs_temperature import t1_t2_vs_temperature
 from .z.t2 import t2
@@ -144,8 +150,8 @@ class Operation(Enum):
 
     # rabi_frequency_length_signal = rabi_frequency_length_signal
     # resonator_qubit_spectroscopy = resonator_qubit_spectroscopy
-    # resonator_twpa_pow = resonator_twpa_pow
-    # resonator_twpa_freq = resonator_twpa_freq
+    resonator_twpa_pow = resonator_twpa_pow
+    resonator_twpa_freq = resonator_twpa_freq
     # spurious_identification = spurious_identification
     # t1_t2_vs_temperature = t1_t2_vs_temperature
 
@@ -157,5 +163,7 @@ class Operation(Enum):
     twpa_frequency_SNR = twpa_frequency
     cz_virtualz_signal = cz_virtualz
 
-    mixer_calibration = mixer_calibration
+    qubit_mixer_calibration = qubit_mixer_calibration
+    resonator_mixer_calibration = resonator_mixer_calibration
+    resonator_spectroscopy_with_lo = qubit_spectroscopy_with_lo
     qubit_spectroscopy_with_lo = qubit_spectroscopy_with_lo
