@@ -1,0 +1,31 @@
+T1 signal
+=========
+
+Experiment Description
+----------------------
+
+The T1 experiment enables to measure the intrinsic T1 of the qubit.
+It is composed of a single pi pulse followed by a delay and a measurement.
+
+This routine plots and fits in arbitrary units (V-like).
+
+Example Runcard
+---------------
+
+.. code-block::
+
+    - id: t1
+      operation: t1
+      parameters:
+        delay_before_readout_start: 0
+        delay_before_readout_end: 20_000
+        delay_before_readout_step: 2000
+        sinle_shot: False
+
+Parameters
+----------
+
+- delay_between_pulses_start: start value for the delay
+- delay_between_pulses_end: end value for the delay
+- delay_between_pulses_step: step value for the delay
+- single_shot: if True saves single-shot data
