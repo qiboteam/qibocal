@@ -507,6 +507,13 @@ actions:
   - id: readout characterization
     operation: readout_characterization
     parameters:
+      delay: 1000
+      nshots: 10
+
+  - id: readout characterization delay 0
+    operation: readout_characterization
+    parameters:
+      delay: 0
       nshots: 10
 
   - id: allXY
