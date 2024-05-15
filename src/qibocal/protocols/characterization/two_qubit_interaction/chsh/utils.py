@@ -1,5 +1,7 @@
 """Auxiliary functions to run CHSH protocol."""
 
+from qibo.config import log
+
 READOUT_BASIS = ["ZZ", "ZX", "XZ", "XX"]
 
 
@@ -17,4 +19,8 @@ def compute_chsh(frequencies, basis, i):
                 chsh += (-1) ** (int(outcome[0]) + int(outcome[1])) * freq[outcome][i]
         aux += 1
     nshots = sum(freq[x][i] for x in freq)
-    return chsh / nshots
+    try:
+        return chsh / nshots
+    except ZeroDivisionError:
+        log.warning("Zero number of shots, returning zero.")
+        return 0
