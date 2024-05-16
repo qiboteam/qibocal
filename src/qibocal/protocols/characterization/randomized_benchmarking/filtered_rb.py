@@ -36,9 +36,9 @@ def _acquisition(
     3. Post process the data and initialize a filtered rb data object with it.
 
     Args:
-        params (FilteredRBParameters): All parameters in one object.
-        platform (Platform): Platform the experiment is executed on.
-        target (dict[int, Union[str, int]] or list[Union[str, int]]): list of qubits the experiment is executed on.
+        params : All parameters in one object.
+        platform : Platform the experiment is executed on.
+        target : list of qubits the experiment is executed on.
 
     Returns:
         RBData: The depths, samples and ground state probability of each experiment in the scan.
