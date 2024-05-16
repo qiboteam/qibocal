@@ -39,3 +39,12 @@ actions:
       depths: [1, 2, 3, 5]
       niter: 5
       nshots: 50
+
+  - id: filtered rb
+    priority: 0
+    operation: filtered_rb
+    qubits: [1]
+    parameters:
+      depths: [1, 2, 3, 5]
+      niter: 5
+      nshots: 50
