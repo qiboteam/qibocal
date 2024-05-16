@@ -151,7 +151,7 @@ def _acquisition(
                 ResonatorFrequencyType,
                 (qubit),
                 dict(
-                    freq=np.array([(ro_pulses[qubit].frequency + freq) * HZ_TO_GHZ]),
+                    freq=np.array([(ro_pulses[qubit].frequency + freq) ]),
                     assignment_fidelity=np.array([model.assignment_fidelity]),
                     angle=np.array([model.angle]),
                     threshold=np.array([model.threshold]),
