@@ -56,3 +56,5 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     twpa_power
     twpa_power_SNR
     twpa_frequency_power
+    chevron
+    chevron_signal
