@@ -67,15 +67,10 @@ class QubitFluxData(Data):
     resonator_type: str
     """Resonator type."""
 
-    qubit_frequency: dict[QubitId, float] = field(default_factory=dict)
-    """Qubit frequencies."""
-
-    offset: dict[QubitId, float] = field(default_factory=dict)
-    """Qubit bias offset."""
-
     charging_energy: dict[QubitId, float] = field(default_factory=dict)
     """Qubit charging energy."""
-
+    qubit_frequency: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit charging energy."""
     data: dict[QubitId, npt.NDArray[QubitFluxType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -98,7 +93,6 @@ def _acquisition(
     ro_pulses = {}
     qd_pulses = {}
     qubit_frequency = {}
-    offset = {}
     for qubit in targets:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.drive_duration
@@ -149,7 +143,7 @@ def _acquisition(
         charging_energy={
             qubit: -platform.qubits[qubit].anharmonicity for qubit in targets
         },
-        offset=offset,
+        qubit_frequency=qubit_frequency,
     )
     options = ExecutionParameters(
         nshots=params.nshots,
@@ -217,6 +211,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 ),
                 maxfev=100000,
             )[0]
+            print(popt[1])
             fitted_parameters[qubit] = {
                 "w_max": popt[0],
                 "xj": 0,

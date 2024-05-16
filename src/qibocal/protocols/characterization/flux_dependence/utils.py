@@ -140,8 +140,7 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
                     go.Scatter(
                         x=fit_function(
                             xj=qubit_data.bias, **fit.fitted_parameters[flux_qubit]
-                        )
-                        * HZ_TO_GHZ,
+                        ),
                         y=qubit_data.bias,
                         showlegend=not any(
                             isinstance(trace, go.Scatter) for trace in fig.data
@@ -157,9 +156,9 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
                 diagonal_params = fit.fitted_parameters[qubit, qubit]
                 fig.add_trace(
                     go.Scatter(
-                        x=globals().get(fit_function.__name__ + "_diagonal")(
+                        x=fit_function(
                             qubit_data.bias,
-                            *diagonal_params,
+                            **diagonal_params,
                         ),
                         y=qubit_data.bias,
                         showlegend=not any(
