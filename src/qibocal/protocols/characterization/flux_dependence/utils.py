@@ -61,13 +61,10 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
         and qubit in fit.fitted_parameters
     ):
         params = fit.fitted_parameters[qubit]
-
         bias = np.unique(qubit_data.bias)
         fig.add_trace(
             go.Scatter(
-                x=fit_function(
-                    bias, w_max=params[0], scaling=params[1], offset=params[2]
-                ),
+                x=fit_function(bias, **params),
                 y=bias - data.offset[qubit] if data.flux_pulses else bias,
                 showlegend=True,
                 name="Fit",
@@ -283,7 +280,16 @@ def transmon_frequency(
 
 
 def transmon_readout_frequency(
-    xi, xj, w_max, d, matrix_element, crosstalk_element, sweetspot, resonator_freq, g
+    xi,
+    xj,
+    w_max,
+    d,
+    scaling,
+    crosstalk_element,
+    offset,
+    resonator_freq,
+    g,
+    charging_energy,
 ):
     r"""Approximation to flux dependent resonator frequency.
 
@@ -307,11 +313,11 @@ def transmon_readout_frequency(
          (float): resonator frequency as a function of bias.
     """
     return resonator_freq + g**2 * G_f_d(
-        xi=xi,
-        xj=xj,
-        sweetspot=sweetspot,
+        xi,
+        xj,
+        offset=offset,
         d=d,
-        matrix_element=matrix_element,
+        scaling=scaling,
         crosstalk_element=crosstalk_element,
     ) / (
         resonator_freq
@@ -320,9 +326,10 @@ def transmon_readout_frequency(
             xj=xj,
             w_max=w_max,
             d=d,
-            matrix_element=matrix_element,
-            sweetspot=sweetspot,
+            scaling=scaling,
+            offset=offset,
             crosstalk_element=crosstalk_element,
+            charging_energy=charging_energy,
         )
     )
 

@@ -125,7 +125,9 @@ def _acquisition(
         sequence.add(ro_pulses[qubit])
 
     # define the parameters to sweep and their range:
-    delta_frequency_range = np.arange(-params.freq_width, 0, params.freq_step)
+    delta_frequency_range = np.arange(
+        -params.freq_width / 2, params.freq_width / 2, params.freq_step
+    )
     freq_sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
@@ -213,7 +215,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 scaling=scaling,
                 offset=offset,
                 crosstalk_element=1,
-                charging_energy=data.charging_energy[qubit],
+                charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
             )
 
         try:
@@ -226,8 +228,17 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 ),
                 maxfev=100000,
             )[0]
-            fitted_parameters[qubit] = popt.tolist()
+            fitted_parameters[qubit] = {
+                "w_max": popt[0],
+                "xj": 0,
+                "d": 0,
+                "scaling": popt[1],
+                "offset": popt[2],
+                "crosstalk_element": 1,
+                "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
+            }
             frequency[qubit] = popt[0] * GHZ_TO_HZ
+            # TODO: check if this is correct
             sweetspot[qubit] = -popt[2] / popt[1]
             matrix_element[qubit] = popt[1]
         except ValueError as e:
@@ -248,20 +259,12 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
 def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
     """Plotting function for QubitFlux Experiment."""
-    from functools import partial
 
     figures = utils.flux_dependence_plot(
         data,
         fit,
         target,
-        fit_function=partial(
-            utils.transmon_frequency,
-            crosstalk_element=1,
-            d=0,
-            xj=0,
-            charging_energy=data.charging_energy[target],
-        ),
-        # fit_function=utils.transmon_frequency_diagonal
+        fit_function=utils.transmon_frequency,
     )
     if data.flux_pulses:
         bias_flux_unit = "a.u."
