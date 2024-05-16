@@ -11,6 +11,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 
@@ -417,11 +418,9 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
 
 def _update(results: ResonatorFluxResults, platform: Platform, qubit: QubitId):
     pass
-    # update.bare_resonator_frequency(results.bare_frequency[qubit], platform, qubit)
-    # update.readout_frequency(results.frequency[qubit], platform, qubit)
-    # update.drive_frequency(results.drive_frequency[qubit], platform, qubit)
-    # update.asymmetry(results.asymmetry[qubit], platform, qubit)
-    # update.coupling(results.coupling[qubit], platform, qubit)
+    update.bare_resonator_frequency(results.bare_resonator_freq[qubit], platform, qubit)
+    update.readout_frequency(results.resonator_freq[qubit], platform, qubit)
+    update.coupling(results.coupling[qubit], platform, qubit)
 
 
 resonator_flux = Routine(_acquisition, _fit, _plot, _update)
