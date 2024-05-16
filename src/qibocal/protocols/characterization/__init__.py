@@ -75,6 +75,7 @@ from .z.in_progress.qubit_spectroscopy_with_lo import qubit_spectroscopy_with_lo
 from .z.in_progress.resonator_mixer_calibration import resonator_mixer_calibration
 from .z.in_progress.resonator_spectroscopy_with_lo import resonator_spectroscopy_with_lo
 from .z.in_progress.ro_resonator_amplitude import resonator_amplitude
+from .z.qubit_spectroscopy import qubit_spectroscopy
 from .z.ramsey import ramsey
 
 # from .z.frequency_length_signal import rabi_frequency_length_signal
