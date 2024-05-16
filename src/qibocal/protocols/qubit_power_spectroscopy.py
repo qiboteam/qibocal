@@ -63,15 +63,13 @@ def _acquisition(
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.duration
         )
-
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
         )
-
         if params.amplitude is not None:
-            ro_pulses[qubit].amplitude = params.amplitude
+            qd_pulses[qubit].amplitude = params.amplitude
+        amplitudes[qubit] = qd_pulses[qubit].amplitude
 
-        amplitudes[qubit] = ro_pulses[qubit].amplitude
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
