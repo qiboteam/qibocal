@@ -95,7 +95,6 @@ def _acquisition(
 
     data = QubitFluxTrackData(
         resonator_type=platform.resonator_type,
-        flux_pulses=params.flux_pulses,
         qubit_frequency=qubit_frequency,
     )
 
