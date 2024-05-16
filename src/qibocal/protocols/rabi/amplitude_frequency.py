@@ -10,11 +10,16 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Routine
+from qibocal.config import log
+from qibocal.protocols.utils import table_dict, table_html
 
+from ..two_qubit_interaction.utils import fit_flux_amplitude
 from ..utils import HZ_TO_GHZ, norm
-from .amplitude_signal import RabiAmplitudeVoltParameters
+from .amplitude_signal import RabiAmplitudeVoltResults
+from .utils import period_correction_factor, rabi_amplitude_function
 
 
 @dataclass
@@ -38,7 +43,7 @@ class RabiAmplitudeFrequencyParameters(Parameters):
 
 
 @dataclass
-class RabiAmplitudeFrequencyResults(RabiAmplitudeVoltParameters):
+class RabiAmplitudeFrequencyResults(RabiAmplitudeVoltResults):
     """RabiAmplitudeFrequency outputs."""
 
     frequency: dict[QubitId, tuple[float, Optional[int]]]
@@ -75,6 +80,14 @@ class RabiAmplitudeFreqVoltData(Data):
         ar["signal"] = signal.ravel()
         ar["phase"] = phase.ravel()
         self.data[qubit] = np.rec.array(ar)
+
+    def amplitudes(self, qubit):
+        """Unique qubit amplitudes."""
+        return np.unique(self[qubit].amp)
+
+    def frequencies(self, qubit):
+        """Unique qubit frequency."""
+        return np.unique(self[qubit].freq)
 
 
 def _acqisition(
@@ -150,9 +163,67 @@ def _acqisition(
     return data
 
 
-def _fit(data: RabiAmplitudeFreqVoltData) -> Results:
+def _fit(data: RabiAmplitudeFreqVoltData) -> RabiAmplitudeFrequencyResults:
     """Do not perform any fitting procedure."""
-    return Results()
+    fitted_frequencies = {}
+    fitted_amplitudes = {}
+    fitted_parameters = {}
+
+    for qubit in data.data:
+        amps = data.amplitudes(qubit)
+        freqs = data.frequencies(qubit)
+        signal = data[qubit].signal
+        signal_matrix = signal.reshape(len(amps), len(freqs)).T
+
+        # guess amplitude computing FFT
+        frequency, index, _ = fit_flux_amplitude(signal_matrix, freqs, amps)
+
+        pguess = [0.5, 1, 1 / frequency, 0]
+        y = signal_matrix[index, :].ravel()
+
+        y_min = np.min(y)
+        y_max = np.max(y)
+        x_min = np.min(amps)
+        x_max = np.max(amps)
+        x = (amps - x_min) / (x_max - x_min)
+        y = (y - y_min) / (y_max - y_min)
+
+        try:
+            popt, _ = curve_fit(
+                rabi_amplitude_function,
+                x,
+                y,
+                p0=pguess,
+                maxfev=100000,
+                bounds=(
+                    [0, 0, 0, -np.pi],
+                    [1, 1, np.inf, np.pi],
+                ),
+            )
+            translated_popt = [  # Change it according to fit function changes
+                y_min + (y_max - y_min) * popt[0],
+                (y_max - y_min) * popt[1],
+                popt[2] * (x_max - x_min),
+                popt[3] - 2 * np.pi * x_min / (x_max - x_min) / popt[2],
+            ]
+            pi_pulse_parameter = (
+                translated_popt[2]
+                / 2
+                * period_correction_factor(phase=translated_popt[3])
+            )
+            fitted_frequencies[qubit] = frequency
+            fitted_amplitudes[qubit] = pi_pulse_parameter
+            fitted_parameters[qubit] = translated_popt
+
+        except Exception as e:
+            log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
+
+    return RabiAmplitudeFrequencyResults(
+        amplitude=fitted_amplitudes,
+        length=data.durations,
+        fitted_parameters=fitted_parameters,
+        frequency=fitted_frequencies,
+    )
 
 
 def _plot(
@@ -215,6 +286,18 @@ def _plot(
     fig.update_yaxes(title_text="Frequency [GHz]", row=1, col=1)
 
     figures.append(fig)
+
+    if fit is not None:
+        fitting_report = table_html(
+            table_dict(
+                target,
+                ["Transition frequency", "Pi-pulse amplitude"],
+                [
+                    fit.frequency[target],
+                    fit.amplitude[target],
+                ],
+            )
+        )
     return figures, fitting_report
 
 
