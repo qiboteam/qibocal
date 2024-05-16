@@ -52,3 +52,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     qubit_crosstalk
     calibrate_state_discrimination
     twpa_frequency
+    twpa_frequency_SNR
+    twpa_power
+    twpa_power_SNR
+    twpa_frequency_power
