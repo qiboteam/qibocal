@@ -13,7 +13,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.fitting.classifier.qubit_fit import QubitFit
-from qibocal.protocols.characterization.utils import HZ_TO_GHZ, table_dict, table_html
+from qibocal.protocols.characterization.utils import table_dict, table_html
 
 
 @dataclass
@@ -151,7 +151,7 @@ def _acquisition(
                 ResonatorFrequencyType,
                 (qubit),
                 dict(
-                    freq=np.array([(ro_pulses[qubit].frequency + freq) ]),
+                    freq=np.array([(ro_pulses[qubit].frequency + freq)]),
                     assignment_fidelity=np.array([model.assignment_fidelity]),
                     angle=np.array([model.angle]),
                     threshold=np.array([model.threshold]),
