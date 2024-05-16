@@ -60,3 +60,5 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     chevron_signal
     czvirtualz
     czvirtualz_signal
+    chsh_pulses
+    chsh_circuit
