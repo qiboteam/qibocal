@@ -17,7 +17,7 @@ from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
 from ..two_qubit_interaction.utils import fit_flux_amplitude
-from ..utils import HZ_TO_GHZ, norm
+from ..utils import HZ_TO_GHZ
 from .amplitude_signal import RabiAmplitudeVoltResults
 from .utils import period_correction_factor, rabi_amplitude_function
 
@@ -156,7 +156,7 @@ def _acqisition(
         data.register_qubit(
             qubit=qubit,
             freq=qd_pulses[qubit].frequency + frequency_range,
-            amp=qd_pulses[qubit].amplitude + amplitude_range,
+            amp=qd_pulses[qubit].amplitude * amplitude_range,
             signal=result.magnitude,
             phase=result.phase,
         )
@@ -247,12 +247,13 @@ def _plot(
     qubit_data = data[target]
     frequencies = qubit_data.freq * HZ_TO_GHZ
     amplitudes = qubit_data.amp
-    n_amps = len(np.unique(qubit_data.amp))
-    n_freq = len(np.unique(qubit_data.freq))
-    for i in range(n_amps):
-        qubit_data.signal[i * n_freq : (i + 1) * n_freq] = norm(
-            qubit_data.signal[i * n_freq : (i + 1) * n_freq]
-        )
+
+    # n_amps = len(np.unique(qubit_data.amp))
+    # n_freq = len(np.unique(qubit_data.freq))
+    # for i in range(n_amps):
+    # qubit_data.signal[i * n_freq : (i + 1) * n_freq] = norm(
+    #    qubit_data.signal[i * n_freq : (i + 1) * n_freq]
+    # )
 
     fig.add_trace(
         go.Heatmap(
