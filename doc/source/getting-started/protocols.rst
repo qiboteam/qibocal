@@ -10,7 +10,7 @@ Here is a scheme with the protocols currently available in Qibocal.
 The source code for each protocol is available in the :ref:`Components`.
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
     :caption: Protocols
 
     ../protocols/index

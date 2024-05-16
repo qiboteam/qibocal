@@ -5,9 +5,9 @@ Experiment Description
 ----------------------
 
 The AllXY experiment is a simple test of the calibration of single qubit gates.
-The qubit, initialized in the |0⟩ state, is subjected to two back-to-back single-qubit gates and then measured.
+The qubit, initialized in the \|0⟩ state, is subjected to two back-to-back single-qubit gates and then measured.
 
-In each round, we run 21 different gate pairs: ideally, the first 5 return the qubit to the |0⟩ state, the next 12 drive it to a superposition state, and the last 4 put the qubit in the |1⟩ state.
+In each round, we run 21 different gate pairs: ideally, the first 5 return the qubit to the \|0⟩ state, the next 12 drive it to a superposition state, and the last 4 put the qubit in the \|1⟩ state.
 
 Example Runcard
 ---------------

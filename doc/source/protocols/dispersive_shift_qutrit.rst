@@ -4,7 +4,7 @@ Dispersive-shift qutrit
 Experiment Description
 ----------------------
 
-Perform spectroscopy on the readout resonator, with the qubit in ground and excited state, showing the resonator shift produced by the coupling between the resonator and the qubit. Do this both for |1> and |2>.
+Perform spectroscopy on the readout resonator, with the qubit in ground and excited state, showing the resonator shift produced by the coupling between the resonator and the qubit. Do this both for \|1> and \|2>.
 
 Example Runcard
 ---------------

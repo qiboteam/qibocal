@@ -45,5 +45,5 @@ Under ``actions`` are listed the protocols that will be executed sequentially.
 
 For each protocol the user needs to specify the following:
     * ``id``: custom id chosen by the user.
-    * ``operation``: protocol available in ``Qibocal``. See :ref:`calibration_routines` for a complete list of the protocols available.
+    * ``operation``: protocol available in ``Qibocal``. See the Protocols section for a complete list of the protocols available.
     * ``parameters``: input parameters.

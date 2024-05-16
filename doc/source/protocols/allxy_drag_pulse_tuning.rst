@@ -4,9 +4,9 @@ AllXY_drag_pulse_tuning
 Experiment Description
 ----------------------
 
-The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state) is subjected to two back-to-back single-qubit gates and measured.
+The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the \|0> state) is subjected to two back-to-back single-qubit gates and measured.
 
-In each round, we run 21 different gate pairs: ideally, the first 5 return the qubit to |0>, the next 12 drive it to superposition state, and the last 4 put the qubit in |1> state.
+In each round, we run 21 different gate pairs: ideally, the first 5 return the qubit to \|0>, the next 12 drive it to superposition state, and the last 4 put the qubit in \|1> state.
 
 The AllXY iteration method allows the user to execute iteratively the list of gates playing with the drag pulse shape in order to find the optimal drag pulse coefficient for pi pulses.
 

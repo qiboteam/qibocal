@@ -131,7 +131,7 @@ This approach is flexible enough to allow the data acquisition without performin
 Step by step tutorial
 ~~~~~~~~~~~~~~~~~~~~~
 
-All protocols are located in ``src/qibocal/protocols/characterization <https://github.com/qiboteam/qibocal/tree/main/src/qibocal/protocols/characterization>``_.
+All protocols are located in `src/qibocal/protocols/characterization <https://github.com/qiboteam/qibocal/tree/main/src/qibocal/protocols/characterization>`_.
 Suppose that we want to code a protocol to perform a RX rotation for different
 angles.
 
