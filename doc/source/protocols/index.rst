@@ -62,6 +62,6 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     czvirtualz_signal
     chsh_pulses
     chsh_circuit
-    coupler_qubit_specroscopy
-    coupler_resonator_specroscopy
+    coupler_qubit_spectroscopy
+    coupler_resonator_spectroscopy
     coupler_chevron
