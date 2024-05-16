@@ -13,7 +13,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from ..utils import chi2_reduced, table_dict, table_html
+from ..utils import table_dict, table_html
 from . import utils
 
 COLORBAND = "rgba(0,100,80,0.2)"
@@ -142,18 +142,7 @@ def _fit(data: T1Data) -> T1Results:
 
             y = p_0-p_1 e^{-x p_2}.
     """
-    t1s, fitted_parameters = utils.exponential_fit_probability(data)
-    chi2 = {
-        qubit: (
-            chi2_reduced(
-                data[qubit].prob,
-                utils.exp_decay(data[qubit].wait, *fitted_parameters[qubit]),
-                data[qubit].error,
-            ),
-            np.sqrt(2 / len(data[qubit].prob)),
-        )
-        for qubit in data.qubits
-    }
+    t1s, fitted_parameters, chi2 = utils.exponential_fit_probability(data)
 
     return T1Results(t1s, fitted_parameters, chi2)
 

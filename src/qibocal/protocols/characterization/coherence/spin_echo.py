@@ -11,7 +11,7 @@ from qibolab.qubits import QubitId
 from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
-from ..utils import chi2_reduced, table_dict, table_html
+from ..utils import table_dict, table_html
 from . import t1
 from .utils import exp_decay, exponential_fit_probability
 
@@ -122,19 +122,7 @@ def _acquisition(
 
 def _fit(data: SpinEchoData) -> SpinEchoResults:
     """Post-processing for SpinEcho."""
-    t2Echos, fitted_parameters = exponential_fit_probability(data)
-    chi2 = {
-        qubit: (
-            chi2_reduced(
-                data[qubit].prob,
-                exp_decay(data[qubit].wait, *fitted_parameters[qubit]),
-                data[qubit].error,
-            ),
-            np.sqrt(2 / len(data[qubit].prob)),
-        )
-        for qubit in data.qubits
-    }
-
+    t2Echos, fitted_parameters, chi2 = exponential_fit_probability(data)
     return SpinEchoResults(t2Echos, fitted_parameters, chi2)
 
 

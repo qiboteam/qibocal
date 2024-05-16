@@ -16,11 +16,7 @@ from qibocal.protocols.characterization.coherence.utils import (
     exp_decay,
     exponential_fit_probability,
 )
-from qibocal.protocols.characterization.utils import (
-    chi2_reduced,
-    table_dict,
-    table_html,
-)
+from qibocal.protocols.characterization.utils import table_dict, table_html
 
 
 @dataclass
@@ -149,18 +145,7 @@ def _fit(data: T2Data) -> T2Results:
     .. math::
         y = p_0 - p_1 e^{-x p_2}.
     """
-    t2s, fitted_parameters = exponential_fit_probability(data)
-    chi2 = {
-        qubit: (
-            chi2_reduced(
-                data[qubit].prob,
-                exp_decay(data[qubit].wait, *fitted_parameters[qubit]),
-                data[qubit].error,
-            ),
-            np.sqrt(2 / len(data[qubit].prob)),
-        )
-        for qubit in data.qubits
-    }
+    t2s, fitted_parameters, chi2 = exponential_fit_probability(data)
     return T2Results(t2s, fitted_parameters, chi2)
 
 
