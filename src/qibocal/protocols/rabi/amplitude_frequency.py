@@ -19,7 +19,7 @@ from qibocal.protocols.utils import table_dict, table_html
 from ..two_qubit_interaction.utils import fit_flux_amplitude
 from ..utils import HZ_TO_GHZ
 from .amplitude_signal import RabiAmplitudeVoltResults
-from .utils import period_correction_factor, rabi_amplitude_function
+from .utils import rabi_amplitude_function
 
 
 @dataclass
@@ -206,13 +206,8 @@ def _fit(data: RabiAmplitudeFreqVoltData) -> RabiAmplitudeFrequencyResults:
                 popt[2] * (x_max - x_min),
                 popt[3] - 2 * np.pi * x_min / (x_max - x_min) / popt[2],
             ]
-            pi_pulse_parameter = (
-                translated_popt[2]
-                / 2
-                * period_correction_factor(phase=translated_popt[3])
-            )
             fitted_frequencies[qubit] = frequency
-            fitted_amplitudes[qubit] = pi_pulse_parameter
+            fitted_amplitudes[qubit] = translated_popt[1]
             fitted_parameters[qubit] = translated_popt
 
         except Exception as e:
