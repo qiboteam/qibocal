@@ -11,10 +11,8 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Results, Routine
-from qibocal.protocols.characterization.qubit_spectroscopy import (
-    QubitSpectroscopyResults,
-)
 
+from .qubit_spectroscopy import QubitSpectroscopyResults
 from .resonator_punchout import ResonatorPunchoutData
 from .utils import HZ_TO_GHZ, norm
 
