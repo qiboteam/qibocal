@@ -10,10 +10,10 @@ from qibolab import create_platform
 from qibocal.auto.task import PLATFORM_DIR
 from qibocal.cli import utils
 from qibocal.cli._base import command
-from qibocal.protocols.characterization.rabi.amplitude import RabiAmplitudeData
-from qibocal.protocols.characterization.rabi.ef import RabiAmplitudeEFData
-from qibocal.protocols.characterization.rabi.length import RabiLengthData
-from qibocal.protocols.characterization.rabi.utils import (
+from qibocal.protocols.rabi.amplitude import RabiAmplitudeData
+from qibocal.protocols.rabi.ef import RabiAmplitudeEFData
+from qibocal.protocols.rabi.length import RabiLengthData
+from qibocal.protocols.rabi.utils import (
     extract_rabi,
     rabi_amplitude_function,
     rabi_length_function,
