@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import dataclass, field
 from numbers import Number
 from typing import Iterable, Optional, Union
@@ -6,7 +7,6 @@ import numpy as np
 import numpy.typing as npt
 from qibo import gates
 from qibo.backends import GlobalBackend
-from qibolab.platform import defaultdict
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters
