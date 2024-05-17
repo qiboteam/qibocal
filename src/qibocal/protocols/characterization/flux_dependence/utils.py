@@ -193,7 +193,7 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
     return figures, fitting_report
 
 
-def G_f_d(xi, xj, offset, d, crosstalk_element, scaling):
+def G_f_d(xi, xj, offset, d, crosstalk_element, normalization):
     """Auxiliary function to calculate qubit frequency as a function of bias.
 
     It also determines the flux dependence of :math:`E_J`,:math:`E_J(\\phi)=E_J(0)G_f_d`.
@@ -207,20 +207,23 @@ def G_f_d(xi, xj, offset, d, crosstalk_element, scaling):
         crosstalk_element(float): off-diagonal crosstalk matrix element
         d (float): asymmetry between the two junctions of the transmon.
                    Typically denoted as :math:`d`. :math:`d = (E_J^1 - E_J^2) / (E_J^1 + E_J^2)`.
-        scaling (float): Normalize diagonal element to 1
+        normalization (float): Normalize diagonal element to 1
     Returns:
         (float)
     """
     return (
         d**2
         + (1 - d**2)
-        * np.cos(np.pi * (xi * scaling + scaling * xj / crosstalk_element + offset))
+        * np.cos(
+            np.pi
+            * (xi * normalization + normalization * xj * crosstalk_element + offset)
+        )
         ** 2
     ) ** 0.25
 
 
 def transmon_frequency(
-    xi, xj, w_max, d, scaling, offset, crosstalk_element, charging_energy
+    xi, xj, w_max, d, normalization, offset, crosstalk_element, charging_energy
 ):
     r"""Approximation to transmon frequency.
 
@@ -247,7 +250,7 @@ def transmon_frequency(
         xj,
         offset=offset,
         d=d,
-        scaling=scaling,
+        normalization=normalization,
         crosstalk_element=crosstalk_element,
     ) - charging_energy
 
@@ -257,7 +260,7 @@ def transmon_readout_frequency(
     xj,
     w_max,
     d,
-    scaling,
+    normalization,
     crosstalk_element,
     offset,
     resonator_freq,
@@ -290,7 +293,7 @@ def transmon_readout_frequency(
         xj,
         offset=offset,
         d=d,
-        scaling=scaling,
+        normalization=normalization,
         crosstalk_element=crosstalk_element,
     ) / (
         resonator_freq
@@ -299,7 +302,7 @@ def transmon_readout_frequency(
             xj=xj,
             w_max=w_max,
             d=d,
-            scaling=scaling,
+            normalization=normalization,
             offset=offset,
             crosstalk_element=crosstalk_element,
             charging_energy=charging_energy,
@@ -321,15 +324,3 @@ def qubit_flux_dependence_fit_bounds(qubit_frequency: float):
             np.pi,
         ],
     )
-
-
-def resonator_flux_dependence_fit_bounds(
-    qubit_frequency: float, bias: np.array, bare_resonator_frequency: float
-):
-    """Returns bounds for resonator flux fit."""
-    left_bound, right_bound = qubit_flux_dependence_fit_bounds(
-        qubit_frequency=qubit_frequency, bias=bias
-    )
-    left_bound += [bare_resonator_frequency * HZ_TO_GHZ - 0.5, 0]
-    right_bound += [bare_resonator_frequency * HZ_TO_GHZ + 0.5, 1]
-    return (left_bound, right_bound)

@@ -66,7 +66,7 @@ class ResonatorFluxData(Data):
     """Qubit bias offset."""
     bare_resonator_frequency: dict[QubitId, int] = field(default_factory=dict)
     """Qubit bare resonator frequency power provided by the user."""
-    matrix_element: dict[QubitId, float] = field(default_factory=dict)
+    normalization: dict[QubitId, float] = field(default_factory=dict)
     charging_energy: dict[QubitId, float] = field(default_factory=dict)
 
     data: dict[QubitId, npt.NDArray[ResFluxType]] = field(default_factory=dict)
@@ -92,15 +92,15 @@ def _acquisition(
     qubit_frequency = {}
     bare_resonator_frequency = {}
     offset = {}
-    matrix_element = {}
+    normalization = {}
     charging_energy = {}
     for qubit in targets:
         qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
         bare_resonator_frequency[qubit] = platform.qubits[
             qubit
         ].bare_resonator_frequency
-        matrix_element[qubit] = platform.qubits[qubit].crosstalk_matrix[qubit]
-        offset[qubit] = -platform.qubits[qubit].sweetspot * matrix_element[qubit]
+        normalization[qubit] = platform.qubits[qubit].normalization
+        offset[qubit] = -platform.qubits[qubit].sweetspot * normalization[qubit]
         charging_energy[qubit] = -platform.qubits[qubit].anharmonicity
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
         sequence.add(ro_pulses[qubit])
@@ -132,7 +132,7 @@ def _acquisition(
         resonator_type=platform.resonator_type,
         qubit_frequency=qubit_frequency,
         offset=offset,
-        matrix_element=matrix_element,
+        normalization=normalization,
         bare_resonator_frequency=bare_resonator_frequency,
         charging_energy=charging_energy,
     )
@@ -185,7 +185,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 w_max=data.qubit_frequency[qubit] * HZ_TO_GHZ,
                 xj=0,
                 d=0,
-                scaling=data.matrix_element[qubit],
+                normalization=data.normalization[qubit],
                 offset=data.offset[qubit],
                 crosstalk_element=1,
                 charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
@@ -208,14 +208,14 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 "w_max": data.qubit_frequency[qubit] * HZ_TO_GHZ,
                 "xj": 0,
                 "d": 0,
-                "scaling": data.matrix_element[qubit],
+                "normalization": data.normalization[qubit],
                 "offset": data.offset[qubit],
                 "crosstalk_element": 1,
                 "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
                 "resonator_freq": popt[1],
                 "g": popt[0],
             }
-            sweetspot = -data.offset[qubit] / data.matrix_element[qubit]
+            sweetspot = -data.offset[qubit] / data.normalization[qubit]
             resonator_freq[qubit] = fit_function(sweetspot, *popt) * GHZ_TO_HZ
             coupling[qubit] = popt[0]
             bare_resonator_freq[qubit] = popt[1] * GHZ_TO_HZ
