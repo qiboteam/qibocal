@@ -4,14 +4,9 @@ import numpy as np
 import pytest
 import qibo
 
-from qibocal.protocols.characterization.randomized_benchmarking import (
-    fitting,
-    noisemodels,
-)
-from qibocal.protocols.characterization.randomized_benchmarking.standard_rb import (
+from qibocal.protocols.randomized_benchmarking import fitting, noisemodels
+from qibocal.protocols.randomized_benchmarking.utils import (
     RB_Generator,
-)
-from qibocal.protocols.characterization.randomized_benchmarking.utils import (
     number_to_str,
     random_clifford,
 )
