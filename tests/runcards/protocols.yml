@@ -80,6 +80,17 @@ actions:
       freq_step: 500_000
       nshots: 10
 
+  - id: qubit power spectroscopy
+    operation: qubit_power_spectroscopy
+    parameters:
+      freq_width: 1_000_000
+      freq_step: 10_000
+      min_amp_factor: 0
+      max_amp_factor: 1
+      step_amp_factor: 0.05
+      duration: 100
+      amplitude: 0.5
+
   - id: qubit spectroscopy ef
     operation: qubit_spectroscopy_ef
     #FIXME: add RX12 for qubit 4
