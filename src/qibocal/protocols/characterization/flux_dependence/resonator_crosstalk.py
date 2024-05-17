@@ -246,7 +246,10 @@ def _fit(data: ResCrosstalkData) -> ResCrosstalkResults:
         target_qubit, flux_qubit = target_flux_qubit
 
         frequencies, biases = extract_feature(
-            qubit_data.freq, qubit_data.bias, qubit_data.signal, "min"
+            qubit_data.freq,
+            qubit_data.bias,
+            qubit_data.signal,
+            "min" if data.resonator_type == "2D" else "max",
         )
 
         if target_qubit != flux_qubit:
@@ -315,7 +318,7 @@ def _plot(data: ResCrosstalkData, fit: ResCrosstalkResults, target: QubitId):
             "Resonator Frequency at Sweetspot [Hz]",
             "Coupling g [MHz]",
             "Bare Resonator Frequency [Hz]",
-            "χ [MHz]",
+            "Chi [MHz]",
         ]
         values = [
             np.round(fit.resonator_freq[target], 4),

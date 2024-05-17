@@ -184,7 +184,9 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         frequencies = qubit_data.freq
         signal = qubit_data.signal
 
-        frequencies, biases = extract_feature(frequencies, biases, signal, "max")
+        frequencies, biases = extract_feature(
+            frequencies, biases, signal, "max" if data.resonator_type == "2D" else "min"
+        )
 
         def fit_function(x, w_max, normalization, offset):
             return utils.transmon_frequency(

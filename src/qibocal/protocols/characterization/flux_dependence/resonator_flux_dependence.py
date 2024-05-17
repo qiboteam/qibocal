@@ -175,7 +175,9 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         biases = qubit_data.bias
         frequencies = qubit_data.freq
         signal = qubit_data.signal
-        frequencies, biases = extract_feature(frequencies, biases, signal, "min")
+        frequencies, biases = extract_feature(
+            frequencies, biases, signal, "min" if data.resonator_type == "2D" else "max"
+        )
 
         def fit_function(x, g, resonator_freq):
             return utils.transmon_readout_frequency(
@@ -247,7 +249,7 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
                     "Coupling g [MHz]",
                     "Bare resonator freq [Hz]",
                     "Dressed resonator freq [Hz]",
-                    "χ [MHz]",
+                    "Chi [MHz]",
                 ],
                 [
                     np.round(fit.coupling[target] * 1e3, 2),
