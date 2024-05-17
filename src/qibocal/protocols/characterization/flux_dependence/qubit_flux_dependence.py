@@ -45,7 +45,7 @@ class QubitFluxResults(Results):
     """Drive frequency for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
-    normalization: dict[QubitId, float]
+    matrix_element: dict[QubitId, float]
     """V_ii coefficient."""
 
 
@@ -175,7 +175,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     qubits = data.qubits
     frequency = {}
     sweetspot = {}
-    normalization = {}
+    matrix_element = {}
     fitted_parameters = {}
 
     for qubit in qubits:
@@ -220,9 +220,9 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
             }
             frequency[qubit] = popt[0] * GHZ_TO_HZ
-            # TODO: check if this is correct
+            # sweetspot obtain by solving transmon_frequency == w_max
             sweetspot[qubit] = -popt[2] / popt[1]
-            normalization[qubit] = popt[1]
+            matrix_element[qubit] = popt[1]
         except ValueError as e:
             log.error(
                 f"Error in qubit_flux protocol fit: {e} "
@@ -234,7 +234,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     return QubitFluxResults(
         frequency=frequency,
         sweetspot=sweetspot,
-        normalization=normalization,
+        matrix_element=matrix_element,
         fitted_parameters=fitted_parameters,
     )
 
@@ -255,12 +255,12 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
                 [
                     f"Sweetspot [V]",
                     "Qubit Frequency at Sweetspot [Hz]",
-                    "Flux Normalization",
+                    "Flux dependence [V]^-1",
                 ],
                 [
                     np.round(fit.sweetspot[target], 4),
                     np.round(fit.frequency[target], 4),
-                    np.round(fit.normalization[target], 4),
+                    np.round(fit.matrix_element[target], 4),
                 ],
             )
         )
@@ -271,8 +271,7 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
 def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
     update.drive_frequency(results.frequency[qubit], platform, qubit)
     update.sweetspot(results.sweetspot[qubit], platform, qubit)
-    update.crosstalk_matrix(1, platform, qubit, qubit)
-    update.normalization(results.normalization[qubit], platform, qubit)
+    update.crosstalk_matrix(results.matrix_element[qubit], platform, qubit, qubit)
 
 
 qubit_flux = Routine(_acquisition, _fit, _plot, _update)

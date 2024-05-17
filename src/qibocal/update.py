@@ -201,7 +201,3 @@ def coupling(g: float, platform: Platform, qubit: QubitId):
 
 def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].kernel = kernel
-
-
-def normalization(normalization: np.ndarray, platform: Platform, qubit: QubitId):
-    platform.qubits[qubit].normalization = normalization

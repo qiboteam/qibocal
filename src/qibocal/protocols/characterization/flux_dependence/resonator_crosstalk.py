@@ -65,7 +65,7 @@ class ResCrosstalkData(ResonatorFluxData):
     """Readout resonator frequency for each qubit."""
     resonator_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Readout resonator frequency for each qubit."""
-    normalization: dict[QubitId, float] = field(default_factory=dict)
+    matrix_element: dict[QubitId, float] = field(default_factory=dict)
     """Diagonal crosstalk matrix element."""
     data: dict[tuple[QubitId, QubitId], npt.NDArray[ResFluxType]] = field(
         default_factory=dict
@@ -89,7 +89,7 @@ class ResCrosstalkData(ResonatorFluxData):
             qubit_frequency=self.qubit_frequency,
             offset=self.offset,
             bare_resonator_frequency=self.bare_resonator_frequency,
-            normalization=self.normalization,
+            matrix_element=self.matrix_element,
             charging_energy=self.charging_energy,
         )
         for qubit in self.qubits:
@@ -107,7 +107,7 @@ class ResCrosstalkData(ResonatorFluxData):
             qubit_frequency=self.qubit_frequency,
             offset=self.offset,
             bare_resonator_frequency=self.bare_resonator_frequency,
-            normalization=self.normalization,
+            matrix_element=self.matrix_element,
             charging_energy=self.charging_energy,
         )
 
@@ -129,15 +129,15 @@ def _acquisition(
     charging_energy = {}
     bias_point = {}
     offset = {}
-    normalization = {}
+    matrix_element = {}
     for qubit in targets:
         charging_energy[qubit] = -platform.qubits[qubit].anharmonicity
         bias_point[qubit] = params.bias_point.get(
             qubit, platform.qubits[qubit].sweetspot
         )
         coupling[qubit] = platform.qubits[qubit].g
-        normalization[qubit] = platform.qubits[qubit].normalization
-        offset[qubit] = -platform.qubits[qubit].sweetspot * normalization[qubit]
+        matrix_element[qubit] = platform.qubits[qubit].crosstalk_matrix[qubit]
+        offset[qubit] = -platform.qubits[qubit].sweetspot * matrix_element[qubit]
         bare_resonator_frequency[qubit] = platform.qubits[
             qubit
         ].bare_resonator_frequency
@@ -184,7 +184,7 @@ def _acquisition(
         resonator_frequency=resonator_frequency,
         charging_energy=charging_energy,
         bias_point=bias_point,
-        normalization=normalization,
+        matrix_element=matrix_element,
         coupling=coupling,
         bare_resonator_frequency=bare_resonator_frequency,
     )
@@ -262,7 +262,7 @@ def _fit(data: ResCrosstalkData) -> ResCrosstalkResults:
                     d=0,
                     w_max=data.qubit_frequency[target_qubit] * HZ_TO_GHZ,
                     offset=offset,
-                    normalization=data.normalization[target_qubit],
+                    normalization=data.matrix_element[target_qubit],
                     charging_energy=data.charging_energy[target_qubit] * HZ_TO_GHZ,
                     g=coupling[target_qubit],
                     resonator_freq=bare_resonator_frequency[target_qubit] * HZ_TO_GHZ,
@@ -281,13 +281,15 @@ def _fit(data: ResCrosstalkData) -> ResCrosstalkResults:
                     d=0,
                     w_max=data.qubit_frequency[target_qubit] * HZ_TO_GHZ,
                     offset=popt[1],
-                    normalization=data.normalization[target_qubit],
+                    normalization=data.matrix_element[target_qubit],
                     charging_energy=data.charging_energy[target_qubit] * HZ_TO_GHZ,
                     g=coupling[target_qubit],
                     resonator_freq=bare_resonator_frequency[target_qubit] * HZ_TO_GHZ,
                     crosstalk_element=float(popt[0]),
                 )
-                crosstalk_matrix[target_qubit][flux_qubit] = popt[0]
+                crosstalk_matrix[target_qubit][flux_qubit] = (
+                    popt[0] * data.matrix_element[target_qubit]
+                )
             except ValueError as e:
                 log.error(
                     f"Off-diagonal flux fit failed for qubit {flux_qubit} due to {e}."
@@ -297,7 +299,7 @@ def _fit(data: ResCrosstalkData) -> ResCrosstalkResults:
                 target_qubit
             ]
             # TODO: to be fixed
-            crosstalk_matrix[target_qubit][flux_qubit] = 1
+            crosstalk_matrix[target_qubit][flux_qubit] = data.matrix_element[qubit]
 
     return ResCrosstalkResults(
         resonator_freq=resonator_frequency,
