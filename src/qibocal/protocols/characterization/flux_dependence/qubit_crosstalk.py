@@ -291,7 +291,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
                     crosstalk_element=float(popt[0]),
                 )
                 crosstalk_matrix[target_qubit][flux_qubit] = popt[0]
-            except ValueError as e:
+            except RuntimeError as e:
                 log.error(
                     f"Off-diagonal flux fit failed for qubit {flux_qubit} due to {e}."
                 )
@@ -326,7 +326,7 @@ def _plot(data: QubitCrosstalkData, fit: QubitCrosstalkResults, target: QubitId)
             if flux_qubit != target:
                 labels.append(f"Crosstalk with qubit {flux_qubit}")
             else:
-                labels.append(f"Flux dependence")
+                labels.append(f"Flux normalization")
             values.append(np.round(fit.crosstalk_matrix[target][flux_qubit], 4))
         fitting_report = table_html(
             table_dict(

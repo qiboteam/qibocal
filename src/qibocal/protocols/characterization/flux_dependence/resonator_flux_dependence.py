@@ -136,7 +136,6 @@ def _acquisition(
         bare_resonator_frequency=bare_resonator_frequency,
         charging_energy=charging_energy,
     )
-
     options = ExecutionParameters(
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
@@ -176,7 +175,6 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         biases = qubit_data.bias
         frequencies = qubit_data.freq
         signal = qubit_data.signal
-
         frequencies, biases = extract_feature(frequencies, biases, signal, "min")
 
         def fit_function(x, g, resonator_freq):

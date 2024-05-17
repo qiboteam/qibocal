@@ -16,8 +16,8 @@ def add_timings_to_meta(meta, history):
             meta[task_id]["fit"] = completed.results_time
         if "acquisition" in meta[task_id]:
             meta[task_id]["tot"] = meta[task_id]["acquisition"]
-        if "fit" in meta[task_id]:
-            meta[task_id]["tot"] += meta[task_id]["fit"]
+        # if "fit" in meta[task_id]:
+        #     meta[task_id]["tot"] += meta[task_id]["fit"]
 
     return meta
 

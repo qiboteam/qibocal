@@ -135,7 +135,7 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
         )
         if fit is not None:
 
-            if flux_qubit[1] != qubit:
+            if flux_qubit[1] != qubit and flux_qubit in fit.fitted_parameters:
                 fig.add_trace(
                     go.Scatter(
                         x=fit_function(
