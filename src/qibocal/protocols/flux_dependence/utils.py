@@ -1,6 +1,8 @@
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from qibolab.platform import Platform
+from qibolab.qubits import QubitId
 
 from ..utils import HZ_TO_GHZ
 
@@ -324,3 +326,48 @@ def qubit_flux_dependence_fit_bounds(qubit_frequency: float):
             np.pi,
         ],
     )
+
+
+def crosstalk_matrix(platform: Platform, qubits: list[QubitId]) -> np.ndarray:
+    """Computing crosstalk matrix for number of qubits selected.
+    The matrix returns has the following matrix element:
+    (M)ij = qubits[i].crosstalk_matrix[qubits[j]]
+    """
+    size = len(qubits)
+    matrix = np.ones(size, size)
+    for i in range(size):
+        for j in range(size):
+            matrix[i, j] = platform.qubits[qubits[i]].crosstalk_matrix[qubits[j]]
+    return matrix
+
+
+def invert_transmon_freq(target_freq: float, platform: Platform, qubit: QubitId):
+    """Return right side of equation matrix * total_flux = f(target_freq).
+    Target frequency shoudl be expressed in GHz.
+    """
+    charging_energy = -platform.qubits[qubit].anharmonicity * HZ_TO_GHZ
+    offset = (
+        -platform.qubits[qubit].sweetspot
+        * platform.qubits[qubit].crosstalk_matrix[qubit]
+    )
+    w_max = platform.qubits[qubit].drive_frequency * HZ_TO_GHZ
+    d = platform.qubits[qubit].asymmetry
+    angle = np.sqrt(
+        1
+        / (1 - d**2)
+        * (((target_freq + charging_energy) / (w_max + charging_energy)) ** 4 - d**2)
+    )
+    return 1 / np.pi * np.arccos(angle) - offset
+
+
+def bias_for_frequency_configuration(
+    target_freqs: dict[QubitId, float], platform: Platform
+) -> np.ndarray:
+    """Starting from set of target_freqs computes bias points."""
+    qubits = list(target_freqs)
+    inverted_crosstalk_matrix = np.linalg.inv(crosstalk_matrix(platform, qubits))
+    transmon_freq = np.ndarray(
+        [invert_transmon_freq(freq, platform, qubit) for qubit, freq in target_freqs]
+    )
+    bias_array = inverted_crosstalk_matrix @ transmon_freq
+    return {qubit: bias_array[index] for qubit, index in enumerate(qubits)}
