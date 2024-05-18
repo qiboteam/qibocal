@@ -154,7 +154,7 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
                     row=1,
                     col=col + 1,
                 )
-            else:
+            elif flux_qubit in fit.fitted_parameters:
                 diagonal_params = fit.fitted_parameters[qubit, qubit]
                 fig.add_trace(
                     go.Scatter(
@@ -360,7 +360,7 @@ def invert_transmon_freq(target_freq: float, platform: Platform, qubit: QubitId)
     return 1 / np.pi * np.arccos(angle) - offset
 
 
-def bias_for_frequency_configuration(
+def frequency_to_bias(
     target_freqs: dict[QubitId, float], platform: Platform
 ) -> np.ndarray:
     """Starting from set of target_freqs computes bias points."""

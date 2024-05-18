@@ -250,7 +250,6 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
         )
 
     for target_flux_qubit, qubit_data in data.data.items():
-
         frequencies, biases = extract_feature(
             qubit_data.freq,
             qubit_data.bias,
@@ -280,6 +279,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
                     biases,
                     frequencies * HZ_TO_GHZ,
                     bounds=((-np.inf, -1), (np.inf, 1)),
+                    maxfev=100000,
                 )
                 fitted_parameters[target_qubit, flux_qubit] = dict(
                     xi=bias_point[qubit],
