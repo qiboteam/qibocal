@@ -830,3 +830,25 @@ actions:
       bias_width: 0.2
       bias_step:  0.05
       drive_amplitude: 0.5
+
+  - id: cross resonance
+    operation: cross_resonance
+    targets: [[0,2]]
+    parameters:
+      pulse_duration_start: 10
+      pulse_duration_end: 20000
+      pulse_duration_step: 1000
+      pulse_amplitude: -0.5
+
+
+  - id: cross resonance chevron
+    operation: cross_resonance_chevron
+    targets: [[0,2]]
+    parameters:
+      pulse_duration_start: 10
+      pulse_duration_end: 5000
+      pulse_duration_step: 500
+      amplitude_min_factor: -1
+      amplitude_max_factor: 1
+      amplitude_step_factor: 0.1
+      pulse_amplitude: 0.5
