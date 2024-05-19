@@ -334,10 +334,11 @@ def crosstalk_matrix(platform: Platform, qubits: list[QubitId]) -> np.ndarray:
     (M)ij = qubits[i].crosstalk_matrix[qubits[j]]
     """
     size = len(qubits)
-    matrix = np.ones(size, size)
+    matrix = np.ones((size, size))
     for i in range(size):
         for j in range(size):
             matrix[i, j] = platform.qubits[qubits[i]].crosstalk_matrix[qubits[j]]
+
     return matrix
 
 
@@ -366,8 +367,12 @@ def frequency_to_bias(
     """Starting from set of target_freqs computes bias points."""
     qubits = list(target_freqs)
     inverted_crosstalk_matrix = np.linalg.inv(crosstalk_matrix(platform, qubits))
-    transmon_freq = np.ndarray(
-        [invert_transmon_freq(freq, platform, qubit) for qubit, freq in target_freqs]
+    transmon_freq = np.array(
+        [
+            invert_transmon_freq(freq, platform, qubit)
+            for qubit, freq in target_freqs.items()
+        ]
     )
     bias_array = inverted_crosstalk_matrix @ transmon_freq
-    return {qubit: bias_array[index] for qubit, index in enumerate(qubits)}
+    print(bias_array)
+    return {qubit: bias_array[index] for index, qubit in enumerate(qubits)}

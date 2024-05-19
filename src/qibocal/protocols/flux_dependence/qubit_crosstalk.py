@@ -323,7 +323,6 @@ def _plot(data: QubitCrosstalkData, fit: QubitCrosstalkResults, target: QubitId)
     if fit is not None:
         labels = ["Qubit Frequency at Sweetspot [Hz]"]
         values = [
-            # np.round(fit.sweetspot[target], 4),
             np.round(fit.frequency[target], 4),
         ]
         for flux_qubit in fit.crosstalk_matrix[target]:
