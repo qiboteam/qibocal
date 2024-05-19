@@ -285,6 +285,18 @@ actions:
       pulse_length: 30
       nshots: 1024
 
+  - id: rabi amplitude frequency_signal
+    operation: rabi_amplitude_frequency_signal
+    parameters:
+      min_amp_factor: 0.0
+      max_amp_factor: 4.0
+      step_amp_factor: 0.1
+      min_freq: -100_000
+      max_freq: 100_000
+      step_freq: 10_000
+      pulse_length: 30
+      nshots: 1024
+
 
   - id: rabi_ef
     operation: rabi_amplitude_ef

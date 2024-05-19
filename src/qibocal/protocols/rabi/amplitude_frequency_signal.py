@@ -12,61 +12,73 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Data, Routine
+from qibocal.auto.operation import Data, Parameters, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
 from ..two_qubit_interaction.utils import fit_flux_amplitude
-from ..utils import HZ_TO_GHZ, chi2_reduced
-from .amplitude_frequency_signal import (
-    RabiAmplitudeFrequencyVoltParameters,
-    RabiAmplitudeFrequencyVoltResults,
-)
-from .utils import period_correction_factor, rabi_amplitude_function
+from ..utils import HZ_TO_GHZ
+from .amplitude_signal import RabiAmplitudeVoltResults
+from .utils import rabi_amplitude_function
 
 
 @dataclass
-class RabiAmplitudeFrequencyParameters(RabiAmplitudeFrequencyVoltParameters):
+class RabiAmplitudeFrequencyVoltParameters(Parameters):
     """RabiAmplitudeFrequency runcard inputs."""
 
+    min_amp_factor: float
+    """Minimum amplitude multiplicative factor."""
+    max_amp_factor: float
+    """Maximum amplitude multiplicative factor."""
+    step_amp_factor: float
+    """Step amplitude multiplicative factor."""
+    min_freq: int
+    """Minimum frequency as an offset."""
+    max_freq: int
+    """Maximum frequency as an offset."""
+    step_freq: int
+    """Frequency to use as step for the scan."""
+    pulse_length: Optional[float] = None
+    """RX pulse duration [ns]."""
+
 
 @dataclass
-class RabiAmplitudeFrequencyResults(RabiAmplitudeFrequencyVoltResults):
+class RabiAmplitudeFrequencyVoltResults(RabiAmplitudeVoltResults):
     """RabiAmplitudeFrequency outputs."""
 
-    chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
+    frequency: dict[QubitId, tuple[float, Optional[int]]]
+    """Drive frequency for each qubit."""
 
 
-RabiAmpFreqType = np.dtype(
+RabiAmpFreqVoltType = np.dtype(
     [
         ("amp", np.float64),
         ("freq", np.float64),
-        ("prob", np.float64),
-        ("error", np.float64),
+        ("signal", np.float64),
+        ("phase", np.float64),
     ]
 )
 """Custom dtype for rabi amplitude."""
 
 
 @dataclass
-class RabiAmplitudeFreqData(Data):
-    """RabiAmplitudeFreq data acquisition."""
+class RabiAmplitudeFreqVoltData(Data):
+    """RabiAmplitudeFreqVolt data acquisition."""
 
     durations: dict[QubitId, float] = field(default_factory=dict)
     """Pulse durations provided by the user."""
-    data: dict[QubitId, npt.NDArray[RabiAmpFreqType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[RabiAmpFreqVoltType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, freq, amp, prob, error):
+    def register_qubit(self, qubit, freq, amp, signal, phase):
         """Store output for single qubit."""
         size = len(freq) * len(amp)
         frequency, amplitude = np.meshgrid(freq, amp)
-        ar = np.empty(size, dtype=RabiAmpFreqType)
-        prob = np.array(prob)
+        ar = np.empty(size, dtype=RabiAmpFreqVoltType)
         ar["freq"] = frequency.ravel()
         ar["amp"] = amplitude.ravel()
-        ar["prob"] = np.array(prob).ravel()
-        ar["error"] = np.array(error).ravel()
+        ar["signal"] = signal.ravel()
+        ar["phase"] = phase.ravel()
         self.data[qubit] = np.rec.array(ar)
 
     def amplitudes(self, qubit):
@@ -79,8 +91,10 @@ class RabiAmplitudeFreqData(Data):
 
 
 def _acquisition(
-    params: RabiAmplitudeFrequencyParameters, platform: Platform, targets: list[QubitId]
-) -> RabiAmplitudeFreqData:
+    params: RabiAmplitudeFrequencyVoltParameters,
+    platform: Platform,
+    targets: list[QubitId],
+) -> RabiAmplitudeFreqVoltData:
     """Data acquisition for Rabi experiment sweeping amplitude."""
 
     # create a sequence of pulses for the experiment
@@ -126,52 +140,48 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
-    data = RabiAmplitudeFreqData(durations=durations)
+    data = RabiAmplitudeFreqVoltData(durations=durations)
 
     results = platform.sweep(
         sequence,
         ExecutionParameters(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
         ),
         sweeper_amp,
         sweeper_freq,
     )
     for qubit in targets:
         result = results[ro_pulses[qubit].serial]
-        prob = result.probability(state=1)
         data.register_qubit(
             qubit=qubit,
             freq=qd_pulses[qubit].frequency + frequency_range,
             amp=qd_pulses[qubit].amplitude * amplitude_range,
-            prob=prob.tolist(),
-            error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
+            signal=result.magnitude,
+            phase=result.phase,
         )
     return data
 
 
-def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
+def _fit(data: RabiAmplitudeFreqVoltData) -> RabiAmplitudeFrequencyVoltResults:
     """Do not perform any fitting procedure."""
     fitted_frequencies = {}
     fitted_amplitudes = {}
     fitted_parameters = {}
-    chi2 = {}
 
     for qubit in data.data:
         amps = data.amplitudes(qubit)
         freqs = data.frequencies(qubit)
-        probability = data[qubit].prob
-        probability_matrix = probability.reshape(len(amps), len(freqs)).T
+        signal = data[qubit].signal
+        signal_matrix = signal.reshape(len(amps), len(freqs)).T
 
         # guess amplitude computing FFT
-        frequency, index, _ = fit_flux_amplitude(probability_matrix, freqs, amps)
+        frequency, index, _ = fit_flux_amplitude(signal_matrix, freqs, amps)
 
         pguess = [0.5, 1, 1 / frequency, 0]
-        y = probability_matrix[index, :].ravel()
-        error = data[qubit].error.reshape(len(amps), len(freqs)).T
-        error = error[index, :].ravel()
+        y = signal_matrix[index, :].ravel()
 
         y_min = np.min(y)
         y_max = np.max(y)
@@ -181,7 +191,7 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         y = (y - y_min) / (y_max - y_min)
 
         try:
-            popt, perr = curve_fit(
+            popt, _ = curve_fit(
                 rabi_amplitude_function,
                 x,
                 y,
@@ -191,60 +201,77 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
                     [0, 0, 0, -np.pi],
                     [1, 1, np.inf, np.pi],
                 ),
-                sigma=error,
             )
-            perr = np.sqrt(np.diag(perr))
-            pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
+            translated_popt = [  # Change it according to fit function changes
+                y_min + (y_max - y_min) * popt[0],
+                (y_max - y_min) * popt[1],
+                popt[2] * (x_max - x_min),
+                popt[3] - 2 * np.pi * x_min / (x_max - x_min) / popt[2],
+            ]
             fitted_frequencies[qubit] = frequency
-            fitted_amplitudes[qubit] = (pi_pulse_parameter, perr[2] / 2)
-            fitted_parameters[qubit] = popt.tolist()
+            fitted_amplitudes[qubit] = translated_popt[1]
+            fitted_parameters[qubit] = translated_popt
 
-            chi2[qubit] = (
-                chi2_reduced(
-                    y,
-                    rabi_amplitude_function(x, *popt),
-                    error,
-                ),
-                np.sqrt(2 / len(y)),
-            )
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
-    return RabiAmplitudeFrequencyResults(
+    return RabiAmplitudeFrequencyVoltResults(
         amplitude=fitted_amplitudes,
         length=data.durations,
         fitted_parameters=fitted_parameters,
         frequency=fitted_frequencies,
-        chi2=chi2,
     )
 
 
 def _plot(
-    data: RabiAmplitudeFreqData,
+    data: RabiAmplitudeFreqVoltData,
     target: QubitId,
-    fit: RabiAmplitudeFrequencyResults = None,
+    fit: RabiAmplitudeFrequencyVoltResults = None,
 ):
     """Plotting function for RabiAmplitudeFrequency."""
     figures = []
     fitting_report = ""
     fig = make_subplots(
         rows=1,
-        cols=1,
+        cols=2,
         horizontal_spacing=0.1,
         vertical_spacing=0.2,
-        subplot_titles=("Probability",),
+        subplot_titles=(
+            "Normalised Signal [a.u.]",
+            "phase [rad]",
+        ),
     )
     qubit_data = data[target]
     frequencies = qubit_data.freq * HZ_TO_GHZ
     amplitudes = qubit_data.amp
+
+    # n_amps = len(np.unique(qubit_data.amp))
+    # n_freq = len(np.unique(qubit_data.freq))
+    # for i in range(n_amps):
+    # qubit_data.signal[i * n_freq : (i + 1) * n_freq] = norm(
+    #    qubit_data.signal[i * n_freq : (i + 1) * n_freq]
+    # )
+
     fig.add_trace(
         go.Heatmap(
             x=amplitudes,
             y=frequencies,
-            z=qubit_data.prob,
+            z=qubit_data.signal,
+            colorbar_x=0.46,
         ),
         row=1,
         col=1,
+    )
+
+    fig.add_trace(
+        go.Heatmap(
+            x=amplitudes,
+            y=frequencies,
+            z=qubit_data.phase,
+            colorbar_x=1.01,
+        ),
+        row=1,
+        col=2,
     )
 
     fig.update_layout(
@@ -253,6 +280,7 @@ def _plot(
     )
 
     fig.update_xaxes(title_text="Amplitude [a.u.]", row=1, col=1)
+    fig.update_xaxes(title_text="Amplitude [a.u.]", row=1, col=2)
     fig.update_yaxes(title_text="Frequency [GHz]", row=1, col=1)
 
     figures.append(fig)
@@ -264,12 +292,12 @@ def _plot(
                 ["Transition frequency", "Pi-pulse amplitude"],
                 [
                     fit.frequency[target],
-                    f"{fit.amplitude[target][0]:.2E} +- {fit.amplitude[target][1]:.2E}",
+                    fit.amplitude[target],
                 ],
             )
         )
     return figures, fitting_report
 
 
-rabi_amplitude_frequency = Routine(_acquisition, _fit, _plot)
+rabi_amplitude_frequency_signal = Routine(_acquisition, _fit, _plot)
 """Rabi amplitude with frequency tuning."""
