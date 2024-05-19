@@ -12,60 +12,73 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Data, Routine
+from qibocal.auto.operation import Data, Parameters, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
 from ..two_qubit_interaction.utils import fit_flux_amplitude
-from ..utils import HZ_TO_GHZ, chi2_reduced
-from .length_frequency_signal import (
-    RabiLengthFrequencyVoltParameters,
-    RabiLengthFrequencyVoltResults,
-)
+from ..utils import HZ_TO_GHZ
+from .length_signal import RabiLengthVoltResults
 from .utils import period_correction_factor, rabi_length_function
 
 
 @dataclass
-class RabiLengthFrequencyParameters(RabiLengthFrequencyVoltParameters):
+class RabiLengthFrequencyVoltParameters(Parameters):
     """RabiLengthFrequency runcard inputs."""
+
+    pulse_duration_start: float
+    """Initial pi pulse duration [ns]."""
+    pulse_duration_end: float
+    """Final pi pulse duration [ns]."""
+    pulse_duration_step: float
+    """Step pi pulse duration [ns]."""
+    min_freq: int
+    """Minimum frequency as an offset."""
+    max_freq: int
+    """Maximum frequency as an offset."""
+    step_freq: int
+    """Frequency to use as step for the scan."""
+    pulse_amplitude: Optional[float] = None
+    """Pi pulse amplitude. Same for all qubits."""
 
 
 @dataclass
-class RabiLengthFrequencyResults(RabiLengthFrequencyVoltResults):
+class RabiLengthFrequencyVoltResults(RabiLengthVoltResults):
     """RabiLengthFrequency outputs."""
 
-    chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
+    frequency: dict[QubitId, tuple[float, Optional[int]]]
+    """Drive frequency for each qubit."""
 
 
-RabiLenFreqType = np.dtype(
+RabiLenFreqVoltType = np.dtype(
     [
         ("len", np.float64),
         ("freq", np.float64),
-        ("prob", np.float64),
-        ("error", np.float64),
+        ("signal", np.float64),
+        ("phase", np.float64),
     ]
 )
 """Custom dtype for rabi length."""
 
 
 @dataclass
-class RabiLengthFreqData(Data):
-    """RabiLengthFreq data acquisition."""
+class RabiLengthFreqVoltData(Data):
+    """RabiLengthFreqVolt data acquisition."""
 
     amplitudes: dict[QubitId, float] = field(default_factory=dict)
     """Pulse amplitudes provided by the user."""
-    data: dict[QubitId, npt.NDArray[RabiLenFreqType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[RabiLenFreqVoltType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, freq, lens, prob, error):
+    def register_qubit(self, qubit, freq, lens, signal, phase):
         """Store output for single qubit."""
         size = len(freq) * len(lens)
         frequency, length = np.meshgrid(freq, lens)
-        ar = np.empty(size, dtype=RabiLenFreqType)
+        ar = np.empty(size, dtype=RabiLenFreqVoltType)
         ar["freq"] = frequency.ravel()
         ar["len"] = length.ravel()
-        ar["prob"] = np.array(prob).ravel()
-        ar["error"] = np.array(error).ravel()
+        ar["signal"] = signal.ravel()
+        ar["phase"] = phase.ravel()
         self.data[qubit] = np.rec.array(ar)
 
     def durations(self, qubit):
@@ -78,8 +91,10 @@ class RabiLengthFreqData(Data):
 
 
 def _acquisition(
-    params: RabiLengthFrequencyParameters, platform: Platform, targets: list[QubitId]
-) -> RabiLengthFreqData:
+    params: RabiLengthFrequencyVoltParameters,
+    platform: Platform,
+    targets: list[QubitId],
+) -> RabiLengthFreqVoltData:
     """Data acquisition for Rabi experiment sweeping length."""
 
     # create a sequence of pulses for the experiment
@@ -125,52 +140,48 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
-    data = RabiLengthFreqData(amplitudes=amplitudes)
+    data = RabiLengthFreqVoltData(amplitudes=amplitudes)
 
     results = platform.sweep(
         sequence,
         ExecutionParameters(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
         ),
         sweeper_len,
         sweeper_freq,
     )
     for qubit in targets:
         result = results[ro_pulses[qubit].serial]
-        prob = result.probability(state=1)
         data.register_qubit(
             qubit=qubit,
             freq=qd_pulses[qubit].frequency + frequency_range,
             lens=length_range,
-            prob=prob.tolist(),
-            error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
+            signal=result.magnitude,
+            phase=result.phase,
         )
     return data
 
 
-def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
+def _fit(data: RabiLengthFreqVoltData) -> RabiLengthFrequencyVoltResults:
     """Do not perform any fitting procedure."""
     fitted_frequencies = {}
     fitted_durations = {}
     fitted_parameters = {}
-    chi2 = {}
 
     for qubit in data.data:
         durations = data.durations(qubit)
         freqs = data.frequencies(qubit)
-        probability = data[qubit].prob
-        probability_matrix = probability.reshape(len(durations), len(freqs)).T
+        signal = data[qubit].signal
+        signal_matrix = signal.reshape(len(durations), len(freqs)).T
 
         # guess amplitude computing FFT
-        frequency, index, _ = fit_flux_amplitude(probability_matrix, freqs, durations)
+        frequency, index, _ = fit_flux_amplitude(signal_matrix, freqs, durations)
 
-        y = probability_matrix[index, :].ravel()
+        y = signal_matrix[index, :].ravel()
         pguess = [0, np.sign(y[0]) * 0.5, 1 / frequency, 0, 0]
-        error = data[qubit].error.reshape(len(durations), len(freqs)).T
-        error = error[index, :].ravel()
 
         y_min = np.min(y)
         y_max = np.max(y)
@@ -180,7 +191,7 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
         y = (y - y_min) / (y_max - y_min)
 
         try:
-            popt, perr = curve_fit(
+            popt, _ = curve_fit(
                 rabi_length_function,
                 x,
                 y,
@@ -190,76 +201,83 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
                     [0, -1, 0, -np.pi, 0],
                     [1, 1, np.inf, np.pi, np.inf],
                 ),
-                sigma=error,
             )
-            translated_popt = [
-                popt[0],
-                popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
+            translated_popt = [  # change it according to the fit function
+                (y_max - y_min) * (popt[0] + 1 / 2) + y_min,
+                (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
                 popt[2] * (x_max - x_min),
                 popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
                 popt[4] / (x_max - x_min),
             ]
-
-            perr = np.sqrt(np.diag(perr))
             pi_pulse_parameter = (
                 translated_popt[2]
                 / 2
                 * period_correction_factor(phase=translated_popt[3])
             )
             fitted_frequencies[qubit] = frequency
-            fitted_durations[qubit] = (
-                pi_pulse_parameter,
-                perr[2] * (x_max - x_min) / 2,
-            )
+            fitted_durations[qubit] = pi_pulse_parameter
             fitted_parameters[qubit] = translated_popt
-            chi2[qubit] = (
-                chi2_reduced(
-                    y,
-                    rabi_length_function(x, *translated_popt),
-                    error,
-                ),
-                np.sqrt(2 / len(y)),
-            )
 
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
-    return RabiLengthFrequencyResults(
+    return RabiLengthFrequencyVoltResults(
         length=fitted_durations,
         amplitude=data.amplitudes,
         fitted_parameters=fitted_parameters,
         frequency=fitted_frequencies,
-        chi2=chi2,
     )
 
 
 def _plot(
-    data: RabiLengthFreqData,
+    data: RabiLengthFreqVoltData,
     target: QubitId,
-    fit: RabiLengthFrequencyResults = None,
+    fit: RabiLengthFrequencyVoltResults = None,
 ):
     """Plotting function for RabiLengthFrequency."""
     figures = []
     fitting_report = ""
     fig = make_subplots(
         rows=1,
-        cols=1,
+        cols=2,
         horizontal_spacing=0.1,
         vertical_spacing=0.2,
-        subplot_titles=("Probability",),
+        subplot_titles=(
+            "Normalised Signal [a.u.]",
+            "phase [rad]",
+        ),
     )
     qubit_data = data[target]
     frequencies = qubit_data.freq * HZ_TO_GHZ
     durations = qubit_data.len
 
+    # n_amps = len(np.unique(qubit_data.amp))
+    # n_freq = len(np.unique(qubit_data.freq))
+    # for i in range(n_amps):
+    # qubit_data.signal[i * n_freq : (i + 1) * n_freq] = norm(
+    #    qubit_data.signal[i * n_freq : (i + 1) * n_freq]
+    # )
+
     fig.add_trace(
         go.Heatmap(
             x=durations,
             y=frequencies,
-            z=qubit_data.prob,
+            z=qubit_data.signal,
+            colorbar_x=0.46,
         ),
         row=1,
         col=1,
+    )
+
+    fig.add_trace(
+        go.Heatmap(
+            x=durations,
+            y=frequencies,
+            z=qubit_data.phase,
+            colorbar_x=1.01,
+        ),
+        row=1,
+        col=2,
     )
 
     fig.update_layout(
@@ -268,6 +286,7 @@ def _plot(
     )
 
     fig.update_xaxes(title_text="Durations [ns]", row=1, col=1)
+    fig.update_xaxes(title_text="Durations [ns]", row=1, col=2)
     fig.update_yaxes(title_text="Frequency [GHz]", row=1, col=1)
 
     figures.append(fig)
@@ -279,12 +298,12 @@ def _plot(
                 ["Transition frequency", "Pi-pulse duration"],
                 [
                     fit.frequency[target],
-                    f"{fit.length[target][0]*1e9:.2E} +- {fit.length[target][1]*1e9:.2E} ns",
+                    f"{fit.length[target]*1e9:.2E} ns",
                 ],
             )
         )
     return figures, fitting_report
 
 
-rabi_length_frequency = Routine(_acquisition, _fit, _plot)
+rabi_length_frequency_signal = Routine(_acquisition, _fit, _plot)
 """Rabi length with frequency tuning."""

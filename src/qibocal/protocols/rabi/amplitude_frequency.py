@@ -62,7 +62,6 @@ class RabiAmplitudeFreqData(Data):
         size = len(freq) * len(amp)
         frequency, amplitude = np.meshgrid(freq, amp)
         ar = np.empty(size, dtype=RabiAmpFreqType)
-        prob = np.array(prob)
         ar["freq"] = frequency.ravel()
         ar["amp"] = amplitude.ravel()
         ar["prob"] = np.array(prob).ravel()
@@ -264,7 +263,7 @@ def _plot(
                 ["Transition frequency", "Pi-pulse amplitude"],
                 [
                     fit.frequency[target],
-                    f"{fit.amplitude[target][0]:.2E} +- {fit.amplitude[target][1]:.2E}",
+                    f"{fit.amplitude[target][0]:.2E} +- {fit.amplitude[target][1]:.2E} [a.u.]",
                 ],
             )
         )
