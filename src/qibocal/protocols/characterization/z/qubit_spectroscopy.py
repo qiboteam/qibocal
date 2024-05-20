@@ -29,8 +29,13 @@ class QubitSpectroscopyParameters(Parameters):
     """Drive pulse duration [ns]. Same for all qubits."""
     drive_amplitude: Optional[float] = None
     """Drive pulse amplitude (optional). Same for all qubits."""
+
     flux_amplitude: Optional[float] = None
     """Flux pulse amplitude (optional). Same for all qubits."""
+    flux_shape: Optional[str] = None
+    """Flux pulse shape (optional). Same for all qubits."""
+    coupler_amplitude: Optional[float] = None
+    coupler: Optional[float] = None
 
 
 @dataclass
@@ -60,7 +65,6 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
-    flux_pulses = {}
     amplitudes = {}
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
@@ -76,14 +80,24 @@ def _acquisition(
         )
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
+
         if params.flux_amplitude is not None:
-            flux_pulses[qubit] = platform.create_qubit_flux_pulse(
-                qubit,
+            flux_pulse = platform.create_qubit_flux_pulse(
+                qubit=qubit,
                 start=0,
-                duration=sequence.duration,
+                duration=params.drive_duration,
                 amplitude=params.flux_amplitude,
+                shape=params.flux_shape,
             )
-            sequence.add(flux_pulses[qubit])
+            sequence.add(flux_pulse)
+            if params.coupler is not None and params.coupler_amplitude is not None:
+                coupler_pulse = platform.create_coupler_pulse(
+                    coupler=params.coupler,
+                    start=0,
+                    duration=params.drive_duration,
+                    amplitude=params.coupler_amplitude,
+                )
+                sequence.add(coupler_pulse)
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
