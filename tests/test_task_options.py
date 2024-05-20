@@ -10,10 +10,8 @@ from qibocal.auto.operation import DEFAULT_PARENT_PARAMETERS
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import Task
 from qibocal.cli.report import ExecutionMode
-from qibocal.protocols.characterization.classification import (
-    SingleShotClassificationParameters,
-)
-from qibocal.protocols.characterization.readout_mitigation_matrix import (
+from qibocal.protocols.classification import SingleShotClassificationParameters
+from qibocal.protocols.readout_mitigation_matrix import (
     ReadoutMitigationMatrixParameters,
 )
 
@@ -55,7 +53,6 @@ def test_targets_argument(backend, local_targets, tmp_path):
     task = Task(runcard.actions[0])
 
     completed = task.run(
-        max_iterations=1,
         platform=runcard.platform,
         targets=TARGETS,
         mode=ExecutionMode.acquire,

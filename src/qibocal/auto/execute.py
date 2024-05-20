@@ -26,8 +26,6 @@ class Executor:
     """Qubits/Qubit Pairs to be calibrated."""
     platform: Platform
     """Qubits' platform."""
-    max_iterations: int
-    """Maximum number of iterations."""
     update: bool = True
     """Runcard update mechanism."""
 
@@ -46,7 +44,6 @@ class Executor:
         return cls(
             actions=card.actions,
             history=History({}),
-            max_iterations=card.max_iterations,
             output=output,
             platform=platform,
             targets=targets,
@@ -62,12 +59,8 @@ class Executor:
         """
         for action in self.actions:
             task = Task(action)
-            task.iteration = self.history.iterations(task.id)
-            log.info(
-                f"Executing mode {mode.name} on {task.id} iteration {task.iteration}."
-            )
+            log.info(f"Executing mode {mode.name} on {task.id}.")
             completed = task.run(
-                max_iterations=self.max_iterations,
                 platform=self.platform,
                 targets=self.targets,
                 folder=self.output,
@@ -78,4 +71,4 @@ class Executor:
             if mode.name in ["autocalibration", "fit"] and self.platform is not None:
                 completed.update_platform(platform=self.platform, update=self.update)
 
-            yield completed.task.uid
+            yield completed.task.id

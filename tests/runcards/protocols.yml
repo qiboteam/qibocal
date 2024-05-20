@@ -475,6 +475,13 @@ actions:
   - id: readout characterization
     operation: readout_characterization
     parameters:
+      delay: 1000
+      nshots: 10
+
+  - id: readout characterization delay 0
+    operation: readout_characterization
+    parameters:
+      delay: 0
       nshots: 10
 
   - id: allXY
@@ -488,6 +495,14 @@ actions:
     parameters:
       beta_param: null
       unrolling: True
+      nshots: 10
+
+  - id: allXY drag
+    operation: allxy_drag_pulse_tuning
+    parameters:
+      beta_start: 0
+      beta_end: 0.1
+      beta_step: 0.01
       nshots: 10
 
 
@@ -626,6 +641,13 @@ actions:
       nshots: 50
       unrolling: True
 
+  - id: filtered_rb
+    operation: filtered_rb
+    targets: [1]
+    parameters:
+      depths: [1, 2, 3, 5]
+      niter: 5
+      nshots: 50
 
   - id: standard rb
     operation: standard_rb
