@@ -198,10 +198,8 @@ def plot_parallelogram(a, e, pos_x, pos_y, **options):
 
 def plot_rho(fig, zz, trace_options, figure_options, showlegend=None):
     """Plot density matrix"""
-    x, y = np.meshgrid(
-        [0, 1],
-        [0, 1],
-    )
+    values = list(range(len(zz)))
+    x, y = np.meshgrid(values, values)
     xx = x.flatten()
     yy = y.flatten()
     zz = np.array(zz).ravel()

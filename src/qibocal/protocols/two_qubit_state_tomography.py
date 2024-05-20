@@ -3,8 +3,7 @@ from collections import Counter, defaultdict
 from copy import deepcopy
 from dataclasses import dataclass, field
 from itertools import product
-from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -16,9 +15,10 @@ from qibo.result import QuantumState
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
-from qibocal.auto.operation import DATAFILE, Data, Parameters, Results, Routine
+from qibocal.auto.operation import DATAFILE, Data, Results, Routine
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
 
+from .state_tomography import StateTomographyParameters, plot_rho
 from .utils import table_dict, table_html
 
 SINGLE_QUBIT_BASIS = ["X", "Y", "Z"]
@@ -26,23 +26,6 @@ TWO_QUBIT_BASIS = list(product(SINGLE_QUBIT_BASIS, SINGLE_QUBIT_BASIS))
 OUTCOMES = ["00", "01", "10", "11"]
 SIMULATED_DENSITY_MATRIX = "ideal"
 """Filename for simulated density matrix."""
-
-
-@dataclass
-class StateTomographyParameters(Parameters):
-    """Tomography input parameters"""
-
-    circuit: Optional[Union[str, Circuit]] = None
-    """Circuit to prepare initial state.
-
-        It can also be provided the path to a json file containing
-        a serialized circuit.
-    """
-
-    def __post_init__(self):
-        if isinstance(self.circuit, str):
-            raw = json.loads((Path.cwd() / self.circuit).read_text())
-            self.circuit = Circuit.from_dict(raw)
 
 
 TomographyType = np.dtype(
@@ -82,14 +65,16 @@ class StateTomographyData(Data):
 class StateTomographyResults(Results):
     """Tomography results"""
 
+    measured_raw_density_matrix_real: dict[QubitPairId, list]
+    """Real part of measured density matrix before projecting."""
+    measured_raw_density_matrix_imag: dict[QubitPairId, list]
+    """Imaginary part of measured density matrix before projecting."""
+
     measured_density_matrix_real: dict[QubitPairId, list]
-    """Real part of measured density matrix."""
+    """Real part of measured density matrix after projecting."""
     measured_density_matrix_imag: dict[QubitPairId, list]
-    """Imaginary part of measured density matrix."""
-    measured_density_matrix_projected_real: dict[QubitPairId, list]
-    """Real part of measured density matrix."""
-    measured_density_matrix_projected_imag: dict[QubitPairId, list]
-    """Imaginary part of measured density matrix."""
+    """Imaginary part of measured density matrix after projecting."""
+
     fidelity: dict[QubitId, float]
     """State fidelity."""
 
@@ -116,7 +101,7 @@ def _acquisition(
     data = StateTomographyData(simulated=simulated_state)
     for basis1, basis2 in TWO_QUBIT_BASIS:
         basis_circuit = deepcopy(params.circuit)
-        # FIXME: basis
+        # FIXME: https://github.com/qiboteam/qibo/issues/1318
         if basis1 != "Z":
             basis_circuit.add(
                 getattr(gates, basis1)(2 * i).basis_rotation()
@@ -168,6 +153,11 @@ def _acquisition(
 
 
 def rotation_matrix(basis):
+    """Matrix of the gate implementing the rotation to the given basis.
+
+    Args:
+        basis (str): One of Pauli basis: X, Y or Z.
+    """
     backend = NumpyBackend()
     if basis == "Z":
         return np.eye(2, dtype=complex)
@@ -175,6 +165,7 @@ def rotation_matrix(basis):
 
 
 def project_psd(matrix):
+    """Project matrix to the space of positive semidefinite matrices."""
     s, v = np.linalg.eigh(matrix)
     s = s * (s > 0)
     return v.dot(np.diag(s)).dot(v.conj().T)
@@ -213,26 +204,22 @@ def _fit(data: StateTomographyData) -> StateTomographyResults:
         measured_rho = inverse_measurement.dot(probs).reshape((4, 4))
         measured_rho_proj = project_psd(measured_rho)
 
-        results.measured_density_matrix_real[pair] = measured_rho.real.tolist()
-        results.measured_density_matrix_imag[pair] = measured_rho.imag.tolist()
-        results.measured_density_matrix_projected_real[pair] = (
-            measured_rho_proj.real.tolist()
-        )
-        results.measured_density_matrix_projected_imag[pair] = (
-            measured_rho_proj.imag.tolist()
-        )
+        results.measured_raw_density_matrix_real[pair] = measured_rho.real.tolist()
+        results.measured_raw_density_matrix_imag[pair] = measured_rho.imag.tolist()
+        results.measured_density_matrix_real[pair] = measured_rho_proj.real.tolist()
+        results.measured_density_matrix_imag[pair] = measured_rho_proj.imag.tolist()
         results.fidelity[pair] = fidelity(measured_rho_proj, data.ideal[pair])
 
     return results
 
 
-def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitPairId):
-    """Plotting for state tomography"""
+def plot_measurements(data: StateTomographyData, target: QubitPairId):
+    """Plot histogram of measurements in the 9 different basis."""
     qubit1, qubit2 = target
     color1 = "rgba(0.1, 0.34, 0.7, 0.8)"
     color2 = "rgba(0.7, 0.4, 0.1, 0.6)"
 
-    fig1 = make_subplots(
+    fig = make_subplots(
         rows=3,
         cols=3,
         # "$\text{Plot 1}$"
@@ -246,7 +233,7 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitP
         col = i % 3 + 1
         basis_data = data.data[qubit1, qubit2, basis1, basis2]
 
-        fig1.add_trace(
+        fig.add_trace(
             go.Bar(
                 x=OUTCOMES,
                 y=basis_data["simulation_probabilities"],
@@ -261,7 +248,7 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitP
         )
 
         frequencies = basis_data["frequencies"]
-        fig1.add_trace(
+        fig.add_trace(
             go.Bar(
                 x=OUTCOMES,
                 y=frequencies / np.sum(frequencies),
@@ -275,113 +262,102 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitP
             col=col,
         )
 
-    fig1.update_yaxes(range=[0, 1])
-    fig1.update_layout(barmode="overlay")  # , height=900)
+    fig.update_yaxes(range=[0, 1])
+    fig.update_layout(barmode="overlay")  # , height=900)
+
+    return fig
+
+
+def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitPairId):
+    """Plotting for two qubit state tomography"""
+
+    fig_measurements = plot_measurements(data, target)
+    if fit is None:
+        fitting_report = table_html(
+            table_dict(
+                [target],
+                ["Target state"],
+                [str(data.simulated)],
+            )
+        )
+        return [fig_measurements], fitting_report
+
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        start_cell="top-left",
+        specs=[[{"type": "scatter3d"}, {"type": "scatter3d"}]],
+        subplot_titles=(
+            "Re(ρ)",
+            "Im(ρ)",
+        ),
+    )
+    # computing limits for colorscale
+    min_re, max_re = np.min(data.ideal[target].real), np.max(data.ideal[target].real)
+    min_im, max_im = np.min(data.ideal[target].imag), np.max(data.ideal[target].imag)
+
+    # add offset
+    if np.abs(min_re - max_re) < 1e-5:
+        min_re = min_re - 0.1
+        max_re = max_re + 0.1
+
+    if np.abs(min_im - max_im) < 1e-5:
+        min_im = min_im - 0.1
+        max_im = max_im + 0.1
+
+    plot_rho(
+        fig,
+        fit.measured_density_matrix_real[target],
+        trace_options=dict(
+            color="rgba(255,100,0,0.1)", name="experiment", legendgroup="experiment"
+        ),
+        figure_options=dict(row=1, col=1),
+    )
+
+    plot_rho(
+        fig,
+        data.ideal[target].real,
+        trace_options=dict(
+            color="rgba(100,0,100,0.1)", name="simulation", legendgroup="simulation"
+        ),
+        figure_options=dict(row=1, col=1),
+    )
+
+    plot_rho(
+        fig,
+        fit.measured_density_matrix_imag[target],
+        trace_options=dict(
+            color="rgba(255,100,0,0.1)", name="experiment", legendgroup="experiment"
+        ),
+        figure_options=dict(row=1, col=2),
+        showlegend=False,
+    )
+
+    plot_rho(
+        fig,
+        data.ideal[target].imag,
+        trace_options=dict(
+            color="rgba(100,0,100,0.1)", name="simulation", legendgroup="simulation"
+        ),
+        figure_options=dict(row=1, col=2),
+        showlegend=False,
+    )
+
+    fig.update_scenes(
+        xaxis=dict(tickvals=list(range(4))),
+        yaxis=dict(tickvals=list(range(4))),
+        zaxis=dict(range=[-1, 1]),
+    )
 
     fitting_report = table_html(
         table_dict(
-            [target],
-            ["Target state"],
-            [str(data.simulated)],
+            [target, target],
+            ["Target state", "Fidelity"],
+            [str(data.simulated), np.round(fit.fidelity[target], 4)],
         )
     )
 
-    if fit is not None:
-        fig2 = make_subplots(
-            rows=2,
-            cols=2,
-            # "$\text{Plot 1}$"
-            subplot_titles=(
-                "Re(ρ)<sub>measured</sub>",
-                "Im(ρ)<sub>measured</sub>",
-                "Re(ρ)<sub>theory</sub>",
-                "Im(ρ)<sub>theory</sub>",
-            ),
-        )
-        # computing limits for colorscale
-        min_re, max_re = np.min(
-            fit.measured_density_matrix_projected_real[target]
-        ), np.max(fit.measured_density_matrix_projected_real[target])
-        min_im, max_im = np.min(
-            fit.measured_density_matrix_projected_imag[target]
-        ), np.max(fit.measured_density_matrix_projected_imag[target])
-
-        # add offset
-        if np.abs(min_re - max_re) < 1e-5:
-            min_re = min_re - 0.1
-            max_re = max_re + 0.1
-
-        if np.abs(min_im - max_im) < 1e-5:
-            min_im = min_im - 0.1
-            max_im = max_im + 0.1
-        fig2.add_trace(
-            go.Heatmap(
-                z=fit.measured_density_matrix_projected_real[target],
-                x=OUTCOMES,
-                y=OUTCOMES,
-                colorscale="ice",
-                colorbar_x=-0.2,
-                zmin=min_re,
-                zmax=max_re,
-                reversescale=True,
-            ),
-            row=1,
-            col=1,
-        )
-
-        fig2.add_trace(
-            go.Heatmap(
-                z=data.ideal[target].real,
-                x=OUTCOMES,
-                y=OUTCOMES,
-                showscale=False,
-                colorscale="ice",
-                zmin=min_re,
-                zmax=max_re,
-                reversescale=True,
-            ),
-            row=2,
-            col=1,
-        )
-
-        fig2.add_trace(
-            go.Heatmap(
-                z=fit.measured_density_matrix_projected_imag[target],
-                x=OUTCOMES,
-                y=OUTCOMES,
-                colorscale="Burg",
-                colorbar_x=1.01,
-                zmin=min_im,
-                zmax=max_im,
-            ),
-            row=1,
-            col=2,
-        )
-
-        fig2.add_trace(
-            go.Heatmap(
-                z=data.ideal[target].imag,
-                x=OUTCOMES,
-                y=OUTCOMES,
-                colorscale="Burg",
-                showscale=False,
-                zmin=min_im,
-                zmax=max_im,
-            ),
-            row=2,
-            col=2,
-        )
-        fitting_report = table_html(
-            table_dict(
-                [target, target],
-                ["Target state", "Fidelity"],
-                [str(data.simulated), np.round(fit.fidelity[target], 4)],
-            )
-        )
-
-        return [fig1, fig2], fitting_report
-
-    return [fig1], fitting_report
+    return [fig_measurements, fig], fitting_report
 
 
 two_qubit_state_tomography = Routine(_acquisition, _fit, _plot)
