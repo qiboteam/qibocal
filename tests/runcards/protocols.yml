@@ -497,6 +497,15 @@ actions:
       unrolling: True
       nshots: 10
 
+  - id: resonator_depletion_tuning
+    operation: allxy_resonator_depletion_tuning
+    parameters:
+      delay_start: 1000.0
+      delay_end: 3000.0
+      delay_step: 1000.0
+      nshots: 10
+
+
   - id: allXY drag
     operation: allxy_drag_pulse_tuning
     parameters:
