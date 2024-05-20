@@ -1,0 +1,67 @@
+Qubit spectroscopy
+==================
+
+To measure the resonance frequency of the qubit it is possible to perform
+a `qubit spectroscopy` experiment.
+After having obtained an initial guess for the readout amplitude and the readout
+frequency this experiment aims at extracting the frequency of the qubit.
+
+In this protocol the qubit is probed by sending a drive pulse at
+variable frequency :math:`w` before measuring. When :math:`w` is close
+to the transition frequency  :math:`w_{01}` some of the population will
+move to the excited state. If the drive pulse is long enough it will be
+generated a maximally mixed state with :math:`\rho \propto I` :cite:p:`Baur2012RealizingQG, gao2021practical`.
+
+
+
+
+The parameters for the qubit spectroscopy experiment are :class:`qibocal.protocols.qubit_spectroscopy.QubitSpectroscopyParameters`
+and they include the frequency range and the drive power.
+
+How to execute a qubit spectroscopy experiment
+----------------------------------------------
+
+A possible runcard to launch a qubit spectroscopy experiment could be the following:
+
+.. code-block:: yaml
+
+    - id: qubit spectroscopy 01
+      operation: qubit_spectroscopy
+      parameters:
+        drive_amplitude: 0.01 # drive power
+        drive_duration: 4000 # ns
+        freq_width: 20_000_000
+        freq_step: 1_000_000
+        nshots: 1024
+        relaxation_time: 20_000
+
+Acquisition
+-----------
+
+The full acquisition procedure is described in :func:`qibocal.protocols.qubit_spectroscopy.acquisition`
+
+Here is the corresponding plot:
+
+.. image:: figures/qubit_spec.png
+
+The data are stored :class:`qibocal.protocols.qubit_spectroscopy.QubitSpectroscopyData`,
+which contains the signal and the phase measured for each qubit.
+
+
+Post-processing procedure
+-------------------------
+
+To extract the qubit frequency a lorentzian fit is performed. Full post-processing
+procedure is in :func:`qibocal.protocols.qubit_spectroscopy.fit`.
+
+After the post-processing the following parameters will be updated:
+
+* qubit frequenccy
+* drive frequency
+
+
+.. rubric:: References
+
+.. bibliography::
+   :filter: docname in docnames
+   :style: plain
