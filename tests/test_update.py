@@ -10,7 +10,7 @@ from qibolab.native import VirtualZPulse
 from qibolab.pulses import Drag
 
 from qibocal import update
-from qibocal.protocols.characterization.signal_experiments.calibrate_state_discrimination import (
+from qibocal.protocols.signal_experiments.calibrate_state_discrimination import (
     CalibrateStateDiscriminationResults,
 )
 
