@@ -1,5 +1,11 @@
-Qubit spectroscopy
-==================
+Qubit spectroscopies
+====================
+
+In this section we are going to present how to run with qibocal some
+qubit spectroscopies experiments.
+
+Qubit Spectroscopy
+------------------
 
 To measure the resonance frequency of the qubit it is possible to perform
 a `qubit spectroscopy` experiment.
@@ -61,7 +67,7 @@ After the post-processing the following parameters will be updated:
 
 
 Qubit spectroscopy "ef"
-=======================
+----------------------
 
 Through a qubit spectroscopy experiment it is possible to target also the transition
 frequencies towards higher energy level other than the first excited state.
