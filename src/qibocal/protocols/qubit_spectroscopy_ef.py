@@ -43,9 +43,9 @@ class QubitSpectroscopyEFData(QubitSpectroscopyData):
 
 
 def fit_ef(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
-    results = _fit(data)
+    results = fit(data)
     anharmoncities = {
-        qubit: data.drive_frequencies[qubit] - results.frequency[qubit]
+        qubit: results.frequency[qubit] - data.drive_frequencies[qubit]
         for qubit in data.qubits
         if qubit in results
     }
