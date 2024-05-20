@@ -18,7 +18,7 @@ from qibolab.qubits import QubitId, QubitPairId
 from qibocal.auto.operation import DATAFILE, Data, Results, Routine
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
 
-from .state_tomography import StateTomographyParameters, plot_rho
+from .state_tomography import StateTomographyParameters, plot_reconstruction
 from .utils import table_dict, table_html
 
 SINGLE_QUBIT_BASIS = ["X", "Y", "Z"]
@@ -222,7 +222,6 @@ def plot_measurements(data: StateTomographyData, target: QubitPairId):
     fig = make_subplots(
         rows=3,
         cols=3,
-        # "$\text{Plot 1}$"
         subplot_titles=tuple(
             f"{basis1}<sub>1</sub>{basis2}<sub>2</sub>"
             for basis1, basis2 in TWO_QUBIT_BASIS
@@ -282,72 +281,10 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitP
         )
         return [fig_measurements], fitting_report
 
-    fig = make_subplots(
-        rows=1,
-        cols=2,
-        start_cell="top-left",
-        specs=[[{"type": "scatter3d"}, {"type": "scatter3d"}]],
-        subplot_titles=(
-            "Re(ρ)",
-            "Im(ρ)",
-        ),
+    measured = np.array(fit.measured_density_matrix_real[target]) + 1j * np.array(
+        fit.measured_raw_density_matrix_imag[target]
     )
-    # computing limits for colorscale
-    min_re, max_re = np.min(data.ideal[target].real), np.max(data.ideal[target].real)
-    min_im, max_im = np.min(data.ideal[target].imag), np.max(data.ideal[target].imag)
-
-    # add offset
-    if np.abs(min_re - max_re) < 1e-5:
-        min_re = min_re - 0.1
-        max_re = max_re + 0.1
-
-    if np.abs(min_im - max_im) < 1e-5:
-        min_im = min_im - 0.1
-        max_im = max_im + 0.1
-
-    plot_rho(
-        fig,
-        fit.measured_density_matrix_real[target],
-        trace_options=dict(
-            color="rgba(255,100,0,0.1)", name="experiment", legendgroup="experiment"
-        ),
-        figure_options=dict(row=1, col=1),
-    )
-
-    plot_rho(
-        fig,
-        data.ideal[target].real,
-        trace_options=dict(
-            color="rgba(100,0,100,0.1)", name="simulation", legendgroup="simulation"
-        ),
-        figure_options=dict(row=1, col=1),
-    )
-
-    plot_rho(
-        fig,
-        fit.measured_density_matrix_imag[target],
-        trace_options=dict(
-            color="rgba(255,100,0,0.1)", name="experiment", legendgroup="experiment"
-        ),
-        figure_options=dict(row=1, col=2),
-        showlegend=False,
-    )
-
-    plot_rho(
-        fig,
-        data.ideal[target].imag,
-        trace_options=dict(
-            color="rgba(100,0,100,0.1)", name="simulation", legendgroup="simulation"
-        ),
-        figure_options=dict(row=1, col=2),
-        showlegend=False,
-    )
-
-    fig.update_scenes(
-        xaxis=dict(tickvals=list(range(4))),
-        yaxis=dict(tickvals=list(range(4))),
-        zaxis=dict(range=[-1, 1]),
-    )
+    fig = plot_reconstruction(data.ideal[target], measured)
 
     fitting_report = table_html(
         table_dict(
