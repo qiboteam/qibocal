@@ -69,12 +69,16 @@ from .resonator_spectroscopy_attenuation import (  # will be removed
 # )
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtualz
+from .z.coupler_chevron import coupler_chevron
+from .z.coupler_chevron_signal import coupler_chevron_signal
 from .z.dispersive_shift import dispersive_shift
+from .z.in_progress.qm_cryoscope import cryoscope
 from .z.in_progress.qubit_mixer_calibration import qubit_mixer_calibration
 from .z.in_progress.qubit_spectroscopy_with_lo import qubit_spectroscopy_with_lo
 from .z.in_progress.resonator_mixer_calibration import resonator_mixer_calibration
 from .z.in_progress.resonator_spectroscopy_with_lo import resonator_spectroscopy_with_lo
 from .z.in_progress.ro_resonator_amplitude import resonator_amplitude
+from .z.qubit_flux_dependence import qubit_flux
 from .z.qubit_spectroscopy import qubit_spectroscopy
 from .z.ramsey import ramsey
 
@@ -168,3 +172,6 @@ class Operation(Enum):
     resonator_mixer_calibration = resonator_mixer_calibration
     resonator_spectroscopy_with_lo = qubit_spectroscopy_with_lo
     qubit_spectroscopy_with_lo = qubit_spectroscopy_with_lo
+    coupler_chevron = coupler_chevron
+    coupler_chevron_signal = coupler_chevron_signal
+    cryoscope = cryoscope
