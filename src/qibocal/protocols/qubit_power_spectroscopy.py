@@ -14,7 +14,7 @@ from qibocal.auto.operation import Parameters, Results, Routine
 
 from .qubit_spectroscopy import QubitSpectroscopyResults
 from .resonator_punchout import ResonatorPunchoutData
-from .utils import HZ_TO_GHZ, norm
+from .utils import HZ_TO_GHZ
 
 
 @dataclass
@@ -147,19 +147,13 @@ def _plot(
         horizontal_spacing=0.1,
         vertical_spacing=0.2,
         subplot_titles=(
-            "Normalised Signal [a.u.]",
+            "Signal [a.u.]",
             "phase [rad]",
         ),
     )
     qubit_data = data[target]
     frequencies = qubit_data.freq * HZ_TO_GHZ
     amplitudes = qubit_data.amp
-    n_amps = len(np.unique(qubit_data.amp))
-    n_freq = len(np.unique(qubit_data.freq))
-    for i in range(n_amps):
-        qubit_data.signal[i * n_freq : (i + 1) * n_freq] = norm(
-            qubit_data.signal[i * n_freq : (i + 1) * n_freq]
-        )
 
     fig.add_trace(
         go.Heatmap(
