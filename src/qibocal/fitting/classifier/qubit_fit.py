@@ -5,10 +5,7 @@ from pathlib import Path
 import numpy as np
 import numpy.typing as npt
 
-from qibocal.protocols.characterization.utils import (
-    cumulative,
-    effective_qubit_temperature,
-)
+from qibocal.protocols.utils import cumulative, effective_qubit_temperature
 
 
 def constructor(_hyperparams):
