@@ -115,7 +115,10 @@ def _acquisition(
                     )
                     sequence.add(MZ_pulse)
                 results = platform.execute_pulse_sequence(
-                    sequence, ExecutionParameters(nshots=params.nshots)
+                    sequence,
+                    ExecutionParameters(
+                        nshots=params.nshots, relaxation_time=params.relaxation_time
+                    ),
                 )
                 data.add(qubit_list, state, calculate_frequencies(results, qubit_list))
             else:

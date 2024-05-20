@@ -202,6 +202,7 @@ def _acquisition(
                     sequence,
                     ExecutionParameters(
                         nshots=params.nshots,
+                        relaxation_time=params.relaxation_time,
                         acquisition_type=AcquisitionType.DISCRIMINATION,
                         averaging_mode=AveragingMode.CYCLIC,
                     ),

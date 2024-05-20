@@ -94,7 +94,9 @@ def _acquisition(
 
     # execute the pulse sequence
     options = ExecutionParameters(
-        nshots=params.nshots, averaging_mode=AveragingMode.CYCLIC
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        averaging_mode=AveragingMode.CYCLIC,
     )
     if params.unrolling:
         results = platform.execute_pulse_sequences(sequences, options)
