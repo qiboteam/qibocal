@@ -121,7 +121,7 @@ def _acquisition(
             qubit,
             signal=result.magnitude,
             phase=result.phase,
-            freq=delta_frequency_range + ro_pulse.frequency,
+            freq=delta_frequency_range + qd_pulses[qubit].frequency,
             amp=amplitude_range * amplitudes[qubit],
         )
 
