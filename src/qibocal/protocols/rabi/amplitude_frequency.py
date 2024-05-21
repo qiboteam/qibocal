@@ -236,30 +236,6 @@ def _plot(
     qubit_data = data[target]
     frequencies = qubit_data.freq * HZ_TO_GHZ
     amplitudes = qubit_data.amp
-    fig.add_trace(
-        go.Heatmap(
-            x=amplitudes,
-            y=frequencies,
-            z=qubit_data.prob,
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=[min(amplitudes), max(amplitudes)],
-            y=[fit.frequency[target] / 1e9] * 2,
-            mode="lines",
-            line=dict(color="white", width=4, dash="dash"),
-        ),
-        row=1,
-        col=1,
-    )
-
-    fig.update_layout(
-        showlegend=False,
-        legend=dict(orientation="h"),
-    )
 
     fig.update_xaxes(title_text="Amplitude [a.u.]", row=1, col=1)
     fig.update_yaxes(title_text="Frequency [GHz]", row=1, col=1)
@@ -267,6 +243,25 @@ def _plot(
     figures.append(fig)
 
     if fit is not None:
+        fig.add_trace(
+            go.Heatmap(
+                x=amplitudes,
+                y=frequencies,
+                z=qubit_data.prob,
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=[min(amplitudes), max(amplitudes)],
+                y=[fit.frequency[target] / 1e9] * 2,
+                mode="lines",
+                line=dict(color="white", width=4, dash="dash"),
+            ),
+            row=1,
+            col=1,
+        )
         fitting_report = table_html(
             table_dict(
                 target,
@@ -277,6 +272,11 @@ def _plot(
                 ],
             )
         )
+
+    fig.update_layout(
+        showlegend=False,
+        legend=dict(orientation="h"),
+    )
     return figures, fitting_report
 
 

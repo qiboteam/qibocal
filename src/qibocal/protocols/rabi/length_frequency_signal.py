@@ -261,26 +261,6 @@ def _plot(
         row=1,
         col=1,
     )
-    fig.add_trace(
-        go.Scatter(
-            x=[min(durations), max(durations)],
-            y=[fit.frequency[target] / 1e9] * 2,
-            mode="lines",
-            line=dict(color="white", width=4, dash="dash"),
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=[min(durations), max(durations)],
-            y=[fit.frequency[target] / 1e9] * 2,
-            mode="lines",
-            line=dict(color="white", width=4, dash="dash"),
-        ),
-        row=1,
-        col=2,
-    )
 
     fig.add_trace(
         go.Heatmap(
@@ -293,11 +273,6 @@ def _plot(
         col=2,
     )
 
-    fig.update_layout(
-        showlegend=False,
-        legend=dict(orientation="h"),
-    )
-
     fig.update_xaxes(title_text="Durations [ns]", row=1, col=1)
     fig.update_xaxes(title_text="Durations [ns]", row=1, col=2)
     fig.update_yaxes(title_text="Frequency [GHz]", row=1, col=1)
@@ -305,6 +280,26 @@ def _plot(
     figures.append(fig)
 
     if fit is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=[min(durations), max(durations)],
+                y=[fit.frequency[target] / 1e9] * 2,
+                mode="lines",
+                line=dict(color="white", width=4, dash="dash"),
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=[min(durations), max(durations)],
+                y=[fit.frequency[target] / 1e9] * 2,
+                mode="lines",
+                line=dict(color="white", width=4, dash="dash"),
+            ),
+            row=1,
+            col=2,
+        )
         fitting_report = table_html(
             table_dict(
                 target,
@@ -315,6 +310,12 @@ def _plot(
                 ],
             )
         )
+
+    fig.update_layout(
+        showlegend=False,
+        legend=dict(orientation="h"),
+    )
+
     return figures, fitting_report
 
 
