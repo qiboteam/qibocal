@@ -106,7 +106,7 @@ def _acquisition(
     params: StandardRB2QParameters,
     platform: Platform,
     targets: list[QubitPairId],
-) -> RB2QData:
+) -> RB2QInterData:
     """The data acquisition stage of Standard Randomized Benchmarking.
 
     1. Set up the scan

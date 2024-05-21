@@ -696,6 +696,7 @@ def layer_2q_interleaved_circuit(
 
         if interleaved == "CZ":
             new_circuit.add(gates.CZ(0, 1))
+            random_indexes.append("13")  # FIXME: Check the index
 
         if full_circuit is None:  # instantiate in first loop
             full_circuit = Circuit(new_circuit.nqubits)
