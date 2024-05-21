@@ -6,56 +6,41 @@
       url = "github:cachix/devenv";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    nixpkgs-python = {
-      url = "github:cachix/nixpkgs-python";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    flake-parts.url = "github:hercules-ci/flake-parts";
   };
 
   outputs = {
     self,
     nixpkgs,
-    devenv,
-    systems,
+    flake-parts,
     ...
-  } @ inputs: let
-    forEachSystem = nixpkgs.lib.genAttrs (import systems);
-  in {
-    packages = forEachSystem (system: {
-      default =
-        nixpkgs.legacyPackages.${system}.poetry2nix.mkPoetryApplication
-        {
+  } @ inputs:
+    flake-parts.lib.mkFlake {inherit inputs;} {
+      imports = [inputs.devenv.flakeModule];
+      systems = nixpkgs.lib.systems.flakeExposed;
+
+      perSystem = {pkgs, ...}: {
+        packages.default = pkgs.poetry2nix.mkPoetryApplication {
           projectDir = self;
           preferWheels = true;
         };
-    });
 
-    devShells =
-      forEachSystem
-      (system: let
-        pkgs = nixpkgs.legacyPackages.${system};
-      in {
-        default = devenv.lib.mkShell {
-          inherit inputs pkgs;
+        devenv.shells.default = {
+          packages = with pkgs; [pre-commit poethepoet];
 
-          modules = [
-            {
-              packages = with pkgs; [pre-commit poethepoet];
-
-              languages.python = {
+          languages.python = {
+            enable = true;
+            poetry = {
+              enable = true;
+              install = {
                 enable = true;
-                poetry = {
-                  enable = true;
-                  install.enable = true;
-                  install.groups = ["dev" "test"];
-                };
-                version = "3.11";
+                groups = ["dev" "test"];
               };
-            }
-          ];
+            };
+          };
         };
-      });
-  };
+      };
+    };
 
   nixConfig = {
     extra-trusted-public-keys = "devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=";
