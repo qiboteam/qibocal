@@ -51,7 +51,7 @@ class QubitSpectroscopyData(ResonatorSpectroscopyData):
     """QubitSpectroscopy acquisition outputs."""
 
 
-def acquisition(
+def _acquisition(
     params: QubitSpectroscopyParameters, platform: Platform, targets: list[QubitId]
 ) -> QubitSpectroscopyData:
     """Data acquisition for qubit spectroscopy."""
@@ -123,7 +123,7 @@ def acquisition(
     return data
 
 
-def fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
+def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     """Post-processing function for QubitSpectroscopy."""
     qubits = data.qubits
     frequency = {}
@@ -164,5 +164,5 @@ def _update(results: QubitSpectroscopyResults, platform: Platform, target: Qubit
     update.drive_frequency(results.frequency[target], platform, target)
 
 
-qubit_spectroscopy = Routine(acquisition, fit, _plot, _update)
+qubit_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
 """QubitSpectroscopy Routine object."""

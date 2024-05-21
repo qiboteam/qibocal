@@ -14,7 +14,7 @@ from .qubit_spectroscopy import (
     QubitSpectroscopyData,
     QubitSpectroscopyParameters,
     QubitSpectroscopyResults,
-    fit,
+    _fit,
 )
 from .resonator_spectroscopy import ResSpecType
 from .utils import spectroscopy_plot, table_dict, table_html
@@ -43,7 +43,7 @@ class QubitSpectroscopyEFData(QubitSpectroscopyData):
 
 
 def fit_ef(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
-    results = fit(data)
+    results = _fit(data)
     anharmoncities = {
         qubit: results.frequency[qubit] - data.drive_frequencies[qubit]
         for qubit in data.qubits

@@ -44,7 +44,7 @@ A possible runcard to launch a qubit spectroscopy experiment could be the follow
 Acquisition
 ^^^^^^^^^^^
 
-The full acquisition procedure is described in :func:`qibocal.protocols.qubit_spectroscopy.acquisition`
+The full acquisition procedure is described in :func:`qibocal.protocols.qubit_spectroscopy._acquisition`
 
 Here is the corresponding plot:
 
@@ -107,20 +107,20 @@ A possible runcard to launch a qubit spectroscopy experiment could be the follow
 Acquisition
 ^^^^^^^^^^^
 
-The full acquisition procedure is described in :func:`qibocal.protocols.qubit_spectroscopy_ef.acquisition`
+The full acquisition procedure is described in :func:`qibocal.protocols.qubit_spectroscopy_ef._acquisition`
 
 Here is the corresponding plot:
 
 TODO: ADD PLOT
 
-The data are stored :class:`qibocal.protocols.qubit_spectroscopy.QubitSpectroscopyEFData`,
+The data are stored :class:`qibocal.protocols.qubit_spectroscopy_ef.QubitSpectroscopyEFData`,
 which contains the signal and the phase measured for each qubit.
 
 Post-processing procedure
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To extract :math:`\omega_{12}` a lorentzian fit is performed. Full post-processing
-procedure is in :func:`qibocal.protocols.qubit_spectroscopy_ef._update`.
+procedure is in :func:`qibocal.protocols.qubit_spectroscopy_ef.fit_ef`.
 
 After the post-processing the following parameters will be updated:
 
