@@ -83,7 +83,7 @@ def report(path: pathlib.Path, executor: Optional[Executor] = None):
     if executor is None:
         executor = Executor.load(runcard, path, targets=runcard.targets)
         # produce html
-        list(executor.run(mode=ExecutionMode.report))
+        list(executor.run_protocols(mode=ExecutionMode.report))
 
     css_styles = f"<style>\n{pathlib.Path(STYLES).read_text()}\n</style>"
 

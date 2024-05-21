@@ -2,12 +2,14 @@
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 from qibolab.platform import Platform
 
 from qibocal.config import log
 
 from .history import History
+from .mode import ExecutionMode
 from .runcard import Action, Runcard, Targets
 from .task import Task
 
@@ -18,23 +20,28 @@ class Executor:
 
     actions: list[Action]
     """List of actions."""
-    history: History
+    history: Optional[History] = None
     """The execution history, with results and exit states."""
-    output: Path
+    output: Optional[Path] = None
     """Output path."""
-    targets: Targets
+    targets: Optional[Targets] = None
     """Qubits/Qubit Pairs to be calibrated."""
-    platform: Platform
+    platform: Optional[Platform] = None
     """Qubits' platform."""
     update: bool = True
     """Runcard update mechanism."""
+
+    def __post_init__(self):
+        # create default history
+        if self.history is None:
+            self.history = History({})
 
     # TODO: find a more elegant way to pass everything
     @classmethod
     def load(
         cls,
         card: Runcard,
-        output: Path,
+        output: Path = None,
         platform: Platform = None,
         targets: Targets = None,
         update: bool = True,
@@ -50,7 +57,25 @@ class Executor:
             update=update,
         )
 
-    def run(self, mode):
+    def run_protocol(self, mode: ExecutionMode, protocol: Action):
+        """Run single protocol in ExecutionMode mode."""
+        task = Task(protocol)
+        log.info(f"Executing mode {mode.name} on {task.id}.")
+        completed = task.run(
+            platform=self.platform,
+            targets=self.targets,
+            folder=self.output,
+            mode=mode,
+        )
+
+        if mode.name in ["autocalibration", "fit"] and self.platform is not None:
+            completed.update_platform(platform=self.platform, update=self.update)
+
+        self.history.push(completed)
+
+        return completed
+
+    def run_protocols(self, mode: ExecutionMode):
         """Actual execution.
 
         The platform's update method is called if:
@@ -58,17 +83,5 @@ class Executor:
         - task.update is True
         """
         for action in self.actions:
-            task = Task(action)
-            log.info(f"Executing mode {mode.name} on {task.id}.")
-            completed = task.run(
-                platform=self.platform,
-                targets=self.targets,
-                folder=self.output,
-                mode=mode,
-            )
-            self.history.push(completed)
-
-            if mode.name in ["autocalibration", "fit"] and self.platform is not None:
-                completed.update_platform(platform=self.platform, update=self.update)
-
+            completed = self.run_protocol(mode=mode, protocol=action)
             yield completed.task.id

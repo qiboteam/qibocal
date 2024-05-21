@@ -60,7 +60,7 @@ def fit(input_path, update, output_path, force):
     )
 
     # perform post-processing
-    list(executor.run(mode=ExecutionMode.fit))
+    list(executor.run_protocols(mode=ExecutionMode.fit))
 
     # update time in meta
     meta = add_timings_to_meta(meta, executor.history)
