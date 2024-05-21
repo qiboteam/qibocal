@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, Optional
 
 from qibolab.platform import Platform
 
@@ -10,8 +10,8 @@ from qibocal.config import log
 
 from .history import History
 from .mode import ExecutionMode
-from .runcard import Action, Runcard, Targets
-from .task import Task
+from .runcard import Action, Id, Runcard, Targets
+from .task import Completed, Task
 
 
 @dataclass
@@ -57,7 +57,7 @@ class Executor:
             update=update,
         )
 
-    def run_protocol(self, mode: ExecutionMode, protocol: Action):
+    def run_protocol(self, mode: ExecutionMode, protocol: Action) -> Completed:
         """Run single protocol in ExecutionMode mode."""
         task = Task(protocol)
         log.info(f"Executing mode {mode.name} on {task.id}.")
@@ -75,7 +75,7 @@ class Executor:
 
         return completed
 
-    def run_protocols(self, mode: ExecutionMode):
+    def run_protocols(self, mode: ExecutionMode) -> Iterator[Id]:
         """Actual execution.
 
         The platform's update method is called if:
