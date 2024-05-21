@@ -43,7 +43,7 @@ def acquire(runcard, folder, force):
         platform.connect()
 
     # run protocols
-    list(executor.run(mode=ExecutionMode.acquire))
+    list(executor.run(mode=ExecutionMode.ACQUIRE))
 
     e = datetime.datetime.now(datetime.timezone.utc)
     meta["end-time"] = e.strftime("%H:%M:%S")

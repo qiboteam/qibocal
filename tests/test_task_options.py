@@ -9,7 +9,7 @@ from qibocal.auto.execute import Executor
 from qibocal.auto.operation import DEFAULT_PARENT_PARAMETERS
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import Task
-from qibocal.cli.report import ExecutionMode
+from qibocal.cli.report import AUTOCALIBRATION, ExecutionMode
 from qibocal.protocols.classification import SingleShotClassificationParameters
 from qibocal.protocols.readout_mitigation_matrix import (
     ReadoutMitigationMatrixParameters,
@@ -55,7 +55,7 @@ def test_targets_argument(backend, local_targets, tmp_path):
     completed = task.run(
         platform=runcard.platform,
         targets=TARGETS,
-        mode=ExecutionMode.acquire,
+        mode=ExecutionMode.ACQUIRE,
         folder=tmp_path,
     )
     if local_targets:
@@ -102,7 +102,7 @@ def test_update_argument(global_update, local_update, tmp_path):
     old_readout_frequency = executor.platform.qubits[0].readout_frequency
     old_iq_angle = executor.platform.qubits[1].iq_angle
 
-    list(executor.run(mode=ExecutionMode.autocalibration))
+    list(executor.run(mode=AUTOCALIBRATION))
 
     if local_update and global_update:
         assert old_readout_frequency != executor.platform.qubits[0].readout_frequency

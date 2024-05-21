@@ -80,13 +80,17 @@ class Executor:
             output=Path(output),
             platform=platform,
             targets=list(platform.qubits),
-            update=False,  # TODO: to be discussed
+            update=True,
         )
 
-    def run_protocol(self, mode: ExecutionMode, id: Id) -> Completed:
+    def run_protocol(
+        self, id: Id, mode: ExecutionMode = ExecutionMode.ACQUIRE | ExecutionMode.FIT
+    ) -> Completed:
         """Run single protocol in ExecutionMode mode."""
         task = Task(self._actions_dict[id])
-        log.info(f"Executing mode {mode.name} on {id}.")
+        log.info(
+            f"Executing mode {mode.name if mode.name is not None else 'AUTOCALIBRATION'} on {id}."
+        )
         completed = task.run(
             platform=self.platform,
             targets=self.targets,
@@ -94,7 +98,7 @@ class Executor:
             mode=mode,
         )
 
-        if mode.name in ["autocalibration", "fit"] and self.platform is not None:
+        if mode & ExecutionMode.FIT and self.platform is not None:
             completed.update_platform(platform=self.platform, update=self.update)
 
         self.history.push(completed)
@@ -109,5 +113,5 @@ class Executor:
         - task.update is True
         """
         for action_id in self._actions_dict:
-            completed = self.run_protocol(mode=mode, id=action_id)
+            completed = self.run_protocol(id=action_id, mode=mode)
             yield completed.task.id
