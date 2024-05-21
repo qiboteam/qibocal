@@ -4,6 +4,5 @@ import importlib.metadata as im
 
 from qibocal.auto.execute import Executor
 
-from .cli import command
-
 __version__ = im.version(__package__)
+__all__ = ["Executor"]
