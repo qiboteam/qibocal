@@ -33,6 +33,11 @@ release = qibocal.__version__
 # master_doc = "index"
 
 autodoc_mock_imports = ["qm"]
+autodoc_default_options = {
+    "members": True,
+    "undoc-members": True,
+    "private-members": True,
+}
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom

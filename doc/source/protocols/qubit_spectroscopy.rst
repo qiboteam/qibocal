@@ -120,7 +120,7 @@ Post-processing procedure
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 To extract :math:`\omega_{12}` a lorentzian fit is performed. Full post-processing
-procedure is in :func:`qibocal.protocols.qubit_spectroscopy_ef.fit`.
+procedure is in :func:`qibocal.protocols.qubit_spectroscopy_ef._update`.
 
 After the post-processing the following parameters will be updated:
 
