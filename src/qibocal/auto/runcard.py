@@ -23,7 +23,7 @@ class Action:
 
     id: Id
     """Action unique identifier."""
-    operation: Optional[OperationId] = None
+    operation: OperationId
     """Operation to be performed by the executor."""
     targets: Optional[Targets] = None
     """Local qubits (optional)."""
@@ -45,8 +45,10 @@ class Runcard:
     """List of action to be executed."""
     targets: Optional[Targets] = None
     """Qubits to be calibrated.
-       If `None` the protocols will be executed on all qubits
-       available in the platform."""
+
+    If `None` the protocols will be executed on all qubits
+    available in the platform.
+    """
     backend: str = "qibolab"
     """Qibo backend."""
     platform: str = os.environ.get("QIBO_PLATFORM", "dummy")

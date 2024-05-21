@@ -7,7 +7,9 @@ from qibolab.platform import Platform
 
 from qibocal.config import log
 
+from ..protocols import Operation
 from .history import History
+from .operation import Routine
 from .runcard import Action, Runcard, Targets
 from .task import Task
 
@@ -58,7 +60,7 @@ class Executor:
         - task.update is True
         """
         for action in self.actions:
-            task = Task(action)
+            task = Task(action, self._operation(action.operation))
             log.info(f"Executing mode {mode.name} on {task.id}.")
             completed = task.run(
                 platform=self.platform,
@@ -72,3 +74,15 @@ class Executor:
                 completed.update_platform(platform=self.platform, update=self.update)
 
             yield completed.task.id
+
+    def _operation(self, name: str) -> Routine:
+        """Retrieve routine."""
+        # probe plugins first, to allow shadowing builtins
+        ...
+
+        try:
+            # then builtins
+            return Operation[name].value
+        except KeyError:
+            # eventually failed, if not found
+            raise RuntimeError(f"Operation '{name}' not found.")
