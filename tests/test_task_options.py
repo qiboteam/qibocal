@@ -102,7 +102,7 @@ def test_update_argument(global_update, local_update, tmp_path):
     old_readout_frequency = executor.platform.qubits[0].readout_frequency
     old_iq_angle = executor.platform.qubits[1].iq_angle
 
-    list(executor.run(mode=ExecutionMode.autocalibration))
+    list(executor.run_protocols(mode=ExecutionMode.autocalibration))
 
     if local_update and global_update:
         assert old_readout_frequency != executor.platform.qubits[0].readout_frequency
