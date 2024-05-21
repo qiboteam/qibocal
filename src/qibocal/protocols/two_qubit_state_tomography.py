@@ -82,7 +82,7 @@ class StateTomographyResults(Results):
 def _acquisition(
     params: StateTomographyParameters, platform: Platform, targets: list[QubitPairId]
 ) -> StateTomographyData:
-    """Acquisition protocol for single qubit state tomography experiment."""
+    """Acquisition protocol for two qubit state tomography experiment."""
     qubits = [q for pair in targets for q in pair]
     for q, counts in Counter(qubits).items():
         if counts > 1:
