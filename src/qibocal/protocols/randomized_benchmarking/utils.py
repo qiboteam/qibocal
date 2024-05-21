@@ -733,30 +733,3 @@ def add_measurement_layer(circuit: Circuit):
     """
 
     circuit.add(gates.M(*range(circuit.nqubits)))
-
-
-def layer_2q_circuit(rb_gen: Callable, depth: int, qubits) -> tuple[Circuit, dict]:
-    """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`
-    and a dictionary with random indexes used to select the clifford gates.
-    Args:
-        layer_gen (Callable): Should return gates or a full circuit specifying a layer.
-        depth (int): Number of layers.
-    Returns:
-        Circuit: with `depth` many layers.
-    """
-
-    full_circuit = None
-    random_indexes = []
-    # Build each layer, there will be depth many in the final circuit.
-    for _ in range(depth):
-        # Generate a layer.
-        new_layer, random_index = rb_gen.layer_gen()
-        new_circuit = Circuit(2)
-        for gate in new_layer:
-            new_circuit.add(gate)
-        random_indexes.append(random_index)
-
-        if full_circuit is None:  # instantiate in first loop
-            full_circuit = Circuit(new_circuit.nqubits)
-        full_circuit = full_circuit + new_circuit
-    return full_circuit, random_indexes
