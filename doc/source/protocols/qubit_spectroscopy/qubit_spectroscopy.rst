@@ -67,7 +67,7 @@ After the post-processing the following parameters will be updated:
 
 
 Qubit spectroscopy "ef"
-----------------------
+-----------------------
 
 Through a qubit spectroscopy experiment it is possible to target also the transition
 frequencies towards higher energy level other than the first excited state.
