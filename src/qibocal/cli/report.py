@@ -10,7 +10,6 @@ from qibo.backends import GlobalBackend
 from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.execute import Executor
-from qibocal.auto.mode import ExecutionMode
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import Completed
 from qibocal.cli.utils import META, RUNCARD
@@ -81,9 +80,12 @@ def report(path: pathlib.Path, executor: Optional[Executor] = None):
 
     # load executor
     if executor is None:
-        executor = Executor.load(runcard, path, targets=runcard.targets)
+        executor = Executor.load(
+            runcard, path, targets=runcard.targets, platform=GlobalBackend().platform
+        )
         # produce html
-        list(executor.run(mode=ExecutionMode.REPORT))
+        # TODO: skip report in a proper way
+        list(executor.run(mode=[]))
 
     css_styles = f"<style>\n{pathlib.Path(STYLES).read_text()}\n</style>"
 

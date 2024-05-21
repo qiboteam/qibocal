@@ -38,9 +38,9 @@ class Executor:
     def load(
         cls,
         card: Runcard,
-        output: Path = None,
-        platform: Platform = None,
-        targets: Targets = None,
+        output: Path,
+        platform: Platform,
+        targets: Targets,
         update: bool = True,
     ):
         """Load execution graph and associated executor from a runcard."""
@@ -88,9 +88,10 @@ class Executor:
     ) -> Completed:
         """Run single protocol in ExecutionMode mode."""
         task = Task(self._actions_dict[id])
-        log.info(
-            f"Executing mode {mode.name if mode.name is not None else 'AUTOCALIBRATION'} on {id}."
-        )
+        if isinstance(mode, ExecutionMode):
+            log.info(
+                f"Executing mode {mode.name if mode.name is not None else 'AUTOCALIBRATION'} on {id}."
+            )
         completed = task.run(
             platform=self.platform,
             targets=self.targets,
@@ -98,7 +99,7 @@ class Executor:
             mode=mode,
         )
 
-        if mode & ExecutionMode.FIT and self.platform is not None:
+        if ExecutionMode.FIT in mode and self.platform is not None:
             completed.update_platform(platform=self.platform, update=self.update)
 
         self.history.push(completed)

@@ -89,7 +89,8 @@ class Task:
         except (RuntimeError, AttributeError):
             operation = dummy_operation
             parameters = DummyPars()
-        if mode & ExecutionMode.ACQUIRE:
+
+        if ExecutionMode.ACQUIRE in mode:
             if operation.platform_dependent and operation.targets_dependent:
                 completed.data, completed.data_time = operation.acquisition(
                     parameters,
@@ -101,7 +102,7 @@ class Task:
                 completed.data, completed.data_time = operation.acquisition(
                     parameters, platform=platform
                 )
-        if mode & ExecutionMode.FIT:
+        if ExecutionMode.FIT in mode:
             completed.results, completed.results_time = operation.fit(completed.data)
         return completed
 
