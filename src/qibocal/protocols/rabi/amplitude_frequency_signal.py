@@ -310,7 +310,7 @@ def _plot(
                 ["Optimal rabi frequency", "Pi-pulse amplitude"],
                 [
                     fit.frequency[target],
-                    fit.amplitude[target],
+                    f"{fit.amplitude[target]:.6f} [a.u]",
                 ],
             )
         )
