@@ -16,7 +16,6 @@ from qibocal.auto.operation import Data, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
-from ..two_qubit_interaction.utils import fit_flux_amplitude
 from ..utils import HZ_TO_GHZ, chi2_reduced
 from .length_frequency_signal import (
     RabiLengthFrequencyVoltParameters,
@@ -164,8 +163,9 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
         probability = data[qubit].prob
         probability_matrix = probability.reshape(len(durations), len(freqs)).T
 
-        # guess amplitude computing FFT
-        frequency, index, _ = fit_flux_amplitude(probability_matrix, freqs, durations)
+        # guess optimal frequency maximizing oscillatio amplitude
+        index = np.argmax([max(x) - min(x) for x in probability_matrix])
+        frequency = freqs[index]
 
         y = probability_matrix[index, :].ravel()
         pguess = [0, np.sign(y[0]) * 0.5, 1 / frequency, 0, 0]
@@ -261,9 +261,19 @@ def _plot(
         row=1,
         col=1,
     )
+    fig.add_trace(
+        go.Scatter(
+            x=[min(durations), max(durations)],
+            y=[fit.frequency[target] / 1e9] * 2,
+            mode="lines",
+            line=dict(color="white", width=4, dash="dash"),
+        ),
+        row=1,
+        col=1,
+    )
 
     fig.update_layout(
-        showlegend=True,
+        showlegend=False,
         legend=dict(orientation="h"),
     )
 
@@ -276,10 +286,10 @@ def _plot(
         fitting_report = table_html(
             table_dict(
                 target,
-                ["Transition frequency", "Pi-pulse duration"],
+                ["Optimal rabi frequency", "Pi-pulse duration"],
                 [
                     fit.frequency[target],
-                    f"{fit.length[target][0]*1e9:.2E} +- {fit.length[target][1]*1e9:.2E} ns",
+                    f"{int(fit.length[target][0]*1e9)} +- {fit.length[target][1]*1e9:.2e} ns",
                 ],
             )
         )

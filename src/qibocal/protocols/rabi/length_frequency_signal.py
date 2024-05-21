@@ -16,7 +16,6 @@ from qibocal.auto.operation import Data, Parameters, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
-from ..two_qubit_interaction.utils import fit_flux_amplitude
 from ..utils import HZ_TO_GHZ
 from .length_signal import RabiLengthVoltResults
 from .utils import period_correction_factor, rabi_length_function
@@ -177,8 +176,9 @@ def _fit(data: RabiLengthFreqVoltData) -> RabiLengthFrequencyVoltResults:
         signal = data[qubit].signal
         signal_matrix = signal.reshape(len(durations), len(freqs)).T
 
-        # guess amplitude computing FFT
-        frequency, index, _ = fit_flux_amplitude(signal_matrix, freqs, durations)
+        # guess optimal frequency maximizing oscillatio amplitude
+        index = np.argmax([max(x) - min(x) for x in signal_matrix])
+        frequency = freqs[index]
 
         y = signal_matrix[index, :].ravel()
         pguess = [0, np.sign(y[0]) * 0.5, 1 / frequency, 0, 0]
@@ -243,20 +243,13 @@ def _plot(
         horizontal_spacing=0.1,
         vertical_spacing=0.2,
         subplot_titles=(
-            "Normalised Signal [a.u.]",
-            "phase [rad]",
+            "Signal [a.u.]",
+            "Phase [rad]",
         ),
     )
     qubit_data = data[target]
     frequencies = qubit_data.freq * HZ_TO_GHZ
     durations = qubit_data.len
-
-    # n_amps = len(np.unique(qubit_data.amp))
-    # n_freq = len(np.unique(qubit_data.freq))
-    # for i in range(n_amps):
-    # qubit_data.signal[i * n_freq : (i + 1) * n_freq] = norm(
-    #    qubit_data.signal[i * n_freq : (i + 1) * n_freq]
-    # )
 
     fig.add_trace(
         go.Heatmap(
@@ -267,6 +260,26 @@ def _plot(
         ),
         row=1,
         col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=[min(durations), max(durations)],
+            y=[fit.frequency[target] / 1e9] * 2,
+            mode="lines",
+            line=dict(color="white", width=4, dash="dash"),
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=[min(durations), max(durations)],
+            y=[fit.frequency[target] / 1e9] * 2,
+            mode="lines",
+            line=dict(color="white", width=4, dash="dash"),
+        ),
+        row=1,
+        col=2,
     )
 
     fig.add_trace(
@@ -281,7 +294,7 @@ def _plot(
     )
 
     fig.update_layout(
-        showlegend=True,
+        showlegend=False,
         legend=dict(orientation="h"),
     )
 
@@ -295,10 +308,10 @@ def _plot(
         fitting_report = table_html(
             table_dict(
                 target,
-                ["Transition frequency", "Pi-pulse duration"],
+                ["Optimal rabi frequency", "Pi-pulse duration"],
                 [
                     fit.frequency[target],
-                    f"{fit.length[target]*1e9:.2E} ns",
+                    f"{int(fit.length[target]*1e9)} ns",
                 ],
             )
         )
