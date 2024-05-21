@@ -6,10 +6,10 @@ import pytest
 from qibolab import create_platform
 
 from qibocal.auto.execute import Executor
+from qibocal.auto.mode import AUTOCALIBRATION, ExecutionMode
 from qibocal.auto.operation import DEFAULT_PARENT_PARAMETERS
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import Task
-from qibocal.cli.report import AUTOCALIBRATION, ExecutionMode
 from qibocal.protocols.classification import SingleShotClassificationParameters
 from qibocal.protocols.readout_mitigation_matrix import (
     ReadoutMitigationMatrixParameters,
