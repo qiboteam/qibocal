@@ -320,7 +320,7 @@ def _plot(
                 ["Optimal rabi frequency", "Pi-pulse duration"],
                 [
                     fit.frequency[target],
-                    f"{int(fit.length[target]*1e9)} ns",
+                    f"{fit.length[target]:.2} ns",
                 ],
             )
         )
