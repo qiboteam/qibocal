@@ -11,6 +11,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
+from scipy.signal import find_peaks
 
 from qibocal.auto.operation import Data, Parameters, Routine
 from qibocal.config import log
@@ -180,7 +181,7 @@ def _fit(data: RabiAmplitudeFreqVoltData) -> RabiAmplitudeFrequencyVoltResults:
         index = np.argmax([max(x) - min(x) for x in signal_matrix])
         frequency = freqs[index]
 
-        pguess = [0.5, 1, 1 / frequency, 0]
+        # Guessing period using fourier transform
         y = signal_matrix[index, :].ravel()
 
         y_min = np.min(y)
@@ -189,6 +190,15 @@ def _fit(data: RabiAmplitudeFreqVoltData) -> RabiAmplitudeFrequencyVoltResults:
         x_max = np.max(amps)
         x = (amps - x_min) / (x_max - x_min)
         y = (y - y_min) / (y_max - y_min)
+
+        ft = np.fft.rfft(y)
+        mags = abs(ft)
+        local_maxima = find_peaks(mags, threshold=10)[0]
+        index = local_maxima[0] if len(local_maxima) > 0 else None
+        # 0.5 hardcoded guess for less than one oscillation
+        f = amps[index] / (amps[1] - amps[0]) if index is not None else 0.5
+
+        pguess = [0.5, 0.5, 1 / f, 0]
 
         try:
             popt, _ = curve_fit(

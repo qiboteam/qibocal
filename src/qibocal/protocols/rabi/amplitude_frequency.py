@@ -172,6 +172,13 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         error = data[qubit].error.reshape(len(amps), len(freqs)).T
         error = error[index, :].ravel()
 
+        y_min = np.min(y)
+        y_max = np.max(y)
+        x_min = np.min(amps)
+        x_max = np.max(amps)
+        x = (amps - x_min) / (x_max - x_min)
+        y = (y - y_min) / (y_max - y_min)
+
         # Guessing period using fourier transform
         ft = np.fft.rfft(y)
         mags = abs(ft)
@@ -181,13 +188,6 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         f = amps[index] / (amps[1] - amps[0]) if index is not None else 0.5
 
         pguess = [0.5, 0.5, 1 / f, 0]
-
-        y_min = np.min(y)
-        y_max = np.max(y)
-        x_min = np.min(amps)
-        x_max = np.max(amps)
-        x = (amps - x_min) / (x_max - x_min)
-        y = (y - y_min) / (y_max - y_min)
 
         try:
             popt, perr = curve_fit(
