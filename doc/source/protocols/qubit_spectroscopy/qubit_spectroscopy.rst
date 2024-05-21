@@ -48,7 +48,7 @@ The full acquisition procedure is described in :func:`qibocal.protocols.qubit_sp
 
 Here is the corresponding plot:
 
-.. image:: figures/qubit_spec.png
+.. image:: qubit_spec.png
 
 The data are stored :class:`qibocal.protocols.qubit_spectroscopy.QubitSpectroscopyData`,
 which contains the signal and the phase measured for each qubit.
