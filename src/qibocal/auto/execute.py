@@ -1,9 +1,11 @@
 """Tasks execution."""
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Iterator, Union
 
+from qibolab import create_platform
 from qibolab.platform import Platform
 
 from qibocal.config import log
@@ -20,21 +22,16 @@ class Executor:
 
     actions: list[Action]
     """List of actions."""
-    history: Optional[History] = None
+    history: History
     """The execution history, with results and exit states."""
-    output: Optional[Path] = None
+    output: Path
     """Output path."""
-    targets: Optional[Targets] = None
+    targets: Targets
     """Qubits/Qubit Pairs to be calibrated."""
-    platform: Optional[Platform] = None
+    platform: Platform
     """Qubits' platform."""
     update: bool = True
     """Runcard update mechanism."""
-
-    def __post_init__(self):
-        # create default history
-        if self.history is None:
-            self.history = History({})
 
     # TODO: find a more elegant way to pass everything
     @classmethod
@@ -57,10 +54,39 @@ class Executor:
             update=update,
         )
 
-    def run_protocol(self, mode: ExecutionMode, protocol: Action) -> Completed:
+    @property
+    def _actions_dict(self):
+        """Helper dict to find protocol."""
+        return {action.id: action for action in self.actions}
+
+    @classmethod
+    def create(
+        cls,
+        protocols: list[Union[Action, dict]],
+        platform: Union[Platform, str] = None,
+        output: Union[str, bytes, os.PathLike] = None,
+    ):
+        """Load list of protocols."""
+        actions = [
+            protocol if isinstance(protocol, Action) else Action(**protocol)
+            for protocol in protocols
+        ]
+        platform = (
+            platform if isinstance(platform, Platform) else create_platform(platform)
+        )
+        return cls(
+            actions=actions,
+            history=History({}),
+            output=Path(output),
+            platform=platform,
+            targets=list(platform.qubits),
+            update=False,  # TODO: to be discussed
+        )
+
+    def run_protocol(self, mode: ExecutionMode, id: Id) -> Completed:
         """Run single protocol in ExecutionMode mode."""
-        task = Task(protocol)
-        log.info(f"Executing mode {mode.name} on {task.id}.")
+        task = Task(self._actions_dict[id])
+        log.info(f"Executing mode {mode.name} on {id}.")
         completed = task.run(
             platform=self.platform,
             targets=self.targets,
@@ -75,13 +101,13 @@ class Executor:
 
         return completed
 
-    def run_protocols(self, mode: ExecutionMode) -> Iterator[Id]:
+    def run(self, mode: ExecutionMode) -> Iterator[Id]:
         """Actual execution.
 
         The platform's update method is called if:
         - self.update is True and task.update is None
         - task.update is True
         """
-        for action in self.actions:
-            completed = self.run_protocol(mode=mode, protocol=action)
+        for action_id in self._actions_dict:
+            completed = self.run_protocol(mode=mode, id=action_id)
             yield completed.task.id

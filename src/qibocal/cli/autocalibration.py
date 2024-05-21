@@ -53,7 +53,7 @@ def autocalibrate(runcard, folder, force, update):
         platform.connect()
 
     # run protocols
-    for _ in executor.run_protocols(mode=ExecutionMode.autocalibration):
+    for _ in executor.run(mode=ExecutionMode.autocalibration):
         # meta needs to be updated before each report to show correct end-time
         e = datetime.datetime.now(datetime.timezone.utc)
         meta["end-time"] = e.strftime("%H:%M:%S")
