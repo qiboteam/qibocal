@@ -43,6 +43,7 @@ from .ramsey.ramsey_signal import ramsey_signal
 from .randomized_benchmarking.filtered_rb import filtered_rb
 from .randomized_benchmarking.standard_rb import standard_rb
 from .randomized_benchmarking.standard_rb_2q import standard_rb_2q
+from .randomized_benchmarking.standard_rb_2q_inter import standard_rb_2q_inter
 from .readout_characterization import readout_characterization
 from .readout_mitigation_matrix import readout_mitigation_matrix
 from .readout_optimization.resonator_amplitude import resonator_amplitude
@@ -135,3 +136,4 @@ class Operation(Enum):
     calibrate_state_discrimination = calibrate_state_discrimination
     state_tomography = state_tomography
     standard_rb_2q = standard_rb_2q
+    standard_rb_2q_inter = standard_rb_2q_inter
