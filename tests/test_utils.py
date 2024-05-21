@@ -1,6 +1,6 @@
 import numpy as np
 
-from qibocal.protocols.characterization.utils import cumulative, eval_magnitude
+from qibocal.protocols.utils import cumulative, eval_magnitude
 
 
 def test_cumulative():

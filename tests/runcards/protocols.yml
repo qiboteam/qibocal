@@ -475,6 +475,13 @@ actions:
   - id: readout characterization
     operation: readout_characterization
     parameters:
+      delay: 1000
+      nshots: 10
+
+  - id: readout characterization delay 0
+    operation: readout_characterization
+    parameters:
+      delay: 0
       nshots: 10
 
   - id: allXY
@@ -489,6 +496,15 @@ actions:
       beta_param: null
       unrolling: True
       nshots: 10
+
+  - id: resonator_depletion_tuning
+    operation: allxy_resonator_depletion_tuning
+    parameters:
+      delay_start: 1000.0
+      delay_end: 3000.0
+      delay_step: 1000.0
+      nshots: 10
+
 
   - id: allXY drag
     operation: allxy_drag_pulse_tuning
@@ -634,6 +650,13 @@ actions:
       nshots: 50
       unrolling: True
 
+  - id: filtered_rb
+    operation: filtered_rb
+    targets: [1]
+    parameters:
+      depths: [1, 2, 3, 5]
+      niter: 5
+      nshots: 50
 
   - id: standard rb
     operation: standard_rb
@@ -824,3 +847,14 @@ actions:
       bias_width: 0.2
       bias_step:  0.05
       drive_amplitude: 0.5
+
+  - id: tomography
+    operation: state_tomography
+    parameters:
+      nshots: 1024
+
+  - id: tomography from file
+    operation: state_tomography
+    parameters:
+      nshots: 1024
+      circuit: tests/circuit.json
