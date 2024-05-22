@@ -135,7 +135,7 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
         f = utils.guess_frequency(x, y)
         pguess = [0, np.sign(y[0]) * 0.5, 1 / f, 0, 0]
         try:
-            popt, _, pi_pulse_parameter = fit_length_function(
+            popt, _, pi_pulse_parameter = utils.fit_length_function(
                 x,
                 y,
                 pguess,
