@@ -65,17 +65,21 @@ class StateTomographyData(Data):
 class StateTomographyResults(Results):
     """Tomography results"""
 
-    measured_raw_density_matrix_real: dict[QubitPairId, list]
+    measured_raw_density_matrix_real: dict[QubitPairId, list] = field(
+        default_factory=dict
+    )
     """Real part of measured density matrix before projecting."""
-    measured_raw_density_matrix_imag: dict[QubitPairId, list]
+    measured_raw_density_matrix_imag: dict[QubitPairId, list] = field(
+        default_factory=dict
+    )
     """Imaginary part of measured density matrix before projecting."""
 
-    measured_density_matrix_real: dict[QubitPairId, list]
+    measured_density_matrix_real: dict[QubitPairId, list] = field(default_factory=dict)
     """Real part of measured density matrix after projecting."""
-    measured_density_matrix_imag: dict[QubitPairId, list]
+    measured_density_matrix_imag: dict[QubitPairId, list] = field(default_factory=dict)
     """Imaginary part of measured density matrix after projecting."""
 
-    fidelity: dict[QubitId, float]
+    fidelity: dict[QubitId, float] = field(default_factory=dict)
     """State fidelity."""
 
 
@@ -199,7 +203,7 @@ def _fit(data: StateTomographyData) -> StateTomographyResults:
 
     # reconstruction
     backend = NumpyBackend()
-    results = StateTomographyResults({}, {}, {}, {}, {})
+    results = StateTomographyResults()
     for pair, probs in probabilities.items():
         measured_rho = inverse_measurement.dot(probs).reshape((4, 4))
         measured_rho_proj = project_psd(measured_rho)
