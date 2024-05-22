@@ -21,6 +21,7 @@ from ..utils import HZ_TO_GHZ, chi2_reduced
 from .amplitude_frequency_signal import (
     RabiAmplitudeFrequencyVoltParameters,
     RabiAmplitudeFrequencyVoltResults,
+    _update,
 )
 from .utils import period_correction_factor, rabi_amplitude_function
 
@@ -290,5 +291,5 @@ def _plot(
     return figures, fitting_report
 
 
-rabi_amplitude_frequency = Routine(_acquisition, _fit, _plot)
+rabi_amplitude_frequency = Routine(_acquisition, _fit, _plot, _update)
 """Rabi amplitude with frequency tuning."""

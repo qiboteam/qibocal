@@ -21,6 +21,7 @@ from ..utils import HZ_TO_GHZ, chi2_reduced
 from .length_frequency_signal import (
     RabiLengthFrequencyVoltParameters,
     RabiLengthFrequencyVoltResults,
+    _update,
 )
 from .utils import period_correction_factor, rabi_length_function
 
@@ -310,5 +311,5 @@ def _plot(
     return figures, fitting_report
 
 
-rabi_length_frequency = Routine(_acquisition, _fit, _plot)
+rabi_length_frequency = Routine(_acquisition, _fit, _plot, _update)
 """Rabi length with frequency tuning."""

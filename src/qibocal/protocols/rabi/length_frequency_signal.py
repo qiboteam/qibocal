@@ -13,6 +13,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
@@ -333,5 +334,12 @@ def _plot(
     return figures, fitting_report
 
 
-rabi_length_frequency_signal = Routine(_acquisition, _fit, _plot)
+def _update(
+    results: RabiLengthFrequencyVoltResults, platform: Platform, target: QubitId
+):
+    update.drive_duration(results.length[target], platform, target)
+    update.drive_frequency(results.frequency[target], platform, target)
+
+
+rabi_length_frequency_signal = Routine(_acquisition, _fit, _plot, _update)
 """Rabi length with frequency tuning."""
