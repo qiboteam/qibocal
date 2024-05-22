@@ -185,7 +185,7 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
     delta_amplitude_detuned = {}
     for qubit in qubits:
         qubit_data = data[qubit]
-        detuned_pi_pulse_amplitude = data.pi_pulse_amplitudes[qubit] + data.detuning
+        detuned_pi_pulse_amplitude = data.pi_pulse_amplitudes[qubit]
         voltages = qubit_data.signal
         flips = qubit_data.flips
         y_min = np.min(voltages)
