@@ -9,6 +9,8 @@ from qibocal.protocols.randomized_benchmarking.standard_rb_2q import (
     StandardRB2QParameters,
 )
 
+import numpy as np
+
 from .utils import RB2QInterData, StandardRBResult, fit, twoq_rb_acquisition
 
 
@@ -16,7 +18,7 @@ from .utils import RB2QInterData, StandardRBResult, fit, twoq_rb_acquisition
 class StandardRB2QInterParameters(StandardRB2QParameters):
     """Parameters for the standard 2q randomized benchmarking protocol."""
 
-    interleaved: str = "CZ"
+    interleave: str = "CZ"
     """Gate to interleave"""
 
 
@@ -58,20 +60,18 @@ def _fit(data: RB2QInterData) -> StandardRBResult:
 
     qubits = data.pairs
     results = fit(qubits, data)
-
-    fidelity_cz = {}
-    for qubit in qubits:
-        fid_cz = results.fidelity[qubits] / data.fidelity[qubits][0]
-        uncertainty_cz = data.fidelity[qubits][1]  # FIXME: Propagate uncertainty
-        fidelity_cz[qubit] = [fid_cz, uncertainty_cz]
-
-    import pdb
-
-    pdb.set_trace()
-
-    results = StandardRB2QInterResult(
-        fidelity, pulse_fidelity, popts, perrs, error_barss, fidelity_cz
-    )
+    
+    #FIXME: I can only get the data.fidelity if there is an acquisition step
+    if data.fidelity is not None:
+        fidelity_cz = {}
+        for qubit in qubits:
+            fid_cz = results.fidelity[qubit] / data.fidelity[qubit][0]
+            uncertainty_cz = np.sqrt(1/data.fidelity[qubit][0]**2 * results.fit_uncertainties[qubit][1]**2 + (results.fidelity[qubit]/data.fidelity[qubit][0]**2)**2 * data.fidelity[qubit][1]**2)
+            fidelity_cz[qubit] = [fid_cz, uncertainty_cz]
+        
+        results = StandardRB2QInterResult(
+            results.fidelity, results.pulse_fidelity, results.fit_parameters, results.fit_uncertainties, results.error_bars, fidelity_cz
+        )
 
     return results
 
