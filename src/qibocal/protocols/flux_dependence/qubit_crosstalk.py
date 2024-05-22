@@ -49,6 +49,8 @@ class QubitCrosstalkData(QubitFluxData):
     """Diagonal flux element."""
     bias_point: dict[QubitId, float] = field(default_factory=dict)
     """Bias point for each qubit."""
+    offset: dict[QubitId, float] = field(default_factory=dict)
+    """Phase shift for each qubit."""
     qubit_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequency for each qubit."""
     data: dict[tuple[QubitId, QubitId], npt.NDArray[QubitFluxType]] = field(
@@ -95,6 +97,8 @@ class QubitCrosstalkResults(QubitFluxResults):
     Qubit Crosstalk outputs.
     """
 
+    qubit_frequency_bias_point: dict[QubitId, float]
+    """Expected qubit frequency at bias point."""
     crosstalk_matrix: dict[QubitId, dict[QubitId, float]]
     """Crosstalk matrix element."""
     fitted_parameters: dict[tuple[QubitId, QubitId], dict]
@@ -186,6 +190,7 @@ def _acquisition(
     data = QubitCrosstalkData(
         resonator_type=platform.resonator_type,
         matrix_element=matrix_element,
+        offset=offset,
         qubit_frequency=qubit_frequency,
         charging_energy=charging_energy,
         bias_point=bias_point,
@@ -232,7 +237,9 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
     sweetspot = {}
     matrix_element = {}
     qubit_frequency = {}
+    qubit_frequency_bias_point = {}
     offset = {}
+
     diagonal = diagonal_fit(data.diagonal)
     for qubit in data.qubits:
         condition = qubit in diagonal
@@ -246,7 +253,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
         offset[qubit] = (
             -diagonal.sweetspot[qubit] * diagonal.matrix_element[qubit]
             if condition
-            else data.qubit_frequency[qubit]
+            else data.offset[qubit]
         )
 
     for target_flux_qubit, qubit_data in data.data.items():
@@ -261,9 +268,20 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
         if target_qubit != flux_qubit:
             # fit function needs to be defined here to pass correct parameters
             # at runtime
+            qubit_frequency_bias_point[target_qubit] = utils.transmon_frequency(
+                xi=bias_point[target_qubit],
+                xj=0,
+                d=0,
+                w_max=qubit_frequency[target_qubit] * HZ_TO_GHZ,
+                offset=offset[qubit],
+                normalization=matrix_element[target_qubit],
+                charging_energy=data.charging_energy[target_qubit] * HZ_TO_GHZ,
+                crosstalk_element=1,
+            )
+
             def fit_function(x, crosstalk_element, offset):
                 return utils.transmon_frequency(
-                    xi=bias_point[qubit],
+                    xi=bias_point[target_qubit],
                     xj=x,
                     d=0,
                     w_max=qubit_frequency[target_qubit] * HZ_TO_GHZ,
@@ -282,7 +300,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
                     maxfev=100000,
                 )
                 fitted_parameters[target_qubit, flux_qubit] = dict(
-                    xi=bias_point[qubit],
+                    xi=bias_point[target_qubit],
                     d=0,
                     w_max=qubit_frequency[target_qubit] * HZ_TO_GHZ,
                     offset=popt[1],
@@ -308,6 +326,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
 
     return QubitCrosstalkResults(
         frequency=qubit_frequency,
+        qubit_frequency_bias_point=qubit_frequency_bias_point,
         sweetspot=sweetspot,
         matrix_element=matrix_element,
         crosstalk_matrix=crosstalk_matrix,
@@ -321,9 +340,13 @@ def _plot(data: QubitCrosstalkData, fit: QubitCrosstalkResults, target: QubitId)
         data, target, fit, fit_function=utils.transmon_frequency
     )
     if fit is not None:
-        labels = ["Qubit Frequency at Sweetspot [Hz]"]
+        labels = [
+            "Qubit Frequency at Sweetspot [Hz]",
+            "Qubit Frequency at Bias point [Hz]",
+        ]
         values = [
             np.round(fit.frequency[target], 4),
+            np.round(fit.qubit_frequency_bias_point[target], 4),
         ]
         for flux_qubit in fit.crosstalk_matrix[target]:
             if flux_qubit != target:
