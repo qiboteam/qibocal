@@ -27,20 +27,7 @@ def _acquisition(
     platform: Platform,
     targets: list[QubitPairId],
 ) -> RB2QData:
-    """The data acquisition stage of Standard Randomized Benchmarking.
-
-    1. Set up the scan
-    2. Execute the scan
-    3. Post process the data and initialize a standard rb data object with it.
-
-    Args:
-        params (StandardRBParameters): All parameters in one object.
-        platform (Platform): Platform the experiment is executed on.
-        qubits (dict[int, Union[str, int]] or list[Union[str, int]]): list of qubits the experiment is executed on.
-
-    Returns:
-        RBData: The depths, samples and ground state probability of each experiment in the scan.
-    """
+    """Data acquisition for two qubit Standard Randomized Benchmarking."""
 
     return twoq_rb_acquisition(params, targets)
 

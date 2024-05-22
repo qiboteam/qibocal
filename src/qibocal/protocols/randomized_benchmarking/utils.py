@@ -63,67 +63,59 @@ SINGLE_QUBIT_CLIFFORDS = {
 SINGLE_QUBIT_CLIFFORDS_NAMES = {
     # Virtual gates
     "": gates.I,
-    # Check the Z
-    "minusX,minusY": lambda q: gates.U3(q, 0, np.pi / 2, np.pi / 2),  # Z, gp:exp(iπ)
+    "minusX,minusY": lambda q: gates.U3(q, 0, np.pi / 2, np.pi / 2),  # Z
     "sqrtX,sqrtMinusY,sqrtMinusX": lambda q: gates.U3(
         q, 0, -np.pi / 2, 0
-    ),  # La U3 esta bien el nombre no ?  # gates.RZ(q, np.pi / 2),  gp:exp(iπ/4)
+    ),  # gates.RZ(q, np.pi / 2)
     "sqrtX,sqrtY,sqrtMinusX": lambda q: gates.U3(
         q, 0, np.pi / 2, 0
-    ),  # gates.U3(q, 0, -np.pi / 2, 0),  # Esta bien gates.RZ(q, -np.pi / 2),  gp:exp(iπ/4)
+    ),  # gates.RZ(q, -np.pi / 2)
     # pi rotations
-    # 'X': lambda q: gates.U3(q, np.pi, 0, np.pi),  # X,
-    # 'Y': lambda q: gates.U3(q, np.pi, 0, 0),  # Y,
-    # pi rotations (For the minus exp(iπ) global phase) (Check the phase from qiskit) RX(π)=−iX; RY(π)=−iY
-    "minusX": lambda q: gates.U3(q, np.pi, -np.pi, 0),  # X, gp:exp(iπ)
-    "minusY": lambda q: gates.U3(q, np.pi, 0, 0),  # Y, gp:exp(iπ)
-    # pi/2 rotations (Check the minus) RX(π/2)=−exp(i π/4)SX
-    "sqrtX": lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),  # Rx(pi/2) gp:
-    "sqrtMinusX": lambda q: gates.U3(
-        q, -np.pi / 2, -np.pi / 2, np.pi / 2
-    ),  # Rx(-pi/2) gp:
-    "sqrtY": lambda q: gates.U3(q, np.pi / 2, 0, 0),  # Ry(pi/2) gp:
-    "sqrtMinusY": lambda q: gates.U3(q, -np.pi / 2, 0, 0),  # Ry(-pi/2) gp:
-    # 2pi/3 rotations Check the gp
-    "sqrtX,sqrtY": lambda q: gates.U3(
-        q, np.pi / 2, -np.pi / 2, 0
-    ),  # Rx(pi/2)Ry(pi/2) gp:
+    "minusX": lambda q: gates.U3(q, np.pi, -np.pi, 0),  # X
+    "minusY": lambda q: gates.U3(q, np.pi, 0, 0),  # Y
+    # pi/2 rotations
+    "sqrtX": lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),  # Rx(pi/2)
+    "sqrtMinusX": lambda q: gates.U3(q, -np.pi / 2, -np.pi / 2, np.pi / 2),  # Rx(-pi/2)
+    "sqrtY": lambda q: gates.U3(q, np.pi / 2, 0, 0),  # Ry(pi/2)
+    "sqrtMinusY": lambda q: gates.U3(q, -np.pi / 2, 0, 0),  # Ry(-pi/2)
+    # 2pi/3 rotations
+    "sqrtX,sqrtY": lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, 0),  # Rx(pi/2)Ry(pi/2)
     "sqrtX,sqrtMinusY": lambda q: gates.U3(
         q, np.pi / 2, -np.pi / 2, np.pi
-    ),  # Rx(pi/2)Ry(-pi/2) gp:
+    ),  # Rx(pi/2)Ry(-pi/2)
     "sqrtMinusX,sqrtY": lambda q: gates.U3(
         q, np.pi / 2, np.pi / 2, 0
-    ),  # Rx(-pi/2)Ry(pi/2) gp:
+    ),  # Rx(-pi/2)Ry(pi/2)
     "sqrtMinusX,sqrtMinusY": lambda q: gates.U3(
         q, np.pi / 2, np.pi / 2, -np.pi
-    ),  # Rx(-pi/2)Ry(-pi/2) gp:
+    ),  # Rx(-pi/2)Ry(-pi/2)
     "sqrtY,sqrtX": lambda q: gates.U3(
         q, np.pi / 2, 0, np.pi / 2
     ),  # Ry(pi/2)Rx(pi/2) gp:
     "sqrtY,sqrtMinusX": lambda q: gates.U3(
         q, np.pi / 2, 0, -np.pi / 2
-    ),  # Ry(pi/2)Rx(-pi/2) gp:
+    ),  # Ry(pi/2)Rx(-pi/2)
     "sqrtMinusY,sqrtX": lambda q: gates.U3(
         q, np.pi / 2, -np.pi, np.pi / 2
-    ),  # Ry(-pi/2)Rx(pi/2) gp:
+    ),  # Ry(-pi/2)Rx(pi/2)
     "sqrtMinusY,sqrtMinusX": lambda q: gates.U3(
         q, np.pi / 2, np.pi, -np.pi / 2
-    ),  # Ry(-pi/2)Rx(-pi/2) gp:
-    # Hadamard-like Check the gp
-    "minusX,sqrtY": lambda q: gates.U3(q, np.pi / 2, -np.pi, 0),  # X Ry(pi/2) gp:
-    "minusX,sqrtMinusY": lambda q: gates.U3(q, np.pi / 2, 0, np.pi),  # X Ry(-pi/2) gp:
+    ),  # Ry(-pi/2)Rx(-pi/2)
+    # Hadamard-like
+    "minusX,sqrtY": lambda q: gates.U3(q, np.pi / 2, -np.pi, 0),  # X Ry(pi/2)
+    "minusX,sqrtMinusY": lambda q: gates.U3(q, np.pi / 2, 0, np.pi),  # X Ry(-pi/2)
     "minusY,sqrtX": lambda q: gates.U3(
         q, np.pi / 2, np.pi / 2, np.pi / 2
-    ),  # Y Rx(pi/2) gp:
+    ),  # Y Rx(pi/2)
     "minusY,sqrtMinusX": lambda q: gates.U3(
         q, np.pi / 2, -np.pi / 2, -np.pi / 2
-    ),  # Y Rx(-pi/2) gp:
+    ),  # Y Rx(-pi/2)
     "sqrtX,sqrtY,sqrtX": lambda q: gates.U3(
         q, np.pi, -np.pi / 4, np.pi / 4
-    ),  # Rx(pi/2)Ry(pi/2)Rx(pi/2) gp:
+    ),  # Rx(pi/2)Ry(pi/2)Rx(pi/2)
     "sqrtX,sqrtMinusY,sqrtX": lambda q: gates.U3(
         q, np.pi, np.pi / 4, -np.pi / 4
-    ),  # Rx(-pi/2)Ry(pi/2)Rx(-pi/2) gp:
+    ),  # Rx(-pi/2)Ry(pi/2)Rx(-pi/2)
 }
 
 GLOBAL_PHASES = [
@@ -174,7 +166,7 @@ def random_circuits(
     single_qubit=True,
     file_inv=pathlib.Path(),
 ) -> Iterable:
-    """Returns single-qubit random (self-inverting) Clifford circuits."""
+    """Returns random (self-inverting) Clifford circuits."""
 
     circuits = []
     indexes = defaultdict(list)
@@ -280,6 +272,7 @@ class RB_Generator:
             if seed is None or isinstance(seed, int)
             else seed
         )
+
         if file is not None:
             self.two_qubit_cliffords = load_cliffords(file)
             self.file = file
@@ -287,43 +280,25 @@ class RB_Generator:
             self.file = None
 
     def random_index(self, gate_dict):
-        """
-        Generates a random index within the range of the given file len.
-
-        Parameters:
-        - file (Dict): Dict of gates.
-
-        Returns:
-        - int: Random index.
-        """
+        """Generates a random index within the range of the given file len."""
         return self.local_state.integers(0, len(gate_dict.keys()), 1)
 
     def layer_gen_single_qubit(self):
-        """
-        Returns:
-        - Gate: Random single-qubit clifford .
-        """
+        """Generates a random single-qubit clifford gate."""
         return random_clifford(self.random_index)
 
     def layer_gen_two_qubit(self):
-        """
-        Returns:
-        - Gate: Random two-qubit clifford .
-        """
+        """Generates a random two-qubit clifford gate."""
         return random_2q_clifford(self.random_index, self.two_qubit_cliffords)
 
     def calculate_average_pulses(self):
-        """
-        Returns:
-        -  Average number of pulses per clifford.
-        """
+        """Average number of pulses per clifford."""
         # FIXME: Make it work for single qubit properly
-        if self.file is not None:
-            npulses = calculate_pulses_clifford(self.two_qubit_cliffords)
-        else:
-            npulses = 1.875
-
-        return npulses
+        return (
+            calculate_pulses_clifford(self.two_qubit_cliffords)
+            if self.file is not None
+            else 1.875
+        )
 
 
 @dataclass
@@ -466,10 +441,11 @@ def get_circuits(
 def execute_circuits(circuits, targets, params, backend, single_qubit=True):
     # Execute the circuits
     transpiler = dummy_transpiler(backend)
-    if single_qubit:
-        qubit_maps = [[i] for i in targets] * (len(params.depths) * params.niter)
-    else:
-        qubit_maps = [list(i) for i in targets] * (len(params.depths) * params.niter)
+    qubit_maps = (
+        [[i] for i in targets] * (len(params.depths) * params.niter)
+        if single_qubit
+        else [list(i) for i in targets] * (len(params.depths) * params.niter)
+    )
     if params.unrolling:
         _, executed_circuits = execute_transpiled_circuits(
             circuits,
@@ -489,7 +465,6 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
             )[1]
             for circuit, qubit_map in zip(circuits, qubit_maps)
         ]
-
     return executed_circuits
 
 
@@ -693,13 +668,13 @@ def clifford_to_pulses(clifford):
     return pulses
 
 
-def calculate_pulses_clifford(two_qubit_cliffords):
+def calculate_pulses_clifford(cliffords):
     pulses = 0
-    for i, clifford in enumerate(two_qubit_cliffords.values()):
-        clifford = two_qubit_cliffords[str(i)]
+    for i, clifford in enumerate(cliffords.values()):
+        clifford = cliffords[str(i)]
         pulses += clifford_to_pulses(clifford)
 
-    pulses_per_clifford = pulses / len(two_qubit_cliffords)
+    pulses_per_clifford = pulses / len(cliffords)
     return pulses_per_clifford
 
 
@@ -740,7 +715,6 @@ def layer_circuit(rb_gen: Callable, depth: int, target) -> tuple[Circuit, dict]:
     for _ in range(depth):
         # Generate a layer.
         new_layer, random_index = rb_gen_layer
-        # FIXME: Check len(qubits) to get 2 for pair and 1 for qubits
         new_circuit = Circuit(nqubits)
         if nqubits == 1:
             new_circuit.add(new_layer)
