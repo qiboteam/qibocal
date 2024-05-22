@@ -7,7 +7,6 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
-from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import Data, Routine
@@ -117,21 +116,12 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         f = utils.guess_frequency(x, y)
         pguess = [0.5, 0.5, 1 / f, 0]
         try:
-            popt, perr = curve_fit(
-                utils.rabi_amplitude_function,
+            popt, perr, pi_pulse_parameter = utils.fit_amplitude_function(
                 x,
                 y,
-                p0=pguess,
-                maxfev=100000,
-                bounds=(
-                    [0, 0, 0, -np.pi],
-                    [1, 1, np.inf, np.pi],
-                ),
+                pguess,
                 sigma=qubit_data.error,
-            )
-            perr = np.sqrt(np.diag(perr))
-            pi_pulse_parameter = (
-                popt[2] / 2 * utils.period_correction_factor(phase=popt[3])
+                signal=False,
             )
             pi_pulse_amplitudes[qubit] = (pi_pulse_parameter, perr[2] / 2)
             fitted_parameters[qubit] = popt.tolist()

@@ -4,6 +4,7 @@ from plotly.subplots import make_subplots
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
+from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal.auto.operation import Parameters
@@ -278,3 +279,34 @@ def guess_frequency(x, y):
     index = local_maxima[0] if len(local_maxima) > 0 else None
     # 0.5 hardcoded guess for less than one oscillation
     return x[index] / (x[1] - x[0]) if index is not None else 0.5
+
+
+def fit_amplitude_function(
+    x, y, guess, sigma=None, signal=True, x_limits=None, y_limits=None
+):
+    popt, perr = curve_fit(
+        rabi_amplitude_function,
+        x,
+        y,
+        p0=guess,
+        maxfev=100000,
+        bounds=(
+            [0, 0, 0, -np.pi],
+            [1, 1, np.inf, np.pi],
+        ),
+        sigma=sigma,
+    )
+    if signal is False:
+        perr = np.sqrt(np.diag(perr))
+    else:
+        x_min, x_max = *x_limits
+        y_min, y_max = *y_limits
+        popt = [  # Change it according to fit function changes
+            y_min + (y_max - y_min) * popt[0],
+            (y_max - y_min) * popt[1],
+            popt[2] * (x_max - x_min),
+            popt[3] - 2 * np.pi * x_min / (x_max - x_min) / popt[2],
+        ]
+    pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
+
+    return popt, perr, pi_pulse_parameter
