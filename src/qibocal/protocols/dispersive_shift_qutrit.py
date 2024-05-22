@@ -1,7 +1,7 @@
-from copy import deepcopy
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
@@ -10,9 +10,9 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.protocols.dispersive_shift import DispersiveShiftType
 from qibocal.protocols.utils import (
-    GHZ_TO_HZ,
     HZ_TO_GHZ,
     lorentzian,
     lorentzian_fit,
@@ -20,13 +20,15 @@ from qibocal.protocols.utils import (
     table_html,
 )
 
-from .dispersive_shift import DispersiveShiftData, DispersiveShiftParameters
-from .resonator_spectroscopy import ResSpecType
-
 
 @dataclass
-class DispersiveShiftQutritParameters(DispersiveShiftParameters):
+class DispersiveShiftQutritParameters(Parameters):
     """Dispersive shift inputs."""
+
+    freq_width: int
+    """Width [Hz] for frequency sweep relative to the readout frequency [Hz]."""
+    freq_step: int
+    """Frequency step for sweep [Hz]."""
 
 
 @dataclass
@@ -59,16 +61,19 @@ class DispersiveShiftQutritResults(Results):
         return {key: value for key, value in asdict(self).items() if "two" in key}
 
 
-"""Custom dtype for rabi amplitude."""
-
-
 @dataclass
-class DispersiveShiftQutritData(DispersiveShiftData):
-    """Dipsersive shift acquisition outputs."""
+class DispersiveShiftQutritData(Data):
+    """Dispersive shift acquisition outputs."""
+
+    resonator_type: str
+    """Resonator type."""
+    data: dict[tuple[QubitId, int], npt.NDArray[DispersiveShiftType]] = field(
+        default_factory=dict
+    )
 
 
 def _acquisition(
-    params: DispersiveShiftParameters, platform: Platform, targets: list[QubitId]
+    params: DispersiveShiftQutritParameters, platform: Platform, targets: list[QubitId]
 ) -> DispersiveShiftQutritData:
     r"""
     Data acquisition for dispersive shift experiment.
@@ -76,32 +81,47 @@ def _acquisition(
     the resonator shift produced by the coupling between the resonator and the qubit.
 
     Args:
-        params (DispersiveShiftParameters): experiment's parameters
+        params (DispersiveShiftQutritParameters): experiment's parameters
         platform (Platform): Qibolab platform object
         targets (list): list of target qubits to perform the action
 
     """
 
-    # create 3 sequences of pulses for the experiment:
+    # create 2 sequences of pulses for the experiment:
     # sequence_0: I  - MZ
     # sequence_1: RX - MZ
-    # sequence_2: RX - RX12 - MZ
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence_0 = PulseSequence()
     sequence_1 = PulseSequence()
     sequence_2 = PulseSequence()
-
+    ro_pulses = {}
+    qd_pulses = {}
+    rx12_pulses = {}
     for qubit in targets:
-        rx_pulse = platform.create_RX_pulse(qubit, start=0)
-        rx_12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish)
-        ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
-        sequence_1.add(rx_pulse)
-        sequence_2.add(rx_pulse, rx_12_pulse)
-        for sequence in [sequence_0, sequence_1, sequence_2]:
-            readout_pulse = deepcopy(ro_pulse)
-            readout_pulse.start = sequence.qd_pulses.finish
-            sequence.add(readout_pulse)
+        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+        ro_pulses[qubit] = []
+        rx12_pulses[qubit] = platform.create_RX12_pulse(
+            qubit, start=qd_pulses[qubit].duration
+        )
+        ro_pulses[qubit].append(platform.create_qubit_readout_pulse(qubit, start=0))
+
+        ro_pulses[qubit].append(
+            platform.create_qubit_readout_pulse(qubit, start=qd_pulses[qubit].duration)
+        )
+        ro_pulses[qubit].append(
+            platform.create_qubit_readout_pulse(
+                qubit, start=rx12_pulses[qubit].duration
+            )
+        )
+        sequence_0.add(ro_pulses[qubit][0])
+
+        sequence_1.add(qd_pulses[qubit])
+        sequence_1.add(ro_pulses[qubit][1])
+
+        sequence_2.add(qd_pulses[qubit])
+        sequence_2.add(rx12_pulses[qubit])
+        sequence_2.add(ro_pulses[qubit][2])
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
@@ -109,46 +129,51 @@ def _acquisition(
     )
 
     data = DispersiveShiftQutritData(resonator_type=platform.resonator_type)
-
-    for state, sequence in enumerate([sequence_0, sequence_1, sequence_2]):
+    results = []
+    for i, sequence in enumerate([sequence_0, sequence_1, sequence_2]):
         sweeper = Sweeper(
             Parameter.frequency,
             delta_frequency_range,
-            pulses=list(sequence.ro_pulses),
+            pulses=[ro_pulses[qubit][i] for qubit in targets],
             type=SweeperType.OFFSET,
         )
 
-        results = platform.sweep(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
-            ),
-            sweeper,
+        results.append(
+            platform.sweep(
+                sequence,
+                ExecutionParameters(
+                    nshots=params.nshots,
+                    relaxation_time=params.relaxation_time,
+                    acquisition_type=AcquisitionType.INTEGRATION,
+                    averaging_mode=AveragingMode.CYCLIC,
+                ),
+                sweeper,
+            )
         )
 
-        for qubit in targets:
-            result = results[qubit]
+    # retrieve the results for every qubit
+    for qubit in targets:
+        for i, results in enumerate(results):
+            result = results[ro_pulses[qubit][i].serial]
             # store the results
             data.register_qubit(
-                ResSpecType,
-                (qubit, state),
+                DispersiveShiftType,
+                (qubit, i),
                 dict(
-                    freq=sequence.get_qubit_pulses(qubit).ro_pulses[0].frequency
-                    + delta_frequency_range,
+                    freq=ro_pulses[qubit][i].frequency + delta_frequency_range,
                     signal=result.magnitude,
                     phase=result.phase,
+                    i=result.voltage_i,
+                    q=result.voltage_q,
                 ),
             )
-
     return data
 
 
 def _fit(data: DispersiveShiftQutritData) -> DispersiveShiftQutritResults:
     """Post-Processing for dispersive shift"""
     qubits = data.qubits
+    iq_couples = [[], []]  # axis 0: states, axis 1: qubit
 
     frequency_0 = {}
     frequency_1 = {}
@@ -206,6 +231,7 @@ def _plot(
     fit_data_0 = fit.state_zero if fit is not None else None
     fit_data_1 = fit.state_one if fit is not None else None
     fit_data_2 = fit.state_two if fit is not None else None
+
     for i, label, q_data, data_fit in list(
         zip(
             (0, 1, 2),
@@ -269,6 +295,30 @@ def _plot(
             )
 
     if fit is not None:
+        # fig.add_trace(
+        #     go.Scatter(
+        #         x=[
+        #             fit.best_freq[target] * HZ_TO_GHZ,
+        #             fit.best_freq[target] * HZ_TO_GHZ,
+        #         ],
+        #         y=[
+        #             np.min(np.concatenate((data_0.signal, data_1.signal))),
+        #             np.max(np.concatenate((data_0.signal, data_1.signal))),
+        #         ],
+        #         mode="lines",
+        #         line=go.scatter.Line(color="orange", width=3, dash="dash"),
+        #         name="Best frequency",
+        #     ),
+        #     row=1,
+        #     col=1,
+        # )
+
+        # fig.add_vline(
+        #     x=fit.best_freq[target] * HZ_TO_GHZ,
+        #     line=dict(color="orange", width=3, dash="dash"),
+        #     row=1,
+        #     col=1,
+        # )
         fitting_report = table_html(
             table_dict(
                 target,
@@ -279,9 +329,9 @@ def _plot(
                 ],
                 np.round(
                     [
-                        fit_data_0["frequency_state_zero"][target] * GHZ_TO_HZ,
-                        fit_data_1["frequency_state_one"][target] * GHZ_TO_HZ,
-                        fit_data_2["frequency_state_two"][target] * GHZ_TO_HZ,
+                        fit_data_0["frequency_state_zero"][target],
+                        fit_data_1["frequency_state_one"][target],
+                        fit_data_2["frequency_state_two"][target],
                     ]
                 ),
             )
@@ -299,4 +349,9 @@ def _plot(
     return figures, fitting_report
 
 
-dispersive_shift_qutrit = Routine(_acquisition, fit=_fit, report=_plot)
+dispersive_shift_qutrit = Routine(
+    _acquisition,
+    _fit,
+    _plot,
+)
+"""Dispersive shift Routine object."""

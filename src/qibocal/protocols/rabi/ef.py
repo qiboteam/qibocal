@@ -48,20 +48,23 @@ def _acquisition(
     durations = {}
     for qubit in targets:
         rx_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        qd_pulses[qubit] = platform.create_RX_pulse(
+        qd_pulses[qubit] = platform.create_RX12_pulse(
             qubit, start=rx_pulses[qubit].finish
         )
         if params.pulse_length is not None:
             qd_pulses[qubit].duration = params.pulse_length
 
         durations[qubit] = qd_pulses[qubit].duration
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+        ro_pulses[qubit] = platform.create_MZ1_pulse(
             qubit, start=qd_pulses[qubit].finish
         )
+        # TODO define MZ1
+        # ro_pulses[qubit].amplitude = 0.01
+        # ro_pulses[qubit].frequency = 7207728354
+
         sequence.add(rx_pulses[qubit])
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
-
     # define the parameter to sweep and its range:
     # qubit drive pulse amplitude
     qd_pulse_amplitude_range = np.arange(
@@ -75,7 +78,6 @@ def _acquisition(
         [qd_pulses[qubit] for qubit in targets],
         type=SweeperType.FACTOR,
     )
-
     data = RabiAmplitudeEFData(durations=durations)
 
     # sweep the parameter

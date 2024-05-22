@@ -96,9 +96,13 @@ def _acquisition(
 
         amplitudes[qubit] = qd_pulses[qubit].amplitude
 
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+        ro_pulses[qubit] = platform.create_MZ1_pulse(
             qubit, start=qd_pulses[qubit].finish
         )
+        # TODO define MZ1
+        # ro_pulses[qubit].amplitude = 0.01
+        # ro_pulses[qubit].frequency = 7207728354
+
         sequence.add(rx_pulses[qubit])
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
