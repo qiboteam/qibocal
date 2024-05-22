@@ -1,5 +1,6 @@
 from .allxy.allxy import allxy
 from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
+from .allxy.allxy_resonator_depletion_tuning import allxy_resonator_depletion_tuning
 from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
 from .coherence.spin_echo_signal import spin_echo_signal
@@ -55,6 +56,7 @@ from .signal_experiments.calibrate_state_discrimination import (
     calibrate_state_discrimination,
 )
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
+from .state_tomography import state_tomography
 from .two_qubit_interaction import (
     chevron,
     chevron_signal,
@@ -126,4 +128,6 @@ __all__ = [
     "chsh_pulses",
     "cz_virtualz",
     "cz_virtualz_signal",
+    "state_tomography",
+    "allxy_resonator_depletion_tuning",
 ]
