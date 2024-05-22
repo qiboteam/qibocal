@@ -704,7 +704,7 @@ def layer_circuit(rb_gen: Callable, depth: int, target) -> tuple[Circuit, dict]:
     """
     full_circuit = None
     random_indexes = []
-    if isinstance(target, QubitId):
+    if isinstance(target, int):
         nqubits = 1
         rb_gen_layer = rb_gen.layer_gen_single_qubit()
     # FIXME: I Can't use QubitPairId
