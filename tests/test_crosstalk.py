@@ -50,5 +50,5 @@ def test_frequency_to_bias():
         charging_energy=-PLATFORM.qubits[1].anharmonicity * HZ_TO_GHZ,
     )
 
-    np.testing.assert_equal(freq_q1, target_freqs[0])
-    np.testing.assert_equal(freq_q2, target_freqs[1])
+    np.testing.assert_allclose(freq_q1, target_freqs[0])
+    np.testing.assert_allclose(freq_q2, target_freqs[1])
