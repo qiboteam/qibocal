@@ -281,8 +281,49 @@ def guess_frequency(x, y):
     return x[index] / (x[1] - x[0]) if index is not None else 0.5
 
 
+def fit_length_function(
+    x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
+):
+    popt, perr = curve_fit(
+        rabi_length_function,
+        x,
+        y,
+        p0=guess,
+        maxfev=100000,
+        bounds=(
+            [0, 0, 0, -np.pi, 0],
+            [1, 1, np.inf, np.pi, np.inf],
+        ),
+        sigma=sigma,
+    )
+    x_min = x_limits[0]
+    x_max = x_limits[1]
+    y_min = y_limits[0]
+    y_max = y_limits[1]
+    if signal is False:
+        popt = [
+            popt[0],
+            popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
+            popt[2] * (x_max - x_min),
+            popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
+            popt[4] / (x_max - x_min),
+        ]
+        perr = np.sqrt(np.diag(perr))
+    else:
+        popt = [  # change it according to the fit function
+            (y_max - y_min) * (popt[0] + 1 / 2) + y_min,
+            (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
+            popt[2] * (x_max - x_min),
+            popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
+            popt[4] / (x_max - x_min),
+        ]
+
+    pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
+    return popt, perr, pi_pulse_parameter
+
+
 def fit_amplitude_function(
-    x, y, guess, sigma=None, signal=True, x_limits=None, y_limits=None
+    x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
 ):
     popt, perr = curve_fit(
         rabi_amplitude_function,
@@ -299,13 +340,11 @@ def fit_amplitude_function(
     if signal is False:
         perr = np.sqrt(np.diag(perr))
     else:
-        x_min, x_max = *x_limits
-        y_min, y_max = *y_limits
         popt = [  # Change it according to fit function changes
-            y_min + (y_max - y_min) * popt[0],
-            (y_max - y_min) * popt[1],
-            popt[2] * (x_max - x_min),
-            popt[3] - 2 * np.pi * x_min / (x_max - x_min) / popt[2],
+            y_limits[0] + (y_limits[1] - y_limits[0]) * popt[0],
+            (y_limits[1] - y_limits[0]) * popt[1],
+            popt[2] * (x_limits[1] - x_limits[0]),
+            popt[3] - 2 * np.pi * x_limits[0] / (x_limits[1] - x_limits[0]) / popt[2],
         ]
     pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
 

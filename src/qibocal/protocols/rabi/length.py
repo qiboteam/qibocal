@@ -7,7 +7,6 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
-from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import Parameters, Routine
@@ -132,40 +131,21 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         pguess = [0.5, 0.5, 1 / f, 0, 0]
 
         try:
-            popt, perr = curve_fit(
-                utils.rabi_length_function,
+            popt, perr, pi_pulse_parameter = utils.fit_length_function(
                 x,
                 y,
-                p0=pguess,
-                maxfev=100000,
-                bounds=(
-                    [0, 0, 0, -np.pi, 0],
-                    [1, 1, np.inf, np.pi, np.inf],
-                ),
+                pguess,
                 sigma=qubit_data.error,
-            )
-
-            translated_popt = [
-                popt[0],
-                popt[1] * np.exp(min_x * popt[4] / (max_x - min_x)),
-                popt[2] * (max_x - min_x),
-                popt[3] - 2 * np.pi * min_x / popt[2] / (max_x - min_x),
-                popt[4] / (max_x - min_x),
-            ]
-
-            perr = np.sqrt(np.diag(perr))
-            pi_pulse_parameter = (
-                translated_popt[2]
-                / 2
-                * utils.period_correction_factor(phase=translated_popt[3])
+                signal=False,
+                x_limits=(min_x, max_x),
             )
             durations[qubit] = (pi_pulse_parameter, perr[2] * (max_x - min_x) / 2)
-            fitted_parameters[qubit] = translated_popt
+            fitted_parameters[qubit] = popt
             amplitudes = {key: (value, 0) for key, value in data.amplitudes.items()}
             chi2[qubit] = (
                 chi2_reduced(
                     y,
-                    utils.rabi_length_function(raw_x, *translated_popt),
+                    utils.rabi_length_function(raw_x, *popt),
                     qubit_data.error,
                 ),
                 np.sqrt(2 / len(y)),

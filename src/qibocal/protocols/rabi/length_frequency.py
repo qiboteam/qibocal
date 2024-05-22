@@ -9,7 +9,6 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
-from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Routine
 from qibocal.config import log
@@ -22,8 +21,8 @@ from .length_frequency_signal import (
     _update,
 )
 from .utils import (
+    fit_length_function,
     guess_frequency,
-    period_correction_factor,
     rabi_length_function,
     sequence_length,
 )
@@ -174,42 +173,25 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
         pguess = [0, np.sign(y[0]) * 0.5, 1 / f, 0, 0]
 
         try:
-            popt, perr = curve_fit(
-                rabi_length_function,
+            popt, perr, pi_pulse_parameter = fit_length_function(
                 x,
                 y,
-                p0=pguess,
-                maxfev=100000,
-                bounds=(
-                    [0, 0, 0, -np.pi, 0],
-                    [1, 1, np.inf, np.pi, np.inf],
-                ),
+                pguess,
                 sigma=error,
-            )
-            translated_popt = [
-                popt[0],
-                popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
-                popt[2] * (x_max - x_min),
-                popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
-                popt[4] / (x_max - x_min),
-            ]
-
-            perr = np.sqrt(np.diag(perr))
-            pi_pulse_parameter = (
-                translated_popt[2]
-                / 2
-                * period_correction_factor(phase=translated_popt[3])
+                signal=False,
+                x_limits=(x_min, x_max),
+                y_limits=(y_min, y_max),
             )
             fitted_frequencies[qubit] = frequency
             fitted_durations[qubit] = (
                 pi_pulse_parameter,
                 perr[2] * (x_max - x_min) / 2,
             )
-            fitted_parameters[qubit] = translated_popt
+            fitted_parameters[qubit] = popt
             chi2[qubit] = (
                 chi2_reduced(
                     y,
-                    rabi_length_function(x, *translated_popt),
+                    rabi_length_function(x, *popt),
                     error,
                 ),
                 np.sqrt(2 / len(y)),

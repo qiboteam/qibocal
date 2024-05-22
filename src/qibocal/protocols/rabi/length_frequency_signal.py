@@ -9,7 +9,6 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
-from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Routine
@@ -18,12 +17,7 @@ from qibocal.protocols.utils import table_dict, table_html
 
 from ..utils import HZ_TO_GHZ
 from .length_signal import RabiLengthVoltResults
-from .utils import (
-    guess_frequency,
-    period_correction_factor,
-    rabi_length_function,
-    sequence_length,
-)
+from .utils import fit_length_function, guess_frequency, sequence_length
 
 
 @dataclass
@@ -185,32 +179,17 @@ def _fit(data: RabiLengthFreqVoltData) -> RabiLengthFrequencyVoltResults:
         pguess = [0, np.sign(y[0]) * 0.5, 1 / f, 0, 0]
 
         try:
-            popt, _ = curve_fit(
-                rabi_length_function,
+            popt, _, pi_pulse_parameter = fit_length_function(
                 x,
                 y,
-                p0=pguess,
-                maxfev=100000,
-                bounds=(
-                    [0, -1, 0, -np.pi, 0],
-                    [1, 1, np.inf, np.pi, np.inf],
-                ),
-            )
-            translated_popt = [  # change it according to the fit function
-                (y_max - y_min) * (popt[0] + 1 / 2) + y_min,
-                (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
-                popt[2] * (x_max - x_min),
-                popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
-                popt[4] / (x_max - x_min),
-            ]
-            pi_pulse_parameter = (
-                translated_popt[2]
-                / 2
-                * period_correction_factor(phase=translated_popt[3])
+                pguess,
+                signal=True,
+                x_limits=(x_min, x_max),
+                y_limits=(y_min, y_max),
             )
             fitted_frequencies[qubit] = frequency
             fitted_durations[qubit] = pi_pulse_parameter
-            fitted_parameters[qubit] = translated_popt
+            fitted_parameters[qubit] = popt
 
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
