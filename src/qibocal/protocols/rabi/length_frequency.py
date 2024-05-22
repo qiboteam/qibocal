@@ -1,3 +1,5 @@
+"""Rabi experiment that sweeps length and frequency (with probability)."""
+
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -64,12 +66,12 @@ class RabiLengthFreqData(Data):
         """Store output for single qubit."""
         size = len(freq) * len(lens)
         frequency, length = np.meshgrid(freq, lens)
-        ar = np.empty(size, dtype=RabiLenFreqType)
-        ar["freq"] = frequency.ravel()
-        ar["len"] = length.ravel()
-        ar["prob"] = np.array(prob).ravel()
-        ar["error"] = np.array(error).ravel()
-        self.data[qubit] = np.rec.array(ar)
+        data = np.empty(size, dtype=RabiLenFreqType)
+        data["freq"] = frequency.ravel()
+        data["len"] = length.ravel()
+        data["prob"] = np.array(prob).ravel()
+        data["error"] = np.array(error).ravel()
+        self.data[qubit] = np.rec.array(data)
 
     def durations(self, qubit):
         """Unique qubit lengths."""
@@ -249,7 +251,7 @@ def _plot(
                 x=[min(durations), max(durations)],
                 y=[fit.frequency[target] / 1e9] * 2,
                 mode="lines",
-                line=dict(color="white", width=4, dash="dash"),
+                line={"color": "white", "width": 4, "dash": "dash"},
             ),
             row=1,
             col=1,
@@ -267,7 +269,7 @@ def _plot(
 
     fig.update_layout(
         showlegend=False,
-        legend=dict(orientation="h"),
+        legend={"orientation": "h"},
     )
     return figures, fitting_report
 

@@ -1,3 +1,5 @@
+"""Rabi experiment that sweeps amplitude and frequency."""
+
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -64,12 +66,12 @@ class RabiAmplitudeFreqData(Data):
         """Store output for single qubit."""
         size = len(freq) * len(amp)
         frequency, amplitude = np.meshgrid(freq, amp)
-        ar = np.empty(size, dtype=RabiAmpFreqType)
-        ar["freq"] = frequency.ravel()
-        ar["amp"] = amplitude.ravel()
-        ar["prob"] = np.array(prob).ravel()
-        ar["error"] = np.array(error).ravel()
-        self.data[qubit] = np.rec.array(ar)
+        data = np.empty(size, dtype=RabiAmpFreqType)
+        data["freq"] = frequency.ravel()
+        data["amp"] = amplitude.ravel()
+        data["prob"] = np.array(prob).ravel()
+        data["error"] = np.array(error).ravel()
+        self.data[qubit] = np.rec.array(data)
 
     def amplitudes(self, qubit):
         """Unique qubit amplitudes."""
@@ -244,7 +246,7 @@ def _plot(
                 x=[min(amplitudes), max(amplitudes)],
                 y=[fit.frequency[target] / 1e9] * 2,
                 mode="lines",
-                line=dict(color="white", width=4, dash="dash"),
+                line={"color": "white", "width": 4, "dash": "dash"},
             ),
             row=1,
             col=1,
@@ -262,7 +264,7 @@ def _plot(
 
     fig.update_layout(
         showlegend=False,
-        legend=dict(orientation="h"),
+        legend={"orientation": "h"},
     )
     return figures, fitting_report
 

@@ -1,3 +1,5 @@
+"""Rabi experiment that sweeps length and frequency."""
+
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -72,12 +74,12 @@ class RabiLengthFreqVoltData(Data):
         """Store output for single qubit."""
         size = len(freq) * len(lens)
         frequency, length = np.meshgrid(freq, lens)
-        ar = np.empty(size, dtype=RabiLenFreqVoltType)
-        ar["freq"] = frequency.ravel()
-        ar["len"] = length.ravel()
-        ar["signal"] = signal.ravel()
-        ar["phase"] = phase.ravel()
-        self.data[qubit] = np.rec.array(ar)
+        data = np.empty(size, dtype=RabiLenFreqVoltType)
+        data["freq"] = frequency.ravel()
+        data["len"] = length.ravel()
+        data["signal"] = signal.ravel()
+        data["phase"] = phase.ravel()
+        self.data[qubit] = np.rec.array(data)
 
     def durations(self, qubit):
         """Unique qubit lengths."""
@@ -258,7 +260,7 @@ def _plot(
                 x=[min(durations), max(durations)],
                 y=[fit.frequency[target] / 1e9] * 2,
                 mode="lines",
-                line=dict(color="white", width=4, dash="dash"),
+                line={"color": "white", "width": 4, "dash": "dash"},
             ),
             row=1,
             col=1,
@@ -268,7 +270,7 @@ def _plot(
                 x=[min(durations), max(durations)],
                 y=[fit.frequency[target] / 1e9] * 2,
                 mode="lines",
-                line=dict(color="white", width=4, dash="dash"),
+                line={"color": "white", "width": 4, "dash": "dash"},
             ),
             row=1,
             col=2,
@@ -286,7 +288,7 @@ def _plot(
 
     fig.update_layout(
         showlegend=False,
-        legend=dict(orientation="h"),
+        legend={"orientation": "h"},
     )
 
     return figures, fitting_report
