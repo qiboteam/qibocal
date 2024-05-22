@@ -374,5 +374,4 @@ def frequency_to_bias(
         ]
     )
     bias_array = inverted_crosstalk_matrix @ transmon_freq
-    print(bias_array)
     return {qubit: bias_array[index] for index, qubit in enumerate(qubits)}
