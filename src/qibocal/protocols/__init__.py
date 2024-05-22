@@ -2,6 +2,7 @@ from enum import Enum
 
 from .allxy.allxy import allxy
 from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
+from .allxy.allxy_resonator_depletion_tuning import allxy_resonator_depletion_tuning
 from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
 from .coherence.spin_echo_signal import spin_echo_signal
@@ -57,6 +58,7 @@ from .signal_experiments.calibrate_state_discrimination import (
     calibrate_state_discrimination,
 )
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
+from .state_tomography import state_tomography
 from .two_qubit_interaction import (
     chevron,
     chevron_signal,
@@ -97,6 +99,7 @@ class Operation(Enum):
     allxy = allxy
     allxy_drag_pulse_tuning = allxy_drag_pulse_tuning
     drag_tuning = drag_tuning
+    allxy_resonator_depletion_tuning = allxy_resonator_depletion_tuning
     flipping = flipping
     dispersive_shift = dispersive_shift
     chevron = chevron
@@ -129,3 +132,4 @@ class Operation(Enum):
     coupler_chevron = coupler_chevron
     flipping_signal = flipping_signal
     calibrate_state_discrimination = calibrate_state_discrimination
+    state_tomography = state_tomography
