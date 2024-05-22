@@ -12,7 +12,7 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Data, Routine
+from qibocal.auto.operation import Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
@@ -20,6 +20,7 @@ from ..utils import HZ_TO_GHZ, chi2_reduced
 from .amplitude_frequency_signal import (
     RabiAmplitudeFrequencyVoltParameters,
     RabiAmplitudeFrequencyVoltResults,
+    RabiAmplitudeFreqVoltData,
     _update,
 )
 from .utils import (
@@ -54,11 +55,9 @@ RabiAmpFreqType = np.dtype(
 
 
 @dataclass
-class RabiAmplitudeFreqData(Data):
+class RabiAmplitudeFreqData(RabiAmplitudeFreqVoltData):
     """RabiAmplitudeFreq data acquisition."""
 
-    durations: dict[QubitId, float] = field(default_factory=dict)
-    """Pulse durations provided by the user."""
     data: dict[QubitId, npt.NDArray[RabiAmpFreqType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -72,14 +71,6 @@ class RabiAmplitudeFreqData(Data):
         data["prob"] = np.array(prob).ravel()
         data["error"] = np.array(error).ravel()
         self.data[qubit] = np.rec.array(data)
-
-    def amplitudes(self, qubit):
-        """Unique qubit amplitudes."""
-        return np.unique(self[qubit].amp)
-
-    def frequencies(self, qubit):
-        """Unique qubit frequency."""
-        return np.unique(self[qubit].freq)
 
 
 def _acquisition(
