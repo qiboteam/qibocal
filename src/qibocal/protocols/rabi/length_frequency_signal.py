@@ -10,7 +10,6 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
-from scipy.signal import find_peaks
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Routine
@@ -19,7 +18,12 @@ from qibocal.protocols.utils import table_dict, table_html
 
 from ..utils import HZ_TO_GHZ
 from .length_signal import RabiLengthVoltResults
-from .utils import period_correction_factor, rabi_length_function, sequence_length
+from .utils import (
+    guess_frequency,
+    period_correction_factor,
+    rabi_length_function,
+    sequence_length,
+)
 
 
 @dataclass
@@ -177,18 +181,7 @@ def _fit(data: RabiLengthFreqVoltData) -> RabiLengthFrequencyVoltResults:
         x = (durations - x_min) / (x_max - x_min)
         y = (y - y_min) / (y_max - y_min)
 
-        # Guessing period using fourier transform
-        ft = np.fft.rfft(y)
-        mags = abs(ft)
-        local_maxima = find_peaks(mags, threshold=1)[0]
-        index = local_maxima[0] if len(local_maxima) > 0 else None
-        # 0.5 hardcoded guess for less than one oscillation
-        f = (
-            durations[index] / (durations[1] - durations[0])
-            if index is not None
-            else 0.5
-        )
-
+        f = guess_frequency(durations, y)
         pguess = [0, np.sign(y[0]) * 0.5, 1 / f, 0, 0]
 
         try:

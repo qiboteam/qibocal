@@ -4,6 +4,7 @@ from plotly.subplots import make_subplots
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
+from scipy.signal import find_peaks
 
 from qibocal.auto.operation import Parameters
 
@@ -266,3 +267,14 @@ def sequence_length(
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
     return sequence, qd_pulses, ro_pulses, amplitudes
+
+
+def guess_frequency(x, y):
+    """Return fft frequency estimation given a sinusoidal plot."""
+    # Guessing period using fourier transform
+    ft = np.fft.rfft(y)
+    mags = abs(ft)
+    local_maxima = find_peaks(mags, threshold=10)[0]
+    index = local_maxima[0] if len(local_maxima) > 0 else None
+    # 0.5 hardcoded guess for less than one oscillation
+    return x[index] / (x[1] - x[0]) if index is not None else 0.5

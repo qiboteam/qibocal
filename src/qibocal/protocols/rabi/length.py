@@ -8,7 +8,6 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
-from scipy.signal import find_peaks
 
 from qibocal import update
 from qibocal.auto.operation import Parameters, Routine
@@ -127,15 +126,9 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         min_x = np.min(raw_x)
         max_x = np.max(raw_x)
         y = qubit_data.prob
-
         x = (raw_x - min_x) / (max_x - min_x)
-        # Guessing period using fourier transform
-        ft = np.fft.rfft(y)
-        mags = abs(ft)
-        local_maxima = find_peaks(mags, threshold=1)[0]
-        index = local_maxima[0] if len(local_maxima) > 0 else None
-        # 0.5 hardcoded guess for less than one oscillation
-        f = x[index] / (x[1] - x[0]) if index is not None else 0.5
+
+        f = utils.guess_frequency(x, y)
         pguess = [0.5, 0.5, 1 / f, 0, 0]
 
         try:
