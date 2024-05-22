@@ -74,17 +74,18 @@ def _acquisition(
         ro_pulses[qubit] = []
         for i, sequence in enumerate(states_sequences):
             sequence.add(*drive_pulses[:i])
-            print(drive_pulses)
             start = drive_pulses[i - 1].finish if i != 0 else 0
-            print(start)
-            print(platform.create_qubit_readout_pulse(qubit, start=start))
-            ro_pulse = platform.create_qubit_readout_pulse(qubit, start=start)
             if i == 2:
-                ro_pulse.frequency = 7207817029
-                ro_pulse.amplitude = 0.01
+                # TODO: add the RO pulse MZ in the same time
+                ro_pulse = platform.create_MZ1_pulse(qubit, start=start)
+                # ro_pulse.frequency = 7207817029
+                # ro_pulse.amplitude = 0.01
+            else:
+                ro_pulse = platform.create_qubit_readout_pulse(qubit, start=start)
+
             ro_pulses[qubit].append(ro_pulse)
             sequence.add(ro_pulses[qubit][-1])
-            print(sequence)
+            print("JJJJJJJJJJJJJJJJJJJJJ", sequence)
 
     data = QutritClassificationData(
         nshots=params.nshots,
