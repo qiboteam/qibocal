@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import numpy as np
 from qibolab.platform import Platform
 from qibolab.qubits import QubitPairId
 
@@ -8,8 +9,6 @@ from qibocal.protocols.randomized_benchmarking.standard_rb import _plot
 from qibocal.protocols.randomized_benchmarking.standard_rb_2q import (
     StandardRB2QParameters,
 )
-
-import numpy as np
 
 from .utils import RB2QInterData, StandardRBResult, fit, twoq_rb_acquisition
 
@@ -60,17 +59,28 @@ def _fit(data: RB2QInterData) -> StandardRBResult:
 
     qubits = data.pairs
     results = fit(qubits, data)
-    
-    #FIXME: I can only get the data.fidelity if there is an acquisition step
+
+    # FIXME: I can only get the data.fidelity if there is an acquisition step
     if data.fidelity is not None:
         fidelity_cz = {}
         for qubit in qubits:
             fid_cz = results.fidelity[qubit] / data.fidelity[qubit][0]
-            uncertainty_cz = np.sqrt(1/data.fidelity[qubit][0]**2 * results.fit_uncertainties[qubit][1]**2 + (results.fidelity[qubit]/data.fidelity[qubit][0]**2)**2 * data.fidelity[qubit][1]**2)
+            uncertainty_cz = np.sqrt(
+                1
+                / data.fidelity[qubit][0] ** 2
+                * results.fit_uncertainties[qubit][1] ** 2
+                + (results.fidelity[qubit] / data.fidelity[qubit][0] ** 2) ** 2
+                * data.fidelity[qubit][1] ** 2
+            )
             fidelity_cz[qubit] = [fid_cz, uncertainty_cz]
-        
+
         results = StandardRB2QInterResult(
-            results.fidelity, results.pulse_fidelity, results.fit_parameters, results.fit_uncertainties, results.error_bars, fidelity_cz
+            results.fidelity,
+            results.pulse_fidelity,
+            results.fit_parameters,
+            results.fit_uncertainties,
+            results.error_bars,
+            fidelity_cz,
         )
 
     return results
