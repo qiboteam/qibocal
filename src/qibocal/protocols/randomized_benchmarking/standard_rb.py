@@ -8,6 +8,7 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Routine
 
+from ..utils import table_dict, table_html
 from .fitting import exp1B_func
 from .utils import RBData, StandardRBResult, fit, number_to_str, rb_acquisition
 
@@ -180,29 +181,27 @@ def _plot(
                 )
             )
 
-    # import pdb; pdb.set_trace()
-
-    # if fit is not None:
-    #     fitting_report = table_html(
-    #         table_dict(
-    #             qubit,
-    #             ["niter", "nshots", "uncertainties", "fidelity", "pulse_fidelity"],
-    #             [
-    #                 data.niter,
-    #                 data.nshots,
-    #                 data.uncertainties,
-    #                 number_to_str(
-    #                     fit.fidelity[qubit],
-    #                     np.array(fit.fit_uncertainties[qubit][1]) / 2,
-    #                 ),
-    #                 number_to_str(
-    #                     fit.pulse_fidelity[qubit],
-    #                     np.array(fit.fit_uncertainties[qubit][1])
-    #                     / (2 * data.npulses_per_clifford),
-    #                 ),
-    #             ],
-    #         )
-    #     )
+    if fit is not None:
+        fitting_report = table_html(
+            table_dict(
+                str(qubit),
+                ["niter", "nshots", "uncertainties", "fidelity", "pulse_fidelity"],
+                [
+                    data.niter,
+                    data.nshots,
+                    data.uncertainties,
+                    number_to_str(
+                        fit.fidelity[qubit],
+                        np.array(fit.fit_uncertainties[qubit][1]) / 2,
+                    ),
+                    number_to_str(
+                        fit.pulse_fidelity[qubit],
+                        np.array(fit.fit_uncertainties[qubit][1])
+                        / (2 * data.npulses_per_clifford),
+                    ),
+                ],
+            )
+        )
 
     fig.update_layout(
         showlegend=True,

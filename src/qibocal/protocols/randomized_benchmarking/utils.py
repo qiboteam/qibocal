@@ -166,26 +166,15 @@ def random_2q_clifford(random_index_gen, two_qubit_cliffords):
 
 def random_circuits(
     depth: int,
-    targets: list[QubitId],
+    targets: list[Union[QubitId, QubitPairId]],
     niter,
     rb_gen,
     noise_model=None,
     inverse_layer=True,
+    single_qubit=True,
+    file_inv=pathlib.Path(),
 ) -> Iterable:
-    """Returns single-qubit random self-inverting Clifford circuits.
-
-    Args:
-        params (StandardRBParameters): Parameters of the RB protocol.
-        targets (list[QubitId]):
-            list of qubits the circuit is executed on.
-        nqubits (int, optional): Number of qubits of the resulting circuits.
-            If ``None``, sets ``len(qubits)``. Defaults to ``None``.
-        inverse_layer (bool): If `True` a layer inverting the circuit is added.
-            Default to `True`.
-
-    Returns:
-        Iterable: The iterator of circuits.
-    """
+    """Returns single-qubit random (self-inverting) Clifford circuits."""
 
     circuits = []
     indexes = defaultdict(list)
@@ -193,46 +182,7 @@ def random_circuits(
         for target in targets:
             circuit, random_index = layer_circuit(rb_gen, depth, target)
             if inverse_layer:
-                add_inverse_layer(circuit)
-            add_measurement_layer(circuit)
-            if noise_model is not None:
-                circuit = noise_model.apply(circuit)
-            circuits.append(circuit)
-            indexes[target].append(random_index)
-
-    return circuits, indexes
-
-
-def random_circuits_2q(
-    depth: int,
-    targets: list[QubitPairId],
-    niter,
-    rb_gen,
-    file_inv,
-    noise_model=None,
-    inverse_layer=True,
-) -> Iterable:
-    """Returns single-qubit random self-inverting Clifford circuits.
-
-    Args:
-        params (StandardRBParameters): Parameters of the RB protocol.
-        targets (list[QubitId]):
-            list of qubits the circuit is executed on.
-        nqubits (int, optional): Number of qubits of the resulting circuits.
-            If ``None``, sets ``len(qubits)``. Defaults to ``None``.
-
-    Returns:
-        Iterable: The iterator of circuits.
-    """
-
-    circuits = []
-    indexes = defaultdict(list)
-    for _ in range(niter):
-        for target in targets:
-            circuit, random_index = layer_circuit(rb_gen, depth, target)
-            if inverse_layer:
-                # FIXME: General for 1 and 2q
-                add_inverse_2q_layer(circuit, rb_gen.two_qubit_cliffords, file_inv)
+                add_inverse_layer(circuit, rb_gen, single_qubit, file_inv)
             add_measurement_layer(circuit)
             if noise_model is not None:
                 circuit = noise_model.apply(circuit)
@@ -488,34 +438,25 @@ def get_circuits(
         else RB_Generator(params.seed, params.file)
     )
     npulses_per_clifford = rb_gen.calculate_average_pulses()
+    inv_file = params.file_inv if not single_qubit else None
     for depth in params.depths:
         # TODO: This does not generate multi qubit circuits
-        # FIXME: Select 1q and 2q circuits
+        circuits_depth, random_indexes = random_circuits(
+            depth,
+            qubits_ids,
+            params.niter,
+            rb_gen,
+            noise_model,
+            add_inverse_layer,
+            single_qubit,
+            inv_file,
+        )
 
+        circuits.extend(circuits_depth)
         if single_qubit:
-            circuits_depth, random_indexes = random_circuits(
-                depth,
-                qubits_ids,
-                params.niter,
-                rb_gen,
-                noise_model,
-                add_inverse_layer,
-            )
-            circuits.extend(circuits_depth)
             for qubit in random_indexes.keys():
                 indexes[(qubit, depth)] = random_indexes[qubit]
-
         else:
-            circuits_depth, random_indexes = random_circuits_2q(
-                depth,
-                qubits_ids,
-                params.niter,
-                rb_gen,
-                params.file_inv,
-                noise_model,
-                add_inverse_layer,
-            )
-            circuits.extend(circuits_depth)
             for qubit in random_indexes.keys():
                 indexes[(qubit[0], qubit[1], depth)] = random_indexes[qubit]
 
@@ -557,7 +498,7 @@ def rb_acquisition(
     targets: list[QubitId],
     add_inverse_layer: bool = True,
     interleave: str = None,  # FIXME: Add interleave
-) -> Data:
+) -> RBData:
     """RB data acquisition function.
 
     Args:
@@ -597,10 +538,10 @@ def rb_acquisition(
 
 def twoq_rb_acquisition(
     params: Parameters,
-    targets: list[QubitId],
+    targets: list[QubitPairId],
     add_inverse_layer: bool = True,
     interleave: str = None,
-) -> Data:
+) -> RB2QData:
     """The data acquisition stage of two qubit Standard Randomized Benchmarking."""
 
     data, noise_model, backend = setup(params, single_qubit=False)
@@ -815,60 +756,57 @@ def layer_circuit(rb_gen: Callable, depth: int, target) -> tuple[Circuit, dict]:
     return full_circuit, random_indexes
 
 
-def add_inverse_layer(circuit: Circuit, single_qubit=True):
+def add_inverse_layer(
+    circuit: Circuit, rb_gen: RB_Generator, single_qubit=True, file_inv=pathlib.Path()
+):
     """Adds an inverse gate/inverse gates at the end of a circuit (in place).
 
     Args:
         circuit (Circuit): circuit
     """
-
-    if circuit.depth > 0:
-        circuit.add(gates.Unitary(circuit.unitary(), *range(circuit.nqubits)).dagger())
-
-
-def add_inverse_2q_layer(circuit: Circuit, two_qubit_cliffords, file_inv):
-    """Adds an inverse gate/inverse gates at the end of a circuit (in place).
-
-    Args:
-        circuit (Circuit): circuit
-    """
-
-    path = pathlib.Path(__file__).parent / file_inv
-    if file_inv is None and not path.is_file():
-        clifford_matrices_inv = generate_inv_dict_cliffords_file(
-            two_qubit_cliffords, file_inv
-        )
+    if single_qubit:
+        if circuit.depth > 0:
+            circuit.add(
+                gates.Unitary(circuit.unitary(), *range(circuit.nqubits)).dagger()
+            )
     else:
-        clifford_matrices_inv = np.load(path)
+        two_qubit_cliffords = rb_gen.two_qubit_cliffords
+        path = pathlib.Path(__file__).parent / file_inv
+        if file_inv is None and not path.is_file():
+            clifford_matrices_inv = generate_inv_dict_cliffords_file(
+                two_qubit_cliffords, file_inv
+            )
+        else:
+            clifford_matrices_inv = np.load(path)
 
-    if circuit.depth > 0:
-        clifford = circuit.unitary()
+        if circuit.depth > 0:
+            clifford = circuit.unitary()
 
-        cliffords = [clifford * global_phase for global_phase in GLOBAL_PHASES]
-        cliffords_inv = [np.linalg.inv(clifford).round(3) for clifford in cliffords]
+            cliffords = [clifford * global_phase for global_phase in GLOBAL_PHASES]
+            cliffords_inv = [np.linalg.inv(clifford).round(3) for clifford in cliffords]
 
-        for clifford_inv in cliffords_inv:
-            clifford_inv += 0.0 + 0.0j
-            clifford_inv_str = np.array2string(clifford_inv, separator=",")
-            if clifford_inv_str in clifford_matrices_inv.files:
-                index_inv = clifford_matrices_inv[clifford_inv_str]
+            for clifford_inv in cliffords_inv:
+                clifford_inv += 0.0 + 0.0j
+                clifford_inv_str = np.array2string(clifford_inv, separator=",")
+                if clifford_inv_str in clifford_matrices_inv.files:
+                    index_inv = clifford_matrices_inv[clifford_inv_str]
 
-        clifford = two_qubit_cliffords[str(index_inv)]
+            clifford = two_qubit_cliffords[str(index_inv)]
 
-        gate_list = clifford.split(",")
+            gate_list = clifford.split(",")
 
-        clifford_list = find_cliffords(gate_list)
+            clifford_list = find_cliffords(gate_list)
 
-        clifford_gate = []
-        for clifford in clifford_list:
-            values_with_1, values_with_2, value_with_CZ = separator(clifford)
-            clifford_gate.append(SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_1](0))
-            clifford_gate.append(SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_2](1))
-            if value_with_CZ:
-                clifford_gate.append(gates.CZ(0, 1))
+            clifford_gate = []
+            for clifford in clifford_list:
+                values_with_1, values_with_2, value_with_CZ = separator(clifford)
+                clifford_gate.append(SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_1](0))
+                clifford_gate.append(SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_2](1))
+                if value_with_CZ:
+                    clifford_gate.append(gates.CZ(0, 1))
 
-        for gate in clifford_gate:
-            circuit.add(gate)
+            for gate in clifford_gate:
+                circuit.add(gate)
 
 
 def add_measurement_layer(circuit: Circuit):
