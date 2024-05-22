@@ -23,7 +23,6 @@ from .resonator_flux_dependence import (
     ResonatorFluxResults,
 )
 from .resonator_flux_dependence import _fit as diagonal_fit
-from .resonator_flux_dependence import create_flux_pulse_sweepers
 
 
 @dataclass
@@ -87,7 +86,6 @@ class ResCrosstalkData(ResonatorFluxData):
     def diagonal(self) -> Optional[ResonatorFluxData]:
         instance = ResonatorFluxData(
             resonator_type=self.resonator_type,
-            flux_pulses=self.flux_pulses,
             qubit_frequency=self.qubit_frequency,
             bare_resonator_frequency=self.bare_resonator_frequency,
         )
@@ -103,7 +101,6 @@ class ResCrosstalkData(ResonatorFluxData):
             return instance
         return ResonatorFluxData(
             resonator_type=self.resonator_type,
-            flux_pulses=self.flux_pulses,
             qubit_frequency=self.qubit_frequency,
         )
 
@@ -160,28 +157,23 @@ def _acquisition(
 
     else:
         flux_qubits = params.flux_qubits
-    if params.flux_pulses:
-        delta_bias_flux_range, sweepers, sequences = create_flux_pulse_sweepers(
-            params, platform, flux_qubits, sequence, crosstalk=True
+
+    delta_bias_range = np.arange(
+        -params.bias_width / 2, params.bias_width / 2, params.bias_step
+    )
+    sequences = [sequence] * len(flux_qubits)
+    sweepers = [
+        Sweeper(
+            Parameter.bias,
+            delta_bias_range,
+            qubits=[platform.qubits[flux_qubit]],
+            type=SweeperType.OFFSET,
         )
-    else:
-        delta_bias_flux_range = np.arange(
-            -params.bias_width / 2, params.bias_width / 2, params.bias_step
-        )
-        sequences = [sequence] * len(flux_qubits)
-        sweepers = [
-            Sweeper(
-                Parameter.bias,
-                delta_bias_flux_range,
-                qubits=[platform.qubits[flux_qubit]],
-                type=SweeperType.OFFSET,
-            )
-            for flux_qubit in flux_qubits
-        ]
+        for flux_qubit in flux_qubits
+    ]
 
     data = ResCrosstalkData(
         resonator_type=platform.resonator_type,
-        flux_pulses=params.flux_pulses,
         qubit_frequency=qubit_frequency,
         resonator_frequency=resonator_frequency,
         sweetspot=sweetspots,
@@ -212,7 +204,7 @@ def _acquisition(
                 signal=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + ro_pulses[qubit].frequency,
-                bias=delta_bias_flux_range + sweetspot,
+                bias=delta_bias_range + sweetspot,
             )
     return data
 

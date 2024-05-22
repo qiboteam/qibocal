@@ -43,11 +43,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
     fig.add_trace(
         go.Heatmap(
             x=qubit_data.freq * HZ_TO_GHZ,
-            y=(
-                qubit_data.bias - data.offset[qubit]
-                if data.flux_pulses
-                else qubit_data.bias
-            ),
+            y=qubit_data.bias,
             z=qubit_data.signal,
             colorbar_x=0.46,
         ),
@@ -66,7 +62,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
         fig.add_trace(
             go.Scatter(
                 x=fit_function(bias, *params),
-                y=bias - data.offset[qubit] if data.flux_pulses else bias,
+                y=bias,
                 showlegend=True,
                 name="Fit",
                 marker=dict(color="green"),
@@ -81,10 +77,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
         col=1,
     )
 
-    if data.flux_pulses:
-        fig.update_yaxes(title_text="Flux Amplitude [a.u.]", row=1, col=1)
-    else:
-        fig.update_yaxes(title_text="Bias [V]", row=1, col=1)
+    fig.update_yaxes(title_text="Bias [V]", row=1, col=1)
 
     fig.add_trace(
         go.Heatmap(
@@ -134,11 +127,7 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
         fig.add_trace(
             go.Heatmap(
                 x=frequencies,
-                y=(
-                    qubit_data.bias - data.voltage[qubit]
-                    if data.flux_pulses
-                    else qubit_data.bias
-                ),
+                y=qubit_data.bias,
                 z=qubit_data.signal,
                 showscale=False,
             ),
@@ -154,11 +143,7 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
                             xj=qubit_data.bias, **fit.fitted_parameters[flux_qubit]
                         )
                         * HZ_TO_GHZ,
-                        y=(
-                            qubit_data.bias - data.voltage[qubit]
-                            if data.flux_pulses
-                            else qubit_data.bias
-                        ),
+                        y=qubit_data.bias,
                         showlegend=not any(
                             isinstance(trace, go.Scatter) for trace in fig.data
                         ),
@@ -177,11 +162,7 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
                             qubit_data.bias,
                             *diagonal_params,
                         ),
-                        y=(
-                            qubit_data.bias - data.voltage[flux_qubit[1]]
-                            if data.flux_pulses
-                            else qubit_data.bias
-                        ),
+                        y=qubit_data.bias,
                         showlegend=not any(
                             isinstance(trace, go.Scatter) for trace in fig.data
                         ),
@@ -199,16 +180,9 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
             col=col + 1,
         )
 
-        if data.flux_pulses:
-            fig.update_yaxes(
-                title_text=f"Qubit {flux_qubit[1]}: Flux Amplitude [a.u.]",
-                row=1,
-                col=col + 1,
-            )
-        else:
-            fig.update_yaxes(
-                title_text=f"Qubit {flux_qubit[1]}: Bias [V]", row=1, col=col + 1
-            )
+        fig.update_yaxes(
+            title_text=f"Qubit {flux_qubit[1]}: Bias [V]", row=1, col=col + 1
+        )
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
     fig.update_layout(xaxis2=dict(range=[np.min(frequencies), np.max(frequencies)]))
