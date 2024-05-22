@@ -7,7 +7,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
@@ -23,7 +22,7 @@ from .length_frequency_signal import (
     RabiLengthFrequencyVoltResults,
     _update,
 )
-from .utils import period_correction_factor, rabi_length_function
+from .utils import period_correction_factor, rabi_length_function, sequence_length
 
 
 @dataclass
@@ -83,22 +82,9 @@ def _acquisition(
 ) -> RabiLengthFreqData:
     """Data acquisition for Rabi experiment sweeping length."""
 
-    # create a sequence of pulses for the experiment
-    sequence = PulseSequence()
-    qd_pulses = {}
-    ro_pulses = {}
-    amplitudes = {}
-    for qubit in targets:
-        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        if params.pulse_amplitude is not None:
-            qd_pulses[qubit].amplitude = params.pulse_amplitude
-
-        amplitudes[qubit] = qd_pulses[qubit].amplitude
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
-        )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
+    sequence, qd_pulses, ro_pulses, amplitudes = sequence_length(
+        targets, params, platform
+    )
 
     # qubit drive pulse length
     length_range = np.arange(

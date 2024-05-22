@@ -5,7 +5,6 @@ import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
@@ -57,23 +56,9 @@ def _acquisition(
     to find the drive pulse amplitude that creates a rotation of a desired angle.
     """
 
-    # create a sequence of pulses for the experiment
-    sequence = PulseSequence()
-    qd_pulses = {}
-    ro_pulses = {}
-    durations = {}
-    for qubit in targets:
-        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        if params.pulse_length is not None:
-            qd_pulses[qubit].duration = params.pulse_length
-
-        durations[qubit] = qd_pulses[qubit].duration
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
-        )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
-
+    sequence, qd_pulses, _, durations = utils.sequence_amplitude(
+        targets, params, platform
+    )
     # define the parameter to sweep and its range:
     # qubit drive pulse amplitude
     qd_pulse_amplitude_range = np.arange(

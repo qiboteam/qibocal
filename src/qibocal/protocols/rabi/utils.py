@@ -1,6 +1,11 @@
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from qibolab.platform import Platform
+from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
+
+from qibocal.auto.operation import Parameters
 
 from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
 
@@ -215,3 +220,49 @@ def period_correction_factor(phase: float):
 
     x = phase / np.pi
     return np.round(1 + x) - x
+
+
+def sequence_amplitude(
+    targets: list[QubitId], params: Parameters, platform: Platform
+) -> tuple[PulseSequence, dict, dict, dict]:
+    """Return sequence for rabi amplitude."""
+    sequence = PulseSequence()
+    qd_pulses = {}
+    ro_pulses = {}
+    durations = {}
+    for qubit in targets:
+        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+        if params.pulse_length is not None:
+            qd_pulses[qubit].duration = params.pulse_length
+
+        durations[qubit] = qd_pulses[qubit].duration
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=qd_pulses[qubit].finish
+        )
+        sequence.add(qd_pulses[qubit])
+        sequence.add(ro_pulses[qubit])
+    return sequence, qd_pulses, ro_pulses, durations
+
+
+def sequence_length(
+    targets: list[QubitId], params: Parameters, platform: Platform
+) -> tuple[PulseSequence, dict, dict, dict]:
+    """Return sequence for rabi length."""
+    sequence = PulseSequence()
+    qd_pulses = {}
+    ro_pulses = {}
+    amplitudes = {}
+    for qubit in targets:
+        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
+            qubit, start=0, duration=params.pulse_duration_start
+        )
+        if params.pulse_amplitude is not None:
+            qd_pulses[qubit].amplitude = params.pulse_amplitude
+        amplitudes[qubit] = qd_pulses[qubit].amplitude
+
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=qd_pulses[qubit].finish
+        )
+        sequence.add(qd_pulses[qubit])
+        sequence.add(ro_pulses[qubit])
+    return sequence, qd_pulses, ro_pulses, amplitudes

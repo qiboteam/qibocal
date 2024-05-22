@@ -7,7 +7,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
@@ -20,7 +19,7 @@ from qibocal.protocols.utils import table_dict, table_html
 
 from ..utils import HZ_TO_GHZ
 from .amplitude_signal import RabiAmplitudeVoltResults
-from .utils import period_correction_factor, rabi_amplitude_function
+from .utils import period_correction_factor, rabi_amplitude_function, sequence_amplitude
 
 
 @dataclass
@@ -98,22 +97,9 @@ def _acquisition(
 ) -> RabiAmplitudeFreqVoltData:
     """Data acquisition for Rabi experiment sweeping amplitude."""
 
-    # create a sequence of pulses for the experiment
-    sequence = PulseSequence()
-    qd_pulses = {}
-    ro_pulses = {}
-    durations = {}
-    for qubit in targets:
-        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        if params.pulse_length is not None:
-            qd_pulses[qubit].duration = params.pulse_length
-
-        durations[qubit] = qd_pulses[qubit].duration
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
-        )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
+    sequence, qd_pulses, ro_pulses, durations = sequence_amplitude(
+        targets, params, platform
+    )
 
     # qubit drive pulse amplitude
     amplitude_range = np.arange(
