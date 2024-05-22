@@ -11,6 +11,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.protocols.dispersive_shift import DispersiveShiftType
 from qibocal.protocols.utils import (
     HZ_TO_GHZ,
     lorentzian,
@@ -21,7 +22,7 @@ from qibocal.protocols.utils import (
 
 
 @dataclass
-class DispersiveShiftParameters(Parameters):
+class DispersiveShiftQutritParameters(Parameters):
     """Dispersive shift inputs."""
 
     freq_width: int
@@ -31,7 +32,7 @@ class DispersiveShiftParameters(Parameters):
 
 
 @dataclass
-class DispersiveShiftResults(Results):
+class DispersiveShiftQutritResults(Results):
     """Dispersive shift outputs."""
 
     frequency_state_zero: dict[QubitId, float]
@@ -60,20 +61,8 @@ class DispersiveShiftResults(Results):
         return {key: value for key, value in asdict(self).items() if "two" in key}
 
 
-DispersiveShiftType = np.dtype(
-    [
-        ("freq", np.float64),
-        ("i", np.float64),
-        ("q", np.float64),
-        ("signal", np.float64),
-        ("phase", np.float64),
-    ]
-)
-"""Custom dtype for dispersive shift."""
-
-
 @dataclass
-class DispersiveShiftData(Data):
+class DispersiveShiftQutritData(Data):
     """Dispersive shift acquisition outputs."""
 
     resonator_type: str
@@ -84,15 +73,15 @@ class DispersiveShiftData(Data):
 
 
 def _acquisition(
-    params: DispersiveShiftParameters, platform: Platform, targets: list[QubitId]
-) -> DispersiveShiftData:
+    params: DispersiveShiftQutritParameters, platform: Platform, targets: list[QubitId]
+) -> DispersiveShiftQutritData:
     r"""
     Data acquisition for dispersive shift experiment.
     Perform spectroscopy on the readout resonator, with the qubit in ground and excited state, showing
     the resonator shift produced by the coupling between the resonator and the qubit.
 
     Args:
-        params (DispersiveShiftParameters): experiment's parameters
+        params (DispersiveShiftQutritParameters): experiment's parameters
         platform (Platform): Qibolab platform object
         targets (list): list of target qubits to perform the action
 
@@ -139,7 +128,7 @@ def _acquisition(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
 
-    data = DispersiveShiftData(resonator_type=platform.resonator_type)
+    data = DispersiveShiftQutritData(resonator_type=platform.resonator_type)
     results = []
     for i, sequence in enumerate([sequence_0, sequence_1, sequence_2]):
         sweeper = Sweeper(
@@ -181,7 +170,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
+def _fit(data: DispersiveShiftQutritData) -> DispersiveShiftQutritResults:
     """Post-Processing for dispersive shift"""
     qubits = data.qubits
     iq_couples = [[], []]  # axis 0: states, axis 1: qubit
@@ -207,7 +196,7 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
                 else:
                     frequency_2[qubit], fitted_parameters_2[qubit], _ = fit_result
 
-    return DispersiveShiftResults(
+    return DispersiveShiftQutritResults(
         frequency_state_zero=frequency_0,
         frequency_state_one=frequency_1,
         frequency_state_two=frequency_2,
@@ -217,7 +206,9 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     )
 
 
-def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResults):
+def _plot(
+    data: DispersiveShiftQutritData, target: QubitId, fit: DispersiveShiftQutritResults
+):
     """Plotting function for dispersive shift."""
     figures = []
     fig = make_subplots(
