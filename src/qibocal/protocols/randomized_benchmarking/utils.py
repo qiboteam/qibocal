@@ -1,20 +1,20 @@
 import json
 import pathlib
+from ast import Tuple
 from collections import defaultdict
 from dataclasses import dataclass, field
 from numbers import Number
-from typing import Callable, Iterable, Optional, Union
+from typing import Callable, Iterable, Optional, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
 from qibo import gates
 from qibo.backends import GlobalBackend
 from qibo.config import raise_error
-from qibo.gates.abstract import Gate
 from qibo.models import Circuit
-from qibolab.qubits import QubitId
+from qibolab.qubits import QubitId, QubitPairId
 
-from qibocal.auto.operation import Data, Parameters
+from qibocal.auto.operation import Data, Parameters, Results
 from qibocal.auto.transpile import (
     dummy_transpiler,
     execute_transpiled_circuit,
@@ -23,6 +23,8 @@ from qibocal.auto.transpile import (
 from qibocal.config import raise_error
 from qibocal.protocols.randomized_benchmarking import noisemodels
 from qibocal.protocols.utils import significant_digit
+
+from .fitting import fit_exp1B_func
 
 SINGLE_QUBIT_CLIFFORDS = {
     # Virtual gates
@@ -58,25 +60,186 @@ SINGLE_QUBIT_CLIFFORDS = {
     ),  # Rx(-pi/2)Ry(pi/2)Rx(-pi/2)
 }
 
+SINGLE_QUBIT_CLIFFORDS_NAMES = {
+    # Virtual gates
+    "": gates.I,
+    # Check the Z
+    "minusX,minusY": lambda q: gates.U3(q, 0, np.pi / 2, np.pi / 2),  # Z, gp:exp(iπ)
+    "sqrtX,sqrtMinusY,sqrtMinusX": lambda q: gates.U3(
+        q, 0, -np.pi / 2, 0
+    ),  # La U3 esta bien el nombre no ?  # gates.RZ(q, np.pi / 2),  gp:exp(iπ/4)
+    "sqrtX,sqrtY,sqrtMinusX": lambda q: gates.U3(
+        q, 0, np.pi / 2, 0
+    ),  # gates.U3(q, 0, -np.pi / 2, 0),  # Esta bien gates.RZ(q, -np.pi / 2),  gp:exp(iπ/4)
+    # pi rotations
+    # 'X': lambda q: gates.U3(q, np.pi, 0, np.pi),  # X,
+    # 'Y': lambda q: gates.U3(q, np.pi, 0, 0),  # Y,
+    # pi rotations (For the minus exp(iπ) global phase) (Check the phase from qiskit) RX(π)=−iX; RY(π)=−iY
+    "minusX": lambda q: gates.U3(q, np.pi, -np.pi, 0),  # X, gp:exp(iπ)
+    "minusY": lambda q: gates.U3(q, np.pi, 0, 0),  # Y, gp:exp(iπ)
+    # pi/2 rotations (Check the minus) RX(π/2)=−exp(i π/4)SX
+    "sqrtX": lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),  # Rx(pi/2) gp:
+    "sqrtMinusX": lambda q: gates.U3(
+        q, -np.pi / 2, -np.pi / 2, np.pi / 2
+    ),  # Rx(-pi/2) gp:
+    "sqrtY": lambda q: gates.U3(q, np.pi / 2, 0, 0),  # Ry(pi/2) gp:
+    "sqrtMinusY": lambda q: gates.U3(q, -np.pi / 2, 0, 0),  # Ry(-pi/2) gp:
+    # 2pi/3 rotations Check the gp
+    "sqrtX,sqrtY": lambda q: gates.U3(
+        q, np.pi / 2, -np.pi / 2, 0
+    ),  # Rx(pi/2)Ry(pi/2) gp:
+    "sqrtX,sqrtMinusY": lambda q: gates.U3(
+        q, np.pi / 2, -np.pi / 2, np.pi
+    ),  # Rx(pi/2)Ry(-pi/2) gp:
+    "sqrtMinusX,sqrtY": lambda q: gates.U3(
+        q, np.pi / 2, np.pi / 2, 0
+    ),  # Rx(-pi/2)Ry(pi/2) gp:
+    "sqrtMinusX,sqrtMinusY": lambda q: gates.U3(
+        q, np.pi / 2, np.pi / 2, -np.pi
+    ),  # Rx(-pi/2)Ry(-pi/2) gp:
+    "sqrtY,sqrtX": lambda q: gates.U3(
+        q, np.pi / 2, 0, np.pi / 2
+    ),  # Ry(pi/2)Rx(pi/2) gp:
+    "sqrtY,sqrtMinusX": lambda q: gates.U3(
+        q, np.pi / 2, 0, -np.pi / 2
+    ),  # Ry(pi/2)Rx(-pi/2) gp:
+    "sqrtMinusY,sqrtX": lambda q: gates.U3(
+        q, np.pi / 2, -np.pi, np.pi / 2
+    ),  # Ry(-pi/2)Rx(pi/2) gp:
+    "sqrtMinusY,sqrtMinusX": lambda q: gates.U3(
+        q, np.pi / 2, np.pi, -np.pi / 2
+    ),  # Ry(-pi/2)Rx(-pi/2) gp:
+    # Hadamard-like Check the gp
+    "minusX,sqrtY": lambda q: gates.U3(q, np.pi / 2, -np.pi, 0),  # X Ry(pi/2) gp:
+    "minusX,sqrtMinusY": lambda q: gates.U3(q, np.pi / 2, 0, np.pi),  # X Ry(-pi/2) gp:
+    "minusY,sqrtX": lambda q: gates.U3(
+        q, np.pi / 2, np.pi / 2, np.pi / 2
+    ),  # Y Rx(pi/2) gp:
+    "minusY,sqrtMinusX": lambda q: gates.U3(
+        q, np.pi / 2, -np.pi / 2, -np.pi / 2
+    ),  # Y Rx(-pi/2) gp:
+    "sqrtX,sqrtY,sqrtX": lambda q: gates.U3(
+        q, np.pi, -np.pi / 4, np.pi / 4
+    ),  # Rx(pi/2)Ry(pi/2)Rx(pi/2) gp:
+    "sqrtX,sqrtMinusY,sqrtX": lambda q: gates.U3(
+        q, np.pi, np.pi / 4, -np.pi / 4
+    ),  # Rx(-pi/2)Ry(pi/2)Rx(-pi/2) gp:
+}
+
+GLOBAL_PHASES = [
+    1 + 0j,
+    -1 + 0j,
+    0 + 1j,
+    0 - 1j,
+    0.707 + 0.707j,
+    -0.707 + 0.707j,
+    0.707 - 0.707j,
+    -0.707 - 0.707j,
+]
+
+RBType = np.dtype(
+    [
+        ("samples", np.int32),
+    ]
+)
+"""Custom dtype for RB."""
+
 
 def random_clifford(random_index_gen):
-    """Generates random Clifford operator.
-
-    Args:
-        qubits (int or list or ndarray): if ``int``, the number of qubits for the Clifford.
-            If ``list`` or ``ndarray``, indexes of the qubits for the Clifford to act on.
-        seed (int or ``numpy.random.Generator``, optional): Either a generator of
-            random numbers or a fixed seed to initialize a generator. If ``None``,
-            initializes a generator with a random seed. Default is ``None``.
-
-    Returns:
-        (list of :class:`qibo.gates.Gate`): Random Clifford operator(s).
-    """
+    """Generates random Clifford operator."""
 
     random_index = int(random_index_gen(SINGLE_QUBIT_CLIFFORDS))
     clifford_gate = SINGLE_QUBIT_CLIFFORDS[random_index](0)
 
     return clifford_gate, random_index
+
+
+def random_2q_clifford(random_index_gen, two_qubit_cliffords):
+    """Generates random two qubit Clifford operator."""
+
+    random_index = int(random_index_gen(two_qubit_cliffords))
+    clifford = two_qubit_cliffords[str(random_index)]
+    clifford_gate = clifford2gates(clifford)
+
+    return clifford_gate, random_index
+
+
+def random_circuits(
+    depth: int,
+    targets: list[QubitId],
+    niter,
+    rb_gen,
+    noise_model=None,
+    inverse_layer=True,
+) -> Iterable:
+    """Returns single-qubit random self-inverting Clifford circuits.
+
+    Args:
+        params (StandardRBParameters): Parameters of the RB protocol.
+        targets (list[QubitId]):
+            list of qubits the circuit is executed on.
+        nqubits (int, optional): Number of qubits of the resulting circuits.
+            If ``None``, sets ``len(qubits)``. Defaults to ``None``.
+        inverse_layer (bool): If `True` a layer inverting the circuit is added.
+            Default to `True`.
+
+    Returns:
+        Iterable: The iterator of circuits.
+    """
+
+    circuits = []
+    indexes = defaultdict(list)
+    for _ in range(niter):
+        for target in targets:
+            circuit, random_index = layer_circuit(rb_gen, depth, target)
+            if inverse_layer:
+                add_inverse_layer(circuit)
+            add_measurement_layer(circuit)
+            if noise_model is not None:
+                circuit = noise_model.apply(circuit)
+            circuits.append(circuit)
+            indexes[target].append(random_index)
+
+    return circuits, indexes
+
+
+def random_circuits_2q(
+    depth: int,
+    targets: list[QubitPairId],
+    niter,
+    rb_gen,
+    file_inv,
+    noise_model=None,
+    inverse_layer=True,
+) -> Iterable:
+    """Returns single-qubit random self-inverting Clifford circuits.
+
+    Args:
+        params (StandardRBParameters): Parameters of the RB protocol.
+        targets (list[QubitId]):
+            list of qubits the circuit is executed on.
+        nqubits (int, optional): Number of qubits of the resulting circuits.
+            If ``None``, sets ``len(qubits)``. Defaults to ``None``.
+
+    Returns:
+        Iterable: The iterator of circuits.
+    """
+
+    circuits = []
+    indexes = defaultdict(list)
+    for _ in range(niter):
+        for target in targets:
+            circuit, random_index = layer_circuit(rb_gen, depth, target)
+            if inverse_layer:
+                # FIXME: General for 1 and 2q
+                add_inverse_2q_layer(circuit, rb_gen.two_qubit_cliffords, file_inv)
+            add_measurement_layer(circuit)
+            if noise_model is not None:
+                circuit = noise_model.apply(circuit)
+            circuits.append(circuit)
+            indexes[target].append(random_index)
+
+    return circuits, indexes
 
 
 def number_to_str(
@@ -157,82 +320,60 @@ def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
 
 class RB_Generator:
     """
-    This class generates random single qubit cliffords for randomized benchmarking.
+    This class generates random two qubit cliffords for randomized benchmarking.
     """
 
-    def __init__(self, seed):
+    def __init__(self, seed, file=None):
         self.seed = seed
         self.local_state = (
             np.random.default_rng(seed)
             if seed is None or isinstance(seed, int)
             else seed
         )
+        if file is not None:
+            self.two_qubit_cliffords = load_cliffords(file)
+            self.file = file
+        else:
+            self.file = None
 
-    def random_index(self, gate_list):
+    def random_index(self, gate_dict):
         """
-        Generates a random index within the range of the given gate list.
+        Generates a random index within the range of the given file len.
 
         Parameters:
-        - gate_list (list): Dict of gates.
+        - file (Dict): Dict of gates.
 
         Returns:
         - int: Random index.
         """
-        return self.local_state.integers(0, len(gate_list), 1)
+        return self.local_state.integers(0, len(gate_dict.keys()), 1)
 
-    def layer_gen(self):
+    def layer_gen_single_qubit(self):
         """
         Returns:
         - Gate: Random single-qubit clifford .
         """
         return random_clifford(self.random_index)
 
+    def layer_gen_two_qubit(self):
+        """
+        Returns:
+        - Gate: Random two-qubit clifford .
+        """
+        return random_2q_clifford(self.random_index, self.two_qubit_cliffords)
 
-def random_circuits(
-    depth: int,
-    targets: list[QubitId],
-    niter,
-    rb_gen,
-    noise_model=None,
-    inverse_layer=True,
-) -> Iterable:
-    """Returns single-qubit random self-inverting Clifford circuits.
+    def calculate_average_pulses(self):
+        """
+        Returns:
+        -  Average number of pulses per clifford.
+        """
+        # FIXME: Make it work for single qubit properly
+        if self.file is not None:
+            npulses = calculate_pulses_clifford(self.two_qubit_cliffords)
+        else:
+            npulses = 1.875
 
-    Args:
-        params (StandardRBParameters): Parameters of the RB protocol.
-        targets (list[QubitId]):
-            list of qubits the circuit is executed on.
-        nqubits (int, optional): Number of qubits of the resulting circuits.
-            If ``None``, sets ``len(qubits)``. Defaults to ``None``.
-        inverse_layer (bool): If `True` a layer inverting the circuit is added.
-            Default to `True`.
-
-    Returns:
-        Iterable: The iterator of circuits.
-    """
-
-    circuits = []
-    indexes = defaultdict(list)
-    for _ in range(niter):
-        for target in targets:
-            circuit, random_index = layer_circuit(rb_gen, depth, target)
-            if inverse_layer:
-                add_inverse_layer(circuit)
-            add_measurement_layer(circuit)
-            if noise_model is not None:
-                circuit = noise_model.apply(circuit)
-            circuits.append(circuit)
-            indexes[target].append(random_index)
-
-    return circuits, indexes
-
-
-RBType = np.dtype(
-    [
-        ("samples", np.int32),
-    ]
-)
-"""Custom dtype for RB."""
+        return npulses
 
 
 @dataclass
@@ -248,10 +389,16 @@ class RBData(Data):
     """Number of shots."""
     niter: int
     """Number of iterations for each depth."""
-    data: dict[QubitId, npt.NDArray[RBType]] = field(default_factory=dict)
+    data: dict[Union[QubitId, QubitPairId], npt.NDArray[RBType]] = field(
+        default_factory=dict
+    )
     """Raw data acquired."""
-    circuits: dict[QubitId, list[list[int]]] = field(default_factory=dict)
+    circuits: dict[Union[QubitId, QubitPairId], list[list[int]]] = field(
+        default_factory=dict
+    )
     """Clifford gate indexes executed."""
+    npulses_per_clifford: float = 1.875
+    """Number of pulses for an average clifford."""
 
     def extract_probabilities(self, qubit):
         """Extract the probabilities given `qubit`"""
@@ -263,21 +410,47 @@ class RBData(Data):
         return probs
 
 
-def rb_acquisition(
+@dataclass
+class RB2QData(RBData):
+    """The output of the acquisition function."""
+
+    npulses_per_clifford: float = 8.6  # Assuming U3s and 1 pulse CZ
+    """Number of pulses for an average clifford."""
+
+    def extract_probabilities(self, qubits):
+        """Extract the probabilities given (`qubit`, `qubit`)"""
+        probs = []
+        for depth in self.depths:
+            data_list = np.array(self.data[qubits[0], qubits[1], depth].tolist())
+            data_list = data_list.reshape((-1, self.nshots))
+            probs.append(np.count_nonzero(1 - data_list, axis=1) / data_list.shape[1])
+        return probs
+
+
+@dataclass
+class StandardRBResult(Results):
+    """Standard RB outputs."""
+
+    fidelity: dict[QubitId, float]
+    """The overall fidelity of this qubit."""
+    pulse_fidelity: dict[QubitId, float]
+    """The pulse fidelity of the gates acting on this qubit."""
+    fit_parameters: dict[QubitId, tuple[float, float, float]]
+    """Raw fitting parameters."""
+    fit_uncertainties: dict[QubitId, tuple[float, float, float]]
+    """Fitting parameters uncertainties."""
+    error_bars: dict[QubitId, Optional[Union[float, list[float]]]] = None
+    """Error bars for y."""
+
+    # FIXME: fix this after https://github.com/qiboteam/qibocal/pull/597
+    def __contains__(self, qubit: QubitId):
+        return True
+
+
+def setup(
     params: Parameters,
-    targets: list[QubitId],
-    add_inverse_layer: bool = True,
-) -> Data:
-    """RB data acquisition function.
-
-    Args:
-        params (FilteredRBParameters): All parameters in one object.
-        targets (dict[int, Union[str, int]] or list[Union[str, int]]): list of qubits the experiment is executed on.
-
-    Returns:
-        RBData: The depths, samples and ground state probability of each experiment in the scan.
-
-    """
+    single_qubit: bool = True,
+):
     backend = GlobalBackend()
     # For simulations, a noise model can be added.
     noise_model = None
@@ -290,9 +463,9 @@ def rb_acquisition(
 
         noise_model = getattr(noisemodels, params.noise_model)(params.noise_params)
         params.noise_params = noise_model.params.tolist()
-    # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
-    nqubits = len(targets)
-    data = RBData(
+    # Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
+    cls = RBData if single_qubit else RB2QData
+    data = cls(
         depths=params.depths,
         uncertainties=params.uncertainties,
         seed=params.seed,
@@ -300,27 +473,62 @@ def rb_acquisition(
         niter=params.niter,
     )
 
+    return data, noise_model, backend
+
+
+def get_circuits(
+    params, targets, add_inverse_layer, interleave, noise_model, single_qubit=True
+):
     circuits = []
     indexes = {}
-    samples = []
     qubits_ids = targets
-    rb_gen = RB_Generator(params.seed)
+    rb_gen = (
+        RB_Generator(params.seed)
+        if single_qubit
+        else RB_Generator(params.seed, params.file)
+    )
+    npulses_per_clifford = rb_gen.calculate_average_pulses()
     for depth in params.depths:
         # TODO: This does not generate multi qubit circuits
-        circuits_depth, random_indexes = random_circuits(
-            depth,
-            qubits_ids,
-            params.niter,
-            rb_gen,
-            noise_model,
-            add_inverse_layer,
-        )
-        circuits.extend(circuits_depth)
-        for qubit in random_indexes.keys():
-            indexes[(qubit, depth)] = random_indexes[qubit]
+        # FIXME: Select 1q and 2q circuits
+
+        if single_qubit:
+            circuits_depth, random_indexes = random_circuits(
+                depth,
+                qubits_ids,
+                params.niter,
+                rb_gen,
+                noise_model,
+                add_inverse_layer,
+            )
+            circuits.extend(circuits_depth)
+            for qubit in random_indexes.keys():
+                indexes[(qubit, depth)] = random_indexes[qubit]
+
+        else:
+            circuits_depth, random_indexes = random_circuits_2q(
+                depth,
+                qubits_ids,
+                params.niter,
+                rb_gen,
+                params.file_inv,
+                noise_model,
+                add_inverse_layer,
+            )
+            circuits.extend(circuits_depth)
+            for qubit in random_indexes.keys():
+                indexes[(qubit[0], qubit[1], depth)] = random_indexes[qubit]
+
+    return circuits, indexes, npulses_per_clifford
+
+
+def execute_circuits(circuits, targets, params, backend, single_qubit=True):
     # Execute the circuits
     transpiler = dummy_transpiler(backend)
-    qubit_maps = [[i] for i in targets] * (len(params.depths) * params.niter)
+    if single_qubit:
+        qubit_maps = [[i] for i in targets] * (len(params.depths) * params.niter)
+    else:
+        qubit_maps = [list(i) for i in targets] * (len(params.depths) * params.niter)
     if params.unrolling:
         _, executed_circuits = execute_transpiled_circuits(
             circuits,
@@ -341,9 +549,35 @@ def rb_acquisition(
             for circuit, qubit_map in zip(circuits, qubit_maps)
         ]
 
+    return executed_circuits
+
+
+def rb_acquisition(
+    params: Parameters,
+    targets: list[QubitId],
+    add_inverse_layer: bool = True,
+    interleave: str = None,  # FIXME: Add interleave
+) -> Data:
+    """RB data acquisition function.
+
+    Args:
+        params (FilteredRBParameters): All parameters in one object.
+        targets (dict[int, Union[str, int]] or list[Union[str, int]]): list of qubits the experiment is executed on.
+
+    Returns:
+        RBData: The depths, samples and ground state probability of each experiment in the scan.
+
+    """
+    data, noise_model, backend = setup(params, single_qubit=True)
+    circuits, indexes, npulses_per_clifford = get_circuits(
+        params, targets, add_inverse_layer, interleave, noise_model, single_qubit=True
+    )
+    executed_circuits = execute_circuits(circuits, targets, params, backend)
+
+    samples = []
     for circ in executed_circuits:
         samples.extend(circ.samples())
-    samples = np.reshape(samples, (-1, nqubits, params.nshots))
+    samples = np.reshape(samples, (-1, len(targets), params.nshots))
 
     for i, depth in enumerate(params.depths):
         index = (i * params.niter, (i + 1) * params.niter)
@@ -356,75 +590,54 @@ def rb_acquisition(
                 ),
             )
     data.circuits = indexes
+    data.npulses_per_clifford = npulses_per_clifford
 
     return data
 
 
-SINGLE_QUBIT_CLIFFORDS_NAMES = {
-    # Virtual gates
-    "": gates.I,
-    # Check the Z
-    "minusX,minusY": lambda q: gates.U3(q, 0, np.pi / 2, np.pi / 2),  # Z, gp:exp(iπ)
-    "sqrtX,sqrtMinusY,sqrtMinusX": lambda q: gates.U3(
-        q, 0, -np.pi / 2, 0
-    ),  # La U3 esta bien el nombre no ?  # gates.RZ(q, np.pi / 2),  gp:exp(iπ/4)
-    "sqrtX,sqrtY,sqrtMinusX": lambda q: gates.U3(
-        q, 0, np.pi / 2, 0
-    ),  # gates.U3(q, 0, -np.pi / 2, 0),  # Esta bien gates.RZ(q, -np.pi / 2),  gp:exp(iπ/4)
-    # pi rotations
-    # 'X': lambda q: gates.U3(q, np.pi, 0, np.pi),  # X,
-    # 'Y': lambda q: gates.U3(q, np.pi, 0, 0),  # Y,
-    # pi rotations (For the minus exp(iπ) global phase) (Check the phase from qiskit) RX(π)=−iX; RY(π)=−iY
-    "minusX": lambda q: gates.U3(q, np.pi, -np.pi, 0),  # X, gp:exp(iπ)
-    "minusY": lambda q: gates.U3(q, np.pi, 0, 0),  # Y, gp:exp(iπ)
-    # pi/2 rotations (Check the minus) RX(π/2)=−exp(i π/4)SX
-    "sqrtX": lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),  # Rx(pi/2) gp:
-    "sqrtMinusX": lambda q: gates.U3(
-        q, -np.pi / 2, -np.pi / 2, np.pi / 2
-    ),  # Rx(-pi/2) gp:
-    "sqrtY": lambda q: gates.U3(q, np.pi / 2, 0, 0),  # Ry(pi/2) gp:
-    "sqrtMinusY": lambda q: gates.U3(q, -np.pi / 2, 0, 0),  # Ry(-pi/2) gp:
-    # 2pi/3 rotations Check the gp
-    "sqrtX,sqrtY": lambda q: gates.U3(
-        q, np.pi / 2, -np.pi / 2, 0
-    ),  # Rx(pi/2)Ry(pi/2) gp:
-    "sqrtX,sqrtMinusY": lambda q: gates.U3(
-        q, np.pi / 2, -np.pi / 2, np.pi
-    ),  # Rx(pi/2)Ry(-pi/2) gp:
-    "sqrtMinusX,sqrtY": lambda q: gates.U3(
-        q, np.pi / 2, np.pi / 2, 0
-    ),  # Rx(-pi/2)Ry(pi/2) gp:
-    "sqrtMinusX,sqrtMinusY": lambda q: gates.U3(
-        q, np.pi / 2, np.pi / 2, -np.pi
-    ),  # Rx(-pi/2)Ry(-pi/2) gp:
-    "sqrtY,sqrtX": lambda q: gates.U3(
-        q, np.pi / 2, 0, np.pi / 2
-    ),  # Ry(pi/2)Rx(pi/2) gp:
-    "sqrtY,sqrtMinusX": lambda q: gates.U3(
-        q, np.pi / 2, 0, -np.pi / 2
-    ),  # Ry(pi/2)Rx(-pi/2) gp:
-    "sqrtMinusY,sqrtX": lambda q: gates.U3(
-        q, np.pi / 2, -np.pi, np.pi / 2
-    ),  # Ry(-pi/2)Rx(pi/2) gp:
-    "sqrtMinusY,sqrtMinusX": lambda q: gates.U3(
-        q, np.pi / 2, np.pi, -np.pi / 2
-    ),  # Ry(-pi/2)Rx(-pi/2) gp:
-    # Hadamard-like Check the gp
-    "minusX,sqrtY": lambda q: gates.U3(q, np.pi / 2, -np.pi, 0),  # X Ry(pi/2) gp:
-    "minusX,sqrtMinusY": lambda q: gates.U3(q, np.pi / 2, 0, np.pi),  # X Ry(-pi/2) gp:
-    "minusY,sqrtX": lambda q: gates.U3(
-        q, np.pi / 2, np.pi / 2, np.pi / 2
-    ),  # Y Rx(pi/2) gp:
-    "minusY,sqrtMinusX": lambda q: gates.U3(
-        q, np.pi / 2, -np.pi / 2, -np.pi / 2
-    ),  # Y Rx(-pi/2) gp:
-    "sqrtX,sqrtY,sqrtX": lambda q: gates.U3(
-        q, np.pi, -np.pi / 4, np.pi / 4
-    ),  # Rx(pi/2)Ry(pi/2)Rx(pi/2) gp:
-    "sqrtX,sqrtMinusY,sqrtX": lambda q: gates.U3(
-        q, np.pi, np.pi / 4, -np.pi / 4
-    ),  # Rx(-pi/2)Ry(pi/2)Rx(-pi/2) gp:
-}
+def twoq_rb_acquisition(
+    params: Parameters,
+    targets: list[QubitId],
+    add_inverse_layer: bool = True,
+    interleave: str = None,
+) -> Data:
+    """The data acquisition stage of two qubit Standard Randomized Benchmarking."""
+
+    data, noise_model, backend = setup(params, single_qubit=False)
+    circuits, indexes, npulses_per_clifford = get_circuits(
+        params, targets, add_inverse_layer, interleave, noise_model, single_qubit=False
+    )
+    executed_circuits = execute_circuits(
+        circuits, targets, params, backend, single_qubit=False
+    )
+
+    samples = []
+    zero_array = np.array([0, 0])
+    for circ in executed_circuits:
+        # Post process [0,0] to 0 and [1,0], [0,1], [1,1] to 1
+        converted_samples = []
+        for sample in circ.samples():
+            if np.all(sample == zero_array):
+                converted_samples.append(np.array(0, dtype=np.int32))
+            else:
+                converted_samples.append(np.array(1, dtype=np.int32))
+        samples.extend(converted_samples)
+    samples = np.reshape(samples, (-1, len(targets), params.nshots))
+
+    for i, depth in enumerate(params.depths):
+        index = (i * params.niter, (i + 1) * params.niter)
+        for nqubit, qubit_id in enumerate(targets):
+            data.register_qubit(
+                RBType,
+                (qubit_id[0], qubit_id[1], depth),
+                dict(
+                    samples=samples[index[0] : index[1]][:, nqubit],
+                ),
+            )
+    data.circuits = indexes
+    data.npulses_per_clifford = npulses_per_clifford
+
+    return data
 
 
 # TODO: Expand when more entangling gates are calibrated
@@ -474,27 +687,6 @@ def clifford2gates(clifford):
             clifford_gate.append(gates.CZ(0, 1))
 
     return clifford_gate
-
-
-def random_2q_clifford(random_index_gen, two_qubit_cliffords):
-    """Generates random two qubit Clifford operator.
-
-    Args:
-        qubits (int or list or ndarray): if ``int``, the number of qubits for the Clifford.
-            If ``list`` or ``ndarray``, indexes of the qubits for the Clifford to act on.
-        seed (int or ``numpy.random.Generator``, optional): Either a generator of
-            random numbers or a fixed seed to initialize a generator. If ``None``,
-            initializes a generator with a random seed. Default is ``None``.
-
-    Returns:
-        (list of :class:`qibo.gates.Gate`): Random Clifford operator(s).
-    """
-
-    random_index = int(random_index_gen(two_qubit_cliffords))
-    clifford = two_qubit_cliffords[str(random_index)]
-    clifford_gate = clifford2gates(clifford)
-
-    return clifford_gate, random_index
 
 
 def clifford_to_matrix(clifford):
@@ -583,19 +775,7 @@ def load_cliffords(file):
     return two_qubit_cliffords
 
 
-GLOBAL_PHASES = [
-    1 + 0j,
-    -1 + 0j,
-    0 + 1j,
-    0 - 1j,
-    0.707 + 0.707j,
-    -0.707 + 0.707j,
-    0.707 - 0.707j,
-    -0.707 - 0.707j,
-]
-
-
-def layer_circuit(rb_gen: Callable, depth: int, qubit) -> tuple[Circuit, dict]:
+def layer_circuit(rb_gen: Callable, depth: int, target) -> tuple[Circuit, dict]:
     """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`
     and a dictionary with random indexes used to select the clifford gates.
 
@@ -606,61 +786,27 @@ def layer_circuit(rb_gen: Callable, depth: int, qubit) -> tuple[Circuit, dict]:
     Returns:
         Circuit: with `depth` many layers.
     """
-
     full_circuit = None
     random_indexes = []
-    # Build each layer, there will be depth many in the final circuit.
-    qubits_str = [str(qubit)]
-
-    for _ in range(depth):
-        # Generate a layer.
-        new_layer, random_index = rb_gen.layer_gen()
-        # Ensure new_layer is a circuit
-        if isinstance(new_layer, Gate):
-            new_circuit = Circuit(1)
-            new_circuit.add(new_layer)
-            random_indexes.append(random_index)
-
-        # We are only using this for the RB we have right now
-        elif all(isinstance(gate, Gate) for gate in new_layer):
-            new_circuit = Circuit(1, wire_names=qubits_str)
-            new_circuit.add(new_layer)
-            random_indexes.append(random_index)
-
-        elif isinstance(new_layer, Circuit):
-            new_circuit = new_layer
-        else:
-            raise_error(
-                TypeError,
-                f"layer_gen must return type Circuit or Gate, but it is type {type(new_layer)}.",
-            )
-        if full_circuit is None:  # instantiate in first loop
-            full_circuit = Circuit(new_circuit.nqubits)
-        full_circuit = full_circuit + new_circuit
-    return full_circuit, random_indexes
-
-
-def layer_2q_circuit(rb_gen: Callable, depth: int, qubits) -> tuple[Circuit, dict]:
-    """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`
-    and a dictionary with random indexes used to select the clifford gates.
-
-    Args:
-        layer_gen (Callable): Should return gates or a full circuit specifying a layer.
-        depth (int): Number of layers.
-
-    Returns:
-        Circuit: with `depth` many layers.
-    """
-
-    full_circuit = None
-    random_indexes = []
+    if isinstance(target, QubitId):
+        nqubits = 1
+        rb_gen_layer = rb_gen.layer_gen_single_qubit()
+    # FIXME: I Can't use QubitPairId
+    elif isinstance(target, Tuple):
+        nqubits = 2
+        rb_gen_layer = rb_gen.layer_gen_two_qubit()
     # Build each layer, there will be depth many in the final circuit.
     for _ in range(depth):
         # Generate a layer.
-        new_layer, random_index = rb_gen.layer_gen()
-        new_circuit = Circuit(2)
-        for gate in new_layer:
-            new_circuit.add(gate)
+        new_layer, random_index = rb_gen_layer
+        # FIXME: Check len(qubits) to get 2 for pair and 1 for qubits
+        new_circuit = Circuit(nqubits)
+        if nqubits == 1:
+            new_circuit.add(new_layer)
+        elif nqubits == 2:
+            for gate in new_layer:
+                new_circuit.add(gate)
+
         random_indexes.append(random_index)
 
         if full_circuit is None:  # instantiate in first loop
@@ -733,3 +879,40 @@ def add_measurement_layer(circuit: Circuit):
     """
 
     circuit.add(gates.M(*range(circuit.nqubits)))
+
+
+def fit(qubits, data):
+    fidelity, pulse_fidelity = {}, {}
+    popts, perrs = {}, {}
+    error_barss = {}
+    for qubit in qubits:
+        # Extract depths and probabilities
+        x = data.depths
+        probs = data.extract_probabilities(qubit)
+        samples_mean = np.mean(probs, axis=1)
+        # TODO: Should we use the median or the mean?
+        median = np.median(probs, axis=1)
+
+        error_bars = data_uncertainties(
+            probs,
+            method=data.uncertainties,
+            data_median=median,
+        )
+
+        sigma = (
+            np.max(error_bars, axis=0) if data.uncertainties is not None else error_bars
+        )
+
+        popt, perr = fit_exp1B_func(x, samples_mean, sigma=sigma, bounds=[0, 1])
+        # Compute the fidelities
+        infidelity = (1 - popt[1]) / 2
+        fidelity[qubit] = 1 - infidelity
+        pulse_fidelity[qubit] = 1 - infidelity / data.npulses_per_clifford
+
+        # conversion from np.array to list/tuple
+        error_bars = error_bars.tolist()
+        error_barss[qubit] = error_bars
+        perrs[qubit] = perr
+        popts[qubit] = popt
+
+    return StandardRBResult(fidelity, pulse_fidelity, popts, perrs, error_barss)
