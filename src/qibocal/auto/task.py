@@ -10,7 +10,6 @@ from qibolab.platform import Platform
 from qibolab.serialize import dump_platform
 
 from ..config import log
-from ..protocols import Operation
 from .mode import ExecutionMode
 from .operation import Data, DummyPars, Results, Routine, dummy_operation
 from .runcard import Action, Id, Targets
@@ -29,6 +28,7 @@ PLATFORM_DIR = "platform"
 class Task:
     action: Action
     """Action object parsed from Runcard."""
+    operation: Routine
 
     @property
     def targets(self) -> Targets:
@@ -39,14 +39,6 @@ class Task:
     def id(self) -> Id:
         """Task Id."""
         return self.action.id
-
-    @property
-    def operation(self):
-        """Routine object from Operation Enum."""
-        if self.action.operation is None:
-            raise RuntimeError("No operation specified")
-
-        return Operation[self.action.operation].value
 
     @property
     def parameters(self):

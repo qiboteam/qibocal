@@ -787,7 +787,7 @@ actions:
       power_step: 1
 
   - id: twpa_power_SNR
-    operation: twpa_power_SNR
+    operation: twpa_power_snr
     parameters:
       freq_width: 500_000_000
       freq_step: 50_000_000
@@ -798,7 +798,7 @@ actions:
       relaxation_time: 2000
 
   - id: twpa_frequency_SNR
-    operation: twpa_frequency_SNR
+    operation: twpa_frequency_snr
     parameters:
       freq_width: 100_000_000
       freq_step: 20_000_000

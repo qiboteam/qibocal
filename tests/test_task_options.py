@@ -5,6 +5,7 @@ from copy import deepcopy
 import pytest
 from qibolab import create_platform
 
+from qibocal import protocols
 from qibocal.auto.execute import Executor
 from qibocal.auto.mode import AUTOCALIBRATION, ExecutionMode
 from qibocal.auto.operation import DEFAULT_PARENT_PARAMETERS
@@ -50,7 +51,7 @@ def test_targets_argument(backend, local_targets, tmp_path):
     runcard = Runcard.load(
         modify_card(DUMMY_CARD, targets=local_targets, backend=backend)
     )
-    task = Task(runcard.actions[0])
+    task = Task(runcard.actions[0], getattr(protocols, runcard.actions[0].operation))
 
     completed = task.run(
         platform=runcard.platform,

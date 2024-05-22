@@ -8,10 +8,12 @@ from typing import Iterator, Union
 from qibolab import create_platform
 from qibolab.platform import Platform
 
+from qibocal import protocols
 from qibocal.config import log
 
 from .history import History
 from .mode import ExecutionMode
+from .operation import Routine
 from .runcard import Action, Id, Runcard, Targets
 from .task import Completed, Task
 
@@ -62,20 +64,15 @@ class Executor:
     @classmethod
     def create(
         cls,
-        protocols: list[Union[Action, dict]],
         platform: Union[Platform, str] = None,
         output: Union[str, bytes, os.PathLike] = None,
     ):
         """Load list of protocols."""
-        actions = [
-            protocol if isinstance(protocol, Action) else Action(**protocol)
-            for protocol in protocols
-        ]
         platform = (
             platform if isinstance(platform, Platform) else create_platform(platform)
         )
         return cls(
-            actions=actions,
+            actions=[],
             history=History({}),
             output=Path(output),
             platform=platform,
@@ -84,10 +81,18 @@ class Executor:
         )
 
     def run_protocol(
-        self, id: Id, mode: ExecutionMode = ExecutionMode.ACQUIRE | ExecutionMode.FIT
+        self,
+        protocol: Routine,
+        parameters: Union[dict, Action],
+        mode: ExecutionMode = ExecutionMode.ACQUIRE | ExecutionMode.FIT,
     ) -> Completed:
         """Run single protocol in ExecutionMode mode."""
-        task = Task(self._actions_dict[id])
+        if isinstance(parameters, dict):
+            parameters["operation"] = str(protocol)
+            action = Action(**parameters)
+        else:
+            action = parameters
+        task = Task(action, protocol)
         if isinstance(mode, ExecutionMode):
             log.info(
                 f"Executing mode {mode.name if mode.name is not None else 'AUTOCALIBRATION'} on {id}."
@@ -113,6 +118,10 @@ class Executor:
         - self.update is True and task.update is None
         - task.update is True
         """
-        for action_id in self._actions_dict:
-            completed = self.run_protocol(id=action_id, mode=mode)
+        for id, params in self._actions_dict.items():
+            completed = self.run_protocol(
+                protocol=getattr(protocols, params.operation),
+                parameters=params,
+                mode=mode,
+            )
             yield completed.task.id
