@@ -176,7 +176,14 @@ def project_psd(matrix):
 
 
 def _fit(data: StateTomographyData) -> StateTomographyResults:
-    """Post-processing for State tomography."""
+    """Post-processing for two qubit state tomography.
+
+    Uses the standard linear inversion algorithm described in
+    https://en.wikipedia.org/wiki/Quantum_tomography#Linear_inversion
+    to reconstruct the density matrix.
+    The matrix is also post projected after the linear inversion
+    using ``project_psd``.
+    """
     rotations = [
         np.kron(rotation_matrix(basis1), rotation_matrix(basis2))
         for basis1, basis2 in TWO_QUBIT_BASIS

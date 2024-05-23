@@ -276,9 +276,11 @@ def plot_reconstruction(ideal, measured):
         showlegend=False,
     )
 
+    tickvals = list(range(len(ideal)))
+    ticktext = ["{:02b}".format(i) for i in tickvals]
     fig.update_scenes(
-        xaxis=dict(tickvals=list(range(len(ideal)))),
-        yaxis=dict(tickvals=list(range(len(ideal)))),
+        xaxis=dict(tickvals=tickvals, ticktext=ticktext),
+        yaxis=dict(tickvals=tickvals, ticktext=ticktext),
         zaxis=dict(range=[-1, 1]),
     )
 
