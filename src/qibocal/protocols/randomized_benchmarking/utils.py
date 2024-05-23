@@ -118,6 +118,7 @@ SINGLE_QUBIT_CLIFFORDS_NAMES = {
     ),  # Rx(-pi/2)Ry(pi/2)Rx(-pi/2)
 }
 
+# Global phases that could appear in the Clifford group we defined in the "2q_cliffords.json" file
 GLOBAL_PHASES = [
     1 + 0j,
     -1 + 0j,
@@ -128,6 +129,7 @@ GLOBAL_PHASES = [
     0.707 - 0.707j,
     -0.707 - 0.707j,
 ]
+
 
 RBType = np.dtype(
     [
@@ -281,7 +283,7 @@ class RB_Generator:
 
     def random_index(self, gate_dict):
         """Generates a random index within the range of the given file len."""
-        return self.local_state.integers(0, len(gate_dict.keys()), 1)
+        return self.local_state.integers(0, len(gate_dict), 1)
 
     def layer_gen_single_qubit(self):
         """Generates a random single-qubit clifford gate."""
@@ -367,10 +369,6 @@ class StandardRBResult(Results):
     error_bars: dict[QubitId, Optional[Union[float, list[float]]]] = None
     """Error bars for y."""
 
-    # FIXME: fix this after https://github.com/qiboteam/qibocal/pull/597
-    def __contains__(self, qubit: QubitId):
-        return True
-
 
 def setup(
     params: Parameters,
@@ -429,10 +427,10 @@ def get_circuits(
 
         circuits.extend(circuits_depth)
         if single_qubit:
-            for qubit in random_indexes.keys():
+            for qubit in random_indexes:
                 indexes[(qubit, depth)] = random_indexes[qubit]
         else:
-            for qubit in random_indexes.keys():
+            for qubit in random_indexes:
                 indexes[(qubit[0], qubit[1], depth)] = random_indexes[qubit]
 
     return circuits, indexes, npulses_per_clifford
@@ -472,17 +470,20 @@ def rb_acquisition(
     params: Parameters,
     targets: list[QubitId],
     add_inverse_layer: bool = True,
-    interleave: str = None,  # FIXME: Add interleave
+    interleave: str = None,
 ) -> RBData:
     """RB data acquisition function.
 
+    This function performs data acquisition for randomized benchmarking experiments.
+
     Args:
-        params (FilteredRBParameters): All parameters in one object.
-        targets (dict[int, Union[str, int]] or list[Union[str, int]]): list of qubits the experiment is executed on.
+        params (RBParameters): All parameters in one object.
+        targets (dict[int, Union[str, int]] or list[Union[str, int]]): List of qubits the experiment is executed on.
+        add_inverse_layer (bool, optional): Whether to add an inverse layer to the circuits. Defaults to True.
+        interleave (str, optional): Interleaving pattern for the circuits. Defaults to None.
 
     Returns:
-        RBData: The depths, samples and ground state probability of each experiment in the scan.
-
+        RBData: The depths, samples, and ground state probability of each experiment in the scan.
     """
     data, noise_model, backend = setup(params, single_qubit=True)
     circuits, indexes, npulses_per_clifford = get_circuits(
@@ -517,7 +518,18 @@ def twoq_rb_acquisition(
     add_inverse_layer: bool = True,
     interleave: str = None,
 ) -> RB2QData:
-    """The data acquisition stage of two qubit Standard Randomized Benchmarking."""
+    """
+    The data acquisition stage of two qubit Standard Randomized Benchmarking.
+
+    Args:
+        params (RB2QParameters): The parameters for the randomized benchmarking experiment.
+        targets (list[QubitPairId]): The list of qubit pair IDs on which to perform the benchmarking.
+        add_inverse_layer (bool, optional): Whether to add an inverse layer to the circuits. Defaults to True.
+        interleave (str, optional): The type of interleaving to apply. Defaults to None.
+
+    Returns:
+        RB2QData: The acquired data for two qubit randomized benchmarking.
+    """
 
     data, noise_model, backend = setup(params, single_qubit=False)
     circuits, indexes, npulses_per_clifford = get_circuits(
@@ -558,6 +570,7 @@ def twoq_rb_acquisition(
 
 # TODO: Expand when more entangling gates are calibrated
 def find_cliffords(cz_list):
+    """Splits a clifford (list of gates) into sublists based on the occurrence of the "CZ" gate."""
     clifford_list = []
     clifford = []
     for gate in cz_list:
@@ -572,6 +585,16 @@ def find_cliffords(cz_list):
 
 
 def separator(clifford):
+    """
+    Separates values in the given clifford sublist based on certain conditions.
+
+    Returns:
+        tuple: A tuple containing three elements:
+            - values_with_1 (str): A comma-separated string of values containing '1'.
+            - values_with_2 (str): A comma-separated string of values containing '2'.
+            - value_with_CZ (bool): True if 'CZ' is present in the clifford list, False otherwise.
+    """
+
     # Separate values containing 1
     values_with_1 = [value for value in clifford if "1" in value]
     values_with_1 = ",".join(values_with_1)
@@ -582,7 +605,7 @@ def separator(clifford):
 
     # Check if CZ
     value_with_CZ = [value for value in clifford if "CZ" in value]
-    value_with_CZ = len(value_with_CZ) == 1
+    value_with_CZ = len(value_with_CZ) == 1  # FIXME: What is this ?
 
     values_with_1 = values_with_1.replace("1", "")
     values_with_2 = values_with_2.replace("2", "")
@@ -590,6 +613,12 @@ def separator(clifford):
 
 
 def clifford2gates(clifford):
+    """
+    Converts a Clifford string into a list of gates.
+
+    Args:
+        clifford (str): A comma-separated string representing a sequence of gates that represent a Clifford gate.
+    """
     gate_list = clifford.split(",")
 
     clifford_list = find_cliffords(gate_list)
@@ -606,6 +635,9 @@ def clifford2gates(clifford):
 
 
 def clifford_to_matrix(clifford):
+    """
+    Converts a Clifford gate as a string to its corresponding unitary matrix representation.
+    """
     clifford_gate = clifford2gates(clifford)
 
     qubits_str = ["q0", "q1"]
@@ -621,10 +653,10 @@ def clifford_to_matrix(clifford):
 
 def generate_inv_dict_cliffords_file(two_qubit_cliffords, output_file=None):
     """
-    Generate an inverse dictionary of clifford matrices and save it to a npz file.
+    Generate an inverse dictionary of Clifford matrices and save it to a npz file.
 
     Parameters:
-    two_qubit_cliffords (dict): A dictionary of two-qubit cliffords.
+    two_qubit_cliffords (dict): A dictionary of two-qubit Cliffords.
     output_file (str): The path to the output npz file.
     """
     clifford_matrices = {}
@@ -650,6 +682,15 @@ def generate_inv_dict_cliffords_file(two_qubit_cliffords, output_file=None):
 
 
 def clifford_to_pulses(clifford):
+    """
+    From a Clifford gate sequence into the number of pulses required to implement it.
+
+    Args:
+        clifford (str): A comma-separated string representing the Clifford gate sequence.
+
+    Returns:
+        int: The number of pulses required to implement the given Clifford gate sequence.
+    """
     gate_list = clifford.split(",")
 
     clifford_list = find_cliffords(gate_list)
@@ -669,6 +710,15 @@ def clifford_to_pulses(clifford):
 
 
 def calculate_pulses_clifford(cliffords):
+    """
+    Calculate the average number of pulses per Clifford operation.
+
+    Parameters:
+    - cliffords (dict): A dictionary of Clifford operations.
+
+    Returns:
+    - pulses_per_clifford (float): The average number of pulses per Clifford operation.
+    """
     pulses = 0
     for i, clifford in enumerate(cliffords.values()):
         clifford = cliffords[str(i)]
@@ -794,6 +844,9 @@ def add_measurement_layer(circuit: Circuit):
 
 
 def fit(qubits, data):
+    """Takes data, extracts the depths and the signal and fits it with an
+    exponential function y = Ap^x+B."""
+
     fidelity, pulse_fidelity = {}, {}
     popts, perrs = {}, {}
     error_barss = {}

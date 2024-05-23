@@ -33,15 +33,6 @@ def _acquisition(
 
 
 def _fit(data: RB2QData) -> StandardRBResult:
-    """Takes a data frame, extracts the depths and the signal and fits it with an
-    exponential function y = Ap^x+B.
-
-    Args:
-        data (RBData): Data from the data acquisition stage.
-
-    Returns:
-        StandardRBResult: Aggregated and processed data.
-    """
     qubits = data.pairs
     results = fit(qubits, data)
 
