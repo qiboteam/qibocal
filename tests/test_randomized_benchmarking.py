@@ -1,5 +1,3 @@
-import os
-import pathlib
 from functools import reduce
 
 import numpy as np
@@ -172,17 +170,17 @@ def test_random_clifford(qubits, seed):
     assert np.allclose(matrix, result)
 
 
-def test_generate_inv_dict_cliffords_file():
+def test_generate_inv_dict_cliffords_file(tmp_path):
     file = "2qubitCliffs.json"
     two_qubit_cliffords = load_cliffords(file)
 
-    path_test_inv = pathlib.Path(__file__).parent / "test.npz"
-    clifford_inv = generate_inv_dict_cliffords_file(two_qubit_cliffords, path_test_inv)
-    clifford_inv = np.load(path_test_inv)
+    tmp_path = tmp_path / "test.npz"
+
+    clifford_inv = generate_inv_dict_cliffords_file(two_qubit_cliffords)
+    np.savez(tmp_path, **clifford_inv)
+    clifford_inv = np.load(tmp_path)
 
     file_inv = "2qubitCliffsInv.npz"
     clifford_matrices_inv = load_inverse_cliffords(file_inv)
 
     assert clifford_inv.files == clifford_matrices_inv.files
-
-    os.remove(path_test_inv)

@@ -353,6 +353,14 @@ class RB2QData(RBData):
 
 
 @dataclass
+class RB2QInterData(RB2QData):
+    """The output of the acquisition function."""
+
+    fidelity: dict[QubitPairId, list] = None
+    """Number of pulses for an average clifford."""
+
+
+@dataclass
 class StandardRBResult(Results):
     """Standard RB outputs."""
 
@@ -375,6 +383,7 @@ class StandardRBResult(Results):
 def setup(
     params: Parameters,
     single_qubit: bool = True,
+    interleave: Optional[str] = None,
 ):
     backend = GlobalBackend()
     # For simulations, a noise model can be added.
@@ -390,6 +399,8 @@ def setup(
         params.noise_params = noise_model.params.tolist()
     # Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     cls = RBData if single_qubit else RB2QData
+    if isinstance(cls, RB2QData) and interleave is not None:
+        cls = RB2QInterData
     data = cls(
         depths=params.depths,
         uncertainties=params.uncertainties,
@@ -516,7 +527,7 @@ def twoq_rb_acquisition(
     targets: list[QubitPairId],
     add_inverse_layer: bool = True,
     interleave: str = None,
-) -> RB2QData:
+) -> Union[RB2QData, RB2QInterData]:
     """The data acquisition stage of two qubit Standard Randomized Benchmarking."""
 
     data, noise_model, backend = setup(params, single_qubit=False)
@@ -619,7 +630,7 @@ def clifford_to_matrix(clifford):
     return unitary
 
 
-def generate_inv_dict_cliffords_file(two_qubit_cliffords, output_file):
+def generate_inv_dict_cliffords_file(two_qubit_cliffords, output_file=None):
     """
     Generate an inverse dictionary of clifford matrices and save it to a npz file.
 
@@ -691,7 +702,9 @@ def load_cliffords(file):
     return two_qubit_cliffords
 
 
-def layer_circuit(rb_gen: Callable, depth: int, target) -> tuple[Circuit, dict]:
+def layer_circuit(
+    rb_gen: Callable, depth: int, target, interleave: str = None
+) -> tuple[Circuit, dict]:
     """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`
     and a dictionary with random indexes used to select the clifford gates.
 
@@ -715,14 +728,19 @@ def layer_circuit(rb_gen: Callable, depth: int, target) -> tuple[Circuit, dict]:
     for _ in range(depth):
         # Generate a layer.
         new_layer, random_index = rb_gen_layer
+        random_indexes.append(random_index)
         new_circuit = Circuit(nqubits)
         if nqubits == 1:
             new_circuit.add(new_layer)
         elif nqubits == 2:
             for gate in new_layer:
                 new_circuit.add(gate)
-
-        random_indexes.append(random_index)
+            # FIXME: General interleave
+            if interleave == "CZ":
+                interleaved_clifford = rb_gen.two_qubit_cliffords["13"]
+                interleaved_clifford_gate = clifford2gates(interleaved_clifford)
+                new_circuit.add(interleaved_clifford_gate)
+                random_indexes.append("13")
 
         if full_circuit is None:  # instantiate in first loop
             full_circuit = Circuit(new_circuit.nqubits)

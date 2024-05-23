@@ -674,6 +674,14 @@ actions:
       niter: 5
       nshots: 50
 
+  - id: standard rb 2q interleaved
+    operation: standard_rb_2q_inter
+    targets: [[0,2]]
+    parameters:
+      depths: [1, 2, 3, 5]
+      niter: 5
+      nshots: 50
+
   - id: chevron id
     operation: chevron
     targets: [[0, 2],[1,2]]
