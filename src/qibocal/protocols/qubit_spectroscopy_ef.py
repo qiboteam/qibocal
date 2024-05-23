@@ -1,7 +1,6 @@
 from dataclasses import asdict, dataclass, field
 
 import numpy as np
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
@@ -124,12 +123,7 @@ def _acquisition(
 
     results = platform.sweep(
         sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
-        ),
+        params.execution_parameters,
         sweeper,
     )
 
@@ -141,11 +135,11 @@ def _acquisition(
             ResSpecType,
             (qubit),
             dict(
-                signal=np.abs(result.average.voltage),
-                phase=np.mean(result.phase, axis=0),
+                signal=result.average.magnitude,
+                phase=result.average.phase,
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
                 error_signal=result.average.std,
-                error_phase=np.std(result.phase, axis=0, ddof=1),
+                error_phase=result.phase_std,
             ),
         )
     return data
@@ -156,25 +150,44 @@ def _plot(
 ):
     """Plotting function for QubitSpectroscopy."""
     figures, report = spectroscopy_plot(data, target, fit)
+    show_error_bars = not np.isnan(data[target].error_signal).any()
     if fit is not None:
-        report = table_html(
-            table_dict(
-                target,
-                [
-                    "Frequency 1->2 [Hz]",
-                    "Amplitude [a.u.]",
-                    "Anharmonicity [Hz]",
-                    "Chi2",
-                ],
-                [
-                    (fit.frequency[target], fit.error_fit_pars[target][1]),
-                    (fit.amplitude[target], fit.error_fit_pars[target][0]),
-                    (fit.anharmonicity[target], fit.error_fit_pars[target][2]),
-                    fit.chi2_reduced[target],
-                ],
-                display_error=True,
+        if show_error_bars:
+            report = table_html(
+                table_dict(
+                    target,
+                    [
+                        "Frequency 1->2 [Hz]",
+                        "Amplitude [a.u.]",
+                        "Anharmonicity [Hz]",
+                        "Chi2",
+                    ],
+                    [
+                        (fit.frequency[target], fit.error_fit_pars[target][1]),
+                        (fit.amplitude[target], fit.error_fit_pars[target][0]),
+                        (fit.anharmonicity[target], fit.error_fit_pars[target][2]),
+                        fit.chi2_reduced[target],
+                    ],
+                    display_error=True,
+                )
             )
-        )
+        else:
+            report = table_html(
+                table_dict(
+                    target,
+                    [
+                        "Frequency 1->2 [Hz]",
+                        "Amplitude [a.u.]",
+                        "Anharmonicity [Hz]",
+                    ],
+                    [
+                        fit.frequency[target],
+                        fit.amplitude[target],
+                        fit.anharmonicity[target],
+                    ],
+                    display_error=False,
+                )
+            )
 
     return figures, report
 
