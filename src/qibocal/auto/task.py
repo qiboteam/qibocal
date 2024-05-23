@@ -10,7 +10,7 @@ from qibolab.platform import Platform
 from qibolab.serialize import dump_platform
 
 from ..config import log
-from ..protocols.characterization import Operation
+from ..protocols import Operation
 from .mode import ExecutionMode
 from .operation import Data, DummyPars, Results, Routine, dummy_operation
 from .runcard import Action, Id, Targets
