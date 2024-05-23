@@ -619,7 +619,7 @@ def clifford_to_matrix(clifford):
     return unitary
 
 
-def generate_inv_dict_cliffords_file(two_qubit_cliffords, output_file):
+def generate_inv_dict_cliffords_file(two_qubit_cliffords, output_file=None):
     """
     Generate an inverse dictionary of clifford matrices and save it to a npz file.
 
