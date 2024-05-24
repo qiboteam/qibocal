@@ -1,6 +1,6 @@
 from qibocal import Executor
 
-executor = Executor("mycal", ...)
+executor = Executor.create("mycal")
 
 from mycal import ciao, come
 

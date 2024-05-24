@@ -9,7 +9,7 @@ from .cli import command
 __version__ = im.version(__package__)
 __all__ = ["Executor", "protocols", "command"]
 
-DEFAULT_EXECUTOR = Executor.create("qibocal.routines")
+DEFAULT_EXECUTOR = Executor.create(".routines")
 """Default executor, registered as a qibocal submodule.
 
 It is defined for streamlined usage of qibocal protocols in simple
