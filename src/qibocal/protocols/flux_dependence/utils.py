@@ -342,6 +342,25 @@ def crosstalk_matrix(platform: Platform, qubits: list[QubitId]) -> np.ndarray:
     return matrix
 
 
+def compensation_matrix(platform: Platform, qubits: list[QubitId]) -> np.ndarray:
+    """Compensation matrix C computed as M C = diag(M') where M is the
+    crosstalk matrix.
+    For more details check: https://web.physics.ucsb.edu/~martinisgroup/theses/Chen2018.pdf
+    8.2.3
+    """
+    size = len(qubits)
+    matrix = np.ones((size, size))
+    crosstalk = crosstalk_matrix(platform, qubits)
+    for i in range(size):
+        for j in range(size):
+            if i == j:
+                matrix[i, j] = 1
+            else:
+                matrix[i, j] = -crosstalk[i, j] / crosstalk[i, i]
+
+    return matrix
+
+
 def invert_transmon_freq(target_freq: float, platform: Platform, qubit: QubitId):
     """Return right side of equation matrix * total_flux = f(target_freq).
     Target frequency shoudl be expressed in GHz.
@@ -364,9 +383,11 @@ def invert_transmon_freq(target_freq: float, platform: Platform, qubit: QubitId)
 def frequency_to_bias(
     target_freqs: dict[QubitId, float], platform: Platform
 ) -> np.ndarray:
-    """Starting from set of target_freqs computes bias points."""
+    """Starting from set of target_freqs computes bias points using the compensation matrix."""
     qubits = list(target_freqs)
-    inverted_crosstalk_matrix = np.linalg.inv(crosstalk_matrix(platform, qubits))
+    inverted_crosstalk_matrix = np.linalg.inv(
+        crosstalk_matrix(platform, qubits) @ compensation_matrix(platform, qubits)
+    )
     transmon_freq = np.array(
         [
             invert_transmon_freq(freq, platform, qubit)
