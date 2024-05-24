@@ -1,3 +1,8 @@
-from qibocal.protocols import ciao
+from qibocal import Executor
 
-out = ciao()
+executor = Executor("mycal", ...)
+
+from mycal import ciao, come
+
+out = ciao(1)
+res = out if out > 2 else come(42)
