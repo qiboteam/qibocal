@@ -1,7 +1,8 @@
 """Tasks execution."""
 
+import sys
 from dataclasses import dataclass
-from typing import Union
+from typing import Optional, Union
 
 from qibolab import create_platform
 from qibolab.platform import Platform
@@ -29,9 +30,48 @@ class Executor:
     """Qubits' platform."""
     update: bool = True
     """Runcard update mechanism."""
+    name: Optional[str] = None
+    """Name, used just as a label but also to register the module."""
+
+    def __post_init__(self):
+        if self.name is not None:
+            if self.name in sys.modules:
+                raise ValueError(
+                    f"Module '{self.name}' already present. "
+                    "Choose a different one to avoid overwriting it."
+                )
+            sys.modules[name] = self
+
+    def __getattribute__(self, name):
+        """Provide access to routines through the executor.
+
+        This is done mainly to support the import mechanics: the routines retrieved
+        through the object will have it pre-registered.
+        """
+        modname = super().__getattribute__(name)
+        if modname is None:
+            # no module registration, immediately fall back
+            return super().__getattribute__(name)
+
+        attrs = {
+            "__spec__": None,
+            "__name__": modname,
+        }
+
+        try:
+            # stage 1: module definition
+            return attrs[name]
+        except KeyError:
+            pass
+        try:
+            # stage 2: routines look up
+            return getattr(protocols, name)
+        except AttributeError:
+            # stage 3: fall back on regular attributes
+            return super().__getattribute__(name)
 
     @classmethod
-    def create(cls, platform: Union[Platform, str]):
+    def create(cls, name: str, platform: Union[Platform, str]):
         """Load list of protocols."""
         platform = (
             platform if isinstance(platform, Platform) else create_platform(platform)
