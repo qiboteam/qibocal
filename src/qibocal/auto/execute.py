@@ -97,18 +97,25 @@ class Executor:
     def create(
         cls,
         name: str,
-        platform: Union[Platform, str] = "dummy",
+        platform: Union[Platform, str, None] = None,
         output: Optional[os.PathLike] = None,
     ):
         """Load list of protocols."""
         platform = (
-            platform if isinstance(platform, Platform) else create_platform(platform)
+            platform
+            if isinstance(platform, Platform)
+            else create_platform(
+                platform
+                if platform is not None
+                else os.environ.get("QIBO_PLATFORM", "dummy")
+            )
         )
+        output = Path(output) if output is not None else Path.cwd()
         return cls(
             name=name,
             actions=[],
             history=History(),
-            output=Path(output) if output is not None else Path.cwd(),
+            output=output,
             platform=platform,
             targets=list(platform.qubits),
             update=True,
