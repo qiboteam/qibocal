@@ -1,5 +1,5 @@
-from pathlib import Path
 from copy import deepcopy
+from pathlib import Path
 
 import pytest
 from qibolab import create_platform
