@@ -1,3 +1,3 @@
-from qibocal.protocols import ciao
+from qibocal.routines import ciao
 
 out = ciao()
