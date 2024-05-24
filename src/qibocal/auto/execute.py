@@ -2,6 +2,7 @@
 
 import importlib
 import importlib.util
+import os
 import sys
 from dataclasses import dataclass
 from typing import Optional, Union
@@ -91,10 +92,16 @@ class Executor:
             return super().__getattribute__(name)
 
     @classmethod
-    def create(cls, name: str, platform: Union[Platform, str] = "dummy"):
+    def create(cls, name: str, platform: Union[Platform, str, None] = None):
         """Load list of protocols."""
         platform = (
-            platform if isinstance(platform, Platform) else create_platform(platform)
+            platform
+            if isinstance(platform, Platform)
+            else create_platform(
+                platform
+                if platform is not None
+                else os.environ.get("QIBO_PLATFORM", "dummy")
+            )
         )
         return cls(
             name=name,
