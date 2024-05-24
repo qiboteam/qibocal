@@ -1,5 +1,7 @@
 """Tasks execution."""
 
+import importlib
+import importlib.util
 import sys
 from dataclasses import dataclass
 from typing import Optional, Union
@@ -18,6 +20,28 @@ PLATFORM_DIR = "platform"
 """Folder where platform will be dumped."""
 
 
+def _register(name, obj):
+    # prevent overwriting existing modules
+    if name in sys.modules:
+        raise ValueError(
+            f"Module '{name}' already present. "
+            "Choose a different one to avoid overwriting it."
+        )
+
+    # allow relative paths, where relative is intended respect to package root
+    root = __name__.split(".")[0]
+    qualified = importlib.util.resolve_name(name, root)
+
+    # allow to nest module in arbitrary subpackage
+    if "." in qualified:
+        parent_name, _, child_name = qualified.rpartition(".")
+        parent_module = importlib.import_module(parent_name)
+        setattr(parent_module, child_name, obj)
+
+    sys.modules[qualified] = obj
+    obj.name = qualified
+
+
 @dataclass
 class Executor:
     """Execute a tasks' graph and tracks its history."""
@@ -34,13 +58,9 @@ class Executor:
     """Name, used just as a label but also to register the module."""
 
     def __post_init__(self):
+        """Register as a module, if a name is specified."""
         if self.name is not None:
-            if self.name in sys.modules:
-                raise ValueError(
-                    f"Module '{self.name}' already present. "
-                    "Choose a different one to avoid overwriting it."
-                )
-            sys.modules[name] = self
+            _register(self.name, self)
 
     def __getattribute__(self, name):
         """Provide access to routines through the executor.
