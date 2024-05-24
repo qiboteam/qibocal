@@ -71,12 +71,18 @@ class Executor:
             return super().__getattribute__(name)
 
     @classmethod
-    def create(cls, name: str, platform: Union[Platform, str]):
+    def create(cls, name: str, platform: Union[Platform, str] = "dummy"):
         """Load list of protocols."""
         platform = (
             platform if isinstance(platform, Platform) else create_platform(platform)
         )
-        return cls(history=History(), platform=platform, targets=list(platform.qubits))
+        return cls(
+            name=name,
+            history=History(),
+            platform=platform,
+            targets=list(platform.qubits),
+            update=True,
+        )
 
     def run_protocol(
         self,
