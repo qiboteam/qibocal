@@ -86,7 +86,8 @@ class Executor:
             pass
         try:
             # stage 2: routines look up
-            return getattr(protocols, name)
+            protocol = getattr(protocols, name)
+            return lambda *args, **kwargs: self.run_protocol(protocol, *args, **kwargs)
         except AttributeError:
             # stage 3: fall back on regular attributes
             return super().__getattribute__(name)
