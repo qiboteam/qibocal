@@ -8,3 +8,5 @@ from .cli import command
 
 __version__ = im.version(__package__)
 __all__ = ["Executor", "protocols", "command"]
+
+Executor.create("qibocal.routines")
