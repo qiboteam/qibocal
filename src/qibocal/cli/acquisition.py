@@ -3,6 +3,7 @@ import json
 from dataclasses import asdict
 
 import yaml
+from qibo.backends import GlobalBackend, set_backend
 from qibolab.serialize import dump_platform
 
 from ..auto.execute import Executor
@@ -19,9 +20,9 @@ def acquire(runcard, folder, force):
      - RUNCARD: runcard with declarative inputs.
     """
 
-    # rename for brevity
-    backend = runcard.backend_obj
-    platform = runcard.platform_obj
+    set_backend(backend=runcard.backend, platform=runcard.platform)
+    backend = GlobalBackend()
+    platform = backend.platform
     # generate output folder
     path = generate_output_folder(folder, force)
 
@@ -37,13 +38,11 @@ def acquire(runcard, folder, force):
     # dump meta
     (path / META).write_text(json.dumps(meta, indent=4))
 
-    executor = Executor.load(runcard, path, platform, runcard.targets)
     # connect and initialize platform
     if platform is not None:
         platform.connect()
 
-    # run protocols
-    list(executor.run(mode=ExecutionMode.ACQUIRE))
+    executor = Executor.run(output=path, runcard=runcard, mode=ExecutionMode.ACQUIRE)
 
     e = datetime.datetime.now(datetime.timezone.utc)
     meta["end-time"] = e.strftime("%H:%M:%S")

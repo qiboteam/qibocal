@@ -1,5 +1,7 @@
 """Track execution history."""
 
+from pathlib import Path
+
 from .runcard import Id
 from .task import Completed
 
@@ -22,7 +24,7 @@ def add_timings_to_meta(meta, history):
     return meta
 
 
-class History(dict[tuple[Id, int], Completed]):
+class History(dict[Id, Completed]):
     """Execution history.
 
     This is not only used for logging and debugging, but it is an actual part
@@ -30,6 +32,14 @@ class History(dict[tuple[Id, int], Completed]):
     former ones from here.
 
     """
+
+    @classmethod
+    def load(cls, path: Path):
+        """To be defined"""
+        instance = cls()
+        for protocol in path.glob("data/*"):
+            instance.push(Completed.load(protocol))
+        return instance
 
     def push(self, completed: Completed):
         """Adding completed task to history."""

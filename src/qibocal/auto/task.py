@@ -9,6 +9,8 @@ from typing import Optional
 from qibolab.platform import Platform
 from qibolab.serialize import dump_platform
 
+from qibocal import protocols
+
 from ..config import log
 from .mode import ExecutionMode
 from .operation import Data, DummyPars, Results, Routine, dummy_operation
@@ -29,6 +31,14 @@ class Task:
     action: Action
     """Action object parsed from Runcard."""
     operation: Routine
+
+    @classmethod
+    def load(cls, path):
+        action = Action.load(path)
+        return cls(action=action, operation=getattr(protocols, action.operation))
+
+    def dump(self, path):
+        self.action.dump(path)
 
     @property
     def targets(self) -> Targets:
@@ -161,6 +171,17 @@ class Completed:
         """Set and store data."""
         self._data = data
         self._data.save(self.datapath)
+
+    def dump(self, path):
+        """test"""
+        self.task.dump(self.datapath)
+
+    @classmethod
+    def load(cls, folder: Path):
+        """Loading completed from path."""
+
+        task = Task.load(folder)
+        return cls(task=task, folder=folder.parent.parent)
 
     def update_platform(self, platform: Platform, update: bool):
         """Perform update on platform' parameters by looping over qubits or pairs."""
