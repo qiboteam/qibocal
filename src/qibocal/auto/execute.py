@@ -40,7 +40,8 @@ def _register(name, obj):
         setattr(parent_module, child_name, obj)
 
     sys.modules[qualified] = obj
-    obj.name = qualified
+    obj.name = obj.__name__ = qualified
+    obj.__spec__ = None
 
 
 @dataclass
@@ -63,33 +64,27 @@ class Executor:
         if self.name is not None:
             _register(self.name, self)
 
-    def __getattribute__(self, name):
+    def __getattribute__(self, name: str):
         """Provide access to routines through the executor.
 
         This is done mainly to support the import mechanics: the routines retrieved
         through the object will have it pre-registered.
         """
-        modname = super().__getattribute__(name)
+        modname = super().__getattribute__("name")
         if modname is None:
             # no module registration, immediately fall back
             return super().__getattribute__(name)
 
-        attrs = {
-            "__spec__": None,
-            "__name__": modname,
-        }
+        try:
+            # routines look up
+            if name.startswith("_"):
+                # internal attributes should never be routines
+                raise AttributeError
 
-        try:
-            # stage 1: module definition
-            return attrs[name]
-        except KeyError:
-            pass
-        try:
-            # stage 2: routines look up
             protocol = getattr(protocols, name)
             return lambda *args, **kwargs: self.run_protocol(protocol, *args, **kwargs)
         except AttributeError:
-            # stage 3: fall back on regular attributes
+            # fall back on regular attributes
             return super().__getattribute__(name)
 
     @classmethod
