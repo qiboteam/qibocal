@@ -101,15 +101,14 @@ def test_update_argument(global_update, local_update, tmp_path):
     NEW_CARD = modify_card(
         UPDATE_CARD, local_update=local_update, global_update=global_update
     )
-    platform = GlobalBackend().platform
+    platform = deepcopy(GlobalBackend().platform)
+    old_readout_frequency = platform.qubits[0].readout_frequency
+    old_iq_angle = platform.qubits[1].iq_angle
     executor = Executor.run(
         Runcard.load(NEW_CARD),
         tmp_path,
         mode=AUTOCALIBRATION,
     )
-
-    old_readout_frequency = platform.qubits[0].readout_frequency
-    old_iq_angle = platform.qubits[1].iq_angle
 
     if local_update and global_update:
         assert old_readout_frequency != executor.platform.qubits[0].readout_frequency
