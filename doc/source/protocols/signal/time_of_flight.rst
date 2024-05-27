@@ -1,11 +1,11 @@
 Time Of Flight (Readout)
 ========================
 
-In this section, we present the time-of-flight experiment for qibocal.
+In this section, we present the time-of-flight experiment for qibocal (see Fig.12 :cite:p:`gao2021practical`).
 
 In the `time of flight` experiment, we measure the time it takes for a readout pulse to travel to the qubit and back, being acquired by the control instrument ADCs.
 
-Carefully calibrating this delay time is important to optimize the readout length. In particular, it is useful to acquire for a duration equal to that of the pulse, where it is possible to see differences (in amplitude and phase) between the two states of a qubit.
+Carefully calibrating this delay time is important to optimize the readout. In particular, it is useful to acquire just for the duration of the readout pulse, where differences between the two states really appear (both in amplitude and phase).
 
 The parameters for the experiment are :class:`qibocal.protocols.signal_experiments.time_of_flight_readout.TimeOfFlightReadoutParameters`, namely the amplitude of the readout pulse (if it is not set, the runcard one is used) and an integer that is used as the window size for a moving average.
 
@@ -27,13 +27,29 @@ Although it is possible to avoid setting a specific readout amplitude, it is gen
 Acquisition
 ^^^^^^^^^^^
 
-The acquisition procedure is described in :func:`qibocal.protocols.signal_experiments.time_of_flight_readout._acquisition`. It is important to note that this experiment makes use of the RAW acquisition mode, which may require some specific care depending on the instrument employed.
+The acquisition procedure is described in :func:`qibocal.protocols.signal_experiments.time_of_flight_readout._acquisition`. It is important to note that this experiment makes use of the RAW acquisition mode, which may require some specific care depending on the instrument employed (for some devices demdulation could be used, or this mode could be avialbe for just a single qubit at a time).
+
+For a 3D cavity we expect a plot (considering demodulation) as the following:
 
 .. image:: time_of_flight.png
 
-In this image, for example, we can see that the fit procedure did not find the correct pulse starting point (that is around 200). This can be improved increasing the window size.
+In this image, for example, we can see that the fit procedure did not find the correct pulse starting point (that is around 200). This could be improved increasing the window size.
+
+For a 2D resonator, some more oscillation could appear:
+
+.. image:: time_of_flight_2d.png
 
 Fit
 ^^^
 
 The fit procedure (:func:`qibocal.protocols.signal_experiments.time_of_flight_readout._fit`) employs a moving average, returning the time when it is maximum, namely when the signal starts being acquired.
+
+Since these plots could vary a lot, depending on the controller instrument specifics and on the design o the QPU undery analysis, we suggest to verify each time the correctness of the fit procedure.
+
+.. rubric:: References
+
+
+
+.. bibliography::
+   :filter: docname in docnames
+   :style: plain
