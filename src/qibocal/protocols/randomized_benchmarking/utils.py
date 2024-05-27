@@ -535,15 +535,11 @@ def twoq_rb_acquisition(
     )
 
     samples = []
-    zero_array = np.array([0, 0])
     for circ in executed_circuits:
         # Post process [0,0] to 0 and [1,0], [0,1], [1,1] to 1
-        converted_samples = []
-        for sample in circ.samples():
-            if np.all(sample == zero_array):
-                converted_samples.append(np.array(0, dtype=np.int32))
-            else:
-                converted_samples.append(np.array(1, dtype=np.int32))
+        converted_samples = (
+            1 - np.all(circ.samples() == [0], axis=1).astype(int)
+        ).tolist()
         samples.extend(converted_samples)
     samples = np.reshape(samples, (-1, len(targets), params.nshots))
 
