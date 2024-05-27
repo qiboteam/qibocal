@@ -12,6 +12,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     :maxdepth: 2
 
     signal/time_of_flight
+    signal/calibrate_kernel
     resonator_spectroscopy
     resonator_punchout
     qubit_spectroscopy/qubit_spectroscopy
