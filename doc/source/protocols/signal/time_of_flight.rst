@@ -9,8 +9,8 @@ Carefully calibrating this delay time is important to optimize the readout lengt
 
 The parameters for the experiment are :class:`qibocal.protocols.signal_experiments.time_of_flight_readout.TimeOfFlightReadoutParameters`, namely the amplitude of the readout pulse (if it is not set, the runcard one is used) and an integer that is used as the window size for a moving average.
 
-How to Execute an Experiment
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+How to Execute the experiment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: yaml
 
@@ -29,7 +29,9 @@ Acquisition
 
 The acquisition procedure is described in :func:`qibocal.protocols.signal_experiments.time_of_flight_readout._acquisition`. It is important to note that this experiment makes use of the RAW acquisition mode, which may require some specific care depending on the instrument employed.
 
-TODO: ADD PLOT
+.. image:: time_of_flight.png
+
+In this image, for example, we can see that the fit procedure did not find the correct pulse starting point (that is around 200). This can be improved increasing the window size.
 
 Fit
 ^^^

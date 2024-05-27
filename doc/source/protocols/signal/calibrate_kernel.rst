@@ -21,7 +21,7 @@ Acquisition
 
 The acquisition procedure is described in :func:`qibocal.protocols.signal_experiments.calibrate_state_discrimination._acquisition`. It is important to note that this experiment makes use of the RAW acquisition mode, which may require some specific care depending on the instrument employed.
 
-TODO: ADD PLOT
+.. image:: kernel.png
 
 Fit
 ^^^
