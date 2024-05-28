@@ -1,3 +1,5 @@
+.. _Time Of Flight:
+
 Time Of Flight (Readout)
 ========================
 
@@ -27,7 +29,10 @@ Although it is possible to avoid setting a specific readout amplitude, it is gen
 Acquisition
 ^^^^^^^^^^^
 
-The acquisition procedure is described in :func:`qibocal.protocols.signal_experiments.time_of_flight_readout._acquisition`. It is important to note that this experiment makes use of the RAW acquisition mode, which may require some specific care depending on the instrument employed (for some devices demodulation could be used, or this mode could be available for just a single qubit at a time).
+.. testcode::
+   from qibolab.execution_parameters import AcquisitionType
+
+The acquisition procedure is described in :func:`qibocal.protocols.signal_experiments.time_of_flight_readout._acquisition`. It is important to note that this experiment makes use of the RAW acquisition mode (see `Qibolab documentation <https://qibo.science/qibolab/stable/api-reference/qibolab.html#qibolab.execution_parameters.AcquisitionType>`_), which may require some specific care depending on the instrument employed (for some devices demodulation could be used, or this mode could be available for just a single qubit at a time).
 
 For a 3D cavity we expect a plot (considering demodulation) as the following:
 
@@ -48,8 +53,6 @@ Fit
 ^^^
 
 The fit procedure (:func:`qibocal.protocols.signal_experiments.time_of_flight_readout._fit`) employs a moving average, returning the time when it is maximum, namely when the signal starts being acquired.
-
-Since these plots could vary a lot, depending on the controller instrument specifics and on the design of the QPU under analysis, we suggest to verify each time the correctness of the fit procedure.
 
 Requirements pre-experiment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
