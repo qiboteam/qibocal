@@ -5,7 +5,7 @@ This experiment is quite similar to the time-of-flight experiment but has a diff
 
 In the time-of-flight experiment, we were only interested in the timing of the pulse, regardless of the current qubit state. Here, on the other hand, we want to build a "vector of weights," with a value for each point in the measurement, to maximize the differences between :math:`\ket{0}` and :math:`\ket{1}`. Points that are further away, considering the two states, are given a higher weight since they are "more interesting" for discrimination purposes.
 
-How to Execute the Experiment
+How to execute the experiment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: yaml

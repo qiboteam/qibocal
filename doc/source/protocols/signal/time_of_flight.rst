@@ -9,7 +9,7 @@ Carefully calibrating this delay time is important to optimize the readout. In p
 
 The parameters for the experiment are :class:`qibocal.protocols.signal_experiments.time_of_flight_readout.TimeOfFlightReadoutParameters`, namely the amplitude of the readout pulse (if it is not set, the runcard one is used) and an integer that is used as the window size for a moving average.
 
-How to Execute the experiment
+How to execute the experiment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: yaml
