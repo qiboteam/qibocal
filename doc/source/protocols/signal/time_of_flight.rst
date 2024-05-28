@@ -30,6 +30,8 @@ Acquisition
 ^^^^^^^^^^^
 
 .. testcode::
+   :hide:
+
    from qibolab.execution_parameters import AcquisitionType
 
 The acquisition procedure is described in :func:`qibocal.protocols.signal_experiments.time_of_flight_readout._acquisition`. It is important to note that this experiment makes use of the RAW acquisition mode (see `Qibolab documentation <https://qibo.science/qibolab/stable/api-reference/qibolab.html#qibolab.execution_parameters.AcquisitionType>`_), which may require some specific care depending on the instrument employed (for some devices demodulation could be used, or this mode could be available for just a single qubit at a time).
