@@ -63,6 +63,7 @@ def _acquisition(
     ro_pulses = {}
     durations = {}
     for qubit in targets:
+        # qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=50000)
         qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         if params.pulse_length is not None:
             qd_pulses[qubit].duration = params.pulse_length
@@ -112,6 +113,7 @@ def _acquisition(
                 error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
             ),
         )
+    print(data)
     return data
 
 

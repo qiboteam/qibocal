@@ -75,16 +75,19 @@ def _acquisition(
         for i, sequence in enumerate(states_sequences):
             sequence.add(*drive_pulses[:i])
             start = drive_pulses[i - 1].finish if i != 0 else 0
-            if i == 2:
-                # TODO: add the RO pulse MZ in the same time
-                ro_pulse = platform.create_MZ1_pulse(qubit, start=start)
-                # ro_pulse.frequency = 7207817029
-                # ro_pulse.amplitude = 0.01
-            else:
-                ro_pulse = platform.create_qubit_readout_pulse(qubit, start=start)
+            print(drive_pulses, start)
+            # if i == 2:
+            # TODO: add the RO pulse MZ in the same time
+            # ro_pulse = platform.create_MZ1_pulse(qubit, start=start)
+            # ro_pulse.frequency = 7207817029
+            # ro_pulse.amplitude = 0.01
+            # else:
+            ro_pulse0 = platform.create_MZ_pulse(qubit, start=start)
+            ro_pulse1 = platform.create_MZ1_pulse(qubit, start=start)
 
-            ro_pulses[qubit].append(ro_pulse)
-            sequence.add(ro_pulses[qubit][-1])
+            ro_pulses[qubit].append([ro_pulse0, ro_pulse1])
+            # sequence.add(ro_pulse0)
+            sequence.add(ro_pulse1)
             print("JJJJJJJJJJJJJJJJJJJJJ", sequence)
 
     data = QutritClassificationData(
@@ -107,7 +110,9 @@ def _acquisition(
 
     for qubit in targets:
         for state, state_result in enumerate(states_results):
-            result = state_result[ro_pulses[qubit][state].serial]
+            print(state_result)
+            print(state_result.keys())
+            result = state_result[ro_pulses[qubit][state][-1].serial]
             data.register_qubit(
                 ClassificationType,
                 (qubit),
