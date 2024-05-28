@@ -1,12 +1,13 @@
-Rabi experiment
-==============
+Rabi experiments
+================
 
-The goal of the Rabi experiment is to tune the amplitude (or the time) of the drive pulse, in order
-to move the qubit state from the ground to the first excited one.
+The goal of the Rabi experiment is to tune the amplitude (duration) of the drive pulse, in order
+to excite the qubit from the ground state up to state :math:`\ket{1}`.
 
 In the Rabi experiment, the qubit is probed with a drive pulse at the qubit frequency :math:`w_{01}`
-before measuring. This pulse sequence is repeated multiple times changing the amplitude (the time).
-The qubit starts in the ground state, changing one of the two parameters of the drive pulse, the probability of being in the excited state increases following a sinusoidal pattern.
+before measuring. This pulse sequence is repeated multiple times changing the amplitude (time).
+The qubit starts in the ground state, changing one of the two parameters of the drive pulse, the probability of being in the first
+excited state increases following a sinusoidal pattern.
 
 For the amplitude version, we expect:
 
@@ -27,13 +28,62 @@ It follows an example of the experiment parameters.
 
 .. code-block:: yaml
 
-    - id: Rabi
+    - id: Rabi amplitude
       operation: rabi_amplitude
       parameters:
-	  	min_amp_factor: 0.1
-		max_amp_factor: 1.
-		step_amp_factor: 0.01
-		pulse_length: 40
-		nshots: 3000
+        min_amp_factor: 0.1
+        max_amp_factor: 1.
+        step_amp_factor: 0.01
+        pulse_length: 40
+        nshots: 3000
+        relaxation_time: 50000
 
-A detailed explanation of the parameters can be found in :class:`qibocal.protocols.rabi.amplitude.RabiAmplitudeParameters` or `qibocal.protocols.rabi.length.RabiAmplitudeParameters`.
+
+A detailed explanation of the parameters can be found in :class:`qibocal.protocols.rabi.amplitude.RabiAmplitudeParameters`
+or :class:`qibocal.protocols.rabi.length.RabiLengthParameters`. To run properly this experiment it is important to set the
+`relaxation_time` higher than the qubit `T1`.
+
+After running `qq auto`, the experiment is executed and the result will looks like
+the following picture.
+
+.. image:: rabi_amplitude.png
+
+Regarding the time version of this experiment, this is an example
+
+
+.. code-block:: yaml
+
+    - id: Rabi length
+      operation: rabi_length
+      parameters:
+        pulse_duration_start: 16
+        pulse_duration_end: 100
+        pulse_duration_step: 4
+        pulse_amplitude: 0.22
+        nshots: 3000
+        relaxation_time: 50000
+
+.. image:: rabi_length.png
+
+For each Rabi experiment Qibocal provides the `signal` version, where just the readout signal is acquired, without
+performing state discrimination :class:`qibocal.protocols.rabi.amplitude_signal.rabi_amplitude_signal`,
+:class:`qibocal.protocols.rabi.length_signal.rabi_length_signal`.
+
+It follows an example runcard and plot for the signal exepriment
+
+.. code-block:: yaml
+
+    - id: Rabi signal
+      operation: rabi_amplitude_signal
+      parameters:
+        min_amp_factor: 0.2
+        max_amp_factor: 1.
+        step_amp_factor: 0.01
+        pulse_length: 40
+        nshots: 3000
+        relaxation_time: 50000
+
+Requirements
+^^^^^^^^^^^^
+- :ref:`qubit_spectroscopy`
+- :ref:`resonator_spectroscopy`

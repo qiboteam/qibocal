@@ -9,3 +9,5 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     resonator_spectroscopy
     resonator_punchout
     qubit_spectroscopy
+    rabi
+    singleshot
