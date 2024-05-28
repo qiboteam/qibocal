@@ -29,3 +29,11 @@ Fit
 The fit procedure (:func:`qibocal.protocols.signal_experiments.calibrate_state_discrimination._fit`) uses the numpy conjugate function, as it takes the conjugate of the differences of the two RAW traces acquired (one for the ground state and one for the excited state) as the kernel, after normalization.
 
 The kernel is also updated in the platform runcard after successful fitting.
+
+Requirements pre-experiment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+This experiment requires the calibration of a pi-pulse, since in the pulse sequence, we eed to use the X gate.
+Therefore, before this experiment, we need to run at least a:
+
+- Rabi experiment (ADD LINK TO DOC)

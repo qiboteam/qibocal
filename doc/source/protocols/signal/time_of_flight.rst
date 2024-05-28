@@ -39,12 +39,22 @@ For a 2D resonator, some more oscillation could appear:
 
 .. image:: time_of_flight_2d.png
 
+Just as an example, we provide here also a plot for a 2D resonator case, where the demodulation is not carried out.
+As we can see the plot is very different, but the starting point of the signal is still clearly visible.
+
+.. image:: time_of_flight_2d_nodem.png
+
 Fit
 ^^^
 
 The fit procedure (:func:`qibocal.protocols.signal_experiments.time_of_flight_readout._fit`) employs a moving average, returning the time when it is maximum, namely when the signal starts being acquired.
 
 Since these plots could vary a lot, depending on the controller instrument specifics and on the design o the QPU undery analysis, we suggest to verify each time the correctness of the fit procedure.
+
+Requirements pre-experiment
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Before this experiment, nothing in particular is required. This can indeed be done as a first test of the connections.
 
 .. rubric:: References
 
