@@ -10,7 +10,6 @@ from qibolab.qubits import QubitId
 from qibocal.auto.operation import Routine
 from qibocal.fitting.classifier import run
 from qibocal.protocols.classification import (
-    ClassificationType,
     SingleShotClassificationData,
     SingleShotClassificationParameters,
     SingleShotClassificationResults,
@@ -42,6 +41,12 @@ class QutritClassificationData(SingleShotClassificationData):
     """List of models to classify the qubit states"""
 
 
+QutritClassificationType = np.dtype(
+    [("i", np.float64), ("q", np.float64), ("state", int), ("tone", int)]
+)
+"""Custom dtype for qutrit classification."""
+
+
 def _acquisition(
     params: QutritClassificationParameters,
     platform: Platform,
@@ -65,63 +70,52 @@ def _acquisition(
     """
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
-    states_sequences = [PulseSequence() for _ in range(3)]
-    ro_pulses = {}
-    for qubit in targets:
-        rx_pulse = platform.create_RX_pulse(qubit, start=0)
-        rx12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish)
-        drive_pulses = [rx_pulse, rx12_pulse]
-        ro_pulses[qubit] = []
-        for i, sequence in enumerate(states_sequences):
-            sequence.add(*drive_pulses[:i])
-            start = drive_pulses[i - 1].finish if i != 0 else 0
-            print(drive_pulses, start)
-            # if i == 2:
-            # TODO: add the RO pulse MZ in the same time
-            # ro_pulse = platform.create_MZ1_pulse(qubit, start=start)
-            # ro_pulse.frequency = 7207817029
-            # ro_pulse.amplitude = 0.01
-            # else:
-            ro_pulse0 = platform.create_MZ_pulse(qubit, start=start)
-            ro_pulse1 = platform.create_MZ1_pulse(qubit, start=start)
-
-            ro_pulses[qubit].append([ro_pulse0, ro_pulse1])
-            # sequence.add(ro_pulse0)
-            sequence.add(ro_pulse1)
-            print("JJJJJJJJJJJJJJJJJJJJJ", sequence)
-
+    states_sequences_tone2 = [PulseSequence() for _ in range(3)]
+    states_sequences_tone1 = [PulseSequence() for _ in range(3)]
     data = QutritClassificationData(
         nshots=params.nshots,
         classifiers_list=params.classifiers_list,
         savedir=params.savedir,
     )
-    states_results = []
-    for sequence in states_sequences:
-        states_results.append(
-            platform.execute_pulse_sequence(
-                sequence,
-                ExecutionParameters(
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.INTEGRATION,
-                ),
-            )
-        )
-
     for qubit in targets:
-        for state, state_result in enumerate(states_results):
-            print(state_result)
-            print(state_result.keys())
-            result = state_result[ro_pulses[qubit][state][-1].serial]
-            data.register_qubit(
-                ClassificationType,
-                (qubit),
-                dict(
-                    state=[state] * params.nshots,
-                    i=result.voltage_i,
-                    q=result.voltage_q,
-                ),
-            )
+        rx_pulse = platform.create_RX_pulse(qubit, start=0)
+        rx12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish)
+        drive_pulses = [rx_pulse, rx12_pulse]
+        for tone, sequences in enumerate(
+            [states_sequences_tone1, states_sequences_tone2]
+        ):
+            for state, sequence in enumerate(sequences):
+
+                sequence.add(*drive_pulses[:state])
+                start = drive_pulses[state - 1].finish if state != 0 else 0
+                if tone == 0:
+                    ro_pulse = platform.create_MZ_pulse(qubit, start=start)
+                else:
+                    ro_pulse = platform.create_MZ1_pulse(qubit, start=start)
+                sequence.add(ro_pulse)
+                print("JJJJJJJJJJJJJJJJJJJJJ", sequence)
+
+                results = platform.execute_pulse_sequence(
+                    sequence,
+                    ExecutionParameters(
+                        nshots=params.nshots,
+                        relaxation_time=params.relaxation_time,
+                        acquisition_type=AcquisitionType.INTEGRATION,
+                    ),
+                )
+
+                print(results)
+                result = results[ro_pulse.serial]
+                data.register_qubit(
+                    QutritClassificationType,
+                    (qubit),
+                    dict(
+                        state=[state] * params.nshots,
+                        i=result.voltage_i,
+                        q=result.voltage_q,
+                        tone=tone,
+                    ),
+                )
 
     return data
 
@@ -179,7 +173,7 @@ def _plot(
     target: QubitId,
     fit: SingleShotClassificationResults,
 ):
-    figures = plot_results(data, target, 3, fit)
+    figures = plot_results(data, target, 3, fit, 2)
     fitting_report = ""
     return figures, fitting_report
 
