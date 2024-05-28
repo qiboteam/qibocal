@@ -33,7 +33,7 @@ The kernel is also updated in the platform runcard after successful fitting.
 Requirements pre-experiment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-This experiment requires the calibration of a pi-pulse, since in the pulse sequence, we eed to use the X gate.
+This experiment requires the calibration of a pi-pulse, since in the pulse sequence, we need to use the X gate.
 Therefore, before this experiment, we need to run at least a:
 
 - Rabi experiment (ADD LINK TO DOC)
