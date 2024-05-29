@@ -319,7 +319,7 @@ def _plot(
 
     if fit is not None:
         for color, best_freq in zip(
-            ["green", "orange"][fit.best_freqs01, fit.best_freqs12]
+            ["green", "orange"], [fit.best_freqs01, fit.best_freqs12]
         ):
             fig.add_trace(
                 go.Scatter(
