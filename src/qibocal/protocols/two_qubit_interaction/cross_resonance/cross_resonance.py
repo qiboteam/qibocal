@@ -101,7 +101,7 @@ def _acquisition(
             )
 
             # store the results
-            prob1 = results[target].probability(state=1)
+            prob1 = results[target].probability(state=0)
             data.register_qubit(
                 CrossResonanceType,
                 (target, control, setup),
