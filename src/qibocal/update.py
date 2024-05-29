@@ -27,6 +27,15 @@ def readout_frequency(freq: float, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].readout_frequency = freq_hz
 
 
+def readout_mz1_frequency(freq: float, platform: Platform, qubit: QubitId):
+    """Update readout frequency value in platform for specific qubit."""
+    mz = platform.qubits[qubit].native_gates.MZ1
+    freq_hz = int(freq)
+    mz.frequency = freq_hz
+    # if mz.if_frequency is not None:
+    #     mz.if_frequency = freq_hz - platform.qubits[qubit].readout.lo_frequency
+
+
 def bare_resonator_frequency(freq: float, platform: Platform, qubit: QubitId):
     """Update rbare frequency value in platform for specific qubit."""
     platform.qubits[qubit].bare_resonator_frequency = int(freq)

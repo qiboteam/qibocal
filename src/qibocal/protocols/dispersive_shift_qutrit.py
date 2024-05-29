@@ -10,6 +10,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.protocols.dispersive_shift import DispersiveShiftType
 from qibocal.protocols.utils import (
@@ -366,9 +367,14 @@ def _plot(
     return figures, fitting_report
 
 
+def _update(results: DispersiveShiftQutritResults, platform: Platform, target: QubitId):
+    update.readout_mz1_frequency(results.best_freq[target], platform, target)
+
+
 dispersive_shift_qutrit = Routine(
     _acquisition,
     _fit,
     _plot,
+    _update,
 )
 """Dispersive shift Routine object."""

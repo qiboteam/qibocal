@@ -116,7 +116,6 @@ def _acquisition(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
 
-    # create a DataUnits objects to store the results
     data = DispersiveShiftData(resonator_type=platform.resonator_type)
     sweeper = Sweeper(
         Parameter.frequency,
