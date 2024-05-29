@@ -47,6 +47,8 @@ class DispersiveShiftQutritResults(Results):
     """Fitted parameters state one."""
     fitted_parameters_state_two: dict[QubitId, list[float]]
     """Fitted parameters state one."""
+    best_freq: dict[QubitId, float]
+    """Best readout frequency."""
 
     @property
     def state_zero(self):
@@ -130,11 +132,11 @@ def _acquisition(
 
     data = DispersiveShiftQutritData(resonator_type=platform.resonator_type)
     results = []
-    for i, sequence in enumerate([sequence_0, sequence_1, sequence_2]):
+    for state, sequence in enumerate([sequence_0, sequence_1, sequence_2]):
         sweeper = Sweeper(
             Parameter.frequency,
             delta_frequency_range,
-            pulses=[ro_pulses[qubit][i] for qubit in targets],
+            pulses=[ro_pulses[qubit][state] for qubit in targets],
             type=SweeperType.OFFSET,
         )
 
@@ -153,14 +155,14 @@ def _acquisition(
 
     # retrieve the results for every qubit
     for qubit in targets:
-        for i, results in enumerate(results):
-            result = results[ro_pulses[qubit][i].serial]
+        for state, results in enumerate(results):
+            result = results[ro_pulses[qubit][state].serial]
             # store the results
             data.register_qubit(
                 DispersiveShiftType,
-                (qubit, i),
+                (qubit, state),
                 dict(
-                    freq=ro_pulses[qubit][i].frequency + delta_frequency_range,
+                    freq=ro_pulses[qubit][state].frequency + delta_frequency_range,
                     signal=result.magnitude,
                     phase=result.phase,
                     i=result.voltage_i,
@@ -181,21 +183,35 @@ def _fit(data: DispersiveShiftQutritData) -> DispersiveShiftQutritResults:
     fitted_parameters_0 = {}
     fitted_parameters_1 = {}
     fitted_parameters_2 = {}
-
-    for i in range(3):
-        for qubit in qubits:
-            data_i = data[qubit, i]
+    best_freqs = {}
+    frequencies = np.unique(data[0, 0].freq)
+    for qubit in qubits:
+        centers = [[] for _ in range(3)]
+        for state in range(3):
+            data_state = data[qubit, state]
+            # print(data_state)
             fit_result = lorentzian_fit(
-                data_i, resonator_type=data.resonator_type, fit="resonator"
+                data_state, resonator_type=data.resonator_type, fit="resonator"
             )
             if fit_result is not None:
-                if i == 0:
+                if state == 0:
                     frequency_0[qubit], fitted_parameters_0[qubit], _ = fit_result
-                elif i == 1:
+                elif state == 1:
                     frequency_1[qubit], fitted_parameters_1[qubit], _ = fit_result
                 else:
                     frequency_2[qubit], fitted_parameters_2[qubit], _ = fit_result
-
+            for frequency in frequencies:
+                data_same_freq = data_state[data_state.freq == frequency]
+                i_center = np.mean(data_same_freq.i)
+                q_center = np.mean(data_same_freq.q)
+                centers[state].append([i_center, q_center])
+        centers = np.array(centers)
+        # import pdb; pdb.set_trace()
+        distances01 = np.linalg.norm(centers[0] - centers[1], axis=1)
+        distances12 = np.linalg.norm(centers[1] - centers[2], axis=1)
+        distances = np.stack((distances01, distances12))
+        distances = np.sum(distances, axis=0)
+        best_freqs[qubit] = frequencies[np.argmax(distances)]
     return DispersiveShiftQutritResults(
         frequency_state_zero=frequency_0,
         frequency_state_one=frequency_1,
@@ -203,6 +219,7 @@ def _fit(data: DispersiveShiftQutritData) -> DispersiveShiftQutritResults:
         fitted_parameters_state_one=fitted_parameters_1,
         fitted_parameters_state_zero=fitted_parameters_0,
         fitted_parameters_state_two=fitted_parameters_2,
+        best_freq=best_freqs,
     )
 
 
@@ -295,30 +312,30 @@ def _plot(
             )
 
     if fit is not None:
-        # fig.add_trace(
-        #     go.Scatter(
-        #         x=[
-        #             fit.best_freq[target] * HZ_TO_GHZ,
-        #             fit.best_freq[target] * HZ_TO_GHZ,
-        #         ],
-        #         y=[
-        #             np.min(np.concatenate((data_0.signal, data_1.signal))),
-        #             np.max(np.concatenate((data_0.signal, data_1.signal))),
-        #         ],
-        #         mode="lines",
-        #         line=go.scatter.Line(color="orange", width=3, dash="dash"),
-        #         name="Best frequency",
-        #     ),
-        #     row=1,
-        #     col=1,
-        # )
+        fig.add_trace(
+            go.Scatter(
+                x=[
+                    fit.best_freq[target] * HZ_TO_GHZ,
+                    fit.best_freq[target] * HZ_TO_GHZ,
+                ],
+                y=[
+                    np.min(np.concatenate((data_0.signal, data_1.signal))),
+                    np.max(np.concatenate((data_0.signal, data_1.signal))),
+                ],
+                mode="lines",
+                line=go.scatter.Line(color="orange", width=3, dash="dash"),
+                name="Best frequency",
+            ),
+            row=1,
+            col=1,
+        )
 
-        # fig.add_vline(
-        #     x=fit.best_freq[target] * HZ_TO_GHZ,
-        #     line=dict(color="orange", width=3, dash="dash"),
-        #     row=1,
-        #     col=1,
-        # )
+        fig.add_vline(
+            x=fit.best_freq[target] * HZ_TO_GHZ,
+            line=dict(color="orange", width=3, dash="dash"),
+            row=1,
+            col=1,
+        )
         fitting_report = table_html(
             table_dict(
                 target,
