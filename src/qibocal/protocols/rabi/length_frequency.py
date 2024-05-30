@@ -152,8 +152,7 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
         frequency = freqs[index]
 
         y = probability_matrix[index, :].ravel()
-        error = data[qubit].error.reshape(len(durations), len(freqs)).T
-        error = error[index, :].ravel()
+        error = data[qubit].error[data[qubit].freq == frequency]
 
         y_min = np.min(y)
         y_max = np.max(y)

@@ -168,7 +168,7 @@ def _fit(data: RabiLengthFreqVoltData) -> RabiLengthFrequencyVoltResults:
         index = np.argmax([max(x) - min(x) for x in signal_matrix])
         frequency = freqs[index]
 
-        y = signal_matrix[index, :].ravel()
+        y = signal_matrix[index]
 
         y_min = np.min(y)
         y_max = np.max(y)
