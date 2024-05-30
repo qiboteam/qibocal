@@ -107,17 +107,15 @@ def _acquisition(
         qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         ro_pulses[qubit] = []
         rx12_pulses[qubit] = platform.create_RX12_pulse(
-            qubit, start=qd_pulses[qubit].duration
+            qubit, start=qd_pulses[qubit].finish
         )
         ro_pulses[qubit].append(platform.create_qubit_readout_pulse(qubit, start=0))
 
         ro_pulses[qubit].append(
-            platform.create_qubit_readout_pulse(qubit, start=qd_pulses[qubit].duration)
+            platform.create_qubit_readout_pulse(qubit, start=qd_pulses[qubit].finish)
         )
         ro_pulses[qubit].append(
-            platform.create_qubit_readout_pulse(
-                qubit, start=rx12_pulses[qubit].duration
-            )
+            platform.create_qubit_readout_pulse(qubit, start=rx12_pulses[qubit].finish)
         )
         sequence_0.add(ro_pulses[qubit][0])
 
@@ -127,7 +125,9 @@ def _acquisition(
         sequence_2.add(qd_pulses[qubit])
         sequence_2.add(rx12_pulses[qubit])
         sequence_2.add(ro_pulses[qubit][2])
-
+    print(sequence_0)
+    print(sequence_1)
+    print(sequence_2)
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
