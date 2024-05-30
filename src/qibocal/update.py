@@ -46,6 +46,11 @@ def readout_amplitude(amp: float, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].native_gates.MZ.amplitude = float(amp)
 
 
+def readout_MZ1_amplitude(amp: float, platform: Platform, qubit: QubitId):
+    """Update readout amplitude value in platform for specific qubit."""
+    platform.qubits[qubit].native_gates.MZ1.amplitude = float(amp)
+
+
 def readout_attenuation(att: int, platform: Platform, qubit: QubitId):
     """Update readout attenuation value in platform for specific qubit."""
     platform.qubits[qubit].readout.attenuation = int(att)

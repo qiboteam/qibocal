@@ -27,6 +27,7 @@ class ResonatorAmplitudeParameters(Parameters):
     """Amplitude stop value"""
     error_threshold: float = 0.003
     """Probability error threshold to stop the best amplitude search"""
+    qubit_states: bool = True
 
 
 ResonatorAmplitudeType = np.dtype(
@@ -45,6 +46,7 @@ class ResonatorAmplitudeData(Data):
     """Data class for `resoantor_amplitude` protocol."""
 
     data: dict[tuple, npt.NDArray[ResonatorAmplitudeType]] = field(default_factory=dict)
+    qubit_states: bool
 
 
 @dataclass
@@ -59,6 +61,7 @@ class ResonatorAmplitudeResults(Results):
     """IQ angle that gives lower error."""
     best_threshold: dict[QubitId, float]
     """Thershold that gives lower error."""
+    qubit_states: bool
 
 
 def _acquisition(
@@ -81,7 +84,7 @@ def _acquisition(
         data (:class:`ResonatorAmplitudeData`)
     """
 
-    data = ResonatorAmplitudeData()
+    data = ResonatorAmplitudeData(qubit_states=params.qubit_states)
     for qubit in targets:
         error = 1
         old_amp = platform.qubits[qubit].native_gates.MZ.amplitude
@@ -90,14 +93,24 @@ def _acquisition(
             platform.qubits[qubit].native_gates.MZ.amplitude = new_amp
             sequence_0 = PulseSequence()
             sequence_1 = PulseSequence()
-
-            qd_pulses = platform.create_RX_pulse(qubit, start=0)
-            ro_pulses = platform.create_qubit_readout_pulse(
-                qubit, start=qd_pulses.finish
-            )
-            sequence_0.add(ro_pulses)
-            sequence_1.add(qd_pulses)
-            sequence_1.add(ro_pulses)
+            if params.qubit_states:
+                qd_pulses = platform.create_RX_pulse(qubit, start=0)
+                ro_pulses = platform.create_qubit_readout_pulse(
+                    qubit, start=qd_pulses.finish
+                )
+                sequence_0.add(ro_pulses)
+                sequence_1.add(qd_pulses)
+                sequence_1.add(ro_pulses)
+            else:
+                qd_pulses01 = platform.create_RX_pulse(qubit, start=0)
+                qd_pulses12 = platform.create_RX12_pulse(
+                    qubit, start=qd_pulses01.finish
+                )
+                ro_pulses = platform.create_MZ1_pulse(qubit, start=qd_pulses.finish)
+                sequence_0.add(ro_pulses)
+                sequence_1.add(qd_pulses01)
+                sequence_1.add(qd_pulses12)
+                sequence_1.add(ro_pulses)
 
             state0_results = platform.execute_pulse_sequence(
                 sequence_0,
@@ -156,7 +169,13 @@ def _fit(data: ResonatorAmplitudeData) -> ResonatorAmplitudeResults:
         best_angle[qubit] = data_qubit["angle"][index_best_err]
         best_threshold[qubit] = data_qubit["threshold"][index_best_err]
 
-    return ResonatorAmplitudeResults(lowest_err, best_amps, best_angle, best_threshold)
+    return ResonatorAmplitudeResults(
+        lowest_err,
+        best_amps,
+        best_angle,
+        best_threshold,
+        qubit_states=data.qubit_states,
+    )
 
 
 def _plot(
@@ -203,9 +222,12 @@ def _plot(
 
 
 def _update(results: ResonatorAmplitudeResults, platform: Platform, target: QubitId):
-    update.readout_amplitude(results.best_amp[target], platform, target)
-    update.iq_angle(results.best_angle[target], platform, target)
-    update.threshold(results.best_threshold[target], platform, target)
+    if results.qubit_states:
+        update.readout_amplitude(results.best_amp[target], platform, target)
+        update.iq_angle(results.best_angle[target], platform, target)
+        update.threshold(results.best_threshold[target], platform, target)
+    else:
+        update.readout_MZ1_amplitude(results.best_amp[target], platform, target)
 
 
 resonator_amplitude = Routine(_acquisition, _fit, _plot, _update)
