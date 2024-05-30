@@ -74,6 +74,13 @@ def drive_duration(duration: Union[int, tuple], platform: Platform, qubit: Qubit
     platform.qubits[qubit].native_gates.RX.duration = int(duration)
 
 
+def drive_12_duration(duration: Union[int, tuple], platform: Platform, qubit: QubitId):
+    """Update drive duration value in platform for specific qubit."""
+    if isinstance(duration, tuple):
+        duration = duration[0]
+    platform.qubits[qubit].native_gates.RX12.duration = int(duration)
+
+
 def crosstalk_matrix(
     matrix_element: float, platform: Platform, qubit: QubitId, flux_qubit: QubitId
 ):
