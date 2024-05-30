@@ -169,7 +169,7 @@ def _fit(data: RabiAmplitudeFreqVoltData) -> RabiAmplitudeFrequencyVoltResults:
         frequency = freqs[index]
 
         # Guessing period using fourier transform
-        y = signal_matrix[index, :].ravel()
+        y = signal_matrix[index]
 
         y_min = np.min(y)
         y_max = np.max(y)
