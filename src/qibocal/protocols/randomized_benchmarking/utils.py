@@ -247,7 +247,7 @@ class RB_Generator:
 
     def calculate_average_pulses(self):
         """Average number of pulses per clifford."""
-        # FIXME: Make it work for single qubit properly
+        # FIXME: Make it work for single qubit properly if we need it ?
         return (
             calculate_pulses_clifford(self.two_qubit_cliffords)
             if self.file is not None
@@ -572,11 +572,10 @@ def layer_circuit(rb_gen: Callable, depth: int, target) -> tuple[Circuit, dict]:
     """
     full_circuit = None
     random_indexes = []
-    if isinstance(target, int):
+    if isinstance(target, int):  # int for qubit
         nqubits = 1
         rb_gen_layer = rb_gen.layer_gen_single_qubit()
-    # FIXME: I Can't use QubitPairId
-    elif isinstance(target, Tuple):
+    elif isinstance(target, Tuple):  # Tuple for qubit pair
         nqubits = 2
         rb_gen_layer = rb_gen.layer_gen_two_qubit()
     # Build each layer, there will be depth many in the final circuit.

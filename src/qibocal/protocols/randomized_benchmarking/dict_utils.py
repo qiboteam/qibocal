@@ -228,8 +228,8 @@ def load_inverse_cliffords(file_inv):
     return clifford_matrices_inv
 
 
-def load_cliffords(file):
-    path = pathlib.Path(__file__).parent / "2qubitCliffs.json"
+def load_cliffords(file_cliffords):
+    path = pathlib.Path(__file__).parent / file_cliffords
     with open(path) as file:
         two_qubit_cliffords = json.load(file)
     return two_qubit_cliffords
