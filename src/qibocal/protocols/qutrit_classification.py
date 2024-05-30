@@ -70,8 +70,9 @@ def _acquisition(
     """
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
-    states_sequences_tone2 = [PulseSequence() for _ in range(3)]
-    states_sequences_tone1 = [PulseSequence() for _ in range(3)]
+    # states_sequences_tone2 = [PulseSequence() for _ in range(3)]
+    # states_sequences_tone1 = [PulseSequence() for _ in range(3)]
+    # sequneces  = [PulseSequence() for _ in range(3)]
     data = QutritClassificationData(
         nshots=params.nshots,
         classifiers_list=params.classifiers_list,
@@ -81,30 +82,30 @@ def _acquisition(
         rx_pulse = platform.create_RX_pulse(qubit, start=0)
         rx12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish)
         drive_pulses = [rx_pulse, rx12_pulse]
-        for tone, sequences in enumerate(
-            [states_sequences_tone1, states_sequences_tone2]
-        ):
-            for state, sequence in enumerate(sequences):
 
-                sequence.add(*drive_pulses[:state])
-                start = drive_pulses[state - 1].finish if state != 0 else 0
-                if tone == 0:
-                    ro_pulse = platform.create_MZ_pulse(qubit, start=start)
-                else:
-                    ro_pulse = platform.create_MZ1_pulse(qubit, start=start)
-                sequence.add(ro_pulse)
-                print("JJJJJJJJJJJJJJJJJJJJJ", sequence)
+        for state in range(3):
+            sequence = PulseSequence()
+            sequence.add(*drive_pulses[:state])
+            start = drive_pulses[state - 1].finish if state != 0 else 0
+            # if tone == 0:
+            ro_pulse_tone0 = platform.create_MZ_pulse(qubit, start=start)
+            # else:
+            ro_pulse_tone1 = platform.create_MZ1_pulse(qubit, start=start)
+            sequence.add(ro_pulse_tone0)
+            sequence.add(ro_pulse_tone1)
+            print("JJJJJJJJJJJJJJJJJJJJJ", sequence)
 
-                results = platform.execute_pulse_sequence(
-                    sequence,
-                    ExecutionParameters(
-                        nshots=params.nshots,
-                        relaxation_time=params.relaxation_time,
-                        acquisition_type=AcquisitionType.INTEGRATION,
-                    ),
-                )
+            results = platform.execute_pulse_sequence(
+                sequence,
+                ExecutionParameters(
+                    nshots=params.nshots,
+                    relaxation_time=params.relaxation_time,
+                    acquisition_type=AcquisitionType.INTEGRATION,
+                ),
+            )
 
-                print(results)
+            print(results)
+            for tone, ro_pulse in enumerate([ro_pulse_tone0, ro_pulse_tone1]):
                 result = results[ro_pulse.serial]
                 data.register_qubit(
                     QutritClassificationType,

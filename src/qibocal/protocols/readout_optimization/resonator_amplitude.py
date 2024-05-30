@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from os import error
 
 import numpy as np
 import numpy.typing as npt
