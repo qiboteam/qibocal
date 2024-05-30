@@ -151,9 +151,8 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         index = np.argmax([max(x) - min(x) for x in probability_matrix])
         frequency = freqs[index]
 
-        y = probability_matrix[index, :].ravel()
-        error = data[qubit].error.reshape(len(amps), len(freqs)).T
-        error = error[index, :].ravel()
+        y = probability_matrix[index]
+        error = data[qubit].error[data[qubit].freq == frequency]
 
         y_min = np.min(y)
         y_max = np.max(y)
