@@ -44,7 +44,7 @@ class QubitSpectroscopyEFData(QubitSpectroscopyData):
 def _fit_ef(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
     results = _fit(data)
     anharmoncities = {
-        qubit: data.drive_frequencies[qubit] - results.frequency[qubit]
+        qubit: results.frequency[qubit] - data.drive_frequencies[qubit]
         for qubit in data.qubits
         if qubit in results
     }
@@ -81,7 +81,9 @@ def _acquisition(
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=rx_pulses[qubit].finish, duration=params.drive_duration
         )
+
         if platform.qubits[qubit].native_gates.RX12.frequency is None:
+
             qd_pulses[qubit].frequency = (
                 rx_pulses[qubit].frequency - DEFAULT_ANHARMONICITY
             )
