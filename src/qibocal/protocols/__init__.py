@@ -67,6 +67,7 @@ from .two_qubit_interaction import (
     cz_virtualz,
     cz_virtualz_signal,
 )
+from .two_qubit_state_tomography import two_qubit_state_tomography
 
 
 class Operation(Enum):
@@ -133,3 +134,4 @@ class Operation(Enum):
     flipping_signal = flipping_signal
     calibrate_state_discrimination = calibrate_state_discrimination
     state_tomography = state_tomography
+    two_qubit_state_tomography = two_qubit_state_tomography
