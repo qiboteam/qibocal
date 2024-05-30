@@ -65,6 +65,8 @@ from .two_qubit_interaction import (
     chevron_signal,
     chsh_circuits,
     chsh_pulses,
+    cross_resonance,
+    cross_resonance_chevron,
     cz_virtualz,
     cz_virtualz_signal,
 )
@@ -135,5 +137,7 @@ class Operation(Enum):
     coupler_chevron = coupler_chevron
     flipping_signal = flipping_signal
     calibrate_state_discrimination = calibrate_state_discrimination
+    cross_resonance = cross_resonance
+    cross_resonance_chevron = cross_resonance_chevron
     state_tomography = state_tomography
     two_qubit_state_tomography = two_qubit_state_tomography
