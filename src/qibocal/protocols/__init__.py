@@ -29,6 +29,7 @@ from .flux_dependence.qubit_flux_dependence import qubit_flux
 from .flux_dependence.qubit_flux_tracking import qubit_flux_tracking
 from .flux_dependence.resonator_crosstalk import resonator_crosstalk
 from .flux_dependence.resonator_flux_dependence import resonator_flux
+from .qubit_power_spectroscopy import qubit_power_spectroscopy
 from .qubit_spectroscopy import qubit_spectroscopy
 from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
 from .qutrit_classification import qutrit_classification
@@ -68,6 +69,7 @@ from .two_qubit_interaction import (
     cz_virtualz,
     cz_virtualz_signal,
 )
+from .two_qubit_state_tomography import two_qubit_state_tomography
 
 
 class Operation(Enum):
@@ -77,6 +79,7 @@ class Operation(Enum):
     resonator_flux = resonator_flux
     resonator_crosstalk = resonator_crosstalk
     qubit_spectroscopy = qubit_spectroscopy
+    qubit_power_spectroscopy = qubit_power_spectroscopy
     qubit_flux = qubit_flux
     qubit_flux_tracking = qubit_flux_tracking
     qubit_crosstalk = qubit_crosstalk
@@ -134,4 +137,5 @@ class Operation(Enum):
     flipping_signal = flipping_signal
     calibrate_state_discrimination = calibrate_state_discrimination
     state_tomography = state_tomography
+    two_qubit_state_tomography = two_qubit_state_tomography
     standard_rb_2q = standard_rb_2q

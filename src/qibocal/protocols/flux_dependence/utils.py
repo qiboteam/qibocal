@@ -1,6 +1,8 @@
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from qibolab.platform import Platform
+from qibolab.qubits import QubitId
 
 from ..utils import HZ_TO_GHZ
 
@@ -31,7 +33,6 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
         "Signal [a.u.]",
         "Phase [rad]",
     )
-
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -43,11 +44,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
     fig.add_trace(
         go.Heatmap(
             x=qubit_data.freq * HZ_TO_GHZ,
-            y=(
-                qubit_data.bias - data.offset[qubit]
-                if data.flux_pulses
-                else qubit_data.bias
-            ),
+            y=qubit_data.bias,
             z=qubit_data.signal,
             colorbar_x=0.46,
         ),
@@ -65,8 +62,8 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
         bias = np.unique(qubit_data.bias)
         fig.add_trace(
             go.Scatter(
-                x=fit_function(bias, *params),
-                y=bias - data.offset[qubit] if data.flux_pulses else bias,
+                x=fit_function(bias, **params),
+                y=bias,
                 showlegend=True,
                 name="Fit",
                 marker=dict(color="green"),
@@ -81,10 +78,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
         col=1,
     )
 
-    if data.flux_pulses:
-        fig.update_yaxes(title_text="Flux Amplitude [a.u.]", row=1, col=1)
-    else:
-        fig.update_yaxes(title_text="Bias [V]", row=1, col=1)
+    fig.update_yaxes(title_text="Bias [V]", row=1, col=1)
 
     fig.add_trace(
         go.Heatmap(
@@ -134,11 +128,7 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
         fig.add_trace(
             go.Heatmap(
                 x=frequencies,
-                y=(
-                    qubit_data.bias - data.voltage[qubit]
-                    if data.flux_pulses
-                    else qubit_data.bias
-                ),
+                y=qubit_data.bias,
                 z=qubit_data.signal,
                 showscale=False,
             ),
@@ -147,18 +137,13 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
         )
         if fit is not None:
 
-            if flux_qubit[1] != qubit:
+            if flux_qubit[1] != qubit and flux_qubit in fit.fitted_parameters:
                 fig.add_trace(
                     go.Scatter(
                         x=fit_function(
                             xj=qubit_data.bias, **fit.fitted_parameters[flux_qubit]
-                        )
-                        * HZ_TO_GHZ,
-                        y=(
-                            qubit_data.bias - data.voltage[qubit]
-                            if data.flux_pulses
-                            else qubit_data.bias
                         ),
+                        y=qubit_data.bias,
                         showlegend=not any(
                             isinstance(trace, go.Scatter) for trace in fig.data
                         ),
@@ -169,19 +154,15 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
                     row=1,
                     col=col + 1,
                 )
-            else:
+            elif flux_qubit in fit.fitted_parameters:
                 diagonal_params = fit.fitted_parameters[qubit, qubit]
                 fig.add_trace(
                     go.Scatter(
-                        x=globals().get(fit_function.__name__ + "_diagonal")(
+                        x=fit_function(
                             qubit_data.bias,
-                            *diagonal_params,
+                            **diagonal_params,
                         ),
-                        y=(
-                            qubit_data.bias - data.voltage[flux_qubit[1]]
-                            if data.flux_pulses
-                            else qubit_data.bias
-                        ),
+                        y=qubit_data.bias,
                         showlegend=not any(
                             isinstance(trace, go.Scatter) for trace in fig.data
                         ),
@@ -199,16 +180,9 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
             col=col + 1,
         )
 
-        if data.flux_pulses:
-            fig.update_yaxes(
-                title_text=f"Qubit {flux_qubit[1]}: Flux Amplitude [a.u.]",
-                row=1,
-                col=col + 1,
-            )
-        else:
-            fig.update_yaxes(
-                title_text=f"Qubit {flux_qubit[1]}: Bias [V]", row=1, col=col + 1
-            )
+        fig.update_yaxes(
+            title_text=f"Qubit {flux_qubit[1]}: Bias [V]", row=1, col=col + 1
+        )
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
     fig.update_layout(xaxis2=dict(range=[np.min(frequencies), np.max(frequencies)]))
@@ -221,7 +195,7 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
     return figures, fitting_report
 
 
-def G_f_d(xi, xj, sweetspot, d, matrix_element, crosstalk_element):
+def G_f_d(xi, xj, offset, d, crosstalk_element, normalization):
     """Auxiliary function to calculate qubit frequency as a function of bias.
 
     It also determines the flux dependence of :math:`E_J`,:math:`E_J(\\phi)=E_J(0)G_f_d`.
@@ -230,12 +204,12 @@ def G_f_d(xi, xj, sweetspot, d, matrix_element, crosstalk_element):
     Args:
         xi (float): bias of target qubit
         xj (float): bias of neighbor qubit
-        sweetspot (float): sweetspot [V].
+        offset (float): phase_offset [V].
         matrix_element(float): diagonal crosstalk matrix element
         crosstalk_element(float): off-diagonal crosstalk matrix element
         d (float): asymmetry between the two junctions of the transmon.
                    Typically denoted as :math:`d`. :math:`d = (E_J^1 - E_J^2) / (E_J^1 + E_J^2)`.
-
+        normalization (float): Normalize diagonal element to 1
     Returns:
         (float)
     """
@@ -244,13 +218,15 @@ def G_f_d(xi, xj, sweetspot, d, matrix_element, crosstalk_element):
         + (1 - d**2)
         * np.cos(
             np.pi
-            * ((xi - sweetspot) * matrix_element + (xj - sweetspot) * crosstalk_element)
+            * (xi * normalization + normalization * xj * crosstalk_element + offset)
         )
         ** 2
     ) ** 0.25
 
 
-def transmon_frequency(xi, xj, w_max, d, matrix_element, sweetspot, crosstalk_element):
+def transmon_frequency(
+    xi, xj, w_max, d, normalization, offset, crosstalk_element, charging_energy
+):
     r"""Approximation to transmon frequency.
 
     The formula holds in the transmon regime Ej / Ec >> 1.
@@ -266,51 +242,32 @@ def transmon_frequency(xi, xj, w_max, d, matrix_element, sweetspot, crosstalk_el
         crosstalk_element(float): off-diagonal crosstalk matrix element
         d (float): asymmetry between the two junctions of the transmon.
                    Typically denoted as :math:`d`. :math:`d = (E_J^1 - E_J^2) / (E_J^1 + E_J^2)`.
+        charging_energy (float): Ec / h (GHz)
 
      Returns:
          (float): qubit frequency as a function of bias.
     """
-    return w_max * G_f_d(
+    return (w_max + charging_energy) * G_f_d(
         xi,
         xj,
-        sweetspot=sweetspot,
+        offset=offset,
         d=d,
-        matrix_element=matrix_element,
+        normalization=normalization,
         crosstalk_element=crosstalk_element,
-    )
-
-
-def transmon_frequency_diagonal(x, w_max, d, matrix_element, sweetspot):
-    r"""Approximation to transmon frequency without crosstalk.
-
-    The formula holds in the transmon regime Ej / Ec >> 1.
-
-    See  https://arxiv.org/pdf/cond-mat/0703002.pdf for the complete formula.
-
-    Args:
-        x (float): bias of target qubit
-        w_max (float): maximum frequency  :math:`w_{max} = \sqrt{8 E_j E_c}
-        sweetspot (float): sweetspot [V].
-        matrix_element(float): diagonal crosstalk matrix element
-        d (float): asymmetry between the two junctions of the transmon.
-                   Typically denoted as :math:`d`. :math:`d = (E_J^1 - E_J^2) / (E_J^1 + E_J^2)`.
-
-     Returns:
-         (float): qubit frequency as a function of bias.
-    """
-    return transmon_frequency(
-        xi=x,
-        xj=0,
-        w_max=w_max,
-        d=d,
-        matrix_element=matrix_element,
-        sweetspot=sweetspot,
-        crosstalk_element=0,
-    )
+    ) - charging_energy
 
 
 def transmon_readout_frequency(
-    xi, xj, w_max, d, matrix_element, crosstalk_element, sweetspot, resonator_freq, g
+    xi,
+    xj,
+    w_max,
+    d,
+    normalization,
+    crosstalk_element,
+    offset,
+    resonator_freq,
+    g,
+    charging_energy,
 ):
     r"""Approximation to flux dependent resonator frequency.
 
@@ -334,11 +291,11 @@ def transmon_readout_frequency(
          (float): resonator frequency as a function of bias.
     """
     return resonator_freq + g**2 * G_f_d(
-        xi=xi,
-        xj=xj,
-        sweetspot=sweetspot,
+        xi,
+        xj,
+        offset=offset,
         d=d,
-        matrix_element=matrix_element,
+        normalization=normalization,
         crosstalk_element=crosstalk_element,
     ) / (
         resonator_freq
@@ -347,72 +304,95 @@ def transmon_readout_frequency(
             xj=xj,
             w_max=w_max,
             d=d,
-            matrix_element=matrix_element,
-            sweetspot=sweetspot,
+            normalization=normalization,
+            offset=offset,
             crosstalk_element=crosstalk_element,
+            charging_energy=charging_energy,
         )
     )
 
 
-def transmon_readout_frequency_diagonal(
-    x, w_max, d, matrix_element, sweetspot, resonator_freq, g
-):
-    r"""Approximation to flux dependent resonator frequency without crosstalk.
-
-    The formula holds in the transmon regime Ej / Ec >> 1.
-
-    See  https://arxiv.org/pdf/cond-mat/0703002.pdf for the complete formula.
-
-    Args:
-         x (float): bias value
-         w_max (float): maximum frequency  :math:`w_{max} = \sqrt{8 E_j E_c}
-         d (float):  d (float): asymmetry between the two junctions of the transmon.
-         matrix element (float): diagonal crosstalk matrix element
-         phase (float): bias corresponding to zero flux (sweetspot).
-         resonator_freq (float): bare resonator frequency [GHz]
-         g (float): readout coupling.
-
-     Returns:
-         (float): resonator frequency as a function of bias.
-    """
-    return transmon_readout_frequency(
-        xi=x,
-        xj=0,
-        w_max=w_max,
-        sweetspot=sweetspot,
-        d=d,
-        matrix_element=matrix_element,
-        crosstalk_element=0,
-        g=g,
-        resonator_freq=resonator_freq,
-    )
-
-
-def qubit_flux_dependence_fit_bounds(qubit_frequency: float, bias: np.array):
+def qubit_flux_dependence_fit_bounds(qubit_frequency: float):
     """Returns bounds for qubit flux fit."""
     return (
         [
             qubit_frequency * HZ_TO_GHZ - 1,
             0,
-            0,
-            np.mean(bias) - 0.5,
+            -np.pi,
         ],
         [
             qubit_frequency * HZ_TO_GHZ + 1,
-            1,
             np.inf,
-            np.mean(bias) + 0.5,
+            np.pi,
         ],
     )
 
 
-def resonator_flux_dependence_fit_bounds(
-    qubit_frequency: float, bias: np.array, bare_resonator_frequency: float
-):
-    """Returns bounds for resonator flux fit."""
-    left_bound, right_bound = qubit_flux_dependence_fit_bounds(
-        qubit_frequency=qubit_frequency, bias=bias
+def crosstalk_matrix(platform: Platform, qubits: list[QubitId]) -> np.ndarray:
+    """Computing crosstalk matrix for number of qubits selected.
+    The matrix returns has the following matrix element:
+    (M)ij = qubits[i].crosstalk_matrix[qubits[j]]
+    """
+    size = len(qubits)
+    matrix = np.ones((size, size))
+    for i in range(size):
+        for j in range(size):
+            matrix[i, j] = platform.qubits[qubits[i]].crosstalk_matrix[qubits[j]]
+
+    return matrix
+
+
+def compensation_matrix(platform: Platform, qubits: list[QubitId]) -> np.ndarray:
+    """Compensation matrix C computed as M C = diag(M') where M is the
+    crosstalk matrix.
+    For more details check: https://web.physics.ucsb.edu/~martinisgroup/theses/Chen2018.pdf
+    8.2.3
+    """
+    size = len(qubits)
+    matrix = np.ones((size, size))
+    crosstalk = crosstalk_matrix(platform, qubits)
+    for i in range(size):
+        for j in range(size):
+            if i == j:
+                matrix[i, j] = 1
+            else:
+                matrix[i, j] = -crosstalk[i, j] / crosstalk[i, i]
+
+    return matrix
+
+
+def invert_transmon_freq(target_freq: float, platform: Platform, qubit: QubitId):
+    """Return right side of equation matrix * total_flux = f(target_freq).
+    Target frequency shoudl be expressed in GHz.
+    """
+    charging_energy = -platform.qubits[qubit].anharmonicity * HZ_TO_GHZ
+    offset = (
+        -platform.qubits[qubit].sweetspot
+        * platform.qubits[qubit].crosstalk_matrix[qubit]
     )
-    left_bound += [bare_resonator_frequency * HZ_TO_GHZ - 0.5, 0]
-    right_bound += [bare_resonator_frequency * HZ_TO_GHZ + 0.5, 1]
-    return (left_bound, right_bound)
+    w_max = platform.qubits[qubit].drive_frequency * HZ_TO_GHZ
+    d = platform.qubits[qubit].asymmetry
+    angle = np.sqrt(
+        1
+        / (1 - d**2)
+        * (((target_freq + charging_energy) / (w_max + charging_energy)) ** 4 - d**2)
+    )
+    return 1 / np.pi * np.arccos(angle) - offset
+
+
+def frequency_to_bias(
+    target_freqs: dict[QubitId, float], platform: Platform
+) -> np.ndarray:
+    """Starting from set of target_freqs computes bias points using the compensation matrix."""
+    qubits = list(target_freqs)
+    inverted_crosstalk_matrix = np.linalg.inv(
+        crosstalk_matrix(platform, qubits) @ compensation_matrix(platform, qubits)
+    )
+    transmon_freq = np.array(
+        [
+            invert_transmon_freq(freq, platform, qubit)
+            for qubit, freq in target_freqs.items()
+        ]
+    )
+    bias_array = inverted_crosstalk_matrix @ transmon_freq
+    return {qubit: bias_array[index] for index, qubit in enumerate(qubits)}

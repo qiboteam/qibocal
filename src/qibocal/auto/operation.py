@@ -9,6 +9,7 @@ from typing import Callable, Generic, NewType, Optional, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.qubits import Qubit, QubitId, QubitPair, QubitPairId
 
@@ -71,6 +72,10 @@ class Parameters:
     """Number of executions on hardware"""
     relaxation_time: float
     """Wait time for the qubit to decohere back to the `gnd` state"""
+    hardware_average: bool = False
+    """By default hardware average will be performed."""
+    classify: bool = False
+    """By default qubit state classification will not be performed."""
 
     @classmethod
     def load(cls, input_parameters):
@@ -95,6 +100,24 @@ class Parameters:
         for parameter, value in default_parent_parameters.items():
             setattr(instantiated_class, parameter, value)
         return instantiated_class
+
+    @property
+    def execution_parameters(self):
+        """Default execution parameters."""
+        averaging_mode = (
+            AveragingMode.CYCLIC if self.hardware_average else AveragingMode.SINGLESHOT
+        )
+        acquisition_type = (
+            AcquisitionType.DISCRIMINATION
+            if self.classify
+            else AcquisitionType.INTEGRATION
+        )
+        return ExecutionParameters(
+            nshots=self.nshots,
+            relaxation_time=self.relaxation_time,
+            acquisition_type=acquisition_type,
+            averaging_mode=averaging_mode,
+        )
 
 
 class AbstractData:
@@ -197,9 +220,10 @@ class Data(AbstractData):
             the values are the related arrays.
         """
         # to be able to handle the non-sweeper case
-        ar = np.empty(np.shape(data_dict[list(data_dict.keys())[0]]), dtype=dtype)
+        ar = np.empty(np.shape(data_dict[list(data_dict)[0]]), dtype=dtype)
         for key, value in data_dict.items():
             ar[key] = value
+
         if data_keys in self.data:
             self.data[data_keys] = np.rec.array(
                 np.concatenate((self.data[data_keys], ar))

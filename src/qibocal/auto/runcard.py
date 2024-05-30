@@ -4,7 +4,8 @@ import os
 from typing import Any, NewType, Optional, Union
 
 from pydantic.dataclasses import dataclass
-from qibo.backends import Backend, GlobalBackend
+from qibo.backends import GlobalBackend
+from qibo.backends.abstract import Backend
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
