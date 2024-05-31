@@ -9,7 +9,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
 from qibocal.auto.operation import Qubits, Routine
-from qibocal.protocols.characterization import amplitude_signal, utils
+from qibocal.protocols.characterization.rabi import amplitude_signal, utils
 
 
 @dataclass
