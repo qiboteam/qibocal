@@ -96,8 +96,11 @@ from .z.in_progress.resonator_mixer_calibration import resonator_mixer_calibrati
 from .z.in_progress.resonator_spectroscopy_with_lo import resonator_spectroscopy_with_lo
 from .z.in_progress.ro_resonator_amplitude import resonator_amplitude
 from .z.qubit_spectroscopy import qubit_spectroscopy
+from .z.qubit_spectroscopy_ef import qubit_spectroscopy_ef
+from .z.qutrit_classification import qutrit_classification
 from .z.rabi.length import rabi_length
 from .z.rabi.length_signal import rabi_length_signal
+from .z.rabi_ef import rabi_amplitude_ef
 from .z.ramsey.ramsey import ramsey
 
 # from .z.rabi_frequency_length_signal import rabi_frequency_length_signal
