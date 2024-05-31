@@ -120,17 +120,16 @@ def _aquisition(
             start=initialize_highfreq.finish,
         )
 
-        # sequence.add(cz.get_qubit_pulses(ordered_pair[0]))
-        # sequence.add(cz.get_qubit_pulses(ordered_pair[1]))
-        sequence.add(cz)
+        sequence.add(cz.get_qubit_pulses(ordered_pair[0]))
+        sequence.add(cz.get_qubit_pulses(ordered_pair[1]))
 
-        # # Patch to get the coupler until the routines use QubitPair
-        # if platform.couplers:
-        #     sequence.add(
-        #         cz.coupler_pulses(
-        #             platform.pairs[tuple(sorted(ordered_pair))].coupler.name
-        #         )
-        #     )
+        # Patch to get the coupler until the routines use QubitPair
+        if platform.couplers:
+            sequence.add(
+                cz.coupler_pulses(
+                    platform.pairs[tuple(sorted(ordered_pair))].coupler.name
+                )
+            )
 
         if params.parking:
             for pulse in cz:
@@ -142,13 +141,11 @@ def _aquisition(
         # add readout
         measure_lowfreq = platform.create_qubit_readout_pulse(
             ordered_pair[0],
-            # start=initialize_lowfreq.finish + params.duration_max + params.dt,
-            start=sequence.finish + params.dt,
+            start=initialize_lowfreq.finish + params.duration_max + params.dt,
         )
         measure_highfreq = platform.create_qubit_readout_pulse(
             ordered_pair[1],
-            # start=initialize_highfreq.finish + params.duration_max + params.dt,
-            start=sequence.finish + params.dt,
+            start=initialize_highfreq.finish + params.duration_max + params.dt,
         )
 
         sequence.add(measure_lowfreq)
@@ -180,7 +177,6 @@ def _aquisition(
             sequence,
             ExecutionParameters(
                 nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
                 acquisition_type=AcquisitionType.INTEGRATION,
                 averaging_mode=AveragingMode.CYCLIC,
             ),
