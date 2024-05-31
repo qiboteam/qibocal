@@ -66,7 +66,7 @@ def _acquisition(
     ro_pulses = {}
     for qubit in qubits:
         rx_pulse = platform.create_RX_pulse(qubit, start=0)
-        rx12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish - 4)
+        rx12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish)
         drive_pulses = [rx_pulse, rx12_pulse]
         ro_pulses[qubit] = []
         for i, sequence in enumerate(states_sequences):

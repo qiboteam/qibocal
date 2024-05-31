@@ -11,6 +11,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Qubits, Results, Routine
+from qibocal.protocols.characterization.resonator_spectroscopy import ResSpecType
 from qibocal.protocols.characterization.utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
@@ -19,9 +20,10 @@ from qibocal.protocols.characterization.utils import (
     table_dict,
     table_html,
 )
-
-from .dispersive_shift import DispersiveShiftData, DispersiveShiftParameters
-from .resonator_spectroscopy import ResSpecType
+from qibocal.protocols.characterization.z.dispersive_shift import (
+    DispersiveShiftData,
+    DispersiveShiftParameters,
+)
 
 
 @dataclass
@@ -94,7 +96,7 @@ def _acquisition(
 
     for qubit in qubits:
         rx_pulse = platform.create_RX_pulse(qubit, start=0)
-        rx_12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish - 4)
+        rx_12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish)
         ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
         sequence_1.add(rx_pulse)
         sequence_2.add(rx_pulse, rx_12_pulse)
@@ -108,7 +110,9 @@ def _acquisition(
         -params.freq_width // 2, params.freq_width // 2, params.freq_step
     )
 
-    data = DispersiveShiftQutritData(resonator_type=platform.resonator_type)
+    data = DispersiveShiftQutritData(
+        resonator_type=platform.resonator_type, readout_frequency={}
+    )
 
     for state, sequence in enumerate([sequence_0, sequence_1, sequence_2]):
         sweeper = Sweeper(
@@ -131,6 +135,9 @@ def _acquisition(
 
         for qubit in qubits:
             result = results[qubit]
+            data.readout_frequency[qubit] = platform.qubits[
+                qubit
+            ].native_gates.MZ.frequency
             # store the results
             data.register_qubit(
                 ResSpecType,
@@ -284,6 +291,42 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
                 ),
             )
         )
+
+    fig.add_trace(
+        go.Scatter(
+            x=[
+                data.readout_frequency[qubit] * HZ_TO_GHZ,
+                data.readout_frequency[qubit] * HZ_TO_GHZ,
+            ],
+            y=[
+                np.min(np.concatenate((data_0.signal, data_1.signal))),
+                np.max(np.concatenate((data_0.signal, data_1.signal))),
+            ],
+            mode="lines",
+            line=go.scatter.Line(color="black", width=2),
+            name="Current frequency",
+            showlegend=True,
+            legendgroup="Current frequency",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=[
+                data.readout_frequency[qubit] * HZ_TO_GHZ,
+                data.readout_frequency[qubit] * HZ_TO_GHZ,
+            ],
+            y=[-np.pi, np.pi],
+            mode="lines",
+            line=go.scatter.Line(color="black", width=2),
+            name="Current frequency",
+            showlegend=False,
+            legendgroup="Current frequency",
+        ),
+        row=1,
+        col=2,
+    )
     fig.update_layout(
         showlegend=True,
         xaxis_title="Frequency [GHz]",
