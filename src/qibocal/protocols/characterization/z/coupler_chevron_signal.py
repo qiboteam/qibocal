@@ -18,19 +18,19 @@ from qibocal.protocols.characterization.two_qubit_interaction.utils import order
 
 @dataclass
 class ChevronCouplersParameters(Parameters):
-    amplitude_min_factor: float
-    """Amplitude minimum."""
-    amplitude_max_factor: float
-    """Amplitude maximum."""
-    amplitude_step_factor: float
-    """Amplitude step."""
-
-    # amplitude_min: float
+    # amplitude_min_factor: float
     # """Amplitude minimum."""
-    # amplitude_max: float
+    # amplitude_max_factor: float
     # """Amplitude maximum."""
-    # amplitude_step: float
+    # amplitude_step_factor: float
     # """Amplitude step."""
+
+    amplitude_min: float
+    """Amplitude minimum."""
+    amplitude_max: float
+    """Amplitude maximum."""
+    amplitude_step: float
+    """Amplitude step."""
     duration_min: float
     """Duration minimum."""
     duration_max: float
@@ -77,9 +77,9 @@ def _aquisition(
     """
     # define the parameter to sweep and its range:
     delta_amplitude_range = np.arange(
-        params.amplitude_min_factor,
-        params.amplitude_max_factor,
-        params.amplitude_step_factor,
+        params.amplitude_min,
+        params.amplitude_max,
+        params.amplitude_step,
     )
     delta_duration_range = np.arange(
         params.duration_min, params.duration_max, params.duration_step
@@ -130,7 +130,8 @@ def _aquisition(
             Parameter.amplitude,
             delta_amplitude_range,
             pulses=[p for p in native_gate.coupler_pulses(*pair)][:1],
-            type=SweeperType.FACTOR,
+            # type=SweeperType.FACTOR,
+            type=SweeperType.ABSOLUTE,
         )
         sweeper_duration = Sweeper(
             Parameter.duration,
@@ -156,7 +157,8 @@ def _aquisition(
             ordered_pair[0],
             ordered_pair[1],
             delta_duration_range,
-            delta_amplitude_range * data.native_amplitude[ordered_pair],
+            # delta_amplitude_range * data.native_amplitude[ordered_pair],
+            delta_amplitude_range,
             results[ordered_pair[0]].magnitude,
             results[ordered_pair[1]].magnitude,
         )
@@ -178,5 +180,7 @@ def plot(data: ChevronCouplersData, fit: ChevronCouplersResults, qubit):
     return _plot(data, None, qubit)
 
 
-coupler_chevron_signal = Routine(_aquisition, _fit, plot, two_qubit_gates=True)
+coupler_chevron_signal_amplitude = Routine(
+    _aquisition, _fit, plot, two_qubit_gates=True
+)
 """Coupler cz/swap flux routine."""

@@ -11,10 +11,8 @@ from qibolab.platform import Platform
 from qibolab.pulses import FluxPulse, PulseSequence, Rectangular
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
-from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.config import log
 
 
 @dataclass
@@ -307,6 +305,7 @@ def _aquisition(
                 sequence,
                 ExecutionParameters(
                     nshots=params.nshots,
+                    relaxation_time=params.relaxation_time,
                     acquisition_type=AcquisitionType.DISCRIMINATION,
                     averaging_mode=AveragingMode.CYCLIC,
                 ),
@@ -319,8 +318,11 @@ def _aquisition(
                 component=tag,
                 flux_pulse_duration=flux_pulse_duration_range,
                 flux_pulse_amplitude=flux_pulse_amplitude_range,
-                statistical_freq=results[MZ_ro_pulses[qubit].serial].probability,
+                statistical_freq=results[
+                    MZ_ro_pulses[qubit].serial
+                ].statistical_frequency,
             )
+    return data
 
 
 def _plot(data: CryscopeData, fit: CryscopeResults, qubits):
@@ -336,9 +338,9 @@ def _plot(data: CryscopeData, fit: CryscopeResults, qubits):
         ordered_index = index if index in data.data else (index[1], index[0], index[2])
         fig.add_trace(
             go.Heatmap(
-                x=data[ordered_index].length,
-                y=data[ordered_index].amp,
-                z=data[ordered_index].prob,
+                x=data[ordered_index].flux_pulse_duration,
+                y=data[ordered_index].flux_pulse_amplitude,
+                z=data[ordered_index].statistical_freq,
                 name=f"Qubit {qubit} |{state}>",
                 coloraxis=colouraxis[states.index(state)],
             ),
@@ -368,34 +370,34 @@ def fit_function(x, p0, p1, p2, p3):
 
 
 def _fit(data: CryscopeData):
-    pairs = data.pairs
-    results = {}
-    for pair in pairs:
-        for qubit in pair:
-            qubit_data = data[pair[0], pair[1], qubit]
-            fft_freqs = []
-            for amp in np.unique(qubit_data.amp):
-                probability = qubit_data[qubit_data.amp == amp].prob
-                fft_freqs.append(max(np.abs(np.fft.fft(probability))))
+    # pairs = data.pairs
+    # results = {}
+    # for pair in pairs:
+    #     for qubit in pair:
+    #         qubit_data = data[pair[0], pair[1], qubit]
+    #         fft_freqs = []
+    #         for amp in np.unique(qubit_data.flux_pulse_amplitude):
+    #             probability = qubit_data[qubit_data.flux_pulse_amplitude == amp].statistical_freq
+    #             fft_freqs.append(max(np.abs(np.fft.fft(probability))))
 
-            min_idx = np.argmin(fft_freqs)
-            amp = np.unique(qubit_data.amp)[min_idx]
-            duration = qubit_data[qubit_data.amp == amp].length
-            probability = qubit_data[qubit_data.amp == amp].amp
-            guesses = [np.mean(probability), 1, np.min(fft_freqs), 0]
-            # bounds = []
-            # TODO maybe normalize
-            try:
-                popt, _ = curve_fit(
-                    fit_function, duration, probability, p0=guesses, maxfev=10000
-                )
+    #         min_idx = np.argmin(fft_freqs)
+    #         amp = np.unique(qubit_data.flux_pulse_amplitude)[min_idx]
+    #         duration = qubit_data[qubit_data.flux_pulse_amplitude == amp].flux_pulse_duration
+    #         probability = qubit_data[qubit_data.flux_pulse_amplitude == amp].flux_pulse_amplitude
+    #         guesses = [np.mean(probability), 1, np.min(fft_freqs), 0]
+    #         # bounds = []
+    #         # TODO maybe normalize
+    #         try:
+    #             popt, _ = curve_fit(
+    #                 fit_function, duration, probability, p0=guesses, maxfev=10000
+    #             )
 
-                results[str((pair[0], pair[1], qubit))] = np.abs(1 / popt[2])
+    #             results[str((pair[0], pair[1], qubit))] = np.abs(1 / popt[2])
 
-            except:
-                log.warning("cryscope fit: the fitting was not succesful")
+    #         except:
+    #             log.warning("cryscope fit: the fitting was not succesful")
 
-                results[str((pair, qubit))] = 0
+    #             results[str((pair, qubit))] = 0
 
     return CryscopeResults(results)
 

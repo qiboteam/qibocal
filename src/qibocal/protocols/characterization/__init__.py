@@ -70,16 +70,24 @@ from .resonator_spectroscopy_attenuation import (  # will be removed
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtualz
 from .z.coupler_chevron import coupler_chevron
-from .z.coupler_chevron_signal import coupler_chevron_signal
+from .z.coupler_chevron_signal import coupler_chevron_signal_amplitude
+from .z.couplers.coupler_qubit_spectroscopy import coupler_qubit_spectroscopy_bias
+from .z.couplers.coupler_resonator_spectroscopy import (
+    coupler_resonator_spectroscopy_amplitude,
+    coupler_resonator_spectroscopy_bias,
+)
 from .z.dispersive_shift import dispersive_shift
+from .z.flux_dependence.qubit_flux_dependence import qubit_flux
 from .z.in_progress.qm_cryoscope import cryoscope
+from .z.in_progress.qm_cryoscope_signal import cryoscope_signal
 from .z.in_progress.qubit_mixer_calibration import qubit_mixer_calibration
 from .z.in_progress.qubit_spectroscopy_with_lo import qubit_spectroscopy_with_lo
 from .z.in_progress.resonator_mixer_calibration import resonator_mixer_calibration
 from .z.in_progress.resonator_spectroscopy_with_lo import resonator_spectroscopy_with_lo
 from .z.in_progress.ro_resonator_amplitude import resonator_amplitude
-from .z.qubit_flux_dependence import qubit_flux
 from .z.qubit_spectroscopy import qubit_spectroscopy
+from .z.rabi.length import rabi_length
+from .z.rabi.length_signal import rabi_length_signal
 from .z.ramsey import ramsey
 
 # from .z.frequency_length_signal import rabi_frequency_length_signal
@@ -148,8 +156,9 @@ class Operation(Enum):
     resonator_amplitude = resonator_amplitude
     avoided_crossing = avoided_crossing
     dispersive_shift_qutrit = dispersive_shift_qutrit
-    coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
-    coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
+    coupler_resonator_spectroscopy_bias = coupler_resonator_spectroscopy_bias
+    coupler_resonator_spectroscopy_amplitude = coupler_resonator_spectroscopy_amplitude
+    coupler_qubit_spectroscopy = coupler_qubit_spectroscopy_bias
     # flipping_signal = flipping_signal
     # calibrate_state_discrimination = calibrate_state_discrimination
 
@@ -173,5 +182,5 @@ class Operation(Enum):
     resonator_spectroscopy_with_lo = qubit_spectroscopy_with_lo
     qubit_spectroscopy_with_lo = qubit_spectroscopy_with_lo
     coupler_chevron = coupler_chevron
-    coupler_chevron_signal = coupler_chevron_signal
+    coupler_chevron_signal_amplitude = coupler_chevron_signal_amplitude
     cryoscope = cryoscope
