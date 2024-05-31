@@ -1,9 +1,5 @@
 from enum import Enum
 
-from z.allxy.allxy import allxy
-from z.allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
-from z.allxy.drag_pulse_tuning import drag_pulse_tuning
-
 from .allxy.allxy import allxy
 from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
 from .allxy.drag_pulse_tuning import drag_pulse_tuning
@@ -73,7 +69,11 @@ from .resonator_spectroscopy_attenuation import (  # will be removed
 # )
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtualz
+from .z.allxy.allxy import allxy
+from .z.allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
+from .z.allxy.allxy_resonator_depletion_tuning import allxy_resonator_depletion_tuning
 
+####################################################################################
 # from .z.spurious_identification import spurious_identification
 # from .z.t1_t2_vs_temperature import t1_t2_vs_temperature
 from .z.coherence.t2 import t2
@@ -105,6 +105,7 @@ from .z.ramsey.ramsey_signal import ramsey_signal
 # from .z.resonator_qubit_spectroscopy import resonator_qubit_spectroscopy
 from .z.resonator_twpa_freq import resonator_twpa_freq
 from .z.resonator_twpa_pow import resonator_twpa_pow
+from .z.two_qubit_interaction.chevron import chevron
 
 
 class Operation(Enum):

@@ -16,7 +16,7 @@ from qibocal.protocols.characterization.coherence.utils import (
     exponential_fit,
 )
 from qibocal.protocols.characterization.utils import table_dict, table_html
-from qibocal.protocols.characterization.z import t2
+from qibocal.protocols.characterization.z.coherence import t2
 
 
 @dataclass
