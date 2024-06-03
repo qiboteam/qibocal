@@ -164,7 +164,7 @@ def _fit(data: RabiAmplitudeFreqVoltData) -> RabiAmplitudeFrequencyVoltResults:
         signal = data[qubit].signal
         signal_matrix = signal.reshape(len(amps), len(freqs)).T
 
-        # guess optimal frequency maximizing oscillatio amplitude
+        # guess optimal frequency maximizing oscillation amplitude
         index = np.argmax([max(x) - min(x) for x in signal_matrix])
         frequency = freqs[index]
 

@@ -147,7 +147,7 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         probability = data[qubit].prob
         probability_matrix = probability.reshape(len(amps), len(freqs)).T
 
-        # guess optimal frequency maximizing oscillatio amplitude
+        # guess optimal frequency maximizing oscillation amplitude
         index = np.argmax([max(x) - min(x) for x in probability_matrix])
         frequency = freqs[index]
 
