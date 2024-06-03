@@ -16,3 +16,4 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     qubit_spectroscopy/qubit_spectroscopy
     ramsey/ramsey
     t1/t1
+    t2/t2
