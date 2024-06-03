@@ -18,9 +18,9 @@ from qibocal.protocols.utils import table_dict, table_html
 
 from ..utils import HZ_TO_GHZ, chi2_reduced
 from .length_frequency_signal import (
-    RabiLengthFrequencyVoltParameters,
-    RabiLengthFrequencyVoltResults,
-    RabiLengthFreqVoltData,
+    RabiLengthFreqSignalData,
+    RabiLengthFrequencySignalParameters,
+    RabiLengthFrequencySignalResults,
     _update,
 )
 from .utils import (
@@ -32,12 +32,12 @@ from .utils import (
 
 
 @dataclass
-class RabiLengthFrequencyParameters(RabiLengthFrequencyVoltParameters):
+class RabiLengthFrequencyParameters(RabiLengthFrequencySignalParameters):
     """RabiLengthFrequency runcard inputs."""
 
 
 @dataclass
-class RabiLengthFrequencyResults(RabiLengthFrequencyVoltResults):
+class RabiLengthFrequencyResults(RabiLengthFrequencySignalResults):
     """RabiLengthFrequency outputs."""
 
     chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
@@ -55,7 +55,7 @@ RabiLenFreqType = np.dtype(
 
 
 @dataclass
-class RabiLengthFreqData(RabiLengthFreqVoltData):
+class RabiLengthFreqData(RabiLengthFreqSignalData):
     """RabiLengthFreq data acquisition."""
 
     data: dict[QubitId, npt.NDArray[RabiLenFreqType]] = field(default_factory=dict)

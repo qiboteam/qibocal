@@ -18,12 +18,12 @@ from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
 from ..utils import HZ_TO_GHZ
-from .amplitude_signal import RabiAmplitudeVoltResults
+from .amplitude_signal import RabiAmplitudeSignalResults
 from .utils import fit_amplitude_function, guess_frequency, sequence_amplitude
 
 
 @dataclass
-class RabiAmplitudeFrequencyVoltParameters(Parameters):
+class RabiAmplitudeFrequencySignalParameters(Parameters):
     """RabiAmplitudeFrequency runcard inputs."""
 
     min_amp_factor: float
@@ -43,14 +43,14 @@ class RabiAmplitudeFrequencyVoltParameters(Parameters):
 
 
 @dataclass
-class RabiAmplitudeFrequencyVoltResults(RabiAmplitudeVoltResults):
+class RabiAmplitudeFrequencySignalResults(RabiAmplitudeSignalResults):
     """RabiAmplitudeFrequency outputs."""
 
     frequency: dict[QubitId, tuple[float, Optional[int]]]
     """Drive frequency for each qubit."""
 
 
-RabiAmpFreqVoltType = np.dtype(
+RabiAmpFreqSignalType = np.dtype(
     [
         ("amp", np.float64),
         ("freq", np.float64),
@@ -62,19 +62,21 @@ RabiAmpFreqVoltType = np.dtype(
 
 
 @dataclass
-class RabiAmplitudeFreqVoltData(Data):
-    """RabiAmplitudeFreqVolt data acquisition."""
+class RabiAmplitudeFreqSignalData(Data):
+    """RabiAmplitudeFreqSignal data acquisition."""
 
     durations: dict[QubitId, float] = field(default_factory=dict)
     """Pulse durations provided by the user."""
-    data: dict[QubitId, npt.NDArray[RabiAmpFreqVoltType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[RabiAmpFreqSignalType]] = field(
+        default_factory=dict
+    )
     """Raw data acquired."""
 
     def register_qubit(self, qubit, freq, amp, signal, phase):
         """Store output for single qubit."""
         size = len(freq) * len(amp)
         frequency, amplitude = np.meshgrid(freq, amp)
-        data = np.empty(size, dtype=RabiAmpFreqVoltType)
+        data = np.empty(size, dtype=RabiAmpFreqSignalType)
         data["freq"] = frequency.ravel()
         data["amp"] = amplitude.ravel()
         data["signal"] = signal.ravel()
@@ -91,10 +93,10 @@ class RabiAmplitudeFreqVoltData(Data):
 
 
 def _acquisition(
-    params: RabiAmplitudeFrequencyVoltParameters,
+    params: RabiAmplitudeFrequencySignalParameters,
     platform: Platform,
     targets: list[QubitId],
-) -> RabiAmplitudeFreqVoltData:
+) -> RabiAmplitudeFreqSignalData:
     """Data acquisition for Rabi experiment sweeping amplitude."""
 
     sequence, qd_pulses, ro_pulses, durations = sequence_amplitude(
@@ -127,7 +129,7 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
-    data = RabiAmplitudeFreqVoltData(durations=durations)
+    data = RabiAmplitudeFreqSignalData(durations=durations)
 
     results = platform.sweep(
         sequence,
@@ -152,7 +154,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: RabiAmplitudeFreqVoltData) -> RabiAmplitudeFrequencyVoltResults:
+def _fit(data: RabiAmplitudeFreqSignalData) -> RabiAmplitudeFrequencySignalResults:
     """Do not perform any fitting procedure."""
     fitted_frequencies = {}
     fitted_amplitudes = {}
@@ -197,7 +199,7 @@ def _fit(data: RabiAmplitudeFreqVoltData) -> RabiAmplitudeFrequencyVoltResults:
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
-    return RabiAmplitudeFrequencyVoltResults(
+    return RabiAmplitudeFrequencySignalResults(
         amplitude=fitted_amplitudes,
         length=data.durations,
         fitted_parameters=fitted_parameters,
@@ -206,9 +208,9 @@ def _fit(data: RabiAmplitudeFreqVoltData) -> RabiAmplitudeFrequencyVoltResults:
 
 
 def _plot(
-    data: RabiAmplitudeFreqVoltData,
+    data: RabiAmplitudeFreqSignalData,
     target: QubitId,
-    fit: RabiAmplitudeFrequencyVoltResults = None,
+    fit: RabiAmplitudeFrequencySignalResults = None,
 ):
     """Plotting function for RabiAmplitudeFrequency."""
     figures = []
@@ -295,7 +297,7 @@ def _plot(
 
 
 def _update(
-    results: RabiAmplitudeFrequencyVoltResults, platform: Platform, target: QubitId
+    results: RabiAmplitudeFrequencySignalResults, platform: Platform, target: QubitId
 ):
     update.drive_amplitude(results.amplitude[target], platform, target)
     update.drive_frequency(results.frequency[target], platform, target)

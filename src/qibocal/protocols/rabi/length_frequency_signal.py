@@ -18,12 +18,12 @@ from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
 from ..utils import HZ_TO_GHZ
-from .length_signal import RabiLengthVoltResults
+from .length_signal import RabiLengthSignalResults
 from .utils import fit_length_function, guess_frequency, sequence_length
 
 
 @dataclass
-class RabiLengthFrequencyVoltParameters(Parameters):
+class RabiLengthFrequencySignalParameters(Parameters):
     """RabiLengthFrequency runcard inputs."""
 
     pulse_duration_start: float
@@ -43,14 +43,14 @@ class RabiLengthFrequencyVoltParameters(Parameters):
 
 
 @dataclass
-class RabiLengthFrequencyVoltResults(RabiLengthVoltResults):
+class RabiLengthFrequencySignalResults(RabiLengthSignalResults):
     """RabiLengthFrequency outputs."""
 
     frequency: dict[QubitId, tuple[float, Optional[int]]]
     """Drive frequency for each qubit."""
 
 
-RabiLenFreqVoltType = np.dtype(
+RabiLenFreqSignalType = np.dtype(
     [
         ("len", np.float64),
         ("freq", np.float64),
@@ -62,19 +62,21 @@ RabiLenFreqVoltType = np.dtype(
 
 
 @dataclass
-class RabiLengthFreqVoltData(Data):
-    """RabiLengthFreqVolt data acquisition."""
+class RabiLengthFreqSignalData(Data):
+    """RabiLengthFreqSignal data acquisition."""
 
     amplitudes: dict[QubitId, float] = field(default_factory=dict)
     """Pulse amplitudes provided by the user."""
-    data: dict[QubitId, npt.NDArray[RabiLenFreqVoltType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[RabiLenFreqSignalType]] = field(
+        default_factory=dict
+    )
     """Raw data acquired."""
 
     def register_qubit(self, qubit, freq, lens, signal, phase):
         """Store output for single qubit."""
         size = len(freq) * len(lens)
         frequency, length = np.meshgrid(freq, lens)
-        data = np.empty(size, dtype=RabiLenFreqVoltType)
+        data = np.empty(size, dtype=RabiLenFreqSignalType)
         data["freq"] = frequency.ravel()
         data["len"] = length.ravel()
         data["signal"] = signal.ravel()
@@ -91,10 +93,10 @@ class RabiLengthFreqVoltData(Data):
 
 
 def _acquisition(
-    params: RabiLengthFrequencyVoltParameters,
+    params: RabiLengthFrequencySignalParameters,
     platform: Platform,
     targets: list[QubitId],
-) -> RabiLengthFreqVoltData:
+) -> RabiLengthFreqSignalData:
     """Data acquisition for Rabi experiment sweeping length."""
 
     sequence, qd_pulses, ro_pulses, amplitudes = sequence_length(
@@ -127,7 +129,7 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
-    data = RabiLengthFreqVoltData(amplitudes=amplitudes)
+    data = RabiLengthFreqSignalData(amplitudes=amplitudes)
 
     results = platform.sweep(
         sequence,
@@ -152,7 +154,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: RabiLengthFreqVoltData) -> RabiLengthFrequencyVoltResults:
+def _fit(data: RabiLengthFreqSignalData) -> RabiLengthFrequencySignalResults:
     """Do not perform any fitting procedure."""
     fitted_frequencies = {}
     fitted_durations = {}
@@ -196,7 +198,7 @@ def _fit(data: RabiLengthFreqVoltData) -> RabiLengthFrequencyVoltResults:
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
-    return RabiLengthFrequencyVoltResults(
+    return RabiLengthFrequencySignalResults(
         length=fitted_durations,
         amplitude=data.amplitudes,
         fitted_parameters=fitted_parameters,
@@ -205,9 +207,9 @@ def _fit(data: RabiLengthFreqVoltData) -> RabiLengthFrequencyVoltResults:
 
 
 def _plot(
-    data: RabiLengthFreqVoltData,
+    data: RabiLengthFreqSignalData,
     target: QubitId,
-    fit: RabiLengthFrequencyVoltResults = None,
+    fit: RabiLengthFrequencySignalResults = None,
 ):
     """Plotting function for RabiLengthFrequency."""
     figures = []
@@ -295,7 +297,7 @@ def _plot(
 
 
 def _update(
-    results: RabiLengthFrequencyVoltResults, platform: Platform, target: QubitId
+    results: RabiLengthFrequencySignalResults, platform: Platform, target: QubitId
 ):
     update.drive_duration(results.length[target], platform, target)
     update.drive_frequency(results.frequency[target], platform, target)

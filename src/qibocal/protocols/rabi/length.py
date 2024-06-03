@@ -12,8 +12,8 @@ from qibocal import update
 from qibocal.auto.operation import Parameters, Routine
 from qibocal.config import log
 from qibocal.protocols.rabi.length_signal import (
-    RabiLengthVoltData,
-    RabiLengthVoltResults,
+    RabiLengthSignalData,
+    RabiLengthSignalResults,
 )
 
 from ..utils import chi2_reduced
@@ -35,7 +35,7 @@ class RabiLengthParameters(Parameters):
 
 
 @dataclass
-class RabiLengthResults(RabiLengthVoltResults):
+class RabiLengthResults(RabiLengthSignalResults):
     """RabiLength outputs."""
 
     chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
@@ -48,7 +48,7 @@ RabiLenType = np.dtype(
 
 
 @dataclass
-class RabiLengthData(RabiLengthVoltData):
+class RabiLengthData(RabiLengthSignalData):
     """RabiLength acquisition outputs."""
 
     data: dict[QubitId, npt.NDArray[RabiLenType]] = field(default_factory=dict)

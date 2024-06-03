@@ -16,8 +16,8 @@ from . import utils
 
 
 @dataclass
-class RabiLengthVoltParameters(Parameters):
-    """RabiLengthVolt runcard inputs."""
+class RabiLengthSignalParameters(Parameters):
+    """RabiLengthSignal runcard inputs."""
 
     pulse_duration_start: float
     """Initial pi pulse duration [ns]."""
@@ -30,8 +30,8 @@ class RabiLengthVoltParameters(Parameters):
 
 
 @dataclass
-class RabiLengthVoltResults(Results):
-    """RabiLengthVolt outputs."""
+class RabiLengthSignalResults(Results):
+    """RabiLengthSignal outputs."""
 
     length: dict[QubitId, tuple[int, Optional[float]]]
     """Pi pulse duration for each qubit."""
@@ -41,25 +41,25 @@ class RabiLengthVoltResults(Results):
     """Raw fitting output."""
 
 
-RabiLenVoltType = np.dtype(
+RabiLenSignalType = np.dtype(
     [("length", np.float64), ("signal", np.float64), ("phase", np.float64)]
 )
 """Custom dtype for rabi amplitude."""
 
 
 @dataclass
-class RabiLengthVoltData(Data):
+class RabiLengthSignalData(Data):
     """RabiLength acquisition outputs."""
 
     amplitudes: dict[QubitId, float] = field(default_factory=dict)
     """Pulse durations provided by the user."""
-    data: dict[QubitId, npt.NDArray[RabiLenVoltType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[RabiLenSignalType]] = field(default_factory=dict)
     """Raw data acquired."""
 
 
 def _acquisition(
-    params: RabiLengthVoltParameters, platform: Platform, targets: list[QubitId]
-) -> RabiLengthVoltData:
+    params: RabiLengthSignalParameters, platform: Platform, targets: list[QubitId]
+) -> RabiLengthSignalData:
     r"""
     Data acquisition for RabiLength Experiment.
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse length
@@ -85,7 +85,7 @@ def _acquisition(
         type=SweeperType.ABSOLUTE,
     )
 
-    data = RabiLengthVoltData(amplitudes=amplitudes)
+    data = RabiLengthSignalData(amplitudes=amplitudes)
 
     # execute the sweep
     results = platform.sweep(
@@ -102,7 +102,7 @@ def _acquisition(
     for qubit in targets:
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
-            RabiLenVoltType,
+            RabiLenSignalType,
             (qubit),
             dict(
                 length=qd_pulse_duration_range,
@@ -113,7 +113,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
+def _fit(data: RabiLengthSignalData) -> RabiLengthSignalResults:
     """Post-processing for RabiLength experiment."""
 
     qubits = data.qubits
@@ -149,14 +149,14 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
-    return RabiLengthVoltResults(durations, data.amplitudes, fitted_parameters)
+    return RabiLengthSignalResults(durations, data.amplitudes, fitted_parameters)
 
 
-def _update(results: RabiLengthVoltResults, platform: Platform, target: QubitId):
+def _update(results: RabiLengthSignalResults, platform: Platform, target: QubitId):
     update.drive_duration(results.length[target], platform, target)
 
 
-def _plot(data: RabiLengthVoltData, fit: RabiLengthVoltResults, target: QubitId):
+def _plot(data: RabiLengthSignalData, fit: RabiLengthSignalResults, target: QubitId):
     """Plotting function for RabiLength experiment."""
     return utils.plot(data, target, fit)
 

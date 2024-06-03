@@ -16,7 +16,7 @@ from . import utils
 
 
 @dataclass
-class RabiAmplitudeVoltParameters(Parameters):
+class RabiAmplitudeSignalParameters(Parameters):
     """RabiAmplitude runcard inputs."""
 
     min_amp_factor: float
@@ -30,7 +30,7 @@ class RabiAmplitudeVoltParameters(Parameters):
 
 
 @dataclass
-class RabiAmplitudeVoltResults(Results):
+class RabiAmplitudeSignalResults(Results):
     """RabiAmplitude outputs."""
 
     amplitude: dict[QubitId, tuple[float, Optional[float]]]
@@ -41,25 +41,25 @@ class RabiAmplitudeVoltResults(Results):
     """Raw fitted parameters."""
 
 
-RabiAmpVoltType = np.dtype(
+RabiAmpSignalType = np.dtype(
     [("amp", np.float64), ("signal", np.float64), ("phase", np.float64)]
 )
 """Custom dtype for rabi amplitude."""
 
 
 @dataclass
-class RabiAmplitudeVoltData(Data):
-    """RabiAmplitudeVolt data acquisition."""
+class RabiAmplitudeSignalData(Data):
+    """RabiAmplitudeSignal data acquisition."""
 
     durations: dict[QubitId, float] = field(default_factory=dict)
     """Pulse durations provided by the user."""
-    data: dict[QubitId, npt.NDArray[RabiAmpVoltType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[RabiAmpSignalType]] = field(default_factory=dict)
     """Raw data acquired."""
 
 
 def _acquisition(
-    params: RabiAmplitudeVoltParameters, platform: Platform, targets: list[QubitId]
-) -> RabiAmplitudeVoltData:
+    params: RabiAmplitudeSignalParameters, platform: Platform, targets: list[QubitId]
+) -> RabiAmplitudeSignalData:
     r"""
     Data acquisition for Rabi experiment sweeping amplitude.
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse amplitude
@@ -85,7 +85,7 @@ def _acquisition(
         type=SweeperType.FACTOR,
     )
 
-    data = RabiAmplitudeVoltData(durations=durations)
+    data = RabiAmplitudeSignalData(durations=durations)
 
     # sweep the parameter
     results = platform.sweep(
@@ -101,7 +101,7 @@ def _acquisition(
     for qubit in targets:
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
-            RabiAmpVoltType,
+            RabiAmpSignalType,
             (qubit),
             dict(
                 amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
@@ -112,7 +112,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: RabiAmplitudeVoltData) -> RabiAmplitudeVoltResults:
+def _fit(data: RabiAmplitudeSignalData) -> RabiAmplitudeSignalResults:
     """Post-processing for RabiAmplitude."""
     qubits = data.qubits
 
@@ -149,19 +149,21 @@ def _fit(data: RabiAmplitudeVoltData) -> RabiAmplitudeVoltResults:
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
-    return RabiAmplitudeVoltResults(
+    return RabiAmplitudeSignalResults(
         pi_pulse_amplitudes, data.durations, fitted_parameters
     )
 
 
 def _plot(
-    data: RabiAmplitudeVoltData, target: QubitId, fit: RabiAmplitudeVoltResults = None
+    data: RabiAmplitudeSignalData,
+    target: QubitId,
+    fit: RabiAmplitudeSignalResults = None,
 ):
     """Plotting function for RabiAmplitude."""
     return utils.plot(data, target, fit)
 
 
-def _update(results: RabiAmplitudeVoltResults, platform: Platform, target: QubitId):
+def _update(results: RabiAmplitudeSignalResults, platform: Platform, target: QubitId):
     update.drive_amplitude(results.amplitude[target], platform, target)
 
 

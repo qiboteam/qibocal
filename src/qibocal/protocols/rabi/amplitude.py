@@ -14,16 +14,16 @@ from qibocal.config import log
 
 from ..utils import chi2_reduced
 from . import utils
-from .amplitude_signal import RabiAmplitudeVoltParameters, RabiAmplitudeVoltResults
+from .amplitude_signal import RabiAmplitudeSignalParameters, RabiAmplitudeSignalResults
 
 
 @dataclass
-class RabiAmplitudeParameters(RabiAmplitudeVoltParameters):
+class RabiAmplitudeParameters(RabiAmplitudeSignalParameters):
     """RabiAmplitude runcard inputs."""
 
 
 @dataclass
-class RabiAmplitudeResults(RabiAmplitudeVoltResults):
+class RabiAmplitudeResults(RabiAmplitudeSignalResults):
     """RabiAmplitude outputs."""
 
     chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)

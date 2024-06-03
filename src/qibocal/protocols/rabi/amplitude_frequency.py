@@ -18,9 +18,9 @@ from qibocal.protocols.utils import table_dict, table_html
 
 from ..utils import HZ_TO_GHZ, chi2_reduced
 from .amplitude_frequency_signal import (
-    RabiAmplitudeFrequencyVoltParameters,
-    RabiAmplitudeFrequencyVoltResults,
-    RabiAmplitudeFreqVoltData,
+    RabiAmplitudeFreqSignalData,
+    RabiAmplitudeFrequencySignalParameters,
+    RabiAmplitudeFrequencySignalResults,
     _update,
 )
 from .utils import (
@@ -32,12 +32,12 @@ from .utils import (
 
 
 @dataclass
-class RabiAmplitudeFrequencyParameters(RabiAmplitudeFrequencyVoltParameters):
+class RabiAmplitudeFrequencyParameters(RabiAmplitudeFrequencySignalParameters):
     """RabiAmplitudeFrequency runcard inputs."""
 
 
 @dataclass
-class RabiAmplitudeFrequencyResults(RabiAmplitudeFrequencyVoltResults):
+class RabiAmplitudeFrequencyResults(RabiAmplitudeFrequencySignalResults):
     """RabiAmplitudeFrequency outputs."""
 
     chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
@@ -55,7 +55,7 @@ RabiAmpFreqType = np.dtype(
 
 
 @dataclass
-class RabiAmplitudeFreqData(RabiAmplitudeFreqVoltData):
+class RabiAmplitudeFreqData(RabiAmplitudeFreqSignalData):
     """RabiAmplitudeFreq data acquisition."""
 
     data: dict[QubitId, npt.NDArray[RabiAmpFreqType]] = field(default_factory=dict)

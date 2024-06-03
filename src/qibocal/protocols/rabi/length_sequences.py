@@ -6,9 +6,9 @@ from qibolab.qubits import QubitId
 from qibocal.auto.operation import Routine
 
 from .length_signal import (
-    RabiLengthVoltData,
-    RabiLengthVoltParameters,
-    RabiLenVoltType,
+    RabiLengthSignalData,
+    RabiLengthSignalParameters,
+    RabiLenSignalType,
     _fit,
     _plot,
     _update,
@@ -17,8 +17,8 @@ from .utils import sequence_length
 
 
 def _acquisition(
-    params: RabiLengthVoltParameters, platform: Platform, targets: list[QubitId]
-) -> RabiLengthVoltData:
+    params: RabiLengthSignalParameters, platform: Platform, targets: list[QubitId]
+) -> RabiLengthSignalData:
     r"""
     Data acquisition for RabiLength Experiment.
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse length
@@ -37,7 +37,7 @@ def _acquisition(
         params.pulse_duration_step,
     )
 
-    data = RabiLengthVoltData(amplitudes=amplitudes)
+    data = RabiLengthSignalData(amplitudes=amplitudes)
 
     # sweep the parameter
     for duration in qd_pulse_duration_range:
@@ -59,7 +59,7 @@ def _acquisition(
         for qubit in targets:
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
-                RabiLenVoltType,
+                RabiLenSignalType,
                 (qubit),
                 dict(
                     length=np.array([duration]),
