@@ -15,3 +15,4 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     resonator_punchout
     qubit_spectroscopy/qubit_spectroscopy
     ramsey/ramsey
+    t1/t1

@@ -1,0 +1,103 @@
+T1 experiments
+==============
+
+In this section we show how to run T1 experiments using Qibocal.
+
+T1
+--
+
+Due to coupling to the environment the qubit in state :math:`\ket{1}`
+will decay to to state :math:`\ket{0}`. To measure such decay we can perform
+a simple experiment by initializing the qubit in :math:`\ket{1}` through a
+:math:`\pi` pulse previously calibrated, we then measure the population of
+the excited state for different waiting times :math:`\Delta \tau`.
+We expect to measure an exponential decay which is fitted with the following formula:
+
+
+
+
+.. math::
+
+    p_e(t) = A + B  e^{ - t / T_1}
+
+:math:`A` and :math:`B` are introduced to improve the performance of the fit.
+
+
+Example
+^^^^^^^
+
+A possible runcard to launch a T1 experiment could be the following:
+
+.. code-block:: yaml
+
+    - id: t1
+      operation: t1
+      parameters:
+        delay_before_readout_end: 10000
+        delay_before_readout_start: 4
+        delay_before_readout_step: 100
+        nshots: 1000
+
+The parameters specified here are available in :class:`qibocal.protocols.coherence.t1.T1Parameters`
+
+The expected output is the following:
+
+.. image:: t1_prob.png
+
+:math:`T_1`is determined by fitting the output signal using
+the formula presented above.
+
+
+T1 with raw signal
+------------------
+
+A standard :math:`T_1` experiment will try to compute the probability of the qubit
+being measured in state :math:`\ket{1}`. It is possible to perform a :math:`T_1` experiment
+without performing single shot calibration by running an experiment called ``t1_signal``.
+
+The acquisition and the fitting procedure are exactly the same, the only difference being
+that on the y axis it will be displayed the raw measurements from the instruments.
+
+Example:
+^^^^^^^^
+
+.. code-block:: yaml
+
+    - id: T1 with signal
+      operation: t1_signal
+      parameters:
+        delay_before_readout_end: 100008
+        delay_before_readout_start: 16
+        delay_before_readout_step: 1000
+        nshots: 2048
+
+
+.. image:: t1_signal.png
+
+Note that in this case error bands will not be provided.
+
+T1 with for loops
+-----------------
+
+If the instrument driver is not able to perform duration sweepers in real time, we provide
+a protocol where the different waiting time are swept through a python for loop. Such
+execution will be usually slower compared to the one where sweepers are supported but it
+could be useful for debugging purposes.
+
+Here is a possible runcard:
+
+.. code-block:: yaml
+
+    - id: T1 with for loops
+      operation: t1_sequences
+      parameters:
+        delay_before_readout_end: 100008
+        delay_before_readout_start: 16
+        delay_before_readout_step: 1000
+        nshots: 2048
+
+
+.. note::
+
+    For ``t1_sequences`` on the y-axis it will be shown the raw output from instruments,
+    not the population of :math:`\ket{1}`.
