@@ -239,7 +239,7 @@ def _plot(
         fig.add_trace(
             go.Scatter(
                 x=[min(durations), max(durations)],
-                y=[fit.frequency[target] / 1e9] * 2,
+                y=[fit.frequency[target] * HZ_TO_GHZ] * 2,
                 mode="lines",
                 line={"color": "white", "width": 4, "dash": "dash"},
             ),
