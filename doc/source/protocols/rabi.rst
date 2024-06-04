@@ -1,6 +1,11 @@
 Rabi experiments
 ================
 
+In this section se present all the Rabi experiments provided by Qibocal.
+
+Rabi lenght and amplitude
+=========================
+
 The goal of the Rabi experiment is to tune the amplitude (duration) of the drive pulse, in order
 to excite the qubit from the ground state up to state :math:`\ket{1}`.
 
@@ -87,3 +92,6 @@ Requirements
 ^^^^^^^^^^^^
 - :ref:`qubit_spectroscopy`
 - :ref:`resonator_spectroscopy`
+
+Rabi ef
+^^^^^^^
