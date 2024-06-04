@@ -31,4 +31,26 @@ center coincides with the ground state Gaussian center, the `threshold` is the d
 	\mathcal{F} = 1 - \frac{1}{2} (P(0,1) + P(1,0))
 
 where :math:`P(i,j)` is the probability of measuring the qubit in state `i` but prepeared in state `j`.
-Other options are available, check :class:`qibocal.protocols.classification.SingleShotClassificationParameters`.
+With this routine is possible to train different classifiers, plot their ROC curves and evaluating the Area Under the Curves
+all the options are explained into the details in :class:`qibocal.protocols.classification.SingleShotClassificationParameters`.
+
+Example
+^^^^^^^
+
+A possible choice of parameters is the following
+
+.. code-block:: yaml
+
+    - id: single shot classification
+      operation: single_shot_classification
+      parameters:
+        nshots: 5000
+
+the result should looks like this
+
+.. image:: singleshot.png
+
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`rabi`
