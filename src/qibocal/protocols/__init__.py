@@ -34,9 +34,13 @@ from .qubit_spectroscopy import qubit_spectroscopy
 from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
 from .qutrit_classification import qutrit_classification
 from .rabi.amplitude import rabi_amplitude
+from .rabi.amplitude_frequency import rabi_amplitude_frequency
+from .rabi.amplitude_frequency_signal import rabi_amplitude_frequency_signal
 from .rabi.amplitude_signal import rabi_amplitude_signal
 from .rabi.ef import rabi_amplitude_ef
 from .rabi.length import rabi_length
+from .rabi.length_frequency import rabi_length_frequency
+from .rabi.length_frequency_signal import rabi_length_frequency_signal
 from .rabi.length_sequences import rabi_length_sequences
 from .rabi.length_signal import rabi_length_signal
 from .ramsey.ramsey import ramsey
@@ -83,7 +87,11 @@ class Operation(Enum):
     qubit_flux_tracking = qubit_flux_tracking
     qubit_crosstalk = qubit_crosstalk
     rabi_amplitude = rabi_amplitude
+    rabi_amplitude_frequency = rabi_amplitude_frequency
+    rabi_amplitude_frequency_signal = rabi_amplitude_frequency_signal
     rabi_length = rabi_length
+    rabi_length_frequency = rabi_length_frequency
+    rabi_length_frequency_signal = rabi_length_frequency_signal
     rabi_length_sequences = rabi_length_sequences
     rabi_amplitude_signal = rabi_amplitude_signal
     rabi_length_signal = rabi_length_signal
