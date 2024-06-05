@@ -43,7 +43,7 @@ class Action:
         """Each action is uniquely identified by its id."""
         return hash(self.id)
 
-    def dump(self, path):
+    def dump(self, path: Path):
         """Dump single action to yaml"""
         (path / SINGLE_ACTION).write_text(yaml.safe_dump(asdict(self)))
 

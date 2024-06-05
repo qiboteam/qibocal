@@ -37,7 +37,7 @@ class History(dict[Id, Completed]):
     def load(cls, path: Path):
         """To be defined"""
         instance = cls()
-        for protocol in path.glob("data/*"):
+        for protocol in (path / "data").glob("*"):
             instance.push(Completed.load(protocol))
         return instance
 

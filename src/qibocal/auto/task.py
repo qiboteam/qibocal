@@ -33,7 +33,7 @@ class Task:
     operation: Routine
 
     @classmethod
-    def load(cls, path):
+    def load(cls, path: Path):
         action = Action.load(path)
         return cls(action=action, operation=getattr(protocols, action.operation))
 
