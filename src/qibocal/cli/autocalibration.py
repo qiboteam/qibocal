@@ -4,7 +4,7 @@ import json
 from qibo.backends import set_backend
 from qibolab.serialize import dump_platform
 
-from ..auto.execute import Executor
+from ..auto.execute import run
 from ..auto.history import add_timings_to_meta
 from ..auto.mode import AUTOCALIBRATION
 from .report import report
@@ -48,7 +48,7 @@ def autocalibrate(runcard, folder, force, update):
         platform.connect()
 
     # run
-    executor = Executor.run(output=path, runcard=runcard, mode=AUTOCALIBRATION)
+    history = run(output=path, runcard=runcard, mode=AUTOCALIBRATION)
 
     # TODO: implement iterative dump of report...
 
@@ -58,10 +58,10 @@ def autocalibrate(runcard, folder, force, update):
 
     e = datetime.datetime.now(datetime.timezone.utc)
     meta["end-time"] = e.strftime("%H:%M:%S")
-    meta = add_timings_to_meta(meta, executor.history)
+    meta = add_timings_to_meta(meta, history)
     (path / META).write_text(json.dumps(meta, indent=4))
 
-    report(path, executor.history)
+    report(path, history)
 
     # dump updated runcard
     if platform is not None:

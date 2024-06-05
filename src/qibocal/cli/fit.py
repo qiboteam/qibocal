@@ -8,7 +8,7 @@ from qibolab.serialize import dump_runcard
 
 from qibocal.config import log, raise_error
 
-from ..auto.execute import Executor
+from ..auto.execute import run
 from ..auto.history import add_timings_to_meta
 from ..auto.mode import ExecutionMode
 from ..auto.operation import RESULTSFILE
@@ -48,15 +48,15 @@ def fit(input_path, update, output_path, force):
     # load runcard
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
 
-    # load executor
-    executor = Executor.run(
+    # run
+    history = run(
         output=path,
         runcard=runcard,
         mode=ExecutionMode.FIT,
     )
 
     # update time in meta
-    meta = add_timings_to_meta(meta, executor.history)
+    meta = add_timings_to_meta(meta, history)
     e = datetime.datetime.now(datetime.timezone.utc)
     meta["end-time"] = e.strftime("%H:%M:%S")
 

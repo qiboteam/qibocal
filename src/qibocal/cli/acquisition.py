@@ -6,7 +6,7 @@ import yaml
 from qibo.backends import GlobalBackend, set_backend
 from qibolab.serialize import dump_platform
 
-from ..auto.execute import Executor
+from ..auto.execute import run
 from ..auto.history import add_timings_to_meta
 from ..auto.mode import ExecutionMode
 from .utils import META, PLATFORM, RUNCARD, generate_meta, generate_output_folder
@@ -42,7 +42,7 @@ def acquire(runcard, folder, force):
     if platform is not None:
         platform.connect()
 
-    executor = Executor.run(output=path, runcard=runcard, mode=ExecutionMode.ACQUIRE)
+    history = run(output=path, runcard=runcard, mode=ExecutionMode.ACQUIRE)
 
     e = datetime.datetime.now(datetime.timezone.utc)
     meta["end-time"] = e.strftime("%H:%M:%S")
@@ -52,5 +52,5 @@ def acquire(runcard, folder, force):
         platform.disconnect()
 
     # dump updated meta
-    meta = add_timings_to_meta(meta, executor.history)
+    meta = add_timings_to_meta(meta, history)
     (path / META).write_text(json.dumps(meta, indent=4))

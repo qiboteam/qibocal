@@ -6,7 +6,7 @@ import pytest
 from qibo.backends import GlobalBackend, set_backend
 
 from qibocal import protocols
-from qibocal.auto.execute import Executor
+from qibocal.auto.execute import run
 from qibocal.auto.mode import AUTOCALIBRATION, ExecutionMode
 from qibocal.auto.operation import DEFAULT_PARENT_PARAMETERS
 from qibocal.auto.runcard import Runcard
@@ -18,8 +18,9 @@ from qibocal.protocols.readout_mitigation_matrix import (
 
 
 @pytest.fixture(scope="module")
-def qibolab_backend():
+def platform():
     set_backend(backend="qibolab", platform="dummy")
+    return GlobalBackend().platform
 
 
 TARGETS = [0, 1, 2]
@@ -100,27 +101,27 @@ UPDATE_CARD = {
 
 @pytest.mark.parametrize("global_update", [True, False])
 @pytest.mark.parametrize("local_update", [True, False])
-def test_update_argument(qibolab_backend, global_update, local_update, tmp_path):
+def test_update_argument(platform, global_update, local_update, tmp_path):
     """Test possible update combinations between global and local."""
     NEW_CARD = modify_card(
         UPDATE_CARD, local_update=local_update, global_update=global_update
     )
-    platform = deepcopy(GlobalBackend().platform)
+    # platform = deepcopy(GlobalBackend().platform)
     old_readout_frequency = platform.qubits[0].readout_frequency
     old_iq_angle = platform.qubits[1].iq_angle
-    executor = Executor.run(
+    run(
         Runcard.load(NEW_CARD),
         tmp_path,
         mode=AUTOCALIBRATION,
     )
 
     if local_update and global_update:
-        assert old_readout_frequency != executor.platform.qubits[0].readout_frequency
-        assert old_iq_angle != executor.platform.qubits[1].iq_angle
+        assert old_readout_frequency != platform.qubits[0].readout_frequency
+        assert old_iq_angle != platform.qubits[1].iq_angle
 
     else:
-        assert old_readout_frequency == executor.platform.qubits[0].readout_frequency
-        assert old_iq_angle == executor.platform.qubits[1].iq_angle
+        assert old_readout_frequency == platform.qubits[0].readout_frequency
+        assert old_iq_angle == platform.qubits[1].iq_angle
 
 
 @pytest.mark.parametrize(

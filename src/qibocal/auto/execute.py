@@ -83,30 +83,23 @@ class Executor:
 
         return completed
 
-    @classmethod
-    def run(cls, runcard: Runcard, output: Path, mode: ExecutionMode):
-        """Actual execution.
 
-        The platform's update method is called if:
-        - self.update is True and task.update is None
-        - task.update is True
-        """
-        platform = runcard.platform_obj
-        targets = (
-            runcard.targets if runcard.targets is not None else list(platform.qubits)
-        )
-        instance = cls(
-            history=History.load(output),
-            platform=platform,
-            targets=targets,
-            output=output,
-            update=runcard.update,
-        )
+def run(runcard: Runcard, output: Path, mode: ExecutionMode):
+    """Run runcard and dump to output."""
+    platform = runcard.platform_obj
+    targets = runcard.targets if runcard.targets is not None else list(platform.qubits)
+    instance = Executor(
+        history=History.load(output),
+        platform=platform,
+        targets=targets,
+        output=output,
+        update=runcard.update,
+    )
 
-        for action in runcard.actions:
-            _ = instance.run_protocol(
-                protocol=getattr(protocols, action.operation),
-                parameters=action,
-                mode=mode,
-            )
-        return instance
+    for action in runcard.actions:
+        instance.run_protocol(
+            protocol=getattr(protocols, action.operation),
+            parameters=action,
+            mode=mode,
+        )
+    return instance.history
