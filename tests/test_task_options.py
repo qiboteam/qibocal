@@ -16,7 +16,11 @@ from qibocal.protocols.readout_mitigation_matrix import (
     ReadoutMitigationMatrixParameters,
 )
 
-set_backend(backend="qibolab", platform="dummy")
+
+@pytest.fixture(scope="module")
+def qibolab_backend():
+    set_backend(backend="qibolab", platform="dummy")
+
 
 TARGETS = [0, 1, 2]
 DUMMY_CARD = {
@@ -96,7 +100,7 @@ UPDATE_CARD = {
 
 @pytest.mark.parametrize("global_update", [True, False])
 @pytest.mark.parametrize("local_update", [True, False])
-def test_update_argument(global_update, local_update, tmp_path):
+def test_update_argument(qibolab_backend, global_update, local_update, tmp_path):
     """Test possible update combinations between global and local."""
     NEW_CARD = modify_card(
         UPDATE_CARD, local_update=local_update, global_update=global_update

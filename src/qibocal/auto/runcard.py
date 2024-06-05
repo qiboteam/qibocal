@@ -2,6 +2,7 @@
 
 import os
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any, NewType, Optional, Union
 
 import yaml
