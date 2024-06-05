@@ -67,7 +67,7 @@ def report(path: pathlib.Path, history: History = None):
     Executor can be passed to generate report on the fly.
     """
 
-    if (path / "index.html").exists():
+    if (path / "index.html").exists():  # pragma: no cover
         log.warning(f"Regenerating {path}/index.html")
     # load meta
     meta = json.loads((path / META).read_text())

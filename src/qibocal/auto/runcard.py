@@ -40,10 +40,6 @@ class Action:
     parameters: Optional[dict[str, Any]] = None
     """Input parameters, either values or provider reference."""
 
-    def __hash__(self) -> int:
-        """Each action is uniquely identified by its id."""
-        return hash(self.id)
-
     def dump(self, path: Path):
         """Dump single action to yaml"""
         (path / SINGLE_ACTION).write_text(yaml.safe_dump(asdict(self)))
