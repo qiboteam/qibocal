@@ -135,6 +135,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         mags = abs(ft)
         local_maxima = find_peaks(mags, threshold=10)[0]
         index = local_maxima[0] if len(local_maxima) > 0 else None
+
         # 0.5 hardcoded guess for less than one oscillation
         f = x[index] / (x[1] - x[0]) if index is not None else 0.5
         pguess = [0.5, 0.5, 1 / f, 0]
