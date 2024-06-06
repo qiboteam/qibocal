@@ -24,7 +24,7 @@ class Action:
 
     id: Id
     """Action unique identifier."""
-    operation: Optional[OperationId] = None
+    operation: OperationId
     """Operation to be performed by the executor."""
     targets: Optional[Targets] = None
     """Local qubits (optional)."""
