@@ -181,7 +181,7 @@ class Completed:
         """Loading completed from path."""
 
         task = Task.load(folder)
-        return cls(task=task, folder=folder.parent.parent)
+        return cls(task=task, folder=folder.parents[1])
 
     def update_platform(self, platform: Platform, update: bool):
         """Perform update on platform' parameters by looping over qubits or pairs."""
