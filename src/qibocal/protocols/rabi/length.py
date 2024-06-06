@@ -5,18 +5,15 @@ import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
-from scipy.optimize import curve_fit
-from scipy.signal import find_peaks
 
 from qibocal import update
 from qibocal.auto.operation import Parameters, Routine
 from qibocal.config import log
 from qibocal.protocols.rabi.length_signal import (
-    RabiLengthVoltData,
-    RabiLengthVoltResults,
+    RabiLengthSignalData,
+    RabiLengthSignalResults,
 )
 
 from ..utils import chi2_reduced
@@ -38,7 +35,7 @@ class RabiLengthParameters(Parameters):
 
 
 @dataclass
-class RabiLengthResults(RabiLengthVoltResults):
+class RabiLengthResults(RabiLengthSignalResults):
     """RabiLength outputs."""
 
     chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
@@ -51,7 +48,7 @@ RabiLenType = np.dtype(
 
 
 @dataclass
-class RabiLengthData(RabiLengthVoltData):
+class RabiLengthData(RabiLengthSignalData):
     """RabiLength acquisition outputs."""
 
     data: dict[QubitId, npt.NDArray[RabiLenType]] = field(default_factory=dict)
@@ -67,26 +64,9 @@ def _acquisition(
     to find the drive pulse length that creates a rotation of a desired angle.
     """
 
-    # create a sequence of pulses for the experiment
-    sequence = PulseSequence()
-    qd_pulses = {}
-    ro_pulses = {}
-    amplitudes = {}
-    for qubit in targets:
-        # TODO: made duration optional for qd pulse?
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=params.pulse_duration_start
-        )
-        if params.pulse_amplitude is not None:
-            qd_pulses[qubit].amplitude = params.pulse_amplitude
-        amplitudes[qubit] = qd_pulses[qubit].amplitude
-
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
-        )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
-
+    sequence, qd_pulses, _, amplitudes = utils.sequence_length(
+        targets, params, platform
+    )
     # define the parameter to sweep and its range:
     # qubit drive pulse duration time
     qd_pulse_duration_range = np.arange(
@@ -145,52 +125,27 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         min_x = np.min(raw_x)
         max_x = np.max(raw_x)
         y = qubit_data.prob
-
         x = (raw_x - min_x) / (max_x - min_x)
-        # Guessing period using fourier transform
-        ft = np.fft.rfft(y)
-        mags = abs(ft)
-        local_maxima = find_peaks(mags, threshold=1)[0]
-        index = local_maxima[0] if len(local_maxima) > 0 else None
-        # 0.5 hardcoded guess for less than one oscillation
-        f = x[index] / (x[1] - x[0]) if index is not None else 0.5
+
+        f = utils.guess_frequency(x, y)
         pguess = [0.5, 0.5, 1 / f, 0, 0]
 
         try:
-            popt, perr = curve_fit(
-                utils.rabi_length_function,
+            popt, perr, pi_pulse_parameter = utils.fit_length_function(
                 x,
                 y,
-                p0=pguess,
-                maxfev=100000,
-                bounds=(
-                    [0, 0, 0, -np.pi, 0],
-                    [1, 1, np.inf, np.pi, np.inf],
-                ),
+                pguess,
                 sigma=qubit_data.error,
-            )
-
-            translated_popt = [
-                popt[0],
-                popt[1] * np.exp(min_x * popt[4] / (max_x - min_x)),
-                popt[2] * (max_x - min_x),
-                popt[3] - 2 * np.pi * min_x / popt[2] / (max_x - min_x),
-                popt[4] / (max_x - min_x),
-            ]
-
-            perr = np.sqrt(np.diag(perr))
-            pi_pulse_parameter = (
-                translated_popt[2]
-                / 2
-                * utils.period_correction_factor(phase=translated_popt[3])
+                signal=False,
+                x_limits=(min_x, max_x),
             )
             durations[qubit] = (pi_pulse_parameter, perr[2] * (max_x - min_x) / 2)
-            fitted_parameters[qubit] = translated_popt
+            fitted_parameters[qubit] = popt
             amplitudes = {key: (value, 0) for key, value in data.amplitudes.items()}
             chi2[qubit] = (
                 chi2_reduced(
                     y,
-                    utils.rabi_length_function(raw_x, *translated_popt),
+                    utils.rabi_length_function(raw_x, *popt),
                     qubit_data.error,
                 ),
                 np.sqrt(2 / len(y)),

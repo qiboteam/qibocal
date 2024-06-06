@@ -27,13 +27,18 @@ from .flux_dependence.qubit_flux_dependence import qubit_flux
 from .flux_dependence.qubit_flux_tracking import qubit_flux_tracking
 from .flux_dependence.resonator_crosstalk import resonator_crosstalk
 from .flux_dependence.resonator_flux_dependence import resonator_flux
+from .qubit_power_spectroscopy import qubit_power_spectroscopy
 from .qubit_spectroscopy import qubit_spectroscopy
 from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
 from .qutrit_classification import qutrit_classification
 from .rabi.amplitude import rabi_amplitude
+from .rabi.amplitude_frequency import rabi_amplitude_frequency
+from .rabi.amplitude_frequency_signal import rabi_amplitude_frequency_signal
 from .rabi.amplitude_signal import rabi_amplitude_signal
 from .rabi.ef import rabi_amplitude_ef
 from .rabi.length import rabi_length
+from .rabi.length_frequency import rabi_length_frequency
+from .rabi.length_frequency_signal import rabi_length_frequency_signal
 from .rabi.length_sequences import rabi_length_sequences
 from .rabi.length_signal import rabi_length_signal
 from .ramsey.ramsey import ramsey
@@ -65,6 +70,7 @@ from .two_qubit_interaction import (
     cz_virtualz,
     cz_virtualz_signal,
 )
+from .two_qubit_state_tomography import two_qubit_state_tomography
 
 __all__ = [
     "allxy",
@@ -130,4 +136,10 @@ __all__ = [
     "cz_virtualz_signal",
     "state_tomography",
     "allxy_resonator_depletion_tuning",
+    "two_qubit_state_tomography",
+    "qubit_power_spectroscopy",
+    "rabi_amplitude_frequency",
+    "rabi_amplitude_frequency_signal",
+    "rabi_length_frequency",
+    "rabi_length_frequency_signal",
 ]

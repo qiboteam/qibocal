@@ -52,13 +52,9 @@ def _acquisition(
 
     sequence = PulseSequence()
 
-    RX_pulses = {}
     ro_pulses = {}
     for qubit in targets:
-        RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=RX_pulses[qubit].finish
-        )
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
         if params.readout_amplitude is not None:
             ro_pulses[qubit].amplitude = params.readout_amplitude
         sequence.add(ro_pulses[qubit])
