@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+from qibocal.config import raise_error
+
 from .runcard import Id
 from .task import Completed
 
@@ -43,6 +45,10 @@ class History(dict[Id, Completed]):
 
     def push(self, completed: Completed):
         """Adding completed task to history."""
+        if completed.task.id in self:
+            # patch to make sure that calling fit after acquire works
+            if self[completed.task.id]._results is not None:
+                raise_error(KeyError, f"{completed.task.id} already in History.")
         self[completed.task.id] = completed
 
     # TODO: implemet time_travel()

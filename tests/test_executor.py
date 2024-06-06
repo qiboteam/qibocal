@@ -28,3 +28,5 @@ def test_executor_create(params, platform, tmp_path):
     """Create method of Executor"""
     executor = Executor.create(platform=platform, output=tmp_path)
     executor.run_protocol(flipping, params)
+    with pytest.raises(KeyError):
+        executor.run_protocol(flipping, params)
