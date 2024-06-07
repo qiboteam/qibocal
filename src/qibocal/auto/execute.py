@@ -1,15 +1,21 @@
 """Tasks execution."""
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterator, Union
 
+from qibolab import create_platform
 from qibolab.platform import Platform
 
+from qibocal import protocols
 from qibocal.config import log
 
 from .history import History
-from .runcard import Action, Runcard, Targets
-from .task import Task
+from .mode import ExecutionMode
+from .operation import Routine
+from .runcard import Action, Id, Runcard, Targets
+from .task import Completed, Task
 
 
 @dataclass
@@ -35,8 +41,8 @@ class Executor:
         cls,
         card: Runcard,
         output: Path,
-        platform: Platform = None,
-        targets: Targets = None,
+        platform: Platform,
+        targets: Targets,
         update: bool = True,
     ):
         """Load execution graph and associated executor from a runcard."""
@@ -50,25 +56,72 @@ class Executor:
             update=update,
         )
 
-    def run(self, mode):
+    @property
+    def _actions_dict(self):
+        """Helper dict to find protocol."""
+        return {action.id: action for action in self.actions}
+
+    @classmethod
+    def create(
+        cls,
+        platform: Union[Platform, str] = None,
+        output: Union[str, bytes, os.PathLike] = None,
+    ):
+        """Load list of protocols."""
+        platform = (
+            platform if isinstance(platform, Platform) else create_platform(platform)
+        )
+        return cls(
+            actions=[],
+            history=History({}),
+            output=Path(output),
+            platform=platform,
+            targets=list(platform.qubits),
+            update=True,
+        )
+
+    def run_protocol(
+        self,
+        protocol: Routine,
+        parameters: Union[dict, Action],
+        mode: ExecutionMode = ExecutionMode.ACQUIRE | ExecutionMode.FIT,
+    ) -> Completed:
+        """Run single protocol in ExecutionMode mode."""
+        if isinstance(parameters, dict):
+            parameters["operation"] = str(protocol)
+            action = Action(**parameters)
+        else:
+            action = parameters
+        task = Task(action, protocol)
+        if isinstance(mode, ExecutionMode):
+            log.info(
+                f"Executing mode {mode.name if mode.name is not None else 'AUTOCALIBRATION'} on {id}."
+            )
+        completed = task.run(
+            platform=self.platform,
+            targets=self.targets,
+            folder=self.output,
+            mode=mode,
+        )
+
+        if ExecutionMode.FIT in mode and self.platform is not None:
+            completed.update_platform(platform=self.platform, update=self.update)
+
+        self.history.push(completed)
+
+        return completed
+
+    def run(self, mode: ExecutionMode) -> Iterator[Id]:
         """Actual execution.
 
         The platform's update method is called if:
         - self.update is True and task.update is None
         - task.update is True
         """
-        for action in self.actions:
-            task = Task(action)
-            log.info(f"Executing mode {mode.name} on {task.id}.")
-            completed = task.run(
-                platform=self.platform,
-                targets=self.targets,
-                folder=self.output,
+        for id, params in self._actions_dict.items():
+            completed = self.run_protocol(
+                protocol=getattr(protocols, params.operation),
+                parameters=params,
                 mode=mode,
             )
-            self.history.push(completed)
-
-            if mode.name in ["autocalibration", "fit"] and self.platform is not None:
-                completed.update_platform(platform=self.platform, update=self.update)
-
             yield completed.task.id

@@ -5,11 +5,8 @@ import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
-from scipy.optimize import curve_fit
-from scipy.signal import find_peaks
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
@@ -19,8 +16,8 @@ from . import utils
 
 
 @dataclass
-class RabiLengthVoltParameters(Parameters):
-    """RabiLengthVolt runcard inputs."""
+class RabiLengthSignalParameters(Parameters):
+    """RabiLengthSignal runcard inputs."""
 
     pulse_duration_start: float
     """Initial pi pulse duration [ns]."""
@@ -33,8 +30,8 @@ class RabiLengthVoltParameters(Parameters):
 
 
 @dataclass
-class RabiLengthVoltResults(Results):
-    """RabiLengthVolt outputs."""
+class RabiLengthSignalResults(Results):
+    """RabiLengthSignal outputs."""
 
     length: dict[QubitId, tuple[int, Optional[float]]]
     """Pi pulse duration for each qubit."""
@@ -44,50 +41,34 @@ class RabiLengthVoltResults(Results):
     """Raw fitting output."""
 
 
-RabiLenVoltType = np.dtype(
+RabiLenSignalType = np.dtype(
     [("length", np.float64), ("signal", np.float64), ("phase", np.float64)]
 )
 """Custom dtype for rabi amplitude."""
 
 
 @dataclass
-class RabiLengthVoltData(Data):
+class RabiLengthSignalData(Data):
     """RabiLength acquisition outputs."""
 
     amplitudes: dict[QubitId, float] = field(default_factory=dict)
     """Pulse durations provided by the user."""
-    data: dict[QubitId, npt.NDArray[RabiLenVoltType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[RabiLenSignalType]] = field(default_factory=dict)
     """Raw data acquired."""
 
 
 def _acquisition(
-    params: RabiLengthVoltParameters, platform: Platform, targets: list[QubitId]
-) -> RabiLengthVoltData:
+    params: RabiLengthSignalParameters, platform: Platform, targets: list[QubitId]
+) -> RabiLengthSignalData:
     r"""
     Data acquisition for RabiLength Experiment.
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse length
     to find the drive pulse length that creates a rotation of a desired angle.
     """
 
-    # create a sequence of pulses for the experiment
-    sequence = PulseSequence()
-    qd_pulses = {}
-    ro_pulses = {}
-    amplitudes = {}
-    for qubit in targets:
-        # TODO: made duration optional for qd pulse?
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=params.pulse_duration_start
-        )
-        if params.pulse_amplitude is not None:
-            qd_pulses[qubit].amplitude = params.pulse_amplitude
-        amplitudes[qubit] = qd_pulses[qubit].amplitude
-
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
-        )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
+    sequence, qd_pulses, ro_pulses, amplitudes = utils.sequence_length(
+        targets, params, platform
+    )
 
     # define the parameter to sweep and its range:
     # qubit drive pulse duration time
@@ -104,7 +85,7 @@ def _acquisition(
         type=SweeperType.ABSOLUTE,
     )
 
-    data = RabiLengthVoltData(amplitudes=amplitudes)
+    data = RabiLengthSignalData(amplitudes=amplitudes)
 
     # execute the sweep
     results = platform.sweep(
@@ -121,7 +102,7 @@ def _acquisition(
     for qubit in targets:
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
-            RabiLenVoltType,
+            RabiLenSignalType,
             (qubit),
             dict(
                 length=qd_pulse_duration_range,
@@ -132,7 +113,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
+def _fit(data: RabiLengthSignalData) -> RabiLengthSignalResults:
     """Post-processing for RabiLength experiment."""
 
     qubits = data.qubits
@@ -151,53 +132,31 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
         x = (rabi_parameter - x_min) / (x_max - x_min)
         y = (voltages - y_min) / (y_max - y_min) - 1 / 2
 
-        # Guessing period using fourier transform
-        ft = np.fft.rfft(y)
-        mags = abs(ft)
-        local_maxima = find_peaks(mags, threshold=1)[0]
-        index = local_maxima[0] if len(local_maxima) > 0 else None
-        # 0.5 hardcoded guess for less than one oscillation
-        f = x[index] / (x[1] - x[0]) if index is not None else 0.5
-
+        f = utils.guess_frequency(x, y)
         pguess = [0, np.sign(y[0]) * 0.5, 1 / f, 0, 0]
         try:
-            popt, _ = curve_fit(
-                utils.rabi_length_function,
+            popt, _, pi_pulse_parameter = utils.fit_length_function(
                 x,
                 y,
-                p0=pguess,
-                maxfev=100000,
-                bounds=(
-                    [0, -1, 0, -np.pi, 0],
-                    [1, 1, np.inf, np.pi, np.inf],
-                ),
-            )
-            translated_popt = [  # change it according to the fit function
-                (y_max - y_min) * (popt[0] + 1 / 2) + y_min,
-                (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
-                popt[2] * (x_max - x_min),
-                popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
-                popt[4] / (x_max - x_min),
-            ]
-            pi_pulse_parameter = (
-                translated_popt[2]
-                / 2
-                * utils.period_correction_factor(phase=translated_popt[3])
+                pguess,
+                signal=True,
+                x_limits=(x_min, x_max),
+                y_limits=(y_min, y_max),
             )
             durations[qubit] = pi_pulse_parameter
-            fitted_parameters[qubit] = translated_popt
+            fitted_parameters[qubit] = popt
 
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
-    return RabiLengthVoltResults(durations, data.amplitudes, fitted_parameters)
+    return RabiLengthSignalResults(durations, data.amplitudes, fitted_parameters)
 
 
-def _update(results: RabiLengthVoltResults, platform: Platform, target: QubitId):
+def _update(results: RabiLengthSignalResults, platform: Platform, target: QubitId):
     update.drive_duration(results.length[target], platform, target)
 
 
-def _plot(data: RabiLengthVoltData, fit: RabiLengthVoltResults, target: QubitId):
+def _plot(data: RabiLengthSignalData, fit: RabiLengthSignalResults, target: QubitId):
     """Plotting function for RabiLength experiment."""
     return utils.plot(data, target, fit)
 

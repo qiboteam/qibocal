@@ -16,7 +16,7 @@ from qibocal.config import log
 from qibocal.protocols.qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, extract_feature, table_dict, table_html
-from . import resonator_flux_dependence, utils
+from . import utils
 from .resonator_flux_dependence import ResonatorFluxParameters
 
 
@@ -41,8 +41,6 @@ class QubitFluxResults(Results):
     """Sweetspot for each qubit."""
     frequency: dict[QubitId, float]
     """Drive frequency for each qubit."""
-    asymmetry: dict[QubitId, float]
-    """Asymmetry between junctions."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
     matrix_element: dict[QubitId, float]
@@ -66,16 +64,10 @@ class QubitFluxData(Data):
 
     resonator_type: str
     """Resonator type."""
-
-    flux_pulses: bool
-    """True if sweeping flux pulses, False if sweeping bias."""
-
+    charging_energy: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit charging energy."""
     qubit_frequency: dict[QubitId, float] = field(default_factory=dict)
-    """Qubit frequencies."""
-
-    offset: dict[QubitId, float] = field(default_factory=dict)
-    """Qubit bias offset."""
-
+    """Qubit charging energy."""
     data: dict[QubitId, npt.NDArray[QubitFluxType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -98,13 +90,11 @@ def _acquisition(
     ro_pulses = {}
     qd_pulses = {}
     qubit_frequency = {}
-    offset = {}
     for qubit in targets:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.drive_duration
         )
         qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
-        offset[qubit] = platform.qubits[qubit].sweetspot
 
         if params.transition == "02":
             if platform.qubits[qubit].anharmonicity:
@@ -131,30 +121,25 @@ def _acquisition(
         pulses=[qd_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
-    if params.flux_pulses:
-        (delta_bias_flux_range, sweepers, sequences) = (
-            resonator_flux_dependence.create_flux_pulse_sweepers(
-                params, platform, targets, sequence
-            )
+
+    delta_bias_range = np.arange(
+        -params.bias_width / 2, params.bias_width / 2, params.bias_step
+    )
+    sweepers = [
+        Sweeper(
+            Parameter.bias,
+            delta_bias_range,
+            qubits=[platform.qubits[qubit] for qubit in targets],
+            type=SweeperType.OFFSET,
         )
-        sequence = sequences[0]
-    else:
-        delta_bias_flux_range = np.arange(
-            -params.bias_width / 2, params.bias_width / 2, params.bias_step
-        )
-        sweepers = [
-            Sweeper(
-                Parameter.bias,
-                delta_bias_flux_range,
-                qubits=[platform.qubits[qubit] for qubit in targets],
-                type=SweeperType.OFFSET,
-            )
-        ]
+    ]
+
     data = QubitFluxData(
         resonator_type=platform.resonator_type,
-        flux_pulses=params.flux_pulses,
+        charging_energy={
+            qubit: -platform.qubits[qubit].anharmonicity for qubit in targets
+        },
         qubit_frequency=qubit_frequency,
-        offset=offset,
     )
     options = ExecutionParameters(
         nshots=params.nshots,
@@ -173,7 +158,7 @@ def _acquisition(
                 signal=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
-                bias=delta_bias_flux_range + sweetspot,
+                bias=delta_bias_range + sweetspot,
             )
     return data
 
@@ -188,34 +173,54 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     qubits = data.qubits
     frequency = {}
     sweetspot = {}
-    asymmetry = {}
     matrix_element = {}
     fitted_parameters = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
-
         biases = qubit_data.bias
         frequencies = qubit_data.freq
         signal = qubit_data.signal
 
-        frequencies, biases = extract_feature(frequencies, biases, signal, "max")
+        frequencies, biases = extract_feature(
+            frequencies, biases, signal, "max" if data.resonator_type == "2D" else "min"
+        )
+
+        def fit_function(x, w_max, normalization, offset):
+            return utils.transmon_frequency(
+                xi=x,
+                w_max=w_max,
+                xj=0,
+                d=0,
+                normalization=normalization,
+                offset=offset,
+                crosstalk_element=1,
+                charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
+            )
 
         try:
             popt = curve_fit(
-                utils.transmon_frequency_diagonal,
+                fit_function,
                 biases,
                 frequencies * HZ_TO_GHZ,
                 bounds=utils.qubit_flux_dependence_fit_bounds(
-                    data.qubit_frequency[qubit], qubit_data.bias
+                    data.qubit_frequency[qubit],
                 ),
                 maxfev=100000,
             )[0]
-            fitted_parameters[qubit] = popt.tolist()
+            fitted_parameters[qubit] = {
+                "w_max": popt[0],
+                "xj": 0,
+                "d": 0,
+                "normalization": popt[1],
+                "offset": popt[2],
+                "crosstalk_element": 1,
+                "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
+            }
             frequency[qubit] = popt[0] * GHZ_TO_HZ
-            asymmetry[qubit] = popt[1]
-            sweetspot[qubit] = popt[3]
-            matrix_element[qubit] = popt[2]
+            # sweetspot obtain by solving transmon_frequency == w_max
+            sweetspot[qubit] = -popt[2] / popt[1]
+            matrix_element[qubit] = popt[1]
         except ValueError as e:
             log.error(
                 f"Error in qubit_flux protocol fit: {e} "
@@ -227,7 +232,6 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     return QubitFluxResults(
         frequency=frequency,
         sweetspot=sweetspot,
-        asymmetry=asymmetry,
         matrix_element=matrix_element,
         fitted_parameters=fitted_parameters,
     )
@@ -235,30 +239,25 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
 def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
     """Plotting function for QubitFlux Experiment."""
+
     figures = utils.flux_dependence_plot(
         data,
         fit,
         target,
-        fit_function=utils.transmon_frequency_diagonal,
+        fit_function=utils.transmon_frequency,
     )
-    if data.flux_pulses:
-        bias_flux_unit = "a.u."
-    else:
-        bias_flux_unit = "V"
     if fit is not None:
         fitting_report = table_html(
             table_dict(
                 target,
                 [
-                    f"Sweetspot [{bias_flux_unit}]",
+                    f"Sweetspot [V]",
                     "Qubit Frequency at Sweetspot [Hz]",
-                    "Asymmetry d",
-                    "Flux dependence",
+                    "Flux dependence [V]^-1",
                 ],
                 [
                     np.round(fit.sweetspot[target], 4),
                     np.round(fit.frequency[target], 4),
-                    np.round(fit.asymmetry[target], 4),
                     np.round(fit.matrix_element[target], 4),
                 ],
             )
@@ -270,7 +269,6 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
 def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
     update.drive_frequency(results.frequency[qubit], platform, qubit)
     update.sweetspot(results.sweetspot[qubit], platform, qubit)
-    update.asymmetry(results.asymmetry[qubit], platform, qubit)
     update.crosstalk_matrix(results.matrix_element[qubit], platform, qubit, qubit)
 
 
