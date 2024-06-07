@@ -20,3 +20,4 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     t1/t1
     t2/t2
     t2_echo/t2_echo
+    flux/single
