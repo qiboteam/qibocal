@@ -9,7 +9,7 @@ from qibolab import create_platform
 from qibolab.platform import Platform
 
 from qibocal import protocols
-from qibocal.config import log
+from qibocal.config import log, raise_error
 
 from .history import History
 from .mode import ExecutionMode
@@ -68,6 +68,12 @@ class Executor:
             log.info(
                 f"Executing mode {mode.name if mode.name is not None else 'AUTOCALIBRATION'} on {task.id}."
             )
+
+        if ExecutionMode.ACQUIRE in mode and task.id in self.history:
+            raise_error(KeyError, f"{task.id} already contains acquisition data.")
+        if ExecutionMode.FIT is mode and self.history[task.id]._results is not None:
+            raise_error(KeyError, f"{task.id} already contains fitting results.")
+
         completed = task.run(
             platform=self.platform,
             targets=self.targets,
