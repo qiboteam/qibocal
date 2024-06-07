@@ -142,9 +142,3 @@ and also here:
             0:
                 bare_resonator_frequency: <high_power_resonator_frequency>
                 readout_frequency: <low_power_resonator_frequency>
-
-.. rubric:: References
-
-.. bibliography::
-   :filter: docname in docnames
-   :style: plain

@@ -120,9 +120,10 @@ def _acquisition(
 
 
 def _fit(data: T2SignalData) -> T2SignalResults:
-    r"""
-    Fitting routine for Ramsey experiment. The used model is
+    """The used model is
+
     .. math::
+
         y = p_0 - p_1 e^{-x p_2}.
     """
     data = data.average

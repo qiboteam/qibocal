@@ -126,9 +126,3 @@ This is and example of a runcard for a resonator punchout with attenuation:
           nshots: 1000
           step_att: 4
           nshots: 2048
-
-.. rubric:: References
-
-.. bibliography::
-   :cited:
-   :style: plain

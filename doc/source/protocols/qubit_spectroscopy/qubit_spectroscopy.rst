@@ -126,11 +126,3 @@ After the post-processing the following parameters will be updated:
 
 * qubit.anharmonicity
 * qubit.native_gates.RX12.frequency
-
-.. rubric:: References
-
-
-
-.. bibliography::
-   :filter: docname in docnames
-   :style: plain

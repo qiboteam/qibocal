@@ -60,11 +60,3 @@ Requirements pre-experiment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Before this experiment, nothing in particular is required. This can indeed be done as a first test of the connections.
-
-.. rubric:: References
-
-
-
-.. bibliography::
-   :filter: docname in docnames
-   :style: plain

@@ -105,9 +105,10 @@ def _acquisition(
 
 
 def _fit(data: T2Data) -> T2Results:
-    r"""
-    Fitting routine for Ramsey experiment. The used model is
+    """The used model is
+
     .. math::
+
         y = p_0 - p_1 e^{-x p_2}.
     """
     t2s, fitted_parameters, chi2 = utils.exponential_fit_probability(data)
