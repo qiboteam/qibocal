@@ -257,10 +257,10 @@ def _acquisition(
     return data
 
 
-def fit_function(x, p0, p1, p2):
+def fit_function(x, amplitude, offset, phase):
     """Sinusoidal fit function."""
     # return p0 + p1 * np.sin(2*np.pi*p2 * x + p3)
-    return np.sin(x + p2) * p0 + p1
+    return np.sin(x + phase) * amplitude + offset
 
 
 def _fit(
