@@ -4,7 +4,7 @@ Rabi experiments
 In this section se present all the Rabi experiments provided by Qibocal.
 
 Rabi lenght and amplitude
-=========================
+-------------------------
 
 The goal of the Rabi experiment is to tune the amplitude (duration) of the drive pulse, in order
 to excite the qubit from the ground state up to state :math:`\ket{1}`.
@@ -78,15 +78,16 @@ It follows an example runcard and plot for the signal exepriment
 
 .. code-block:: yaml
 
-    - id: Rabi signal
-      operation: rabi_amplitude_signal
-      parameters:
-        min_amp_factor: 0.2
-        max_amp_factor: 1.
-        step_amp_factor: 0.01
-        pulse_length: 40
-        nshots: 3000
-        relaxation_time: 50000
+
+	- id: Rabi signal
+	  operation: rabi_amplitude_signal
+	  parameters:
+	    min_amp_factor: 0.2
+	    max_amp_factor: 1.
+	    step_amp_factor: 0.01
+	    pulse_length: 40
+	    nshots: 3000
+	    relaxation_time: 50000
 
 Requirements
 ^^^^^^^^^^^^
@@ -94,4 +95,33 @@ Requirements
 - :ref:`resonator_spectroscopy`
 
 Rabi ef
+------
+
+This experiment is used to characterized the :math:`\pi_{12}` pulse, in order to change the qubit state from :math:`\ket{1}`
+to :math:`\ket{2}`. The experiment is similar to the Rabi  experiment, but at the beginning the state should be prepeared in the
+:math:`\ket{1}` state through a :math:`\pi_{01}` pulse.
+
+Example
 ^^^^^^^
+
+It follows an example of runcard and a generated report.
+
+.. code-block:: yaml
+
+    - id: Rabi ef
+      operation: rabi_amplitude_ef
+      parameters:
+	    min_amp_factor: 0.2
+	    max_amp_factor: 1.
+	    step_amp_factor: 0.01
+	    pulse_length: 400
+	    nshots: 3000
+	    relaxation_time: 50000
+
+.. image:: rabi_ef.png
+
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`rabi`
+- :ref:`dispersive_shift`
