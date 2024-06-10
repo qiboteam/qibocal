@@ -1,3 +1,5 @@
+.. _flux:
+
 Frequency vs flux experiments
 =============================
 
@@ -95,6 +97,9 @@ A possible runcard to assess how the resonator frequency changes by varying flux
 
 From this protocol it is possible to extract both the bare and the dressed resonator frequency
 as well as an estimate for the coupling :math:`g_0`.
+It is suggested to run this protocol only after executing the qubit flux dependence experiment
+since some of the coefficients required can be computed with that experiment.
+
 
 .. image:: resonator_flux.png
 
