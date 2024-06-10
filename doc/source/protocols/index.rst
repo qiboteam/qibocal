@@ -23,7 +23,6 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     flux/single
     flux/crosstalk
     references
-||||||| parent of 70fdaaaf (docs: add singleshot docs)
     qubit_spectroscopy
     qubit_spectroscopy
     rabi
