@@ -1,3 +1,5 @@
+.. _qubit_spectroscopy:
+
 Qubit spectroscopies
 ====================
 

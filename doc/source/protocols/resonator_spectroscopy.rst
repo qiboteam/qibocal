@@ -1,3 +1,5 @@
+.. _resonator_spectroscopy:
+
 Resonator spectroscopy
 ======================
 
