@@ -25,5 +25,6 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     references
     qubit_spectroscopy
     qubit_spectroscopy
-    rabi
+    rabi/rabi
     singleshot
+    dispersive_shift

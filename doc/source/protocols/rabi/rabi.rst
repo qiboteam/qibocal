@@ -1,3 +1,5 @@
+.. _rabi:
+
 Rabi experiments
 ================
 
@@ -89,13 +91,15 @@ It follows an example runcard and plot for the signal exepriment
 	    nshots: 3000
 	    relaxation_time: 50000
 
+.. image:: rabi_signal.png
+
 Requirements
 ^^^^^^^^^^^^
 - :ref:`qubit_spectroscopy`
 - :ref:`resonator_spectroscopy`
 
 Rabi ef
-------
+-------
 
 This experiment is used to characterized the :math:`\pi_{12}` pulse, in order to change the qubit state from :math:`\ket{1}`
 to :math:`\ket{2}`. The experiment is similar to the Rabi  experiment, but at the beginning the state should be prepeared in the
@@ -111,12 +115,12 @@ It follows an example of runcard and a generated report.
     - id: Rabi ef
       operation: rabi_amplitude_ef
       parameters:
-	    min_amp_factor: 0.2
-	    max_amp_factor: 1.
-	    step_amp_factor: 0.01
-	    pulse_length: 400
-	    nshots: 3000
-	    relaxation_time: 50000
+        min_amp_factor: 0.2
+        max_amp_factor: 1.
+        step_amp_factor: 0.01
+        pulse_length: 400
+        nshots: 3000
+        relaxation_time: 50000
 
 .. image:: rabi_ef.png
 
