@@ -7,7 +7,7 @@ from qibolab.serialize import dump_platform
 
 from ..auto.execute import Executor
 from ..auto.history import add_timings_to_meta
-from ..auto.mode import ExecutionMode
+from ..auto.mode import AUTOCALIBRATION
 from .report import report
 from .utils import (
     META,
@@ -53,7 +53,7 @@ def autocalibrate(runcard, folder, force, update):
         platform.connect()
 
     # run protocols
-    for _ in executor.run(mode=ExecutionMode.autocalibration):
+    for _ in executor.run(mode=AUTOCALIBRATION):
         # meta needs to be updated before each report to show correct end-time
         e = datetime.datetime.now(datetime.timezone.utc)
         meta["end-time"] = e.strftime("%H:%M:%S")

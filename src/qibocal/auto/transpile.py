@@ -1,7 +1,7 @@
 from typing import Optional
 
 from qibo import Circuit
-from qibo.backends import Backend
+from qibo.backends.abstract import Backend
 from qibo.transpiler.pipeline import Passes
 from qibo.transpiler.unroller import NativeGates, Unroller
 
