@@ -3,10 +3,10 @@
 from copy import deepcopy
 
 import pytest
-from qibolab import create_platform
+from qibo.backends import GlobalBackend, set_backend
 
 from qibocal import protocols
-from qibocal.auto.execute import Executor
+from qibocal.auto.execute import run
 from qibocal.auto.mode import AUTOCALIBRATION, ExecutionMode
 from qibocal.auto.operation import DEFAULT_PARENT_PARAMETERS
 from qibocal.auto.runcard import Runcard
@@ -15,6 +15,13 @@ from qibocal.protocols.classification import SingleShotClassificationParameters
 from qibocal.protocols.readout_mitigation_matrix import (
     ReadoutMitigationMatrixParameters,
 )
+
+
+@pytest.fixture(scope="module")
+def platform():
+    set_backend(backend="qibolab", platform="dummy")
+    return GlobalBackend().platform
+
 
 TARGETS = [0, 1, 2]
 DUMMY_CARD = {
@@ -33,14 +40,20 @@ DUMMY_CARD = {
 }
 
 
-def modify_card(card, targets=None, update=None, backend="qibolab"):
+def modify_card(
+    card, targets=None, local_update=None, global_update=None, backend="qibolab"
+):
     """Modify runcard to change local targets or update."""
     card["backend"] = backend
+
+    if global_update is not None:
+        card["update"] = global_update
+
     for action in card["actions"]:
         if targets is not None:
             action["targets"] = targets
-        elif update is not None:
-            action["update"] = update
+        elif local_update is not None:
+            action["update"] = local_update
     return card
 
 
@@ -88,30 +101,27 @@ UPDATE_CARD = {
 
 @pytest.mark.parametrize("global_update", [True, False])
 @pytest.mark.parametrize("local_update", [True, False])
-def test_update_argument(global_update, local_update, tmp_path):
+def test_update_argument(platform, global_update, local_update, tmp_path):
     """Test possible update combinations between global and local."""
-    platform = create_platform("dummy")
-    NEW_CARD = modify_card(UPDATE_CARD, update=local_update)
-    executor = Executor.load(
+    NEW_CARD = modify_card(
+        UPDATE_CARD, local_update=local_update, global_update=global_update
+    )
+    # platform = deepcopy(GlobalBackend().platform)
+    old_readout_frequency = platform.qubits[0].readout_frequency
+    old_iq_angle = platform.qubits[1].iq_angle
+    run(
         Runcard.load(NEW_CARD),
         tmp_path,
-        platform,
-        list(platform.qubits),
-        update=global_update,
+        mode=AUTOCALIBRATION,
     )
 
-    old_readout_frequency = executor.platform.qubits[0].readout_frequency
-    old_iq_angle = executor.platform.qubits[1].iq_angle
-
-    list(executor.run(mode=AUTOCALIBRATION))
-
     if local_update and global_update:
-        assert old_readout_frequency != executor.platform.qubits[0].readout_frequency
-        assert old_iq_angle != executor.platform.qubits[1].iq_angle
+        assert old_readout_frequency != platform.qubits[0].readout_frequency
+        assert old_iq_angle != platform.qubits[1].iq_angle
 
     else:
-        assert old_readout_frequency == executor.platform.qubits[0].readout_frequency
-        assert old_iq_angle == executor.platform.qubits[1].iq_angle
+        assert old_readout_frequency == platform.qubits[0].readout_frequency
+        assert old_iq_angle == platform.qubits[1].iq_angle
 
 
 @pytest.mark.parametrize(

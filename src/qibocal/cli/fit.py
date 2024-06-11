@@ -4,12 +4,11 @@ import pathlib
 import shutil
 
 import yaml
-from qibo.backends import GlobalBackend
 from qibolab.serialize import dump_runcard
 
 from qibocal.config import log, raise_error
 
-from ..auto.execute import Executor
+from ..auto.execute import run
 from ..auto.history import add_timings_to_meta
 from ..auto.mode import ExecutionMode
 from ..auto.operation import RESULTSFILE
@@ -49,29 +48,23 @@ def fit(input_path, update, output_path, force):
     # load runcard
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
 
-    # set backend, platform and qubits
-    GlobalBackend.set_backend(backend=meta["backend"], platform=meta["platform"])
-    backend = GlobalBackend()
-    platform = backend.platform
-
-    # load executor
-    executor = Executor.load(
-        runcard, path, update=update, platform=platform, targets=runcard.targets
+    # run
+    history = run(
+        output=path,
+        runcard=runcard,
+        mode=ExecutionMode.FIT,
     )
 
-    # perform post-processing
-    list(executor.run(mode=ExecutionMode.FIT))
-
     # update time in meta
-    meta = add_timings_to_meta(meta, executor.history)
+    meta = add_timings_to_meta(meta, history)
     e = datetime.datetime.now(datetime.timezone.utc)
     meta["end-time"] = e.strftime("%H:%M:%S")
 
     # dump updated runcard
-    if platform is not None and update:  # pragma: no cover
+    if runcard.platform_obj is not None and update:  # pragma: no cover
         # cannot test update since dummy may produce wrong values and trigger errors
         (path / UPDATED_PLATFORM).mkdir(parents=True, exist_ok=True)
-        dump_runcard(platform, path / UPDATED_PLATFORM)
+        dump_runcard(runcard.platform_obj, path / UPDATED_PLATFORM)
 
     # dump json
 

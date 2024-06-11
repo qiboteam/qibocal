@@ -4,6 +4,7 @@ import pytest
 from qibolab import create_platform
 
 from qibocal import Executor
+from qibocal.auto.mode import ExecutionMode
 from qibocal.auto.runcard import Action
 from qibocal.protocols import flipping
 
@@ -27,4 +28,15 @@ ACTION = Action(**action)
 def test_executor_create(params, platform, tmp_path):
     """Create method of Executor"""
     executor = Executor.create(platform=platform, output=tmp_path)
-    executor.run_protocol(flipping, params)
+    executor.run_protocol(flipping, params, mode=ExecutionMode.ACQUIRE)
+
+    # check double acquisition error
+    with pytest.raises(KeyError):
+        executor.run_protocol(flipping, params, mode=ExecutionMode.ACQUIRE)
+
+    # perform fit
+    executor.run_protocol(flipping, params, mode=ExecutionMode.FIT)
+
+    # check double fit error
+    with pytest.raises(KeyError):
+        executor.run_protocol(flipping, params, mode=ExecutionMode.FIT)
