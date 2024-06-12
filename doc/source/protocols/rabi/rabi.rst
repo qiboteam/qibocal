@@ -19,13 +19,13 @@ excited state increases following a sinusoidal pattern.
 For the amplitude version, we expect:
 
 .. math::
-	p_e(t) = sin(\Omega_R \frac{t}{2})
+	p_e(t) = sin\left(\Omega_R \frac{t}{2}\right)^2
 
 For the time version, we have to take into account the dephasing and the energy decay. In case the
 Rabi rate is larger than the decay and the pure dephasing rate,
 
 .. math::
-	p_e(t) = \frac{1}{2} (1- e^{-t/\tau} sin(\Omega_R \frac{t}{2}))
+	p_e(t) = \frac{1}{2} \left(1- e^{-t/\tau} cos\left(\Omega_R \frac{t}{2}\right)\right)
 
 where :math:`\Omega_R` is the Rabi frequency and :math:`\tau` the decay time.
 
