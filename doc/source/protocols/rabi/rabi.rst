@@ -81,15 +81,15 @@ It follows an example runcard and plot for the signal exepriment
 .. code-block:: yaml
 
 
-	- id: Rabi signal
-	  operation: rabi_amplitude_signal
-	  parameters:
-	    min_amp_factor: 0.2
-	    max_amp_factor: 1.
-	    step_amp_factor: 0.01
-	    pulse_length: 40
-	    nshots: 3000
-	    relaxation_time: 50000
+    - id: Rabi signal
+      operation: rabi_amplitude_signal
+      parameters:
+        min_amp_factor: 0.2
+        max_amp_factor: 1.
+        step_amp_factor: 0.01
+        pulse_length: 40
+        nshots: 3000
+        relaxation_time: 50000
 
 .. image:: rabi_signal.png
 
