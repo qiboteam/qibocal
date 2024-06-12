@@ -128,4 +128,3 @@ Requirements
 ^^^^^^^^^^^^
 
 - :ref:`rabi`
-- :ref:`dispersive_shift`
