@@ -179,6 +179,11 @@ def drive_12_amplitude(amplitude: float, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].native_gates.RX12.amplitude = float(amplitude)
 
 
+def drive_12_duration(duration: Union[int, tuple], platform: Platform, qubit: QubitId):
+    """Update drive duration value in platform for specific qubit."""
+    platform.qubits[qubit].native_gates.RX12.duration = int(duration)
+
+
 def twpa_frequency(frequency: int, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].twpa.local_oscillator.frequency = int(frequency)
 
