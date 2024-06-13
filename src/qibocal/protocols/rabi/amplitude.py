@@ -147,6 +147,7 @@ def _plot(data: RabiAmplitudeData, target: QubitId, fit: RabiAmplitudeResults = 
 
 def _update(results: RabiAmplitudeResults, platform: Platform, target: QubitId):
     update.drive_amplitude(results.amplitude[target], platform, target)
+    update.drive_duration(results.length[target], platform, target)
 
 
 rabi_amplitude = Routine(_acquisition, _fit, _plot, _update)

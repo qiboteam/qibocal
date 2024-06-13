@@ -299,6 +299,7 @@ def _plot(
 def _update(
     results: RabiLengthFrequencySignalResults, platform: Platform, target: QubitId
 ):
+    update.drive_amplitude(results.amplitude[target], platform, target)
     update.drive_duration(results.length[target], platform, target)
     update.drive_frequency(results.frequency[target], platform, target)
 

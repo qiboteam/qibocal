@@ -165,6 +165,7 @@ def _plot(
 
 def _update(results: RabiAmplitudeSignalResults, platform: Platform, target: QubitId):
     update.drive_amplitude(results.amplitude[target], platform, target)
+    update.drive_duration(results.length[target], platform, target)
 
 
 rabi_amplitude_signal = Routine(_acquisition, _fit, _plot, _update)

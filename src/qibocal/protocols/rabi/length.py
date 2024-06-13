@@ -158,6 +158,7 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
 
 def _update(results: RabiLengthResults, platform: Platform, target: QubitId):
     update.drive_duration(results.length[target], platform, target)
+    update.drive_amplitude(results.amplitude[target], platform, target)
 
 
 def _plot(data: RabiLengthData, fit: RabiLengthResults, target: QubitId):
