@@ -54,6 +54,8 @@ class ZenoSignalResults(Results):
     """T1 for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    pcov: dict[QubitId, list[float]]
+    """Approximate covariance of fitted parameters."""
 
 
 def _acquisition(
@@ -120,9 +122,9 @@ def _fit(data: ZenoSignalData) -> ZenoSignalResults:
             y = p_0-p_1 e^{-x p_2}.
     """
 
-    t1s, fitted_parameters, _ = utils.exponential_fit(data, zeno=True)
+    t1s, fitted_parameters, pcovs = utils.exponential_fit(data, zeno=True)
 
-    return ZenoSignalResults(t1s, fitted_parameters)
+    return ZenoSignalResults(t1s, fitted_parameters, pcovs)
 
 
 def _plot(data: ZenoSignalData, fit: ZenoSignalResults, target: QubitId):

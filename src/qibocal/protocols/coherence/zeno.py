@@ -105,8 +105,8 @@ def _fit(data: ZenoData) -> ZenoResults:
 
             y = p_0-p_1 e^{-x p_2}.
     """
-    t1s, fitted_parameters, chi2 = utils.exponential_fit_probability(data)
-    return ZenoResults(t1s, fitted_parameters, chi2)
+    t1s, fitted_parameters, pcovs, chi2 = utils.exponential_fit_probability(data)
+    return ZenoResults(t1s, fitted_parameters, pcovs, chi2)
 
 
 def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
