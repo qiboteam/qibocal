@@ -26,3 +26,4 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     rabi/rabi
     singleshot
     dispersive_shift
+    allxy
