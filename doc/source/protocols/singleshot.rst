@@ -10,7 +10,7 @@ Acquisition
 ^^^^^^^^^^^
 
 In this experiment, the qubit is preapared multiple times in state :math:`\ket{0}` and :math:`\ket{1}`,
-for each shot the averaged `I` and `Q` values are acquired. According to the theory, if we take into account
+for each shot the  `I` and `Q` values are acquired. According to the theory, if we take into account
 the noise, for each state we should observe a Gaussian blob in the `IQ-plane`.
 
 Fit
