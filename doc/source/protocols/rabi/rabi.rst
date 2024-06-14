@@ -3,7 +3,7 @@
 Rabi experiments
 ================
 
-In this section se present all the Rabi experiments provided by Qibocal.
+In this section we present all Rabi experiments provided by Qibocal.
 
 Rabi lenght and amplitude
 -------------------------
@@ -12,20 +12,20 @@ The goal of the Rabi experiment is to tune the amplitude (duration) of the drive
 to excite the qubit from the ground state up to state :math:`\ket{1}`.
 
 In the Rabi experiment, the qubit is probed with a drive pulse at the qubit frequency :math:`w_{01}`
-before measuring. This pulse sequence is repeated multiple times changing the amplitude (time).
+before measuring. This pulse sequence is repeated multiple times changing the amplitude (duration) of the pulse.
 The qubit starts in the ground state, changing one of the two parameters of the drive pulse, the probability of being in the first
 excited state increases following a sinusoidal pattern.
 
 For the amplitude version, we expect:
 
 .. math::
-	p_e(t) = sin\left(\Omega_R \frac{t}{2}\right)^2
+	p_e(t) = \sin\left(\Omega_R \frac{t}{2}\right)^2
 
 For the time version, we have to take into account the dephasing and the energy decay. In case the
 Rabi rate is larger than the decay and the pure dephasing rate,
 
 .. math::
-	p_e(t) = \frac{1}{2} \left(1- e^{-t/\tau} cos\left(\Omega_R \frac{t}{2}\right)\right)
+	p_e(t) = \frac{1}{2} \left(1- e^{-t/\tau} \cos\left(\Omega_R \frac{t}{2}\right)\right)
 
 where :math:`\Omega_R` is the Rabi frequency and :math:`\tau` the decay time.
 
@@ -102,7 +102,7 @@ Rabi ef
 -------
 
 This experiment is used to characterized the :math:`\pi_{12}` pulse, in order to change the qubit state from :math:`\ket{1}`
-to :math:`\ket{2}`. The experiment is similar to the Rabi  experiment, but at the beginning the state should be prepeared in the
+to :math:`\ket{2}`. The experiment is similar to the Rabi  experiment, but at the beginning the state should be prepared in the
 :math:`\ket{1}` state through a :math:`\pi_{01}` pulse.
 
 Example
