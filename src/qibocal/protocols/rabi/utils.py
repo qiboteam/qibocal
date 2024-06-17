@@ -284,6 +284,7 @@ def guess_frequency(x, y):
 def fit_length_function(
     x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
 ):
+    inf_bounds = [0, -1, 0, -np.pi, 0] if signal else [0, 0, 0, -np.pi, 0]
     popt, perr = curve_fit(
         rabi_length_function,
         x,
@@ -291,7 +292,7 @@ def fit_length_function(
         p0=guess,
         maxfev=100000,
         bounds=(
-            [0, 0, 0, -np.pi, 0],
+            inf_bounds,
             [1, 1, np.inf, np.pi, np.inf],
         ),
         sigma=sigma,
