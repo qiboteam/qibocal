@@ -30,6 +30,8 @@ class ResonatorFluxParameters(Parameters):
     """Width for bias sweep [V]."""
     bias_step: Optional[float] = None
     """Bias step for sweep [a.u.]."""
+    phase_delay: float = None
+    """Phase delay correction in rad/MHz (us). By default no correction is performed."""
 
 
 @dataclass
@@ -148,11 +150,20 @@ def _acquisition(
         for qubit in targets:
             result = results[ro_pulses[qubit].serial]
             sweetspot = platform.qubits[qubit].sweetspot
+
+            frequency =delta_frequency_range + ro_pulses[qubit].frequency
+
+            if params.phase_delay is not None:
+                phase = result.average.phase
+                phase = np.unwrap(phase)-(frequency-frequency[0])*1e-6*params.phase_delay
+            else:
+                phase = result.average.phase
+
             data.register_qubit(
                 qubit,
                 signal=result.magnitude,
-                phase=result.phase,
-                freq=delta_frequency_range + ro_pulses[qubit].frequency,
+                phase=phase,
+                freq=frequency,
                 bias=delta_bias_range + sweetspot,
             )
     return data
