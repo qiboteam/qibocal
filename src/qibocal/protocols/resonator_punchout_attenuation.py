@@ -31,6 +31,8 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
     """Attenuation maximum value [dB]."""
     step_att: int
     """Attenuation step [dB]."""
+    phase_delay: float = None
+    """Phase delay correction in rad/MHz (us). By default no correction is performed."""
 
 
 @dataclass

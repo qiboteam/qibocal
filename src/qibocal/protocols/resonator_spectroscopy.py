@@ -179,7 +179,7 @@ def _acquisition(
         result = results[ro_pulses[qubit].serial]
         # store the results
         frequency =delta_frequency_range + ro_pulses[qubit].frequency
-        print(frequency[0])
+        
         if params.phase_delay is not None:
             phase = result.average.phase
             phase = np.unwrap(phase)-(frequency-frequency[0])*1e-6*params.phase_delay
