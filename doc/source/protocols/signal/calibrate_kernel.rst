@@ -12,8 +12,8 @@ Parameters
   :noindex:
 
 
-How to execute the experiment
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Example
+^^^^^^^
 
 .. code-block:: yaml
 
@@ -23,22 +23,14 @@ How to execute the experiment
         nshots: 1024
         relaxation_time: 20_000
 
-Acquisition
-^^^^^^^^^^^
-
-The acquisition procedure is described in :func:`qibocal.protocols.signal_experiments.calibrate_state_discrimination._acquisition`. It is important to note that this experiment makes use of the RAW acquisition mode, which may require some specific care depending on the instrument employed.
-
 .. image:: kernel.png
-
-Fit
-^^^
 
 The fit procedure (:func:`qibocal.protocols.signal_experiments.calibrate_state_discrimination._fit`) uses the numpy conjugate function, as it takes the conjugate of the differences of the two RAW traces acquired (one for the ground state and one for the excited state) as the kernel, after normalization.
 
 The kernel is also updated in the platform runcard after successful fitting.
 
-Requirements pre-experiment
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Requirements
+^^^^^^^^^^^^
 
 This experiment requires the calibration of a pi-pulse, since in the pulse sequence, we need to use the X gate.
 Therefore, before this experiment, we need to run at least a:

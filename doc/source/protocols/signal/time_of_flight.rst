@@ -61,7 +61,7 @@ Fit
 
 The fit procedure (:func:`qibocal.protocols.signal_experiments.time_of_flight_readout._fit`) employs a moving average, returning the time when it is maximum, namely when the signal starts being acquired.
 
-Requirements pre-experiment
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Requirements
+^^^^^^^^^^^^
 
 Before this experiment, nothing in particular is required. This can indeed be done as a first test of the connections.

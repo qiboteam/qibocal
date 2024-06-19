@@ -38,6 +38,8 @@ above. To measure the qubit detuning a 2D sweep is performed probing the systems
 and at different flux (bias) offset values. For the resonator we perform the same experiment
 by sweeping the readout frequency instead of the drive frequency.
 
+.. _qubit_flux:
+
 Qubit flux dependence
 ---------------------
 
@@ -84,6 +86,13 @@ the flux felt by qubit :math:`i` :cite:p:`Barrett_2023`:
 where :math:`C_{ij}` is known in the literature as the crosstalk matrix, while
 :math:`V_{i}` is the applied voltage.
 
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`qubit_spectroscopy`
+
+.. _resonator_flux:
+
 Resonator flux dependence
 -------------------------
 
@@ -119,6 +128,11 @@ since some of the coefficients required can be computed with that experiment.
 
 .. image:: resonator_flux.png
 
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`resonator_punchout`
+- :ref:`qubit_flux`
 
 Qubit flux dependence (tracking)
 --------------------------------
@@ -152,3 +166,8 @@ Here is a possible runcard:
         freq_width: 10000000
         nshots: 1024
         relaxation_time: 20000
+
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`resonator_flux`

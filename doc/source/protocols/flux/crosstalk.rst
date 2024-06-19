@@ -13,6 +13,8 @@ will receive contributions from other qubits
 which means that transmon frequency can change when current is applied
 on other qubits.
 
+.. _qubit_crosstalk:
+
 Qubit crosstalk
 ---------------
 
@@ -56,6 +58,12 @@ Example
 The previous runcard aims at extracting the crosstalk coefficients
 :math:`C_{20}` and :math:`C_{23}`.
 
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`qubit_flux`
+
+.. _resonator_crosstalk:
 
 Resonator crosstalk
 -------------------
@@ -96,3 +104,8 @@ a dependence by only a shift in frequency which is expected by biasing the qubit
 
 The protocols aims at extracting the crosstalk coefficients
 :math:`C_{20}` and :math:`C_{23}`.
+
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`resonator_flux`

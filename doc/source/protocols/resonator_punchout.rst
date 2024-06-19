@@ -1,3 +1,5 @@
+.. _resonator_punchout:
+
 Resonator punchout
 ==================
 
@@ -130,3 +132,9 @@ Example
           nshots: 2048
 
 .. image:: resonator_punchout_attenuation.png
+
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`Time Of Flight`
+- :ref:`resonator_spectroscopy` (high power)

@@ -1,3 +1,5 @@
+.. _resonator_spectroscopy:
+
 Resonator spectroscopy
 ======================
 
@@ -143,3 +145,8 @@ and also here:
             0:
                 bare_resonator_frequency: <high_power_resonator_frequency>
                 readout_frequency: <low_power_resonator_frequency>
+
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`Time Of Flight`

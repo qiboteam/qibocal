@@ -50,6 +50,11 @@ The expected output is the following:
 :math:`T_2` is determined by fitting the output signal using
 the formula presented above.
 
+Requirements
+^^^^^^^^^^^^
+
+- Single shot classification
+
 
 T2 with raw signal
 ------------------
@@ -85,6 +90,11 @@ Example
 .. image:: t2_signal.png
 
 Note that in this case error bars will not be provided.
+
+Requirements
+^^^^^^^^^^^^
+
+- Rabi signal
 
 T2 with for loops
 -----------------

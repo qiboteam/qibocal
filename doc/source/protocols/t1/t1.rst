@@ -52,6 +52,10 @@ The expected output is the following:
 :math:`T_1` is determined by fitting the output signal using
 the formula presented above.
 
+Requirements
+^^^^^^^^^^^^
+
+- Single shot classification
 
 T1 with raw signal
 ------------------
@@ -89,6 +93,11 @@ Example
 
 Note that in this case error bands will not be provided.
 
+Requirements
+^^^^^^^^^^^^
+
+- Rabi signal
+
 T1 with for loops
 -----------------
 
@@ -115,3 +124,9 @@ Here is a possible runcard:
 
     For ``t1_sequences`` on the y-axis it will be shown the raw output from instruments,
     not the population of :math:`\ket{1}`.
+
+
+Requirements
+^^^^^^^^^^^^
+
+- Rabi signal

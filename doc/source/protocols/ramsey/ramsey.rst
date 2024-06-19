@@ -3,6 +3,8 @@ Ramsey experiments
 
 In this section we show how to run Ramsey experiments using Qibocal
 
+.. _ramsey:
+
 Ramsey
 ------
 
@@ -57,6 +59,13 @@ the formula presented above.
 If the protocols is successful the drive frequency will be updated, for updating :math:`T_2`
 the user is invited to run ``T2 experiment``.
 
+Requirements
+^^^^^^^^^^^^
+
+- Single shot classification
+
+.. _ramsey_signal:
+
 Ramsey with raw signal
 ----------------------
 
@@ -89,3 +98,8 @@ Example
 .. image:: ramsey_signal.png
 
 Note that in this case error bars will not be provided.
+
+Requirements
+^^^^^^^^^^^^
+
+- Rabi signal

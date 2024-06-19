@@ -4,6 +4,8 @@ Qubit spectroscopies
 In this section we are going to present how to run with qibocal some
 qubit spectroscopies experiments.
 
+.. _qubit_spectroscopy:
+
 Qubit Spectroscopy
 ------------------
 
@@ -54,6 +56,12 @@ After the post-processing the following parameters will be updated:
 * qubit.drive_frequency
 * qubit.native_gates.RX.frequency
 
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`resonator_spectroscopy`
+
+.. _qubit_spectroscopy_ef:
 
 Qubit spectroscopy "ef"
 -----------------------
@@ -110,3 +118,8 @@ After the post-processing the following parameters will be updated:
 
 * qubit.anharmonicity
 * qubit.native_gates.RX12.frequency
+
+Requirements
+^^^^^^^^^^^^
+
+- single shot classification

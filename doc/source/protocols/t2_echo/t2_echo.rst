@@ -52,6 +52,11 @@ The expected output is the following:
 :math:`T_2^{\text{Echo}}` is determined by fitting the output signal using
 the formula presented above.
 
+Requirements
+^^^^^^^^^^^^
+
+- Single shot classification
+
 
 Spin-echo with raw signal
 -------------------------
@@ -87,3 +92,8 @@ Example
 TODO: add plot
 
 Note that in this case error bars will not be provided.
+
+Requirements
+^^^^^^^^^^^^
+
+- Rabi signal
