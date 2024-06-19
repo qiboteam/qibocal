@@ -5,6 +5,11 @@ This experiment is quite similar to the :ref:`Time Of Flight` experiment but has
 
 In the time-of-flight experiment, we were only interested in the timing of the pulse, regardless of the current qubit state. Here, on the other hand, we want to build a "vector of weights," with a value for each point in the measurement, to maximize the differences between :math:`\ket{0}` and :math:`\ket{1}`. Points that are further away, considering the two states, are given a higher weight since they are "more interesting" for discrimination purposes.
 
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.signal_experiments.calibrate_state_discrimination.CalibrateStateDiscriminationParameters
+
 How to execute the experiment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

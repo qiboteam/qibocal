@@ -9,7 +9,10 @@ In the `time of flight` experiment, we measure the time it takes for a readout p
 
 Carefully calibrating this delay time is important to optimize the readout. In particular, it is useful to acquire just for the duration of the readout pulse, where differences between the two states really appear (both in amplitude and phase).
 
-The parameters for the experiment are :class:`qibocal.protocols.signal_experiments.time_of_flight_readout.TimeOfFlightReadoutParameters`, namely the amplitude of the readout pulse (if it is not set, the runcard one is used) and an integer that is used as the window size for a moving average.
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.signal_experiments.time_of_flight_readout.TimeOfFlightReadoutParameters
 
 How to execute the experiment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -34,7 +37,7 @@ Acquisition
 
    from qibolab.execution_parameters import AcquisitionType
 
-The acquisition procedure is described in :func:`qibocal.protocols.signal_experiments.time_of_flight_readout._acquisition`. It is important to note that this experiment makes use of the RAW acquisition mode (see `Qibolab documentation <https://qibo.science/qibolab/stable/api-reference/qibolab.html#qibolab.execution_parameters.AcquisitionType>`_), which may require some specific care depending on the instrument employed (for some devices demodulation could be used, or this mode could be available for just a single qubit at a time).
+It is important to note that this experiment makes use of the RAW acquisition mode (see `Qibolab documentation <https://qibo.science/qibolab/stable/api-reference/qibolab.html#qibolab.execution_parameters.AcquisitionType>`_), which may require some specific care depending on the instrument employed (for some devices demodulation could be used, or this mode could be available for just a single qubit at a time).
 
 For a 3D cavity we expect a plot (considering demodulation) as the following:
 
