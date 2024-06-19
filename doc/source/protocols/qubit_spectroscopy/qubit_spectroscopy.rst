@@ -19,10 +19,11 @@ move to the excited state. If the drive pulse is long enough it will be
 generated a maximally mixed state with :math:`\rho \propto I` :cite:p:`Baur2012RealizingQG, gao2021practical`.
 
 
+Parameters
+^^^^^^^^^^
 
+.. autoclass:: qibocal.protocols.qubit_spectroscopy.QubitSpectroscopyParameters
 
-The parameters for the qubit spectroscopy experiment are :class:`qibocal.protocols.qubit_spectroscopy.QubitSpectroscopyParameters`
-and they include the frequency range and the drive power.
 
 How to execute a qubit spectroscopy experiment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,25 +42,13 @@ A possible runcard to launch a qubit spectroscopy experiment could be the follow
         nshots: 1024
         relaxation_time: 20_000
 
-Acquisition
-^^^^^^^^^^^
-
-The full acquisition procedure is described in :func:`qibocal.protocols.qubit_spectroscopy._acquisition`
 
 Here is the corresponding plot:
 
 .. image:: qubit_spec.png
 
-The data are stored :class:`qibocal.protocols.qubit_spectroscopy.QubitSpectroscopyData`,
-which contains the signal and the phase measured for each qubit.
 
-
-Post-processing procedure
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-To extract the qubit frequency a lorentzian fit is performed. Full post-processing
-procedure is in :func:`qibocal.protocols.qubit_spectroscopy.fit`.
-
+To extract the qubit frequency a lorentzian fit is performed.
 After the post-processing the following parameters will be updated:
 
 * qubit.drive_frequency
@@ -87,6 +76,12 @@ From :math:`\omega_{12}` and :math:`\omega_{01}` it is possible to compute the a
 
     \alpha = \omega_{12} - \omega_{01}
 
+
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.qubit_spectroscopy_ef.QubitSpectroscopyEFParameters
+
 How to execute a qubit spectroscopy experiment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -104,23 +99,12 @@ A possible runcard to launch a qubit spectroscopy experiment could be the follow
         nshots: 1024
         relaxation_time: 20_000
 
-Acquisition
-^^^^^^^^^^^
-
-The full acquisition procedure is described in :func:`qibocal.protocols.qubit_spectroscopy_ef._acquisition`
 
 Here is the corresponding plot:
 
 TODO: ADD PLOT
 
-The data are stored :class:`qibocal.protocols.qubit_spectroscopy_ef.QubitSpectroscopyEFData`,
-which contains the signal and the phase measured for each qubit.
-
-Post-processing procedure
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-To extract :math:`\omega_{12}` a lorentzian fit is performed. Full post-processing
-procedure is in :func:`qibocal.protocols.qubit_spectroscopy_ef.fit_ef`.
+To extract :math:`\omega_{12}` a lorentzian fit is performed.
 
 After the post-processing the following parameters will be updated:
 

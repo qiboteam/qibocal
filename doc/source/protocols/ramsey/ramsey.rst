@@ -24,6 +24,11 @@ a correction on the qubit frequency :cite:p:`Baur2012RealizingQG`:
 In order to obtain the correction on the qubit frequency reliably usually the
 drive pulse it is detuned on purpose to generate oscillations.
 
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.ramsey.ramsey.RamseyParameters
+
 
 Example
 ^^^^^^^
@@ -38,10 +43,9 @@ A possible runcard to launch a Rasmey experiment could be the following:
         delay_between_pulses_end: 2000
         delay_between_pulses_start: 50
         delay_between_pulses_step: 50
-        detuning: -1000000 # detuning on the drive pulse
+        detuning: -1000000
         nshots: 1024
 
-The parameters specified here are available in :class:`qibocal.protocols.ramsey.ramsey.RamseyParameters`
 
 The expected output is the following:
 
@@ -63,8 +67,13 @@ without performing single shot calibration by running an experiment called ``ram
 The acquisition and the fitting procedure are exactly the same, the only difference being
 that on the y axis it will be displayed the raw measurements from the instruments.
 
-Example:
-^^^^^^^^
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.ramsey.ramsey_signal.RamseySignalParameters
+
+Example
+^^^^^^^
 
 .. code-block:: yaml
 

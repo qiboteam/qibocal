@@ -19,6 +19,12 @@ The reason why there are two distinct experiment is that in order to correct the
 if the pulse is detuned enough we can proceed with short scans, while to extract reliably  :math:`T_2`
 it will be necessary to perform longer scans.
 
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.coherence.t2.T2Parameters
+  :noindex:
+
 
 Example
 ^^^^^^^
@@ -55,8 +61,14 @@ without performing single shot calibration by running an experiment called ``t2_
 The acquisition and the fitting procedure are exactly the same, the only difference being
 that on the y axis it will be displayed the raw measurements from the instruments.
 
-Example:
-^^^^^^^^
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.coherence.t2_signal.T2SignalParameters
+  :noindex:
+
+Example
+^^^^^^^
 
 .. code-block:: yaml
 

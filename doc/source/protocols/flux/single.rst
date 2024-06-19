@@ -41,6 +41,15 @@ by sweeping the readout frequency instead of the drive frequency.
 Qubit flux dependence
 ---------------------
 
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.flux_dependence.qubit_flux_dependence.QubitFluxParameters
+  :noindex:
+
+Example
+^^^^^^^
+
 A possible runcard to assess how the qubit frequency changes by varying flux is the following:
 
 .. code-block:: yaml
@@ -57,8 +66,6 @@ A possible runcard to assess how the qubit frequency changes by varying flux is 
         nshots: 1024
         relaxation_time: 20000
 
-
-The parameters specified here are available in :class:`qibocal.protocols.flux_dependence.qubit_flux_dependence.QubitFluxParameters`.
 
 The expected output is the following:
 
@@ -79,6 +86,15 @@ where :math:`C_{ij}` is known in the literature as the crosstalk matrix, while
 
 Resonator flux dependence
 -------------------------
+
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.flux_dependence.resonator_flux_dependence.ResonatorFluxParameters
+  :noindex:
+
+Example
+^^^^^^^
 
 A possible runcard to assess how the resonator frequency changes by varying flux is the following:
 
@@ -111,6 +127,15 @@ As we saw above both the transmon and the qubit are affected by an external flux
 In the qubit flux dependence the measurement is performed at fixed readout frequency.
 To take into account how the transmon shifts in frequency when probing the qubit we have
 another experiment `qubit_flux_tracking`.
+
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.flux_dependence.qubit_flux_tracking.QubitFluxTrackParameters
+  :noindex:
+
+Example
+^^^^^^^
 
 Here is a possible runcard:
 

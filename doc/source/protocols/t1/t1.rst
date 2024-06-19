@@ -22,6 +22,12 @@ We expect to measure an exponential decay which is fitted with the following for
 
 :math:`A` and :math:`B` are introduced to improve the performance of the fit.
 
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.coherence.t1.T1Parameters
+  :noindex:
+
 
 Example
 ^^^^^^^
@@ -38,13 +44,12 @@ A possible runcard to launch a T1 experiment could be the following:
         delay_before_readout_step: 100
         nshots: 1000
 
-The parameters specified here are available in :class:`qibocal.protocols.coherence.t1.T1Parameters`
 
 The expected output is the following:
 
 .. image:: t1_prob.png
 
-:math:`T_1`is determined by fitting the output signal using
+:math:`T_1` is determined by fitting the output signal using
 the formula presented above.
 
 
@@ -58,8 +63,16 @@ without performing single shot calibration by running an experiment called ``t1_
 The acquisition and the fitting procedure are exactly the same, the only difference being
 that on the y axis it will be displayed the raw measurements from the instruments.
 
-Example:
-^^^^^^^^
+
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.coherence.t1_signal.T1SignalParameters
+  :noindex:
+
+
+Example
+^^^^^^^
 
 .. code-block:: yaml
 
@@ -83,6 +96,7 @@ If the instrument driver is not able to perform duration sweepers in real time, 
 a protocol where the different waiting time are swept through a python for loop. Such
 execution will be usually slower compared to the one where sweepers are supported but it
 could be useful for debugging purposes.
+
 
 Here is a possible runcard:
 

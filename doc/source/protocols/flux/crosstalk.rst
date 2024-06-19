@@ -23,8 +23,14 @@ effects it is suggested to bias the qubit away.
 Here is a possible runcard where we measure the crosstalk on qubit 2
 caused by qubit 3 and 0.
 
-A description of the parameters is available in :class:`qibocal.protocols.flux_dependence.qubit_crosstalk.QubitCrosstalkParameters`.
+Parameters
+^^^^^^^^^^
 
+.. autoclass:: qibocal.protocols.flux_dependence.qubit_crosstalk.QubitCrosstalkParameters
+  :noindex:
+
+Example
+^^^^^^^
 
 .. code-block:: yaml
 
@@ -59,6 +65,14 @@ by sweeping the readout frequency. Note that in this case it will be
 necessary to bias the qubit away from its sweetspot more to observe
 significant variations.
 
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.flux_dependence.resonator_crosstalk.ResCrosstalkParameters
+  :noindex:
+
+Example
+^^^^^^^
 
 .. code-block:: yaml
 
@@ -74,8 +88,6 @@ significant variations.
         freq_step: 100000
         freq_width: 6000000
         nshots: 2000
-
-A description of the parameters is available in :class:`qibocal.protocols.flux_dependence.resonator_crosstalk.ResCrosstalkParameters`.
 
 .. image:: resonator_crosstalk.png
 
