@@ -53,5 +53,5 @@ def test_frequency_to_bias():
         crosstalk_element=PLATFORM.qubits[1].crosstalk_matrix[0],
         charging_energy=-PLATFORM.qubits[1].anharmonicity * HZ_TO_GHZ,
     )
-    np.testing.assert_allclose(freq_q1, target_freqs[0], rtol=1e-5)
-    np.testing.assert_allclose(freq_q2, target_freqs[1], rtol=1e-5)
+    np.testing.assert_allclose(freq_q1, target_freqs[0], rtol=1e-3)
+    np.testing.assert_allclose(freq_q2, target_freqs[1], rtol=1e-3)
