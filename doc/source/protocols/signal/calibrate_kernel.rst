@@ -9,6 +9,8 @@ Parameters
 ^^^^^^^^^^
 
 .. autoclass:: qibocal.protocols.signal_experiments.calibrate_state_discrimination.CalibrateStateDiscriminationParameters
+  :noindex:
+
 
 How to execute the experiment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

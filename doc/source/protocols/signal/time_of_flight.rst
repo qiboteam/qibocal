@@ -13,6 +13,8 @@ Parameters
 ^^^^^^^^^^
 
 .. autoclass:: qibocal.protocols.signal_experiments.time_of_flight_readout.TimeOfFlightReadoutParameters
+  :noindex:
+
 
 How to execute the experiment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
