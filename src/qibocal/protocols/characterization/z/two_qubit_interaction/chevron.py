@@ -44,6 +44,8 @@ class ChevronParameters(Parameters):
     """Time delay between flux pulses and readout."""
     parking: bool = True
     """Wether to park non interacting qubits or not."""
+    native_gate: Optional[str] = "CZ"
+    """Native gate to implement, CZ or iSWAP."""
 
 
 @dataclass
@@ -108,34 +110,34 @@ def _aquisition(
         # order the qubits so that the low frequency one is the first
         sequence = PulseSequence()
         ordered_pair = order_pair(pair, platform.qubits)
-        # initialize in system in 11 state
-        initialize_lowfreq = platform.create_RX_pulse(
-            ordered_pair[0], start=0, relative_phase=0
-        )
+
+        # initialize in system in 11(CZ) or 10(iSWAP) state
+        if params.native_gate == "CZ":
+            initialize_lowfreq = platform.create_RX_pulse(
+                ordered_pair[0], start=0, relative_phase=0
+            )
+            sequence.add(initialize_lowfreq)
+
         initialize_highfreq = platform.create_RX_pulse(
             ordered_pair[1], start=0, relative_phase=0
         )
         sequence.add(initialize_highfreq)
-        sequence.add(initialize_lowfreq)
-        cz, _ = platform.create_CZ_pulse_sequence(
-            qubits=(ordered_pair[1], ordered_pair[0]),
-            start=initialize_highfreq.finish,
-        )
 
-        # sequence.add(cz.get_qubit_pulses(ordered_pair[0]))
-        # sequence.add(cz.get_qubit_pulses(ordered_pair[1]))
-        sequence.add(cz)
+        if params.native_gate == "CZ":
+            native_gate, _ = platform.create_CZ_pulse_sequence(
+                (ordered_pair[1], ordered_pair[0]),
+                start=sequence.finish + params.dt,
+            )
+        elif params.native_gate == "iSWAP":
+            native_gate, _ = platform.create_iSWAP_pulse_sequence(
+                (ordered_pair[1], ordered_pair[0]),
+                start=sequence.finish + params.dt,
+            )
 
-        # # Patch to get the coupler until the routines use QubitPair
-        # if platform.couplers:
-        #     sequence.add(
-        #         cz.coupler_pulses(
-        #             platform.pairs[tuple(sorted(ordered_pair))].coupler.name
-        #         )
-        #     )
+        sequence.add(native_gate)
 
         if params.parking:
-            for pulse in cz:
+            for pulse in native_gate:
                 if pulse.qubit not in ordered_pair:
                     pulse.start = 0
                     pulse.duration = 100
@@ -169,13 +171,13 @@ def _aquisition(
         sweeper_amplitude = Sweeper(
             Parameter.amplitude,
             delta_amplitude_range,
-            pulses=[cz.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
+            pulses=[native_gate.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
             type=SweeperType.ABSOLUTE,
         )
         sweeper_duration = Sweeper(
             Parameter.duration,
             delta_duration_range,
-            pulses=[cz.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
+            pulses=[native_gate.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
             type=SweeperType.ABSOLUTE,
         )
         results = platform.sweep(
