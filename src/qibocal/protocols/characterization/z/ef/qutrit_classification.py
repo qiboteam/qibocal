@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -61,21 +62,49 @@ def _acquisition(
         relaxation_time (float): Relaxation time.
     """
 
+    # create 3 sequences of pulses for the experiment:
+    # sequence_0: I  - I    - MZ
+    # sequence_1: RX - I    - MZ
+    # sequence_2: RX - RX12 - MZ
+
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
-    states_sequences = [PulseSequence() for _ in range(3)]
+    sequence_0 = PulseSequence()
+    sequence_1 = PulseSequence()
+    sequence_2 = PulseSequence()
+    states_sequences = [sequence_0, sequence_1, sequence_2]
+
     ro_pulses = {}
     for qubit in qubits:
         rx_pulse = platform.create_RX_pulse(qubit, start=0)
-        rx12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish)
-        drive_pulses = [rx_pulse, rx12_pulse]
+        rx_12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish)
+        ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
+        sequence_1.add(rx_pulse)
+        sequence_2.add(rx_pulse, rx_12_pulse)
         ro_pulses[qubit] = []
-        for i, sequence in enumerate(states_sequences):
-            sequence.add(*drive_pulses[:i])
-            start = drive_pulses[i - 1].finish if i != 0 else 0
-            ro_pulses[qubit].append(
-                platform.create_qubit_readout_pulse(qubit, start=start)
-            )
-            sequence.add(ro_pulses[qubit][-1])
+        for sequence in states_sequences:
+            readout_pulse = deepcopy(ro_pulse)
+            # readout_pulse.start = sequence.qd_pulses.finish
+            readout_pulse.start = rx_12_pulse.finish
+            ro_pulses[qubit].append(readout_pulse)
+            sequence.add(readout_pulse)
+            print(sequence)
+
+    # # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
+    # states_sequences = [PulseSequence() for _ in range(3)]
+    # ro_pulses = {}
+    # for qubit in qubits:
+    #     rx_pulse = platform.create_RX_pulse(qubit, start=0)
+    #     rx12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish)
+    #     drive_pulses = [rx_pulse, rx12_pulse]
+    #     ro_pulses[qubit] = []
+    #     for i, sequence in enumerate(states_sequences):
+    #         sequence.add(*drive_pulses[:i])
+    #         start = drive_pulses[i - 1].finish if i != 0 else 0
+    #         ro_pulses[qubit].append(
+    #             platform.create_qubit_readout_pulse(qubit, start=start)
+    #         )
+    #         sequence.add(ro_pulses[qubit][-1])
+    #         print(sequence)
 
     data = QutritClassificationData(
         nshots=params.nshots,

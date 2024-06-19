@@ -75,7 +75,6 @@ from .z.allxy.allxy import allxy
 from .z.allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
 from .z.allxy.allxy_resonator_depletion_tuning import allxy_resonator_depletion_tuning
 
-# from .z.spurious_identification import spurious_identification
 # from .z.t1_t2_vs_temperature import t1_t2_vs_temperature
 from .z.coherence.t2 import t2
 from .z.coherence.t2_signal import t2_signal
@@ -89,6 +88,7 @@ from .z.couplers.coupler_resonator_spectroscopy import (
 from .z.dispersive_shift import dispersive_shift
 from .z.ef.dispersive_shift_qutrit import dispersive_shift_qutrit
 from .z.ef.qubit_spectroscopy_ef import qubit_spectroscopy_ef
+from .z.ef.qutrit_classification import qutrit_classification
 from .z.ef.rabi_ef import rabi_amplitude_ef
 from .z.flux_dependence.qubit_flux_dependence import qubit_flux
 from .z.in_progress.qm_cryoscope import cryoscope
@@ -109,6 +109,7 @@ from .z.ramsey.ramsey_signal import ramsey_signal
 # from .z.resonator_qubit_spectroscopy import resonator_qubit_spectroscopy
 from .z.resonator_twpa_freq import resonator_twpa_freq
 from .z.resonator_twpa_pow import resonator_twpa_pow
+from .z.spurious_identification import spurious_identification
 from .z.two_qubit_interaction.chevron import chevron
 
 
@@ -175,7 +176,7 @@ class Operation(Enum):
     # resonator_qubit_spectroscopy = resonator_qubit_spectroscopy
     resonator_twpa_pow = resonator_twpa_pow
     resonator_twpa_freq = resonator_twpa_freq
-    # spurious_identification = spurious_identification
+    spurious_identification = spurious_identification
     # t1_t2_vs_temperature = t1_t2_vs_temperature
 
     # compatibility with future changes future_name = current_name
@@ -193,3 +194,4 @@ class Operation(Enum):
     coupler_chevron = coupler_chevron
     coupler_chevron_signal_amplitude = coupler_chevron_signal_amplitude
     cryoscope = cryoscope
+    allxy_resonator_depletion_tuning = allxy_resonator_depletion_tuning
