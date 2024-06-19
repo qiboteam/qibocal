@@ -11,15 +11,8 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Qubits, Results, Routine
-from qibocal.protocols.characterization.resonator_spectroscopy import ResSpecType
-from qibocal.protocols.characterization.utils import (
-    GHZ_TO_HZ,
-    HZ_TO_GHZ,
-    lorentzian,
-    lorentzian_fit,
-    table_dict,
-    table_html,
-)
+from qibocal.protocols.characterization.dispersive_shift import DispersiveShiftType
+from qibocal.protocols.characterization.utils import HZ_TO_GHZ, table_dict, table_html
 from qibocal.protocols.characterization.z.dispersive_shift import (
     DispersiveShiftData,
     DispersiveShiftParameters,
@@ -35,18 +28,8 @@ class DispersiveShiftQutritParameters(DispersiveShiftParameters):
 class DispersiveShiftQutritResults(Results):
     """Dispersive shift outputs."""
 
-    frequency_state_zero: dict[QubitId, float]
-    """State zero frequency."""
-    frequency_state_one: dict[QubitId, float]
-    """State one frequency."""
-    frequency_state_two: dict[QubitId, float]
-    """State two frequency."""
-    fitted_parameters_state_zero: dict[QubitId, list[float]]
-    """Fitted parameters state zero."""
-    fitted_parameters_state_one: dict[QubitId, list[float]]
-    """Fitted parameters state one."""
-    fitted_parameters_state_two: dict[QubitId, list[float]]
-    """Fitted parameters state one."""
+    best_freq: dict[QubitId, float]
+    """Readout frequency that maximizes the separation between states in iq-plane"""
 
     @property
     def state_zero(self):
@@ -85,8 +68,8 @@ def _acquisition(
     """
 
     # create 3 sequences of pulses for the experiment:
-    # sequence_0: I  - MZ
-    # sequence_1: RX - MZ
+    # sequence_0: I  - I    - MZ
+    # sequence_1: RX - I    - MZ
     # sequence_2: RX - RX12 - MZ
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
@@ -102,8 +85,10 @@ def _acquisition(
         sequence_2.add(rx_pulse, rx_12_pulse)
         for sequence in [sequence_0, sequence_1, sequence_2]:
             readout_pulse = deepcopy(ro_pulse)
-            readout_pulse.start = sequence.qd_pulses.finish
+            # readout_pulse.start = sequence.qd_pulses.finish
+            readout_pulse.start = rx_12_pulse.finish
             sequence.add(readout_pulse)
+            print(sequence)
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
@@ -140,13 +125,15 @@ def _acquisition(
             ].native_gates.MZ.frequency
             # store the results
             data.register_qubit(
-                ResSpecType,
+                DispersiveShiftType,
                 (qubit, state),
                 dict(
                     freq=sequence.get_qubit_pulses(qubit).ro_pulses[0].frequency
                     + delta_frequency_range,
                     signal=result.magnitude,
                     phase=result.phase,
+                    i=result.voltage_i,
+                    q=result.voltage_q,
                 ),
             )
 
@@ -157,37 +144,24 @@ def _fit(data: DispersiveShiftQutritData) -> DispersiveShiftQutritResults:
     """Post-Processing for dispersive shift"""
     qubits = data.qubits
 
-    frequency_0 = {}
-    frequency_1 = {}
-    frequency_2 = {}
-    fitted_parameters_0 = {}
-    fitted_parameters_1 = {}
-    fitted_parameters_2 = {}
-
-    for i in range(3):
-        for qubit in qubits:
+    # for each qubit find the frequency that maximizes the area between the states in the iq plane
+    best_freqs = {}
+    for qubit in qubits:
+        x = []
+        y = []
+        for i in range(3):
             data_i = data[qubit, i]
-            freq, fitted_params = lorentzian_fit(
-                data_i, resonator_type=data.resonator_type, fit="resonator"
-            )
-            if i == 0:
-                frequency_0[qubit] = freq
-                fitted_parameters_0[qubit] = fitted_params
-            elif i == 1:
-                frequency_1[qubit] = freq
-                fitted_parameters_1[qubit] = fitted_params
-            else:
-                frequency_2[qubit] = freq
-                fitted_parameters_2[qubit] = fitted_params
+            x.append(data_i.i)
+            y.append(data_i.q)
 
-    return DispersiveShiftQutritResults(
-        frequency_state_zero=frequency_0,
-        frequency_state_one=frequency_1,
-        frequency_state_two=frequency_2,
-        fitted_parameters_state_one=fitted_parameters_1,
-        fitted_parameters_state_zero=fitted_parameters_0,
-        fitted_parameters_state_two=fitted_parameters_2,
-    )
+        frequencies = data[qubit, 0].freq
+        areas = 0.5 * np.abs(
+            x[0] * (y[1] - y[2]) + x[1] * (y[2] - y[0]) + x[2] * (y[0] - y[1])
+        )
+        max_index = np.argmax(areas)
+        best_freqs[qubit] = frequencies[max_index]
+
+    return DispersiveShiftQutritResults(best_freq=best_freqs)
 
 
 def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResults):
@@ -248,49 +222,55 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
         )
 
         if fit is not None:
-            freqrange = np.linspace(
-                min(frequencies),
-                max(frequencies),
-                2 * len(q_data),
-            )
-            params = data_fit[
-                "fitted_parameters_state_zero"
-                if i == 0
-                else (
-                    "fitted_parameters_state_one"
-                    if i == 1
-                    else "fitted_parameters_state_two"
-                )
-            ][qubit]
             fig.add_trace(
                 go.Scatter(
-                    x=freqrange,
-                    y=lorentzian(freqrange, *params),
-                    name=f"{label} Fit",
-                    line=go.scatter.Line(dash="dot"),
+                    x=[
+                        fit.best_freq[qubit] * HZ_TO_GHZ,
+                        fit.best_freq[qubit] * HZ_TO_GHZ,
+                    ],
+                    y=[
+                        np.min(np.concatenate((data_0.signal, data_1.signal))),
+                        np.max(np.concatenate((data_0.signal, data_1.signal))),
+                    ],
+                    mode="lines",
+                    line=go.scatter.Line(color="orange", width=2, dash="dash"),
+                    name="Best frequency",
+                    showlegend=True,
+                    legendgroup="Best frequency",
                 ),
                 row=1,
                 col=1,
             )
-
-    if fit is not None:
-        fitting_report = table_html(
-            table_dict(
-                qubit,
-                [
-                    "State Zero Frequency [Hz]",
-                    "State One Frequency [Hz]",
-                    "State Two Frequency [Hz]",
-                ],
-                np.round(
-                    [
-                        fit_data_0["frequency_state_zero"][qubit] * GHZ_TO_HZ,
-                        fit_data_1["frequency_state_one"][qubit] * GHZ_TO_HZ,
-                        fit_data_2["frequency_state_two"][qubit] * GHZ_TO_HZ,
-                    ]
+            fig.add_trace(
+                go.Scatter(
+                    x=[
+                        fit.best_freq[qubit] * HZ_TO_GHZ,
+                        fit.best_freq[qubit] * HZ_TO_GHZ,
+                    ],
+                    y=[-np.pi, np.pi],
+                    mode="lines",
+                    line=go.scatter.Line(color="orange", width=2, dash="dash"),
+                    name="Best frequency",
+                    showlegend=False,
+                    legendgroup="Best frequency",
                 ),
+                row=1,
+                col=2,
             )
-        )
+
+            fitting_report = table_html(
+                table_dict(
+                    qubit,
+                    [
+                        "Best Frequency [Hz]",
+                    ],
+                    np.round(
+                        [
+                            fit.best_freq[qubit],
+                        ]
+                    ),
+                )
+            )
 
     fig.add_trace(
         go.Scatter(
