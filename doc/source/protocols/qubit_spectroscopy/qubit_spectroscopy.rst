@@ -110,7 +110,7 @@ A possible runcard to launch a qubit spectroscopy experiment could be the follow
 
 Here is the corresponding plot:
 
-TODO: ADD PLOT
+.. image:: qubit_spectroscopy_ef.png
 
 To extract :math:`\omega_{12}` a lorentzian fit is performed.
 
