@@ -45,8 +45,8 @@ ResonatorAmplitudeType = np.dtype(
 class ResonatorAmplitudeData(Data):
     """Data class for `resoantor_amplitude` protocol."""
 
-    data: dict[tuple, npt.NDArray[ResonatorAmplitudeType]] = field(default_factory=dict)
     qubit_states: bool
+    data: dict[tuple, npt.NDArray[ResonatorAmplitudeType]] = field(default_factory=dict)
 
 
 @dataclass
@@ -95,22 +95,26 @@ def _acquisition(
             sequence_1 = PulseSequence()
             if params.qubit_states:
                 qd_pulses = platform.create_RX_pulse(qubit, start=0)
-                ro_pulses = platform.create_qubit_readout_pulse(
+                ro_pulse = platform.create_qubit_readout_pulse(
                     qubit, start=qd_pulses.finish
                 )
-                sequence_0.add(ro_pulses)
+                ro_pulses = [ro_pulse] * 2
+                sequence_0.add(ro_pulse)
                 sequence_1.add(qd_pulses)
-                sequence_1.add(ro_pulses)
+                sequence_1.add(ro_pulse)
             else:
                 qd_pulses01 = platform.create_RX_pulse(qubit, start=0)
                 qd_pulses12 = platform.create_RX12_pulse(
                     qubit, start=qd_pulses01.finish
                 )
-                ro_pulses = platform.create_MZ1_pulse(qubit, start=qd_pulses.finish)
-                sequence_0.add(ro_pulses)
+                ro_pulses1 = platform.create_MZ1_pulse(qubit, start=qd_pulses01.finish)
+                ro_pulses2 = platform.create_MZ1_pulse(qubit, start=qd_pulses12.finish)
+                ro_pulses = [ro_pulses1, ro_pulses2]
+                sequence_0.add(qd_pulses01)
+                sequence_0.add(ro_pulses1)
                 sequence_1.add(qd_pulses01)
                 sequence_1.add(qd_pulses12)
-                sequence_1.add(ro_pulses)
+                sequence_1.add(ro_pulses2)
 
             state0_results = platform.execute_pulse_sequence(
                 sequence_0,
@@ -129,11 +133,18 @@ def _acquisition(
                     acquisition_type=AcquisitionType.INTEGRATION,
                 ),
             )
-            result0 = state0_results[ro_pulses.serial]
-            result1 = state1_results[ro_pulses.serial]
+            result0 = state0_results[ro_pulses[0].serial]
+            result1 = state1_results[ro_pulses[1].serial]
 
             i_values = np.concatenate((result0.voltage_i, result1.voltage_i))
             q_values = np.concatenate((result0.voltage_q, result1.voltage_q))
+            if not params.qubit_states:
+                import matplotlib.pyplot as plt
+
+                fig = plt.figure()
+                plt.scatter(result0.voltage_i, result0.voltage_q)
+                plt.scatter(result1.voltage_i, result1.voltage_q)
+                plt.savefig(f"ro_amp{new_amp}.png")
             iq_values = np.stack((i_values, q_values), axis=-1)
             nshots = int(len(i_values) / 2)
             states = [0] * nshots + [1] * nshots
