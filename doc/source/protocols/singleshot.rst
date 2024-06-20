@@ -1,3 +1,5 @@
+
+.. _single_shot:
 Single Shot Experiments
 =======================
 
@@ -11,7 +13,7 @@ Acquisition
 
 In this experiment, the qubit is preapared multiple times in state :math:`\ket{0}` and :math:`\ket{1}`,
 for each shot the  `I` and `Q` values are acquired. According to the theory, if we take into account
-the noise, for each state we should observe a Gaussian blob in the `IQ-plane`.
+the noise, for each state we should observe a Gaussian blob in the `IQ-plane`:cite:`Krantz_2019`.
 
 Fit
 ^^^
