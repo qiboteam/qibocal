@@ -150,12 +150,9 @@ def _acquisition(
         # average signal, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulse.serial]
         frequency =delta_frequency_range + ro_pulses[qubit].frequency
-
+        phase = result.average.phase
         if params.phase_delay is not None:
-            phase = result.average.phase
             phase = np.unwrap(phase)-(frequency-frequency[0])*1e-6*params.phase_delay
-        else:
-            phase = result.average.phase
 
         data.register_qubit(
             qubit,
