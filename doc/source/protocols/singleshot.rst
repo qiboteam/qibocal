@@ -47,6 +47,7 @@ A possible choice of parameters is the following
       operation: single_shot_classification
       parameters:
         nshots: 5000
+        classifiers_list: ["qubit_fit", "naive_bayes"]
 
 the result should looks like this
 
