@@ -112,6 +112,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
     guess_offset = np.mean(
         voltages[np.abs(voltages - np.mean(voltages)) < np.std(voltages)]
     )
+    guess_amp_slope = (voltages.max()-voltages.min())/(frequencies.max()-frequencies.min())
     if (resonator_type == "3D" and fit == "resonator") or (
         resonator_type == "2D" and fit == "qubit"
     ):
@@ -127,7 +128,6 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         ]  # Argmin = Returns the indices of the minimum values along an axis.
         guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
         guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
-        guess_amp_slope = (voltages.max()-voltages.min())/(frequencies.max()-frequencies.min())
 
     initial_parameters = [
         guess_amp,
