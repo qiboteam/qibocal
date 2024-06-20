@@ -91,8 +91,8 @@ from .z.ef.qubit_spectroscopy_ef import qubit_spectroscopy_ef
 from .z.ef.qutrit_classification import qutrit_classification
 from .z.ef.rabi_ef import rabi_amplitude_ef
 from .z.flux_dependence.qubit_flux_dependence import qubit_flux
-from .z.in_progress.qm_cryoscope import cryoscope
-from .z.in_progress.qm_cryoscope_signal import cryoscope_signal
+from .z.in_progress.cryoscope import cryoscope
+from .z.in_progress.cryoscope_signal import cryoscope_signal
 from .z.in_progress.qubit_mixer_calibration import qubit_mixer_calibration
 from .z.in_progress.qubit_spectroscopy_with_lo import qubit_spectroscopy_with_lo
 from .z.in_progress.resonator_mixer_calibration import resonator_mixer_calibration
@@ -111,6 +111,7 @@ from .z.resonator_twpa_freq import resonator_twpa_freq
 from .z.resonator_twpa_pow import resonator_twpa_pow
 from .z.spurious_identification import spurious_identification
 from .z.two_qubit_interaction.chevron import chevron
+from .z.two_qubit_interaction.cz_virtualz import cz_virtualz
 
 
 class Operation(Enum):
