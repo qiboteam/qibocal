@@ -29,7 +29,7 @@ How to execute the experiment
         nshots: 1024
         relaxation_time: 20_000
 
-Although it is possible to avoid setting a specific readout amplitude, it is generally useful to set a high value here. Indeed, we are not looking for the optimal amplitude but want to have a signal with enough power so that it is clear when it starts.
+Although it is possible to avoid setting a specific readout amplitude, it is generally useful to set a high value here. Indeed, we are not looking for the optimal amplitude but we want to have a signal with enough power so that it is clear when it starts.
 
 Acquisition
 ^^^^^^^^^^^

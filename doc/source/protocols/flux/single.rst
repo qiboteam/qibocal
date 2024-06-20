@@ -9,9 +9,9 @@ the flux dependence.
 Flux-tunable transmons
 ----------------------
 
-It can be shown for flux-tunable transmons applying an external flux
+It can be shown for flux-tunable transmons that applying an external flux
 :math:`\Phi` induces to a detuning on the transmon frequency :cite:p:`Koch_2007`.
-Applying short flux pulses it is possible to tune the transmon frequency in order
+By applying short flux pulses it is possible to tune the transmon frequency in order
 of GHz, which leads to several applications including quantum logical gates.
 
 The transmon frequency as a function of the external flux can be expressed as :cite:p:`Barrett_2023`
@@ -137,7 +137,7 @@ Requirements
 Qubit flux dependence (tracking)
 --------------------------------
 
-As we saw above both the transmon and the qubit are affected by an external flux.
+As we saw above both the resonator and the qubit are affected by an external flux.
 In the qubit flux dependence the measurement is performed at fixed readout frequency.
 To take into account how the transmon shifts in frequency when probing the qubit we have
 another experiment `qubit_flux_tracking`.

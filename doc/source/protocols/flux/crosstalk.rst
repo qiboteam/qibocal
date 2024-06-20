@@ -10,7 +10,7 @@ will receive contributions from other qubits
 
     \Phi_i = \sum_{j} C_{ij} V_j +  \Phi_i^{\text{offset}} \quad ,
 
-which means that transmon frequency can change when current is applied
+which means that the transmon frequency can change when current is applied
 on other qubits.
 
 .. _qubit_crosstalk:
