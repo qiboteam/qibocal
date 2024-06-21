@@ -77,7 +77,8 @@ Another way to address the higher levels is to first excite the qubit to state
 :math:`\ket{1}` followed by the sequence previously presented for the qubit spectroscopy.
 In this way it is possible to induce a transition between  :math:`\ket{1}\leftrightarrow\ket{2}`.
 
-Such frequency :math:`\omega_{12}` should be below :math:`\omega_{01}` by around :math:`200 - 300` MHz.
+Such frequency :math:`\omega_{12}` should be below :math:`\omega_{01}` by around :math:`200 - 300` MHz
+for flux tunable transmons.
 From :math:`\omega_{12}` and :math:`\omega_{01}` it is possible to compute the anharmonicity
 :math:`\alpha` as :cite:p:`Koch_2007`:
 
