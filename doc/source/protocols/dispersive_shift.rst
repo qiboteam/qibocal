@@ -34,7 +34,7 @@ qubit is in the ground (excited) state. The separation between the two freqienci
 Routine description
 ^^^^^^^^^^^^^^^^^^^
 After collecting the data from the two spectroscopies, for each readout frequency the distance of the centers of the blobs for
-:math:`\ket{0}` and :math:`\ket{1}` states are evaluated. The best readout frequency is the one maximizing the distance.
+:math:`\ket{0}` and :math:`\ket{1}` states are evaluated. The best readout frequency is the one maximizing the distance between the two blobs.
 
 
 Example
