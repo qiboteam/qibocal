@@ -2,7 +2,7 @@ Qubit spectroscopies
 ====================
 
 In this section we are going to present how to run with qibocal some
-qubit spectroscopies experiments.
+qubit spectroscopy experiments.
 
 .. _qubit_spectroscopy:
 
@@ -50,7 +50,7 @@ Here is the corresponding plot:
 .. image:: qubit_spec.png
 
 
-To extract the qubit frequency a lorentzian fit is performed.
+To extract the qubit frequency a Lorentzian fit is performed.
 After the post-processing the following parameters will be updated:
 
 * qubit.drive_frequency

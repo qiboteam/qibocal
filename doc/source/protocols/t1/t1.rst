@@ -1,15 +1,15 @@
 T1 experiments
 ==============
 
-In this section we show how to run T1 experiments using Qibocal.
+In this section we show how to run T1 experiments.
 
 T1
 --
 
 Due to coupling to the environment the qubit in state :math:`\ket{1}`
-will decay to to state :math:`\ket{0}`. To measure such decay we can perform
+will decay to the state :math:`\ket{0}`. To measure such decay we can perform
 a simple experiment by initializing the qubit in :math:`\ket{1}` through a
-:math:`\pi` pulse previously calibrated, we then measure the population of
+:math:`\pi`-pulse previously calibrated, we then measure the population of
 the excited state for different waiting times :math:`\Delta \tau`.
 We expect to measure an exponential decay which is fitted with the following formula:
 

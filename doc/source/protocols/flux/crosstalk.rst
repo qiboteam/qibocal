@@ -99,8 +99,8 @@ Example
 
 .. image:: resonator_crosstalk.png
 
-As we can see, even by bias the qubit away we are not able to see
-a dependence by only a shift in frequency which is expected by biasing the qubit.
+As we can see, even by biasing the qubit away from its sweetspot we are not able to see
+a dependence ( a deviation from the straight line) but only a shift.
 
 The protocols aims at extracting the crosstalk coefficients
 :math:`C_{20}` and :math:`C_{23}`.
