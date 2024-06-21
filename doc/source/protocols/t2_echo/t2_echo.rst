@@ -24,6 +24,11 @@ The reason why there are two distinct experiment is that in order to correct the
 if the pulse is detuned enough we can proceed with short scans, while to extract reliably  :math:`T_2`
 it will be necessary to perform longer scans.
 
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.coherence.spin_echo.SpinEchoParameters
+  :noindex:
 
 Example
 ^^^^^^^
@@ -40,14 +45,17 @@ A possible runcard to launch a :math:`T_2^{\text{Echo}}` experiment could be the
         delay_between_pulses_step: 1000
         nshots: 1000
 
-The parameters specified here are available in :class:`qibocal.protocols.coherence.spin_echo.SpinEchoParameters`
-
 The expected output is the following:
 
 .. image:: t2_echo.png
 
 :math:`T_2^{\text{Echo}}` is determined by fitting the output signal using
 the formula presented above.
+
+Requirements
+^^^^^^^^^^^^
+
+- Single shot classification
 
 
 Spin-echo with raw signal
@@ -60,8 +68,14 @@ without performing single shot calibration by running an experiment called ``spi
 The acquisition and the fitting procedure are exactly the same, the only difference being
 that on the y axis it will be displayed the raw measurements from the instruments.
 
-Example:
-^^^^^^^^
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.coherence.spin_echo_signal.SpinEchoSignalParameters
+  :noindex:
+
+Example
+^^^^^^^
 
 .. code-block:: yaml
 
@@ -75,6 +89,11 @@ Example:
         relaxation_time: 300000
 
 
-.. .. image:: t2_signal.png
+TODO: add plot
 
 Note that in this case error bars will not be provided.
+
+Requirements
+^^^^^^^^^^^^
+
+- Rabi signal

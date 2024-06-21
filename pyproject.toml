@@ -2,7 +2,7 @@
 name = "qibocal"
 version = "0.0.10"
 description = "Qibo's quantum calibration, characterization and validation module."
-authors = ["andrea-pasquale <andreapasquale97@gmail.com>"]
+authors = ["The Qibo team"]
 license = "Apache License 2.0"
 readme = "README.md"
 homepage = "https://qibo.science/"

@@ -27,13 +27,17 @@ elements to take into consideration:
 
 The bare resonator frequency can be found setting a large value for the amplitude, e.g.:
 
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.resonator_spectroscopy.ResonatorSpectroscopyParameters
+  :noindex:
+
+
+Example
+^^^^^^^
+
 .. code-block:: yaml
-
-    platform: <platform_name>
-
-    targets: [0]
-
-    actions:
 
       - id: resonator_spectroscopy high power
 
@@ -61,13 +65,10 @@ The bare resonator frequency can be found setting a large value for the amplitud
 
 Lowering the amplitude we can see a shift in the peak, e.g.:
 
+Example
+^^^^^^^
+
 .. code-block:: yaml
-
-    platform: <platform_name>
-
-    targets: [0]
-
-    actions:
 
       - id: resonator_spectroscopy low power
 
@@ -144,3 +145,8 @@ and also here:
             0:
                 bare_resonator_frequency: <high_power_resonator_frequency>
                 readout_frequency: <low_power_resonator_frequency>
+
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`Time Of Flight`

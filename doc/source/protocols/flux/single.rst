@@ -9,9 +9,9 @@ the flux dependence.
 Flux-tunable transmons
 ----------------------
 
-It can be shown for flux-tunable transmons applying an external flux
+It can be shown for flux-tunable transmons that applying an external flux
 :math:`\Phi` induces to a detuning on the transmon frequency :cite:p:`Koch_2007`.
-Applying short flux pulses it is possible to tune the transmon frequency in order
+By applying short flux pulses it is possible to tune the transmon frequency in order
 of GHz, which leads to several applications including quantum logical gates.
 
 The transmon frequency as a function of the external flux can be expressed as :cite:p:`Barrett_2023`
@@ -38,8 +38,19 @@ above. To measure the qubit detuning a 2D sweep is performed probing the systems
 and at different flux (bias) offset values. For the resonator we perform the same experiment
 by sweeping the readout frequency instead of the drive frequency.
 
+.. _qubit_flux:
+
 Qubit flux dependence
 ---------------------
+
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.flux_dependence.qubit_flux_dependence.QubitFluxParameters
+  :noindex:
+
+Example
+^^^^^^^
 
 A possible runcard to assess how the qubit frequency changes by varying flux is the following:
 
@@ -58,8 +69,6 @@ A possible runcard to assess how the qubit frequency changes by varying flux is 
         relaxation_time: 20000
 
 
-The parameters specified here are available in :class:`qibocal.protocols.flux_dependence.qubit_flux_dependence.QubitFluxParameters`.
-
 The expected output is the following:
 
 .. image:: qubit_flux.png
@@ -77,8 +86,24 @@ the flux felt by qubit :math:`i` :cite:p:`Barrett_2023`:
 where :math:`C_{ij}` is known in the literature as the crosstalk matrix, while
 :math:`V_{i}` is the applied voltage.
 
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`qubit_spectroscopy`
+
+.. _resonator_flux:
+
 Resonator flux dependence
 -------------------------
+
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.flux_dependence.resonator_flux_dependence.ResonatorFluxParameters
+  :noindex:
+
+Example
+^^^^^^^
 
 A possible runcard to assess how the resonator frequency changes by varying flux is the following:
 
@@ -103,14 +128,28 @@ since some of the coefficients required can be computed with that experiment.
 
 .. image:: resonator_flux.png
 
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`resonator_punchout`
+- :ref:`qubit_flux`
 
 Qubit flux dependence (tracking)
 --------------------------------
 
-As we saw above both the transmon and the qubit are affected by an external flux.
+As we saw above both the resonator and the qubit are affected by an external flux.
 In the qubit flux dependence the measurement is performed at fixed readout frequency.
 To take into account how the transmon shifts in frequency when probing the qubit we have
 another experiment `qubit_flux_tracking`.
+
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.flux_dependence.qubit_flux_tracking.QubitFluxTrackParameters
+  :noindex:
+
+Example
+^^^^^^^
 
 Here is a possible runcard:
 
@@ -127,3 +166,8 @@ Here is a possible runcard:
         freq_width: 10000000
         nshots: 1024
         relaxation_time: 20000
+
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`resonator_flux`

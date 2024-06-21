@@ -10,8 +10,10 @@ will receive contributions from other qubits
 
     \Phi_i = \sum_{j} C_{ij} V_j +  \Phi_i^{\text{offset}} \quad ,
 
-which means that transmon frequency can change when current is applied
+which means that the transmon frequency can change when current is applied
 on other qubits.
+
+.. _qubit_crosstalk:
 
 Qubit crosstalk
 ---------------
@@ -23,8 +25,14 @@ effects it is suggested to bias the qubit away.
 Here is a possible runcard where we measure the crosstalk on qubit 2
 caused by qubit 3 and 0.
 
-A description of the parameters is available in :class:`qibocal.protocols.flux_dependence.qubit_crosstalk.QubitCrosstalkParameters`.
+Parameters
+^^^^^^^^^^
 
+.. autoclass:: qibocal.protocols.flux_dependence.qubit_crosstalk.QubitCrosstalkParameters
+  :noindex:
+
+Example
+^^^^^^^
 
 .. code-block:: yaml
 
@@ -50,6 +58,12 @@ A description of the parameters is available in :class:`qibocal.protocols.flux_d
 The previous runcard aims at extracting the crosstalk coefficients
 :math:`C_{20}` and :math:`C_{23}`.
 
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`qubit_flux`
+
+.. _resonator_crosstalk:
 
 Resonator crosstalk
 -------------------
@@ -59,6 +73,14 @@ by sweeping the readout frequency. Note that in this case it will be
 necessary to bias the qubit away from its sweetspot more to observe
 significant variations.
 
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.flux_dependence.resonator_crosstalk.ResCrosstalkParameters
+  :noindex:
+
+Example
+^^^^^^^
 
 .. code-block:: yaml
 
@@ -75,12 +97,15 @@ significant variations.
         freq_width: 6000000
         nshots: 2000
 
-A description of the parameters is available in :class:`qibocal.protocols.flux_dependence.resonator_crosstalk.ResCrosstalkParameters`.
-
 .. image:: resonator_crosstalk.png
 
-As we can see, even by bias the qubit away we are not able to see
-a dependence by only a shift in frequency which is expected by biasing the qubit.
+As we can see, even by biasing the qubit away from its sweetspot we are not able to see
+a dependence ( a deviation from the straight line) but only a shift.
 
 The protocols aims at extracting the crosstalk coefficients
 :math:`C_{20}` and :math:`C_{23}`.
+
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`resonator_flux`

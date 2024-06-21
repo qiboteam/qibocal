@@ -19,6 +19,12 @@ The reason why there are two distinct experiment is that in order to correct the
 if the pulse is detuned enough we can proceed with short scans, while to extract reliably  :math:`T_2`
 it will be necessary to perform longer scans.
 
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.coherence.t2.T2Parameters
+  :noindex:
+
 
 Example
 ^^^^^^^
@@ -44,6 +50,11 @@ The expected output is the following:
 :math:`T_2` is determined by fitting the output signal using
 the formula presented above.
 
+Requirements
+^^^^^^^^^^^^
+
+- Single shot classification
+
 
 T2 with raw signal
 ------------------
@@ -55,8 +66,14 @@ without performing single shot calibration by running an experiment called ``t2_
 The acquisition and the fitting procedure are exactly the same, the only difference being
 that on the y axis it will be displayed the raw measurements from the instruments.
 
-Example:
-^^^^^^^^
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.coherence.t2_signal.T2SignalParameters
+  :noindex:
+
+Example
+^^^^^^^
 
 .. code-block:: yaml
 
@@ -73,6 +90,11 @@ Example:
 .. image:: t2_signal.png
 
 Note that in this case error bars will not be provided.
+
+Requirements
+^^^^^^^^^^^^
+
+- Rabi signal
 
 T2 with for loops
 -----------------

@@ -1,15 +1,15 @@
 T1 experiments
 ==============
 
-In this section we show how to run T1 experiments using Qibocal.
+In this section we show how to run T1 experiments.
 
 T1
 --
 
 Due to coupling to the environment the qubit in state :math:`\ket{1}`
-will decay to to state :math:`\ket{0}`. To measure such decay we can perform
+will decay to the state :math:`\ket{0}`. To measure such decay we can perform
 a simple experiment by initializing the qubit in :math:`\ket{1}` through a
-:math:`\pi` pulse previously calibrated, we then measure the population of
+:math:`\pi`-pulse previously calibrated, we then measure the population of
 the excited state for different waiting times :math:`\Delta \tau`.
 We expect to measure an exponential decay which is fitted with the following formula:
 
@@ -21,6 +21,12 @@ We expect to measure an exponential decay which is fitted with the following for
     p_e(t) = A + B  e^{ - t / T_1}
 
 :math:`A` and :math:`B` are introduced to improve the performance of the fit.
+
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.coherence.t1.T1Parameters
+  :noindex:
 
 
 Example
@@ -38,15 +44,18 @@ A possible runcard to launch a T1 experiment could be the following:
         delay_before_readout_step: 100
         nshots: 1000
 
-The parameters specified here are available in :class:`qibocal.protocols.coherence.t1.T1Parameters`
 
 The expected output is the following:
 
 .. image:: t1_prob.png
 
-:math:`T_1`is determined by fitting the output signal using
+:math:`T_1` is determined by fitting the output signal using
 the formula presented above.
 
+Requirements
+^^^^^^^^^^^^
+
+- Single shot classification
 
 T1 with raw signal
 ------------------
@@ -58,8 +67,16 @@ without performing single shot calibration by running an experiment called ``t1_
 The acquisition and the fitting procedure are exactly the same, the only difference being
 that on the y axis it will be displayed the raw measurements from the instruments.
 
-Example:
-^^^^^^^^
+
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.coherence.t1_signal.T1SignalParameters
+  :noindex:
+
+
+Example
+^^^^^^^
 
 .. code-block:: yaml
 
@@ -76,6 +93,11 @@ Example:
 
 Note that in this case error bands will not be provided.
 
+Requirements
+^^^^^^^^^^^^
+
+- Rabi signal
+
 T1 with for loops
 -----------------
 
@@ -83,6 +105,7 @@ If the instrument driver is not able to perform duration sweepers in real time, 
 a protocol where the different waiting time are swept through a python for loop. Such
 execution will be usually slower compared to the one where sweepers are supported but it
 could be useful for debugging purposes.
+
 
 Here is a possible runcard:
 
@@ -101,3 +124,9 @@ Here is a possible runcard:
 
     For ``t1_sequences`` on the y-axis it will be shown the raw output from instruments,
     not the population of :math:`\ket{1}`.
+
+
+Requirements
+^^^^^^^^^^^^
+
+- Rabi signal

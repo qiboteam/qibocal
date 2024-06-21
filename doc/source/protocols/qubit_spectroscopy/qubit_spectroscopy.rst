@@ -4,7 +4,9 @@ Qubit spectroscopies
 ====================
 
 In this section we are going to present how to run with qibocal some
-qubit spectroscopies experiments.
+qubit spectroscopy experiments.
+
+.. _qubit_spectroscopy:
 
 Qubit Spectroscopy
 ------------------
@@ -12,7 +14,7 @@ Qubit Spectroscopy
 To measure the resonance frequency of the qubit it is possible to perform
 a `qubit spectroscopy` experiment.
 After having obtained an initial guess for the readout amplitude and the readout
-frequency this experiment aims at extracting the frequency of the qubit.
+frequency through a :ref:`resonator_punchout` this experiment aims at extracting the frequency of the qubit.
 
 In this protocol the qubit is probed by sending a drive pulse at
 variable frequency :math:`w` before measuring. When :math:`w` is close
@@ -21,10 +23,11 @@ move to the excited state. If the drive pulse is long enough it will be
 generated a maximally mixed state with :math:`\rho \propto I` :cite:p:`Baur2012RealizingQG, gao2021practical`.
 
 
+Parameters
+^^^^^^^^^^
 
+.. autoclass:: qibocal.protocols.qubit_spectroscopy.QubitSpectroscopyParameters
 
-The parameters for the qubit spectroscopy experiment are :class:`qibocal.protocols.qubit_spectroscopy.QubitSpectroscopyParameters`
-and they include the frequency range and the drive power.
 
 How to execute a qubit spectroscopy experiment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -43,33 +46,28 @@ A possible runcard to launch a qubit spectroscopy experiment could be the follow
         nshots: 1024
         relaxation_time: 20_000
 
-Acquisition
-^^^^^^^^^^^
-
-The full acquisition procedure is described in :func:`qibocal.protocols.qubit_spectroscopy._acquisition`
 
 Here is the corresponding plot:
 
 .. image:: qubit_spec.png
 
-The data are stored :class:`qibocal.protocols.qubit_spectroscopy.QubitSpectroscopyData`,
-which contains the signal and the phase measured for each qubit.
 
-
-Post-processing procedure
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-To extract the qubit frequency a lorentzian fit is performed. Full post-processing
-procedure is in :func:`qibocal.protocols.qubit_spectroscopy.fit`.
-
+To extract the qubit frequency a Lorentzian fit is performed.
 After the post-processing the following parameters will be updated:
 
 * qubit.drive_frequency
 * qubit.native_gates.RX.frequency
 
+Requirements
+^^^^^^^^^^^^
 
-Qubit spectroscopy "ef"
------------------------
+- :ref:`resonator_spectroscopy`
+- :ref:`resonator_punchout`
+
+.. _qubit_spectroscopy_ef:
+
+Qubit spectroscopy for higher excited states
+--------------------------------------------
 
 Through a qubit spectroscopy experiment it is possible to target also the transition
 frequencies towards higher energy level other than the first excited state.
@@ -81,13 +79,23 @@ Another way to address the higher levels is to first excite the qubit to state
 :math:`\ket{1}` followed by the sequence previously presented for the qubit spectroscopy.
 In this way it is possible to induce a transition between  :math:`\ket{1}\leftrightarrow\ket{2}`.
 
-Such frequency :math:`\omega_{12}` should be below :math:`\omega_{01}` by around :math:`200 - 300` MHz.
+Such frequency :math:`\omega_{12}` should be below :math:`\omega_{01}` by around :math:`200 - 300` MHz
+for flux tunable transmons.
 From :math:`\omega_{12}` and :math:`\omega_{01}` it is possible to compute the anharmonicity
 :math:`\alpha` as :cite:p:`Koch_2007`:
 
 .. math::
 
     \alpha = \omega_{12} - \omega_{01}
+
+In the literature the energy levels can be expressed as :math:`\ket{g}, \ket{e}, \ket{f}`, to
+address the ground state, the excited state and the first excited state above the excited state.
+For this reason the experiments has been labelled ``qubit_spectroscopy_ef``.
+
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.qubit_spectroscopy_ef.QubitSpectroscopyEFParameters
 
 How to execute a qubit spectroscopy experiment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -106,25 +114,19 @@ A possible runcard to launch a qubit spectroscopy experiment could be the follow
         nshots: 1024
         relaxation_time: 20_000
 
-Acquisition
-^^^^^^^^^^^
-
-The full acquisition procedure is described in :func:`qibocal.protocols.qubit_spectroscopy_ef._acquisition`
 
 Here is the corresponding plot:
 
-TODO: ADD PLOT
+.. image:: qubit_spectroscopy_ef.png
 
-The data are stored :class:`qibocal.protocols.qubit_spectroscopy_ef.QubitSpectroscopyEFData`,
-which contains the signal and the phase measured for each qubit.
-
-Post-processing procedure
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-To extract :math:`\omega_{12}` a lorentzian fit is performed. Full post-processing
-procedure is in :func:`qibocal.protocols.qubit_spectroscopy_ef.fit_ef`.
+To extract :math:`\omega_{12}` a lorentzian fit is performed.
 
 After the post-processing the following parameters will be updated:
 
 * qubit.anharmonicity
 * qubit.native_gates.RX12.frequency
+
+Requirements
+^^^^^^^^^^^^
+
+- single shot classification
