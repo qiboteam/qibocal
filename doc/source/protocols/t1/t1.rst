@@ -55,7 +55,7 @@ the formula presented above.
 Requirements
 ^^^^^^^^^^^^
 
-- Single shot classification
+- :ref:`single-shot`
 
 T1 with raw signal
 ------------------
@@ -96,7 +96,7 @@ Note that in this case error bands will not be provided.
 Requirements
 ^^^^^^^^^^^^
 
-- Rabi signal
+- :ref:`rabi`
 
 T1 with for loops
 -----------------
@@ -129,4 +129,4 @@ Here is a possible runcard:
 Requirements
 ^^^^^^^^^^^^
 
-- Rabi signal
+- :ref:`rabi`

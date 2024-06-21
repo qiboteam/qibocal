@@ -41,8 +41,6 @@ A possible runcard to launch a :math:`T_2` experiment could be the following:
         delay_between_pulses_step: 1000
         nshots: 1000
 
-The parameters specified here are available in :class:`qibocal.protocols.coherence.t2.T2Parameters`
-
 The expected output is the following:
 
 .. image:: t2.png
@@ -53,7 +51,7 @@ the formula presented above.
 Requirements
 ^^^^^^^^^^^^
 
-- Single shot classification
+- :ref:`single-shot`
 
 
 T2 with raw signal
@@ -94,7 +92,7 @@ Note that in this case error bars will not be provided.
 Requirements
 ^^^^^^^^^^^^
 
-- Rabi signal
+- :ref:`rabi`
 
 T2 with for loops
 -----------------

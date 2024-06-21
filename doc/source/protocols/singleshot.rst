@@ -1,5 +1,5 @@
+.. _single-shot:
 
-.. _single_shot:
 Single Shot Experiments
 =======================
 

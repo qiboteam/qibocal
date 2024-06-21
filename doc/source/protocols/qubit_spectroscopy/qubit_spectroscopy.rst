@@ -1,4 +1,4 @@
-.. _qubit_spectroscopy:
+.. _qubit-spectroscopy:
 
 Qubit spectroscopies
 ====================
@@ -129,4 +129,4 @@ After the post-processing the following parameters will be updated:
 Requirements
 ^^^^^^^^^^^^
 
-- single shot classification
+- :ref:`single_shot`

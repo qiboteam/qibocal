@@ -105,7 +105,7 @@ It follows an example runcard and plot for the signal exepriment
 
 Requirements
 ^^^^^^^^^^^^
-- :ref:`qubit_spectroscopy`
+- :ref:`qubit-spectroscopy`
 - :ref:`resonator_spectroscopy`
 
 Rabi ef

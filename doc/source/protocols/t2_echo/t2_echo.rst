@@ -55,7 +55,7 @@ the formula presented above.
 Requirements
 ^^^^^^^^^^^^
 
-- Single shot classification
+- :ref:`single-shot`
 
 
 Spin-echo with raw signal
@@ -96,4 +96,4 @@ Note that in this case error bars will not be provided.
 Requirements
 ^^^^^^^^^^^^
 
-- Rabi signal
+- :ref:`rabi`
