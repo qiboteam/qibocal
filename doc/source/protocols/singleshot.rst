@@ -26,14 +26,14 @@ probabilities.
 
 This line is defined in terms of the `angle` :math:`\theta` and `threshold` coordinates. The first one is the angle in radiants formed by the line
 connecting the centers of the blobs and the Q-axis. After performing the rotation with angle :math:`-\theta` and translating such that the coordinate
-center coincides with the ground state Gaussian center, the `threshold` is the distance from the center along x-axis that maximize the fidelity.
+center coincides with the ground state Gaussian center, the `threshold` is the distance from the center along x-axis that maximize the fidelity :cite:`gao2021practical`.
 
 .. math::
 
 	\mathcal{F} = 1 - \frac{1}{2} (P(0,1) + P(1,0))
 
 where :math:`P(i,j)` is the probability of measuring the qubit in state `i` but prepeared in state `j`.
-With this routine is possible to train different classifiers, plot their ROC curves and evaluating the Area Under the Curves
+With this routine is possible to train different classifiers, plot their ROC curves and evaluating the Area Under the Curves :cite:`pedicillo2023`
 all the options are explained into the details in :class:`qibocal.protocols.classification.SingleShotClassificationParameters`.
 
 Example

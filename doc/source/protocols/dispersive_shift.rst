@@ -50,7 +50,7 @@ It follows an example of the experiment parameters.
         freq_width: 1000000
 
 
-A detailed explanation of the parameters can be found in :class:`qibocal.protocols.dispersive_shift`.
+A detailed explanation of the parameters can be found in :class:`qibocal.protocols.dispersive_shift.DispersiveShiftParameters`.
 
 
 After running `qq auto`, the experiment is executed and the result will looks like

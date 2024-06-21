@@ -19,7 +19,7 @@ excited state increases following a sinusoidal pattern.
 For the amplitude version, we expect:
 
 .. math::
-	p_e(t) = \sin\left(\Omega_R \frac{t}{2}\right)^2
+	p_e(t) =\frac{1}{2} \left( 1 - \cos\left(\Omega_R t \right) \right)
 
 For the time version, we have to take into account the dephasing and the energy decay. In case the
 Rabi rate is larger than the decay and the pure dephasing rate,
