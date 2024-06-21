@@ -29,6 +29,17 @@ Rabi rate is larger than the decay and the pure dephasing rate,
 
 where :math:`\Omega_R` is the Rabi frequency and :math:`\tau` the decay time.
 
+Parameters
+^^^^^^^^^^
+
+.. autoclass::
+	qibocal.protocols.rabi.amplitude.RabiAmplitudeParameters
+	:noindex:
+
+.. autoclass::
+	qibocal.protocols.rabi.length.RabiLengthParameters
+	:noindex:
+
 Example
 ^^^^^^^
 It follows an example of the experiment parameters.
@@ -46,8 +57,7 @@ It follows an example of the experiment parameters.
         relaxation_time: 50000
 
 
-A detailed explanation of the parameters can be found in :class:`qibocal.protocols.rabi.amplitude.RabiAmplitudeParameters`
-or :class:`qibocal.protocols.rabi.length.RabiLengthParameters`. To run properly this experiment it is important to set the
+To run properly this experiment it is important to set the
 `relaxation_time` higher than the qubit `T1`.
 
 After running `qq auto`, the experiment is executed and the result will looks like

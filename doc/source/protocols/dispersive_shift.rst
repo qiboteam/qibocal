@@ -36,6 +36,11 @@ Routine description
 After collecting the data from the two spectroscopies, for each readout frequency the distance of the centers of the blobs for
 :math:`\ket{0}` and :math:`\ket{1}` states are evaluated. The best readout frequency is the one maximizing the distance between the two blobs.
 
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.dispersive_shift.DispersiveShiftParameters
+	:noindex:
 
 Example
 ^^^^^^^
@@ -48,9 +53,6 @@ It follows an example of the experiment parameters.
       parameters:
         freq_step: 200000
         freq_width: 1000000
-
-
-A detailed explanation of the parameters can be found in :class:`qibocal.protocols.dispersive_shift.DispersiveShiftParameters`.
 
 
 After running `qq auto`, the experiment is executed and the result will looks like

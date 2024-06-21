@@ -5,6 +5,13 @@ The All-XY experiment is commonly used to evaluate the quality of the single qub
 of single qubit rotations pairs are performed, such that the resulting states form a staircase pattern where only :math:`\ket{0}`,
 :math:`\ket{1}` or a superposition of the two are present.
 
+Parameters
+^^^^^^^^^^
+
+.. autoclass::
+	qibocal.protocols.allxy.allxy.AllXYParameters
+	:noindex:
+
 Example
 ^^^^^^^
 It follows a runcard example of this experiment.
@@ -15,9 +22,6 @@ It follows a runcard example of this experiment.
       operation: allxy
       parameters:
         nshots: 2000
-
-A detailed explanation of the parameters can be found in :class:`qibocal.protocols.allxy`.
-
 
 The expected output is the following:
 

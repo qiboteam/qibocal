@@ -12,6 +12,12 @@ after the initial flip, in the over rotations one the final state will be closer
 By fitting the resulting data with a sinusoidal function, we can determine the delta amplitude, which allows us to refine the
 :math:`\pi` pulse amplitue.
 
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.flipping.FlippingParameters
+	:noindex:
+
 Example
 ^^^^^^^
 It follows a runcard example of this experiment.
@@ -24,9 +30,6 @@ It follows a runcard example of this experiment.
 	    detuning: 0.05
 	    nflips_max: 30
 	    nflips_step: 1
-
-A detailed explanation of the parameters can be found in :class:`qibocal.protocols.flipping.FlippingParameters`.
-
 
 The expected output is the following:
 
