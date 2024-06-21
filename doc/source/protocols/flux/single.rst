@@ -89,7 +89,7 @@ where :math:`C_{ij}` is known in the literature as the crosstalk matrix, while
 Requirements
 ^^^^^^^^^^^^
 
-- :ref:`qubit_spectroscopy`
+- :ref:`qubit-spectroscopy`
 
 .. _resonator_flux:
 

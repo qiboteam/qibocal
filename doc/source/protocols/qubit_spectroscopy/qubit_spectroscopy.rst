@@ -1,3 +1,5 @@
+.. _qubit-spectroscopy:
+
 Qubit spectroscopies
 ====================
 
@@ -125,4 +127,4 @@ from state :math:`\ket{1}` to state :math:`\ket{2}`).
 Requirements
 ^^^^^^^^^^^^
 
-- single shot classification
+- :ref:`single_shot`

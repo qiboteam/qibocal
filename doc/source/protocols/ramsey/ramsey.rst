@@ -62,7 +62,7 @@ the user is invited to run ``T2 experiment``.
 Requirements
 ^^^^^^^^^^^^
 
-- Single shot classification
+- :ref:`single-shot`
 
 .. _ramsey_signal:
 
@@ -102,4 +102,4 @@ Note that in this case error bars will not be provided.
 Requirements
 ^^^^^^^^^^^^
 
-- Rabi signal
+- :ref:`rabi`

@@ -22,4 +22,9 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     t2_echo/t2_echo
     flux/single
     flux/crosstalk
+    rabi/rabi
+    singleshot
+    dispersive_shift
+    allxy
+    flipping
     references

@@ -35,4 +35,4 @@ Requirements
 This experiment requires the calibration of a pi-pulse, since in the pulse sequence, we need to use the X gate.
 Therefore, before this experiment, we need to run at least a:
 
-- Rabi experiment (ADD LINK TO DOC)
+- :ref:`rabi`
