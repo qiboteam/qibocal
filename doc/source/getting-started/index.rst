@@ -11,5 +11,5 @@ your quantum hardware.
     installation
     interface
     runcard
-    protocols
+    ../protocols/index
     example

@@ -176,9 +176,9 @@ def _acquisition(
 
 
 def _fit(data: RamseySignalData) -> RamseySignalResults:
-    r"""
-    Fitting routine for Ramsey experiment. The used model is
+    r"""Fitting routine for Ramsey experiment. The used model is
     .. math::
+
         y = p_0 + p_1 sin \Big(p_2 x + p_3 \Big) e^{-x p_4}.
     """
     qubits = data.qubits
