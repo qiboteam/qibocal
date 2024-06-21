@@ -101,14 +101,8 @@ def _acquisition(
     for qubit_id in qubits:
         qubit: Qubit = qubits[qubit_id]
 
-        # get qubit drive and readout frequencies, modules and sequencers
-        drive_lo_frequency = qubit.drive.lo_frequency
-        drive_frequency = qubit.drive_frequency
-        drive_intermediate_frequency = drive_frequency - drive_lo_frequency
-        drive_module = qubit.drive.port.module.device
-        drive_port_number = qubit.drive.port.port_number
-        drive_sequencer_number = qubit.drive.port.sequencer_number
-        drive_sequencer = drive_module.sequencers[drive_sequencer_number]
+        # get qubit readout frequencies, modules and sequencers
+
         readout_lo_frequency = qubit.readout.lo_frequency
         readout_frequency = qubit.readout_frequency
         readout_intermediate_frequency = readout_frequency - readout_lo_frequency
@@ -118,29 +112,35 @@ def _acquisition(
         readout_sequencer = readout_module.sequencers[readout_port_number]
 
         # save current values
-        # current_offset_i = drive_module.get(f"out{drive_port_number}_offset_path0")
-        # current_offset_q = drive_module.get(f"out{drive_port_number}_offset_path1")
-        # current_gain_ratio = drive_sequencer.get(f"mixer_corr_gain_ratio")
-        # current_phase_offset = drive_sequencer.get(f"mixer_corr_phase_offset_degree")
+        # current_offset_i = readout_module.get(f"out{readout_port_number}_offset_path0")
+        # current_offset_q = readout_module.get(f"out{readout_port_number}_offset_path1")
+        # current_gain_ratio = readout_sequencer.get(f"mixer_corr_gain_ratio")
+        # current_phase_offset = readout_sequencer.get(f"mixer_corr_phase_offset_degree")
+
+        zoom = 5
 
         # get parameter bounds
-        offset_i_bounds = drive_module.__getattr__(
-            f"out{drive_port_number}_offset_path0"
+        offset_i_bounds = readout_module.__getattr__(
+            f"out{readout_port_number}_offset_path0"
         ).vals.valid_values
-        offset_q_bounds = drive_module.__getattr__(
-            f"out{drive_port_number}_offset_path1"
+        offset_q_bounds = readout_module.__getattr__(
+            f"out{readout_port_number}_offset_path1"
         ).vals.valid_values
-        gain_ratio_bounds = drive_sequencer.__getattr__(
+        gain_ratio_bounds = readout_sequencer.__getattr__(
             f"mixer_corr_gain_ratio"
         ).vals.valid_values
-        phase_offset_bounds = drive_sequencer.__getattr__(
+        phase_offset_bounds = readout_sequencer.__getattr__(
             f"mixer_corr_phase_offset_degree"
         ).vals.valid_values
 
         # calculate parameter ranges
         n_points = params.n_points
-        offset_i_range = np.linspace(offset_i_bounds[0], offset_i_bounds[1], n_points)
-        offset_q_range = np.linspace(offset_q_bounds[0], offset_q_bounds[1], n_points)
+        offset_i_range = (
+            np.linspace(offset_i_bounds[0], offset_i_bounds[1], n_points) / zoom
+        )
+        offset_q_range = (
+            np.linspace(offset_q_bounds[0], offset_q_bounds[1], n_points) / zoom
+        )
         # gain_ratio_range = np.linspace(gain_ratio_bounds[0], gain_ratio_bounds[1], n_points)
         gain_ratio_range = 2 ** (np.linspace(-1, 1, n_points))
         phase_offset_range = np.linspace(
@@ -150,6 +150,7 @@ def _acquisition(
         # configure modules
         # readout module
         ro_pulse = platform.create_qubit_readout_pulse(qubit_id, start=0)
+        ro_pulse.amplitude *= 0.5
         waveforms = {
             f"{ro_pulse.envelope_waveform_i.serial}": {
                 "data": ro_pulse.envelope_waveform_i.data.tolist(),
@@ -187,61 +188,53 @@ def _acquisition(
         readout_sequencer.sequence(sequence)
         readout_sequencer.nco_freq(readout_intermediate_frequency)
 
-        # drive module
-        drive_pulse = platform.create_RX_pulse(qubit_id, start=0)
-        drive_sequencer.offset_awg_path0(1.0)  # 0
-        drive_sequencer.offset_awg_path1(1.0)  # 0
-        drive_sequencer.nco_freq(drive_intermediate_frequency)  # 0
+        # # drive module
+        # drive_pulse = platform.create_RX_pulse(qubit_id, start=0)
+        # drive_sequencer.offset_awg_path0(1.0)  # 0
+        # drive_sequencer.offset_awg_path1(1.0)  # 0
+        # drive_sequencer.nco_freq(drive_intermediate_frequency)  # 0
 
-        for module, sequencer_number in [
-            (drive_module, drive_sequencer_number),
-            (readout_module, readout_sequencer_number),
-        ]:
-            for s in range(6):
-                module.sequencers[s].set("sync_en", value=False)
-                if s == sequencer_number:
-                    module.sequencers[s].set("marker_ovr_en", value=True)
-                    module.sequencers[s].set("marker_ovr_value", value=15)
-                    module.sequencers[s].set("mod_en_awg", value=True)
+        module = readout_module
+        sequencer_number = readout_sequencer_number
+        for s in range(6):
+            module.sequencers[s].set("sync_en", value=False)
+            if s == sequencer_number:
+                module.sequencers[s].set("marker_ovr_en", value=True)
+                module.sequencers[s].set("marker_ovr_value", value=15)
+                module.sequencers[s].set("mod_en_awg", value=True)
 
-                else:
-                    module.sequencers[s].set("marker_ovr_en", value=False)
-                    module.sequencers[s].set("marker_ovr_value", value=0)
-                    module.sequencers[s].set("mod_en_awg", value=False)
+            else:
+                module.sequencers[s].set("marker_ovr_en", value=False)
+                module.sequencers[s].set("marker_ovr_value", value=0)
+                module.sequencers[s].set("mod_en_awg", value=False)
 
         ####################################################################################
         # leakage
         ####################################################################################
 
         leakage_data[qubit_id] = np.zeros((len(offset_q_range), len(offset_i_range)))
-        qubit.drive.lo_frequency = (
-            drive_lo_frequency + drive_intermediate_frequency
-        )  # drive_frequency
+        qubit.readout.lo_frequency = readout_lo_frequency
 
-        # control_module.print_readable_snapshot(update=True)
         # readout_module.print_readable_snapshot(update=True)
 
         for i, offset_i in enumerate(offset_i_range):
-            drive_module.set(f"out{drive_port_number}_offset_path0", offset_i)
+            readout_module.set(f"out{readout_port_number}_offset_path0", offset_i)
             log.info(
                 f"qubit {qubit_id} leakage mitigation progress: {int(i/n_points*100)}%"
             )
 
             for q, offset_q in enumerate(offset_q_range):
-                drive_module.set(f"out{drive_port_number}_offset_path1", offset_q)
+                readout_module.set(f"out{readout_port_number}_offset_path1", offset_q)
 
-                drive_module.arm_sequencer(drive_sequencer_number)
                 readout_sequencer.delete_acquisition_data(all=True)
                 readout_module.arm_sequencer(readout_sequencer_number)
-                drive_module.start_sequencer(drive_sequencer_number)
                 readout_module.start_sequencer(readout_sequencer_number)
 
                 # wait until all sequencers stop
-                for module in [drive_module, readout_module]:
-                    for sequencer_number in range(len(module.sequencers)):
-                        wait_for_sequencer_stop(module, sequencer_number)
+                module = readout_module
+                for sequencer_number in range(len(module.sequencers)):
+                    wait_for_sequencer_stop(module, sequencer_number)
 
-                drive_module.stop_sequencer(drive_sequencer_number)
                 readout_module.stop_sequencer(readout_sequencer_number)
 
                 duration = qubit.feedback.port.acquisition_duration
@@ -268,74 +261,75 @@ def _acquisition(
         min_index = np.argmin(leakage_data[qubit_id])
         min_coords = np.unravel_index(min_index, leakage_data[qubit_id].shape)
 
-        drive_module.set(
-            f"out{drive_port_number}_offset_path0", offset_i_range[min_coords[1]]
+        readout_module.set(
+            f"out{readout_port_number}_offset_path0", offset_i_range[min_coords[1]]
         )
-        drive_module.set(
-            f"out{drive_port_number}_offset_path1", offset_q_range[min_coords[0]]
+        readout_module.set(
+            f"out{readout_port_number}_offset_path1", offset_q_range[min_coords[0]]
         )
-        ####################################################################################
-        # image
-        ####################################################################################
 
-        image_data[qubit_id] = np.zeros(
+        # ####################################################################################
+        # # image
+        # ####################################################################################
+
+        image_data[qubit_id] = np.ones(
             (len(gain_ratio_range), len(phase_offset_range))
-        )
-        qubit.drive.lo_frequency = drive_lo_frequency + 2 * drive_intermediate_frequency
+        ) * np.average(leakage_data[qubit_id])
+        # qubit.drive.lo_frequency = drive_lo_frequency + 2 * drive_intermediate_frequency
 
-        # control_module.print_readable_snapshot(update=True)
-        # readout_module.print_readable_snapshot(update=True)
+        # # control_module.print_readable_snapshot(update=True)
+        # # readout_module.print_readable_snapshot(update=True)
 
-        for g, gain_ratio in enumerate(gain_ratio_range):
-            drive_sequencer.set("mixer_corr_gain_ratio", gain_ratio)
-            log.info(
-                f"qubit {qubit_id} image mitigation progress: {int(g/n_points*100)}%"
-            )
+        # for g, gain_ratio in enumerate(gain_ratio_range):
+        #     drive_sequencer.set("mixer_corr_gain_ratio", gain_ratio)
+        #     log.info(
+        #         f"qubit {qubit_id} image mitigation progress: {int(g/n_points*100)}%"
+        #     )
 
-            for p, phase_offset in enumerate(phase_offset_range):
-                drive_sequencer.set("mixer_corr_phase_offset_degree", phase_offset)
+        #     for p, phase_offset in enumerate(phase_offset_range):
+        #         drive_sequencer.set("mixer_corr_phase_offset_degree", phase_offset)
 
-                drive_module.arm_sequencer(drive_sequencer_number)
-                readout_sequencer.delete_acquisition_data(all=True)
-                readout_module.arm_sequencer(readout_sequencer_number)
-                drive_module.start_sequencer(drive_sequencer_number)
-                readout_module.start_sequencer(readout_sequencer_number)
+        #         drive_module.arm_sequencer(drive_sequencer_number)
+        #         readout_sequencer.delete_acquisition_data(all=True)
+        #         readout_module.arm_sequencer(readout_sequencer_number)
+        #         drive_module.start_sequencer(drive_sequencer_number)
+        #         readout_module.start_sequencer(readout_sequencer_number)
 
-                # wait until all sequencers stop
-                for module in [drive_module, readout_module]:
-                    for sequencer_number in range(len(module.sequencers)):
-                        wait_for_sequencer_stop(module, sequencer_number)
+        #         # wait until all sequencers stop
+        #         for module in [drive_module, readout_module]:
+        #             for sequencer_number in range(len(module.sequencers)):
+        #                 wait_for_sequencer_stop(module, sequencer_number)
 
-                drive_module.stop_sequencer(drive_sequencer_number)
-                readout_module.stop_sequencer(readout_sequencer_number)
+        #         drive_module.stop_sequencer(drive_sequencer_number)
+        #         readout_module.stop_sequencer(readout_sequencer_number)
 
-                duration = qubit.feedback.port.acquisition_duration
-                results = readout_module.get_acquisitions(readout_sequencer_number)
+        #         duration = qubit.feedback.port.acquisition_duration
+        #         results = readout_module.get_acquisitions(readout_sequencer_number)
 
-                _is = (
-                    np.array(
-                        results[ro_pulse.serial]["acquisition"]["bins"]["integration"][
-                            "path0"
-                        ]
-                    )
-                    / duration
-                )
-                _qs = (
-                    np.array(
-                        results[ro_pulse.serial]["acquisition"]["bins"]["integration"][
-                            "path1"
-                        ]
-                    )
-                    / duration
-                )
-                image_data[qubit_id][p, g] = np.sqrt(_is**2 + _qs**2)
+        #         _is = (
+        #             np.array(
+        #                 results[ro_pulse.serial]["acquisition"]["bins"]["integration"][
+        #                     "path0"
+        #                 ]
+        #             )
+        #             / duration
+        #         )
+        #         _qs = (
+        #             np.array(
+        #                 results[ro_pulse.serial]["acquisition"]["bins"]["integration"][
+        #                     "path1"
+        #                 ]
+        #             )
+        #             / duration
+        #         )
+        #         image_data[qubit_id][p, g] = np.sqrt(_is**2 + _qs**2)
 
-        ####################################################################################
+        # ####################################################################################
 
-        qubit.drive.lo_frequency = drive_lo_frequency
-        drive_sequencer.offset_awg_path0(0)  # 0
-        drive_sequencer.offset_awg_path1(0)  # 0
-        drive_sequencer.nco_freq(drive_intermediate_frequency)  # 0
+        # qubit.drive.lo_frequency = drive_lo_frequency
+        # drive_sequencer.offset_awg_path0(0)  # 0
+        # drive_sequencer.offset_awg_path1(0)  # 0
+        # drive_sequencer.nco_freq(drive_intermediate_frequency)  # 0
 
     for qubit_id in qubits:
         qubit: Qubit = qubits[qubit_id]
@@ -358,7 +352,7 @@ def _acquisition(
             leakage_data=leakage_data[qubit_id],
             image_data=image_data[qubit_id],
         )
-    qubit.drive.port.module._cluster.device.reset()
+    qubit.readout.port.module._cluster.device.reset()
     return data
 
 

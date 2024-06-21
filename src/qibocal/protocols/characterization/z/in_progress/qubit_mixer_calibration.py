@@ -301,6 +301,15 @@ def _acquisition(
                 drive_module.start_sequencer(drive_sequencer_number)
                 readout_module.start_sequencer(readout_sequencer_number)
 
+                print(
+                    drive_module.get(f"out{drive_port_number}_offset_path0"),
+                    drive_module.get(f"out{drive_port_number}_offset_path1"),
+                )
+                print(
+                    drive_sequencer.get("mixer_corr_gain_ratio"),
+                    drive_sequencer.get("mixer_corr_phase_offset_degree"),
+                )
+
                 # wait until all sequencers stop
                 for module in [drive_module, readout_module]:
                     for sequencer_number in range(len(module.sequencers)):

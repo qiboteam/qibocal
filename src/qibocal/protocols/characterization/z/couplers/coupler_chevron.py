@@ -18,19 +18,12 @@ from qibocal.protocols.characterization.two_qubit_interaction.utils import order
 
 @dataclass
 class ChevronCouplersParameters(Parameters):
-    amplitude_min_factor: float
+    amplitude_min: float
     """Amplitude minimum."""
-    amplitude_max_factor: float
+    amplitude_max: float
     """Amplitude maximum."""
-    amplitude_step_factor: float
+    amplitude_step: float
     """Amplitude step."""
-
-    # amplitude_min: float
-    # """Amplitude minimum."""
-    # amplitude_max: float
-    # """Amplitude maximum."""
-    # amplitude_step: float
-    # """Amplitude step."""
     duration_min: float
     """Duration minimum."""
     duration_max: float
@@ -77,9 +70,9 @@ def _aquisition(
     """
     # define the parameter to sweep and its range:
     delta_amplitude_range = np.arange(
-        params.amplitude_min_factor,
-        params.amplitude_max_factor,
-        params.amplitude_step_factor,
+        params.amplitude_min,
+        params.amplitude_max,
+        params.amplitude_step,
     )
     delta_duration_range = np.arange(
         params.duration_min, params.duration_max, params.duration_step
@@ -130,7 +123,7 @@ def _aquisition(
             Parameter.amplitude,
             delta_amplitude_range,
             pulses=[p for p in native_gate.coupler_pulses(*pair)][:1],
-            type=SweeperType.FACTOR,
+            type=SweeperType.ABSOLUTE,
         )
         sweeper_duration = Sweeper(
             Parameter.duration,
@@ -144,19 +137,44 @@ def _aquisition(
             ExecutionParameters(
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.DISCRIMINATION,
-                averaging_mode=AveragingMode.CYCLIC,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.SINGLESHOT,
             ),
             sweeper_duration,
             sweeper_amplitude,
         )
 
-        # TODO: Explore probabilities instead of magnitude
+        # TODO: classify shots
+        classification_parameters = {}
+        classification_parameters[0] = {}
+        classification_parameters[0][0] = ()
+        classification_parameters[0][1] = ()
+        classification_parameters[0][2] = ()
+        classification_parameters[1] = {}
+        classification_parameters[1][0] = ()
+        classification_parameters[1][1] = ()
+        classification_parameters[1][2] = ()
+        classification_parameters[2] = {}
+        classification_parameters[2][0] = ()
+        classification_parameters[2][1] = ()
+        classification_parameters[2][2] = ()
+        classification_parameters[3] = {}
+        classification_parameters[3][0] = ()
+        classification_parameters[3][1] = ()
+        classification_parameters[3][2] = ()
+        classification_parameters[4] = {}
+        classification_parameters[4][0] = ()
+        classification_parameters[4][1] = ()
+        classification_parameters[4][2] = ()
+
+        def classify():
+            return (1, 0, 0)  # (prob state 0, prob state 1, prob state 2) RGB
+
         data.register_qubit(
             ordered_pair[0],
             ordered_pair[1],
             delta_duration_range,
-            delta_amplitude_range * data.native_amplitude[ordered_pair],
+            delta_amplitude_range,
             results[ordered_pair[0]].probability(state=1),
             results[ordered_pair[1]].probability(state=1),
         )
