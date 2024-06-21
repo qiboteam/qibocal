@@ -12,7 +12,7 @@ Qubit Spectroscopy
 To measure the resonance frequency of the qubit it is possible to perform
 a `qubit spectroscopy` experiment.
 After having obtained an initial guess for the readout amplitude and the readout
-frequency this experiment aims at extracting the frequency of the qubit.
+frequency through a :ref:`resonator_punchout` this experiment aims at extracting the frequency of the qubit.
 
 In this protocol the qubit is probed by sending a drive pulse at
 variable frequency :math:`w` before measuring. When :math:`w` is close
@@ -60,11 +60,12 @@ Requirements
 ^^^^^^^^^^^^
 
 - :ref:`resonator_spectroscopy`
+- :ref:`resonator_punchout`
 
 .. _qubit_spectroscopy_ef:
 
-Qubit spectroscopy "ef"
------------------------
+Qubit spectroscopy for higher excited states
+--------------------------------------------
 
 Through a qubit spectroscopy experiment it is possible to target also the transition
 frequencies towards higher energy level other than the first excited state.
@@ -84,6 +85,9 @@ From :math:`\omega_{12}` and :math:`\omega_{01}` it is possible to compute the a
 
     \alpha = \omega_{12} - \omega_{01}
 
+In the literature the energy levels can be expressed as :math:`\ket{g}, \ket{e}, \ket{f}`, to
+address the ground state, the excited state and the first excited state above the excited state.
+For this reason the experiments has been labelled ``qubit_spectroscopy_ef``.
 
 Parameters
 ^^^^^^^^^^
