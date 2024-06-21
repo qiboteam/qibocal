@@ -89,7 +89,7 @@ Example
         relaxation_time: 300000
 
 
-TODO: add plot
+.. image:: t2_echo_signal.png
 
 Note that in this case error bars will not be provided.
 

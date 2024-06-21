@@ -118,11 +118,9 @@ Here is the corresponding plot:
 .. image:: qubit_spectroscopy_ef.png
 
 To extract :math:`\omega_{12}` a lorentzian fit is performed.
-
-After the post-processing the following parameters will be updated:
-
-* qubit.anharmonicity
-* qubit.native_gates.RX12.frequency
+After the post-processing both the anharmonicity and the frequency of
+the `RX12` pulse (which is the pulse that allows to drive a qubit
+from state :math:`\ket{1}` to state :math:`\ket{2}`).
 
 Requirements
 ^^^^^^^^^^^^
