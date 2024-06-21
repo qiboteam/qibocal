@@ -9,7 +9,7 @@ Here is a scheme with the protocols currently available in Qibocal.
 In this section we introduce the basics of all protocols supported by ``qibocal``.
 
 .. toctree::
-    :maxdepth: 2
+    :maxdepth: 1
 
     signal/time_of_flight
     signal/calibrate_kernel
