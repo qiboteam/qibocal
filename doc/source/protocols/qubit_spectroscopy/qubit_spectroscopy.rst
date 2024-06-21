@@ -122,7 +122,7 @@ Here is the corresponding plot:
 To extract :math:`\omega_{12}` a lorentzian fit is performed.
 After the post-processing both the anharmonicity and the frequency of
 the `RX12` pulse (which is the pulse that allows to drive a qubit
-from state :math:`\ket{1}` to state :math:`\ket{2}`).
+from state :math:`\ket{1}` to state :math:`\ket{2}`) are updated.
 
 Requirements
 ^^^^^^^^^^^^
