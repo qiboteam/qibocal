@@ -8,7 +8,7 @@ Qibocal also allows executing protocols without the standard :ref:`interface <in
 
 In the following tutorial we show how to run a single protocol using Qibocal as a library.
 For this particular example we will focus on the `t1_signal protocol
-<https://github.com/qiboteam/qibocal/blob/main/src/qibocal/protocols/t1/t1_signal.py>`_.
+<https://github.com/qiboteam/qibocal/blob/main/src/qibocal/protocols/coherence/t1_signal.py>`_ (see also :ref:`t1`).
 
 .. code-block:: python
 
@@ -56,7 +56,7 @@ After defining the parameters, the user can perform the acquisition using
 
 * ``protocol`` (`Routine <https://qibo.science/qibocal/latest/api-reference/qibocal.auto.html#qibocal.auto.operation.Routine>`_): protocol
 * ``parameters`` (Dict): parameters dictionary
-* ``mode`` (`ExecutionMode <https://qibo.science/qibolab/latest/api-reference/qibolab.html#qibolab.auto.operation.ExecutionMode>`_): can be ExecutionMode.ACQUIRE or ExecutionMode.FIT
+* ``mode`` (`ExecutionMode <https://qibo.science/qibocal/latest/api-reference/qibocal.auto.html#qibocal.auto.mode.ExecutionMode>`_): can be ExecutionMode.ACQUIRE or ExecutionMode.FIT
 
 .. code-block:: python
 
@@ -79,10 +79,7 @@ The history, that contains both the raw data (added with ExecutionMode.ACQUIRE) 
     data = t1_res.data  # raw data
     results = t1_res.results  # fit data
 
-    data_time = 0  # acquisition time
-    results_time = 0  # data time
-
-In particulary the history object returns a dictionary that links the id of the experiments with the `Completed <https://qibo.science/qibocal/latest/api-reference/qibocal.html#qibocal.auto.task.Completed>`_ object
+In particulary the history object returns a dictionary that links the id of the experiments with the `Completed <https://qibo.science/qibocal/latest/api-reference/qibocal.auto.html#qibocal.auto.task.Completed>`_ object
 
 How to add a new protocol
 -------------------------
