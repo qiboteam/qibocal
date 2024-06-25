@@ -29,7 +29,7 @@ For this particular example we will focus on the `t1_signal protocol
     )
 
 The executor is responsible to running the routines on a platform and eventually store the history of multiple experiments.
-``t1_signal``, that we import, is a `Routine <https://qibo.science/qibocal/stable/api-reference/qibocal.auto.html#qibocal.auto.operation.Routine>`_ object which contains all the necessary
+``t1_signal``, that we import, is a :class:`qibocal.auto.operation.Routine` object which contains all the necessary
 methods to execute the experiment.
 
 In order to run an experiment the user needs to specify the parameters.
