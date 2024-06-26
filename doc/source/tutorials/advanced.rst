@@ -7,107 +7,79 @@ How to use Qibocal as a library
 Qibocal also allows executing protocols without the standard :ref:`interface <interface>`.
 
 In the following tutorial we show how to run a single protocol using Qibocal as a library.
-For this particular example we will focus on the `single shot classification protocol
-<https://github.com/qiboteam/qibocal/blob/main/src/qibocal/protocols/characterization/classification.py>`_.
+For this particular example we will focus on the `t1_signal protocol
+<https://github.com/qiboteam/qibocal/blob/main/src/qibocal/protocols/coherence/t1_signal.py>`_ (see also :ref:`t1`).
 
 .. code-block:: python
 
-    from qibocal.protocols.characterization import Operation
+    import pathlib
     from qibolab import create_platform
+
+    from qibocal.auto.execute import Executor
+    from qibocal.auto.mode import ExecutionMode
+    from qibocal.protocols import t1_signal
 
     # allocate platform
     platform = create_platform("....")
-    # get qubits from platform
-    qubits = platform.qubits
 
-    # we select the protocol
-    protocol = Operation.single_shot_classification.value
+    #creare executor
+    executor = Executor.create(
+      platform=platform,
+      output=pathlib.Path("experiment_data")
+    )
 
-``protocol`` is a `Routine <https://qibo.science/qibocal/stable/api-reference/qibocal.auto.html#qibocal.auto.operation.Routine>`_ object which contains all the necessary
+The executor is responsible of running the routines on a platform and eventually store the history of multiple experiments.
+``t1_signal``, that we import, is a :class:`qibocal.auto.operation.Routine` object which contains all the necessary
 methods to execute the experiment.
 
-In order to run a protocol the user needs to specify the parameters.
+In order to run an experiment the user needs to specify its parameters.
 The user can check which parameters need to be provided either by checking the
 documentation of the specific protocol or by simply inspecting ``protocol.parameters_type``.
-For ``single_shot_classification`` we can pass just the number of shots
-in the following way:
+For ``t1_signal`` we define the parameters in the following way:
 
 .. code-block:: python
 
-    parameters = experiment.parameters_type.load(dict(nshots=1024))
+    t1_params = {
+        "id": "t1_experiment",
+        "targets": [0],  # we are defining here which qubits to analyze
+        "operation": "t1_signal",
+        "parameters": {
+            "delay_before_readout_start": 0,
+            "delay_before_readout_end": 20_000,
+            "delay_before_readout_step": 50,
+        },
+    }
 
 
 After defining the parameters, the user can perform the acquisition using
-``experiment.acquisition`` which accepts the following parameters:
+``executor.run_protocol`` which accepts the following parameters:
 
-* ``params`` (`experiment.parameters_type <https://qibo.science/qibocal/latest/api-reference/qibocal.auto.html#qibocal.auto.operation.Routine.parameters_type>`_): input parameters for the experiment
-* ``platform`` (`qibolab.platform.Platform <https://qibo.science/qibolab/latest/api-reference/qibolab.html#qibolab.platform.Platform>`_): Qibolab platform class
-* ``targets`` (Union[list[`QubitId <https://qibo.science/qibolab/latest/api-reference/qibolab.html#qibolab.qubits.QubitId>`_],list[`QubitPairId <https://qibo.science/qibolab/latest/api-reference/qibolab.html#qibolab.qubits.QubitPairId>`_], list[list[`QubitId <https://qibo.science/qibolab/latest/api-reference/qibolab.html#qibolab.qubits.QubitId>`_]]]) list with qubits where the acquisition will run
-
-and returns the following:
-
-* ``data`` (`experiment.data_type <https://qibo.science/qibocal/latest/api-reference/qibocal.auto.html#qibocal.auto.operation.Routine.data_type>`_): data acquired
-* ``acquisition_time`` (float): acquisition time on hardware
+* ``protocol`` (:class:`qibocal.auto.operation.Routine`): protocol
+* ``parameters`` (Dict): parameters dictionary
+* ``mode`` (:class:`qibocal.auto.mode.ExecutionMode`): can be ExecutionMode.ACQUIRE or ExecutionMode.FIT
 
 .. code-block:: python
 
-    data, acquisition_time = experiment.acquisition(params=parameters, platform=platform, qubits=qubits)
+    executor.run_protocol(t1_signal, t1_params, ExecutionMode.ACQUIRE)
+    executor.run_protocol(t1_signal, t1_params, ExecutionMode.FIT)
 
+In this way we have first executed the acquisition part of the experiment and then performed the fit on the acquired data.
 
 The user can now use the raw data acquired by the quantum processor to perform
 an arbitrary post-processing analysis. This is one of the main advantages of this API
 compared to the cli execution.
 
-The fitting corresponding to the experiment (``experiment.fit``) can be launched in the
-following way:
+The history, that contains both the raw data (added with :attr:`qibocal.auto.mode.ExecutionMode.ACQUIRE`) and the fit data (added with :attr:`qibocal.auto.mode.ExecutionMode.FIT`) can be accessed:
 
 .. code-block:: python
 
-    fit, fit_time = experiment.fit(data)
+    history = executor.history
+    t1_res = history["t1_experiment"]  # id of the protocol
 
-To be more specific the user should pass as input ``data`` which is of type
-``experiment.data_type`` and the outputs are the following:
+    data = t1_res.data  # raw data
+    results = t1_res.results  # fit data
 
-* ``fit``: (`experiment.results_type <https://qibo.science/qibocal/latest/api-reference/qibocal.auto.html#qibocal.auto.operation.Routine.results_type>`_) input parameters for the experiment
-* ``fit_time`` (float): post-processing time
-
-
-It is also possible to access the plots and the tables generated in the
-report using ``experiment.report`` which accepts the following parameters:
-
-* ``data``: (`experiment.data_type <https://qibo.science/qibocal/latest/api-reference/qibocal.auto.html#qibocal.auto.operation.Routine.data_type>`_) data structure used by ``experiment``
-* ``target`` (dict[`QubitId <https://qibo.science/qibolab/latest/api-reference/qibolab.html#qibolab.qubits.QubitId>`_, `QubitPairId <https://qibo.science/qibolab/latest/api-reference/qibolab.html#qibolab.qubits.QubitPairId>`_]): qubit / qubit pair to be plotted
-* ``fit``: (`experiment.results_type <https://qibo.science/qibocal/latest/api-reference/qibocal.auto.html#qibocal.auto.operation.Routine.results_type>`_): data structure for post-processing used by ``experiment``
-
-.. code-block:: python
-
-    # Plot for qubit 0
-    target = 0
-    figs, html_content = experiment.report(data=data, target=target, fit=fit)
-
-``experiment.report`` returns the following:
-
-* figs: list of plotly figures
-* html_content: raw html with additional information usually in the form of a table
-
-In our case we get the following figure for qubit 0:
-
-.. code-block:: python
-
-    figs[0]
-
-
-.. image:: classification_plot.png
-
-and we can render the html content in the following way:
-
-.. code-block:: python
-
-    import IPython
-    IPython.display.HTML(html_content)
-
-.. image:: classification_table.png
-
+In particular, the history object returns a dictionary that links the id of the experiments with the :class:`qibocal.auto.task.Completed` object
 
 How to add a new protocol
 -------------------------
@@ -131,11 +103,11 @@ This approach is flexible enough to allow the data acquisition without performin
 Step by step tutorial
 ~~~~~~~~~~~~~~~~~~~~~
 
-All protocols are located in ``src/qibocal/protocols/characterization <https://github.com/qiboteam/qibocal/tree/main/src/qibocal/protocols/characterization>``_.
+All protocols are located in :mod:`qibocal.protocols`.
 Suppose that we want to code a protocol to perform a RX rotation for different
 angles.
 
-We create a file ``rotate.py`` in ``src/qibocal/protocols/characterization``.
+We create a file ``rotate.py`` in ``src/qibocal/protocols``.
 
 
 
@@ -219,7 +191,7 @@ In the acquisition function we are going to perform the experiment.
       .. code-block:: python
 
         from qibolab.platform import Platform
-        from qibolab.qubits import QubitId,, QubitPairId
+        from qibolab.qubits import QubitId, QubitPairId
         from typing import Union
 
         def acquisition(params: RoutineParameters, platform: Platform, targets: Union[list[QubitId], list[QubitPairId], list[list[QubitId]]]) -> RoutineData
@@ -432,7 +404,7 @@ Add routine to `Operation` Enum
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The last step is to add the routine that we just created
-to the ``Operation`` `Enum` in `src/qibocal/protocols/characterization/__init__.py <https://github.com/qiboteam/qibocal/tree/main/src/qibocal/protocols/characterization/__init__.py>`_:
+to the available protocols in `src/qibocal/protocols/__init__.py <https://github.com/qiboteam/qibocal/tree/main/src/qibocal/protocols/__init__.py>`_:
 
 .. code-block:: python
 
@@ -440,9 +412,10 @@ to the ``Operation`` `Enum` in `src/qibocal/protocols/characterization/__init__.
     from rotate import rotation
 
 
-    class Operation(Enum):
-    ### other protocols...
-    rotation = rotation
+    __all__ = [
+        # other protocols....
+        "rotation",
+    ]
 
 Write a runcard
 ^^^^^^^^^^^^^^^
@@ -459,7 +432,6 @@ To launch the protocol a possible runcard could be the following one:
 
     actions:
         - id: rotate
-
           operation: rotation
           parameters:
             theta_start: 0

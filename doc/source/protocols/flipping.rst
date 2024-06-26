@@ -53,4 +53,4 @@ Requirements
 ^^^^^^^^^^^^
 
 - :ref:`rabi`
-- :ref:`single_shot`
+- :ref:`single-shot`

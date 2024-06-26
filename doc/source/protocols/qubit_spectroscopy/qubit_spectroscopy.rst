@@ -127,4 +127,4 @@ from state :math:`\ket{1}` to state :math:`\ket{2}`) are updated.
 Requirements
 ^^^^^^^^^^^^
 
-- :ref:`single_shot`
+- :ref:`single-shot`
