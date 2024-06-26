@@ -107,7 +107,7 @@ All protocols are located in :mod:`qibocal.protocols`.
 Suppose that we want to code a protocol to perform a RX rotation for different
 angles.
 
-We create a file ``rotate.py`` in ``src/qibocal/protocols/characterization``.
+We create a file ``rotate.py`` in ``src/qibocal/protocols``.
 
 
 
@@ -191,7 +191,7 @@ In the acquisition function we are going to perform the experiment.
       .. code-block:: python
 
         from qibolab.platform import Platform
-        from qibolab.qubits import QubitId,, QubitPairId
+        from qibolab.qubits import QubitId, QubitPairId
         from typing import Union
 
         def acquisition(params: RoutineParameters, platform: Platform, targets: Union[list[QubitId], list[QubitPairId], list[list[QubitId]]]) -> RoutineData
@@ -404,7 +404,7 @@ Add routine to `Operation` Enum
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The last step is to add the routine that we just created
-to the ``Operation`` `Enum` in `src/qibocal/protocols/characterization/__init__.py <https://github.com/qiboteam/qibocal/tree/main/src/qibocal/protocols/characterization/__init__.py>`_:
+to the available protocols in `src/qibocal/protocols/__init__.py <https://github.com/qiboteam/qibocal/tree/main/src/qibocal/protocols/__init__.py>`_:
 
 .. code-block:: python
 
@@ -412,9 +412,10 @@ to the ``Operation`` `Enum` in `src/qibocal/protocols/characterization/__init__.
     from rotate import rotation
 
 
-    class Operation(Enum):
-    ### other protocols...
-    rotation = rotation
+    __all__ = [
+        # other protocols....
+        "rotation",
+    ]
 
 Write a runcard
 ^^^^^^^^^^^^^^^
@@ -431,7 +432,6 @@ To launch the protocol a possible runcard could be the following one:
 
     actions:
         - id: rotate
-
           operation: rotation
           parameters:
             theta_start: 0

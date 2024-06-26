@@ -16,13 +16,13 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     resonator_spectroscopy
     resonator_punchout
     qubit_spectroscopy/qubit_spectroscopy
+    rabi/rabi
     ramsey/ramsey
     t1/t1
     t2/t2
     t2_echo/t2_echo
     flux/single
     flux/crosstalk
-    rabi/rabi
     singleshot
     dispersive_shift
     allxy
