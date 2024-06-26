@@ -69,7 +69,7 @@ The user can now use the raw data acquired by the quantum processor to perform
 an arbitrary post-processing analysis. This is one of the main advantages of this API
 compared to the cli execution.
 
-The history, that contains both the raw data (added with ExecutionMode.ACQUIRE) and the fit data (added with ExecutionMode.FIT) can be accessed:
+The history, that contains both the raw data (added with :attr:`qibocal.auto.mode.ExecutionMode.ACQUIRE`) and the fit data (added with :attr:`qibocal.auto.mode.ExecutionMode.FIT`) can be accessed:
 
 .. code-block:: python
 
