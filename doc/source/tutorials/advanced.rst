@@ -28,11 +28,11 @@ For this particular example we will focus on the `t1_signal protocol
       output=pathlib.Path("experiment_data")
     )
 
-The executor is responsible to running the routines on a platform and eventually store the history of multiple experiments.
+The executor is responsible of running the routines on a platform and eventually store the history of multiple experiments.
 ``t1_signal``, that we import, is a :class:`qibocal.auto.operation.Routine` object which contains all the necessary
 methods to execute the experiment.
 
-In order to run an experiment the user needs to specify the parameters.
+In order to run an experiment the user needs to specify its parameters.
 The user can check which parameters need to be provided either by checking the
 documentation of the specific protocol or by simply inspecting ``protocol.parameters_type``.
 For ``t1_signal`` we define the parameters in the following way:
@@ -79,7 +79,7 @@ The history, that contains both the raw data (added with ExecutionMode.ACQUIRE) 
     data = t1_res.data  # raw data
     results = t1_res.results  # fit data
 
-In particulary the history object returns a dictionary that links the id of the experiments with the :class:`qibocal.auto.task.Completed` object
+In particular, the history object returns a dictionary that links the id of the experiments with the :class:`qibocal.auto.task.Completed` object
 
 How to add a new protocol
 -------------------------
@@ -103,7 +103,7 @@ This approach is flexible enough to allow the data acquisition without performin
 Step by step tutorial
 ~~~~~~~~~~~~~~~~~~~~~
 
-All protocols are located in `src/qibocal/protocols <https://github.com/qiboteam/qibocal/tree/main/src/qibocal/protocols/>`_.
+All protocols are located in :mod:`qibocal.protocols`.
 Suppose that we want to code a protocol to perform a RX rotation for different
 angles.
 
