@@ -144,6 +144,7 @@ def create_sequence(
     sequence.add(
         Y90_pulse,
         cz.get_qubit_pulses(ordered_pair[1]),
+        cz.cf_pulses,
         theta_pulse,
         measure_target,
         measure_control,
