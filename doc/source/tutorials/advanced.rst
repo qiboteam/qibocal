@@ -29,7 +29,7 @@ For this particular example we will focus on the `t1_signal protocol
     )
 
 The executor is responsible to running the routines on a platform and eventually store the history of multiple experiments.
-``t1_signal``, that we import, is a `Routine <https://qibo.science/qibocal/stable/api-reference/qibocal.auto.html#qibocal.auto.operation.Routine>`_ object which contains all the necessary
+``t1_signal``, that we import, is a :class:`qibocal.auto.operation.Routine` object which contains all the necessary
 methods to execute the experiment.
 
 In order to run an experiment the user needs to specify the parameters.
@@ -54,9 +54,9 @@ For ``t1_signal`` we define the parameters in the following way:
 After defining the parameters, the user can perform the acquisition using
 ``executor.run_protocol`` which accepts the following parameters:
 
-* ``protocol`` (`Routine <https://qibo.science/qibocal/latest/api-reference/qibocal.auto.html#qibocal.auto.operation.Routine>`_): protocol
+* ``protocol`` (:class:`qibocal.auto.operation.Routine`): protocol
 * ``parameters`` (Dict): parameters dictionary
-* ``mode`` (`ExecutionMode <https://qibo.science/qibocal/latest/api-reference/qibocal.auto.html#qibocal.auto.mode.ExecutionMode>`_): can be ExecutionMode.ACQUIRE or ExecutionMode.FIT
+* ``mode`` (:class:`qibocal.auto.mode.ExecutionMode`): can be ExecutionMode.ACQUIRE or ExecutionMode.FIT
 
 .. code-block:: python
 
@@ -79,7 +79,7 @@ The history, that contains both the raw data (added with ExecutionMode.ACQUIRE) 
     data = t1_res.data  # raw data
     results = t1_res.results  # fit data
 
-In particulary the history object returns a dictionary that links the id of the experiments with the `Completed <https://qibo.science/qibocal/latest/api-reference/qibocal.auto.html#qibocal.auto.task.Completed>`_ object
+In particulary the history object returns a dictionary that links the id of the experiments with the :class:`qibocal.auto.task.Completed` object
 
 How to add a new protocol
 -------------------------
@@ -103,7 +103,7 @@ This approach is flexible enough to allow the data acquisition without performin
 Step by step tutorial
 ~~~~~~~~~~~~~~~~~~~~~
 
-All protocols are located in `src/qibocal/protocols <https://github.com/qiboteam/qibocal/tree/main/src/qibocal/protocols>`_.
+All protocols are located in `src/qibocal/protocols <https://github.com/qiboteam/qibocal/tree/main/src/qibocal/protocols/>`_.
 Suppose that we want to code a protocol to perform a RX rotation for different
 angles.
 
