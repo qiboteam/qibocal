@@ -109,7 +109,6 @@ class Executor:
         output = Path(output) if output is not None else Path.cwd()
         return cls(
             name=name,
-            actions=[],
             history=History(),
             output=output,
             platform=platform,
