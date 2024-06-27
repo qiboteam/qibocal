@@ -4,6 +4,8 @@ import json
 from qibo.backends import set_backend
 from qibolab.serialize import dump_platform
 
+from qibocal.auto.runcard import Runcard
+
 from ..auto.execute import run
 from ..auto.history import add_timings_to_meta
 from ..auto.mode import AUTOCALIBRATION
@@ -17,8 +19,8 @@ from .utils import (
 )
 
 
-def autocalibrate(runcard, folder, force, update):
-    """Autocalibration
+def autocalibrate(runcard: Runcard, folder, force, update):
+    """Autocalibration.
 
     Arguments:
 
