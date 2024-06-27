@@ -1,9 +1,8 @@
 """Tasks execution."""
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
 from qibolab import create_platform
 from qibolab.platform import Platform
@@ -28,8 +27,6 @@ class Executor:
 
     history: History
     """The execution history, with results and exit states."""
-    output: Path
-    """Output path."""
     targets: Targets
     """Qubits/Qubit Pairs to be calibrated."""
     platform: Platform
@@ -38,23 +35,12 @@ class Executor:
     """Runcard update mechanism."""
 
     @classmethod
-    def create(
-        cls,
-        platform: Union[Platform, str],
-        output: Optional[os.PathLike] = None,
-    ):
+    def create(cls, platform: Union[Platform, str]):
         """Load list of protocols."""
         platform = (
             platform if isinstance(platform, Platform) else create_platform(platform)
         )
-        output = Path(output) if output is not None else (Path.cwd() / "qibocal_output")
-        return cls(
-            history=History(),
-            output=output,
-            platform=platform,
-            targets=list(platform.qubits),
-            update=True,
-        )
+        return cls(history=History(), platform=platform, targets=list(platform.qubits))
 
     def run_protocol(
         self,
@@ -80,13 +66,9 @@ class Executor:
         if ExecutionMode.FIT is mode and self.history[task.id]._results is not None:
             raise_error(KeyError, f"{task.id} already contains fitting results.")
 
-        completed = task.run(
-            platform=self.platform,
-            targets=self.targets,
-            folder=self.output,
-            mode=mode,
-        )
-        if ExecutionMode.FIT in mode and self.platform is not None and update:
+        completed = task.run(platform=self.platform, targets=self.targets, mode=mode)
+
+        if ExecutionMode.FIT in mode and self.platform is not None:
             completed.update_platform(platform=self.platform, update=self.update)
 
         if self.platform is not None:
@@ -94,7 +76,7 @@ class Executor:
             dump_platform(self.platform, completed.datapath / PLATFORM_DIR)
 
         self.history.push(completed)
-        completed.dump(self.output)
+        completed.dump()
 
         return completed
 
@@ -107,7 +89,6 @@ def run(runcard: Runcard, output: Path, mode: ExecutionMode, update: bool = True
         history=History.load(output),
         platform=platform,
         targets=targets,
-        output=output,
         update=runcard.update,
     )
 

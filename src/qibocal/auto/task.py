@@ -119,7 +119,7 @@ class Completed:
         once tasks will be immutable, a separate `iteration` attribute should
         be added
     """
-    folder: Path
+    folder: Optional[Path] = None
     """Folder with data and results."""
     _data: Optional[Data] = None
     """Protocol data."""
@@ -134,7 +134,7 @@ class Completed:
         self.task = copy.deepcopy(self.task)
 
     @property
-    def datapath(self):
+    def datapath(self) -> Path:
         """Path contaning data and results file for task."""
         path = self.folder / "data" / f"{self.task.id}"
         if not path.is_dir():
@@ -169,7 +169,7 @@ class Completed:
         self._data = data
         self._data.save(self.datapath)
 
-    def dump(self, path):
+    def dump(self):
         """test."""
         self.task.dump(self.datapath)
 
