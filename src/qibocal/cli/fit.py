@@ -4,7 +4,6 @@ import pathlib
 import shutil
 
 import yaml
-from qibolab.serialize import dump_runcard
 
 from qibocal.config import log, raise_error
 
@@ -13,16 +12,15 @@ from ..auto.history import add_timings_to_meta
 from ..auto.mode import ExecutionMode
 from ..auto.operation import RESULTSFILE
 from ..auto.runcard import Runcard
-from .utils import META, RUNCARD, UPDATED_PLATFORM
+from .utils import META, RUNCARD
 
 
-def fit(input_path, update, output_path, force):
+def fit(input_path, output_path, force):
     """Post-processing analysis
 
     Arguments:
 
     - input_path: input folder.
-    - update: perform platform update
     - output_path: new folder with data and fit
     """
 
@@ -59,12 +57,6 @@ def fit(input_path, update, output_path, force):
     meta = add_timings_to_meta(meta, history)
     e = datetime.datetime.now(datetime.timezone.utc)
     meta["end-time"] = e.strftime("%H:%M:%S")
-
-    # dump updated runcard
-    if runcard.platform_obj is not None and update:  # pragma: no cover
-        # cannot test update since dummy may produce wrong values and trigger errors
-        (path / UPDATED_PLATFORM).mkdir(parents=True, exist_ok=True)
-        dump_runcard(runcard.platform_obj, path / UPDATED_PLATFORM)
 
     # dump json
 

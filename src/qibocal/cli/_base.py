@@ -149,15 +149,7 @@ def report(folder):
     is_flag=True,
     help="Use --force option to overwrite the output folder.",
 )
-@click.option(
-    "--update/--no-update",
-    default=True,
-    help="Use --no-update option to avoid updating iteratively the platform."
-    "With this option the new runcard will not be produced.",
-)
-def fit(
-    input_folder: pathlib.Path, update: bool, output_folder: pathlib.Path, force: bool
-):
+def fit(input_folder: pathlib.Path, output_folder: pathlib.Path, force: bool):
     """Post-processing analysis
 
     Arguments:
@@ -165,7 +157,7 @@ def fit(
     - FOLDER: input folder.
 
     """
-    fitting(input_folder, update, output_folder, force)
+    fitting(input_folder, output_folder, force)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)

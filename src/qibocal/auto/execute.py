@@ -81,9 +81,6 @@ class Executor:
             mode=mode,
         )
 
-        # if ExecutionMode.FIT in mode and self.platform is not None:
-        #     completed.update_platform(platform=self.platform, update=self.update)
-
         self.history.push(completed)
         completed.dump(self.output)
 

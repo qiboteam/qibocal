@@ -1,5 +1,4 @@
 platform: dummy
-
 backend: numpy
 
 targets: [0,1]

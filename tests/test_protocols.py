@@ -110,9 +110,8 @@ def test_acquire_command(runcard, tmp_path):
     assert (tmp_path / "index.html").is_file()
 
 
-@pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_fit_command(runcard, update, tmp_path):
+def test_fit_command(runcard, tmp_path):
     """Test fit builder and report generated."""
 
     runcard = runcard[0]
@@ -135,11 +134,7 @@ def test_fit_command(runcard, update, tmp_path):
     )
 
     # perform fit
-    runner.invoke(command, ["fit", str(tmp_path), update], **INVOKER_OPTIONS)
-
-    if update == "--update" and runcard["backend"] == "qibolab":
-        assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
-        assert (tmp_path / "data" / f"{protocol}" / PLATFORM_DIR).is_dir()
+    runner.invoke(command, ["fit", str(tmp_path)], **INVOKER_OPTIONS)
 
     # generate report with fit and plot
     runner.invoke(command, ["report", str(tmp_path)], **INVOKER_OPTIONS)

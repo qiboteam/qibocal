@@ -106,7 +106,7 @@ class Task:
                 )
         if ExecutionMode.FIT in mode:
             completed.results, completed.results_time = operation.fit(completed.data)
-        if ExecutionMode.UPDATE in mode:
+        if ExecutionMode.UPDATE in mode and platform is not None:
             for qubit in self.targets:
                 try:
                     operation.update(completed.results, platform, qubit)
