@@ -3,7 +3,7 @@
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 
 from qibolab import create_platform
 from qibolab.platform import Platform
@@ -41,15 +41,16 @@ class Executor:
     def create(
         cls,
         platform: Union[Platform, str] = None,
-        output: Union[str, bytes, os.PathLike] = None,
+        output: Optional[os.PathLike] = None,
     ):
         """Load list of protocols."""
         platform = (
             platform if isinstance(platform, Platform) else create_platform(platform)
         )
+        output = Path(output) if output is not None else (Path.cwd() / "qibocal_output")
         return cls(
             history=History(),
-            output=Path(output),
+            output=output,
             platform=platform,
             targets=list(platform.qubits),
             update=True,
