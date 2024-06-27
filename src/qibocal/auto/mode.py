@@ -12,5 +12,5 @@ class ExecutionMode(Flag):
     """Perform update of platform."""
 
 
-AUTOCALIBRATION = ExecutionMode.ACQUIRE | ExecutionMode.FIT
+AUTOCALIBRATION = ExecutionMode.ACQUIRE | ExecutionMode.FIT | ExecutionMode.UPDATE
 """Perform acquisition and fitting."""
