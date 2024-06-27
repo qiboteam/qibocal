@@ -11,6 +11,7 @@ from .acquisition import acquire as acquisition
 from .autocalibration import autocalibrate
 from .fit import fit as fitting
 from .report import report as reporting
+from .update import update as updating
 from .upload import upload_report
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -165,6 +166,35 @@ def fit(
 
     """
     fitting(input_folder, update, output_folder, force)
+
+
+@command.command(context_settings=CONTEXT_SETTINGS)
+@click.argument(
+    "input_folder",
+    metavar="input_folder",
+    type=click.Path(exists=True, path_type=pathlib.Path),
+)
+@click.option(
+    "output_folder",
+    "-o",
+    type=click.Path(path_type=pathlib.Path),
+    help="Output folder where fit is generated.",
+)
+@click.option(
+    "force",
+    "-f",
+    is_flag=True,
+    help="Use --force option to overwrite the output folder.",
+)
+def update(input_folder: pathlib.Path, output_folder: pathlib.Path, force: bool):
+    """Update platform according to qibocal report
+
+    Arguments:
+
+    - FOLDER: input folder.
+
+    """
+    updating(input_folder, output_folder, force)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
