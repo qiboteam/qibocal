@@ -174,7 +174,7 @@ class Completed:
         be added
     """
     path: Optional[Path] = None
-    """Folder contaning data and results file for task."""
+    """Folder contaning data and results files for task."""
     _data: Optional[Data] = None
     """Protocol data."""
     _results: Optional[Results] = None
