@@ -38,14 +38,15 @@ def autocalibrate(runcard: Runcard, folder: Path, force, update):
     platform.connect()
 
     # run
+    meta.start()
     history = run(output=path, runcard=runcard, platform=platform, mode=AUTOCALIBRATION)
+    meta.end()
 
     # TODO: implement iterative dump of report...
 
     # stop and disconnect platform
     platform.disconnect()
 
-    meta.end()
     output.dump(path)
 
     report(path, history)
