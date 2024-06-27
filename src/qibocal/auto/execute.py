@@ -40,7 +40,7 @@ class Executor:
     @classmethod
     def create(
         cls,
-        platform: Union[Platform, str] = None,
+        platform: Union[Platform, str],
         output: Optional[os.PathLike] = None,
     ):
         """Load list of protocols."""
@@ -49,7 +49,7 @@ class Executor:
         )
         output = Path(output) if output is not None else (Path.cwd() / "qibocal_output")
         return cls(
-            history=History(),
+            history=History({}),
             output=output,
             platform=platform,
             targets=list(platform.qubits),
