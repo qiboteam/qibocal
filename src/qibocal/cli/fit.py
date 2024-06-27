@@ -13,11 +13,10 @@ from ..auto.history import add_timings_to_meta
 from ..auto.mode import ExecutionMode
 from ..auto.operation import RESULTSFILE
 from ..auto.runcard import Runcard
-from .utils import META, RUNCARD, UPDATED_PLATFORM
 
 
 def fit(input_path, update, output_path, force):
-    """Post-processing analysis
+    """Post-processing analysis.
 
     Arguments:
 

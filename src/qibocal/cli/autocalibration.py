@@ -10,13 +10,6 @@ from ..auto.execute import run
 from ..auto.history import add_timings_to_meta
 from ..auto.mode import AUTOCALIBRATION
 from .report import report
-from .utils import (
-    META,
-    PLATFORM,
-    UPDATED_PLATFORM,
-    generate_meta,
-    generate_output_folder,
-)
 
 
 def autocalibrate(runcard: Runcard, folder, force, update):

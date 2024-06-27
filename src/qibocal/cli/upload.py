@@ -12,8 +12,6 @@ from urllib.parse import urljoin
 import yaml
 from qibo.config import log, raise_error
 
-from .utils import META
-
 # options for report upload
 UPLOAD_HOST = (
     "qibocal@localhost"

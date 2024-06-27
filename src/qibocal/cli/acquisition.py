@@ -9,11 +9,10 @@ from qibolab.serialize import dump_platform
 from ..auto.execute import run
 from ..auto.history import add_timings_to_meta
 from ..auto.mode import ExecutionMode
-from .utils import META, PLATFORM, RUNCARD, generate_meta, generate_output_folder
 
 
 def acquire(runcard, folder, force):
-    """Data acquisition
+    """Data acquisition.
 
     Arguments:
 
