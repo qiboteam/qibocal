@@ -7,14 +7,17 @@ from pathlib import Path
 from typing import Optional
 
 from qibocal.config import log
+from qibocal.version import __version__
 
 from .history import History
 
 
 @dataclass
 class Versions:
-    qibocal: str
+    """Versions of the main software used."""
+
     other: dict
+    qibocal: str = __version__
 
 
 @dataclass
@@ -34,11 +37,8 @@ class Metadata:
         - storing qq runcard
         - generating meta.yml
         """
-
-        import qibocal
-
         now = datetime.now(timezone.utc)
-        versions = Versions(qibocal=qibocal.__version__, other=backend.versions)
+        versions = Versions(other=backend.versions)
         return cls(
             title=path.name,
             backend=backend.name,
@@ -79,6 +79,12 @@ META = "meta.json"
 
 @dataclass
 class Output:
+    """Output manager.
+
+    This object represents the output folder, serializing from and
+    deserialing to it.
+    """
+
     history: History
     meta: Metadata
 

@@ -11,7 +11,6 @@ from qibolab.qubits import QubitId, QubitPairId
 from qibocal.auto.history import History
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import Completed
-from qibocal.cli.utils import META, RUNCARD
 from qibocal.config import log
 from qibocal.web.report import STYLES, TEMPLATES, Report
 
@@ -43,9 +42,8 @@ def plotter(
 ) -> tuple[str, str]:
     """Run plotly pipeline for generating html.
 
-    Performs conversions of plotly figures in html rendered code for completed
-    node on specific target.
-
+    Performs conversions of plotly figures in html rendered code for
+    completed node on specific target.
     """
     figures, fitting_report = generate_figures_and_report(node, target)
     buffer = io.StringIO()
