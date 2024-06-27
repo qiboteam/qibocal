@@ -57,9 +57,7 @@ class Executor:
             action = parameters
         task = Task(action, protocol)
         if isinstance(mode, ExecutionMode):
-            log.info(
-                f"Executing mode {mode.name if mode.name is not None else 'AUTOCALIBRATION'} on {task.id}."
-            )
+            log.info(f"Executing mode {mode} on {task.id}.")
 
         if ExecutionMode.ACQUIRE in mode and task.id in self.history:
             raise_error(KeyError, f"{task.id} already contains acquisition data.")
