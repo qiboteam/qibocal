@@ -14,10 +14,19 @@ from .mode import ExecutionMode
 from .operation import Data, DummyPars, Results, Routine, dummy_operation
 from .runcard import Action, Id, Targets
 
+
+@dataclass
+class TaskId:
+    """Unique identifier for executed tasks."""
+
+    id: Id
+    iteration: int
+
+
 DEFAULT_NSHOTS = 100
 """Default number on shots when the platform is not provided."""
-TaskId = tuple[Id, int]
-"""Unique identifier for executed tasks."""
+PLATFORM_DIR = "platform"
+"""Folder where platform will be dumped."""
 
 
 @dataclass

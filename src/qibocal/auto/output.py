@@ -9,11 +9,10 @@ from typing import Optional
 from qibolab import Platform
 from qibolab.serialize import dump_platform
 
-from qibocal.auto.task import TaskId
-from qibocal.config import log
-from qibocal.version import __version__
-
+from ..config import log
+from ..version import __version__
 from .history import History
+from .task import TaskId
 
 
 @dataclass

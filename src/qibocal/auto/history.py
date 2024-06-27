@@ -3,13 +3,10 @@
 from pathlib import Path
 from typing import Optional
 
-from qibocal.config import raise_error
-
-from .runcard import Id
-from .task import Completed
+from .task import Completed, TaskId
 
 
-class History(dict[Id, Completed]):
+class History(dict[TaskId, Completed]):
     """Execution history.
 
     This is not only used for logging and debugging, but it is an actual
@@ -27,11 +24,11 @@ class History(dict[Id, Completed]):
 
     def push(self, completed: Completed):
         """Adding completed task to history."""
-        if completed.task.id in self:
-            # patch to make sure that calling fit after acquire works
-            if self[completed.task.id]._results is not None:
-                raise_error(KeyError, f"{completed.task.id} already in History.")
-        self[completed.task.id] = completed
+        id = TaskId(completed.task.id, 0)
+        while id in self:
+            id.iteration += 1
+
+        self[id] = completed
 
     @staticmethod
     def route(completed: Completed, folder: Path):
