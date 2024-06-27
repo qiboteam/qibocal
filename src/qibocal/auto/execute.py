@@ -78,9 +78,8 @@ class Executor:
         return completed
 
 
-def run(runcard: Runcard, output: Path, mode: ExecutionMode, update: bool = True):
+def run(runcard: Runcard, output: Path, platform: Platform, mode: ExecutionMode):
     """Run runcard and dump to output."""
-    platform = runcard.platform_obj
     targets = runcard.targets if runcard.targets is not None else list(platform.qubits)
     history = History.load(output)
     instance = Executor(

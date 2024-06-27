@@ -20,29 +20,30 @@ def autocalibrate(runcard: Runcard, folder: Path, force, update):
     # rename for brevity
     backend = construct_backend(backend=runcard.backend, platform=runcard.platform)
     platform = backend.platform
+    if platform is None:
+        raise ValueError("Qibocal requires a Qibolab platform to run.")
+
     # generate output folder
     path = Output.mkdir(folder, force)
+
+    # dump action runcard
+    runcard.dump(path)
 
     # generate meta
     meta = Metadata.generate(path.name, backend, str(platform))
     output = Output(History(), meta, platform)
     output.dump(path)
 
-    # dump action runcard
-    runcard.dump(path)
-
     # connect and initialize platform
-    if platform is not None:
-        platform.connect()
+    platform.connect()
 
     # run
-    history = run(output=path, runcard=runcard, mode=AUTOCALIBRATION, update=update)
+    history = run(output=path, runcard=runcard, platform=platform, mode=AUTOCALIBRATION)
 
     # TODO: implement iterative dump of report...
 
     # stop and disconnect platform
-    if platform is not None:
-        platform.disconnect()
+    platform.disconnect()
 
     meta.end()
     output.dump(path)
