@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from qibocal.auto.task import TaskId
 from qibocal.config import log
 from qibocal.version import __version__
 
@@ -21,12 +22,23 @@ class Versions:
 
 
 @dataclass
+class TaskStats:
+    acquisition: float
+    fit: float
+
+    @property
+    def tot(self) -> float:
+        return self.acquisition + self.fit
+
+
+@dataclass
 class Metadata:
     title: str
     backend: str
     platform: str
     start_time: datetime
     end_time: Optional[datetime]
+    stats: dict[TaskId, TaskStats]
     versions: Versions
     more: Optional[dict] = None
 
@@ -45,6 +57,7 @@ class Metadata:
             platform=str(platform),
             start_time=now,
             end_time=None,
+            stats={},
             versions=versions,
         )
 
@@ -106,3 +119,9 @@ class Output:
 
         log.info(f"Creating directory {path}.")
         path.mkdir(parents=True)
+
+    def export_stats(self):
+        self.meta.stats = {
+            id: TaskStats(completed.data_time, completed.results_time)
+            for id, completed in self.history.items()
+        }
