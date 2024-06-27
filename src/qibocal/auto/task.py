@@ -15,11 +15,6 @@ from .mode import ExecutionMode
 from .operation import Data, DummyPars, Results, Routine, dummy_operation
 from .runcard import Action, Id, Targets
 
-MAX_PRIORITY = int(1e9)
-"""A number bigger than whatever will be manually typed.
-
-But not so insanely big not to fit in a native integer.
-"""
 DEFAULT_NSHOTS = 100
 """Default number on shots when the platform is not provided."""
 TaskId = tuple[Id, int]
