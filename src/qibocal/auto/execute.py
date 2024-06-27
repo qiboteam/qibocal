@@ -62,11 +62,10 @@ class Executor:
         completed = task.run(platform=self.platform, targets=self.targets, mode=mode)
 
         if ExecutionMode.FIT in mode and self.platform is not None:
-            completed.update_platform(platform=self.platform, update=self.update)
+            if self.update and task.update:
+                completed.update_platform(platform=self.platform)
 
         self.history.push(completed)
-        completed.dump()
-
         return completed
 
 
@@ -74,17 +73,18 @@ def run(runcard: Runcard, output: Path, mode: ExecutionMode):
     """Run runcard and dump to output."""
     platform = runcard.platform_obj
     targets = runcard.targets if runcard.targets is not None else list(platform.qubits)
+    history = History.load(output)
     instance = Executor(
-        history=History.load(output),
+        history=history,
         platform=platform,
         targets=targets,
         update=runcard.update,
     )
 
     for action in runcard.actions:
-        instance.run_protocol(
-            protocol=getattr(protocols, action.operation),
-            parameters=action,
-            mode=mode,
+        completed = instance.run_protocol(
+            protocol=getattr(protocols, action.operation), parameters=action, mode=mode
         )
+        completed.path = history.route(completed, output)
+        completed.dump()
     return instance.history
