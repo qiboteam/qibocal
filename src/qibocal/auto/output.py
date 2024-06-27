@@ -36,10 +36,12 @@ class TaskStats:
 
 @dataclass
 class Metadata:
+    """Execution metadata."""
+
     title: str
     backend: str
     platform: str
-    start_time: datetime
+    start_time: Optional[datetime]
     end_time: Optional[datetime]
     stats: dict[TaskId, TaskStats]
     versions: Versions
@@ -52,17 +54,20 @@ class Metadata:
         - storing qq runcard
         - generating meta.yml
         """
-        now = datetime.now(timezone.utc)
         versions = Versions(other=backend.versions)
         return cls(
             title=name,
             backend=backend.name,
             platform=platform,
-            start_time=now,
+            start_time=None,
             end_time=None,
             stats={},
             versions=versions,
         )
+
+    def start(self):
+        """Register completion time."""
+        self.start_time = datetime.now(timezone.utc)
 
     def end(self):
         """Register completion time."""
