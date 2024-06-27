@@ -43,7 +43,7 @@ def test_named_executor(params, platform, tmp_path):
     """Create method of Executor."""
     executor = Executor.create("myexec", platform=platform, output=tmp_path)
     executor.run_protocol(flipping, params)
-    del sys.modules["myexec"]
+    executor.unload()
 
 
 SCRIPTS = Path(__file__).parent / "scripts"
