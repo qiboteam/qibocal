@@ -9,7 +9,6 @@ from qibolab.serialize import dump_runcard
 from qibocal.config import log, raise_error
 
 from ..auto.execute import run
-from ..auto.history import add_timings_to_meta
 from ..auto.mode import ExecutionMode
 from ..auto.operation import RESULTSFILE
 from ..auto.runcard import Runcard

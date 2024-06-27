@@ -1,6 +1,7 @@
 """Track execution history."""
 
 from pathlib import Path
+from typing import Optional
 
 from qibocal.config import raise_error
 
@@ -31,5 +32,25 @@ class History(dict[Id, Completed]):
             if self[completed.task.id]._results is not None:
                 raise_error(KeyError, f"{completed.task.id} already in History.")
         self[completed.task.id] = completed
+
+    @staticmethod
+    def route(completed: Completed, folder: Path):
+        """Determine the path related to a completed task.
+
+        `folder` should be ussually the general output folder, used by Qibocal to store
+        all the execution results. Cf. :cls:`qibocal.auto.output.Output`.
+        """
+        return folder / "data" / f"{completed.task.id}"
+
+    def flush(self, output: Optional[Path] = None):
+        """Flush all content to disk.
+
+        Specifying `output` is possible to select which folder should be considered as
+        the general Qibocal output folder. Cf. :cls:`qibocal.auto.output.Output`.
+        """
+        for completed in self.values():
+            if output is not None:
+                completed.path = self.route(completed, output)
+            completed.dump()
 
     # TODO: implement time_travel()

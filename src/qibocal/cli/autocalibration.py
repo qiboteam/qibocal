@@ -1,18 +1,18 @@
 import datetime
 import json
+from pathlib import Path
 
 from qibo.backends import set_backend
 from qibolab.serialize import dump_platform
 
-from qibocal.auto.runcard import Runcard
-
 from ..auto.execute import run
-from ..auto.history import add_timings_to_meta
 from ..auto.mode import AUTOCALIBRATION
+from ..auto.output import Metadata, Output
+from ..auto.runcard import Runcard
 from .report import report
 
 
-def autocalibrate(runcard: Runcard, folder, force, update):
+def autocalibrate(runcard: Runcard, folder: Path, force, update):
     """Autocalibration.
 
     Arguments:
@@ -24,10 +24,11 @@ def autocalibrate(runcard: Runcard, folder, force, update):
     backend = runcard.backend_obj
     platform = runcard.platform_obj
     # generate output folder
-    path = generate_output_folder(folder, force)
+    path = Output.mkdir(folder, force)
 
     # generate meta
-    meta = generate_meta(runcard.backend_obj, runcard.platform_obj, path)
+    meta = Metadata.generate(path.name, backend, str(platform))
+
     # dump platform
     if backend.name == "qibolab":
         (path / PLATFORM).mkdir(parents=True, exist_ok=True)

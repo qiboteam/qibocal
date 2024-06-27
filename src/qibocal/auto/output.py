@@ -43,7 +43,7 @@ class Metadata:
     more: Optional[dict] = None
 
     @classmethod
-    def generate(cls, backend, platform, path: Path):
+    def generate(cls, name: str, backend, platform: str):
         """Methods that takes care of:
         - dumping original platform
         - storing qq runcard
@@ -52,9 +52,9 @@ class Metadata:
         now = datetime.now(timezone.utc)
         versions = Versions(other=backend.versions)
         return cls(
-            title=path.name,
+            title=name,
             backend=backend.name,
-            platform=str(platform),
+            platform=platform,
             start_time=now,
             end_time=None,
             stats={},
@@ -108,7 +108,8 @@ class Output:
             meta=Metadata(**json.loads((path / META).read_text())),
         )
 
-    def dump(self, path: Optional[Path] = None, force: bool = False):
+    @staticmethod
+    def mkdir(path: Optional[Path] = None, force: bool = False):
         if path is None:
             path = _new_output()
         elif path.exists() and not force:
@@ -119,6 +120,10 @@ class Output:
 
         log.info(f"Creating directory {path}.")
         path.mkdir(parents=True)
+        return path
+
+    def dump(self):
+        pass
 
     def export_stats(self):
         self.meta.stats = {

@@ -3,7 +3,6 @@
 import copy
 from dataclasses import dataclass
 from pathlib import Path
-from statistics import mode
 from typing import Optional
 
 from qibolab.platform import Platform
@@ -61,15 +60,14 @@ class Task:
 
     def run(
         self,
-        platform: Platform = None,
-        targets: Targets = list,
-        mode: ExecutionMode = None,
-        folder: Path = None,
+        platform: Optional[Platform] = None,
+        targets: Optional[Targets] = None,
+        mode: Optional[ExecutionMode] = None,
     ):
         if self.targets is None:
             self.action.targets = targets
 
-        completed = Completed(self, folder)
+        completed = Completed(self)
 
         try:
             if platform is not None:
@@ -119,8 +117,8 @@ class Completed:
         once tasks will be immutable, a separate `iteration` attribute should
         be added
     """
-    folder: Optional[Path] = None
-    """Folder with data and results."""
+    path: Optional[Path] = None
+    """Folder contaning data and results file for task."""
     _data: Optional[Data] = None
     """Protocol data."""
     _results: Optional[Results] = None
@@ -134,60 +132,52 @@ class Completed:
         self.task = copy.deepcopy(self.task)
 
     @property
-    def datapath(self) -> Path:
-        """Path contaning data and results file for task."""
-        path = self.folder / "data" / f"{self.task.id}"
-        if not path.is_dir():
-            path.mkdir(parents=True)
-        return path
+    def data(self):
+        """Access task's data."""
+        if self._data is None:
+            Data = self.task.operation.data_type
+            self._data = Data.load(self.path)
+        return self._data
 
     @property
     def results(self):
         """Access task's results."""
         if self._results is None:
             Results = self.task.operation.results_type
-            self._results = Results.load(self.datapath)
+            self._results = Results.load(self.path)
         return self._results
 
-    @results.setter
-    def results(self, results: Results):
-        """Set and store results."""
-        self._results = results
-        self._results.save(self.datapath)
-
-    @property
-    def data(self):
-        """Access task's data."""
-        if self._data is None:
-            Data = self.task.operation.data_type
-            self._data = Data.load(self.datapath)
-        return self._data
-
-    @data.setter
-    def data(self, data: Data):
-        """Set and store data."""
-        self._data = data
-        self._data.save(self.datapath)
-
     def dump(self):
-        """test."""
-        self.task.dump(self.datapath)
+        """Dump object to disk."""
+        if self.path is None:
+            raise ValueError("No known path where to dump execution results.")
+
+        self.task.dump(self.path)
+        if self._data is not None:
+            self._data.save(self.path)
+        if self._results is not None:
+            self._results.save(self.path)
+
+    def flush(self):
+        """Dump disk, and release from memory."""
+        self.dump()
+        self._data = None
+        self._results = None
 
     @classmethod
-    def load(cls, folder: Path):
+    def load(cls, path: Path):
         """Loading completed from path."""
 
-        task = Task.load(folder)
-        return cls(task=task, folder=folder.parents[1])
+        task = Task.load(path)
+        return cls(path=path, task=task)
 
-    def update_platform(self, platform: Platform, update: bool):
+    def update_platform(self, platform: Platform):
         """Perform update on platform' parameters by looping over qubits or
         pairs."""
-        if self.task.update and update:
-            for qubit in self.task.targets:
-                try:
-                    self.task.operation.update(self.results, platform, qubit)
-                except KeyError:
-                    log.warning(
-                        f"Skipping update of qubit {qubit} due to error in fit."
-                    )
+        for qubit in self.task.targets:
+            try:
+                self.task.operation.update(self.results, platform, qubit)
+            except KeyError:
+                log.warning(f"Skipping update of qubit {qubit} due to error in fit.")
+        (self.path / PLATFORM_DIR).mkdir(parents=True, exist_ok=True)
+        dump_platform(platform, self.path / PLATFORM_DIR)
