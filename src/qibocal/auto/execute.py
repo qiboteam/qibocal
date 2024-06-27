@@ -92,7 +92,7 @@ class Executor:
     @classmethod
     def create(
         cls,
-        name: str,
+        name: Optional[str] = None,
         platform: Union[Platform, str, None] = None,
         output: Optional[os.PathLike] = None,
     ):
@@ -155,6 +155,27 @@ class Executor:
         completed.dump(self.output)
 
         return completed
+
+    def unload(self):
+        """Unlist the executor from available modules."""
+        if self.name is not None:
+            del sys.modules[self.name]
+
+    def __del__(self):
+        """Revert constructions side-effects.
+
+        .. note::
+
+            This is to make sure that the executor is properly unregistered from
+            `sys.modules`. However, it is not reliable to be called directly, since `del
+            executor` is not guaranteed to immediately invoke this method, cf. the note
+            for :meth:`object.__del__`.
+        """
+        try:
+            self.unload()
+        except KeyError:
+            # it has been explicitly unloaded, no need to do it again
+            pass
 
 
 def run(runcard: Runcard, output: Path, mode: ExecutionMode):
