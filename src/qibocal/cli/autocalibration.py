@@ -1,11 +1,9 @@
-import datetime
-import json
 from pathlib import Path
 
-from qibo.backends import set_backend
-from qibolab.serialize import dump_platform
+from qibo.backends import construct_backend
 
 from ..auto.execute import run
+from ..auto.history import History
 from ..auto.mode import AUTOCALIBRATION
 from ..auto.output import Metadata, Output
 from ..auto.runcard import Runcard
@@ -19,25 +17,19 @@ def autocalibrate(runcard: Runcard, folder: Path, force, update):
 
      - RUNCARD: runcard with declarative inputs.
     """
-    set_backend(backend=runcard.backend, platform=runcard.platform)
     # rename for brevity
-    backend = runcard.backend_obj
-    platform = runcard.platform_obj
+    backend = construct_backend(backend=runcard.backend, platform=runcard.platform)
+    platform = backend.platform
     # generate output folder
     path = Output.mkdir(folder, force)
 
     # generate meta
     meta = Metadata.generate(path.name, backend, str(platform))
-
-    # dump platform
-    if backend.name == "qibolab":
-        (path / PLATFORM).mkdir(parents=True, exist_ok=True)
-        dump_platform(platform, path / PLATFORM)
+    output = Output(History(), meta, platform)
+    output.dump(path)
 
     # dump action runcard
-    runcard.dump(folder)
-    # dump meta
-    (path / META).write_text(json.dumps(meta, indent=4))
+    runcard.dump(path)
 
     # connect and initialize platform
     if platform is not None:
@@ -52,14 +44,7 @@ def autocalibrate(runcard: Runcard, folder: Path, force, update):
     if platform is not None:
         platform.disconnect()
 
-    e = datetime.datetime.now(datetime.timezone.utc)
-    meta["end-time"] = e.strftime("%H:%M:%S")
-    meta = add_timings_to_meta(meta, history)
-    (path / META).write_text(json.dumps(meta, indent=4))
+    meta.end()
+    output.dump(path)
 
     report(path, history)
-
-    # dump updated runcard
-    if platform is not None:
-        (path / UPDATED_PLATFORM).mkdir(parents=True, exist_ok=True)
-        dump_platform(platform, path / UPDATED_PLATFORM)

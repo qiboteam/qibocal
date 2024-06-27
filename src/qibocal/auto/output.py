@@ -1,10 +1,13 @@
 import getpass
 import json
 import shutil
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
+
+from qibolab import Platform
+from qibolab.serialize import dump_platform
 
 from qibocal.auto.task import TaskId
 from qibocal.config import log
@@ -100,6 +103,7 @@ class Output:
 
     history: History
     meta: Metadata
+    platform: Optional[Platform] = None
 
     @classmethod
     def load(cls, path: Path):
@@ -122,10 +126,31 @@ class Output:
         path.mkdir(parents=True)
         return path
 
-    def dump(self):
-        pass
+    def dump(self, path: Path):
+        # dump metadata
+        self._export_stats()
+        (path / META).write_text(json.dumps(asdict(self.meta), indent=4))
 
-    def export_stats(self):
+        # dump tasks
+        self.history.flush(path)
+
+        # dump platform used
+        # if the original one is not defined, use the current one as the original,
+        # else update the new one
+        if self.platform is not None:
+            platpath = path / PLATFORM
+            if platpath.is_dir():
+                platpath = path / UPDATED_PLATFORM
+
+            platpath.mkdir(parents=True, exist_ok=True)
+            dump_platform(self.platform, platpath)
+
+    def _export_stats(self):
+        """Export task statistics.
+
+        Extract statistics from the history, and record them in the
+        metadata.
+        """
         self.meta.stats = {
             id: TaskStats(completed.data_time, completed.results_time)
             for id, completed in self.history.items()
