@@ -7,9 +7,6 @@ from typing import Any, NewType, Optional, Union
 
 import yaml
 from pydantic.dataclasses import dataclass
-from qibo.backends import GlobalBackend
-from qibo.backends.abstract import Backend
-from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
 from .operation import OperationId
@@ -42,7 +39,7 @@ class Action:
     """Input parameters, either values or provider reference."""
 
     def dump(self, path: Path):
-        """Dump single action to yaml"""
+        """Dump single action to yaml."""
         (path / SINGLE_ACTION).write_text(yaml.safe_dump(asdict(self)))
 
     @classmethod
@@ -59,23 +56,15 @@ class Runcard:
     """List of action to be executed."""
     targets: Optional[Targets] = None
     """Qubits to be calibrated.
-       If `None` the protocols will be executed on all qubits
-       available in the platform."""
+
+    If `None` the protocols will be executed on all qubits
+    available in the platform.
+    """
     backend: str = "qibolab"
     """Qibo backend."""
     platform: str = os.environ.get("QIBO_PLATFORM", "dummy")
     """Qibolab platform."""
     update: bool = True
-
-    @property
-    def backend_obj(self) -> Backend:
-        """Allocate backend."""
-        return GlobalBackend()
-
-    @property
-    def platform_obj(self) -> Platform:
-        """Allocate platform."""
-        return self.backend_obj.platform
 
     @classmethod
     def load(cls, runcard: Union[dict, os.PathLike]):
