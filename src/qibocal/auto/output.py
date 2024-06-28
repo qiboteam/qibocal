@@ -72,6 +72,14 @@ class Metadata:
         """Register completion time."""
         self.end_time = datetime.now(timezone.utc)
 
+    def dump(self) -> dict:
+        """Dump to serializable to dictionary."""
+        d = asdict(self)
+        d["start_time"] = str(d["start_time"]) if self.start_time is not None else None
+        d["end_time"] = str(d["end_time"]) if self.end_time is not None else None
+
+        return d
+
 
 def _new_output() -> Path:
     user = getpass.getuser().replace(".", "-")
@@ -133,7 +141,7 @@ class Output:
     def dump(self, path: Path):
         # dump metadata
         self._export_stats()
-        (path / META).write_text(json.dumps(asdict(self.meta), indent=4))
+        (path / META).write_text(json.dumps(self.meta.dump(), indent=4))
 
         # dump tasks
         self.history.flush(path)
