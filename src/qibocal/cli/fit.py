@@ -1,17 +1,33 @@
-import datetime
-import json
-import pathlib
 import shutil
+from pathlib import Path
+from typing import Optional
 
 import yaml
-from qibolab.serialize import dump_runcard
 
-from qibocal.config import log, raise_error
-
+from ..auto.output import Output
+from ..config import log, raise_error
 from ..auto.execute import run
 from ..auto.mode import ExecutionMode
 from ..auto.operation import RESULTSFILE
-from ..auto.runcard import Runcard
+from ..auto.runcard import Runcard, RUNCARD
+
+
+def mkoutput(input: Path, output: Optional[Path], force: bool):
+    if output is not None:
+        if output.exists():
+            if not force:
+                raise_error(RuntimeError, f"Directory {output} already exists.")
+            # overwrite output_path
+            log.warning(f"Deleting previous directory {output}.")
+            shutil.rmtree(output)
+        return shutil.copytree(input, output)
+
+    if len(list(input.glob(f"**/{RESULTSFILE}.json"))) > 0:
+        if force:
+            log.warning(f"Overwriting fit in {input}.")
+        else:
+            raise_error(RuntimeError, f"Directory {input} contains fitting results.")
+    return input
 
 
 def fit(input_path, update, output_path, force):
@@ -23,49 +39,19 @@ def fit(input_path, update, output_path, force):
     - update: perform platform update
     - output_path: new folder with data and fit
     """
+    path = mkoutput(input_path, output_path, force)
 
-    if output_path is not None:
-        if output_path.exists():
-            if force is False:
-                raise_error(RuntimeError, f"Directory {output_path} already exists.")
-            # overwrite output_path
-            log.warning(f"Deleting previous directory {output_path}.")
-            shutil.rmtree(pathlib.Path.cwd() / output_path)
-        path = shutil.copytree(input_path, output_path)
-    else:
-        if len(list(input_path.glob(f"**/{RESULTSFILE}.json"))) > 0:
-            if force:
-                log.warning(f"Overwriting fit in {input_path}.")
-            else:
-                raise_error(
-                    RuntimeError, f"Directory {input_path} contains fitting results."
-                )
-        path = input_path
-
-    meta = json.loads((path / META).read_text())
+    output = Output.load(path)
     # load runcard
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
 
     # run
-    history = run(
+    output.history = run(
         output=path,
         runcard=runcard,
         mode=ExecutionMode.FIT,
+        platform=output.platform,
     )
 
     # update time in meta
-    meta = add_timings_to_meta(meta, history)
-    e = datetime.datetime.now(datetime.timezone.utc)
-    meta["end-time"] = e.strftime("%H:%M:%S")
-
-    # checking if at least on the task had local update
-    local_update = any(completed.task.update for completed in list(history.values()))
-
-    # dump updated runcard
-    if runcard.platform_obj is not None:
-        (path / UPDATED_PLATFORM).mkdir(parents=True, exist_ok=True)
-        dump_runcard(runcard.platform_obj, path / UPDATED_PLATFORM)
-
-    # dump json
-
-    (path / META).write_text(json.dumps(meta, indent=4))
+    output.dump(path)
