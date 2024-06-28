@@ -78,7 +78,9 @@ class Executor:
         return completed
 
 
-def run(runcard: Runcard, output: Path, platform: Platform, mode: ExecutionMode):
+def run(
+    runcard: Runcard, output: Path, platform: Platform, mode: ExecutionMode
+) -> History:
     """Run runcard and dump to output."""
     targets = runcard.targets if runcard.targets is not None else list(platform.qubits)
     history = History.load(output)
@@ -90,9 +92,8 @@ def run(runcard: Runcard, output: Path, platform: Platform, mode: ExecutionMode)
     )
 
     for action in runcard.actions:
-        completed = instance.run_protocol(
+        instance.run_protocol(
             protocol=getattr(protocols, action.operation), parameters=action, mode=mode
         )
-        completed.path = history.route(completed, output)
-        completed.dump()
+        instance.history.flush()
     return instance.history
