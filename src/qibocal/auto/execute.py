@@ -79,16 +79,18 @@ class Executor:
 
 
 def run(
-    runcard: Runcard, output: Path, platform: Platform, mode: ExecutionMode
+    runcard: Runcard,
+    output: Path,
+    platform: Platform,
+    mode: ExecutionMode,
+    update: bool,
 ) -> History:
     """Run runcard and dump to output."""
     targets = runcard.targets if runcard.targets is not None else list(platform.qubits)
     history = History.load(output)
+    update = update and runcard.update
     instance = Executor(
-        history=history,
-        platform=platform,
-        targets=targets,
-        update=runcard.update,
+        history=history, platform=platform, targets=targets, update=update
     )
 
     for action in runcard.actions:

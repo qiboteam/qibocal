@@ -4,12 +4,12 @@ from typing import Optional
 
 import yaml
 
-from ..auto.output import Output
-from ..config import log, raise_error
 from ..auto.execute import run
 from ..auto.mode import ExecutionMode
 from ..auto.operation import RESULTSFILE
-from ..auto.runcard import Runcard, RUNCARD
+from ..auto.output import Output
+from ..auto.runcard import RUNCARD, Runcard
+from ..config import log, raise_error
 
 
 def mkoutput(input: Path, output: Optional[Path], force: bool):
@@ -51,6 +51,7 @@ def fit(input_path, update, output_path, force):
         runcard=runcard,
         mode=ExecutionMode.FIT,
         platform=output.platform,
+        update=update,
     )
 
     # update time in meta
