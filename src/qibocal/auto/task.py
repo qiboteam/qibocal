@@ -15,7 +15,7 @@ from .operation import Data, DummyPars, Results, Routine, dummy_operation
 from .runcard import Action, Id, Targets
 
 
-@dataclass
+@dataclass(frozen=True)
 class TaskId:
     """Unique identifier for executed tasks."""
 
@@ -167,6 +167,7 @@ class Completed:
         if self.path is None:
             raise ValueError("No known path where to dump execution results.")
 
+        self.path.mkdir(parents=True)
         self.task.dump(self.path)
         if self._data is not None:
             self._data.save(self.path)
