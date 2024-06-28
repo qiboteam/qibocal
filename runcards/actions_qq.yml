@@ -3,7 +3,7 @@ platform: dummy
 targets: [0, 1]
 
 actions:
-  - id: resoantor_amplitude
+  - id: resonator_amplitude
     operation: resonator_amplitude
     parameters:
       amplitude_step: 0.1
