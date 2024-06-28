@@ -39,7 +39,13 @@ def autocalibrate(runcard: Runcard, folder: Path, force, update):
 
     # run
     meta.start()
-    history = run(output=path, runcard=runcard, platform=platform, mode=AUTOCALIBRATION)
+    history = run(
+        output=path,
+        runcard=runcard,
+        platform=platform,
+        mode=AUTOCALIBRATION,
+        update=update,
+    )
     meta.end()
 
     # TODO: implement iterative dump of report...
