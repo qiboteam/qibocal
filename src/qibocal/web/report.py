@@ -26,11 +26,14 @@ class Report:
     """Plotting function to generate html."""
 
     @staticmethod
-    def routine_name(routine):
+    def routine_name(routine: TaskId):
         """Prettify routine's name for report headers."""
-        return routine.title()
+        return routine.id.title()
 
     def routine_targets(self, task_id: TaskId):
-        """Get local targets parameter from Task if available otherwise use global one."""
+        """Extract local targets parameter from Task.
+
+        If not available use the global ones.
+        """
         local_targets = self.history[task_id].task.targets
         return local_targets if len(local_targets) > 0 else self.targets

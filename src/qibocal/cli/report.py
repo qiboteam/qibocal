@@ -1,5 +1,4 @@
 import io
-import json
 import pathlib
 from typing import Union
 
@@ -9,7 +8,8 @@ from jinja2 import Environment, FileSystemLoader
 from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.history import History
-from qibocal.auto.runcard import Runcard
+from qibocal.auto.output import Output
+from qibocal.auto.runcard import RUNCARD, Runcard
 from qibocal.auto.task import Completed
 from qibocal.config import log
 from qibocal.web.report import STYLES, TEMPLATES, Report
@@ -67,7 +67,7 @@ def report(path: pathlib.Path, history: History = None):
     if (path / "index.html").exists():  # pragma: no cover
         log.warning(f"Regenerating {path}/index.html")
     # load meta
-    meta = json.loads((path / META).read_text())
+    output = Output.load(path)
     # load runcard
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
 
@@ -87,7 +87,7 @@ def report(path: pathlib.Path, history: History = None):
             path=path,
             targets=runcard.targets,
             history=history,
-            meta=meta,
+            meta=output.meta.dump(),
             plotter=plotter,
         ),
     )
