@@ -1,15 +1,13 @@
 platform: dummy
 
-targets: [0,1]
-
+targets: [0, 1]
 
 actions:
-
-#   - id: resoantor_amplitude
-#     operation: resonator_amplitude
-#     parameters:
-#       amplitude_step: 0.1
-#       amplitude_stop: 0.5
+  - id: resoantor_amplitude
+    operation: resonator_amplitude
+    parameters:
+      amplitude_step: 0.1
+      amplitude_stop: 0.5
 
   # - id: resonator_spectroscopy high power
   #   operation: resonator_spectroscopy
@@ -131,7 +129,7 @@ actions:
   #   operation: single_shot_classification
   #   parameters:
   #     nshots: 1024
-      # classifiers_list: ["qblox_fit", "naive_bayes"]
+  # classifiers_list: ["qblox_fit", "naive_bayes"]
 
   # - id: allXY
   #   operation: allxy
@@ -169,7 +167,6 @@ actions:
   #   parameters:
   #     nflips_max: 20
   #     nflips_step: 1
-
 #   - id: qubit flux dependence
 #     operation: qubit_flux
 #     parameters:
@@ -191,7 +188,6 @@ actions:
 #       relaxation_time: 2000
 #       transition: "01"
 
-
 #   - id: rabi
 #     operation: rabi_amplitude
 #     parameters:
@@ -200,7 +196,6 @@ actions:
 #       step_amp_factor: 0.1
 #       pulse_length: 30
 #       nshots: 1024
-
 
 #   - id: rabi length
 #     operation: rabi_length
@@ -211,7 +206,6 @@ actions:
 #       pulse_amplitude: 0.5
 #       nshots: 1024
 
-
 #   - id: rabi length sequences
 #     operation: rabi_length_sequences
 #     parameters:
@@ -221,7 +215,6 @@ actions:
 #       pulse_amplitude: 0.5
 #       nshots: 1024
 
-
 #   - id: t1
 #     operation: t1
 #     parameters:
@@ -229,7 +222,6 @@ actions:
 #       delay_before_readout_end: 20_000
 #       delay_before_readout_step: 2000
 #       nshots: 1024
-
 
 #   - id: t1 sequences
 #     operation: t1_sequences
@@ -239,7 +231,6 @@ actions:
 #       delay_before_readout_step: 2000
 #       nshots: 10
 
-
 #   - id: t2
 #     operation: t2
 #     parameters:
@@ -248,7 +239,6 @@ actions:
 #       delay_between_pulses_step: 100
 #       nshots: 10
 
-
 #   - id: t2 sequences
 #     operation: t2_sequences
 #     parameters:
@@ -256,7 +246,6 @@ actions:
 #       delay_between_pulses_end: 20000
 #       delay_between_pulses_step: 100
 #       nshots: 1024
-
 
 #   - id: ramsey_detuned
 #     operation: ramsey
@@ -267,7 +256,6 @@ actions:
 #       detuning: 1_000_000
 #       nshots: 10
 
-
 #   - id: ramsey detuned sequences
 #     operation: ramsey_sequences
 #     parameters:
@@ -277,7 +265,6 @@ actions:
 #       detuning: 1_000_000
 #       nshots: 1024
 
-
 #   - id: ramsey
 #     operation: ramsey
 #     parameters:
@@ -286,7 +273,6 @@ actions:
 #       delay_between_pulses_step: 500 # must be a multiple of 4
 #       nshots: 1024
 
-
 #   - id: single shot classification
 #     operation: single_shot_classification
 #     parameters:
@@ -294,13 +280,11 @@ actions:
 #       classifiers_list: ["qubit_fit", "naive_bayes", "qblox_fit"]
 #       savedir: results
 
-
 #   - id: allXY
 #     operation: allxy
 #     parameters:
 #       beta_param: null
 #       nshots: 10
-
 
 #   - id: allxy_drag_pulse_tuning
 #     operation: allxy_drag_pulse_tuning
@@ -310,7 +294,6 @@ actions:
 #       beta_step: 0.01
 #       nshots: 10
 
-
 #   - id: drag_pulse_tuning
 #     operation: drag_pulse_tuning
 #     parameters:
@@ -318,7 +301,6 @@ actions:
 #       beta_end: 0.02
 #       beta_step: 0.01
 #       nshots: 10
-
 
 #   - id: spin_echo
 #     operation: spin_echo
@@ -328,7 +310,6 @@ actions:
 #       delay_between_pulses_step: 2000
 #       nshots: 10
 
-
 #   - id: flipping
 #     operation: flipping
 #     parameters:
@@ -336,14 +317,12 @@ actions:
 #       nflips_step: 1
 #       nshots: 10
 
-
 #   - id: dispersive shift
 #     operation: dispersive_shift
 #     parameters:
 #       freq_width: 10_000_000
 #       freq_step: 100_000
 #       nshots: 10
-
 
 #   - id: standard rb no error
 #     operation: standard_rb
@@ -356,7 +335,6 @@ actions:
 #       nshots: 50
 #       uncertainties: None
 
-
 #   - id: standard rb
 #     operation: standard_rb
 #     targets: [1]
@@ -365,7 +343,6 @@ actions:
 #       niter: 5
 #       nshots: 50
 #       noise_model: PauliErrorOnAll
-
 
 #   - id: standard rb inhomogeneous
 #     operation: standard_rb
@@ -378,7 +355,6 @@ actions:
 #       noise_model: PauliErrorOnX
 #       noise_params: [0.01, 0.01, 0.01]
 
-
 #   - id: CHSH with pulses
 #     operation: chsh_pulses
 #     targets: [[0,1],[1,2],[0,3]]
@@ -387,7 +363,6 @@ actions:
 #       ntheta: 10
 #       bell_states: [0,1,2,3]
 #       apply_error_mitigation: True
-
 
 #   - id: CHSH with natives
 #     operation: chsh_circuits
@@ -399,7 +374,6 @@ actions:
 #       native: True
 #       apply_error_mitigation: True
 
-
 #   - id: CHSH with circuits
 #     operation: chsh_circuits
 #     targets: [[0,1],[1,2]]
@@ -408,14 +382,12 @@ actions:
 #       ntheta: 10
 #       bell_states: [0,1,2,3]
 
-
 #   - id: readout_mitigation_matrix pulses
 #     operation: readout_mitigation_matrix
 #     targets: [[0,1,2],[1,2]]
 #     parameters:
 #       nshots: 100
 #       pulses: True
-
 
 #   - id: readout_mitigation_matrix circuits
 #     operation: readout_mitigation_matrix
