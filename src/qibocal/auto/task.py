@@ -25,8 +25,6 @@ class TaskId:
 
 DEFAULT_NSHOTS = 100
 """Default number on shots when the platform is not provided."""
-PLATFORM_DIR = "platform"
-"""Folder where platform will be dumped."""
 
 
 @dataclass
@@ -148,6 +146,10 @@ class Completed:
             self._data = Data.load(self.path)
         return self._data
 
+    @data.setter
+    def data(self, value):
+        self._data = value
+
     @property
     def results(self):
         """Access task's results."""
@@ -155,6 +157,10 @@ class Completed:
             Results = self.task.operation.results_type
             self._results = Results.load(self.path)
         return self._results
+
+    @results.setter
+    def results(self, value):
+        self._results = value
 
     def dump(self):
         """Dump object to disk."""
@@ -188,5 +194,3 @@ class Completed:
                 self.task.operation.update(self.results, platform, qubit)
             except KeyError:
                 log.warning(f"Skipping update of qubit {qubit} due to error in fit.")
-        (self.path / PLATFORM_DIR).mkdir(parents=True, exist_ok=True)
-        dump_platform(platform, self.path / PLATFORM_DIR)
