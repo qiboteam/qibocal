@@ -138,16 +138,23 @@ class Output:
         # dump tasks
         self.history.flush(path)
 
-        # dump platform used
-        # if the original one is not defined, use the current one as the original,
-        # else update the new one
+        # update platform
         if self.platform is not None:
-            platpath = path / PLATFORM
-            if platpath.is_dir():
-                platpath = path / UPDATED_PLATFORM
+            self.update_platform(self.platform, path)
 
-            platpath.mkdir(parents=True, exist_ok=True)
-            dump_platform(self.platform, platpath)
+    @staticmethod
+    def update_platform(platform: Platform, path: Path):
+        """Dump platform used.
+
+        If the original one is not defined, use the current one as the
+        original, else update the new one.
+        """
+        platpath = path / PLATFORM
+        if platpath.is_dir():
+            platpath = path / UPDATED_PLATFORM
+
+        platpath.mkdir(parents=True, exist_ok=True)
+        dump_platform(platform, platpath)
 
     def _export_stats(self):
         """Export task statistics.

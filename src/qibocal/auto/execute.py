@@ -66,7 +66,7 @@ class Executor:
 
         completed = task.run(platform=self.platform, targets=self.targets, mode=mode)
 
-        if ExecutionMode.FIT in mode and self.platform is not None:
+        if ExecutionMode.FIT in mode:
             if self.update and task.update:
                 completed.update_platform(platform=self.platform)
 
