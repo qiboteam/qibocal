@@ -47,6 +47,8 @@ def autocalibrate(runcard: Runcard, folder: Path, force, update):
     # stop and disconnect platform
     platform.disconnect()
 
+    # dump history, metadata, and updated platform
+    output.history = history
     output.dump(path)
 
     report(path, history)
