@@ -2,7 +2,6 @@ from pathlib import Path
 
 from qibo.backends import construct_backend
 
-from ..auto.execute import run
 from ..auto.history import History
 from ..auto.mode import AUTOCALIBRATION
 from ..auto.output import Metadata, Output
@@ -39,9 +38,8 @@ def autocalibrate(runcard: Runcard, folder: Path, force, update):
 
     # run
     meta.start()
-    history = run(
+    history = runcard.run(
         output=path,
-        runcard=runcard,
         platform=platform,
         mode=AUTOCALIBRATION,
         update=update,

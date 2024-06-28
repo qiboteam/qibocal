@@ -1,20 +1,17 @@
 """Tasks execution."""
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Union
 
 from qibolab import create_platform
 from qibolab.platform import Platform
 
-from qibocal import protocols
 from qibocal.config import log, raise_error
 
 from .history import History
 from .mode import ExecutionMode
 from .operation import Routine
-from .runcard import Action, Runcard, Targets
-from .task import Completed, Task
+from .task import Action, Completed, Targets, Task
 
 
 @dataclass
@@ -67,26 +64,3 @@ class Executor:
 
         self.history.push(completed)
         return completed
-
-
-def run(
-    runcard: Runcard,
-    output: Path,
-    platform: Platform,
-    mode: ExecutionMode,
-    update: bool,
-) -> History:
-    """Run runcard and dump to output."""
-    targets = runcard.targets if runcard.targets is not None else list(platform.qubits)
-    history = History.load(output)
-    update = update and runcard.update
-    instance = Executor(
-        history=history, platform=platform, targets=targets, update=update
-    )
-
-    for action in runcard.actions:
-        instance.run_protocol(
-            protocol=getattr(protocols, action.operation), parameters=action, mode=mode
-        )
-        instance.history.flush()
-    return instance.history
