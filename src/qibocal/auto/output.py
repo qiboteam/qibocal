@@ -12,7 +12,6 @@ from qibolab.serialize import dump_platform
 from ..config import log
 from ..version import __version__
 from .history import History
-from .task import TaskId
 
 
 @dataclass
@@ -42,7 +41,7 @@ class Metadata:
     platform: str
     start_time: Optional[datetime]
     end_time: Optional[datetime]
-    stats: dict[TaskId, TaskStats]
+    stats: dict[str, TaskStats]
     versions: Versions
     more: Optional[dict] = None
 
@@ -171,6 +170,6 @@ class Output:
         metadata.
         """
         self.meta.stats = {
-            id: TaskStats(completed.data_time, completed.results_time)
+            str(id): TaskStats(completed.data_time, completed.results_time)
             for id, completed in self.history.items()
         }

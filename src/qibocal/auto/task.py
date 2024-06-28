@@ -1,18 +1,51 @@
 """Action execution tracker."""
 
 import copy
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Any, NewType, Optional, Union
 
+import yaml
 from qibolab.platform import Platform
+from qibolab.qubits import QubitId, QubitPairId
 
-from qibocal import protocols
-
+from .. import protocols
 from ..config import log
 from .mode import ExecutionMode
-from .operation import Data, DummyPars, Results, Routine, dummy_operation
-from .runcard import Action, Id, Targets
+from .operation import Data, DummyPars, OperationId, Results, Routine, dummy_operation
+
+Id = NewType("Id", str)
+"""Action identifiers type."""
+
+Targets = Union[list[QubitId], list[QubitPairId], list[tuple[QubitId, ...]]]
+"""Elements to be calibrated by a single protocol."""
+
+SINGLE_ACTION = "action.yml"
+
+
+@dataclass
+class Action:
+    """Action specification in the runcard."""
+
+    id: Id
+    """Action unique identifier."""
+    operation: OperationId
+    """Operation to be performed by the executor."""
+    targets: Optional[Targets] = None
+    """Local qubits (optional)."""
+    update: bool = True
+    """Runcard update mechanism."""
+    parameters: Optional[dict[str, Any]] = None
+    """Input parameters, either values or provider reference."""
+
+    def dump(self, path: Path):
+        """Dump single action to yaml."""
+        (path / SINGLE_ACTION).write_text(yaml.safe_dump(asdict(self)))
+
+    @classmethod
+    def load(cls, path):
+        """Load action from yaml."""
+        return cls(**yaml.safe_load((path / SINGLE_ACTION).read_text(encoding="utf-8")))
 
 
 @dataclass(frozen=True)
@@ -167,7 +200,7 @@ class Completed:
         if self.path is None:
             raise ValueError("No known path where to dump execution results.")
 
-        self.path.mkdir(parents=True)
+        self.path.mkdir(parents=True, exist_ok=True)
         self.task.dump(self.path)
         if self._data is not None:
             self._data.save(self.path)

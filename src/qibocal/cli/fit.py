@@ -4,7 +4,6 @@ from typing import Optional
 
 import yaml
 
-from ..auto.execute import run
 from ..auto.mode import ExecutionMode
 from ..auto.operation import RESULTSFILE
 from ..auto.output import Output
@@ -46,9 +45,8 @@ def fit(input_path, update, output_path, force):
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
 
     # run
-    output.history = run(
+    output.history = runcard.run(
         output=path,
-        runcard=runcard,
         mode=ExecutionMode.FIT,
         platform=output.platform,
         update=update,

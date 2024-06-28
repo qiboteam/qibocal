@@ -6,7 +6,6 @@ import yaml
 from qibo.backends import GlobalBackend, set_backend
 from qibolab.serialize import dump_platform
 
-from ..auto.execute import run
 from ..auto.mode import ExecutionMode
 
 
