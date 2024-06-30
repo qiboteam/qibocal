@@ -51,7 +51,7 @@ class Runcard:
         (path / RUNCARD).write_text(yaml.safe_dump(asdict(self)))
 
     def run(
-        self, output: Path, platform: Platform, mode: ExecutionMode, update: bool
+        self, output: Path, platform: Platform, mode: ExecutionMode, update: bool = True
     ) -> History:
         """Run runcard and dump to output."""
         targets = self.targets if self.targets is not None else list(platform.qubits)

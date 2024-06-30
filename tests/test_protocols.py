@@ -1,4 +1,4 @@
-"""Test routines' acquisition method using dummy_couplers platform"""
+"""Test routines' acquisition method using dummy_couplers platform."""
 
 import pathlib
 
@@ -7,8 +7,7 @@ import yaml
 from click.testing import CliRunner
 from qibolab import create_platform
 
-from qibocal.auto.execute import PLATFORM_DIR
-from qibocal.cli import utils
+from qibocal.auto.output import PLATFORM as PLATFORM_DIR
 from qibocal.cli._base import command
 from qibocal.protocols.rabi.amplitude import RabiAmplitudeData
 from qibocal.protocols.rabi.ef import RabiAmplitudeEFData
