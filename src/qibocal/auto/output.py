@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from qibo.backends import construct_backend
 from qibolab import Platform
 from qibolab.serialize import dump_platform
 
@@ -177,6 +178,10 @@ class Output:
 
     def process(self, output: Path, mode: ExecutionMode, update: bool = True):
         """Process existing output."""
+        self.platform = construct_backend(
+            backend=self.meta.backend, platform=self.meta.platform
+        ).platform
+
         for completed in self.history:
             completed.task.run(platform=self.platform, mode=mode, folder=completed.path)
             self.history.flush(output)
