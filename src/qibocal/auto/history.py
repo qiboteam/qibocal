@@ -1,18 +1,48 @@
 """Track execution history."""
 
+from collections import defaultdict
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
-from .task import Completed, TaskId
+from .task import Completed, Id, TaskId
 
 
-class History(dict[TaskId, Completed]):
+@dataclass
+class History:
     """Execution history.
 
     This is not only used for logging and debugging, but it is an actual
     part of the execution itself, since later routines can retrieve the
     output of former ones from here.
     """
+
+    _tasks: dict[Id, list[Completed]] = field(default_factory=lambda: defaultdict(list))
+    """List of completed tasks.
+
+    .. note::
+
+        Representing the object as a map of sequences makes it smoother to identify the
+        iterations of a given task, since they are already grouped together.
+    """
+    _order: list[TaskId] = field(default_factory=list)
+    """Record of the execution order."""
+
+    def __contains__(self, elem: Union[Id, TaskId]):
+        """Check whether a generic or specific task has been completed."""
+        if isinstance(elem, TaskId):
+            return len(self._tasks.get(elem.id, [])) > elem.iteration
+        return elem in self._tasks
+
+    def __getitem__(self, key: Union[Id, TaskId]) -> Union[Completed, list[Completed]]:
+        """Access a generic or specific task."""
+        if isinstance(key, TaskId):
+            return self._tasks[key.id][key.iteration]
+        return self._tasks[key]
+
+    def __iter__(self):
+        """Iterate individual tasks according to the execution order."""
+        return (self[task_id] for task_id in self._order)
 
     @classmethod
     def load(cls, path: Path):
@@ -22,13 +52,13 @@ class History(dict[TaskId, Completed]):
             instance.push(Completed.load(protocol))
         return instance
 
-    def push(self, completed: Completed):
+    def push(self, completed: Completed) -> TaskId:
         """Adding completed task to history."""
-        id = TaskId(completed.task.id, 0)
-        while id in self:
-            id.iteration += 1
-
-        self[id] = completed
+        id = completed.task.id
+        self._tasks[id].append(completed)
+        task_id = TaskId(id=id, iteration=len(self._tasks[id]))
+        self._order.append(task_id)
+        return task_id
 
     @staticmethod
     def route(completed: Completed, folder: Path):
@@ -45,9 +75,10 @@ class History(dict[TaskId, Completed]):
         Specifying `output` is possible to select which folder should be considered as
         the general Qibocal output folder. Cf. :cls:`qibocal.auto.output.Output`.
         """
-        for completed in self.values():
-            if output is not None:
-                completed.path = self.route(completed, output)
-            completed.dump()
+        for task in self._tasks.values():
+            for completed in task:
+                if output is not None:
+                    completed.path = self.route(completed, output)
+                completed.dump()
 
     # TODO: implement time_travel()
