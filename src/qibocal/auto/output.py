@@ -182,7 +182,7 @@ class Output:
             backend=self.meta.backend, platform=self.meta.platform
         ).platform
 
-        for completed in self.history:
+        for completed in self.history.values():
             completed.task.run(platform=self.platform, mode=mode, folder=completed.path)
             self.history.flush(output)
 
