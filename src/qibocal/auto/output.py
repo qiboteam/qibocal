@@ -182,7 +182,11 @@ class Output:
             backend=self.meta.backend, platform=self.meta.platform
         ).platform
 
-        for completed in self.history.values():
+        for task_id, completed in self.history.items():
+            # TODO: should we drop this check as well, and just allow overwriting?
+            if ExecutionMode.FIT in mode and self.history[task_id]._results is not None:
+                raise KeyError(f"{task_id} already contains fitting results.")
+
             completed.task.run(platform=self.platform, mode=mode, folder=completed.path)
             self.history.flush(output)
 
