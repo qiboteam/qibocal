@@ -1,9 +1,9 @@
 import pathlib
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Optional
 
 from qibocal.auto.history import History
-from qibocal.auto.task import TaskId
+from qibocal.auto.task import Targets, TaskId
 
 WEB_DIR = pathlib.Path(__file__).parent
 STYLES = WEB_DIR / "static" / "styles.css"
@@ -16,7 +16,7 @@ class Report:
 
     path: pathlib.Path
     """Path with calibration data."""
-    targets: list
+    targets: Optional[Targets]
     """Global targets."""
     history: History
     """History of protocols."""

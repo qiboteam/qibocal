@@ -1,6 +1,6 @@
 import io
 import pathlib
-from typing import Union
+from typing import Optional, Union
 
 import plotly.graph_objects as go
 import yaml
@@ -57,7 +57,7 @@ def plotter(
     return all_html, fitting_report
 
 
-def report(path: pathlib.Path, history: History = None):
+def report(path: pathlib.Path, history: Optional[History] = None):
     """Report generation.
 
     Generates the report for protocol dumped in `path`.
@@ -72,7 +72,7 @@ def report(path: pathlib.Path, history: History = None):
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
 
     if history is None:
-        history = History.load(path)
+        history = output.history
 
     css_styles = f"<style>\n{pathlib.Path(STYLES).read_text()}\n</style>"
 
