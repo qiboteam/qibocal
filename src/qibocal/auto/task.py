@@ -118,11 +118,12 @@ class Task:
         platform: Optional[Platform] = None,
         targets: Optional[Targets] = None,
         mode: Optional[ExecutionMode] = None,
+        folder: Optional[Path] = None,
     ):
         if self.targets is None:
             self.action.targets = targets
 
-        completed = Completed(self)
+        completed = Completed(self, folder)
 
         try:
             if platform is not None:

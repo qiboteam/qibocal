@@ -39,12 +39,12 @@ class History:
         return len(self._tasks.get(elem.id, [])) > elem.iteration
 
     @singledispatchmethod
-    def __getitem__(self):
-        raise
-
-    @__getitem__.register
-    def _(self, key: Id) -> list[Completed]:
+    def __getitem__(self, _):
         """Access a generic or specific task."""
+        raise NotImplementedError
+
+    @__getitem__.register(str)
+    def _(self, key: Id) -> list[Completed]:
         return self._tasks[key]
 
     @__getitem__.register
@@ -67,7 +67,7 @@ class History:
         """Adding completed task to history."""
         id = completed.task.id
         self._tasks[id].append(completed)
-        task_id = TaskId(id=id, iteration=len(self._tasks[id]))
+        task_id = TaskId(id=id, iteration=len(self._tasks[id]) - 1)
         self._order.append(task_id)
         return task_id
 

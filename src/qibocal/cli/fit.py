@@ -2,12 +2,9 @@ import shutil
 from pathlib import Path
 from typing import Optional
 
-import yaml
-
 from ..auto.mode import ExecutionMode
 from ..auto.operation import RESULTSFILE
 from ..auto.output import Output
-from ..auto.runcard import RUNCARD, Runcard
 from ..config import log, raise_error
 
 
@@ -41,16 +38,7 @@ def fit(input_path, update, output_path, force):
     path = mkoutput(input_path, output_path, force)
 
     output = Output.load(path)
-    # load runcard
-    runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
-
     # run
-    output.history = runcard.run(
-        output=path,
-        mode=ExecutionMode.FIT,
-        platform=output.platform,
-        update=update,
-    )
-
+    output.process(output=path, mode=ExecutionMode.FIT, update=update)
     # update time in meta
     output.dump(path)
