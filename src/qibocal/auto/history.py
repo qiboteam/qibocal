@@ -2,8 +2,9 @@
 
 from collections import defaultdict
 from dataclasses import dataclass, field
+from functools import singledispatchmethod
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 from .task import Completed, Id, TaskId
 
@@ -28,17 +29,27 @@ class History:
     _order: list[TaskId] = field(default_factory=list)
     """Record of the execution order."""
 
-    def __contains__(self, elem: Union[Id, TaskId]):
+    @singledispatchmethod
+    def __contains__(self, elem: Id):
         """Check whether a generic or specific task has been completed."""
-        if isinstance(elem, TaskId):
-            return len(self._tasks.get(elem.id, [])) > elem.iteration
         return elem in self._tasks
 
-    def __getitem__(self, key: Union[Id, TaskId]) -> Union[Completed, list[Completed]]:
+    @__contains__.register
+    def _(self, elem: TaskId):
+        return len(self._tasks.get(elem.id, [])) > elem.iteration
+
+    @singledispatchmethod
+    def __getitem__(self):
+        raise
+
+    @__getitem__.register
+    def _(self, key: Id) -> list[Completed]:
         """Access a generic or specific task."""
-        if isinstance(key, TaskId):
-            return self._tasks[key.id][key.iteration]
         return self._tasks[key]
+
+    @__getitem__.register
+    def _(self, key: TaskId) -> Completed:
+        return self._tasks[key.id][key.iteration]
 
     def __iter__(self):
         """Iterate individual tasks according to the execution order."""
