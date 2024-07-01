@@ -12,7 +12,7 @@ from qibocal.config import log, raise_error
 from .history import History
 from .mode import ExecutionMode
 from .operation import Routine
-from .task import Action, Completed, Targets, Task
+from .task import Action, Completed, Targets, Task, TaskId
 
 PLATFORM_DIR = "platform"
 """Folder where platform will be dumped."""
@@ -47,19 +47,17 @@ class Executor:
         update: bool = True,
     ) -> Completed:
         """Run single protocol in ExecutionMode mode."""
-        if isinstance(parameters, dict):
-            parameters["operation"] = str(protocol)
-            action = Action(**parameters)
-        else:
-            action = parameters
-        task = Task(action, protocol)
+        action = Action.cast(source=parameters, operation=str(protocol))
+        task = Task(action=action, operation=protocol)
         if isinstance(mode, ExecutionMode):
-            log.info(f"Executing mode {mode} on {task.id}.")
+            log.info(f"Executing mode {mode} on {task.action.id}.")
+
+        task_id = TaskId(id=task.action.id, iteration=len(self.history[task.action.id]))
 
         if ExecutionMode.ACQUIRE in mode and task.id in self.history:
-            raise_error(KeyError, f"{task.id} already contains acquisition data.")
+            raise_error(KeyError, f"{task_id} already contains acquisition data.")
         if ExecutionMode.FIT is mode and self.history[task.id]._results is not None:
-            raise_error(KeyError, f"{task.id} already contains fitting results.")
+            raise_error(KeyError, f"{task_id} already contains fitting results.")
 
         completed = task.run(platform=self.platform, targets=self.targets, mode=mode)
 

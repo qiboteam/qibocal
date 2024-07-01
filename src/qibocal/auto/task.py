@@ -47,6 +47,17 @@ class Action:
         """Load action from yaml."""
         return cls(**yaml.safe_load((path / SINGLE_ACTION).read_text(encoding="utf-8")))
 
+    @classmethod
+    def cast(cls, source: Union[dict, "Action"], operation: Optional[str] = None):
+        """Cast an action source to an action."""
+        if isinstance(source, Action):
+            return source
+        assert (
+            operation is not None
+        ), "Operation name required to create actions from parameters"
+
+        return cls(**source, operation=OperationId(operation))
+
 
 @dataclass(frozen=True)
 class TaskId:
@@ -54,6 +65,10 @@ class TaskId:
 
     id: Id
     iteration: int
+
+    def __str__(self):
+        """Coincise representation."""
+        return f"{self.id}-{self.iteration}"
 
 
 DEFAULT_NSHOTS = 100
