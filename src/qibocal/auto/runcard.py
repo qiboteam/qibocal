@@ -1,12 +1,11 @@
 """Specify runcard layout, handles (de)serialization."""
 
 import os
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 import yaml
-from pydantic.dataclasses import dataclass
 from qibolab.platform import Platform
 
 from .. import protocols
@@ -19,7 +18,7 @@ RUNCARD = "runcard.yml"
 """Runcard filename."""
 
 
-@dataclass(config=dict(smart_union=True))
+@dataclass
 class Runcard:
     """Structure of an execution runcard."""
 
@@ -38,12 +37,10 @@ class Runcard:
     update: bool = True
 
     @classmethod
-    def load(cls, runcard: Union[dict, os.PathLike]):
+    def load(cls, runcard: Union[dict[str, Any], Path]):
         """Load a runcard dict or path."""
         if not isinstance(runcard, dict):
-            runcard = cls.load(
-                yaml.safe_load((runcard / RUNCARD).read_text(encoding="utf-8"))
-            )
+            return cls(yaml.safe_load((runcard / RUNCARD).read_text(encoding="utf-8")))
         return cls(**runcard)
 
     def dump(self, path):
