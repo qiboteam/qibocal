@@ -52,8 +52,19 @@ class History:
         return self._tasks[key.id][key.iteration]
 
     def __iter__(self):
+        """Iterate individual tasks identifiers.
+
+        It follows the execution order.
+        """
+        return iter(self._order)
+
+    def values(self):
         """Iterate individual tasks according to the execution order."""
         return (self[task_id] for task_id in self._order)
+
+    def items(self):
+        """Consistent iteration over individual tasks and their ids."""
+        return ((task_id, self[task_id]) for task_id in self._order)
 
     @classmethod
     def load(cls, path: Path):
