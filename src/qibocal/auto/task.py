@@ -17,7 +17,10 @@ from .operation import Data, DummyPars, Results, Routine, dummy_operation
 from .runcard import Action, Id, Targets
 
 MAX_PRIORITY = int(1e9)
-"""A number bigger than whatever will be manually typed. But not so insanely big not to fit in a native integer."""
+"""A number bigger than whatever will be manually typed.
+
+But not so insanely big not to fit in a native integer.
+"""
 DEFAULT_NSHOTS = 100
 """Default number on shots when the platform is not provided."""
 TaskId = tuple[Id, int]
@@ -67,7 +70,6 @@ class Task:
         mode: ExecutionMode = None,
         folder: Path = None,
     ):
-
         if self.targets is None:
             self.action.targets = targets
 
@@ -120,7 +122,6 @@ class Completed:
 
         once tasks will be immutable, a separate `iteration` attribute should
         be added
-
     """
     folder: Path
     """Folder with data and results."""
@@ -184,7 +185,8 @@ class Completed:
         return cls(task=task, folder=folder.parents[1])
 
     def update_platform(self, platform: Platform, update: bool):
-        """Perform update on platform' parameters by looping over qubits or pairs."""
+        """Perform update on platform' parameters by looping over qubits or
+        pairs."""
         if self.task.update and update:
             for qubit in self.task.targets:
                 try:
