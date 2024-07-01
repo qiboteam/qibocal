@@ -12,6 +12,7 @@ from qibolab.serialize import dump_platform
 from ..config import log
 from ..version import __version__
 from .history import History
+from .mode import ExecutionMode
 
 
 @dataclass
@@ -173,3 +174,12 @@ class Output:
             str(id): TaskStats(completed.data_time, completed.results_time)
             for id, completed in self.history.items()
         }
+
+    def process(self, output: Path, mode: ExecutionMode, update: bool = True):
+        """Process existing output."""
+        for completed in self.history:
+            completed.task.run(platform=self.platform, mode=mode, folder=completed.path)
+            self.history.flush(output)
+
+            if update and completed.task.update:
+                completed.update_platform(platform=self.platform)
