@@ -1,3 +1,4 @@
+import os
 from copy import deepcopy
 from pathlib import Path
 
@@ -7,7 +8,7 @@ from qibolab import Platform
 
 from qibocal import Executor
 from qibocal.auto.mode import ExecutionMode
-from qibocal.auto.output import History, Metadata, Output
+from qibocal.auto.output import History, Metadata, Output, TaskStats, _new_output
 from qibocal.auto.runcard import Action
 from qibocal.protocols import flipping
 
@@ -54,3 +55,34 @@ def test_output_process(fake_output: tuple[Output, Path]):
     # check double fit error
     with pytest.raises(KeyError):
         output.process(path, mode=ExecutionMode.FIT)
+
+
+def test_task_stats():
+    stats = TaskStats(2, 5)
+    assert stats.fit == 5
+    assert stats.tot == 7
+
+
+def test_new_output(tmp_path):
+    # TODO: move to conftests
+    os.chdir(tmp_path)
+    path1 = _new_output()
+    path1.mkdir()
+    path2 = _new_output()
+
+    assert str(path1).split("-")[-2] == "000"
+    assert str(path2).split("-")[-2] == "001"
+
+
+def test_output_mkdir(tmp_path):
+    os.chdir(tmp_path)
+    path1 = Output.mkdir()
+    path2 = Output.mkdir()
+
+    assert str(path1).split("-")[-2] == "000"
+    assert str(path2).split("-")[-2] == "001"
+
+    with pytest.raises(RuntimeError):
+        Output.mkdir(path1)
+
+    Output.mkdir(path1, force=True)
