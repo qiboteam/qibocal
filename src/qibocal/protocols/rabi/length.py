@@ -38,7 +38,7 @@ class RabiLengthParameters(Parameters):
 class RabiLengthResults(RabiLengthSignalResults):
     """RabiLength outputs."""
 
-    chi2: dict[QubitId, list[float, Optional[float]]] = field(default_factory=dict)
+    chi2: dict[QubitId, list[float]] = field(default_factory=dict)
 
 
 RabiLenType = np.dtype(

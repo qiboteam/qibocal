@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -26,7 +25,7 @@ class RabiAmplitudeParameters(RabiAmplitudeSignalParameters):
 class RabiAmplitudeResults(RabiAmplitudeSignalResults):
     """RabiAmplitude outputs."""
 
-    chi2: dict[QubitId, list[float, Optional[float]]] = field(default_factory=dict)
+    chi2: dict[QubitId, list[float]] = field(default_factory=dict)
 
 
 RabiAmpType = np.dtype(

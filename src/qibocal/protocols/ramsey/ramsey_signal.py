@@ -40,13 +40,13 @@ class RamseySignalParameters(Parameters):
 class RamseySignalResults(Results):
     """Ramsey outputs."""
 
-    frequency: dict[QubitId, Union[float, list[float, float]]]
+    frequency: dict[QubitId, Union[float, list[float]]]
     """Drive frequency [GHz] for each qubit."""
-    t2: dict[QubitId, Union[float, list[float, float]]]
+    t2: dict[QubitId, Union[float, list[float]]]
     """T2 for each qubit [ns]."""
-    delta_phys: dict[QubitId, Union[float, list[float, float]]]
+    delta_phys: dict[QubitId, Union[float, list[float]]]
     """Drive frequency [Hz] correction for each qubit."""
-    delta_fitting: dict[QubitId, Union[float, list[float, float]]]
+    delta_fitting: dict[QubitId, Union[float, list[float]]]
     """Raw drive frequency [Hz] correction for each qubit.
        including the detuning."""
     fitted_parameters: dict[QubitId, list[float]]

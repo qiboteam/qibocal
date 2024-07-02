@@ -38,7 +38,7 @@ class SpinEchoSignalParameters(Parameters):
 class SpinEchoSignalResults(Results):
     """SpinEchoSignal outputs."""
 
-    t2_spin_echo: dict[QubitId, Union[float, tuple[float, float]]]
+    t2_spin_echo: dict[QubitId, Union[float, list[float]]]
     """T2 echo for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""

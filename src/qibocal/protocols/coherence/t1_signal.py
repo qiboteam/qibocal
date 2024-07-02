@@ -35,7 +35,7 @@ class T1SignalParameters(Parameters):
 class T1SignalResults(Results):
     """T1 Signal outputs."""
 
-    t1: dict[QubitId, Union[float, tuple[float, float]]]
+    t1: dict[QubitId, Union[float, list[float]]]
     """T1 for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""

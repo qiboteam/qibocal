@@ -46,7 +46,7 @@ class RabiAmplitudeFrequencySignalParameters(Parameters):
 class RabiAmplitudeFrequencySignalResults(RabiAmplitudeSignalResults):
     """RabiAmplitudeFrequency outputs."""
 
-    frequency: dict[QubitId, Union[float, tuple[float, float]]]
+    frequency: dict[QubitId, Union[float, list[float]]]
     """Drive frequency for each qubit."""
 
 

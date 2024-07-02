@@ -34,7 +34,7 @@ class FlippingParameters(FlippingSignalParameters):
 class FlippingResults(FlippingSignalResults):
     """Flipping outputs."""
 
-    chi2: dict[QubitId, tuple[float, float]] = field(default_factory=dict)
+    chi2: dict[QubitId, list[float]] = field(default_factory=dict)
     """Chi squared estimate mean value and error. """
 
 

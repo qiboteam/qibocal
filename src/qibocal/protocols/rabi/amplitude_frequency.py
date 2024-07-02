@@ -39,7 +39,7 @@ class RabiAmplitudeFrequencyParameters(RabiAmplitudeFrequencySignalParameters):
 class RabiAmplitudeFrequencyResults(RabiAmplitudeFrequencySignalResults):
     """RabiAmplitudeFrequency outputs."""
 
-    chi2: dict[QubitId, tuple[float, float]] = field(default_factory=dict)
+    chi2: dict[QubitId, list[float]] = field(default_factory=dict)
 
 
 RabiAmpFreqType = np.dtype(

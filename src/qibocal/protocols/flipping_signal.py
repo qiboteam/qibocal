@@ -36,11 +36,11 @@ class FlippingSignalParameters(Parameters):
 class FlippingSignalResults(Results):
     """Flipping outputs."""
 
-    amplitude: dict[QubitId, Union[float, tuple[float, float]]]
+    amplitude: dict[QubitId, Union[float, list[float]]]
     """Drive amplitude for each qubit."""
-    delta_amplitude: dict[QubitId, Union[float, tuple[float, float]]]
+    delta_amplitude: dict[QubitId, Union[float, list[float]]]
     """Difference in amplitude between initial value and fit."""
-    delta_amplitude_detuned: dict[QubitId, Union[float, tuple[float, float]]]
+    delta_amplitude_detuned: dict[QubitId, Union[float, list[float]]]
     """Difference in amplitude between detuned value and fit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
