@@ -53,7 +53,7 @@ class Metadata:
     more: Optional[dict] = None
 
     @classmethod
-    def generate(cls, name: str, backend, platform: str):
+    def generate(cls, name: str, backend):
         """Generate template metadata.
 
         The purpose is to fill the arguments with defaults, or extract
@@ -63,7 +63,7 @@ class Metadata:
         return cls(
             title=name,
             backend=backend.name,
-            platform=platform,
+            platform=backend.platform.name,
             start_time=None,
             end_time=None,
             stats={},

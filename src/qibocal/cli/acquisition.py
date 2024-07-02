@@ -28,7 +28,7 @@ def acquire(runcard: Runcard, folder: Path, force: bool):
     runcard.dump(path)
 
     # generate meta
-    meta = Metadata.generate(path.name, backend, str(platform))
+    meta = Metadata.generate(path.name, backend)
     output = Output(History(), meta, platform)
     output.dump(path)
 
