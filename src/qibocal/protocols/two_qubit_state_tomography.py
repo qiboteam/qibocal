@@ -1,5 +1,6 @@
 import json
 from collections import Counter, defaultdict
+from collections.abc import Iterable
 from copy import deepcopy
 from dataclasses import dataclass, field
 from itertools import product
@@ -36,7 +37,7 @@ TomographyType = np.dtype(
 
 @dataclass
 class StateTomographyData(Data):
-    """Tomography data"""
+    """Tomography data."""
 
     data: dict[tuple[QubitId, QubitId, str, str], np.int64] = field(
         default_factory=dict
@@ -63,7 +64,7 @@ class StateTomographyData(Data):
 
 @dataclass
 class StateTomographyResults(Results):
-    """Tomography results"""
+    """Tomography results."""
 
     measured_raw_density_matrix_real: dict[QubitPairId, list] = field(
         default_factory=dict
@@ -279,7 +280,9 @@ def plot_measurements(data: StateTomographyData, target: QubitPairId):
 
 
 def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitPairId):
-    """Plotting for two qubit state tomography"""
+    """Plotting for two qubit state tomography."""
+    if isinstance(target, Iterable):
+        target = tuple(target)
 
     fig_measurements = plot_measurements(data, target)
     if fit is None:

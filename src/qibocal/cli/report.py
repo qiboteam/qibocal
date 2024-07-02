@@ -1,7 +1,6 @@
 import io
-import json
 import pathlib
-from typing import Union
+from typing import Optional, Union
 
 import plotly.graph_objects as go
 import yaml
@@ -9,9 +8,9 @@ from jinja2 import Environment, FileSystemLoader
 from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.history import History
-from qibocal.auto.runcard import Runcard
+from qibocal.auto.output import Output
+from qibocal.auto.runcard import RUNCARD, Runcard
 from qibocal.auto.task import Completed
-from qibocal.cli.utils import META, RUNCARD
 from qibocal.config import log
 from qibocal.web.report import STYLES, TEMPLATES, Report
 
@@ -43,9 +42,8 @@ def plotter(
 ) -> tuple[str, str]:
     """Run plotly pipeline for generating html.
 
-    Performs conversions of plotly figures in html rendered code for completed
-    node on specific target.
-
+    Performs conversions of plotly figures in html rendered code for
+    completed node on specific target.
     """
     figures, fitting_report = generate_figures_and_report(node, target)
     buffer = io.StringIO()
@@ -59,7 +57,7 @@ def plotter(
     return all_html, fitting_report
 
 
-def report(path: pathlib.Path, history: History = None):
+def report(path: pathlib.Path, history: Optional[History] = None):
     """Report generation.
 
     Generates the report for protocol dumped in `path`.
@@ -69,12 +67,12 @@ def report(path: pathlib.Path, history: History = None):
     if (path / "index.html").exists():  # pragma: no cover
         log.warning(f"Regenerating {path}/index.html")
     # load meta
-    meta = json.loads((path / META).read_text())
+    output = Output.load(path)
     # load runcard
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
 
     if history is None:
-        history = History.load(path)
+        history = output.history
 
     css_styles = f"<style>\n{pathlib.Path(STYLES).read_text()}\n</style>"
 
@@ -89,7 +87,7 @@ def report(path: pathlib.Path, history: History = None):
             path=path,
             targets=runcard.targets,
             history=history,
-            meta=meta,
+            meta=output.meta.dump(),
             plotter=plotter,
         ),
     )
