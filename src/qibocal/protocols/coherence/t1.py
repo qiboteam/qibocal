@@ -132,8 +132,8 @@ def _fit(data: T1Data) -> T1Results:
 
             y = p_0-p_1 e^{-x p_2}.
     """
-    t1s, fitted_parameters, chi2 = utils.exponential_fit_probability(data)
-    return T1Results(t1s, fitted_parameters, chi2)
+    t1s, fitted_parameters, pcovs, chi2 = utils.exponential_fit_probability(data)
+    return T1Results(t1s, fitted_parameters, pcovs, chi2)
 
 
 def _plot(data: T1Data, target: QubitId, fit: T1Results = None):

@@ -9,8 +9,9 @@ from typing import Optional
 from qibolab.platform import Platform
 from qibolab.serialize import dump_platform
 
+from qibocal import protocols
+
 from ..config import log
-from ..protocols import Operation
 from .mode import ExecutionMode
 from .operation import Data, DummyPars, Results, Routine, dummy_operation
 from .runcard import Action, Id, Targets
@@ -29,6 +30,15 @@ PLATFORM_DIR = "platform"
 class Task:
     action: Action
     """Action object parsed from Runcard."""
+    operation: Routine
+
+    @classmethod
+    def load(cls, path: Path):
+        action = Action.load(path)
+        return cls(action=action, operation=getattr(protocols, action.operation))
+
+    def dump(self, path):
+        self.action.dump(path)
 
     @property
     def targets(self) -> Targets:
@@ -39,14 +49,6 @@ class Task:
     def id(self) -> Id:
         """Task Id."""
         return self.action.id
-
-    @property
-    def operation(self):
-        """Routine object from Operation Enum."""
-        if self.action.operation is None:
-            raise RuntimeError("No operation specified")
-
-        return Operation[self.action.operation].value
 
     @property
     def parameters(self):
@@ -90,7 +92,7 @@ class Task:
             operation = dummy_operation
             parameters = DummyPars()
 
-        if mode.name in ["autocalibration", "acquire"]:
+        if ExecutionMode.ACQUIRE in mode:
             if operation.platform_dependent and operation.targets_dependent:
                 completed.data, completed.data_time = operation.acquisition(
                     parameters,
@@ -102,7 +104,7 @@ class Task:
                 completed.data, completed.data_time = operation.acquisition(
                     parameters, platform=platform
                 )
-        if mode.name in ["autocalibration", "fit"]:
+        if ExecutionMode.FIT in mode:
             completed.results, completed.results_time = operation.fit(completed.data)
         return completed
 
@@ -170,6 +172,17 @@ class Completed:
         """Set and store data."""
         self._data = data
         self._data.save(self.datapath)
+
+    def dump(self, path):
+        """test"""
+        self.task.dump(self.datapath)
+
+    @classmethod
+    def load(cls, folder: Path):
+        """Loading completed from path."""
+
+        task = Task.load(folder)
+        return cls(task=task, folder=folder.parents[1])
 
     def update_platform(self, platform: Platform, update: bool):
         """Perform update on platform' parameters by looping over qubits or pairs."""

@@ -152,12 +152,12 @@ def _acquisition(
         Example:
         .. code-block:: yaml
 
-            - id: single_shot_classification_1
-                operation: single_shot_classification
-                parameters:
-                nshots: 5000
-                savedir: "single_shot"
-                classifiers_list: ["qubit_fit","naive_bayes", "linear_svm"]
+        - id: single_shot_classification_1
+            operation: single_shot_classification
+            parameters:
+            nshots: 5000
+            savedir: "single_shot"
+            classifiers_list: ["qubit_fit","naive_bayes", "linear_svm"]
 
     """
 

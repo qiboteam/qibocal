@@ -1,10 +1,14 @@
 """Specify runcard layout, handles (de)serialization."""
 
 import os
+from dataclasses import asdict
+from pathlib import Path
 from typing import Any, NewType, Optional, Union
 
+import yaml
 from pydantic.dataclasses import dataclass
-from qibo.backends import Backend, GlobalBackend
+from qibo.backends import GlobalBackend
+from qibo.backends.abstract import Backend
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
@@ -16,6 +20,11 @@ Id = NewType("Id", str)
 Targets = Union[list[QubitId], list[QubitPairId], list[tuple[QubitId, ...]]]
 """Elements to be calibrated by a single protocol."""
 
+RUNCARD = "runcard.yml"
+"""Runcard filename."""
+
+SINGLE_ACTION = "action.yml"
+
 
 @dataclass(config=dict(smart_union=True))
 class Action:
@@ -23,7 +32,7 @@ class Action:
 
     id: Id
     """Action unique identifier."""
-    operation: Optional[OperationId] = None
+    operation: OperationId
     """Operation to be performed by the executor."""
     targets: Optional[Targets] = None
     """Local qubits (optional)."""
@@ -32,9 +41,14 @@ class Action:
     parameters: Optional[dict[str, Any]] = None
     """Input parameters, either values or provider reference."""
 
-    def __hash__(self) -> int:
-        """Each action is uniquely identified by its id."""
-        return hash(self.id)
+    def dump(self, path: Path):
+        """Dump single action to yaml"""
+        (path / SINGLE_ACTION).write_text(yaml.safe_dump(asdict(self)))
+
+    @classmethod
+    def load(cls, path):
+        """Load action from yaml."""
+        return cls(**yaml.safe_load((path / SINGLE_ACTION).read_text(encoding="utf-8")))
 
 
 @dataclass(config=dict(smart_union=True))
@@ -51,15 +65,11 @@ class Runcard:
     """Qibo backend."""
     platform: str = os.environ.get("QIBO_PLATFORM", "dummy")
     """Qibolab platform."""
-
-    def __post_init__(self):
-        if self.targets is None and self.platform_obj is not None:
-            self.targets = list(self.platform_obj.qubits)
+    update: bool = True
 
     @property
     def backend_obj(self) -> Backend:
         """Allocate backend."""
-        GlobalBackend.set_backend(self.backend, platform=self.platform)
         return GlobalBackend()
 
     @property
@@ -68,6 +78,14 @@ class Runcard:
         return self.backend_obj.platform
 
     @classmethod
-    def load(cls, params: dict):
-        """Load a runcard (dict)."""
-        return cls(**params)
+    def load(cls, runcard: Union[dict, os.PathLike]):
+        """Load a runcard dict or path."""
+        if not isinstance(runcard, dict):
+            runcard = cls.load(
+                yaml.safe_load((runcard / RUNCARD).read_text(encoding="utf-8"))
+            )
+        return cls(**runcard)
+
+    def dump(self, path):
+        """Dump runcard object to yaml."""
+        (path / RUNCARD).write_text(yaml.safe_dump(asdict(self)))

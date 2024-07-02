@@ -160,6 +160,7 @@ def _acquisition(
     for qubit in targets:
         for state, results in enumerate(results):
             result = results[ro_pulses[qubit][state].serial]
+            # result = results[qubit].average
             # store the results
             data.register_qubit(
                 DispersiveShiftType,
