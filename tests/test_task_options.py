@@ -112,6 +112,7 @@ def test_update_argument(platform, global_update, local_update, tmp_path):
     Runcard.load(NEW_CARD).run(
         tmp_path,
         mode=AUTOCALIBRATION,
+        platform=platform,
     )
 
     if local_update and global_update:
