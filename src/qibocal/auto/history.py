@@ -97,10 +97,9 @@ class History:
         Specifying `output` is possible to select which folder should be considered as
         the general Qibocal output folder. Cf. :cls:`qibocal.auto.output.Output`.
         """
-        for task in self._tasks.values():
-            for completed in task:
-                if output is not None:
-                    completed.path = self.route(completed, output)
-                completed.dump()
+        for completed in self.values():
+            if output is not None:
+                completed.path = self.route(completed, output)
+            completed.flush()
 
     # TODO: implement time_travel()
