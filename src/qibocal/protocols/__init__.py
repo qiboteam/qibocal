@@ -62,6 +62,7 @@ from .signal_experiments.calibrate_state_discrimination import (
     calibrate_state_discrimination,
 )
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
+from .stark_shift import starkshift
 from .state_tomography import state_tomography
 from .two_qubit_interaction import (
     chevron,
@@ -144,4 +145,5 @@ __all__ = [
     "rabi_length_frequency",
     "rabi_length_frequency_signal",
     "standard_rb_2q",
+    "starkshift",
 ]

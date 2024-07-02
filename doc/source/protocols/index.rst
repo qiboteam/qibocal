@@ -16,6 +16,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     resonator_spectroscopy
     resonator_punchout
     qubit_spectroscopy/qubit_spectroscopy
+    stark_shift
     rabi/rabi
     ramsey/ramsey
     t1/t1
