@@ -35,9 +35,11 @@ def fit(input_path: Path, update: bool, output_path: Optional[Path], force: bool
     - output_path: new folder with data and fit
     """
     path = mkoutput(input_path, output_path, force)
+    if input_path.absolute() != path.absolute():
+        force = True
 
     output = Output.load(path)
     # run
-    output.process(output=path, mode=ExecutionMode.FIT, update=update)
+    output.process(output=path, mode=ExecutionMode.FIT, update=update, force=force)
     # update time in meta
     output.dump(path)
