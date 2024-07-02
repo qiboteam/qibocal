@@ -61,7 +61,7 @@ def fit(input_path, update, output_path, force):
     meta["end-time"] = e.strftime("%H:%M:%S")
 
     # checking if at least on the task had local update
-    local_update = any(list(history.values().update))
+    local_update = any(completed.task.update for completed in list(history.values()))
 
     # dump updated runcard
     if runcard.platform_obj is not None and (
