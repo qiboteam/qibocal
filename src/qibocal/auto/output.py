@@ -187,7 +187,11 @@ class Output:
             if ExecutionMode.FIT in mode and self.history[task_id]._results is not None:
                 raise KeyError(f"{task_id} already contains fitting results.")
 
-            completed.task.run(platform=self.platform, mode=mode, folder=completed.path)
+            # TODO: this is a plain hack, to be fixed together with the task lifecycle
+            # refactor
+            self.history._tasks[task_id.id][task_id.iteration] = completed.task.run(
+                platform=self.platform, mode=mode, folder=completed.path
+            )
             self.history.flush(output)
 
             if update and completed.task.update:
