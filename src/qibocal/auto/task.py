@@ -119,7 +119,7 @@ class Task:
         targets: Optional[Targets] = None,
         mode: Optional[ExecutionMode] = None,
         folder: Optional[Path] = None,
-    ):
+    ) -> "Completed":
         if self.targets is None:
             self.action.targets = targets
 
