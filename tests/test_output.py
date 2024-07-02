@@ -31,7 +31,7 @@ ACTION = Action(**action)
 def fake_output(tmp_path: Path) -> tuple[Output, Path]:
     backend = construct_backend(backend="qibolab", platform="dummy")
     platform: Platform = backend.platform
-    meta = Metadata.generate(tmp_path.name, backend, "dummy")
+    meta = Metadata.generate(tmp_path.name, backend)
     output = Output(History(), meta, platform)
     platform.connect()
     meta.start()
