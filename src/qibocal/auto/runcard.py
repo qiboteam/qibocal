@@ -1,11 +1,12 @@
 """Specify runcard layout, handles (de)serialization."""
 
 import os
-from dataclasses import asdict, dataclass
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Optional, Union
 
 import yaml
+from pydantic.dataclasses import dataclass
 from qibolab.platform import Platform
 
 from .. import protocols
