@@ -26,11 +26,10 @@ def mkoutput(input: Path, output: Optional[Path], force: bool):
     return input
 
 
-def fit(input_path, update, output_path, force):
+def fit(input_path: Path, update: bool, output_path: Optional[Path], force: bool):
     """Post-processing analysis.
 
     Arguments:
-
     - input_path: input folder.
     - update: perform platform update
     - output_path: new folder with data and fit

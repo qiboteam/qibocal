@@ -4,7 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import singledispatchmethod
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, Optional
 
 from .task import Completed, Id, TaskId
 
@@ -51,20 +51,20 @@ class History:
     def _(self, key: TaskId) -> Completed:
         return self._tasks[key.id][key.iteration]
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[TaskId]:
         """Iterate individual tasks identifiers.
 
         It follows the execution order.
         """
         return iter(self._order)
 
-    def values(self):
+    def values(self) -> Iterator[Completed]:
         """Iterate individual tasks according to the execution order."""
-        return (self[task_id] for task_id in self._order)
+        return (self[task_id] for task_id in self)
 
-    def items(self):
+    def items(self) -> Iterator[tuple[TaskId, Completed]]:
         """Consistent iteration over individual tasks and their ids."""
-        return ((task_id, self[task_id]) for task_id in self._order)
+        return ((task_id, self[task_id]) for task_id in self)
 
     @classmethod
     def load(cls, path: Path):
