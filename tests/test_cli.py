@@ -1,3 +1,4 @@
+import os
 import pathlib
 
 import pytest
@@ -6,6 +7,36 @@ from click.testing import CliRunner
 from qibocal.cli._base import command
 
 DUMMY_ACTION = pathlib.Path(__file__).parent / "runcards" / "dummy_action.yml"
+
+
+@pytest.mark.parametrize("update", ["--update", "--no-update"])
+def test_qq_update(update, tmp_path, monkeypatch):
+    """Testing qq update using mock."""
+
+    output_folder = tmp_path / "out"
+    runner = CliRunner()
+    runner.invoke(
+        command,
+        ["auto", str(DUMMY_ACTION), "-o", str(output_folder), "-f", update],
+        catch_exceptions=False,
+    )
+
+    platforms = tmp_path / "platforms"
+    (platforms / "dummy").mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("QIBOLAB_PLATFORMS", str(platforms))
+
+    runner = CliRunner()
+    if not update:
+        while pytest.raises(FileNotFoundError):
+            runner.invoke(
+                command, ["update", str(output_folder)], catch_exceptions=False
+            )
+
+    runner.invoke(command, ["update", str(output_folder)], catch_exceptions=False)
+    new_parameters = (
+        pathlib.Path(os.getenv("QIBOLAB_PLATFORMS")) / "dummy" / "parameters.json"
+    )
+    assert new_parameters.exists()
 
 
 def test_fit_command(tmp_path):

@@ -38,7 +38,7 @@ class ReadoutCharacterizationResults(Results):
     """Assignment fidelity."""
     qnd: dict[QubitId, float]
     "QND-ness of the measurement"
-    effective_temperature: dict[QubitId, tuple[float, float]]
+    effective_temperature: dict[QubitId, list[float]]
     """Effective qubit temperature."""
     Lambda_M: dict[QubitId, float]
     "Mapping between a given initial state to an outcome after the measurement"

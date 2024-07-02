@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -33,9 +33,9 @@ class RabiAmplitudeSignalParameters(Parameters):
 class RabiAmplitudeSignalResults(Results):
     """RabiAmplitude outputs."""
 
-    amplitude: dict[QubitId, tuple[float, Optional[float]]]
+    amplitude: dict[QubitId, Union[float, list[float]]]
     """Drive amplitude for each qubit."""
-    length: dict[QubitId, tuple[float, Optional[float]]]
+    length: dict[QubitId, Union[float, list[float]]]
     """Drive pulse duration. Same for all qubits."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitted parameters."""

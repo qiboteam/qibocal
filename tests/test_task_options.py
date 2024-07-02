@@ -99,6 +99,7 @@ UPDATE_CARD = {
 }
 
 
+# FIXME: handle local update
 @pytest.mark.parametrize("global_update", [True, False])
 @pytest.mark.parametrize("local_update", [True, False])
 def test_update_argument(platform, global_update, local_update, tmp_path):

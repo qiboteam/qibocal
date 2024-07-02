@@ -11,6 +11,7 @@ from .acquisition import acquire as acquisition
 from .autocalibration import autocalibrate
 from .fit import fit as fitting
 from .report import report as reporting
+from .update import update as updating
 from .upload import upload_report
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -113,6 +114,23 @@ def acquire(runcard, folder, force, platform, backend):
         runcard.backend = backend
 
     acquisition(runcard, folder, force)
+
+
+@command.command(context_settings=CONTEXT_SETTINGS)
+@click.argument(
+    "folder", metavar="folder", type=click.Path(exists=True, path_type=pathlib.Path)
+)
+def update(folder):
+    """Update platform configuration.
+
+    All configuration files related to platform will be copied
+    in the corresponding QIBOLAB_PLAFORMS folder.
+
+    Arguments:
+        - folder: Qibocal output folder.
+
+    """
+    updating(folder)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
