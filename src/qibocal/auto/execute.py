@@ -56,6 +56,7 @@ class Executor:
         protocol: Routine,
         parameters: Union[dict, Action],
         mode: ExecutionMode = ExecutionMode.ACQUIRE | ExecutionMode.FIT,
+        update: bool = True,
     ) -> Completed:
         """Run single protocol in ExecutionMode mode."""
         if isinstance(parameters, dict):
@@ -80,6 +81,8 @@ class Executor:
             folder=self.output,
             mode=mode,
         )
+        if ExecutionMode.FIT in mode and self.platform is not None and update:
+            completed.update_platform(platform=self.platform, update=self.update)
 
         self.history.push(completed)
         completed.dump(self.output)
@@ -87,7 +90,7 @@ class Executor:
         return completed
 
 
-def run(runcard: Runcard, output: Path, mode: ExecutionMode):
+def run(runcard: Runcard, output: Path, mode: ExecutionMode, update: bool = True):
     """Run runcard and dump to output."""
     platform = runcard.platform_obj
     targets = runcard.targets if runcard.targets is not None else list(platform.qubits)
@@ -104,5 +107,6 @@ def run(runcard: Runcard, output: Path, mode: ExecutionMode):
             protocol=getattr(protocols, action.operation),
             parameters=action,
             mode=mode,
+            update=update,
         )
     return instance.history

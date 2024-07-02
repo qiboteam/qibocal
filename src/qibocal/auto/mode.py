@@ -8,9 +8,7 @@ class ExecutionMode(Flag):
     """Peform acquisition only."""
     FIT = auto()
     """Perform fitting only"""
-    UPDATE = auto()
-    """Perform update of platform."""
 
 
-AUTOCALIBRATION = ExecutionMode.ACQUIRE or ExecutionMode.FIT or ExecutionMode.UPDATE
+AUTOCALIBRATION = ExecutionMode.ACQUIRE | ExecutionMode.FIT
 """Perform acquisition and fitting."""

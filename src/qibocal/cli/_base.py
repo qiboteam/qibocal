@@ -120,6 +120,21 @@ def acquire(runcard, folder, force, platform, backend):
 @click.argument(
     "folder", metavar="folder", type=click.Path(exists=True, path_type=pathlib.Path)
 )
+def update(folder):
+    """Report generation
+
+    Arguments:
+
+    - FOLDER: input folder.
+
+    """
+    updating(folder)
+
+
+@command.command(context_settings=CONTEXT_SETTINGS)
+@click.argument(
+    "folder", metavar="folder", type=click.Path(exists=True, path_type=pathlib.Path)
+)
 def report(folder):
     """Report generation
 
@@ -149,7 +164,15 @@ def report(folder):
     is_flag=True,
     help="Use --force option to overwrite the output folder.",
 )
-def fit(input_folder: pathlib.Path, output_folder: pathlib.Path, force: bool):
+@click.option(
+    "--update/--no-update",
+    default=True,
+    help="Use --no-update option to avoid updating iteratively the platform."
+    "With this option the new runcard will not be produced.",
+)
+def fit(
+    input_folder: pathlib.Path, update: bool, output_folder: pathlib.Path, force: bool
+):
     """Post-processing analysis
 
     Arguments:
@@ -157,36 +180,7 @@ def fit(input_folder: pathlib.Path, output_folder: pathlib.Path, force: bool):
     - FOLDER: input folder.
 
     """
-    fitting(input_folder, output_folder, force)
-
-
-@command.command(context_settings=CONTEXT_SETTINGS)
-@click.argument(
-    "input_folder",
-    metavar="input_folder",
-    type=click.Path(exists=True, path_type=pathlib.Path),
-)
-@click.option(
-    "output_folder",
-    "-o",
-    type=click.Path(path_type=pathlib.Path),
-    help="Output folder where fit is generated.",
-)
-@click.option(
-    "force",
-    "-f",
-    is_flag=True,
-    help="Use --force option to overwrite the output folder.",
-)
-def update(input_folder: pathlib.Path, output_folder: pathlib.Path, force: bool):
-    """Update platform according to qibocal report
-
-    Arguments:
-
-    - FOLDER: input folder.
-
-    """
-    updating(input_folder, output_folder, force)
+    fitting(input_folder, update, output_folder, force)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)

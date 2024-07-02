@@ -106,16 +106,6 @@ class Task:
                 )
         if ExecutionMode.FIT in mode:
             completed.results, completed.results_time = operation.fit(completed.data)
-        if ExecutionMode.UPDATE in mode and platform is not None:
-            for qubit in self.targets:
-                try:
-                    operation.update(completed.results, platform, qubit)
-                except KeyError:
-                    log.warning(
-                        f"Skipping update of qubit {qubit} due to error in fit."
-                    )
-            (completed.datapath / PLATFORM_DIR).mkdir(parents=True, exist_ok=True)
-            dump_platform(platform, completed.datapath / PLATFORM_DIR)
         return completed
 
 
@@ -193,15 +183,15 @@ class Completed:
         task = Task.load(folder)
         return cls(task=task, folder=folder.parents[1])
 
-    # def update_platform(self, platform: Platform, update: bool):
-    #     """Perform update on platform' parameters by looping over qubits or pairs."""
-    #     if self.task.update and update:
-    #         for qubit in self.task.targets:
-    #             try:
-    #                 self.task.operation.update(self.results, platform, qubit)
-    #             except KeyError:
-    #                 log.warning(
-    #                     f"Skipping update of qubit {qubit} due to error in fit."
-    #                 )
-    #         (self.datapath / PLATFORM_DIR).mkdir(parents=True, exist_ok=True)
-    #         dump_platform(platform, self.datapath / PLATFORM_DIR)
+    def update_platform(self, platform: Platform, update: bool):
+        """Perform update on platform' parameters by looping over qubits or pairs."""
+        if self.task.update and update:
+            for qubit in self.task.targets:
+                try:
+                    self.task.operation.update(self.results, platform, qubit)
+                except KeyError:
+                    log.warning(
+                        f"Skipping update of qubit {qubit} due to error in fit."
+                    )
+            (self.datapath / PLATFORM_DIR).mkdir(parents=True, exist_ok=True)
+            dump_platform(platform, self.datapath / PLATFORM_DIR)

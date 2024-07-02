@@ -48,7 +48,7 @@ def autocalibrate(runcard, folder, force, update):
         platform.connect()
 
     # run
-    history = run(output=path, runcard=runcard, mode=AUTOCALIBRATION)
+    history = run(output=path, runcard=runcard, mode=AUTOCALIBRATION, update=update)
 
     # TODO: implement iterative dump of report...
 
@@ -63,7 +63,10 @@ def autocalibrate(runcard, folder, force, update):
 
     report(path, history)
 
+    # checking if at least on the task had local update
+    local_update = any(completed.task.update for completed in list(history.values()))
+
     # dump updated runcard
-    if platform is not None:
+    if platform is not None and (update or local_update):
         (path / UPDATED_PLATFORM).mkdir(parents=True, exist_ok=True)
         dump_platform(platform, path / UPDATED_PLATFORM)

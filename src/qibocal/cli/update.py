@@ -1,21 +1,13 @@
-import datetime
 import json
+import os
 import pathlib
 import shutil
 
-import yaml
-from qibo.backends import set_backend
-from qibolab.serialize import dump_runcard
-
-from ..auto.execute import run
-from ..auto.history import add_timings_to_meta
-from ..auto.mode import ExecutionMode
-from ..auto.runcard import Runcard
-from ..config import log, raise_error
-from .utils import META, RUNCARD, UPDATED_PLATFORM
+from ..config import raise_error
+from .utils import META, UPDATED_PLATFORM
 
 
-def update(input_path, output_path, force):
+def update(path):
     """Post-processing analysis
 
     Arguments:
@@ -24,44 +16,17 @@ def update(input_path, output_path, force):
     - update: perform platform update
     - output_path: new folder with data and fit
     """
-    if output_path is not None:
-        if output_path.exists():
-            if force is False:
-                raise_error(RuntimeError, f"Directory {output_path} already exists.")
-            # overwrite output_path
-            log.warning(f"Deleting previous directory {output_path}.")
-            shutil.rmtree(pathlib.Path.cwd() / output_path)
-        path = shutil.copytree(input_path, output_path)
-    else:
-        if (input_path / UPDATED_PLATFORM).exists():
-            if force:
-                log.warning(f"Overwriting updated platform in {input_path}.")
-            else:
-                raise_error(
-                    RuntimeError, f"Directory {input_path} contains updated platform."
-                )
-        path = input_path
 
-    meta = json.loads((path / META).read_text())
-    # load runcard
-    runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
-    set_backend(backend=runcard.backend, platform=runcard.platform)
-    # run
-    history = run(
-        output=path,
-        runcard=runcard,
-        mode=ExecutionMode.UPDATE,
-    )
+    new_platform_path = path / UPDATED_PLATFORM
 
-    # update time in meta
-    meta = add_timings_to_meta(meta, history)
-    e = datetime.datetime.now(datetime.timezone.utc)
-    meta["end-time"] = e.strftime("%H:%M:%S")
+    if not new_platform_path.exists():
+        raise_error(FileNotFoundError, f"No updated runcard platform found in {path}.")
 
-    # dump updated runcard
-    (path / UPDATED_PLATFORM).mkdir(parents=True, exist_ok=True)
-    dump_runcard(runcard.platform_obj, path / UPDATED_PLATFORM)
+    platform_name = json.loads((path / META).read_text())["platform"]
+    platform_path = pathlib.Path(os.getenv("QIBOLAB_PLATFORMS")) / platform_name
 
-    # dump json
-
-    (path / META).write_text(json.dumps(meta, indent=4))
+    for filename in os.listdir(new_platform_path):
+        shutil.copy(
+            new_platform_path / filename,
+            platform_path / filename,
+        )
