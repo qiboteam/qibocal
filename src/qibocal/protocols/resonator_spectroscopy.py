@@ -127,7 +127,7 @@ def _acquisition(
     ro_pulses = {}
     amplitudes = {}
     attenuations = {}
-
+    print(targets)
     for qubit in targets:
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
 

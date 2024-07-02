@@ -228,6 +228,8 @@ class Results(AbstractData):
         If key is not present means that fitting failed or
         was not performed.
         """
+        for field in fields(self):
+            print("KKKKKKKKKKKKKKK", getattr(self, field.name).keys())
         return all(
             key in getattr(self, field.name)
             for field in fields(self)

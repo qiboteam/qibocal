@@ -227,6 +227,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
     )
 
     if fit is not None:
+        print("BBBBBBBBBBBBBBBBBBBB", fit.fitted_parameters.keys())
         params = fit.fitted_parameters[qubit]
         fig.add_trace(
             go.Scatter(

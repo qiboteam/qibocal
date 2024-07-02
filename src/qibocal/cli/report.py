@@ -29,14 +29,10 @@ def generate_figures_and_report(
     It operates on a completed `node` and a specific protocol `target`, generating
     a report outcome (cf. `ReportOutcome`).
     """
-
+    print("JJJJJJJJJJJJJ", node.results)
     if node.results is None:
         # plot acquisition data
         return node.task.operation.report(data=node.data, fit=None, target=target)
-    if target not in node.results:
-        # plot acquisition data and message for unsuccessful fit
-        figures = node.task.operation.report(data=node.data, fit=None, target=target)[0]
-        return figures, "An error occurred when performing the fit."
     # plot acquisition and fit
     return node.task.operation.report(data=node.data, fit=node.results, target=target)
 

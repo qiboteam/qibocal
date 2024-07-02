@@ -226,6 +226,7 @@ def _acquisition(
 
 
 def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
+    print(data)
     qubits = data.qubits
 
     benchmark_tables = {}
@@ -258,6 +259,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         grid_preds = []
         grid = evaluate_grid(qubit_data)
         for i, model_name in enumerate(names):
+            print("FFFFFFFFFFFFF", model_name)
             hpars[qubit][model_name] = hpars_list[i]
             try:
                 y_preds.append(models[i].predict_proba(x_test)[:, 1].tolist())
@@ -281,7 +283,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
                 )
         y_test_predict[qubit] = y_preds
         grid_preds_dict[qubit] = grid_preds
-    return SingleShotClassificationResults(
+    r = SingleShotClassificationResults(
         benchmark_table=benchmark_tables,
         y_tests=y_tests,
         x_tests=x_tests,
@@ -299,6 +301,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         y_preds=y_test_predict,
         grid_preds=grid_preds_dict,
     )
+    return r
 
 
 def _plot(
