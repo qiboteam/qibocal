@@ -121,11 +121,13 @@ def acquire(runcard, folder, force, platform, backend):
     "folder", metavar="folder", type=click.Path(exists=True, path_type=pathlib.Path)
 )
 def update(folder):
-    """Report generation
+    """Update platform configuration.
+
+    All configuration files related to platform will be copied
+    in the corresponding QIBOLAB_PLAFORMS folder.
 
     Arguments:
-
-    - FOLDER: input folder.
+        - folder: Qibocal output folder.
 
     """
     updating(folder)

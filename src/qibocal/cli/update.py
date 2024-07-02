@@ -13,9 +13,7 @@ def update(path: pathlib.Path):
     Arguments:
         - input_path: Qibocal output folder.
     """
-
     new_platform_path = path / UPDATED_PLATFORM
-
     if not new_platform_path.exists():
         raise_error(FileNotFoundError, f"No updated runcard platform found in {path}.")
 
