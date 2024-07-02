@@ -7,14 +7,11 @@ from ..config import raise_error
 from .utils import META, UPDATED_PLATFORM
 
 
-def update(path):
-    """Post-processing analysis
+def update(path: pathlib.Path):
+    """Perform copy of updated platform in QIBOLAB_PLATFORM."
 
     Arguments:
-
-    - input_path: input folder.
-    - update: perform platform update
-    - output_path: new folder with data and fit
+        - input_path: Qibocal output folder.
     """
 
     new_platform_path = path / UPDATED_PLATFORM
