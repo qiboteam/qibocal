@@ -26,11 +26,16 @@ class Versions:
 
 @dataclass
 class TaskStats:
+    """Statistics about task execution."""
+
     acquisition: float
+    """Acquisition timing."""
     fit: float
+    """Fitting timing."""
 
     @property
     def tot(self) -> float:
+        """Total execution time."""
         return self.acquisition + self.fit
 
 
@@ -49,10 +54,10 @@ class Metadata:
 
     @classmethod
     def generate(cls, name: str, backend, platform: str):
-        """Methods that takes care of:
-        - dumping original platform
-        - storing qq runcard
-        - generating meta.yml
+        """Generate template metadata.
+
+        The purpose is to fill the arguments with defaults, or extract
+        them from the few arguments.
         """
         versions = Versions(other=backend.versions)
         return cls(
@@ -66,7 +71,7 @@ class Metadata:
         )
 
     def start(self):
-        """Register completion time."""
+        """Register start time."""
         self.start_time = datetime.now(timezone.utc)
 
     def end(self):
@@ -120,6 +125,7 @@ class Output:
 
     @classmethod
     def load(cls, path: Path):
+        """Load output from existing folder."""
         return cls(
             history=History.load(path),
             meta=Metadata(**json.loads((path / META).read_text())),
@@ -127,6 +133,15 @@ class Output:
 
     @staticmethod
     def mkdir(path: Optional[Path] = None, force: bool = False):
+        """Create output directory.
+
+        If a `path` is given and existing, it is overwritten only in the case `force`
+        is enabled, otherwise an error is thrown. If not already existing, it is just
+        used.
+
+        If no `path` is given, a default one is generated (according to user name and
+        time stamp).
+        """
         if path is None:
             path = _new_output()
         elif path.exists() and not force:
@@ -140,6 +155,7 @@ class Output:
         return path
 
     def dump(self, path: Path):
+        """Dump output content to an output folder."""
         # dump metadata
         self._export_stats()
         (path / META).write_text(json.dumps(self.meta.dump(), indent=4))
