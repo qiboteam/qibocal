@@ -128,6 +128,7 @@ def _acquisition(
                     "freq_width": params.freq_width,
                     "freq_step": params.freq_step,
                     "power_level": params.power_level,
+                    "relaxation_time": params.relaxation_time,
                     "nshots": params.nshots,
                 }
             ),
