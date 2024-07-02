@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -35,7 +34,7 @@ class FlippingParameters(FlippingSignalParameters):
 class FlippingResults(FlippingSignalResults):
     """Flipping outputs."""
 
-    chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
+    chi2: dict[QubitId, tuple[float, float]] = field(default_factory=dict)
     """Chi squared estimate mean value and error. """
 
 
@@ -188,7 +187,7 @@ def _fit(data: FlippingData) -> FlippingResults:
             else:
                 signed_correction = popt[2] / 2
             # The amplitude is directly proportional to the rotation angle
-            corrected_amplitudes[qubit] = (
+            corrected_amplitudes[qubit] = [
                 float(detuned_pi_pulse_amplitude * np.pi / (np.pi + signed_correction)),
                 float(
                     detuned_pi_pulse_amplitude
@@ -198,11 +197,11 @@ def _fit(data: FlippingData) -> FlippingResults:
                     * perr[2]
                     / 2
                 ),
-            )
+            ]
 
             fitted_parameters[qubit] = popt
 
-            delta_amplitude[qubit] = (
+            delta_amplitude[qubit] = [
                 -signed_correction
                 * detuned_pi_pulse_amplitude
                 / (np.pi + signed_correction),
@@ -213,20 +212,20 @@ def _fit(data: FlippingData) -> FlippingResults:
                 )
                 * perr[2]
                 / 2,
-            )
-            delta_amplitude_detuned[qubit] = (
+            ]
+            delta_amplitude_detuned[qubit] = [
                 delta_amplitude[qubit][0] - data.detuning,
                 delta_amplitude[qubit][1],
-            )
+            ]
 
-            chi2[qubit] = (
+            chi2[qubit] = [
                 chi2_reduced(
                     y,
                     flipping_fit(x, *popt),
                     qubit_data.error,
                 ),
                 np.sqrt(2 / len(x)),
-            )
+            ]
         except Exception as e:
             log.warning(f"Error in flipping fit for qubit {qubit} due to {e}.")
 

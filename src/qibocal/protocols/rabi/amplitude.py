@@ -26,7 +26,7 @@ class RabiAmplitudeParameters(RabiAmplitudeSignalParameters):
 class RabiAmplitudeResults(RabiAmplitudeSignalResults):
     """RabiAmplitude outputs."""
 
-    chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
+    chi2: dict[QubitId, list[float, Optional[float]]] = field(default_factory=dict)
 
 
 RabiAmpType = np.dtype(
@@ -123,17 +123,17 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
                 sigma=qubit_data.error,
                 signal=False,
             )
-            pi_pulse_amplitudes[qubit] = (pi_pulse_parameter, perr[2] / 2)
+            pi_pulse_amplitudes[qubit] = [pi_pulse_parameter, perr[2] / 2]
             fitted_parameters[qubit] = popt.tolist()
-            durations = {key: (value, 0) for key, value in data.durations.items()}
-            chi2[qubit] = (
+            durations = {key: [value, 0] for key, value in data.durations.items()}
+            chi2[qubit] = [
                 chi2_reduced(
                     y,
                     utils.rabi_amplitude_function(x, *popt),
                     qubit_data.error,
                 ),
                 np.sqrt(2 / len(y)),
-            )
+            ]
 
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")

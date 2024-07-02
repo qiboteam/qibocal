@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -34,7 +35,7 @@ class T1SignalParameters(Parameters):
 class T1SignalResults(Results):
     """T1 Signal outputs."""
 
-    t1: dict[QubitId, tuple[float]]
+    t1: dict[QubitId, Union[float, tuple[float, float]]]
     """T1 for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""

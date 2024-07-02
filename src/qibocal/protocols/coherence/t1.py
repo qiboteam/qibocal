@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -28,7 +28,7 @@ class T1Parameters(t1_signal.T1SignalParameters):
 class T1Results(t1_signal.T1SignalResults):
     """T1 outputs."""
 
-    chi2: Optional[dict[QubitId, tuple[float, Optional[float]]]] = field(
+    chi2: Optional[dict[QubitId, Union[float, list[float, float]]]] = field(
         default_factory=dict
     )
     """Chi squared estimate mean value and error."""

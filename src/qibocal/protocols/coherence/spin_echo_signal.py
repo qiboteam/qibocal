@@ -1,5 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass
+from typing import Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -37,7 +38,7 @@ class SpinEchoSignalParameters(Parameters):
 class SpinEchoSignalResults(Results):
     """SpinEchoSignal outputs."""
 
-    t2_spin_echo: dict[QubitId, tuple[float]]
+    t2_spin_echo: dict[QubitId, Union[float, tuple[float, float]]]
     """T2 echo for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
