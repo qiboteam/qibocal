@@ -7,7 +7,7 @@ import yaml
 from click.testing import CliRunner
 from qibolab import create_platform
 
-from qibocal.auto.output import PLATFORM as PLATFORM_DIR
+from qibocal.auto.output import UPDATED_PLATFORM
 from qibocal.cli._base import command
 from qibocal.protocols.rabi.amplitude import RabiAmplitudeData
 from qibocal.protocols.rabi.ef import RabiAmplitudeEFData
@@ -59,7 +59,6 @@ def idfn(val):
 def test_auto_command(runcard, update, tmp_path):
     """Test auto command pipeline."""
     runcard = runcard[0]
-    protocol = runcard["actions"][0]["id"]
 
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
     runner = CliRunner()
@@ -75,9 +74,8 @@ def test_auto_command(runcard, update, tmp_path):
         ],
         **INVOKER_OPTIONS,
     )
-    if runcard["backend"] == "qibolab" and runcard["platform"] is not None:
-        assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
-        assert (tmp_path / "data" / f"{protocol}" / PLATFORM_DIR).is_dir()
+    if update == "--update" and runcard["backend"] == "qibolab":
+        assert (tmp_path / UPDATED_PLATFORM).is_dir()
 
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
@@ -102,7 +100,7 @@ def test_acquire_command(runcard, tmp_path):
         **INVOKER_OPTIONS,
     )
 
-    assert (tmp_path / "data" / f"{protocol}").is_dir()
+    assert (tmp_path / "data" / protocol).is_dir()
 
     # generate report from acquired data
     runner.invoke(command, ["report", str(tmp_path)], **INVOKER_OPTIONS)
@@ -136,9 +134,8 @@ def test_fit_command(runcard, update, tmp_path):
     # perform fit
     runner.invoke(command, ["fit", str(tmp_path), update], **INVOKER_OPTIONS)
 
-    if runcard["backend"] == "qibolab" and runcard["platform"] is not None:
-        assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
-        assert (tmp_path / "data" / f"{protocol}" / PLATFORM_DIR).is_dir()
+    if update == "--update" and runcard["backend"] == "qibolab":
+        assert (tmp_path / UPDATED_PLATFORM).is_dir()
 
     # generate report with fit and plot
     runner.invoke(command, ["report", str(tmp_path)], **INVOKER_OPTIONS)
