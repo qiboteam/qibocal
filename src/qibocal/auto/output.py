@@ -176,15 +176,26 @@ class Output:
             for id, completed in self.history.items()
         }
 
-    def process(self, output: Path, mode: ExecutionMode, update: bool = True):
+    def process(
+        self,
+        output: Path,
+        mode: ExecutionMode,
+        update: bool = True,
+        force: bool = False,
+    ):
         """Process existing output."""
         self.platform = construct_backend(
             backend=self.meta.backend, platform=self.meta.platform
         ).platform
+        assert self.platform is not None
 
         for task_id, completed in self.history.items():
             # TODO: should we drop this check as well, and just allow overwriting?
-            if ExecutionMode.FIT in mode and self.history[task_id]._results is not None:
+            if (
+                ExecutionMode.FIT in mode
+                and not force
+                and completed.results is not None
+            ):
                 raise KeyError(f"{task_id} already contains fitting results.")
 
             # TODO: this is a plain hack, to be fixed together with the task lifecycle
