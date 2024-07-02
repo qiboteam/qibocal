@@ -1,4 +1,3 @@
-import os
 from copy import deepcopy
 from pathlib import Path
 
@@ -63,9 +62,7 @@ def test_task_stats():
     assert stats.tot == 7
 
 
-def test_new_output(tmp_path):
-    # TODO: move to conftests
-    os.chdir(tmp_path)
+def test_new_output():
     path1 = _new_output()
     path1.mkdir()
     path2 = _new_output()
@@ -74,8 +71,7 @@ def test_new_output(tmp_path):
     assert str(path2).split("-")[-2] == "001"
 
 
-def test_output_mkdir(tmp_path):
-    os.chdir(tmp_path)
+def test_output_mkdir():
     path1 = Output.mkdir()
     path2 = Output.mkdir()
 
