@@ -758,7 +758,7 @@ def resonator_spectroscopy_plot(data, qubit, fit: Results = None):
             xaxis_title="Real [a.u.]",
             yaxis_title="Imaginary [a.u.]",
             xaxis2_title="",
-            yaxis2_title="Magnitude [a.u.]",
+            yaxis2_title="Transmission [a.u.]",
             xaxis3_title="Frequency [GHz]",
             yaxis3_title="Phase [rad]",
         )
