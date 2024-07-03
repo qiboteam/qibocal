@@ -770,5 +770,5 @@ def extract_feature(
         z[first_mask],
         [100 - ci_second_mask, ci_second_mask],
     )
-    second_mask = z[first_mask] < max if feat == "min" else z[first_mask] > min
+    second_mask = z[first_mask] < min if feat == "min" else z[first_mask] > max
     return x[first_mask][second_mask], y[first_mask][second_mask]
