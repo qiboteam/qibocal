@@ -186,7 +186,7 @@ def s21(
         resonance (float): resonance frequency (Hz).
         q_loaded (float): loaded quality factor.
         q_coupling (float): coupling quality factor.
-        phi (float): quantifies the impedance mismatch.
+        phi (float): quantifies the impedance mismatch (Fano interference).
         amplitude (float): accounts for additional attenuation/amplification present in the setup.
         alpha (float): accounts for a additional phase shift.
         tau (float): cable delay caused by the length of the cable and finite speed of light.
@@ -582,10 +582,10 @@ def resonator_spectroscopy_plot(data, qubit, fit: Results = None):
                     "Loaded Quality Factor",
                     "Internal Quality Factor",
                     "Coupling Quality Factor",
-                    "ϕ",
+                    "Fano interference ϕ [rad]",
                     "Amplitude [a.u.]",
-                    "Phase Shift α",
-                    "Electronic Delay 𝜏",
+                    "Phase Shift α [rad]",
+                    "Electronic Delay 𝜏 [rad]",
                 ]
                 values = [
                     freq[qubit],
