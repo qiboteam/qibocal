@@ -39,6 +39,8 @@ class ResonatorSpectroscopyParameters(Parameters):
     """Width for frequency sweep relative  to the readout frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
+    fit_function: str
+    """Fit function used for the resonance."""
     power_level: Union[PowerLevel, str]
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
@@ -100,6 +102,8 @@ class ResonatorSpectroscopyData(Data):
     """Resonator type."""
     amplitudes: dict[QubitId, float]
     """Amplitudes provided by the user."""
+    fit_function: str
+    """Fit function used for the resonance."""
     data: dict[QubitId, npt.NDArray[ResSpecType]] = field(default_factory=dict)
     """Raw data acquired."""
     power_level: Optional[PowerLevel] = None
@@ -163,6 +167,7 @@ def _acquisition(
         power_level=params.power_level,
         amplitudes=amplitudes,
         attenuations=attenuations,
+        fit_function=params.fit_function,
     )
 
     results = platform.sweep(
