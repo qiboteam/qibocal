@@ -1,31 +1,23 @@
 import numpy as np
+from numpy.typing import NDArray
 from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import leastsq, newton
 
 
-def resonator_fit(
-    frequencies: np.array,
-    resonance: float,
-    q_loaded: float,
-    q_coupling: float,
-    phi: float = 0.0,
-    amplitude: float = 1.0,
-    alpha: float = 0.0,
-    tau: float = 0.0,
-):
-    return (
-        amplitude
-        * np.exp(1j * alpha)
-        * np.exp(-2 * np.pi * 1j * frequencies * tau)
-        * (
-            1
-            - ((q_loaded / (np.abs(q_coupling))) * np.exp(1j * phi))
-            / (1 + 2j * q_loaded * (frequencies / resonance - 1))
-        )
-    )
+def get_cable_delay(frequencies: NDArray, z: NDArray, num_points: int = 10) -> float:
+    """
+    Evaluates the cable delay τ caused by the length of the cable and the finite speed of light.
+    Performs a first-grade polynomial fit of the phase and extracts the angular coefficient.
 
+        Args:
+            frequencies (NDArray[float]): frequencies (Hz) at which the measurement was taken.
+            z (NDArray[complex]): S21 scattering matrix element.
+            num_points (int): number of points selected from both the start and the end of the
+                              frequencies array to perform the linear fit.
 
-def get_cable_delay(frequencies: np.array, z: np.array, num_points: int = 10):
+        Returns:
+            The value (float) of the cable delay τ in seconds.
+    """
     phases = np.unwrap(np.angle(z))
 
     frequencies_selected = np.concatenate(
@@ -38,12 +30,34 @@ def get_cable_delay(frequencies: np.array, z: np.array, num_points: int = 10):
     return pvals[0] / (-2 * np.pi)
 
 
-def remove_cable_delay(frequencies: np.array, z: np.array, tau: float):
+def remove_cable_delay(frequencies: NDArray, z: NDArray, tau: float) -> NDArray:
+    """
+    Corrects the S21 scattering matrix element array from the cable delay.
+
+        Args:
+            frequencies (NDArray[float]): frequencies (Hz) at which the measurement was taken.
+            z (NDArray[complex]): S21 scattering matrix element.
+            tau (float): the cable delay τ in seconds.
+        Returns:
+            The corrected S21 scattering matrix element (NDArray[complex]).
+    """
     return z * np.exp(2j * np.pi * frequencies * tau)
 
 
-def circle_fit(z: np.array):
-    z = z.deepcopy()
+def circle_fit(z: NDArray) -> tuple[float, float, float]:
+    """
+    Fits the circle of an S21 scattering matrix element array using the algebraic fit described in
+    "Efficient and robust analysis of complex scattering data under noise in microwave resonators"
+    (https://doi.org/10.1063/1.4907935) by Sebastian Probst.
+
+        Args:
+            z (NDArray[complex]): S21 scattering matrix element.
+            tau (float): the cable delay τ in seconds
+        Returns:
+            (tuple[float, float, float]): the (x,y) coordinates of the circle's center and
+            the radius of the circle.
+    """
+    z = z.copy()
     x_norm = 0.5 * (np.max(z.real) + np.min(z.real))
     y_norm = 0.5 * (np.max(z.imag) + np.min(z.imag))
     z -= x_norm + 1j * y_norm
@@ -184,13 +198,30 @@ def circle_fit(z: np.array):
     )
     a_4 = -4
 
-    def char_pol(x: np.array):
+    def pol_func(x: float) -> float:
+        """
+        Polynomio for find a root of a real or complex function using the Newton-Raphson method.
+
+            Args:
+                x (float): independent variable.
+            Returns:
+                Evaluated polynomial (float).
+        """
         return a_0 + a_1 * x + a_2 * x**2 + a_3 * x**3 + a_4 * x**4
 
-    def d_char_pol(x: np.array):
+    def der_pol_func(x: float) -> float:
+        """
+        Derivative of the polynomio for find a root of a real or complex function using the
+        Newton-Raphson method.
+
+            Args:
+                x (float): independent variable.
+            Returns:
+                Evaluated derivative of the polynomial (float).
+        """
         return a_1 + 2 * a_2 * x + 3 * a_3 * x**2 + 4 * a_4 * x**3
 
-    eta = newton(char_pol, 0.0, fprime=d_char_pol)
+    eta = newton(pol_func, 0.0, fprime=der_pol_func)
 
     m_matrix[3][0] = m_matrix[3][0] + 2 * eta
     m_matrix[0][3] = m_matrix[0][3] + 2 * eta
@@ -216,15 +247,25 @@ def circle_fit(z: np.array):
     )
 
 
-def phase_fit(frequencies: np.array, z: np.array):
+def phase_fit(frequencies: NDArray, z: NDArray) -> NDArray:
+    """
+    Fits the phase response of a resonator.
+
+        Args:
+            frequencies (NDArray[float]): frequencies (Hz) at which the measurement was taken.
+            z (NDArray[complex]): S21 scattering matrix element.
+
+        Returns:
+            Resonance frequency, loaded quality factor, offset phase and time delay between output
+            and input signal leading to linearly frequency dependent phase shift (NDArray[float]).
+    """
     phase = np.unwrap(np.angle(z))
 
-    # For centered circle roll-off should be close to 2pi. If not warn user.
     if np.max(phase) - np.min(phase) <= 0.8 * 2 * np.pi:
         roll_off = np.max(phase) - np.min(phase)
     else:
         roll_off = 2 * np.pi
-    # Use maximum of derivative of phase as guess for fr
+
     phase_smooth = gaussian_filter1d(phase, 30)
     phase_derivative = np.gradient(phase_smooth)
     resonance_guess = frequencies[np.argmax(np.abs(phase_derivative))]
@@ -233,9 +274,8 @@ def phase_fit(frequencies: np.array, z: np.array):
     tau_guess = -slope / (2 * np.pi * (frequencies[-1] - frequencies[0]))
     theta_guess = 0.5 * (np.mean(phase[:5]) + np.mean(phase[-5:]))
 
-    # Fit model with less parameters first to improve stability of fit
     def residuals_q_loaded(params):
-        q_loaded = params
+        (q_loaded,) = params
         return residuals_full((resonance_guess, q_loaded, theta_guess, tau_guess))
 
     def residuals_resonance_theta(params):
@@ -243,7 +283,7 @@ def phase_fit(frequencies: np.array, z: np.array):
         return residuals_full((resonance, q_loaded_guess, theta, tau_guess))
 
     def residuals_tau(params):
-        tau = params
+        (tau,) = params
         return residuals_full((resonance_guess, q_loaded_guess, theta_guess, tau))
 
     def residuals_resonance_q_loaded(params):
@@ -254,11 +294,11 @@ def phase_fit(frequencies: np.array, z: np.array):
         return phase_dist(phase - phase_centered(frequencies, *params))
 
     p_final = leastsq(residuals_q_loaded, [q_loaded_guess])
-    q_loaded_guess = p_final[0]
+    (q_loaded_guess,) = p_final[0]
     p_final = leastsq(residuals_resonance_theta, [resonance_guess, theta_guess])
     resonance_guess, theta_guess = p_final[0]
     p_final = leastsq(residuals_tau, [tau_guess])
-    tau_guess = p_final[0]
+    (tau_guess,) = p_final[0]
     p_final = leastsq(residuals_resonance_q_loaded, [resonance_guess, q_loaded_guess])
     resonance_guess, q_loaded_guess = p_final[0]
     p_final = leastsq(
@@ -268,17 +308,39 @@ def phase_fit(frequencies: np.array, z: np.array):
     return p_final[0]
 
 
-def phase_dist(phase: np.array):
-    return np.pi - np.abs(np.pi - np.abs(phase))
+def phase_dist(angle: float) -> float:
+    """
+    Maps angle [-2pi, 2pi] to phase distance on circle [0, pi].
+
+        Args:
+            angle (float): angle to be mapped.
+        Returns:
+            Mapped angle (float).
+    """
+    return np.pi - np.abs(np.pi - np.abs(angle))
 
 
 def phase_centered(
-    frequencies: np.array,
+    frequencies: NDArray,
     resonance: float,
     q_loaded: float,
     theta: float,
     tau: float = 0.0,
-):
+) -> NDArray:
+    """
+    Evaluates the phase response of a resonator which corresponds to a circle centered around
+    the origin. Additionally, a linear background slope is accounted for if needed.
+
+        Args:
+            frequencies (NDArray[float]): frequencies (Hz) at which the measurement was taken.
+            resonance (float): resonance frequency.
+            q_loaded (float): loaded quality factor.
+            theta (float): offset phase.
+            tau (float): time delay between output and input signal leading to linearly frequency
+                         dependent phase shift.
+        Returns:
+            Phase centered array (NDArray[float]).
+    """
     return (
         theta
         - 2 * np.pi * tau * (frequencies - resonance)
@@ -286,5 +348,13 @@ def phase_centered(
     )
 
 
-def periodic_boundary(angle: np.array):
+def periodic_boundary(angle: float) -> float:
+    """
+    Maps arbitrary angle to interval [-np.pi, np.pi).
+
+    Args:
+        angle (float): angle to be mapped.
+    Returns:
+        Mapped angle (float).
+    """
     return (angle + np.pi) % (2 * np.pi) - np.pi
