@@ -25,7 +25,7 @@ from .length_frequency_signal import (
 )
 from .utils import (
     fit_length_function,
-    guess_frequency,
+    guess_period,
     rabi_length_function,
     sequence_length,
 )
@@ -161,8 +161,8 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
         x = (durations - x_min) / (x_max - x_min)
         y = (y - y_min) / (y_max - y_min)
 
-        f = guess_frequency(durations, y)
-        pguess = [0, np.sign(y[0]) * 0.5, 1 / f, 0, 0]
+        f = guess_period(durations, y)
+        pguess = [0, np.sign(y[0]) * 0.5, f, 0, 0]
 
         try:
             popt, perr, pi_pulse_parameter = fit_length_function(

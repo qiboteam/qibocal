@@ -127,8 +127,8 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         y = qubit_data.prob
         x = (raw_x - min_x) / (max_x - min_x)
 
-        f = utils.guess_frequency(x, y)
-        pguess = [0.5, 0.5, 1 / f, 0, 0]
+        f = utils.guess_period(x, y)
+        pguess = [0.5, 0.5, f, 0, 0]
 
         try:
             popt, perr, pi_pulse_parameter = utils.fit_length_function(

@@ -19,7 +19,7 @@ from qibocal.protocols.utils import table_dict, table_html
 
 from ..utils import HZ_TO_GHZ
 from .amplitude_signal import RabiAmplitudeSignalResults
-from .utils import fit_amplitude_function, guess_frequency, sequence_amplitude
+from .utils import fit_amplitude_function, guess_period, sequence_amplitude
 
 
 @dataclass
@@ -180,7 +180,7 @@ def _fit(data: RabiAmplitudeFreqSignalData) -> RabiAmplitudeFrequencySignalResul
         x = (amps - x_min) / (x_max - x_min)
         y = (y - y_min) / (y_max - y_min)
 
-        f = guess_frequency(amps, y)
+        f = guess_period(amps, y)
         pguess = [0.5, 0.5, 1 / f, 0]
 
         try:

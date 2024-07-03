@@ -25,7 +25,7 @@ from .amplitude_frequency_signal import (
 )
 from .utils import (
     fit_amplitude_function,
-    guess_frequency,
+    guess_period,
     rabi_amplitude_function,
     sequence_amplitude,
 )
@@ -161,8 +161,8 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         x = (amps - x_min) / (x_max - x_min)
         y = (y - y_min) / (y_max - y_min)
 
-        f = guess_frequency(amps, y)
-        pguess = [0.5, 0.5, 1 / f, 0]
+        f = guess_period(amps, y)
+        pguess = [0.5, 0.5, f, 0]
 
         try:
             popt, perr, pi_pulse_parameter = fit_amplitude_function(

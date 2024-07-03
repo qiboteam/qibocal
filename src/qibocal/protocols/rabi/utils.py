@@ -270,15 +270,20 @@ def sequence_length(
     return sequence, qd_pulses, ro_pulses, amplitudes
 
 
-def guess_frequency(x, y):
-    """Return fft frequency estimation given a sinusoidal plot."""
-    # Guessing period using fourier transform
-    ft = np.fft.rfft(y)
-    mags = abs(ft)
-    local_maxima = find_peaks(mags, threshold=10)[0]
-    index = local_maxima[0] if len(local_maxima) > 0 else None
+def guess_period(x, y):
+    """Return fft period estimation given a sinusoidal plot."""
+
+    fft = np.fft.rfft(y)
+    fft_freqs = np.fft.rfftfreq(len(y), d=(x[1] - x[0]))
+    mags = abs(fft)
+    mags[0] = 0
+    local_maxima, _ = find_peaks(mags)
+    if len(local_maxima) > 0:
+        dominant_freq = fft_freqs[np.argmax(mags)]
+    else:
+        dominant_freq = 0  # Default if no peaks are found
     # 0.5 hardcoded guess for less than one oscillation
-    return x[index] / (x[1] - x[0]) if index is not None else 0.5
+    return 1 / dominant_freq if dominant_freq != 0 else 0.5
 
 
 def fit_length_function(

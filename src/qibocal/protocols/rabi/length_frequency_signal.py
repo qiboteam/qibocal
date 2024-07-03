@@ -19,7 +19,7 @@ from qibocal.protocols.utils import table_dict, table_html
 
 from ..utils import HZ_TO_GHZ
 from .length_signal import RabiLengthSignalResults
-from .utils import fit_length_function, guess_frequency, sequence_length
+from .utils import fit_length_function, guess_period, sequence_length
 
 
 @dataclass
@@ -179,8 +179,8 @@ def _fit(data: RabiLengthFreqSignalData) -> RabiLengthFrequencySignalResults:
         x = (durations - x_min) / (x_max - x_min)
         y = (y - y_min) / (y_max - y_min)
 
-        f = guess_frequency(durations, y)
-        pguess = [0, np.sign(y[0]) * 0.5, 1 / f, 0, 0]
+        f = guess_period(durations, y)
+        pguess = [0, np.sign(y[0]) * 0.5, f, 0, 0]
 
         try:
             popt, _, pi_pulse_parameter = fit_length_function(
