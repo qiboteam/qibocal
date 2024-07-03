@@ -3,17 +3,24 @@ from enum import Enum
 from typing import Union
 
 import numpy as np
-import numpy.typing as npt
 import pandas as pd
 import plotly.graph_objects as go
+from numpy.typing import NDArray
 from plotly.subplots import make_subplots
-from qibolab.qubits import QubitId
 from scipy import constants
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Results
 from qibocal.config import log
 from qibocal.fitting.classifier import run
+from qibocal.protocols.resonator_utils import (
+    circle_fit,
+    get_cable_delay,
+    periodic_boundary,
+    phase_fit,
+    remove_cable_delay,
+)
+from qibolab.qubits import QubitId
 
 GHZ_TO_HZ = 1e9
 HZ_TO_GHZ = 1e-9
@@ -38,7 +45,7 @@ CONFIDENCE_INTERVAL_SECOND_MASK = 70
 
 
 def effective_qubit_temperature(
-    prob_0: np.array, prob_1: np.array, qubit_frequency: float, nshots: int
+    prob_0: NDArray, prob_1: NDArray, qubit_frequency: float, nshots: int
 ):
     """Calculates the qubit effective temperature.
 
@@ -47,8 +54,8 @@ def effective_qubit_temperature(
     kB Teff = - hbar qubit_freq / ln(prob_1/prob_0)
 
     Args:
-        prob_0 (np.array): population 0 samples
-        prob_1 (np.array): population 1 samples
+        prob_0 (NDArray): population 0 samples
+        prob_1 (NDArray): population 1 samples
         qubit_frequency(float): frequency of qubit
         nshots (int): number of shots
     Returns:
@@ -431,9 +438,9 @@ def format_error_single_cell(measure: tuple):
 
 
 def chi2_reduced(
-    observed: npt.NDArray,
-    estimated: npt.NDArray,
-    errors: npt.NDArray,
+    observed: NDArray,
+    estimated: NDArray,
+    errors: NDArray,
     dof: float = None,
 ):
     if np.count_nonzero(errors) < len(errors):
@@ -483,7 +490,7 @@ def significant_digit(number: float):
 
 
 def evaluate_grid(
-    data: npt.NDArray,
+    data: NDArray,
 ):
     """
     This function returns a matrix grid evaluated from
