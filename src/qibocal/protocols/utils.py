@@ -408,6 +408,380 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
     return figures, fitting_report
 
 
+def resonator_spectroscopy_plot(data, qubit, fit: Results = None):
+    figures = []
+    fig_raw = make_subplots(
+        rows=2,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        specs=[
+            [{"rowspan": 2}, {}],
+            [None, {}],
+        ],
+    )
+    qubit_data = data[qubit]
+    fitting_report = ""
+    frequencies = qubit_data.freq
+    signal = qubit_data.signal
+    phase = qubit_data.phase
+    s21_raw = np.abs(signal) * np.exp(1j * phase)
+
+    fig_raw.add_trace(
+        go.Scatter(
+            x=np.real(s21_raw),
+            y=np.imag(s21_raw),
+            mode="markers",
+            marker=dict(
+                size=4,
+            ),
+            opacity=1,
+            name="S21",
+            showlegend=True,
+            legendgroup="S21",
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig_raw.add_trace(
+        go.Scatter(
+            x=frequencies * HZ_TO_GHZ,
+            y=signal,
+            mode="markers",
+            marker=dict(
+                size=4,
+            ),
+            opacity=1,
+            name="Magnitude",
+            showlegend=True,
+            legendgroup="Magnitude",
+        ),
+        row=1,
+        col=2,
+    )
+
+    fig_raw.add_trace(
+        go.Scatter(
+            x=frequencies * HZ_TO_GHZ,
+            y=np.unwrap(phase),
+            mode="markers",
+            marker=dict(
+                size=4,
+            ),
+            opacity=1,
+            name="Phase",
+            showlegend=True,
+            legendgroup="Phase",
+        ),
+        row=2,
+        col=2,
+    )
+
+    show_error_bars = not np.isnan(qubit_data.error_signal).any()
+
+    if show_error_bars:
+        errors_signal = qubit_data.error_signal
+        errors_phase = qubit_data.error_phase
+        fig_raw.add_trace(
+            go.Scatter(
+                x=np.concatenate((frequencies, frequencies[::-1])),
+                y=np.concatenate(
+                    (signal + errors_signal, (signal - errors_signal)[::-1])
+                ),
+                fill="toself",
+                fillcolor=COLORBAND,
+                line=dict(color=COLORBAND_LINE),
+                showlegend=True,
+                name="Signal Errors",
+            ),
+            row=1,
+            col=1,
+        )
+
+        fig_raw.add_trace(
+            go.Scatter(
+                x=np.concatenate((frequencies, frequencies[::-1])),
+                y=np.concatenate((phase + errors_phase), (phase - errors_phase[::-1])),
+                fill="toself",
+                fillcolor=COLORBAND,
+                line=dict(color=COLORBAND_LINE),
+                showlegend=True,
+                name="Phase Errors",
+            ),
+            row=1,
+            col=2,
+        )
+
+    freqrange = np.linspace(
+        min(frequencies),
+        max(frequencies),
+        2 * len(frequencies),
+    )
+
+    if fit is not None:
+        params = fit.fitted_parameters[qubit]
+        s21_fitted = s21(freqrange, *params)
+
+        fig_raw.add_trace(
+            go.Scatter(
+                x=np.real(s21_fitted),
+                y=np.imag(s21_fitted),
+                opacity=1,
+                name="S21 Fit",
+                line=go.scatter.Line(dash="solid"),
+            ),
+            row=1,
+            col=1,
+        )
+        fig_raw.add_trace(
+            go.Scatter(
+                x=freqrange * HZ_TO_GHZ,
+                y=np.abs(s21_fitted),
+                name="Magnitude Fit",
+                line=go.scatter.Line(dash="solid"),
+            ),
+            row=1,
+            col=2,
+        )
+        fig_raw.add_trace(
+            go.Scatter(
+                x=freqrange * HZ_TO_GHZ,
+                y=np.unwrap(np.angle(s21_fitted)),
+                name="Phase Fit",
+                line=go.scatter.Line(dash="solid"),
+            ),
+            row=2,
+            col=2,
+        )
+
+        if data.power_level is PowerLevel.low:
+            label = "Readout Frequency [Hz]"
+            freq = fit.frequency
+        elif data.power_level is PowerLevel.high:
+            label = "Bare Resonator Frequency [Hz]"
+            freq = fit.bare_frequency
+        else:
+            label = "Qubit Frequency [Hz]"
+            freq = fit.frequency
+
+        if data.amplitudes[qubit] is not None:
+            if show_error_bars:
+                labels = [label, "Amplitude", "Chi2 Reduced"]
+                values = [
+                    (
+                        freq[qubit],
+                        fit.error_fit_pars[qubit][1],
+                    ),
+                    (data.amplitudes[qubit], 0),
+                    fit.chi2_reduced[qubit],
+                ]
+            else:
+                labels = [
+                    label,
+                    "Loaded Quality Factor",
+                    "Internal Quality Factor",
+                    "Coupling Quality Factor",
+                    "ϕ",
+                    "Amplitude [a.u.]",
+                    "Phase Shift α",
+                    "Electronic Delay 𝜏",
+                ]
+                values = [
+                    freq[qubit],
+                    params[1],
+                    1.0 / (1.0 / params[1] - 1.0 / params[2]),
+                    params[2],
+                    params[3],
+                    params[4],
+                    params[5],
+                    params[6],
+                ]
+
+            fitting_report = table_html(
+                table_dict(
+                    qubit,
+                    labels,
+                    values,
+                    display_error=show_error_bars,
+                )
+            )
+        s21_calibrated = (
+            s21_raw
+            / params[4]
+            * np.exp(1j * (-params[5] + 2.0 * np.pi * params[6] * frequencies))
+        )
+        fig_calibrated = make_subplots(
+            rows=2,
+            cols=2,
+            horizontal_spacing=0.1,
+            vertical_spacing=0.1,
+            specs=[
+                [{"rowspan": 2}, {}],
+                [None, {}],
+            ],
+        )
+
+        fig_calibrated.add_trace(
+            go.Scatter(
+                x=np.real(s21_calibrated),
+                y=np.imag(s21_calibrated),
+                mode="markers",
+                marker=dict(
+                    size=4,
+                ),
+                opacity=1,
+                name="S21",
+                showlegend=True,
+                legendgroup="S21",
+            ),
+            row=1,
+            col=1,
+        )
+
+        fig_calibrated.add_trace(
+            go.Scatter(
+                x=frequencies * HZ_TO_GHZ,
+                y=np.abs(s21_calibrated),
+                mode="markers",
+                marker=dict(
+                    size=4,
+                ),
+                opacity=1,
+                name="Magnitude",
+                showlegend=True,
+                legendgroup="Magnitude",
+            ),
+            row=1,
+            col=2,
+        )
+
+        fig_calibrated.add_trace(
+            go.Scatter(
+                x=frequencies * HZ_TO_GHZ,
+                y=np.unwrap(np.angle(s21_calibrated)),
+                mode="markers",
+                marker=dict(
+                    size=4,
+                ),
+                opacity=1,
+                name="Phase",
+                showlegend=True,
+                legendgroup="Phase",
+            ),
+            row=2,
+            col=2,
+        )
+
+        show_error_bars = not np.isnan(qubit_data.error_signal).any()
+
+        if show_error_bars:
+            errors_signal = qubit_data.error_signal
+            errors_phase = qubit_data.error_phase
+            fig_calibrated.add_trace(
+                go.Scatter(
+                    x=np.concatenate((frequencies, frequencies[::-1])),
+                    y=np.concatenate(
+                        (signal + errors_signal, (signal - errors_signal)[::-1])
+                    ),
+                    fill="toself",
+                    fillcolor=COLORBAND,
+                    line=dict(color=COLORBAND_LINE),
+                    showlegend=True,
+                    name="Signal Errors",
+                ),
+                row=1,
+                col=1,
+            )
+
+            fig_calibrated.add_trace(
+                go.Scatter(
+                    x=np.concatenate((frequencies, frequencies[::-1])),
+                    y=np.concatenate(
+                        (phase + errors_phase), (phase - errors_phase[::-1])
+                    ),
+                    fill="toself",
+                    fillcolor=COLORBAND,
+                    line=dict(color=COLORBAND_LINE),
+                    showlegend=True,
+                    name="Phase Errors",
+                ),
+                row=1,
+                col=2,
+            )
+
+        freqrange = np.linspace(
+            min(frequencies),
+            max(frequencies),
+            2 * len(frequencies),
+        )
+        s21_calibrated_fitted = s21(
+            freqrange, params[0], params[1], params[2], params[3]
+        )
+        fig_calibrated.add_trace(
+            go.Scatter(
+                x=np.real(s21_calibrated_fitted),
+                y=np.imag(s21_calibrated_fitted),
+                opacity=1,
+                name="S21 Fit",
+                line=go.scatter.Line(dash="solid"),
+            ),
+            row=1,
+            col=1,
+        )
+        fig_calibrated.add_trace(
+            go.Scatter(
+                x=freqrange * HZ_TO_GHZ,
+                y=np.abs(s21_calibrated_fitted),
+                name="Magnitude Fit",
+                line=go.scatter.Line(dash="solid"),
+            ),
+            row=1,
+            col=2,
+        )
+        fig_calibrated.add_trace(
+            go.Scatter(
+                x=freqrange * HZ_TO_GHZ,
+                y=np.unwrap(np.angle(s21_calibrated_fitted)),
+                name="Phase Fit",
+                line=go.scatter.Line(dash="solid"),
+            ),
+            row=2,
+            col=2,
+        )
+
+        fig_calibrated.update_xaxes(scaleanchor="y", scaleratio=1, row=1, col=1)
+        fig_calibrated.update_yaxes(scaleanchor="x", scaleratio=1, row=1, col=1)
+        fig_calibrated.update_layout(
+            title="Calibrated data",
+            showlegend=True,
+            xaxis_title="Real [a.u.]",
+            yaxis_title="Imaginary [a.u.]",
+            xaxis2_title="",
+            yaxis2_title="Magnitude [a.u.]",
+            xaxis3_title="Frequency [GHz]",
+            yaxis3_title="Phase [rad]",
+        )
+        figures.append(fig_calibrated)
+
+    fig_raw.update_xaxes(scaleanchor="y", scaleratio=1, row=1, col=1)
+    fig_raw.update_yaxes(scaleanchor="x", scaleratio=1, row=1, col=1)
+    fig_raw.update_layout(
+        title="Raw data",
+        showlegend=True,
+        xaxis_title="Real [a.u.]",
+        yaxis_title="Imaginary [a.u.]",
+        xaxis2_title="",
+        yaxis2_title="Magnitude [a.u.]",
+        xaxis3_title="Frequency [GHz]",
+        yaxis3_title="Phase [rad]",
+    )
+    figures.append(fig_raw)
+    figures.reverse()
+
+    return figures, fitting_report
+
+
 def norm(x_mags):
     return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
 
