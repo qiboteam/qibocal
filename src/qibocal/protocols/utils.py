@@ -7,6 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
+from qibolab.qubits import QubitId
 from scipy import constants
 from scipy.optimize import curve_fit
 
@@ -20,7 +21,6 @@ from qibocal.protocols.resonator_utils import (
     phase_fit,
     remove_cable_delay,
 )
-from qibolab.qubits import QubitId
 
 GHZ_TO_HZ = 1e9
 HZ_TO_GHZ = 1e-9
@@ -162,6 +162,91 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         return model_parameters[1] * GHZ_TO_HZ, model_parameters, perr
     except RuntimeError as e:
         log.warning(f"Lorentzian fit not successful due to {e}")
+
+
+def s21(
+    frequencies: NDArray,
+    resonance: float,
+    q_loaded: float,
+    q_coupling: float,
+    phi: float = 0.0,
+    amplitude: float = 1.0,
+    alpha: float = 0.0,
+    tau: float = 0.0,
+) -> NDArray:
+    """
+    Full model of the S21 notch resonator based on eq. (1) described in:
+    "Efficient and robust analysis of complex scattering data under noise in microwave resonators"
+    (https://doi.org/10.1063/1.4907935) by Sebastian Probst.
+
+    The equation is split into two parts describing the ideal resonator and the environment.
+
+    Args:
+        frequencies (NDArray[float]): frequencies (Hz) at which the measurement was taken.
+        resonance (float): resonance frequency (Hz).
+        q_loaded (float): loaded quality factor.
+        q_coupling (float): coupling quality factor.
+        phi (float): quantifies the impedance mismatch.
+        amplitude (float): accounts for additional attenuation/amplification present in the setup.
+        alpha (float): accounts for a additional phase shift.
+        tau (float): cable delay caused by the length of the cable and finite speed of light.
+
+    Returns:
+        S21 resonance profile array (NDArray) of a notch resonator.
+    """
+    return (
+        amplitude
+        * np.exp(1j * alpha)
+        * np.exp(-2 * np.pi * 1j * frequencies * tau)
+        * (
+            1
+            - ((q_loaded / (np.abs(q_coupling))) * np.exp(1j * phi))
+            / (1 + 2j * q_loaded * (frequencies / resonance - 1))
+        )
+    )
+
+
+def s21_fit(data: NDArray, resonator_type=None, fit=None) -> tuple[float, list[float]]:
+    """
+    Calibrates the S21 profile of a notch resonator, based on https://github.com/qkitgroup/qkit.
+
+        Args:
+            data (NDArray[complex]): S21 scattering matrix element.
+        Returns:
+            Model parameters
+
+    """
+    f_data = data.freq
+    z_data = data.signal * np.exp(1j * data.phase)
+
+    tau = get_cable_delay(f_data, z_data, 20)
+    z_1 = remove_cable_delay(f_data, z_data, tau)
+
+    x_c, y_c, r_0 = circle_fit(z_1)
+    z_c = x_c + 1j * y_c
+    z_2 = z_1 - z_c
+
+    resonance, q_loaded, theta, _ = phase_fit(f_data, z_2)
+    theta = periodic_boundary(theta)
+    beta = periodic_boundary(theta - np.pi)
+    off_resonant_point = z_c + r_0 * np.cos(beta) + 1j * r_0 * np.sin(beta)
+
+    amplitude = np.abs(off_resonant_point)
+    alpha = np.angle(off_resonant_point)
+    phi = periodic_boundary(beta - alpha)
+    r_0_norm = r_0 / amplitude
+    q_coupling = q_loaded / (2 * r_0_norm) / np.cos(phi)
+
+    model_parameters = [
+        resonance,
+        q_loaded,
+        q_coupling,
+        phi,
+        amplitude,
+        alpha,
+        tau,
+    ]
+    return model_parameters[0], model_parameters
 
 
 def spectroscopy_plot(data, qubit, fit: Results = None):
