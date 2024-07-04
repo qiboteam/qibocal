@@ -17,9 +17,9 @@ from qibocal.auto.operation import Data, Parameters, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
-from ..utils import HZ_TO_GHZ
+from ..utils import HZ_TO_GHZ, guess_period
 from .length_signal import RabiLengthSignalResults
-from .utils import fit_length_function, guess_period, sequence_length
+from .utils import fit_length_function, sequence_length
 
 
 @dataclass

@@ -9,13 +9,19 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
-from scipy.signal import find_peaks
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 
-from .utils import COLORBAND, COLORBAND_LINE, chi2_reduced, table_dict, table_html
+from .utils import (
+    COLORBAND,
+    COLORBAND_LINE,
+    chi2_reduced,
+    guess_period,
+    table_dict,
+    table_html,
+)
 
 # TODO: add errors in fitting
 
@@ -155,17 +161,8 @@ def _fit(data: DragTuningData) -> DragTuningResults:
         normalized_beta = (beta_params - beta_min) / (beta_max - beta_min)
 
         # Guessing period using fourier transform
-        ft = np.fft.rfft(prob)
-        mags = abs(ft)
-        local_maxima = find_peaks(mags, threshold=1)[0]
-        index = local_maxima[0] if len(local_maxima) > 0 else None
-        # 0.5 hardcoded guess for less than one oscillation
-        f = (
-            beta_params[index] / (beta_params[1] - beta_params[0])
-            if index is not None
-            else 0.5
-        )
-        pguess = [0.5, 0.5, 1 / f, 0]
+        period = guess_period(normalized_beta, prob)
+        pguess = [0.5, 0.5, period, 0]
 
         try:
             popt, _ = curve_fit(

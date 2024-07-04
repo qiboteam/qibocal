@@ -5,7 +5,6 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
-from scipy.signal import find_peaks
 
 from qibocal.auto.operation import Parameters
 
@@ -268,22 +267,6 @@ def sequence_length(
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
     return sequence, qd_pulses, ro_pulses, amplitudes
-
-
-def guess_period(x, y):
-    """Return fft period estimation given a sinusoidal plot."""
-
-    fft = np.fft.rfft(y)
-    fft_freqs = np.fft.rfftfreq(len(y), d=(x[1] - x[0]))
-    mags = abs(fft)
-    mags[0] = 0
-    local_maxima, _ = find_peaks(mags)
-    if len(local_maxima) > 0:
-        dominant_freq = fft_freqs[np.argmax(mags)]
-    else:
-        dominant_freq = 0  # Default if no peaks are found
-    # 0.5 hardcoded guess for less than one oscillation
-    return 1 / dominant_freq if dominant_freq != 0 else 0.5
 
 
 def fit_length_function(

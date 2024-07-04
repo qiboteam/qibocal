@@ -15,11 +15,10 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Routine
 from qibocal.config import log
-from qibocal.protocols.utils import table_dict, table_html
+from qibocal.protocols.utils import HZ_TO_GHZ, guess_period, table_dict, table_html
 
-from ..utils import HZ_TO_GHZ
 from .amplitude_signal import RabiAmplitudeSignalResults
-from .utils import fit_amplitude_function, guess_period, sequence_amplitude
+from .utils import fit_amplitude_function, sequence_amplitude
 
 
 @dataclass

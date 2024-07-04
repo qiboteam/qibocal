@@ -16,7 +16,7 @@ from qibocal.protocols.rabi.length_signal import (
     RabiLengthSignalResults,
 )
 
-from ..utils import chi2_reduced
+from ..utils import chi2_reduced, guess_period
 from . import utils
 
 
@@ -127,7 +127,7 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         y = qubit_data.prob
         x = (raw_x - min_x) / (max_x - min_x)
 
-        f = utils.guess_period(x, y)
+        f = guess_period(x, y)
         pguess = [0.5, 0.5, f, 0, 0]
 
         try:

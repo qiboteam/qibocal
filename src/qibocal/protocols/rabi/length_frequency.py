@@ -16,19 +16,14 @@ from qibocal.auto.operation import Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
-from ..utils import HZ_TO_GHZ, chi2_reduced
+from ..utils import HZ_TO_GHZ, chi2_reduced, guess_period
 from .length_frequency_signal import (
     RabiLengthFreqSignalData,
     RabiLengthFrequencySignalParameters,
     RabiLengthFrequencySignalResults,
     _update,
 )
-from .utils import (
-    fit_length_function,
-    guess_period,
-    rabi_length_function,
-    sequence_length,
-)
+from .utils import fit_length_function, rabi_length_function, sequence_length
 
 
 @dataclass

@@ -9,11 +9,10 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
-from scipy.signal import find_peaks
 
 from qibocal.auto.operation import Routine
 from qibocal.config import log
-from qibocal.protocols.utils import table_dict, table_html
+from qibocal.protocols.utils import guess_period, table_dict, table_html
 
 from .flipping_signal import (
     FlippingSignalData,
@@ -74,7 +73,7 @@ def _acquisition(
 
     data = FlippingData(
         resonator_type=platform.resonator_type,
-        detuning=params.detuning,
+        delta_amplitude=params.delta_amplitude,
         pi_pulse_amplitudes={
             qubit: platform.qubits[qubit].native_gates.RX.amplitude for qubit in targets
         },
@@ -95,7 +94,10 @@ def _acquisition(
         sequence = PulseSequence()
         for qubit in targets:
             sequence += flipping_sequence(
-                platform=platform, qubit=qubit, detuning=params.detuning, flips=flips
+                platform=platform,
+                qubit=qubit,
+                delta_amplitude=params.delta_amplitude,
+                flips=flips,
             )
 
         sequences.append(sequence)
@@ -153,19 +155,8 @@ def _fit(data: FlippingData) -> FlippingResults:
         y = qubit_data.prob
         x = qubit_data.flips
 
-        ft = np.fft.rfft(y)
-        # Remove the zero frequency mode
-        mags = abs(ft)[1:]
-        local_maxima = find_peaks(mags, height=0)
-        peak_heights = local_maxima[1]["peak_heights"]
-        # Select the frequency with the highest peak
-        index = (
-            int(local_maxima[0][np.argmax(peak_heights)] + 1)
-            if len(local_maxima[0]) > 0
-            else None
-        )
-        f = x[index] / (x[1] - x[0]) if index is not None else 1
-        pguess = [0.5, 0.5, 1 / f, np.pi, 0]
+        period = guess_period(x, y)
+        pguess = [0, 1, 2 * np.pi / period, -np.pi / 4, 0]
 
         try:
             popt, perr = curve_fit(
@@ -175,8 +166,8 @@ def _fit(data: FlippingData) -> FlippingResults:
                 p0=pguess,
                 maxfev=2000000,
                 bounds=(
-                    [0, 0, -np.inf, 0, 0],
-                    [1, np.inf, np.inf, 2 * np.pi, np.inf],
+                    [0, 0, -np.inf, -np.pi, 0],
+                    [1, 1, np.inf, np.pi, np.inf],
                 ),
                 sigma=qubit_data.error,
             )
@@ -215,7 +206,7 @@ def _fit(data: FlippingData) -> FlippingResults:
                 / 2,
             )
             delta_amplitude_detuned[qubit] = (
-                delta_amplitude[qubit][0] - data.detuning,
+                delta_amplitude[qubit][0] - data.delta_amplitude,
                 delta_amplitude[qubit][1],
             )
 
@@ -317,7 +308,7 @@ def _plot(data: FlippingData, target: QubitId, fit: FlippingResults = None):
     fig.update_layout(
         showlegend=True,
         xaxis_title="Flips",
-        yaxis_title="Probability",
+        yaxis_title="Excited State Probability",
     )
 
     figures.append(fig)

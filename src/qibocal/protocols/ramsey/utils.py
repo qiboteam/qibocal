@@ -5,7 +5,8 @@ from qibolab import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
-from scipy.signal import find_peaks
+
+from qibocal.protocols.utils import guess_period
 
 POPT_EXCEPTION = [0, 0, 0, 0, 1]
 """Fit parameters output to handle exceptions"""
@@ -69,17 +70,13 @@ def fitting(x: list, y: list, errors: list = None) -> list:
     y = (y - y_min) / delta_y
     x = (x - x_min) / delta_x
     err = errors / delta_y if errors is not None else None
-    ft = np.fft.rfft(y)
-    freqs = np.fft.rfftfreq(len(y), x[1] - x[0])
-    mags = abs(ft)
-    local_maxima = find_peaks(mags, threshold=THRESHOLD)[0]
-    index = local_maxima[0] if len(local_maxima) > 0 else None
-    # 0.5 hardcoded guess for less than one oscillation
-    f = freqs[index] * 2 * np.pi if index is not None else 0.5
+
+    period = guess_period(x, y)
+    omega = 2 * np.pi / period
     p0 = [
         0.5,
         0.5,
-        f,
+        omega,
         0,
         1,
     ]

@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from qibocal.protocols.rabi.utils import guess_period
+from qibocal.protocols.utils import guess_period
 
 
 @pytest.mark.parametrize("period", [0.2, 0.5, 1])
