@@ -41,11 +41,11 @@ class ResonatorSpectroscopyParameters(Parameters):
     """Width for frequency sweep relative  to the readout frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
-    fit_function: str
-    """Fit function used for the resonance."""
     power_level: Union[PowerLevel, str]
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
+    fit_function: Optional[str] = "lorentzian"
+    """Fit function (optional) used for the resonance."""
     amplitude: Optional[float] = None
     """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
@@ -104,8 +104,8 @@ class ResonatorSpectroscopyData(Data):
     """Resonator type."""
     amplitudes: dict[QubitId, float]
     """Amplitudes provided by the user."""
-    fit_function: str
-    """Fit function used for the resonance."""
+    fit_function: Optional[str] = "lorentzian"
+    """Fit function (optional) used for the resonance."""
     data: dict[QubitId, npt.NDArray[ResSpecType]] = field(default_factory=dict)
     """Raw data acquired."""
     power_level: Optional[PowerLevel] = None
