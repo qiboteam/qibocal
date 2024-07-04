@@ -48,7 +48,7 @@ def circle_fit(z: NDArray) -> tuple[float, float, float]:
     """
     Fits the circle of an S21 scattering matrix element array using the algebraic fit described in
     "Efficient and robust analysis of complex scattering data under noise in microwave resonators"
-    (https://doi.org/10.1063/1.4907935) by Sebastian Probst.
+    (https://doi.org/10.1063/1.4907935) by S. Probst et al.
 
         Args:
             z (NDArray[complex]): S21 scattering matrix element.
