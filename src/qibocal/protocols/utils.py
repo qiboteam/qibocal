@@ -786,6 +786,5 @@ def guess_period(x, y):
     if len(local_maxima) > 0:
         dominant_freq = fft_freqs[np.argmax(mags)]
     else:
-        dominant_freq = 0  # Default if no peaks are found
-    # 0.5 hardcoded guess for less than one oscillation
-    return 1 / dominant_freq if dominant_freq != 0 else 2
+        dominant_freq = None  # Default if no peaks are found
+    return 1 / dominant_freq if dominant_freq is not None else 2
