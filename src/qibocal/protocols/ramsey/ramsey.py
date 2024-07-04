@@ -121,7 +121,7 @@ def _acquisition(
             sweeper,
         )
         for qubit in targets:
-            probs = results[qubit].probability()
+            probs = results[qubit].probability(state=1)
             # The probability errors are the standard errors of the binomial distribution
             errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
             data.register_qubit(
@@ -307,7 +307,7 @@ def _plot(data: RamseyData, target: QubitId, fit: RamseyResults = None):
     fig.update_layout(
         showlegend=True,
         xaxis_title="Time [ns]",
-        yaxis_title="Ground state probability",
+        yaxis_title="Excited state probability",
     )
 
     figures.append(fig)

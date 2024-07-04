@@ -788,4 +788,4 @@ def guess_period(x, y):
     else:
         dominant_freq = 0  # Default if no peaks are found
     # 0.5 hardcoded guess for less than one oscillation
-    return 1 / dominant_freq if dominant_freq != 0 else 0.5
+    return 1 / dominant_freq if dominant_freq != 0 else 2
