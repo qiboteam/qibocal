@@ -100,46 +100,46 @@ def _acquisition(
         ].twpa.local_oscillator.frequency
         initial_twpa_power[qubit] = platform.qubits[qubit].twpa.local_oscillator.power
 
-    for freq in freq_range:
-        platform.qubits[qubit].twpa.local_oscillator.frequency = (
-            initial_twpa_freq[qubit] + freq
-        )
+        for freq in freq_range:
+            platform.qubits[qubit].twpa.local_oscillator.frequency = (
+                initial_twpa_freq[qubit] + freq
+            )
 
-        for power in power_range:
-            for qubit in targets:
-                platform.qubits[qubit].twpa.local_oscillator.power = (
-                    initial_twpa_power[qubit] + power
+            for power in power_range:
+                for qubit in targets:
+                    platform.qubits[qubit].twpa.local_oscillator.power = (
+                        initial_twpa_power[qubit] + power
+                    )
+
+                classification_data = classification._acquisition(
+                    classification.SingleShotClassificationParameters.load(
+                        {"nshots": params.nshots}
+                    ),
+                    platform,
+                    targets,
                 )
 
-            classification_data = classification._acquisition(
-                classification.SingleShotClassificationParameters.load(
-                    {"nshots": params.nshots}
-                ),
-                platform,
-                targets,
-            )
+                classification_result = classification._fit(classification_data)
 
-            classification_result = classification._fit(classification_data)
-
-            data.register_qubit(
-                TwpaFrequencyPowerType,
-                (qubit),
-                dict(
-                    freq=np.array(
-                        [platform.qubits[qubit].twpa.local_oscillator.frequency],
-                        dtype=np.float64,
+                data.register_qubit(
+                    TwpaFrequencyPowerType,
+                    (qubit),
+                    dict(
+                        freq=np.array(
+                            [platform.qubits[qubit].twpa.local_oscillator.frequency],
+                            dtype=np.float64,
+                        ),
+                        power=np.array(
+                            [platform.qubits[qubit].twpa.local_oscillator.power],
+                            dtype=np.float64,
+                        ),
+                        assignment_fidelity=np.array(
+                            [classification_result.assignment_fidelity[qubit]],
+                        ),
+                        angle=np.array([classification_result.rotation_angle[qubit]]),
+                        threshold=np.array([classification_result.threshold[qubit]]),
                     ),
-                    power=np.array(
-                        [platform.qubits[qubit].twpa.local_oscillator.power],
-                        dtype=np.float64,
-                    ),
-                    assignment_fidelity=np.array(
-                        [classification_result.assignment_fidelity[qubit]],
-                    ),
-                    angle=np.array([classification_result.rotation_angle[qubit]]),
-                    threshold=np.array([classification_result.threshold[qubit]]),
-                ),
-            )
+                )
     return data
 
 
