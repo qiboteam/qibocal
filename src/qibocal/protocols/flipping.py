@@ -151,12 +151,14 @@ def _fit(data: FlippingData) -> FlippingResults:
     chi2 = {}
     for qubit in qubits:
         qubit_data = data[qubit]
-        detuned_pi_pulse_amplitude = data.pi_pulse_amplitudes[qubit]
+        detuned_pi_pulse_amplitude = (
+            data.pi_pulse_amplitudes[qubit] + data.delta_amplitude
+        )
         y = qubit_data.prob
         x = qubit_data.flips
 
         period = guess_period(x, y)
-        pguess = [0, 1, 2 * np.pi / period, -np.pi / 4, 0]
+        pguess = [0.5, 0.5, 2 * np.pi / period, 0, 0]
 
         try:
             popt, perr = curve_fit(
@@ -166,26 +168,21 @@ def _fit(data: FlippingData) -> FlippingResults:
                 p0=pguess,
                 maxfev=2000000,
                 bounds=(
-                    [0, 0, -np.inf, -np.pi, 0],
-                    [1, 1, np.inf, np.pi, np.inf],
+                    [0.4, 0.4, -np.inf, -np.pi / 4, 0],
+                    [0.6, 0.6, np.inf, np.pi / 4, np.inf],
                 ),
                 sigma=qubit_data.error,
             )
             perr = np.sqrt(np.diag(perr)).tolist()
             popt = popt.tolist()
-
-            if popt[3] > np.pi / 2 and popt[3] < 3 * np.pi / 2:
-                signed_correction = -popt[2] / 2
-            else:
-                signed_correction = popt[2] / 2
-            # The amplitude is directly proportional to the rotation angle
+            correction = popt[2] / 2
             corrected_amplitudes[qubit] = (
-                float(detuned_pi_pulse_amplitude * np.pi / (np.pi + signed_correction)),
+                float(detuned_pi_pulse_amplitude * np.pi / (np.pi + correction)),
                 float(
                     detuned_pi_pulse_amplitude
                     * np.pi
                     * 1
-                    / (np.pi + signed_correction) ** 2
+                    / (np.pi + correction) ** 2
                     * perr[2]
                     / 2
                 ),
@@ -193,21 +190,19 @@ def _fit(data: FlippingData) -> FlippingResults:
 
             fitted_parameters[qubit] = popt
 
-            delta_amplitude[qubit] = (
-                -signed_correction
-                * detuned_pi_pulse_amplitude
-                / (np.pi + signed_correction),
+            delta_amplitude_detuned[qubit] = (
+                -correction * detuned_pi_pulse_amplitude / (np.pi + correction),
                 np.abs(
                     np.pi
                     * detuned_pi_pulse_amplitude
-                    * np.power(np.pi + signed_correction, -2)
+                    * np.power(np.pi + correction, -2)
                 )
                 * perr[2]
                 / 2,
             )
-            delta_amplitude_detuned[qubit] = (
-                delta_amplitude[qubit][0] - data.delta_amplitude,
-                delta_amplitude[qubit][1],
+            delta_amplitude[qubit] = (
+                delta_amplitude_detuned[qubit][0] + data.delta_amplitude,
+                delta_amplitude_detuned[qubit][1],
             )
 
             chi2[qubit] = (

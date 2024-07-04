@@ -170,7 +170,7 @@ def _acquisition(
 
 
 def flipping_fit(x, offset, amplitude, omega, phase, gamma):
-    return np.cos(x * omega + phase) * amplitude * np.exp(-x * gamma) + offset
+    return np.sin(x * omega + phase) * amplitude * np.exp(-x * gamma) + offset
 
 
 def _fit(data: FlippingSignalData) -> FlippingSignalResults:
@@ -195,21 +195,20 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
         voltages = qubit_data.signal
         flips = qubit_data.flips
 
-        period = guess_period(flips, voltages)
-
-        y_min = np.min(voltages)
-        y_max = np.max(voltages)
         x_min = np.min(flips)
         x_max = np.max(flips)
         x = (flips - x_min) / (x_max - x_min)
-        y = (voltages - y_min) / (y_max - y_min)
+        # shift so that first point is in 0.5
+        b = voltages[0] - 0.5
+        translated_voltages = voltages - b
+        y_max = np.max(translated_voltages)
+        y_min = np.min(translated_voltages)
+        # normalize between 0 and 1
+        y = (translated_voltages - y_min) / (y_max - y_min)
 
         period = guess_period(x, y)
-        f = 1 / period
-        pguess = [0.5, 0.5, 1, np.pi, 0]
+        pguess = [0.5, 0.5, 2 * np.pi / period, 0, 0]
 
-        x = (flips - x_min) * 2 * np.pi / period / (x_max - x_min)
-        y = (voltages - y_min) / (y_max - y_min)
         try:
             popt, _ = curve_fit(
                 flipping_fit,
@@ -218,37 +217,32 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
                 p0=pguess,
                 maxfev=2000000,
                 bounds=(
-                    [0, 0, -np.inf, 0, 0],
-                    [1, np.inf, np.inf, 2 * np.pi, np.inf],
+                    [0.4, 0.4, -np.inf, -np.pi / 4, 0],
+                    [0.6, 0.6, np.inf, np.pi / 4, np.inf],
                 ),
             )
 
             translated_popt = [
-                y_min + (y_max - y_min) * popt[0],
-                (y_max - y_min)
-                * popt[1]
-                * np.exp(x_min * popt[4] * 2 * np.pi * f / (x_max - x_min)),
-                popt[2] * 2 * np.pi * f / (x_max - x_min),
-                popt[3] - x_min * 2 * np.pi * f / (x_max - x_min) * popt[2],
-                popt[4] * 2 * np.pi * f / (x_max - x_min),
+                y_min + (y_max - y_min) * popt[0] + b,
+                (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
+                popt[2] / (x_max - x_min),
+                popt[3] - x_min / (x_max - x_min) * popt[2],
+                popt[4] / (x_max - x_min),
             ]
             # TODO: this might be related to the resonator type
-            if popt[3] > np.pi / 2 and popt[3] < 3 * np.pi / 2:
-                signed_correction = translated_popt[2] / 2
-            else:
-                signed_correction = -translated_popt[2] / 2
+            signed_correction = translated_popt[2] / 2
             # The amplitude is directly proportional to the rotation angle
             corrected_amplitudes[qubit] = (detuned_pi_pulse_amplitude * np.pi) / (
                 np.pi + signed_correction
             )
             fitted_parameters[qubit] = translated_popt
-            delta_amplitude[qubit] = (
+            delta_amplitude_detuned[qubit] = (
                 -signed_correction
                 * detuned_pi_pulse_amplitude
                 / (np.pi + signed_correction)
             )
-            delta_amplitude_detuned[qubit] = (
-                delta_amplitude[qubit] - data.delta_amplitude
+            delta_amplitude[qubit] = (
+                delta_amplitude_detuned[qubit] - data.delta_amplitude
             )
         except Exception as e:
             log.warning(f"Error in flipping fit for qubit {qubit} due to {e}.")
