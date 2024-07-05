@@ -198,13 +198,10 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
         x_min = np.min(flips)
         x_max = np.max(flips)
         x = (flips - x_min) / (x_max - x_min)
-        # shift so that first point is in 0.5
-        b = voltages[0] - 0.5
-        translated_voltages = voltages - b
-        y_max = np.max(translated_voltages)
-        y_min = np.min(translated_voltages)
+        y_max = np.max(voltages)
+        y_min = np.min(voltages)
         # normalize between 0 and 1
-        y = (translated_voltages - y_min) / (y_max - y_min)
+        y = (voltages - y_min) / (y_max - y_min)
 
         period = guess_period(x, y)
         pguess = [0.5, 0.5, 2 * np.pi / period, 0, 0]
@@ -223,7 +220,7 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
             )
 
             translated_popt = [
-                y_min + (y_max - y_min) * popt[0] + b,
+                y_min + (y_max - y_min) * popt[0],
                 (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
                 popt[2] / (x_max - x_min),
                 popt[3] - x_min / (x_max - x_min) * popt[2],
