@@ -78,11 +78,30 @@ class Metadata:
         """Register completion time."""
         self.end_time = datetime.now(timezone.utc)
 
+    @classmethod
+    def load(cls, path):
+        attrs = json.loads((path / META).read_text())
+        attrs["start_time"] = (
+            datetime.fromisoformat(attrs["start_time"])
+            if attrs["start_time"] is not None
+            else None
+        )
+        attrs["end_time"] = (
+            datetime.fromisoformat(attrs["end_time"])
+            if attrs["end_time"] is not None
+            else None
+        )
+        versions = attrs.pop("versions")
+        attrs["versions"] = Versions(qibocal=versions.pop("qibocal"), other=versions)
+        return cls(**attrs)
+
     def dump(self) -> dict:
         """Dump to serializable to dictionary."""
         d = asdict(self)
         d["start_time"] = str(d["start_time"]) if self.start_time is not None else None
         d["end_time"] = str(d["end_time"]) if self.end_time is not None else None
+        versions = d.pop("versions")
+        d["versions"] = versions["other"] | {"qibocal": versions["qibocal"]}
 
         return d
 
@@ -128,7 +147,7 @@ class Output:
         """Load output from existing folder."""
         return cls(
             history=History.load(path),
-            meta=Metadata(**json.loads((path / META).read_text())),
+            meta=Metadata.load(path),
         )
 
     @staticmethod
