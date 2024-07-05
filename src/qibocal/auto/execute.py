@@ -46,10 +46,10 @@ def _register(name, obj):
 
 
 def _wrapped_protocol(executor: "Executor", protocol: Routine, name: str):
-    def wrapper(**kwargs):
-        mode = kwargs.pop("mode", AUTOCALIBRATION)
-        parameters = {"id": kwargs.get("id", name), "parameters": kwargs}
-        return executor.run_protocol(protocol, parameters=parameters, mode=mode)
+    def wrapper(parameters=None, id=name, mode=AUTOCALIBRATION, **kwargs):
+        params = parameters.copy() if parameters is not None else {}
+        params = {"id": id, "parameters": params | kwargs}
+        return executor.run_protocol(protocol, parameters=params, mode=mode)
 
     return wrapper
 
