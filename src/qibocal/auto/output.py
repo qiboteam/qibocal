@@ -80,7 +80,10 @@ class Metadata:
 
     @classmethod
     def load(cls, path):
-        attrs = json.loads((path / META).read_text())
+        attrs: dict = json.loads((path / META).read_text())
+        del attrs["date"]
+        del attrs["start-time"]
+        del attrs["end-time"]
         attrs["start_time"] = (
             datetime.fromisoformat(attrs["start_time"])
             if attrs["start_time"] is not None
@@ -102,6 +105,11 @@ class Metadata:
         d["end_time"] = str(d["end_time"]) if self.end_time is not None else None
         versions = d.pop("versions")
         d["versions"] = versions["other"] | {"qibocal": versions["qibocal"]}
+        if self.start_time is not None:
+            d["date"] = self.start_time.date
+            d["start-time"] = self.start_time.strftime("%H:%M:%S")
+        if self.end_time is not None:
+            d["end-time"] = self.end_time.strftime("%H:%M:%S")
 
         return d
 
