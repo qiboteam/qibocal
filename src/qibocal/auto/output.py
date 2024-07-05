@@ -106,7 +106,7 @@ class Metadata:
         versions = d.pop("versions")
         d["versions"] = versions["other"] | {"qibocal": versions["qibocal"]}
         if self.start_time is not None:
-            d["date"] = str(self.start_time.date)
+            d["date"] = str(self.start_time.date())
             d["start-time"] = self.start_time.strftime("%H:%M:%S")
         if self.end_time is not None:
             d["end-time"] = self.end_time.strftime("%H:%M:%S")
