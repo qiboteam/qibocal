@@ -1,6 +1,5 @@
 import json
 from collections import Counter, defaultdict
-from collections.abc import Iterable
 from copy import deepcopy
 from dataclasses import dataclass, field
 from itertools import product
@@ -281,7 +280,7 @@ def plot_measurements(data: StateTomographyData, target: QubitPairId):
 
 def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitPairId):
     """Plotting for two qubit state tomography."""
-    if isinstance(target, Iterable):
+    if isinstance(target, list):
         target = tuple(target)
 
     fig_measurements = plot_measurements(data, target)

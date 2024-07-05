@@ -118,7 +118,7 @@ def _plot(
     Returns:
         tuple[list[go.Figure], str]:
     """
-    if isinstance(target, Iterable):
+    if isinstance(target, list):
         target = tuple(target)
 
     qubit = target

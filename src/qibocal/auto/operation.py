@@ -1,7 +1,6 @@
 import inspect
 import json
 import time
-from collections.abc import Iterable
 from copy import deepcopy
 from dataclasses import asdict, dataclass, fields
 from functools import wraps
@@ -131,7 +130,7 @@ class AbstractData:
 
     def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
         """Access data attribute member."""
-        if isinstance(qubit, Iterable):
+        if isinstance(qubit, list):
             qubit = tuple(qubit)
         return self.data[qubit]
 
@@ -256,7 +255,7 @@ class Results(AbstractData):
         If key is not present means that fitting failed or was not
         performed.
         """
-        if isinstance(key, Iterable):
+        if isinstance(key, list):
             key = tuple(key)
         return all(
             key in getattr(self, field.name)

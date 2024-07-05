@@ -1,6 +1,5 @@
 """SWAP experiment for two qubit gates, chevron plot."""
 
-from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -222,7 +221,7 @@ def _fit(data: ChevronData) -> ChevronResults:
 
 def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     """Plot the experiment result for a single pair."""
-    if isinstance(target, Iterable):
+    if isinstance(target, list):
         target = tuple(target)
 
     # reverse qubit order if not found in data
@@ -315,7 +314,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
 
 
 def _update(results: ChevronResults, platform: Platform, target: QubitPairId):
-    if isinstance(target, Iterable):
+    if isinstance(target, list):
         target = tuple(target)
 
     if target not in results.duration:
