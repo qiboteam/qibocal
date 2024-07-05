@@ -10,6 +10,7 @@ from typing import Optional, Union
 from qibolab import create_platform
 from qibolab.platform import Platform
 
+from qibocal import protocols
 from qibocal.config import log
 
 from .history import History
