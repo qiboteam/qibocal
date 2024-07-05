@@ -7,6 +7,7 @@ from typing import Union
 
 from qibolab import create_platform
 from qibolab.platform import Platform
+from qibolab.serialize import dump_platform
 
 from qibocal import protocols
 from qibocal.config import log, raise_error
@@ -16,6 +17,9 @@ from .mode import ExecutionMode
 from .operation import Routine
 from .runcard import Action, Runcard, Targets
 from .task import Completed, Task
+
+PLATFORM_DIR = "platform"
+"""Folder where platform will be dumped."""
 
 
 @dataclass
@@ -83,6 +87,9 @@ class Executor:
         )
         if ExecutionMode.FIT in mode and self.platform is not None and update:
             completed.update_platform(platform=self.platform, update=self.update)
+
+        (completed.datapath / PLATFORM_DIR).mkdir(parents=True, exist_ok=True)
+        dump_platform(self.platform, completed.datapath / PLATFORM_DIR)
 
         self.history.push(completed)
         completed.dump(self.output)

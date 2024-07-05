@@ -64,10 +64,7 @@ def fit(input_path, update, output_path, force):
     local_update = any(completed.task.update for completed in list(history.values()))
 
     # dump updated runcard
-    if runcard.platform_obj is not None and (
-        update or local_update
-    ):  # pragma: no cover
-        # cannot test update since dummy may produce wrong values and trigger errors
+    if runcard.platform_obj is not None:
         (path / UPDATED_PLATFORM).mkdir(parents=True, exist_ok=True)
         dump_runcard(runcard.platform_obj, path / UPDATED_PLATFORM)
 

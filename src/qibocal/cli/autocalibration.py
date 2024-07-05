@@ -63,10 +63,7 @@ def autocalibrate(runcard, folder, force, update):
 
     report(path, history)
 
-    # checking if at least on the task had local update
-    local_update = any(completed.task.update for completed in list(history.values()))
-
     # dump updated runcard
-    if platform is not None and (update or local_update):
+    if platform is not None:
         (path / UPDATED_PLATFORM).mkdir(parents=True, exist_ok=True)
         dump_platform(platform, path / UPDATED_PLATFORM)

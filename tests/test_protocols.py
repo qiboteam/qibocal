@@ -7,7 +7,7 @@ import yaml
 from click.testing import CliRunner
 from qibolab import create_platform
 
-from qibocal.auto.task import PLATFORM_DIR
+from qibocal.auto.execute import PLATFORM_DIR
 from qibocal.cli import utils
 from qibocal.cli._base import command
 from qibocal.protocols.rabi.amplitude import RabiAmplitudeData
@@ -76,7 +76,7 @@ def test_auto_command(runcard, update, tmp_path):
         ],
         **INVOKER_OPTIONS,
     )
-    if update == "--update" and runcard["backend"] == "qibolab":
+    if runcard["backend"] == "qibolab":
         assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
         assert (tmp_path / "data" / f"{protocol}" / PLATFORM_DIR).is_dir()
 
@@ -137,7 +137,7 @@ def test_fit_command(runcard, update, tmp_path):
     # perform fit
     runner.invoke(command, ["fit", str(tmp_path), update], **INVOKER_OPTIONS)
 
-    if update == "--update" and runcard["backend"] == "qibolab":
+    if runcard["backend"] == "qibolab":
         assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
         assert (tmp_path / "data" / f"{protocol}" / PLATFORM_DIR).is_dir()
 
