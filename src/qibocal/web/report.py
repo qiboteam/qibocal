@@ -27,8 +27,8 @@ class Report:
     """Plotting function to generate html."""
 
     def __post_init__(self):
-        start = datetime.fromisoformat(self.meta["start-time"])
-        end = datetime.fromisoformat(self.meta["end-time"])
+        start = datetime.fromisoformat(self.meta["start_time"])
+        end = datetime.fromisoformat(self.meta["end_time"])
         self.meta["date"] = start.date
         self.meta["start-time"] = start.strftime("%H:%M:%S")
         self.meta["end-time"] = end.strftime("%H:%M:%S")
