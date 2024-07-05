@@ -206,11 +206,11 @@ def _fit(data: RamseyData) -> RamseyResults:
             popts[qubit] = popt
             # TODO: check error formula
             delta_phys_measure[qubit] = (
-                delta_phys,
+                -delta_phys,
                 perr[2] * GHZ_TO_HZ / (2 * np.pi),
             )
             delta_fitting_measure[qubit] = (
-                delta_fitting * GHZ_TO_HZ,
+                -delta_fitting * GHZ_TO_HZ,
                 perr[2] * GHZ_TO_HZ / (2 * np.pi),
             )
             chi2[qubit] = (
