@@ -3,11 +3,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from qibolab import create_platform
+from qibolab import Platform, create_platform
 from qibolab.qubits import QubitId
 
 import qibocal.protocols
 from qibocal import Executor
+from qibocal.auto.history import History
 from qibocal.auto.mode import ExecutionMode
 from qibocal.auto.operation import Parameters, Results, Routine
 from qibocal.auto.runcard import Action
@@ -30,17 +31,25 @@ ACTION = Action(**action)
 
 @pytest.mark.parametrize("params", [ACTION, PARAMETERS])
 @pytest.mark.parametrize("platform", ["dummy", PLATFORM])
-def test_executor_create(params, platform):
-    """Create method of Executor."""
-    executor = Executor.create(platform=platform)
+def test_anonymous_executor(params, platform):
+    """Executor without any name."""
+    platform = platform if isinstance(platform, Platform) else create_platform(platform)
+    executor = Executor(
+        history=History(),
+        platform=platform,
+        targets=list(platform.qubits),
+        update=True,
+    )
     executor.run_protocol(flipping, params, mode=ExecutionMode.ACQUIRE)
+
+    assert executor.name is None
 
 
 @pytest.mark.parametrize("params", [ACTION, PARAMETERS])
 @pytest.mark.parametrize("platform", ["dummy", PLATFORM])
-def test_named_executor(params, platform, tmp_path):
+def test_named_executor(params, platform):
     """Create method of Executor."""
-    executor = Executor.create("myexec", platform=platform, output=tmp_path)
+    executor = Executor.create("myexec", platform=platform)
     executor.run_protocol(flipping, params)
     executor.unload()
 
