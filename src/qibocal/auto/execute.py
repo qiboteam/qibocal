@@ -88,8 +88,9 @@ class Executor:
         if ExecutionMode.FIT in mode and self.platform is not None and update:
             completed.update_platform(platform=self.platform, update=self.update)
 
-        (completed.datapath / PLATFORM_DIR).mkdir(parents=True, exist_ok=True)
-        dump_platform(self.platform, completed.datapath / PLATFORM_DIR)
+        if self.platform is not None:
+            (completed.datapath / PLATFORM_DIR).mkdir(parents=True, exist_ok=True)
+            dump_platform(self.platform, completed.datapath / PLATFORM_DIR)
 
         self.history.push(completed)
         completed.dump(self.output)

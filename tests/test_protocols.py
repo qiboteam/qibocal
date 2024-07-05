@@ -76,7 +76,7 @@ def test_auto_command(runcard, update, tmp_path):
         ],
         **INVOKER_OPTIONS,
     )
-    if runcard["backend"] == "qibolab":
+    if runcard["backend"] == "qibolab" and runcard["platform"] is not None:
         assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
         assert (tmp_path / "data" / f"{protocol}" / PLATFORM_DIR).is_dir()
 
@@ -137,7 +137,7 @@ def test_fit_command(runcard, update, tmp_path):
     # perform fit
     runner.invoke(command, ["fit", str(tmp_path), update], **INVOKER_OPTIONS)
 
-    if runcard["backend"] == "qibolab":
+    if runcard["backend"] == "qibolab" and runcard["platform"] is not None:
         assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
         assert (tmp_path / "data" / f"{protocol}" / PLATFORM_DIR).is_dir()
 
