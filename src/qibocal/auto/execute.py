@@ -14,7 +14,7 @@ from qibocal import protocols
 from qibocal.config import log
 
 from .history import History
-from .mode import ExecutionMode
+from .mode import AUTOCALIBRATION, ExecutionMode
 from .operation import Routine
 from .task import Action, Completed, Targets, Task
 
@@ -43,6 +43,15 @@ def _register(name, obj):
     sys.modules[qualified] = obj
     obj.name = obj.__name__ = qualified
     obj.__spec__ = None
+
+
+def _wrapped_protocol(executor: "Executor", protocol: Routine, name: str):
+    def wrapper(**kwargs):
+        mode = kwargs.pop("mode", AUTOCALIBRATION)
+        parameters = {"id": kwargs.get("id", name), "parameters": kwargs}
+        return executor.run_protocol(protocol, parameters=parameters, mode=mode)
+
+    return wrapper
 
 
 @dataclass
@@ -83,7 +92,7 @@ class Executor:
                 raise AttributeError
 
             protocol = getattr(protocols, name)
-            return lambda *args, **kwargs: self.run_protocol(protocol, *args, **kwargs)
+            return _wrapped_protocol(self, protocol, name)
         except AttributeError:
             # fall back on regular attributes
             return super().__getattribute__(name)
@@ -112,7 +121,7 @@ class Executor:
         self,
         protocol: Routine,
         parameters: Union[dict, Action],
-        mode: ExecutionMode = ExecutionMode.ACQUIRE | ExecutionMode.FIT,
+        mode: ExecutionMode = AUTOCALIBRATION,
     ) -> Completed:
         """Run single protocol in ExecutionMode mode."""
         action = Action.cast(source=parameters, operation=str(protocol))

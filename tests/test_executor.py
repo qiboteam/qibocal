@@ -1,6 +1,7 @@
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 import pytest
 from qibolab import Platform, create_platform
@@ -10,7 +11,7 @@ import qibocal.protocols
 from qibocal import Executor
 from qibocal.auto.history import History
 from qibocal.auto.mode import ExecutionMode
-from qibocal.auto.operation import Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.auto.runcard import Action
 from qibocal.protocols import flipping
 
@@ -63,15 +64,28 @@ class FakeParameters(Parameters):
 
 
 @dataclass
+class FakeData(Data):
+    par: int
+
+
+@dataclass
 class FakeResults(Results):
     par: dict[QubitId, int]
 
 
-def _acquisition(params: FakeParameters, platform):
-    return FakeResults({0: params.par})
+def _acquisition(params: FakeParameters, platform) -> FakeData:
+    return FakeData(par=params.par)
 
 
-def _update(results, platform, qubit):
+def _fit(data: FakeData) -> FakeResults:
+    return FakeResults(par={0: data.par})
+
+
+def _plot(data: FakeData, target: QubitId, fit: Optional[FakeResults] = None):
+    pass
+
+
+def _update(results: FakeResults, platform, qubit):
     pass
 
 
@@ -83,14 +97,13 @@ def fake_protocols(request):
 
     protocols = {}
     for name in marker.args:
-        routine = Routine(_acquisition, lambda x: x, lambda x: x, _update)
+        routine = Routine(_acquisition, _fit, _plot, _update)
         setattr(qibocal.protocols, name, routine)
         protocols[name] = routine
 
     return protocols
 
 
-# class TestScripts:
 @pytest.mark.protocols("ciao", "come")
 def test_simple(fake_protocols):
     globals_ = {}
