@@ -3,7 +3,7 @@ import os
 import pathlib
 import shutil
 
-from ..config import raise_error
+from ..config import log, raise_error
 from .utils import META, UPDATED_PLATFORM
 
 
@@ -25,3 +25,5 @@ def update(path: pathlib.Path):
             new_platform_path / filename,
             platform_path / filename,
         )
+
+    log.info(f"Platform {platform_name} configuration has been updated.")
