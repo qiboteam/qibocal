@@ -64,66 +64,77 @@ from .two_qubit_interaction import (
     cz_virtualz,
     cz_virtualz_signal,
 )
+from .two_qubit_state_tomography import two_qubit_state_tomography
 
-
-class Operation(Enum):
-    resonator_spectroscopy = resonator_spectroscopy
-    resonator_punchout = resonator_punchout
-    resonator_punchout_attenuation = resonator_punchout_attenuation
-    resonator_flux = resonator_flux
-    resonator_crosstalk = resonator_crosstalk
-    qubit_spectroscopy = qubit_spectroscopy
-    qubit_flux = qubit_flux
-    qubit_flux_tracking = qubit_flux_tracking
-    qubit_crosstalk = qubit_crosstalk
-    rabi_amplitude = rabi_amplitude
-    rabi_length = rabi_length
-    rabi_length_sequences = rabi_length_sequences
-    rabi_amplitude_signal = rabi_amplitude_signal
-    rabi_length_signal = rabi_length_signal
-    ramsey = ramsey
-    ramsey_signal = ramsey_signal
-    t1 = t1
-    t1_signal = t1_signal
-    t1_sequences = t1_sequences
-    t2 = t2
-    t2_signal = t2_signal
-    t2_sequences = t2_sequences
-    time_of_flight_readout = time_of_flight_readout
-    single_shot_classification = single_shot_classification
-    spin_echo = spin_echo
-    spin_echo_signal = spin_echo_signal
-    allxy = allxy
-    drag_tuning = drag_tuning
-    flipping = flipping
-    dispersive_shift = dispersive_shift
-    chevron = chevron
-    chevron_signal = chevron_signal
-    cz_virtualz = cz_virtualz
-    standard_rb = standard_rb
-    standard_rb_2q = standard_rb_2q
-    readout_characterization = readout_characterization
-    resonator_frequency = resonator_frequency
-    fast_reset = fast_reset
-    zeno = zeno
-    zeno_signal = zeno_signal
-    chsh_pulses = chsh_pulses
-    chsh_circuits = chsh_circuits
-    readout_mitigation_matrix = readout_mitigation_matrix
-    twpa_frequency = twpa_frequency
-    twpa_frequency_SNR = twpa_frequency_snr
-    twpa_power = twpa_power
-    twpa_power_SNR = twpa_power_snr
-    twpa_frequency_power = twpa_frequency_power
-    rabi_amplitude_ef = rabi_amplitude_ef
-    qubit_spectroscopy_ef = qubit_spectroscopy_ef
-    qutrit_classification = qutrit_classification
-    resonator_amplitude = resonator_amplitude
-    avoided_crossing = avoided_crossing
-    dispersive_shift_qutrit = dispersive_shift_qutrit
-    coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
-    coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
-    cz_virtualz_signal = cz_virtualz_signal
-    coupler_chevron = coupler_chevron
-    flipping_signal = flipping_signal
-    calibrate_state_discrimination = calibrate_state_discrimination
+__all__ = [
+    "allxy",
+    "allxy_drag_pulse_tuning",
+    "single_shot_classification",
+    "spin_echo",
+    "spin_echo_signal",
+    "t1",
+    "t1_sequences",
+    "t1_signal",
+    "t2",
+    "t2_sequences",
+    "t2_signal",
+    "zeno",
+    "zeno_signal",
+    "coupler_chevron",
+    "coupler_qubit_spectroscopy",
+    "coupler_resonator_spectroscopy",
+    "dispersive_shift",
+    "dispersive_shift_qutrit",
+    "drag_tuning",
+    "fast_reset",
+    "flipping",
+    "flipping_signal",
+    "avoided_crossing",
+    "qubit_crosstalk",
+    "qubit_flux",
+    "qubit_flux_tracking",
+    "resonator_crosstalk",
+    "resonator_flux",
+    "qubit_spectroscopy",
+    "qubit_spectroscopy_ef",
+    "qutrit_classification",
+    "rabi_amplitude",
+    "rabi_amplitude_signal",
+    "rabi_length",
+    "rabi_amplitude_ef",
+    "rabi_length_sequences",
+    "rabi_length_signal",
+    "ramsey",
+    "ramsey_signal",
+    "filtered_rb",
+    "standard_rb",
+    "readout_characterization",
+    "readout_mitigation_matrix",
+    "resonator_amplitude",
+    "resonator_frequency",
+    "twpa_frequency",
+    "twpa_frequency_power",
+    "twpa_frequency_snr",
+    "twpa_power",
+    "twpa_power_snr",
+    "resonator_punchout",
+    "resonator_punchout_attenuation",
+    "resonator_spectroscopy",
+    "calibrate_state_discrimination",
+    "time_of_flight_readout",
+    "chevron",
+    "chevron_signal",
+    "chsh_circuits",
+    "chsh_pulses",
+    "cz_virtualz",
+    "cz_virtualz_signal",
+    "state_tomography",
+    "allxy_resonator_depletion_tuning",
+    "two_qubit_state_tomography",
+    "qubit_power_spectroscopy",
+    "rabi_amplitude_frequency",
+    "rabi_amplitude_frequency_signal",
+    "rabi_length_frequency",
+    "rabi_length_frequency_signal",
+    "standard_rb_2q",
+]

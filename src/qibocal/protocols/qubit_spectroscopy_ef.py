@@ -41,7 +41,7 @@ class QubitSpectroscopyEFData(QubitSpectroscopyData):
     drive_frequencies: dict[QubitId, float] = field(default_factory=dict)
 
 
-def _fit_ef(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
+def fit_ef(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
     results = _fit(data)
     anharmoncities = {
         qubit: results.frequency[qubit] - data.drive_frequencies[qubit]
@@ -200,5 +200,5 @@ def _update(results: QubitSpectroscopyEFResults, platform: Platform, target: Qub
     update.anharmonicity(results.anharmonicity[target], platform, target)
 
 
-qubit_spectroscopy_ef = Routine(_acquisition, _fit_ef, _plot, _update)
+qubit_spectroscopy_ef = Routine(_acquisition, fit_ef, _plot, _update)
 """QubitSpectroscopyEF Routine object."""

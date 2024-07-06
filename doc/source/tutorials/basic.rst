@@ -356,9 +356,3 @@ randomized benchmarking.
           nshots: 128
 
 .. image:: ../protocols/rb.png
-
-.. rubric:: References
-
-.. bibliography::
-   :filter: docname in docnames
-   :style: plain

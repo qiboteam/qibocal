@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "qibocal"
-version = "0.0.10"
+version = "0.0.11"
 description = "Qibo's quantum calibration, characterization and validation module."
-authors = ["andrea-pasquale <andreapasquale97@gmail.com>"]
+authors = ["The Qibo team"]
 license = "Apache License 2.0"
 readme = "README.md"
 homepage = "https://qibo.science/"
@@ -17,7 +17,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
-qibolab = "^0.1.7"
+qibolab = "^0.1.8"
 qibo ="^0.2.6"
 numpy = "^1.26.4"
 scipy = "^1.10.1"
