@@ -85,7 +85,7 @@ def _acquisition(
         if platform.qubits[qubit].native_gates.RX12.frequency is None:
 
             qd_pulses[qubit].frequency = (
-                rx_pulses[qubit].frequency - DEFAULT_ANHARMONICITY
+                rx_pulses[qubit].frequency + DEFAULT_ANHARMONICITY
             )
         else:
             qd_pulses[qubit].frequency = platform.qubits[
