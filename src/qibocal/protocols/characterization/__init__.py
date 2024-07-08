@@ -94,6 +94,7 @@ from .z.flux_dependence.qubit_flux_dependence import qubit_flux
 from .z.in_progress.cryoscope import cryoscope
 from .z.in_progress.cryoscope_signal import cryoscope_signal
 from .z.in_progress.qubit_mixer_calibration import qubit_mixer_calibration
+from .z.in_progress.qubit_power_spectroscopy import qubit_power_spectroscopy
 from .z.in_progress.qubit_spectroscopy_with_lo import qubit_spectroscopy_with_lo
 from .z.in_progress.resonator_mixer_calibration import resonator_mixer_calibration
 from .z.in_progress.resonator_spectroscopy_with_lo import resonator_spectroscopy_with_lo
@@ -196,3 +197,4 @@ class Operation(Enum):
     coupler_chevron_signal_amplitude = coupler_chevron_signal_amplitude
     cryoscope = cryoscope
     allxy_resonator_depletion_tuning = allxy_resonator_depletion_tuning
+    qubit_power_spectroscopy = qubit_power_spectroscopy
