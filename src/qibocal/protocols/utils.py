@@ -206,7 +206,9 @@ def s21(
     )
 
 
-def s21_fit(data: NDArray, resonator_type=None, fit=None) -> tuple[float, list[float]]:
+def s21_fit(
+    data: NDArray, resonator_type=None, fit=None
+) -> tuple[float, list[float], list[float]]:
     """
     Calibrates the S21 profile of a notch resonator, based on https://github.com/qkitgroup/qkit.
 
@@ -246,7 +248,9 @@ def s21_fit(data: NDArray, resonator_type=None, fit=None) -> tuple[float, list[f
         alpha,
         tau,
     ]
-    return model_parameters[0], model_parameters
+    perr = [0.0] * 7
+
+    return model_parameters[0], model_parameters, perr
 
 
 def spectroscopy_plot(data, qubit, fit: Results = None):
@@ -343,19 +347,19 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         )
 
         if data.power_level is PowerLevel.low:
-            label = "readout frequency[Hz]"
+            label = "Readout Frequency [Hz]"
             freq = fit.frequency
         elif data.power_level is PowerLevel.high:
-            label = "bare resonator frequency[Hz]"
+            label = "Bare Resonator Frequency [Hz]"
             freq = fit.bare_frequency
         else:
-            label = "qubit frequency[Hz]"
+            label = "Qubit Frequency [Hz]"
             freq = fit.frequency
 
         if data.attenuations:
             if data.attenuations[qubit] is not None:
                 if show_error_bars:
-                    labels = [label, "amplitude", "attenuation", "chi2 reduced"]
+                    labels = [label, "Amplitude", "Attenuation", "Chi2 Reduced"]
                     values = [
                         (
                             freq[qubit],
@@ -366,7 +370,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                         fit.chi2_reduced[qubit],
                     ]
                 else:
-                    labels = [label, "amplitude", "attenuation"]
+                    labels = [label, "Amplitude", "Attenuation"]
                     values = [
                         freq[qubit],
                         data.amplitudes[qubit],
@@ -374,7 +378,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                     ]
         if data.amplitudes[qubit] is not None:
             if show_error_bars:
-                labels = [label, "amplitude", "chi2 reduced"]
+                labels = [label, "Amplitude", "Chi2 reduced"]
                 values = [
                     (
                         freq[qubit],
@@ -384,7 +388,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                     fit.chi2_reduced[qubit],
                 ]
             else:
-                labels = [label, "amplitude"]
+                labels = [label, "Amplitude"]
                 values = [freq[qubit], data.amplitudes[qubit]]
 
             fitting_report = table_html(
@@ -582,7 +586,7 @@ def resonator_spectroscopy_plot(data, qubit, fit: Results = None):
                     "Loaded Quality Factor",
                     "Internal Quality Factor",
                     "Coupling Quality Factor",
-                    "Fano interference ϕ [rad]",
+                    "Fano Interference ϕ [rad]",
                     "Amplitude [a.u.]",
                     "Phase Shift α [rad]",
                     "Electronic Delay 𝜏 [rad]",
@@ -901,6 +905,7 @@ def chi2_reduced(
     estimated: NDArray,
     errors: NDArray,
     dof: float = None,
+    periodic: bool = False,
 ):
     if np.count_nonzero(errors) < len(errors):
         return EXTREME_CHI
@@ -908,7 +913,13 @@ def chi2_reduced(
     if dof is None:
         dof = len(observed) - 1
 
-    chi2 = np.sum(np.square((observed - estimated) / errors)) / dof
+    if not periodic:
+        chi2 = np.sum(np.square((observed - estimated) / errors)) / dof
+    else:
+        delta_phase = np.arctan2(
+            np.sin(observed - estimated), np.cos(observed - estimated)
+        )
+        chi2 = np.sum(np.square(delta_phase / errors)) / dof
 
     return chi2
 
