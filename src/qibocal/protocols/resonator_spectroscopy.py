@@ -17,6 +17,7 @@ from .utils import (
     lorentzian,
     lorentzian_fit,
     resonator_spectroscopy_plot,
+    s21,
     s21_fit,
     spectroscopy_plot,
 )
@@ -208,37 +209,58 @@ def _fit(
     error_fit_pars = {}
     chi2 = {}
     amplitudes = {}
+
     for qubit in qubits:
         if data.fit_function == "s21":
-            fit_result = s21_fit(data[qubit])
-
-            if fit_result is not None:
-                frequency[qubit], fitted_parameters[qubit] = fit_result
-                error_fit_pars[qubit] = len(fitted_parameters[qubit]) * [0.0]
-                if data.power_level is PowerLevel.high:
-                    bare_frequency[qubit] = frequency[qubit]
-                chi2[qubit] = 0.0
-                amplitudes[qubit] = fitted_parameters[qubit][0]
+            fit_result = s21_fit(
+                data[qubit], resonator_type=data.resonator_type, fit="resonator"
+            )
         else:
             fit_result = lorentzian_fit(
                 data[qubit], resonator_type=data.resonator_type, fit="resonator"
             )
+        if fit_result is not None:
+            (
+                frequency[qubit],
+                fitted_parameters[qubit],
+                error_fit_pars[qubit],
+            ) = fit_result
 
-            if fit_result is not None:
-                frequency[qubit], fitted_parameters[qubit], error_fit_pars[qubit] = (
-                    fit_result
+            dof = len(data[qubit].freq) - len(fitted_parameters[qubit])
+
+            if data.power_level is PowerLevel.high:
+                bare_frequency[qubit] = frequency[qubit]
+
+            if data.fit_function == "s21":
+                z_fit = s21(data[qubit].freq, *fitted_parameters[qubit])
+
+                chi2[qubit] = (
+                    chi2_reduced(
+                        np.abs(data[qubit].signal),
+                        np.abs(z_fit),
+                        data[qubit].error_signal,
+                        dof,
+                    ),
+                    +chi2_reduced(
+                        data[qubit].phase,
+                        np.angle(z_fit),
+                        data[qubit].error_phase,
+                        dof,
+                        True,
+                    ),
+                    np.sqrt(2 / dof),
                 )
-                if data.power_level is PowerLevel.high:
-                    bare_frequency[qubit] = frequency[qubit]
+            else:
                 chi2[qubit] = (
                     chi2_reduced(
                         data[qubit].signal,
                         lorentzian(data[qubit].freq, *fitted_parameters[qubit]),
                         data[qubit].error_signal,
                     ),
-                    np.sqrt(2 / len(data[qubit].freq)),
+                    np.sqrt(2 / dof),
                 )
-                amplitudes[qubit] = fitted_parameters[qubit][0]
+
+            amplitudes[qubit] = fitted_parameters[qubit][0]
 
     if data.power_level is PowerLevel.high:
         return ResonatorSpectroscopyResults(
