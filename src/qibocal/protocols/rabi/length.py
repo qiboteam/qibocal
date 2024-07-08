@@ -38,7 +38,7 @@ class RabiLengthParameters(Parameters):
 class RabiLengthResults(RabiLengthSignalResults):
     """RabiLength outputs."""
 
-    chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
+    chi2: dict[QubitId, list[float]] = field(default_factory=dict)
 
 
 RabiLenType = np.dtype(
@@ -139,17 +139,17 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
                 signal=False,
                 x_limits=(min_x, max_x),
             )
-            durations[qubit] = (pi_pulse_parameter, perr[2] * (max_x - min_x) / 2)
+            durations[qubit] = [pi_pulse_parameter, perr[2] * (max_x - min_x) / 2]
             fitted_parameters[qubit] = popt
-            amplitudes = {key: (value, 0) for key, value in data.amplitudes.items()}
-            chi2[qubit] = (
+            amplitudes = {key: [value, 0] for key, value in data.amplitudes.items()}
+            chi2[qubit] = [
                 chi2_reduced(
                     y,
                     utils.rabi_length_function(raw_x, *popt),
                     qubit_data.error,
                 ),
                 np.sqrt(2 / len(y)),
-            )
+            ]
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 

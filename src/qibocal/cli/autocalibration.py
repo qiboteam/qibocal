@@ -48,7 +48,7 @@ def autocalibrate(runcard, folder, force, update):
         platform.connect()
 
     # run
-    history = run(output=path, runcard=runcard, mode=AUTOCALIBRATION)
+    history = run(output=path, runcard=runcard, mode=AUTOCALIBRATION, update=update)
 
     # TODO: implement iterative dump of report...
 

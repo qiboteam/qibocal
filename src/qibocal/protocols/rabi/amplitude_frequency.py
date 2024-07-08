@@ -1,7 +1,6 @@
 """Rabi experiment that sweeps amplitude and frequency."""
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -40,7 +39,7 @@ class RabiAmplitudeFrequencyParameters(RabiAmplitudeFrequencySignalParameters):
 class RabiAmplitudeFrequencyResults(RabiAmplitudeFrequencySignalResults):
     """RabiAmplitudeFrequency outputs."""
 
-    chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
+    chi2: dict[QubitId, list[float]] = field(default_factory=dict)
 
 
 RabiAmpFreqType = np.dtype(
@@ -174,7 +173,7 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
             )
 
             fitted_frequencies[qubit] = frequency
-            fitted_amplitudes[qubit] = (pi_pulse_parameter, perr[2] / 2)
+            fitted_amplitudes[qubit] = [pi_pulse_parameter, perr[2] / 2]
             fitted_parameters[qubit] = popt.tolist()
 
             chi2[qubit] = (
