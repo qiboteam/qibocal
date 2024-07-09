@@ -789,5 +789,6 @@ def guess_period(x, y):
     return None
 
 
-fallback_period = lambda period: period if period is not None else 4
-"""Function to estimate period if guess_period fails."""
+def fallback_period(period):
+    """Function to estimate period if guess_period fails."""
+    return period if period is not None else 4
