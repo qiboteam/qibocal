@@ -3,12 +3,12 @@ import os
 import pathlib
 import shutil
 
+from ..auto.output import META, UPDATED_PLATFORM
 from ..config import log, raise_error
-from .utils import META, UPDATED_PLATFORM
 
 
 def update(path: pathlib.Path):
-    """Perform copy of updated platform in QIBOLAB_PLATFORM."
+    """Perform copy of updated platform in QIBOLAB_PLATFORM.".
 
     Arguments:
         - input_path: Qibocal output folder.
