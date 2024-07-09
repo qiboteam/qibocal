@@ -4,7 +4,8 @@ import importlib
 import importlib.util
 import os
 import sys
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, fields
 from typing import Optional, Union
 
 from qibolab import create_platform
@@ -46,10 +47,15 @@ def _register(name, obj):
 
 
 def _wrapped_protocol(executor: "Executor", protocol: Routine, name: str):
-    def wrapper(parameters=None, id=name, mode=AUTOCALIBRATION, **kwargs):
-        params = parameters.copy() if parameters is not None else {}
+    def wrapper(*args, parameters=None, id=name, mode=AUTOCALIBRATION, **kwargs):
+        positional = dict(zip((f.name for f in fields(protocol.parameters_type)), args))
+        params = deepcopy(parameters) if parameters is not None else {}
         action = Action.cast(
-            source={"id": id, "operation": name, "parameters": params | kwargs}
+            source={
+                "id": id,
+                "operation": name,
+                "parameters": params | positional | kwargs,
+            }
         )
         return executor.run_protocol(protocol, parameters=action, mode=mode)
 
