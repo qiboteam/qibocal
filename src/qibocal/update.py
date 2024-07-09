@@ -46,7 +46,7 @@ def drive_frequency(
     freq: Union[float, tuple, list], platform: Platform, qubit: QubitId
 ):
     """Update drive frequency value in platform for specific qubit."""
-    if isinstance(freq, list):
+    if isinstance(freq, Iterable):
         freq = freq[0]
     freq = int(freq)
     platform.qubits[qubit].native_gates.RX.frequency = int(freq)
@@ -55,7 +55,7 @@ def drive_frequency(
 
 def drive_amplitude(amp: Union[float, tuple, list], platform: Platform, qubit: QubitId):
     """Update drive frequency value in platform for specific qubit."""
-    if isinstance(amp, list):
+    if isinstance(amp, Iterable):
         amp = amp[0]
     platform.qubits[qubit].native_gates.RX.amplitude = float(amp)
 
@@ -64,7 +64,7 @@ def drive_duration(
     duration: Union[int, tuple, list], platform: Platform, qubit: QubitId
 ):
     """Update drive duration value in platform for specific qubit."""
-    if isinstance(duration, list):
+    if isinstance(duration, Iterable):
         duration = duration[0]
     platform.qubits[qubit].native_gates.RX.duration = int(duration)
 
@@ -140,7 +140,7 @@ def CZ_amplitude(amp: float, platform: Platform, pair: QubitPairId):
 
 def t1(t1: int, platform: Platform, qubit: QubitId):
     """Update t1 value in platform for specific qubit."""
-    if isinstance(t1, list):
+    if isinstance(t1, Iterable):
         platform.qubits[qubit].T1 = int(t1[0])
     else:
         platform.qubits[qubit].T1 = int(t1)
@@ -148,7 +148,7 @@ def t1(t1: int, platform: Platform, qubit: QubitId):
 
 def t2(t2: int, platform: Platform, qubit: QubitId):
     """Update t2 value in platform for specific qubit."""
-    if isinstance(t2, list):
+    if isinstance(t2, Iterable):
         platform.qubits[qubit].T2 = int(t2[0])
     else:
         platform.qubits[qubit].T2 = int(t2)
@@ -156,7 +156,7 @@ def t2(t2: int, platform: Platform, qubit: QubitId):
 
 def t2_spin_echo(t2_spin_echo: float, platform: Platform, qubit: QubitId):
     """Update t2 echo value in platform for specific qubit."""
-    if isinstance(t2_spin_echo, list):
+    if isinstance(t2_spin_echo, Iterable):
         platform.qubits[qubit].T2_spin_echo = int(t2_spin_echo[0])
     else:
         platform.qubits[qubit].T2_spin_echo = int(t2_spin_echo)
