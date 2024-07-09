@@ -2,16 +2,20 @@ from pathlib import Path
 
 from qibo.backends import construct_backend
 
+from qibocal.auto.execute import Executor
 from qibocal.auto.history import History
 from qibocal.auto.output import Metadata, Output
 from qibocal.cli.report import report
-from qibocal.routines import single_shot_classification
 
 folder = Path("test_x")
 force = True
 
 backend = construct_backend(backend="qibolab", platform="qw11q")
 platform = backend.platform
+if platform is None:
+    raise ValueError("Qibocal requires a Qibolab platform to run.")
+
+executor = Executor(name="myexec", history=History(), platform=platform, targets=["D4"])
 
 # generate output folder
 path = Output.mkdir(folder, force)
@@ -21,6 +25,8 @@ meta = Metadata.generate(path.name, backend)
 output = Output(History(), meta, platform)
 output.dump(path)
 
+from myexec import single_shot_classification
+
 # connect and initialize platform
 platform.connect()
 
@@ -28,6 +34,8 @@ platform.connect()
 meta.start()
 
 completed = single_shot_classification(nshots=1000)
+
+meta.end()
 
 # stop and disconnect platform
 platform.disconnect()
