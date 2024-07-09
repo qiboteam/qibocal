@@ -2,14 +2,16 @@ import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Qubits, Routine
+from qibocal.auto.operation import Routine
 
-from . import t1, t1_signal
+from . import t1_signal
+from .utils import CoherenceType
 
 
 def _acquisition(
-    params: t1_signal.T1SignalParameters, platform: Platform, qubits: Qubits
+    params: t1_signal.T1SignalParameters, platform: Platform, qubits: list[QubitId]
 ) -> t1_signal.T1SignalData:
     r"""Data acquisition for T1 experiment.
     In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
@@ -21,7 +23,7 @@ def _acquisition(
     Args:
         params:
         platform (Platform): Qibolab platform object
-        qubits (list): list of target qubits to perform the action
+        qubits (list): list of qubit qubits to perform the action
         delay_before_readout_start (int): Initial time delay before ReadOut
         delay_before_readout_end (list): Maximum time delay before ReadOut
         delay_before_readout_step (int): Scan range step for the delay before ReadOut
@@ -71,7 +73,7 @@ def _acquisition(
         for qubit in qubits:
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
-                t1_signal.CoherenceType,
+                CoherenceType,
                 (qubit),
                 dict(
                     wait=np.array([wait]),
@@ -82,5 +84,5 @@ def _acquisition(
     return data
 
 
-t1_sequences = Routine(_acquisition, t1_signal._fit, t1_signal._plot, t1._update)
+t1_sequences = Routine(_acquisition, t1_signal._fit, t1_signal._plot, t1_signal._update)
 """T1 Routine object."""

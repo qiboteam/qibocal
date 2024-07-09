@@ -12,8 +12,8 @@ from qibocal.auto.operation import Qubits, Routine
 
 from ..utils import table_dict, table_html
 from . import spin_echo
-from .t1_signal import CoherenceType, T1SignalData
-from .utils import exp_decay, exponential_fit
+from .t1_signal import T1SignalData
+from .utils import CoherenceType, exp_decay, exponential_fit
 
 
 @dataclass
