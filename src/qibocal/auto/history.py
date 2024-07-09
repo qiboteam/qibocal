@@ -83,7 +83,7 @@ class History:
         return task_id
 
     @staticmethod
-    def route(completed: Completed, folder: Path):
+    def route(completed: Completed, folder: Path) -> Path:
         """Determine the path related to a completed task.
 
         `folder` should be ussually the general output folder, used by Qibocal to store

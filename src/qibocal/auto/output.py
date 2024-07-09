@@ -163,7 +163,7 @@ class Output:
         )
 
     @staticmethod
-    def mkdir(path: Optional[Path] = None, force: bool = False):
+    def mkdir(path: Optional[Path] = None, force: bool = False) -> Path:
         """Create output directory.
 
         If a `path` is given and existing, it is overwritten only in the case `force`
