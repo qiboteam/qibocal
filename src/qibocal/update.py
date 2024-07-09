@@ -1,5 +1,6 @@
 """Helper functions to update parameters in platform."""
 
+from collections.abc import Iterable
 from typing import Union
 
 import numpy as np
