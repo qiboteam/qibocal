@@ -5,7 +5,6 @@ from typing import Union
 
 from qibolab import create_platform
 from qibolab.platform import Platform
-from qibolab.serialize import dump_platform
 
 from qibocal.config import log
 
@@ -44,7 +43,6 @@ class Executor:
         protocol: Routine,
         parameters: Union[dict, Action],
         mode: ExecutionMode = ExecutionMode.ACQUIRE | ExecutionMode.FIT,
-        update: bool = True,
     ) -> Completed:
         """Run single protocol in ExecutionMode mode."""
         action = Action.cast(source=parameters, operation=str(protocol))
