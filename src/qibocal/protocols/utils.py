@@ -15,8 +15,8 @@ from qibocal.auto.operation import Data, Results
 from qibocal.config import log
 from qibocal.fitting.classifier import run
 from qibocal.protocols.resonator_utils import (
+    cable_delay,
     circle_fit,
-    get_cable_delay,
     periodic_boundary,
     phase_fit,
     remove_cable_delay,
@@ -224,7 +224,7 @@ def s21_fit(
     z_data = np.abs(data.signal) * np.exp(1j * data.phase)
 
     num_points = int(len(f_data) * DELAY_FIT_PERCENTAGE / 100)
-    tau = get_cable_delay(f_data, data.phase, num_points)
+    tau = cable_delay(f_data, data.phase, num_points)
     z_1 = remove_cable_delay(f_data, z_data, tau)
 
     x_c, y_c, r_0 = circle_fit(z_1)
