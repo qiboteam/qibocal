@@ -177,7 +177,7 @@ def s21(
     """
     Full model of the S21 notch resonator based on eq. (1) described in:
     "Efficient and robust analysis of complex scattering data under noise in microwave resonators"
-    (https://doi.org/10.1063/1.4907935) by Sebastian Probst.
+    (https://doi.org/10.1063/1.4907935) by S. Probst et al.
 
     The equation is split into two parts describing the ideal resonator and the environment.
 
