@@ -3,10 +3,10 @@ import json
 from pathlib import Path
 from typing import List
 
-import lxml
 import pandas as pd
 import plotly.graph_objects as go
 import yaml
+from plotly.subplots import make_subplots
 from qibo.backends import GlobalBackend
 from qibolab.qubits import QubitId
 
@@ -133,12 +133,26 @@ class CompareReportBuilder:
                 merged_plot_data = merged_plot_data + plot[0].data
             fig = go.Figure(data=merged_plot_data, layout=plots[0][0].layout).to_html()
         elif plots[0][0].data[0].type == "heatmap":
-            html_block = lxml.html.fromstring(plots[0][0].to_html())
-            html_block[1].remove(html_block[1][0])
+            fig = make_subplots(rows=2, cols=2)
             for i, plot in enumerate(plots):
-                single_report_html_block = lxml.html.fromstring(plot[0].to_html())
-                html_block[1].insert(i, single_report_html_block[1][0])
-            fig = lxml.etree.tostring(html_block).decode("ascii")
+                fig.append_trace(
+                    plot[0].data[0],
+                    row=i + 1,
+                    col=1,
+                )
+                fig.append_trace(
+                    plot[0].data[1],
+                    row=i + 1,
+                    col=2,
+                )
+                # heatmap fit
+                fig.append_trace(
+                    plot[0].data[2],
+                    row=i + 1,
+                    col=1,
+                )
+            fig.update_layout(legend=plots[0][0].layout.legend)
+            fig = fig.to_html()
 
         return fig
 
