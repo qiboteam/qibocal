@@ -42,6 +42,8 @@ CONFIDENCE_INTERVAL_FIRST_MASK = 99
 """Confidence interval used to mask flux data."""
 CONFIDENCE_INTERVAL_SECOND_MASK = 70
 """Confidence interval used to clean outliers."""
+DELAY_FIT_PERCENTAGE = 10
+"""Percentage of the first and last points used to fit the cable delay."""
 
 
 def effective_qubit_temperature(
@@ -221,7 +223,8 @@ def s21_fit(
     f_data = data.freq
     z_data = np.abs(data.signal) * np.exp(1j * data.phase)
 
-    tau = get_cable_delay(f_data, z_data, 20)
+    num_points = int(len(f_data) * DELAY_FIT_PERCENTAGE / 100)
+    tau = get_cable_delay(f_data, z_data, num_points)
     z_1 = remove_cable_delay(f_data, z_data, tau)
 
     x_c, y_c, r_0 = circle_fit(z_1)
