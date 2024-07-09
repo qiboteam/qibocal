@@ -112,8 +112,8 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         x = qubit_data.amp
         y = qubit_data.prob
 
-        f = fallback_period(guess_period(x, y))
-        pguess = [0.5, 0.5, f, 0]
+        period = fallback_period(guess_period(x, y))
+        pguess = [0.5, 0.5, period, 0]
         try:
             popt, perr, pi_pulse_parameter = utils.fit_amplitude_function(
                 x,

@@ -179,8 +179,8 @@ def _fit(data: RabiLengthFreqSignalData) -> RabiLengthFrequencySignalResults:
         x = (durations - x_min) / (x_max - x_min)
         y = (y - y_min) / (y_max - y_min)
 
-        f = fallback_period(guess_period(durations, y))
-        pguess = [0, np.sign(y[0]) * 0.5, f, 0, 0]
+        period = fallback_period(guess_period(durations, y))
+        pguess = [0, np.sign(y[0]) * 0.5, period, 0, 0]
 
         try:
             popt, _, pi_pulse_parameter = fit_length_function(
