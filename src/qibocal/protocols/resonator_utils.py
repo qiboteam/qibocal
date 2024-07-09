@@ -4,22 +4,21 @@ from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import leastsq, newton
 
 
-def get_cable_delay(frequencies: NDArray, z: NDArray, num_points: int) -> float:
+def get_cable_delay(frequencies: NDArray, phases: NDArray, num_points: int) -> float:
     """
     Evaluates the cable delay τ caused by the length of the cable and the finite speed of light.
     Performs a first-grade polynomial fit of the phase and extracts the angular coefficient.
 
         Args:
             frequencies (NDArray[float]): frequencies (Hz) at which the measurement was taken.
-            z (NDArray[complex]): S21 scattering matrix element.
+            phases (NDArray[complex]): Phase of the S21 scattering matrix element.
             num_points (int): number of points selected from both the start and the end of the
                               frequencies array to perform the linear fit.
 
         Returns:
             The value (float) of the cable delay τ in seconds.
     """
-    phases = np.unwrap(np.angle(z))
-
+    phases = np.unwrap(phases)
     frequencies_selected = np.concatenate(
         (frequencies[:num_points], frequencies[-num_points:])
     )
