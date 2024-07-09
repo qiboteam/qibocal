@@ -16,7 +16,6 @@ from .utils import (
     chi2_reduced,
     lorentzian,
     lorentzian_fit,
-    resonator_spectroscopy_plot,
     s21,
     s21_fit,
     spectroscopy_plot,
@@ -232,21 +231,46 @@ def _fit(
                 bare_frequency[qubit] = frequency[qubit]
 
             if data.fit_function == "s21":
+                z_data = np.abs(data[qubit].signal) * np.exp(1j * data[qubit].phase)
                 z_fit = s21(data[qubit].freq, *fitted_parameters[qubit])
+
+                z_data_real = np.real(z_data)
+                z_data_imag = np.imag(z_data)
+
+                z_fit_real = np.real(z_fit)
+                z_fit_imag = np.imag(z_fit)
+
+                z_data_error_real = np.sqrt(
+                    (np.cos(data[qubit].phase) * data[qubit].error_signal) ** 2
+                    + (
+                        data[qubit].signal
+                        * np.sin(data[qubit].phase)
+                        * data[qubit].error_phase
+                    )
+                    ** 2
+                )
+                z_data_error_imag = np.sqrt(
+                    (np.sin(data[qubit].phase) * data[qubit].error_signal) ** 2
+                    + (
+                        data[qubit].signal
+                        * np.cos(data[qubit].phase)
+                        * data[qubit].error_phase
+                    )
+                    ** 2
+                )
 
                 chi2[qubit] = (
                     chi2_reduced(
-                        np.abs(data[qubit].signal),
-                        np.abs(z_fit),
-                        data[qubit].error_signal,
+                        z_data_real,
+                        z_fit_real,
+                        z_data_error_real,
                         dof,
-                    ),
-                    +chi2_reduced(
-                        data[qubit].phase,
-                        np.angle(z_fit),
-                        data[qubit].error_phase,
+                    )
+                    + chi2_reduced(
+                        z_data_imag,
+                        z_fit_imag,
+                        z_data_error_imag,
                         dof,
-                        True,
                     ),
                     np.sqrt(2 / dof),
                 )
