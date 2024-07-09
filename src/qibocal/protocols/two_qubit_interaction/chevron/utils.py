@@ -68,7 +68,7 @@ def chevron_sequence(
     )
 
     sequence.add(measure_lowfreq)
-    sequence.add(measure_highfreq)
+    # sequence.add(measure_highfreq)
 
     return sequence
 

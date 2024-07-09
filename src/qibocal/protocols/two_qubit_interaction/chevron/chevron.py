@@ -184,7 +184,7 @@ def _aquisition(
             params.duration_range,
             params.amplitude_range * data.native_amplitude[ordered_pair],
             results[ordered_pair[0]].probability(state=1),
-            results[ordered_pair[1]].probability(state=1),
+            results[ordered_pair[0]].probability(state=1),
         )
     return data
 
