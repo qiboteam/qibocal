@@ -16,7 +16,7 @@ from qibocal.auto.operation import Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
-from ..utils import HZ_TO_GHZ, chi2_reduced, guess_period
+from ..utils import HZ_TO_GHZ, chi2_reduced, fallback_period, guess_period
 from .length_frequency_signal import (
     RabiLengthFreqSignalData,
     RabiLengthFrequencySignalParameters,
@@ -156,7 +156,7 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
         x = (durations - x_min) / (x_max - x_min)
         y = (y - y_min) / (y_max - y_min)
 
-        f = guess_period(durations, y)
+        f = fallback_period(guess_period(durations, y))
         pguess = [0, np.sign(y[0]) * 0.5, f, 0, 0]
 
         try:

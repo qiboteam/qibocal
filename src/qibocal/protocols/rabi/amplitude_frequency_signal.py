@@ -15,7 +15,13 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Routine
 from qibocal.config import log
-from qibocal.protocols.utils import HZ_TO_GHZ, guess_period, table_dict, table_html
+from qibocal.protocols.utils import (
+    HZ_TO_GHZ,
+    fallback_period,
+    guess_period,
+    table_dict,
+    table_html,
+)
 
 from .amplitude_signal import RabiAmplitudeSignalResults
 from .utils import fit_amplitude_function, sequence_amplitude
@@ -179,7 +185,7 @@ def _fit(data: RabiAmplitudeFreqSignalData) -> RabiAmplitudeFrequencySignalResul
         x = (amps - x_min) / (x_max - x_min)
         y = (y - y_min) / (y_max - y_min)
 
-        f = guess_period(amps, y)
+        f = fallback_period(guess_period(amps, y))
         pguess = [0.5, 0.5, f, 0]
 
         try:

@@ -6,7 +6,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
 
-from qibocal.protocols.utils import guess_period
+from qibocal.protocols.utils import fallback_period, guess_period
 
 POPT_EXCEPTION = [0, 0, 0, 0, 1]
 """Fit parameters output to handle exceptions"""
@@ -71,7 +71,7 @@ def fitting(x: list, y: list, errors: list = None) -> list:
     x = (x - x_min) / delta_x
     err = errors / delta_y if errors is not None else None
 
-    period = guess_period(x, y)
+    period = fallback_period(guess_period(x, y))
     omega = 2 * np.pi / period
     p0 = [
         0.5,

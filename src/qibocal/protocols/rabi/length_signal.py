@@ -11,7 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
-from qibocal.protocols.utils import guess_period
+from qibocal.protocols.utils import fallback_period, guess_period
 
 from . import utils
 
@@ -133,7 +133,7 @@ def _fit(data: RabiLengthSignalData) -> RabiLengthSignalResults:
         x = (rabi_parameter - x_min) / (x_max - x_min)
         y = (voltages - y_min) / (y_max - y_min) - 1 / 2
 
-        period = guess_period(x, y)
+        period = fallback_period(guess_period(x, y))
         pguess = [0, np.sign(y[0]) * 0.5, period, 0, 0]
         try:
             popt, _, pi_pulse_parameter = utils.fit_length_function(

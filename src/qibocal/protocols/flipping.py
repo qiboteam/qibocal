@@ -12,7 +12,12 @@ from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Routine
 from qibocal.config import log
-from qibocal.protocols.utils import guess_period, table_dict, table_html
+from qibocal.protocols.utils import (
+    fallback_period,
+    guess_period,
+    table_dict,
+    table_html,
+)
 
 from .flipping_signal import (
     FlippingSignalData,
@@ -157,7 +162,7 @@ def _fit(data: FlippingData) -> FlippingResults:
         y = qubit_data.prob
         x = qubit_data.flips
 
-        period = guess_period(x, y)
+        period = fallback_period(guess_period(x, y))
         pguess = [0.5, 0.5, 2 * np.pi / period, 0, 0]
 
         try:

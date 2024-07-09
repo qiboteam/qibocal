@@ -17,6 +17,7 @@ from qibocal.config import log
 from qibocal.protocols.utils import (
     HZ_TO_GHZ,
     chi2_reduced,
+    fallback_period,
     guess_period,
     table_dict,
     table_html,
@@ -161,7 +162,7 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         x = (amps - x_min) / (x_max - x_min)
         y = (y - y_min) / (y_max - y_min)
 
-        f = guess_period(amps, y)
+        f = fallback_period(guess_period(amps, y))
         pguess = [0.5, 0.5, f, 0]
 
         try:

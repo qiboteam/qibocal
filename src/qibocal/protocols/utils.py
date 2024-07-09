@@ -785,6 +785,9 @@ def guess_period(x, y):
     local_maxima, _ = find_peaks(mags)
     if len(local_maxima) > 0:
         dominant_freq = fft_freqs[np.argmax(mags)]
-    else:
-        dominant_freq = None  # Default if no peaks are found
-    return 1 / dominant_freq if dominant_freq is not None else 2
+        return 1 / dominant_freq
+    return None
+
+
+fallback_period = lambda period: period if period is not None else 4
+"""Function to estimate period if guess_period fails."""

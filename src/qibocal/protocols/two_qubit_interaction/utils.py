@@ -4,10 +4,7 @@ import numpy as np
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
-from ..utils import guess_period
-
-RANDOM_HIGH_VALUE = 1e6
-"""High value to avoid None when computing FFT."""
+from ..utils import fallback_period, guess_period
 
 
 def order_pair(pair: QubitPairId, platform: Platform) -> tuple[QubitId, QubitId]:
@@ -47,7 +44,7 @@ def fit_flux_amplitude(matrix, amps, times):
     fs = []
     for i in range(size_amp):
         y = matrix[i, :]
-        period = guess_period(times, y)
+        period = fallback_period(guess_period(times, y))
         fs.append(1 / period)
 
     low_freq_interval = np.where(fs == np.min(fs))

@@ -13,7 +13,12 @@ from scipy.optimize import curve_fit
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
-from qibocal.protocols.utils import guess_period, table_dict, table_html
+from qibocal.protocols.utils import (
+    fallback_period,
+    guess_period,
+    table_dict,
+    table_html,
+)
 
 
 @dataclass
@@ -203,7 +208,7 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
         # normalize between 0 and 1
         y = (voltages - y_min) / (y_max - y_min)
 
-        period = guess_period(x, y)
+        period = fallback_period(guess_period(x, y))
         pguess = [0.5, 0.5, 2 * np.pi / period, 0, 0]
 
         try:

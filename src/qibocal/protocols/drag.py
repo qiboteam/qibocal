@@ -18,6 +18,7 @@ from .utils import (
     COLORBAND,
     COLORBAND_LINE,
     chi2_reduced,
+    fallback_period,
     guess_period,
     table_dict,
     table_html,
@@ -161,7 +162,7 @@ def _fit(data: DragTuningData) -> DragTuningResults:
         normalized_beta = (beta_params - beta_min) / (beta_max - beta_min)
 
         # Guessing period using fourier transform
-        period = guess_period(normalized_beta, prob)
+        period = fallback_period(guess_period(normalized_beta, prob))
         pguess = [0.5, 0.5, period, 0]
 
         try:
