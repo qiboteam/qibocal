@@ -1,7 +1,6 @@
 """Rabi experiment that sweeps length and frequency (with probability)."""
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -40,7 +39,7 @@ class RabiLengthFrequencyParameters(RabiLengthFrequencySignalParameters):
 class RabiLengthFrequencyResults(RabiLengthFrequencySignalResults):
     """RabiLengthFrequency outputs."""
 
-    chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
+    chi2: dict[QubitId, list[float]] = field(default_factory=dict)
 
 
 RabiLenFreqType = np.dtype(
@@ -175,19 +174,19 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
                 y_limits=(y_min, y_max),
             )
             fitted_frequencies[qubit] = frequency
-            fitted_durations[qubit] = (
+            fitted_durations[qubit] = [
                 pi_pulse_parameter,
                 perr[2] * (x_max - x_min) / 2,
-            )
+            ]
             fitted_parameters[qubit] = popt
-            chi2[qubit] = (
+            chi2[qubit] = [
                 chi2_reduced(
                     y,
                     rabi_length_function(x, *popt),
                     error,
                 ),
                 np.sqrt(2 / len(y)),
-            )
+            ]
 
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")

@@ -7,7 +7,6 @@ from statistics import mode
 from typing import Optional
 
 from qibolab.platform import Platform
-from qibolab.serialize import dump_platform
 
 from qibocal import protocols
 
@@ -22,8 +21,6 @@ DEFAULT_NSHOTS = 100
 """Default number on shots when the platform is not provided."""
 TaskId = tuple[Id, int]
 """Unique identifier for executed tasks."""
-PLATFORM_DIR = "platform"
-"""Folder where platform will be dumped."""
 
 
 @dataclass
@@ -193,5 +190,3 @@ class Completed:
                     log.warning(
                         f"Skipping update of qubit {qubit} due to error in fit."
                     )
-            (self.datapath / PLATFORM_DIR).mkdir(parents=True, exist_ok=True)
-            dump_platform(platform, self.datapath / PLATFORM_DIR)

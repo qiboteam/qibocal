@@ -60,9 +60,11 @@ def fit(input_path, update, output_path, force):
     e = datetime.datetime.now(datetime.timezone.utc)
     meta["end-time"] = e.strftime("%H:%M:%S")
 
+    # checking if at least on the task had local update
+    local_update = any(completed.task.update for completed in list(history.values()))
+
     # dump updated runcard
-    if runcard.platform_obj is not None and update:  # pragma: no cover
-        # cannot test update since dummy may produce wrong values and trigger errors
+    if runcard.platform_obj is not None:
         (path / UPDATED_PLATFORM).mkdir(parents=True, exist_ok=True)
         dump_runcard(runcard.platform_obj, path / UPDATED_PLATFORM)
 
