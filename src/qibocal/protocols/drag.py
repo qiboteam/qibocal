@@ -48,8 +48,6 @@ class DragTuningResults(Results):
 
     betas: dict[QubitId, float]
     """Optimal beta paramter for each qubit."""
-    betas_not_normalized: dict[QubitId, float]
-    """Betas / qubit anharmonicity."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
     chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
@@ -158,7 +156,6 @@ def drag_fit(x, offset, amplitude, period, phase):
 def _fit(data: DragTuningData) -> DragTuningResults:
     qubits = data.qubits
     betas_optimal = {}
-    betas_not_normalized = {}
     fitted_parameters = {}
     chi2 = {}
 
@@ -206,9 +203,6 @@ def _fit(data: DragTuningData) -> DragTuningResults:
             fitted_parameters[qubit] = translated_popt
             predicted_prob = drag_fit(beta_params, *translated_popt)
             betas_optimal[qubit] = beta_params[np.argmax(predicted_prob)]
-            betas_not_normalized[qubit] = (
-                betas_optimal[qubit] / data.anharmonicity[qubit]
-            )
             chi2[qubit] = (
                 chi2_reduced(
                     prob,
@@ -219,9 +213,7 @@ def _fit(data: DragTuningData) -> DragTuningResults:
             )
         except Exception as e:
             log.warning(f"drag_tuning_fit failed for qubit {qubit} due to {e}.")
-    return DragTuningResults(
-        betas_optimal, betas_not_normalized, fitted_parameters, chi2=chi2
-    )
+    return DragTuningResults(betas_optimal, fitted_parameters, chi2=chi2)
 
 
 def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
@@ -297,7 +289,9 @@ def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
 
 
 def _update(results: DragTuningResults, platform: Platform, target: QubitId):
-    update.drag_pulse_beta(results.betas_not_normalized[target], platform, target)
+    update.drag_pulse_beta(
+        results.betas[target] / platform.qubits[target].anharmonicity, platform, target
+    )
 
 
 drag_tuning = Routine(_acquisition, _fit, _plot, _update)
