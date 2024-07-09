@@ -7,7 +7,6 @@ import pandas as pd
 import plotly.graph_objects as go
 import yaml
 from plotly.subplots import make_subplots
-from qibo.backends import GlobalBackend
 from qibolab.qubits import QubitId
 
 from qibocal.auto.execute import Executor
@@ -44,9 +43,6 @@ def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
         meta = json.loads((path / META).read_text())
         # load runcard
         runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
-
-        # set backend, platform and qubits
-        GlobalBackend.set_backend(backend=meta["backend"], platform=meta["platform"])
 
         # load executor
         executor = Executor.load(runcard, path, targets=runcard.targets)
