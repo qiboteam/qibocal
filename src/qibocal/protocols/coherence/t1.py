@@ -28,9 +28,7 @@ class T1Parameters(t1_signal.T1SignalParameters):
 class T1Results(t1_signal.T1SignalResults):
     """T1 outputs."""
 
-    chi2: Optional[dict[QubitId, tuple[float, Optional[float]]]] = field(
-        default_factory=dict
-    )
+    chi2: Optional[dict[QubitId, list[float]]] = field(default_factory=dict)
     """Chi squared estimate mean value and error."""
 
 

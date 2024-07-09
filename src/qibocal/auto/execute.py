@@ -7,6 +7,7 @@ from typing import Union
 
 from qibolab import create_platform
 from qibolab.platform import Platform
+from qibolab.serialize import dump_platform
 
 from qibocal import protocols
 from qibocal.config import log, raise_error
@@ -16,6 +17,9 @@ from .mode import ExecutionMode
 from .operation import Routine
 from .runcard import Action, Runcard, Targets
 from .task import Completed, Task
+
+PLATFORM_DIR = "platform"
+"""Folder where platform will be dumped."""
 
 
 @dataclass
@@ -56,6 +60,7 @@ class Executor:
         protocol: Routine,
         parameters: Union[dict, Action],
         mode: ExecutionMode = ExecutionMode.ACQUIRE | ExecutionMode.FIT,
+        update: bool = True,
     ) -> Completed:
         """Run single protocol in ExecutionMode mode."""
         if isinstance(parameters, dict):
@@ -80,9 +85,12 @@ class Executor:
             folder=self.output,
             mode=mode,
         )
-
-        if ExecutionMode.FIT in mode and self.platform is not None:
+        if ExecutionMode.FIT in mode and self.platform is not None and update:
             completed.update_platform(platform=self.platform, update=self.update)
+
+        if self.platform is not None:
+            (completed.datapath / PLATFORM_DIR).mkdir(parents=True, exist_ok=True)
+            dump_platform(self.platform, completed.datapath / PLATFORM_DIR)
 
         self.history.push(completed)
         completed.dump(self.output)
@@ -90,7 +98,7 @@ class Executor:
         return completed
 
 
-def run(runcard: Runcard, output: Path, mode: ExecutionMode):
+def run(runcard: Runcard, output: Path, mode: ExecutionMode, update: bool = True):
     """Run runcard and dump to output."""
     platform = runcard.platform_obj
     targets = runcard.targets if runcard.targets is not None else list(platform.qubits)
@@ -107,5 +115,6 @@ def run(runcard: Runcard, output: Path, mode: ExecutionMode):
             protocol=getattr(protocols, action.operation),
             parameters=action,
             mode=mode,
+            update=update,
         )
     return instance.history

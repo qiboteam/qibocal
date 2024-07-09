@@ -1,7 +1,7 @@
 """Rabi experiment that sweeps amplitude and frequency (with probability)."""
 
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -51,7 +51,7 @@ class RabiAmplitudeFrequencySignalParameters(Parameters):
 class RabiAmplitudeFrequencySignalResults(RabiAmplitudeSignalResults):
     """RabiAmplitudeFrequency outputs."""
 
-    frequency: dict[QubitId, tuple[float, Optional[int]]]
+    frequency: dict[QubitId, Union[float, list[float]]]
     """Drive frequency for each qubit."""
 
 
