@@ -156,7 +156,7 @@ def _aquisition(
         )
 
         sequence.add(measure_lowfreq)
-        sequence.add(measure_highfreq)
+        # sequence.add(measure_highfreq) # comment for ZCU111
 
         # define the parameter to sweep and its range:
         delta_amplitude_range = np.arange(
@@ -197,7 +197,8 @@ def _aquisition(
             delta_duration_range,
             delta_amplitude_range,
             results[ordered_pair[0]].magnitude,
-            results[ordered_pair[1]].magnitude,
+            results[ordered_pair[0]].magnitude, # ZCU111
+            # results[ordered_pair[1]].magnitude,
         )
     return data
 
