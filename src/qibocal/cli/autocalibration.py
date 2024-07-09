@@ -30,6 +30,7 @@ def autocalibrate(runcard: Runcard, folder: Path, force, update):
 
     # generate meta
     meta = Metadata.generate(path.name, backend)
+    meta.targets = runcard.targets
     output = Output(History(), meta, platform)
     output.dump(path)
 
