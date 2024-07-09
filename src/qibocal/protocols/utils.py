@@ -219,7 +219,7 @@ def s21_fit(
 
     """
     f_data = data.freq
-    z_data = data.signal * np.exp(1j * data.phase)
+    z_data = np.abs(data.signal) * np.exp(1j * data.phase)
 
     tau = get_cable_delay(f_data, z_data, 20)
     z_1 = remove_cable_delay(f_data, z_data, tau)
@@ -412,7 +412,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
     return figures, fitting_report
 
 
-def resonator_spectroscopy_plot(data, qubit, fit: Results = None):
+def s21_spectroscopy_plot(data, qubit, fit: Results = None):
     figures = []
     fig_raw = make_subplots(
         rows=2,
@@ -905,7 +905,6 @@ def chi2_reduced(
     estimated: NDArray,
     errors: NDArray,
     dof: float = None,
-    periodic: bool = False,
 ):
     if np.count_nonzero(errors) < len(errors):
         return EXTREME_CHI
@@ -913,13 +912,7 @@ def chi2_reduced(
     if dof is None:
         dof = len(observed) - 1
 
-    if not periodic:
-        chi2 = np.sum(np.square((observed - estimated) / errors)) / dof
-    else:
-        delta_phase = np.arctan2(
-            np.sin(observed - estimated), np.cos(observed - estimated)
-        )
-        chi2 = np.sum(np.square(delta_phase / errors)) / dof
+    chi2 = np.sum(np.square((observed - estimated) / errors)) / dof
 
     return chi2
 

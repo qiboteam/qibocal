@@ -18,6 +18,7 @@ from .utils import (
     lorentzian_fit,
     s21,
     s21_fit,
+    s21_spectroscopy_plot,
     spectroscopy_plot,
 )
 
@@ -311,7 +312,7 @@ def _plot(
 ):
     """Plotting function for ResonatorSpectroscopy."""
     if data.fit_function == "s21":
-        return resonator_spectroscopy_plot(data, target, fit)
+        return s21_spectroscopy_plot(data, target, fit)
     return spectroscopy_plot(data, target, fit)
 
 
