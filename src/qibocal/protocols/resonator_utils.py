@@ -16,7 +16,7 @@ def get_cable_delay(frequencies: NDArray, phases: NDArray, num_points: int) -> f
                               frequencies array to perform the linear fit.
 
         Returns:
-            The value (float) of the cable delay τ in seconds.
+            The value (float) of the cable delay :math:`\tau` in seconds.
     """
     phases = np.unwrap(phases)
     frequencies_selected = np.concatenate(
