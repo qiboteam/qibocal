@@ -48,8 +48,10 @@ def _register(name, obj):
 def _wrapped_protocol(executor: "Executor", protocol: Routine, name: str):
     def wrapper(parameters=None, id=name, mode=AUTOCALIBRATION, **kwargs):
         params = parameters.copy() if parameters is not None else {}
-        params = {"id": id, "parameters": params | kwargs}
-        return executor.run_protocol(protocol, parameters=params, mode=mode)
+        action = Action.cast(
+            source={"id": id, "operation": name, "parameters": params | kwargs}
+        )
+        return executor.run_protocol(protocol, parameters=action, mode=mode)
 
     return wrapper
 
@@ -120,12 +122,11 @@ class Executor:
     def run_protocol(
         self,
         protocol: Routine,
-        parameters: Union[dict, Action],
+        parameters: Action,
         mode: ExecutionMode = AUTOCALIBRATION,
     ) -> Completed:
         """Run single protocol in ExecutionMode mode."""
-        action = Action.cast(source=parameters, operation=str(protocol))
-        task = Task(action=action, operation=protocol)
+        task = Task(action=parameters, operation=protocol)
         log.info(f"Executing mode {mode} on {task.action.id}.")
 
         completed = task.run(platform=self.platform, targets=self.targets, mode=mode)

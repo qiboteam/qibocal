@@ -52,11 +52,11 @@ class Action:
         """Cast an action source to an action."""
         if isinstance(source, Action):
             return source
-        assert (
-            operation is not None
-        ), "Operation name required to create actions from parameters"
 
-        return cls(**source, operation=OperationId(operation))
+        if operation is not None:
+            source["operation"] = operation
+
+        return cls(**source)
 
 
 @dataclass(frozen=True)

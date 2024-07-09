@@ -41,7 +41,9 @@ def test_anonymous_executor(params, platform):
         targets=list(platform.qubits),
         update=True,
     )
-    executor.run_protocol(flipping, params, mode=ExecutionMode.ACQUIRE)
+    executor.run_protocol(
+        flipping, Action.cast(params, "flipping"), mode=ExecutionMode.ACQUIRE
+    )
 
     assert executor.name is None
 
@@ -51,7 +53,7 @@ def test_anonymous_executor(params, platform):
 def test_named_executor(params, platform):
     """Create method of Executor."""
     executor = Executor.create("myexec", platform=platform)
-    executor.run_protocol(flipping, params)
+    executor.run_protocol(flipping, Action.cast(params, "flipping"))
     executor.unload()
 
 
