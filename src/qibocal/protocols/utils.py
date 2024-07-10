@@ -784,8 +784,7 @@ def guess_period(x, y):
     mags[0] = 0
     local_maxima, _ = find_peaks(mags)
     if len(local_maxima) > 0:
-        dominant_freq = fft_freqs[np.argmax(mags)]
-        return 1 / dominant_freq
+        return 1 / fft_freqs[np.argmax(mags)]
     return None
 
 
