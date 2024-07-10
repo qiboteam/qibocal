@@ -75,7 +75,19 @@ class Executor:
     update: bool = True
     """Runcard update mechanism."""
     name: Optional[str] = None
-    """Name, used just as a label but also to register the module."""
+    """Symbol for the executor.
+
+    This can be used generically to distinguish the executor, but its specific use is to
+    register a module with this name in `sys.modules`.
+    They can contain dots, `.`, that are interpreted as usual by the Python module
+    system.
+
+    .. note::
+
+        As a special case, mainly used for internal purposes, names starting with `.`
+        are also allowed, and they are interpreted relative to this package (in the top
+        scope).
+    """
 
     def __post_init__(self):
         """Register as a module, if a name is specified."""
