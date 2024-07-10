@@ -7,7 +7,7 @@ Qibocal provides Quantum Characterization Validation and Verification protocols 
 
 Qibocal key features:
 
-- Automatization of calibration protocols.
+- Automation of calibration protocols.
 
 - Declarative inputs using runcard.
 
