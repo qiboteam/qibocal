@@ -8,7 +8,7 @@ from ..config import log, raise_error
 
 
 def update(path: pathlib.Path):
-    """Perform copy of updated platform in QIBOLAB_PLATFORM.".
+    """Perform copy of updated platform in QIBOLAB_PLATFORM
 
     Arguments:
         - input_path: Qibocal output folder.
