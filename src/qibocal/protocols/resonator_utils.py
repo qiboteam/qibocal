@@ -7,17 +7,13 @@ from scipy.optimize import leastsq, newton
 def cable_delay(frequencies: NDArray, phases: NDArray, num_points: int) -> float:
     """Evaluates the cable delay :math:`\tau`.
 
-    This delay is caused by the length of the cable and the finite speed of light.
-    Performs a first-grade polynomial fit of the phase and extracts the angular coefficient.
+    The cable delay :math:`tau` is caused by the length of the cable and the finite speed of light.
+    This is estimated fitting a first-grade polynomial fit of the `phases` as a function of the
+    `frequencies` (in Hz), and extracting the angular coefficient, which is then expressed
+    in seconds.
 
-       Args:
-           frequencies (NDArray[float]): frequencies (Hz) at which the measurement was taken.
-           phases (NDArray[complex]): Phase of the S21 scattering matrix element.
-           num_points (int): number of points selected from both the start and the end of the
-                             frequencies array to perform the linear fit.
-
-       Returns:
-           The value (float) of the cable delay :math:`\tau` in seconds.
+    The `num_points` is used to select how manu points should be fitted, from both the
+    start and the end of the frequency range.
     """
     phases = np.unwrap(phases)
     frequencies_selected = np.concatenate(
@@ -31,31 +27,22 @@ def cable_delay(frequencies: NDArray, phases: NDArray, num_points: int) -> float
 
 
 def remove_cable_delay(frequencies: NDArray, z: NDArray, tau: float) -> NDArray:
-    """
-    Corrects the S21 scattering matrix element array from the cable delay.
+    """Corrects the cable delay :math:`\tau`.
 
-        Args:
-            frequencies (NDArray[float]): frequencies (Hz) at which the measurement was taken.
-            z (NDArray[complex]): S21 scattering matrix element.
-            tau (float): the cable delay τ in seconds.
-        Returns:
-            The corrected S21 scattering matrix element (NDArray[complex]).
+    The cable delay :math:`\tau` (in s) is removed from the scattering matrix element array `z` by performing
+    an exponential product which also depends from the `frequencies` (in Hz).
     """
+
     return z * np.exp(2j * np.pi * frequencies * tau)
 
 
 def circle_fit(z: NDArray) -> tuple[float, float, float]:
-    """
-    Fits the circle of an S21 scattering matrix element array using the algebraic fit described in
-    "Efficient and robust analysis of complex scattering data under noise in microwave resonators"
-    (https://doi.org/10.1063/1.4907935) by S. Probst et al.
+    """Fits the circle of a scattering matrix element array.
 
-        Args:
-            z (NDArray[complex]): S21 scattering matrix element.
-            tau (float): the cable delay τ in seconds
-        Returns:
-            (tuple[float, float, float]): the (x,y) coordinates of the circle's center and
-            the radius of the circle.
+    The circle fit exploits the algebraic fit described in
+    "Efficient and robust analysis of complex scattering data under noise in microwave resonators"
+    (https://doi.org/10.1063/1.4907935) by S. Probst et al. The function, from the scattering matrix
+    element array, evaluates the center coordinates `x_c` and `y_c` and the radius of the circle `r_0`.
     """
     z = z.copy()
     x_norm = 0.5 * (np.max(z.real) + np.min(z.real))
@@ -199,26 +186,9 @@ def circle_fit(z: NDArray) -> tuple[float, float, float]:
     a_4 = -4
 
     def pol_func(x: float) -> float:
-        """
-        Polynomio for find a root of a real or complex function using the Newton-Raphson method.
-
-            Args:
-                x (float): independent variable.
-            Returns:
-                Evaluated polynomial (float).
-        """
         return a_0 + a_1 * x + a_2 * x**2 + a_3 * x**3 + a_4 * x**4
 
     def der_pol_func(x: float) -> float:
-        """
-        Derivative of the polynomio for find a root of a real or complex function using the
-        Newton-Raphson method.
-
-            Args:
-                x (float): independent variable.
-            Returns:
-                Evaluated derivative of the polynomial (float).
-        """
         return a_1 + 2 * a_2 * x + 3 * a_3 * x**2 + 4 * a_4 * x**3
 
     eta = newton(pol_func, 0.0, fprime=der_pol_func)
@@ -309,14 +279,7 @@ def phase_fit(frequencies: NDArray, z: NDArray) -> NDArray:
 
 
 def phase_dist(angle: float) -> float:
-    """
-    Maps angle [-2pi, 2pi] to phase distance on circle [0, pi].
-
-        Args:
-            angle (float): angle to be mapped.
-        Returns:
-            Mapped angle (float).
-    """
+    """Maps angle [-2pi, 2pi] to phase distance on circle [0, pi]."""
     return np.pi - np.abs(np.pi - np.abs(angle))
 
 
