@@ -50,7 +50,6 @@ class Metadata:
     end_time: Optional[datetime]
     stats: dict[str, TaskStats]
     versions: Versions
-    more: Optional[dict] = None
 
     @classmethod
     def generate(cls, name: str, backend):
