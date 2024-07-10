@@ -29,8 +29,6 @@ plotly = "^5.15.0"
 dash = "^2.6.0"
 skops = "^0.10.0"
 scikit-learn = "^1.2.1"
-# Explicit dependency required to cope for dash: https://github.com/plotly/dash/issues/2557
-setuptools = "^69.1.1"
 matplotlib = { version = "^3.7.0", optional = true }
 seaborn = { version = "^0.12.2", optional = true }
 pydot = { version = "^1.4.2", optional = true }
