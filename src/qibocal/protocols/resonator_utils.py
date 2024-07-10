@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.typing import NDArray
 from scipy.ndimage import gaussian_filter1d
-from scipy.optimize import leastsq, newton
+from scipy.optimize import leastsq, minimize
 
 
 def cable_delay(frequencies: NDArray, phases: NDArray, num_points: int) -> float:
@@ -12,7 +12,7 @@ def cable_delay(frequencies: NDArray, phases: NDArray, num_points: int) -> float
     `frequencies` (in Hz), and extracting the angular coefficient, which is then expressed
     in seconds.
 
-    The `num_points` is used to select how manu points should be fitted, from both the
+    The `num_points` is used to select how many points should be fitted, from both the
     start and the end of the frequency range.
     """
     phases = np.unwrap(phases)
@@ -44,6 +44,7 @@ def circle_fit(z: NDArray) -> tuple[float, float, float]:
     (https://doi.org/10.1063/1.4907935) by S. Probst et al. The function, from the scattering matrix
     element array, evaluates the center coordinates `x_c` and `y_c` and the radius of the circle `r_0`.
     """
+
     z = z.copy()
     x_norm = 0.5 * (np.max(z.real) + np.min(z.real))
     y_norm = 0.5 * (np.max(z.imag) + np.min(z.imag))
@@ -52,162 +53,45 @@ def circle_fit(z: NDArray) -> tuple[float, float, float]:
     amplitude_norm = np.max(np.abs(z))
     z /= amplitude_norm
 
-    x_i = z.real
-    x_i2 = x_i**2
-
-    y_i = z.imag
-    y_i2 = y_i**2
-
-    z_i = x_i2 + y_i2
-    z_i2 = z_i**2
-
-    n = len(x_i)
-
-    x_i_sum = np.sum(x_i)
-    y_i_sum = np.sum(y_i)
-    z_i_sum = np.sum(z_i)
-    x_i_y_i_sum = np.sum(x_i * y_i)
-    x_i_z_i_sum = np.sum(x_i * z_i)
-    y_i_z_i_sum = np.sum(y_i * z_i)
-    z_i2_sum = np.sum(z_i2)
-    x_i2_sum = np.sum(x_i2)
-    y_i2_sum = np.sum(y_i2)
-
-    m_matrix = np.array(
-        [
-            [z_i2_sum, x_i_z_i_sum, y_i_z_i_sum, z_i_sum],
-            [x_i_z_i_sum, x_i2_sum, x_i_y_i_sum, x_i_sum],
-            [y_i_z_i_sum, x_i_y_i_sum, y_i2_sum, y_i_sum],
-            [z_i_sum, x_i_sum, y_i_sum, n],
-        ]
+    coords = np.stack(
+        [np.abs(z) ** 2, z.real, z.imag, np.ones_like(z, dtype=np.float64)]
     )
+    m_matrix = np.einsum("in,jn->ij", coords, coords)
 
-    a_0 = (
-        (
-            (m_matrix[2][0] * m_matrix[3][2] - m_matrix[2][2] * m_matrix[3][0])
-            * m_matrix[1][1]
-            - m_matrix[1][2] * m_matrix[2][0] * m_matrix[3][1]
-            - m_matrix[1][0] * m_matrix[2][1] * m_matrix[3][2]
-            + m_matrix[1][0] * m_matrix[2][2] * m_matrix[3][1]
-            + m_matrix[1][2] * m_matrix[2][1] * m_matrix[3][0]
+    b_matrix = np.array([[0, 0, 0, -2], [0, 1, 0, 0], [0, 0, 1, 0], [-2, 0, 0, 0]])
+
+    coefficients = np.poly(np.linalg.eigvals(np.linalg.inv(b_matrix).dot(m_matrix)))
+    roots = np.roots(coefficients)
+    eta = np.min(np.real([root for root in roots if np.isreal(root) and root > 0]))
+
+    def f_matrix(a_vector, m_matrix, b_matrix, eta):
+        a_vector = np.array(a_vector)
+        return a_vector.T @ m_matrix @ a_vector - eta * (
+            a_vector.T @ b_matrix @ a_vector - 1
         )
-        * m_matrix[0][3]
-        + (
-            m_matrix[0][2] * m_matrix[2][3] * m_matrix[3][0]
-            - m_matrix[0][2] * m_matrix[2][0] * m_matrix[3][3]
-            + m_matrix[0][0] * m_matrix[2][2] * m_matrix[3][3]
-            - m_matrix[0][0] * m_matrix[2][3] * m_matrix[3][2]
-        )
-        * m_matrix[1][1]
-        + (
-            m_matrix[0][1] * m_matrix[1][3] * m_matrix[3][0]
-            - m_matrix[0][1] * m_matrix[1][0] * m_matrix[3][3]
-            - m_matrix[0][0] * m_matrix[1][3] * m_matrix[3][1]
-        )
-        * m_matrix[2][2]
-        + (
-            -m_matrix[0][1] * m_matrix[1][2] * m_matrix[2][3]
-            - m_matrix[0][2] * m_matrix[1][3] * m_matrix[2][1]
-        )
-        * m_matrix[3][0]
-        + (
-            (m_matrix[2][3] * m_matrix[3][1] - m_matrix[2][1] * m_matrix[3][3])
-            * m_matrix[1][2]
-            + m_matrix[2][1] * m_matrix[3][2] * m_matrix[1][3]
-        )
-        * m_matrix[0][0]
-        + (
-            m_matrix[1][0] * m_matrix[2][3] * m_matrix[3][2]
-            + m_matrix[2][0]
-            * (m_matrix[1][2] * m_matrix[3][3] - m_matrix[1][3] * m_matrix[3][2])
-        )
-        * m_matrix[0][1]
-        + (
-            (m_matrix[2][1] * m_matrix[3][3] - m_matrix[2][3] * m_matrix[3][1])
-            * m_matrix[1][0]
-            + m_matrix[1][3] * m_matrix[2][0] * m_matrix[3][1]
-        )
-        * m_matrix[0][2]
+
+    def constraint(a_vector, b_matrix):
+        a_vector = np.array(a_vector)
+        return a_vector.T @ b_matrix @ a_vector - 1
+
+    constraints = [{"type": "eq", "fun": constraint, "args": (b_matrix,)}]
+
+    a_vector = np.ones(4)
+    result = minimize(
+        f_matrix, a_vector, args=(m_matrix, b_matrix, eta), constraints=constraints
     )
-    a_1 = (
-        (
-            (m_matrix[3][0] - 2.0 * m_matrix[2][2]) * m_matrix[1][1]
-            - m_matrix[1][0] * m_matrix[3][1]
-            + m_matrix[2][2] * m_matrix[3][0]
-            + 2.0 * m_matrix[1][2] * m_matrix[2][1]
-            - m_matrix[2][0] * m_matrix[3][2]
+    a_vector = result.x
+
+    x_c = -a_vector[1] / (2 * a_vector[0])
+    y_c = -a_vector[2] / (2 * a_vector[0])
+    r_0 = 1 / (
+        2
+        * np.abs(a_vector[0])
+        * np.sqrt(
+            a_vector[1] * a_vector[1]
+            + a_vector[2] * a_vector[2]
+            - 4 * a_vector[0] * a_vector[3]
         )
-        * m_matrix[0][3]
-        + (
-            2.0 * m_matrix[2][0] * m_matrix[3][2]
-            - m_matrix[0][0] * m_matrix[3][3]
-            - 2.0 * m_matrix[2][2] * m_matrix[3][0]
-            + 2.0 * m_matrix[0][2] * m_matrix[2][3]
-        )
-        * m_matrix[1][1]
-        + (
-            -m_matrix[0][0] * m_matrix[3][3]
-            + 2.0 * m_matrix[0][1] * m_matrix[1][3]
-            + 2.0 * m_matrix[1][0] * m_matrix[3][1]
-        )
-        * m_matrix[2][2]
-        + (
-            -m_matrix[0][1] * m_matrix[1][3]
-            + 2.0 * m_matrix[1][2] * m_matrix[2][1]
-            - m_matrix[0][2] * m_matrix[2][3]
-        )
-        * m_matrix[3][0]
-        + (m_matrix[1][3] * m_matrix[3][1] + m_matrix[2][3] * m_matrix[3][2])
-        * m_matrix[0][0]
-        + (m_matrix[1][0] * m_matrix[3][3] - 2.0 * m_matrix[1][2] * m_matrix[2][3])
-        * m_matrix[0][1]
-        + (m_matrix[2][0] * m_matrix[3][3] - 2.0 * m_matrix[1][3] * m_matrix[2][1])
-        * m_matrix[0][2]
-        - 2.0 * m_matrix[1][2] * m_matrix[2][0] * m_matrix[3][1]
-        - 2.0 * m_matrix[1][0] * m_matrix[2][1] * m_matrix[3][2]
-    )
-    a_2 = (
-        (2.0 * m_matrix[1][1] - m_matrix[3][0] + 2.0 * m_matrix[2][2]) * m_matrix[0][3]
-        + (2.0 * m_matrix[3][0] - 4.0 * m_matrix[2][2]) * m_matrix[1][1]
-        - 2.0 * m_matrix[2][0] * m_matrix[3][2]
-        + 2.0 * m_matrix[2][2] * m_matrix[3][0]
-        + m_matrix[0][0] * m_matrix[3][3]
-        + 4.0 * m_matrix[1][2] * m_matrix[2][1]
-        - 2.0 * m_matrix[0][1] * m_matrix[1][3]
-        - 2.0 * m_matrix[1][0] * m_matrix[3][1]
-        - 2.0 * m_matrix[0][2] * m_matrix[2][3]
-    )
-    a_3 = (
-        -2.0 * m_matrix[3][0]
-        + 4.0 * m_matrix[1][1]
-        + 4.0 * m_matrix[2][2]
-        - 2.0 * m_matrix[0][3]
-    )
-    a_4 = -4
-
-    def pol_func(x: float) -> float:
-        return a_0 + a_1 * x + a_2 * x**2 + a_3 * x**3 + a_4 * x**4
-
-    def der_pol_func(x: float) -> float:
-        return a_1 + 2 * a_2 * x + 3 * a_3 * x**2 + 4 * a_4 * x**3
-
-    eta = newton(pol_func, 0.0, fprime=der_pol_func)
-
-    m_matrix[3][0] = m_matrix[3][0] + 2 * eta
-    m_matrix[0][3] = m_matrix[0][3] + 2 * eta
-    m_matrix[1][1] = m_matrix[1][1] - eta
-    m_matrix[2][2] = m_matrix[2][2] - eta
-
-    _, s, vt = np.linalg.svd(m_matrix)
-    a_vec = vt[np.argmin(s), :]
-
-    x_c = -a_vec[1] / (2.0 * a_vec[0])
-    y_c = -a_vec[2] / (2.0 * a_vec[0])
-
-    r_0 = (
-        1.0
-        / (2.0 * np.absolute(a_vec[0]))
-        * np.sqrt(a_vec[1] * a_vec[1] + a_vec[2] * a_vec[2] - 4.0 * a_vec[0] * a_vec[3])
     )
 
     return (
