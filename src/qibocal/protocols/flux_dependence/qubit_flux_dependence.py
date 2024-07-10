@@ -218,8 +218,10 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
             }
             frequency[qubit] = popt[0] * GHZ_TO_HZ
-            # sweetspot obtain by solving transmon_frequency == w_max
-            sweetspot[qubit] = -popt[2] / popt[1]
+            # just take maximum
+            sweetspot[qubit] = biases[
+                np.argmax([fit_function(x, *popt) for x in biases])
+            ]
             matrix_element[qubit] = popt[1]
         except ValueError as e:
             log.error(
