@@ -15,7 +15,7 @@ PARAMETERS = {
     "parameters": {
         "nflips_max": 20,
         "nflips_step": 2,
-        "detuning": +0.1,
+        "delta_amplitude": +0.1,
     },
 }
 action = deepcopy(PARAMETERS)

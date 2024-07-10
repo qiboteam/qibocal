@@ -16,7 +16,7 @@ from qibocal.protocols.rabi.length_signal import (
     RabiLengthSignalResults,
 )
 
-from ..utils import chi2_reduced
+from ..utils import chi2_reduced, fallback_period, guess_period
 from . import utils
 
 
@@ -127,8 +127,8 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         y = qubit_data.prob
         x = (raw_x - min_x) / (max_x - min_x)
 
-        f = utils.guess_frequency(x, y)
-        pguess = [0.5, 0.5, 1 / f, 0, 0]
+        period = fallback_period(guess_period(x, y))
+        pguess = [0.5, 0.5, period, 0, 0]
 
         try:
             popt, perr, pi_pulse_parameter = utils.fit_length_function(

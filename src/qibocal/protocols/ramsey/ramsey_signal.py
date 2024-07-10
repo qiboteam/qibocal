@@ -206,11 +206,11 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
             t2_measure[qubit] = [t2, perr[4] * (t2**2)]
             popts[qubit] = popt
             delta_phys_measure[qubit] = [
-                delta_phys,
+                -delta_phys,
                 perr[2] * GHZ_TO_HZ / (2 * np.pi),
             ]
             delta_fitting_measure[qubit] = [
-                delta_fitting * GHZ_TO_HZ,
+                -delta_fitting * GHZ_TO_HZ,
                 perr[2] * GHZ_TO_HZ / (2 * np.pi),
             ]
         except Exception as e:
