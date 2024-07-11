@@ -13,7 +13,10 @@ from qibolab.qubits import QubitId, QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.config import log
+from qibocal.protocols.utils import table_dict, table_html
 
 from .cz_virtualz import create_sequence, fit_function
 from .utils import order_pair
@@ -59,16 +62,23 @@ class CZSweepResults(Results):
     """Virtual Z phase correction."""
     leakages: dict[tuple[QubitPairId, float], dict[QubitId, float]]
     """Leakage on control qubit for pair."""
+    best_amp: dict[QubitPairId]
+    """Flux pulse amplitude of best CZ configuration."""
+    best_dur: dict[QubitPairId]
+    """Flux pulse duration of best CZ configuration."""
+    best_virtual_phase: dict[QubitPairId]
+    """Virtual phase to correct best CZ configuration."""
 
     def __contains__(self, key: QubitPairId):
         """Check if key is in class.
-        While key is a QubitPairId both chsh and chsh_mitigated contain
-        an additional key which represents the basis chosen.
+
+        Additional  manipulations required because of the Results class.
         """
-        return True
-        # return key in [
-        #     (target, control) for target, control, _ in self.fitted_parameters
-        # ]
+        # TODO: to be improved
+        pairs = {
+            (target, control) for target, control, _, _, _ in self.fitted_parameters
+        }
+        return tuple(key) in list(pairs)
 
 
 CZSweepType = np.dtype(
@@ -233,20 +243,18 @@ def _acquisition(
 def _fit(
     data: CZSweepData,
 ) -> CZSweepResults:
-    r"""Fitting routine for the experiment.
-
-    The used model is
-
-    .. math::
-
-        y = p_0 sin\Big(x + p_2\Big) + p_1.
-    """
+    """Repetition of CZ fit for all configurations."""
     fitted_parameters = {}
     pairs = data.pairs
     virtual_phases = {}
     cz_angles = {}
     leakages = {}
+    best_amp = {}
+    best_dur = {}
+    best_virtual_phase = {}
+    # FIXME: experiment should be for single pair
     for pair in pairs:
+        # TODO: improve this
         ord_pair = next(iter(data.amplitudes))[:2]
         for duration in data.durations[ord_pair]:
             for amplitude in data.amplitudes[ord_pair]:
@@ -278,24 +286,7 @@ def _fit(
                                 (np.max(target_data), np.max(target_data), 2 * np.pi),
                             ),
                         )
-                        import matplotlib.pyplot as plt
 
-                        plt.figure()
-                        plt.scatter(
-                            np.array(data.thetas) - data.vphases[ord_pair][target],
-                            target_data,
-                        )
-                        plt.plot(
-                            np.array(data.thetas) - data.vphases[ord_pair][target],
-                            fit_function(
-                                np.array(data.thetas) - data.vphases[ord_pair][target],
-                                *popt,
-                            ),
-                        )
-                        plt.savefig(
-                            f"test_cz_{duration}_{amplitude}_t{target}c{control}.png"
-                        )
-                        plt.close()
                         fitted_parameters[
                             target, control, setup, amplitude, duration
                         ] = popt.tolist()
@@ -362,16 +353,28 @@ def _fit(
                         )
                 except KeyError:
                     pass
+        index = np.argmin(np.abs(np.array(list(cz_angles.values())) - np.pi))
+        _, _, amp, dur = np.array(list(cz_angles))[index]
+        best_amp[pair] = float(amp)
+        best_dur[pair] = float(dur)
+        best_virtual_phase[pair] = virtual_phases[
+            ord_pair[0], ord_pair[1], float(amp), float(dur)
+        ]
+
     return CZSweepResults(
         cz_angles=cz_angles,
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
         leakages=leakages,
+        best_amp=best_amp,
+        best_dur=best_dur,
+        best_virtual_phase=best_virtual_phase,
     )
 
 
 def _plot(data: CZSweepData, fit: CZSweepResults, target: QubitPairId):
     """Plot routine for CZSweep."""
+    fitting_report = ""
     qubits = next(iter(data.amplitudes))[:2]
     fig = make_subplots(
         rows=2,
@@ -383,52 +386,66 @@ def _plot(data: CZSweepData, fit: CZSweepResults, target: QubitPairId):
             f"Qubit {qubits[1]} Leakage",
         ),
     )
-    for target_q, control_q in (
-        target,
-        list(target)[::-1],
-    ):
-        cz = []
-        durs = []
-        amps = []
-        leakage = []
-        for i in data.amplitudes[qubits]:
-            for j in data.durations[qubits]:
-                durs.append(j)
-                amps.append(i)
-                cz.append(fit.cz_angles[target_q, control_q, i, j])
-                leakage.append(fit.leakages[qubits[0], qubits[1], i, j][control_q])
+    if fit is not None:
+        for target_q, control_q in (
+            target,
+            list(target)[::-1],
+        ):
+            cz = []
+            durs = []
+            amps = []
+            leakage = []
+            for i in data.amplitudes[qubits]:
+                for j in data.durations[qubits]:
+                    durs.append(j)
+                    amps.append(i)
+                    cz.append(fit.cz_angles[target_q, control_q, i, j])
+                    leakage.append(fit.leakages[qubits[0], qubits[1], i, j][control_q])
 
-        condition = (target_q, control_q) == target
-        fig.add_trace(
-            go.Heatmap(
-                x=durs,
-                y=amps,
-                z=cz,
-                zmin=np.pi / 2,
-                zmax=3 * np.pi / 2,
-                name="CZ angle",
-                colorbar_x=-0.4,
-                colorscale="RdBu",
-                showscale=condition,
-            ),
-            row=1 if condition else 2,
-            col=1,
-        )
+            condition = [target_q, control_q] == target
+            fig.add_trace(
+                go.Heatmap(
+                    x=durs,
+                    y=amps,
+                    z=cz,
+                    zmin=np.pi / 2,
+                    zmax=3 * np.pi / 2,
+                    name="CZ angle",
+                    colorbar_x=-0.4,
+                    colorscale="RdBu",
+                    showscale=condition,
+                ),
+                row=1 if condition else 2,
+                col=1,
+            )
 
-        fig.add_trace(
-            go.Heatmap(
-                x=durs,
-                y=amps,
-                z=leakage,
-                name="Leakage",
-                showscale=condition,
-                colorscale="Reds",
-                zmin=0,
-                zmax=0.05,
-            ),
-            row=1 if condition else 2,
-            col=2,
-        )
+            fig.add_trace(
+                go.Heatmap(
+                    x=durs,
+                    y=amps,
+                    z=leakage,
+                    name="Leakage",
+                    showscale=condition,
+                    colorscale="Reds",
+                    zmin=0,
+                    zmax=0.05,
+                ),
+                row=1 if condition else 2,
+                col=2,
+            )
+            fitting_report = table_html(
+                table_dict(
+                    [qubits[1], qubits[1]],
+                    [
+                        "Flux pulse amplitude [a.u.]",
+                        "Flux pulse duration [ns]",
+                    ],
+                    [
+                        np.round(fit.best_amp[qubits], 4),
+                        np.round(fit.best_dur[qubits], 4),
+                    ],
+                )
+            )
 
         fig.update_layout(
             xaxis3_title="Pulse duration [ns]",
@@ -437,16 +454,17 @@ def _plot(data: CZSweepData, fit: CZSweepResults, target: QubitPairId):
             yaxis3_title="Flux Amplitude [a.u.]",
         )
 
-    return [fig], ""
+    return [fig], fitting_report
 
 
 def _update(results: CZSweepResults, platform: Platform, target: QubitPairId):
     # FIXME: quick fix for qubit order
-    # qubit_pair = tuple(sorted(target))
-    # target = tuple(sorted(target))
-    # update.virtual_phases(results.virtual_phase[target], platform, target)
-    pass
+    qubit_pair = tuple(sorted(target))
+    target = tuple(sorted(target))
+    update.virtual_phases(results.best_virtual_phase[target], platform, target)
+    update.CZ_duration(results.best_dur[target], platform, target)
+    update.CZ_amplitude(results.best_amp[target], platform, target)
 
 
 cz_sweep = Routine(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
-"""CZ virtual Z correction routine."""
+"""CZ sweep protocol"""
