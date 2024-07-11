@@ -1,6 +1,7 @@
 """Upload report to server."""
 
 import base64
+import json
 import pathlib
 import shutil
 import socket
@@ -25,10 +26,8 @@ ROOT_URL = "http://login.qrccluster.com:9000/"
 def upload_report(path: pathlib.Path, tag: str, author: str):
     # load meta and update tag
     meta = Metadata.load(path)
-    meta["author"] = author
-    if tag is not None:
-        meta["tag"] = tag
-    (path / META).write_text(meta.dump())
+    meta._prepare_upload(author=author, tag=tag)
+    (path / META).write_text(json.dumps(meta.dump(), indent=4))
 
     # check the rsync command exists.
     if not shutil.which("rsync"):
