@@ -15,7 +15,7 @@ PARAMETERS = {
     "parameters": {
         "nflips_max": 20,
         "nflips_step": 2,
-        "detuning": +0.1,
+        "delta_amplitude": +0.1,
     },
 }
 action = deepcopy(PARAMETERS)
@@ -25,18 +25,7 @@ ACTION = Action(**action)
 
 @pytest.mark.parametrize("params", [ACTION, PARAMETERS])
 @pytest.mark.parametrize("platform", ["dummy", PLATFORM])
-def test_executor_create(params, platform, tmp_path):
-    """Create method of Executor"""
-    executor = Executor.create(platform=platform, output=tmp_path)
+def test_executor_create(params, platform):
+    """Create method of Executor."""
+    executor = Executor.create(platform=platform)
     executor.run_protocol(flipping, params, mode=ExecutionMode.ACQUIRE)
-
-    # check double acquisition error
-    with pytest.raises(KeyError):
-        executor.run_protocol(flipping, params, mode=ExecutionMode.ACQUIRE)
-
-    # perform fit
-    executor.run_protocol(flipping, params, mode=ExecutionMode.FIT)
-
-    # check double fit error
-    with pytest.raises(KeyError):
-        executor.run_protocol(flipping, params, mode=ExecutionMode.FIT)

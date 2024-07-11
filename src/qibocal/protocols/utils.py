@@ -10,6 +10,7 @@ from plotly.subplots import make_subplots
 from qibolab.qubits import QubitId
 from scipy import constants
 from scipy.optimize import curve_fit
+from scipy.signal import find_peaks
 
 from qibocal.auto.operation import Data, Results
 from qibocal.config import log
@@ -772,3 +773,21 @@ def extract_feature(
     )
     second_mask = z[first_mask] < max if feat == "min" else z[first_mask] > min
     return x[first_mask][second_mask], y[first_mask][second_mask]
+
+
+def guess_period(x, y):
+    """Return fft period estimation given a sinusoidal plot."""
+
+    fft = np.fft.rfft(y)
+    fft_freqs = np.fft.rfftfreq(len(y), d=(x[1] - x[0]))
+    mags = abs(fft)
+    mags[0] = 0
+    local_maxima, _ = find_peaks(mags)
+    if len(local_maxima) > 0:
+        return 1 / fft_freqs[np.argmax(mags)]
+    return None
+
+
+def fallback_period(period):
+    """Function to estimate period if guess_period fails."""
+    return period if period is not None else 4

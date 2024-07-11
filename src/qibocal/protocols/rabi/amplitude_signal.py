@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -11,6 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
+from qibocal.protocols.utils import fallback_period, guess_period
 
 from . import utils
 
@@ -33,9 +34,9 @@ class RabiAmplitudeSignalParameters(Parameters):
 class RabiAmplitudeSignalResults(Results):
     """RabiAmplitude outputs."""
 
-    amplitude: dict[QubitId, tuple[float, Optional[float]]]
+    amplitude: dict[QubitId, Union[float, list[float]]]
     """Drive amplitude for each qubit."""
-    length: dict[QubitId, tuple[float, Optional[float]]]
+    length: dict[QubitId, Union[float, list[float]]]
     """Drive pulse duration. Same for all qubits."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitted parameters."""
@@ -132,8 +133,8 @@ def _fit(data: RabiAmplitudeSignalData) -> RabiAmplitudeSignalResults:
         x = (rabi_parameter - x_min) / (x_max - x_min)
         y = (voltages - y_min) / (y_max - y_min)
 
-        f = utils.guess_frequency(x, y)
-        pguess = [0.5, 1, 1 / f, 0]
+        period = fallback_period(guess_period(x, y))
+        pguess = [0.5, 1, period, 0]
         try:
             popt, _, pi_pulse_parameter = utils.fit_amplitude_function(
                 x,

@@ -14,7 +14,8 @@ from .utils import RBData, StandardRBResult, fit, number_to_str, rb_acquisition
 
 
 class Depthsdict(TypedDict):
-    """dictionary used to build a list of depths as ``range(start, stop, step)``."""
+    """Dictionary used to build a list of depths as ``range(start, stop,
+    step)``."""
 
     start: int
     stop: int
@@ -26,25 +27,39 @@ class StandardRBParameters(Parameters):
     """Standard Randomized Benchmarking runcard inputs."""
 
     depths: Union[list, Depthsdict]
-    """A list of depths/sequence lengths. If a dictionary is given the list will be build."""
+    """A list of depths/sequence lengths.
+
+    If a dictionary is given the list will be build.
+    """
     niter: int
     """Sets how many iterations over the same depth value."""
     uncertainties: Optional[float] = None
-    """Method of computing the error bars of the signal and uncertainties of the fit. If ``None``,
-    it computes the standard deviation. Otherwise it computes the corresponding confidence interval. Defaults `None`."""
+    """Method of computing the error bars of the signal and uncertainties of
+    the fit.
+
+    If ``None``,
+    it computes the standard deviation. Otherwise it computes the corresponding confidence interval. Defaults `None`.
+    """
     unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple circuits in a single instrument call.
-    Defaults to ``False``."""
+    """If ``True`` it uses sequence unrolling to deploy multiple circuits in a
+    single instrument call.
+
+    Defaults to ``False``.
+    """
     seed: Optional[int] = None
-    """A fixed seed to initialize ``np.random.Generator``. If ``None``, uses a random seed.
-    Defaults is ``None``."""
+    """A fixed seed to initialize ``np.random.Generator``.
+
+    If ``None``, uses a random seed.
+    Defaults is ``None``.
+    """
     noise_model: Optional[str] = None
     """For simulation purposes, string has to match what is in
     :mod:`qibocal.protocols.randomized_benchmarking.noisemodels`"""
     noise_params: Optional[list] = field(default_factory=list)
-    """With this the noise model will be initialized, if not given random values will be used."""
+    """With this the noise model will be initialized, if not given random
+    values will be used."""
     nshots: int = 10
-    """Just to add the default value"""
+    """Just to add the default value."""
 
     def __post_init__(self):
         if isinstance(self.depths, dict):
@@ -77,8 +92,8 @@ def _acquisition(
 
 
 def _fit(data: RBData) -> StandardRBResult:
-    """Takes a data frame, extracts the depths and the signal and fits it with an
-    exponential function y = Ap^x+B.
+    """Takes a data frame, extracts the depths and the signal and fits it with
+    an exponential function y = Ap^x+B.
 
     Args:
         data (RBData): Data from the data acquisition stage.
@@ -92,8 +107,8 @@ def _fit(data: RBData) -> StandardRBResult:
 def _plot(
     data: RBData, fit: StandardRBResult, target: QubitId
 ) -> tuple[list[go.Figure], str]:
-    """Builds the table for the qq pipe, calls the plot function of the result object
-    and returns the figure es list.
+    """Builds the table for the qq pipe, calls the plot function of the result
+    object and returns the figure es list.
 
     Args:
         data (RBData): Data object used for the table.
@@ -103,6 +118,8 @@ def _plot(
     Returns:
         tuple[list[go.Figure], str]:
     """
+    if isinstance(target, list):
+        target = tuple(target)
 
     qubit = target
     fig = go.Figure()

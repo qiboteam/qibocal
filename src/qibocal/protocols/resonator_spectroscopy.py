@@ -221,7 +221,6 @@ def _fit(
                 np.sqrt(2 / len(data[qubit].freq)),
             )
             amplitudes[qubit] = fitted_parameters[qubit][0]
-
     if data.power_level is PowerLevel.high:
         return ResonatorSpectroscopyResults(
             frequency=frequency,

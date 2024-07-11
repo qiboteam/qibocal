@@ -1,12 +1,11 @@
 platform: dummy
 
-backend: numpy
+# TODO: restore 'numpy' https://github.com/qiboteam/qibocal/issues/913
+backend: qibolab
 
-targets: [0,1]
+targets: [0, 1]
 
 actions:
-
-
   - id: standard rb no error
     priority: 0
     operation: standard_rb

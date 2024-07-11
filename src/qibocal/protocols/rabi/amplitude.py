@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -12,7 +11,7 @@ from qibocal import update
 from qibocal.auto.operation import Data, Routine
 from qibocal.config import log
 
-from ..utils import chi2_reduced
+from ..utils import chi2_reduced, fallback_period, guess_period
 from . import utils
 from .amplitude_signal import RabiAmplitudeSignalParameters, RabiAmplitudeSignalResults
 
@@ -26,7 +25,7 @@ class RabiAmplitudeParameters(RabiAmplitudeSignalParameters):
 class RabiAmplitudeResults(RabiAmplitudeSignalResults):
     """RabiAmplitude outputs."""
 
-    chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
+    chi2: dict[QubitId, list[float]] = field(default_factory=dict)
 
 
 RabiAmpType = np.dtype(
@@ -113,8 +112,8 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         x = qubit_data.amp
         y = qubit_data.prob
 
-        f = utils.guess_frequency(x, y)
-        pguess = [0.5, 0.5, 1 / f, 0]
+        period = fallback_period(guess_period(x, y))
+        pguess = [0.5, 0.5, period, 0]
         try:
             popt, perr, pi_pulse_parameter = utils.fit_amplitude_function(
                 x,
@@ -123,17 +122,17 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
                 sigma=qubit_data.error,
                 signal=False,
             )
-            pi_pulse_amplitudes[qubit] = (pi_pulse_parameter, perr[2] / 2)
+            pi_pulse_amplitudes[qubit] = [pi_pulse_parameter, perr[2] / 2]
             fitted_parameters[qubit] = popt.tolist()
-            durations = {key: (value, 0) for key, value in data.durations.items()}
-            chi2[qubit] = (
+            durations = {key: [value, 0] for key, value in data.durations.items()}
+            chi2[qubit] = [
                 chi2_reduced(
                     y,
                     utils.rabi_amplitude_function(x, *popt),
                     qubit_data.error,
                 ),
                 np.sqrt(2 / len(y)),
-            )
+            ]
 
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
