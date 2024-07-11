@@ -23,7 +23,21 @@ PLATFORM_DIR = "platform"
 """Folder where platform will be dumped."""
 
 
-def _register(name, obj):
+def _register(name: str, obj):
+    """Register object as module.
+
+    With a small abuse of the Python module system, the object is registered as a
+    module, with the given `name`.
+    `name` may contain dots, cf. :attr:`Executor.name` for clarifications about their
+    meaning.
+
+    .. note::
+
+        This is mainly used to register executors, such that the protocols can be
+        bound to it through the `import` keyword, in order to construct an intuitive
+        syntax, apparently purely functional, maintaining the context in a single
+        `Executor` "global" object.
+    """
     # prevent overwriting existing modules
     if name in sys.modules:
         raise ValueError(
