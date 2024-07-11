@@ -866,7 +866,7 @@ actions:
 
   - id: cz_sweep
     operation: cz_sweep
-    targets: [[3,2]]
+    targets: [[0,2]]
     parameters:
       flux_pulse_amplitude_min: -0.249
       flux_pulse_amplitude_max: -0.248

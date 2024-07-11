@@ -411,7 +411,7 @@ def _plot(data: CZSweepData, fit: CZSweepResults, target: QubitPairId):
                     zmin=np.pi / 2,
                     zmax=3 * np.pi / 2,
                     name="CZ angle",
-                    colorbar_x=-0.4,
+                    colorbar_x=-0.1,
                     colorscale="RdBu",
                     showscale=condition,
                 ),
