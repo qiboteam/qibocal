@@ -50,6 +50,8 @@ class Metadata:
     end_time: Optional[datetime]
     stats: dict[str, TaskStats]
     versions: Versions
+    author: str = None
+    tag: str = None
 
     @classmethod
     def generate(cls, name: str, backend):
@@ -68,6 +70,12 @@ class Metadata:
             stats={},
             versions=versions,
         )
+
+    def _prepare_upload(self, author: str, tag: str):
+        """Adding author and tag attributes."""
+        self.author = author
+        if tag is not None:
+            self.tag = tag
 
     def start(self):
         """Register start time."""

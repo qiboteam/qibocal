@@ -82,3 +82,14 @@ def test_output_mkdir():
         Output.mkdir(path1)
 
     Output.mkdir(path1, force=True)
+
+
+@pytest.mark.parametrize("tag", ["tag", None])
+def test_meta_prepare_upload(tmp_path, tag):
+    backend = construct_backend(backend="qibolab", platform="dummy")
+    meta = Metadata.generate(tmp_path.name, backend)
+    print(meta)
+    meta._prepare_upload(author="foo", tag=tag)
+    assert "foo" == meta.author
+    if tag is not None:
+        assert tag == meta.tag
