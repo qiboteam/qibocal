@@ -60,22 +60,6 @@ def _register(name: str, obj):
     obj.__spec__ = None
 
 
-def _wrapped_protocol(executor: "Executor", protocol: Routine, name: str):
-    def wrapper(*args, parameters=None, id=name, mode=AUTOCALIBRATION, **kwargs):
-        positional = dict(zip((f.name for f in fields(protocol.parameters_type)), args))
-        params = deepcopy(parameters) if parameters is not None else {}
-        action = Action.cast(
-            source={
-                "id": id,
-                "operation": name,
-                "parameters": params | positional | kwargs,
-            }
-        )
-        return executor.run_protocol(protocol, parameters=action, mode=mode)
-
-    return wrapper
-
-
 @dataclass
 class Executor:
     """Execute a tasks' graph and tracks its history."""
@@ -126,10 +110,31 @@ class Executor:
                 raise AttributeError
 
             protocol = getattr(protocols, name)
-            return _wrapped_protocol(self, protocol, name)
+            return self._wrapped_protocol(protocol, name)
         except AttributeError:
             # fall back on regular attributes
             return super().__getattribute__(name)
+
+    def _wrapped_protocol(self, protocol: Routine, operation: str):
+        """Create a bound protocol."""
+
+        def wrapper(
+            *args, parameters=None, id=operation, mode=AUTOCALIBRATION, **kwargs
+        ):
+            positional = dict(
+                zip((f.name for f in fields(protocol.parameters_type)), args)
+            )
+            params = deepcopy(parameters) if parameters is not None else {}
+            action = Action.cast(
+                source={
+                    "id": id,
+                    "operation": operation,
+                    "parameters": params | positional | kwargs,
+                }
+            )
+            return self.run_protocol(protocol, parameters=action, mode=mode)
+
+        return wrapper
 
     @classmethod
     def create(cls, name: str, platform: Union[Platform, str, None] = None):
