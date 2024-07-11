@@ -281,9 +281,16 @@ def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
 
 
 def _update(results: DragTuningResults, platform: Platform, target: QubitId):
-    update.drag_pulse_beta(
-        results.betas[target] / platform.qubits[target].anharmonicity, platform, target
-    )
+    try:
+        update.drag_pulse_beta(
+            results.betas[target] / platform.qubits[target].anharmonicity,
+            platform,
+            target,
+        )
+    except ZeroDivisionError:
+        log.warning(
+            f"Beta parameter cannot be updated since the anharmoncity for qubit {target} is 0."
+        )
 
 
 drag_tuning = Routine(_acquisition, _fit, _plot, _update)
