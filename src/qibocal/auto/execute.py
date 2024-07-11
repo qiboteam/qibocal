@@ -1,22 +1,17 @@
 """Tasks execution."""
 
-import os
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Union
 
 from qibolab import create_platform
 from qibolab.platform import Platform
-from qibolab.serialize import dump_platform
 
-from qibocal import protocols
-from qibocal.config import log, raise_error
+from qibocal.config import log
 
 from .history import History
 from .mode import ExecutionMode
 from .operation import Routine
-from .runcard import Action, Runcard, Targets
-from .task import Completed, Task
+from .task import Action, Completed, Targets, Task
 
 PLATFORM_DIR = "platform"
 """Folder where platform will be dumped."""
@@ -28,8 +23,6 @@ class Executor:
 
     history: History
     """The execution history, with results and exit states."""
-    output: Path
-    """Output path."""
     targets: Targets
     """Qubits/Qubit Pairs to be calibrated."""
     platform: Platform
@@ -38,83 +31,31 @@ class Executor:
     """Runcard update mechanism."""
 
     @classmethod
-    def create(
-        cls,
-        platform: Union[Platform, str] = None,
-        output: Union[str, bytes, os.PathLike] = None,
-    ):
+    def create(cls, platform: Union[Platform, str]):
         """Load list of protocols."""
         platform = (
             platform if isinstance(platform, Platform) else create_platform(platform)
         )
-        return cls(
-            history=History(),
-            output=Path(output),
-            platform=platform,
-            targets=list(platform.qubits),
-            update=True,
-        )
+        return cls(history=History(), platform=platform, targets=list(platform.qubits))
 
     def run_protocol(
         self,
         protocol: Routine,
         parameters: Union[dict, Action],
         mode: ExecutionMode = ExecutionMode.ACQUIRE | ExecutionMode.FIT,
-        update: bool = True,
     ) -> Completed:
         """Run single protocol in ExecutionMode mode."""
-        if isinstance(parameters, dict):
-            parameters["operation"] = str(protocol)
-            action = Action(**parameters)
-        else:
-            action = parameters
-        task = Task(action, protocol)
-        if isinstance(mode, ExecutionMode):
-            log.info(
-                f"Executing mode {mode.name if mode.name is not None else 'AUTOCALIBRATION'} on {task.id}."
-            )
+        action = Action.cast(source=parameters, operation=str(protocol))
+        task = Task(action=action, operation=protocol)
+        log.info(f"Executing mode {mode} on {task.action.id}.")
 
-        if ExecutionMode.ACQUIRE in mode and task.id in self.history:
-            raise_error(KeyError, f"{task.id} already contains acquisition data.")
-        if ExecutionMode.FIT is mode and self.history[task.id]._results is not None:
-            raise_error(KeyError, f"{task.id} already contains fitting results.")
-
-        completed = task.run(
-            platform=self.platform,
-            targets=self.targets,
-            folder=self.output,
-            mode=mode,
-        )
-        if ExecutionMode.FIT in mode and self.platform is not None and update:
-            completed.update_platform(platform=self.platform, update=self.update)
-
-        if self.platform is not None:
-            (completed.datapath / PLATFORM_DIR).mkdir(parents=True, exist_ok=True)
-            dump_platform(self.platform, completed.datapath / PLATFORM_DIR)
-
+        completed = task.run(platform=self.platform, targets=self.targets, mode=mode)
         self.history.push(completed)
-        completed.dump(self.output)
+
+        # TODO: drop, as the conditions won't be necessary any longer, and then it could
+        # be performed as part of `task.run` https://github.com/qiboteam/qibocal/issues/910
+        if ExecutionMode.FIT in mode:
+            if self.update and task.update:
+                completed.update_platform(platform=self.platform)
 
         return completed
-
-
-def run(runcard: Runcard, output: Path, mode: ExecutionMode, update: bool = True):
-    """Run runcard and dump to output."""
-    platform = runcard.platform_obj
-    targets = runcard.targets if runcard.targets is not None else list(platform.qubits)
-    instance = Executor(
-        history=History.load(output),
-        platform=platform,
-        targets=targets,
-        output=output,
-        update=runcard.update,
-    )
-
-    for action in runcard.actions:
-        instance.run_protocol(
-            protocol=getattr(protocols, action.operation),
-            parameters=action,
-            mode=mode,
-            update=update,
-        )
-    return instance.history

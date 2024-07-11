@@ -1,4 +1,4 @@
-"""Test routines' acquisition method using dummy_couplers platform"""
+"""Test routines' acquisition method using dummy_couplers platform."""
 
 import pathlib
 
@@ -7,8 +7,7 @@ import yaml
 from click.testing import CliRunner
 from qibolab import create_platform
 
-from qibocal.auto.execute import PLATFORM_DIR
-from qibocal.cli import utils
+from qibocal.auto.output import UPDATED_PLATFORM
 from qibocal.cli._base import command
 from qibocal.protocols.rabi.amplitude import RabiAmplitudeData
 from qibocal.protocols.rabi.ef import RabiAmplitudeEFData
@@ -55,14 +54,22 @@ def idfn(val):
     return val[0]["platform"] + "-" + val[1] + "-" + val[0]["actions"][0]["id"]
 
 
+def locate_tomography_file(runcard):
+    if "tomography from file" in runcard["actions"][0]["id"]:
+        params = runcard["actions"][0]["parameters"]
+        params["circuit"] = str(pathlib.Path(__file__).parents[1] / params["circuit"])
+
+
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_auto_command(runcard, update, tmp_path):
     """Test auto command pipeline."""
     runcard = runcard[0]
-    protocol = runcard["actions"][0]["id"]
+
+    locate_tomography_file(runcard)
 
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
+    outpath = tmp_path / "auto_test"
     runner = CliRunner()
     runner.invoke(
         command,
@@ -70,15 +77,14 @@ def test_auto_command(runcard, update, tmp_path):
             "auto",
             str(tmp_path / SINGLE_ACTION_RUNCARD),
             "-o",
-            f"{str(tmp_path)}",
+            str(outpath),
             "-f",
             update,
         ],
         **INVOKER_OPTIONS,
     )
-    if runcard["backend"] == "qibolab" and runcard["platform"] is not None:
-        assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
-        assert (tmp_path / "data" / f"{protocol}" / PLATFORM_DIR).is_dir()
+    if update == "--update" and runcard["backend"] == "qibolab":
+        assert (outpath / UPDATED_PLATFORM).is_dir()
 
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
@@ -87,7 +93,10 @@ def test_acquire_command(runcard, tmp_path):
     runcard = runcard[0]
     protocol = runcard["actions"][0]["id"]
 
+    locate_tomography_file(runcard)
+
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
+    outpath = tmp_path / "acquire_test"
     runner = CliRunner()
 
     # test acquisition
@@ -97,28 +106,29 @@ def test_acquire_command(runcard, tmp_path):
             "acquire",
             str(tmp_path / SINGLE_ACTION_RUNCARD),
             "-o",
-            f"{str(tmp_path)}",
+            str(outpath),
             "-f",
         ],
         **INVOKER_OPTIONS,
     )
 
-    assert (tmp_path / "data" / f"{protocol}").is_dir()
+    assert (outpath / "data" / protocol).is_dir()
 
     # generate report from acquired data
-    runner.invoke(command, ["report", str(tmp_path)], **INVOKER_OPTIONS)
-    assert (tmp_path / "index.html").is_file()
+    runner.invoke(command, ["report", str(outpath)], **INVOKER_OPTIONS)
+    assert (outpath / "index.html").is_file()
 
 
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_fit_command(runcard, update, tmp_path):
     """Test fit builder and report generated."""
-
     runcard = runcard[0]
-    protocol = runcard["actions"][0]["id"]
+
+    locate_tomography_file(runcard)
 
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
+    outpath = tmp_path / "fit_test"
     runner = CliRunner()
 
     # test acquisition
@@ -128,22 +138,21 @@ def test_fit_command(runcard, update, tmp_path):
             "acquire",
             str(tmp_path / SINGLE_ACTION_RUNCARD),
             "-o",
-            f"{str(tmp_path)}",
+            str(outpath),
             "-f",
         ],
         **INVOKER_OPTIONS,
     )
 
     # perform fit
-    runner.invoke(command, ["fit", str(tmp_path), update], **INVOKER_OPTIONS)
+    runner.invoke(command, ["fit", str(outpath), update], **INVOKER_OPTIONS)
 
-    if runcard["backend"] == "qibolab" and runcard["platform"] is not None:
-        assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
-        assert (tmp_path / "data" / f"{protocol}" / PLATFORM_DIR).is_dir()
+    if update == "--update" and runcard["backend"] == "qibolab":
+        assert (outpath / UPDATED_PLATFORM).is_dir()
 
     # generate report with fit and plot
-    runner.invoke(command, ["report", str(tmp_path)], **INVOKER_OPTIONS)
-    assert (tmp_path / "index.html").is_file()
+    runner.invoke(command, ["report", str(outpath)], **INVOKER_OPTIONS)
+    assert (outpath / "index.html").is_file()
 
 
 def test_extract_rabi():

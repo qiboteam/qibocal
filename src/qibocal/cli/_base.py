@@ -20,6 +20,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.group()
 def command():
     """Welcome to Qibocal!
+
     Qibo module to calibrate and characterize self-hosted QPUs.
     """
 
@@ -57,7 +58,7 @@ def command():
     help="Name of the Qibo backend.,",
 )
 def auto(runcard, folder, force, update, platform, backend):
-    """Autocalibration
+    """Autocalibration.
 
     Arguments:
 
@@ -100,7 +101,7 @@ def auto(runcard, folder, force, update, platform, backend):
     help="Name of the Qibo backend.,",
 )
 def acquire(runcard, folder, force, platform, backend):
-    """Data acquisition
+    """Data acquisition.
 
     Arguments:
 
@@ -138,12 +139,11 @@ def update(folder):
     "folder", metavar="folder", type=click.Path(exists=True, path_type=pathlib.Path)
 )
 def report(folder):
-    """Report generation
+    """Report generation.
 
     Arguments:
 
     - FOLDER: input folder.
-
     """
     reporting(folder)
 
@@ -175,12 +175,11 @@ def report(folder):
 def fit(
     input_folder: pathlib.Path, update: bool, output_folder: pathlib.Path, force: bool
 ):
-    """Post-processing analysis
+    """Post-processing analysis.
 
     Arguments:
 
     - FOLDER: input folder.
-
     """
     fitting(input_folder, update, output_folder, force)
 
@@ -202,7 +201,7 @@ def fit(
     help="Default is UID username.",
 )
 def upload(path, tag, author):
-    """Uploads output folder to server
+    """Uploads output folder to server.
 
     Arguments:
 

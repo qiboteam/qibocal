@@ -1,56 +1,50 @@
-import datetime
-import json
-from dataclasses import asdict
+from pathlib import Path
 
-import yaml
-from qibo.backends import GlobalBackend, set_backend
-from qibolab.serialize import dump_platform
+from qibo.backends import construct_backend
 
-from ..auto.execute import run
-from ..auto.history import add_timings_to_meta
+from ..auto.history import History
 from ..auto.mode import ExecutionMode
-from .utils import META, PLATFORM, RUNCARD, generate_meta, generate_output_folder
+from ..auto.output import Metadata, Output
+from ..auto.runcard import Runcard
 
 
-def acquire(runcard, folder, force):
-    """Data acquisition
+def acquire(runcard: Runcard, folder: Path, force: bool):
+    """Data acquisition.
 
     Arguments:
 
      - RUNCARD: runcard with declarative inputs.
     """
-
-    set_backend(backend=runcard.backend, platform=runcard.platform)
-    backend = GlobalBackend()
+    # rename for brevity
+    backend = construct_backend(backend=runcard.backend, platform=runcard.platform)
     platform = backend.platform
-    # generate output folder
-    path = generate_output_folder(folder, force)
+    if platform is None:
+        raise ValueError("Qibocal requires a Qibolab platform to run.")
 
-    # generate meta
-    meta = generate_meta(backend, platform, path)
-    # dump platform
-    if backend.name == "qibolab":
-        (path / PLATFORM).mkdir(parents=True, exist_ok=True)
-        dump_platform(platform, path / PLATFORM)
+    # generate output folder
+    path = Output.mkdir(folder, force)
 
     # dump action runcard
-    (path / RUNCARD).write_text(yaml.safe_dump(asdict(runcard)))
-    # dump meta
-    (path / META).write_text(json.dumps(meta, indent=4))
+    runcard.dump(path)
+
+    # generate meta
+    meta = Metadata.generate(path.name, backend)
+    output = Output(History(), meta, platform)
+    output.dump(path)
 
     # connect and initialize platform
-    if platform is not None:
-        platform.connect()
+    platform.connect()
 
-    history = run(output=path, runcard=runcard, mode=ExecutionMode.ACQUIRE)
+    # run
+    meta.start()
+    history = runcard.run(output=path, platform=platform, mode=ExecutionMode.ACQUIRE)
+    meta.end()
 
-    e = datetime.datetime.now(datetime.timezone.utc)
-    meta["end-time"] = e.strftime("%H:%M:%S")
+    # TODO: implement iterative dump of report...
 
     # stop and disconnect platform
-    if platform is not None:
-        platform.disconnect()
+    platform.disconnect()
 
-    # dump updated meta
-    meta = add_timings_to_meta(meta, history)
-    (path / META).write_text(json.dumps(meta, indent=4))
+    # dump history, metadata, and updated platform
+    output.history = history
+    output.dump(path)
