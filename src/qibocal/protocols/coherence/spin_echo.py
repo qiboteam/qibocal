@@ -126,8 +126,8 @@ def _acquisition(
 
 def _fit(data: SpinEchoData) -> SpinEchoResults:
     """Post-processing for SpinEcho."""
-    t2Echos, fitted_parameters, chi2 = exponential_fit_probability(data)
-    return SpinEchoResults(t2Echos, fitted_parameters, chi2)
+    t2Echos, fitted_parameters, pcovs, chi2 = exponential_fit_probability(data)
+    return SpinEchoResults(t2Echos, fitted_parameters, pcovs, chi2)
 
 
 def _plot(data: SpinEchoData, target: QubitId, fit: SpinEchoResults = None):

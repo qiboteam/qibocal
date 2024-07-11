@@ -121,7 +121,7 @@ def _acquisition(
             sweeper,
         )
         for qubit in targets:
-            probs = results[qubit].probability()
+            probs = results[qubit].probability(state=1)
             # The probability errors are the standard errors of the binomial distribution
             errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
             data.register_qubit(
@@ -172,9 +172,9 @@ def _acquisition(
 
 
 def _fit(data: RamseyData) -> RamseyResults:
-    r"""
-    Fitting routine for Ramsey experiment. The used model is
+    r"""Fitting routine for Ramsey experiment. The used model is
     .. math::
+
         y = p_0 + p_1 sin \Big(p_2 x + p_3 \Big) e^{-x p_4}.
     """
     qubits = data.qubits
@@ -206,11 +206,11 @@ def _fit(data: RamseyData) -> RamseyResults:
             popts[qubit] = popt
             # TODO: check error formula
             delta_phys_measure[qubit] = (
-                delta_phys,
+                -delta_phys,
                 perr[2] * GHZ_TO_HZ / (2 * np.pi),
             )
             delta_fitting_measure[qubit] = (
-                delta_fitting * GHZ_TO_HZ,
+                -delta_fitting * GHZ_TO_HZ,
                 perr[2] * GHZ_TO_HZ / (2 * np.pi),
             )
             chi2[qubit] = (
@@ -307,7 +307,7 @@ def _plot(data: RamseyData, target: QubitId, fit: RamseyResults = None):
     fig.update_layout(
         showlegend=True,
         xaxis_title="Time [ns]",
-        yaxis_title="Ground state probability",
+        yaxis_title="Excited state probability",
     )
 
     figures.append(fig)

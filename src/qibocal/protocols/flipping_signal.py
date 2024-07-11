@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -9,12 +9,16 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
-from scipy.signal import find_peaks
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
-from qibocal.protocols.utils import table_dict, table_html
+from qibocal.protocols.utils import (
+    fallback_period,
+    guess_period,
+    table_dict,
+    table_html,
+)
 
 
 @dataclass
@@ -28,7 +32,7 @@ class FlippingSignalParameters(Parameters):
     unrolling: bool = False
     """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
     Defaults to ``False``."""
-    detuning: float = 0
+    delta_amplitude: float = 0
     """Amplitude detuning."""
 
 
@@ -36,11 +40,11 @@ class FlippingSignalParameters(Parameters):
 class FlippingSignalResults(Results):
     """Flipping outputs."""
 
-    amplitude: dict[QubitId, tuple[float, Optional[float]]]
+    amplitude: dict[QubitId, Union[float, list[float]]]
     """Drive amplitude for each qubit."""
-    delta_amplitude: dict[QubitId, tuple[float, Optional[float]]]
+    delta_amplitude: dict[QubitId, Union[float, list[float]]]
     """Difference in amplitude between initial value and fit."""
-    delta_amplitude_detuned: dict[QubitId, tuple[float, Optional[float]]]
+    delta_amplitude_detuned: dict[QubitId, Union[float, list[float]]]
     """Difference in amplitude between detuned value and fit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -55,7 +59,7 @@ class FlippingSignalData(Data):
 
     resonator_type: str
     """Resonator type."""
-    detuning: float
+    delta_amplitude: float
     """Amplitude detuning."""
     pi_pulse_amplitudes: dict[QubitId, float]
     """Pi pulse amplitudes for each qubit."""
@@ -63,20 +67,22 @@ class FlippingSignalData(Data):
     """Raw data acquired."""
 
 
-def flipping_sequence(platform: Platform, qubit: QubitId, detuning: float, flips: int):
+def flipping_sequence(
+    platform: Platform, qubit: QubitId, delta_amplitude: float, flips: int
+):
 
     sequence = PulseSequence()
     RX90_pulse = platform.create_RX90_pulse(qubit, start=0)
     sequence.add(RX90_pulse)
     # execute sequence RX(pi/2) - [RX(pi) - RX(pi)] from 0...flips times - RO
     start1 = RX90_pulse.duration
-    drive_frequency = platform.qubits[qubit].native_gates.RX.frequency
+    drive_amplitude = platform.qubits[qubit].native_gates.RX.amplitude
     for _ in range(flips):
         RX_pulse1 = platform.create_RX_pulse(qubit, start=start1)
-        RX_pulse1.frequency = drive_frequency + detuning
+        RX_pulse1.amplitude = drive_amplitude + delta_amplitude
         start2 = start1 + RX_pulse1.duration
         RX_pulse2 = platform.create_RX_pulse(qubit, start=start2)
-        RX_pulse2.frequency = drive_frequency + detuning
+        RX_pulse2.amplitude = drive_amplitude + delta_amplitude
 
         sequence.add(RX_pulse1)
         sequence.add(RX_pulse2)
@@ -110,7 +116,7 @@ def _acquisition(
 
     data = FlippingSignalData(
         resonator_type=platform.resonator_type,
-        detuning=params.detuning,
+        delta_amplitude=params.delta_amplitude,
         pi_pulse_amplitudes={
             qubit: platform.qubits[qubit].native_gates.RX.amplitude for qubit in targets
         },
@@ -131,7 +137,10 @@ def _acquisition(
         sequence = PulseSequence()
         for qubit in targets:
             sequence += flipping_sequence(
-                platform=platform, qubit=qubit, detuning=params.detuning, flips=flips
+                platform=platform,
+                qubit=qubit,
+                delta_amplitude=params.delta_amplitude,
+                flips=flips,
             )
 
         sequences.append(sequence)
@@ -185,30 +194,23 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
     delta_amplitude_detuned = {}
     for qubit in qubits:
         qubit_data = data[qubit]
-        detuned_pi_pulse_amplitude = data.pi_pulse_amplitudes[qubit] + data.detuning
+        detuned_pi_pulse_amplitude = (
+            data.pi_pulse_amplitudes[qubit] + data.delta_amplitude
+        )
         voltages = qubit_data.signal
         flips = qubit_data.flips
-        y_min = np.min(voltages)
-        # Guessing period using Fourier transform
-        ft = np.fft.rfft(voltages)
-        # Remove the zero frequency mode
-        mags = abs(ft)[1:]
-        local_maxima = find_peaks(mags, height=0)
-        peak_heights = local_maxima[1]["peak_heights"]
-        # Select the frequency with the highest peak
-        index = (
-            int(local_maxima[0][np.argmax(peak_heights)] + 1)
-            if len(local_maxima[0]) > 0
-            else None
-        )
-        f = flips[index] / (flips[1] - flips[0]) if index is not None else 1
-        y_max = np.max(voltages)
+
         x_min = np.min(flips)
         x_max = np.max(flips)
-        x = (flips - x_min) * 2 * np.pi * f / (x_max - x_min)
+        x = (flips - x_min) / (x_max - x_min)
+        y_max = np.max(voltages)
+        y_min = np.min(voltages)
+        # normalize between 0 and 1
         y = (voltages - y_min) / (y_max - y_min)
 
-        pguess = [0.5, 0.5, 1, np.pi, 0]
+        period = fallback_period(guess_period(x, y))
+        pguess = [0.5, 0.5, 2 * np.pi / period, 0, 0]
+
         try:
             popt, _ = curve_fit(
                 flipping_fit,
@@ -217,36 +219,33 @@ def _fit(data: FlippingSignalData) -> FlippingSignalResults:
                 p0=pguess,
                 maxfev=2000000,
                 bounds=(
-                    [0, 0, -np.inf, 0, 0],
-                    [1, np.inf, np.inf, 2 * np.pi, np.inf],
+                    [0.4, 0.4, -np.inf, -np.pi / 4, 0],
+                    [0.6, 0.6, np.inf, np.pi / 4, np.inf],
                 ),
             )
 
             translated_popt = [
                 y_min + (y_max - y_min) * popt[0],
-                (y_max - y_min)
-                * popt[1]
-                * np.exp(x_min * popt[4] * 2 * np.pi * f / (x_max - x_min)),
-                popt[2] * 2 * np.pi * f / (x_max - x_min),
-                popt[3] - x_min * 2 * np.pi * f / (x_max - x_min) * popt[2],
-                popt[4] * 2 * np.pi * f / (x_max - x_min),
+                (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
+                popt[2] / (x_max - x_min),
+                popt[3] - x_min / (x_max - x_min) * popt[2],
+                popt[4] / (x_max - x_min),
             ]
             # TODO: this might be related to the resonator type
-            if popt[3] > np.pi / 2 and popt[3] < 3 * np.pi / 2:
-                signed_correction = translated_popt[2] / 2
-            else:
-                signed_correction = -translated_popt[2] / 2
+            signed_correction = translated_popt[2] / 2
             # The amplitude is directly proportional to the rotation angle
             corrected_amplitudes[qubit] = (detuned_pi_pulse_amplitude * np.pi) / (
                 np.pi + signed_correction
             )
             fitted_parameters[qubit] = translated_popt
-            delta_amplitude[qubit] = (
+            delta_amplitude_detuned[qubit] = (
                 -signed_correction
                 * detuned_pi_pulse_amplitude
                 / (np.pi + signed_correction)
             )
-            delta_amplitude_detuned[qubit] = delta_amplitude[qubit] - data.detuning
+            delta_amplitude[qubit] = (
+                delta_amplitude_detuned[qubit] - data.delta_amplitude
+            )
         except Exception as e:
             log.warning(f"Error in flipping fit for qubit {qubit} due to {e}.")
 

@@ -1,27 +1,28 @@
 """Tasks execution."""
 
 from dataclasses import dataclass
-from pathlib import Path
+from typing import Union
 
+from qibolab import create_platform
 from qibolab.platform import Platform
 
 from qibocal.config import log
 
 from .history import History
-from .runcard import Action, Runcard, Targets
-from .task import Task
+from .mode import ExecutionMode
+from .operation import Routine
+from .task import Action, Completed, Targets, Task
+
+PLATFORM_DIR = "platform"
+"""Folder where platform will be dumped."""
 
 
 @dataclass
 class Executor:
     """Execute a tasks' graph and tracks its history."""
 
-    actions: list[Action]
-    """List of actions."""
     history: History
     """The execution history, with results and exit states."""
-    output: Path
-    """Output path."""
     targets: Targets
     """Qubits/Qubit Pairs to be calibrated."""
     platform: Platform
@@ -29,46 +30,32 @@ class Executor:
     update: bool = True
     """Runcard update mechanism."""
 
-    # TODO: find a more elegant way to pass everything
     @classmethod
-    def load(
-        cls,
-        card: Runcard,
-        output: Path,
-        platform: Platform = None,
-        targets: Targets = None,
-        update: bool = True,
-    ):
-        """Load execution graph and associated executor from a runcard."""
-
-        return cls(
-            actions=card.actions,
-            history=History({}),
-            output=output,
-            platform=platform,
-            targets=targets,
-            update=update,
+    def create(cls, platform: Union[Platform, str]):
+        """Load list of protocols."""
+        platform = (
+            platform if isinstance(platform, Platform) else create_platform(platform)
         )
+        return cls(history=History(), platform=platform, targets=list(platform.qubits))
 
-    def run(self, mode):
-        """Actual execution.
+    def run_protocol(
+        self,
+        protocol: Routine,
+        parameters: Union[dict, Action],
+        mode: ExecutionMode = ExecutionMode.ACQUIRE | ExecutionMode.FIT,
+    ) -> Completed:
+        """Run single protocol in ExecutionMode mode."""
+        action = Action.cast(source=parameters, operation=str(protocol))
+        task = Task(action=action, operation=protocol)
+        log.info(f"Executing mode {mode} on {task.action.id}.")
 
-        The platform's update method is called if:
-        - self.update is True and task.update is None
-        - task.update is True
-        """
-        for action in self.actions:
-            task = Task(action)
-            log.info(f"Executing mode {mode.name} on {task.id}.")
-            completed = task.run(
-                platform=self.platform,
-                targets=self.targets,
-                folder=self.output,
-                mode=mode,
-            )
-            self.history.push(completed)
+        completed = task.run(platform=self.platform, targets=self.targets, mode=mode)
+        self.history.push(completed)
 
-            if mode.name in ["autocalibration", "fit"] and self.platform is not None:
-                completed.update_platform(platform=self.platform, update=self.update)
+        # TODO: drop, as the conditions won't be necessary any longer, and then it could
+        # be performed as part of `task.run` https://github.com/qiboteam/qibocal/issues/910
+        if ExecutionMode.FIT in mode:
+            if self.update and task.update:
+                completed.update_platform(platform=self.platform)
 
-            yield completed.task.id
+        return completed

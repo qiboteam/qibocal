@@ -9,19 +9,19 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import Pulse, PulseSequence
 from qibolab.qubits import QubitId, QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 
+from .cz_virtualz import create_sequence, fit_function
 from .utils import order_pair
 
 
 @dataclass
-class CZVirtualZSweepParameters(Parameters):
-    """CzVirtualZ runcard inputs."""
+class CZSweepParameters(Parameters):
+    """CZSweep runcard inputs."""
 
     theta_start: float
     """Initial angle for the low frequency qubit measurement in radians."""
@@ -30,14 +30,17 @@ class CZVirtualZSweepParameters(Parameters):
     theta_step: float
     """Step size for the theta sweep in radians."""
     flux_pulse_amplitude_min: float
+    """Minimum amplitude of flux pulse swept."""
     flux_pulse_amplitude_max: float
+    """Maximum amplitude of flux pulse swept."""
     flux_pulse_amplitude_step: float
+    """Step amplitude of flux pulse swept."""
     duration_min: int
+    """Minimum duration of flux pulse swept."""
     duration_max: int
+    """Maximum duration of flux pulse swept."""
     duration_step: int
-    """Amplitude of flux pulse implementing CZ."""
-    flux_pulse_duration: Optional[float] = None
-    """Duration of flux pulse implementing CZ."""
+    """Step duration of flux pulse swept."""
     dt: Optional[float] = 20
     """Time delay between flux pulses and readout."""
     parking: bool = True
@@ -45,7 +48,7 @@ class CZVirtualZSweepParameters(Parameters):
 
 
 @dataclass
-class CZVirtualZSweepResults(Results):
+class CZSweepResults(Results):
     """CzVirtualZ outputs when fitting will be done."""
 
     fitted_parameters: dict[tuple[str, QubitId, float], list]
@@ -68,7 +71,7 @@ class CZVirtualZSweepResults(Results):
         # ]
 
 
-ChevronType = np.dtype(
+CZSweepType = np.dtype(
     [
         ("amp", np.float64),
         ("theta", np.float64),
@@ -80,16 +83,22 @@ ChevronType = np.dtype(
 
 
 @dataclass
-class CZVirtualZSweepData(Data):
-    """CZVirtualZ data."""
+class CZSweepData(Data):
+    """CZSweep data."""
 
-    data: dict[tuple, npt.NDArray[ChevronType]] = field(default_factory=dict)
+    data: dict[tuple, npt.NDArray[CZSweepType]] = field(default_factory=dict)
+    """Raw data."""
     thetas: list = field(default_factory=list)
+    """Angles swept."""
     vphases: dict[QubitPairId, dict[QubitId, float]] = field(default_factory=dict)
+    """Virtual phases for each qubit."""
     amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
+    """"Amplitudes swept."""
     durations: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
+    """Durations swept."""
 
     def __getitem__(self, pair):
+        """Extract data for pair."""
         return {
             index: value
             for index, value in self.data.items()
@@ -99,10 +108,10 @@ class CZVirtualZSweepData(Data):
     def register_qubit(
         self, target, control, setup, theta, amp, duration, prob_control, prob_target
     ):
-        """Store output for single qubit."""
+        """Store output for single pair."""
         size = len(theta) * len(amp) * len(duration)
-        duration, amplitude, angle = np.meshgrid(duration, amp, theta)
-        ar = np.empty(size, dtype=ChevronType)
+        duration, amplitude, angle = np.meshgrid(duration, amp, theta, indexing="ij")
+        ar = np.empty(size, dtype=CZSweepType)
         ar["theta"] = angle.ravel()
         ar["amp"] = amplitude.ravel()
         ar["duration"] = duration.ravel()
@@ -111,113 +120,17 @@ class CZVirtualZSweepData(Data):
         self.data[target, control, setup] = np.rec.array(ar)
 
 
-def create_sequence(
-    platform: Platform,
-    setup: str,
-    target_qubit: QubitId,
-    control_qubit: QubitId,
-    ordered_pair: list[QubitId, QubitId],
-    parking: bool,
-    dt: float,
-    amplitude: float = None,
-    duration: float = None,
-) -> tuple[
-    PulseSequence,
-    dict[QubitId, Pulse],
-    dict[QubitId, Pulse],
-    dict[QubitId, Pulse],
-    dict[QubitId, Pulse],
-]:
-    """Create the experiment PulseSequence."""
-
-    sequence = PulseSequence()
-
-    Y90_pulse = platform.create_RX90_pulse(
-        target_qubit, start=0, relative_phase=np.pi / 2
-    )
-    RX_pulse_start = platform.create_RX_pulse(control_qubit, start=0, relative_phase=0)
-
-    cz, virtual_z_phase = platform.create_CZ_pulse_sequence(
-        (ordered_pair[1], ordered_pair[0]),
-        start=max(Y90_pulse.finish, RX_pulse_start.finish),
-    )
-
-    if amplitude is not None:
-        cz.get_qubit_pulses(ordered_pair[1])[0].amplitude = amplitude
-
-    if duration is not None:
-        cz.get_qubit_pulses(ordered_pair[1])[0].duration = duration
-
-    theta_pulse = platform.create_RX90_pulse(
-        target_qubit,
-        start=cz.finish + dt,
-        relative_phase=virtual_z_phase[target_qubit],
-    )
-    RX_pulse_end = platform.create_RX_pulse(
-        control_qubit,
-        start=cz.finish + dt,
-        relative_phase=virtual_z_phase[control_qubit],
-    )
-    measure_target = platform.create_qubit_readout_pulse(
-        target_qubit, start=theta_pulse.finish
-    )
-    measure_control = platform.create_qubit_readout_pulse(
-        control_qubit, start=theta_pulse.finish
-    )
-
-    sequence.add(
-        Y90_pulse,
-        cz.get_qubit_pulses(ordered_pair[1]),
-        theta_pulse,
-        measure_target,
-        measure_control,
-    )
-
-    if setup == "X":
-        sequence.add(
-            RX_pulse_start,
-            RX_pulse_end,
-        )
-
-    if parking:
-        for pulse in cz:
-            if pulse.qubit not in ordered_pair:
-                pulse.duration = theta_pulse.finish
-                sequence.add(pulse)
-
-    return (
-        sequence,
-        virtual_z_phase,
-        theta_pulse,
-        cz.get_qubit_pulses(ordered_pair[1])[0].amplitude,
-        cz.get_qubit_pulses(ordered_pair[1])[0].duration,
-    )
-
-
 def _acquisition(
-    params: CZVirtualZSweepParameters,
+    params: CZSweepParameters,
     platform: Platform,
     targets: list[QubitPairId],
-) -> CZVirtualZSweepData:
+) -> CZSweepData:
     r"""
-    Acquisition for CZVirtualZ.
-
-    Check the two-qubit landscape created by a flux pulse of a given duration
-    and amplitude.
-    The system is initialized with a Y90 pulse on the low frequency qubit and either
-    an Id or an X gate on the high frequency qubit. Then the flux pulse is applied to
-    the high frequency qubit in order to perform a two-qubit interaction. The Id/X gate
-    is undone in the high frequency qubit and a theta90 pulse is applied to the low
-    frequency qubit before measurement. That is, a pi-half pulse around the relative phase
-    parametereized by the angle theta.
-    Measurements on the low frequency qubit yield the 2Q-phase of the gate and the
-    remnant single qubit Z phase aquired during the execution to be corrected.
-    Population of the high frequency qubit yield the leakage to the non-computational states
-    during the execution of the flux pulse.
+    Repetition of CZVirtualZ experiment for several amplitude and duration values.
     """
 
     theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
-    data = CZVirtualZSweepData(thetas=theta_absolute.tolist())
+    data = CZSweepData(thetas=theta_absolute.tolist())
     for pair in targets:
         # order the qubits so that the low frequency one is the first
         ord_pair = order_pair(pair, platform)
@@ -297,14 +210,13 @@ def _acquisition(
                         acquisition_type=AcquisitionType.DISCRIMINATION,
                         averaging_mode=AveragingMode.CYCLIC,
                     ),
-                    sweeper_theta,
-                    sweeper_amplitude,
                     sweeper_duration,
+                    sweeper_amplitude,
+                    sweeper_theta,
                 )
 
                 result_target = results[target_q].probability(1)
                 result_control = results[control_q].probability(1)
-
                 data.register_qubit(
                     target_q,
                     control_q,
@@ -318,15 +230,9 @@ def _acquisition(
     return data
 
 
-def fit_function(x, p0, p1, p2):
-    """Sinusoidal fit function."""
-    # return p0 + p1 * np.sin(2*np.pi*p2 * x + p3)
-    return np.sin(x + p2) * p0 + p1
-
-
 def _fit(
-    data: CZVirtualZSweepData,
-) -> CZVirtualZSweepResults:
+    data: CZSweepData,
+) -> CZSweepResults:
     r"""Fitting routine for the experiment.
 
     The used model is
@@ -360,77 +266,103 @@ def _fit(
                         np.mean(target_data),
                         np.pi,
                     ]
-                    # try:
-                    popt, _ = curve_fit(
-                        fit_function,
-                        np.array(data.thetas) - data.vphases[ord_pair][target],
-                        target_data,
-                        p0=pguess,
-                        bounds=(
-                            (0, -np.max(target_data), 0),
-                            (np.max(target_data), np.max(target_data), 2 * np.pi),
-                        ),
-                    )
-                    fitted_parameters[target, control, setup, amplitude, duration] = (
-                        popt.tolist()
-                    )
-                # except Exception as e:
-                #     log.warning(f"CZ fit failed for pair ({target, control}) due to {e}.")
 
-                # try:
-                for target_q, control_q in (
-                    pair,
-                    list(pair)[::-1],
-                ):
-                    cz_angles[target_q, control_q, amplitude, duration] = abs(
-                        fitted_parameters[
-                            target_q, control_q, "X", amplitude, duration
-                        ][2]
-                        - fitted_parameters[
-                            target_q, control_q, "I", amplitude, duration
-                        ][2]
-                    )
-                    virtual_phases[ord_pair[0], ord_pair[1], amplitude, duration][
-                        target_q
-                    ] = fitted_parameters[
-                        target_q, control_q, "I", amplitude, duration
-                    ][
-                        2
-                    ]
-
-                    # leakage estimate: L = m /2
-                    # See NZ paper from Di Carlo
-                    # approximation which does not need qutrits
-                    # https://arxiv.org/pdf/1903.02492.pdf
-                    leakages[ord_pair[0], ord_pair[1], amplitude, duration][
-                        control_q
-                    ] = 0.5 * float(
-                        np.mean(
-                            data[pair][target_q, control_q, "X"].prob_control[
-                                np.where(
-                                    np.logical_and(
-                                        data[pair][target_q, control_q, "X"].amp
-                                        == amplitude,
-                                        data[pair][target_q, control_q, "X"].duration
-                                        == duration,
-                                    )
-                                )
-                            ]
-                            - data[pair][target_q, control_q, "I"].prob_control[
-                                np.where(
-                                    np.logical_and(
-                                        data[pair][target_q, control_q, "I"].amp
-                                        == amplitude,
-                                        data[pair][target_q, control_q, "I"].duration
-                                        == duration,
-                                    )
-                                )
-                            ]
+                    try:
+                        popt, _ = curve_fit(
+                            fit_function,
+                            np.array(data.thetas) - data.vphases[ord_pair][target],
+                            target_data,
+                            p0=pguess,
+                            bounds=(
+                                (0, -np.max(target_data), 0),
+                                (np.max(target_data), np.max(target_data), 2 * np.pi),
+                            ),
                         )
-                    )
-            # except KeyError:
-            #     pass  # exception covered above
-    return CZVirtualZSweepResults(
+                        import matplotlib.pyplot as plt
+
+                        plt.figure()
+                        plt.scatter(
+                            np.array(data.thetas) - data.vphases[ord_pair][target],
+                            target_data,
+                        )
+                        plt.plot(
+                            np.array(data.thetas) - data.vphases[ord_pair][target],
+                            fit_function(
+                                np.array(data.thetas) - data.vphases[ord_pair][target],
+                                *popt,
+                            ),
+                        )
+                        plt.savefig(
+                            f"test_cz_{duration}_{amplitude}_t{target}c{control}.png"
+                        )
+                        plt.close()
+                        fitted_parameters[
+                            target, control, setup, amplitude, duration
+                        ] = popt.tolist()
+
+                    except Exception as e:
+                        log.warning(
+                            f"CZ fit failed for pair ({target, control}) due to {e}."
+                        )
+
+                try:
+                    for target_q, control_q in (
+                        pair,
+                        list(pair)[::-1],
+                    ):
+                        cz_angles[target_q, control_q, amplitude, duration] = abs(
+                            fitted_parameters[
+                                target_q, control_q, "X", amplitude, duration
+                            ][2]
+                            - fitted_parameters[
+                                target_q, control_q, "I", amplitude, duration
+                            ][2]
+                        )
+                        virtual_phases[ord_pair[0], ord_pair[1], amplitude, duration][
+                            target_q
+                        ] = fitted_parameters[
+                            target_q, control_q, "I", amplitude, duration
+                        ][
+                            2
+                        ]
+
+                        # leakage estimate: L = m /2
+                        # See NZ paper from Di Carlo
+                        # approximation which does not need qutrits
+                        # https://arxiv.org/pdf/1903.02492.pdf
+                        leakages[ord_pair[0], ord_pair[1], amplitude, duration][
+                            control_q
+                        ] = 0.5 * float(
+                            np.mean(
+                                data[pair][target_q, control_q, "X"].prob_control[
+                                    np.where(
+                                        np.logical_and(
+                                            data[pair][target_q, control_q, "X"].amp
+                                            == amplitude,
+                                            data[pair][
+                                                target_q, control_q, "X"
+                                            ].duration
+                                            == duration,
+                                        )
+                                    )
+                                ]
+                                - data[pair][target_q, control_q, "I"].prob_control[
+                                    np.where(
+                                        np.logical_and(
+                                            data[pair][target_q, control_q, "I"].amp
+                                            == amplitude,
+                                            data[pair][
+                                                target_q, control_q, "I"
+                                            ].duration
+                                            == duration,
+                                        )
+                                    )
+                                ]
+                            )
+                        )
+                except KeyError:
+                    pass
+    return CZSweepResults(
         cz_angles=cz_angles,
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
@@ -438,9 +370,8 @@ def _fit(
     )
 
 
-# TODO: remove str
-def _plot(data: CZVirtualZSweepData, fit: CZVirtualZSweepResults, target: QubitPairId):
-    """Plot routine for CZVirtualZ."""
+def _plot(data: CZSweepData, fit: CZSweepResults, target: QubitPairId):
+    """Plot routine for CZSweep."""
     qubits = next(iter(data.amplitudes))[:2]
     fig = make_subplots(
         rows=2,
@@ -452,14 +383,6 @@ def _plot(data: CZVirtualZSweepData, fit: CZVirtualZSweepResults, target: QubitP
             f"Qubit {qubits[1]} Leakage",
         ),
     )
-    # fig2 = make_subplots(
-    #     rows=1,
-    #     cols=2,
-    #     subplot_titles=(
-    #         f"Qubit {qubits[0]}",
-    #         f"Qubit {qubits[1]}",
-    #     ),
-    # )
     for target_q, control_q in (
         target,
         list(target)[::-1],
@@ -517,7 +440,7 @@ def _plot(data: CZVirtualZSweepData, fit: CZVirtualZSweepResults, target: QubitP
     return [fig], ""
 
 
-def _update(results: CZVirtualZSweepResults, platform: Platform, target: QubitPairId):
+def _update(results: CZSweepResults, platform: Platform, target: QubitPairId):
     # FIXME: quick fix for qubit order
     # qubit_pair = tuple(sorted(target))
     # target = tuple(sorted(target))

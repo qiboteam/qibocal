@@ -1,7 +1,6 @@
 from dataclasses import asdict, dataclass, field
 
 import numpy as np
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
@@ -42,10 +41,10 @@ class QubitSpectroscopyEFData(QubitSpectroscopyData):
     drive_frequencies: dict[QubitId, float] = field(default_factory=dict)
 
 
-def _fit_ef(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
+def fit_ef(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
     results = _fit(data)
     anharmoncities = {
-        qubit: data.drive_frequencies[qubit] - results.frequency[qubit]
+        qubit: results.frequency[qubit] - data.drive_frequencies[qubit]
         for qubit in data.qubits
         if qubit in results
     }
@@ -82,7 +81,9 @@ def _acquisition(
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=rx_pulses[qubit].finish, duration=params.drive_duration
         )
+
         if platform.qubits[qubit].native_gates.RX12.frequency is None:
+
             qd_pulses[qubit].frequency = (
                 rx_pulses[qubit].frequency - DEFAULT_ANHARMONICITY
             )
@@ -124,12 +125,7 @@ def _acquisition(
 
     results = platform.sweep(
         sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
-        ),
+        params.execution_parameters,
         sweeper,
     )
 
@@ -141,11 +137,11 @@ def _acquisition(
             ResSpecType,
             (qubit),
             dict(
-                signal=np.abs(result.average.voltage),
-                phase=np.mean(result.phase, axis=0),
+                signal=result.average.magnitude,
+                phase=result.average.phase,
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
                 error_signal=result.average.std,
-                error_phase=np.std(result.phase, axis=0, ddof=1),
+                error_phase=result.phase_std,
             ),
         )
     return data
@@ -156,25 +152,44 @@ def _plot(
 ):
     """Plotting function for QubitSpectroscopy."""
     figures, report = spectroscopy_plot(data, target, fit)
+    show_error_bars = not np.isnan(data[target].error_signal).any()
     if fit is not None:
-        report = table_html(
-            table_dict(
-                target,
-                [
-                    "Frequency 1->2 [Hz]",
-                    "Amplitude [a.u.]",
-                    "Anharmonicity [Hz]",
-                    "Chi2",
-                ],
-                [
-                    (fit.frequency[target], fit.error_fit_pars[target][1]),
-                    (fit.amplitude[target], fit.error_fit_pars[target][0]),
-                    (fit.anharmonicity[target], fit.error_fit_pars[target][2]),
-                    fit.chi2_reduced[target],
-                ],
-                display_error=True,
+        if show_error_bars:
+            report = table_html(
+                table_dict(
+                    target,
+                    [
+                        "Frequency 1->2 [Hz]",
+                        "Amplitude [a.u.]",
+                        "Anharmonicity [Hz]",
+                        "Chi2",
+                    ],
+                    [
+                        (fit.frequency[target], fit.error_fit_pars[target][1]),
+                        (fit.amplitude[target], fit.error_fit_pars[target][0]),
+                        (fit.anharmonicity[target], fit.error_fit_pars[target][2]),
+                        fit.chi2_reduced[target],
+                    ],
+                    display_error=True,
+                )
             )
-        )
+        else:
+            report = table_html(
+                table_dict(
+                    target,
+                    [
+                        "Frequency 1->2 [Hz]",
+                        "Amplitude [a.u.]",
+                        "Anharmonicity [Hz]",
+                    ],
+                    [
+                        fit.frequency[target],
+                        fit.amplitude[target],
+                        fit.anharmonicity[target],
+                    ],
+                    display_error=False,
+                )
+            )
 
     return figures, report
 
@@ -185,5 +200,5 @@ def _update(results: QubitSpectroscopyEFResults, platform: Platform, target: Qub
     update.anharmonicity(results.anharmonicity[target], platform, target)
 
 
-qubit_spectroscopy_ef = Routine(_acquisition, _fit_ef, _plot, _update)
+qubit_spectroscopy_ef = Routine(_acquisition, fit_ef, _plot, _update)
 """QubitSpectroscopyEF Routine object."""

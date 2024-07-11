@@ -95,21 +95,27 @@ def _acquisition(
 
     data = QubitFluxTrackData(
         resonator_type=platform.resonator_type,
-        flux_pulses=params.flux_pulses,
         qubit_frequency=qubit_frequency,
+        charging_energy={
+            qubit: -platform.qubits[qubit].anharmonicity for qubit in targets
+        },
     )
 
     for bias in delta_bias_range:
         for qubit in targets:
             try:
-                freq_resonator = utils.transmon_readout_frequency_diagonal(
-                    bias,
-                    platform.qubits[qubit].drive_frequency,
-                    platform.qubits[qubit].asymmetry,
-                    platform.qubits[qubit].crosstalk_matrix[qubit],
-                    platform.qubits[qubit].sweetspot,
-                    platform.qubits[qubit].bare_resonator_frequency,
-                    platform.qubits[qubit].g,
+                freq_resonator = utils.transmon_readout_frequency(
+                    xi=bias,
+                    xj=0,
+                    w_max=platform.qubits[qubit].drive_frequency,
+                    d=0,
+                    normalization=platform.qubits[qubit].normalization,
+                    crosstalk_element=1,
+                    offset=-platform.qubits[qubit].sweetspot
+                    * platform.qubits[qubit].normalization,
+                    resonator_freq=platform.qubits[qubit].bare_resonator_frequency,
+                    g=platform.qubits[qubit].coupling,
+                    charging_energy=data.charging_energy[qubit],
                 )
                 # modify qubit resonator frequency
                 platform.qubits[qubit].readout_frequency = freq_resonator

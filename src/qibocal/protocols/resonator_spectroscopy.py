@@ -3,7 +3,6 @@ from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
@@ -49,6 +48,8 @@ class ResonatorSpectroscopyParameters(Parameters):
     attenuation: Optional[int] = None
     """Readout attenuation (optional). If defined, same attenuation will be used in all qubits.
     Otherwise the default attenuation defined on the platform runcard will be used"""
+    hardware_average: bool = True
+    """By default hardware average will be performed."""
 
     def __post_init__(self):
         if isinstance(self.power_level, str):
@@ -166,12 +167,7 @@ def _acquisition(
 
     results = platform.sweep(
         sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
-        ),
+        params.execution_parameters,
         sweeper,
     )
 
@@ -183,14 +179,13 @@ def _acquisition(
             ResSpecType,
             (qubit),
             dict(
-                signal=np.abs(result.average.voltage),
-                phase=np.mean(result.phase, axis=0),
+                signal=result.average.magnitude,
+                phase=result.average.phase,
                 freq=delta_frequency_range + ro_pulses[qubit].frequency,
                 error_signal=result.average.std,
-                error_phase=np.std(result.phase, axis=0, ddof=1),
+                error_phase=result.phase_std,
             ),
         )
-    # finally, save the remaining data
     return data
 
 
@@ -226,7 +221,6 @@ def _fit(
                 np.sqrt(2 / len(data[qubit].freq)),
             )
             amplitudes[qubit] = fitted_parameters[qubit][0]
-
     if data.power_level is PowerLevel.high:
         return ResonatorSpectroscopyResults(
             frequency=frequency,

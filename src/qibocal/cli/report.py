@@ -1,19 +1,16 @@
 import io
-import json
 import pathlib
 from typing import Optional, Union
 
 import plotly.graph_objects as go
 import yaml
 from jinja2 import Environment, FileSystemLoader
-from qibo.backends import GlobalBackend
 from qibolab.qubits import QubitId, QubitPairId
 
-from qibocal.auto.execute import Executor
-from qibocal.auto.mode import ExecutionMode
-from qibocal.auto.runcard import Runcard
+from qibocal.auto.history import History
+from qibocal.auto.output import Output
+from qibocal.auto.runcard import RUNCARD, Runcard
 from qibocal.auto.task import Completed
-from qibocal.cli.utils import META, RUNCARD
 from qibocal.config import log
 from qibocal.web.report import STYLES, TEMPLATES, Report
 
@@ -29,7 +26,6 @@ def generate_figures_and_report(
     It operates on a completed `node` and a specific protocol `target`, generating
     a report outcome (cf. `ReportOutcome`).
     """
-
     if node.results is None:
         # plot acquisition data
         return node.task.operation.report(data=node.data, fit=None, target=target)
@@ -46,9 +42,8 @@ def plotter(
 ) -> tuple[str, str]:
     """Run plotly pipeline for generating html.
 
-    Performs conversions of plotly figures in html rendered code for completed
-    node on specific target.
-
+    Performs conversions of plotly figures in html rendered code for
+    completed node on specific target.
     """
     figures, fitting_report = generate_figures_and_report(node, target)
     buffer = io.StringIO()
@@ -62,28 +57,22 @@ def plotter(
     return all_html, fitting_report
 
 
-def report(path: pathlib.Path, executor: Optional[Executor] = None):
+def report(path: pathlib.Path, history: Optional[History] = None):
     """Report generation.
 
     Generates the report for protocol dumped in `path`.
     Executor can be passed to generate report on the fly.
     """
 
-    if path.exists():
+    if (path / "index.html").exists():  # pragma: no cover
         log.warning(f"Regenerating {path}/index.html")
     # load meta
-    meta = json.loads((path / META).read_text())
+    output = Output.load(path)
     # load runcard
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
 
-    # set backend, platform and qubits
-    GlobalBackend.set_backend(backend=meta["backend"], platform=meta["platform"])
-
-    # load executor
-    if executor is None:
-        executor = Executor.load(runcard, path, targets=runcard.targets)
-        # produce html
-        list(executor.run(mode=ExecutionMode.report))
+    if history is None:
+        history = output.history
 
     css_styles = f"<style>\n{pathlib.Path(STYLES).read_text()}\n</style>"
 
@@ -96,9 +85,9 @@ def report(path: pathlib.Path, executor: Optional[Executor] = None):
         title=path.name,
         report=Report(
             path=path,
-            targets=executor.targets,
-            history=executor.history,
-            meta=meta,
+            targets=runcard.targets,
+            history=history,
+            meta=output.meta.dump(),
             plotter=plotter,
         ),
     )

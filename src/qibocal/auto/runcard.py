@@ -1,43 +1,25 @@
 """Specify runcard layout, handles (de)serialization."""
 
 import os
-from typing import Any, NewType, Optional, Union
+from dataclasses import asdict
+from pathlib import Path
+from typing import Any, Optional, Union
 
+import yaml
 from pydantic.dataclasses import dataclass
-from qibo.backends import Backend, GlobalBackend
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId, QubitPairId
 
-from .operation import OperationId
+from .. import protocols
+from .execute import Executor
+from .history import History
+from .mode import ExecutionMode
+from .task import Action, Targets
 
-Id = NewType("Id", str)
-"""Action identifiers type."""
-
-Targets = Union[list[QubitId], list[QubitPairId], list[tuple[QubitId, ...]]]
-"""Elements to be calibrated by a single protocol."""
-
-
-@dataclass(config=dict(smart_union=True))
-class Action:
-    """Action specification in the runcard."""
-
-    id: Id
-    """Action unique identifier."""
-    operation: Optional[OperationId] = None
-    """Operation to be performed by the executor."""
-    targets: Optional[Targets] = None
-    """Local qubits (optional)."""
-    update: bool = True
-    """Runcard update mechanism."""
-    parameters: Optional[dict[str, Any]] = None
-    """Input parameters, either values or provider reference."""
-
-    def __hash__(self) -> int:
-        """Each action is uniquely identified by its id."""
-        return hash(self.id)
+RUNCARD = "runcard.yml"
+"""Runcard filename."""
 
 
-@dataclass(config=dict(smart_union=True))
+@dataclass
 class Runcard:
     """Structure of an execution runcard."""
 
@@ -45,29 +27,43 @@ class Runcard:
     """List of action to be executed."""
     targets: Optional[Targets] = None
     """Qubits to be calibrated.
-       If `None` the protocols will be executed on all qubits
-       available in the platform."""
+
+    If `None` the protocols will be executed on all qubits
+    available in the platform.
+    """
     backend: str = "qibolab"
     """Qibo backend."""
     platform: str = os.environ.get("QIBO_PLATFORM", "dummy")
     """Qibolab platform."""
-
-    def __post_init__(self):
-        if self.targets is None and self.platform_obj is not None:
-            self.targets = list(self.platform_obj.qubits)
-
-    @property
-    def backend_obj(self) -> Backend:
-        """Allocate backend."""
-        GlobalBackend.set_backend(self.backend, platform=self.platform)
-        return GlobalBackend()
-
-    @property
-    def platform_obj(self) -> Platform:
-        """Allocate platform."""
-        return self.backend_obj.platform
+    update: bool = True
 
     @classmethod
-    def load(cls, params: dict):
-        """Load a runcard (dict)."""
-        return cls(**params)
+    def load(cls, runcard: Union[dict[str, Any], Path]):
+        """Load a runcard dict or path."""
+        if not isinstance(runcard, dict):
+            return cls(yaml.safe_load((runcard / RUNCARD).read_text(encoding="utf-8")))
+        return cls(**runcard)
+
+    def dump(self, path):
+        """Dump runcard object to yaml."""
+        (path / RUNCARD).write_text(yaml.safe_dump(asdict(self)))
+
+    def run(
+        self, output: Path, platform: Platform, mode: ExecutionMode, update: bool = True
+    ) -> History:
+        """Run runcard and dump to output."""
+        targets = self.targets if self.targets is not None else list(platform.qubits)
+        history = History.load(output)
+        update = update and self.update
+        instance = Executor(
+            history=history, platform=platform, targets=targets, update=update
+        )
+
+        for action in self.actions:
+            instance.run_protocol(
+                protocol=getattr(protocols, action.operation),
+                parameters=action,
+                mode=mode,
+            )
+            instance.history.flush(output)
+        return instance.history

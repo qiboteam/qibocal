@@ -1,3 +1,5 @@
+.. _resonator_spectroscopy:
+
 Resonator spectroscopy
 ======================
 
@@ -25,13 +27,17 @@ elements to take into consideration:
 
 The bare resonator frequency can be found setting a large value for the amplitude, e.g.:
 
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.resonator_spectroscopy.ResonatorSpectroscopyParameters
+  :noindex:
+
+
+Example
+^^^^^^^
+
 .. code-block:: yaml
-
-    platform: <platform_name>
-
-    qubits: [0]
-
-    actions:
 
       - id: resonator_spectroscopy high power
 
@@ -44,17 +50,25 @@ The bare resonator frequency can be found setting a large value for the amplitud
             nshots: 1024
             relaxation_time: 100000
 
+.. note::
+    The resonator spectroscopy experiment will be performed by computing
+    the average on hardware. If the user wants to retrieve all the shots
+    and perform the average afterwards it can be done by specifying the
+    entry `hardware_average: false` in the experiment parameters. In this
+    case the fitting procedure will take into account errors and error bands
+    will be included in the plot.
+
+    .. image:: resonator_spectroscopy_error_bars.png
+
+
 .. image:: resonator_spectroscopy_high.png
 
 Lowering the amplitude we can see a shift in the peak, e.g.:
 
+Example
+^^^^^^^
+
 .. code-block:: yaml
-
-    platform: <platform_name>
-
-    qubits: [0]
-
-    actions:
 
       - id: resonator_spectroscopy low power
 
@@ -130,11 +144,9 @@ and also here:
         single_qubit:
             0:
                 bare_resonator_frequency: <high_power_resonator_frequency>
-                readout_frequency: 5_227_920_060
-                drive_frequency: <low_power_resonator_frequency>
+                readout_frequency: <low_power_resonator_frequency>
 
-.. rubric:: References
+Requirements
+^^^^^^^^^^^^
 
-.. bibliography::
-   :filter: docname in docnames
-   :style: plain
+- :ref:`Time Of Flight`

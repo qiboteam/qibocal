@@ -89,7 +89,7 @@ def _acquisition(
         all_ro_pulses.append({})
         for qubit in targets:
             sequences[-1], all_ro_pulses[-1][qubit] = add_gate_pair_pulses_to_sequence(
-                platform, gates, qubit, sequences[-1], params.beta_param
+                platform, gates, qubit, sequences[-1], beta_param=params.beta_param
             )
 
     # execute the pulse sequence
@@ -134,13 +134,15 @@ def add_gate_pair_pulses_to_sequence(
     gates,
     qubit,
     sequence,
+    sequence_delay=0,
+    readout_delay=0,
     beta_param=None,
 ):
     pulse_duration = platform.create_RX_pulse(qubit, start=0).duration
     # All gates have equal pulse duration
 
-    sequenceDuration = 0
-    pulse_start = 0
+    sequence_duration = sequence.get_qubit_pulses(qubit).duration + sequence_delay
+    pulse_start = sequence.get_qubit_pulses(qubit).duration + sequence_delay
 
     for gate in gates:
         if gate == "I":
@@ -206,11 +208,14 @@ def add_gate_pair_pulses_to_sequence(
                 )
             sequence.add(RY90_pulse)
 
-        sequenceDuration = sequenceDuration + pulse_duration
-        pulse_start = pulse_duration
+        sequence_duration += pulse_duration
+        pulse_start = sequence_duration
 
     # RO pulse starting just after pair of gates
-    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=sequenceDuration + 4)
+    ro_pulse = platform.create_qubit_readout_pulse(
+        qubit, start=sequence_duration + readout_delay
+    )
+
     sequence.add(ro_pulse)
     return sequence, ro_pulse
 
