@@ -116,10 +116,50 @@ class Executor:
             return super().__getattribute__(name)
 
     def _wrapped_protocol(self, protocol: Routine, operation: str):
-        """Create a bound protocol."""
+        """Create a bound protocol.
+
+        Returns a closure, already wrapping the current `Executor` instance, but
+        specific to the `protocol` chosen.
+        The parameters of this wrapper function maps to protocol's ones, in particular:
+
+            - the keyword argument `mode` is used as the execution mode (defaults to
+              `AUTOCALIBRATION`)
+            - the keyword argument `id` is used as the `id` for the given operation
+              (defaults to `protocol` identifier, the same used to import and invoke
+              it)
+
+        then the protocol specific are resolved, with the following priority:
+
+            - explicit keyword arguments have the highest priorities
+            - items in the dictionary passed with the keyword `parameters`
+            - positional arguments, which are associated to protocols parameters in the
+              same order in which they are defined (and documented) in their respective
+              parameters classes
+
+        .. attention::
+
+            Despite the priority being clear, it is advised to use only one of the
+            former schemes to pass parameters, to avoid confusion due to unexpected
+            overwritten arguments.
+
+            E.g. for::
+
+                resonator_spectroscopy(1e7, 1e5, freq_width=1e8)
+
+            the `freq_width` will be `1e8`, and `1e7` will be silently overwritten and
+            ignored (as opposed to a regular Python function, where a `TypeError` would
+            be raised).
+
+            The priority defined above is strictly and silently respected, so just pay
+            attention during invocations.
+        """
 
         def wrapper(
-            *args, parameters=None, id=operation, mode=AUTOCALIBRATION, **kwargs
+            *args,
+            parameters: Optional[dict] = None,
+            id: str = operation,
+            mode: ExecutionMode = AUTOCALIBRATION,
+            **kwargs,
         ):
             positional = dict(
                 zip((f.name for f in fields(protocol.parameters_type)), args)
