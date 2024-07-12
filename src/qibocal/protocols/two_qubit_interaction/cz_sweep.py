@@ -459,7 +459,6 @@ def _plot(data: CZSweepData, fit: CZSweepResults, target: QubitPairId):
 
 def _update(results: CZSweepResults, platform: Platform, target: QubitPairId):
     # FIXME: quick fix for qubit order
-    qubit_pair = tuple(sorted(target))
     target = tuple(sorted(target))
     update.virtual_phases(results.best_virtual_phase[target], platform, target)
     update.CZ_duration(results.best_dur[target], platform, target)
