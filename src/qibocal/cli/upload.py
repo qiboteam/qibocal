@@ -26,7 +26,8 @@ ROOT_URL = "http://login.qrccluster.com:9000/"
 def upload_report(path: pathlib.Path, tag: str, author: str):
     # load meta and update tag
     meta = Metadata.load(path)
-    meta._prepare_upload(author=author, tag=tag)
+    meta.author = author
+    meta.tag = tag
     (path / META).write_text(json.dumps(meta.dump(), indent=4))
 
     # check the rsync command exists.

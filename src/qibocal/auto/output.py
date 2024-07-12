@@ -71,12 +71,6 @@ class Metadata:
             versions=versions,
         )
 
-    def _prepare_upload(self, author: str, tag: str):
-        """Adding author and tag attributes."""
-        self.author = author
-        if tag is not None:
-            self.tag = tag
-
     def start(self):
         """Register start time."""
         self.start_time = datetime.now(timezone.utc)
