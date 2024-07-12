@@ -50,8 +50,8 @@ class Metadata:
     end_time: Optional[datetime]
     stats: dict[str, TaskStats]
     versions: Versions
-    author: str = None
-    tag: str = None
+    author: Optional[str] = None
+    tag: Optional[str] = None
 
     @classmethod
     def generate(cls, name: str, backend):
