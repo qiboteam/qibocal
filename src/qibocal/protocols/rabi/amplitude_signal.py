@@ -26,7 +26,7 @@ class RabiAmplitudeSignalParameters(Parameters):
     """Maximum amplitude multiplicative factor."""
     step_amp_factor: float
     """Step amplitude multiplicative factor."""
-    pulse_length: Optional[float]
+    pulse_length: Optional[float] = None
     """RX pulse duration [ns]."""
 
 
