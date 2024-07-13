@@ -23,7 +23,7 @@ from .utils import order_pair
 
 
 @dataclass
-class CZVirtualZParameters(Parameters):
+class VirtualPhasesParameters(Parameters):
     """CzVirtualZ runcard inputs."""
 
     theta_start: float
@@ -43,7 +43,7 @@ class CZVirtualZParameters(Parameters):
 
 
 @dataclass
-class CZVirtualZResults(Results):
+class VirtualPhasesResults(Results):
     """CzVirtualZ outputs when fitting will be done."""
 
     fitted_parameters: dict[tuple[str, QubitId],]
@@ -66,14 +66,14 @@ class CZVirtualZResults(Results):
         ]
 
 
-CZVirtualZType = np.dtype([("target", np.float64), ("control", np.float64)])
+VirtualPhasesType = np.dtype([("target", np.float64), ("control", np.float64)])
 
 
 @dataclass
-class CZVirtualZData(Data):
-    """CZVirtualZ data."""
+class VirtualPhasesData(Data):
+    """VirtualPhases data."""
 
-    data: dict[tuple, npt.NDArray[CZVirtualZType]] = field(default_factory=dict)
+    data: dict[tuple, npt.NDArray[VirtualPhasesType]] = field(default_factory=dict)
     thetas: list = field(default_factory=list)
     vphases: dict[QubitPairId, dict[QubitId, float]] = field(default_factory=dict)
     amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
@@ -172,12 +172,12 @@ def create_sequence(
 
 
 def _acquisition(
-    params: CZVirtualZParameters,
+    params: VirtualPhasesParameters,
     platform: Platform,
     targets: list[QubitPairId],
-) -> CZVirtualZData:
+) -> VirtualPhasesData:
     r"""
-    Acquisition for CZVirtualZ.
+    Acquisition for VirtualPhases.
 
     Check the two-qubit landscape created by a flux pulse of a given duration
     and amplitude.
@@ -194,7 +194,7 @@ def _acquisition(
     """
 
     theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
-    data = CZVirtualZData(thetas=theta_absolute.tolist())
+    data = VirtualPhasesData(thetas=theta_absolute.tolist())
     for pair in targets:
         # order the qubits so that the low frequency one is the first
         ord_pair = order_pair(pair, platform)
@@ -248,7 +248,7 @@ def _acquisition(
                 result_control = results[control_q].probability(1)
 
                 data.register_qubit(
-                    CZVirtualZType,
+                    VirtualPhasesType,
                     (target_q, control_q, setup),
                     dict(
                         target=result_target,
@@ -265,8 +265,8 @@ def fit_function(x, amplitude, offset, phase):
 
 
 def _fit(
-    data: CZVirtualZData,
-) -> CZVirtualZResults:
+    data: VirtualPhasesData,
+) -> VirtualPhasesResults:
     r"""Fitting routine for the experiment.
 
     The used model is
@@ -332,7 +332,7 @@ def _fit(
         except KeyError:
             pass  # exception covered above
 
-    return CZVirtualZResults(
+    return VirtualPhasesResults(
         cz_angle=cz_angle,
         virtual_phase=virtual_phase,
         fitted_parameters=fitted_parameters,
@@ -341,8 +341,8 @@ def _fit(
 
 
 # TODO: remove str
-def _plot(data: CZVirtualZData, fit: CZVirtualZResults, target: QubitPairId):
-    """Plot routine for CZVirtualZ."""
+def _plot(data: VirtualPhasesData, fit: VirtualPhasesResults, target: QubitPairId):
+    """Plot routine for VirtualPhases."""
     pair_data = data[target]
     qubits = next(iter(pair_data))[:2]
     fig1 = make_subplots(
@@ -460,12 +460,14 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, target: QubitPairId):
     return [fig1, fig2], "".join(fitting_report)  # target and control qubit
 
 
-def _update(results: CZVirtualZResults, platform: Platform, target: QubitPairId):
+def _update(results: VirtualPhasesResults, platform: Platform, target: QubitPairId):
     # FIXME: quick fix for qubit order
     qubit_pair = tuple(sorted(target))
     target = tuple(sorted(target))
     update.virtual_phases(results.virtual_phase[target], platform, target)
 
 
-cz_virtualz = Routine(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
+correct_virtual_phases = Routine(
+    _acquisition, _fit, _plot, _update, two_qubit_gates=True
+)
 """CZ virtual Z correction routine."""
