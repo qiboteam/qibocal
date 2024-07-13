@@ -2,7 +2,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
+from qibolab.pulses import Delay, PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
 
@@ -231,17 +231,21 @@ def sequence_amplitude(
     qd_pulses = {}
     ro_pulses = {}
     durations = {}
-    for qubit in targets:
-        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        if params.pulse_length is not None:
-            qd_pulses[qubit].duration = params.pulse_length
+    for q in targets:
+        qubit = platform.qubits[q]
+        qd_sequence = qubit.native_gates.RX.create_sequence(theta=np.pi, phi=0)
+        ro_sequence = qubit.native_gates.MZ.create_sequence()
 
-        durations[qubit] = qd_pulses[qubit].duration
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
-        )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
+        qd_pulses[q] = qd_sequence[qubit.drive.name][0]
+        if params.pulse_length is not None:
+            qd_pulses[q].duration = params.pulse_length
+
+        durations[q] = qd_pulses[q].duration
+        ro_pulses[q] = ro_sequence[qubit.measure.name][0]
+
+        sequence[qubit.drive.name].append(qd_pulses[q])
+        sequence[qubit.measure.name].append(Delay(duration=durations[q]))
+        sequence[qubit.measure.name].append(ro_pulses[q])
     return sequence, qd_pulses, ro_pulses, durations
 
 
