@@ -5,7 +5,6 @@ from typing import Union
 
 import numpy as np
 from qibolab import pulses
-from qibolab.native import VirtualZPulse
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
