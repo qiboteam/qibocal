@@ -53,7 +53,7 @@ def _acquisition(
     to find the drive pulse amplitude that creates a rotation of a desired angle.
     """
 
-    sequence, qd_pulses, _, durations = utils.sequence_amplitude(
+    sequence, qd_pulses, ro_pulses, durations = utils.sequence_amplitude(
         targets, params, platform
     )
     # define the parameter to sweep and its range:
@@ -84,7 +84,7 @@ def _acquisition(
         sweeper,
     )
     for qubit in targets:
-        prob = results[qubit].probability(state=1)
+        prob = results[ro_pulses[qubit].id].probability(state=1)
         data.register_qubit(
             RabiAmpType,
             (qubit),

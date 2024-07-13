@@ -100,7 +100,7 @@ def _acquisition(
         sweeper,
     )
     for qubit in targets:
-        result = results[ro_pulses[qubit].serial]
+        result = results[ro_pulses[qubit].id]
         data.register_qubit(
             RabiAmpSignalType,
             (qubit),
