@@ -10,43 +10,43 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Routine
 
-from .cz_virtualz import (
-    CZVirtualZData,
-    CZVirtualZParameters,
-    CZVirtualZResults,
-    CZVirtualZType,
+from .utils import order_pair
+from .virtual_z_phases import (
+    VirtualZPhasesData,
+    VirtualZPhasesParameters,
+    VirtualZPhasesResults,
+    VirtualZPhasesType,
     _fit,
 )
-from .cz_virtualz import _plot as _plot_prob
-from .cz_virtualz import _update, create_sequence
-from .utils import order_pair
+from .virtual_z_phases import _plot as _plot_prob
+from .virtual_z_phases import _update, create_sequence
 
 
 @dataclass
-class CZVirtualZSignalParameters(CZVirtualZParameters):
+class VirtualZPhasesSignalParameters(VirtualZPhasesParameters):
     """CzVirtualZ runcard inputs."""
 
 
 @dataclass
-class CZVirtualZSignalResults(CZVirtualZResults):
+class VirtualZPhasesSignalResults(VirtualZPhasesResults):
     """CzVirtualZ outputs when fitting will be done."""
 
 
-CZVirtualZType = np.dtype([("target", np.float64), ("control", np.float64)])
+VirtualZPhasesType = np.dtype([("target", np.float64), ("control", np.float64)])
 
 
 @dataclass
-class CZVirtualZSignalData(CZVirtualZData):
-    """CZVirtualZ data."""
+class VirtualZPhasesSignalData(VirtualZPhasesData):
+    """VirtualZPhases data."""
 
 
 def _acquisition(
-    params: CZVirtualZSignalParameters,
+    params: VirtualZPhasesSignalParameters,
     platform: Platform,
     targets: list[QubitPairId],
-) -> CZVirtualZSignalData:
+) -> VirtualZPhasesSignalData:
     r"""
-    Acquisition for CZVirtualZ. See https://arxiv.org/pdf/1904.06560.pdf
+    Acquisition for VirtualZPhases. See https://arxiv.org/pdf/1904.06560.pdf
 
     Check the two-qubit landscape created by a flux pulse of a given duration
     and amplitude.
@@ -63,7 +63,7 @@ def _acquisition(
     """
 
     theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
-    data = CZVirtualZData(thetas=theta_absolute.tolist())
+    data = VirtualZPhasesData(native=params.native, thetas=theta_absolute.tolist())
     for pair in targets:
         # order the qubits so that the low frequency one is the first
         ord_pair = order_pair(pair, platform)
@@ -85,6 +85,7 @@ def _acquisition(
                     target_q,
                     control_q,
                     ord_pair,
+                    params.native,
                     params.dt,
                     params.parking,
                     params.flux_pulse_amplitude,
@@ -117,7 +118,7 @@ def _acquisition(
                 result_control = results[control_q].magnitude
 
                 data.register_qubit(
-                    CZVirtualZType,
+                    VirtualZPhasesType,
                     (target_q, control_q, setup),
                     dict(
                         target=result_target,
@@ -128,9 +129,11 @@ def _acquisition(
 
 
 def _plot(
-    data: CZVirtualZSignalData, fit: CZVirtualZSignalResults, target: QubitPairId
+    data: VirtualZPhasesSignalData,
+    fit: VirtualZPhasesSignalResults,
+    target: QubitPairId,
 ):
-    """Plot routine for CZVirtualZ."""
+    """Plot routine for VirtualZPhases."""
     figs, fitting_report = _plot_prob(data, fit, target)
 
     for fig in figs:
@@ -141,5 +144,7 @@ def _plot(
     return figs, fitting_report
 
 
-cz_virtualz_signal = Routine(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
+correct_virtual_z_phases_signal = Routine(
+    _acquisition, _fit, _plot, _update, two_qubit_gates=True
+)
 """CZ virtual Z correction routine."""

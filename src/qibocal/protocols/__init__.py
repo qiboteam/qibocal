@@ -68,8 +68,8 @@ from .two_qubit_interaction import (
     chevron_signal,
     chsh_circuits,
     chsh_pulses,
-    cz_virtualz,
-    cz_virtualz_signal,
+    correct_virtual_z_phases,
+    correct_virtual_z_phases_signal,
 )
 from .two_qubit_state_tomography import two_qubit_state_tomography
 
@@ -133,8 +133,8 @@ __all__ = [
     "chevron_signal",
     "chsh_circuits",
     "chsh_pulses",
-    "cz_virtualz",
-    "cz_virtualz_signal",
+    "correct_virtual_z_phases",
+    "correct_virtual_z_phases_signal",
     "state_tomography",
     "allxy_resonator_depletion_tuning",
     "two_qubit_state_tomography",
