@@ -60,8 +60,10 @@ def circle_fit(z: NDArray) -> tuple[float, float, float]:
 
     b_matrix = np.array([[0, 0, 0, -2], [0, 1, 0, 0], [0, 0, 1, 0], [-2, 0, 0, 0]])
 
-    coefficients = np.poly(np.linalg.eigvals(np.linalg.inv(b_matrix).dot(m_matrix)))
-    roots = np.roots(coefficients)
+    coefficients = np.polynomial.Polynomial.fromroots(
+        np.linalg.eigvals(np.linalg.inv(b_matrix).dot(m_matrix))
+    )
+    roots = coefficients.roots()
     eta = np.min(np.real([root for root in roots if np.isreal(root) and root > 0]))
 
     def f_matrix(a_vector, m_matrix, b_matrix, eta):
