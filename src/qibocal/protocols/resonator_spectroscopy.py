@@ -14,6 +14,7 @@ from qibocal.auto.operation import Data, Parameters, Results, Routine
 from .utils import (
     PowerLevel,
     chi2_reduced,
+    chi2_reduced_complex,
     lorentzian,
     lorentzian_fit,
     s21,
@@ -210,15 +211,12 @@ def _fit(
     chi2 = {}
     amplitudes = {}
 
+    fit = s21_fit if data.fit_function == "s21" else lorentzian_fit
+
     for qubit in qubits:
-        if data.fit_function == "s21":
-            fit_result = s21_fit(
-                data[qubit], resonator_type=data.resonator_type, fit="resonator"
-            )
-        else:
-            fit_result = lorentzian_fit(
-                data[qubit], resonator_type=data.resonator_type, fit="resonator"
-            )
+        fit_result = fit(
+            data[qubit], resonator_type=data.resonator_type, fit="resonator"
+        )
         if fit_result is not None:
             (
                 frequency[qubit],
@@ -232,45 +230,11 @@ def _fit(
                 bare_frequency[qubit] = frequency[qubit]
 
             if data.fit_function == "s21":
-                z_data = np.abs(data[qubit].signal) * np.exp(1j * data[qubit].phase)
-                z_fit = s21(data[qubit].freq, *fitted_parameters[qubit])
-
-                z_data_real = np.real(z_data)
-                z_data_imag = np.imag(z_data)
-
-                z_fit_real = np.real(z_fit)
-                z_fit_imag = np.imag(z_fit)
-
-                z_data_error_real = np.sqrt(
-                    (np.cos(data[qubit].phase) * data[qubit].error_signal) ** 2
-                    + (
-                        data[qubit].signal
-                        * np.sin(data[qubit].phase)
-                        * data[qubit].error_phase
-                    )
-                    ** 2
-                )
-                z_data_error_imag = np.sqrt(
-                    (np.sin(data[qubit].phase) * data[qubit].error_signal) ** 2
-                    + (
-                        data[qubit].signal
-                        * np.cos(data[qubit].phase)
-                        * data[qubit].error_phase
-                    )
-                    ** 2
-                )
-
                 chi2[qubit] = (
-                    chi2_reduced(
-                        z_data_real,
-                        z_fit_real,
-                        z_data_error_real,
-                        dof,
-                    )
-                    + chi2_reduced(
-                        z_data_imag,
-                        z_fit_imag,
-                        z_data_error_imag,
+                    chi2_reduced_complex(
+                        (data[qubit].signal, data[qubit].phase),
+                        s21(data[qubit].freq, *fitted_parameters[qubit]),
+                        (data[qubit].error_signal, data[qubit].error_phase),
                         dof,
                     ),
                     np.sqrt(2 / dof),
@@ -281,6 +245,7 @@ def _fit(
                         data[qubit].signal,
                         lorentzian(data[qubit].freq, *fitted_parameters[qubit]),
                         data[qubit].error_signal,
+                        dof,
                     ),
                     np.sqrt(2 / dof),
                 )
@@ -311,9 +276,8 @@ def _plot(
     data: ResonatorSpectroscopyData, target: QubitId, fit: ResonatorSpectroscopyResults
 ):
     """Plotting function for ResonatorSpectroscopy."""
-    if data.fit_function == "s21":
-        return s21_spectroscopy_plot(data, target, fit)
-    return spectroscopy_plot(data, target, fit)
+    plot = s21_spectroscopy_plot if data.fit_function == "s21" else spectroscopy_plot
+    return plot(data, target, fit)
 
 
 def _update(results: ResonatorSpectroscopyResults, platform: Platform, target: QubitId):
