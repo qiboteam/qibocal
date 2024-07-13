@@ -690,7 +690,7 @@ actions:
       niter: 5
       nshots: 50
 
-  - id: chevron id
+  - id: chevron cz
     operation: chevron
     targets: [[0, 2],[1,2]]
     parameters:
@@ -701,9 +701,10 @@ actions:
       duration_max: 50
       duration_step: 10
       nshots: 10
+      native: CZ
       parking: True
 
-  - id: chevron id signal
+  - id: chevron cz signal
     operation: chevron_signal
     targets: [[0, 2],[1,2]]
     parameters:
@@ -713,10 +714,39 @@ actions:
       duration_min: 10
       duration_max: 50
       duration_step: 1
+      native: CZ
       nshots: 1000
       parking: True
 
-  - id: cz
+  - id: chevron iSWAP
+    operation: chevron
+    targets: [[0, 2],[1,2]]
+    parameters:
+      amplitude_min_factor: 0.1
+      amplitude_max_factor: 0.6
+      amplitude_step_factor: 0.01
+      duration_min: 10
+      duration_max: 50
+      duration_step: 10
+      nshots: 10
+      native: iSWAP
+      parking: True
+
+  - id: chevron iSWAP signal
+    operation: chevron_signal
+    targets: [[0, 2],[1,2]]
+    parameters:
+      amplitude_min_factor: 0.1
+      amplitude_max_factor: 0.6
+      amplitude_step_factor: 0.01
+      duration_min: 10
+      duration_max: 50
+      duration_step: 1
+      native: iSWAP
+      nshots: 1000
+      parking: True
+
+  - id: iswap_virtual_phase
     operation: correct_virtual_z_phases
     targets: [[0, 2],[1,2]]
     parameters:
@@ -726,9 +756,10 @@ actions:
       flux_pulse_amplitude: 0.5
       flux_pulse_duration: 10
       dt: 0
+      native: iSWAP
       parking: True
 
-  - id: cz signal
+  - id: iswap virtual signal
     operation: correct_virtual_z_phases_signal
     targets: [[0, 2],[1,2]]
     parameters:
@@ -737,6 +768,33 @@ actions:
       theta_step: 10
       flux_pulse_amplitude: 0.5
       flux_pulse_duration: 10
+      native: iSWAP
+      dt: 0
+      parking: True
+
+  - id: cz_virtual_phase
+    operation: correct_virtual_z_phases
+    targets: [[0, 2],[1,2]]
+    parameters:
+      theta_start: 0
+      theta_end: 180
+      theta_step: 10
+      flux_pulse_amplitude: 0.5
+      flux_pulse_duration: 10
+      dt: 0
+      native: CZ
+      parking: True
+
+  - id: cz virtual signal
+    operation: correct_virtual_z_phases_signal
+    targets: [[0, 2],[1,2]]
+    parameters:
+      theta_start: 0
+      theta_end: 180
+      theta_step: 10
+      flux_pulse_amplitude: 0.5
+      flux_pulse_duration: 10
+      native: CZ
       dt: 0
       parking: True
 

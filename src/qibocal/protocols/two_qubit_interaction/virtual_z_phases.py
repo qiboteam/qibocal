@@ -62,12 +62,17 @@ class VirtualZPhasesResults(Results):
     """Virtual Z phase correction."""
     leakage: dict[QubitPairId, dict[QubitId, float]]
     """Leakage on control qubit for pair."""
+    flux_pulse_amplitude: dict[QubitPairId, float]
+    """Amplitude of flux pulse implementing CZ."""
+    flux_pulse_duration: dict[QubitPairId, int]
+    """Duration of flux pulse implementing CZ."""
 
     def __contains__(self, key: QubitPairId):
         """Check if key is in class.
         While key is a QubitPairId both chsh and chsh_mitigated contain
         an additional key which represents the basis chosen.
         """
+        # TODO: fix this (failing only for qq report)
         return key in [
             (target, control) for target, control, _ in self.fitted_parameters
         ]
@@ -290,6 +295,8 @@ def _fit(
     fitted_parameters = {}
     pairs = data.pairs
     virtual_phase = {}
+    amplitudes = {}
+    durations = {}
     angle = {}
     leakage = {}
     for pair in pairs:
@@ -346,6 +353,8 @@ def _fit(
 
     return VirtualZPhasesResults(
         native=data.native,
+        flux_pulse_amplitude=data.amplitudes,
+        flux_pulse_duration=data.durations,
         angle=angle,
         virtual_phase=virtual_phase,
         fitted_parameters=fitted_parameters,
@@ -479,6 +488,12 @@ def _update(results: VirtualZPhasesResults, platform: Platform, target: QubitPai
     target = tuple(sorted(target))
     update.virtual_phases(
         results.virtual_phase[target], results.native, platform, target
+    )
+    getattr(update, f"{results.native}_duration")(
+        results.flux_pulse_duration[target], platform, target
+    )
+    getattr(update, f"{results.native}_amplitude")(
+        results.flux_pulse_amplitude[target], platform, target
     )
 
 
