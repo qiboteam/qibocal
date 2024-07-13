@@ -1,6 +1,6 @@
 from colorsys import hls_to_rgb
 from enum import Enum
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -907,7 +907,7 @@ def chi2_reduced(
     observed: NDArray,
     estimated: NDArray,
     errors: NDArray,
-    dof: float = None,
+    dof: Optional[float] = None,
 ):
     if np.count_nonzero(errors) < len(errors):
         return EXTREME_CHI
@@ -918,6 +918,36 @@ def chi2_reduced(
     chi2 = np.sum(np.square((observed - estimated) / errors)) / dof
 
     return chi2
+
+
+def chi2_reduced_complex(
+    observed: tuple[NDArray, NDArray],
+    estimated: NDArray,
+    errors: tuple[NDArray, NDArray],
+    dof: Optional[float] = None,
+):
+
+    observed_complex = np.abs(observed[0] * np.exp(1j * observed[1]))
+
+    observed_real = np.real(observed_complex)
+    observed_imag = np.imag(observed_complex)
+
+    estimated_real = np.real(estimated)
+    estimated_imag = np.imag(estimated)
+
+    observed_error_real = np.sqrt(
+        (np.cos(observed[1]) * errors[0]) ** 2
+        + (observed[0] * np.sin(observed[1]) * errors[1]) ** 2
+    )
+    observed_error_imag = np.sqrt(
+        (np.sin(observed[1]) * errors[0]) ** 2
+        + (observed[0] * np.cos(observed[1]) * errors[1]) ** 2
+    )
+
+    chi2_real = chi2_reduced(observed_real, estimated_real, observed_error_real, dof)
+    chi2_imag = chi2_reduced(observed_imag, estimated_imag, observed_error_imag, dof)
+
+    return chi2_real + chi2_imag
 
 
 def get_color_state0(number):
