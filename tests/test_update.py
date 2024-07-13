@@ -16,7 +16,8 @@ from qibocal.protocols.signal_experiments.calibrate_state_discrimination import 
 
 PLATFORM = create_platform("dummy")
 QUBITS = list(PLATFORM.qubits.values())
-PAIRS = list(PLATFORM.pairs)
+# TODO: fix error in parameters.json for dummy
+PAIRS = [(1, 2)]
 RANDOM_FLOAT = random.random()
 RANDOM_INT = random.randint(0, 10)
 RANDOM_ARRAY = np.random.rand(10)
