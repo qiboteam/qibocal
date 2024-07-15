@@ -239,8 +239,8 @@ def sequence_amplitude(
         qd_pulses[q] = qd_sequence[qubit.drive.name][0]
         if params.pulse_length is not None:
             qd_pulses[q].duration = params.pulse_length
-
         durations[q] = qd_pulses[q].duration
+
         ro_pulses[q] = ro_sequence[qubit.measure.name][0]
 
         sequence[qubit.drive.name].append(qd_pulses[q])
@@ -255,22 +255,27 @@ def sequence_length(
     """Return sequence for rabi length."""
     sequence = PulseSequence()
     qd_pulses = {}
+    delays = {}
     ro_pulses = {}
     amplitudes = {}
-    for qubit in targets:
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=params.pulse_duration_start
-        )
-        if params.pulse_amplitude is not None:
-            qd_pulses[qubit].amplitude = params.pulse_amplitude
-        amplitudes[qubit] = qd_pulses[qubit].amplitude
+    for q in targets:
+        qubit = platform.qubits[q]
+        qd_sequence = qubit.native_gates.RX.create_sequence(theta=np.pi, phi=0)
+        ro_sequence = qubit.native_gates.MZ.create_sequence()
 
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
-        )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
-    return sequence, qd_pulses, ro_pulses, amplitudes
+        qd_pulses[q] = qd_sequence[qubit.drive.name][0]
+        if params.pulse_amplitude is not None:
+            qd_pulses[q].amplitude = params.pulse_amplitude
+        amplitudes[q] = qd_pulses[q].amplitude
+
+        delays[q] = Delay(duration=16)
+        ro_pulses[q] = ro_sequence[qubit.measure.name][0]
+
+        sequence[qubit.drive.name].append(qd_pulses[q])
+        sequence[qubit.measure.name].append(delays[q])
+        sequence[qubit.measure.name].append(ro_pulses[q])
+
+    return sequence, qd_pulses, delays, ro_pulses, amplitudes
 
 
 def fit_length_function(
