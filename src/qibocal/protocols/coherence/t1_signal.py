@@ -6,7 +6,7 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
+from qibolab.pulses import Delay, PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
@@ -81,15 +81,19 @@ def _acquisition(
     # create a sequence of pulses for the experiment
     # RX - wait t - MZ
     qd_pulses = {}
+    delays = {}
     ro_pulses = {}
     sequence = PulseSequence()
-    for qubit in targets:
-        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].duration
-        )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
+    for q in targets:
+        qubit = platform.qubits[q]
+        qd_sequence = qubit.native_gates.RX.create_sequence(theta=np.pi, phi=0)
+        ro_sequence = qubit.native_gates.MZ.create_sequence()
+        qd_pulses[q] = qd_sequence[qubit.drive.name][0]
+        ro_pulses[q] = ro_sequence[qubit.measure.name][0]
+        delays[q] = Delay(duration=qd_pulses[q].duration)
+        sequence.extend(qd_sequence)
+        sequence[qubit.measure.name].append(delays[q])
+        sequence.extend(ro_sequence)
 
     # define the parameter to sweep and its range:
     # wait time before readout
@@ -100,9 +104,9 @@ def _acquisition(
     )
 
     sweeper = Sweeper(
-        Parameter.start,
+        Parameter.duration,
         ro_wait_range,
-        [ro_pulses[qubit] for qubit in targets],
+        [delays[q] for q in targets],
         type=SweeperType.ABSOLUTE,
     )
 
@@ -122,15 +126,15 @@ def _acquisition(
     )
 
     data = T1SignalData()
-    for qubit in targets:
-        result = results[ro_pulses[qubit].serial]
+    for q in targets:
+        result = results[ro_pulses[q].id]
         if params.single_shot:
             _waits = np.array(len(result.magnitude) * [ro_wait_range])
         else:
             _waits = ro_wait_range
         data.register_qubit(
             utils.CoherenceType,
-            (qubit),
+            (q),
             dict(wait=_waits, signal=result.magnitude, phase=result.phase),
         )
 

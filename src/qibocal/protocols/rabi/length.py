@@ -64,7 +64,7 @@ def _acquisition(
     to find the drive pulse length that creates a rotation of a desired angle.
     """
 
-    sequence, qd_pulses, _, amplitudes = utils.sequence_length(
+    sequence, qd_pulses, delays, ro_pulses, amplitudes = utils.sequence_length(
         targets, params, platform
     )
     # define the parameter to sweep and its range:
@@ -78,7 +78,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.duration,
         qd_pulse_duration_range,
-        [qd_pulses[qubit] for qubit in targets],
+        [qd_pulses[q] for q in targets] + [delays[q] for q in targets],
         type=SweeperType.ABSOLUTE,
     )
 
@@ -96,11 +96,11 @@ def _acquisition(
         sweeper,
     )
 
-    for qubit in targets:
-        prob = results[qubit].probability(state=1)
+    for q in targets:
+        prob = results[ro_pulses[q].id].probability(state=1)
         data.register_qubit(
             RabiLenType,
-            (qubit),
+            (q),
             dict(
                 length=qd_pulse_duration_range,
                 prob=prob,
