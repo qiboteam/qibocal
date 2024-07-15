@@ -12,6 +12,7 @@ from qibocal import update
 from qibocal.auto.operation import Qubits, Routine
 from qibocal.protocols.characterization.coherence import t1_signal
 from qibocal.protocols.characterization.coherence.utils import (
+    CoherenceType,
     exp_decay,
     exponential_fit,
 )
@@ -118,7 +119,7 @@ def _acquisition(
     for qubit in qubits:
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
-            t1_signal.CoherenceType,
+            CoherenceType,
             (qubit),
             dict(wait=waits, signal=result.magnitude, phase=result.phase),
         )
@@ -131,7 +132,7 @@ def _fit(data: T2SignalData) -> T2SignalResults:
     .. math::
         y = p_0 - p_1 e^{-x p_2}.
     """
-    t2s, fitted_parameters = exponential_fit(data)
+    t2s, fitted_parameters, pcovs = exponential_fit(data)
     return T2SignalResults(t2s, fitted_parameters)
 
 
@@ -176,7 +177,9 @@ def _plot(data: T2SignalData, qubit, fit: T2SignalResults = None):
             )
         )
         fitting_report = table_html(
-            table_dict(qubit, "T2 [ns]", np.round(fit.t2[qubit]))
+            table_dict(
+                qubit, ["T2 [ns]"], [np.round(fit.t2[qubit])], display_error=True
+            )
         )
 
     fig.update_layout(
