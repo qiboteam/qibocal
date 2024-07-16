@@ -106,12 +106,14 @@ from .z.ramsey.ramsey import ramsey
 
 # from .z.rabi_frequency_length_signal import rabi_frequency_length_signal
 from .z.ramsey.ramsey_signal import ramsey_signal
+from .z.randomized_benchmarking.standard_rb import standard_rb
 
 # from .z.resonator_qubit_spectroscopy import resonator_qubit_spectroscopy
 from .z.resonator_twpa_freq import resonator_twpa_freq
 from .z.resonator_twpa_pow import resonator_twpa_pow
 from .z.spurious_identification import spurious_identification
 from .z.two_qubit_interaction.chevron import chevron
+from .z.two_qubit_interaction.cz_sweep import cz_sweep
 from .z.two_qubit_interaction.cz_virtualz import cz_virtualz
 
 
@@ -198,3 +200,4 @@ class Operation(Enum):
     cryoscope = cryoscope
     allxy_resonator_depletion_tuning = allxy_resonator_depletion_tuning
     qubit_power_spectroscopy = qubit_power_spectroscopy
+    cz_sweep = cz_sweep
