@@ -13,7 +13,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal.auto.operation import Parameters, Results, Routine
 
 from .resonator_punchout import ResonatorPunchoutData
-from .utils import HZ_TO_GHZ
+from .utils import HZ_TO_GHZ, norm
 
 
 @dataclass
@@ -30,10 +30,10 @@ class StarkShiftParameters(Parameters):
     """Maximum amplitude multiplicative factor."""
     step_amp_factor: float
     """Step amplitude multiplicative factor."""
-    duration: int
+    drive_duration: int
     """Drive duration."""
-    amplitude: Optional[float] = None
-    """Initial drive amplitude."""
+    drive_amplitude: Optional[float] = None
+    """Drive amplitude."""
 
 
 @dataclass
@@ -48,19 +48,25 @@ def _acquisition(
 ) -> StarkShiftData:
     sequence = PulseSequence()
     ro_pulses = {}
+    prep_ro_pulses = {}
     qd_pulses = {}
     amplitudes = {}
     for qubit in targets:
+        prep_ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
+        prep_ro_pulses[qubit].duration = params.drive_duration
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=params.duration
+            qubit, start=params.drive_duration, duration=params.drive_duration
         )
+        if params.drive_amplitude is not None:
+            qd_pulses[qubit].amplitude = params.drive_amplitude
+
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
         )
-        if params.amplitude is not None:
-            ro_pulses[qubit].amplitude = params.amplitude
-        amplitudes[qubit] = ro_pulses[qubit].amplitude
 
+        amplitudes[qubit] = prep_ro_pulses[qubit].amplitude
+
+        sequence.add(prep_ro_pulses[qubit])
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
@@ -75,14 +81,14 @@ def _acquisition(
         [qd_pulses[qubit] for qubit in targets],
         type=SweeperType.OFFSET,
     )
-    # drive amplitude
+    # readout amplitude
     amplitude_range = np.arange(
         params.min_amp_factor, params.max_amp_factor, params.step_amp_factor
     )
     amp_sweeper = Sweeper(
         Parameter.amplitude,
         amplitude_range,
-        [ro_pulses[qubit] for qubit in targets],
+        [prep_ro_pulses[qubit] for qubit in targets],
         type=SweeperType.FACTOR,
     )
 
@@ -146,6 +152,12 @@ def _plot(
     frequencies = qubit_data.freq * HZ_TO_GHZ
     amplitudes = qubit_data.amp
 
+    n_amps = len(np.unique(qubit_data.amp))
+    n_freq = len(np.unique(qubit_data.freq))
+    for i in range(n_amps):
+        qubit_data.signal[i * n_freq : (i + 1) * n_freq] = norm(
+            qubit_data.signal[i * n_freq : (i + 1) * n_freq]
+        )
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
