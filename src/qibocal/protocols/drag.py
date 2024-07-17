@@ -283,7 +283,7 @@ def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
 def _update(results: DragTuningResults, platform: Platform, target: QubitId):
     try:
         update.drag_pulse_beta(
-            results.betas[target] / platform.qubits[target].anharmonicity,
+            results.betas[target] / platform.qubits[target].anharmonicity / HZ_TO_GHZ,
             platform,
             target,
         )
