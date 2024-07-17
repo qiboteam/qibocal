@@ -90,7 +90,7 @@ class Executor:
         scope).
     """
     path: Optional[Path] = None
-    output: Optional[Output] = None
+    meta: Optional[Metadata] = None
 
     def __post_init__(self):
         """Register as a module, if a name is specified."""
@@ -245,48 +245,50 @@ class Executor:
 
     def init(
         self,
-        folder: os.PathLike,
+        path: os.PathLike,
         force: bool = False,
-        platform: Optional[Platform] = None,
+        platform: Union[Platform, str, None] = None,
         targets: Optional[Targets] = None,
     ):
-        if platform is not None:
-            self.platform = platform
-        else:
+        """Initialize execution."""
+        if platform is None:
             platform = self.platform
 
         backend = construct_backend(backend="qibolab", platform=platform)
+        platform = self.platform = backend.platform
+        assert isinstance(platform, Platform)
 
         if targets is not None:
             self.targets = targets
 
         # generate output folder
-        path = Output.mkdir(Path(folder), force)
+        path = Output.mkdir(Path(path), force)
 
         # generate meta
         meta = Metadata.generate(path.name, backend)
         output = Output(History(), meta, platform)
         output.dump(path)
 
-        # connect and initialize platform
-        platform.connect()
-
         # run
         meta.start()
 
-        self.output = output
+        # connect and initialize platform
+        platform.connect()
+
         self.path = path
+        self.meta = meta
 
     def close(self, path: Optional[os.PathLike] = None):
-        assert self.output is not None and self.path is not None
+        """Close execution."""
+        assert self.meta is not None and self.path is not None
 
         path = self.path if path is None else Path(path)
-
-        self.output.meta.end()
 
         # stop and disconnect platform
         self.platform.disconnect()
 
+        self.meta.end()
+
         # dump history, metadata, and updated platform
-        self.output.history = self.history
-        self.output.dump(path)
+        output = Output(self.history, self.meta)
+        output.dump(path)
