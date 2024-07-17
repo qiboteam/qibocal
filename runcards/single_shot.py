@@ -10,12 +10,12 @@ from qibocal.cli.report import report
 folder = Path("test_x")
 force = True
 
-backend = construct_backend(backend="qibolab", platform="qw11q")
+backend = construct_backend(backend="qibolab", platform="dummy")
 platform = backend.platform
 if platform is None:
     raise ValueError("Qibocal requires a Qibolab platform to run.")
 
-executor = Executor(name="myexec", history=History(), platform=platform, targets=["D4"])
+executor = Executor(name="myexec", history=History(), platform=platform, targets=[0])
 
 # generate output folder
 path = Output.mkdir(folder, force)
