@@ -35,6 +35,7 @@
           languages = {
             python = {
               enable = true;
+              libraries = with pkgs; [zlib];
               poetry = {
                 enable = true;
                 install = {
