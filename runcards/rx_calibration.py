@@ -3,10 +3,11 @@ from qibocal.cli.report import report
 
 executor = Executor.create(name="myexec", platform="dummy")
 
-from myexec import init, close, drag_tuning, rabi_amplitude, ramsey
+from myexec import close, drag_tuning, init, rabi_amplitude, ramsey
 
 target = 0
 platform = executor.platform
+platform.settings.nshots = 2048
 init("test_rx_calibration", force=True, targets=[target])
 
 rabi_output = rabi_amplitude(
@@ -14,7 +15,6 @@ rabi_output = rabi_amplitude(
     max_amp_factor=1.5,
     step_amp_factor=0.01,
     pulse_length=platform.qubits[target].native_gates.RX.duration,
-    nshots=2048,
 )
 # update only if chi2 is satisfied
 if rabi_output.results.chi2[target][0] > 2:
@@ -28,7 +28,6 @@ ramsey_output = ramsey(
     delay_between_pulses_end=5000,
     delay_between_pulses_step=100,
     detuning=1_000_000,
-    nshots=2048,
 )
 if ramsey_output.results.chi2[target][0] > 2:
     raise RuntimeError(
@@ -46,7 +45,6 @@ rabi_output_2 = rabi_amplitude(
     max_amp_factor=1.5,
     step_amp_factor=0.01,
     pulse_length=platform.qubits[target].native_gates.RX.duration,
-    nshots=2048,
 )
 # update only if chi2 is satisfied
 if rabi_output_2.results.chi2[target][0] > 2:
@@ -67,7 +65,6 @@ rabi_output_3 = rabi_amplitude(
     max_amp_factor=1.5,
     step_amp_factor=0.01,
     pulse_length=platform.qubits[target].native_gates.RX.duration,
-    nshots=2048,
 )
 # update only if chi2 is satisfied
 if rabi_output_3.results.chi2[target][0] > 2:
