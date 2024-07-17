@@ -51,21 +51,6 @@ def test_fit_command(tmp_path):
     # fit after acquisition different folder
 
 
-# def test_compare_command(tmp_path):
-#     report_dir_1 = tmp_path / "report_dir_1"
-#     report_dir_2 = tmp_path / "report_dir_2"
-#     compare_dir = tmp_path / "compare_dir"
-
-#     runner = CliRunner()
-#     runner.invoke(command, ["auto", str(DUMMY_COMPARE), "-o", str(report_dir_1), "-f"])
-#     runner.invoke(command, ["auto", str(DUMMY_COMPARE), "-o", str(report_dir_2), "-f"])
-
-#     runner.invoke(
-#         command,
-#         ["compare", str(report_dir_1), str(report_dir_2), "-o", str(compare_dir), "-f"],
-#     )
-
-
 def test_compare_report_dates(tmp_path):
     report_dir_1 = tmp_path / "report_dir_1"
     report_dir_2 = tmp_path / "report_dir_2"
