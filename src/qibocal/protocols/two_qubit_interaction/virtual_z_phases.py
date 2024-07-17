@@ -24,7 +24,7 @@ from .utils import order_pair
 
 @dataclass
 class VirtualZPhasesParameters(Parameters):
-    """CzVirtualZ runcard inputs."""
+    """VirtualZ runcard inputs."""
 
     theta_start: float
     """Initial angle for the low frequency qubit measurement in radians."""
