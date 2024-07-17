@@ -85,7 +85,7 @@ class CompareReportBuilder:
     def history_uids(self):
         experiment_ids = []
         for report_builder in self.report_builders:
-            experiment_ids.append({x for x in report_builder.history.keys()})
+            experiment_ids.append({x for x in report_builder.history})
 
         common_experiment_ids = experiment_ids[0]
         for exp_id in experiment_ids[1:]:
@@ -168,14 +168,14 @@ class CompareReportBuilder:
             merged_table = pd.read_html(tables[0])[0]
             merged_table = merged_table.rename(
                 columns={
-                    col: f"{col}_0" for col in set(merged_table.columns) - merge_columns
+                    col: f"{col}\n{self.report_builders[0].title}" for col in set(merged_table.columns) - merge_columns
                 }
             )
             for i, table in enumerate(tables[1:]):
                 a = pd.read_html(table)[0]
                 merged_table = pd.merge(merged_table, a, on=list(merge_columns)).rename(
                     columns={
-                        col: f"{col}_{i+1}" for col in set(a.columns) - merge_columns
+                       col: f"{col}\n{self.report_builders[1].title}" for col in set(a.columns) - merge_columns
                     }
                 )
         except ValueError:
