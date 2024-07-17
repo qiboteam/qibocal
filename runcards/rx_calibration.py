@@ -7,11 +7,11 @@ from qibocal.auto.history import History
 from qibocal.auto.output import Metadata, Output
 from qibocal.cli.report import report
 
-target = "D4"
+target = 0
 folder = Path("test_rx_calibration")
 force = True
 
-backend = construct_backend(backend="qibolab", platform="qw11q")
+backend = construct_backend(backend="qibolab", platform="dummy")
 platform = backend.platform
 if platform is None:
     raise ValueError("Qibocal requires a Qibolab platform to run.")
@@ -47,11 +47,10 @@ rabi_output = rabi_amplitude(
 
 # update only if chi2 is satisfied
 if rabi_output.results.chi2[target][0] > 2:
-    raise (
+    raise RuntimeError(
         f"Rabi fit has chi2 {rabi_output.results.chi2[target][0]} greater than 2. Stopping."
     )
-else:
-    rabi_output.update_platform(platform)
+rabi_output.update_platform(platform)
 
 ramsey_output = ramsey(
     delay_between_pulses_start=10,
@@ -62,10 +61,11 @@ ramsey_output = ramsey(
 )
 
 if ramsey_output.results.chi2[target][0] > 2:
-    raise (
+    raise RuntimeError(
         f"Ramsey fit has chi2 {ramsey_output.results.chi2[target][0]} greater than 2. Stopping."
     )
-elif ramsey_output.results.delta_phys[target][0] < 1e4:
+
+if ramsey_output.results.delta_phys[target][0] < 1e4:
     print(
         f"Ramsey frequency not updated, correctio to small { ramsey_output.results.delta_phys[target][0]}"
     )
@@ -83,20 +83,18 @@ rabi_output_2 = rabi_amplitude(
 
 # update only if chi2 is satisfied
 if rabi_output_2.results.chi2[target][0] > 2:
-    raise (
+    raise RuntimeError(
         f"Rabi fit has chi2 {rabi_output_2.results.chi2[target][0]} greater than 2. Stopping."
     )
-else:
-    rabi_output_2.update_platform(platform)
+rabi_output_2.update_platform(platform)
 
 drag_output = drag_tuning(beta_start=-4, beta_end=4, beta_step=0.5)
 
 if drag_output.results.chi2[target][0] > 2:
-    raise (
+    raise RuntimeError(
         f"Drag fit has chi2 {drag_output.results.chi2[target][0]} greater than 2. Stopping."
     )
-else:
-    drag_output.update_platform(platform)
+drag_output.update_platform(platform)
 
 rabi_output_3 = rabi_amplitude(
     min_amp_factor=0.5,
@@ -109,11 +107,10 @@ rabi_output_3 = rabi_amplitude(
 
 # update only if chi2 is satisfied
 if rabi_output_3.results.chi2[target][0] > 2:
-    raise (
+    raise RuntimeError(
         f"Rabi fit has chi2 {rabi_output_3.results.chi2[target][0]} greater than 2. Stopping."
     )
-else:
-    rabi_output_3.update_platform(platform)
+rabi_output_3.update_platform(platform)
 
 meta.end()
 
