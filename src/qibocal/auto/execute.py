@@ -6,8 +6,10 @@ import os
 import sys
 from copy import deepcopy
 from dataclasses import dataclass, fields
+from pathlib import Path
 from typing import Optional, Union
 
+from qibo.backends import construct_backend
 from qibolab import create_platform
 from qibolab.platform import Platform
 
@@ -17,6 +19,7 @@ from qibocal.config import log
 from .history import History
 from .mode import AUTOCALIBRATION, ExecutionMode
 from .operation import Routine
+from .output import Metadata, Output
 from .task import Action, Completed, Targets, Task
 
 PLATFORM_DIR = "platform"
@@ -237,3 +240,36 @@ class Executor:
         except KeyError:
             # it has been explicitly unloaded, no need to do it again
             pass
+
+    def init(
+        self,
+        folder: Path,
+        force: bool = False,
+        platform: Optional[Platform] = None,
+        targets: Optional[Targets] = None,
+    ):
+        if platform is not None:
+            self.platform = platform
+        else:
+            platform = self.platform
+
+        backend = construct_backend(backend="qibolab", platform=platform)
+
+        if targets is not None:
+            self.targets = targets
+
+        # generate output folder
+        path = Output.mkdir(folder, force)
+
+        # generate meta
+        meta = Metadata.generate(path.name, backend)
+        output = Output(History(), meta, platform)
+        output.dump(path)
+
+        # connect and initialize platform
+        platform.connect()
+
+        # run
+        meta.start()
+
+        return path, output, meta, platform
