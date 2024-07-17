@@ -351,6 +351,7 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
 
 def _update(results: DispersiveShiftResults, platform: Platform, target: QubitId):
     update.readout_frequency(results.best_freq[target], platform, target)
+    update.readout_mz1_frequency(results.frequency_state_one[target], platform, target)
 
 
 dispersive_shift = Routine(_acquisition, _fit, _plot, _update)

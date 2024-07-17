@@ -124,6 +124,8 @@ def _acquisition(
 
         sequence_2.add(qd_pulses[qubit])
         sequence_2.add(rx12_pulses[qubit])
+        # TODO: Maybe remove the following pulse
+        # sequence_2.add(qd_pulses[qubit])
         sequence_2.add(ro_pulses[qubit][2])
     print(sequence_0)
     print(sequence_1)
@@ -189,7 +191,6 @@ def _fit(data: DispersiveShiftQutritData) -> DispersiveShiftQutritResults:
     fitted_parameters_2 = {}
     best_freqs01 = {}
     best_freqs12 = {}
-    frequencies = np.unique(data[0, 0].freq)
     for qubit in qubits:
         centers = [[] for _ in range(3)]
         for state in range(3):
@@ -205,6 +206,7 @@ def _fit(data: DispersiveShiftQutritData) -> DispersiveShiftQutritResults:
                     frequency_1[qubit], fitted_parameters_1[qubit], _ = fit_result
                 else:
                     frequency_2[qubit], fitted_parameters_2[qubit], _ = fit_result
+            frequencies = np.unique(data_state.freq)
             for frequency in frequencies:
                 data_same_freq = data_state[data_state.freq == frequency]
                 i_center = np.mean(data_same_freq.i)

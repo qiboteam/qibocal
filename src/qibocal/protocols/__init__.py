@@ -2,6 +2,7 @@ from .allxy.allxy import allxy
 from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
 from .allxy.allxy_resonator_depletion_tuning import allxy_resonator_depletion_tuning
 from .classification import single_shot_classification
+from .classification_ef import single_shot_classification_ef
 from .coherence.spin_echo import spin_echo
 from .coherence.spin_echo_signal import spin_echo_signal
 from .coherence.t1 import t1
@@ -77,6 +78,7 @@ __all__ = [
     "allxy",
     "allxy_drag_pulse_tuning",
     "single_shot_classification",
+    "single_shot_classification_ef",
     "spin_echo",
     "spin_echo_signal",
     "t1",
