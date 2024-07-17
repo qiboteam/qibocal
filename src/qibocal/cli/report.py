@@ -3,13 +3,11 @@ import pathlib
 from typing import Optional, Union
 
 import plotly.graph_objects as go
-import yaml
 from jinja2 import Environment, FileSystemLoader
 from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.history import History
 from qibocal.auto.output import Output
-from qibocal.auto.runcard import RUNCARD, Runcard
 from qibocal.auto.task import Completed
 from qibocal.config import log
 from qibocal.web.report import STYLES, TEMPLATES, Report
@@ -68,8 +66,6 @@ def report(path: pathlib.Path, history: Optional[History] = None):
         log.warning(f"Regenerating {path}/index.html")
     # load meta
     output = Output.load(path)
-    # load runcard
-    runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
 
     if history is None:
         history = output.history
@@ -85,7 +81,6 @@ def report(path: pathlib.Path, history: Optional[History] = None):
         title=path.name,
         report=Report(
             path=path,
-            targets=runcard.targets,
             history=history,
             meta=output.meta.dump(),
             plotter=plotter,

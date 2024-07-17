@@ -14,6 +14,7 @@ from ..config import log
 from ..version import __version__
 from .history import History
 from .mode import ExecutionMode
+from .task import Targets
 
 
 @dataclass
@@ -52,6 +53,7 @@ class Metadata:
     versions: Versions
     author: Optional[str] = None
     tag: Optional[str] = None
+    targets: Optional[Targets] = None
 
     @classmethod
     def generate(cls, name: str, backend):
