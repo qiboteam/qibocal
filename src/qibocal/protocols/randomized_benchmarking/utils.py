@@ -439,7 +439,6 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
         if single_qubit
         else [list(i) for i in targets] * (len(params.depths) * params.niter)
     )
-    print("GGGGGGGG", qubit_maps)
     if params.unrolling:
         _, executed_circuits = execute_transpiled_circuits(
             circuits,
@@ -573,7 +572,7 @@ def layer_circuit(rb_gen: Callable, depth: int, target) -> tuple[Circuit, dict]:
     """
     full_circuit = None
     random_indexes = []
-    if isinstance(target, int) or isinstance(target, str):  # int for qubit
+    if isinstance(target, QubitId):
         nqubits = 1
         rb_gen_layer = rb_gen.layer_gen_single_qubit()
     elif isinstance(target, Tuple):  # Tuple for qubit pair
