@@ -273,3 +273,15 @@ class Executor:
         meta.start()
 
         return path, output, meta, platform
+
+    def close(self, path, output, meta, platform):
+        meta.end()
+
+        # stop and disconnect platform
+        platform.disconnect()
+
+        # dump history, metadata, and updated platform
+        output.history = self.history
+        output.dump(path)
+
+        return self.history
