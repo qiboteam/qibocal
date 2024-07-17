@@ -1,9 +1,11 @@
+from copy import deepcopy
 from typing import Optional
 
 from qibo import Circuit
 from qibo.backends.abstract import Backend
 from qibo.transpiler.pipeline import Passes
 from qibo.transpiler.unroller import NativeGates, Unroller
+from qibolab.qubits import QubitId
 
 
 def execute_transpiled_circuits(
@@ -39,7 +41,7 @@ def execute_transpiled_circuits(
 
 def execute_transpiled_circuit(
     circuit: Circuit,
-    qubit_map: list[int],
+    qubit_map: list[QubitId],
     backend: Backend,
     initial_state=None,
     nshots=1000,
@@ -54,6 +56,11 @@ def execute_transpiled_circuit(
     For the qubit map look :func:`dummy_transpiler`.
     This function returns the transpiled circuit and the execution results.
     """
+    # TODO: propagate the following lines in execute_transpiled_circuits
+    qubits = list(backend.platform.qubits.keys())
+    if isinstance(qubit_map[0], str):
+        qubit_map_copy = deepcopy(qubit_map)
+        qubit_map = [qubits.index(i) for i in qubit_map_copy]
     if backend.name == "qibolab":
         platform_nqubits = backend.platform.nqubits
         new_circuit = pad_circuit(platform_nqubits, circuit, qubit_map)
