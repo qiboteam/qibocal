@@ -24,12 +24,12 @@ from .virtual_z_phases import _update, create_sequence
 
 @dataclass
 class VirtualZPhasesSignalParameters(VirtualZPhasesParameters):
-    """CzVirtualZ runcard inputs."""
+    """VirtualZ runcard inputs."""
 
 
 @dataclass
 class VirtualZPhasesSignalResults(VirtualZPhasesResults):
-    """CzVirtualZ outputs when fitting will be done."""
+    """VirtualZ outputs when fitting will be done."""
 
 
 VirtualZPhasesType = np.dtype([("target", np.float64), ("control", np.float64)])
@@ -147,4 +147,4 @@ def _plot(
 correct_virtual_z_phases_signal = Routine(
     _acquisition, _fit, _plot, _update, two_qubit_gates=True
 )
-"""CZ virtual Z correction routine."""
+"""Virtual Z correction routine."""
