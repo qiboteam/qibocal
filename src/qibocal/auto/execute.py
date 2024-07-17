@@ -89,6 +89,8 @@ class Executor:
         are also allowed, and they are interpreted relative to this package (in the top
         scope).
     """
+    path: Optional[Path] = None
+    output: Optional[Output] = None
 
     def __post_init__(self):
         """Register as a module, if a name is specified."""
@@ -243,7 +245,7 @@ class Executor:
 
     def init(
         self,
-        folder: Path,
+        folder: os.PathLike,
         force: bool = False,
         platform: Optional[Platform] = None,
         targets: Optional[Targets] = None,
@@ -259,7 +261,7 @@ class Executor:
             self.targets = targets
 
         # generate output folder
-        path = Output.mkdir(folder, force)
+        path = Output.mkdir(Path(folder), force)
 
         # generate meta
         meta = Metadata.generate(path.name, backend)
@@ -272,14 +274,19 @@ class Executor:
         # run
         meta.start()
 
-        return output, meta
+        self.output = output
+        self.path = path
 
-    def close(self, path, output, meta):
-        meta.end()
+    def close(self, path: Optional[os.PathLike] = None):
+        assert self.output is not None and self.path is not None
+
+        path = self.path if path is None else Path(path)
+
+        self.output.meta.end()
 
         # stop and disconnect platform
         self.platform.disconnect()
 
         # dump history, metadata, and updated platform
-        output.history = self.history
-        output.dump(path)
+        self.output.history = self.history
+        self.output.dump(path)
