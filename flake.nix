@@ -25,8 +25,12 @@
           preferWheels = true;
         };
 
-        devenv.shells.default = {
+        devenv.shells.default = {config, ...}: {
           packages = with pkgs; [poethepoet pre-commit stdenv.cc.cc.lib];
+
+          env = {
+            QIBOLAB_PLATFORMS = (dirOf config.env.DEVENV_ROOT) + "/qibolab_platforms_qrc";
+          };
 
           languages = {
             python = {
