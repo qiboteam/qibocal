@@ -50,7 +50,7 @@ class VirtualZPhasesParameters(Parameters):
 
 @dataclass
 class VirtualZPhasesResults(Results):
-    """CzVirtualZ outputs when fitting will be done."""
+    """VirtualZ outputs when fitting will be done."""
 
     fitted_parameters: dict[tuple[str, QubitId],]
     """Fitted parameters"""
