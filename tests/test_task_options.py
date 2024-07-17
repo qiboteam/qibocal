@@ -3,6 +3,7 @@
 from copy import deepcopy
 
 import pytest
+from pytest import approx
 from qibo.backends import GlobalBackend, set_backend
 
 from qibocal import protocols
@@ -116,12 +117,12 @@ def test_update_argument(platform, global_update, local_update, tmp_path):
     )
 
     if local_update and global_update:
-        assert old_readout_frequency != platform.qubits[0].readout_frequency
-        assert old_iq_angle != platform.qubits[1].iq_angle
+        assert old_readout_frequency != approx(platform.qubits[0].readout_frequency)
+        assert old_iq_angle != approx(platform.qubits[1].iq_angle)
 
     else:
-        assert old_readout_frequency == platform.qubits[0].readout_frequency
-        assert old_iq_angle == platform.qubits[1].iq_angle
+        assert old_readout_frequency == approx(platform.qubits[0].readout_frequency)
+        assert old_iq_angle == approx(platform.qubits[1].iq_angle)
 
 
 @pytest.mark.parametrize(
