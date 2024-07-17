@@ -92,6 +92,47 @@ class Executor:
         if self.name is not None:
             _register(self.name, self)
 
+    @classmethod
+    def create(cls, name: str, platform: Union[Platform, str, None] = None):
+        """Load list of protocols."""
+        platform = (
+            platform
+            if isinstance(platform, Platform)
+            else create_platform(
+                platform
+                if platform is not None
+                else os.environ.get("QIBO_PLATFORM", "dummy")
+            )
+        )
+        return cls(
+            name=name,
+            history=History(),
+            platform=platform,
+            targets=list(platform.qubits),
+            update=True,
+        )
+
+    def run_protocol(
+        self,
+        protocol: Routine,
+        parameters: Action,
+        mode: ExecutionMode = AUTOCALIBRATION,
+    ) -> Completed:
+        """Run single protocol in ExecutionMode mode."""
+        task = Task(action=parameters, operation=protocol)
+        log.info(f"Executing mode {mode} on {task.action.id}.")
+
+        completed = task.run(platform=self.platform, targets=self.targets, mode=mode)
+        self.history.push(completed)
+
+        # TODO: drop, as the conditions won't be necessary any longer, and then it could
+        # be performed as part of `task.run` https://github.com/qiboteam/qibocal/issues/910
+        if ExecutionMode.FIT in mode:
+            if self.update and task.update:
+                completed.update_platform(platform=self.platform)
+
+        return completed
+
     def __getattribute__(self, name: str):
         """Provide access to routines through the executor.
 
@@ -175,47 +216,6 @@ class Executor:
             return self.run_protocol(protocol, parameters=action, mode=mode)
 
         return wrapper
-
-    @classmethod
-    def create(cls, name: str, platform: Union[Platform, str, None] = None):
-        """Load list of protocols."""
-        platform = (
-            platform
-            if isinstance(platform, Platform)
-            else create_platform(
-                platform
-                if platform is not None
-                else os.environ.get("QIBO_PLATFORM", "dummy")
-            )
-        )
-        return cls(
-            name=name,
-            history=History(),
-            platform=platform,
-            targets=list(platform.qubits),
-            update=True,
-        )
-
-    def run_protocol(
-        self,
-        protocol: Routine,
-        parameters: Action,
-        mode: ExecutionMode = AUTOCALIBRATION,
-    ) -> Completed:
-        """Run single protocol in ExecutionMode mode."""
-        task = Task(action=parameters, operation=protocol)
-        log.info(f"Executing mode {mode} on {task.action.id}.")
-
-        completed = task.run(platform=self.platform, targets=self.targets, mode=mode)
-        self.history.push(completed)
-
-        # TODO: drop, as the conditions won't be necessary any longer, and then it could
-        # be performed as part of `task.run` https://github.com/qiboteam/qibocal/issues/910
-        if ExecutionMode.FIT in mode:
-            if self.update and task.update:
-                completed.update_platform(platform=self.platform)
-
-        return completed
 
     def unload(self):
         """Unlist the executor from available modules."""
