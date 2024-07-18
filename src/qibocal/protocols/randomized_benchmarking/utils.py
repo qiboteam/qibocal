@@ -513,6 +513,7 @@ def rb_acquisition(
 def twoq_rb_acquisition(
     params: Parameters,
     targets: list[QubitPairId],
+    platform: Platform,
     add_inverse_layer: bool = True,
     interleave: str = None,
 ) -> RB2QData:
@@ -530,6 +531,7 @@ def twoq_rb_acquisition(
     """
 
     data, noise_model, backend = setup(params, single_qubit=False)
+    backend.platform = platform
     circuits, indexes, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, noise_model, single_qubit=False
     )
