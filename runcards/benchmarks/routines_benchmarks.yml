@@ -67,7 +67,7 @@ actions:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 30_000
       delay_between_pulses_step: 1_000
-      n_osc: 10
+      detuning: 333_333
 
   - id: t1
 
@@ -86,7 +86,6 @@ actions:
       delay_between_pulses_start: 16
       delay_between_pulses_end: 65_000
       delay_between_pulses_step: 2_000
-      n_osc: 0
 
   - id: single shot classification
 

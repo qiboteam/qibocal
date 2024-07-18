@@ -1,5 +1,6 @@
 """Helper functions to update parameters in platform."""
 
+from collections.abc import Iterable
 from typing import Union
 
 import numpy as np
@@ -42,27 +43,38 @@ def readout_attenuation(att: int, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].readout.attenuation = int(att)
 
 
-def drive_frequency(freq: Union[float, tuple], platform: Platform, qubit: QubitId):
+def drive_frequency(
+    freq: Union[float, tuple, list], platform: Platform, qubit: QubitId
+):
     """Update drive frequency value in platform for specific qubit."""
-    if isinstance(freq, tuple):
+    if isinstance(freq, Iterable):
         freq = freq[0]
     freq = int(freq)
     platform.qubits[qubit].native_gates.RX.frequency = int(freq)
     platform.qubits[qubit].drive_frequency = int(freq)
 
 
-def drive_amplitude(amp: Union[float, tuple], platform: Platform, qubit: QubitId):
+def drive_amplitude(amp: Union[float, tuple, list], platform: Platform, qubit: QubitId):
     """Update drive frequency value in platform for specific qubit."""
-    if isinstance(amp, tuple):
+    if isinstance(amp, Iterable):
         amp = amp[0]
     platform.qubits[qubit].native_gates.RX.amplitude = float(amp)
 
 
-def drive_duration(duration: Union[int, tuple], platform: Platform, qubit: QubitId):
+def drive_duration(
+    duration: Union[int, tuple, list], platform: Platform, qubit: QubitId
+):
     """Update drive duration value in platform for specific qubit."""
-    if isinstance(duration, tuple):
+    if isinstance(duration, Iterable):
         duration = duration[0]
     platform.qubits[qubit].native_gates.RX.duration = int(duration)
+
+
+def crosstalk_matrix(
+    matrix_element: float, platform: Platform, qubit: QubitId, flux_qubit: QubitId
+):
+    """Update crosstalk_matrix element."""
+    platform.qubits[qubit].crosstalk_matrix[flux_qubit] = float(matrix_element)
 
 
 def iq_angle(angle: float, platform: Platform, qubit: QubitId):
@@ -129,26 +141,26 @@ def CZ_amplitude(amp: float, platform: Platform, pair: QubitPairId):
 
 def t1(t1: int, platform: Platform, qubit: QubitId):
     """Update t1 value in platform for specific qubit."""
-    if isinstance(t1, tuple):
-        platform.qubits[qubit].t1 = int(t1[0])
+    if isinstance(t1, Iterable):
+        platform.qubits[qubit].T1 = int(t1[0])
     else:
-        platform.qubits[qubit].t1 = int(t1)
+        platform.qubits[qubit].T1 = int(t1)
 
 
 def t2(t2: int, platform: Platform, qubit: QubitId):
     """Update t2 value in platform for specific qubit."""
-    if isinstance(t2, tuple):
-        platform.qubits[qubit].t2 = int(t2[0])
+    if isinstance(t2, Iterable):
+        platform.qubits[qubit].T2 = int(t2[0])
     else:
-        platform.qubits[qubit].t2 = int(t2)
+        platform.qubits[qubit].T2 = int(t2)
 
 
 def t2_spin_echo(t2_spin_echo: float, platform: Platform, qubit: QubitId):
     """Update t2 echo value in platform for specific qubit."""
-    if isinstance(t2_spin_echo, tuple):
-        platform.qubits[qubit].t2_spin_echo = int(t2_spin_echo[0])
+    if isinstance(t2_spin_echo, Iterable):
+        platform.qubits[qubit].T2_spin_echo = int(t2_spin_echo[0])
     else:
-        platform.qubits[qubit].t2_spin_echo = int(t2_spin_echo)
+        platform.qubits[qubit].T2_spin_echo = int(t2_spin_echo)
 
 
 def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
@@ -170,6 +182,13 @@ def frequency_12_transition(frequency: int, platform: Platform, qubit: QubitId):
 
 def drive_12_amplitude(amplitude: float, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].native_gates.RX12.amplitude = float(amplitude)
+
+
+def drive_12_duration(
+    duration: Union[int, tuple, list], platform: Platform, qubit: QubitId
+):
+    """Update drive duration value in platform for specific qubit."""
+    platform.qubits[qubit].native_gates.RX12.duration = int(duration)
 
 
 def twpa_frequency(frequency: int, platform: Platform, qubit: QubitId):

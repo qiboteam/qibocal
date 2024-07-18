@@ -1,12 +1,11 @@
 platform: dummy
 
-backend: numpy
+# TODO: restore 'numpy' https://github.com/qiboteam/qibocal/issues/913
+backend: qibolab
 
-targets: [0,1]
+targets: [0, 1]
 
 actions:
-
-
   - id: standard rb no error
     priority: 0
     operation: standard_rb
@@ -34,6 +33,15 @@ actions:
   - id: standard rb
     priority: 0
     operation: standard_rb
+    qubits: [1]
+    parameters:
+      depths: [1, 2, 3, 5]
+      niter: 5
+      nshots: 50
+
+  - id: filtered rb
+    priority: 0
+    operation: filtered_rb
     qubits: [1]
     parameters:
       depths: [1, 2, 3, 5]

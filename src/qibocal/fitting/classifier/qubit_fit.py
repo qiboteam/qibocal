@@ -5,10 +5,7 @@ from pathlib import Path
 import numpy as np
 import numpy.typing as npt
 
-from qibocal.protocols.characterization.utils import (
-    cumulative,
-    effective_qubit_temperature,
-)
+from qibocal.protocols.utils import cumulative, effective_qubit_temperature
 
 
 def constructor(_hyperparams):
@@ -46,13 +43,14 @@ def dump(model, save_path: Path):
 
 
 def predict_from_file(loading_path: Path, input: np.typing.NDArray):
-    r"""This function loads the model saved in `loading_path`
-    and returns the predictions of `input`.
-    """
+    r"""This function loads the model saved in `loading_path` and returns the
+    predictions of `input`."""
     # relative import to reduce overhead when importing qibocal
     import skops.io as sio
 
-    model = sio.load(loading_path, trusted=True)
+    model = sio.load(
+        loading_path, trusted=["qibocal.fitting.classifier.qubit_fit.QubitFit"]
+    )
     return model.predict(input)
 
 

@@ -1,4 +1,4 @@
-"""Test routines' acquisition method using dummy platform"""
+"""Test routines' acquisition method using dummy_couplers platform."""
 
 import pathlib
 
@@ -7,16 +7,12 @@ import yaml
 from click.testing import CliRunner
 from qibolab import create_platform
 
-from qibocal.auto.task import PLATFORM_DIR
-from qibocal.cli import utils
+from qibocal.auto.output import UPDATED_PLATFORM
 from qibocal.cli._base import command
-from qibocal.protocols.characterization.flux_dependence.resonator_flux_dependence import (
-    ResonatorFluxParameters,
-)
-from qibocal.protocols.characterization.rabi.amplitude import RabiAmplitudeData
-from qibocal.protocols.characterization.rabi.ef import RabiAmplitudeEFData
-from qibocal.protocols.characterization.rabi.length import RabiLengthData
-from qibocal.protocols.characterization.rabi.utils import (
+from qibocal.protocols.rabi.amplitude import RabiAmplitudeData
+from qibocal.protocols.rabi.ef import RabiAmplitudeEFData
+from qibocal.protocols.rabi.length import RabiLengthData
+from qibocal.protocols.rabi.utils import (
     extract_rabi,
     rabi_amplitude_function,
     rabi_length_function,
@@ -26,6 +22,9 @@ SINGLE_ACTION_RUNCARD = "action.yml"
 PLATFORM = create_platform("dummy")
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/"
 RUNCARDS_NAMES = ["protocols.yml", "rb_noise_protocols.yml", "protocols_couplers.yml"]
+
+INVOKER_OPTIONS = dict(catch_exceptions=False)
+"""Generate errors when calling qq."""
 
 
 def generate_runcard_single_protocol():
@@ -55,31 +54,37 @@ def idfn(val):
     return val[0]["platform"] + "-" + val[1] + "-" + val[0]["actions"][0]["id"]
 
 
+def locate_tomography_file(runcard):
+    if "tomography from file" in runcard["actions"][0]["id"]:
+        params = runcard["actions"][0]["parameters"]
+        params["circuit"] = str(pathlib.Path(__file__).parents[1] / params["circuit"])
+
+
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_auto_command(runcard, update, tmp_path):
     """Test auto command pipeline."""
     runcard = runcard[0]
-    protocol = runcard["actions"][0]["id"]
+
+    locate_tomography_file(runcard)
 
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
+    outpath = tmp_path / "auto_test"
     runner = CliRunner()
-    results = runner.invoke(
+    runner.invoke(
         command,
         [
             "auto",
             str(tmp_path / SINGLE_ACTION_RUNCARD),
             "-o",
-            f"{str(tmp_path)}",
+            str(outpath),
             "-f",
             update,
         ],
+        **INVOKER_OPTIONS,
     )
-    assert not results.exception
-    assert results.exit_code == 0
     if update == "--update" and runcard["backend"] == "qibolab":
-        assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
-        assert (tmp_path / "data" / f"{protocol}_0" / PLATFORM_DIR).is_dir()
+        assert (outpath / UPDATED_PLATFORM).is_dir()
 
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
@@ -88,71 +93,66 @@ def test_acquire_command(runcard, tmp_path):
     runcard = runcard[0]
     protocol = runcard["actions"][0]["id"]
 
+    locate_tomography_file(runcard)
+
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
+    outpath = tmp_path / "acquire_test"
     runner = CliRunner()
 
     # test acquisition
-    results = runner.invoke(
+    runner.invoke(
         command,
         [
             "acquire",
             str(tmp_path / SINGLE_ACTION_RUNCARD),
             "-o",
-            f"{str(tmp_path)}",
+            str(outpath),
             "-f",
         ],
+        **INVOKER_OPTIONS,
     )
-    assert not results.exception
-    assert results.exit_code == 0
-    assert (tmp_path / "data" / f"{protocol}_0").is_dir()
+
+    assert (outpath / "data" / protocol).is_dir()
 
     # generate report from acquired data
-    results_report = runner.invoke(command, ["report", str(tmp_path)])
-    assert not results_report.exception
-    assert results_report.exit_code == 0
-    assert (tmp_path / "index.html").is_file()
+    runner.invoke(command, ["report", str(outpath)], **INVOKER_OPTIONS)
+    assert (outpath / "index.html").is_file()
 
 
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_fit_command(runcard, update, tmp_path):
     """Test fit builder and report generated."""
-
     runcard = runcard[0]
-    protocol = runcard["actions"][0]["id"]
+
+    locate_tomography_file(runcard)
 
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
+    outpath = tmp_path / "fit_test"
     runner = CliRunner()
 
     # test acquisition
-    results = runner.invoke(
+    runner.invoke(
         command,
         [
             "acquire",
             str(tmp_path / SINGLE_ACTION_RUNCARD),
             "-o",
-            f"{str(tmp_path)}",
+            str(outpath),
             "-f",
         ],
+        **INVOKER_OPTIONS,
     )
-    assert not results.exception
-    assert results.exit_code == 0
 
     # perform fit
-    results_fit = runner.invoke(command, ["fit", str(tmp_path), update])
-
-    assert not results_fit.exception
-    assert results_fit.exit_code == 0
+    runner.invoke(command, ["fit", str(outpath), update], **INVOKER_OPTIONS)
 
     if update == "--update" and runcard["backend"] == "qibolab":
-        assert (tmp_path / utils.UPDATED_PLATFORM).is_dir()
-        assert (tmp_path / "data" / f"{protocol}_0" / PLATFORM_DIR).is_dir()
+        assert (outpath / UPDATED_PLATFORM).is_dir()
 
     # generate report with fit and plot
-    results_plot = runner.invoke(command, ["report", str(tmp_path)])
-    assert not results_plot.exception
-    assert results_plot.exit_code == 0
-    assert (tmp_path / "index.html").is_file()
+    runner.invoke(command, ["report", str(outpath)], **INVOKER_OPTIONS)
+    assert (outpath / "index.html").is_file()
 
 
 def test_extract_rabi():
@@ -168,28 +168,6 @@ def test_extract_rabi():
     )
     with pytest.raises(RuntimeError):
         extract_rabi(RabiAmplitudeEFData)
-
-
-def test_resonator_flux_bias():
-    freq_width = 100_000
-    freq_step = 10_000
-    bias_width = 1
-    bias_step = 0.2
-    flux_start = -0.5
-    flux_end = 0.4
-    flux_step = 0.1
-    ResonatorFluxParameters(freq_width, freq_step, bias_width, bias_step)
-    ResonatorFluxParameters(freq_width, freq_step, flux_start, flux_end, flux_step)
-    with pytest.raises(ValueError):
-        ResonatorFluxParameters(
-            freq_width,
-            freq_step,
-            bias_width,
-            bias_step,
-            flux_start,
-            flux_end,
-            flux_step,
-        )
 
 
 # TODO: compare report by calling qq report
