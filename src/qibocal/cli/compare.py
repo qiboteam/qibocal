@@ -74,7 +74,6 @@ class ComparedReport:
         self.folder = folder
         self.history = self.create_common_history()
         self.meta = meta
-        # self.plotter = plotter
 
     def history_uids(self):
         experiment_ids = []
@@ -190,10 +189,3 @@ class ComparedReport:
             classes="fitting-table", index=False, border=0, escape=False
         )
         return all_html, fitting_report
-
-
-if __name__ == "__main__":
-    path_1 = Path.home() / "qqrun1"
-    path_2 = Path.home() / "qqrun2"
-    folder = Path.home() / "qqcomparison"
-    compare_reports(folder, path_1, path_2, force=True)
