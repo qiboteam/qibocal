@@ -10,6 +10,7 @@ from qibo import gates
 from qibo.backends import GlobalBackend
 from qibo.config import raise_error
 from qibo.models import Circuit
+from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.operation import Data, Parameters, Results
@@ -464,6 +465,7 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
 def rb_acquisition(
     params: Parameters,
     targets: list[QubitId],
+    platform: Platform,
     add_inverse_layer: bool = True,
     interleave: str = None,
 ) -> RBData:
@@ -481,6 +483,7 @@ def rb_acquisition(
         RBData: The depths, samples, and ground state probability of each experiment in the scan.
     """
     data, noise_model, backend = setup(params, single_qubit=True)
+    backend.platform = platform
     circuits, indexes, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, noise_model, single_qubit=True
     )
