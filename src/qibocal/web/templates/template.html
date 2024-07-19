@@ -6,9 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   {% if report %}
-  <title>{{ report.title }}</title>
+  <title>{{ title }}</title>
   {% else %}
-  <title>Qibocal {{version}}</title>
+  <title>Qibocal {{report.meta["versions"]["qibocal"]}}</title>
   {% endif %}
 
   <link rel="icon" type="image/x-icon" href="/_favicon.ico?v=2.6.0">
@@ -63,11 +63,11 @@
               Actions
             </button>
             <div class="collapse show" id="actions-collapse">
-              {% for task_uid in report.history  %}
+              {% for task_id in report.history  %}
                 <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                   <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                     <li><a class="link-dark d-inline-flex text-decoration-none rounded"
-                        href="#{{report.routine_name(*task_uid)}}"> {{report.routine_name(*task_uid)}}</a></li>
+                        href="#{{report.routine_name(task_id)}}"> {{report.routine_name(task_id)}}</a></li>
                   </ul>
                 </ul>
               {% endfor %}
@@ -97,7 +97,7 @@
               <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                 {% for folder in folders %}
                 <li><a id="reports" href="{{ url_for('page', path=folder) }}"
-                    class="link-dark d-inline-flex text-decoration-none rounded list-group-item {{ 'active' if folder == report.path else '' }}">{{ folder }}</a></li>
+                    class="link-dark d-inline-flex text-decoration-none rounded list-group-item {{ 'active' if folder == path else '' }}">{{ folder }}</a></li>
                 {% endfor %}
               </ul>
             </div>
@@ -111,37 +111,37 @@
 
     <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
 
-      {% if report.path %}
+      {% if path %}
       <div
         class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-        <h1>{{ report.title }}</h1>
+        <h1>{{ title }}</h1>
         <button class="button-export" id="export-pdf">Export to pdf</button>
       </div>
-      <p id="report_info">
-        Platform: {{ report.metadata.get('platform')}}<br>
-        Run date: {{ report.metadata.get('date') }}<br>
-        Start time (UTC): {{ report.metadata.get('start-time') }}<br>
-        End time (UTC): {{ report.metadata.get('end-time') }}
+      <p>
+        Platform: {{ report.meta.get('platform')}}<br>
+        Run date: {{ report.meta.get('date') }}<br>
+        Start time (UTC): {{ report.meta.get('start-time') }}<br>
+        End time (UTC): {{ report.meta.get('end-time') }}
       </p>
 
       <h3 id="actions"
         class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
         </h3>
 
-      {% for task_uid in report.history %}
 
-      <div id="{{report.routine_name(*task_uid)}}" style="scroll-margin-top: 4em;">
+      {% for task_id in report.history %}
+      <div id="{{report.routine_name(task_id)}}" style="scroll-margin-top: 4em;">
         <h4
           class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-          {{ report.routine_name(*task_uid) }}</h4>
-        {% for qubit in report.routine_targets(task_uid) %}
+          {{ report.routine_name(task_id) }}</h4>
+        {% for qubit in report.routine_targets(task_id) %}
         <div id="{{ routine }}-{{ iteration }}-{{ qubit }}" style="scroll-margin-top: 4em;">
             <h5
               class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
               {{ header }} - Qubit {{ qubit }}</h5>
 
 
-            {% set figures, fitting_report = report.single_qubit_plot(task_uid, qubit) %}
+            {% set figures, fitting_report = report.plotter(report.history[task_id], qubit) %}
             {{ fitting_report }}
             {{ figures }}
 
@@ -167,7 +167,7 @@
             </tr>
           </thead>
           <tbody>
-            {% for library, version in report.metadata.get('versions').items() %}
+            {% for library, version in report.meta.get('versions').items() %}
             <tr>
               <td>{{ library }}</td>
               <td>{{ version }}</td>
