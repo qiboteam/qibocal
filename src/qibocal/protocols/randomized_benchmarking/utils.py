@@ -577,7 +577,7 @@ def layer_circuit(rb_gen: Callable, depth: int, target) -> tuple[Circuit, dict]:
     """
     full_circuit = None
     random_indexes = []
-    if isinstance(target, (str,int)):
+    if isinstance(target, (str, int)):
         nqubits = 1
         rb_gen_layer = rb_gen.layer_gen_single_qubit()
     elif isinstance(target, Tuple):  # Tuple for qubit pair
