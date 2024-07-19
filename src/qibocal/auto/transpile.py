@@ -57,7 +57,7 @@ def execute_transpiled_circuit(
     This function returns the transpiled circuit and the execution results.
     """
     # TODO: propagate the following lines in execute_transpiled_circuits
-    qubits = list(backend.platform.qubits.keys())
+    qubits = list(backend.platform.qubits)
     if isinstance(qubit_map[0], str):
         qubit_map_copy = deepcopy(qubit_map)
         qubit_map = [qubits.index(i) for i in qubit_map_copy]
