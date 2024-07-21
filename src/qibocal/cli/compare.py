@@ -124,6 +124,7 @@ class ComparedReport:
             for trace_0, trace_1 in zip(fig0.data, fig1.data):
                 trace_0.legendgroup = None
                 trace_1.legendgroup = None
+                trace_0.legend = "legend"
                 trace_1.legend = "legend2"
 
             if any(isinstance(trace, go.Heatmap) for trace in fig0.data):
@@ -157,13 +158,13 @@ class ComparedReport:
                 fig.update_layout(
                     dict(
                         legend={
-                            "title": f"{self.report_builders[0].title}",
+                            "title": f"{self.report_paths[0].name}",
                             "xref": "container",
                             "yref": "container",
                             "y": 0.8,
                         },
                         legend2={
-                            "title": f"{self.report_builders[1].title}",
+                            "title": f"{self.report_paths[1].name}",
                             "xref": "container",
                             "yref": "container",
                             "y": 0.2,
@@ -181,13 +182,13 @@ class ComparedReport:
                 fig0.update_layout(
                     dict(
                         legend={
-                            "title": f"{self.report_builders[0].title}",
+                            "title": f"{self.report_paths[0].name}",
                             "xref": "container",
                             "yref": "container",
                             "y": 0.8,
                         },
                         legend2={
-                            "title": f"{self.report_builders[1].title}",
+                            "title": f"{self.report_paths[1].name}",
                             "xref": "container",
                             "yref": "container",
                             "y": 0.2,
@@ -195,6 +196,32 @@ class ComparedReport:
                         showlegend=None,
                     )
                 )
+
+                # this fixes weird behavior for comparing classification protocols
+                if any(isinstance(trace, go.Contour) for trace in fig0.data):
+                    fig0.update_layout(
+                        dict(
+                            legend={
+                                "font": {"size": None},
+                                "x": None,
+                                "xanchor": None,
+                                "yanchor": None,
+                                "orientation": None,
+                            },
+                        )
+                    )
+                    for trace in fig0.data:
+                        if isinstance(trace, go.Scatter):
+                            if trace.legend == "legend":
+                                if trace.name == "Qubit Fit: state 0":
+                                    trace.legendgroup = "legend0_q0"
+                                else:
+                                    trace.legendgroup = "legend0_q1"
+                            else:
+                                if trace.name == "Qubit Fit: state 0":
+                                    trace.legendgroup = "legend1_q0"
+                                else:
+                                    trace.legendgroup = "legend1_q1"
 
         buffer = io.StringIO()
         html_list = []
@@ -215,24 +242,17 @@ class ComparedReport:
             tables.append(fitting_report)
             plots.append(report_figures)
 
-        figures = self.merge_plots(plots)
-        buffer = io.StringIO()
-        html_list = []
-        for figure in figures:
-            figure.write_html(buffer, include_plotlyjs=True, full_html=False)
-            buffer.seek(0)
-            html_list.append(buffer.read())
-        buffer.close()
-        all_html = "".join(html_list)
+        figures_html = self.merge_plots(plots)
 
         try:
             merged_table = None
             merge_columns = {"Qubit", "Parameters"}
             for i, table in enumerate(tables):
-                a = pd.read_html(table)[0]
+                a = pd.read_html(io.StringIO(table))[0]
                 a = a.rename(
                     columns={
-                        col: f"{col}_{i}" for col in set(a.columns) - merge_columns
+                        col: f"{col}\n{self.report_paths[i].name}"
+                        for col in set(a.columns) - merge_columns
                     }
                 )
                 if merged_table is None:
@@ -246,4 +266,4 @@ class ComparedReport:
         fitting_report = merged_table.to_html(
             classes="fitting-table", index=False, border=0, escape=False
         )
-        return all_html, fitting_report
+        return figures_html, fitting_report
