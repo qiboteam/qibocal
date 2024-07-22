@@ -106,10 +106,9 @@ def _acquisition(
             )
 
             for power in power_range:
-                for qubit in targets:
-                    platform.qubits[qubit].twpa.local_oscillator.power = (
-                        initial_twpa_power[qubit] + power
-                    )
+                platform.qubits[qubit].twpa.local_oscillator.power = (
+                    initial_twpa_power[qubit] + power
+                )
 
                 classification_data = classification._acquisition(
                     classification.SingleShotClassificationParameters.load(

@@ -314,9 +314,9 @@ class StandardRBResult(Results):
     """The overall fidelity of this qubit."""
     pulse_fidelity: dict[QubitId, float]
     """The pulse fidelity of the gates acting on this qubit."""
-    fit_parameters: dict[QubitId, tuple[float, float, float]]
+    fit_parameters: dict[QubitId, list[float]]
     """Raw fitting parameters."""
-    fit_uncertainties: dict[QubitId, tuple[float, float, float]]
+    fit_uncertainties: dict[QubitId, list[float]]
     """Fitting parameters uncertainties."""
     error_bars: dict[QubitId, Optional[Union[float, list[float]]]] = None
     """Error bars for y."""

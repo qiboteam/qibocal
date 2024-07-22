@@ -106,7 +106,7 @@ class ChevronData(Data):
         self.data[low_qubit, high_qubit] = np.rec.array(ar)
 
     def amplitudes(self, pair):
-        """Unique pair amplitudes"""
+        """Unique pair amplitudes."""
         return np.unique(self[pair].amp)
 
     def durations(self, pair):
@@ -125,8 +125,8 @@ def _aquisition(
     platform: Platform,
     targets: list[QubitPairId],
 ) -> ChevronData:
-    r"""
-    Perform an CZ experiment between pairs of qubits by changing its frequency.
+    r"""Perform an CZ experiment between pairs of qubits by changing its
+    frequency.
 
     Args:
         platform: Platform to use.
@@ -221,6 +221,8 @@ def _fit(data: ChevronData) -> ChevronResults:
 
 def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     """Plot the experiment result for a single pair."""
+    if isinstance(target, list):
+        target = tuple(target)
 
     # reverse qubit order if not found in data
     if target not in data.data:
@@ -312,6 +314,9 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
 
 
 def _update(results: ChevronResults, platform: Platform, target: QubitPairId):
+    if isinstance(target, list):
+        target = tuple(target)
+
     if target not in results.duration:
         target = (target[1], target[0])
     update.CZ_duration(results.duration[target], platform, target)

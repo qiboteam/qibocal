@@ -1,69 +1,59 @@
-import datetime
-import json
+from pathlib import Path
 
-from qibo.backends import set_backend
-from qibolab.serialize import dump_platform
+from qibo.backends import construct_backend
 
-from ..auto.execute import run
-from ..auto.history import add_timings_to_meta
+from ..auto.history import History
 from ..auto.mode import AUTOCALIBRATION
+from ..auto.output import Metadata, Output
+from ..auto.runcard import Runcard
 from .report import report
-from .utils import (
-    META,
-    PLATFORM,
-    UPDATED_PLATFORM,
-    generate_meta,
-    generate_output_folder,
-)
 
 
-def autocalibrate(runcard, folder, force, update):
-    """Autocalibration
+def autocalibrate(runcard: Runcard, folder: Path, force, update):
+    """Autocalibration.
 
     Arguments:
 
      - RUNCARD: runcard with declarative inputs.
     """
-    set_backend(backend=runcard.backend, platform=runcard.platform)
     # rename for brevity
-    backend = runcard.backend_obj
-    platform = runcard.platform_obj
-    # generate output folder
-    path = generate_output_folder(folder, force)
+    backend = construct_backend(backend=runcard.backend, platform=runcard.platform)
+    platform = backend.platform
+    if platform is None:
+        raise ValueError("Qibocal requires a Qibolab platform to run.")
 
-    # generate meta
-    meta = generate_meta(runcard.backend_obj, runcard.platform_obj, path)
-    # dump platform
-    if backend.name == "qibolab":
-        (path / PLATFORM).mkdir(parents=True, exist_ok=True)
-        dump_platform(platform, path / PLATFORM)
+    # generate output folder
+    path = Output.mkdir(folder, force)
 
     # dump action runcard
-    runcard.dump(folder)
-    # dump meta
-    (path / META).write_text(json.dumps(meta, indent=4))
+    runcard.dump(path)
+
+    # generate meta
+    meta = Metadata.generate(path.name, backend)
+    meta.targets = runcard.targets
+    output = Output(History(), meta, platform)
+    output.dump(path)
 
     # connect and initialize platform
-    if platform is not None:
-        platform.connect()
+    platform.connect()
 
     # run
-    history = run(output=path, runcard=runcard, mode=AUTOCALIBRATION)
+    meta.start()
+    history = runcard.run(
+        output=path,
+        platform=platform,
+        mode=AUTOCALIBRATION,
+        update=update,
+    )
+    meta.end()
 
     # TODO: implement iterative dump of report...
 
     # stop and disconnect platform
-    if platform is not None:
-        platform.disconnect()
+    platform.disconnect()
 
-    e = datetime.datetime.now(datetime.timezone.utc)
-    meta["end-time"] = e.strftime("%H:%M:%S")
-    meta = add_timings_to_meta(meta, history)
-    (path / META).write_text(json.dumps(meta, indent=4))
+    # dump history, metadata, and updated platform
+    output.history = history
+    output.dump(path)
 
     report(path, history)
-
-    # dump updated runcard
-    if platform is not None:
-        (path / UPDATED_PLATFORM).mkdir(parents=True, exist_ok=True)
-        dump_platform(platform, path / UPDATED_PLATFORM)

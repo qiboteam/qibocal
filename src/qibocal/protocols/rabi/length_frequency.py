@@ -1,7 +1,6 @@
 """Rabi experiment that sweeps length and frequency (with probability)."""
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -16,19 +15,14 @@ from qibocal.auto.operation import Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
-from ..utils import HZ_TO_GHZ, chi2_reduced
+from ..utils import HZ_TO_GHZ, chi2_reduced, fallback_period, guess_period
 from .length_frequency_signal import (
     RabiLengthFreqSignalData,
     RabiLengthFrequencySignalParameters,
     RabiLengthFrequencySignalResults,
     _update,
 )
-from .utils import (
-    fit_length_function,
-    guess_frequency,
-    rabi_length_function,
-    sequence_length,
-)
+from .utils import fit_length_function, rabi_length_function, sequence_length
 
 
 @dataclass
@@ -40,7 +34,7 @@ class RabiLengthFrequencyParameters(RabiLengthFrequencySignalParameters):
 class RabiLengthFrequencyResults(RabiLengthFrequencySignalResults):
     """RabiLengthFrequency outputs."""
 
-    chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
+    chi2: dict[QubitId, list[float]] = field(default_factory=dict)
 
 
 RabiLenFreqType = np.dtype(
@@ -161,8 +155,8 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
         x = (durations - x_min) / (x_max - x_min)
         y = (y - y_min) / (y_max - y_min)
 
-        f = guess_frequency(durations, y)
-        pguess = [0, np.sign(y[0]) * 0.5, 1 / f, 0, 0]
+        period = fallback_period(guess_period(durations, y))
+        pguess = [0, np.sign(y[0]) * 0.5, period, 0, 0]
 
         try:
             popt, perr, pi_pulse_parameter = fit_length_function(
@@ -175,19 +169,19 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
                 y_limits=(y_min, y_max),
             )
             fitted_frequencies[qubit] = frequency
-            fitted_durations[qubit] = (
+            fitted_durations[qubit] = [
                 pi_pulse_parameter,
                 perr[2] * (x_max - x_min) / 2,
-            )
+            ]
             fitted_parameters[qubit] = popt
-            chi2[qubit] = (
+            chi2[qubit] = [
                 chi2_reduced(
                     y,
                     rabi_length_function(x, *popt),
                     error,
                 ),
                 np.sqrt(2 / len(y)),
-            )
+            ]
 
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")

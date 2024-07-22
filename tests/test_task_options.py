@@ -1,12 +1,12 @@
-"""Test routines' acquisition method using dummy platform"""
+"""Test routines' acquisition method using dummy platform."""
 
 from copy import deepcopy
 
 import pytest
+from pytest import approx
 from qibo.backends import GlobalBackend, set_backend
 
 from qibocal import protocols
-from qibocal.auto.execute import run
 from qibocal.auto.mode import AUTOCALIBRATION, ExecutionMode
 from qibocal.auto.operation import DEFAULT_PARENT_PARAMETERS
 from qibocal.auto.runcard import Runcard
@@ -99,6 +99,7 @@ UPDATE_CARD = {
 }
 
 
+# FIXME: handle local update
 @pytest.mark.parametrize("global_update", [True, False])
 @pytest.mark.parametrize("local_update", [True, False])
 def test_update_argument(platform, global_update, local_update, tmp_path):
@@ -109,19 +110,19 @@ def test_update_argument(platform, global_update, local_update, tmp_path):
     # platform = deepcopy(GlobalBackend().platform)
     old_readout_frequency = platform.qubits[0].readout_frequency
     old_iq_angle = platform.qubits[1].iq_angle
-    run(
-        Runcard.load(NEW_CARD),
+    Runcard.load(NEW_CARD).run(
         tmp_path,
         mode=AUTOCALIBRATION,
+        platform=platform,
     )
 
     if local_update and global_update:
-        assert old_readout_frequency != platform.qubits[0].readout_frequency
-        assert old_iq_angle != platform.qubits[1].iq_angle
+        assert old_readout_frequency != approx(platform.qubits[0].readout_frequency)
+        assert old_iq_angle != approx(platform.qubits[1].iq_angle)
 
     else:
-        assert old_readout_frequency == platform.qubits[0].readout_frequency
-        assert old_iq_angle == platform.qubits[1].iq_angle
+        assert old_readout_frequency == approx(platform.qubits[0].readout_frequency)
+        assert old_iq_angle == approx(platform.qubits[1].iq_angle)
 
 
 @pytest.mark.parametrize(
