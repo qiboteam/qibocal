@@ -41,13 +41,17 @@ Contents
     :maxdepth: 2
     :caption: Introduction
 
-    getting-started/index
+    getting-started/installation
+    getting-started/interface
+    getting-started/runcard
+    getting-started/example
 
 .. toctree::
     :maxdepth: 2
-    :caption: Tutorials
+    :caption: Guides
 
     tutorials/index
+    protocols/index
 
 .. toctree::
     :maxdepth: 2

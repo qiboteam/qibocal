@@ -3,10 +3,8 @@ from statistics import median_high
 import numpy as np
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
-from scipy.signal import find_peaks
 
-RANDOM_HIGH_VALUE = 1e6
-"""High value to avoid None when computing FFT."""
+from ..utils import fallback_period, guess_period
 
 
 def order_pair(pair: QubitPairId, platform: Platform) -> tuple[QubitId, QubitId]:
@@ -46,23 +44,8 @@ def fit_flux_amplitude(matrix, amps, times):
     fs = []
     for i in range(size_amp):
         y = matrix[i, :]
-        ft = np.fft.rfft(y) / len(y)
-        mags = abs(ft)[1:]
-        local_maxima = find_peaks(mags, height=0)
-        peak_heights = local_maxima[1]["peak_heights"]
-        # Select the frequency with the highest peak
-        index = (
-            int(local_maxima[0][np.argmax(peak_heights)] + 1)
-            if len(local_maxima[0]) > 0
-            else None
-        )
-
-        sampling_freq = 1 / time_step
-        values = np.arange(int(len(y) / 2))
-        period = len(y) / sampling_freq
-        frequencies = values / period
-        f = frequencies[index] if index is not None else RANDOM_HIGH_VALUE
-        fs.append(2 * np.pi * f)
+        period = fallback_period(guess_period(times, y))
+        fs.append(1 / period)
 
     low_freq_interval = np.where(fs == np.min(fs))
     amplitude = median_high(amps[::-1][low_freq_interval])

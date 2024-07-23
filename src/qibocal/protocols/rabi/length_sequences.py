@@ -1,47 +1,33 @@
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Routine
 
 from .length_signal import (
-    RabiLengthVoltData,
-    RabiLengthVoltParameters,
-    RabiLenVoltType,
+    RabiLengthSignalData,
+    RabiLengthSignalParameters,
+    RabiLenSignalType,
     _fit,
     _plot,
     _update,
 )
+from .utils import sequence_length
 
 
 def _acquisition(
-    params: RabiLengthVoltParameters, platform: Platform, targets: list[QubitId]
-) -> RabiLengthVoltData:
+    params: RabiLengthSignalParameters, platform: Platform, targets: list[QubitId]
+) -> RabiLengthSignalData:
     r"""
     Data acquisition for RabiLength Experiment.
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse length
     to find the drive pulse length that creates a rotation of a desired angle.
     """
 
-    # create a sequence of pulses for the experiment
-    sequence = PulseSequence()
-    qd_pulses = {}
-    ro_pulses = {}
-    amplitudes = {}
-    for qubit in targets:
-        # TODO: made duration optional for qd pulse?
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
-        if params.pulse_amplitude is not None:
-            qd_pulses[qubit].amplitude = params.pulse_amplitude
-        amplitudes[qubit] = qd_pulses[qubit].amplitude
-
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
-        )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
+    sequence, qd_pulses, ro_pulses, amplitudes = sequence_length(
+        targets, params, platform
+    )
 
     # define the parameter to sweep and its range:
     # qubit drive pulse duration time
@@ -51,7 +37,7 @@ def _acquisition(
         params.pulse_duration_step,
     )
 
-    data = RabiLengthVoltData(amplitudes=amplitudes)
+    data = RabiLengthSignalData(amplitudes=amplitudes)
 
     # sweep the parameter
     for duration in qd_pulse_duration_range:
@@ -73,7 +59,7 @@ def _acquisition(
         for qubit in targets:
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
-                RabiLenVoltType,
+                RabiLenSignalType,
                 (qubit),
                 dict(
                     length=np.array([duration]),

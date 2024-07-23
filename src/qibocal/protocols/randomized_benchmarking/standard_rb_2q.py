@@ -11,14 +11,17 @@ from qibocal.protocols.randomized_benchmarking.standard_rb import (
 
 from .utils import RB2QData, StandardRBResult, fit, twoq_rb_acquisition
 
+FILE_CLIFFORDS = "2qubitCliffs.json"
+FILE_INV = "2qubitCliffsInv.npz"
+
 
 @dataclass
 class StandardRB2QParameters(StandardRBParameters):
     """Parameters for the standard 2q randomized benchmarking protocol."""
 
-    file: str = "2qubitCliffs.json"
+    file: str = FILE_CLIFFORDS
     """File with the cliffords to be used."""
-    file_inv: str = "2qubitCliffsInv.npz"
+    file_inv: str = FILE_INV
     """File with the cliffords to be used in an inverted dict."""
 
 
@@ -33,15 +36,6 @@ def _acquisition(
 
 
 def _fit(data: RB2QData) -> StandardRBResult:
-    """Takes a data frame, extracts the depths and the signal and fits it with an
-    exponential function y = Ap^x+B.
-
-    Args:
-        data (RBData): Data from the data acquisition stage.
-
-    Returns:
-        StandardRBResult: Aggregated and processed data.
-    """
     qubits = data.pairs
     results = fit(qubits, data)
 

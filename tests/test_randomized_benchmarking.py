@@ -5,11 +5,11 @@ import pytest
 import qibo
 
 from qibocal.protocols.randomized_benchmarking import fitting, noisemodels
+from qibocal.protocols.randomized_benchmarking.dict_utils import load_inverse_cliffords
 from qibocal.protocols.randomized_benchmarking.utils import (
     RB_Generator,
     generate_inv_dict_cliffords_file,
     load_cliffords,
-    load_inverse_cliffords,
     random_clifford,
 )
 

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -33,7 +34,7 @@ class T2SignalParameters(Parameters):
 class T2SignalResults(Results):
     """T2Signal outputs."""
 
-    t2: dict[QubitId, tuple[float]]
+    t2: dict[QubitId, Union[float, list[float]]]
     """T2 for each qubit [ns]."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -120,9 +121,10 @@ def _acquisition(
 
 
 def _fit(data: T2SignalData) -> T2SignalResults:
-    r"""
-    Fitting routine for Ramsey experiment. The used model is
+    """The used model is
+
     .. math::
+
         y = p_0 - p_1 e^{-x p_2}.
     """
     data = data.average
