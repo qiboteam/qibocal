@@ -19,6 +19,7 @@ from .flux_dependence.qubit_crosstalk import qubit_crosstalk
 from .flux_dependence.qubit_flux_dependence import qubit_flux
 from .flux_dependence.resonator_flux_dependence import resonator_flux
 from .flux_gate import flux_gate
+from .qua import rb_ondevice
 from .qubit_power_spectroscopy import qubit_power_spectroscopy
 from .qubit_spectroscopy import qubit_spectroscopy
 from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
@@ -116,4 +117,5 @@ __all__ = [
     "flux_amplitude_frequency",
     "cpmg",
     "drag_simple",
+    "rb_ondevice",
 ]
