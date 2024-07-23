@@ -1,22 +1,25 @@
+import json
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 import mpld3
 import numpy as np
 import numpy.typing as npt
+from qibolab.platform import Platform
+from qibolab.qubits import QubitId
+from qm import generate_qua_script
 from qm.qua import *  # nopycln: import
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualang_tools.results import fetching_tool
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Parameters, Results
+from qibocal.auto.operation import DATAFILE, Data, Parameters, Results, Routine
 from qibocal.protocols.utils import table_dict, table_html
 
 from .configuration import generate_config
-from .utils import RBType, power_law, process_data
+from .utils import RBType, generate_depths, power_law, process_data
 
-# parser.add_argument("--qubit", type=int, default=0)
-# parser.add_argument("--resonator", type=int, default=None)
 # parser.add_argument("--simulation-duration", type=int, default=None)
 # parser.add_argument("--relaxation-time", type=int, default=None)
 
@@ -28,7 +31,7 @@ class RbOnDeviceParameters(Parameters):
     "Maximum circuit depth"
     delta_clifford: int
     "Play each sequence with a depth step equals to delta_clifford"
-    seed: int = 345324
+    seed: Optional[int] = None
     "Pseudo-random number generator seed"
     n_avg: int = 1
     "Number of averaging loops for each random sequence"
@@ -36,6 +39,10 @@ class RbOnDeviceParameters(Parameters):
     apply_inverse: bool = False
     state_discrimination: bool = True
     "Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)"
+
+    def __post_init__(self):
+        if self.seed is None:
+            self.seed = np.random.randint(0, int(1e6))
 
 
 def generate_sequence(max_circuit_depth, seed):
@@ -69,7 +76,7 @@ def generate_sequence_with_inverse(max_circuit_depth, seed, c1_table, inv_gates)
     return sequence, inv_gate
 
 
-def play_sequence(qubit, sequence_list, depth, rx_duration):
+def play_sequence(qubit, sequence_list, apply_inverse, depth, rx_duration):
     i = declare(int)
     condition = (i <= depth) if apply_inverse else (i < depth)
     with for_(i, 0, condition, i + 1):
@@ -145,24 +152,50 @@ def play_sequence(qubit, sequence_list, depth, rx_duration):
                 play("-x90", qubit)
 
 
+RbOnDeviceType = np.dtype(
+    [
+        ("state", np.int32),
+        ("sequences", np.int32),
+        ("voltage_i", np.float64),
+        ("voltage_q", np.float64),
+    ]
+)
+
+
 @dataclass
-class RbOnDeviceData(Results):
+class RbOnDeviceData(Data):
     rb_type: str
     relaxation_time: int
-    state: dict[QubitId, npt.NDArray] = field(default_factory=dict)
-    sequences: dict[QubitId, npt.NDArray] = field(default_factory=dict)
-    voltage_i: dict[QubitId, npt.NDArray] = field(default_factory=dict)
-    voltage_q: dict[QubitId, npt.NDArray] = field(default_factory=dict)
+    depths: npt.NDArray[np.int32]
+    state: npt.NDArray[np.int32]
+    sequences: Optional[npt.NDArray[np.int32]] = None
+
+    def save(self, path):
+        params = {"rb_type": self.rb_type, "relaxation_time": int(self.relaxation_time)}
+        (path / f"{DATAFILE}.json").write_text(json.dumps(params, indent=4))
+        np.savez(
+            path / f"{DATAFILE}.npz",
+            depths=self.depths,
+            state=self.state,
+            sequences=self.sequences,
+        )
+
+    @classmethod
+    def load(cls, path):
+        params = json.loads((path / f"{DATAFILE}.json").read_text())
+        data = np.load(path / (path / f"{DATAFILE}.npz"))
+        return cls(**params, **data)
 
 
-def _acquisition(params, platform, targets):
+def _acquisition(
+    params: RbOnDeviceParameters, platform: Platform, targets: list[QubitId]
+):
     assert len(targets) == 1
     target = targets[0]
-    qubit = f"qubit{target}"
-    resonator = f"resonator{target}" if target is not None else f"resonator{target}"
+    qubit = f"drive{target}"
+    resonator = f"readout{target}" if target is not None else f"readout{target}"
     save_sequences = params.save_sequences
     apply_inverse = params.apply_inverse
-    simulation_duration = params.simulation_duration
     relaxation_time = params.relaxation_time
 
     num_of_sequences = params.num_of_sequences
@@ -244,7 +277,9 @@ def _acquisition(params, platform, targets):
                             rx_duration = platform.qubits[
                                 target
                             ].native_gates.RX.duration
-                            play_sequence(qubit, sequence_list, depth, rx_duration)
+                            play_sequence(
+                                qubit, sequence_list, apply_inverse, depth, rx_duration
+                            )
                         # Align the two elements to measure after playing the circuit.
                         align(qubit, resonator)
                         # wait(3 * (depth + 1) * (DRIVE_DURATION // 4), resonator)
@@ -335,10 +370,13 @@ def _acquisition(params, platform, targets):
     # Run or Simulate Program #
     ###########################
     # Open the quantum machine
-    config = generate_config(platform, [0, 2, 3])
+    config = generate_config(platform, list(platform.qubits.keys()))
     qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(rb)
+
+    with open("qua_script.py", "w") as file:
+        file.write(generate_qua_script(rb, config))
 
     # Get results from QUA program
     if state_discrimination:
@@ -361,72 +399,75 @@ def _acquisition(params, platform, targets):
 
     # At the end of the program, fetch the non-averaged results to get the error-bars
     rb_type = RBType.infer(apply_inverse, relaxation_time).value
-    data = RbOnDeviceData(rb_type=rb_type, relaxation_time=relaxation_time)
-    data.depths[target] = depths
     if state_discrimination:
         if save_sequences:
             results = fetching_tool(job, data_list=["state", "sequences"])
             state, sequences = results.fetch_all()
-            data.state[target] = state
-            data.sequences[target] = sequences
         else:
             results = fetching_tool(job, data_list=["state"])
             state = results.fetch_all()[0]
-            data.state[target] = state
+            sequences = None
     else:
-        if save_sequences:
-            results = fetching_tool(job, data_list=["I", "Q", "sequences"])
-            I, Q, sequences = results.fetch_all()
-            data.voltage_i[target] = I
-            data.voltage_q[target] = Q
-            data.sequences[target] = sequences
-        else:
-            results = fetching_tool(job, data_list=["I", "Q"])
-            I, Q = results.fetch_all()
-            data.voltage_i[target] = I
-            data.voltage_q[target] = Q
-    return data
+        raise NotImplementedError
+        # if save_sequences:
+        #    results = fetching_tool(job, data_list=["I", "Q", "sequences"])
+        #    I, Q, sequences = results.fetch_all()
+        #    data.voltage_i[target] = I
+        #    data.voltage_q[target] = Q
+        #    data.sequences[target] = sequences
+        # else:
+        #    results = fetching_tool(job, data_list=["I", "Q"])
+        #    I, Q = results.fetch_all()
+        #    data.voltage_i[target] = I
+        #    data.voltage_q[target] = Q
+    return RbOnDeviceData(
+        rb_type=rb_type,
+        relaxation_time=relaxation_time,
+        depths=generate_depths(max_circuit_depth, delta_clifford),
+        state=state,
+        sequences=sequences,
+    )
 
 
 @dataclass
 class RbOnDeviceResults(Results):
-    pars: dict[QubitId, npt.NDArray] = field(default_factory=dict)
-    cov: dict[QubitId, npt.NDArray] = field(default_factory=dict)
+    pars: dict[QubitId, list[float]] = field(default_factory=dict)
+    cov: dict[QubitId, list[float]] = field(default_factory=dict)
 
 
-def _fit(data):
+def _fit(data: RbOnDeviceData) -> RbOnDeviceResults:
+    rb_type = RBType(data.rb_type)
+    depths = data.depths
+    state = data.state
+    sequences = data.sequences
+
     value_avg = np.mean(state, axis=0)
     error_avg = np.std(state, axis=0)
-    rb_type = RBType(data.rb_type)
 
     results = RbOnDeviceResults()
-    for target in data.qubits:
-        depths = data.depths[target]
-        state = data.state[target]
-        sequences = data.depths.get(target)
-        ydata, ysigma = process_data(rb_type, state, depths, sequences)
+    ydata, ysigma = process_data(rb_type, state, depths, sequences)
 
-        pars, cov = curve_fit(
-            f=power_law,
-            xdata=depths,
-            ydata=ydata,
-            sigma=ysigma,
-            p0=[0.5, 0.0, 0.9],
-            bounds=(-np.inf, np.inf),
-            maxfev=2000,
-        )
-        for qubit in data.qubits:
-            results.pars[qubit] = pars
-            results.cov[qubit] = cov
+    pars, cov = curve_fit(
+        f=power_law,
+        xdata=depths,
+        ydata=ydata,
+        sigma=ysigma,
+        p0=[0.5, 0.0, 0.9],
+        bounds=(-np.inf, np.inf),
+        maxfev=2000,
+    )
+    for qubit in data.qubits:
+        results.pars[qubit] = list(pars)
+        results.cov[qubit] = list(cov.flatten())
 
     return results
 
 
-def _plot(data, target, fit):
+def _plot(data: RbOnDeviceData, target: QubitId, fit: RbOnDeviceResults):
     pars = fit.pars.get(target)
 
     if pars is not None:
-        stdevs = np.sqrt(np.diag(fit.cov.get(target)))
+        stdevs = np.sqrt(np.diag(np.reshape(fit.cov[target], (3, 3))))
         one_minus_p = 1 - pars[2]
         r_c = one_minus_p * (1 - 1 / 2**1)
         r_g = r_c / 1.875  # 1.875 is the average number of gates in clifford operation
@@ -447,7 +488,7 @@ def _plot(data, target, fit):
                 ],
                 [
                     (data.rb_type.capitalize(),),
-                    (len(data.state[target]),),
+                    (len(data.state),),
                     (data.relaxation_time // 1000,),
                     (np.round(pars[0], 3), np.round(stdevs[0], 1)),
                     (np.round(pars[1], 3), np.round(stdevs[1], 1)),
@@ -455,10 +496,12 @@ def _plot(data, target, fit):
                     (
                         np.format_float_scientific(one_minus_p, precision=2),
                         np.round(stdevs[2], 1),
-                    )(
+                    ),
+                    (
                         np.format_float_scientific(r_c, precision=2),
                         np.round(r_c_std, 1),
-                    )(
+                    ),
+                    (
                         np.format_float_scientific(r_g, precision=2),
                         np.round(r_g_std, 1),
                     ),
@@ -476,11 +519,17 @@ def _plot(data, target, fit):
                 ],
                 [
                     (data.rb_type.capitalize(),),
-                    (len(data.state[target]),),
+                    (len(data.state),),
                     (data.relaxation_time // 1000,),
                 ],
             )
         )
+
+    rb_type = RBType(data.rb_type)
+    depths = data.depths
+    state = data.state
+    sequences = data.sequences
+    ydata, ysigma = process_data(rb_type, state, depths, sequences)
 
     fig = plt.figure()
     title = f"{rb_type.value.capitalize()} RB"
@@ -488,7 +537,7 @@ def _plot(data, target, fit):
         depths, ydata, ysigma, marker="o", linestyle="-", markersize=4, label="data"
     )
     if pars is not None:
-        max_circuit_depth = data.depths[target][-1]
+        max_circuit_depth = depths[-1]
         x = np.linspace(0, max_circuit_depth + 0.1, 1000)
         plt.plot(x, power_law(x, *pars), linestyle="--", label="fit")
     plt.xlabel("Depth")
@@ -497,3 +546,10 @@ def _plot(data, target, fit):
 
     figures = [mpld3.fig_to_html(fig)]
     return figures, fitting_report
+
+
+def _update(results: RbOnDeviceResults, platform: Platform, target: QubitId):
+    pass
+
+
+rb_ondevice = Routine(_acquisition, _fit, _plot, _update)

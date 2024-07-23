@@ -6,6 +6,9 @@ import numpy as np
 CLIFFORD = np.load(Path(__file__).parent / "qua_clifford_group.npz")
 
 
+RESTLESS_RELAXATION_CUTOFF = int(20e3)
+
+
 class RBType(Enum):
     STANDARD = "standard"
     FILTERED = "filtered"
