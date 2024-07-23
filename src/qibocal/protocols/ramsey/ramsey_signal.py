@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -40,13 +40,13 @@ class RamseySignalParameters(Parameters):
 class RamseySignalResults(Results):
     """Ramsey outputs."""
 
-    frequency: dict[QubitId, tuple[float, Optional[float]]]
+    frequency: dict[QubitId, Union[float, list[float]]]
     """Drive frequency [GHz] for each qubit."""
-    t2: dict[QubitId, tuple[float, Optional[float]]]
+    t2: dict[QubitId, Union[float, list[float]]]
     """T2 for each qubit [ns]."""
-    delta_phys: dict[QubitId, tuple[float, Optional[float]]]
+    delta_phys: dict[QubitId, Union[float, list[float]]]
     """Drive frequency [Hz] correction for each qubit."""
-    delta_fitting: dict[QubitId, tuple[float, Optional[float]]]
+    delta_fitting: dict[QubitId, Union[float, list[float]]]
     """Raw drive frequency [Hz] correction for each qubit.
        including the detuning."""
     fitted_parameters: dict[QubitId, list[float]]
@@ -176,9 +176,9 @@ def _acquisition(
 
 
 def _fit(data: RamseySignalData) -> RamseySignalResults:
-    r"""
-    Fitting routine for Ramsey experiment. The used model is
+    r"""Fitting routine for Ramsey experiment. The used model is
     .. math::
+
         y = p_0 + p_1 sin \Big(p_2 x + p_3 \Big) e^{-x p_4}.
     """
     qubits = data.qubits
@@ -199,20 +199,20 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
             delta_phys = int(sign * (delta_fitting * GHZ_TO_HZ - np.abs(data.detuning)))
             corrected_qubit_frequency = int(qubit_freq - delta_phys)
             t2 = 1 / popt[4]
-            freq_measure[qubit] = (
+            freq_measure[qubit] = [
                 corrected_qubit_frequency,
                 perr[2] * GHZ_TO_HZ / (2 * np.pi),
-            )
-            t2_measure[qubit] = (t2, perr[4] * (t2**2))
+            ]
+            t2_measure[qubit] = [t2, perr[4] * (t2**2)]
             popts[qubit] = popt
-            delta_phys_measure[qubit] = (
-                delta_phys,
+            delta_phys_measure[qubit] = [
+                -delta_phys,
                 perr[2] * GHZ_TO_HZ / (2 * np.pi),
-            )
-            delta_fitting_measure[qubit] = (
-                delta_fitting * GHZ_TO_HZ,
+            ]
+            delta_fitting_measure[qubit] = [
+                -delta_fitting * GHZ_TO_HZ,
                 perr[2] * GHZ_TO_HZ / (2 * np.pi),
-            )
+            ]
         except Exception as e:
             log.warning(f"Ramsey fitting failed for qubit {qubit} due to {e}.")
 

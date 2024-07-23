@@ -1,38 +1,105 @@
 """Track execution history."""
 
-from .runcard import Id
-from .task import Completed
+from collections import defaultdict
+from dataclasses import dataclass, field
+from functools import singledispatchmethod
+from pathlib import Path
+from typing import Iterator, Optional
+
+from .task import Completed, Id, TaskId
 
 
-def add_timings_to_meta(meta, history):
-    for task_id in history:
-        completed = history[task_id]
-        if task_id not in meta:
-            meta[task_id] = {}
-
-        if "acquisition" not in meta[task_id] and completed.data_time > 0:
-            meta[task_id]["acquisition"] = completed.data_time
-        if "fit" not in meta[task_id] and completed.results_time > 0:
-            meta[task_id]["fit"] = completed.results_time
-        if "acquisition" in meta[task_id]:
-            meta[task_id]["tot"] = meta[task_id]["acquisition"]
-        if "fit" in meta[task_id]:
-            meta[task_id]["tot"] += meta[task_id]["fit"]
-
-    return meta
-
-
-class History(dict[tuple[Id, int], Completed]):
+@dataclass
+class History:
     """Execution history.
 
-    This is not only used for logging and debugging, but it is an actual part
-    of the execution itself, since later routines can retrieve the output of
-    former ones from here.
-
+    This is not only used for logging and debugging, but it is an actual
+    part of the execution itself, since later routines can retrieve the
+    output of former ones from here.
     """
 
-    def push(self, completed: Completed):
-        """Adding completed task to history."""
-        self[completed.task.id] = completed
+    _tasks: dict[Id, list[Completed]] = field(default_factory=lambda: defaultdict(list))
+    """List of completed tasks.
 
-    # TODO: implemet time_travel()
+    .. note::
+
+        Representing the object as a map of sequences makes it smoother to identify the
+        iterations of a given task, since they are already grouped together.
+    """
+    _order: list[TaskId] = field(default_factory=list)
+    """Record of the execution order."""
+
+    @singledispatchmethod
+    def __contains__(self, elem: Id):
+        """Check whether a generic or specific task has been completed."""
+        return elem in self._tasks
+
+    @__contains__.register
+    def _(self, elem: TaskId):
+        return len(self._tasks.get(elem.id, [])) > elem.iteration
+
+    @singledispatchmethod
+    def __getitem__(self, _):
+        """Access a generic or specific task."""
+        raise NotImplementedError
+
+    @__getitem__.register(str)
+    def _(self, key: Id) -> list[Completed]:
+        return self._tasks[key]
+
+    @__getitem__.register
+    def _(self, key: TaskId) -> Completed:
+        return self._tasks[key.id][key.iteration]
+
+    def __iter__(self) -> Iterator[TaskId]:
+        """Iterate individual tasks identifiers.
+
+        It follows the execution order.
+        """
+        return iter(self._order)
+
+    def values(self) -> Iterator[Completed]:
+        """Iterate individual tasks according to the execution order."""
+        return (self[task_id] for task_id in self)
+
+    def items(self) -> Iterator[tuple[TaskId, Completed]]:
+        """Consistent iteration over individual tasks and their ids."""
+        return ((task_id, self[task_id]) for task_id in self)
+
+    @classmethod
+    def load(cls, path: Path):
+        """To be defined."""
+        instance = cls()
+        for protocol in (path / "data").glob("*"):
+            instance.push(Completed.load(protocol))
+        return instance
+
+    def push(self, completed: Completed) -> TaskId:
+        """Adding completed task to history."""
+        id = completed.task.id
+        self._tasks[id].append(completed)
+        task_id = TaskId(id=id, iteration=len(self._tasks[id]) - 1)
+        self._order.append(task_id)
+        return task_id
+
+    @staticmethod
+    def route(completed: Completed, folder: Path) -> Path:
+        """Determine the path related to a completed task.
+
+        `folder` should be ussually the general output folder, used by Qibocal to store
+        all the execution results. Cf. :cls:`qibocal.auto.output.Output`.
+        """
+        return folder / "data" / f"{completed.task.id}"
+
+    def flush(self, output: Optional[Path] = None):
+        """Flush all content to disk.
+
+        Specifying `output` is possible to select which folder should be considered as
+        the general Qibocal output folder. Cf. :cls:`qibocal.auto.output.Output`.
+        """
+        for completed in self.values():
+            if output is not None:
+                completed.path = self.route(completed, output)
+            completed.flush()
+
+    # TODO: implement time_travel()

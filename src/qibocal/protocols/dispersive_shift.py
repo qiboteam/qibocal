@@ -125,20 +125,21 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
+    execution_pars = ExecutionParameters(
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
+    )
     results_0 = platform.sweep(
         sequence_0,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
+        execution_pars,
         sweeper,
     )
 
     results_1 = platform.sweep(
         sequence_1,
-        params.execution_parameters,
+        execution_pars,
         sweeper,
     )
 

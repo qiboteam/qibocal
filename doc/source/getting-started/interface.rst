@@ -71,6 +71,20 @@ The report is generated iteratively as soon as each protocol finished.
 
     qq auto <path_to_runcard> -o <output_folder>
 
+``qq update``
+^^^^^^^^^^^^^
+Using ``qq update`` it is possible to update the platform calibrated by Qibocal.
+The correct syntax is the following
+
+.. code-block::
+
+    qq update <output_folder>
+
+which will copy the configuration of the platform in the corresponding
+directory specified using the environment variable  ``QIBOLAB_PLATFORMS``.
+See the Qibolab `documentation <https://qibo.science/qibolab/stable/tutorials/lab.html#how-to-connect-qibolab-to-your-lab>`_ for more details.
+
+
 ``qq upload``
 ^^^^^^^^^^^^^
 
