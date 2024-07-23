@@ -525,8 +525,8 @@ def rb_acquisition(
 def twoq_rb_acquisition(
     params: Parameters,
     targets: list[QubitPairId],
-    add_inverse_layer: bool = True,
     platform: Platform,
+    add_inverse_layer: bool = True,
     interleave: str = None,
 ) -> Union[RB2QData, RB2QInterData]:
     """
