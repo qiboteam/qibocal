@@ -179,6 +179,7 @@ class Executor:
     @classmethod
     def create(cls, name: str, platform: Union[Platform, str, None] = None):
         """Load list of protocols."""
+        platform = "qw11qD"
         platform = (
             platform
             if isinstance(platform, Platform)
