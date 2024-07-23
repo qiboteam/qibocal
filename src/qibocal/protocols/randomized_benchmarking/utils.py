@@ -122,6 +122,7 @@ def random_circuits(
     inverse_layer=True,
     single_qubit=True,
     file_inv=pathlib.Path(),
+    interleave=None,
 ) -> Iterable:
     """Returns random (self-inverting) Clifford circuits."""
 
@@ -129,7 +130,7 @@ def random_circuits(
     indexes = defaultdict(list)
     for _ in range(niter):
         for target in targets:
-            circuit, random_index = layer_circuit(rb_gen, depth, target)
+            circuit, random_index = layer_circuit(rb_gen, depth, target, interleave)
             if inverse_layer:
                 add_inverse_layer(circuit, rb_gen, single_qubit, file_inv)
             add_measurement_layer(circuit)
@@ -419,6 +420,7 @@ def get_circuits(
             add_inverse_layer,
             single_qubit,
             inv_file,
+            interleave,
         )
 
         circuits.extend(circuits_depth)
@@ -478,6 +480,7 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
 
 def rb_acquisition(
     params: Parameters,
+    platform: Platform,
     targets: list[QubitId],
     add_inverse_layer: bool = True,
     interleave: str = None,
@@ -495,7 +498,7 @@ def rb_acquisition(
     Returns:
         RBData: The depths, samples, and ground state probability of each experiment in the scan.
     """
-    data, noise_model, backend = setup(params, single_qubit=True)
+    data, noise_model, backend = setup(params, platform, single_qubit=True)
     circuits, indexes, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, noise_model, single_qubit=True
     )
@@ -524,8 +527,8 @@ def rb_acquisition(
 
 def twoq_rb_acquisition(
     params: Parameters,
-    targets: list[QubitPairId],
     platform: Platform,
+    targets: list[QubitPairId],
     add_inverse_layer: bool = True,
     interleave: str = None,
 ) -> Union[RB2QData, RB2QInterData]:
@@ -542,7 +545,7 @@ def twoq_rb_acquisition(
         RB2QData: The acquired data for two qubit randomized benchmarking.
     """
 
-    data, noise_model, backend = setup(params, single_qubit=False, platform=platform)
+    data, noise_model, backend = setup(params, platform, single_qubit=False)
     circuits, indexes, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, noise_model, single_qubit=False
     )
@@ -584,6 +587,7 @@ def layer_circuit(
     Args:
         layer_gen (Callable): Should return gates or a full circuit specifying a layer.
         depth (int): Number of layers.
+        interleave (str, optional): Interleaving pattern for the circuits. Defaults to None.
 
     Returns:
         Circuit: with `depth` many layers.

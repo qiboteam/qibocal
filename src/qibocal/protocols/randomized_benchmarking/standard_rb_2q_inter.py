@@ -46,7 +46,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: RB2QInterData) -> StandardRBResult:
+def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
     """Takes a data frame, extracts the depths and the signal and fits it with an
     exponential function y = Ap^x+B.
 
@@ -54,7 +54,7 @@ def _fit(data: RB2QInterData) -> StandardRBResult:
         data (RBData): Data from the data acquisition stage.
 
     Returns:
-        StandardRBResult: Aggregated and processed data.
+        StandardRB2QInterResult: Aggregated and processed data.
     """
 
     qubits = data.pairs
@@ -74,7 +74,7 @@ def _fit(data: RB2QInterData) -> StandardRBResult:
             )
             fidelity_cz[qubit] = [fid_cz, uncertainty_cz]
 
-        results = StandardRB2QInterResult(
+        new_results = StandardRB2QInterResult(
             results.fidelity,
             results.pulse_fidelity,
             results.fit_parameters,
@@ -82,8 +82,16 @@ def _fit(data: RB2QInterData) -> StandardRBResult:
             results.error_bars,
             fidelity_cz,
         )
+    else:
+        new_results = StandardRB2QInterResult(
+            results.fidelity,
+            results.pulse_fidelity,
+            results.fit_parameters,
+            results.fit_uncertainties,
+            results.error_bars,
+        )
 
-    return results
+    return new_results
 
 
 standard_rb_2q_inter = Routine(_acquisition, _fit, _plot)
