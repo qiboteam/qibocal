@@ -58,9 +58,7 @@ def waveforms(platform, qubits):
         }
     )
     for q in qubits:
-        _waveforms.update(
-            drive_waveforms(q, platform.qubits[q].native_gates.RX.amplitude)
-        )
+        _waveforms.update(drive_waveforms(platform, q))
     return _waveforms
 
 
@@ -99,7 +97,7 @@ def pulses(platform, qubits):
         for q in qubits
     }
     for q in qubits:
-        _pulses.update(drive_pulses(q))
+        _pulses.update(drive_pulses(platform, q))
     return _pulses
 
 
@@ -130,102 +128,72 @@ def generate_config(platform, qubits):
     return {
         "version": 1,
         "controllers": {
-            "con4": {
+            "con9": {
                 "analog_inputs": {
                     "1": {
                         "offset": 0.0,
-                        "gain_db": 10,
+                        "gain_db": 0,
                     },
                     "2": {
                         "offset": 0.0,
-                        "gain_db": 10,
+                        "gain_db": 0,
                     },
                 },
                 "digital_outputs": {},
                 "analog_outputs": {
-                    "1": {
-                        "offset": 0.288,
-                        "filter": {},
-                    },
-                    "2": {
-                        "offset": -0.25,
-                        "filter": {},
-                    },
                     "3": {
-                        "offset": 0.268,
-                        "filter": {
-                            "feedforward": [1.0684635881381783, -1.0163217174522334],
-                            "feedback": [0.947858129314055],
-                        },
+                        "offset": -0.13,
+                        "filter": {},
                     },
                     "4": {
-                        "offset": 0.292,
-                        "filter": {
-                            "feedforward": [1.0684635881381783, -1.0163217174522334],
-                            "feedback": [0.947858129314055],
-                        },
+                        "offset": 0.134,
+                        "filter": {},
                     },
                     "5": {
-                        "offset": -0.49,
-                        "filter": {},
-                    },
-                },
-            },
-            "con3": {
-                "analog_inputs": {
-                    "1": {
-                        "offset": 0.0,
-                        "gain_db": 10,
-                    },
-                    "2": {
-                        "offset": 0.0,
-                        "gain_db": 10,
-                    },
-                },
-                "digital_outputs": {
-                    "1": {},
-                },
-                "analog_outputs": {
-                    "1": {
-                        "offset": 0.0,
-                        "filter": {},
-                    },
-                    "2": {
-                        "offset": 0.0,
-                        "filter": {},
-                    },
-                },
-            },
-            "con2": {
-                "analog_inputs": {
-                    "1": {
-                        "offset": 0.0,
-                        "gain_db": 10,
-                    },
-                    "2": {
-                        "offset": 0.0,
-                        "gain_db": 10,
-                    },
-                },
-                "digital_outputs": {
-                    "5": {},
-                    "1": {},
-                    "7": {},
-                },
-                "analog_outputs": {
-                    "5": {
-                        "offset": 0.0,
+                        "offset": -0.438,
                         "filter": {},
                     },
                     "6": {
-                        "offset": 0.0,
+                        "offset": -0.002,
                         "filter": {},
                     },
+                    "7": {
+                        "offset": -0.031,
+                        "filter": {},
+                    },
+                },
+            },
+            "con6": {
+                "analog_inputs": {
+                    "1": {
+                        "offset": 0.0,
+                        "gain_db": 10,
+                    },
+                    "2": {
+                        "offset": 0.0,
+                        "gain_db": 10,
+                    },
+                },
+                "digital_outputs": {
+                    "1": {},
+                    "3": {},
+                    "7": {},
+                    "9": {},
+                },
+                "analog_outputs": {
                     "1": {
                         "offset": 0.0,
                         "filter": {},
                     },
                     "2": {
+                        "offset": 0.0,
+                        "filter": {},
+                    },
+                    "3": {
+                        "offset": 0.0,
+                        "filter": {},
+                    },
+                    "4": {
                         "offset": 0.0,
                         "filter": {},
                     },
@@ -237,187 +205,307 @@ def generate_config(platform, qubits):
                         "offset": 0.0,
                         "filter": {},
                     },
+                    "9": {
+                        "offset": 0.0,
+                        "filter": {},
+                    },
+                    "10": {
+                        "offset": 0.0,
+                        "filter": {},
+                    },
+                },
+            },
+            "con8": {
+                "analog_inputs": {
+                    "1": {
+                        "offset": 0.0,
+                        "gain_db": 10,
+                    },
+                    "2": {
+                        "offset": 0.0,
+                        "gain_db": 10,
+                    },
+                },
+                "digital_outputs": {
+                    "9": {},
+                    "5": {},
+                },
+                "analog_outputs": {
+                    "9": {
+                        "offset": 0.0,
+                        "filter": {},
+                    },
+                    "10": {
+                        "offset": 0.0,
+                        "filter": {},
+                    },
+                    "5": {
+                        "offset": 0.0,
+                        "filter": {},
+                    },
+                    "6": {
+                        "offset": 0.0,
+                        "filter": {},
+                    },
                 },
             },
         },
         "octaves": {
-            "octave3": {
+            "octave5": {
                 "RF_outputs": {
                     "1": {
-                        "LO_frequency": 7550000000,
-                        "gain": -20,
+                        "LO_frequency": 7450000000,
+                        "gain": 0,
+                        "LO_source": "internal",
+                        "output_mode": "triggered",
+                    },
+                    "2": {
+                        "LO_frequency": 5100000000,
+                        "gain": 0,
+                        "LO_source": "internal",
+                        "output_mode": "triggered",
+                    },
+                    "4": {
+                        "LO_frequency": 5700000000,
+                        "gain": 0,
+                        "LO_source": "internal",
+                        "output_mode": "triggered",
+                    },
+                    "5": {
+                        "LO_frequency": 5700000000,
+                        "gain": 0,
                         "LO_source": "internal",
                         "output_mode": "triggered",
                     },
                 },
-                "connectivity": "con3",
+                "connectivity": "con6",
                 "RF_inputs": {
                     "1": {
-                        "LO_frequency": 7550000000,
+                        "LO_frequency": 7450000000,
                         "LO_source": "internal",
                         "IF_mode_I": "direct",
                         "IF_mode_Q": "direct",
                     },
                 },
             },
-            "octave2": {
+            "octave6": {
                 "RF_outputs": {
+                    "5": {
+                        "LO_frequency": 6400000000,
+                        "gain": 0,
+                        "LO_source": "internal",
+                        "output_mode": "triggered",
+                    },
                     "3": {
-                        "LO_frequency": 5100000000.0,
-                        "gain": 20,
-                        "LO_source": "internal",
-                        "output_mode": "triggered",
-                    },
-                    "1": {
-                        "LO_frequency": 5800000000.0,
-                        "gain": 20,
-                        "LO_source": "internal",
-                        "output_mode": "triggered",
-                    },
-                    "4": {
-                        "LO_frequency": 6500000000.0,
-                        "gain": -10,
+                        "LO_frequency": 5700000000,
+                        "gain": 0,
                         "LO_source": "internal",
                         "output_mode": "triggered",
                     },
                 },
-                "connectivity": "con2",
+                "connectivity": "con8",
             },
         },
         "elements": {
-            "flux0": {
+            "fluxD1": {
                 "singleInput": {
-                    "port": ("con4", 1),
+                    "port": ("con9", 3),
                 },
                 "intermediate_frequency": 0,
                 "operations": {},
             },
-            "flux1": {
+            "fluxD2": {
                 "singleInput": {
-                    "port": ("con4", 2),
+                    "port": ("con9", 4),
                 },
                 "intermediate_frequency": 0,
                 "operations": {},
             },
-            "flux2": {
+            "fluxD3": {
                 "singleInput": {
-                    "port": ("con4", 3),
+                    "port": ("con9", 5),
                 },
                 "intermediate_frequency": 0,
                 "operations": {},
             },
-            "flux3": {
+            "fluxD4": {
                 "singleInput": {
-                    "port": ("con4", 4),
+                    "port": ("con9", 6),
                 },
                 "intermediate_frequency": 0,
                 "operations": {},
             },
-            "flux4": {
+            "fluxD5": {
                 "singleInput": {
-                    "port": ("con4", 5),
+                    "port": ("con9", 7),
                 },
                 "intermediate_frequency": 0,
                 "operations": {},
             },
-            "resonator0": {
+            "readoutD1": {
                 "RF_inputs": {
-                    "port": ("octave3", 1),
+                    "port": ("octave5", 1),
                 },
                 "RF_outputs": {
-                    "port": ("octave3", 1),
+                    "port": ("octave5", 1),
                 },
                 "digitalInputs": {
                     "output_switch": {
-                        "port": ("con3", 1),
+                        "port": ("con6", 1),
                         "delay": 57,
                         "buffer": 18,
                     },
                 },
-                "intermediate_frequency": -341526044.0,
-                "operations": {"measure": "mz_0"},
+                "intermediate_frequency": -312480000,
+                "operations": {"measure": "mz_D1"},
                 "time_of_flight": 224,
                 "smearing": 0,
             },
-            "resonator2": {
+            "readoutD2": {
                 "RF_inputs": {
-                    "port": ("octave3", 1),
+                    "port": ("octave5", 1),
                 },
                 "RF_outputs": {
-                    "port": ("octave3", 1),
+                    "port": ("octave5", 1),
                 },
                 "digitalInputs": {
                     "output_switch": {
-                        "port": ("con3", 1),
+                        "port": ("con6", 1),
                         "delay": 57,
                         "buffer": 18,
                     },
                 },
-                "intermediate_frequency": -54617042.0,
-                "operations": {"measure": "mz_2"},
+                "intermediate_frequency": -70432000,
+                "operations": {"measure": "mz_D2"},
                 "time_of_flight": 224,
                 "smearing": 0,
             },
-            "resonator3": {
+            "readoutD3": {
                 "RF_inputs": {
-                    "port": ("octave3", 1),
+                    "port": ("octave5", 1),
                 },
                 "RF_outputs": {
-                    "port": ("octave3", 1),
+                    "port": ("octave5", 1),
                 },
                 "digitalInputs": {
                     "output_switch": {
-                        "port": ("con3", 1),
+                        "port": ("con6", 1),
                         "delay": 57,
                         "buffer": 18,
                     },
                 },
-                "intermediate_frequency": 118471933.0,
-                "operations": {"measure": "mz_3"},
+                "intermediate_frequency": 40960000,
+                "operations": {"measure": "mz_D3"},
                 "time_of_flight": 224,
                 "smearing": 0,
             },
-            "qubit0": {
+            "readoutD4": {
                 "RF_inputs": {
-                    "port": ("octave2", 3),
+                    "port": ("octave5", 1),
+                },
+                "RF_outputs": {
+                    "port": ("octave5", 1),
                 },
                 "digitalInputs": {
                     "output_switch": {
-                        "port": ("con2", 5),
+                        "port": ("con6", 1),
                         "delay": 57,
                         "buffer": 18,
                     },
                 },
-                "intermediate_frequency": -331021444.0,
-                "operations": native_operations(0),
+                "intermediate_frequency": 256570000,
+                "operations": {"measure": "mz_D4"},
+                "time_of_flight": 224,
+                "smearing": 0,
             },
-            "qubit2": {
+            "readoutD5": {
                 "RF_inputs": {
-                    "port": ("octave2", 1),
+                    "port": ("octave5", 1),
+                },
+                "RF_outputs": {
+                    "port": ("octave5", 1),
                 },
                 "digitalInputs": {
                     "output_switch": {
-                        "port": ("con2", 1),
+                        "port": ("con6", 1),
                         "delay": 57,
                         "buffer": 18,
                     },
                 },
-                "intermediate_frequency": -283494000.0,
-                "operations": native_operations(2),
+                "intermediate_frequency": 186110000,
+                "operations": {"measure": "mz_D5"},
+                "time_of_flight": 224,
+                "smearing": 0,
             },
-            "qubit3": {
+            "driveD1": {
                 "RF_inputs": {
-                    "port": ("octave2", 4),
+                    "port": ("octave5", 2),
                 },
                 "digitalInputs": {
                     "output_switch": {
-                        "port": ("con2", 7),
+                        "port": ("con6", 3),
                         "delay": 57,
                         "buffer": 18,
                     },
                 },
-                "intermediate_frequency": -175418000.0,
-                "operations": native_operations(3),
+                "intermediate_frequency": -142488654,
+                "operations": native_operations("D1"),
+            },
+            "driveD2": {
+                "RF_inputs": {
+                    "port": ("octave5", 4),
+                },
+                "digitalInputs": {
+                    "output_switch": {
+                        "port": ("con6", 7),
+                        "delay": 57,
+                        "buffer": 18,
+                    },
+                },
+                "intermediate_frequency": -136254288,
+                "operations": native_operations("D2"),
+            },
+            "driveD3": {
+                "RF_inputs": {
+                    "port": ("octave5", 5),
+                },
+                "digitalInputs": {
+                    "output_switch": {
+                        "port": ("con6", 9),
+                        "delay": 57,
+                        "buffer": 18,
+                    },
+                },
+                "intermediate_frequency": -47692427,
+                "operations": native_operations("D3"),
+            },
+            "driveD4": {
+                "RF_inputs": {
+                    "port": ("octave6", 5),
+                },
+                "digitalInputs": {
+                    "output_switch": {
+                        "port": ("con8", 9),
+                        "delay": 57,
+                        "buffer": 18,
+                    },
+                },
+                "intermediate_frequency": -150769917,
+                "operations": native_operations("D4"),
+            },
+            "driveD5": {
+                "RF_inputs": {
+                    "port": ("octave6", 3),
+                },
+                "digitalInputs": {
+                    "output_switch": {
+                        "port": ("con8", 5),
+                        "delay": 57,
+                        "buffer": 18,
+                    },
+                },
+                "intermediate_frequency": -173219116,
+                "operations": native_operations("D5"),
             },
         },
         "pulses": pulses(platform, qubits),
