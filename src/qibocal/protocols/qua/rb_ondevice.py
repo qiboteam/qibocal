@@ -1,3 +1,4 @@
+import json
 import time
 from dataclasses import dataclass, field
 from typing import Optional
@@ -47,6 +48,10 @@ class RbOnDeviceParameters(Parameters):
     "Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)"
     script_file: Optional[str] = None
     "Dump QUA program and config to file for debugging."
+
+    def __post_init__(self):
+        if self.seed is None:
+            self.seed = np.random.randint(0, int(1e6))
 
     def __post_init__(self):
         if self.seed is None:
@@ -427,6 +432,9 @@ def _acquisition(
     job = qm.execute(
         rb, compiler_options=CompilerOptionArguments(flags=["not-strict-timing"])
     )
+
+    with open("qua_script.py", "w") as file:
+        file.write(generate_qua_script(rb, config))
 
     # Get results from QUA program
     if state_discrimination:
