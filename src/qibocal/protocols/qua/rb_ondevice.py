@@ -2,6 +2,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Optional
 
+import matplotlib.pyplot as plt
 import mpld3
 import numpy as np
 import numpy.typing as npt
@@ -165,6 +166,22 @@ class RbOnDeviceData(Data):
     relaxation_time: int
     depths: list[int]
     data: dict[QubitId, dict[str, npt.NDArray[np.int32]]]
+
+    def _get_data(self, key: str):
+        qubit = self.qubits[0]
+        try:
+            arrays = self.data[qubit].item(0)
+            return arrays[key]
+        except AttributeError:
+            return self.data[qubit][key]
+
+    @property
+    def state(self):
+        return self._get_data("state")
+
+    @property
+    def sequences(self):
+        return self._get_data("sequences")
 
 
 def _acquisition(
@@ -419,9 +436,8 @@ def _fit(data: RbOnDeviceData) -> RbOnDeviceResults:
     qubit = data.qubits[0]
     rb_type = RBType(data.rb_type)
     depths = data.depths
-    arrays = data.data[qubit].item(0)
-    state = arrays["state"]
-    sequences = arrays["sequences"]
+    state = data.state
+    sequences = data.sequences
 
     value_avg = np.mean(state, axis=0)
     error_avg = np.std(state, axis=0)
@@ -449,9 +465,8 @@ def _plot(data: RbOnDeviceData, target: QubitId, fit: RbOnDeviceResults):
     rb_type = RBType(data.rb_type)
     relaxation_time = data.relaxation_time
     depths = data.depths
-    arrays = data.data[target].item(0)
-    state = arrays["state"]
-    sequences = arrays["sequences"]
+    state = data.state
+    sequences = data.sequences
 
     fitting_report = table_html(
         table_dict(
@@ -459,7 +474,7 @@ def _plot(data: RbOnDeviceData, target: QubitId, fit: RbOnDeviceResults):
             [
                 "RB type",
                 "Number of sequences",
-                "Relaxation time",
+                "Relaxation time (us)",
             ],
             [
                 (rb_type.value.capitalize(),),
@@ -490,21 +505,12 @@ def _plot(data: RbOnDeviceData, target: QubitId, fit: RbOnDeviceResults):
                             "Gate infidelity",
                         ],
                         [
-                            (np.round(pars[0], 3), np.round(stdevs[0], 1)),
-                            (np.round(pars[1], 3), np.round(stdevs[1], 1)),
-                            (np.round(pars[2], 3), np.round(stdevs[2], 1)),
-                            (
-                                np.format_float_scientific(one_minus_p, precision=2),
-                                np.round(stdevs[2], 1),
-                            ),
-                            (
-                                np.format_float_scientific(r_c, precision=2),
-                                np.round(r_c_std, 1),
-                            ),
-                            (
-                                np.format_float_scientific(r_g, precision=2),
-                                np.round(r_g_std, 1),
-                            ),
+                            (np.round(pars[0], 3), np.round(stdevs[0], 3)),
+                            (np.round(pars[1], 3), np.round(stdevs[1], 3)),
+                            (np.round(pars[2], 3), np.round(stdevs[2], 3)),
+                            (one_minus_p, stdevs[2]),
+                            (r_c, r_c_std),
+                            (r_g, r_g_std),
                         ],
                         display_error=True,
                     )
@@ -514,7 +520,7 @@ def _plot(data: RbOnDeviceData, target: QubitId, fit: RbOnDeviceResults):
 
     ydata, ysigma = process_data(rb_type, state, depths, sequences)
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(16, 6))
     title = f"{rb_type.value.capitalize()} RB"
     plt.errorbar(
         depths, ydata, ysigma, marker="o", linestyle="-", markersize=4, label="data"
