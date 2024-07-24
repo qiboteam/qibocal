@@ -1,4 +1,3 @@
-import json
 import time
 from dataclasses import dataclass, field
 from typing import Optional
@@ -14,7 +13,7 @@ from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualang_tools.results import fetching_tool
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import DATAFILE, Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.protocols.utils import table_dict, table_html
 
 from .configuration import generate_config
@@ -166,25 +165,8 @@ RbOnDeviceType = np.dtype(
 class RbOnDeviceData(Data):
     rb_type: str
     relaxation_time: int
-    depths: npt.NDArray[np.int32]
-    state: npt.NDArray[np.int32]
-    sequences: Optional[npt.NDArray[np.int32]] = None
-
-    def save(self, path):
-        params = {"rb_type": self.rb_type, "relaxation_time": int(self.relaxation_time)}
-        (path / f"{DATAFILE}.json").write_text(json.dumps(params, indent=4))
-        np.savez(
-            path / f"{DATAFILE}.npz",
-            depths=self.depths,
-            state=self.state,
-            sequences=self.sequences,
-        )
-
-    @classmethod
-    def load(cls, path):
-        params = json.loads((path / f"{DATAFILE}.json").read_text())
-        data = np.load(path / (path / f"{DATAFILE}.npz"))
-        return cls(**params, **data)
+    depths: list[int]
+    data: dict[str, npt.NDArray[np.int32]]
 
 
 def _acquisition(
@@ -403,10 +385,11 @@ def _acquisition(
         if save_sequences:
             results = fetching_tool(job, data_list=["state", "sequences"])
             state, sequences = results.fetch_all()
+            data = {"state": state, "sequences": sequences}
         else:
             results = fetching_tool(job, data_list=["state"])
             state = results.fetch_all()[0]
-            sequences = None
+            data = {"state": state}
     else:
         raise NotImplementedError
         # if save_sequences:
@@ -423,9 +406,8 @@ def _acquisition(
     return RbOnDeviceData(
         rb_type=rb_type,
         relaxation_time=relaxation_time,
-        depths=generate_depths(max_circuit_depth, delta_clifford),
-        state=state,
-        sequences=sequences,
+        depths=[int(x) for x in generate_depths(max_circuit_depth, delta_clifford)],
+        data=data,
     )
 
 
@@ -438,8 +420,9 @@ class RbOnDeviceResults(Results):
 def _fit(data: RbOnDeviceData) -> RbOnDeviceResults:
     rb_type = RBType(data.rb_type)
     depths = data.depths
-    state = data.state
-    sequences = data.sequences
+    print(data.data.keys())
+    state = data.data["state"]
+    sequences = data.data["sequences"]
 
     value_avg = np.mean(state, axis=0)
     error_avg = np.std(state, axis=0)
@@ -465,6 +448,11 @@ def _fit(data: RbOnDeviceData) -> RbOnDeviceResults:
 
 def _plot(data: RbOnDeviceData, target: QubitId, fit: RbOnDeviceResults):
     pars = fit.pars.get(target)
+    rb_type = RBType(data.rb_type)
+    relaxation_time = data.relaxation_time
+    depths = data.depths
+    state = data.data["state"]
+    sequences = data.data["sequences"]
 
     if pars is not None:
         stdevs = np.sqrt(np.diag(np.reshape(fit.cov[target], (3, 3))))
@@ -487,9 +475,9 @@ def _plot(data: RbOnDeviceData, target: QubitId, fit: RbOnDeviceResults):
                     "Gate infidelity",
                 ],
                 [
-                    (data.rb_type.capitalize(),),
-                    (len(data.state),),
-                    (data.relaxation_time // 1000,),
+                    (rb_type.value.capitalize(),),
+                    (len(state),),
+                    (relaxation_time // 1000,),
                     (np.round(pars[0], 3), np.round(stdevs[0], 1)),
                     (np.round(pars[1], 3), np.round(stdevs[1], 1)),
                     (np.round(pars[2], 3), np.round(stdevs[2], 1)),
@@ -518,17 +506,13 @@ def _plot(data: RbOnDeviceData, target: QubitId, fit: RbOnDeviceResults):
                     "Relaxation time",
                 ],
                 [
-                    (data.rb_type.capitalize(),),
-                    (len(data.state),),
+                    (rb_type.value.capitalize(),),
+                    (len(state),),
                     (data.relaxation_time // 1000,),
                 ],
             )
         )
 
-    rb_type = RBType(data.rb_type)
-    depths = data.depths
-    state = data.state
-    sequences = data.sequences
     ydata, ysigma = process_data(rb_type, state, depths, sequences)
 
     fig = plt.figure()
