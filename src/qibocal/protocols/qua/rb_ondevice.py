@@ -155,8 +155,6 @@ RbOnDeviceType = np.dtype(
     [
         ("state", np.int32),
         ("sequences", np.int32),
-        ("voltage_i", np.float64),
-        ("voltage_q", np.float64),
     ]
 )
 
@@ -166,12 +164,12 @@ class RbOnDeviceData(Data):
     rb_type: str
     relaxation_time: int
     depths: list[int]
-    data: dict[str, npt.NDArray[np.int32]]
+    data: dict[QubitId, dict[str, npt.NDArray[np.int32]]]
 
 
 def _acquisition(
     params: RbOnDeviceParameters, platform: Platform, targets: list[QubitId]
-):
+) -> RbOnDeviceData:
     assert len(targets) == 1
     target = targets[0]
     qubit = f"drive{target}"
@@ -385,11 +383,11 @@ def _acquisition(
         if save_sequences:
             results = fetching_tool(job, data_list=["state", "sequences"])
             state, sequences = results.fetch_all()
-            data = {"state": state, "sequences": sequences}
+            data = {target: {"state": state, "sequences": sequences}}
         else:
             results = fetching_tool(job, data_list=["state"])
             state = results.fetch_all()[0]
-            data = {"state": state}
+            data = {target: {"state": state}}
     else:
         raise NotImplementedError
         # if save_sequences:
@@ -418,11 +416,12 @@ class RbOnDeviceResults(Results):
 
 
 def _fit(data: RbOnDeviceData) -> RbOnDeviceResults:
+    qubit = data.qubits[0]
     rb_type = RBType(data.rb_type)
     depths = data.depths
-    print(data.data.keys())
-    state = data.data["state"]
-    sequences = data.data["sequences"]
+    arrays = data.data[qubit].item(0)
+    state = arrays["state"]
+    sequences = arrays["sequences"]
 
     value_avg = np.mean(state, axis=0)
     error_avg = np.std(state, axis=0)
@@ -439,9 +438,8 @@ def _fit(data: RbOnDeviceData) -> RbOnDeviceResults:
         bounds=(-np.inf, np.inf),
         maxfev=2000,
     )
-    for qubit in data.qubits:
-        results.pars[qubit] = list(pars)
-        results.cov[qubit] = list(cov.flatten())
+    results.pars[qubit] = list(pars)
+    results.cov[qubit] = list(cov.flatten())
 
     return results
 
@@ -451,9 +449,25 @@ def _plot(data: RbOnDeviceData, target: QubitId, fit: RbOnDeviceResults):
     rb_type = RBType(data.rb_type)
     relaxation_time = data.relaxation_time
     depths = data.depths
-    state = data.data["state"]
-    sequences = data.data["sequences"]
+    arrays = data.data[target].item(0)
+    state = arrays["state"]
+    sequences = arrays["sequences"]
 
+    fitting_report = table_html(
+        table_dict(
+            target,
+            [
+                "RB type",
+                "Number of sequences",
+                "Relaxation time",
+            ],
+            [
+                (rb_type.value.capitalize(),),
+                (len(state),),
+                (data.relaxation_time // 1000,),
+            ],
+        )
+    )
     if pars is not None:
         stdevs = np.sqrt(np.diag(np.reshape(fit.cov[target], (3, 3))))
         one_minus_p = 1 - pars[2]
@@ -461,56 +475,41 @@ def _plot(data: RbOnDeviceData, target: QubitId, fit: RbOnDeviceResults):
         r_g = r_c / 1.875  # 1.875 is the average number of gates in clifford operation
         r_c_std = stdevs[2] * (1 - 1 / 2**1)
         r_g_std = r_c_std / 1.875
-        fitting_report = table_html(
-            table_dict(
-                target,
-                [
-                    "RB type" "Number of sequences",
-                    "Relaxation time",
-                    "A",
-                    "B",
-                    "p",
-                    "Error rate (1-p)",
-                    "Clifford set infidelity",
-                    "Gate infidelity",
-                ],
-                [
-                    (rb_type.value.capitalize(),),
-                    (len(state),),
-                    (relaxation_time // 1000,),
-                    (np.round(pars[0], 3), np.round(stdevs[0], 1)),
-                    (np.round(pars[1], 3), np.round(stdevs[1], 1)),
-                    (np.round(pars[2], 3), np.round(stdevs[2], 1)),
-                    (
-                        np.format_float_scientific(one_minus_p, precision=2),
-                        np.round(stdevs[2], 1),
-                    ),
-                    (
-                        np.format_float_scientific(r_c, precision=2),
-                        np.round(r_c_std, 1),
-                    ),
-                    (
-                        np.format_float_scientific(r_g, precision=2),
-                        np.round(r_g_std, 1),
-                    ),
-                ],
-                display_error=True,
-            )
-        )
-    else:
-        fitting_report = table_html(
-            table_dict(
-                target,
-                [
-                    "RB type" "Number of sequences",
-                    "Relaxation time",
-                ],
-                [
-                    (rb_type.value.capitalize(),),
-                    (len(state),),
-                    (data.relaxation_time // 1000,),
-                ],
-            )
+        fitting_report = "\n".join(
+            [
+                fitting_report,
+                table_html(
+                    table_dict(
+                        target,
+                        [
+                            "A",
+                            "B",
+                            "p",
+                            "Error rate (1-p)",
+                            "Clifford set infidelity",
+                            "Gate infidelity",
+                        ],
+                        [
+                            (np.round(pars[0], 3), np.round(stdevs[0], 1)),
+                            (np.round(pars[1], 3), np.round(stdevs[1], 1)),
+                            (np.round(pars[2], 3), np.round(stdevs[2], 1)),
+                            (
+                                np.format_float_scientific(one_minus_p, precision=2),
+                                np.round(stdevs[2], 1),
+                            ),
+                            (
+                                np.format_float_scientific(r_c, precision=2),
+                                np.round(r_c_std, 1),
+                            ),
+                            (
+                                np.format_float_scientific(r_g, precision=2),
+                                np.round(r_g_std, 1),
+                            ),
+                        ],
+                        display_error=True,
+                    )
+                ),
+            ]
         )
 
     ydata, ysigma = process_data(rb_type, state, depths, sequences)
