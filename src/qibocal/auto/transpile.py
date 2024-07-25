@@ -1,4 +1,3 @@
-from copy import deepcopy
 from typing import Optional
 
 from qibo import Circuit
@@ -8,13 +7,50 @@ from qibo.transpiler.unroller import NativeGates, Unroller
 from qibolab.qubits import QubitId
 
 
+def transpile_circuits(
+    circuits: list[Circuit],
+    qubit_maps: list[list[QubitId]],
+    backend: Backend,
+    transpiler: Optional[Passes],
+):
+    """
+    Apply the `transpiler` to the `circuits` list and pad them in
+    circuits with the same number of qubits in the platform.
+    Before manipulating the circuits, this function check that the
+    `qubits_maps` contain string ids and in the positive case it
+    remap them in integers, following the ids order provided by the
+    platform.
+
+    .. note::
+
+        In this function we are implicitly assume that the qubit ids
+        are all string or all integers.
+    """
+    transpiled_circuits = []
+
+    qubits = list(backend.platform.qubits)
+    if isinstance(qubit_maps[0][0], str):
+        for i, qubit_map in enumerate(qubit_maps):
+            qubit_map = map(lambda x: qubits.index(x), qubit_map)
+            qubit_maps[i] = list(qubit_map)
+    if backend.name == "qibolab":
+        platform_nqubits = backend.platform.nqubits
+        for circuit, qubit_map in zip(circuits, qubit_maps):
+            new_circuit = pad_circuit(platform_nqubits, circuit, qubit_map)
+            transpiled_circ, _ = transpiler(new_circuit)
+            transpiled_circuits.append(transpiled_circ)
+    else:
+        transpiled_circuits = circuits
+    return transpiled_circuits
+
+
 def execute_transpiled_circuits(
     circuits: list[Circuit],
-    qubit_maps: list[list[int]],
+    qubit_maps: list[list[QubitId]],
     backend: Backend,
+    transpiler: Optional[Passes],
     initial_states=None,
     nshots=1000,
-    transpiler: Optional[Passes] = None,
 ):
     """
     If the `qibolab` backend is used, this function pads the `circuits` in new
@@ -25,17 +61,14 @@ def execute_transpiled_circuits(
     For the qubit map look :func:`dummy_transpiler`.
     This function returns the list of transpiled circuits and the execution results.
     """
-    new_circuits = []
-    if backend.name == "qibolab":
-        platform_nqubits = backend.platform.nqubits
-        for circuit, qubit_map in zip(circuits, qubit_maps):
-            new_circuit = pad_circuit(platform_nqubits, circuit, qubit_map)
-            transpiled_circ, _ = transpiler(new_circuit)
-            new_circuits.append(transpiled_circ)
-    else:
-        new_circuits = circuits
-    return new_circuits, backend.execute_circuits(
-        new_circuits, initial_states=initial_states, nshots=nshots
+    transpiled_circuits = transpile_circuits(
+        circuits,
+        qubit_maps,
+        backend,
+        transpiler,
+    )
+    return transpiled_circuits, backend.execute_circuits(
+        transpiled_circuits, initial_states=initial_states, nshots=nshots
     )
 
 
@@ -43,9 +76,9 @@ def execute_transpiled_circuit(
     circuit: Circuit,
     qubit_map: list[QubitId],
     backend: Backend,
+    transpiler: Optional[Passes],
     initial_state=None,
     nshots=1000,
-    transpiler: Optional[Passes] = None,
 ):
     """
     If the `qibolab` backend is used, this function pads the `circuit` in new a
@@ -56,17 +89,13 @@ def execute_transpiled_circuit(
     For the qubit map look :func:`dummy_transpiler`.
     This function returns the transpiled circuit and the execution results.
     """
-    # TODO: propagate the following lines in execute_transpiled_circuits
-    qubits = list(backend.platform.qubits)
-    if isinstance(qubit_map[0], str):
-        qubit_map_copy = deepcopy(qubit_map)
-        qubit_map = [qubits.index(i) for i in qubit_map_copy]
-    if backend.name == "qibolab":
-        platform_nqubits = backend.platform.nqubits
-        new_circuit = pad_circuit(platform_nqubits, circuit, qubit_map)
-        transpiled_circ, _ = transpiler(new_circuit)
-    else:
-        transpiled_circ = circuit
+
+    transpiled_circ = transpile_circuits(
+        [circuit],
+        [qubit_map],
+        backend,
+        transpiler,
+    )[0]
     return transpiled_circ, backend.execute_circuit(
         transpiled_circ, initial_state=initial_state, nshots=nshots
     )
