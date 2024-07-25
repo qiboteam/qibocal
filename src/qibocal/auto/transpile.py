@@ -53,7 +53,8 @@ def execute_transpiled_circuits(
     initial_states=None,
     nshots=1000,
 ):
-    """
+    """Transpile `circuits`.
+
     If the `qibolab` backend is used, this function pads the `circuits` in new
     ones with a number of qubits equal to the one provided by the platform.
     At the end, the circuits are transpiled, executed and the results returned.
@@ -81,7 +82,8 @@ def execute_transpiled_circuit(
     initial_state=None,
     nshots=1000,
 ):
-    """
+    """Transpile `circuit`.
+
     If the `qibolab` backend is used, this function pads the `circuit` in new a
     one with a number of qubits equal to the one provided by the platform.
     At the end, the circuit is transpiled, executed and the results returned.
