@@ -13,11 +13,12 @@ def transpile_circuits(
     backend: Backend,
     transpiler: Optional[Passes],
 ):
-    """
-    Apply the `transpiler` to the `circuits` list and pad them in
+    """Transpile and pad `circuits` according to the platform.
+
+    Apply the `transpiler` to `circuits` and pad them in
     circuits with the same number of qubits in the platform.
     Before manipulating the circuits, this function check that the
-    `qubits_maps` contain string ids and in the positive case it
+    `qubit_maps` contain string ids and in the positive case it
     remap them in integers, following the ids order provided by the
     platform.
 
