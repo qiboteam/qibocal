@@ -118,9 +118,8 @@ class ComparedReport:
         Scatter plots are plotted in the same figure.
         Heatmaps are vertically stacked.
         """
-        for i in range(len(plots[0])):
-            fig0 = plots[0][i]
-            fig1 = plots[1][i]
+        merged_figures = []
+        for fig0, fig1 in zip(plots[0], plots[1]):
             for trace_0, trace_1 in zip(fig0.data, fig1.data):
                 trace_0.legendgroup = None
                 trace_1.legendgroup = None
@@ -138,11 +137,12 @@ class ComparedReport:
                     if isinstance(trace, go.Heatmap):
                         trace.zmin = min(min(trace.z), min(fig1.data[j].z))
                         trace.zmax = max(max(trace.z), max(fig1.data[j].z))
-                    fig.append_trace(
+                    fig.add_trace(
                         trace,
                         row=1,
                         col=1 if j % 2 == 0 else 2,
                     )
+
                 for j, trace in enumerate(fig1.data):
                     # same as before but for second report everything goes
                     # on second row
@@ -150,7 +150,7 @@ class ComparedReport:
                         trace.showscale = False
                         trace.zmin = min(min(trace.z), min(fig1.data[j].z))
                         trace.zmax = max(max(trace.z), max(fig1.data[j].z))
-                    fig.append_trace(
+                    fig.add_trace(
                         trace,
                         row=2,
                         col=1 if j % 2 == 0 else 2,
@@ -172,10 +172,9 @@ class ComparedReport:
                         showlegend=None,
                     )
                 )
-                plots[0][i] = fig
+                merged_figures.append(fig)
 
             else:
-
                 for trace in fig1.data:
                     fig0.add_trace(trace)
 
@@ -222,10 +221,11 @@ class ComparedReport:
                                     trace.legendgroup = "legend1_q0"
                                 else:
                                     trace.legendgroup = "legend1_q1"
+                merged_figures.append(fig0)
 
         buffer = io.StringIO()
         html_list = []
-        for figure in plots[0]:
+        for figure in merged_figures:
             figure.write_html(buffer, include_plotlyjs=True, full_html=False)
             buffer.seek(0)
             html_list.append(buffer.read())
