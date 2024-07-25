@@ -118,34 +118,119 @@ class ComparedReport:
         Scatter plots are plotted in the same figure.
         Heatmaps are vertically stacked.
         """
-        if plots[0][0].data[0].type == "scatter":
-            merged_plot_data = plots[0][0].data
-            for plot in plots[1:]:
-                merged_plot_data = merged_plot_data + plot[0].data
-            fig = [go.Figure(data=merged_plot_data, layout=plots[0][0].layout)]
-        elif plots[0][0].data[0].type == "heatmap":
-            fig = make_subplots(rows=2, cols=2)
-            for i, plot in enumerate(plots):
-                fig.append_trace(
-                    plot[0].data[0],
-                    row=i + 1,
-                    col=1,
-                )
-                fig.append_trace(
-                    plot[0].data[1],
-                    row=i + 1,
-                    col=2,
-                )
-                # heatmap fit
-                fig.append_trace(
-                    plot[0].data[2],
-                    row=i + 1,
-                    col=1,
-                )
-            fig.update_layout(legend=plots[0][0].layout.legend)
-            fig = [fig]
+        merged_figures = []
+        for fig0, fig1 in zip(plots[0], plots[1]):
+            for trace_0, trace_1 in zip(fig0.data, fig1.data):
+                trace_0.legendgroup = None
+                trace_1.legendgroup = None
+                trace_0.legend = "legend"
+                trace_1.legend = "legend2"
 
-        return fig
+            if any(isinstance(trace, go.Heatmap) for trace in fig0.data):
+                # TODO: check if this is valid for all protocols
+                fig = make_subplots(rows=2, cols=2)
+                for j, trace in enumerate(fig0.data):
+                    # TODO: remove harcoded
+                    # usually with heatmap first should be signal col = 1
+                    # then phase (col = 2)
+                    # if there is another element it should be a fit done on the first column
+                    if isinstance(trace, go.Heatmap):
+                        trace.zmin = min(min(trace.z), min(fig1.data[j].z))
+                        trace.zmax = max(max(trace.z), max(fig1.data[j].z))
+                    fig.add_trace(
+                        trace,
+                        row=1,
+                        col=1 if j % 2 == 0 else 2,
+                    )
+
+                for j, trace in enumerate(fig1.data):
+                    # same as before but for second report everything goes
+                    # on second row
+                    if isinstance(trace, go.Heatmap):
+                        trace.showscale = False
+                        trace.zmin = min(min(trace.z), min(fig1.data[j].z))
+                        trace.zmax = max(max(trace.z), max(fig1.data[j].z))
+                    fig.add_trace(
+                        trace,
+                        row=2,
+                        col=1 if j % 2 == 0 else 2,
+                    )
+                fig.update_layout(
+                    dict(
+                        legend={
+                            "title": f"{self.report_paths[0].name}",
+                            "xref": "container",
+                            "yref": "container",
+                            "y": 0.8,
+                        },
+                        legend2={
+                            "title": f"{self.report_paths[1].name}",
+                            "xref": "container",
+                            "yref": "container",
+                            "y": 0.2,
+                        },
+                        showlegend=None,
+                    )
+                )
+                merged_figures.append(fig)
+
+            else:
+                for trace in fig1.data:
+                    fig0.add_trace(trace)
+
+                fig0.update_layout(
+                    dict(
+                        legend={
+                            "title": f"{self.report_paths[0].name}",
+                            "xref": "container",
+                            "yref": "container",
+                            "y": 0.8,
+                        },
+                        legend2={
+                            "title": f"{self.report_paths[1].name}",
+                            "xref": "container",
+                            "yref": "container",
+                            "y": 0.2,
+                        },
+                        showlegend=None,
+                    )
+                )
+
+                # this fixes weird behavior for comparing classification protocols
+                if any(isinstance(trace, go.Contour) for trace in fig0.data):
+                    fig0.update_layout(
+                        dict(
+                            legend={
+                                "font": {"size": None},
+                                "x": None,
+                                "xanchor": None,
+                                "yanchor": None,
+                                "orientation": None,
+                            },
+                        )
+                    )
+                    for trace in fig0.data:
+                        if isinstance(trace, go.Scatter):
+                            if trace.legend == "legend":
+                                if trace.name == "Qubit Fit: state 0":
+                                    trace.legendgroup = "legend0_q0"
+                                else:
+                                    trace.legendgroup = "legend0_q1"
+                            else:
+                                if trace.name == "Qubit Fit: state 0":
+                                    trace.legendgroup = "legend1_q0"
+                                else:
+                                    trace.legendgroup = "legend1_q1"
+                merged_figures.append(fig0)
+
+        buffer = io.StringIO()
+        html_list = []
+        for figure in merged_figures:
+            figure.write_html(buffer, include_plotlyjs=True, full_html=False)
+            buffer.seek(0)
+            html_list.append(buffer.read())
+        buffer.close()
+        return "".join(html_list)
 
     def plotter(
         self, nodes: list[Completed], target: Union[QubitId, QubitPairId, list[QubitId]]
@@ -157,24 +242,17 @@ class ComparedReport:
             tables.append(fitting_report)
             plots.append(report_figures)
 
-        figures = self.merge_plots(plots)
-        buffer = io.StringIO()
-        html_list = []
-        for figure in figures:
-            figure.write_html(buffer, include_plotlyjs=False, full_html=False)
-            buffer.seek(0)
-            html_list.append(buffer.read())
-        buffer.close()
-        all_html = "".join(html_list)
+        figures_html = self.merge_plots(plots)
 
         try:
             merged_table = None
             merge_columns = {"Qubit", "Parameters"}
             for i, table in enumerate(tables):
-                a = pd.read_html(table)[0]
+                a = pd.read_html(io.StringIO(table))[0]
                 a = a.rename(
                     columns={
-                        col: f"{col}_{i}" for col in set(a.columns) - merge_columns
+                        col: f"{col}\n{self.report_paths[i].name}"
+                        for col in set(a.columns) - merge_columns
                     }
                 )
                 if merged_table is None:
@@ -188,4 +266,4 @@ class ComparedReport:
         fitting_report = merged_table.to_html(
             classes="fitting-table", index=False, border=0, escape=False
         )
-        return all_html, fitting_report
+        return figures_html, fitting_report
