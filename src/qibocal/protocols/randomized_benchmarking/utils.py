@@ -313,7 +313,7 @@ class RB2QInterData(RB2QData):
     """The output of the acquisition function."""
 
     fidelity: dict[QubitPairId, list] = None
-    """Number of pulses for an average clifford."""
+    """The interleaved fidelity of this qubit."""
 
 
 @dataclass
