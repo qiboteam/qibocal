@@ -34,7 +34,7 @@ def _acquisition(
     platform: Platform,
     targets: list[QubitPairId],
 ) -> RB2QInterData:
-    """Data acquisition for two qubit Standard Randomized Benchmarking."""
+    """Data acquisition for two qubit Interleaved Randomized Benchmarking."""
 
     data = twoq_rb_acquisition(params, platform, targets, interleave=params.interleave)
 
