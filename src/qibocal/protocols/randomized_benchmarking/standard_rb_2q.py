@@ -32,7 +32,7 @@ def _acquisition(
 ) -> RB2QData:
     """Data acquisition for two qubit Standard Randomized Benchmarking."""
 
-    return twoq_rb_acquisition(params, targets)
+    return twoq_rb_acquisition(params, targets, platform)
 
 
 def _fit(data: RB2QData) -> StandardRBResult:

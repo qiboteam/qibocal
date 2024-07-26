@@ -221,6 +221,7 @@ def _acquisition_circuits(
         thetas=thetas.tolist(),
     )
     backend = GlobalBackend()
+    backend.platform = platform
     transpiler = dummy_transpiler(backend)
     qubit_map = [i for i in range(platform.nqubits)]
     if params.apply_error_mitigation:
