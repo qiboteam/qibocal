@@ -7,6 +7,7 @@ from .coherence.spin_echo_signal import spin_echo_signal
 from .coherence.t1 import t1
 from .coherence.t1_sequences import t1_sequences
 from .coherence.t1_signal import t1_signal
+from .coherence.flux_t1_signal import t1flux_signal
 from .coherence.t2 import t2
 from .coherence.t2_sequences import t2_sequences
 from .coherence.t2_signal import t2_signal
@@ -144,4 +145,5 @@ __all__ = [
     "rabi_length_frequency",
     "rabi_length_frequency_signal",
     "standard_rb_2q",
+    "t1flux_signal"
 ]
