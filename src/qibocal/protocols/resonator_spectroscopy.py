@@ -3,6 +3,7 @@ from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
+from _collections_abc import Callable
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
@@ -33,6 +34,36 @@ ResSpecType = np.dtype(
     ]
 )
 """Custom dtype for resonator spectroscopy."""
+
+
+@dataclass
+class SpectroscopyFit:
+    function: Callable
+    fit: Callable
+    chi2: Callable
+    values: Callable
+    errors: Callable
+    plot: Callable
+
+
+FITS = {
+    "lorentzian": SpectroscopyFit(
+        lorentzian,
+        lorentzian_fit,
+        chi2_reduced,
+        lambda z: z.signal,
+        lambda z: z.error_signal,
+        spectroscopy_plot,
+    ),
+    "s21": SpectroscopyFit(
+        s21,
+        s21_fit,
+        chi2_reduced_complex,
+        lambda z: (z.signal, z.phase),
+        lambda z: (z.error_signal, z.error_phase),
+        s21_spectroscopy_plot,
+    ),
+}
 
 
 @dataclass
@@ -106,7 +137,7 @@ class ResonatorSpectroscopyData(Data):
     """Resonator type."""
     amplitudes: dict[QubitId, float]
     """Amplitudes provided by the user."""
-    fit_function: Optional[str] = "lorentzian"
+    fit_function: str = "lorentzian"
     """Fit function (optional) used for the resonance."""
     data: dict[QubitId, npt.NDArray[ResSpecType]] = field(default_factory=dict)
     """Raw data acquired."""
@@ -211,10 +242,10 @@ def _fit(
     chi2 = {}
     amplitudes = {}
 
-    fit = s21_fit if data.fit_function == "s21" else lorentzian_fit
+    fit = FITS[data.fit_function]
 
     for qubit in qubits:
-        fit_result = fit(
+        fit_result = fit.fit(
             data[qubit], resonator_type=data.resonator_type, fit="resonator"
         )
         if fit_result is not None:
@@ -229,27 +260,15 @@ def _fit(
             if data.power_level is PowerLevel.high:
                 bare_frequency[qubit] = frequency[qubit]
 
-            if data.fit_function == "s21":
-                chi2[qubit] = (
-                    chi2_reduced_complex(
-                        (data[qubit].signal, data[qubit].phase),
-                        s21(data[qubit].freq, *fitted_parameters[qubit]),
-                        (data[qubit].error_signal, data[qubit].error_phase),
-                        dof,
-                    ),
-                    np.sqrt(2 / dof),
-                )
-            else:
-                chi2[qubit] = (
-                    chi2_reduced(
-                        data[qubit].signal,
-                        lorentzian(data[qubit].freq, *fitted_parameters[qubit]),
-                        data[qubit].error_signal,
-                        dof,
-                    ),
-                    np.sqrt(2 / dof),
-                )
-
+            chi2[qubit] = (
+                fit.chi2(
+                    fit.values(data[qubit]),
+                    fit.function(data[qubit].freq, *fitted_parameters[qubit]),
+                    fit.errors(data[qubit]),
+                    dof,
+                ),
+                np.sqrt(2 / dof),
+            )
             amplitudes[qubit] = fitted_parameters[qubit][0]
 
     if data.power_level is PowerLevel.high:
@@ -276,8 +295,7 @@ def _plot(
     data: ResonatorSpectroscopyData, target: QubitId, fit: ResonatorSpectroscopyResults
 ):
     """Plotting function for ResonatorSpectroscopy."""
-    plot = s21_spectroscopy_plot if data.fit_function == "s21" else spectroscopy_plot
-    return plot(data, target, fit)
+    return FITS[data.fit_function].plot(data, target, fit)
 
 
 def _update(results: ResonatorSpectroscopyResults, platform: Platform, target: QubitId):
