@@ -1,29 +1,21 @@
 from pathlib import Path
-import numpy as np
 
+import numpy as np
 from qibo.backends import construct_backend
 
 from qibocal.auto.execute import Executor
 from qibocal.auto.history import History
 from qibocal.auto.output import Metadata, Output
 from qibocal.cli.report import report
-
-from qibocal.protocols.flux_dependence.utils import transmon_frequency, transmon_readout_frequency
-from qibolab.qubits import QubitId, QubitPairId
-
 from qibocal.protocols.flux_dependence.qubit_flux_dependence import QubitFluxResults
+from qibocal.protocols.flux_dependence.utils import (
+    transmon_frequency,
+)
 
-import plotly.graph_objects as go
-from pathlib import Path
-
-
-from qibocal.auto.history import History
-from qibocal.auto.output import Output
-
-#NOTE: Run in Dummy
+# NOTE: Run in Dummy
 target = 0
 backend = construct_backend(backend="qibolab", platform="dummy")
-#NOTE: Run in QW11Q
+# NOTE: Run in QW11Q
 # target = "D4"
 # backend = construct_backend(backend="qibolab", platform="qw11q")
 
@@ -35,13 +27,13 @@ executor = Executor(
     name="myexec", history=History(), platform=platform, targets=[target]
 )
 
-from myexec import qubit_spectroscopy,  rabi_amplitude_signal, t1_signal
+from myexec import qubit_spectroscopy, rabi_amplitude_signal, t1_signal
 
 # connect and initialize platform
 platform.connect()
 
 
-#NOTE: No need resonator should be fixed at these flux scales
+# NOTE: No need resonator should be fixed at these flux scales
 # from myexec import resonator_flux
 # #Do a 2D resonator flux dependacy first
 # folder = Path(f"test_T1vsFlux/resonator_flux_dependancy")
@@ -78,7 +70,7 @@ platform.connect()
 
 # meta.end()
 
-#NOTE: Optional qubit flux dependancy map 
+# NOTE: Optional qubit flux dependancy map
 # from myexec import qubit_flux
 # #Do a 2D flux dependacy first
 # folder = Path(f"test_T1vsFlux/qubit_flux_dependancy")
@@ -127,14 +119,14 @@ platform.connect()
 
 # meta.end()
 
-#NOTE: Load qubit flux dependancy map
+# NOTE: Load qubit flux dependancy map
 folder_map = Path(f"test_T1vsFlux_map/qubit_flux_dependancy")
-path = folder_map / Path( "data/qubit_flux")
+path = folder_map / Path("data/qubit_flux")
 
 results = QubitFluxResults.load(path)
 fitted_parameters = results.fitted_parameters
 params_qubit = fitted_parameters[target]
-fit_function=transmon_frequency
+fit_function = transmon_frequency
 
 # biases = [0.1, 0.15]
 biases = list(np.arange(0, 0.15, 0.01))
@@ -145,17 +137,17 @@ for flux in biases:
 
     # check if this changes flux
     platform.qubits[target].flux.offset = flux
-    
-    #NOTE: No need resonator should be fixed at these flux scales
+
+    # NOTE: No need resonator should be fixed at these flux scales
     # resonator_frequency=fit_function(flux, **params_resonator)
     # platform.qubits[target].resonator.frequency = resonator_frequency
-    # print(resonator_frequency)  
+    # print(resonator_frequency)
 
-    qubit_frequency=fit_function(flux, **params_qubit)
+    qubit_frequency = fit_function(flux, **params_qubit)
     qubit_frequency *= 1e9
     platform.qubits[target].drive_frequency = qubit_frequency
     platform.qubits[target].native_gates.RX.frequency = qubit_frequency
-    
+
     folder = Path(f"test_T1vsFlux/flux{i}")
     path = Output.mkdir(folder, force=True)
 
@@ -167,22 +159,24 @@ for flux in biases:
     # run
     meta.start()
 
-    #NOTE: Look and correct from the 1st estimate qubit frequency
+    # NOTE: Look and correct from the 1st estimate qubit frequency
     qubit_spectroscopy_output = qubit_spectroscopy(
         freq_width=100_000_000,
-        freq_step= 5_000_000,
-        drive_duration= 500,
+        freq_step=5_000_000,
+        drive_duration=500,
     )
-    
+
     qubit_spectroscopy_output.update_platform(platform)
-    
+
     platform.qubits[target].native_gates.RX.amplitude = 0.5
     platform.qubits[target].native_gates.RX.duration = 60
     if qubit_spectroscopy_output.results.frequency:
-        platform.qubits[target].native_gates.RX.frequency = qubit_spectroscopy_output.results.frequency[target]
+        platform.qubits[target].native_gates.RX.frequency = (
+            qubit_spectroscopy_output.results.frequency[target]
+        )
     else:
         platform.qubits[target].native_gates.RX.frequency = qubit_frequency
-        
+
     qfs[target, flux] = platform.qubits[target].native_gates.RX.frequency
     rabi_output = rabi_amplitude_signal(
         min_amp_factor=0.1,
@@ -190,13 +184,15 @@ for flux in biases:
         step_amp_factor=0.01,
         pulse_length=platform.qubits[target].native_gates.RX.duration,
     )
-    
-    if rabi_output.results.amplitude[target] > .5:
-        print(f"Rabi fit has pi pulse amplitude {rabi_output.results.amplitude[target]}, greater than 0.5 not possible for QM. Skipping to next bias point.")
+
+    if rabi_output.results.amplitude[target] > 0.5:
+        print(
+            f"Rabi fit has pi pulse amplitude {rabi_output.results.amplitude[target]}, greater than 0.5 not possible for QM. Skipping to next bias point."
+        )
         continue
     else:
         rabi_output.update_platform(platform)
-        
+
         t1_output = t1_signal(
             delay_before_readout_start=16,
             delay_before_readout_end=100_000,
@@ -209,13 +205,13 @@ for flux in biases:
     # dump history, metadata, and updated platform
     output.history = history
     output.dump(path)
-    
+
     report(path, history)
-    
+
     executor.history = History()
-    
-    i +=1
-    
+
+    i += 1
+
     print(qfs)
     print(t1s)
 
@@ -230,7 +226,7 @@ platform.disconnect()
 #     """Plotting function for T1 experiment."""
 
 #     figure = go.Figure()
-    
+
 #     for bias in biases:
 #         figure.add_trace(
 #             go.Scatter(
@@ -253,7 +249,7 @@ platform.disconnect()
 #     return figure
 
 
-#TODO: What to do with the plot here
+# TODO: What to do with the plot here
 
 # def report_script(path: Path, history: Optional[History] = None):
 #     """Report generation.
@@ -288,7 +284,7 @@ platform.disconnect()
 #     )
 
 #     (path / "index.html").write_text(html)
-    
+
 # def plotter(
 #     data, target: Union[QubitId, QubitPairId, list[QubitId]]
 # ) -> tuple[str, str]:
