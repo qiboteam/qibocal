@@ -34,7 +34,7 @@ def _acquisition(
     platform: Platform,
     targets: list[QubitPairId],
 ) -> RB2QInterData:
-    """Data acquisition for two qubit Standard Randomized Benchmarking."""
+    """Data acquisition for two qubit Interleaved Randomized Benchmarking."""
 
     data = twoq_rb_acquisition(params, platform, targets, interleave=params.interleave)
 
@@ -51,7 +51,7 @@ def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
     exponential function y = Ap^x+B.
 
     Args:
-        data (RBData): Data from the data acquisition stage.
+        data: Data from the data acquisition stage.
 
     Returns:
         StandardRB2QInterResult: Aggregated and processed data.
