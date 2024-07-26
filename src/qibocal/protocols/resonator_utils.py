@@ -36,7 +36,7 @@ def remove_cable_delay(frequencies: NDArray, z: NDArray, tau: float) -> NDArray:
     return z * np.exp(2j * np.pi * frequencies * tau)
 
 
-def circle_fit(z: NDArray) -> tuple[float, float, float]:
+def circle_fit(z: NDArray) -> tuple[complex, float]:
     """Fits the circle of a scattering matrix element array.
 
     The circle fit exploits the algebraic fit described in
@@ -101,13 +101,12 @@ def circle_fit(z: NDArray) -> tuple[float, float, float]:
     )
 
     return (
-        x_c * amplitude_norm + x_norm,
-        y_c * amplitude_norm + y_norm,
+        complex(x_c * amplitude_norm + x_norm, y_c * amplitude_norm + y_norm),
         r_0 * amplitude_norm,
     )
 
 
-def phase_fit(frequencies: NDArray, z: NDArray) -> NDArray:
+def phase_fit(frequencies: NDArray, phases: NDArray) -> NDArray:
     """
     Fits the phase response of a resonator.
 
@@ -119,20 +118,20 @@ def phase_fit(frequencies: NDArray, z: NDArray) -> NDArray:
             Resonance frequency, loaded quality factor, offset phase and time delay between output
             and input signal leading to linearly frequency dependent phase shift (NDArray[float]).
     """
-    phase = np.unwrap(np.angle(z))
+    phases = np.unwrap(phases)
 
-    if np.max(phase) - np.min(phase) <= 0.8 * 2 * np.pi:
-        roll_off = np.max(phase) - np.min(phase)
+    if np.max(phases) - np.min(phases) <= 0.8 * 2 * np.pi:
+        roll_off = np.max(phases) - np.min(phases)
     else:
         roll_off = 2 * np.pi
 
-    phase_smooth = gaussian_filter1d(phase, 30)
-    phase_derivative = np.gradient(phase_smooth)
-    resonance_guess = frequencies[np.argmax(np.abs(phase_derivative))]
+    phases_smooth = gaussian_filter1d(phases, 30)
+    phases_derivative = np.gradient(phases_smooth)
+    resonance_guess = frequencies[np.argmax(np.abs(phases_derivative))]
     q_loaded_guess = 2 * resonance_guess / (frequencies[-1] - frequencies[0])
-    slope = phase[-1] - phase[0] + roll_off
+    slope = phases[-1] - phases[0] + roll_off
     tau_guess = -slope / (2 * np.pi * (frequencies[-1] - frequencies[0]))
-    theta_guess = 0.5 * (np.mean(phase[:5]) + np.mean(phase[-5:]))
+    theta_guess = 0.5 * (np.mean(phases[:5]) + np.mean(phases[-5:]))
 
     def residuals_q_loaded(params):
         (q_loaded,) = params
@@ -151,7 +150,7 @@ def phase_fit(frequencies: NDArray, z: NDArray) -> NDArray:
         return residuals_full((resonance, q_loaded, theta_guess, tau_guess))
 
     def residuals_full(params):
-        return phase_dist(phase - phase_centered(frequencies, *params))
+        return phase_dist(phases - phase_centered(frequencies, *params))
 
     p_final = leastsq(residuals_q_loaded, [q_loaded_guess])
     (q_loaded_guess,) = p_final[0]
@@ -165,10 +164,10 @@ def phase_fit(frequencies: NDArray, z: NDArray) -> NDArray:
         residuals_full, [resonance_guess, q_loaded_guess, theta_guess, tau_guess]
     )
 
-    return p_final[0]
+    return p_final[0][:-1]
 
 
-def phase_dist(angle: float) -> float:
+def phase_dist(angle: NDArray) -> NDArray:
     """Maps angle [-2pi, 2pi] to phase distance on circle [0, pi]."""
     return np.pi - np.abs(np.pi - np.abs(angle))
 
