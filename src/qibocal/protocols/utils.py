@@ -227,12 +227,10 @@ def s21_fit(
     tau = cable_delay(f_data, data.phase, num_points)
     z_1 = remove_cable_delay(f_data, z_data, tau)
 
-    x_c, y_c, r_0 = circle_fit(z_1)
-    z_c = x_c + 1j * y_c
+    z_c, r_0 = circle_fit(z_1)
     z_2 = z_1 - z_c
 
-    resonance, q_loaded, theta, _ = phase_fit(f_data, z_2)
-    theta = periodic_boundary(theta)
+    resonance, q_loaded, theta = phase_fit(f_data, np.angle(z_2))
     beta = periodic_boundary(theta - np.pi)
     off_resonant_point = z_c + r_0 * np.cos(beta) + 1j * r_0 * np.sin(beta)
 
@@ -592,7 +590,7 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
                     "Fano Interference ϕ [rad]",
                     "Amplitude [a.u.]",
                     "Phase Shift α [rad]",
-                    "Electronic Delay 𝜏 [rad]",
+                    "Electronic Delay 𝜏 [s]",
                 ]
                 values = [
                     freq[qubit],
