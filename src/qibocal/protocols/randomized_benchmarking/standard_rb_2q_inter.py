@@ -51,7 +51,7 @@ def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
     exponential function y = Ap^x+B.
 
     Args:
-        data (RBData): Data from the data acquisition stage.
+        data: Data from the data acquisition stage.
 
     Returns:
         StandardRB2QInterResult: Aggregated and processed data.
