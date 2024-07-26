@@ -587,10 +587,10 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
                     "Loaded Quality Factor",
                     "Internal Quality Factor",
                     "Coupling Quality Factor",
-                    "Fano Interference ϕ [rad]",
+                    "Fano Interference [rad]",
                     "Amplitude [a.u.]",
-                    "Phase Shift α [rad]",
-                    "Electronic Delay 𝜏 [s]",
+                    "Phase Shift [rad]",
+                    "Electronic Delay [s]",
                 ]
                 values = [
                     freq[qubit],
