@@ -110,7 +110,7 @@ def fake_protocols(request):
 def executor():
     executor = Executor.create("my-exec")
     yield executor
-    executor.unload()
+    del executor
 
 
 @pytest.mark.protocols("ciao", "come")
