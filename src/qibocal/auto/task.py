@@ -52,11 +52,11 @@ class Action:
         """Cast an action source to an action."""
         if isinstance(source, Action):
             return source
-        assert (
-            operation is not None
-        ), "Operation name required to create actions from parameters"
 
-        return cls(**source, operation=OperationId(operation))
+        if operation is not None:
+            source["operation"] = operation
+
+        return cls(**source)
 
 
 @dataclass(frozen=True)
@@ -174,7 +174,7 @@ class Completed:
         be added
     """
     path: Optional[Path] = None
-    """Folder contaning data and results file for task."""
+    """Folder contaning data and results files for task."""
     _data: Optional[Data] = None
     """Protocol data."""
     _results: Optional[Results] = None
