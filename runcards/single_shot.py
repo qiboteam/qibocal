@@ -1,13 +1,9 @@
 from qibocal.auto.execute import Executor
 from qibocal.cli.report import report
 
-executor = Executor.create(name="myexec", platform="dummy")
+with Executor.open("myexec", path="test_x", platform="dummy", force=True) as executor:
+    from myexec import single_shot_classification
 
-from myexec import close, init, single_shot_classification
+    completed = single_shot_classification(nshots=1000)
 
-init("test_x", force=True)
-
-completed = single_shot_classification(nshots=1000)
-
-close()
 report(executor.path, executor.history)

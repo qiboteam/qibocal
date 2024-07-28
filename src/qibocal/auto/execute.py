@@ -4,6 +4,7 @@ import importlib
 import importlib.util
 import os
 import sys
+from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, fields
 from pathlib import Path
@@ -295,3 +296,20 @@ class Executor:
 
         # attempt unloading
         self.__del__()
+
+    @classmethod
+    @contextmanager
+    def open(
+        cls,
+        name: str,
+        path: os.PathLike,
+        force: bool = False,
+        platform: Union[Platform, str, None] = None,
+        targets: Optional[Targets] = None,
+    ):
+        ex = cls.create(name, platform)
+        ex.init(path, force, platform, targets)
+        try:
+            yield ex
+        finally:
+            ex.close()
