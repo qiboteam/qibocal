@@ -292,3 +292,6 @@ class Executor:
         # dump history, metadata, and updated platform
         output = Output(self.history, self.meta)
         output.dump(path)
+
+        # attempt unloading
+        self.__del__()
