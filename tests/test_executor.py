@@ -110,7 +110,11 @@ def fake_protocols(request):
 def executor():
     executor = Executor.create("my-exec")
     yield executor
-    del executor
+    try:
+        executor.unload()
+    except KeyError:
+        # it has been explicitly unloaded, no need to do it again
+        pass
 
 
 @pytest.mark.protocols("ciao", "come")
