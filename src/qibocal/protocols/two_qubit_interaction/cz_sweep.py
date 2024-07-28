@@ -376,6 +376,7 @@ def _plot(data: CZSweepData, fit: CZSweepResults, target: QubitPairId):
     """Plot routine for CZSweep."""
     fitting_report = ""
     qubits = next(iter(data.amplitudes))[:2]
+
     fig = make_subplots(
         rows=2,
         cols=2,
@@ -402,7 +403,8 @@ def _plot(data: CZSweepData, fit: CZSweepResults, target: QubitPairId):
                     cz.append(fit.cz_angles[target_q, control_q, i, j])
                     leakage.append(fit.leakages[qubits[0], qubits[1], i, j][control_q])
 
-            condition = [target_q, control_q] == target
+            condition = [target_q, control_q] == list(target)
+
             fig.add_trace(
                 go.Heatmap(
                     x=durs,
