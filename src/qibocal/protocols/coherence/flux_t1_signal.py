@@ -117,10 +117,6 @@ def _acquisition(
             "charging_energy": platform.qubits[target].Ec,
         }
 
-        # TODO: Get this parameters from the platform
-        # results = QubitFluxResults.load(params.folder_flux_map)
-        # fitted_parameters = results.fitted_parameters
-        # params_qubit = fitted_parameters[target]
         fit_function = transmon_frequency
 
         biases = np.arange(params.biases_start, params.biases_end, params.biases_step)
@@ -136,7 +132,7 @@ def _acquisition(
             platform.qubits[target].drive_frequency = qubit_frequency
             platform.qubits[target].native_gates.RX.frequency = qubit_frequency
 
-            init("test_T1vsFlux/flux{i}", force=True, targets=targets)
+            init(f"test_T1vsFlux/flux{i}", force=True, targets=targets)
 
             # NOTE: Look and correct from the 1st estimate qubit frequency
             qubit_spectroscopy_output = qubit_spectroscopy(
