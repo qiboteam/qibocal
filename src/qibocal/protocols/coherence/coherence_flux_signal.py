@@ -281,7 +281,7 @@ def _acquisition(
                     qubit_frequency=[platform.qubits[target].native_gates.RX.frequency],
                     T1=[t1_output.results.t1[target][0]],
                     T2=[t2_output.results.t2[target][0]],
-                    T2_ramsey=[t2_output.results.t2[target][1]],
+                    T2_ramsey=[ramsey_t2_output.results.t2[target][1]],
                 ),
             )
 
