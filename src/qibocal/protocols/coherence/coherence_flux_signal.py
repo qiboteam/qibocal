@@ -51,6 +51,12 @@ class CoherenceFluxSignalParameters(Parameters):
     step_amp_factor: float
     """Step amplitude multiplicative factor."""
 
+    # Flipping
+    nflips_max: int
+    """Maximum number of flips ([RX(pi) - RX(pi)] sequences). """
+    nflips_step: int
+    """Flip step."""
+
     # T1 signal
     delay_before_readout_start: int
     """Initial delay before readout [ns]."""
@@ -59,7 +65,7 @@ class CoherenceFluxSignalParameters(Parameters):
     delay_before_readout_step: int
     """Step delay before readout [ns]."""
 
-    # T2 signal
+    # T2 and Ramsey signal
     delay_between_pulses_start: int
     """Initial delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_end: int
@@ -110,9 +116,11 @@ def _acquisition(
     executor = Executor.create(name="myexec", platform=platform)
     from myexec import (
         close,
+        flipping_signal,
         init,
         qubit_spectroscopy,
         rabi_amplitude_signal,
+        ramsey_signal,
         t1_signal,
         t2_signal,
     )
@@ -122,19 +130,29 @@ def _acquisition(
     for target in targets:
 
         # TODO: Get the right parameters from the platform
+        # params_qubit = {
+        #     "w_max": platform.qubits[
+        #         target
+        #     ].drive_frequency,  # FIXME: this is not the qubit frequency
+        #     "xj": 0,
+        #     "d": platform.qubits[target].asymmetry,
+        #     "normalization": platform.qubits[target].crosstalk_matrix[target],
+        #     "offset": -platform.qubits[target].sweetspot
+        #     * platform.qubits[target].crosstalk_matrix[
+        #         target
+        #     ],  # Check is this the right one ???
+        #     "crosstalk_element": 1,
+        #     "charging_energy": platform.qubits[target].Ec,
+        # }
+
         params_qubit = {
-            "w_max": platform.qubits[
-                target
-            ].drive_frequency,  # FIXME: this is not the qubit frequency
+            "w_max": 6.241995547988714 * 1e9,  # FIXME: this is not the qubit frequency
             "xj": 0,
-            "d": platform.qubits[target].asymmetry,
-            "normalization": platform.qubits[target].crosstalk_matrix[target],
-            "offset": -platform.qubits[target].sweetspot
-            * platform.qubits[target].crosstalk_matrix[
-                target
-            ],  # Check is this the right one ???
+            "d": 0,
+            "normalization": 0.8014912073448989,
+            "offset": 0.004093096458484372,  # Check is this the right one ???
             "crosstalk_element": 1,
-            "charging_energy": platform.qubits[target].Ec,
+            "charging_energy": 0.2,
         }
 
         fit_function = transmon_frequency
@@ -148,7 +166,7 @@ def _acquisition(
             platform.qubits[target].flux.offset = bias
 
             # Change the qubit frequency
-            qubit_frequency = fit_function(bias, **params_qubit) * 1e9
+            qubit_frequency = fit_function(bias, **params_qubit)  # * 1e9
             platform.qubits[target].drive_frequency = qubit_frequency
             platform.qubits[target].native_gates.RX.frequency = qubit_frequency
 
@@ -162,6 +180,8 @@ def _acquisition(
                 freq_step=params.freq_step,
                 drive_duration=params.drive_duration,
                 drive_amplitude=params.drive_amplitude,
+                relaxation_time=5000,
+                nshots=1024,
             )
 
             qubit_spectroscopy_output.update_platform(platform)
@@ -191,6 +211,20 @@ def _acquisition(
                 )
                 continue
             rabi_output.update_platform(platform)
+
+            ramsey_output = ramsey_signal(
+                delay_between_pulses_start=params.delay_between_pulses_start,
+                delay_between_pulses_end=params.delay_between_pulses_end,
+                delay_between_pulses_step=params.delay_between_pulses_step,
+                detuning=0,
+            )
+            ramsey_output.update_platform(platform)
+
+            flipping_output = flipping_signal(
+                nflips_max=params.nflips_max,
+                nflips_step=params.nflips_step,
+            )
+            flipping_output.update_platform(platform)
 
             t1_output = t1_signal(
                 delay_before_readout_start=params.delay_before_readout_start,
