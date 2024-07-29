@@ -482,6 +482,7 @@ def rb_acquisition(
     params: Parameters,
     platform: Platform,
     targets: list[QubitId],
+    platform: Platform,
     add_inverse_layer: bool = True,
     interleave: str = None,
 ) -> RBData:
@@ -529,6 +530,7 @@ def twoq_rb_acquisition(
     params: Parameters,
     platform: Platform,
     targets: list[QubitPairId],
+    platform: Platform,
     add_inverse_layer: bool = True,
     interleave: str = None,
 ) -> Union[RB2QData, RB2QInterData]:
@@ -594,7 +596,7 @@ def layer_circuit(
     """
     full_circuit = None
     random_indexes = []
-    if isinstance(target, int):  # int for qubit
+    if isinstance(target, (str, int)):
         nqubits = 1
         rb_gen_layer = rb_gen.layer_gen_single_qubit()
     elif isinstance(target, Tuple):  # Tuple for qubit pair
