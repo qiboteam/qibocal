@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -10,14 +9,15 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.execute import Executor
 from qibocal.auto.history import History
-from qibocal.auto.operation import Data, Parameters, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.cli.report import report
-from qibocal.protocols.flux_dependence.qubit_flux_dependence import QubitFluxResults
 from qibocal.protocols.flux_dependence.utils import transmon_frequency
 
 from . import utils
 
-T1FluxType = np.dtype([("qubit_frequency", np.float64), ("T1", np.float64)])
+T1FluxType = np.dtype(
+    [("biases", np.float64), ("qubit_frequency", np.float64), ("T1", np.float64)]
+)
 """Custom dtype for T1Flux routines."""
 
 
@@ -25,8 +25,6 @@ T1FluxType = np.dtype([("qubit_frequency", np.float64), ("T1", np.float64)])
 @dataclass
 class T1FluxSignalParameters(Parameters):
     """T1 runcard inputs."""
-
-    folder_flux_map: Path
 
     biases_start: list[float]
     biases_end: list[float]
@@ -82,6 +80,12 @@ class T1FluxSignalData(Data):
         return self
 
 
+@dataclass
+class T1FluxSignalResults(Results):
+    sweetspot: dict[QubitId, float]
+    "Best frequency for each qubit only regarding T1"
+
+
 def _acquisition(
     params: T1FluxSignalParameters, platform: Platform, targets: list[QubitId]
 ) -> T1FluxSignalData:
@@ -98,18 +102,31 @@ def _acquisition(
 
         # data_T1 = {}
 
-        import pdb
-
-        pdb.set_trace()
+        # TODO: Get the right parameters from the platform
+        params_qubit = {
+            "w_max": platform.qubits[
+                target
+            ].drive_frequency,  # FIXME: this is not the qubit frequency
+            "xj": 0,
+            "d": platform.qubits[target].asymmetry,
+            "normalization": platform.qubits[target].crosstalk_matrix[target],
+            "offset": platform.qubits[
+                target
+            ].sweetspot,  # Check is this the right one ???
+            "crosstalk_element": 1,
+            "charging_energy": platform.qubits[target].Ec,
+        }
 
         # TODO: Get this parameters from the platform
-        results = QubitFluxResults.load(params.folder_flux_map)
-        fitted_parameters = results.fitted_parameters
-        params_qubit = fitted_parameters[target]
+        # results = QubitFluxResults.load(params.folder_flux_map)
+        # fitted_parameters = results.fitted_parameters
+        # params_qubit = fitted_parameters[target]
         fit_function = transmon_frequency
 
+        biases = np.arange(params.biases_start, params.biases_end, params.biases_step)
+
         i = 0
-        for bias in params.biases:
+        for bias in biases:
             i += 1
             # Change the flux
             platform.qubits[target].flux.offset = bias
@@ -165,10 +182,11 @@ def _acquisition(
 
             data.register_qubit(
                 T1FluxType,
-                (target, bias),
+                (target),
                 dict(
-                    frequency=platform.qubits[target].native_gates.RX.frequency,
-                    t1=t1_output.results.t1[target][0],
+                    biases=[bias],
+                    qubit_frequency=[platform.qubits[target].native_gates.RX.frequency],
+                    T1=[t1_output.results.t1[target][0]],
                 ),
             )
 
@@ -182,32 +200,27 @@ def _acquisition(
     return data
 
 
-def _fit():
-    pass
+def _fit(data: T1FluxSignalData) -> T1FluxSignalResults:
+    """Post-processing function for 1FluxSignal."""
+    # TODO: Highest T1 at the lowest frequency cost function
+
+    return T1FluxSignalResults(sweetspot=None)
 
 
 def _plot(data: T1FluxSignalData, target: QubitId, fit=None):
     """Plotting function for T1 experiment."""
 
-    import pdb
-
-    pdb.set_trace()
-
-    data = data.average
-
-    qubit_data = data[target]
-    waits = qubit_data.wait
-
+    figures = []
     figure = go.Figure()
 
     figure.add_trace(
         go.Scatter(
-            x=data_qf,
-            y=data_t1,
+            x=data[target].qubit_frequency,
+            y=data[target].T1,
             opacity=1,
-            name="Signal",
+            name="T1",
             showlegend=True,
-            legendgroup="Signal",
+            legendgroup="T1",
         )
     )
 
@@ -215,10 +228,12 @@ def _plot(data: T1FluxSignalData, target: QubitId, fit=None):
     figure.update_layout(
         showlegend=True,
         xaxis_title="Frequency [GHZ]",
-        yaxis_title="Signal [a.u.]",
+        yaxis_title="T1 [a.u.]",
     )
 
-    return figure
+    figures.append(figure)
+
+    return figures, ""
 
 
 def _update(results, platform: Platform, target: QubitId):
