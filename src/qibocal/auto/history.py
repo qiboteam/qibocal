@@ -83,13 +83,13 @@ class History:
         return task_id
 
     @staticmethod
-    def route(completed: Completed, folder: Path) -> Path:
-        """Determine the path related to a completed task.
+    def route(task_id: TaskId, folder: Path) -> Path:
+        """Determine the path related to a completed task given TaskId.
 
-        `folder` should be ussually the general output folder, used by Qibocal to store
+        `folder` should be usually the general output folder, used by Qibocal to store
         all the execution results. Cf. :cls:`qibocal.auto.output.Output`.
         """
-        return folder / "data" / f"{completed.task.id}"
+        return folder / "data" / f"{task_id}"
 
     def flush(self, output: Optional[Path] = None):
         """Flush all content to disk.
@@ -97,9 +97,9 @@ class History:
         Specifying `output` is possible to select which folder should be considered as
         the general Qibocal output folder. Cf. :cls:`qibocal.auto.output.Output`.
         """
-        for completed in self.values():
+        for task_id, completed in self.items():
             if output is not None:
-                completed.path = self.route(completed, output)
+                completed.path = self.route(task_id, output)
             completed.flush()
 
     # TODO: implement time_travel()

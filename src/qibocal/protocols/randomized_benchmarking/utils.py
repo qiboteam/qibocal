@@ -10,6 +10,7 @@ from qibo import gates
 from qibo.backends import GlobalBackend
 from qibo.config import raise_error
 from qibo.models import Circuit
+from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.operation import Data, Parameters, Results
@@ -464,6 +465,7 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
 def rb_acquisition(
     params: Parameters,
     targets: list[QubitId],
+    platform: Platform,
     add_inverse_layer: bool = True,
     interleave: str = None,
 ) -> RBData:
@@ -481,6 +483,7 @@ def rb_acquisition(
         RBData: The depths, samples, and ground state probability of each experiment in the scan.
     """
     data, noise_model, backend = setup(params, single_qubit=True)
+    backend.platform = platform
     circuits, indexes, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, noise_model, single_qubit=True
     )
@@ -510,6 +513,7 @@ def rb_acquisition(
 def twoq_rb_acquisition(
     params: Parameters,
     targets: list[QubitPairId],
+    platform: Platform,
     add_inverse_layer: bool = True,
     interleave: str = None,
 ) -> RB2QData:
@@ -527,6 +531,7 @@ def twoq_rb_acquisition(
     """
 
     data, noise_model, backend = setup(params, single_qubit=False)
+    backend.platform = platform
     circuits, indexes, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, noise_model, single_qubit=False
     )
@@ -572,7 +577,7 @@ def layer_circuit(rb_gen: Callable, depth: int, target) -> tuple[Circuit, dict]:
     """
     full_circuit = None
     random_indexes = []
-    if isinstance(target, int):  # int for qubit
+    if isinstance(target, (str, int)):
         nqubits = 1
         rb_gen_layer = rb_gen.layer_gen_single_qubit()
     elif isinstance(target, Tuple):  # Tuple for qubit pair
