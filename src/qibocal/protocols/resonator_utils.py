@@ -15,7 +15,6 @@ def cable_delay(frequencies: NDArray, phases: NDArray, num_points: int) -> float
     The `num_points` is used to select how many points should be fitted, from both the
     start and the end of the frequency range.
     """
-    phases = np.unwrap(phases)
     frequencies_selected = np.concatenate(
         (frequencies[:num_points], frequencies[-num_points:])
     )
@@ -118,7 +117,6 @@ def phase_fit(frequencies: NDArray, phases: NDArray) -> NDArray:
             Resonance frequency, loaded quality factor, offset phase and time delay between output
             and input signal leading to linearly frequency dependent phase shift (NDArray[float]).
     """
-    phases = np.unwrap(phases)
 
     if np.max(phases) - np.min(phases) <= 0.8 * 2 * np.pi:
         roll_off = np.max(phases) - np.min(phases)

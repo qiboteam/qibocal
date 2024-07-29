@@ -230,7 +230,9 @@ def s21_fit(
     z_c, r_0 = circle_fit(z_1)
     z_2 = z_1 - z_c
 
-    resonance, q_loaded, theta = phase_fit(f_data, np.angle(z_2))
+    phases = np.unwrap(np.angle(z_2))
+
+    resonance, q_loaded, theta = phase_fit(f_data, phases)
     beta = periodic_boundary(theta - np.pi)
     off_resonant_point = z_c + r_0 * np.cos(beta) + 1j * r_0 * np.sin(beta)
 
