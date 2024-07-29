@@ -200,9 +200,9 @@ def _acquisition(
             )
 
             t2_output = t2_signal(
-                delay_between_pulses_start=params.delay_between_pulses_start,
-                delay_between_pulses_end=params.delay_between_pulses_end,
-                delay_between_pulses_step=params.delay_between_pulses_step,
+                delay_before_readout_start=params.delay_before_readout_start,
+                delay_before_readout_end=params.delay_before_readout_end,
+                delay_before_readout_step=params.delay_before_readout_step,
                 single_shot=params.single_shot_T2,
             )
 
@@ -229,7 +229,7 @@ def _acquisition(
 
 def _fit(data: CoherenceFluxSignalData) -> CoherenceFluxSignalResults:
     """Post-processing function for 1FluxSignal."""
-    # TODO: Highest T1+T2 at the lowest frequency cost function
+    # TODO: Highest T1+T2 at the lowest flux bias cost function
 
     return CoherenceFluxSignalResults(sweetspot=None)
 
