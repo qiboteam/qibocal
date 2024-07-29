@@ -15,16 +15,21 @@ from qibocal.protocols.flux_dependence.utils import transmon_frequency
 
 from . import utils
 
-T1FluxType = np.dtype(
-    [("biases", np.float64), ("qubit_frequency", np.float64), ("T1", np.float64)]
+CoherenceFluxType = np.dtype(
+    [
+        ("biases", np.float64),
+        ("qubit_frequency", np.float64),
+        ("T1", np.float64),
+        ("T2", np.float64),
+    ]
 )
-"""Custom dtype for T1Flux routines."""
+"""Custom dtype for CoherenceFlux routines."""
 
 
 # TODO: Make this parameters a dict of 4 parameters classes for each routine ???
 @dataclass
-class T1FluxSignalParameters(Parameters):
-    """T1 runcard inputs."""
+class CoherenceFluxSignalParameters(Parameters):
+    """Coherence runcard inputs."""
 
     biases_start: list[float]
     biases_end: list[float]
@@ -56,6 +61,16 @@ class T1FluxSignalParameters(Parameters):
     single_shot: bool = False
     """If ``True`` save single shot signal data."""
 
+    # T2 signal
+    delay_between_pulses_start: int
+    """Initial delay between RX(pi/2) pulses in ns."""
+    delay_between_pulses_end: int
+    """Final delay between RX(pi/2) pulses in ns."""
+    delay_between_pulses_step: int
+    """Step delay between RX(pi/2) pulses in ns."""
+    single_shot: bool = False
+    """If ``True`` save single shot signal data."""
+
     # Optional qubit spectroscopy
     drive_amplitude: Optional[float] = None
     """Drive pulse amplitude (optional). Same for all qubits."""
@@ -67,8 +82,8 @@ class T1FluxSignalParameters(Parameters):
 
 
 @dataclass
-class T1FluxSignalData(Data):
-    """T1 acquisition outputs."""
+class CoherenceFluxSignalData(Data):
+    """Coherence acquisition outputs."""
 
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
@@ -81,26 +96,29 @@ class T1FluxSignalData(Data):
 
 
 @dataclass
-class T1FluxSignalResults(Results):
+class CoherenceFluxSignalResults(Results):
     sweetspot: dict[QubitId, float]
-    "Best frequency for each qubit only regarding T1"
+    "Best frequency for each qubit only regarding Coherence"
 
 
 def _acquisition(
-    params: T1FluxSignalParameters, platform: Platform, targets: list[QubitId]
-) -> T1FluxSignalData:
-    r"""Data acquisition for T1 experiment."""
+    params: CoherenceFluxSignalParameters, platform: Platform, targets: list[QubitId]
+) -> CoherenceFluxSignalData:
+    r"""Data acquisition for Coherence experiment."""
 
     executor = Executor.create(name="myexec", platform=platform)
-    from myexec import close, init, qubit_spectroscopy, rabi_amplitude_signal, t1_signal
+    from myexec import (
+        close,
+        init,
+        qubit_spectroscopy,
+        rabi_amplitude_signal,
+        t1_signal,
+        t2_signal,
+    )
 
-    # init("test_T1vsFlux_map/qubit_flux_dependancy", force=True, targets=targets)
-
-    data = T1FluxSignalData()
+    data = CoherenceFluxSignalData()
 
     for target in targets:
-
-        # data_T1 = {}
 
         # TODO: Get the right parameters from the platform
         params_qubit = {
@@ -110,9 +128,10 @@ def _acquisition(
             "xj": 0,
             "d": platform.qubits[target].asymmetry,
             "normalization": platform.qubits[target].crosstalk_matrix[target],
-            "offset": platform.qubits[
+            "offset": -platform.qubits[target].sweetspot
+            * platform.qubits[target].crosstalk_matrix[
                 target
-            ].sweetspot,  # Check is this the right one ???
+            ],  # Check is this the right one ???
             "crosstalk_element": 1,
             "charging_energy": platform.qubits[target].Ec,
         }
@@ -132,7 +151,9 @@ def _acquisition(
             platform.qubits[target].drive_frequency = qubit_frequency
             platform.qubits[target].native_gates.RX.frequency = qubit_frequency
 
-            init(f"test_T1vsFlux/flux{i}", force=True, targets=targets)
+            init(
+                f"test_CoherencevsFlux/flux{i}", force=True, targets=targets
+            )  # FIXME: Routine path
 
             # NOTE: Look and correct from the 1st estimate qubit frequency
             qubit_spectroscopy_output = qubit_spectroscopy(
@@ -176,13 +197,20 @@ def _acquisition(
                 delay_before_readout_step=params.delay_before_readout_step,
             )
 
+            t2_output = t2_signal(
+                delay_before_readout_start=params.delay_before_readout_start,
+                delay_before_readout_end=params.delay_before_readout_end,
+                delay_before_readout_step=params.delay_before_readout_step,
+            )
+
             data.register_qubit(
-                T1FluxType,
+                CoherenceFluxType,
                 (target),
                 dict(
                     biases=[bias],
                     qubit_frequency=[platform.qubits[target].native_gates.RX.frequency],
                     T1=[t1_output.results.t1[target][0]],
+                    T2=[t2_output.results.t2[target][0]],
                 ),
             )
 
@@ -196,15 +224,15 @@ def _acquisition(
     return data
 
 
-def _fit(data: T1FluxSignalData) -> T1FluxSignalResults:
+def _fit(data: CoherenceFluxSignalData) -> CoherenceFluxSignalResults:
     """Post-processing function for 1FluxSignal."""
-    # TODO: Highest T1 at the lowest frequency cost function
+    # TODO: Highest T1+T2 at the lowest frequency cost function
 
-    return T1FluxSignalResults(sweetspot=None)
+    return CoherenceFluxSignalResults(sweetspot=None)
 
 
-def _plot(data: T1FluxSignalData, target: QubitId, fit=None):
-    """Plotting function for T1 experiment."""
+def _plot(data: CoherenceFluxSignalData, target: QubitId, fit=None):
+    """Plotting function for Coherence experiment."""
 
     figures = []
     figure = go.Figure()
@@ -220,11 +248,22 @@ def _plot(data: T1FluxSignalData, target: QubitId, fit=None):
         )
     )
 
+    figure.add_trace(
+        go.Scatter(
+            x=data[target].qubit_frequency,
+            y=data[target].T2,
+            opacity=1,
+            name="T2",
+            showlegend=True,
+            legendgroup="T2",
+        )
+    )
+
     # last part
     figure.update_layout(
         showlegend=True,
         xaxis_title="Frequency [GHZ]",
-        yaxis_title="T1 [a.u.]",
+        yaxis_title="Coherence [ns]",
     )
 
     figures.append(figure)
@@ -236,5 +275,5 @@ def _update(results, platform: Platform, target: QubitId):
     pass
 
 
-t1flux_signal = Routine(_acquisition, _fit, _plot, _update)
-"""T1 Flux Signal Routine object."""
+coherence_flux_signal = Routine(_acquisition, _fit, _plot, _update)
+"""Coherence Flux Signal Routine object."""
