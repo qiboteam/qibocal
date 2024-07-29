@@ -2,6 +2,7 @@ from .allxy.allxy import allxy
 from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
 from .allxy.allxy_resonator_depletion_tuning import allxy_resonator_depletion_tuning
 from .classification import single_shot_classification
+from .coherence.coherence_flux_signal import coherence_flux_signal
 from .coherence.spin_echo import spin_echo
 from .coherence.spin_echo_signal import spin_echo_signal
 from .coherence.t1 import t1
@@ -12,7 +13,6 @@ from .coherence.t2_sequences import t2_sequences
 from .coherence.t2_signal import t2_signal
 from .coherence.zeno import zeno
 from .coherence.zeno_signal import zeno_signal
-from .coherence.coherence_flux_signal import coherence_flux_signal
 from .couplers.coupler_chevron import coupler_chevron
 from .couplers.coupler_qubit_spectroscopy import coupler_qubit_spectroscopy
 from .couplers.coupler_resonator_spectroscopy import coupler_resonator_spectroscopy
@@ -45,6 +45,7 @@ from .rabi.length_signal import rabi_length_signal
 from .ramsey.ramsey import ramsey
 from .ramsey.ramsey_signal import ramsey_signal
 from .randomized_benchmarking.filtered_rb import filtered_rb
+from .randomized_benchmarking.rb_script import rb_correction
 from .randomized_benchmarking.standard_rb import standard_rb
 from .randomized_benchmarking.standard_rb_2q import standard_rb_2q
 from .readout_characterization import readout_characterization
@@ -146,4 +147,5 @@ __all__ = [
     "rabi_length_frequency_signal",
     "standard_rb_2q",
     "coherence_flux_signal",
+    "rb_correction",
 ]
