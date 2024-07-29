@@ -3,6 +3,10 @@ from numpy.typing import NDArray
 from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import leastsq, minimize
 
+PHASES_THRESHOLD_PERCENTAGE = 80
+STD_DEV_GAUSSIAN_KERNEL = 30
+PHASE_ELEMENTS = 5
+
 
 def cable_delay(frequencies: NDArray, phases: NDArray, num_points: int) -> float:
     """Evaluates the cable delay :math:`\tau`.
@@ -118,18 +122,20 @@ def phase_fit(frequencies: NDArray, phases: NDArray) -> NDArray:
             and input signal leading to linearly frequency dependent phase shift (NDArray[float]).
     """
 
-    if np.max(phases) - np.min(phases) <= 0.8 * 2 * np.pi:
+    if np.max(phases) - np.min(phases) <= PHASES_THRESHOLD_PERCENTAGE / 100 * 2 * np.pi:
         roll_off = np.max(phases) - np.min(phases)
     else:
         roll_off = 2 * np.pi
 
-    phases_smooth = gaussian_filter1d(phases, 30)
+    phases_smooth = gaussian_filter1d(phases, STD_DEV_GAUSSIAN_KERNEL)
     phases_derivative = np.gradient(phases_smooth)
     resonance_guess = frequencies[np.argmax(np.abs(phases_derivative))]
     q_loaded_guess = 2 * resonance_guess / (frequencies[-1] - frequencies[0])
     slope = phases[-1] - phases[0] + roll_off
     tau_guess = -slope / (2 * np.pi * (frequencies[-1] - frequencies[0]))
-    theta_guess = 0.5 * (np.mean(phases[:5]) + np.mean(phases[-5:]))
+    theta_guess = 0.5 * (
+        np.mean(phases[:PHASE_ELEMENTS]) + np.mean(phases[-PHASE_ELEMENTS:])
+    )
 
     def residuals_q_loaded(params):
         (q_loaded,) = params
