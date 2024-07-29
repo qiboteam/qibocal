@@ -21,6 +21,7 @@ CoherenceFluxType = np.dtype(
         ("qubit_frequency", np.float64),
         ("T1", np.float64),
         ("T2", np.float64),
+        ("T2_ramsey", np.float64),
     ]
 )
 """Custom dtype for CoherenceFlux routines."""
@@ -65,12 +66,22 @@ class CoherenceFluxSignalParameters(Parameters):
     delay_before_readout_step: int
     """Step delay before readout [ns]."""
 
-    # T2 and Ramsey signal
+    #  Ramsey signal
+    detuning: int
+    """Frequency detuning [Hz]."""
     delay_between_pulses_start: int
     """Initial delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_end: int
     """Final delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_step: int
+    """Step delay between RX(pi/2) pulses in ns."""
+
+    # T2 and Ramsey signal
+    delay_between_pulses_start_T2: int
+    """Initial delay between RX(pi/2) pulses in ns."""
+    delay_between_pulses_end_T2: int
+    """Final delay between RX(pi/2) pulses in ns."""
+    delay_between_pulses_step_T2: int
     """Step delay between RX(pi/2) pulses in ns."""
     single_shot_T2: bool = False
     """If ``True`` save single shot signal data."""
@@ -145,18 +156,31 @@ def _acquisition(
         #     "charging_energy": platform.qubits[target].Ec,
         # }
 
+        # D4
+        # params_qubit = {
+        #     "w_max": 6.241995547988714 * 1e9,  # FIXME: this is not the qubit frequency
+        #     "xj": 0,
+        #     "d": 0,
+        #     "normalization": 0.8014912073448989,
+        #     "offset": 0.004093096458484372,  # Check is this the right one ???
+        #     "crosstalk_element": 1,
+        #     "charging_energy": 0.2,
+        # }
+
+        # D2
         params_qubit = {
-            "w_max": 6.241995547988714 * 1e9,  # FIXME: this is not the qubit frequency
+            "w_max": 5.552552628640306 * 1e9,  # FIXME: this is not the qubit frequency
             "xj": 0,
             "d": 0,
-            "normalization": 0.8014912073448989,
-            "offset": 0.004093096458484372,  # Check is this the right one ???
+            "normalization": 0.8058267234810884,
+            "offset": 0.0770175390610017,  # Check is this the right one ???
             "crosstalk_element": 1,
             "charging_energy": 0.2,
         }
 
         fit_function = transmon_frequency
 
+        # TODO: Center around the sweetspot
         biases = np.arange(params.biases_start, params.biases_end, params.biases_step)
 
         i = 0
@@ -216,7 +240,7 @@ def _acquisition(
                 delay_between_pulses_start=params.delay_between_pulses_start,
                 delay_between_pulses_end=params.delay_between_pulses_end,
                 delay_between_pulses_step=params.delay_between_pulses_step,
-                detuning=0,
+                detuning=params.detuning,
             )
             ramsey_output.update_platform(platform)
 
@@ -233,12 +257,21 @@ def _acquisition(
                 single_shot=params.single_shot_T1,
             )
 
+            # TODO: Estimate T2 with Ramsey signal without detuning
             t2_output = t2_signal(
-                delay_between_pulses_start=params.delay_between_pulses_start,
-                delay_between_pulses_end=params.delay_between_pulses_end,
-                delay_between_pulses_step=params.delay_between_pulses_step,
+                delay_between_pulses_start=params.delay_between_pulses_start_T2,
+                delay_between_pulses_end=params.delay_between_pulses_end_T2,
+                delay_between_pulses_step=params.delay_between_pulses_step_T2,
                 single_shot=params.single_shot_T2,
             )
+
+            ramsey_t2_output = ramsey_signal(
+                delay_between_pulses_start=params.delay_between_pulses_start_T2,
+                delay_between_pulses_end=params.delay_between_pulses_end_T2,
+                delay_between_pulses_step=params.delay_between_pulses_step_T2,
+                detuning=0,
+            )
+            ramsey_output.update_platform(platform)
 
             data.register_qubit(
                 CoherenceFluxType,
@@ -248,6 +281,7 @@ def _acquisition(
                     qubit_frequency=[platform.qubits[target].native_gates.RX.frequency],
                     T1=[t1_output.results.t1[target][0]],
                     T2=[t2_output.results.t2[target][0]],
+                    T2_ramsey=[t2_output.results.t2[target][1]],
                 ),
             )
 
@@ -293,6 +327,17 @@ def _plot(data: CoherenceFluxSignalData, target: QubitId, fit=None):
             name="T2",
             showlegend=True,
             legendgroup="T2",
+        )
+    )
+
+    figure.add_trace(
+        go.Scatter(
+            x=data[target].qubit_frequency,
+            y=data[target].T2_ramsey,
+            opacity=1,
+            name="T2_ramsey",
+            showlegend=True,
+            legendgroup="T2_ramsey",
         )
     )
 
