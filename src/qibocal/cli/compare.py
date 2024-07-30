@@ -9,6 +9,28 @@ from qibocal.web.compared_report import ComparedReport
 from qibocal.web.report import STYLES, TEMPLATES
 
 
+def initialize_combined_report(
+    report_path: Path, output_folder: Path, force: bool
+) -> Output:
+    """Initialisation of the output.
+
+    Create the report directory and set up start-finish time, report title.
+
+    Args:
+        report_path (pathlib.Path): path of the folder containing one of the initial reports.
+        output_folder (pathlib.Path): path of the folder containing the combined report.
+        force (bool): if set to true, overwrites output_folder (if it already exists).
+    """
+    combined_meta = Output.load(report_path).meta
+    combined_meta.start()
+    combined_report = Output(history=DummyHistory(), meta=combined_meta)
+    combined_report_path = combined_report.mkdir(output_folder, force)
+    combined_meta.title = combined_report_path.name
+    combined_meta.end()
+    combined_report.meta = combined_meta
+    return combined_report
+
+
 def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
     """Report comparison generation.
 
@@ -21,31 +43,25 @@ def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
         path_1 (pathlib.Path): path of the first report to be compared.
         path_2 (pathlib.Path): path of the second report to be compared.
         force (bool): if set to true, overwrites folder (if it already exists).
-
     """
-    combined_meta = Output.load(path_1).meta
-    combined_meta.start()
     paths = [path_1, path_2]
-
-    css_styles = f"<style>\n{pathlib.Path(STYLES).read_text()}\n</style>"
-
     env = Environment(loader=FileSystemLoader(TEMPLATES))
     template = env.get_template("template.html")
-    combined_report = Output(history=DummyHistory(), meta=combined_meta)
-    combined_report_path = combined_report.mkdir(folder, force)
-    combined_meta.title = combined_report_path.name
-    combined_meta.end()
-    combined_report.meta = combined_meta
+    combined_report = initialize_combined_report(
+        path_1, output_folder=folder, force=force
+    )
+
+    css_styles = f"<style>\n{pathlib.Path(STYLES).read_text()}\n</style>"
 
     html = template.render(
         is_static=True,
         css_styles=css_styles,
         path=folder,
-        title=combined_report_path.name,
+        title=combined_report.meta.title,
         report=ComparedReport(
             report_paths=paths,
             folder=folder,
-            meta=combined_meta.dump(),
+            meta=combined_report.meta.dump(),
         ),
     )
     combined_report.dump(folder)
