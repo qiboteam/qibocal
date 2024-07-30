@@ -3,18 +3,10 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
+from qibocal.auto.history import DummyHistory
 from qibocal.auto.output import Output
 from qibocal.web.compared_report import ComparedReport
 from qibocal.web.report import STYLES, TEMPLATES
-
-
-class FakeHistory:
-
-    def flush(self, output=None):
-        pass
-
-    def items(self):
-        return tuple()
 
 
 def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
@@ -39,7 +31,7 @@ def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
 
     env = Environment(loader=FileSystemLoader(TEMPLATES))
     template = env.get_template("template.html")
-    combined_report = Output(history=FakeHistory(), meta=combined_meta)
+    combined_report = Output(history=DummyHistory(), meta=combined_meta)
     combined_report_path = combined_report.mkdir(folder, force)
     combined_meta.title = combined_report_path.name
     combined_meta.end()
