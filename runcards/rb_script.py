@@ -1,11 +1,12 @@
 from qibolab import create_platform
 
 from qibocal.auto.execute import Executor
+from qibocal.auto.history import History
 from qibocal.cli.report import report
 
-TARGET = 0
+TARGET = "D4"
 """Target qubit where RB will be executed."""
-PLATFORM = create_platform("dummy")
+PLATFORM = create_platform("qw11q")
 """Platform where RB will be executed."""
 OUTPUT = "test_rb_script"
 """Output folder name."""
@@ -18,18 +19,24 @@ executor = Executor(
 )
 from myexec import close, init, standard_rb
 
-# start experiment
-init(OUTPUT, force=True, targets=targets)
+for amplitude in [0.07, 0.08]:
 
-# launch rb
-rb_output = standard_rb(depths=[1, 5, 10, 20, 50, 100], niter=20, nshots=100)
+    executor.platform.qubits[TARGET].native_gates.RX.amplitude = amplitude
 
-# retrive result
-print(f"Fidelity: {rb_output.results.fidelity[TARGET]}")
-print(f"Pulse Fidelity: {rb_output.results.pulse_fidelity[TARGET]}")
+    # start experiment
+    init(f"{OUTPUT}_amp_{amplitude}", force=True, targets=targets)
 
-# disconnect
-close()
+    # launch rb
+    rb_output = standard_rb(depths=[1, 5, 10, 20], niter=5, nshots=100)
 
-# generate report
-report(executor.path, executor.history)
+    # retrieve result
+    print(f"Fidelity: {rb_output.results.fidelity[TARGET]}")
+    print(f"Pulse Fidelity: {rb_output.results.pulse_fidelity[TARGET]}")
+
+    # disconnect
+    close()
+
+    # generate report
+    report(executor.path, executor.history)
+    # reset history
+    executor.history = History()
