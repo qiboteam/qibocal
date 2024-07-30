@@ -1,4 +1,3 @@
-import pathlib
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
@@ -6,7 +5,7 @@ from jinja2 import Environment, FileSystemLoader
 from qibocal.auto.history import DummyHistory
 from qibocal.auto.output import Output
 from qibocal.web.compared_report import ComparedReport
-from qibocal.web.report import STYLES, TEMPLATES
+from qibocal.web.report import STYLES, TEMPLATES, report_css_styles
 
 
 def initialize_combined_report(
@@ -51,11 +50,9 @@ def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
         path_1, output_folder=folder, force=force
     )
 
-    css_styles = f"<style>\n{pathlib.Path(STYLES).read_text()}\n</style>"
-
     html = template.render(
         is_static=True,
-        css_styles=css_styles,
+        css_styles=report_css_styles(STYLES),
         path=folder,
         title=combined_report.meta.title,
         report=ComparedReport(
