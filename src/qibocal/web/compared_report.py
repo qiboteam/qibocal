@@ -1,4 +1,5 @@
 import io
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Union
 
@@ -12,14 +13,22 @@ from qibocal.auto.task import Completed, TaskId
 from qibocal.cli.report import generate_figures_and_report
 
 
+@dataclass
 class ComparedReport:
     """Class for comparison of two qibocal reports."""
 
-    def __init__(self, report_paths: list[Path], folder, meta):
-        self.report_paths = report_paths
-        self.folder = folder
+    report_paths: list[Path]
+    """List of paths of qibocal reports to compare."""
+    folder: Path
+    """Generated report path."""
+    meta: dict
+    """Meta data."""
+    history: dict = field(default_factory=dict)
+    """History of protocols with same id in both reports."""
+
+    def __post_init__(self):
+        """Store only protocols with same id in all the reports."""
         self.history = self.create_common_history()
-        self.meta = meta
 
     def history_uids(self):
         experiment_ids = []
