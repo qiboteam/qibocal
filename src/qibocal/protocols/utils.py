@@ -472,7 +472,7 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
     fig_raw.add_trace(
         go.Scatter(
             x=frequencies * HZ_TO_GHZ,
-            y=np.unwrap(phase),
+            y=phase,
             mode="markers",
             marker=dict(
                 size=4,
