@@ -13,6 +13,7 @@ from qibocal.cli.report import generate_figures_and_report
 
 
 class ComparedReport:
+    """Class for comparison of two qibocal reports."""
 
     def __init__(self, report_paths: list[Path], folder, meta):
         self.report_paths = report_paths
