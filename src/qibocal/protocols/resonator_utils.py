@@ -4,15 +4,18 @@ from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import leastsq, minimize
 
 PHASES_THRESHOLD_PERCENTAGE = 80
+r"""Threshold percentage to ensure the phase data covers a significant portion of the full 2 :math:\pi circle."""
 STD_DEV_GAUSSIAN_KERNEL = 30
+"""Standard deviation for the Gaussian kernel."""
 PHASE_ELEMENTS = 5
+"""Number of values to better guess :math:`\theta` (in rad) in the phase fit function."""
 
 
 def cable_delay(frequencies: NDArray, phases: NDArray, num_points: int) -> float:
-    """Evaluates the cable delay :math:`\tau`.
+    """Evaluates the cable delay :math:`\tau` (in s).
 
-    The cable delay :math:`tau` is caused by the length of the cable and the finite speed of light.
-    This is estimated fitting a first-grade polynomial fit of the `phases` as a function of the
+    The cable delay :math:`\tau` (in s) is caused by the length of the cable and the finite speed of light.
+    This is estimated fitting a first-grade polynomial fit of the `phases` (in rad) as a function of the
     `frequencies` (in Hz), and extracting the angular coefficient, which is then expressed
     in seconds.
 
@@ -30,7 +33,7 @@ def cable_delay(frequencies: NDArray, phases: NDArray, num_points: int) -> float
 
 
 def remove_cable_delay(frequencies: NDArray, z: NDArray, tau: float) -> NDArray:
-    """Corrects the cable delay :math:`\tau`.
+    """Corrects the cable delay :math:`\tau` (in s).
 
     The cable delay :math:`\tau` (in s) is removed from the scattering matrix element array `z` by performing
     an exponential product which also depends from the `frequencies` (in Hz).
@@ -44,8 +47,12 @@ def circle_fit(z: NDArray) -> tuple[complex, float]:
 
     The circle fit exploits the algebraic fit described in
     "Efficient and robust analysis of complex scattering data under noise in microwave resonators"
-    (https://doi.org/10.1063/1.4907935) by S. Probst et al. The function, from the scattering matrix
-    element array, evaluates the center coordinates `x_c` and `y_c` and the radius of the circle `r_0`.
+    (https://doi.org/10.1063/1.4907935) by S. Probst et al and
+    "The physics of superconducting microwave resonators"
+    (https://doi.org/10.7907/RAT0-VM75) by J. Gao.
+
+    The function, from the scattering matrix element array, evaluates the center coordinates
+    `x_c` and `y_c` and the radius of the circle `r_0`.
     """
 
     z = z.copy()
@@ -110,16 +117,19 @@ def circle_fit(z: NDArray) -> tuple[complex, float]:
 
 
 def phase_fit(frequencies: NDArray, phases: NDArray) -> NDArray:
-    """
-    Fits the phase response of a resonator.
+    r"""Fits the phase response of a resonator.
 
-        Args:
-            frequencies (NDArray[float]): frequencies (Hz) at which the measurement was taken.
-            z (NDArray[complex]): S21 scattering matrix element.
+    The phase fit firstly ensure the phase data (in rad) covers a significant portion of the full 2 :math:`\pi`
+    circle evaluating a `roll_off`. If the data do not cover a full circle it is possible to increase
+    the frequency span around the resonance. Data are smoothed using a Gaussian filter and the
+    derivative is evaluated while initial guesses for the parameters (`resonance_guess` (in Hz)),
+    `q_loaded_guess`, `tau_guess` (in s) and `theta_guess` (in rad) are computed with `frequencies` (in Hz).
 
-        Returns:
-            Resonance frequency, loaded quality factor, offset phase and time delay between output
-            and input signal leading to linearly frequency dependent phase shift (NDArray[float]).
+    The parameter estimation is done through an iterative least squares process to optimize the model
+    parameters. The defined functions: `residuals_q_loaded`, `residuals_resonance_theta`
+    `residuals_resonance_theta`, `residuals_tau`, `residuals_resonance_q_loaded`, `residuals_full`
+    take the parameters to be fitted and return the residuals calculated by subtracting the phase
+    centered model from the phase data (in rad).
     """
 
     if np.max(phases) - np.min(phases) <= PHASES_THRESHOLD_PERCENTAGE / 100 * 2 * np.pi:
@@ -171,9 +181,9 @@ def phase_fit(frequencies: NDArray, phases: NDArray) -> NDArray:
     return p_final[0][:-1]
 
 
-def phase_dist(angle: NDArray) -> NDArray:
-    """Maps angle [-2pi, 2pi] to phase distance on circle [0, pi]."""
-    return np.pi - np.abs(np.pi - np.abs(angle))
+def phase_dist(phases: NDArray) -> NDArray:
+    """Maps `phases` (in rad) [-2pi, 2pi] to phase distance on circle [0, pi]."""
+    return np.pi - np.abs(np.pi - np.abs(phases))
 
 
 def phase_centered(
@@ -183,19 +193,12 @@ def phase_centered(
     theta: float,
     tau: float = 0.0,
 ) -> NDArray:
-    """
-    Evaluates the phase response of a resonator which corresponds to a circle centered around
-    the origin. Additionally, a linear background slope is accounted for if needed.
+    """Evaluates the phase (in rad) response of a resonator.
 
-        Args:
-            frequencies (NDArray[float]): frequencies (Hz) at which the measurement was taken.
-            resonance (float): resonance frequency.
-            q_loaded (float): loaded quality factor.
-            theta (float): offset phase.
-            tau (float): time delay between output and input signal leading to linearly frequency
-                         dependent phase shift.
-        Returns:
-            Phase centered array (NDArray[float]).
+    The phase centered evaluates the phase angle (in rad) of a circle centered around the origin accounting
+    for a phase offset :math:`\theta` (in rad), a linear background slope
+    :math: 2\\pi `\tau` (in s) (`frequencies` (in Hz) - `resonance` (in Hz)) (if needed) and a dependency on
+    the `q_loaded`.
     """
     return (
         theta
@@ -205,12 +208,5 @@ def phase_centered(
 
 
 def periodic_boundary(angle: float) -> float:
-    """
-    Maps arbitrary angle to interval [-np.pi, np.pi).
-
-    Args:
-        angle (float): angle to be mapped.
-    Returns:
-        Mapped angle (float).
-    """
+    """Maps arbitrary `angle` (in rad) to interval [-np.pi, np.pi)."""
     return (angle + np.pi) % (2 * np.pi) - np.pi

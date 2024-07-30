@@ -37,17 +37,25 @@ ResSpecType = np.dtype(
 
 
 @dataclass
-class SpectroscopyFit:
+class ResonatorSpectroscopyFit:
+    """ResonatorSpectroscopy fit."""
+
     function: Callable
+    """Routine function to fit data with a model."""
     fit: Callable
+    """Fit function used for the resonance."""
     chi2: Callable
+    """Chi2 reduced."""
     values: Callable
+    """Extract values from data."""
     errors: Callable
+    """Extract errors from data."""
     plot: Callable
+    """Plotting function for ResonatorSpectroscopy."""
 
 
 FITS = {
-    "lorentzian": SpectroscopyFit(
+    "lorentzian": ResonatorSpectroscopyFit(
         lorentzian,
         lorentzian_fit,
         chi2_reduced,
@@ -55,7 +63,7 @@ FITS = {
         lambda z: z.error_signal,
         spectroscopy_plot,
     ),
-    "s21": SpectroscopyFit(
+    "s21": ResonatorSpectroscopyFit(
         s21,
         s21_fit,
         chi2_reduced_complex,
@@ -64,6 +72,7 @@ FITS = {
         s21_spectroscopy_plot,
     ),
 }
+"""Dictionary of available fitting routines for ResonatorSpectroscopy."""
 
 
 @dataclass
@@ -78,7 +87,7 @@ class ResonatorSpectroscopyParameters(Parameters):
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
     fit_function: str = "lorentzian"
-    """Fit function used for the resonance."""
+    """Routine function (lorentzian or s21) to fit data with a model."""
     amplitude: Optional[float] = None
     """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""

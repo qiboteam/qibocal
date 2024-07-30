@@ -176,10 +176,11 @@ def s21(
     alpha: float = 0.0,
     tau: float = 0.0,
 ) -> NDArray:
-    """
-    Full model of the S21 notch resonator based on eq. (1) described in:
+    """Full model of the S21 notch resonator based on eq. (1) described in:
     "Efficient and robust analysis of complex scattering data under noise in microwave resonators"
-    (https://doi.org/10.1063/1.4907935) by S. Probst et al.
+    (https://doi.org/10.1063/1.4907935) by S. Probst et al and on eq. (E.1) described in:
+    "The Physics of Superconducting Microwave Resonators"
+    (https://doi.org/10.7907/RAT0-VM75) by J. Gao.
 
     The equation is split into two parts describing the ideal resonator and the environment.
 
