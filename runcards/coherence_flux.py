@@ -124,9 +124,11 @@ with Executor.open(
     data = CoherenceFluxSignalData()
 
     for target in e.targets:
-        
-        import pdb; pdb.set_trace()
-        
+
+        import pdb
+
+        pdb.set_trace()
+
         params_qubit = {
             "w_max": e.platform.qubits[
                 target
@@ -141,7 +143,7 @@ with Executor.open(
             "crosstalk_element": 1,
             "charging_energy": e.platform.qubits[target].Ec,
         }
-        
+
         # D2 hardcoded frpm qubit flux map
         params_qubit = {
             "w_max": 5.552552628640306 * 1e9,
