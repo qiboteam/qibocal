@@ -249,7 +249,7 @@ class Executor:
         path: os.PathLike,
         force: bool = False,
         platform: Union[Platform, str, None] = None,
-        update: bool = True,
+        update: Optional[bool] = None,
         targets: Optional[Targets] = None,
     ):
         """Initialize execution."""
@@ -260,6 +260,8 @@ class Executor:
         platform = self.platform = backend.platform
         assert isinstance(platform, Platform)
 
+        if update is not None:
+            self.update = update
         if targets is not None:
             self.targets = targets
 
@@ -306,7 +308,7 @@ class Executor:
         path: os.PathLike,
         force: bool = False,
         platform: Union[Platform, str, None] = None,
-        update: bool = True,
+        update: Optional[bool] = None,
         targets: Optional[Targets] = None,
     ):
         ex = cls.create(name, platform)
