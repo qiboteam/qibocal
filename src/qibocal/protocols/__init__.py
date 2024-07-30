@@ -6,8 +6,10 @@ from .coherence.coherence_flux_signal import coherence_flux_signal
 from .coherence.spin_echo import spin_echo
 from .coherence.spin_echo_signal import spin_echo_signal
 from .coherence.t1 import t1
+from .coherence.t1_flux import t1_flux
 from .coherence.t1_sequences import t1_sequences
 from .coherence.t1_signal import t1_signal
+from .coherence.t2 import t2
 from .coherence.t2_sequences import t2_sequences
 from .coherence.t2_signal import t2_signal
 from .coherence.zeno import zeno
@@ -83,7 +85,8 @@ __all__ = [
     "t1",
     "t1_sequences",
     "t1_signal",
-    "t1_flux" "t2",
+    "t1_flux",
+    "t2",
     "t2_sequences",
     "t2_signal",
     "zeno",
