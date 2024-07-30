@@ -104,7 +104,7 @@ parser = ArgumentParser()
 parser.add_argument("--target", type=int, default=0, help="Target qubit index")
 parser.add_argument("--platform", type=str, default="dummy", help="Platform name")
 parser.add_argument(
-    "--path", type=str, default="CoherenceFlux", help="Path for the output"
+    "--path", type=str, default="TTESTCoherenceFlux", help="Path for the output"
 )
 args = parser.parse_args()
 
@@ -124,15 +124,16 @@ with Executor.open(
     data = CoherenceFluxSignalData()
 
     for target in e.targets:
-
-        # TODO: Get the right parameters from the platform
+        
+        import pdb; pdb.set_trace()
+        
         params_qubit = {
             "w_max": e.platform.qubits[
                 target
             ].drive_frequency,  # FIXME: this is not the qubit frequency
             "xj": 0,
             "d": e.platform.qubits[target].asymmetry,
-            "normalization": e.platform.qubits[target].crosstalk_matrix[target, target],
+            "normalization": e.platform.qubits[target].crosstalk_matrix[target],
             "offset": -e.platform.qubits[target].sweetspot
             * e.platform.qubits[target].crosstalk_matrix[
                 target
@@ -140,10 +141,10 @@ with Executor.open(
             "crosstalk_element": 1,
             "charging_energy": e.platform.qubits[target].Ec,
         }
-
-        # D2
+        
+        # D2 hardcoded frpm qubit flux map
         params_qubit = {
-            "w_max": 5.552552628640306 * 1e9,  # FIXME: this is not the qubit frequency
+            "w_max": 5.552552628640306 * 1e9,
             "xj": 0,
             "d": 0,
             "normalization": 0.8058267234810884,
@@ -154,7 +155,7 @@ with Executor.open(
 
         fit_function = transmon_frequency
 
-        # TODO: Center around the sweetspot
+        # TODO: Center around the sweetspot ???
         # biases += e.platform.qubits[target].sweetspot
 
         i = 0
@@ -162,7 +163,7 @@ with Executor.open(
             i += 1
 
             # Change the path
-            e.path = Path(f"CoherenceFlux/flux_{i}")
+            e.path = Path(f"TTESTCoherenceFlux/flux_{i}")
             # FIXME: Path for the general output
 
             # Change the flux
@@ -198,6 +199,9 @@ with Executor.open(
             if rabi_output.results.amplitude[target] > 0.5:
                 print(
                     f"Rabi fit has pi pulse amplitude {rabi_output.results.amplitude[target]}, greater than 0.5 not possible for QM. Skipping to next bias point."
+                )
+                e.platform.qubits[target].native_gates.RX.amplitude = (
+                    0.5  # FIXME: For QM this should be 0.5
                 )
                 continue
 
