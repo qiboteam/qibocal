@@ -206,6 +206,8 @@ class Executor:
             parameters: Optional[dict] = None,
             id: str = operation,
             mode: ExecutionMode = AUTOCALIBRATION,
+            update: bool = True,
+            targets: Optional[Targets] = None,
             **kwargs,
         ):
             positional = dict(
@@ -216,6 +218,8 @@ class Executor:
                 source={
                     "id": id,
                     "operation": operation,
+                    "targets": targets,
+                    "update": update,
                     "parameters": params | positional | kwargs,
                 }
             )
