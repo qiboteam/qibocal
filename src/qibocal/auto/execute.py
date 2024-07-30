@@ -249,6 +249,7 @@ class Executor:
         path: os.PathLike,
         force: bool = False,
         platform: Union[Platform, str, None] = None,
+        update: bool = True,
         targets: Optional[Targets] = None,
     ):
         """Initialize execution."""
@@ -305,10 +306,11 @@ class Executor:
         path: os.PathLike,
         force: bool = False,
         platform: Union[Platform, str, None] = None,
+        update: bool = True,
         targets: Optional[Targets] = None,
     ):
         ex = cls.create(name, platform)
-        ex.init(path, force, platform, targets)
+        ex.init(path, force, platform, update, targets)
         try:
             yield ex
         finally:
