@@ -8,6 +8,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab.qubits import QubitId, QubitPairId
 
+from qibocal.auto.history import History
 from qibocal.auto.output import Output
 from qibocal.auto.task import Completed, TaskId
 from qibocal.cli.report import generate_figures_and_report
@@ -30,7 +31,8 @@ class ComparedReport:
         """Store only protocols with same id in all the reports."""
         self.history = self.create_common_history()
 
-    def history_uids(self):
+    def history_uids(self) -> set[TaskId]:
+        """Find the set of TakId in common between the reports."""
         experiment_ids = []
         for path in self.report_paths:
             report = Output.load(path)
@@ -41,7 +43,8 @@ class ComparedReport:
             common_experiment_ids = common_experiment_ids & exp_id
         return common_experiment_ids
 
-    def create_common_history(self):
+    def create_common_history(self) -> dict[TaskId, list[History]]:
+        """Obtain histories of common TaskIds from the reports."""
         common_experiment_ids = self.history_uids()
         history = {}
         # create a dictionary of task_uid: List[Completed(...)]
@@ -55,7 +58,7 @@ class ComparedReport:
         return history
 
     @staticmethod
-    def routine_name(routine: TaskId):
+    def routine_name(routine: TaskId) -> str:
         """Prettify routine's name for report headers."""
         return routine.id.title()
 
