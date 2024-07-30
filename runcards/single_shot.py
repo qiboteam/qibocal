@@ -1,9 +1,12 @@
-from qibocal.auto.execute import Executor
+from pathlib import Path
+
 from qibocal.cli.report import report
+from qibocal.routines import close, init, single_shot_classification
 
-with Executor.open("myexec", path="test_x", platform="dummy", force=True) as executor:
-    from myexec import single_shot_classification
+path = Path("test_x")
 
-    completed = single_shot_classification(nshots=1000)
+init(path=path, force=True)
+single_shot_classification(nshots=1000)
+close()
 
-report(executor.path, executor.history)
+report(path)
