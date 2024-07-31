@@ -29,6 +29,7 @@ from .flux_dependence.qubit_flux_dependence import qubit_flux
 from .flux_dependence.qubit_flux_tracking import qubit_flux_tracking
 from .flux_dependence.resonator_crosstalk import resonator_crosstalk
 from .flux_dependence.resonator_flux_dependence import resonator_flux
+from .qua import rb_ondevice
 from .qubit_power_spectroscopy import qubit_power_spectroscopy
 from .qubit_spectroscopy import qubit_spectroscopy
 from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
@@ -46,6 +47,7 @@ from .rabi.length_signal import rabi_length_signal
 from .ramsey.ramsey import ramsey
 from .ramsey.ramsey_signal import ramsey_signal
 from .randomized_benchmarking.filtered_rb import filtered_rb
+from .randomized_benchmarking.rb_qua_script import rb_correction_ondevice
 from .randomized_benchmarking.rb_script import rb_correction
 from .randomized_benchmarking.standard_rb import standard_rb
 from .randomized_benchmarking.standard_rb_2q import standard_rb_2q
@@ -150,4 +152,6 @@ __all__ = [
     "standard_rb_2q",
     "coherence_flux_signal",
     "rb_correction",
+    "rb_ondevice",
+    "rb_correction_ondevice",
 ]
