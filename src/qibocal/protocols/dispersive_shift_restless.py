@@ -15,7 +15,6 @@ from qibocal.protocols.utils import HZ_TO_GHZ, lorentzian
 from .dispersive_shift import (
     DispersiveShiftData,
     DispersiveShiftParameters,
-    DispersiveShiftResults,
     DispersiveShiftType,
 )
 
@@ -129,57 +128,12 @@ def _acquisition(
     return data
 
 
-def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
+def _fit(data: DispersiveShiftData):
     """Post-Processing for dispersive shift"""
-    qubits = data.qubits
-    iq_couples = [[], []]  # axis 0: states, axis 1: qubit
-
-    frequency_0 = {}
-    frequency_1 = {}
-    best_freqs = {}
-    fitted_parameters_0 = {}
-    fitted_parameters_1 = {}
-
-    # for delay in data.delays:
-    #     for i in range(2):
-    #         for qubit in qubits:
-    #             data_i = data[qubit, delay, i]
-    #             fit_result = lorentzian_fit(
-    #                 data_i, resonator_type=data.resonator_type, fit="resonator"
-    #             )
-    #             if fit_result is not None:
-    #                 if i == 0:
-    #                     frequency_0[qubit, delay], fitted_parameters_0[qubit, delay], _ = fit_result
-    #                 else:
-    #                     frequency_1[qubit, delay], fitted_parameters_1[qubit, delay], _ = fit_result
-
-    #             i_measures = data_i.i
-    #             q_measures = data_i.q
-
-    #             iq_couples[i].append(np.stack((i_measures, q_measures), axis=-1))
-    #         # for each qubit find the iq couple of 0-1 states that maximize the distance
-    #     iq_couples = np.array(iq_couples)
-
-    #     for idx, qubit in enumerate(qubits):
-    #         frequencies = data[qubit, delay, 0].freq
-
-    #         max_index = np.argmax(
-    #             np.linalg.norm(iq_couples[0][idx] - iq_couples[1][idx], axis=-1)
-    #         )
-    #         best_freqs[qubit, delay] = frequencies[max_index]
-
-    return DispersiveShiftResults(
-        frequency_state_zero=frequency_0,
-        frequency_state_one=frequency_1,
-        fitted_parameters_state_one=fitted_parameters_1,
-        fitted_parameters_state_zero=fitted_parameters_0,
-        best_freq=best_freqs,
-    )
+    pass
 
 
-def _plot(
-    data: DispersiveShiftRestlessData, target: QubitId, fit: DispersiveShiftResults
-):
+def _plot(data: DispersiveShiftRestlessData, target: QubitId, fit=None):
     """Plotting function for dispersive shift."""
     figures = []
     fig = make_subplots(
@@ -287,29 +241,7 @@ def _plot(
                 row=1,
                 col=1,
             )
-        # fitting_report = table_html(
-        #     table_dict(
-        #         target,
-        #         [
-        #             "State Zero Frequency [Hz]",
-        #             "State One Frequency [Hz]",
-        #             "Chi [Hz]",
-        #             "Best Frequency [Hz]",
-        #         ],
-        #         np.round(
-        #             [
-        #                 fit_data_0["frequency_state_zero"][target],
-        #                 fit_data_1["frequency_state_one"][target],
-        #                 (
-        #                     fit_data_0["frequency_state_zero"][target]
-        #                     - fit_data_1["frequency_state_one"][target]
-        #                 )
-        #                 / 2,
-        #                 fit.best_freq[target],
-        #             ]
-        #         ),
-        #     )
-        # )
+
     fig.update_layout(
         showlegend=True,
         xaxis_title="Frequency [GHz]",
