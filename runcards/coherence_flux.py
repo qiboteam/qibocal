@@ -6,6 +6,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+from qibolab import create_platform
 from qibolab.qubits import QubitId
 
 from qibocal.auto.execute import Executor
@@ -109,41 +110,33 @@ parser.add_argument(
 args = parser.parse_args()
 
 target = args.target
-platform = args.platform
 path = args.path
 
 data = CoherenceFluxSignalData()
 
 for target in [args.target]:
 
-    with Executor.open(
-        f"get_parameters",
-        path=args.path,
-        platform=platform,
-        targets=[target],
-        update=True,
-        force=True,
-    ) as e:
+    platform = create_platform(args.platform)
 
-        params_qubit = {
-            "w_max": e.platform.qubits[
-                target
-            ].drive_frequency,  # FIXME: this is not the qubit frequency
-            "xj": 0,
-            "d": e.platform.qubits[target].asymmetry,
-            "normalization": e.platform.qubits[target].crosstalk_matrix[target],
-            "offset": -e.platform.qubits[target].sweetspot
-            * e.platform.qubits[target].crosstalk_matrix[
-                target
-            ],  # Check is this the right one ???
-            "crosstalk_element": 1,
-            "charging_energy": e.platform.qubits[target].Ec,
-        }
+    params_qubit = {
+        "w_max": platform.qubits[
+            target
+        ].drive_frequency,  # FIXME: this is not the qubit frequency
+        "xj": 0,
+        "d": platform.qubits[target].asymmetry,
+        "normalization": platform.qubits[target].crosstalk_matrix[target],
+        "offset": -platform.qubits[target].sweetspot
+        * platform.qubits[target].crosstalk_matrix[
+            target
+        ],  # Check is this the right one ???
+        "crosstalk_element": 1,
+        "charging_energy": platform.qubits[target].Ec,
+    }
 
     fit_function = transmon_frequency
 
     # TODO: Center around the sweetspot ???
-    biases += e.platform.qubits[target].sweetspot
+    biases += platform.qubits[target].sweetspot
 
     i = 0
     for bias in biases:
@@ -152,7 +145,7 @@ for target in [args.target]:
         with Executor.open(
             f"myexec_{i}",
             path=args.path / Path(f"flux_{i}"),
-            platform=platform,
+            platform=args.platform,
             targets=[target],
             update=True,
             force=True,
