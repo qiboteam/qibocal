@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from math import floor
 from typing import Optional
 
 import numpy as np
@@ -222,7 +221,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
             # solution to x*popt[1] + popt[2] = k pi
             # such that x is close to 0
             # to avoid errors due to periodicity
-            k = floor(popt[2] / np.pi + 0.5)
+            k = np.round(popt[2] / np.pi)
 
             sweetspot[qubit] = (k * np.pi + popt[2]) / popt[1]
             matrix_element[qubit] = popt[1]
