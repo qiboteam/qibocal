@@ -151,3 +151,13 @@ def test_close(tmp_path: Path, executor: Executor):
     assert executor.meta is not None
     assert executor.meta.start is not None
     assert executor.meta.end is not None
+
+
+def test_context_manager(tmp_path: Path, executor: Executor):
+    path = tmp_path / "my-open-folder"
+
+    executor.init(path)
+
+    with executor:
+        assert executor.meta is not None
+        assert executor.meta.start is not None
