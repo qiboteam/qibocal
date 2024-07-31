@@ -10,7 +10,7 @@ from qibocal.web.report import STYLES, TEMPLATES, report_css_styles
 
 def initialize_combined_report(
     report_path: Path, output_folder: Path, force: bool
-) -> Output:
+) -> tuple[Output, Path]:
     """Initialisation of the output.
 
     Create the report directory and set up start-finish time, report title.
@@ -27,7 +27,7 @@ def initialize_combined_report(
     combined_meta.title = combined_report_path.name
     combined_meta.end()
     combined_report.meta = combined_meta
-    return combined_report
+    return combined_report, combined_report_path
 
 
 def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
@@ -46,20 +46,20 @@ def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
     paths = [path_1, path_2]
     env = Environment(loader=FileSystemLoader(TEMPLATES))
     template = env.get_template("template.html")
-    combined_report = initialize_combined_report(
+    combined_report, combined_report_path = initialize_combined_report(
         path_1, output_folder=folder, force=force
     )
 
     html = template.render(
         is_static=True,
         css_styles=report_css_styles(STYLES),
-        path=folder,
+        path=combined_report_path,
         title=combined_report.meta.title,
         report=ComparedReport(
             report_paths=paths,
-            folder=folder,
+            folder=combined_report_path,
             meta=combined_report.meta.dump(),
         ),
     )
-    combined_report.dump(folder)
-    (folder / "index.html").write_text(html)
+    combined_report.dump(combined_report_path)
+    (combined_report_path / "index.html").write_text(html)
