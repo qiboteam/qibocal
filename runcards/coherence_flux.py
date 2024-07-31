@@ -113,9 +113,9 @@ path = args.path
 
 data = CoherenceFluxSignalData()
 
+fit_function = transmon_frequency
+platform = create_platform(args.platform)
 for target in [args.target]:
-
-    platform = create_platform(args.platform)
 
     params_qubit = {
         "w_max": platform.qubits[
@@ -132,15 +132,10 @@ for target in [args.target]:
         "charging_energy": platform.qubits[target].Ec,
     }
 
-    fit_function = transmon_frequency
+    # NOTE: Center around the sweetspot [Optional]
+    centered_biases = biases + platform.qubits[target].sweetspot
 
-    # TODO: Center around the sweetspot ???
-    biases += platform.qubits[target].sweetspot
-
-    i = 0
-    for bias in biases:
-        i += 1
-
+    for i, bias in enumerate(centered_biases):
         with Executor.open(
             f"myexec_{i}",
             path=args.path / Path(f"flux_{i}"),
