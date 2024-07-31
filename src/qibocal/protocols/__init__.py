@@ -17,6 +17,7 @@ from .couplers.coupler_qubit_spectroscopy import coupler_qubit_spectroscopy
 from .couplers.coupler_resonator_spectroscopy import coupler_resonator_spectroscopy
 from .dispersive_shift import dispersive_shift
 from .dispersive_shift_qutrit import dispersive_shift_qutrit
+from .dispersive_shift_restless import dispersive_shift_restless
 from .drag import drag_tuning
 from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
@@ -144,4 +145,5 @@ __all__ = [
     "rabi_length_frequency",
     "rabi_length_frequency_signal",
     "standard_rb_2q",
+    "dispersive_shift_restless",
 ]
