@@ -1,3 +1,5 @@
+from allxy.allxy_restless import allxy_restless
+
 from .allxy.allxy import allxy
 from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
 from .allxy.allxy_resonator_depletion_tuning import allxy_resonator_depletion_tuning
@@ -146,4 +148,5 @@ __all__ = [
     "rabi_length_frequency_signal",
     "standard_rb_2q",
     "dispersive_shift_restless",
+    "allxy_restless",
 ]
