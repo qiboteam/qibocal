@@ -10,7 +10,6 @@ from qibolab import create_platform
 from qibolab.qubits import QubitId
 
 from qibocal.auto.execute import Executor
-from qibocal.auto.history import History
 from qibocal.auto.operation import Data
 from qibocal.cli.report import report
 from qibocal.protocols.flux_dependence.utils import transmon_frequency
@@ -239,7 +238,6 @@ for target in [args.target]:
             )
 
             report(e.path, e.history)
-            e.history = History()
 
 
 def plot(data: CoherenceFluxSignalData, target: QubitId, path=None):
