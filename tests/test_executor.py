@@ -183,3 +183,13 @@ def test_default_executor(tmp_path: Path, fake_platform: str, monkeypatch):
     path = tmp_path / "my-default-exec-folder"
     qibocal.routines.init(path, platform=fake_platform)
     assert qibocal.DEFAULT_EXECUTOR.platform.name == 42
+
+
+def test_context_manager(tmp_path: Path, executor: Executor):
+    path = tmp_path / "my-open-folder"
+
+    executor.init(path)
+
+    with executor:
+        assert executor.meta is not None
+        assert executor.meta.start is not None
