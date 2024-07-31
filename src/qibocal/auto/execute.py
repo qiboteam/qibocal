@@ -315,9 +315,30 @@ class Executor:
         update: Optional[bool] = None,
         targets: Optional[Targets] = None,
     ):
+        """Enter the execution context."""
         ex = cls.create(name, platform)
         ex.init(path, force, platform, update, targets)
         try:
             yield ex
         finally:
             ex.close()
+
+    def __enter__(self):
+        """Reenter the execution context.
+
+        This method its here to reuse an already existing (and
+        initialized) executor, in a new context.
+
+        It should not be used with new executors. In which case, cf. :meth:`__open__`.
+        """
+        # connect and initialize platform
+        self.platform.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Exit execution context.
+
+        This pairs with :meth:`__enter__`.
+        """
+        self.close()
+        return False
