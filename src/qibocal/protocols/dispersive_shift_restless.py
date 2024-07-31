@@ -10,10 +10,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Routine
-from qibocal.protocols.utils import (
-    HZ_TO_GHZ,
-    lorentzian,
-)
+from qibocal.protocols.utils import HZ_TO_GHZ, lorentzian
 
 from .dispersive_shift import (
     DispersiveShiftData,
