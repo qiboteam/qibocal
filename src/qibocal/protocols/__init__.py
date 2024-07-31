@@ -1,8 +1,7 @@
-from allxy.allxy_restless import allxy_restless
-
 from .allxy.allxy import allxy
 from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
 from .allxy.allxy_resonator_depletion_tuning import allxy_resonator_depletion_tuning
+from .allxy.allxy_restless import allxy_restless
 from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
 from .coherence.spin_echo_signal import spin_echo_signal
