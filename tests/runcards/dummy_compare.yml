@@ -24,3 +24,9 @@ actions:
       max_amp_factor: 0.3
       step_amp_factor: 0.005
       nshots: 100
+
+  - id: single shot classification
+    operation: single_shot_classification
+    parameters:
+      unrolling: False
+      nshots: 100
