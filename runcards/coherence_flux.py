@@ -112,21 +112,19 @@ target = args.target
 platform = args.platform
 path = args.path
 
-with Executor.open(
-    "myexec",
-    path=args.path,
-    platform=platform,
-    targets=[target],
-    update=True,
-    force=True,
-) as e:
+data = CoherenceFluxSignalData()
 
-    data = CoherenceFluxSignalData()
+for target in [args.target]:
 
-    for target in e.targets:
-        
-        import pdb; pdb.set_trace()
-        
+    with Executor.open(
+        f"get_parameters",
+        path=args.path,
+        platform=platform,
+        targets=[target],
+        update=True,
+        force=True,
+    ) as e:
+
         params_qubit = {
             "w_max": e.platform.qubits[
                 target
@@ -141,30 +139,24 @@ with Executor.open(
             "crosstalk_element": 1,
             "charging_energy": e.platform.qubits[target].Ec,
         }
-        
-        # D2 hardcoded frpm qubit flux map
-        params_qubit = {
-            "w_max": 5.552552628640306 * 1e9,
-            "xj": 0,
-            "d": 0,
-            "normalization": 0.8058267234810884,
-            "offset": 0.0770175390610017,  # Check is this the right one ???
-            "crosstalk_element": 1,
-            "charging_energy": 0.2,
-        }
 
-        fit_function = transmon_frequency
+    fit_function = transmon_frequency
 
-        # TODO: Center around the sweetspot ???
-        # biases += e.platform.qubits[target].sweetspot
+    # TODO: Center around the sweetspot ???
+    biases += e.platform.qubits[target].sweetspot
 
-        i = 0
-        for bias in biases:
-            i += 1
+    i = 0
+    for bias in biases:
+        i += 1
 
-            # Change the path
-            e.path = Path(f"TTESTCoherenceFlux/flux_{i}")
-            # FIXME: Path for the general output
+        with Executor.open(
+            f"myexec_{i}",
+            path=args.path / Path(f"flux_{i}"),
+            platform=platform,
+            targets=[target],
+            update=True,
+            force=True,
+        ) as e:
 
             # Change the flux
             e.platform.qubits[target].flux.offset = bias
@@ -257,10 +249,9 @@ with Executor.open(
             e.history = History()
 
 
-def plot(data: CoherenceFluxSignalData, target: QubitId, fit=None):
+def plot(data: CoherenceFluxSignalData, target: QubitId, path=None):
     """Plotting function for Coherence experiment."""
 
-    figures = []
     figure = go.Figure()
 
     figure.add_trace(
@@ -302,7 +293,8 @@ def plot(data: CoherenceFluxSignalData, target: QubitId, fit=None):
         yaxis_title="Coherence [ns]",
     )
 
-    figure.write_image(e.path / ".pdf")
+    if path is not None:
+        figure.write_html(path / Path("plot.html"))
 
 
-plot(data, target)
+plot(data, target, path=args.path)
