@@ -98,6 +98,7 @@ def _acquisition(
         params.circuit = Circuit(len(qubits))
 
     backend = GlobalBackend()
+    backend.platform = platform
     simulator = NumpyBackend()
     transpiler = dummy_transpiler(backend)
 

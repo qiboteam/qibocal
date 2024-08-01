@@ -1,6 +1,6 @@
 import json
 import pathlib
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from typing import Optional
 
 import numpy as np
@@ -106,6 +106,19 @@ class SingleShotClassificationResults(Results):
     """Test set."""
     y_tests: dict[QubitId, list] = field(default_factory=dict)
     """Test set."""
+
+    def __contains__(self, key: QubitId):
+        """Checking if key is in Results.
+
+        Overwritten because classifiers_hpars is empty when running
+        the default_classifier.
+        """
+        return all(
+            key in getattr(self, field.name)
+            for field in fields(self)
+            if isinstance(getattr(self, field.name), dict)
+            and field.name != "classifiers_hpars"
+        )
 
     def save(self, path):
         classifiers = run.import_classifiers(self.names)

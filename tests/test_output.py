@@ -35,7 +35,9 @@ def fake_output(tmp_path: Path) -> tuple[Output, Path]:
     output = Output(History(), meta, platform)
     platform.connect()
     meta.start()
-    executor = Executor.create(platform=platform)
+    executor = Executor(
+        history=History(), targets=list(platform.qubits), platform=platform
+    )
     executor.run_protocol(flipping, ACTION, mode=ExecutionMode.ACQUIRE)
     meta.end()
     platform.disconnect()
