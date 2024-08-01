@@ -73,16 +73,9 @@ class RBCorrectionSignalData(Data):
             return utils.average_single_shots(self.__class__, self.data)
         return self
 
-
-@dataclass
-class RBCorrectionSignalResults(Results):
-    sweetspot: dict[QubitId, float]
-    "Best frequency for each qubit only regarding Coherence"
-
-
 parser = ArgumentParser()
-parser.add_argument("--target", type=int, default=0, help="Target qubit index")
-parser.add_argument("--platform", type=str, default="dummy", help="Platform name")
+parser.add_argument("--target", type=int, default="D2", help="Target qubit index")
+parser.add_argument("--platform", type=str, default="qw11q", help="Platform name")
 parser.add_argument(
     "--path", type=str, default="TESTRBCorrection", help="Path for the output"
 )
