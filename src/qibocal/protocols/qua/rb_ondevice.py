@@ -39,6 +39,8 @@ class RbOnDeviceParameters(Parameters):
     apply_inverse: bool = False
     state_discrimination: bool = True
     "Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)"
+    debug: bool = False
+    "If enabled it dumps the qua script."
 
     def __post_init__(self):
         if self.seed is None:
@@ -372,8 +374,9 @@ def _acquisition(
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(rb)
 
-    with open("qua_script.py", "w") as file:
-        file.write(generate_qua_script(rb, config))
+    if params.debug:
+        with open("qua_script.py", "w") as file:
+            file.write(generate_qua_script(rb, config))
 
     # Get results from QUA program
     if state_discrimination:
