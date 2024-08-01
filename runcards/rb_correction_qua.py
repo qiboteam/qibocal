@@ -73,6 +73,7 @@ class RBCorrectionSignalData(Data):
             return utils.average_single_shots(self.__class__, self.data)
         return self
 
+
 parser = ArgumentParser()
 parser.add_argument("--target", type=int, default="D2", help="Target qubit index")
 parser.add_argument("--platform", type=str, default="qw11q", help="Platform name")
