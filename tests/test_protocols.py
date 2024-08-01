@@ -112,7 +112,7 @@ def test_acquire_command(runcard, tmp_path):
         **INVOKER_OPTIONS,
     )
 
-    assert (outpath / "data" / protocol).is_dir()
+    assert (outpath / "data" / f"{protocol}-0").is_dir()
 
     # generate report from acquired data
     runner.invoke(command, ["report", str(outpath)], **INVOKER_OPTIONS)
