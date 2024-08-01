@@ -90,7 +90,7 @@ def _aquisition(
     """
 
     # create a DataUnits object to store the results,
-    data = ChevronSignalData()
+    data = ChevronSignalData(native=params.native)
     for pair in targets:
         # order the qubits so that the low frequency one is the first
         ordered_pair = order_pair(pair, platform)
@@ -100,6 +100,7 @@ def _aquisition(
             duration_max=params.duration_max,
             parking=params.parking,
             dt=params.dt,
+            native=params.native,
         )
 
         data.native_amplitude[ordered_pair] = (

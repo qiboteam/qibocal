@@ -106,11 +106,13 @@ def assignment_fidelity(fidelity: float, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].assignment_fidelity = float(fidelity)
 
 
-def virtual_phases(phases: dict[QubitId, float], platform: Platform, pair: QubitPairId):
+def virtual_phases(
+    phases: dict[QubitId, float], native: str, platform: Platform, pair: QubitPairId
+):
     """Update virtual phases for given qubits in pair in results."""
     virtual_z_pulses = {
         pulse.qubit.name: pulse
-        for pulse in platform.pairs[pair].native_gates.CZ.pulses
+        for pulse in getattr(platform.pairs[pair].native_gates, native).pulses
         if isinstance(pulse, VirtualZPulse)
     }
     for qubit_id, phase in phases.items():
@@ -120,7 +122,7 @@ def virtual_phases(phases: dict[QubitId, float], platform: Platform, pair: Qubit
             virtual_z_pulses[qubit_id] = VirtualZPulse(
                 phase=phase, qubit=platform.qubits[qubit_id]
             )
-            platform.pairs[pair].native_gates.CZ.pulses.append(
+            getattr(platform.pairs[pair].native_gates, native).pulses.append(
                 virtual_z_pulses[qubit_id]
             )
 
@@ -135,6 +137,20 @@ def CZ_duration(duration: int, platform: Platform, pair: QubitPairId):
 def CZ_amplitude(amp: float, platform: Platform, pair: QubitPairId):
     """Update CZ amplitude for specific pair."""
     for pulse in platform.pairs[pair].native_gates.CZ.pulses:
+        if pulse.qubit.name == pair[1]:
+            pulse.amplitude = float(amp)
+
+
+def iSWAP_duration(duration: int, platform: Platform, pair: QubitPairId):
+    """Update iSWAP_duration duration for specific pair."""
+    for pulse in platform.pairs[pair].native_gates.iSWAP.pulses:
+        if pulse.qubit.name == pair[1]:
+            pulse.duration = int(duration)
+
+
+def iSWAP_amplitude(amp: float, platform: Platform, pair: QubitPairId):
+    """Update iSWAP_duration amplitude for specific pair."""
+    for pulse in platform.pairs[pair].native_gates.iSWAP.pulses:
         if pulse.qubit.name == pair[1]:
             pulse.amplitude = float(amp)
 
