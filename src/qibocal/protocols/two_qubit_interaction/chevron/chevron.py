@@ -203,12 +203,17 @@ def _fit(data: ChevronData) -> ChevronResults:
         amplitude, index, delta = fit_flux_amplitude(signal_matrix, amps, times)
         # estimate duration by rabi curve at amplitude previously estimated
         y = signal_matrix[index, :].ravel()
-
         try:
             popt, _ = curve_fit(
-                chevron_fit, times, y, p0=[delta, 0, np.mean(y), np.mean(y)]
+                chevron_fit,
+                times,
+                y,
+                p0=[delta * 2 * np.pi, np.pi, np.mean(y), np.mean(y)],
+                bounds=(
+                    [0, -2 * np.pi, np.min(y), np.min(y)],
+                    [np.inf, 2 * np.pi, np.max(y), np.max(y)],
+                ),
             )
-
             # duration can be estimated as the period of the oscillation
             duration = 1 / (popt[0] / 2 / np.pi)
             amplitudes[pair] = amplitude
