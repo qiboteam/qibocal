@@ -2,9 +2,11 @@ from .allxy.allxy import allxy
 from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
 from .allxy.allxy_resonator_depletion_tuning import allxy_resonator_depletion_tuning
 from .classification import single_shot_classification
+from .coherence.coherence_flux_signal import coherence_flux_signal
 from .coherence.spin_echo import spin_echo
 from .coherence.spin_echo_signal import spin_echo_signal
 from .coherence.t1 import t1
+from .coherence.t1_flux import t1_flux
 from .coherence.t1_sequences import t1_sequences
 from .coherence.t1_signal import t1_signal
 from .coherence.t2 import t2
@@ -27,6 +29,7 @@ from .flux_dependence.qubit_flux_dependence import qubit_flux
 from .flux_dependence.qubit_flux_tracking import qubit_flux_tracking
 from .flux_dependence.resonator_crosstalk import resonator_crosstalk
 from .flux_dependence.resonator_flux_dependence import resonator_flux
+from .qua import rb_ondevice
 from .qubit_power_spectroscopy import qubit_power_spectroscopy
 from .qubit_spectroscopy import qubit_spectroscopy
 from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
@@ -44,6 +47,8 @@ from .rabi.length_signal import rabi_length_signal
 from .ramsey.ramsey import ramsey
 from .ramsey.ramsey_signal import ramsey_signal
 from .randomized_benchmarking.filtered_rb import filtered_rb
+from .randomized_benchmarking.rb_qua_script import rb_correction_ondevice
+from .randomized_benchmarking.rb_script import rb_correction
 from .randomized_benchmarking.standard_rb import standard_rb
 from .randomized_benchmarking.standard_rb_2q import standard_rb_2q
 from .readout_characterization import readout_characterization
@@ -82,6 +87,7 @@ __all__ = [
     "t1",
     "t1_sequences",
     "t1_signal",
+    "t1_flux",
     "t2",
     "t2_sequences",
     "t2_signal",
@@ -144,4 +150,8 @@ __all__ = [
     "rabi_length_frequency",
     "rabi_length_frequency_signal",
     "standard_rb_2q",
+    "coherence_flux_signal",
+    "rb_correction",
+    "rb_ondevice",
+    "rb_correction_ondevice",
 ]
