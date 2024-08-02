@@ -7,7 +7,7 @@ from .version import __version__
 
 __all__ = ["Executor", "protocols", "command", "__version__"]
 
-DEFAULT_EXECUTOR = Executor.create(".routines")
+DEFAULT_EXECUTOR = Executor.create(".routines", platform="dummy")
 """Default executor, registered as a qibocal submodule.
 
 It is defined for streamlined usage of qibocal protocols in simple
