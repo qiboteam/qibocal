@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Union
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -93,8 +94,10 @@ class ComparedReport:
                     # then phase (col = 2)
                     # if there is another element it should be a fit done on the first column
                     if isinstance(trace, go.Heatmap):
-                        trace.zmin = min(min(trace.z), min(fig1.data[j].z))
-                        trace.zmax = max(max(trace.z), max(fig1.data[j].z))
+                        flatten_trace = np.array(trace.z).flatten()
+                        flatten_fig_data = np.array(fig1.data[j].z).flatten()
+                        trace.zmin = min(min(flatten_trace), min(flatten_fig_data))
+                        trace.zmax = max(max(flatten_trace), max(flatten_fig_data))
                     fig.add_trace(
                         trace,
                         row=1,
@@ -106,8 +109,10 @@ class ComparedReport:
                     # on second row
                     if isinstance(trace, go.Heatmap):
                         trace.showscale = False
-                        trace.zmin = min(min(trace.z), min(fig1.data[j].z))
-                        trace.zmax = max(max(trace.z), max(fig1.data[j].z))
+                        flatten_trace = np.array(trace.z).flatten()
+                        flatten_fig_data = np.array(fig1.data[j].z).flatten()
+                        trace.zmin = min(min(flatten_trace), min(flatten_fig_data))
+                        trace.zmax = max(max(flatten_trace), max(flatten_fig_data))
                     fig.add_trace(
                         trace,
                         row=2,
