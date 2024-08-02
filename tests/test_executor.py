@@ -157,13 +157,9 @@ def test_close(tmp_path: Path, executor: Executor):
     assert executor.meta.end is not None
 
 
-def test_default_executor(tmp_path: Path):
+@pytest.fixture
+def fake_platform(tmp_path):
     name = "ciao-come-va"
-    os.environ["QIBO_PLATFORM"] = name
-    reload(qibocal)
-    assert qibocal.DEFAULT_EXECUTOR.platform.name == "dummy"
-
-    path = tmp_path / "my-default-exec-folder"
     platform = tmp_path / "ciao-come-va"
     platform.mkdir()
     (platform / "platform.py").write_text(
@@ -177,6 +173,14 @@ def test_default_executor(tmp_path: Path):
         )
     )
     os.environ["QIBOLAB_PLATFORMS"] = str(tmp_path)
+    return name
 
-    qibocal.routines.init(path, platform=name)
+
+def test_default_executor(tmp_path: Path, fake_platform: str):
+    os.environ["QIBO_PLATFORM"] = fake_platform
+    reload(qibocal)
+    assert qibocal.DEFAULT_EXECUTOR.platform.name == "dummy"
+
+    path = tmp_path / "my-default-exec-folder"
+    qibocal.routines.init(path, platform=fake_platform)
     assert qibocal.DEFAULT_EXECUTOR.platform.name == 42
