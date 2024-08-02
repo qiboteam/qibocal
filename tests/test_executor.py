@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -154,10 +155,21 @@ def test_close(tmp_path: Path, executor: Executor):
 
 
 def test_context_manager(tmp_path: Path, executor: Executor):
-    path = tmp_path / "my-open-folder"
+    path = tmp_path / "my-ctx-folder"
 
     executor.init(path)
 
     with executor:
         assert executor.meta is not None
         assert executor.meta.start is not None
+
+
+def test_open(tmp_path: Path):
+    path = tmp_path / "my-open-folder"
+
+    with Executor.open("myexec", path) as e:
+        assert isinstance(e.t1, Callable)
+        assert e.meta is not None
+        assert e.meta.start is not None
+
+    assert e.meta.end is not None
