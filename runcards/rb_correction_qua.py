@@ -73,8 +73,9 @@ class RBCorrectionSignalData(Data):
             return utils.average_single_shots(self.__class__, self.data)
         return self
 
+
 parser = ArgumentParser()
-parser.add_argument("--target", type=int, default="D2", help="Target qubit index")
+parser.add_argument("--target", default="D2", help="Target qubit index")
 parser.add_argument("--platform", type=str, default="qw11q", help="Platform name")
 parser.add_argument(
     "--path", type=str, default="TESTRBCorrection", help="Path for the output"
@@ -95,8 +96,8 @@ for target in [args.target]:
     for i, bias in enumerate(centered_biases):
         with Executor.open(
             f"myexec_{i}",
-            path=args.path / Path(f"flux_{i}"),
-            platform=args.platform,
+            path=path / Path(f"flux_{i}"),
+            platform=platform,
             targets=[target],
             update=True,
             force=True,
@@ -144,22 +145,22 @@ for target in [args.target]:
                     biases=[bias],
                     qubit_frequency=[platform.qubits[target].native_gates.RX.frequency],
                     pulse_fidelity_uncorrected=[
-                        rb_output_uncorrected.results.pulse_fidelity[target]
+                        rb_output_uncorrected.results.pars[target][
+                            2
+                        ]  # Get error covs[2]
                     ],
                     pulse_fidelity_corrected=[
-                        rb_output_corrected.results.pulse_fidelity[target]
+                        rb_output_corrected.results.pars[target][2]
                     ],
                 ),
             )
 
-        # close()
         report(e.path, e.history)
 
 
-def plot(data: RBCorrectionSignalData, target: QubitId, fit=None):
+def plot(data: RBCorrectionSignalData, target: QubitId, path):
     """Plotting function for Coherence experiment."""
 
-    figures = []
     figure = go.Figure()
 
     figure.add_trace(
@@ -195,4 +196,4 @@ def plot(data: RBCorrectionSignalData, target: QubitId, fit=None):
         figure.write_html(path / Path("plot.html"))
 
 
-plot(data, target, path=args.path)
+plot(data, target, path=path)
