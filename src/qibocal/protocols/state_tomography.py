@@ -99,6 +99,7 @@ def _acquisition(
         params.circuit = Circuit(len(targets))
 
     backend = GlobalBackend()
+    backend.platform = platform
     transpiler = dummy_transpiler(backend)
 
     data = StateTomographyData()

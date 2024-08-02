@@ -106,8 +106,48 @@ def fake_protocols(request):
     return protocols
 
 
+@pytest.fixture
+def executor():
+    executor = Executor.create("my-exec")
+    yield executor
+    try:
+        executor.unload()
+    except KeyError:
+        # it has been explicitly unloaded, no need to do it again
+        pass
+
+
 @pytest.mark.protocols("ciao", "come")
 def test_simple(fake_protocols):
     globals_ = {}
     exec((SCRIPTS / "simple.py").read_text(), globals_)
     assert globals_["res"]._results.par[0] == 42
+
+
+def test_init(tmp_path: Path, executor: Executor):
+    path = tmp_path / "my-init-folder"
+
+    init = executor.init
+
+    init(path)
+    with pytest.raises(RuntimeError, match="Directory .* already exists"):
+        init(path)
+
+    init(path, force=True)
+
+    assert executor.meta is not None
+    assert executor.meta.start is not None
+
+
+def test_close(tmp_path: Path, executor: Executor):
+    path = tmp_path / "my-close-folder"
+
+    init = executor.init
+    close = executor.close
+
+    init(path)
+    close()
+
+    assert executor.meta is not None
+    assert executor.meta.start is not None
+    assert executor.meta.end is not None

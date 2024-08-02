@@ -51,8 +51,9 @@ class Metadata:
     end_time: Optional[datetime]
     stats: dict[str, TaskStats]
     versions: Versions
+    author: Optional[str] = None
+    tag: Optional[str] = None
     targets: Optional[Targets] = None
-    """Global targets."""
 
     @classmethod
     def generate(cls, name: str, backend):
