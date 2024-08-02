@@ -1,5 +1,7 @@
+import os
 from copy import deepcopy
 from dataclasses import dataclass
+from importlib import reload
 from pathlib import Path
 from typing import Optional
 
@@ -7,6 +9,7 @@ import pytest
 from qibolab import Platform, create_platform
 from qibolab.qubits import QubitId
 
+import qibocal
 import qibocal.protocols
 from qibocal import Executor
 from qibocal.auto.history import History
@@ -151,3 +154,9 @@ def test_close(tmp_path: Path, executor: Executor):
     assert executor.meta is not None
     assert executor.meta.start is not None
     assert executor.meta.end is not None
+
+
+def test_default_executor():
+    os.environ["QIBO_PLATFORM"] = "ciao-come-va"
+    reload(qibocal)
+    assert qibocal.DEFAULT_EXECUTOR.platform.name == "dummy"
