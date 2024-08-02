@@ -2,6 +2,7 @@ import os
 from copy import deepcopy
 from dataclasses import dataclass
 from importlib import reload
+from inspect import cleandoc
 from pathlib import Path
 from typing import Optional
 
@@ -156,7 +157,26 @@ def test_close(tmp_path: Path, executor: Executor):
     assert executor.meta.end is not None
 
 
-def test_default_executor():
-    os.environ["QIBO_PLATFORM"] = "ciao-come-va"
+def test_default_executor(tmp_path: Path):
+    name = "ciao-come-va"
+    os.environ["QIBO_PLATFORM"] = name
     reload(qibocal)
     assert qibocal.DEFAULT_EXECUTOR.platform.name == "dummy"
+
+    path = tmp_path / "my-default-exec-folder"
+    platform = tmp_path / "ciao-come-va"
+    platform.mkdir()
+    (platform / "platform.py").write_text(
+        cleandoc(
+            """
+            from qibolab import Platform
+
+            def create():
+                return Platform(42, {}, {}, {})
+            """
+        )
+    )
+    os.environ["QIBOLAB_PLATFORMS"] = str(tmp_path)
+
+    qibocal.routines.init(path, platform=name)
+    assert qibocal.DEFAULT_EXECUTOR.platform.name == 42
