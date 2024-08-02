@@ -1,4 +1,3 @@
-import os
 from copy import deepcopy
 from dataclasses import dataclass
 from importlib import reload
@@ -158,7 +157,7 @@ def test_close(tmp_path: Path, executor: Executor):
 
 
 @pytest.fixture
-def fake_platform(tmp_path):
+def fake_platform(tmp_path, monkeypatch):
     name = "ciao-come-va"
     platform = tmp_path / "ciao-come-va"
     platform.mkdir()
@@ -172,12 +171,12 @@ def fake_platform(tmp_path):
             """
         )
     )
-    os.environ["QIBOLAB_PLATFORMS"] = str(tmp_path)
+    monkeypatch.setenv("QIBOLAB_PLATFORMS", tmp_path)
     return name
 
 
-def test_default_executor(tmp_path: Path, fake_platform: str):
-    os.environ["QIBO_PLATFORM"] = fake_platform
+def test_default_executor(tmp_path: Path, fake_platform: str, monkeypatch):
+    monkeypatch.setenv("QIBO_PLATFORM", fake_platform)
     reload(qibocal)
     assert qibocal.DEFAULT_EXECUTOR.platform.name == "dummy"
 
