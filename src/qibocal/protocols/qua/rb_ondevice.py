@@ -18,7 +18,7 @@ from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.protocols.utils import table_dict, table_html
 
 from .configuration import generate_config
-from .utils import RBType, generate_depths, power_law, process_data
+from .utils import RBType, filter_function, filter_term, generate_depths, power_law
 
 # parser.add_argument("--simulation-duration", type=int, default=None)
 # parser.add_argument("--relaxation-time", type=int, default=None)
@@ -431,45 +431,61 @@ def _acquisition(
 
 @dataclass
 class RbOnDeviceResults(Results):
+    ydata: dict[QubitId, list[float]] = field(default_factory=dict)
+    ysigma: dict[QubitId, list[float]] = field(default_factory=dict)
     pars: dict[QubitId, list[float]] = field(default_factory=dict)
     cov: dict[QubitId, list[float]] = field(default_factory=dict)
 
 
-def _fit(data: RbOnDeviceData) -> RbOnDeviceResults:
-    qubit = data.qubits[0]
+def process_data(data: RbOnDeviceData):
     rb_type = RBType(data.rb_type)
     depths = data.depths
     state = data.state
-    sequences = data.sequences
 
-    value_avg = np.mean(state, axis=0)
-    error_avg = np.std(state, axis=0)
+    if rb_type is RBType.STANDARD:
+        return 1 - np.mean(state, axis=0), np.std(state, axis=0) / np.sqrt(
+            state.shape[0]
+        )
 
-    results = RbOnDeviceResults()
-    ydata, ysigma = process_data(rb_type, state, depths, sequences)
+    is_restless = rb_type is RBType.RESTLESS
+    term = filter_term(depths, state, data.sequences, is_restless=is_restless)
+    ff = filter_function(term)
+    return np.mean(ff, axis=1), np.std(ff, axis=1) / np.sqrt(ff.shape[1])
 
-    pars, cov = curve_fit(
-        f=power_law,
-        xdata=depths,
-        ydata=ydata,
-        sigma=ysigma,
-        p0=[0.5, 0.0, 0.9],
-        bounds=(-np.inf, np.inf),
-        maxfev=2000,
+
+def _fit(data: RbOnDeviceData) -> RbOnDeviceResults:
+    qubit = data.qubits[0]
+
+    ydata, ysigma = process_data(data)
+    results = RbOnDeviceResults(
+        ydata={qubit: list(ydata)}, ysigma={qubit: list(ysigma)}
     )
-    results.pars[qubit] = list(pars)
-    results.cov[qubit] = list(cov.flatten())
-
+    try:
+        pars, cov = curve_fit(
+            f=power_law,
+            xdata=data.depths,
+            ydata=ydata,
+            sigma=ysigma,
+            p0=[0.5, 0.0, 0.9],
+            bounds=(-np.inf, np.inf),
+            maxfev=2000,
+        )
+        results.pars[qubit] = list(pars)
+        resutls.cov[qubit] = list(cov.flatten())
+    except RuntimeError:
+        pass
     return results
 
 
 def _plot(data: RbOnDeviceData, target: QubitId, fit: RbOnDeviceResults):
-    pars = fit.pars.get(target)
-    rb_type = RBType(data.rb_type)
-    relaxation_time = data.relaxation_time
     depths = data.depths
     state = data.state
-    sequences = data.sequences
+
+    if fit is not None:
+        ydata = fit.ydata[target]
+        ysigma = fit.ysigma[target]
+    else:
+        ydata, ysigma = process_data(data)
 
     fitting_report = table_html(
         table_dict(
@@ -480,12 +496,16 @@ def _plot(data: RbOnDeviceData, target: QubitId, fit: RbOnDeviceResults):
                 "Relaxation time (us)",
             ],
             [
-                (rb_type.value.capitalize(),),
+                (data.rb_type.capitalize(),),
                 (len(state),),
                 (data.relaxation_time // 1000,),
             ],
         )
     )
+
+    pars = None
+    if fit is not None:
+        pars = fit.pars.get(target)
     if pars is not None:
         stdevs = np.sqrt(np.diag(np.reshape(fit.cov[target], (3, 3))))
         one_minus_p = 1 - pars[2]
@@ -521,10 +541,8 @@ def _plot(data: RbOnDeviceData, target: QubitId, fit: RbOnDeviceResults):
             ]
         )
 
-    ydata, ysigma = process_data(rb_type, state, depths, sequences)
-
     fig = plt.figure(figsize=(16, 6))
-    title = f"{rb_type.value.capitalize()} RB"
+    title = f"{data.rb_type.capitalize()} RB"
     plt.errorbar(
         depths, ydata, ysigma, marker="o", linestyle="-", markersize=4, label="data"
     )
