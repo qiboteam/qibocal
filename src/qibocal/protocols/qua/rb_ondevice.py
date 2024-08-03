@@ -471,7 +471,7 @@ def _fit(data: RbOnDeviceData) -> RbOnDeviceResults:
             maxfev=2000,
         )
         results.pars[qubit] = list(pars)
-        resutls.cov[qubit] = list(cov.flatten())
+        results.cov[qubit] = list(cov.flatten())
     except RuntimeError:
         pass
     return results
