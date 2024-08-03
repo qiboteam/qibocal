@@ -44,14 +44,17 @@ def plotter(
     completed node on specific target.
     """
     figures, fitting_report = generate_figures_and_report(node, target)
-    buffer = io.StringIO()
-    html_list = []
-    for figure in figures:
-        figure.write_html(buffer, include_plotlyjs=False, full_html=False)
-        buffer.seek(0)
-        html_list.append(buffer.read())
-    buffer.close()
-    all_html = "".join(html_list)
+    if isinstance(figures[0], str):
+        all_html = "".join(figures)
+    else:
+        buffer = io.StringIO()
+        html_list = []
+        for figure in figures:
+            figure.write_html(buffer, include_plotlyjs=False, full_html=False)
+            buffer.seek(0)
+            html_list.append(buffer.read())
+        buffer.close()
+        all_html = "".join(html_list)
     return all_html, fitting_report
 
 
