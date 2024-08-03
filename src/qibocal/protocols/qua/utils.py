@@ -24,18 +24,6 @@ class RBType(Enum):
         return cls.FILTERED
 
 
-def process_data(rb_type, state, depths=None, sequences=None):
-    if rb_type is RBType.STANDARD:
-        return 1 - np.mean(state, axis=0), np.std(state, axis=0) / np.sqrt(
-            state.shape[0]
-        )
-
-    is_restless = rb_type is RBType.RESTLESS
-    term = filter_term(depths, state, sequences, is_restless=is_restless)
-    ff = filter_function(term)
-    return np.mean(ff, axis=1), np.std(ff, axis=1) / np.sqrt(ff.shape[1])
-
-
 def power_law(power, a, b, p):
     """Function to fit to survival probability vs circuit depths."""
     return a * (p**power) + b
