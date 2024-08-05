@@ -254,6 +254,7 @@ def _fit(
     fit = FITS[data.fit_function]
 
     for qubit in qubits:
+        data[qubit].phase = np.unwrap(data[qubit].phase)
         fit_result = fit.fit(
             data[qubit], resonator_type=data.resonator_type, fit="resonator"
         )

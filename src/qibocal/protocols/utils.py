@@ -432,7 +432,7 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
     fitting_report = ""
     frequencies = qubit_data.freq
     signal = qubit_data.signal
-    phase = qubit_data.phase
+    phase = np.unwrap(qubit_data.phase)
     s21_raw = np.abs(signal) * np.exp(1j * phase)
 
     fig_raw.add_trace(
