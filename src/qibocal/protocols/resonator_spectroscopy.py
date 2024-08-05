@@ -88,6 +88,9 @@ class ResonatorSpectroscopyParameters(Parameters):
     If high both the readout frequency and the bare resonator frequency will be updated."""
     fit_function: str = "lorentzian"
     """Routine function (lorentzian or s21) to fit data with a model."""
+    phase_sign: bool = False
+    """Several instruments have their convention about the sign of the phase. If True, the routine
+    will apply a minus to the phase data."""
     amplitude: Optional[float] = None
     """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
@@ -148,6 +151,9 @@ class ResonatorSpectroscopyData(Data):
     """Amplitudes provided by the user."""
     fit_function: str = "lorentzian"
     """Fit function (optional) used for the resonance."""
+    phase_sign: bool = False
+    """Several instruments have their convention about the sign of the phase. If True, the routine
+    will apply a minus to the phase data."""
     data: dict[QubitId, npt.NDArray[ResSpecType]] = field(default_factory=dict)
     """Raw data acquired."""
     power_level: Optional[PowerLevel] = None
@@ -212,6 +218,7 @@ def _acquisition(
         amplitudes=amplitudes,
         attenuations=attenuations,
         fit_function=params.fit_function,
+        phase_sign=params.phase_sign,
     )
 
     results = platform.sweep(
@@ -254,7 +261,12 @@ def _fit(
     fit = FITS[data.fit_function]
 
     for qubit in qubits:
-        data[qubit].phase = np.unwrap(data[qubit].phase)
+        data[qubit].phase = (
+            -data[qubit].phase if data.phase_sign else data[qubit].phase
+        )  # TODO: tmp patch for the sign of the phase
+        data[qubit].phase = np.unwrap(
+            data[qubit].phase
+        )  # TODO: move phase unwrapping in qibolab
         fit_result = fit.fit(
             data[qubit], resonator_type=data.resonator_type, fit="resonator"
         )

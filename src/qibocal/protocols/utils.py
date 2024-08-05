@@ -432,9 +432,12 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
     fitting_report = ""
     frequencies = qubit_data.freq
     signal = qubit_data.signal
-    phase = np.unwrap(qubit_data.phase)
+    phase = qubit_data.phase
+    phase = (
+        -phase if data.phase_sign else phase
+    )  # TODO: tmp patch for the sign of the phase
+    phase = np.unwrap(phase)  # TODO: move phase unwrapping in qibolab
     s21_raw = np.abs(signal) * np.exp(1j * phase)
-
     fig_raw.add_trace(
         go.Scatter(
             x=np.real(s21_raw),
