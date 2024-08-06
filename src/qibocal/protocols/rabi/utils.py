@@ -241,11 +241,11 @@ def sequence_amplitude(
             qd_pulses[q].duration = params.pulse_length
         durations[q] = qd_pulses[q].duration
 
-        ro_pulses[q] = ro_sequence[qubit.measure.name][0]
+        ro_pulses[q] = ro_sequence[qubit.probe.name][0]
 
         sequence[qubit.drive.name].append(qd_pulses[q])
-        sequence[qubit.measure.name].append(Delay(duration=durations[q]))
-        sequence[qubit.measure.name].append(ro_pulses[q])
+        sequence[qubit.probe.name].append(Delay(duration=durations[q]))
+        sequence[qubit.probe.name].append(ro_pulses[q])
     return sequence, qd_pulses, ro_pulses, durations
 
 
@@ -269,11 +269,11 @@ def sequence_length(
         amplitudes[q] = qd_pulses[q].amplitude
 
         delays[q] = Delay(duration=16)
-        ro_pulses[q] = ro_sequence[qubit.measure.name][0]
+        ro_pulses[q] = ro_sequence[qubit.probe.name][0]
 
         sequence[qubit.drive.name].append(qd_pulses[q])
-        sequence[qubit.measure.name].append(delays[q])
-        sequence[qubit.measure.name].append(ro_pulses[q])
+        sequence[qubit.probe.name].append(delays[q])
+        sequence[qubit.probe.name].append(ro_pulses[q])
 
     return sequence, qd_pulses, delays, ro_pulses, amplitudes
 

@@ -6,6 +6,7 @@ import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
+from qibolab.result import magnitude, phase
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
@@ -89,25 +90,25 @@ def _acquisition(
     data = RabiAmplitudeSignalData(durations=durations)
 
     # sweep the parameter
-    results = platform.sweep(
-        sequence,
+    results = platform.execute(
+        [sequence],
         ExecutionParameters(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
             averaging_mode=AveragingMode.CYCLIC,
         ),
-        sweeper,
+        [[sweeper]],
     )
     for qubit in targets:
-        result = results[ro_pulses[qubit].id]
+        result = results[ro_pulses[qubit].id][0]
         data.register_qubit(
             RabiAmpSignalType,
             (qubit),
             dict(
                 amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
-                signal=result.magnitude,
-                phase=result.phase,
+                signal=magnitude(result),
+                phase=phase(result),
             ),
         )
     return data
