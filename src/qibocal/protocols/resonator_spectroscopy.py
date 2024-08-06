@@ -8,6 +8,7 @@ from _collections_abc import Callable
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
+from qibolab.result import magnitude, phase
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
@@ -187,7 +188,7 @@ def _acquisition(
     for q in targets:
         qubit = platform.qubits[q]
         ro_sequence = qubit.native_gates.MZ.create_sequence()
-        ro_pulses[q] = ro_sequence[qubit.measure.name][0]
+        ro_pulses[q] = ro_sequence[qubit.probe.name][0]
 
         if params.amplitude is not None:
             ro_pulses[q].amplitude = params.amplitude
@@ -203,7 +204,7 @@ def _acquisition(
             attenuation = None
 
         attenuations[q] = attenuation
-        sequence[qubit.measure.name].append(ro_pulses[q])
+        sequence[qubit.probe.name].append(ro_pulses[q])
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
@@ -212,7 +213,7 @@ def _acquisition(
     sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        channels=[platform.qubits[q].measure for q in targets],
+        channels=[platform.qubits[q].probe for q in targets],
         type=SweeperType.OFFSET,
     )
     data = ResonatorSpectroscopyData(
@@ -224,26 +225,26 @@ def _acquisition(
         phase_sign=params.phase_sign,
     )
 
-    results = platform.sweep(
-        sequence,
+    results = platform.execute(
+        [sequence],
         params.execution_parameters,
-        sweeper,
+        [[sweeper]],
     )
 
     # retrieve the results for every qubit
     for qubit in targets:
-        result = results[ro_pulses[qubit].id]
+        result = results[ro_pulses[qubit].id][0]
         # store the results
-        ro_frequency = platform.config(platform.qubits[qubit].measure.name).frequency
+        ro_frequency = platform.config(platform.qubits[qubit].probe.name).frequency
         data.register_qubit(
             ResSpecType,
             (qubit),
             dict(
-                signal=result.average.magnitude,
-                phase=result.average.phase,
+                signal=magnitude(result),
+                phase=phase(result),
                 freq=delta_frequency_range + ro_frequency,
-                error_signal=result.average.std,
-                error_phase=result.phase_std,
+                # error_signal=error_signal,
+                # error_phase=error_phase,
             ),
         )
     return data
