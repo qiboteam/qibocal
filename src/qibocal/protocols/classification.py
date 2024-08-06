@@ -189,9 +189,9 @@ def _acquisition(
             ro_sequence = qubit.native_gates.MZ.create_sequence()
             if state == 1:
                 sequence.extend(rx_sequence)
-            sequence[qubit.measure.name].append(Delay(duration=rx_sequence.duration))
+            sequence[qubit.probe.name].append(Delay(duration=rx_sequence.duration))
             sequence.extend(ro_sequence)
-            ro_pulses[q] = ro_sequence[qubit.measure.name][0].id
+            ro_pulses[q] = ro_sequence[qubit.probe.name][0].id
 
         sequences.append(sequence)
         all_ro_pulses.append(ro_pulses)
@@ -213,11 +213,9 @@ def _acquisition(
     )
 
     if params.unrolling:
-        results = platform.execute_pulse_sequences(sequences, options)
+        results = platform.execute(sequences, options)
     else:
-        results = [
-            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
-        ]
+        results = [platform.execute([sequence], options) for sequence in sequences]
 
     for ig, (state, ro_pulses) in enumerate(zip([0, 1], all_ro_pulses)):
         for qubit in targets:
@@ -225,13 +223,13 @@ def _acquisition(
             if params.unrolling:
                 result = results[serial][ig]
             else:
-                result = results[ig][serial]
+                result = results[ig][serial][0]
             data.register_qubit(
                 ClassificationType,
                 (qubit),
                 dict(
-                    i=result.voltage_i,
-                    q=result.voltage_q,
+                    i=result[..., 0],
+                    q=result[..., 1],
                     state=[state] * params.nshots,
                 ),
             )
