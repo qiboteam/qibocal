@@ -5,6 +5,7 @@ import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
+from qibolab.result import probability
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
@@ -73,18 +74,18 @@ def _acquisition(
     data = RabiAmplitudeData(durations=durations)
 
     # sweep the parameter
-    results = platform.sweep(
-        sequence,
+    results = platform.execute(
+        [sequence],
         ExecutionParameters(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.DISCRIMINATION,
             averaging_mode=AveragingMode.SINGLESHOT,
         ),
-        sweeper,
+        [[sweeper]],
     )
     for qubit in targets:
-        prob = results[ro_pulses[qubit].id].probability(state=1)
+        prob = probability(results[ro_pulses[qubit].id][0], state=1)
         data.register_qubit(
             RabiAmpType,
             (qubit),
