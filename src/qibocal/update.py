@@ -22,8 +22,8 @@ def readout_frequency(freq: float, platform: Platform, qubit: QubitId):
     mz = platform.qubits[qubit].native_gates.MZ
     freq_hz = int(freq)
     mz.frequency = freq_hz
-    if mz.if_frequency is not None:
-        mz.if_frequency = freq_hz - platform.qubits[qubit].readout.lo_frequency
+    # if mz.if_frequency is not None:
+    #    mz.if_frequency = freq_hz - platform.qubits[qubit].readout.lo_frequency
     platform.qubits[qubit].readout_frequency = freq_hz
 
 
