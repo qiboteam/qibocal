@@ -25,7 +25,7 @@ RBCorrectionType = np.dtype(
 """Custom dtype for RBCorrection routines."""
 
 
-biases = np.arange(-0.2, 0.1, 0.01)
+biases = np.arange(-0.02, 0.02, 0.01)
 "bias points to sweep"
 
 # Flipping
@@ -103,6 +103,8 @@ for target in [args.target]:
             force=True,
         ) as e:
 
+            discrimination_output = e.single_shot_classification(nshots=5000)
+
             rb_output_uncorrected = e.rb_ondevice(
                 num_of_sequences=num_of_sequences,
                 max_circuit_depth=max_circuit_depth,
@@ -120,6 +122,7 @@ for target in [args.target]:
                 delay_between_pulses_step=delay_between_pulses_step,
                 detuning=detuning,
             )
+
             flipping_output = e.flipping_signal(
                 nflips_max=nflips_max,
                 nflips_step=nflips_step,
