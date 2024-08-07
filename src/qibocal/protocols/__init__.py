@@ -69,6 +69,7 @@ from .two_qubit_interaction import (
     chevron_signal,
     chsh_circuits,
     chsh_pulses,
+    cz_sweep,
     cz_virtualz,
     cz_virtualz_signal,
 )
@@ -146,4 +147,5 @@ __all__ = [
     "rabi_length_frequency_signal",
     "standard_rb_2q",
     "dispersive_shift_restless",
+    "cz_sweep",
 ]
