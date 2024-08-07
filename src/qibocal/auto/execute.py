@@ -6,8 +6,10 @@ import os
 import sys
 from copy import deepcopy
 from dataclasses import dataclass, fields
+from pathlib import Path
 from typing import Optional, Union
 
+from qibo.backends import construct_backend
 from qibolab import create_platform
 from qibolab.platform import Platform
 
@@ -17,6 +19,7 @@ from qibocal.config import log
 from .history import History
 from .mode import AUTOCALIBRATION, ExecutionMode
 from .operation import Routine
+from .output import Metadata, Output
 from .task import Action, Completed, Targets, Task
 
 PLATFORM_DIR = "platform"
@@ -86,11 +89,54 @@ class Executor:
         are also allowed, and they are interpreted relative to this package (in the top
         scope).
     """
+    path: Optional[Path] = None
+    meta: Optional[Metadata] = None
 
     def __post_init__(self):
         """Register as a module, if a name is specified."""
         if self.name is not None:
             _register(self.name, self)
+
+    @classmethod
+    def create(cls, name: str, platform: Union[Platform, str, None] = None):
+        """Load list of protocols."""
+        platform = (
+            platform
+            if isinstance(platform, Platform)
+            else create_platform(
+                platform
+                if platform is not None
+                else os.environ.get("QIBO_PLATFORM", "dummy")
+            )
+        )
+        return cls(
+            name=name,
+            history=History(),
+            platform=platform,
+            targets=list(platform.qubits),
+            update=True,
+        )
+
+    def run_protocol(
+        self,
+        protocol: Routine,
+        parameters: Action,
+        mode: ExecutionMode = AUTOCALIBRATION,
+    ) -> Completed:
+        """Run single protocol in ExecutionMode mode."""
+        task = Task(action=parameters, operation=protocol)
+        log.info(f"Executing mode {mode} on {task.action.id}.")
+
+        completed = task.run(platform=self.platform, targets=self.targets, mode=mode)
+        self.history.push(completed)
+
+        # TODO: drop, as the conditions won't be necessary any longer, and then it could
+        # be performed as part of `task.run` https://github.com/qiboteam/qibocal/issues/910
+        if ExecutionMode.FIT in mode:
+            if self.update and task.update:
+                completed.update_platform(platform=self.platform)
+
+        return completed
 
     def __getattribute__(self, name: str):
         """Provide access to routines through the executor.
@@ -176,47 +222,6 @@ class Executor:
 
         return wrapper
 
-    @classmethod
-    def create(cls, name: str, platform: Union[Platform, str, None] = None):
-        """Load list of protocols."""
-        platform = (
-            platform
-            if isinstance(platform, Platform)
-            else create_platform(
-                platform
-                if platform is not None
-                else os.environ.get("QIBO_PLATFORM", "dummy")
-            )
-        )
-        return cls(
-            name=name,
-            history=History(),
-            platform=platform,
-            targets=list(platform.qubits),
-            update=True,
-        )
-
-    def run_protocol(
-        self,
-        protocol: Routine,
-        parameters: Action,
-        mode: ExecutionMode = AUTOCALIBRATION,
-    ) -> Completed:
-        """Run single protocol in ExecutionMode mode."""
-        task = Task(action=parameters, operation=protocol)
-        log.info(f"Executing mode {mode} on {task.action.id}.")
-
-        completed = task.run(platform=self.platform, targets=self.targets, mode=mode)
-        self.history.push(completed)
-
-        # TODO: drop, as the conditions won't be necessary any longer, and then it could
-        # be performed as part of `task.run` https://github.com/qiboteam/qibocal/issues/910
-        if ExecutionMode.FIT in mode:
-            if self.update and task.update:
-                completed.update_platform(platform=self.platform)
-
-        return completed
-
     def unload(self):
         """Unlist the executor from available modules."""
         if self.name is not None:
@@ -237,3 +242,56 @@ class Executor:
         except KeyError:
             # it has been explicitly unloaded, no need to do it again
             pass
+
+    def init(
+        self,
+        path: os.PathLike,
+        force: bool = False,
+        platform: Union[Platform, str, None] = None,
+        targets: Optional[Targets] = None,
+    ):
+        """Initialize execution."""
+        if platform is None:
+            platform = self.platform
+
+        backend = construct_backend(backend="qibolab", platform=platform)
+        platform = self.platform = backend.platform
+        assert isinstance(platform, Platform)
+
+        if targets is not None:
+            self.targets = targets
+
+        # generate output folder
+        path = Output.mkdir(Path(path), force)
+
+        # generate meta
+        meta = Metadata.generate(path.name, backend)
+        output = Output(History(), meta, platform)
+        output.dump(path)
+
+        # run
+        meta.start()
+
+        # connect and initialize platform
+        platform.connect()
+
+        self.path = path
+        self.meta = meta
+
+    def close(self, path: Optional[os.PathLike] = None):
+        """Close execution."""
+        assert self.meta is not None and self.path is not None
+
+        path = self.path if path is None else Path(path)
+
+        # stop and disconnect platform
+        self.platform.disconnect()
+
+        self.meta.end()
+
+        # dump history, metadata, and updated platform
+        output = Output(self.history, self.meta)
+        output.dump(path)
+
+        # attempt unloading
+        self.__del__()
