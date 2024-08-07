@@ -364,9 +364,12 @@ def setup(
         noise_model = getattr(noisemodels, params.noise_model)(params.noise_params)
         params.noise_params = noise_model.params.tolist()
     # Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
-    cls = RBData if single_qubit else RB2QData
-    if isinstance(cls, RB2QData) and interleave is not None:
+    if single_qubit:
+        cls = RBData
+    elif interleave is not None:
         cls = RB2QInterData
+    else:
+        cls = RB2QData
     data = cls(
         depths=params.depths,
         uncertainties=params.uncertainties,
