@@ -60,7 +60,6 @@ def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
     qubits = data.pairs
     results = fit(qubits, data)
 
-    # FIXME: I can only get the data.fidelity if there is an acquisition step
     if data.fidelity is not None:
         fidelity_cz = {}
         for qubit in qubits:
