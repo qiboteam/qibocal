@@ -189,9 +189,9 @@ def _acquisition(
             ro_sequence = qubit.native_gates.MZ.create_sequence()
             if state == 1:
                 sequence.extend(rx_sequence)
-            sequence[qubit.probe.name].append(Delay(duration=rx_sequence.duration))
+            sequence.append((qubit.probe.name, Delay(duration=rx_sequence.duration)))
             sequence.extend(ro_sequence)
-            ro_pulses[q] = ro_sequence[qubit.probe.name][0].id
+            ro_pulses[q] = ro_sequence[0][1].id
 
         sequences.append(sequence)
         all_ro_pulses.append(ro_pulses)

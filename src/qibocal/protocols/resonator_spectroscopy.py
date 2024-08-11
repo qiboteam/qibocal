@@ -188,7 +188,7 @@ def _acquisition(
     for q in targets:
         qubit = platform.qubits[q]
         ro_sequence = qubit.native_gates.MZ.create_sequence()
-        ro_pulses[q] = ro_sequence[qubit.probe.name][0]
+        ro_pulses[q] = ro_sequence[0][1]
 
         if params.amplitude is not None:
             ro_pulses[q].amplitude = params.amplitude
@@ -204,7 +204,7 @@ def _acquisition(
             attenuation = None
 
         attenuations[q] = attenuation
-        sequence[qubit.probe.name].append(ro_pulses[q])
+        sequence.concatenate(ro_sequence)
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
