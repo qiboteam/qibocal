@@ -295,8 +295,6 @@ def _fit(
     fitted_parameters = {}
     pairs = data.pairs
     virtual_phase = {}
-    amplitudes = {}
-    durations = {}
     angle = {}
     leakage = {}
     for pair in pairs:

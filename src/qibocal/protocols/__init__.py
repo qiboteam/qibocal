@@ -70,7 +70,7 @@ from .two_qubit_interaction import (
     chsh_pulses,
     correct_virtual_z_phases,
     correct_virtual_z_phases_signal,
-    cz_sweep,
+    optimize_two_qubit_gate,
 )
 from .two_qubit_state_tomography import two_qubit_state_tomography
 
@@ -145,5 +145,5 @@ __all__ = [
     "rabi_length_frequency",
     "rabi_length_frequency_signal",
     "standard_rb_2q",
-    "cz_sweep",
+    "optimize_two_qubit_gate",
 ]
