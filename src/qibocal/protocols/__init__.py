@@ -68,9 +68,9 @@ from .two_qubit_interaction import (
     chevron_signal,
     chsh_circuits,
     chsh_pulses,
-    cz_sweep,
-    cz_virtualz,
-    cz_virtualz_signal,
+    correct_virtual_z_phases,
+    correct_virtual_z_phases_signal,
+    optimize_two_qubit_gate,
 )
 from .two_qubit_state_tomography import two_qubit_state_tomography
 
@@ -134,8 +134,8 @@ __all__ = [
     "chevron_signal",
     "chsh_circuits",
     "chsh_pulses",
-    "cz_virtualz",
-    "cz_virtualz_signal",
+    "correct_virtual_z_phases",
+    "correct_virtual_z_phases_signal",
     "state_tomography",
     "allxy_resonator_depletion_tuning",
     "two_qubit_state_tomography",
@@ -145,5 +145,5 @@ __all__ = [
     "rabi_length_frequency",
     "rabi_length_frequency_signal",
     "standard_rb_2q",
-    "cz_sweep",
+    "optimize_two_qubit_gate",
 ]
