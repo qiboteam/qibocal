@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass, field, fields
 from typing import Optional, Union
 
@@ -261,14 +262,15 @@ def _fit(
     fit = FITS[data.fit_function]
 
     for qubit in qubits:
-        data[qubit].phase = (
-            -data[qubit].phase if data.phase_sign else data[qubit].phase
+        qubit_data = deepcopy(data[qubit])
+        qubit_data.phase = (
+            -qubit_data.phase if data.phase_sign else qubit_data.phase
         )  # TODO: tmp patch for the sign of the phase
-        data[qubit].phase = np.unwrap(
-            data[qubit].phase
+        qubit_data.phase = np.unwrap(
+            qubit_data.phase
         )  # TODO: move phase unwrapping in qibolab
         fit_result = fit.fit(
-            data[qubit], resonator_type=data.resonator_type, fit="resonator"
+            qubit_data, resonator_type=data.resonator_type, fit="resonator"
         )
         if fit_result is not None:
             (
