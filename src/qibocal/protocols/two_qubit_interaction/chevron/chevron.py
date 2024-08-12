@@ -42,6 +42,12 @@ class ChevronParameters(Parameters):
     """Time delay between flux pulses and readout."""
     parking: bool = True
     """Wether to park non interacting qubits or not."""
+    native: str = "CZ"
+    """Two qubit interaction to be calibrated.
+
+    iSWAP and CZ are the possible options.
+
+    """
 
     @property
     def amplitude_range(self):
@@ -68,9 +74,12 @@ class ChevronResults(Results):
     """CZ angle."""
     duration: dict[QubitPairId, int]
     """Virtual Z phase correction."""
+    native: str = "CZ"
+    """Two qubit interaction to be calibrated.
 
-    def __contains__(self, key: QubitPairId):
-        return super().__contains__(key) | super().__contains__((key[1], key[0]))
+    iSWAP and CZ are the possible options.
+
+    """
 
 
 ChevronType = np.dtype(
@@ -90,6 +99,12 @@ class ChevronData(Data):
 
     native_amplitude: dict[QubitPairId, float] = field(default_factory=dict)
     """CZ platform amplitude for qubit pair."""
+    native: str = "CZ"
+    """Two qubit interaction to be calibrated.
+
+    iSWAP and CZ are the possible options.
+
+    """
     sweetspot: dict[QubitPairId, float] = field(default_factory=dict)
     """Sweetspot value for high frequency qubit."""
     data: dict[QubitPairId, npt.NDArray[ChevronType]] = field(default_factory=dict)
@@ -137,8 +152,8 @@ def _aquisition(
         ChevronData: Acquisition data.
     """
 
-    # create a DataUnits object to store the results,
-    data = ChevronData()
+    # create a DataUnits object to store the results
+    data = ChevronData(native=params.native)
     for pair in targets:
         # order the qubits so that the low frequency one is the first
         sequence = chevron_sequence(
@@ -147,6 +162,7 @@ def _aquisition(
             duration_max=params.duration_max,
             parking=params.parking,
             dt=params.dt,
+            native=params.native,
         )
         ordered_pair = order_pair(pair, platform)
         # TODO: move in function to avoid code duplications
@@ -216,20 +232,18 @@ def _fit(data: ChevronData) -> ChevronResults:
         except Exception as e:
             log.warning(f"Chevron fit failed for pair {pair} due to {e}")
 
-    return ChevronResults(amplitude=amplitudes, duration=durations)
+    return ChevronResults(amplitude=amplitudes, duration=durations, native=data.native)
 
 
 def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     """Plot the experiment result for a single pair."""
     if isinstance(target, list):
         target = tuple(target)
-
     # reverse qubit order if not found in data
     if target not in data.data:
         target = (target[1], target[0])
 
     pair_data = data[target]
-
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -278,7 +292,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
                         color="black",
                         symbol="cross",
                     ),
-                    name="CZ estimate",  #  Change name from the params
+                    name=f"{data.native} estimate",  #  Change name from the params
                     showlegend=True if measured_qubit == target[0] else False,
                     legendgroup="Voltage",
                 ),
@@ -301,7 +315,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
         fitting_report = table_html(
             table_dict(
                 target[1],
-                ["CZ amplitude", "CZ duration", "Bias point"],
+                [f"{fit.native} amplitude", f"{fit.native} duration", "Bias point"],
                 [
                     fit.amplitude[target],
                     fit.duration[target],
@@ -319,8 +333,13 @@ def _update(results: ChevronResults, platform: Platform, target: QubitPairId):
 
     if target not in results.duration:
         target = (target[1], target[0])
-    update.CZ_duration(results.duration[target], platform, target)
-    update.CZ_amplitude(results.amplitude[target], platform, target)
+
+    getattr(update, f"{results.native}_duration")(
+        results.duration[target], platform, target
+    )
+    getattr(update, f"{results.native}_amplitude")(
+        results.amplitude[target], platform, target
+    )
 
 
 chevron = Routine(_aquisition, _fit, _plot, _update, two_qubit_gates=True)
