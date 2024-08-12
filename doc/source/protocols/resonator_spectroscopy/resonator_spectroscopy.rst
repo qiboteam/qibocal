@@ -121,6 +121,8 @@ enhance robustness and accuracy:
 The linear background slope accounts for an additional residual delay :math:`2\pi\tau(f - f_r)`, introducing an extra degree of freedom to the parameter set.
 Parameter estimation is performed through an iterative least squares process to optimize the model parameters.
 
+.. image:: s12_fit.png
+
 Example
 ^^^^^^^
 .. code-block:: yaml
