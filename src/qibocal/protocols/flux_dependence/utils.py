@@ -318,12 +318,12 @@ def qubit_flux_dependence_fit_bounds(qubit_frequency: float):
         [
             qubit_frequency * HZ_TO_GHZ - 1,
             0,
-            -np.pi,
+            -1,
         ],
         [
             qubit_frequency * HZ_TO_GHZ + 1,
             np.inf,
-            np.pi,
+            1,
         ],
     )
 
