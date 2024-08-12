@@ -1,5 +1,3 @@
-from statistics import median_high
-
 import numpy as np
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
@@ -23,10 +21,8 @@ def fit_flux_amplitude(matrix, amps, times):
 
     Given the pattern of a chevron plot (see for example Fig. 2 here
     https://arxiv.org/pdf/1907.04818.pdf). This function estimates
-    the CZ amplitude by finding the amplitude which gives the highest
-    oscillation period. In case there are multiple values with the same
-    period, given the symmetry, the median value is chosen.
-    The FFT also gives a first estimate for the duration of the CZ gate.
+    the CZ amplitude by finding the amplitude which gives the standard
+    deviation, indicating that there are oscillation along the z axis.
 
     Args:
      matrix (np.ndarray): signal matrix
@@ -42,13 +38,14 @@ def fit_flux_amplitude(matrix, amps, times):
     size_amp = len(amps)
     time_step = times[1] - times[0]
     fs = []
+    std = []
     for i in range(size_amp):
         y = matrix[i, :]
         period = fallback_period(guess_period(times, y))
         fs.append(1 / period)
+        std.append(np.std(y))
 
-    low_freq_interval = np.where(fs == np.min(fs))
-    amplitude = median_high(amps[::-1][low_freq_interval])
+    amplitude = amps[np.argmax(std)]
+    delta = fs[np.argmax(std)]
     index = int(np.where(np.unique(amps) == amplitude)[0])
-    delta = np.min(fs)
     return amplitude, index, delta
