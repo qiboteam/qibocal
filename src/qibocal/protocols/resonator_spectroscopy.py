@@ -89,7 +89,7 @@ class ResonatorSpectroscopyParameters(Parameters):
     If high both the readout frequency and the bare resonator frequency will be updated."""
     fit_function: str = "lorentzian"
     """Routine function (lorentzian or s21) to fit data with a model."""
-    phase_sign: bool = False
+    phase_sign: bool = True
     """Several instruments have their convention about the sign of the phase. If True, the routine
     will apply a minus to the phase data."""
     amplitude: Optional[float] = None
