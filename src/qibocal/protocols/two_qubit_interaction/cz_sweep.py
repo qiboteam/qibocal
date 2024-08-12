@@ -18,8 +18,8 @@ from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
-from .cz_virtualz import create_sequence, fit_function
 from .utils import order_pair
+from .virtual_z_phases import create_sequence, fit_function
 
 
 @dataclass
@@ -462,7 +462,7 @@ def _plot(data: CZSweepData, fit: CZSweepResults, target: QubitPairId):
 def _update(results: CZSweepResults, platform: Platform, target: QubitPairId):
     # FIXME: quick fix for qubit order
     target = tuple(sorted(target))
-    update.virtual_phases(results.best_virtual_phase[target], platform, target)
+    update.virtual_phases(results.best_virtual_phase[target], "CZ", platform, target)
     update.CZ_duration(results.best_dur[target], platform, target)
     update.CZ_amplitude(results.best_amp[target], platform, target)
 
