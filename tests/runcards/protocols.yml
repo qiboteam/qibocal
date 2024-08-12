@@ -922,6 +922,21 @@ actions:
       bias_step:  0.05
       drive_amplitude: 0.5
 
+  - id: cz_sweep
+    operation: cz_sweep
+    targets: [[0,2]]
+    parameters:
+      flux_pulse_amplitude_min: -0.249
+      flux_pulse_amplitude_max: -0.248
+      flux_pulse_amplitude_step: 0.0001
+      duration_max: 32
+      duration_min: 29
+      duration_step: 1
+      theta_start: 0
+      theta_end: 7
+      theta_step: 1
+      relaxation_time: 50_000
+
   - id: tomography
     operation: state_tomography
     parameters:

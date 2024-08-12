@@ -468,7 +468,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
         showlegend=True,
         xaxis1_title="Virtual phase[rad]",
         xaxis2_title="Virtual phase [rad]",
-        yaxis_title="State 0 Probability",
+        yaxis_title="State 1 Probability",
     )
 
     fig2.update_layout(
@@ -476,7 +476,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
         showlegend=True,
         xaxis1_title="Virtual phase[rad]",
         xaxis2_title="Virtual phase[rad]",
-        yaxis_title="State 0 Probability",
+        yaxis_title="State 1 Probability",
     )
 
     return [fig1, fig2], "".join(fitting_report)  # target and control qubit
