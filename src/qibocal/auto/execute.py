@@ -298,7 +298,7 @@ class Executor:
         self.meta.end()
 
         # dump history, metadata, and updated platform
-        output = Output(self.history, self.meta)
+        output = Output(self.history, self.meta, self.platform)
         output.dump(path)
 
         # attempt unloading
