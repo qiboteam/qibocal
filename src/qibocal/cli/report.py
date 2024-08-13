@@ -10,7 +10,7 @@ from qibocal.auto.history import History
 from qibocal.auto.output import Output
 from qibocal.auto.task import Completed
 from qibocal.config import log
-from qibocal.web.report import STYLES, TEMPLATES, Report
+from qibocal.web.report import STYLES, TEMPLATES, Report, report_css_styles
 
 ReportOutcome = tuple[str, list[go.Figure]]
 """Report produced by protocol."""
@@ -70,13 +70,11 @@ def report(path: pathlib.Path, history: Optional[History] = None):
     if history is None:
         history = output.history
 
-    css_styles = f"<style>\n{pathlib.Path(STYLES).read_text()}\n</style>"
-
     env = Environment(loader=FileSystemLoader(TEMPLATES))
     template = env.get_template("template.html")
     html = template.render(
         is_static=True,
-        css_styles=css_styles,
+        css_styles=report_css_styles(STYLES),
         path=path,
         title=path.name,
         report=Report(
