@@ -263,17 +263,17 @@ def sequence_length(
         qd_sequence = qubit.native_gates.RX.create_sequence(theta=np.pi, phi=0)
         ro_sequence = qubit.native_gates.MZ.create_sequence()
 
-        qd_pulses[q] = qd_sequence[qubit.drive.name][0]
+        qd_pulses[q] = qd_sequence[0][1]
         if params.pulse_amplitude is not None:
             qd_pulses[q].amplitude = params.pulse_amplitude
         amplitudes[q] = qd_pulses[q].amplitude
 
         delays[q] = Delay(duration=16)
-        ro_pulses[q] = ro_sequence[qubit.probe.name][0]
+        ro_pulses[q] = ro_sequence[0][1]
 
-        sequence[qubit.drive.name].append(qd_pulses[q])
-        sequence[qubit.probe.name].append(delays[q])
-        sequence[qubit.probe.name].append(ro_pulses[q])
+        sequence.append((qubit.drive.name, qd_pulses[q]))
+        sequence.append((qubit.probe.name, delays[q]))
+        sequence.append((qubit.probe.name, ro_pulses[q]))
 
     return sequence, qd_pulses, delays, ro_pulses, amplitudes
 
