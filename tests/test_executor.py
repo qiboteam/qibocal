@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
 from importlib import reload
@@ -183,3 +184,24 @@ def test_default_executor(tmp_path: Path, fake_platform: str, monkeypatch):
     path = tmp_path / "my-default-exec-folder"
     qibocal.routines.init(path, platform=fake_platform)
     assert qibocal.DEFAULT_EXECUTOR.platform.name == 42
+
+
+def test_context_manager(tmp_path: Path, executor: Executor):
+    path = tmp_path / "my-ctx-folder"
+
+    executor.init(path)
+
+    with executor:
+        assert executor.meta is not None
+        assert executor.meta.start is not None
+
+
+def test_open(tmp_path: Path):
+    path = tmp_path / "my-open-folder"
+
+    with Executor.open("myexec", path) as e:
+        assert isinstance(e.t1, Callable)
+        assert e.meta is not None
+        assert e.meta.start is not None
+
+    assert e.meta.end is not None
