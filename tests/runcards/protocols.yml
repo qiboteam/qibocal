@@ -33,8 +33,8 @@ actions:
   - id: resonator high power low attenuation
     operation: resonator_spectroscopy
     parameters:
-      freq_width: 10_000_000 # 20_000_000
-      freq_step: 100_000 # 500_00
+      freq_width: 10_000_000
+      freq_step: 100_000
       attenuation: 15
       power_level: high
       nshots: 10
@@ -43,11 +43,22 @@ actions:
   - id: resonator low power high attenuation
     operation: resonator_spectroscopy
     parameters:
-      freq_width: 10_000_000 # 20_000_000
-      freq_step: 100_000 # 500_00
+      freq_width: 10_000_000
+      freq_step: 100_000
       attenuation: 60
       power_level: low
       nshots: 10
+
+
+  - id: resonator low power high attenuation s21
+    operation: resonator_spectroscopy
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 100_000
+      attenuation: 60
+      power_level: low
+      nshots: 10
+      fit_function: s21
 
 
   - id: resonator punchout
