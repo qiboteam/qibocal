@@ -1,13 +1,9 @@
 import argparse
-from pathlib import Path
 
-from qibo.backends import construct_backend
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from qibocal.auto.execute import Executor
-from qibocal.auto.history import History
-from qibocal.auto.output import Metadata, Output
 from qibocal.auto.task import Completed
 from qibocal.cli.report import report
 
@@ -42,78 +38,45 @@ def check_chi2(
 
 def main(targets: list, platform_name: str, output: str):
 
-    folder = Path(f"{output}_{'_'.join(targets)}")
-    force = True
-
-    backend = construct_backend(backend="qibolab", platform=platform_name)
-    platform = backend.platform
-    if platform is None:
-        raise ValueError("Qibocal requires a Qibolab platform to run.")
-
-    executor = Executor(
-        name="myexec",
-        history=History(),
-        platform=platform,
+    with Executor.open(
+        "myexec",
+        path=output,
+        platform=platform_name,
         targets=targets,
         update=False,
-    )
+        force=True,
+    ) as e:
 
-    # generate output folder
-    path = Output.mkdir(folder, force)
+        t1_output = e.t1(
+            delay_before_readout_start=10,
+            delay_before_readout_end=100000,
+            delay_before_readout_step=500,
+            nshots=1024,
+        )
 
-    # generate meta
-    meta = Metadata.generate(path.name, backend)
-    output = Output(History(), meta, platform)
-    output.dump(path)
+        check_chi2(t1_output, platform=e.platform, targets=targets)
 
-    from myexec import ramsey, readout_characterization, t1
+        ramsey_output = e.ramsey(
+            delay_between_pulses_start=10,
+            delay_between_pulses_end=100000,
+            delay_between_pulses_step=500,
+            nshots=1024,
+        )
 
-    # connect and initialize platform
-    platform.connect()
+        check_chi2(ramsey_output, platform=e.platform, targets=targets)
 
-    # run
-    meta.start()
+        # TODO: long without sweepers
+        # t2_echo_output = spin_echo(delay_between_pulses_start=10,
+        #                delay_between_pulses_end=100000,
+        #                delay_between_pulses_step=500,
+        #                unrolling=True,
+        #                nshots=1024)
 
-    t1_output = t1(
-        delay_before_readout_start=10,
-        delay_before_readout_end=100000,
-        delay_before_readout_step=500,
-        nshots=1024,
-    )
+        ro_char_output = e.readout_characterization(nshots=5000, delay=1000)
 
-    check_chi2(t1_output, platform=platform, targets=targets)
+        check_chi2(ro_char_output, platform=e.platform, targets=targets)
 
-    ramsey_output = ramsey(
-        delay_between_pulses_start=10,
-        delay_between_pulses_end=100000,
-        delay_between_pulses_step=500,
-        nshots=1024,
-    )
-
-    check_chi2(ramsey_output, platform=platform, targets=targets)
-
-    # TODO: long without sweepers
-    # t2_echo_output = spin_echo(delay_between_pulses_start=10,
-    #                delay_between_pulses_end=100000,
-    #                delay_between_pulses_step=500,
-    #                unrolling=True,
-    #                nshots=1024)
-
-    ro_char_output = readout_characterization(nshots=5000, delay=1000)
-
-    check_chi2(ro_char_output, platform=platform, targets=targets)
-    meta.end()
-
-    # stop and disconnect platform
-    platform.disconnect()
-
-    history = executor.history
-
-    # dump history, metadata, and updated platform
-    output.history = history
-    output.dump(path)
-
-    report(path, history)
+        report(e.path, e.history)
 
 
 if __name__ == "__main__":
