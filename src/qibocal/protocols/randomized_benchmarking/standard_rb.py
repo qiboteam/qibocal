@@ -120,7 +120,6 @@ def _plot(
     """
     if isinstance(target, list):
         target = tuple(target)
-
     qubit = target
     fig = go.Figure()
     fitting_report = ""

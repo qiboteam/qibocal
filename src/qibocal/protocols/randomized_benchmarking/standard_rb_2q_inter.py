@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 
 import numpy as np
 from qibolab.platform import Platform
@@ -27,6 +27,14 @@ class StandardRB2QInterResult(StandardRBResult):
 
     fidelity_cz: dict[QubitPairId, list] = None
     """The overall fidelity for the CZ gate and its uncertainty."""
+
+    def __contains__(self, value: QubitPairId):
+        return all(
+            value in getattr(self, field.name)
+            for field in fields(self)
+            if isinstance(getattr(self, field.name), dict)
+            and field.name != "fidelity_cz"
+        )
 
 
 def _acquisition(
@@ -60,9 +68,9 @@ def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
     qubits = data.pairs
     results = fit(qubits, data)
 
-    if data.fidelity is not None:
-        fidelity_cz = {}
-        for qubit in qubits:
+    fidelity_cz = {}
+    for qubit in qubits:
+        if data.fidelity[qubit] is not None:
             fid_cz = results.fidelity[qubit] / data.fidelity[qubit][0]
             uncertainty_cz = np.sqrt(
                 1
@@ -73,24 +81,14 @@ def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
             )
             fidelity_cz[qubit] = [fid_cz, uncertainty_cz]
 
-        new_results = StandardRB2QInterResult(
-            results.fidelity,
-            results.pulse_fidelity,
-            results.fit_parameters,
-            results.fit_uncertainties,
-            results.error_bars,
-            fidelity_cz,
-        )
-    else:
-        new_results = StandardRB2QInterResult(
-            results.fidelity,
-            results.pulse_fidelity,
-            results.fit_parameters,
-            results.fit_uncertainties,
-            results.error_bars,
-        )
-
-    return new_results
+    return StandardRB2QInterResult(
+        results.fidelity,
+        results.pulse_fidelity,
+        results.fit_parameters,
+        results.fit_uncertainties,
+        results.error_bars,
+        fidelity_cz,
+    )
 
 
 standard_rb_2q_inter = Routine(_acquisition, _fit, _plot)
