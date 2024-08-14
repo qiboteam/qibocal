@@ -218,12 +218,10 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
             }
             frequency[qubit] = popt[0] * GHZ_TO_HZ
-            # solution to x*popt[1] + popt[2] = k pi
+            # solution to x*popt[1] + popt[2] = k
             # such that x is close to 0
             # to avoid errors due to periodicity
-            k = np.round(popt[2] / np.pi)
-
-            sweetspot[qubit] = (k * np.pi + popt[2]) / popt[1]
+            sweetspot[qubit] = (np.round(popt[2]) - popt[2]) / popt[1]
             matrix_element[qubit] = popt[1]
         except ValueError as e:
             log.error(

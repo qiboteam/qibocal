@@ -103,3 +103,16 @@ class History:
             completed.flush()
 
     # TODO: implement time_travel()
+
+
+class DummyHistory:
+    """Empty History object, used by `qq compare`.
+
+    Used for comparing multiple reports, as their history is not saved.
+    """
+
+    def flush(self, output=None):
+        pass
+
+    def items(self):
+        return tuple()

@@ -4,6 +4,7 @@ import importlib
 import importlib.util
 import os
 import sys
+from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, fields
 from pathlib import Path
@@ -205,6 +206,8 @@ class Executor:
             parameters: Optional[dict] = None,
             id: str = operation,
             mode: ExecutionMode = AUTOCALIBRATION,
+            update: bool = True,
+            targets: Optional[Targets] = None,
             **kwargs,
         ):
             positional = dict(
@@ -215,6 +218,8 @@ class Executor:
                 source={
                     "id": id,
                     "operation": operation,
+                    "targets": targets,
+                    "update": update,
                     "parameters": params | positional | kwargs,
                 }
             )
@@ -248,6 +253,7 @@ class Executor:
         path: os.PathLike,
         force: bool = False,
         platform: Union[Platform, str, None] = None,
+        update: Optional[bool] = None,
         targets: Optional[Targets] = None,
     ):
         """Initialize execution."""
@@ -258,6 +264,8 @@ class Executor:
         platform = self.platform = backend.platform
         assert isinstance(platform, Platform)
 
+        if update is not None:
+            self.update = update
         if targets is not None:
             self.targets = targets
 
@@ -290,8 +298,47 @@ class Executor:
         self.meta.end()
 
         # dump history, metadata, and updated platform
-        output = Output(self.history, self.meta)
+        output = Output(self.history, self.meta, self.platform)
         output.dump(path)
 
         # attempt unloading
         self.__del__()
+
+    @classmethod
+    @contextmanager
+    def open(
+        cls,
+        name: str,
+        path: os.PathLike,
+        force: bool = False,
+        platform: Union[Platform, str, None] = None,
+        update: Optional[bool] = None,
+        targets: Optional[Targets] = None,
+    ):
+        """Enter the execution context."""
+        ex = cls.create(name, platform)
+        ex.init(path, force, platform, update, targets)
+        try:
+            yield ex
+        finally:
+            ex.close()
+
+    def __enter__(self):
+        """Reenter the execution context.
+
+        This method its here to reuse an already existing (and
+        initialized) executor, in a new context.
+
+        It should not be used with new executors. In which case, cf. :meth:`__open__`.
+        """
+        # connect and initialize platform
+        self.platform.connect()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Exit execution context.
+
+        This pairs with :meth:`__enter__`.
+        """
+        self.close()
+        return False
