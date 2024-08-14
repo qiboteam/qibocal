@@ -29,6 +29,8 @@ class StandardRB2QInterResult(StandardRBResult):
     """The overall fidelity for the CZ gate and its uncertainty."""
 
     def __contains__(self, value: QubitPairId):
+        if isinstance(value, list):
+            value = tuple(value)
         return all(
             value in getattr(self, field.name)
             for field in fields(self)
@@ -70,7 +72,7 @@ def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
 
     fidelity_cz = {}
     for qubit in qubits:
-        if data.fidelity[qubit] is not None:
+        if qubit in data.fidelity and data.fidelity[qubit] is not None:
             fid_cz = results.fidelity[qubit] / data.fidelity[qubit][0]
             uncertainty_cz = np.sqrt(
                 1

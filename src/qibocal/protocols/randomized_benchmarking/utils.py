@@ -312,7 +312,7 @@ class RB2QData(RBData):
 class RB2QInterData(RB2QData):
     """The output of the acquisition function."""
 
-    fidelity: dict[QubitPairId, list] = None
+    fidelity: dict[QubitPairId, list] = field(default_factory=dict)
     """The interleaved fidelity of this qubit."""
 
 
@@ -328,7 +328,9 @@ class StandardRBResult(Results):
     """Raw fitting parameters."""
     fit_uncertainties: dict[QubitId, list[float]]
     """Fitting parameters uncertainties."""
-    error_bars: dict[QubitId, Optional[Union[float, list[float]]]] = None
+    error_bars: dict[QubitId, Optional[Union[float, list[float]]]] = field(
+        default_factory=dict
+    )
     """Error bars for y."""
 
 
