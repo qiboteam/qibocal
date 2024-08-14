@@ -46,6 +46,7 @@ from .ramsey.ramsey_signal import ramsey_signal
 from .randomized_benchmarking.filtered_rb import filtered_rb
 from .randomized_benchmarking.standard_rb import standard_rb
 from .randomized_benchmarking.standard_rb_2q import standard_rb_2q
+from .randomized_benchmarking.standard_rb_2q_inter import standard_rb_2q_inter
 from .readout_characterization import readout_characterization
 from .readout_mitigation_matrix import readout_mitigation_matrix
 from .readout_optimization.resonator_amplitude import resonator_amplitude
@@ -145,5 +146,6 @@ __all__ = [
     "rabi_length_frequency",
     "rabi_length_frequency_signal",
     "standard_rb_2q",
+    "standard_rb_2q_inter",
     "optimize_two_qubit_gate",
 ]
