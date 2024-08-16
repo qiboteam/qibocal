@@ -185,8 +185,9 @@ def _acquisition(
         ro_pulses = {}
         for q in targets:
             qubit = platform.qubits[q]
-            rx_sequence = qubit.native_gates.RX.create_sequence(theta=np.pi, phi=0)
-            ro_sequence = qubit.native_gates.MZ.create_sequence()
+            native = platform.parameters.native_gates.single_qubit[qubit.name]
+            rx_sequence = native.RX.create_sequence(theta=np.pi, phi=0)
+            ro_sequence = native.MZ.create_sequence()
             if state == 1:
                 sequence.extend(rx_sequence)
             sequence.append((qubit.probe.name, Delay(duration=rx_sequence.duration)))
