@@ -6,8 +6,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
+from qibolab.sequence import PulseSequence
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.protocols.utils import table_dict, table_html

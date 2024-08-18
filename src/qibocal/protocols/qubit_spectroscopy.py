@@ -3,8 +3,8 @@ from typing import Optional
 
 import numpy as np
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
+from qibolab.sequence import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update

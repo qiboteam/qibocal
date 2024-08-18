@@ -9,8 +9,9 @@ import pandas as pd
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import Delay, PulseSequence
+from qibolab.pulses import Delay
 from qibolab.qubits import QubitId
+from qibolab.sequence import PulseSequence
 from sklearn.metrics import roc_auc_score, roc_curve
 
 from qibocal import update

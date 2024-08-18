@@ -2,8 +2,8 @@ from typing import Optional
 
 import numpy as np
 from qibolab import Platform
-from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
+from qibolab.sequence import PulseSequence
 from scipy.optimize import curve_fit
 
 from qibocal.protocols.utils import fallback_period, guess_period
