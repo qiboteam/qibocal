@@ -233,9 +233,9 @@ def sequence_amplitude(
     ro_pulses = {}
     durations = {}
     for q in targets:
-        qubit = platform.qubits[q]
-        qd_sequence = qubit.native_gates.RX.create_sequence(theta=np.pi, phi=0)
-        ro_sequence = qubit.native_gates.MZ.create_sequence()
+        natives = platform.natives.single_qubit[q]
+        qd_sequence = natives.RX.create_sequence(theta=np.pi, phi=0)
+        ro_sequence = natives.MZ.create_sequence()
 
         qd_pulses[q] = qd_sequence[0][1]
         if params.pulse_length is not None:
@@ -244,6 +244,7 @@ def sequence_amplitude(
 
         ro_pulses[q] = ro_sequence[0][1]
 
+        qubit = platform.qubits[q]
         sequence.append((qubit.drive.name, qd_pulses[q]))
         sequence.append((qubit.probe.name, Delay(duration=durations[q])))
         sequence.append((qubit.probe.name, ro_pulses[q]))
@@ -260,9 +261,9 @@ def sequence_length(
     ro_pulses = {}
     amplitudes = {}
     for q in targets:
-        qubit = platform.qubits[q]
-        qd_sequence = qubit.native_gates.RX.create_sequence(theta=np.pi, phi=0)
-        ro_sequence = qubit.native_gates.MZ.create_sequence()
+        natives = platform.natives.single_qubit[q]
+        qd_sequence = natives.RX.create_sequence(theta=np.pi, phi=0)
+        ro_sequence = natives.MZ.create_sequence()
 
         qd_pulses[q] = qd_sequence[0][1]
         if params.pulse_amplitude is not None:
@@ -272,6 +273,7 @@ def sequence_length(
         delays[q] = Delay(duration=16)
         ro_pulses[q] = ro_sequence[0][1]
 
+        qubit = platform.qubits[q]
         sequence.append((qubit.drive.name, qd_pulses[q]))
         sequence.append((qubit.probe.name, delays[q]))
         sequence.append((qubit.probe.name, ro_pulses[q]))
