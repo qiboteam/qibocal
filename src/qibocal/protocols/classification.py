@@ -185,12 +185,13 @@ def _acquisition(
         sequence = PulseSequence()
         ro_pulses = {}
         for q in targets:
-            qubit = platform.qubits[q]
-            native = platform.parameters.native_gates.single_qubit[qubit.name]
+            native = platform.natives.single_qubit[q]
             rx_sequence = native.RX.create_sequence(theta=np.pi, phi=0)
             ro_sequence = native.MZ.create_sequence()
             if state == 1:
                 sequence.extend(rx_sequence)
+
+            qubit = platform.qubits[q]
             sequence.append((qubit.probe.name, Delay(duration=rx_sequence.duration)))
             sequence.extend(ro_sequence)
             ro_pulses[q] = ro_sequence[0][1].id

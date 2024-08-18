@@ -34,7 +34,7 @@ def bare_resonator_frequency(freq: float, platform: Platform, qubit: QubitId):
 
 def readout_amplitude(amp: float, platform: Platform, qubit: QubitId):
     """Update readout amplitude value in platform for specific qubit."""
-    platform.qubits[qubit].native_gates.MZ.amplitude = float(amp)
+    platform.natives.single_qubit[qubit].MZ.amplitude = float(amp)
 
 
 def readout_attenuation(att: int, platform: Platform, qubit: QubitId):
@@ -57,7 +57,7 @@ def drive_amplitude(amp: Union[float, tuple, list], platform: Platform, qubit: Q
     """Update drive frequency value in platform for specific qubit."""
     if isinstance(amp, Iterable):
         amp = amp[0]
-    platform.qubits[qubit].native_gates.RX.amplitude = float(amp)
+    # platform.natives.single_qubit[qubit].RX.amplitude = float(amp)
 
 
 def drive_duration(
@@ -66,7 +66,7 @@ def drive_duration(
     """Update drive duration value in platform for specific qubit."""
     if isinstance(duration, Iterable):
         duration = duration[0]
-    platform.qubits[qubit].native_gates.RX.duration = int(duration)
+    # platform.natives.single_qubit[qubit].RX.duration = int(duration)
 
 
 def crosstalk_matrix(
