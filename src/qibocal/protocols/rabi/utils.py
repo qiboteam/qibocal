@@ -252,7 +252,10 @@ def sequence_amplitude(
 
 
 def sequence_length(
-    targets: list[QubitId], params: Parameters, platform: Platform
+    targets: list[QubitId],
+    params: Parameters,
+    platform: Platform,
+    use_align: bool = False,
 ) -> tuple[PulseSequence, dict, dict, dict]:
     """Return sequence for rabi length."""
     sequence = PulseSequence()
@@ -270,12 +273,14 @@ def sequence_length(
             qd_pulses[q].amplitude = params.pulse_amplitude
         amplitudes[q] = qd_pulses[q].amplitude
 
-        delays[q] = Delay(duration=16)
         ro_pulses[q] = ro_sequence[0][1]
-
         qubit = platform.qubits[q]
         sequence.append((qubit.drive.name, qd_pulses[q]))
-        sequence.append((qubit.probe.name, delays[q]))
+        if use_align:
+            sequence.align([qubit.drive.name, qubit.probe.name])
+        else:
+            delays[q] = Delay(duration=16)
+            sequence.append((qubit.probe.name, delays[q]))
         sequence.append((qubit.probe.name, ro_pulses[q]))
 
     return sequence, qd_pulses, delays, ro_pulses, amplitudes
