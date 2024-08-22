@@ -43,6 +43,7 @@ from .rabi.length_sequences import rabi_length_sequences
 from .rabi.length_signal import rabi_length_signal
 from .ramsey.ramsey import ramsey
 from .ramsey.ramsey_signal import ramsey_signal
+from .ramsey.ramsey_zz import ramsey_zz
 from .randomized_benchmarking.filtered_rb import filtered_rb
 from .randomized_benchmarking.standard_rb import standard_rb
 from .randomized_benchmarking.standard_rb_2q import standard_rb_2q
@@ -148,4 +149,6 @@ __all__ = [
     "standard_rb_2q",
     "standard_rb_2q_inter",
     "optimize_two_qubit_gate",
+    "optimize_two_qubit_gate",
+    "ramsey_zz",
 ]
