@@ -33,6 +33,8 @@ class RabiLengthParameters(Parameters):
     """Step pi pulse duration [ns]."""
     pulse_amplitude: Optional[float] = None
     """Pi pulse amplitude. Same for all qubits."""
+    interpolated_sweeper: bool = False
+    """Use real-time interpolation if supported by instruments."""
 
 
 @dataclass
@@ -66,7 +68,7 @@ def _acquisition(
     """
 
     sequence, qd_pulses, delays, ro_pulses, amplitudes = utils.sequence_length(
-        targets, params, platform
+        targets, params, platform, use_align=params.interpolated_sweeper
     )
     # define the parameter to sweep and its range:
     # qubit drive pulse duration time
@@ -76,12 +78,20 @@ def _acquisition(
         params.pulse_duration_step,
     )
 
-    sweeper = Sweeper(
-        Parameter.duration,
-        qd_pulse_duration_range,
-        [qd_pulses[q] for q in targets] + [delays[q] for q in targets],
-        type=SweeperType.ABSOLUTE,
-    )
+    if params.interpolated_sweeper:
+        sweeper = Sweeper(
+            Parameter.duration_interpolated,
+            qd_pulse_duration_range,
+            [qd_pulses[q] for q in targets],
+            type=SweeperType.ABSOLUTE,
+        )
+    else:
+        sweeper = Sweeper(
+            Parameter.duration,
+            qd_pulse_duration_range,
+            [qd_pulses[q] for q in targets] + [delays[q] for q in targets],
+            type=SweeperType.ABSOLUTE,
+        )
 
     data = RabiLengthData(amplitudes=amplitudes)
 
