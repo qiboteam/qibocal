@@ -456,6 +456,18 @@ actions:
       detuning: 0
       nshots: 1024
 
+
+  - id: ramsey
+    operation: ramsey_zz
+    targets: [0]
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 20
+      delay_between_pulses_step: 1
+      detuning: 0
+      target_qubit: 1
+      nshots: 1024
+
   - id: calibrate_state_discrimination
     operation: calibrate_state_discrimination
     parameters:
