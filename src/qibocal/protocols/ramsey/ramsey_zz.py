@@ -387,8 +387,7 @@ def _plot(data: RamseyZZData, target: QubitId, fit: RamseyZZResults = None):
                 ],
                 [
                     np.round(
-                        fit.delta_fitting[target, "X"][0]
-                        - fit.delta_fitting[target, "I"][0]
+                        fit.frequency[target, "X"][0] - fit.frequency[target, "I"][0]
                     )
                     * 1e-3,
                 ],
