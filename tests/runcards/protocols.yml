@@ -33,8 +33,8 @@ actions:
   - id: resonator high power low attenuation
     operation: resonator_spectroscopy
     parameters:
-      freq_width: 10_000_000 # 20_000_000
-      freq_step: 100_000 # 500_00
+      freq_width: 10_000_000
+      freq_step: 100_000
       attenuation: 15
       power_level: high
       nshots: 10
@@ -43,11 +43,22 @@ actions:
   - id: resonator low power high attenuation
     operation: resonator_spectroscopy
     parameters:
-      freq_width: 10_000_000 # 20_000_000
-      freq_step: 100_000 # 500_00
+      freq_width: 10_000_000
+      freq_step: 100_000
       attenuation: 60
       power_level: low
       nshots: 10
+
+
+  - id: resonator low power high attenuation s21
+    operation: resonator_spectroscopy
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 100_000
+      attenuation: 60
+      power_level: low
+      nshots: 10
+      fit_function: s21
 
 
   - id: resonator punchout
@@ -690,7 +701,15 @@ actions:
       niter: 5
       nshots: 50
 
-  - id: chevron id
+  - id: standard rb 2q interleaved
+    operation: standard_rb_2q_inter
+    targets: [[0,2]]
+    parameters:
+      depths: [1, 2, 3, 5]
+      niter: 5
+      nshots: 50
+
+  - id: chevron cz
     operation: chevron
     targets: [[0, 2],[1,2]]
     parameters:
@@ -701,9 +720,10 @@ actions:
       duration_max: 50
       duration_step: 10
       nshots: 10
+      native: CZ
       parking: True
 
-  - id: chevron id signal
+  - id: chevron cz signal
     operation: chevron_signal
     targets: [[0, 2],[1,2]]
     parameters:
@@ -713,11 +733,40 @@ actions:
       duration_min: 10
       duration_max: 50
       duration_step: 1
+      native: CZ
       nshots: 1000
       parking: True
 
-  - id: cz
-    operation: cz_virtualz
+  - id: chevron iSWAP
+    operation: chevron
+    targets: [[0, 2],[1,2]]
+    parameters:
+      amplitude_min_factor: 0.1
+      amplitude_max_factor: 0.6
+      amplitude_step_factor: 0.01
+      duration_min: 10
+      duration_max: 50
+      duration_step: 10
+      nshots: 10
+      native: iSWAP
+      parking: True
+
+  - id: chevron iSWAP signal
+    operation: chevron_signal
+    targets: [[0, 2],[1,2]]
+    parameters:
+      amplitude_min_factor: 0.1
+      amplitude_max_factor: 0.6
+      amplitude_step_factor: 0.01
+      duration_min: 10
+      duration_max: 50
+      duration_step: 1
+      native: iSWAP
+      nshots: 1000
+      parking: True
+
+  - id: iswap_virtual_phase
+    operation: correct_virtual_z_phases
     targets: [[0, 2],[1,2]]
     parameters:
       theta_start: 0
@@ -726,10 +775,11 @@ actions:
       flux_pulse_amplitude: 0.5
       flux_pulse_duration: 10
       dt: 0
+      native: iSWAP
       parking: True
 
-  - id: cz signal
-    operation: cz_virtualz_signal
+  - id: iswap virtual signal
+    operation: correct_virtual_z_phases_signal
     targets: [[0, 2],[1,2]]
     parameters:
       theta_start: 0
@@ -737,6 +787,33 @@ actions:
       theta_step: 10
       flux_pulse_amplitude: 0.5
       flux_pulse_duration: 10
+      native: iSWAP
+      dt: 0
+      parking: True
+
+  - id: cz_virtual_phase
+    operation: correct_virtual_z_phases
+    targets: [[0, 2],[1,2]]
+    parameters:
+      theta_start: 0
+      theta_end: 180
+      theta_step: 10
+      flux_pulse_amplitude: 0.5
+      flux_pulse_duration: 10
+      dt: 0
+      native: CZ
+      parking: True
+
+  - id: cz virtual signal
+    operation: correct_virtual_z_phases_signal
+    targets: [[0, 2],[1,2]]
+    parameters:
+      theta_start: 0
+      theta_end: 180
+      theta_step: 10
+      flux_pulse_amplitude: 0.5
+      flux_pulse_duration: 10
+      native: CZ
       dt: 0
       parking: True
 
@@ -864,8 +941,8 @@ actions:
       bias_step:  0.05
       drive_amplitude: 0.5
 
-  - id: cz_sweep
-    operation: cz_sweep
+  - id: optimize cz
+    operation: optimize_two_qubit_gate
     targets: [[0,2]]
     parameters:
       flux_pulse_amplitude_min: -0.249
@@ -874,6 +951,23 @@ actions:
       duration_max: 32
       duration_min: 29
       duration_step: 1
+      native: CZ
+      theta_start: 0
+      theta_end: 7
+      theta_step: 1
+      relaxation_time: 50_000
+
+  - id: optimize iSWAP
+    operation: optimize_two_qubit_gate
+    targets: [[0,2]]
+    parameters:
+      flux_pulse_amplitude_min: -0.249
+      flux_pulse_amplitude_max: -0.248
+      flux_pulse_amplitude_step: 0.0001
+      duration_max: 32
+      duration_min: 29
+      duration_step: 1
+      native: iSWAP
       theta_start: 0
       theta_end: 7
       theta_step: 1

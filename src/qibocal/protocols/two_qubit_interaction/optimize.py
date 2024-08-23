@@ -1,4 +1,4 @@
-"""CZ virtual correction experiment for two qubit gates, tune landscape."""
+"""virtual correction experiment for two qubit gates, tune landscape."""
 
 from dataclasses import dataclass, field
 from typing import Optional
@@ -18,13 +18,13 @@ from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
-from .cz_virtualz import create_sequence, fit_function
 from .utils import order_pair
+from .virtual_z_phases import create_sequence, fit_function
 
 
 @dataclass
-class CZSweepParameters(Parameters):
-    """CZSweep runcard inputs."""
+class OptimizeTwoQubitGateParameters(Parameters):
+    """OptimizeTwoQubitGate runcard inputs."""
 
     theta_start: float
     """Initial angle for the low frequency qubit measurement in radians."""
@@ -48,26 +48,34 @@ class CZSweepParameters(Parameters):
     """Time delay between flux pulses and readout."""
     parking: bool = True
     """Wether to park non interacting qubits or not."""
+    native: str = "CZ"
+    """Two qubit interaction to be calibrated.
+
+    iSWAP and CZ are the possible options.
+
+    """
 
 
 @dataclass
-class CZSweepResults(Results):
+class OptimizeTwoQubitGateResults(Results):
     """CzVirtualZ outputs when fitting will be done."""
 
     fitted_parameters: dict[tuple[str, QubitId, float], list]
     """Fitted parameters"""
-    cz_angles: dict[tuple[QubitPairId, float], float]
-    """CZ angle."""
+    native: str
+    """Native two qubit gate."""
+    angles: dict[tuple[QubitPairId, float], float]
+    """Two qubit gate angle."""
     virtual_phases: dict[tuple[QubitPairId, float], dict[QubitId, float]]
     """Virtual Z phase correction."""
     leakages: dict[tuple[QubitPairId, float], dict[QubitId, float]]
     """Leakage on control qubit for pair."""
     best_amp: dict[QubitPairId]
-    """Flux pulse amplitude of best CZ configuration."""
+    """Flux pulse amplitude of best configuration."""
     best_dur: dict[QubitPairId]
-    """Flux pulse duration of best CZ configuration."""
+    """Flux pulse duration of best configuration."""
     best_virtual_phase: dict[QubitPairId]
-    """Virtual phase to correct best CZ configuration."""
+    """Virtual phase to correct best configuration."""
 
     def __contains__(self, key: QubitPairId):
         """Check if key is in class.
@@ -81,7 +89,7 @@ class CZSweepResults(Results):
         return tuple(key) in list(pairs)
 
 
-CZSweepType = np.dtype(
+OptimizeTwoQubitGateType = np.dtype(
     [
         ("amp", np.float64),
         ("theta", np.float64),
@@ -93,13 +101,17 @@ CZSweepType = np.dtype(
 
 
 @dataclass
-class CZSweepData(Data):
-    """CZSweep data."""
+class OptimizeTwoQubitGateData(Data):
+    """OptimizeTwoQubitGate data."""
 
-    data: dict[tuple, npt.NDArray[CZSweepType]] = field(default_factory=dict)
+    data: dict[tuple, npt.NDArray[OptimizeTwoQubitGateType]] = field(
+        default_factory=dict
+    )
     """Raw data."""
     thetas: list = field(default_factory=list)
     """Angles swept."""
+    native: str = "CZ"
+    """Native two qubit gate."""
     vphases: dict[QubitPairId, dict[QubitId, float]] = field(default_factory=dict)
     """Virtual phases for each qubit."""
     amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
@@ -121,7 +133,7 @@ class CZSweepData(Data):
         """Store output for single pair."""
         size = len(theta) * len(amp) * len(duration)
         duration, amplitude, angle = np.meshgrid(duration, amp, theta, indexing="ij")
-        ar = np.empty(size, dtype=CZSweepType)
+        ar = np.empty(size, dtype=OptimizeTwoQubitGateType)
         ar["theta"] = angle.ravel()
         ar["amp"] = amplitude.ravel()
         ar["duration"] = duration.ravel()
@@ -131,16 +143,18 @@ class CZSweepData(Data):
 
 
 def _acquisition(
-    params: CZSweepParameters,
+    params: OptimizeTwoQubitGateParameters,
     platform: Platform,
     targets: list[QubitPairId],
-) -> CZSweepData:
+) -> OptimizeTwoQubitGateData:
     r"""
-    Repetition of CZVirtualZ experiment for several amplitude and duration values.
+    Repetition of correct virtual phase experiment for several amplitude and duration values.
     """
 
     theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
-    data = CZSweepData(thetas=theta_absolute.tolist())
+    data = OptimizeTwoQubitGateData(
+        thetas=theta_absolute.tolist(), native=params.native
+    )
     for pair in targets:
         # order the qubits so that the low frequency one is the first
         ord_pair = order_pair(pair, platform)
@@ -162,6 +176,7 @@ def _acquisition(
                     target_q,
                     control_q,
                     ord_pair,
+                    params.native,
                     params.dt,
                     params.parking,
                     params.flux_pulse_amplitude_min,
@@ -241,13 +256,13 @@ def _acquisition(
 
 
 def _fit(
-    data: CZSweepData,
-) -> CZSweepResults:
-    """Repetition of CZ fit for all configurations."""
+    data: OptimizeTwoQubitGateData,
+) -> OptimizeTwoQubitGateResults:
+    """Repetition of correct virtual phase fit for all configurations."""
     fitted_parameters = {}
     pairs = data.pairs
     virtual_phases = {}
-    cz_angles = {}
+    angles = {}
     leakages = {}
     best_amp = {}
     best_dur = {}
@@ -293,7 +308,7 @@ def _fit(
 
                     except Exception as e:
                         log.warning(
-                            f"CZ fit failed for pair ({target, control}) due to {e}."
+                            f"Fit failed for pair ({target, control}) due to {e}."
                         )
 
                 try:
@@ -301,7 +316,7 @@ def _fit(
                         pair,
                         list(pair)[::-1],
                     ):
-                        cz_angles[target_q, control_q, amplitude, duration] = abs(
+                        angles[target_q, control_q, amplitude, duration] = abs(
                             fitted_parameters[
                                 target_q, control_q, "X", amplitude, duration
                             ][2]
@@ -353,16 +368,17 @@ def _fit(
                         )
                 except KeyError:
                     pass
-        index = np.argmin(np.abs(np.array(list(cz_angles.values())) - np.pi))
-        _, _, amp, dur = np.array(list(cz_angles))[index]
+        index = np.argmin(np.abs(np.array(list(angles.values())) - np.pi))
+        _, _, amp, dur = np.array(list(angles))[index]
         best_amp[pair] = float(amp)
         best_dur[pair] = float(dur)
         best_virtual_phase[pair] = virtual_phases[
             ord_pair[0], ord_pair[1], float(amp), float(dur)
         ]
 
-    return CZSweepResults(
-        cz_angles=cz_angles,
+    return OptimizeTwoQubitGateResults(
+        angles=angles,
+        native=data.native,
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
         leakages=leakages,
@@ -372,8 +388,12 @@ def _fit(
     )
 
 
-def _plot(data: CZSweepData, fit: CZSweepResults, target: QubitPairId):
-    """Plot routine for CZSweep."""
+def _plot(
+    data: OptimizeTwoQubitGateData,
+    fit: OptimizeTwoQubitGateResults,
+    target: QubitPairId,
+):
+    """Plot routine for OptimizeTwoQubitGate."""
     fitting_report = ""
     qubits = next(iter(data.amplitudes))[:2]
 
@@ -381,9 +401,9 @@ def _plot(data: CZSweepData, fit: CZSweepResults, target: QubitPairId):
         rows=2,
         cols=2,
         subplot_titles=(
-            f"Qubit {qubits[0]} CZ angle",
+            f"Qubit {qubits[0]} {data.native} angle",
             f"Qubit {qubits[0]} Leakage",
-            f"Qubit {qubits[1]} CZ angle",
+            f"Qubit {qubits[1]} {data.native} angle",
             f"Qubit {qubits[1]} Leakage",
         ),
     )
@@ -400,7 +420,7 @@ def _plot(data: CZSweepData, fit: CZSweepResults, target: QubitPairId):
                 for j in data.durations[qubits]:
                     durs.append(j)
                     amps.append(i)
-                    cz.append(fit.cz_angles[target_q, control_q, i, j])
+                    cz.append(fit.angles[target_q, control_q, i, j])
                     leakage.append(fit.leakages[qubits[0], qubits[1], i, j][control_q])
 
             condition = [target_q, control_q] == list(target)
@@ -412,7 +432,7 @@ def _plot(data: CZSweepData, fit: CZSweepResults, target: QubitPairId):
                     z=cz,
                     zmin=np.pi / 2,
                     zmax=3 * np.pi / 2,
-                    name="CZ angle",
+                    name="{fit.native} angle",
                     colorbar_x=-0.1,
                     colorscale="RdBu",
                     showscale=condition,
@@ -459,13 +479,23 @@ def _plot(data: CZSweepData, fit: CZSweepResults, target: QubitPairId):
     return [fig], fitting_report
 
 
-def _update(results: CZSweepResults, platform: Platform, target: QubitPairId):
+def _update(
+    results: OptimizeTwoQubitGateResults, platform: Platform, target: QubitPairId
+):
     # FIXME: quick fix for qubit order
     target = tuple(sorted(target))
-    update.virtual_phases(results.best_virtual_phase[target], platform, target)
-    update.CZ_duration(results.best_dur[target], platform, target)
-    update.CZ_amplitude(results.best_amp[target], platform, target)
+    update.virtual_phases(
+        results.best_virtual_phase[target], results.native, platform, target
+    )
+    getattr(update, f"{results.native}_duration")(
+        results.best_dur[target], platform, target
+    )
+    getattr(update, f"{results.native}_amplitude")(
+        results.best_amp[target], platform, target
+    )
 
 
-cz_sweep = Routine(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
-"""CZ sweep protocol"""
+optimize_two_qubit_gate = Routine(
+    _acquisition, _fit, _plot, _update, two_qubit_gates=True
+)
+"""Optimize two qubit gate protocol"""
