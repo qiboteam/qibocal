@@ -10,13 +10,14 @@ from qibolab.native import VirtualZPulse
 from qibolab.pulses import Drag
 
 from qibocal import update
-from qibocal.protocols.characterization.signal_experiments.calibrate_state_discrimination import (
+from qibocal.protocols.signal_experiments.calibrate_state_discrimination import (
     CalibrateStateDiscriminationResults,
 )
 
 PLATFORM = create_platform("dummy")
 QUBITS = list(PLATFORM.qubits.values())
-PAIRS = list(PLATFORM.pairs)
+# TODO: fix error in parameters.json for dummy
+PAIRS = [(1, 2)]
 RANDOM_FLOAT = random.random()
 RANDOM_INT = random.randint(0, 10)
 RANDOM_ARRAY = np.random.rand(10)
@@ -90,14 +91,15 @@ def test_classification_update(qubit):
     assert qubit.assignment_fidelity == RANDOM_FLOAT
 
 
+@pytest.mark.parametrize("native", ["CZ", "iSWAP"])
 @pytest.mark.parametrize("pair", PAIRS)
-def test_virtual_phases_update(pair):
-    if PLATFORM.pairs[pair].native_gates.CZ is not None:
+def test_virtual_phases_update(pair, native):
+    if getattr(PLATFORM.pairs[pair].native_gates, native) is not None:
         results = {qubit: RANDOM_FLOAT for qubit in pair}
 
-        update.virtual_phases(results, PLATFORM, pair)
-        if PLATFORM.pairs[pair].native_gates.CZ is not None:
-            for pulse in PLATFORM.pairs[pair].native_gates.CZ.pulses:
+        update.virtual_phases(results, native, PLATFORM, pair)
+        if getattr(PLATFORM.pairs[pair].native_gates, native) is not None:
+            for pulse in getattr(PLATFORM.pairs[pair].native_gates, native).pulses:
                 if isinstance(pulse, VirtualZPulse):
                     assert pulse == VirtualZPulse(
                         qubit=pulse.qubit, phase=results[pulse.qubit.name]
@@ -112,6 +114,19 @@ def test_CZ_params_update(pair):
             update.CZ_duration(RANDOM_INT, PLATFORM, pair)
 
             for pulse in PLATFORM.pairs[pair].native_gates.CZ.pulses:
+                if pulse.qubit.name == pair[1]:
+                    assert pulse.duration == RANDOM_INT
+                    assert pulse.amplitude == RANDOM_FLOAT
+
+
+@pytest.mark.parametrize("pair", PAIRS)
+def test_iSWAP_params_update(pair):
+    if hasattr(PLATFORM.pairs[pair].native_gates, "iSWAP"):
+        if PLATFORM.pairs[pair].native_gates.iSWAP is not None:
+            update.iSWAP_amplitude(RANDOM_FLOAT, PLATFORM, pair)
+            update.iSWAP_duration(RANDOM_INT, PLATFORM, pair)
+
+            for pulse in PLATFORM.pairs[pair].native_gates.iSWAP.pulses:
                 if pulse.qubit.name == pair[1]:
                     assert pulse.duration == RANDOM_INT
                     assert pulse.amplitude == RANDOM_FLOAT

@@ -1,7 +1,7 @@
 .. _runcard:
 
 How to execute calibration protocols in ``Qibocal``?
-================================================
+====================================================
 
 In ``Qibocal`` we adopt a declarative programming paradigm, i.e. the user should specify directly
 what he wants to do without caring about the underlying implementation.

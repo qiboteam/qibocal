@@ -9,8 +9,10 @@ import yaml
 from ..auto.runcard import Runcard
 from .acquisition import acquire as acquisition
 from .autocalibration import autocalibrate
+from .compare import compare_reports
 from .fit import fit as fitting
 from .report import report as reporting
+from .update import update as updating
 from .upload import upload_report
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -19,6 +21,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.group()
 def command():
     """Welcome to Qibocal!
+
     Qibo module to calibrate and characterize self-hosted QPUs.
     """
 
@@ -56,7 +59,7 @@ def command():
     help="Name of the Qibo backend.,",
 )
 def auto(runcard, folder, force, update, platform, backend):
-    """Autocalibration
+    """Autocalibration.
 
     Arguments:
 
@@ -99,7 +102,7 @@ def auto(runcard, folder, force, update, platform, backend):
     help="Name of the Qibo backend.,",
 )
 def acquire(runcard, folder, force, platform, backend):
-    """Data acquisition
+    """Data acquisition.
 
     Arguments:
 
@@ -119,13 +122,29 @@ def acquire(runcard, folder, force, platform, backend):
 @click.argument(
     "folder", metavar="folder", type=click.Path(exists=True, path_type=pathlib.Path)
 )
+def update(folder):
+    """Update platform configuration.
+
+    All configuration files related to platform will be copied
+    in the corresponding QIBOLAB_PLAFORMS folder.
+
+    Arguments:
+        - folder: Qibocal output folder.
+
+    """
+    updating(folder)
+
+
+@command.command(context_settings=CONTEXT_SETTINGS)
+@click.argument(
+    "folder", metavar="folder", type=click.Path(exists=True, path_type=pathlib.Path)
+)
 def report(folder):
-    """Report generation
+    """Report generation.
 
     Arguments:
 
     - FOLDER: input folder.
-
     """
     reporting(folder)
 
@@ -157,12 +176,11 @@ def report(folder):
 def fit(
     input_folder: pathlib.Path, update: bool, output_folder: pathlib.Path, force: bool
 ):
-    """Post-processing analysis
+    """Post-processing analysis.
 
     Arguments:
 
     - FOLDER: input folder.
-
     """
     fitting(input_folder, update, output_folder, force)
 
@@ -184,10 +202,37 @@ def fit(
     help="Default is UID username.",
 )
 def upload(path, tag, author):
-    """Uploads output folder to server
+    """Uploads output folder to server.
 
     Arguments:
 
     - FOLDER: input folder.
     """
     upload_report(path, tag, author)
+
+
+@command.command(context_settings=CONTEXT_SETTINGS)
+@click.argument(
+    "report_1_path",
+    metavar="RUNCARD_1_PATH",
+    type=click.Path(exists=True, path_type=pathlib.Path),
+)
+@click.argument(
+    "report_2_path",
+    metavar="RUNCARD_2_PATH",
+    type=click.Path(exists=True, path_type=pathlib.Path),
+)
+@click.option(
+    "folder",
+    "-o",
+    type=click.Path(path_type=pathlib.Path),
+    help="Output folder. If not provided a standard name will generated.",
+)
+@click.option(
+    "force",
+    "-f",
+    is_flag=True,
+    help="Use --force option to overwrite the output folder.",
+)
+def compare(report_1_path, report_2_path, folder, force):
+    compare_reports(folder, report_1_path, report_2_path, force)
