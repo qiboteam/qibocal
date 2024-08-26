@@ -41,14 +41,19 @@ class SingleShotClassificationParameters(Parameters):
     """SingleShotClassification runcard inputs."""
 
     unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
-    Defaults to ``False``."""
+    """Whether to unroll the sequences.
+
+    If ``True`` it uses sequence unrolling to deploy multiple sequences in a
+    single instrument call.
+
+    Defaults to ``False``.
+    """
     classifiers_list: Optional[list[str]] = field(
         default_factory=lambda: [DEFAULT_CLASSIFIER]
     )
-    """List of models to classify the qubit states"""
+    """List of models to classify the qubit states."""
     savedir: Optional[str] = " "
-    """Dumping folder of the classification results"""
+    """Dumping folder of the classification results."""
 
 
 ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", int)])
@@ -60,7 +65,7 @@ class SingleShotClassificationData(Data):
     nshots: int
     """Number of shots."""
     savedir: str
-    """Dumping folder of the classification results"""
+    """Dumping folder of the classification results."""
     qubit_frequencies: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
@@ -68,7 +73,7 @@ class SingleShotClassificationData(Data):
     classifiers_list: Optional[list[str]] = field(
         default_factory=lambda: [DEFAULT_CLASSIFIER]
     )
-    """List of models to classify the qubit states"""
+    """List of models to classify the qubit states."""
 
 
 @dataclass
@@ -111,8 +116,8 @@ class SingleShotClassificationResults(Results):
     def __contains__(self, key: QubitId):
         """Checking if key is in Results.
 
-        Overwritten because classifiers_hpars is empty when running
-        the default_classifier.
+        Overwritten because classifiers_hpars is empty when running the
+        default_classifier.
         """
         return all(
             key in getattr(self, field.name)
@@ -192,7 +197,7 @@ def _acquisition(
                 sequence.extend(rx_sequence)
 
             qubit = platform.qubits[q]
-            sequence.append((qubit.probe.name, Delay(duration=rx_sequence.duration)))
+            sequence.append((qubit.probe, Delay(duration=rx_sequence.duration)))
             sequence.extend(ro_sequence)
             ro_pulses[q] = ro_sequence[1][1].id
 
@@ -202,7 +207,7 @@ def _acquisition(
     data = SingleShotClassificationData(
         nshots=params.nshots,
         qubit_frequencies={
-            qubit: platform.config(str(platform.qubits[qubit].drive.name)).frequency
+            qubit: platform.config(platform.qubits[qubit].drive).frequency
             for qubit in targets
         },
         classifiers_list=params.classifiers_list,
