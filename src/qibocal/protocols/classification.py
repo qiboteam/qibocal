@@ -224,7 +224,7 @@ def _acquisition(
         for qubit in targets:
             serial = ro_pulses[qubit]
             if params.unrolling:
-                result = results[serial][ig]
+                result = results[serial][0][ig]
             else:
                 result = results[ig][serial][0]
             data.register_qubit(
