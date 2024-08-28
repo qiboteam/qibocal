@@ -10,7 +10,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.identifier import QubitId, QubitPairId
 from qibolab.platform import Platform
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab.sweeper import Parameter, Sweeper
 from scipy.optimize import curve_fit
 
 from qibocal import update
