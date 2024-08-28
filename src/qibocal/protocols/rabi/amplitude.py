@@ -68,7 +68,6 @@ def _acquisition(
         Parameter.amplitude,
         qd_pulse_amplitude_range,
         [qd_pulses[qubit] for qubit in targets],
-        type=SweeperType.FACTOR,
     )
 
     data = RabiAmplitudeData(durations=durations)

@@ -90,7 +90,6 @@ def _acquisition(
         ),
         qd_pulse_duration_range,
         [qd_pulses[q] for q in targets] + [delays[q] for q in targets],
-        type=SweeperType.ABSOLUTE,
     )
     data = RabiLengthSignalData(amplitudes=amplitudes)
 
