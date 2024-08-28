@@ -6,7 +6,7 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.identifier import QubitId
 from qibolab.platform import Platform
 from qibolab.result import probability
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal import update
 from qibocal.auto.operation import Data, Routine
