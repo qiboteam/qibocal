@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.identifier import QubitPairId
 from qibolab.platform import Platform
-from qibolab.qubits import QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Routine

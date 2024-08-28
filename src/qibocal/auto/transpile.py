@@ -4,7 +4,7 @@ from qibo import Circuit
 from qibo.backends.abstract import Backend
 from qibo.transpiler.pipeline import Passes
 from qibo.transpiler.unroller import NativeGates, Unroller
-from qibolab.qubits import QubitId
+from qibolab.identifier import QubitId
 
 
 def transpile_circuits(

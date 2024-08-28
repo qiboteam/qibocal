@@ -5,8 +5,8 @@ from typing import Optional, Union
 import numpy as np
 import numpy.typing as npt
 from _collections_abc import Callable
+from qibolab.identifier import QubitId
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId
 from qibolab.result import magnitude, phase
 from qibolab.sequence import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper, SweeperType

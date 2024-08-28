@@ -5,8 +5,8 @@ from typing import Union
 
 import numpy as np
 from qibolab import pulses
+from qibolab.identifier import QubitId, QubitPairId
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId, QubitPairId
 
 CLASSIFICATION_PARAMS = [
     "threshold",

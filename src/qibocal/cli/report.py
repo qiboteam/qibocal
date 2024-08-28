@@ -4,7 +4,7 @@ from typing import Optional, Union
 
 import plotly.graph_objects as go
 from jinja2 import Environment, FileSystemLoader
-from qibolab.qubits import QubitId, QubitPairId
+from qibolab.identifier import QubitId, QubitPairId
 
 from qibocal.auto.history import History
 from qibocal.auto.output import Output

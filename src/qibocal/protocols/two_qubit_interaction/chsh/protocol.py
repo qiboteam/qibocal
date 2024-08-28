@@ -10,8 +10,8 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from qibo.backends import GlobalBackend
 from qibolab import ExecutionParameters
+from qibolab.identifier import QubitId, QubitPairId
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit

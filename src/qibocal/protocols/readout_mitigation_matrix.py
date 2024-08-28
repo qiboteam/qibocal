@@ -8,8 +8,8 @@ from qibo import gates
 from qibo.backends import GlobalBackend
 from qibo.models import Circuit
 from qibolab import ExecutionParameters
+from qibolab.identifier import QubitId
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId
 from qibolab.sequence import PulseSequence
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine

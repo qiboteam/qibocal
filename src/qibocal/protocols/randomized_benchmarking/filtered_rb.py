@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 import numpy as np
 import plotly.graph_objects as go
+from qibolab.identifier import QubitId
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Results, Routine
 from qibocal.protocols.randomized_benchmarking.utils import rb_acquisition

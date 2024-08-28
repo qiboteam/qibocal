@@ -2,7 +2,7 @@ from typing import Optional
 
 import numpy as np
 from qibolab import Platform
-from qibolab.qubits import QubitId
+from qibolab.identifier import QubitId
 from qibolab.sequence import PulseSequence
 from scipy.optimize import curve_fit
 
