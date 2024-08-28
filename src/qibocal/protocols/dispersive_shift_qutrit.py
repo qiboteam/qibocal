@@ -5,8 +5,8 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.identifier import QubitId
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId
 from qibolab.sequence import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 

@@ -10,8 +10,9 @@ from typing import Callable, Generic, NewType, Optional, TypeVar, Union
 import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.Identifier import QubitId, QubitPairId
 from qibolab.platform import Platform
-from qibolab.qubits import Qubit, QubitId, QubitPairId
+from qibolab.qubits import Qubit
 
 from qibocal.config import log
 

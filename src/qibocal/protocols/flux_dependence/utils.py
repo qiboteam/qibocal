@@ -1,8 +1,8 @@
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from qibolab.identifier import QubitId
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId
 
 from ..utils import HZ_TO_GHZ
 

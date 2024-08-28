@@ -5,8 +5,8 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from qibolab.identifier import QubitId
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.protocols.resonator_spectroscopy import resonator_spectroscopy

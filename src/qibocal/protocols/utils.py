@@ -7,7 +7,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
-from qibolab.qubits import QubitId
+from qibolab.identifier import QubitId
 from scipy import constants
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks

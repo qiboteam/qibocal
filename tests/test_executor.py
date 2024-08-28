@@ -8,7 +8,7 @@ from typing import Optional
 
 import pytest
 from qibolab import Platform, create_platform
-from qibolab.qubits import QubitId
+from qibolab.identifier import QubitId
 
 import qibocal
 import qibocal.protocols

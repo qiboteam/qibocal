@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
+from qibolab.identifier import QubitId
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId
 from qibolab.sequence import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 

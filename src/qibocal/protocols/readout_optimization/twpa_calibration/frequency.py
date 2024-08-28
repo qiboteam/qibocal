@@ -3,8 +3,8 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+from qibolab.identifier import QubitId
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine

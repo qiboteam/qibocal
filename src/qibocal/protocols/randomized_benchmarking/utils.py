@@ -10,8 +10,8 @@ from qibo import gates
 from qibo.backends import GlobalBackend
 from qibo.config import raise_error
 from qibo.models import Circuit
+from qibolab.identifier import QubitId, QubitPairId
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.operation import Data, Parameters, Results
 from qibocal.auto.transpile import (

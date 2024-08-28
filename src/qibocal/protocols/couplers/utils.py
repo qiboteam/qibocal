@@ -3,7 +3,7 @@ from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
-from qibolab.qubits import QubitId
+from qibolab.identifier import QubitId
 
 from qibocal.auto.operation import Data, Results
 

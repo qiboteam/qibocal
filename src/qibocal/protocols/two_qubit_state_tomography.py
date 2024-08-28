@@ -12,8 +12,8 @@ from qibo import Circuit, gates
 from qibo.backends import GlobalBackend, NumpyBackend
 from qibo.quantum_info import fidelity
 from qibo.result import QuantumState
+from qibolab.identifier import QubitId, QubitPairId
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.operation import DATAFILE, Data, Results, Routine
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
