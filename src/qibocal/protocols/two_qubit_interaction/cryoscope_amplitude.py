@@ -6,7 +6,6 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-import scipy
 from plotly.subplots import make_subplots
 from qibolab.execution_parameters import (
     AcquisitionType,
@@ -286,7 +285,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
         row=2,
         col=1,
     )
-    scipy.signal.savgol_filter(phase / 2 / np.pi, 5, 3, deriv=1, delta=1)
+    # scipy.signal.savgol_filter(phase / 2 / np.pi, 5, 3, deriv=1, delta=1)
     fig.add_trace(
         go.Scatter(
             x=qubit_X_data.amplitude,
