@@ -143,8 +143,8 @@ def _acquisition(
             duration=params.flux_pulse_duration,
             amplitude=params.flux_pulse_amplitude,
             shape=flux_pulse_shape,
-            channel=platform.qubits[qubit].flux.name,
-            qubit=qubit,
+            channel=platform.qubits["D2"].flux.name,
+            qubit="D2",
         )
 
         # rotation_start = flux_start + params.duration_max + params.padding + params.dt
@@ -184,7 +184,7 @@ def _acquisition(
             rx90_pulses[qubit],  # rotate around X to measure Y CHECK
             ro_pulses[qubit],
         )
-
+    print(sequence_x)
     amplitude_range = np.arange(
         params.amplitude_min, params.amplitude_max, params.amplitude_step
     )
@@ -302,17 +302,17 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
         deg=2,
     )
     print(pol)
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=qubit_X_data.amplitude,
-    #         y=pol[2]
-    #         + qubit_X_data.amplitude * pol[1]
-    #         + qubit_X_data.amplitude**2 * pol[0],
-    #         name="Fit Detuning [GHz]",
-    #     ),
-    #     row=3,
-    #     col=1,
-    # )
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_X_data.amplitude,
+            y=pol[2]
+            + qubit_X_data.amplitude * pol[1]
+            + qubit_X_data.amplitude**2 * pol[0],
+            name="Fit Detuning [GHz]",
+        ),
+        row=3,
+        col=1,
+    )
 
     fig.update_layout(
         xaxis3_title="Flux pulse amplitude [a.u.]",
