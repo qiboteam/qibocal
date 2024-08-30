@@ -100,7 +100,6 @@ def _acquisition(
     backend = GlobalBackend()
     backend.platform = platform
     transpiler = dummy_transpiler(backend)
-    qubit_map = [i for i in range(platform.nqubits)]
     for qubits in targets:
         nqubits = len(qubits)
         for i in range(2**nqubits):
@@ -127,16 +126,13 @@ def _acquisition(
                     tuple(qubits), state, calculate_frequencies(results, tuple(qubits))
                 )
             else:
-                c = Circuit(
-                    platform.nqubits,
-                    wire_names=[str(i) for i in range(platform.nqubits)],
-                )
+                c = Circuit(2)
                 for q, bit in enumerate(state):
                     if bit == "1":
-                        c.add(gates.X(qubits[q]))
-                    c.add(gates.M(qubits[q]))
+                        c.add(gates.X(q))
+                    c.add(gates.M(q))
                 _, results = execute_transpiled_circuit(
-                    c, qubit_map, backend, nshots=params.nshots, transpiler=transpiler
+                    c, qubits, backend, nshots=params.nshots, transpiler=transpiler
                 )
                 data.add(tuple(qubits), state, dict(results.frequencies()))
     return data

@@ -76,14 +76,16 @@ class CHSHData(Data):
 
     def save(self, path: Path):
         """Saving data including mitigation matrix."""
-
-        np.savez(
-            path / f"{MITIGATION_MATRIX_FILE}.npz",
-            **{
-                json.dumps((control, target)): self.mitigation_matrix[control, target]
-                for control, target, _, _, _ in self.data
-            },
-        )
+        if len(self.mitigation_matrix) > 0:
+            np.savez(
+                path / f"{MITIGATION_MATRIX_FILE}.npz",
+                **{
+                    json.dumps((control, target)): self.mitigation_matrix[
+                        control, target
+                    ]
+                    for control, target, _, _, _ in self.data
+                },
+            )
         super().save(path=path)
 
     @classmethod
@@ -117,22 +119,18 @@ class CHSHData(Data):
             else:
                 self.data[pair[0], pair[1], bell_state, basis, state] = np.array([freq])
 
-    def merge_frequencies(self, pair, bell_state):
+    def get_pair_state_data(self, pair, bell_state):
         """Merge frequencies with different measurement basis."""
-        freqs = []
         bell_data = {
             (index[3], index[4]): value
             for index, value in self.data.items()
             if index[:3] == (pair[0], pair[1], bell_state)
         }
+        bell_data = {basis: {} for basis in READOUT_BASIS}
+        for index, value in self.data.items():
+            bell_data[index[3]][index[4]] = value
 
-        freqs = []
-        for i in READOUT_BASIS:
-            freqs.append(
-                {state[1]: value for state, value in bell_data.items() if state[0] == i}
-            )
-
-        return freqs
+        return bell_data
 
     @property
     def params(self):
@@ -159,8 +157,7 @@ class CHSHResults(Results):
         an additional key which represents the basis chosen.
 
         """
-
-        return key in [(target, control) for target, control, _ in self.chsh]
+        return tuple(key) in [(target, control) for target, control, _ in self.chsh]
 
 
 def _acquisition_pulses(
@@ -223,7 +220,6 @@ def _acquisition_circuits(
     backend = GlobalBackend()
     backend.platform = platform
     transpiler = dummy_transpiler(backend)
-    qubit_map = [i for i in range(platform.nqubits)]
     if params.apply_error_mitigation:
         mitigation_data = mitigation_acquisition(
             mitigation_params(pulses=False, nshots=params.nshots), platform, targets
@@ -242,8 +238,6 @@ def _acquisition_circuits(
         for bell_state in params.bell_states:
             for theta in thetas:
                 chsh_circuits = create_chsh_circuits(
-                    platform,
-                    qubits=pair,
                     bell_state=bell_state,
                     theta=theta,
                     native=params.native,
@@ -254,7 +248,7 @@ def _acquisition_circuits(
                         nshots=params.nshots,
                         transpiler=transpiler,
                         backend=backend,
-                        qubit_map=qubit_map,
+                        qubit_map=pair,
                     )
                     frequencies = result.frequencies()
                     data.register_basis(pair, bell_state, basis, frequencies)
@@ -349,30 +343,32 @@ def _fit(data: CHSHData) -> CHSHResults:
     mitigated_results = {}
     for pair in data.pairs:
         for bell_state in data.bell_states:
-            freq = data.merge_frequencies(pair, bell_state)
-            if data.mitigation_matrix:
-                matrix = data.mitigation_matrix[pair]
+            bell_pair_data = data.get_pair_state_data(pair, bell_state)
 
-                mitigated_freq_list = []
-                for freq_basis in freq:
-                    mitigated_freq = {format(i, f"0{2}b"): [] for i in range(4)}
-                    for i in range(len(data.thetas)):
-                        freq_array = np.zeros(4)
-                        for k, v in freq_basis.items():
-                            freq_array[int(k, 2)] = v[i]
-                        freq_array = freq_array.reshape(-1, 1)
-                        for j, val in enumerate(matrix @ freq_array):
-                            mitigated_freq[format(j, f"0{2}b")].append(float(val))
-                    mitigated_freq_list.append(mitigated_freq)
+            #         freq = data.merge_frequencies(pair, bell_state)
+            #         if data.mitigation_matrix:
+            #             matrix = data.mitigation_matrix[pair]
+
+            #             mitigated_freq_list = []
+            #             for freq_basis in freq:
+            #                 mitigated_freq = {format(i, f"0{2}b"): [] for i in range(4)}
+            #                 for i in range(len(data.thetas)):
+            #                     freq_array = np.zeros(4)
+            #                     for k, v in freq_basis.items():
+            #                         freq_array[int(k, 2)] = v[i]
+            #                     freq_array = freq_array.reshape(-1, 1)
+            #                     for j, val in enumerate(matrix @ freq_array):
+            #                         mitigated_freq[format(j, f"0{2}b")].append(float(val))
+            #                 mitigated_freq_list.append(mitigated_freq)
             results[pair[0], pair[1], bell_state] = [
-                compute_chsh(freq, bell_state, l) for l in range(len(data.thetas))
+                compute_chsh(bell_pair_data, l) for l in range(len(data.thetas))
             ]
 
-            if data.mitigation_matrix:
-                mitigated_results[pair[0], pair[1], bell_state] = [
-                    compute_chsh(mitigated_freq_list, bell_state, l)
-                    for l in range(len(data.thetas))
-                ]
+    #         if data.mitigation_matrix:
+    #             mitigated_results[pair[0], pair[1], bell_state] = [
+    #                 compute_chsh(mitigated_freq_list, bell_state, l)
+    #                 for l in range(len(data.thetas))
+    #             ]
     return CHSHResults(chsh=results, chsh_mitigated=mitigated_results)
 
 

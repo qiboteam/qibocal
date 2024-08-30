@@ -1,26 +1,21 @@
 """Auxiliary functions to run CHSH protocol."""
 
-from qibo.config import log
-
 READOUT_BASIS = ["ZZ", "ZX", "XZ", "XX"]
 
 
-def compute_chsh(frequencies, basis, i):
+def compute_chsh(frequencies, i):
     """Computes the chsh inequality out of the frequencies of the 4 circuits executed."""
-    chsh = 0
-    aux = 0
-    for freq in frequencies:
-        for outcome in freq:
-            if aux == 1 + 2 * (
-                basis % 2
-            ):  # This value sets where the minus sign is in the CHSH inequality
-                chsh -= (-1) ** (int(outcome[0]) + int(outcome[1])) * freq[outcome][i]
-            else:
-                chsh += (-1) ** (int(outcome[0]) + int(outcome[1])) * freq[outcome][i]
-        aux += 1
-    nshots = sum(freq[x][i] for x in freq)
-    try:
-        return chsh / nshots
-    except ZeroDivisionError:
-        log.warning("Zero number of shots, returning zero.")
-        return 0
+
+    zz = frequencies["ZZ"]
+    zx = frequencies["ZX"]
+    xz = frequencies["XZ"]
+    xx = frequencies["XX"]
+
+    nshots = zz["11"][i] + zz["00"][i] + zz["10"][i] + zz["01"][i]
+
+    result_zz = zz["11"][i] + zz["00"][i] - zz["10"][i] - zz["01"][i]
+    result_zx = zx["11"][i] + zx["00"][i] - zx["10"][i] - zx["01"][i]
+    result_xz = xz["11"][i] + xz["00"][i] - xz["10"][i] - xz["01"][i]
+    result_xx = xx["11"][i] + xx["00"][i] - xx["10"][i] - xx["01"][i]
+
+    return (result_zz + result_xz - result_zx + result_xx) / nshots
