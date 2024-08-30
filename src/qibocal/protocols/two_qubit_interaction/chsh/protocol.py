@@ -361,7 +361,8 @@ def _fit(data: CHSHData) -> CHSHResults:
             #                         mitigated_freq[format(j, f"0{2}b")].append(float(val))
             #                 mitigated_freq_list.append(mitigated_freq)
             results[pair[0], pair[1], bell_state] = [
-                compute_chsh(bell_pair_data, l) for l in range(len(data.thetas))
+                compute_chsh(bell_pair_data, l, bell_state)
+                for l in range(len(data.thetas))
             ]
 
     #         if data.mitigation_matrix:

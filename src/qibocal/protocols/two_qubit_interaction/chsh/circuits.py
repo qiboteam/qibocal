@@ -7,7 +7,7 @@ from qibo.models import Circuit
 from .utils import READOUT_BASIS
 
 
-def create_bell_circuit(theta=np.pi / 4, bell_state=0):
+def create_bell_circuit(bell_state=0):
     """Creates the circuit to generate the bell states and with a theta-measurement
     bell_state chooses the initial bell state for the test:
     0 -> |00>+|11>
@@ -32,7 +32,7 @@ def create_bell_circuit(theta=np.pi / 4, bell_state=0):
     return c
 
 
-def create_bell_circuit_native(theta=np.pi / 4, bell_state=0):
+def create_bell_circuit_native(bell_state=0):
     """Creates the circuit to generate the bell states and with a theta-measurement
     bell_state chooses the initial bell state for the test:
     0 -> |00>+|11>
@@ -43,30 +43,22 @@ def create_bell_circuit_native(theta=np.pi / 4, bell_state=0):
     """
 
     c = Circuit(2)
-    p = [0, 0]
     c.add(gates.GPI2(0, np.pi / 2))
     c.add(gates.GPI2(1, np.pi / 2))
     c.add(gates.CZ(0, 1))
-    c.add(gates.GPI2(1, np.pi / 2))
+    c.add(gates.GPI2(1, -np.pi / 2))
 
-    c.add(gates.GPI2(0, p[0]))
     if bell_state == 0:
-        p[0] += np.pi
-    elif bell_state == 1:
-        p[0] += 0
+        c.add(gates.Z(0))
     elif bell_state == 2:
-        p[0] += 0
-        c.add(gates.GPI2(0, p[0]))
-        c.add(gates.GPI2(0, p[0]))
+        c.add(gates.GPI(0, 0))
     elif bell_state == 3:
-        p[0] += np.pi
-        c.add(gates.GPI2(0, p[0]))
-        c.add(gates.GPI2(0, p[0]))
+        c.add(gates.Z(0))
+        c.add(gates.GPI(0, 0))
 
-    p[0] += theta
-    c.add(gates.GPI2(0, np.pi))
+    c.add(gates.GPI2(0, 0))
 
-    return c, p
+    return c
 
 
 def create_chsh_circuits(
@@ -82,7 +74,7 @@ def create_chsh_circuits(
     create_bell = create_bell_circuit_native if native else create_bell_circuit
     chsh_circuits = {}
     for basis in readout_basis:
-        c = create_bell(theta, bell_state)
+        c = create_bell(bell_state)
         c.add(gates.RY(0, theta))
         for i, base in enumerate(basis):
             if base == "X":
