@@ -74,7 +74,7 @@ class VirtualZPhasesResults(Results):
         """
         # TODO: fix this (failing only for qq report)
         return key in [
-            [target, control] for target, control, _ in self.fitted_parameters
+            (target, control) for target, control, _ in self.fitted_parameters
         ]
 
 
@@ -348,7 +348,6 @@ def _fit(
                 )
         except KeyError:
             pass  # exception covered above
-    print(virtual_phase)
     return VirtualZPhasesResults(
         native=data.native,
         flux_pulse_amplitude=data.amplitudes,
