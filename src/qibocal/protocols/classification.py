@@ -197,7 +197,7 @@ def _acquisition(
                 sequence.extend(rx_sequence)
 
             qubit = platform.qubits[q]
-            sequence.append((qubit.probe, Delay(duration=rx_sequence.duration)))
+            sequence.append((qubit.acquisition, Delay(duration=rx_sequence.duration)))
             sequence.extend(ro_sequence)
             ro_pulses[q] = ro_sequence[0][1].id
 
