@@ -73,24 +73,23 @@ def _acquisition(
     sequence, qd_pulses, delays, ro_pulses, amplitudes = utils.sequence_length(
         targets, params, platform
     )
-
-    # define the parameter to sweep and its range:
-    # qubit drive pulse duration time
-    qd_pulse_duration_range = np.arange(
+    sweep_range = (
         params.pulse_duration_start,
         params.pulse_duration_end,
         params.pulse_duration_step,
     )
-
-    sweeper = Sweeper(
-        (
-            Parameter.duration_interpolated
-            if params.interpolated_sweeper
-            else Parameter.duration
-        ),
-        qd_pulse_duration_range,
-        [qd_pulses[q] for q in targets] + [delays[q] for q in targets],
-    )
+    if params.interpolated_sweeper:
+        sweeper = Sweeper(
+            parameter=Parameter.duration_interpolated,
+            range=sweep_range,
+            pulses=[qd_pulses[q] for q in targets],
+        )
+    else:
+        sweeper = Sweeper(
+            parameter=Parameter.duration,
+            range=sweep_range,
+            pulses=[qd_pulses[q] for q in targets] + [delays[q] for q in targets],
+        )
 
     data = RabiLengthSignalData(amplitudes=amplitudes)
 
@@ -112,7 +111,7 @@ def _acquisition(
             RabiLenSignalType,
             (q),
             dict(
-                length=qd_pulse_duration_range,
+                length=sweeper.values,
                 signal=magnitude(result),
                 phase=phase(result),
             ),
