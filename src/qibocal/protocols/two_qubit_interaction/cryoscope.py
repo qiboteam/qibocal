@@ -22,6 +22,37 @@ from qibocal.auto.operation import Data, Parameters, Results, Routine
 from .filters import exponential_decay, single_exponential_correction
 
 
+def exponential_decay(x, a, t):
+    return 1 + a * np.exp(-x / t)
+
+
+def single_exponential_correction(
+    A: float,
+    tau: float,
+):
+    """
+    Calculate the best FIR and IIR filter taps to correct for an exponential decay
+    (undershoot or overshoot) of the shape
+    `1 + A * exp(-t/tau)`.
+    Args:
+        A: The exponential decay pre-factor.
+        tau: The time constant for the exponential decay, given in ns.
+    Returns:
+        A tuple of two items.
+        The first is a list of 2 FIR (feedforward) taps starting at 0 and spaced `Ts` apart.
+        The second is a single IIR (feedback) tap.
+    """
+    tau *= 1e-9
+    Ts = 1e-9  # sampling rate
+    k1 = Ts + 2 * tau * (A + 1)
+    k2 = Ts - 2 * tau * (A + 1)
+    c1 = Ts + 2 * tau
+    c2 = Ts - 2 * tau
+    feedback_tap = [-k2 / k1]
+    feedforward_taps = list(np.array([c1, c2]) / k1)
+    return feedforward_taps, feedback_tap
+
+
 @dataclass
 class CryoscopeParameters(Parameters):
     """Cryoscope runcard inputs."""
@@ -34,13 +65,11 @@ class CryoscopeParameters(Parameters):
     """Flux pulse duration step."""
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
-    padding: int = 0
-    """Time padding before and after flux pulse."""
+    parabola_coefficients: list[float]
+    """Coefficients computed using FluxAmplitudeDetuning."""
     nshots: Optional[int] = None
     """Number of shots per point."""
-    unrolling: bool = False
-    # flux_pulse_shapes
-    # TODO support different shapes, for now only rectangular
+    padding: int = 0
 
 
 @dataclass
@@ -174,28 +203,19 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    if params.unrolling:
-        results_x = platform.execute_pulse_sequences(sequences_x, options)
-        results_y = platform.execute_pulse_sequences(sequences_y, options)
-    elif not params.unrolling:
-        results_x = [
-            platform.execute_pulse_sequence(sequence, options)
-            for sequence in sequences_x
-        ]
-        results_y = [
-            platform.execute_pulse_sequence(sequence, options)
-            for sequence in sequences_y
-        ]
+    results_x = [
+        platform.execute_pulse_sequence(sequence, options) for sequence in sequences_x
+    ]
+    results_y = [
+        platform.execute_pulse_sequence(sequence, options) for sequence in sequences_y
+    ]
 
     for ig, (duration, ro_pulses) in enumerate(
         zip(duration_range, sequences_x_ro_pulses)
     ):
         for qubit in targets:
             serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
-            if params.unrolling:
-                result = results_x[serial][ig]
-            else:
-                result = results_x[ig][serial]
+            result = results_x[ig][serial]
             data.register_qubit(
                 CryoscopeType,
                 (qubit, "MX"),
@@ -210,19 +230,16 @@ def _acquisition(
     ):
         for qubit in targets:
             serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
-            if params.unrolling:
-                result = results_y[serial][ig]
-            else:
-                result = results_y[ig][serial]
-            data.register_qubit(
-                CryoscopeType,
-                (qubit, "MY"),
-                dict(
-                    duration=np.array([duration]),
-                    prob_0=result.probability(state=0),
-                    prob_1=result.probability(state=1),
-                ),
-            )
+        result = results_y[ig][serial]
+        data.register_qubit(
+            CryoscopeType,
+            (qubit, "MY"),
+            dict(
+                duration=np.array([duration]),
+                prob_0=result.probability(state=0),
+                prob_1=result.probability(state=1),
+            ),
+        )
 
     return data
 
@@ -279,8 +296,12 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     #     col=1,
     # )
 
-    coeffs = [-9.10575082, -7.28208663e-3, -4.73157701e-5]  # D2
-    coeffs = [-7.76584706, 2.25726809e-3, -3.76982885e-4]  # D1
+    # coeffs = [-9.10575082, -7.28208663e-3, -4.73157701e-5]  # D2
+    coeffs = [[-9.09948820, 5.52686083e-3, -7.42079805e-5]]  # D2
+    # coeffs = [-7.76584706, 2.25726809e-3, -3.76982885e-4]  # D1
+    coeffs = [-7.76812980, 4.00605656e-02, -3.88473996e-4]  # D1
+    coeffs = [-8.99178536, 5.19796241e-3, -1.61507231e-4]  # D3
+    # coeffs = [-8.99334695, -6.70786688e-4, -2.15611619e-04] # D3
     # coeffs = [-9.10575082e+00, -7.28208663e-03, -4.73157701e-05]  # with filters
     detuning = scipy.signal.savgol_filter(
         phase / 2 / np.pi,
