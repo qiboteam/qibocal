@@ -21,12 +21,12 @@ from . import utils
 class RabiAmplitudeSignalParameters(Parameters):
     """RabiAmplitude runcard inputs."""
 
-    min_amp_factor: float
-    """Minimum amplitude multiplicative factor."""
-    max_amp_factor: float
-    """Maximum amplitude multiplicative factor."""
-    step_amp_factor: float
-    """Step amplitude multiplicative factor."""
+    min_amp: float
+    """Minimum amplitude."""
+    max_amp: float
+    """Maximum amplitude."""
+    step_amp: float
+    """Step amplitude."""
     pulse_length: Optional[float] = None
     """RX pulse duration [ns]."""
 
@@ -73,17 +73,10 @@ def _acquisition(
         targets, params, platform
     )
 
-    # define the parameter to sweep and its range:
-    # qubit drive pulse amplitude
-    qd_pulse_amplitude_range = np.arange(
-        params.min_amp_factor,
-        params.max_amp_factor,
-        params.step_amp_factor,
-    )
     sweeper = Sweeper(
-        Parameter.amplitude,
-        qd_pulse_amplitude_range,
-        [qd_pulses[qubit] for qubit in targets],
+        parameter=Parameter.amplitude,
+        range=(params.min_amp, params.max_amp, params.step_amp),
+        pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
     data = RabiAmplitudeSignalData(durations=durations)
@@ -105,7 +98,7 @@ def _acquisition(
             RabiAmpSignalType,
             (qubit),
             dict(
-                amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
+                amp=sweeper.values,
                 signal=magnitude(result),
                 phase=phase(result),
             ),

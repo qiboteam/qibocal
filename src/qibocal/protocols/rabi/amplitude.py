@@ -57,17 +57,11 @@ def _acquisition(
     sequence, qd_pulses, ro_pulses, durations = utils.sequence_amplitude(
         targets, params, platform
     )
-    # define the parameter to sweep and its range:
-    # qubit drive pulse amplitude
-    qd_pulse_amplitude_range = np.arange(
-        params.min_amp_factor,
-        params.max_amp_factor,
-        params.step_amp_factor,
-    )
+
     sweeper = Sweeper(
-        Parameter.amplitude,
-        qd_pulse_amplitude_range,
-        [qd_pulses[qubit] for qubit in targets],
+        parameter=Parameter.amplitude,
+        range=(params.min_amp, params.max_amp, params.step_amp),
+        pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
     data = RabiAmplitudeData(durations=durations)
@@ -89,7 +83,7 @@ def _acquisition(
             RabiAmpType,
             (qubit),
             dict(
-                amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
+                amp=sweeper.values,
                 prob=prob.tolist(),
                 error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
             ),
