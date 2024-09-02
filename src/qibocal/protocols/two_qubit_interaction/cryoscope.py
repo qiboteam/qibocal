@@ -7,7 +7,6 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 import scipy
-from plotly.subplots import make_subplots
 from qibolab.execution_parameters import (
     AcquisitionType,
     AveragingMode,
@@ -19,7 +18,7 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 
-from .filters import exponential_decay, single_exponential_correction
+from ..utils import table_dict, table_html
 
 
 def exponential_decay(x, a, t):
@@ -65,8 +64,6 @@ class CryoscopeParameters(Parameters):
     """Flux pulse duration step."""
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
-    parabola_coefficients: list[float]
-    """Coefficients computed using FluxAmplitudeDetuning."""
     nshots: Optional[int] = None
     """Number of shots per point."""
     padding: int = 0
@@ -85,17 +82,9 @@ CryoscopeType = np.dtype(
 """Custom dtype for Cryoscope."""
 
 
-def generate_waveform():
-    # zeros = np.zeros(20)
-    ones = np.ones(60)
-
-    return np.concatenate([ones])
-
-
 def generate_sequences(
     platform: Platform,
     qubit: QubitId,
-    waveform: np.ndarray,
     duration: int,
     params: CryoscopeParameters,
 ):
@@ -111,7 +100,7 @@ def generate_sequences(
         start=ry90.finish + params.padding,
         duration=duration,
         amplitude=params.flux_pulse_amplitude,
-        shape=Custom(waveform[:duration]),
+        shape=Custom(np.ones(duration)),
         channel=platform.qubits[qubit].flux.name,
         qubit=qubit,
     )
@@ -154,8 +143,6 @@ class CryoscopeData(Data):
 
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
-    waveform: list
-    """Flux pulse waveform"""
     data: dict[tuple[QubitId, str], npt.NDArray[CryoscopeType]] = field(
         default_factory=dict
     )
@@ -169,7 +156,6 @@ def _acquisition(
     # define sequences of pulses to be executed
     data = CryoscopeData(
         flux_pulse_amplitude=params.flux_pulse_amplitude,
-        waveform=generate_waveform().tolist(),
     )
 
     sequences_x = []
@@ -187,7 +173,7 @@ def _acquisition(
 
         for qubit in targets:
             qubit_sequence_x, qubit_sequence_y = generate_sequences(
-                platform, qubit, np.array(data.waveform), duration, params
+                platform, qubit, duration, params
             )
             sequence_x += qubit_sequence_x
             sequence_y += qubit_sequence_y
@@ -250,110 +236,42 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 
 def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     """Cryoscope plots."""
-    figures = []
-    fitting_report = f"Cryoscope of qubit {target}"
 
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        subplot_titles=(),
-    )
+    fig = go.Figure()
     qubit_X_data = data[(target, "MX")]
     qubit_Y_data = data[(target, "MY")]
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=qubit_X_data.duration,
-    #         y=qubit_X_data.prob_1,
-    #         name="X",
-    #         legendgroup="X",
-    #     ),
-    #     row=1,
-    #     col=1,
-    # )
 
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=qubit_Y_data.duration,
-    #         y=qubit_Y_data.prob_1,
-    #         name="Y",
-    #         legendgroup="Y",
-    #     ),
-    #     row=1,
-    #     col=1,
-    # )
-
-    # minus sign for X_exp becuase I get -cos phase
     X_exp = qubit_X_data.prob_1 - qubit_X_data.prob_0
     Y_exp = qubit_Y_data.prob_0 - qubit_Y_data.prob_1
     phase = np.unwrap(np.angle(X_exp + 1.0j * Y_exp))
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=qubit_X_data.duration,
-    #         y=phase,
-    #         name="phase",
-    #     ),
-    #     row=2,
-    #     col=1,
-    # )
 
-    # coeffs = [-9.10575082, -7.28208663e-3, -4.73157701e-5]  # D2
-    coeffs = [[-9.09948820, 5.52686083e-3, -7.42079805e-5]]  # D2
-    # coeffs = [-7.76584706, 2.25726809e-3, -3.76982885e-4]  # D1
-    coeffs = [-7.76812980, 4.00605656e-02, -3.88473996e-4]  # D1
-    coeffs = [-8.99178536, 5.19796241e-3, -1.61507231e-4]  # D3
-    # coeffs = [-8.99334695, -6.70786688e-4, -2.15611619e-04] # D3
-    # coeffs = [-9.10575082e+00, -7.28208663e-03, -4.73157701e-05]  # with filters
     detuning = scipy.signal.savgol_filter(
         phase / 2 / np.pi,
         13,
         3,
         deriv=1,
-        delta=1,  # step
+        delta=1,
     )
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=qubit_X_data.duration,
-    #         y=detuning,
-    #         name="detuning",
-    #     ),
-    #     row=3,
-    #     col=1,
-    # )
 
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=qubit_X_data.duration,
-    #         y=np.polyval(
-    #             coeffs,
-    #             (data.flux_pulse_amplitude) * np.ones(len(qubit_X_data.duration)),
-    #         ),
-    #         name="fit",
-    #     ),
-    #     row=3,
-    #     col=1,
-    # )
+    # TODO: understand why it works
     step_response_freq = detuning / np.average(
         detuning[-int(len(qubit_X_data.duration) / 2) :]
     )
     step_response_volt = np.sqrt(step_response_freq)
+
     fig.add_trace(
         go.Scatter(
             x=qubit_X_data.duration,
             y=step_response_volt,
             name="Volt response",
-        ),
-        row=1,
-        col=1,
+        )
     )
-    print(step_response_volt)
     fig.add_trace(
         go.Scatter(
             x=qubit_X_data.duration,
             y=np.ones(len(qubit_X_data.duration)),
-            name="Volt response",
-        ),
-        row=1,
-        col=1,
+            name="Ideal response",
+        )
     )
 
     from scipy import optimize
@@ -363,100 +281,39 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
         qubit_X_data.duration,
         step_response_volt,
     )
-    # xplot = qubit_X_data.duration - 20
     fig.add_trace(
         go.Scatter(
             x=qubit_X_data.duration,
             y=exponential_decay(qubit_X_data.duration, A, tau),
             name="Fit",
-        ),
-        row=1,
-        col=1,
+        )
     )
 
-    print(A, tau)
-
-    # fir, iir = filter_calc(exponential=[(A, tau)])
-
     fir, iir = single_exponential_correction(A, tau)
-    print(f"FIR: {fir}\nIIR: {iir}")
     from scipy import signal
 
     no_filter = exponential_decay(qubit_X_data.duration, A, tau)
     step_response_th = np.ones(len(qubit_X_data))
     with_filter = no_filter * signal.lfilter(fir, [1, -iir[0]], step_response_th)
 
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=qubit_X_data.duration - 20,
-    #         y=np.ones(len(qubit_X_data)),
-    #         name="Theory",
-    #     ),
-    #     row=2,
-    #     col=1,
-    # )
-
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x = xplot,
-    #         y=no_filter,
-    #         name="No filter"
-    #     ),
-    #     row=3,
-    #     col=1,
-    # )
-
     fig.add_trace(
         go.Scatter(x=qubit_X_data.duration, y=with_filter, name="With filter"),
-        row=1,
-        col=1,
     )
-
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x = xplot,
-    #         y=np.ones(len(with_filter)),
-    #         name="Theory"
-    #     ),
-    #     row=3,
-    #     col=1,
-    # )
-
-    # detuning = np.abs(np.polyval(
-    #             coeffs,
-    #             (data.flux_pulse_amplitude) * np.array(data.waveform),
-    #         ))
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=np.array(range(len(data.waveform))),
-    #         y=(detuning - np.min(detuning) / (np.max(detuning) - np.min(detuning))),
-    #         name="Waveform",
-    #     ),
-    #     row=4,
-    #     col=1,
-    # )
-
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=qubit_X_data.duration,
-    #         y=np.abs(scipy.signal.savgol_filter(
-    #             (phase - phase[-1]) / 2 / np.pi,
-    #             13,
-    #             3,
-    #             deriv=1,
-    #         )),
-    #         name="detuning",
-    #     ),
-    #     row=4,
-    #     col=1,
-    # )
 
     fig.update_layout(
-        # xaxis3_title="Flux pulse duration [ns]",
-        # yaxis1_title="Detuning [GHz]",
-        # yaxis2_title="Waveform",
-        # yaxis3_title="Detuning [GHz]",
+        xaxis_title="Flux pulse duration [ns]",
+        yaxis_title="Waveform [a.u.]",
     )
+
+    fitting_report = table_html(
+        table_dict(
+            target,
+            ["FIR", "IIR"],
+            [fir, iir],
+            display_error=False,
+        )
+    )
+
     return [fig], fitting_report
 
 

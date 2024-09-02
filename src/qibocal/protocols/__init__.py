@@ -72,7 +72,6 @@ from .two_qubit_interaction import (
     correct_virtual_z_phases,
     correct_virtual_z_phases_signal,
     cryoscope,
-    cryoscope_amplitude,
     optimize_two_qubit_gate,
 )
 from .two_qubit_state_tomography import two_qubit_state_tomography
@@ -150,6 +149,5 @@ __all__ = [
     "standard_rb_2q",
     "standard_rb_2q_inter",
     "optimize_two_qubit_gate",
-    "cryoscope_amplitude",
     "cryoscope",
 ]
