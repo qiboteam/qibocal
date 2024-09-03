@@ -1,54 +1,45 @@
-import datetime
-import json
+import shutil
+from pathlib import Path
+from typing import Optional
 
-import yaml
-from qibo.backends import GlobalBackend
-from qibolab.serialize import dump_runcard
-
-from ..auto.execute import Executor
-from ..auto.history import add_timings_to_meta
 from ..auto.mode import ExecutionMode
-from ..auto.runcard import Runcard
-from .utils import META, RUNCARD, UPDATED_PLATFORM
+from ..auto.operation import RESULTSFILE
+from ..auto.output import Output
+from ..config import log, raise_error
 
 
-def fit(path, update):
-    """Post-processing analysis
+def mkoutput(input: Path, output: Optional[Path], force: bool):
+    if output is not None:
+        if output.exists():
+            if not force:
+                raise_error(RuntimeError, f"Directory {output} already exists.")
+            # overwrite output_path
+            log.warning(f"Deleting previous directory {output}.")
+            shutil.rmtree(output)
+        return shutil.copytree(input, output)
+
+    if len(list(input.glob(f"**/{RESULTSFILE}.json"))) > 0:
+        if force:
+            log.warning(f"Overwriting fit in {input}.")
+        else:
+            raise_error(RuntimeError, f"Directory {input} contains fitting results.")
+    return input
+
+
+def fit(input_path: Path, update: bool, output_path: Optional[Path], force: bool):
+    """Post-processing analysis.
 
     Arguments:
-
-    - FOLDER: input folder.
-
+    - input_path: input folder.
+    - update: perform platform update
+    - output_path: new folder with data and fit
     """
-    # load meta
-    meta = json.loads((path / META).read_text())
-    # load runcard
-    runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
+    path = mkoutput(input_path, output_path, force)
+    if input_path.absolute() != path.absolute():
+        force = True
 
-    # set backend, platform and qubits
-    GlobalBackend.set_backend(backend=meta["backend"], platform=meta["platform"])
-    backend = GlobalBackend()
-    platform = backend.platform
-
-    # load executor
-    executor = Executor.load(
-        runcard, path, update=update, platform=platform, targets=runcard.targets
-    )
-
-    # perform post-processing
-    list(executor.run(mode=ExecutionMode.fit))
-
+    output = Output.load(path)
+    # run
+    output.process(output=path, mode=ExecutionMode.FIT, update=update, force=force)
     # update time in meta
-    meta = add_timings_to_meta(meta, executor.history)
-    e = datetime.datetime.now(datetime.timezone.utc)
-    meta["end-time"] = e.strftime("%H:%M:%S")
-
-    # dump updated runcard
-    if platform is not None and update:  # pragma: no cover
-        # cannot test update since dummy may produce wrong values and trigger errors
-        (path / UPDATED_PLATFORM).mkdir(parents=True, exist_ok=True)
-        dump_runcard(platform, path / UPDATED_PLATFORM)
-
-    # dump json
-
-    (path / META).write_text(json.dumps(meta, indent=4))
+    output.dump(path)

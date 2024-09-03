@@ -1,29 +1,42 @@
-import os
 import pathlib
+from dataclasses import dataclass
+from typing import Callable
 
-from jinja2 import Environment, FileSystemLoader
-
-from qibocal import __version__
-from qibocal.cli.report import ReportBuilder
+from qibocal.auto.history import History
+from qibocal.auto.task import TaskId
 
 WEB_DIR = pathlib.Path(__file__).parent
 STYLES = WEB_DIR / "static" / "styles.css"
 TEMPLATES = WEB_DIR / "templates"
 
 
-def create_report(path, report: ReportBuilder):
-    """Creates an HTML report for the data in the given path."""
-    with open(STYLES) as file:
-        css_styles = f"<style>\n{file.read()}\n</style>"
+def report_css_styles(styles_path: pathlib.Path):
+    """HTML string containing path of css file."""
+    return f"<style>\n{pathlib.Path(styles_path).read_text()}\n</style>"
 
-    env = Environment(loader=FileSystemLoader(TEMPLATES))
-    template = env.get_template("template.html")
-    html = template.render(
-        is_static=True,
-        css_styles=css_styles,
-        version=__version__,
-        report=report,
-    )
 
-    with open(os.path.join(path, "index.html"), "w") as file:
-        file.write(html)
+@dataclass
+class Report:
+    """Report generation class."""
+
+    path: pathlib.Path
+    """Path with calibration data."""
+    history: History
+    """History of protocols."""
+    meta: dict
+    """Meta data."""
+    plotter: Callable
+    """Plotting function to generate html."""
+
+    @staticmethod
+    def routine_name(routine: TaskId):
+        """Prettify routine's name for report headers."""
+        return routine.id.title()
+
+    def routine_targets(self, task_id: TaskId):
+        """Extract local targets parameter from Task.
+
+        If not available use the global ones.
+        """
+        local_targets = self.history[task_id].task.targets
+        return local_targets if len(local_targets) > 0 else self.meta["targets"]

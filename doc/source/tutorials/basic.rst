@@ -348,19 +348,11 @@ randomized benchmarking.
 
 .. code-block:: yaml
 
-    - id: standard rb bootstrap
-
+    - id: standard rb
       operation: standard_rb
       parameters:
           depths: [10, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500]
-          n_bootstrap: 10
           niter: 256
           nshots: 128
 
 .. image:: ../protocols/rb.png
-
-.. rubric:: References
-
-.. bibliography::
-   :filter: docname in docnames
-   :style: plain

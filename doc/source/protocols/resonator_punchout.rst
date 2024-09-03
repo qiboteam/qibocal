@@ -1,3 +1,5 @@
+.. _resonator_punchout:
+
 Resonator punchout
 ==================
 
@@ -15,15 +17,18 @@ particular we expect it to be fixed at first (in the high power regime) then und
 transition phase and then be fixed again at a different frequency because of the coupling
 with the qubit.
 
-This is and example of a runcard for a resonator punchout:
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.resonator_punchout.ResonatorPunchoutParameters
+  :noindex:
+
+
+
+Example
+^^^^^^^
 
 .. code-block:: yaml
-
-    platform: <platform_name>
-
-    qubits: [0]
-
-    actions:
 
       - id: resonator punchout
 
@@ -103,17 +108,16 @@ state has changed).
 
 It is also possible to run the punchout experiment with attenuation:
 
-.. image:: resonator_punchout_attenuation.png
+Parameters
+^^^^^^^^^^
 
-This is and example of a runcard for a resonator punchout with attenuation:
+.. autoclass:: qibocal.protocols.resonator_punchout_attenuation.ResonatorPunchoutAttenuationParameters
+  :noindex:
+
+Example
+^^^^^^^
 
 .. code-block:: yaml
-
-    platform: <platform_name>
-
-    qubits: [0]
-
-    actions:
 
       - id: resonator_punchout_attenuation
 
@@ -127,8 +131,10 @@ This is and example of a runcard for a resonator punchout with attenuation:
           step_att: 4
           nshots: 2048
 
-.. rubric:: References
+.. image:: resonator_punchout_attenuation.png
 
-.. bibliography::
-   :cited:
-   :style: plain
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`Time Of Flight`
+- :ref:`resonator_spectroscopy` (high power)

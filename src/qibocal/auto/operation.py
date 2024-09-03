@@ -9,6 +9,7 @@ from typing import Callable, Generic, NewType, Optional, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.qubits import Qubit, QubitId, QubitPair, QubitPairId
 
@@ -60,17 +61,22 @@ DEFAULT_PARENT_PARAMETERS = {
 class Parameters:
     """Generic action parameters.
 
-    Implement parameters as Algebraic Data Types (similar to), by subclassing
-    this marker in actual parameters specification for each calibration routine.
+    Implement parameters as Algebraic Data Types (similar to), by
+    subclassing this marker in actual parameters specification for each
+    calibration routine.
 
-    The actual parameters structure is only used inside the routines themselves.
-
+    The actual parameters structure is only used inside the routines
+    themselves.
     """
 
     nshots: int
-    """Number of executions on hardware"""
+    """Number of executions on hardware."""
     relaxation_time: float
-    """Wait time for the qubit to decohere back to the `gnd` state"""
+    """Wait time for the qubit to decohere back to the `gnd` state."""
+    hardware_average: bool = False
+    """By default hardware average will be performed."""
+    classify: bool = False
+    """By default qubit state classification will not be performed."""
 
     @classmethod
     def load(cls, input_parameters):
@@ -85,7 +91,6 @@ class Parameters:
 
             move the implementation to History, since it is required to resolve
             the linked outputs
-
         """
         default_parent_parameters = deepcopy(DEFAULT_PARENT_PARAMETERS)
         parameters = deepcopy(input_parameters)
@@ -95,6 +100,24 @@ class Parameters:
         for parameter, value in default_parent_parameters.items():
             setattr(instantiated_class, parameter, value)
         return instantiated_class
+
+    @property
+    def execution_parameters(self):
+        """Default execution parameters."""
+        averaging_mode = (
+            AveragingMode.CYCLIC if self.hardware_average else AveragingMode.SINGLESHOT
+        )
+        acquisition_type = (
+            AcquisitionType.DISCRIMINATION
+            if self.classify
+            else AcquisitionType.INTEGRATION
+        )
+        return ExecutionParameters(
+            nshots=self.nshots,
+            relaxation_time=self.relaxation_time,
+            acquisition_type=acquisition_type,
+            averaging_mode=averaging_mode,
+        )
 
 
 class AbstractData:
@@ -107,6 +130,8 @@ class AbstractData:
 
     def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
         """Access data attribute member."""
+        if isinstance(qubit, list):
+            qubit = tuple(qubit)
         return self.data[qubit]
 
     @property
@@ -123,7 +148,8 @@ class AbstractData:
         self._to_npz(path, filename)
 
     def _to_npz(self, path: Path, filename: str):
-        """Helper function to use np.savez while converting keys into strings."""
+        """Helper function to use np.savez while converting keys into
+        strings."""
         if hasattr(self, "data"):
             np.savez(
                 path / f"{filename}.npz",
@@ -197,9 +223,10 @@ class Data(AbstractData):
             the values are the related arrays.
         """
         # to be able to handle the non-sweeper case
-        ar = np.empty(np.shape(data_dict[list(data_dict.keys())[0]]), dtype=dtype)
+        ar = np.empty(np.shape(data_dict[list(data_dict)[0]]), dtype=dtype)
         for key, value in data_dict.items():
             ar[key] = value
+
         if data_keys in self.data:
             self.data[data_keys] = np.rec.array(
                 np.concatenate((self.data[data_keys], ar))
@@ -225,9 +252,11 @@ class Results(AbstractData):
     def __contains__(self, key: Union[QubitId, QubitPairId, tuple[QubitId, ...]]):
         """Checking if qubit is in Results.
 
-        If key is not present means that fitting failed or
-        was not performed.
+        If key is not present means that fitting failed or was not
+        performed.
         """
+        if isinstance(key, list):
+            key = tuple(key)
         return all(
             key in getattr(self, field.name)
             for field in fields(self)
@@ -283,7 +312,7 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
 
     @property
     def data_type(self):
-        """ "Data object type return by data acquisition."""
+        """Data object type return by data acquisition."""
         return inspect.signature(self.acquisition).return_annotation
 
     @property
@@ -313,7 +342,7 @@ class DummyData(Data):
     """Dummy data."""
 
     def save(self, path):
-        """Dummy method for saving data"""
+        """Dummy method for saving data."""
 
 
 @dataclass
@@ -329,7 +358,7 @@ def _dummy_acquisition(pars: DummyPars, platform: Platform) -> DummyData:
 def _dummy_update(
     results: DummyRes, platform: Platform, qubit: Union[QubitId, QubitPairId]
 ) -> None:
-    """Dummy update function"""
+    """Dummy update function."""
 
 
 dummy_operation = Routine(_dummy_acquisition)

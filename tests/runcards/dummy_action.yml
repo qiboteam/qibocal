@@ -1,0 +1,12 @@
+backend: qibolab
+platform: dummy
+
+targets: [0,1]
+
+actions:
+
+  - id: time of flight
+    operation: time_of_flight_readout
+    parameters:
+      nshots: 1024
+      readout_amplitude: 0.5
