@@ -6,13 +6,13 @@ import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.identifier import QubitId
 from qibolab.platform import Platform
-from qibolab.result import magnitude, phase
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import fallback_period, guess_period
+from qibocal.result import magnitude, phase
 
 from . import utils
 
@@ -93,7 +93,7 @@ def _acquisition(
         [[sweeper]],
     )
     for qubit in targets:
-        result = results[ro_pulses[qubit].id][0]
+        result = results[ro_pulses[qubit].id]
         data.register_qubit(
             RabiAmpSignalType,
             (qubit),

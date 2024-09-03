@@ -6,7 +6,6 @@ import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.identifier import QubitId
 from qibolab.platform import Platform
-from qibolab.result import probability
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal import update
@@ -16,6 +15,7 @@ from qibocal.protocols.rabi.length_signal import (
     RabiLengthSignalData,
     RabiLengthSignalResults,
 )
+from qibocal.result import probability
 
 from ..utils import chi2_reduced, fallback_period, guess_period
 from . import utils
