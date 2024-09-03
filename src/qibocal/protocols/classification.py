@@ -223,15 +223,14 @@ def _acquisition(
     if params.unrolling:
         results = platform.execute(sequences, options)
     else:
-        results = [platform.execute([sequence], options) for sequence in sequences]
+        results = {}
+        for sequence in sequences:
+            results.update(platform.execute([sequence], options))
 
-    for ig, (state, ro_pulses) in enumerate(zip([0, 1], all_ro_pulses)):
+    for state, ro_pulses in zip([0, 1], all_ro_pulses):
         for qubit in targets:
             serial = ro_pulses[qubit]
-            if params.unrolling:
-                result = results[serial][0][ig]
-            else:
-                result = results[ig][serial][0]
+            result = results[serial]
             data.register_qubit(
                 ClassificationType,
                 (qubit),
