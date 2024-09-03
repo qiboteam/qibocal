@@ -186,20 +186,21 @@ def _acquisition(
     attenuations = {}
 
     for q in targets:
-        qubit = platform.qubits[q]
-        ro_sequence = qubit.native_gates.MZ.create_sequence()
+        natives = platform.natives.single_qubit[q]
+        ro_sequence = natives.MZ.create_sequence()
         ro_pulses[q] = ro_sequence[0][1]
 
         if params.amplitude is not None:
             ro_pulses[q].amplitude = params.amplitude
 
-        amplitudes[q] = ro_pulses[q].amplitude
+        amplitudes[q] = ro_pulses[q].probe.amplitude
 
         if params.attenuation is not None:
+            raise NotImplementedError
             platform.qubits[q].readout.attenuation = params.attenuation
 
         try:
-            attenuation = platform.qubits[q].readout.attenuation
+            attenuation = platform.config(platform.qubits[q].probe).attenuation
         except AttributeError:
             attenuation = None
 
@@ -210,12 +211,16 @@ def _acquisition(
     delta_frequency_range = np.arange(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
-    sweeper = Sweeper(
-        Parameter.frequency,
-        delta_frequency_range,
-        channels=[platform.qubits[q].probe for q in targets],
-        type=SweeperType.OFFSET,
-    )
+    sweepers = [
+        Sweeper(
+            parameter=Parameter.frequency,
+            values=platform.config(platform.qubits[q].probe).frequency
+            + delta_frequency_range,
+            channels=[platform.qubits[q].probe],
+        )
+        for q in targets
+    ]
+
     data = ResonatorSpectroscopyData(
         resonator_type=platform.resonator_type,
         power_level=params.power_level,
@@ -228,17 +233,17 @@ def _acquisition(
     results = platform.execute(
         [sequence],
         params.execution_parameters,
-        [[sweeper]],
+        [sweepers],
     )
 
     # retrieve the results for every qubit
-    for qubit in targets:
-        result = results[ro_pulses[qubit].id][0]
+    for q in targets:
+        result = results[ro_pulses[q].id][0]
         # store the results
-        ro_frequency = platform.config(platform.qubits[qubit].probe.name).frequency
+        ro_frequency = platform.config(platform.qubits[q].probe).frequency
         data.register_qubit(
             ResSpecType,
-            (qubit),
+            (q),
             dict(
                 signal=magnitude(result),
                 phase=phase(result),

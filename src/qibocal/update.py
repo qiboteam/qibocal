@@ -19,38 +19,38 @@ CLASSIFICATION_PARAMS = [
 
 def readout_frequency(freq: float, platform: Platform, qubit: QubitId):
     """Update readout frequency value in platform for specific qubit."""
-    mz = platform.qubits[qubit].native_gates.MZ
-    freq_hz = int(freq)
-    mz.frequency = freq_hz
+    # mz = platform.qubits[qubit].native_gates.MZ
+    # freq_hz = int(freq)
+    # mz.frequency = freq_hz
     # if mz.if_frequency is not None:
     #    mz.if_frequency = freq_hz - platform.qubits[qubit].readout.lo_frequency
-    platform.qubits[qubit].readout_frequency = freq_hz
+    # platform.qubits[qubit].readout_frequency = freq_hz
 
 
 def bare_resonator_frequency(freq: float, platform: Platform, qubit: QubitId):
     """Update rbare frequency value in platform for specific qubit."""
-    platform.qubits[qubit].bare_resonator_frequency = int(freq)
+    # platform.qubits[qubit].bare_resonator_frequency = int(freq)
 
 
 def readout_amplitude(amp: float, platform: Platform, qubit: QubitId):
     """Update readout amplitude value in platform for specific qubit."""
-    platform.natives.single_qubit[qubit].MZ.amplitude = float(amp)
+    # platform.natives.single_qubit[qubit].MZ.amplitude = float(amp)
 
 
 def readout_attenuation(att: int, platform: Platform, qubit: QubitId):
     """Update readout attenuation value in platform for specific qubit."""
-    platform.qubits[qubit].readout.attenuation = int(att)
+    # platform.qubits[qubit].readout.attenuation = int(att)
 
 
 def drive_frequency(
     freq: Union[float, tuple, list], platform: Platform, qubit: QubitId
 ):
     """Update drive frequency value in platform for specific qubit."""
-    if isinstance(freq, Iterable):
-        freq = freq[0]
-    freq = int(freq)
-    platform.qubits[qubit].native_gates.RX.frequency = int(freq)
-    platform.qubits[qubit].drive_frequency = int(freq)
+    # if isinstance(freq, Iterable):
+    #    freq = freq[0]
+    # freq = int(freq)
+    # platform.qubits[qubit].native_gates.RX.frequency = int(freq)
+    # platform.qubits[qubit].drive_frequency = int(freq)
 
 
 def drive_amplitude(amp: Union[float, tuple, list], platform: Platform, qubit: QubitId):
