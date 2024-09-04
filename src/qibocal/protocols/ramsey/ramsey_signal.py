@@ -295,7 +295,10 @@ def _plot(data: RamseySignalData, target: QubitId, fit: RamseySignalResults = No
 
 
 def _update(results: RamseySignalResults, platform: Platform, target: QubitId):
-    update.drive_frequency(results.frequency[target][0], platform, target)
+    if int(results.delta_phys[target][0]) == int(results.delta_fitting[target][0]):
+        update.t2(results.t2[target][0], platform, target)
+    else:
+        update.drive_frequency(results.frequency[target][0], platform, target)
 
 
 ramsey_signal = Routine(_acquisition, _fit, _plot, _update)
