@@ -1,16 +1,39 @@
-platform: <platform_name>
+platform: qw11q
 
-qubits: [0]
+targets: [D1]
 
 actions:
-  - id: qubit flux dependence
 
-    operation: qubit_flux
+  - id: resonator_spectroscopy high power
+    operation: resonator_spectroscopy
     parameters:
-        freq_width: 100_000_000
-        freq_step: 500_000
-        bias_width: 0.20
-        bias_step:  0.01
-        drive_amplitude: 0.1
+        freq_width: 10_000_000
+        freq_step: 100_000
+        amplitude: 0.002
+        fit_function: s21
+        power_level: high
         nshots: 1024
-        relaxation_time: 20_000
+        relaxation_time: 100000
+
+  # - id: qubit flux dependence
+
+  #   operation: qubit_flux
+  #   parameters:
+  #       bias_step: 0.002
+  #       bias_width: 0.1
+  #       drive_amplitude: 0.001
+  #       drive_duration: 4000
+  #       freq_step: 500000
+  #       freq_width: 10000000
+  #       nshots: 1024
+  #       relaxation_time: 20_000
+
+  - id: resonator flux dependence
+    operation: resonator_flux
+    parameters:
+      bias_step: 0.05
+      bias_width: 0.5
+      freq_step: 100_000
+      freq_width: 10_000_000
+      nshots: 1024
+      relaxation_time: 20000

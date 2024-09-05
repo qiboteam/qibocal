@@ -307,7 +307,7 @@ def _plot(data: RamseyData, target: QubitId, fit: RamseyResults = None):
     fig.update_layout(
         showlegend=True,
         xaxis_title="Time [ns]",
-        yaxis_title="Excited state probability",
+        yaxis_title="Ground state probability",
     )
 
     figures.append(fig)
