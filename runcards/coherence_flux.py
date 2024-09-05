@@ -1,38 +1,25 @@
 from argparse import ArgumentParser
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
 import numpy as np
-import numpy.typing as npt
-import plotly.graph_objects as go
 from qibolab import create_platform
-from qibolab.qubits import QubitId
 
 from qibocal.auto.execute import Executor
-from qibocal.auto.operation import Data
 from qibocal.cli.report import report
-from qibocal.protocols.flux_dependence.utils import transmon_frequency
-
-CoherenceFluxType = np.dtype(
-    [
-        ("biases", np.float64),
-        ("qubit_frequency", np.float64),
-        ("T1", np.float64),
-        ("T2", np.float64),
-        ("T2_ramsey", np.float64),
-    ]
+from qibocal.protocols.flux_dependence.utils import (
+    transmon_frequency,
+    transmon_readout_frequency,
 )
-"""Custom dtype for CoherenceFlux routines."""
 
-
-biases = np.arange(-0.2, 0.1, 0.01)
+biases = np.arange(-0.14, 0.14, 0.01)
+# biases =  np.array([0])
 "bias points to sweep"
 
 # Qubit spectroscopy
-freq_width = 50_000_000
+freq_width = 10_000_000
 """Width [Hz] for frequency sweep relative  to the qubit frequency."""
-freq_step = 1_000_000
+freq_step = 500_000
 """Frequency [Hz] step for sweep."""
 drive_duration = 1000
 """Drive pulse duration [ns]. Same for all qubits."""
@@ -40,7 +27,7 @@ drive_duration = 1000
 # Rabi amp signal
 min_amp_factor = 0.0
 """Minimum amplitude multiplicative factor."""
-max_amp_factor = 0.5
+max_amp_factor = 2
 """Maximum amplitude multiplicative factor."""
 step_amp_factor = 0.01
 """Step amplitude multiplicative factor."""
@@ -64,9 +51,9 @@ detuning = 3_000_000
 """Frequency detuning [Hz]."""
 delay_between_pulses_start = 16
 """Initial delay between RX(pi/2) pulses in ns."""
-delay_between_pulses_end = 5_000
+delay_between_pulses_end = 1_000
 """Final delay between RX(pi/2) pulses in ns."""
-delay_between_pulses_step = 200
+delay_between_pulses_step = 5
 """Step delay between RX(pi/2) pulses in ns."""
 
 # T2 and Ramsey signal
@@ -80,7 +67,7 @@ single_shot_T2: bool = False
 """If ``True`` save single shot signal data."""
 
 # Optional qubit spectroscopy
-drive_amplitude: Optional[float] = None
+drive_amplitude: Optional[float] = 0.1
 """Drive pulse amplitude (optional). Same for all qubits."""
 hardware_average: bool = True
 """By default hardware average will be performed."""
@@ -92,31 +79,22 @@ single_shot_T1: bool = False
 """If ``True`` save single shot signal data."""
 
 
-@dataclass
-class CoherenceFluxSignalData(Data):
-    """Coherence acquisition outputs."""
-
-    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
-    """Raw data acquired."""
-
-
 parser = ArgumentParser()
-parser.add_argument("--target", type=int, default=0, help="Target qubit index")
-parser.add_argument("--platform", type=str, default="dummy", help="Platform name")
+parser.add_argument("--target", nargs="+", required=True, help="Target qubit")
+parser.add_argument("--platform", type=str, required=True, help="Platform name")
 parser.add_argument(
-    "--path", type=str, default="TTESTCoherenceFlux", help="Path for the output"
+    "--path", type=str, default="TTESTCoherenceFlux1", help="Path for the output"
 )
 args = parser.parse_args()
 
-target = args.target
+targets = args.target
 path = args.path
 
-data = CoherenceFluxSignalData()
 
 fit_function = transmon_frequency
 platform = create_platform(args.platform)
-for target in [args.target]:
 
+for target in targets:
     params_qubit = {
         "w_max": platform.qubits[
             target
@@ -150,24 +128,43 @@ for target in [args.target]:
 
             # Change the qubit frequency
             qubit_frequency = fit_function(bias, **params_qubit)  # * 1e9
+
+            res_frequency = transmon_readout_frequency(
+                bias,
+                **params_qubit,
+                g=platform.qubits[target].g,
+                resonator_freq=platform.qubits[target].bare_resonator_frequency,
+            )
+            print(platform.qubits[target].g)
+            print(
+                "FFFFFFFFFF",
+                res_frequency,
+                platform.qubits[target].bare_resonator_frequency,
+            )
             e.platform.qubits[target].drive_frequency = qubit_frequency
             e.platform.qubits[target].native_gates.RX.frequency = qubit_frequency
 
-            qubit_spectroscopy_output = e.qubit_spectroscopy(
+            # e.platform.qubits[target].readout_frequency = res_frequency
+            # e.platform.qubits[target].native_gates.MZ.frequency = res_frequency
+            res_spectroscopy_output = e.resonator_spectroscopy(
                 freq_width=freq_width,
                 freq_step=freq_step,
-                drive_duration=drive_duration,
-                drive_amplitude=drive_amplitude,
-                relaxation_time=5000,
+                power_level="low",
+                relaxation_time=2000,
                 nshots=1024,
             )
+            # qubit_spectroscopy_output = e.qubit_spectroscopy(
+            #     freq_width=freq_width,
+            #     freq_step=freq_step,
+            #     drive_duration=drive_duration,
+            #     drive_amplitude=drive_amplitude,
+            #     relaxation_time=5000,
+            #     nshots=1024,
+            # )
 
-            # Set maximun drive amplitude
-            e.platform.qubits[target].native_gates.RX.amplitude = (
-                0.5  # FIXME: For QM this should be 0.5
-            )
-            e.platform.qubits[target].native_gates.RX.duration = pulse_length
+            # e.platform.qubits[target].native_gates.RX.duration = pulse_length
 
+            # classification_output = e.single_shot_classification( nshots = 5000)
             rabi_output = e.rabi_amplitude_signal(
                 min_amp_factor=min_amp_factor,
                 max_amp_factor=max_amp_factor,
@@ -182,105 +179,41 @@ for target in [args.target]:
                 e.platform.qubits[target].native_gates.RX.amplitude = (
                     0.5  # FIXME: For QM this should be 0.5
                 )
+
+                report(e.path, e.history)
                 continue
 
-            ramsey_output = e.ramsey_signal(
+            classification_output = e.single_shot_classification(nshots=5000)
+            ramsey_output = e.ramsey(
                 delay_between_pulses_start=delay_between_pulses_start,
                 delay_between_pulses_end=delay_between_pulses_end,
                 delay_between_pulses_step=delay_between_pulses_step,
                 detuning=detuning,
             )
+            # # flipping_output = e.flipping_signal(
+            # #     nflips_max=nflips_max,
+            # #     nflips_step=nflips_step,
+            # # )
 
-            flipping_output = e.flipping_signal(
-                nflips_max=nflips_max,
-                nflips_step=nflips_step,
-            )
-
-            t1_output = e.t1_signal(
+            # ramsey_output = e.ramsey(
+            #     delay_between_pulses_start=delay_between_pulses_start,
+            #     delay_between_pulses_end=delay_between_pulses_end,
+            #     delay_between_pulses_step=delay_between_pulses_step,
+            #     detuning=detuning,
+            # )
+            classification_output = e.single_shot_classification(nshots=5000)
+            t1_output = e.t1(
                 delay_before_readout_start=delay_before_readout_start,
                 delay_before_readout_end=delay_before_readout_end,
                 delay_before_readout_step=delay_before_readout_step,
                 single_shot=single_shot_T1,
             )
 
-            # TODO: Estimate T2 with Ramsey signal without detuning
-            t2_output = e.t2_signal(
-                delay_between_pulses_start=delay_between_pulses_start_T2,
-                delay_between_pulses_end=delay_between_pulses_end_T2,
-                delay_between_pulses_step=delay_between_pulses_step_T2,
-                single_shot=single_shot_T2,
-            )
-
-            ramsey_t2_output = e.ramsey_signal(
+            ramsey_t2_output = e.ramsey(
                 delay_between_pulses_start=delay_between_pulses_start_T2,
                 delay_between_pulses_end=delay_between_pulses_end_T2,
                 delay_between_pulses_step=delay_between_pulses_step_T2,
                 detuning=0,
             )
 
-            data.register_qubit(
-                CoherenceFluxType,
-                (target),
-                dict(
-                    biases=[bias],
-                    qubit_frequency=[
-                        e.platform.qubits[target].native_gates.RX.frequency
-                    ],
-                    T1=[t1_output.results.t1[target][0]],
-                    T2=[t2_output.results.t2[target][0]],
-                    T2_ramsey=[ramsey_t2_output.results.t2[target][1]],
-                ),
-            )
-
             report(e.path, e.history)
-
-
-def plot(data: CoherenceFluxSignalData, target: QubitId, path=None):
-    """Plotting function for Coherence experiment."""
-
-    figure = go.Figure()
-
-    figure.add_trace(
-        go.Scatter(
-            x=data[target].qubit_frequency,
-            y=data[target].T1,
-            opacity=1,
-            name="T1",
-            showlegend=True,
-            legendgroup="T1",
-        )
-    )
-
-    figure.add_trace(
-        go.Scatter(
-            x=data[target].qubit_frequency,
-            y=data[target].T2,
-            opacity=1,
-            name="T2",
-            showlegend=True,
-            legendgroup="T2",
-        )
-    )
-
-    figure.add_trace(
-        go.Scatter(
-            x=data[target].qubit_frequency,
-            y=data[target].T2_ramsey,
-            opacity=1,
-            name="T2_ramsey",
-            showlegend=True,
-            legendgroup="T2_ramsey",
-        )
-    )
-
-    figure.update_layout(
-        showlegend=True,
-        xaxis_title="Frequency [GHZ]",
-        yaxis_title="Coherence [ns]",
-    )
-
-    if path is not None:
-        figure.write_html(path / Path("plot.html"))
-
-
-plot(data, target, path=args.path)

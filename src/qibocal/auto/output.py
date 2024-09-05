@@ -211,7 +211,6 @@ class Output:
         platpath = path / PLATFORM
         if platpath.is_dir():
             platpath = path / UPDATED_PLATFORM
-
         platpath.mkdir(parents=True, exist_ok=True)
         dump_platform(platform, platpath)
 
