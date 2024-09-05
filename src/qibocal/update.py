@@ -36,6 +36,25 @@ def readout_amplitude(amp: float, platform: Platform, qubit: QubitId):
     """Update readout amplitude value in platform for specific qubit."""
     platform.qubits[qubit].native_gates.MZ.amplitude = float(amp)
 
+def readout_duration(duration: int, platform: Platform, qubit: QubitId):
+    """Update readout amplitude value in platform for specific qubit."""
+    from qibolab.instruments.qblox.port import QbloxInputPort
+    readout_channel_port: QbloxInputPort = platform.qubits[qubit].readout.port
+    readout_channel_port.acquisition_duration = int(duration)
+
+
+def readout_holdoff(holdoff: int, platform: Platform, qubit: QubitId):
+    """Update readout amplitude value in platform for specific qubit."""
+    from qibolab.instruments.qblox.port import QbloxInputPort
+    readout_channel_port: QbloxInputPort = platform.qubits[qubit].readout.port
+    readout_channel_port.acquisition_hold_off = int(holdoff)
+
+def readout_mz_duration(duration: int, platform: Platform, qubit: QubitId):
+    """Update readout attenuation value in platform for specific qubit."""
+    from qibolab.native import NativePulse
+    MZ:NativePulse = platform.qubits[qubit].native_gates.MZ 
+    MZ.duration = int(duration)
+
 
 def readout_attenuation(att: int, platform: Platform, qubit: QubitId):
     """Update readout attenuation value in platform for specific qubit."""

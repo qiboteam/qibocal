@@ -17,45 +17,45 @@ from qibocal.protocols.utils import table_dict, table_html
 
 
 @dataclass
-class ResonatorAmplitudeParameters(Parameters):
-    """ResonatorAmplitude runcard inputs."""
+class ReadoutHoldoffParameters(Parameters):
+    """Readout holdoff runcard inputs."""
 
-    amplitude_step: float = 0.1
-    """Amplituude step to be probed."""
-    amplitude_start: float = 0.0
-    """Amplitude start."""
-    amplitude_stop: float = 1.0
-    """Amplitude stop value"""
+    holdoff_step: int = 4
+    """holdoff step to be probed."""
+    holdoff_start: int = 100
+    """holdoff start."""
+    holdoff_stop: float = 600
+    """holdoff stop value"""
     error_threshold: float = 0.003
-    """Probability error threshold to stop the best amplitude search"""
+    """Probability error threshold to stop the best holdoff search"""
 
 
-ResonatorAmplitudeType = np.dtype(
+ReadoutHoldoffType = np.dtype(
     [
         ("error", np.float64),
-        ("amp", np.float64),
+        ("holdoff", np.float64),
         ("angle", np.float64),
         ("threshold", np.float64),
     ]
 )
-"""Custom dtype for Optimization RO amplitude."""
+"""Custom dtype for Optimization RO acquisition holdoff."""
 
 
 @dataclass
-class ResonatorAmplitudeData(Data):
-    """Data class for `resoantor_amplitude` protocol."""
+class ReadoutHoldoffData(Data):
+    """Data class for `readout_holdoff` protocol."""
 
-    data: dict[tuple, npt.NDArray[ResonatorAmplitudeType]] = field(default_factory=dict)
+    data: dict[tuple, npt.NDArray[ReadoutHoldoffType]] = field(default_factory=dict)
 
 
 @dataclass
-class ResonatorAmplitudeResults(Results):
-    """Result class for `resonator_amplitude` protocol."""
+class ReadoutHoldoffResults(Results):
+    """Result class for `readout_holdoff` protocol."""
 
     lowest_errors: dict[QubitId, list]
     """Lowest probability errors"""
-    best_amp: dict[QubitId, list]
-    """Amplitude with lowest error"""
+    best_holdoff: dict[QubitId, list]
+    """holdoff with lowest error"""
     best_angle: dict[QubitId, float]
     """IQ angle that gives lower error."""
     best_threshold: dict[QubitId, float]
@@ -63,38 +63,49 @@ class ResonatorAmplitudeResults(Results):
 
 
 def _acquisition(
-    params: ResonatorAmplitudeParameters,
+    params: ReadoutHoldoffParameters,
     platform: Platform,
     targets: list[QubitId],
-) -> ResonatorAmplitudeData:
+) -> ReadoutHoldoffData:
     r"""
-    Data acquisition for resoantor amplitude optmization.
-    This protocol sweeps the readout amplitude performing a classification routine
+    Data acquisition for readout holdoff optmization.
+    This protocol sweeps the readout acquisition holdoff performing a classification routine
     and evaluating the error probability at each step. The sweep will be interrupted
     if the probability error is less than the `error_threshold`.
+    
+    May only work with QBLOX
 
     Args:
-        params (:class:`ResonatorAmplitudeParameters`): input parameters
+        params (:class:`ReadoutHoldoffParameters`): input parameters
         platform (:class:`Platform`): Qibolab's platform
         targets (list): list of QubitIds to be characterized
 
     Returns:
-        data (:class:`ResonatorAmplitudeData`)
+        data (:class:`ReadoutHoldoffData`)
     """
-
-    data = ResonatorAmplitudeData()
-    for qubit in targets:
+    from qibolab.channels import Channel
+    from qibolab.qubits import Qubit
+    from qibolab.instruments.qblox.port import QbloxInputPort
+    
+    data = ReadoutHoldoffData()
+    for qubit_name in targets:
         error = 1
-        old_amp = platform.qubits[qubit].native_gates.MZ.amplitude
-        new_amp = params.amplitude_start
-        while error > params.error_threshold and new_amp <= params.amplitude_stop:
-            platform.qubits[qubit].native_gates.MZ.amplitude = new_amp
+        qubit: Qubit = platform.qubits[qubit_name]
+
+        feddback_channel: Channel = qubit.feedback
+        feddback_channel_port: QbloxInputPort = feddback_channel.port
+        
+        old_holdoff = feddback_channel_port.acquisition_hold_off
+        new_holdoff = params.holdoff_start
+        while error > params.error_threshold and new_holdoff <= params.holdoff_stop:
+            feddback_channel_port.acquisition_holdoff = new_holdoff
+
             sequence_0 = PulseSequence()
             sequence_1 = PulseSequence()
 
-            qd_pulses = platform.create_RX_pulse(qubit, start=0)
+            qd_pulses = platform.create_RX_pulse(qubit_name, start=0)
             ro_pulses = platform.create_qubit_readout_pulse(
-                qubit, start=qd_pulses.finish
+                qubit_name, start=qd_pulses.finish
             )
             sequence_0.add(ro_pulses)
             sequence_1.add(qd_pulses)
@@ -128,24 +139,25 @@ def _acquisition(
             model = QubitFit()
             model.fit(iq_values, np.array(states))
             error = model.probability_error
+
             data.register_qubit(
-                ResonatorAmplitudeType,
-                (qubit),
+                ReadoutHoldoffType,
+                (qubit_name),
                 dict(
-                    amp=np.array([new_amp]),
+                    holdoff = np.array([new_holdoff]),
                     error=np.array([error]),
                     angle=np.array([model.angle]),
                     threshold=np.array([model.threshold]),
                 ),
             )
-            platform.qubits[qubit].native_gates.MZ.amplitude = old_amp
-            new_amp += params.amplitude_step
+            feddback_channel_port.acquisition_hold_off = old_holdoff
+            new_holdoff += params.holdoff_step
     return data
 
 
-def _fit(data: ResonatorAmplitudeData) -> ResonatorAmplitudeResults:
+def _fit(data: ReadoutHoldoffData) -> ReadoutHoldoffResults:
     qubits = data.qubits
-    best_amps = {}
+    best_holdoffs = {}
     best_angle = {}
     best_threshold = {}
     lowest_err = {}
@@ -153,17 +165,17 @@ def _fit(data: ResonatorAmplitudeData) -> ResonatorAmplitudeResults:
         data_qubit = data[qubit]
         index_best_err = np.argmin(data_qubit["error"])
         lowest_err[qubit] = data_qubit["error"][index_best_err]
-        best_amps[qubit] = data_qubit["amp"][index_best_err]
+        best_holdoffs[qubit] = data_qubit["holdoff"][index_best_err]
         best_angle[qubit] = data_qubit["angle"][index_best_err]
         best_threshold[qubit] = data_qubit["threshold"][index_best_err]
 
-    return ResonatorAmplitudeResults(lowest_err, best_amps, best_angle, best_threshold)
+    return ReadoutHoldoffResults(lowest_err, best_holdoffs, best_angle, best_threshold)
 
 
 def _plot(
-    data: ResonatorAmplitudeData, fit: ResonatorAmplitudeResults, target: QubitId
+    data: ReadoutHoldoffData, fit: ReadoutHoldoffResults, target: QubitId
 ):
-    """Plotting function for Optimization RO amplitude."""
+    """Plotting function for Optimization RO holdoff."""
     figures = []
     opacity = 1
     fitting_report = None
@@ -174,7 +186,7 @@ def _plot(
     if fit is not None:
         fig.add_trace(
             go.Scatter(
-                x=data[target]["amp"],
+                x=data[target]["holdoff"],
                 y=data[target]["error"],
                 opacity=opacity,
                 showlegend=True,
@@ -187,14 +199,14 @@ def _plot(
         fitting_report = table_html(
             table_dict(
                 target,
-                "Best Readout Amplitude [a.u.]",
-                np.round(fit.best_amp[target], 4),
+                "Best Readout holdoff [a.u.]",
+                np.round(fit.best_holdoff[target], 4),
             )
         )
 
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Readout Amplitude [a.u.]",
+        xaxis_title="Readout holdoff [a.u.]",
         yaxis_title="Probability Error",
     )
 
@@ -203,11 +215,11 @@ def _plot(
     return figures, fitting_report
 
 
-def _update(results: ResonatorAmplitudeResults, platform: Platform, target: QubitId):
-    update.readout_amplitude(results.best_amp[target], platform, target)
+def _update(results: ReadoutHoldoffResults, platform: Platform, target: QubitId):
+    update.readout_holdoff(results.best_holdoff[target], platform, target)
     update.iq_angle(results.best_angle[target], platform, target)
     update.threshold(results.best_threshold[target], platform, target)
 
 
-resonator_amplitude = Routine(_acquisition, _fit, _plot, _update)
-"""Resonator Amplitude Routine  object."""
+readout_holdoff = Routine(_acquisition, _fit, _plot, _update)
+"""Resonator Readout Duholdoffration Routine  object."""

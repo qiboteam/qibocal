@@ -64,7 +64,7 @@ def _acquisition(
                 dict(
                     length=np.array([duration]),
                     signal=np.array([result.magnitude]),
-                    phase=np.array([result.phase]),
+                    phase=np.unwrap(np.array([result.phase])),
                 ),
             )
 

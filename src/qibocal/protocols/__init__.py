@@ -46,6 +46,9 @@ from .randomized_benchmarking.standard_rb import standard_rb
 from .randomized_benchmarking.standard_rb_2q import standard_rb_2q
 from .readout_characterization import readout_characterization
 from .readout_mitigation_matrix import readout_mitigation_matrix
+from .readout_optimization.readout_duration import readout_duration
+from .readout_optimization.readout_holdoff import readout_holdoff
+from .readout_optimization.mz_duration import mz_duration
 from .readout_optimization.resonator_amplitude import resonator_amplitude
 from .readout_optimization.resonator_frequency import resonator_frequency
 from .readout_optimization.twpa_calibration.frequency import twpa_frequency
