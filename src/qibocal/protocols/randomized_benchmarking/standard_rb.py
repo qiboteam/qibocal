@@ -88,7 +88,7 @@ def _acquisition(
         RBData: The depths, samples and ground state probability of each experiment in the scan.
     """
 
-    return rb_acquisition(params, targets, platform)
+    return rb_acquisition(params, platform, targets)
 
 
 def _fit(data: RBData) -> StandardRBResult:
@@ -120,7 +120,6 @@ def _plot(
     """
     if isinstance(target, list):
         target = tuple(target)
-
     qubit = target
     fig = go.Figure()
     fitting_report = ""

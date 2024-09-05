@@ -10,6 +10,11 @@ STYLES = WEB_DIR / "static" / "styles.css"
 TEMPLATES = WEB_DIR / "templates"
 
 
+def report_css_styles(styles_path: pathlib.Path):
+    """HTML string containing path of css file."""
+    return f"<style>\n{pathlib.Path(styles_path).read_text()}\n</style>"
+
+
 @dataclass
 class Report:
     """Report generation class."""
