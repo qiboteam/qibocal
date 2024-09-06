@@ -1,12 +1,11 @@
 import argparse
 
-from qibolab.qubits import QubitId
 import numpy as np
-
+from qibolab.qubits import QubitId
 from scipy.optimize import minimize
 
 from qibocal.auto.execute import Executor
-from qibocal.cli.report import report
+
 
 def rb_infidelity(x, e, target):
 
@@ -16,17 +15,17 @@ def rb_infidelity(x, e, target):
     drag_param = float(x[1])
 
     e.platform.qubits[target].native_gates.RX.amplitude = float(amplitude)
-    e.platform.qubits[target].native_gates.RX.shape = f'Drag(5, {drag_param})'
+    e.platform.qubits[target].native_gates.RX.shape = f"Drag(5, {drag_param})"
 
     rb_output = e.rb_ondevice(
-            apply_inverse=True,
-            delta_clifford=10,
-            max_circuit_depth=200,
-            n_avg=1,
-            num_of_sequences=10000,
-            save_sequences=False,
-            state_discrimination=True,
-        )
+        apply_inverse=True,
+        delta_clifford=10,
+        max_circuit_depth=200,
+        n_avg=1,
+        num_of_sequences=10000,
+        save_sequences=False,
+        state_discrimination=True,
+    )
 
     one_minus_p = 1 - rb_output.results.pars.get(target)[2]
     r_c = one_minus_p * (1 - 1 / 2**1)
@@ -37,13 +36,12 @@ def rb_infidelity(x, e, target):
 
     print()
     print()
-    print(f'trying amplitude: {float(amplitude)}...\n')
-    print(f'trying drag param: {float(drag_param)}...\n')
-    print(f'           reached infidelity: {r_g}\n')
+    print(f"trying amplitude: {float(amplitude)}...\n")
+    print(f"trying drag param: {float(drag_param)}...\n")
+    print(f"           reached infidelity: {r_g}\n")
     print()
-    
-    return r_g
 
+    return r_g
 
 
 def main(targets: list[QubitId], platform_name: str, output: str):
@@ -67,10 +65,15 @@ def main(targets: list[QubitId], platform_name: str, output: str):
 
         target = targets[0]
 
-
-        res = minimize(rb_infidelity, x0, args=(e, target), method='Nelder-Mead', tol=1e-7,
-                bounds = bnds,
-                options={'maxfev': 50, 'disp': True})
+        res = minimize(
+            rb_infidelity,
+            x0,
+            args=(e, target),
+            method="Nelder-Mead",
+            tol=1e-7,
+            bounds=bnds,
+            options={"maxfev": 50, "disp": True},
+        )
 
         print(res)
         print()
