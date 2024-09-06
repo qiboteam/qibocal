@@ -9,8 +9,8 @@ from qibocal.cli.report import report
 # in this case I am addressing D1 and I am modifying the bias
 # point of the D2 and D3
 NEW_BIAS = {
-    "D2": -0.419,
-    "D3": -0.2074,
+    "D2": -0.219,
+    "D3": -0.0074,
 }
 
 
@@ -40,25 +40,58 @@ def main(targets: list[QubitId], platform_name: str, output: str):
             state_discrimination=True,
         )
 
-        qubit_spectroscopy_output = e.qubit_spectroscopy(
-            freq_width=40_000_000,
-            freq_step=500_000,
-            drive_duration=2000,
-            drive_amplitude=0.01,
-            relaxation_time=5000,
-            nshots=1024,
+        # qubit_spectroscopy_output = e.qubit_spectroscopy(
+        #     freq_width=40_000_000,
+        #     freq_step=500_000,
+        #     drive_duration=2000,
+        #     drive_amplitude=0.01,
+        #     relaxation_time=5000,
+        #     nshots=1024,
+        # )
+
+        # qubit_spectroscopy_output.update_platform(platform)
+
+        # rabi_output = e.rabi_amplitude_signal(
+        #     min_amp_factor=0.1,
+        #     max_amp_factor=2,
+        #     step_amp_factor=0.03,
+        #     pulse_length=40,
+        # )
+
+        # rabi_output.update_platform(platform)
+
+        # classification_output = e.single_shot_classification(
+        #     nshots=5000,
+        # )
+
+        # classification_output.update_platform(platform)
+
+        # rabi_output = e.rabi_amplitude(
+        #     min_amp_factor=0.1,
+        #     max_amp_factor=2,
+        #     step_amp_factor=0.03,
+        #     pulse_length=40,
+        # )
+
+        # rabi_output.update_platform(platform)
+
+        ramsey = e.ramsey(
+            delay_between_pulses_start=10,
+            delay_between_pulses_end=1_000,
+            delay_between_pulses_step=10,
+            detuning=5_000_000,
         )
 
-        qubit_spectroscopy_output.update_platform(platform)
+        ramsey.update_platform(platform)
 
-        rabi_output = e.rabi_amplitude_signal(
-            min_amp_factor=0.1,
-            max_amp_factor=2,
-            step_amp_factor=0.03,
-            pulse_length=40,
+        ramsey = e.ramsey(
+            delay_between_pulses_start=10,
+            delay_between_pulses_end=1_000,
+            delay_between_pulses_step=10,
+            detuning=5_000_000,
         )
 
-        rabi_output.update_platform(platform)
+        ramsey.update_platform(platform)
 
         classification_output = e.single_shot_classification(
             nshots=5000,
@@ -74,24 +107,6 @@ def main(targets: list[QubitId], platform_name: str, output: str):
         )
 
         rabi_output.update_platform(platform)
-
-        ramsey = e.ramsey(
-            delay_between_pulses_start=10,
-            delay_between_pulses_end=1_000,
-            delay_between_pulses_step=20,
-            detuning=10_000_000,
-        )
-
-        ramsey.update_platform(platform)
-
-        ramsey = e.ramsey(
-            delay_between_pulses_start=10,
-            delay_between_pulses_end=1_000,
-            delay_between_pulses_step=20,
-            detuning=10_000_000,
-        )
-
-        ramsey.update_platform(platform)
 
         classification_output = e.single_shot_classification(
             nshots=5000,
