@@ -12,7 +12,8 @@ from qibocal.protocols.flux_dependence.utils import (
     transmon_readout_frequency,
 )
 
-biases = np.arange(-0.14, 0.14, 0.01)
+biases = np.arange(-0.025, 0.025, 0.002)
+# biases = np.arange(-0.14, 0.14, 0.01)
 # biases =  np.array([0])
 "bias points to sweep"
 
@@ -27,7 +28,7 @@ drive_duration = 1000
 # Rabi amp signal
 min_amp_factor = 0.0
 """Minimum amplitude multiplicative factor."""
-max_amp_factor = 2
+max_amp_factor = 1.5
 """Maximum amplitude multiplicative factor."""
 step_amp_factor = 0.01
 """Step amplitude multiplicative factor."""
@@ -116,7 +117,7 @@ for target in targets:
     for i, bias in enumerate(centered_biases):
         with Executor.open(
             f"myexec_{i}",
-            path=args.path / Path(f"flux_{i}"),
+            path=args.path / Path(f"flux_{bias}"),
             platform=args.platform,
             targets=[target],
             update=True,
@@ -195,12 +196,12 @@ for target in targets:
             # #     nflips_step=nflips_step,
             # # )
 
-            # ramsey_output = e.ramsey(
-            #     delay_between_pulses_start=delay_between_pulses_start,
-            #     delay_between_pulses_end=delay_between_pulses_end,
-            #     delay_between_pulses_step=delay_between_pulses_step,
-            #     detuning=detuning,
-            # )
+            ramsey_output = e.ramsey(
+                delay_between_pulses_start=delay_between_pulses_start,
+                delay_between_pulses_end=delay_between_pulses_end,
+                delay_between_pulses_step=delay_between_pulses_step,
+                detuning=detuning,
+            )
             classification_output = e.single_shot_classification(nshots=5000)
             t1_output = e.t1(
                 delay_before_readout_start=delay_before_readout_start,
@@ -215,5 +216,8 @@ for target in targets:
                 delay_between_pulses_step=delay_between_pulses_step_T2,
                 detuning=0,
             )
-
+            readout_characterization_out = e.readout_characterization(
+                delay=1000,
+                nshots=5000,
+            )
             report(e.path, e.history)
