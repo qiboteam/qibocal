@@ -37,3 +37,15 @@ actions:
   #       pulse_amplitude: 0.06
   #       relaxation_time: 100_000
   #       nshots: 1024
+
+  - id: rabi amplitude frequency
+    operation: rabi_amplitude_frequency_signal
+    parameters:
+      min_amp_factor: 0.0
+      max_amp_factor: 2
+      step_amp_factor: 0.1
+      min_freq: -50_000_000
+      max_freq: 50_000_000
+      step_freq: 1_000_000
+      pulse_length: 40
+      nshots: 1024
