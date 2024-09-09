@@ -220,4 +220,12 @@ for target in targets:
                 delay=1000,
                 nshots=5000,
             )
+            rb_out = e.rb_ondevice(
+                num_of_sequences=10000,  # Number of random sequences.
+                max_circuit_depth=500,  # Maximum circuit depth.
+                delta_clifford=10,  # Depth step. Depths applied are [1, delta, 2 * delta, ..., max].
+                n_avg=1,  # Number of repetitions of the same circuit (for averaging).
+                save_sequences=False,  # Download the Clifford gate indices used from the device.
+                apply_inverse=True,  # Apply inverse gate at the end of every circuit. If `False` it will apply "filtered" post-processing.
+            )
             report(e.path, e.history)
