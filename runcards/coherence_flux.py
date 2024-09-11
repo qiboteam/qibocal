@@ -13,8 +13,6 @@ from qibocal.protocols.flux_dependence.utils import (
 )
 
 biases = np.arange(-0.025, 0.025, 0.002)
-# biases = np.arange(-0.14, 0.14, 0.01)
-# biases =  np.array([0])
 "bias points to sweep"
 
 # Qubit spectroscopy
@@ -97,21 +95,17 @@ platform = create_platform(args.platform)
 
 for target in targets:
     params_qubit = {
-        "w_max": platform.qubits[
-            target
-        ].drive_frequency,  # FIXME: this is not the qubit frequency
+        "w_max": platform.qubits[target].drive_frequency,
         "xj": 0,
         "d": platform.qubits[target].asymmetry,
         "normalization": platform.qubits[target].crosstalk_matrix[target],
         "offset": -platform.qubits[target].sweetspot
-        * platform.qubits[target].crosstalk_matrix[
-            target
-        ],  # Check is this the right one ???
+        * platform.qubits[target].crosstalk_matrix[target],
         "crosstalk_element": 1,
         "charging_energy": platform.qubits[target].Ec,
     }
 
-    # NOTE: Center around the sweetspot [Optional]
+    # NOTE: Center around the sweetspot
     centered_biases = biases + platform.qubits[target].sweetspot
 
     for i, bias in enumerate(centered_biases):
