@@ -136,17 +136,9 @@ for target in targets:
                 g=platform.qubits[target].g,
                 resonator_freq=platform.qubits[target].bare_resonator_frequency,
             )
-            print(platform.qubits[target].g)
-            print(
-                "FFFFFFFFFF",
-                res_frequency,
-                platform.qubits[target].bare_resonator_frequency,
-            )
             e.platform.qubits[target].drive_frequency = qubit_frequency
             e.platform.qubits[target].native_gates.RX.frequency = qubit_frequency
 
-            # e.platform.qubits[target].readout_frequency = res_frequency
-            # e.platform.qubits[target].native_gates.MZ.frequency = res_frequency
             res_spectroscopy_output = e.resonator_spectroscopy(
                 freq_width=freq_width,
                 freq_step=freq_step,
@@ -154,18 +146,6 @@ for target in targets:
                 relaxation_time=2000,
                 nshots=1024,
             )
-            # qubit_spectroscopy_output = e.qubit_spectroscopy(
-            #     freq_width=freq_width,
-            #     freq_step=freq_step,
-            #     drive_duration=drive_duration,
-            #     drive_amplitude=drive_amplitude,
-            #     relaxation_time=5000,
-            #     nshots=1024,
-            # )
-
-            # e.platform.qubits[target].native_gates.RX.duration = pulse_length
-
-            # classification_output = e.single_shot_classification( nshots = 5000)
             rabi_output = e.rabi_amplitude_signal(
                 min_amp_factor=min_amp_factor,
                 max_amp_factor=max_amp_factor,
@@ -191,10 +171,6 @@ for target in targets:
                 delay_between_pulses_step=delay_between_pulses_step,
                 detuning=detuning,
             )
-            # # flipping_output = e.flipping_signal(
-            # #     nflips_max=nflips_max,
-            # #     nflips_step=nflips_step,
-            # # )
 
             ramsey_output = e.ramsey(
                 delay_between_pulses_start=delay_between_pulses_start,
@@ -221,11 +197,11 @@ for target in targets:
                 nshots=5000,
             )
             rb_out = e.rb_ondevice(
-                num_of_sequences=10000,  # Number of random sequences.
-                max_circuit_depth=1000,  # Maximum circuit depth.
-                delta_clifford=20,  # Depth step. Depths applied are [1, delta, 2 * delta, ..., max].
-                n_avg=1,  # Number of repetitions of the same circuit (for averaging).
-                save_sequences=False,  # Download the Clifford gate indices used from the device.
-                apply_inverse=True,  # Apply inverse gate at the end of every circuit. If `False` it will apply "filtered" post-processing.
+                num_of_sequences=10000,
+                max_circuit_depth=1000,
+                delta_clifford=20,
+                n_avg=1,
+                save_sequences=False,
+                apply_inverse=True,
             )
             report(e.path, e.history)
