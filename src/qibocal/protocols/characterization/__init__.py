@@ -100,6 +100,7 @@ from .z.in_progress.resonator_mixer_calibration import resonator_mixer_calibrati
 from .z.in_progress.resonator_spectroscopy_with_lo import resonator_spectroscopy_with_lo
 from .z.in_progress.ro_resonator_amplitude import resonator_amplitude
 from .z.qubit_spectroscopy import qubit_spectroscopy
+from .z.qubit_state_crosstalk import qubit_state_crosstalk
 from .z.rabi.length import rabi_length
 from .z.rabi.length_signal import rabi_length_signal
 from .z.ramsey.ramsey import ramsey
@@ -201,3 +202,5 @@ class Operation(Enum):
     allxy_resonator_depletion_tuning = allxy_resonator_depletion_tuning
     qubit_power_spectroscopy = qubit_power_spectroscopy
     cz_sweep = cz_sweep
+
+    qubit_state_crosstalk = qubit_state_crosstalk
