@@ -60,7 +60,7 @@ delay_between_pulses_step = 5
 # T2 and Ramsey signal
 delay_between_pulses_start_T2 = 16
 """Initial delay between RX(pi/2) pulses in ns."""
-delay_between_pulses_end_T2 = 25_000
+delay_between_pulses_end_T2 = 80_000
 """Final delay between RX(pi/2) pulses in ns."""
 delay_between_pulses_step_T2 = 500
 """Step delay between RX(pi/2) pulses in ns."""
@@ -222,8 +222,8 @@ for target in targets:
             )
             rb_out = e.rb_ondevice(
                 num_of_sequences=10000,  # Number of random sequences.
-                max_circuit_depth=500,  # Maximum circuit depth.
-                delta_clifford=10,  # Depth step. Depths applied are [1, delta, 2 * delta, ..., max].
+                max_circuit_depth=1000,  # Maximum circuit depth.
+                delta_clifford=20,  # Depth step. Depths applied are [1, delta, 2 * delta, ..., max].
                 n_avg=1,  # Number of repetitions of the same circuit (for averaging).
                 save_sequences=False,  # Download the Clifford gate indices used from the device.
                 apply_inverse=True,  # Apply inverse gate at the end of every circuit. If `False` it will apply "filtered" post-processing.
