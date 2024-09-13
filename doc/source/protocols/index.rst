@@ -27,4 +27,5 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     dispersive_shift
     allxy
     flipping
+    readout_mitigation_matrix
     references
