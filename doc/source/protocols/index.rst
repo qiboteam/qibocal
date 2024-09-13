@@ -29,4 +29,5 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     flipping
     readout_mitigation_matrix
     avoided_crossing
+    readout_optimization
     references
