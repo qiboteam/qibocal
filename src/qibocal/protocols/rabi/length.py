@@ -103,7 +103,7 @@ def _acquisition(
     )
 
     for q in targets:
-        prob = probability(results[ro_pulses[q].id][0], state=1)
+        prob = probability(results[ro_pulses[q].id], state=1)
         data.register_qubit(
             RabiLenType,
             (q),

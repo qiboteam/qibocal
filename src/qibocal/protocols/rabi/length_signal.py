@@ -106,7 +106,7 @@ def _acquisition(
     )
 
     for q in targets:
-        result = results[ro_pulses[q].id][0]
+        result = results[ro_pulses[q].id]
         data.register_qubit(
             RabiLenSignalType,
             (q),
