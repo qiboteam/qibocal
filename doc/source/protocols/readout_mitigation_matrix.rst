@@ -7,11 +7,11 @@ by applying a corrective linear transformation to the readout results, in formul
 .. math::
 	O_{noisy} = M O_{ideal},
 
-where :math:`O_{noisy}` is the readout probabilities on the noisy device, 
+where :math:`O_{noisy}` is the readout probabilities on the noisy device,
 :math:`O_{ideal}` is the expected one and :math:`M` is the readout mitigation matrix.
 The matrix :math:`M^{-1}` can be used to correct the noisy readouts.
 
-This protocol evaluates the readout matrix by preparing the qubit(s) in the 
+This protocol evaluates the readout matrix by preparing the qubit(s) in the
 computational base and measuring their states.
 
 Pramateters
@@ -24,7 +24,7 @@ Example
 ^^^^^^^
 
 .. code-block:: yaml
-	
+
 	- id: readout_mitigation_matrix
 	  operation: readout_mitigation_matrix
 	  parameters:
