@@ -20,8 +20,8 @@ from .utils import table_dict, table_html
 
 BASIS = ["X", "Y", "Z"]
 """Single qubit measurement basis."""
-SIMULATED_DENSITY_MATRIX = "ideal"
-"""Filename for simulated density matrix."""
+CIRCUIT_PATH = "circuit.txt"
+"""Path where circuit is stored."""
 
 
 @dataclass
@@ -53,25 +53,20 @@ TomographyType = np.dtype(
 class StateTomographyData(Data):
     """Tomography data"""
 
-    ideal: dict[tuple[QubitId, str], np.float64] = field(default_factory=dict)
-    """Ideal samples measurements."""
+    circuit: Circuit
+    """Circuit where tomography will be executed."""
     data: dict[tuple[QubitId, str], np.int64] = field(default_factory=dict)
     """Hardware measurements."""
 
     def save(self, path):
         self._to_npz(path, DATAFILE)
-        np.savez(
-            path / f"{SIMULATED_DENSITY_MATRIX}.npz",
-            **{json.dumps(i): self.ideal[i] for i in self.ideal},
-        )
+        (path / CIRCUIT_PATH).write_text(self.circuit.to_qasm())
 
     @classmethod
     def load(cls, path):
-        instance = cls()
-        instance.data = super().load_data(path, DATAFILE)
-        instance.ideal = super().load_data(path, SIMULATED_DENSITY_MATRIX)
-
-        return instance
+        circuit = Circuit.from_qasm((path / CIRCUIT_PATH).read_text())
+        data = super().load_data(path, DATAFILE)
+        return cls(data=data, circuit=circuit)
 
 
 @dataclass
@@ -94,7 +89,6 @@ def _acquisition(
     params: StateTomographyParameters, platform: Platform, targets: list[QubitId]
 ) -> StateTomographyData:
     """Acquisition protocol for single qubit state tomography experiment."""
-
     if params.circuit is None:
         params.circuit = Circuit(len(targets))
 
@@ -102,7 +96,7 @@ def _acquisition(
     backend.platform = platform
     transpiler = dummy_transpiler(backend)
 
-    data = StateTomographyData()
+    data = StateTomographyData(circuit=params.circuit)
 
     for basis in BASIS:
         basis_circuit = deepcopy(params.circuit)
@@ -127,9 +121,6 @@ def _acquisition(
                     samples=np.array(results.samples()).T[i],
                 ),
             )
-            data.ideal[target, basis] = np.array(
-                NumpyBackend().execute_circuit(basis_circuit, nshots=10000).samples()
-            ).T[i]
     return data
 
 
@@ -140,30 +131,24 @@ def _fit(data: StateTomographyData) -> StateTomographyResults:
     target_density_matrix_real = {}
     target_density_matrix_imag = {}
     fid = {}
+    circuit = data.circuit
+    circuit.density_matrix = True
+    target_density_matrix = NumpyBackend().execute_circuit(circuit=circuit).state()
+
     for qubit in data.qubits:
-        x_exp, y_exp, z_exp = (
-            1 - 2 * np.mean(data[qubit, basis].samples) for basis in BASIS
-        )
-        density_matrix = 0.5 * (
+        x_exp = 1 - 2 * np.mean(data[qubit, "X"].samples)
+        y_exp = 1 - 2 * np.mean(data[qubit, "Y"].samples)
+        z_exp = 1 - 2 * np.mean(data[qubit, "Z"].samples)
+        measured_density_matrix = 0.5 * (
             matrices.I + matrices.X * x_exp + matrices.Y * y_exp + matrices.Z * z_exp
         )
-        measured_density_matrix_real[qubit] = np.real(density_matrix).tolist()
-        measured_density_matrix_imag[qubit] = np.imag(density_matrix).tolist()
+        measured_density_matrix_real[qubit] = np.real(measured_density_matrix).tolist()
+        measured_density_matrix_imag[qubit] = np.imag(measured_density_matrix).tolist()
 
-        x_theory, y_theory, z_theory = (
-            1 - 2 * np.mean(data.ideal[qubit, basis]) for basis in BASIS
-        )
-        target_density_matrix = 0.5 * (
-            matrices.I
-            + matrices.X * x_theory
-            + matrices.Y * y_theory
-            + matrices.Z * z_theory
-        )
         target_density_matrix_real[qubit] = np.real(target_density_matrix).tolist()
         target_density_matrix_imag[qubit] = np.imag(target_density_matrix).tolist()
         fid[qubit] = fidelity(
-            np.array(measured_density_matrix_real[qubit])
-            + 1.0j * np.array(measured_density_matrix_imag[qubit]),
+            measured_density_matrix,
             target_density_matrix,
         )
 
