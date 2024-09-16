@@ -85,7 +85,6 @@ def _acquisition(
         [qd_pulses[qubit] for qubit in targets],
         type=SweeperType.ABSOLUTE,
     )
-    print(sweeper)
     data = RabiLengthSignalData(amplitudes=amplitudes)
 
     # execute the sweep
