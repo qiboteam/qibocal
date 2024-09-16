@@ -53,20 +53,30 @@ TomographyType = np.dtype(
 class StateTomographyData(Data):
     """Tomography data"""
 
+    targets: dict[QubitId, int]
+    """Store targets order."""
     circuit: Circuit
     """Circuit where tomography will be executed."""
     data: dict[tuple[QubitId, str], np.int64] = field(default_factory=dict)
     """Hardware measurements."""
 
+    @property
+    def params(self) -> dict:
+        """Convert non-arrays attributes into dict."""
+        params = super().params
+        params.pop("circuit")
+        return params
+
     def save(self, path):
-        self._to_npz(path, DATAFILE)
+        super().save(path)
         (path / CIRCUIT_PATH).write_text(self.circuit.to_qasm())
 
     @classmethod
     def load(cls, path):
         circuit = Circuit.from_qasm((path / CIRCUIT_PATH).read_text())
         data = super().load_data(path, DATAFILE)
-        return cls(data=data, circuit=circuit)
+        params = super().load_params(path, DATAFILE)
+        return cls(data=data, circuit=circuit, targets=params["targets"])
 
 
 @dataclass
@@ -96,7 +106,9 @@ def _acquisition(
     backend.platform = platform
     transpiler = dummy_transpiler(backend)
 
-    data = StateTomographyData(circuit=params.circuit)
+    data = StateTomographyData(
+        circuit=params.circuit, targets={target: i for i, target in enumerate(targets)}
+    )
 
     for basis in BASIS:
         basis_circuit = deepcopy(params.circuit)
@@ -105,7 +117,7 @@ def _acquisition(
             for i in range(len(targets)):
                 basis_circuit.add(getattr(gates, basis)(i).basis_rotation())
 
-        basis_circuit.add(gates.M(i) for i in range(len(targets)))
+        basis_circuit.add(gates.M(*range(len(targets))))
         _, results = execute_transpiled_circuit(
             basis_circuit,
             targets,
@@ -133,9 +145,13 @@ def _fit(data: StateTomographyData) -> StateTomographyResults:
     fid = {}
     circuit = data.circuit
     circuit.density_matrix = True
-    target_density_matrix = NumpyBackend().execute_circuit(circuit=circuit).state()
-
-    for qubit in data.qubits:
+    total_density_matrix = NumpyBackend().execute_circuit(circuit=circuit).state()
+    for i, qubit in enumerate(data.targets):
+        traced_qubits = list(range(len(data.qubits)))
+        traced_qubits.remove(i)
+        target_density_matrix = NumpyBackend().partial_trace_density_matrix(
+            total_density_matrix, traced_qubits, len(data.qubits)
+        )
         x_exp = 1 - 2 * np.mean(data[qubit, "X"].samples)
         y_exp = 1 - 2 * np.mean(data[qubit, "Y"].samples)
         z_exp = 1 - 2 * np.mean(data[qubit, "Z"].samples)
