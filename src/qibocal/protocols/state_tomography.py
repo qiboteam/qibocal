@@ -20,7 +20,7 @@ from .utils import table_dict, table_html
 
 BASIS = ["X", "Y", "Z"]
 """Single qubit measurement basis."""
-CIRCUIT_PATH = "circuit.txt"
+CIRCUIT_PATH = "circuit.json"
 """Path where circuit is stored."""
 
 
@@ -69,11 +69,11 @@ class StateTomographyData(Data):
 
     def save(self, path):
         super().save(path)
-        (path / CIRCUIT_PATH).write_text(self.circuit.to_qasm())
+        (path / CIRCUIT_PATH).write_text(json.dumps(self.circuit.raw))
 
     @classmethod
     def load(cls, path):
-        circuit = Circuit.from_qasm((path / CIRCUIT_PATH).read_text())
+        circuit = Circuit.from_dict(json.loads((path / CIRCUIT_PATH).read_text()))
         data = super().load_data(path, DATAFILE)
         params = super().load_params(path, DATAFILE)
         return cls(data=data, circuit=circuit, targets=params["targets"])
