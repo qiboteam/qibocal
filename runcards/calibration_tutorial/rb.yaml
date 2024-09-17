@@ -1,11 +1,11 @@
-platform: <platform_name>
+platform: qw11q
 
-qubits: [0]
+targets: [D1]
 
 actions:
   - id: standard rb
     operation: standard_rb
     parameters:
-        depths: [10, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500]
-        niter: 256
-        nshots: 128
+        depths: [1, 5, 10, 20]
+        niter: 20
+        nshots: 100

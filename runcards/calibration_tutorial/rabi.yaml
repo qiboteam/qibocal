@@ -1,16 +1,51 @@
-platform: <platform_name>
+platform: qw11q
 
-qubits: [0]
+targets: [D1]
 
 actions:
 
-  - id: rabi
+  # - id: resonator_spectroscopy high power
+  #   operation: resonator_spectroscopy
+  #   parameters:
+  #       freq_width: 10_000_000
+  #       freq_step: 100_000
+  #       amplitude: 0.002
+  #       fit_function: s21
+  #       power_level: high
+  #       nshots: 1024
+  #       relaxation_time: 100000
 
-    operation: rabi_amplitude_signal
+  # - id: rabi
+
+  #   operation: rabi_amplitude_signal
+  #   parameters:
+  #       min_amp_factor: 0
+  #       max_amp_factor: 2
+  #       step_amp_factor: 0.1
+  #       pulse_length: 40
+  #       relaxation_time: 100_000
+  #       nshots: 1024
+
+
+  # - id: rabi
+
+  #   operation: rabi_length_signal
+  #   parameters:
+  #       pulse_duration_start: 20
+  #       pulse_duration_end: 40
+  #       pulse_duration_step: 1
+  #       pulse_amplitude: 0.06
+  #       relaxation_time: 100_000
+  #       nshots: 1024
+
+  - id: rabi amplitude frequency
+    operation: rabi_amplitude_frequency_signal
     parameters:
-        min_amp_factor: 0
-        max_amp_factor: 1.1
-        step_amp_factor: 0.1
-        pulse_length: 40
-        relaxation_time: 100_000
-        nshots: 1024
+      min_amp_factor: 0.0
+      max_amp_factor: 2
+      step_amp_factor: 0.1
+      min_freq: -50_000_000
+      max_freq: 50_000_000
+      step_freq: 1_000_000
+      pulse_length: 40
+      nshots: 1024

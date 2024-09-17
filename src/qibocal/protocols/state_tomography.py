@@ -278,7 +278,10 @@ def plot_reconstruction(ideal, measured):
     )
 
     tickvals = list(range(len(ideal)))
-    ticktext = ["{:02b}".format(i) for i in tickvals]
+    if len(tickvals) == 2:  # single qubit tomography
+        ticktext = ["{:01b}".format(i) for i in tickvals]
+    else:  # two qubit tomography
+        ticktext = ["{:02b}".format(i) for i in tickvals]
     fig.update_scenes(
         xaxis=dict(tickvals=tickvals, ticktext=ticktext),
         yaxis=dict(tickvals=tickvals, ticktext=ticktext),
