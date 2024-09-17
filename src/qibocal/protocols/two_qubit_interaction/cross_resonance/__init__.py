@@ -1,2 +1,3 @@
 from .chevron import cross_resonance_chevron
 from .cross_resonance import cross_resonance
+from .cross_resonance_sequences import cross_resonance_sequences

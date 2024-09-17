@@ -143,6 +143,5 @@ def _plot(data: CrossResonanceData, target: QubitPairId, fit: CrossResonanceResu
 
     return [fig], ""
 
-
 cross_resonance = Routine(_acquisition, _fit, _plot)
-"""CrossResonance Routine object."""
+"""CrossResonance Sequences Routine object."""
