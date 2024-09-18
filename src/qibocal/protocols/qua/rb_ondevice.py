@@ -29,8 +29,14 @@ class RbOnDeviceParameters(Parameters):
     num_of_sequences: int
     max_circuit_depth: int
     "Maximum circuit depth"
-    delta_clifford: int
+    delta_clifford: int = 1
     "Play each sequence with a depth step equals to delta_clifford"
+    logarithmic: bool = False
+    """Use logarithmically scaled depths.
+
+    The depths used in this case are 1, 2^delta_clifford, 2^(2*delta_clifford), ...
+    up to the specified ``max_circuit_depth``.
+    """
     seed: Optional[int] = None
     "Pseudo-random number generator seed"
     n_avg: int = 1
@@ -303,15 +309,21 @@ def _acquisition(
                             save(I, I_st)
                             save(Q, Q_st)
                     # Go to the next depth
-                    assign(depth_target, depth_target + delta_clifford)
+                    if params.logarithmic:
+                        nmul = declare(int)
+                        with for_(nmul, 0, nmul < delta_clifford, nmul + 1):
+                            assign(depth_target, 2 * depth_target)
+                    else:
+                        assign(depth_target, depth_target + delta_clifford)
                 # Reset the last gate of the sequence back to the original Clifford gate
                 # (that was replaced by the recovery gate at the beginning)
                 assign(sequence_list[depth], saved_gate)
             # Save the counter for the progress bar
             save(m, m_st)
 
+        depths = generate_depths(max_circuit_depth, delta_clifford, params.logarithmic)
         with stream_processing():
-            ndepth = max_circuit_depth / delta_clifford + int(delta_clifford > 1)
+            ndepth = len(depths)
             m_st.save("iteration")
             if save_sequences:
                 sequence_st.buffer(max_circuit_depth + 1).buffer(num_of_sequences).save(
@@ -350,13 +362,7 @@ def _acquisition(
                 ).average().save("Q_avg")
 
     # Print total relaxation time (estimate of execution time)
-    total_relaxation = (
-        relaxation_time
-        * num_of_sequences
-        * n_avg
-        * (max_circuit_depth // delta_clifford)
-        * 1e-9
-    )
+    total_relaxation = relaxation_time * num_of_sequences * n_avg * ndepth * 1e-9
     print("\nTotal relaxation time: %.2f sec\n" % total_relaxation)
 
     #####################################
@@ -424,7 +430,7 @@ def _acquisition(
     return RbOnDeviceData(
         rb_type=rb_type,
         relaxation_time=relaxation_time,
-        depths=[int(x) for x in generate_depths(max_circuit_depth, delta_clifford)],
+        depths=[int(x) for x in depths],
         data=data,
     )
 
