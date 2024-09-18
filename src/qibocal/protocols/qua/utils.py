@@ -48,8 +48,12 @@ def clifford_mul(sequences, interleave=None):
     return result
 
 
-def generate_depths(max_circuit_depth, delta_clifford):
+def generate_depths(max_circuit_depth, delta_clifford, logarithmic=False):
     """Generate vector of depths compatible with the QUA acquisition script."""
+    if logarithmic:
+        return 2 ** np.arange(
+            0, int(np.log2(max_circuit_depth)) + 0.1, delta_clifford
+        ).astype(int)
     if delta_clifford == 1:
         return np.arange(1, max_circuit_depth + 0.1, delta_clifford).astype(int)
     depths = np.arange(0, max_circuit_depth + 0.1, delta_clifford).astype(int)
