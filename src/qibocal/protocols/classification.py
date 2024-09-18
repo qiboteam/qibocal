@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, Delay, ExecutionParameters, Platform, PulseSequence
+from qibolab import AcquisitionType, ExecutionParameters, Platform, PulseSequence
 from sklearn.metrics import roc_auc_score, roc_curve
 
 from qibocal import update
@@ -188,21 +188,19 @@ def _acquisition(
     # state1_sequence: RX - MZ
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
+    native = platform.natives.single_qubit
     sequences, all_ro_pulses = [], []
     for state in [0, 1]:
-        sequence = PulseSequence()
         ro_pulses = {}
+        sequence = PulseSequence()
         for q in targets:
-            native = platform.natives.single_qubit[q]
-            rx_sequence = native.RX.create_sequence(theta=np.pi, phi=0)
-            ro_sequence = native.MZ.create_sequence()
-            if state == 1:
-                sequence.extend(rx_sequence)
-
-            qubit = platform.qubits[q]
-            sequence.append((qubit.acquisition, Delay(duration=rx_sequence.duration)))
-            sequence.extend(ro_sequence)
+            ro_sequence = native.MZ()
             ro_pulses[q] = ro_sequence[0][1].id
+            sequence += ro_sequence
+
+        if state == 1:
+            rx_sequence = sum([native[q].RX() for q in targets], PulseSequence)
+            sequence = rx_sequence | sequence
 
         sequences.append(sequence)
         all_ro_pulses.append(ro_pulses)
