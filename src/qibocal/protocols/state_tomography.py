@@ -99,6 +99,7 @@ def _acquisition(
         params.circuit = Circuit(len(targets))
 
     backend = GlobalBackend()
+    backend.platform = platform
     transpiler = dummy_transpiler(backend)
 
     data = StateTomographyData()
@@ -198,10 +199,8 @@ def plot_parallelogram(a, e, pos_x, pos_y, **options):
 
 def plot_rho(fig, zz, trace_options, figure_options, showlegend=None):
     """Plot density matrix"""
-    x, y = np.meshgrid(
-        [0, 1],
-        [0, 1],
-    )
+    values = list(range(len(zz)))
+    x, y = np.meshgrid(values, values)
     xx = x.flatten()
     yy = y.flatten()
     zz = np.array(zz).ravel()
@@ -215,8 +214,8 @@ def plot_rho(fig, zz, trace_options, figure_options, showlegend=None):
         )
 
 
-def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitId):
-    """Plotting for state tomography"""
+def plot_reconstruction(ideal, measured):
+    """Plot 3D plot with reconstruction of ideal and measured density matrix."""
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -228,82 +227,96 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
         ),
     )
 
-    if fit is not None:
-        # computing limits for colorscale
-        min_re, max_re = np.min(fit.target_density_matrix_real[target]), np.max(
-            fit.target_density_matrix_real[target]
+    # computing limits for colorscale
+    min_re, max_re = np.min(ideal.real), np.max(ideal.real)
+    min_im, max_im = np.min(ideal.imag), np.max(ideal.imag)
+
+    # add offset
+    if np.abs(min_re - max_re) < 1e-5:
+        min_re = min_re - 0.1
+        max_re = max_re + 0.1
+    if np.abs(min_im - max_im) < 1e-5:
+        min_im = min_im - 0.1
+        max_im = max_im + 0.1
+
+    plot_rho(
+        fig,
+        measured.real,
+        trace_options=dict(
+            color="rgba(255,100,0,0.1)", name="experiment", legendgroup="experiment"
+        ),
+        figure_options=dict(row=1, col=1),
+    )
+
+    plot_rho(
+        fig,
+        ideal.real,
+        trace_options=dict(
+            color="rgba(100,0,100,0.1)", name="simulation", legendgroup="simulation"
+        ),
+        figure_options=dict(row=1, col=1),
+    )
+
+    plot_rho(
+        fig,
+        measured.imag,
+        trace_options=dict(
+            color="rgba(255,100,0,0.1)", name="experiment", legendgroup="experiment"
+        ),
+        figure_options=dict(row=1, col=2),
+        showlegend=False,
+    )
+
+    plot_rho(
+        fig,
+        ideal.imag,
+        trace_options=dict(
+            color="rgba(100,0,100,0.1)", name="simulation", legendgroup="simulation"
+        ),
+        figure_options=dict(row=1, col=2),
+        showlegend=False,
+    )
+
+    tickvals = list(range(len(ideal)))
+    if len(tickvals) == 2:  # single qubit tomography
+        ticktext = ["{:01b}".format(i) for i in tickvals]
+    else:  # two qubit tomography
+        ticktext = ["{:02b}".format(i) for i in tickvals]
+    fig.update_scenes(
+        xaxis=dict(tickvals=tickvals, ticktext=ticktext),
+        yaxis=dict(tickvals=tickvals, ticktext=ticktext),
+        zaxis=dict(range=[-1, 1]),
+    )
+
+    return fig
+
+
+def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitId):
+    """Plotting for state tomography"""
+    if fit is None:
+        return [], ""
+
+    ideal = np.array(fit.target_density_matrix_real[target]) + 1j * np.array(
+        fit.target_density_matrix_imag[target]
+    )
+    measured = np.array(fit.measured_density_matrix_real[target]) + 1j * np.array(
+        fit.measured_density_matrix_imag[target]
+    )
+    fig = plot_reconstruction(ideal, measured)
+
+    fitting_report = table_html(
+        table_dict(
+            target,
+            [
+                "Fidelity",
+            ],
+            [
+                np.round(fit.fidelity[target], 4),
+            ],
         )
-        min_im, max_im = np.min(fit.target_density_matrix_imag[target]), np.max(
-            fit.target_density_matrix_imag[target]
-        )
+    )
 
-        # add offset
-        if np.abs(min_re - max_re) < 1e-5:
-            min_re = min_re - 0.1
-            max_re = max_re + 0.1
-
-        if np.abs(min_im - max_im) < 1e-5:
-            min_im = min_im - 0.1
-            max_im = max_im + 0.1
-
-        plot_rho(
-            fig,
-            fit.measured_density_matrix_real[target],
-            trace_options=dict(
-                color="rgba(255,100,0,0.1)", name="experiment", legendgroup="experiment"
-            ),
-            figure_options=dict(row=1, col=1),
-        )
-
-        plot_rho(
-            fig,
-            fit.target_density_matrix_real[target],
-            trace_options=dict(
-                color="rgba(100,0,100,0.1)", name="simulation", legendgroup="simulation"
-            ),
-            figure_options=dict(row=1, col=1),
-        )
-
-        plot_rho(
-            fig,
-            fit.measured_density_matrix_imag[target],
-            trace_options=dict(
-                color="rgba(255,100,0,0.1)", name="experiment", legendgroup="experiment"
-            ),
-            figure_options=dict(row=1, col=2),
-            showlegend=False,
-        )
-
-        plot_rho(
-            fig,
-            fit.target_density_matrix_imag[target],
-            trace_options=dict(
-                color="rgba(100,0,100,0.1)", name="simulation", legendgroup="simulation"
-            ),
-            figure_options=dict(row=1, col=2),
-            showlegend=False,
-        )
-
-        fig.update_scenes(
-            xaxis=dict(tickvals=[0, 1]),
-            yaxis=dict(tickvals=[0, 1]),
-            zaxis=dict(range=[-1, 1]),
-        )
-
-        fitting_report = table_html(
-            table_dict(
-                target,
-                [
-                    "Fidelity",
-                ],
-                [
-                    np.round(fit.fidelity[target], 4),
-                ],
-            )
-        )
-
-        return [fig], fitting_report
-    return [], ""
+    return [fig], fitting_report
 
 
 state_tomography = Routine(_acquisition, _fit, _plot)

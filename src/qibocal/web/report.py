@@ -10,14 +10,17 @@ STYLES = WEB_DIR / "static" / "styles.css"
 TEMPLATES = WEB_DIR / "templates"
 
 
+def report_css_styles(styles_path: pathlib.Path):
+    """HTML string containing path of css file."""
+    return f"<style>\n{pathlib.Path(styles_path).read_text()}\n</style>"
+
+
 @dataclass
 class Report:
     """Report generation class."""
 
     path: pathlib.Path
     """Path with calibration data."""
-    targets: list
-    """Global targets."""
     history: History
     """History of protocols."""
     meta: dict
@@ -26,11 +29,14 @@ class Report:
     """Plotting function to generate html."""
 
     @staticmethod
-    def routine_name(routine):
+    def routine_name(routine: TaskId):
         """Prettify routine's name for report headers."""
-        return routine.title()
+        return routine.id.title()
 
     def routine_targets(self, task_id: TaskId):
-        """Get local targets parameter from Task if available otherwise use global one."""
+        """Extract local targets parameter from Task.
+
+        If not available use the global ones.
+        """
         local_targets = self.history[task_id].task.targets
-        return local_targets if len(local_targets) > 0 else self.targets
+        return local_targets if len(local_targets) > 0 else self.meta["targets"]

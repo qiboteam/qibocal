@@ -15,6 +15,7 @@ from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
+from qibocal.config import log
 
 from ...readout_mitigation_matrix import (
     ReadoutMitigationMatrixParameters as mitigation_params,
@@ -179,9 +180,15 @@ def _acquisition_pulses(
 
     for pair in targets:
         if params.apply_error_mitigation:
-            data.mitigation_matrix[pair] = mitigation_results.readout_mitigation_matrix[
-                pair
-            ]
+            try:
+                data.mitigation_matrix[pair] = (
+                    mitigation_results.readout_mitigation_matrix[pair]
+                )
+            except KeyError:
+                log.warning(
+                    f"Skipping error mitigation for qubits {pair} due to error."
+                )
+
         for bell_state in params.bell_states:
             for theta in thetas:
                 chsh_sequences = create_chsh_sequences(
@@ -214,6 +221,7 @@ def _acquisition_circuits(
         thetas=thetas.tolist(),
     )
     backend = GlobalBackend()
+    backend.platform = platform
     transpiler = dummy_transpiler(backend)
     qubit_map = [i for i in range(platform.nqubits)]
     if params.apply_error_mitigation:
@@ -223,9 +231,14 @@ def _acquisition_circuits(
         mitigation_results = mitigation_fit(mitigation_data)
     for pair in targets:
         if params.apply_error_mitigation:
-            data.mitigation_matrix[pair] = mitigation_results.readout_mitigation_matrix[
-                pair
-            ]
+            try:
+                data.mitigation_matrix[pair] = (
+                    mitigation_results.readout_mitigation_matrix[pair]
+                )
+            except KeyError:
+                log.warning(
+                    f"Skipping error mitigation for qubits {pair} due to error."
+                )
         for bell_state in params.bell_states:
             for theta in thetas:
                 chsh_circuits = create_chsh_circuits(

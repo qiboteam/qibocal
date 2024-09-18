@@ -1,0 +1,28 @@
+platform: qw11q
+
+targets: [D1]
+
+actions:
+  # - id: all_xy
+
+  #   operation: allxy
+  #   parameters:
+  #       nshots: 1024
+  #       relaxation_time: 200000
+
+
+  # - id: state_tomography
+
+  #   operation: state_tomography
+  #   parameters:
+  #       nshots: 1024
+  #       relaxation_time: 200000
+
+
+  - id: readout
+
+    operation: readout_characterization
+    parameters:
+        nshots: 5000
+        delay: 1000
+        relaxation_time: 200000

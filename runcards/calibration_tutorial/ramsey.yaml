@@ -1,15 +1,27 @@
-platform: <platform_name>
+platform: qw11q
 
-qubits: [0]
+targets: [D1]
 
 actions:
   - id: ramsey detuned
 
     operation: ramsey
     parameters:
-        delay_between_pulses_end: 40000
-        delay_between_pulses_start: 100
+        delay_between_pulses_end: 1000
+        delay_between_pulses_start: 10
+        delay_between_pulses_step: 20
+        detuning: 3_000_000
+        nshots: 1024
+        relaxation_time: 200000
+
+
+  - id: t2
+
+    operation: t2
+    parameters:
+        delay_between_pulses_end: 50_000
+        delay_between_pulses_start: 10
         delay_between_pulses_step: 1000
-        n_osc: 0
-        nshots: 4096
+        # detuning: 3_000_000
+        nshots: 1024
         relaxation_time: 200000

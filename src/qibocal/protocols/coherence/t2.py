@@ -105,13 +105,14 @@ def _acquisition(
 
 
 def _fit(data: T2Data) -> T2Results:
-    r"""
-    Fitting routine for Ramsey experiment. The used model is
+    """The used model is
+
     .. math::
+
         y = p_0 - p_1 e^{-x p_2}.
     """
-    t2s, fitted_parameters, chi2 = utils.exponential_fit_probability(data)
-    return T2Results(t2s, fitted_parameters, chi2)
+    t2s, fitted_parameters, pcovs, chi2 = utils.exponential_fit_probability(data)
+    return T2Results(t2s, fitted_parameters, pcovs, chi2)
 
 
 def _plot(data: T2Data, target: QubitId, fit: T2Results = None):

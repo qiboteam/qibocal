@@ -5,9 +5,11 @@ import pytest
 import qibo
 
 from qibocal.protocols.randomized_benchmarking import fitting, noisemodels
+from qibocal.protocols.randomized_benchmarking.dict_utils import load_inverse_cliffords
 from qibocal.protocols.randomized_benchmarking.utils import (
     RB_Generator,
-    number_to_str,
+    generate_inv_dict_cliffords_file,
+    load_cliffords,
     random_clifford,
 )
 
@@ -168,14 +170,17 @@ def test_random_clifford(qubits, seed):
     assert np.allclose(matrix, result)
 
 
-@pytest.mark.parametrize("value", [0.555555, 2, -0.1 + 0.1j])
-def test_number_to_str(value):
-    assert number_to_str(value) == f"{value:.3f}"
-    assert number_to_str(value, [None, None]) == f"{value:.3f}"
-    assert number_to_str(value, 0.0123) == f"{value:.3f} \u00B1 0.012"
-    assert number_to_str(value, [0.0123, 0.012]) == f"{value:.3f} \u00B1 0.012"
-    assert number_to_str(value, 0.1 + 0.02j) == f"{value:.3f} \u00B1 0.100+0.020j"
-    assert number_to_str(value, [0.203, 0.001]) == f"{value:.4f} +0.0010 / -0.2030"
-    assert (
-        number_to_str(value, [float("inf"), float("inf")]) == f"{value:.3f} \u00B1 inf"
-    )
+def test_generate_inv_dict_cliffords_file(tmp_path):
+    file = "2qubitCliffs.json"
+    two_qubit_cliffords = load_cliffords(file)
+
+    tmp_path = tmp_path / "test.npz"
+
+    clifford_inv = generate_inv_dict_cliffords_file(two_qubit_cliffords)
+    np.savez(tmp_path, **clifford_inv)
+    clifford_inv = np.load(tmp_path)
+
+    file_inv = "2qubitCliffsInv.npz"
+    clifford_matrices_inv = load_inverse_cliffords(file_inv)
+
+    assert clifford_inv.files == clifford_matrices_inv.files

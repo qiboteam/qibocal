@@ -64,12 +64,25 @@ regarding the protocols executed.
 ^^^^^^^^^^^
 
 The previous commands are put together using ``qq auto`` which will perform data acquisition, post-processing and report generation.
-When executing multiple protocols they are executed following the graph described in the action runcard.
-The report is generated iteratively as soon as each protocol finished.
+When executing multiple protocols they are executed following the actions specified in the runcard.
 
 .. code-block::
 
     qq auto <path_to_runcard> -o <output_folder>
+
+``qq update``
+^^^^^^^^^^^^^
+Using ``qq update`` it is possible to update the platform calibrated by Qibocal.
+The correct syntax is the following
+
+.. code-block::
+
+    qq update <output_folder>
+
+which will copy the configuration of the platform in the corresponding
+directory specified using the environment variable  ``QIBOLAB_PLATFORMS``.
+See the Qibolab `documentation <https://qibo.science/qibolab/stable/tutorials/lab.html#how-to-connect-qibolab-to-your-lab>`_ for more details.
+
 
 ``qq upload``
 ^^^^^^^^^^^^^
@@ -89,3 +102,18 @@ your public ssh key (from the machine(s) you are planning to upload the report) 
 use the ``qq upload <output_folder>`` command.
 You can also add a tag to be displayed on the server using ``qq upload <output_folder> --tag <tag_name>``.
 This program will upload your report to the server and generate an unique URL.
+
+
+``qq compare``
+^^^^^^^^^^^^^
+
+
+Using ``qq compare`` it is possible to compare together two ``Qibocal`` reports.
+
+.. code-block::
+
+    qq compare <output_folder_1> <output_folder_2>
+
+
+The folder with the report comparison can be specified with the option ``-o``, otherwise a default
+name will be assigned similarly to the ``qq acquire`` command.

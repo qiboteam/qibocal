@@ -14,17 +14,17 @@ from . import amplitude_signal, utils
 
 
 @dataclass
-class RabiAmplitudeEFParameters(amplitude_signal.RabiAmplitudeVoltParameters):
+class RabiAmplitudeEFParameters(amplitude_signal.RabiAmplitudeSignalParameters):
     """RabiAmplitudeEF runcard inputs."""
 
 
 @dataclass
-class RabiAmplitudeEFResults(amplitude_signal.RabiAmplitudeVoltResults):
+class RabiAmplitudeEFResults(amplitude_signal.RabiAmplitudeSignalResults):
     """RabiAmplitudeEF outputs."""
 
 
 @dataclass
-class RabiAmplitudeEFData(amplitude_signal.RabiAmplitudeVoltData):
+class RabiAmplitudeEFData(amplitude_signal.RabiAmplitudeSignalData):
     """RabiAmplitude data acquisition."""
 
 
@@ -92,7 +92,7 @@ def _acquisition(
     for qubit in targets:
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
-            amplitude_signal.RabiAmpVoltType,
+            amplitude_signal.RabiAmpSignalType,
             (qubit),
             dict(
                 amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
@@ -116,6 +116,7 @@ def _plot(
 def _update(results: RabiAmplitudeEFResults, platform: Platform, target: QubitId):
     """Update RX2 amplitude_signal"""
     update.drive_12_amplitude(results.amplitude[target], platform, target)
+    update.drive_12_duration(results.length[target], platform, target)
 
 
 rabi_amplitude_ef = Routine(_acquisition, amplitude_signal._fit, _plot, _update)
