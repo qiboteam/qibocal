@@ -23,6 +23,7 @@ def ramsey_sequence(
     qubit: QubitId,
     wait: Optional[int] = 0,
     detuning: Optional[int] = 0,
+    target_qubit: Optional[QubitId] = None,
 ):
     """Pulse sequence used in Ramsey (detuned) experiments.
 
@@ -48,6 +49,9 @@ def ramsey_sequence(
     )
 
     sequence.add(first_pi_half_pulse, second_pi_half_pulse, readout_pulse)
+    if target_qubit is not None:
+        x_pulse_target_qubit = platform.create_RX_pulse(target_qubit, start=0)
+        sequence.add(x_pulse_target_qubit)
     return sequence
 
 
