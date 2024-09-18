@@ -1,7 +1,7 @@
 from dataclasses import dataclass, fields
 
 import numpy as np
-from qibolab.platform import Platform
+from qibolab import Platform
 
 from qibocal.auto.operation import QubitPairId, Routine
 from qibocal.protocols.randomized_benchmarking.standard_rb import _plot

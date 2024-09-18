@@ -5,9 +5,8 @@ import re
 
 import numpy as np
 import pytest
-from qibolab import create_platform
+from qibolab import Drag, create_platform
 from qibolab.native import VirtualZPulse
-from qibolab.pulses import Drag
 
 from qibocal import update
 from qibocal.protocols.signal_experiments.calibrate_state_discrimination import (

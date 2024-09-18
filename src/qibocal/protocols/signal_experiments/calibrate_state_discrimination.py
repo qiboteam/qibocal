@@ -5,9 +5,13 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.sequence import PulseSequence
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+    Platform,
+    PulseSequence,
+)
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine

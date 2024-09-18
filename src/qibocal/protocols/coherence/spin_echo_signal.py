@@ -4,9 +4,13 @@ from typing import Union
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.sequence import PulseSequence
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+    Platform,
+    PulseSequence,
+)
 
 from qibocal import update
 from qibocal.auto.operation import Parameters, QubitId, Results, Routine

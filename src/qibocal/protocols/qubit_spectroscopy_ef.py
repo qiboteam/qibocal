@@ -1,9 +1,7 @@
 from dataclasses import asdict, dataclass, field
 
 import numpy as np
-from qibolab.platform import Platform
-from qibolab.sequence import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab import Parameter, Platform, PulseSequence, Sweeper
 
 from qibocal import update
 from qibocal.auto.operation import QubitId, Routine

@@ -1,6 +1,5 @@
 import numpy as np
-from qibolab.platform import Platform
-from qibolab.sequence import PulseSequence
+from qibolab import Platform, PulseSequence
 
 from qibocal.auto.operation import QubitPairId
 

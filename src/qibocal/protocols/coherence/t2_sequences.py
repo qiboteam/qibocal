@@ -1,7 +1,11 @@
 import numpy as np
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.sequence import PulseSequence
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+    Platform,
+    PulseSequence,
+)
 
 from qibocal.auto.operation import QubitId, Routine
 

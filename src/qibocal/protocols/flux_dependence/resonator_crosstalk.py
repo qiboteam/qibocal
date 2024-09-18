@@ -3,10 +3,15 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.sequence import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+    Parameter,
+    Platform,
+    PulseSequence,
+    Sweeper,
+)
 from scipy.optimize import curve_fit
 
 from qibocal import update

@@ -2,9 +2,14 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+    Parameter,
+    Platform,
+    Sweeper,
+)
 
 from qibocal import update
 from qibocal.auto.operation import Data, QubitId, Routine

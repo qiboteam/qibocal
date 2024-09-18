@@ -2,10 +2,15 @@ from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.sequence import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+    Parameter,
+    Platform,
+    PulseSequence,
+    Sweeper,
+)
 
 from qibocal.auto.operation import QubitPairId, Results, Routine
 

@@ -190,7 +190,7 @@ In the acquisition function we are going to perform the experiment.
 
       .. code-block:: python
 
-        from qibolab.platform import Platform
+        from qibolab import Platform
         from qibocal.auto.operation import QubitId, QubitPairId
         from typing import Union
 
@@ -200,7 +200,7 @@ In the acquisition function we are going to perform the experiment.
 
 .. code-block:: python
 
-    from qibolab.platform import Platform
+    from qibolab import Platform
     from qibocal.auto.operation import QubitId
 
     def acquisition(

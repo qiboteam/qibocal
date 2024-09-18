@@ -7,9 +7,7 @@ import plotly.express as px
 from qibo import gates
 from qibo.backends import GlobalBackend
 from qibo.models import Circuit
-from qibolab import ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.sequence import PulseSequence
+from qibolab import ExecutionParameters, Platform, PulseSequence
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit

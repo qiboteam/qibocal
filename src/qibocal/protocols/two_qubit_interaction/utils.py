@@ -1,5 +1,5 @@
 import numpy as np
-from qibolab.platform import Platform
+from qibolab import Platform
 
 from qibocal.auto.operation import QubitId, QubitPairId
 

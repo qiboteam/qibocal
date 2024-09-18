@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.platform import Platform
+from qibolab import Platform
 
 from qibocal.auto.operation import QubitId, Results, Routine
 from qibocal.protocols.randomized_benchmarking.utils import rb_acquisition

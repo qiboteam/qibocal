@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab.platform import Platform
+from qibolab import Platform
 
 from qibocal.auto.operation import Data, QubitId, QubitPairId, Results, Routine
 from qibocal.protocols.two_qubit_interaction.utils import order_pair

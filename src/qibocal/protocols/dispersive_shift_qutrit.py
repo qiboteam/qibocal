@@ -4,10 +4,15 @@ from dataclasses import asdict, dataclass
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.sequence import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+    Parameter,
+    Platform,
+    PulseSequence,
+    Sweeper,
+)
 
 from qibocal.auto.operation import QubitId, Results, Routine
 from qibocal.protocols.utils import (

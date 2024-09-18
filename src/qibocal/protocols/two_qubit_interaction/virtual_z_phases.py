@@ -7,11 +7,16 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import Pulse
-from qibolab.sequence import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+    Parameter,
+    Platform,
+    Pulse,
+    PulseSequence,
+    Sweeper,
+)
 from scipy.optimize import curve_fit
 
 from qibocal import update

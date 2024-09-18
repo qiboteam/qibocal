@@ -7,10 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import Delay
-from qibolab.sequence import PulseSequence
+from qibolab import AcquisitionType, Delay, ExecutionParameters, Platform, PulseSequence
 from sklearn.metrics import roc_auc_score, roc_curve
 
 from qibocal import update

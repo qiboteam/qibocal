@@ -1,8 +1,7 @@
 from typing import Optional
 
 import numpy as np
-from qibolab import Platform
-from qibolab.sequence import PulseSequence
+from qibolab import Platform, PulseSequence
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import QubitId

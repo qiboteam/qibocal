@@ -12,7 +12,7 @@ from qibo import Circuit, gates
 from qibo.backends import GlobalBackend, NumpyBackend
 from qibo.quantum_info import fidelity
 from qibo.result import QuantumState
-from qibolab.platform import Platform
+from qibolab import Platform
 
 from qibocal.auto.operation import (
     DATAFILE,
