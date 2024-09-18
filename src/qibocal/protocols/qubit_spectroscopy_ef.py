@@ -1,13 +1,12 @@
 from dataclasses import asdict, dataclass, field
 
 import numpy as np
-from qibolab.identifier import QubitId
 from qibolab.platform import Platform
 from qibolab.sequence import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import QubitId, Routine
 
 from .qubit_spectroscopy import (
     QubitSpectroscopyData,

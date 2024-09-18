@@ -8,12 +8,11 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.identifier import QubitId
 from qibolab.platform import Platform
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 

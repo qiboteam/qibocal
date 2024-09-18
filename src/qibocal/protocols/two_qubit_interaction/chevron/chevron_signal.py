@@ -5,11 +5,10 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.identifier import QubitPairId
 from qibolab.platform import Platform
 from qibolab.sweeper import Parameter, Sweeper
 
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import QubitPairId, Routine
 
 from ..utils import order_pair
 from .chevron import (

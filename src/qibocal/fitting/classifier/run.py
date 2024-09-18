@@ -8,8 +8,9 @@ from typing import List, Optional
 
 import numpy as np
 import pandas as pd
-from qibolab.identifier import QubitId
 from sklearn.metrics import accuracy_score
+
+from qibocal.auto.operation import QubitId
 
 from . import data
 

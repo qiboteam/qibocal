@@ -3,9 +3,8 @@ from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
-from qibolab.identifier import QubitId
 
-from qibocal.auto.operation import Data, Results
+from qibocal.auto.operation import Data, QubitId, Results
 
 from ..flux_dependence.resonator_flux_dependence import ResonatorFluxParameters
 from ..flux_dependence.utils import create_data_array

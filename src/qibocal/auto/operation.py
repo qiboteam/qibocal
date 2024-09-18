@@ -10,13 +10,15 @@ from typing import Callable, Generic, NewType, Optional, TypeVar, Union
 import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.identifier import QubitId, QubitPairId
 from qibolab.platform import Platform
 from qibolab.qubits import Qubit
 
 from qibocal.config import log
 
 from .serialize import deserialize, load, serialize
+
+QubitId = Union[str, int]
+QubitPairId = tuple[QubitId, QubitId]
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""

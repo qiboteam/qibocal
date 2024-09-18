@@ -1,9 +1,8 @@
 from dataclasses import dataclass
 
-from qibolab.identifier import QubitPairId
 from qibolab.platform import Platform
 
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import QubitPairId, Routine
 from qibocal.protocols.randomized_benchmarking.standard_rb import (
     StandardRBParameters,
     _plot,

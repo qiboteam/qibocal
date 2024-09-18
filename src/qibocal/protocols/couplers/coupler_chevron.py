@@ -3,12 +3,11 @@ from typing import Optional
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.identifier import QubitPairId
 from qibolab.platform import Platform
 from qibolab.sequence import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
-from qibocal.auto.operation import Results, Routine
+from qibocal.auto.operation import QubitPairId, Results, Routine
 
 from ..two_qubit_interaction.chevron.chevron import (
     ChevronData,

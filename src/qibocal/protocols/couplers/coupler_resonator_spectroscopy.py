@@ -1,11 +1,10 @@
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.identifier import QubitPairId
 from qibolab.platform import Platform
 from qibolab.sequence import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import QubitPairId, Routine
 
 from ..flux_dependence.utils import flux_dependence_plot
 from ..two_qubit_interaction.utils import order_pair

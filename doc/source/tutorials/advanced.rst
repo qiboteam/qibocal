@@ -191,7 +191,7 @@ In the acquisition function we are going to perform the experiment.
       .. code-block:: python
 
         from qibolab.platform import Platform
-        from qibolab.identifier import QubitId, QubitPairId
+        from qibocal.auto.operation import QubitId, QubitPairId
         from typing import Union
 
         def acquisition(params: RoutineParameters, platform: Platform, targets: Union[list[QubitId], list[QubitPairId], list[list[QubitId]]]) -> RoutineData
@@ -201,7 +201,7 @@ In the acquisition function we are going to perform the experiment.
 .. code-block:: python
 
     from qibolab.platform import Platform
-    from qibolab.identifier import QubitId
+    from qibocal.auto.operation import QubitId
 
     def acquisition(
         params: RotationParameters,
@@ -252,7 +252,7 @@ parameters for each qubit.
 
 .. code-block:: python
 
-    from qibolab.identifier import QubitId
+    from qibocal.auto.operation import QubitId
 
     @dataclass
     class RotationResults(Results):
@@ -344,7 +344,7 @@ Here is the plotting function for the protocol that we are coding:
 .. code-block:: python
 
     import plotly.graph_objects as go
-    from qibolab.identifier import QubitId
+    from qibocal.auto.operation import QubitId
 
     def plot(data: RotationData, fit: RotationResults, target: QubitId):
     """Plotting function for rotation."""

@@ -1,7 +1,8 @@
 import numpy as np
-from qibolab.identifier import QubitPairId
 from qibolab.platform import Platform
 from qibolab.sequence import PulseSequence
+
+from qibocal.auto.operation import QubitPairId
 
 from ..utils import order_pair
 

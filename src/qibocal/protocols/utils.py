@@ -7,12 +7,11 @@ import pandas as pd
 import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
-from qibolab.identifier import QubitId
 from scipy import constants
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
-from qibocal.auto.operation import Data, Results
+from qibocal.auto.operation import Data, QubitId, Results
 from qibocal.config import log
 from qibocal.fitting.classifier import run
 from qibocal.protocols.resonator_utils import (

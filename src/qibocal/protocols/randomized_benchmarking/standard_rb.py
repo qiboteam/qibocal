@@ -3,10 +3,9 @@ from typing import Iterable, Optional, TypedDict, Union
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.identifier import QubitId
 from qibolab.platform import Platform
 
-from qibocal.auto.operation import Parameters, Routine
+from qibocal.auto.operation import Parameters, QubitId, Routine
 
 from ..utils import table_dict, table_html
 from .fitting import exp1B_func

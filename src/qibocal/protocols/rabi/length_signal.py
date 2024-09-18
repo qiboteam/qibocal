@@ -4,12 +4,11 @@ from typing import Optional, Union
 import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.identifier import QubitId
 from qibolab.platform import Platform
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import fallback_period, guess_period
 from qibocal.result import magnitude, phase

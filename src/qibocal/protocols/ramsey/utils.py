@@ -2,10 +2,10 @@ from typing import Optional
 
 import numpy as np
 from qibolab import Platform
-from qibolab.identifier import QubitId
 from qibolab.sequence import PulseSequence
 from scipy.optimize import curve_fit
 
+from qibocal.auto.operation import QubitId
 from qibocal.protocols.utils import fallback_period, guess_period
 
 POPT_EXCEPTION = [0, 0, 0, 0, 1]

@@ -2,11 +2,10 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.identifier import QubitId
 from qibolab.platform import Platform
 
 from qibocal import update
-from qibocal.auto.operation import Parameters, Results, Routine
+from qibocal.auto.operation import Parameters, QubitId, Results, Routine
 from qibocal.protocols import classification
 from qibocal.protocols.utils import table_dict, table_html
 

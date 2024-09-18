@@ -1,13 +1,12 @@
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab.identifier import QubitId
 from qibolab.platform import Platform
 from qibolab.pulses import Delay
 from qibolab.sequence import PulseSequence
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Parameters
+from qibocal.auto.operation import Parameters, QubitId
 
 from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
 

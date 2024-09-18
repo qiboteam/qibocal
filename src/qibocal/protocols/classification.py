@@ -8,14 +8,20 @@ import numpy.typing as npt
 import pandas as pd
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, ExecutionParameters
-from qibolab.identifier import QubitId
 from qibolab.platform import Platform
 from qibolab.pulses import Delay
 from qibolab.sequence import PulseSequence
 from sklearn.metrics import roc_auc_score, roc_curve
 
 from qibocal import update
-from qibocal.auto.operation import RESULTSFILE, Data, Parameters, Results, Routine
+from qibocal.auto.operation import (
+    RESULTSFILE,
+    Data,
+    Parameters,
+    QubitId,
+    Results,
+    Routine,
+)
 from qibocal.auto.serialize import serialize
 from qibocal.fitting.classifier import run
 from qibocal.protocols.utils import (

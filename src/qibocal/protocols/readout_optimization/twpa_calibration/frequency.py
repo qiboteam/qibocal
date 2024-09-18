@@ -3,11 +3,10 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab.identifier import QubitId
 from qibolab.platform import Platform
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.protocols import classification
 from qibocal.protocols.readout_optimization.resonator_frequency import (
     ResonatorFrequencyType,
