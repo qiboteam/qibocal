@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from typing import Union
 
 import numpy as np
-from qibolab import Platform, pulses
+from qibolab import Platform
 
 from qibocal.auto.operation import QubitId, QubitPairId
 

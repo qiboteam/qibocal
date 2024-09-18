@@ -194,12 +194,14 @@ def _acquisition(
         ro_pulses = {}
         sequence = PulseSequence()
         for q in targets:
-            ro_sequence = native.MZ()
+            ro_sequence = native[q].MZ()
             ro_pulses[q] = ro_sequence[0][1].id
             sequence += ro_sequence
 
         if state == 1:
-            rx_sequence = sum([native[q].RX() for q in targets], PulseSequence)
+            rx_sequence = PulseSequence()
+            for q in targets:
+                rx_sequence += native[q].RX()
             sequence = rx_sequence | sequence
 
         sequences.append(sequence)
