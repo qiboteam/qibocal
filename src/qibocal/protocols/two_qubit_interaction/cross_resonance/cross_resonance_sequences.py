@@ -34,7 +34,15 @@ class CrossResonanceSeqResults(Results):
 
 @dataclass
 class CrossResonanceSeqData(Data):
-    """Data structure for Cross Resonance Gate Calibration using Sequences."""
+    """Data structure for Cross Resonance Gate Calibration using Sequences.
+    targets: [target, control]
+    I:
+        Q_C: Pulse(omega_T, t) 
+        Q_T: Pulse(omega_T, t) - MZ
+    X:
+        Q_C: RX   - Pulse(omega_T, t) 
+        Q_T:      - Pulse(omega_T, t) - MZ
+    """
     data: dict[QubitId, npt.NDArray[CrossResonanceType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -42,6 +50,8 @@ def _acquisition(
     params: CrossResonanceSeqParameters, platform: Platform, targets: list[QubitPairId]
 ) -> CrossResonanceSeqData:
     """Data acquisition for Cross Resonance Gate Calibration using Sequences."""
+    from qibolab.pulses import Pulse, Rectangular, PulseType, Gaussian, GaussianSquare
+    from qibolab.native import NativePulse
 
     data = CrossResonanceSeqData()
     
@@ -52,22 +62,44 @@ def _acquisition(
             for duration in params.duration_range:
                 target, control = pair
                 sequence = PulseSequence()
-                control_drive_freq = platform.qubits[control].native_gates.RX.frequency
+                tg_native_rx:NativePulse = platform.qubits[target].native_gates.RX.pulse(start=0)
+                cr_native_rx:NativePulse = platform.qubits[control].native_gates.RX.pulse(start=0)
 
                 if setup == "X":
-                    rx_control = platform.create_RX_pulse(control, 0)
-                    cr_pulse = platform.create_RX_pulse(target, start= rx_control.finish)
+                    rx_control = platform.create_RX_pulse(control, start = 0)
                     sequence.add(rx_control)
+                    next_start = rx_control.finish
                 else:
-                    cr_pulse = platform.create_RX_pulse(target, 0)
+                    next_start = 0
+                   
+                cr_pulse: Pulse = Pulse(start=next_start,
+                                duration=duration,
+                                amplitude=cr_native_rx.amplitude,
+                                frequency=tg_native_rx.frequency,   #target frequency
+                                relative_phase=0,
+                                shape=Gaussian(5),
+                                qubit=control,
+                                channel= cr_native_rx.channel ,type=PulseType.DRIVE
+                                )
+                
+                tg_pulse: Pulse = Pulse(start=next_start,
+                                duration=duration,
+                                amplitude=tg_native_rx.amplitude,
+                                frequency=tg_native_rx.frequency,
+                                relative_phase=0,
+                                shape=Gaussian(5),
+                                qubit=target,
+                                channel= tg_native_rx.channel ,type=PulseType.DRIVE
+                                )
 
-                cr_pulse.frequency = control_drive_freq
-                cr_pulse.duration = duration
                 if params.pulse_amplitude is not None:
                     cr_pulse.amplitude = params.pulse_amplitude
-                sequence.add(cr_pulse)
+                    tg_pulse.amplitude = params.pulse_amplitude
 
-                ro_pulse = platform.create_qubit_readout_pulse(target, start=cr_pulse.finish)
+                sequence.add(cr_pulse)
+                sequence.add(tg_pulse)
+
+                ro_pulse = platform.create_qubit_readout_pulse(target, start=tg_pulse.finish)
                 sequence.add(ro_pulse)
                     
                 results = platform.execute_pulse_sequence(
