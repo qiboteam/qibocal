@@ -231,8 +231,8 @@ def sequence_amplitude(
     durations = {}
     for q in targets:
         natives = platform.natives.single_qubit[q]
-        qd_sequence = natives.RX.create_sequence(theta=np.pi, phi=0)
-        ro_sequence = natives.MZ.create_sequence()
+        qd_sequence = natives.RX()
+        ro_sequence = natives.MZ()
 
         qd_pulses[q] = qd_sequence[0][1]
         if params.pulse_length is not None:
@@ -262,8 +262,8 @@ def sequence_length(
     amplitudes = {}
     for q in targets:
         natives = platform.natives.single_qubit[q]
-        qd_sequence = natives.RX.create_sequence(theta=np.pi, phi=0)
-        ro_sequence = natives.MZ.create_sequence()
+        qd_sequence = natives.RX()
+        ro_sequence = natives.MZ()
 
         qd_pulses[q] = qd_sequence[0][1]
         if params.pulse_amplitude is not None:
