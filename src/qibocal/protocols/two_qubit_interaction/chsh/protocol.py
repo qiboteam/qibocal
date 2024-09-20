@@ -9,7 +9,7 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from qibo.backends import GlobalBackend
-from qibolab import ExecutionParameters, Platform
+from qibolab import Platform
 
 from qibocal.auto.operation import (
     Data,

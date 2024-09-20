@@ -6,7 +6,6 @@ import numpy.typing as npt
 from qibolab import (
     AcquisitionType,
     AveragingMode,
-    ExecutionParameters,
     Parameter,
     Platform,
     PulseSequence,

@@ -2,14 +2,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import (
-    AcquisitionType,
-    AveragingMode,
-    ExecutionParameters,
-    Parameter,
-    Platform,
-    Sweeper,
-)
+from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
 
 from qibocal import update
 from qibocal.auto.operation import Data, QubitId, Routine
@@ -73,13 +66,11 @@ def _acquisition(
     # sweep the parameter
     results = platform.execute(
         [sequence],
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
-        ),
         [[sweeper]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
     for qubit in targets:
         prob = probability(results[ro_pulses[qubit].id], state=1)

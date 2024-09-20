@@ -3,14 +3,7 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import (
-    AcquisitionType,
-    AveragingMode,
-    ExecutionParameters,
-    Parameter,
-    Platform,
-    Sweeper,
-)
+from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
 
 from qibocal import update
 from qibocal.auto.operation import Parameters, QubitId, Routine
@@ -97,13 +90,11 @@ def _acquisition(
     # execute the sweep
     results = platform.execute(
         [sequence],
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
-        ),
         [[sweeper]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
 
     for q in targets:

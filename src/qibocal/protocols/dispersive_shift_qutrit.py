@@ -7,7 +7,6 @@ from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
-    ExecutionParameters,
     Parameter,
     Platform,
     PulseSequence,

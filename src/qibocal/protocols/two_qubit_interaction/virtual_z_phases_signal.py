@@ -3,14 +3,7 @@
 from dataclasses import dataclass
 
 import numpy as np
-from qibolab import (
-    AcquisitionType,
-    AveragingMode,
-    ExecutionParameters,
-    Parameter,
-    Platform,
-    Sweeper,
-)
+from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
 
 from qibocal.auto.operation import QubitPairId, Routine
 

@@ -5,7 +5,6 @@ import numpy as np
 from qibolab import (
     AcquisitionType,
     AveragingMode,
-    ExecutionParameters,
     Parameter,
     Platform,
     PulseSequence,

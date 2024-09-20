@@ -6,7 +6,6 @@ import plotly.graph_objects as go
 from qibolab import (
     AcquisitionType,
     AveragingMode,
-    ExecutionParameters,
     Parameter,
     Platform,
     PulseSequence,

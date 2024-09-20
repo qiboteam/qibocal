@@ -7,7 +7,6 @@ from qibolab import (
     AcquisitionType,
     AveragingMode,
     Delay,
-    ExecutionParameters,
     Parameter,
     Platform,
     PulseSequence,

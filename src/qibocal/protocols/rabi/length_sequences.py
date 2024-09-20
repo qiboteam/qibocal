@@ -1,5 +1,5 @@
 import numpy as np
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters, Platform
+from qibolab import AcquisitionType, AveragingMode, Platform
 
 from qibocal.auto.operation import QubitId, Routine
 

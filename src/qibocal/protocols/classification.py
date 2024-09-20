@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, ExecutionParameters, Platform, PulseSequence
+from qibolab import AcquisitionType, Platform, PulseSequence
 from sklearn.metrics import roc_auc_score, roc_curve
 
 from qibocal import update
@@ -217,18 +217,18 @@ def _acquisition(
         savedir=params.savedir,
     )
 
-    options = ExecutionParameters(
+    options = dict(
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
     )
 
     if params.unrolling:
-        results = platform.execute(sequences, options)
+        results = platform.execute(sequences, **options)
     else:
         results = {}
         for sequence in sequences:
-            results.update(platform.execute([sequence], options))
+            results.update(platform.execute([sequence], **options))
 
     for state, ro_pulses in zip([0, 1], all_ro_pulses):
         for qubit in targets:

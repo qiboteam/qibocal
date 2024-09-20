@@ -3,13 +3,7 @@ from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import (
-    AcquisitionType,
-    AveragingMode,
-    ExecutionParameters,
-    Platform,
-    PulseSequence,
-)
+from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence
 
 from qibocal.auto.operation import QubitId, Routine
 

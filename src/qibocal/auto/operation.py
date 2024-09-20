@@ -9,7 +9,7 @@ from typing import Callable, Generic, NewType, Optional, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters, Platform, Qubit
+from qibolab import AcquisitionType, AveragingMode, Platform, Qubit
 
 from qibocal.config import log
 
