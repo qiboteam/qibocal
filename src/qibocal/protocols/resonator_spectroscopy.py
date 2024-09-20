@@ -229,8 +229,8 @@ def _acquisition(
 
     results = platform.execute(
         [sequence],
-        params.execution_parameters,
         [sweepers],
+        **params.execution_parameters,
     )
 
     # retrieve the results for every qubit

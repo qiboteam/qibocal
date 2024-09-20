@@ -112,7 +112,7 @@ class Parameters:
             if self.classify
             else AcquisitionType.INTEGRATION
         )
-        return ExecutionParameters(
+        return dict(
             nshots=self.nshots,
             relaxation_time=self.relaxation_time,
             acquisition_type=acquisition_type,
