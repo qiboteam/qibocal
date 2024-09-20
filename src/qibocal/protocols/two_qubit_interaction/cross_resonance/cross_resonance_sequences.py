@@ -50,84 +50,86 @@ def _acquisition(
     params: CrossResonanceSeqParameters, platform: Platform, targets: list[QubitPairId]
 ) -> CrossResonanceSeqData:
     """Data acquisition for Cross Resonance Gate Calibration using Sequences."""
-    from qibolab.pulses import Pulse, Rectangular, PulseType, Gaussian, GaussianSquare
+    from qibolab.pulses import Pulse, Rectangular, PulseType, Gaussian
     from qibolab.native import NativePulse
 
     data = CrossResonanceSeqData()
     
     for pair in targets:
         for setup in ["I", "X"]:
-
+            for tgt_state in [0,1]:
             # sweep the parameter
-            for duration in params.duration_range:
-                target, control = pair
-                sequence = PulseSequence()
-                tg_native_rx:NativePulse = platform.qubits[target].native_gates.RX.pulse(start=0)
-                cr_native_rx:NativePulse = platform.qubits[control].native_gates.RX.pulse(start=0)
+                for duration in params.duration_range:
+                    target, control = pair
+                    sequence = PulseSequence()
+                    tg_native_rx:NativePulse = platform.qubits[target].native_gates.RX.pulse(start=0)
+                    cr_native_rx:NativePulse = platform.qubits[control].native_gates.RX.pulse(start=0)
 
-                if setup == "X":
-                    rx_control = platform.create_RX_pulse(control, start = 0)
-                    sequence.add(rx_control)
-                    next_start = rx_control.finish
-                else:
                     next_start = 0
-                   
-                cr_pulse: Pulse = Pulse(start=next_start,
-                                duration=duration,
-                                amplitude=cr_native_rx.amplitude,
-                                frequency=tg_native_rx.frequency,   #target frequency
-                                relative_phase=0,
-                                shape=Gaussian(5),
-                                qubit=control,
-                                channel= cr_native_rx.channel ,type=PulseType.DRIVE
-                                )
-                
-                tg_pulse: Pulse = Pulse(start=next_start,
-                                duration=duration,
-                                amplitude=tg_native_rx.amplitude,
-                                frequency=tg_native_rx.frequency,
-                                relative_phase=0,
-                                shape=Gaussian(5),
-                                qubit=target,
-                                channel= tg_native_rx.channel ,type=PulseType.DRIVE
-                                )
+                    if tgt_state == 1:
+                        sequence.add(tg_native_rx)
+                        next_start = tg_native_rx.finish
 
-                if params.pulse_amplitude is not None:
-                    cr_pulse.amplitude = params.pulse_amplitude
-                    tg_pulse.amplitude = params.pulse_amplitude
-
-                sequence.add(cr_pulse)
-                sequence.add(tg_pulse)
-
-                ro_pulse = platform.create_qubit_readout_pulse(target, start=tg_pulse.finish)
-                sequence.add(ro_pulse)
+                    if setup == "X":
+                        sequence.add(cr_native_rx)
+                        next_start = max(cr_native_rx.finish, next_start)
                     
-                results = platform.execute_pulse_sequence(
-                    sequence,
-                    ExecutionParameters(
-                        nshots=params.nshots,
-                        relaxation_time=params.relaxation_time,
-                        #acquisition_type=AcquisitionType.DISCRIMINATION,
-                        acquisition_type=AcquisitionType.INTEGRATION,
-                        #averaging_mode=AveragingMode.SINGLESHOT,
-                        averaging_mode=AveragingMode.CYCLIC,
-                    ),
-                )
+                    # tg_pulse: Pulse = Pulse(start=next_start,
+                    #                 duration=duration,
+                    #                 amplitude=tg_native_rx.amplitude,
+                    #                 frequency=cr_native_rx.frequency,   # control frequency
+                    #                 relative_phase=0,
+                    #                 shape=Gaussian(5),
+                    #                 qubit=target,
+                    #                 channel= tg_native_rx.channel ,type=PulseType.DRIVE
+                    #                 )
+                    cr_pulse: Pulse = Pulse(start=next_start,
+                                    duration=duration,
+                                    amplitude=cr_native_rx.amplitude,
+                                    frequency=tg_native_rx.frequency,   # control frequency
+                                    relative_phase=0,
+                                    shape=Gaussian(5),
+                                    qubit=control,
+                                    channel= cr_native_rx.channel ,type=PulseType.DRIVE
+                                    )
 
-                # Store Results
-                #result = results[target].probability(state=0)
-                result = results[target]
-                print(result)
-                data.register_qubit(
-                    CrossResonanceType,
-                    (target, control, setup),
-                    dict(
-                        #prob=np.array([result]),
-                        length=np.array([duration]),
-                        magnitude=np.array([result.magnitude]),
-                        phase=np.array([result.phase]),
-                    ),
-                )
+                    if params.pulse_amplitude is not None:
+                        cr_pulse.amplitude = params.pulse_amplitude
+                        # tg_pulse.amplitude = params.pulse_amplitude
+
+                    sequence.add(cr_pulse)
+                    #sequence.add(tg_pulse)
+
+                    ro_pulse = platform.create_qubit_readout_pulse(target, start=cr_pulse.finish)
+                    sequence.add(ro_pulse)
+                        
+                    results = platform.execute_pulse_sequence(
+                        sequence,
+                        ExecutionParameters(
+                            nshots=params.nshots,
+                            relaxation_time=params.relaxation_time,
+                            #acquisition_type=AcquisitionType.DISCRIMINATION,
+                            acquisition_type=AcquisitionType.INTEGRATION,
+                            #averaging_mode=AveragingMode.SINGLESHOT,
+                            averaging_mode=AveragingMode.CYCLIC,
+                        ),
+                    )
+
+                    # Store Results
+                    #result = results[target].probability(state=0)
+                    result = results[target]
+                    print(result)
+                    data.register_qubit(
+                        CrossResonanceType,
+                        (target, control, setup, tgt_state),
+                        dict(
+                            #prob=np.array([result]),
+                            length=np.array([duration]),
+                            magnitude=np.array([result.magnitude]),
+                            phase=np.array([result.phase]),
+                        ),
+                    )
+        
     return data
 
 
@@ -141,14 +143,16 @@ def _fit(
 def _plot(data: CrossResonanceSeqData, target: QubitPairId, fit: CrossResonanceSeqResults):
     """Plotting function for Cross Resonance Gate Calibration using Sequences."""
 
-    control_idle_data = data.data[target[0], target[1], "I"]
-    control_excited_data = data.data[target[0], target[1], "X"]
+    control_idle_data = data.data[target[0], target[1], "I", 0]
+    control_excited_data = data.data[target[0], target[1], "X", 0]
+    control_idle_data_1 = data.data[target[0], target[1], "I", 1]
+    control_excited_data_1 = data.data[target[0], target[1], "X", 1]
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
             x=control_idle_data.length,
             y=control_idle_data.magnitude, 
-            name="Control at 0"
+            name="Control at |0>, Target at |0>"
         ),
     )
 
@@ -156,9 +160,29 @@ def _plot(data: CrossResonanceSeqData, target: QubitPairId, fit: CrossResonanceS
         go.Scatter(
             x=control_excited_data.length,
             y=control_excited_data.magnitude,
-            name="Control at 1",
+            name="Control at |1>, Target at |0>",
         ),
     )
+
+    fig.add_trace(
+        go.Scatter(
+            x=control_idle_data_1.length,
+            y=control_idle_data_1.magnitude,
+            mode='lines', line={'dash': 'dash'}, 
+            name="Control at |0>, Target at |1>"
+        ),
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=control_excited_data_1.length,
+            y=control_excited_data_1.magnitude,
+            mode='lines', line={'dash': 'dash'},
+            name="Control at |1>, Target at |1>",
+        ),
+    )
+
+    
 
     fig.update_layout(
             showlegend=True,
