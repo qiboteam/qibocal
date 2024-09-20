@@ -5,7 +5,14 @@ from typing import Optional, Union
 import numpy as np
 import numpy.typing as npt
 from _collections_abc import Callable
-from qibolab import Parameter, Platform, PulseSequence, Sweeper
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Platform,
+    PulseSequence,
+    Sweeper,
+)
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
@@ -230,23 +237,28 @@ def _acquisition(
     results = platform.execute(
         [sequence],
         [sweepers],
-        **params.execution_parameters,
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
 
     # retrieve the results for every qubit
     for q in targets:
-        result = results[ro_pulses[q].id][0]
+        result = results[ro_pulses[q].id]
         # store the results
         ro_frequency = platform.config(platform.qubits[q].probe).frequency
+        signal = magnitude(result)
+        phase_ = phase(result)
         data.register_qubit(
             ResSpecType,
             (q),
             dict(
-                signal=magnitude(result),
-                phase=phase(result),
+                signal=signal.mean(axis=0),
+                phase=phase_.mean(axis=0),
                 freq=delta_frequency_range + ro_frequency,
-                # error_signal=error_signal,
-                # error_phase=error_phase,
+                error_signal=np.std(signal, axis=0, ddof=1) / np.sqrt(signal.shape[0]),
+                error_phase=np.std(phase_, axis=0, ddof=1) / np.sqrt(phase_.shape[0]),
             ),
         )
     return data
