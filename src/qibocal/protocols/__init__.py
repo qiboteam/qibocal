@@ -27,7 +27,7 @@ from .flux_dependence.qubit_flux_dependence import qubit_flux
 from .flux_dependence.qubit_flux_tracking import qubit_flux_tracking
 from .flux_dependence.resonator_crosstalk import resonator_crosstalk
 from .flux_dependence.resonator_flux_dependence import resonator_flux
-from .qua import rb_ondevice
+from .qua import rb_ondevice, rb_qua_two_qubit
 from .qubit_power_spectroscopy import qubit_power_spectroscopy
 from .qubit_spectroscopy import qubit_spectroscopy
 from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
@@ -154,4 +154,5 @@ __all__ = [
     "mermin",
     "ramsey_zz",
     "rb_ondevice",
+    "rb_qua_two_qubit",
 ]

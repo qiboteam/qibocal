@@ -1,13 +1,15 @@
-import dataclasses
+from dataclasses import dataclass
 
 import numpy as np
 import xarray as xr
 from matplotlib import pyplot as plt
 from scipy.optimize import curve_fit
 
+from qibocal.auto.operation import Data
 
-@dataclasses.dataclass
-class RBResult:
+
+@dataclass
+class QuaTwoQubitRbData(Data):
     """
     Class for analyzing and visualizing the results of a Randomized Benchmarking (RB) experiment.
 
@@ -46,13 +48,14 @@ class RBResult:
         if len(self.circuit_depths) < n_cols:
             n_cols = len(self.circuit_depths)
         n_rows = max(int(np.ceil(len(self.circuit_depths) / n_cols)), 1)
-        plt.figure()
+        fig = plt.figure()
         for i, circuit_depth in enumerate(self.circuit_depths, start=1):
             ax = plt.subplot(n_rows, n_cols, i)
             self.data.state.sel(circuit_depth=circuit_depth).plot.hist(
                 ax=ax, xticks=range(4)
             )
         plt.tight_layout()
+        return fig
 
     def plot(self):
         """
@@ -72,7 +75,7 @@ class RBResult:
         A, alpha, B = self.fit_exponential()
         fidelity = self.get_fidelity(alpha)
 
-        plt.figure()
+        fig = plt.figure()
         plt.plot(self.circuit_depths, self.get_decay_curve(), "o", label="Data")
         plt.plot(
             self.circuit_depths,
@@ -84,7 +87,7 @@ class RBResult:
         plt.ylabel("Fidelity")
         plt.title("2Q Randomized Benchmarking Fidelity")
         plt.legend()
-        plt.show()
+        return fig
 
     def fit_exponential(self):
         """

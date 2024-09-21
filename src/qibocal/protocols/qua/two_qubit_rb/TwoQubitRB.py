@@ -10,7 +10,7 @@ from qualang_tools.bakery.bakery import Baking
 
 from .gates import GateGenerator, gate_db, tableau_from_cirq
 from .RBBaker import RBBaker
-from .RBResult import RBResult
+from .RBResult import QuaTwoQubitRbData
 from .simple_tableau import SimpleTableau
 from .util import pbar, run_in_thread
 from .verification.command_registry import (
@@ -284,7 +284,7 @@ class TwoQubitRb:
         pbar(job.result_handles, full_progress, "progress")
         job.result_handles.wait_for_all_values()
 
-        return RBResult(
+        return QuaTwoQubitRbData(
             circuit_depths=circuit_depths,
             num_repeats=num_circuits_per_depth,
             num_averages=num_shots_per_circuit,
