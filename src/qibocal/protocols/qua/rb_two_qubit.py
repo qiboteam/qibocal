@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
-from qm.qua import align, assign, declare, dual_demod, save, wait
+from qm.qua import align, assign, declare, dual_demod, fixed, measure, save, wait
 from qualang_tools.bakery.bakery import Baking
 
 from qibocal.auto.operation import Parameters, Results, Routine
@@ -46,8 +46,8 @@ def _acquisition(
                 "measure",
                 f"readout{qb}",
                 None,
-                dual_demod.full(weights + "cos", weights + "sin", I[ind]),
-                dual_demod.full(weights + "minus_sin", weights + "cos", Q[ind]),
+                dual_demod.full("cos", "out1", "sin", "out2", I[ind]),
+                dual_demod.full("minus_sin", "out1", "cos", "out2", Q[ind]),
             )
             if I_st is not None:
                 save(I[ind], I_st[ind])
@@ -69,7 +69,7 @@ def _acquisition(
         state1 = declare(bool)
         state2 = declare(bool)
         # readout macro for multiplexed readout
-        multiplexed_readout([I1, I2], None, [Q1, Q2], None, resonators=[qubit1, qubit2])
+        multiplexed_readout([I1, I2], None, [Q1, Q2], None, qubits=[qubit1, qubit2])
         discriminate(qubit1, I1, Q1, state1)
         discriminate(qubit2, I2, Q2, state2)
         return state1, state2
