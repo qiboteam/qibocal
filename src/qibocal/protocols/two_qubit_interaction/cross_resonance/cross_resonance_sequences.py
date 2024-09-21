@@ -38,10 +38,10 @@ class CrossResonanceSeqData(Data):
     targets: [target, control]
     I:
         Q_C: Pulse(omega_T, t) 
-        Q_T: Pulse(omega_T, t) - MZ
+        Q_T: wait               - MZ
     X:
         Q_C: RX   - Pulse(omega_T, t) 
-        Q_T:      - Pulse(omega_T, t) - MZ
+        Q_T:      - wait               - MZ
     """
     data: dict[QubitId, npt.NDArray[CrossResonanceType]] = field(default_factory=dict)
     """Raw data acquired."""
