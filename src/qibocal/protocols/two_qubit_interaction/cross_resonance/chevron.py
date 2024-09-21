@@ -95,16 +95,16 @@ def _acquisition(
         for setup in ["I", "X"]:
             target, control = pair
             sequence = PulseSequence()
-            control_drive_freq = platform.qubits[control].native_gates.RX.frequency
+            target_drive_freq = platform.qubits[target].native_gates.RX.frequency
 
             if setup == "X":
                 rx_control = platform.create_RX_pulse(control, 0)
-                pulse = platform.create_RX_pulse(target, rx_control.finish)
+                pulse = platform.create_RX_pulse(control, rx_control.finish)
                 sequence.add(rx_control)
             else:
-                pulse = platform.create_RX_pulse(target, 0)
+                pulse = platform.create_RX_pulse(control, 0)
 
-            pulse.frequency = control_drive_freq
+            pulse.frequency = target_drive_freq
             if params.pulse_amplitude is not None:
                 pulse.amplitude = params.pulse_amplitude
             sequence.add(pulse)

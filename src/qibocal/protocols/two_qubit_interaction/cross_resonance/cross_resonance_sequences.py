@@ -108,25 +108,25 @@ def _acquisition(
                         ExecutionParameters(
                             nshots=params.nshots,
                             relaxation_time=params.relaxation_time,
-                            #acquisition_type=AcquisitionType.DISCRIMINATION,
-                            acquisition_type=AcquisitionType.INTEGRATION,
-                            #averaging_mode=AveragingMode.SINGLESHOT,
-                            averaging_mode=AveragingMode.CYCLIC,
+                            acquisition_type=AcquisitionType.DISCRIMINATION,
+                            # acquisition_type=AcquisitionType.INTEGRATION,
+                            averaging_mode=AveragingMode.SINGLESHOT,
+                            # averaging_mode=AveragingMode.CYCLIC,
                         ),
                     )
 
                     # Store Results
-                    #result = results[target].probability(state=0)
                     result = results[target]
                     print(result)
                     data.register_qubit(
                         CrossResonanceType,
                         (target, control, setup, tgt_state),
                         dict(
-                            #prob=np.array([result]),
                             length=np.array([duration]),
-                            magnitude=np.array([result.magnitude]),
-                            phase=np.array([result.phase]),
+                            # magnitude=np.array([result.magnitude]),
+                            # phase=np.array([result.phase]),
+                            magnitude=np.array([result.probability(state=0)]),
+                            phase=np.array([0])
                         ),
                     )
         
