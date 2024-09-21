@@ -1,14 +1,19 @@
-import matplotlib.pyplot as plt
+from dataclasses import dataclass
+
 import numpy as np
+from qibolab.platform import Platform
+from qibolab.qubits import QubitId, QubitPairId
 from qm.qua import align, assign, declare, dual_demod, save, wait
 from qualang_tools.bakery.bakery import Baking
-from two_qubit_rb import TwoQubitRb
+
+from qibocal.auto.operation import Parameters, Results, Routine
 
 from .configuration import generate_config
+from .two_qubit_rb import QuaTwoQubitRbData, TwoQubitRb
 
 
 @dataclass
-class QuaRbTwoQubitParameters(Parameters):
+class QuaTwoQubitRbParameters(Parameters):
     circuit_depths: list[int]
     """How many consecutive Clifford gates within one executed circuit
 
@@ -21,8 +26,8 @@ class QuaRbTwoQubitParameters(Parameters):
 
 
 def _acquisition(
-    params: QuaRbTwoQubitParameters, platform: Platform, targets: list[QubitPairId]
-):
+    params: QuaTwoQubitRbParameters, platform: Platform, targets: list[QubitPairId]
+) -> QuaTwoQubitRbData:
     assert len(targets) == 1
     qubit1, qubit2 = targets[0]
 
@@ -129,23 +134,34 @@ def _acquisition(
         num_shots_per_circuit=params.num_shots_per_circuit,
     )
 
+    # verify/save the random sequences created during the experiment
+    # rb.save_sequences_to_file(
+    #     "sequences.txt"
+    # )  # saves the gates used in each random sequence
+    # rb.save_command_mapping_to_file(
+    #     "commands.txt"
+    # )  # saves mapping from "command id" to sequence
+    # rb.print_sequence()
+    # rb.print_command_mapping()
+    # rb.verify_sequences()  # simulates random sequences to ensure they recover to ground state. takes a while...
 
-res.plot_hist()
-plt.show()
 
-res.plot_fidelity()
-plt.show()
+@dataclass
+class QuaTwoQubitRbResults(Results):
+    pass
 
-# verify/save the random sequences created during the experiment
-rb.save_sequences_to_file(
-    "sequences.txt"
-)  # saves the gates used in each random sequence
-rb.save_command_mapping_to_file(
-    "commands.txt"
-)  # saves mapping from "command id" to sequence
-# rb.print_sequence()
-# rb.print_command_mapping()
-# rb.verify_sequences()  # simulates random sequences to ensure they recover to ground state. takes a while...
+
+def _fit(data: QuaTwoQubitRbData) -> QuaTwoQubitRbResults:
+    return QuaTwoQubitRbResults()
+
+
+def _plot(data: QuaTwoQubitRbData, targets: QubitPairId, fit: QuaTwoQubitRbResults):
+    fitting_report = ""
+
+    figures = [data.plot_hist(), data.plot_with_fidelity()]
+
+    return figures, fitting_report
+
 
 # # get the interleaved gate fidelity
 # from two_qubit_rb.RBResult import get_interleaved_gate_fidelity
@@ -155,3 +171,10 @@ rb.save_command_mapping_to_file(
 #     # interleaved_alpha=res.fit_exponential()[1],  # alpha from the interleaved experiment
 # )
 # print(f"Interleaved Gate Fidelity: {interleaved_gate_fidelity*100:.3f}")
+
+
+def _update(results: QuaTwoQubitRbResults, platform: Platform, target: QubitId):
+    pass
+
+
+rb_qua_two_qubit = Routine(_acquisition, _fit, _plot, _update)
