@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 from qm.qua import align, assign, declare, dual_demod, save, wait
 from qualang_tools.bakery.bakery import Baking
 from two_qubit_rb import TwoQubitRb
@@ -83,10 +84,10 @@ def _acquisition(
         baker.play("x180", element, amp=x)
         baker.frame_rotation_2pi(-(a + z) / 2, element)
 
-    # TODO: Read virtual-Z phases from ``platform``
     # single qubit phase corrections in units of 2pi applied after the CZ gate
-    qubit1_frame_update = 0.23  # example values, should be taken from QPU parameters
-    qubit2_frame_update = 0.12  # example values, should be taken from QPU parameters
+    _, phases = platform.pairs[(qubit1, qubit2)].native_gates.CZ.sequence()
+    qubit1_frame_update = phases[qubit1] / (2 * np.pi)
+    qubit2_frame_update = phases[qubit2] / (2 * np.pi)
 
     # defines the CZ gate that realizes the mapping |00> -> |00>, |01> -> |01>, |10> -> |10>, |11> -> -|11>
     def bake_cz(baker: Baking, q1, q2):
@@ -107,7 +108,7 @@ def _acquisition(
     qmm = controller.manager
 
     # create RB experiment from configuration and defined functions
-    config = generate_config(platform.list(platform.qubits.keys()))
+    config = generate_config(platform, platform.qubits.keys(), targets=[qubit1, qubit2])
     rb = TwoQubitRb(
         config=config,
         single_qubit_gate_generator=bake_phased_xz,
