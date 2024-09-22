@@ -3,7 +3,7 @@ from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import cirq
 import numpy as np
-from qm import QuantumMachinesManager
+from qm import QuantumMachinesManager, generate_qua_script
 from qm.jobs.running_qm_job import RunningQmJob
 from qm.qua import *  # nopycln: import
 from qualang_tools.bakery.bakery import Baking
@@ -268,6 +268,9 @@ class TwoQubitRb:
             circuit_depths, num_circuits_per_depth, num_shots_per_circuit
         )
 
+        with open("rb2q_qua_script.py", "w") as file:
+            file.write(generate_qua_script(prog, self._config))
+
         qm = qmm.open_qm(self._config)
         job = qm.execute(prog)
 
@@ -288,7 +291,7 @@ class TwoQubitRb:
             circuit_depths=circuit_depths,
             num_repeats=num_circuits_per_depth,
             num_averages=num_shots_per_circuit,
-            state=job.result_handles.get("state").fetch_all(),
+            data={0: job.result_handles.get("state").fetch_all()},
         )
 
     def print_command_mapping(self):
