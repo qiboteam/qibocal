@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import numpy as np
+import numpy.typing as npt
 import xarray as xr
 from matplotlib import pyplot as plt
 from scipy.optimize import curve_fit
@@ -23,14 +24,14 @@ class QuaTwoQubitRbData(Data):
     circuit_depths: list[int]
     num_repeats: int
     num_averages: int
-    state: np.ndarray
+    data: dict[int, npt.NDArray]
 
     def __post_init__(self):
         """
         Initializes the xarray Dataset to store the RB experiment data.
         """
-        self.data = xr.Dataset(
-            data_vars={"state": (["circuit_depth", "repeat", "average"], self.state)},
+        self.xdata = xr.Dataset(
+            data_vars={"state": (["circuit_depth", "repeat", "average"], self.data[0])},
             coords={
                 "circuit_depth": self.circuit_depths,
                 "repeat": range(self.num_repeats),
@@ -38,7 +39,7 @@ class QuaTwoQubitRbData(Data):
             },
         )
 
-    def plot_hist(self, n_cols=3):
+    def plot_hist(self, n_cols=3, figsize=None):
         """
         Plots histograms of the N-qubit state distribution at each circuit depth.
 
@@ -48,10 +49,10 @@ class QuaTwoQubitRbData(Data):
         if len(self.circuit_depths) < n_cols:
             n_cols = len(self.circuit_depths)
         n_rows = max(int(np.ceil(len(self.circuit_depths) / n_cols)), 1)
-        fig = plt.figure()
+        fig = plt.figure(figsize=figsize)
         for i, circuit_depth in enumerate(self.circuit_depths, start=1):
             ax = plt.subplot(n_rows, n_cols, i)
-            self.data.state.sel(circuit_depth=circuit_depth).plot.hist(
+            self.xdata.state.sel(circuit_depth=circuit_depth).plot.hist(
                 ax=ax, xticks=range(4)
             )
         plt.tight_layout()
@@ -62,12 +63,12 @@ class QuaTwoQubitRbData(Data):
         Plots the raw recovery probability decay curve as a function of circuit depth.
         The curve is plotted using the averaged probability and without any fitting.
         """
-        recovery_probability = (self.data.state == 0).sum(("repeat", "average")) / (
+        recovery_probability = (self.xdata.state == 0).sum(("repeat", "average")) / (
             self.num_repeats * self.num_averages
         )
         recovery_probability.rename("Recovery Probability").plot.line()
 
-    def plot_with_fidelity(self):
+    def plot_with_fidelity(self, figsize=None):
         """
         Plots the RB fidelity as a function of circuit depth, including a fit to an exponential decay model.
         The fitted curve is overlaid with the raw data points.
@@ -75,7 +76,7 @@ class QuaTwoQubitRbData(Data):
         A, alpha, B = self.fit_exponential()
         fidelity = self.get_fidelity(alpha)
 
-        fig = plt.figure()
+        fig = plt.figure(figsize=figsize)
         plt.plot(self.circuit_depths, self.get_decay_curve(), "o", label="Data")
         plt.plot(
             self.circuit_depths,
@@ -136,7 +137,7 @@ class QuaTwoQubitRbData(Data):
         Returns:
             np.ndarray: Decay curve representing the fidelity as a function of circuit depth.
         """
-        return (self.data.state == 0).sum(("repeat", "average")) / (
+        return (self.xdata.state == 0).sum(("repeat", "average")) / (
             self.num_repeats * self.num_averages
         )
 

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+import mpld3
 import numpy as np
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
@@ -114,6 +115,12 @@ def _acquisition(
 
     # create RB experiment from configuration and defined functions
     config = generate_config(platform, platform.qubits.keys(), targets=[qubit1, qubit2])
+
+    # with open("rb2q_qua_config.py", "w") as file:
+    #     with program() as prog:
+    #         align()
+    #     file.write(generate_qua_script(prog, config))
+
     rb = TwoQubitRb(
         config=config,
         single_qubit_gate_generator=bake_phased_xz,
@@ -127,7 +134,7 @@ def _acquisition(
         verify_generation=False,
     )
 
-    res = rb.run(
+    data = rb.run(
         qmm,
         circuit_depths=params.circuit_depths,
         num_circuits_per_depth=params.num_circuits_per_depth,
@@ -144,6 +151,7 @@ def _acquisition(
     # rb.print_sequence()
     # rb.print_command_mapping()
     # rb.verify_sequences()  # simulates random sequences to ensure they recover to ground state. takes a while...
+    return data
 
 
 @dataclass
@@ -155,11 +163,15 @@ def _fit(data: QuaTwoQubitRbData) -> QuaTwoQubitRbResults:
     return QuaTwoQubitRbResults()
 
 
-def _plot(data: QuaTwoQubitRbData, targets: QubitPairId, fit: QuaTwoQubitRbResults):
+def _plot(data: QuaTwoQubitRbData, target: QubitId, fit: QuaTwoQubitRbResults):
     fitting_report = ""
 
-    figures = [data.plot_hist(), data.plot_with_fidelity()]
+    figures = [
+        data.plot_hist(n_cols=6, figsize=(12, len(data.circuit_depths) / 2)),
+        data.plot_with_fidelity(figsize=(12, 6)),
+    ]
 
+    figures = [mpld3.fig_to_html(fig) for fig in figures]
     return figures, fitting_report
 
 
