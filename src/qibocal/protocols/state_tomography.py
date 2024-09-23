@@ -147,8 +147,7 @@ def _fit(data: StateTomographyData) -> StateTomographyResults:
     circuit.density_matrix = True
     total_density_matrix = NumpyBackend().execute_circuit(circuit=circuit).state()
     for i, qubit in enumerate(data.targets):
-        traced_qubits = list(range(len(data.qubits)))
-        traced_qubits.remove(i)
+        traced_qubits = [q for q in range(len(data.qubits)) if q != i]
         target_density_matrix = NumpyBackend().partial_trace_density_matrix(
             total_density_matrix, traced_qubits, len(data.qubits)
         )
