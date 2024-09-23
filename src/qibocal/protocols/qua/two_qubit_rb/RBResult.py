@@ -106,7 +106,7 @@ class QuaTwoQubitRbData(Data):
             rb_decay_curve,
             self.circuit_depths,
             decay_curve,
-            p0=[0.75, -0.1, 0.25],
+            # p0=[0.75, -0.1, 0.25],
             maxfev=10000,
         )
         A, alpha, B = popt
