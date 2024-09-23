@@ -35,6 +35,18 @@ def _acquisition(
     assert len(targets) == 1
     qubit1, qubit2 = targets[0]
 
+    cz_sequence, phases = platform.pairs[(qubit1, qubit2)].native_gates.CZ.sequence()
+    if cz_sequence[0].qubit != qubit1:
+        if cz_sequence[0].qubit == qubit2:
+            qubit1, qubit2 = qubit2, qubit1
+        else:
+            raise ValueError("Flux pulse on different qubit not supported.")
+
+    print()
+    print(qubit1)
+    print(qubit2)
+    print()
+
     ##############################
     ## General helper functions ##
     ##############################
@@ -94,7 +106,6 @@ def _acquisition(
         baker.frame_rotation_2pi(-(a + z) / 2, element)
 
     # single qubit phase corrections in units of 2pi applied after the CZ gate
-    _, phases = platform.pairs[(qubit1, qubit2)].native_gates.CZ.sequence()
     qubit1_frame_update = phases[qubit1] / (2 * np.pi)
     qubit2_frame_update = phases[qubit2] / (2 * np.pi)
 
