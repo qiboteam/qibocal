@@ -42,11 +42,6 @@ def _acquisition(
         else:
             raise ValueError("Flux pulse on different qubit not supported.")
 
-    print()
-    print(qubit1)
-    print(qubit2)
-    print()
-
     ##############################
     ## General helper functions ##
     ##############################
