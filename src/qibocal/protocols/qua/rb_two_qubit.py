@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 import mpld3
 import numpy as np
@@ -21,9 +22,11 @@ class QuaTwoQubitRbParameters(Parameters):
     (https://qiskit.org/documentation/apidoc/circuit.html)
     """
     num_circuits_per_depth: int
-    "How many random circuits within one depth."
+    """How many random circuits within one depth."""
     num_shots_per_circuit: int
-    "Repetitions of the same circuit (averaging)."
+    """Repetitions of the same circuit (averaging)."""
+    debug: Optional[str] = None
+    """Dump QUA script and config in a file with this name."""
 
 
 def _acquisition(
@@ -139,6 +142,7 @@ def _acquisition(
         circuit_depths=params.circuit_depths,
         num_circuits_per_depth=params.num_circuits_per_depth,
         num_shots_per_circuit=params.num_shots_per_circuit,
+        debug=params.debug,
     )
 
     # verify/save the random sequences created during the experiment
