@@ -249,6 +249,7 @@ class TwoQubitRb:
         circuit_depths: List[int],
         num_circuits_per_depth: int,
         num_shots_per_circuit: int,
+        debug: Optional[str] = None,
         **kwargs,
     ):
         """
@@ -261,15 +262,16 @@ class TwoQubitRb:
             circuit_depths (List[int]): A list of the number of Cliffords per circuit (not including inverse).
             num_circuits_per_depth (int): The number of different circuit randomizations per depth.
             num_shots_per_circuit (int): The number of shots per particular circuit.
-
+            debug (str): If not ``None`` it dumps the QUA script and config in a file with the given name.
         """
 
         prog = self._gen_qua_program(
             circuit_depths, num_circuits_per_depth, num_shots_per_circuit
         )
 
-        with open("rb2q_qua_script.py", "w") as file:
-            file.write(generate_qua_script(prog, self._config))
+        if debug is not None:
+            with open(f"{debug}.py", "w") as file:
+                file.write(generate_qua_script(prog, self._config))
 
         qm = qmm.open_qm(self._config)
         job = qm.execute(prog)
