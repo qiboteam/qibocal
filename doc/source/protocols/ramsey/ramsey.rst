@@ -56,8 +56,8 @@ The expected output is the following:
 :math:`T_2` and :math:`\Delta \omega` are determined by fitting the output signal using
 the formula presented above.
 
-If the protocols is successful the drive frequency will be updated. For updating :math:`T_2`
-the user is invited to run ``T2 experiment``.
+If the protocols is successful the drive frequency will be updated only if a non-zero
+detuning is provided. :math:`T_2` is updated only in the case where detuning is 0.
 
 Requirements
 ^^^^^^^^^^^^
