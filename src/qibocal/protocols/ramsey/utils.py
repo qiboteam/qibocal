@@ -6,7 +6,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
 
-from qibocal.protocols.utils import fallback_period, guess_period
+from qibocal.protocols.utils import GHZ_TO_HZ, fallback_period, guess_period
 
 POPT_EXCEPTION = [0, 0, 0, 0, 1]
 """Fit parameters output to handle exceptions"""
@@ -111,3 +111,35 @@ def fitting(x: list, y: list, errors: list = None) -> list:
         perr[4] / delta_x,
     ]
     return popt, perr
+
+
+def process_fit(
+    popt: list[float], perr: list[float], qubit_frequency: float, detuning: float
+):
+    """Processing Ramsey fitting results."""
+
+    delta_fitting = popt[2] / (2 * np.pi)
+    if detuning is not None:
+        sign = np.sign(detuning)
+        delta_phys = int(sign * (delta_fitting * GHZ_TO_HZ - np.abs(detuning)))
+    else:
+        delta_phys = int(delta_fitting * GHZ_TO_HZ)
+
+    corrected_qubit_frequency = int(qubit_frequency - delta_phys)
+    t2 = 1 / popt[4]
+    new_frequency = [
+        corrected_qubit_frequency,
+        perr[2] * GHZ_TO_HZ / (2 * np.pi),
+    ]
+    t2 = [t2, perr[4] * (t2**2)]
+
+    delta_phys_measure = [
+        -delta_phys,
+        perr[2] * GHZ_TO_HZ / (2 * np.pi),
+    ]
+    delta_fitting_measure = [
+        -delta_fitting * GHZ_TO_HZ,
+        perr[2] * GHZ_TO_HZ / (2 * np.pi),
+    ]
+
+    return new_frequency, t2, delta_phys_measure, delta_fitting_measure, popt

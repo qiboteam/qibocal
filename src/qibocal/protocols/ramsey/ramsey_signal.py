@@ -14,8 +14,8 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 
-from ..utils import GHZ_TO_HZ, table_dict, table_html
-from .utils import fitting, ramsey_fit, ramsey_sequence
+from ..utils import table_dict, table_html
+from .utils import fitting, process_fit, ramsey_fit, ramsey_sequence
 
 
 @dataclass
@@ -197,30 +197,13 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
         signal = qubit_data["signal"]
         try:
             popt, perr = fitting(waits, signal)
-            delta_fitting = popt[2] / (2 * np.pi)
-            if data.detuning is not None:
-                sign = np.sign(data.detuning)
-                delta_phys = int(
-                    sign * (delta_fitting * GHZ_TO_HZ - np.abs(data.detuning))
-                )
-            else:
-                delta_phys = int(sign * (delta_fitting * GHZ_TO_HZ))
-            corrected_qubit_frequency = int(qubit_freq - delta_phys)
-            t2 = 1 / popt[4]
-            freq_measure[qubit] = [
-                corrected_qubit_frequency,
-                perr[2] * GHZ_TO_HZ / (2 * np.pi),
-            ]
-            t2_measure[qubit] = [t2, perr[4] * (t2**2)]
-            popts[qubit] = popt
-            delta_phys_measure[qubit] = [
-                -delta_phys,
-                perr[2] * GHZ_TO_HZ / (2 * np.pi),
-            ]
-            delta_fitting_measure[qubit] = [
-                -delta_fitting * GHZ_TO_HZ,
-                perr[2] * GHZ_TO_HZ / (2 * np.pi),
-            ]
+            (
+                freq_measure[qubit],
+                t2_measure[qubit],
+                delta_phys_measure[qubit],
+                delta_fitting_measure[qubit],
+                popts[qubit],
+            ) = process_fit(popt, perr, qubit_freq, data.detuning)
         except Exception as e:
             log.warning(f"Ramsey fitting failed for qubit {qubit} due to {e}.")
 
