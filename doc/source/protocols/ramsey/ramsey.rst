@@ -57,7 +57,7 @@ The expected output is the following:
 the formula presented above.
 
 If the protocols is successful the drive frequency will be updated only if a non-zero
-detuning is provided. :math:`T_2` is updated only in the case where detuning is 0.
+detuning is provided. :math:`T_2` is updated only in the case where detuning is not specified.
 
 Requirements
 ^^^^^^^^^^^^
