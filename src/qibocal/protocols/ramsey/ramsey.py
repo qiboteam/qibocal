@@ -210,6 +210,7 @@ def _fit(data: RamseyData) -> RamseyResults:
         except Exception as e:
             log.warning(f"Ramsey fitting failed for qubit {qubit} due to {e}.")
     return RamseyResults(
+        detuning=data.detuning,
         frequency=freq_measure,
         t2=t2_measure,
         delta_phys=delta_phys_measure,

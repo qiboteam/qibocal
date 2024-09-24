@@ -40,6 +40,8 @@ class RamseySignalParameters(Parameters):
 class RamseySignalResults(Results):
     """Ramsey outputs."""
 
+    detuning: float
+    """Qubit frequency detuning."""
     frequency: dict[QubitId, Union[float, list[float]]]
     """Drive frequency [GHz] for each qubit."""
     t2: dict[QubitId, Union[float, list[float]]]
@@ -51,9 +53,6 @@ class RamseySignalResults(Results):
        including the detuning."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
-
-    def is_detuned(self, qubit: QubitId):
-        return int(self.delta_phys[qubit][0]) != int(self.delta_fitting[qubit][0])
 
 
 RamseySignalType = np.dtype([("wait", np.float64), ("signal", np.float64)])
@@ -208,6 +207,7 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
             log.warning(f"Ramsey fitting failed for qubit {qubit} due to {e}.")
 
     return RamseySignalResults(
+        detuning=data.detuning,
         frequency=freq_measure,
         t2=t2_measure,
         delta_phys=delta_phys_measure,
@@ -286,7 +286,7 @@ def _plot(data: RamseySignalData, target: QubitId, fit: RamseySignalResults = No
 
 
 def _update(results: RamseySignalResults, platform: Platform, target: QubitId):
-    if results.is_detuned(target):
+    if results.detuning is not None:
         update.drive_frequency(results.frequency[target][0], platform, target)
     else:
         update.t2(results.t2[target][0], platform, target)
