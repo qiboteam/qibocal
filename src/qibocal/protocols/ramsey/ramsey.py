@@ -13,7 +13,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal.auto.operation import Routine
 from qibocal.config import log
 
-from ..utils import table_dict, table_html
+from ..utils import chi2_reduced, table_dict, table_html
 from .ramsey_signal import (
     RamseySignalData,
     RamseySignalParameters,
@@ -198,6 +198,15 @@ def _fit(data: RamseyData) -> RamseyResults:
                 delta_fitting_measure[qubit],
                 popts[qubit],
             ) = process_fit(popt, perr, qubit_freq, data.detuning)
+
+            chi2[qubit] = (
+                chi2_reduced(
+                    probs,
+                    ramsey_fit(waits, *popts[qubit]),
+                    qubit_data.errors,
+                ),
+                np.sqrt(2 / len(probs)),
+            )
         except Exception as e:
             log.warning(f"Ramsey fitting failed for qubit {qubit} due to {e}.")
     return RamseyResults(
