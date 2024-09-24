@@ -21,8 +21,8 @@ THRESHOLD = 0.5
 def ramsey_sequence(
     platform: Platform,
     qubit: QubitId,
-    wait: Optional[int] = 0,
-    detuning: Optional[int] = 0,
+    wait: int = 0,
+    detuning: Optional[int] = None,
 ):
     """Pulse sequence used in Ramsey (detuned) experiments.
 
@@ -41,8 +41,9 @@ def ramsey_sequence(
     )
 
     # apply detuning:
-    first_pi_half_pulse.frequency += detuning
-    second_pi_half_pulse.frequency += detuning
+    if detuning is not None:
+        first_pi_half_pulse.frequency += detuning
+        second_pi_half_pulse.frequency += detuning
     readout_pulse = platform.create_qubit_readout_pulse(
         qubit, start=second_pi_half_pulse.finish
     )

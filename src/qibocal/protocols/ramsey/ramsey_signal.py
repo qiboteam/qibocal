@@ -28,7 +28,7 @@ class RamseySignalParameters(Parameters):
     """Final delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_step: int
     """Step delay between RX(pi/2) pulses in ns."""
-    detuning: Optional[int] = 0
+    detuning: Optional[int] = None
     """Frequency detuning [Hz] (optional).
         If 0 standard Ramsey experiment is performed."""
     unrolling: bool = False
@@ -52,6 +52,9 @@ class RamseySignalResults(Results):
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
 
+    def is_detuned(self, qubit: QubitId):
+        return int(self.delta_phys[qubit][0]) != int(self.delta_fitting[qubit][0])
+
 
 RamseySignalType = np.dtype([("wait", np.float64), ("signal", np.float64)])
 """Custom dtype for coherence routines."""
@@ -61,7 +64,7 @@ RamseySignalType = np.dtype([("wait", np.float64), ("signal", np.float64)])
 class RamseySignalData(Data):
     """Ramsey acquisition outputs."""
 
-    detuning: int
+    detuning: Optional[int] = None
     """Frequency detuning [Hz]."""
     qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
     """Qubit freqs for each qubit."""
@@ -195,8 +198,13 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
         try:
             popt, perr = fitting(waits, signal)
             delta_fitting = popt[2] / (2 * np.pi)
-            sign = np.sign(data.detuning) if data.detuning != 0 else 1
-            delta_phys = int(sign * (delta_fitting * GHZ_TO_HZ - np.abs(data.detuning)))
+            if data.detuning is not None:
+                sign = np.sign(data.detuning)
+                delta_phys = int(
+                    sign * (delta_fitting * GHZ_TO_HZ - np.abs(data.detuning))
+                )
+            else:
+                delta_phys = int(sign * (delta_fitting * GHZ_TO_HZ))
             corrected_qubit_frequency = int(qubit_freq - delta_phys)
             t2 = 1 / popt[4]
             freq_measure[qubit] = [
@@ -295,10 +303,10 @@ def _plot(data: RamseySignalData, target: QubitId, fit: RamseySignalResults = No
 
 
 def _update(results: RamseySignalResults, platform: Platform, target: QubitId):
-    if int(results.delta_phys[target][0]) == int(results.delta_fitting[target][0]):
-        update.t2(results.t2[target][0], platform, target)
-    else:
+    if results.is_detuned(target):
         update.drive_frequency(results.frequency[target][0], platform, target)
+    else:
+        update.t2(results.t2[target][0], platform, target)
 
 
 ramsey_signal = Routine(_acquisition, _fit, _plot, _update)
