@@ -20,12 +20,13 @@ CrossResonanceChevronType = np.dtype(
         ("amp", np.float64),
     ]
 )
-"""Custom dtype for resonator spectroscopy."""
+"""Custom dtype for cross resonance chevron."""
 
+STATES = ["I", "X"]
 
 @dataclass
 class CrossResonanceChevronParameters(Parameters):
-    """ResonatorSpectroscopy runcard inputs."""
+    """cross resonance chevron runcard inputs."""
 
     pulse_duration_start: float
     """Initial pi pulse duration [ns]."""
@@ -59,12 +60,12 @@ class CrossResonanceChevronParameters(Parameters):
 
 @dataclass
 class CrossResonanceChevronResults(Results):
-    """ResonatorSpectroscopy outputs."""
+    """cross resonance chevron outputs."""
 
 
 @dataclass
 class CrossResonanceChevronData(Data):
-    """Data structure for resonator spectroscopy with attenuation."""
+    """Data structure for cross resonance chevron."""
 
     data: dict[QubitId, npt.NDArray[CrossResonanceChevronType]] = field(
         default_factory=dict
@@ -87,17 +88,17 @@ def _acquisition(
     platform: Platform,
     targets: list[QubitPairId],
 ) -> CrossResonanceChevronData:
-    """Data acquisition for resonator spectroscopy."""
+    """Data acquisition for cross resonance chevron."""
 
     data = CrossResonanceChevronData()
 
     for pair in targets:
-        for setup in ["I", "X"]:
+        for setup in STATES:
             target, control = pair
             sequence = PulseSequence()
             target_drive_freq = platform.qubits[target].native_gates.RX.frequency
 
-            if setup == "X":
+            if setup == STATES[1]:
                 rx_control = platform.create_RX_pulse(control, 0)
                 pulse = platform.create_RX_pulse(control, rx_control.finish)
                 sequence.add(rx_control)
@@ -163,41 +164,36 @@ def _plot(
     target: QubitPairId,
     fit: CrossResonanceChevronResults,
 ):
-    """Plotting function for ResonatorSpectroscopy."""
-    # TODO: share colorbar
-    control_idle_data = data.data[target[0], target[1], "I"]
-    control_excited_data = data.data[target[0], target[1], "X"]
+    pair = target
+    figs = []
+
+    """Plotting function for Cross Resonance Chevron ."""
     fig = make_subplots(
         rows=1,
         cols=2,
         subplot_titles=(
-            f"Qubit {target[1]} - |0>",
-            f"Qubit {target[1]} - |1>",
+            f"Control Q{pair[1]} = |{STATES[0]}>",
+            f"Control Q{pair[1]} = |{STATES[1]}>",
         ),
-    )
-    fig.add_trace(
-        go.Heatmap(
-            x=control_idle_data.length,
-            y=control_idle_data.amp,
-            z=control_idle_data.prob,
-            name="Control at 0",
-        ),
-        row=1,
-        col=1,
     )
 
-    fig.add_trace(
-        go.Heatmap(
-            x=control_excited_data.length,
-            y=control_excited_data.amp,
-            z=control_excited_data.prob,
-            name="Control at 1",
-        ),
-        row=1,
-        col=2,
-    )
-
-    return [fig], ""
+    for i, setup in enumerate(STATES):
+        qubit_data = data.data[target[0], target[1], setup]
+        fig.add_trace(
+            go.Heatmap(
+                x=qubit_data.length,
+                y=qubit_data.amp,
+                z=qubit_data.prob,
+                name=f"Control at {setup}",
+                coloraxis="coloraxis"
+            ),
+            row=1,
+            col=i+1,
+        )
+    fig.update_layout(coloraxis={'colorscale':'Plasma'})
+    
+    figs.append(fig)
+    return figs, ""
 
 
 cross_resonance_chevron = Routine(_acquisition, _fit, _plot)

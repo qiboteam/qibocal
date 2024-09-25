@@ -67,6 +67,7 @@ from .two_qubit_interaction import (
     cross_resonance,
     cross_resonance_chevron,
     cross_resonance_sequences,
+    cross_resonance_chevron_frequency,
     cz_virtualz,
     cz_virtualz_signal,
 )
@@ -137,5 +138,6 @@ class Operation(Enum):
     calibrate_state_discrimination = calibrate_state_discrimination
     cross_resonance = cross_resonance
     cross_resonance_chevron = cross_resonance_chevron
+    cross_resonance_chevron_frequency = cross_resonance_chevron_frequency
     cross_resonance_sequences = cross_resonance_sequences
     state_tomography = state_tomography

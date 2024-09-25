@@ -232,7 +232,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
         rows=1,
         cols=2,
         subplot_titles=(
-            f"Qubit {target[0]} - Low Frequency",
+            f"Qubit {target[0]} - Target",
             f"Qubit {target[1]} - High Frequency",
         ),
     )
