@@ -30,4 +30,5 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     readout_mitigation_matrix
     avoided_crossing
     readout_optimization
+    standard_rb
     references
