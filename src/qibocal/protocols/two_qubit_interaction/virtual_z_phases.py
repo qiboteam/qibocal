@@ -246,7 +246,7 @@ def _acquisition(
                 )
                 sweeper = Sweeper(
                     Parameter.relative_phase,
-                    theta - data.vphases[ord_pair][target_q],
+                    theta,
                     pulses=[theta_pulse],
                     type=SweeperType.ABSOLUTE,
                 )
@@ -310,7 +310,7 @@ def _fit(
             try:
                 popt, _ = curve_fit(
                     fit_function,
-                    np.array(data.thetas) - data.vphases[pair][target],
+                    np.array(data.thetas),
                     target_data,
                     p0=pguess,
                     bounds=(
@@ -332,7 +332,7 @@ def _fit(
                     fitted_parameters[target_q, control_q, "X"][2]
                     - fitted_parameters[target_q, control_q, "I"][2]
                 )
-                virtual_phase[pair][target_q] = fitted_parameters[
+                virtual_phase[pair][target_q] = -fitted_parameters[
                     target_q, control_q, "I"
                 ][2]
 
@@ -348,7 +348,6 @@ def _fit(
                 )
         except KeyError:
             pass  # exception covered above
-
     return VirtualZPhasesResults(
         native=data.native,
         flux_pulse_amplitude=data.amplitudes,
@@ -390,7 +389,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
         fig = fig1 if (target_q, control_q) == qubits else fig2
         fig.add_trace(
             go.Scatter(
-                x=np.array(thetas) + data.vphases[qubits][target_q],
+                x=np.array(thetas),
                 y=target_prob,
                 name=f"{setup} sequence",
                 legendgroup=setup,
@@ -401,7 +400,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
 
         fig.add_trace(
             go.Scatter(
-                x=np.array(thetas) + data.vphases[qubits][control_q],
+                x=np.array(thetas),
                 y=control_prob,
                 name=f"{setup} sequence",
                 legendgroup=setup,
@@ -414,9 +413,9 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
             fitted_parameters = fit.fitted_parameters[target_q, control_q, setup]
             fig.add_trace(
                 go.Scatter(
-                    x=angle_range + data.vphases[qubits][target_q],
+                    x=angle_range,
                     y=fit_function(
-                        angle_range - data.vphases[qubits][target_q],
+                        angle_range,
                         *fitted_parameters,
                     ),
                     name="Fit",
