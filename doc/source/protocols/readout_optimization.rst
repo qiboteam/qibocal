@@ -1,8 +1,8 @@
 Readout optimization
 ====================
 
-Qibocal provides a protocol to improve the readout pulse amplitude by optimize 
-the assignment fidelity. 
+Qibocal provides a protocol to improve the readout pulse amplitude by optimize
+the assignment fidelity.
 
 Parameters
 ^^^^^^^^^^
