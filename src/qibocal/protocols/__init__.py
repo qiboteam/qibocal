@@ -71,6 +71,8 @@ from .two_qubit_interaction import (
     chsh_pulses,
     correct_virtual_z_phases,
     correct_virtual_z_phases_signal,
+    cross_resonance,
+    cross_resonance_chevron,
     optimize_two_qubit_gate,
 )
 from .two_qubit_state_tomography import two_qubit_state_tomography
@@ -148,4 +150,6 @@ __all__ = [
     "standard_rb_2q",
     "standard_rb_2q_inter",
     "optimize_two_qubit_gate",
+    "cross_resonance",
+    "cross_resonance_chevron",
 ]
