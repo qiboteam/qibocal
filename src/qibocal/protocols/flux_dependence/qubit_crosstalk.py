@@ -3,15 +3,18 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Platform,
+    PulseSequence,
+    Sweeper,
+)
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import QubitId, Routine
 from qibocal.config import log
 
 from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY

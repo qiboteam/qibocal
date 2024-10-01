@@ -12,10 +12,16 @@ from qibo import Circuit, gates
 from qibo.backends import GlobalBackend, NumpyBackend
 from qibo.quantum_info import fidelity, partial_trace
 from qibo.result import QuantumState
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId, QubitPairId
+from qibolab import Platform
 
-from qibocal.auto.operation import DATAFILE, Data, Results, Routine
+from qibocal.auto.operation import (
+    DATAFILE,
+    Data,
+    QubitId,
+    QubitPairId,
+    Results,
+    Routine,
+)
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
 
 from .state_tomography import StateTomographyParameters, plot_reconstruction

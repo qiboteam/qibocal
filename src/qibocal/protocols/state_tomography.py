@@ -10,10 +10,9 @@ from plotly.subplots import make_subplots
 from qibo import Circuit, gates
 from qibo.backends import GlobalBackend, NumpyBackend, matrices
 from qibo.quantum_info import fidelity, partial_trace
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId
+from qibolab import Platform
 
-from qibocal.auto.operation import DATAFILE, Data, Parameters, Results, Routine
+from qibocal.auto.operation import DATAFILE, Data, Parameters, QubitId, Results, Routine
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
 
 from .utils import table_dict, table_html

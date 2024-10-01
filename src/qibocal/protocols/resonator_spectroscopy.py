@@ -5,13 +5,18 @@ from typing import Optional, Union
 import numpy as np
 import numpy.typing as npt
 from _collections_abc import Callable
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Platform,
+    PulseSequence,
+    Sweeper,
+)
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.result import magnitude, phase
 
 from .utils import (
     PowerLevel,
@@ -184,35 +189,42 @@ def _acquisition(
     amplitudes = {}
     attenuations = {}
 
-    for qubit in targets:
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
+    for q in targets:
+        natives = platform.natives.single_qubit[q]
+        ro_sequence = natives.MZ.create_sequence()
+        ro_pulses[q] = ro_sequence[0][1]
 
         if params.amplitude is not None:
-            ro_pulses[qubit].amplitude = params.amplitude
+            ro_pulses[q].amplitude = params.amplitude
 
-        amplitudes[qubit] = ro_pulses[qubit].amplitude
+        amplitudes[q] = ro_pulses[q].probe.amplitude
 
         if params.attenuation is not None:
-            platform.qubits[qubit].readout.attenuation = params.attenuation
+            raise NotImplementedError
+            platform.qubits[q].readout.attenuation = params.attenuation
 
         try:
-            attenuation = platform.qubits[qubit].readout.attenuation
+            attenuation = platform.config(platform.qubits[q].probe).attenuation
         except AttributeError:
             attenuation = None
 
-        attenuations[qubit] = attenuation
-        sequence.add(ro_pulses[qubit])
+        attenuations[q] = attenuation
+        sequence.concatenate(ro_sequence)
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
-    sweeper = Sweeper(
-        Parameter.frequency,
-        delta_frequency_range,
-        pulses=[ro_pulses[qubit] for qubit in targets],
-        type=SweeperType.OFFSET,
-    )
+    sweepers = [
+        Sweeper(
+            parameter=Parameter.frequency,
+            values=platform.config(platform.qubits[q].probe).frequency
+            + delta_frequency_range,
+            channels=[platform.qubits[q].probe],
+        )
+        for q in targets
+    ]
+
     data = ResonatorSpectroscopyData(
         resonator_type=platform.resonator_type,
         power_level=params.power_level,
@@ -222,25 +234,31 @@ def _acquisition(
         phase_sign=params.phase_sign,
     )
 
-    results = platform.sweep(
-        sequence,
-        params.execution_parameters,
-        sweeper,
+    results = platform.execute(
+        [sequence],
+        [sweepers],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
 
     # retrieve the results for every qubit
-    for qubit in targets:
-        result = results[ro_pulses[qubit].serial]
+    for q in targets:
+        result = results[ro_pulses[q].id]
         # store the results
+        ro_frequency = platform.config(platform.qubits[q].probe).frequency
+        signal = magnitude(result)
+        phase_ = phase(result)
         data.register_qubit(
             ResSpecType,
-            (qubit),
+            (q),
             dict(
-                signal=result.average.magnitude,
-                phase=result.average.phase,
-                freq=delta_frequency_range + ro_pulses[qubit].frequency,
-                error_signal=result.average.std,
-                error_phase=result.phase_std,
+                signal=signal.mean(axis=0),
+                phase=phase_.mean(axis=0),
+                freq=delta_frequency_range + ro_frequency,
+                error_signal=np.std(signal, axis=0, ddof=1) / np.sqrt(signal.shape[0]),
+                error_phase=np.std(phase_, axis=0, ddof=1) / np.sqrt(phase_.shape[0]),
             ),
         )
     return data

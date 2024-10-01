@@ -1,11 +1,14 @@
 import numpy as np
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence, PulseType
-from qibolab.qubits import QubitPairId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Platform,
+    PulseSequence,
+    Sweeper,
+)
 
-from qibocal.auto.operation import Results, Routine
+from qibocal.auto.operation import QubitPairId, Results, Routine
 
 from ..two_qubit_interaction.chevron.chevron import (
     ChevronData,

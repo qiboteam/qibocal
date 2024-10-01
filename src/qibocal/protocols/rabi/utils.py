@@ -1,12 +1,10 @@
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
+from qibolab import Delay, Platform, PulseSequence
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Parameters
+from qibocal.auto.operation import Parameters, QubitId
 
 from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
 
@@ -231,42 +229,58 @@ def sequence_amplitude(
     qd_pulses = {}
     ro_pulses = {}
     durations = {}
-    for qubit in targets:
-        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        if params.pulse_length is not None:
-            qd_pulses[qubit].duration = params.pulse_length
+    for q in targets:
+        natives = platform.natives.single_qubit[q]
+        qd_sequence = natives.RX()
+        ro_sequence = natives.MZ()
 
-        durations[qubit] = qd_pulses[qubit].duration
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
-        )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
+        qd_pulses[q] = qd_sequence[0][1]
+        if params.pulse_length is not None:
+            qd_pulses[q].duration = params.pulse_length
+        durations[q] = qd_pulses[q].duration
+
+        ro_pulses[q] = ro_sequence[0][1]
+
+        qubit = platform.qubits[q]
+        sequence.append((qubit.drive, qd_pulses[q]))
+        sequence.append((qubit.acquisition, Delay(duration=durations[q])))
+        sequence.extend(ro_sequence)
     return sequence, qd_pulses, ro_pulses, durations
 
 
 def sequence_length(
-    targets: list[QubitId], params: Parameters, platform: Platform
+    targets: list[QubitId],
+    params: Parameters,
+    platform: Platform,
+    use_align: bool = False,
 ) -> tuple[PulseSequence, dict, dict, dict]:
     """Return sequence for rabi length."""
     sequence = PulseSequence()
     qd_pulses = {}
+    delays = {}
     ro_pulses = {}
     amplitudes = {}
-    for qubit in targets:
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=params.pulse_duration_start
-        )
-        if params.pulse_amplitude is not None:
-            qd_pulses[qubit].amplitude = params.pulse_amplitude
-        amplitudes[qubit] = qd_pulses[qubit].amplitude
+    for q in targets:
+        natives = platform.natives.single_qubit[q]
+        qd_sequence = natives.RX()
+        ro_sequence = natives.MZ()
 
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
-        )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
-    return sequence, qd_pulses, ro_pulses, amplitudes
+        qd_pulses[q] = qd_sequence[0][1]
+        if params.pulse_amplitude is not None:
+            qd_pulses[q].amplitude = params.pulse_amplitude
+        amplitudes[q] = qd_pulses[q].amplitude
+
+        ro_pulses[q] = ro_sequence[0][1]
+        qubit = platform.qubits[q]
+        sequence.append((qubit.drive, qd_pulses[q]))
+        if use_align:
+            sequence.align([qubit.drive, qubit.acquisition])
+        else:
+            delays[q] = Delay(duration=16)
+            sequence.append((qubit.acquisition, delays[q]))
+        sequence.extend(ro_sequence)
+
+    return sequence, qd_pulses, delays, ro_pulses, amplitudes
 
 
 def fit_length_function(

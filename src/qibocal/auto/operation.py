@@ -9,13 +9,14 @@ from typing import Callable, Generic, NewType, Optional, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.qubits import Qubit, QubitId, QubitPair, QubitPairId
+from qibolab import AcquisitionType, AveragingMode, Platform, Qubit
 
 from qibocal.config import log
 
 from .serialize import deserialize, load, serialize
+
+QubitId = Union[str, int]
+QubitPairId = tuple[QubitId, QubitId]
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
@@ -23,7 +24,6 @@ ParameterValue = Union[float, int]
 """Valid value for a routine and runcard parameter."""
 Qubits = dict[QubitId, Qubit]
 """Convenient way of passing qubit pairs in the routines."""
-QubitsPairs = dict[tuple[QubitId, QubitId], QubitPair]
 
 
 DATAFILE = "data"
@@ -112,7 +112,7 @@ class Parameters:
             if self.classify
             else AcquisitionType.INTEGRATION
         )
-        return ExecutionParameters(
+        return dict(
             nshots=self.nshots,
             relaxation_time=self.relaxation_time,
             acquisition_type=acquisition_type,

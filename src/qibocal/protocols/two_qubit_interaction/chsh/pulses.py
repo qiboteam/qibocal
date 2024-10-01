@@ -3,7 +3,7 @@
 from collections import defaultdict
 
 import numpy as np
-from qibolab.pulses import PulseSequence
+from qibolab import PulseSequence
 
 from .utils import READOUT_BASIS
 

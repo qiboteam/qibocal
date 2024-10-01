@@ -1,10 +1,7 @@
 import numpy as np
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
+from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence
 
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import QubitId, Routine
 
 from . import t1_signal
 from .utils import CoherenceType
