@@ -4,13 +4,10 @@ from typing import Union
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
+from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence
 
 from qibocal import update
-from qibocal.auto.operation import Parameters, Results, Routine
+from qibocal.auto.operation import Parameters, QubitId, Results, Routine
 
 from ..utils import table_dict, table_html
 from .t1_signal import T1SignalData

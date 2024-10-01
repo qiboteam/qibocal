@@ -1,6 +1,7 @@
 import numpy as np
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId, QubitPairId
+from qibolab import Platform
+
+from qibocal.auto.operation import QubitId, QubitPairId
 
 from ..utils import fallback_period, guess_period
 

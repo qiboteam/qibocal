@@ -4,13 +4,16 @@ from dataclasses import asdict, dataclass
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Platform,
+    PulseSequence,
+    Sweeper,
+)
 
-from qibocal.auto.operation import Results, Routine
+from qibocal.auto.operation import QubitId, Results, Routine
 from qibocal.protocols.utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
