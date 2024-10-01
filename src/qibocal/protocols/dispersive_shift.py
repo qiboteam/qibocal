@@ -327,11 +327,7 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
                     [
                         fit_data_0["frequency_state_zero"][target],
                         fit_data_1["frequency_state_one"][target],
-                        (
-                            fit_data_0["frequency_state_zero"][target]
-                            - fit_data_1["frequency_state_one"][target]
-                        )
-                        / 2,
+                        chi(fit_data_0, fit_data_1, target),
                         fit.best_freq[target],
                     ]
                 ),
@@ -352,7 +348,18 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
 
 def _update(results: DispersiveShiftResults, platform: Platform, target: QubitId):
     update.readout_frequency(results.best_freq[target], platform, target)
+    fit_data_0 = results.state_zero 
+    fit_data_1 = results.state_one 
+    delta = np.abs(platform.qubits[target].drive_frequency - results.fit_data_0["frequency_state_zero"])
+    g = np.sqrt(chi(fit_data_0, fit_data_1, target)*delta)
+    update.coupling(g, platform, target)
 
-
+def chi(fit_data_0, fit_data_1, target):
+    "Evaluate the dispersive shift"
+    return (
+        fit_data_0["frequency_state_zero"][target]
+        - fit_data_1["frequency_state_one"][target]
+    )/ 2
+ 
 dispersive_shift = Routine(_acquisition, _fit, _plot, _update)
 """Dispersive shift Routine object."""
