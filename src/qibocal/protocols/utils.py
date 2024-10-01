@@ -113,26 +113,38 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
     frequencies = data.freq * HZ_TO_GHZ
     voltages = data.signal
 
+    # DA QUI INIZIA LA MIA MODIFICA
+    if resonator_type == "3D":
+        mask_frequencies, mask_voltages = extract_feature_2D(
+            frequencies, voltages, "max", ci_first_mask=90
+        )
+    else:
+        mask_frequencies, mask_voltages = extract_feature_2D(
+            frequencies, voltages, "min", ci_first_mask=90
+        )
+
     # Guess parameters for Lorentzian max or min
     # TODO: probably this is not working on HW
     guess_offset = np.mean(
-        voltages[np.abs(voltages - np.mean(voltages)) < np.std(voltages)]
+        mask_voltages[
+            np.abs(mask_voltages - np.mean(mask_voltages)) < np.std(mask_voltages)
+        ]
     )
     if (resonator_type == "3D" and fit == "resonator") or (
         resonator_type == "2D" and fit == "qubit"
     ):
-        guess_center = frequencies[
-            np.argmax(voltages)
+        guess_center = mask_frequencies[
+            np.argmax(mask_voltages)
         ]  # Argmax = Returns the indices of the maximum values along an axis.
-        guess_sigma = abs(frequencies[np.argmin(voltages)] - guess_center)
-        guess_amp = (np.max(voltages) - guess_offset) * guess_sigma * np.pi
+        guess_sigma = abs(mask_frequencies[np.argmin(mask_voltages)] - guess_center)
+        guess_amp = (np.max(mask_voltages) - guess_offset) * guess_sigma * np.pi
 
     else:
-        guess_center = frequencies[
-            np.argmin(voltages)
+        guess_center = mask_frequencies[
+            np.argmin(mask_voltages)
         ]  # Argmin = Returns the indices of the minimum values along an axis.
-        guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
-        guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
+        guess_sigma = abs(mask_frequencies[np.argmax(mask_voltages)] - guess_center)
+        guess_amp = (np.min(mask_voltages) - guess_offset) * guess_sigma * np.pi
 
     initial_parameters = [
         guess_amp,
@@ -146,8 +158,8 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
             if not np.isnan(data.error_signal).any():
                 fit_parameters, perr = curve_fit(
                     lorentzian,
-                    frequencies,
-                    voltages,
+                    mask_frequencies,
+                    mask_voltages,
                     p0=initial_parameters,
                     sigma=data.error_signal,
                 )
@@ -156,8 +168,8 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
                 return model_parameters[1] * GHZ_TO_HZ, list(model_parameters), perr
         fit_parameters, perr = curve_fit(
             lorentzian,
-            frequencies,
-            voltages,
+            mask_frequencies,
+            mask_voltages,
             p0=initial_parameters,
         )
         perr = [0] * 4
@@ -210,6 +222,7 @@ def s21(
     )
 
 
+# Potrebbe essere utile applicare la maschera anche in questo caso
 def s21_fit(
     data: NDArray, resonator_type=None, fit=None
 ) -> tuple[float, list[float], list[float]]:
@@ -222,8 +235,22 @@ def s21_fit(
             Model parameters
 
     """
-    f_data = data.freq
-    z_data = np.abs(data.signal) * np.exp(1j * data.phase)
+
+    # TEST USAGE OF MASK:
+    frequencies = data.freq
+    voltages = data.signal
+
+    if resonator_type == "3D":
+        f_data, mask_voltages = extract_feature_2D(
+            frequencies, voltages, "max", ci_first_mask=90
+        )
+    else:
+        f_data, mask_voltages = extract_feature_2D(
+            frequencies, voltages, "min", ci_first_mask=90
+        )
+
+    # f_data = data.freq
+    z_data = np.abs(mask_voltages) * np.exp(1j * data.phase)
 
     num_points = int(len(f_data) * DELAY_FIT_PERCENTAGE / 100)
     tau = cable_delay(f_data, data.phase, num_points)
@@ -1241,6 +1268,36 @@ def table_html(data: dict) -> str:
     return pd.DataFrame(data).to_html(
         classes="fitting-table", index=False, border=0, escape=False
     )
+
+
+def extract_feature_2D(
+    x: np.ndarray,
+    y: np.ndarray,
+    feat: str,
+    ci_first_mask: float = CONFIDENCE_INTERVAL_FIRST_MASK,
+    ci_second_mask: float = CONFIDENCE_INTERVAL_SECOND_MASK,
+):
+    # Create the first mask using the given confidence interval
+    min_value, max_value = np.percentile(
+        y,
+        [100 - ci_first_mask, ci_first_mask],
+    )
+    if feat == "min":
+        first_mask = y < min_value
+    else:
+        first_mask = y > max_value
+
+    # Apply the second mask to remove outliers
+    min_value, max_value = np.percentile(
+        y[first_mask],
+        [100 - ci_second_mask, ci_second_mask],
+    )
+    if feat == "min":
+        second_mask = y[first_mask] < min_value
+    else:
+        second_mask = y[first_mask] > max_value
+
+    return x[first_mask][second_mask], y[first_mask][second_mask]
 
 
 def extract_feature(
