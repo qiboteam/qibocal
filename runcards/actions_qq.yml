@@ -337,12 +337,12 @@ actions:
 #       nshots: 10
 
 
-  - id: dispersive shift
-    operation: dispersive_shift
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 100_000
-      nshots: 10
+  # - id: dispersive shift
+  #   operation: dispersive_shift
+  #   parameters:
+  #     freq_width: 10_000_000
+  #     freq_step: 100_000
+  #     nshots: 10
 
 
 #   - id: standard rb no error
