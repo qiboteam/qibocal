@@ -3,13 +3,16 @@ from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Platform,
+    PulseSequence,
+    Sweeper,
+)
 
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import QubitId, Routine
 
 from ..utils import table_dict, table_html
 from . import t1, t2_signal, utils

@@ -1,9 +1,7 @@
 import numpy as np
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId
+from qibolab import AcquisitionType, AveragingMode, Platform
 
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import QubitId, Routine
 
 from .length_signal import (
     RabiLengthSignalData,

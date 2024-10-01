@@ -1,14 +1,17 @@
 from dataclasses import dataclass
 
 import numpy as np
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Platform,
+    PulseSequence,
+    Sweeper,
+)
 
 from qibocal import update
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import QubitId, Routine
 
 from . import amplitude_signal, utils
 

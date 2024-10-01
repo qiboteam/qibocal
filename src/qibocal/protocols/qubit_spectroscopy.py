@@ -2,13 +2,10 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import Parameter, Platform, PulseSequence, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Parameters, Results, Routine
+from qibocal.auto.operation import Parameters, QubitId, Results, Routine
 
 from .resonator_spectroscopy import ResonatorSpectroscopyData, ResSpecType
 from .utils import chi2_reduced, lorentzian, lorentzian_fit, spectroscopy_plot

@@ -11,8 +11,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 from qibo.backends import construct_backend
-from qibolab import create_platform
-from qibolab.platform import Platform
+from qibolab import Platform, create_platform
 
 from qibocal import protocols
 from qibocal.config import log

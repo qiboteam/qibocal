@@ -3,12 +3,9 @@ from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
+from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence
 
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import QubitId, Routine
 
 from ..utils import table_dict, table_html
 from . import t1, utils

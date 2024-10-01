@@ -7,14 +7,18 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
+from qibolab import AcquisitionType, Platform, PulseSequence
 from sklearn.metrics import roc_auc_score, roc_curve
 
 from qibocal import update
-from qibocal.auto.operation import RESULTSFILE, Data, Parameters, Results, Routine
+from qibocal.auto.operation import (
+    RESULTSFILE,
+    Data,
+    Parameters,
+    QubitId,
+    Results,
+    Routine,
+)
 from qibocal.auto.serialize import serialize
 from qibocal.fitting.classifier import run
 from qibocal.protocols.utils import (
@@ -40,14 +44,19 @@ class SingleShotClassificationParameters(Parameters):
     """SingleShotClassification runcard inputs."""
 
     unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
-    Defaults to ``False``."""
+    """Whether to unroll the sequences.
+
+    If ``True`` it uses sequence unrolling to deploy multiple sequences in a
+    single instrument call.
+
+    Defaults to ``False``.
+    """
     classifiers_list: Optional[list[str]] = field(
         default_factory=lambda: [DEFAULT_CLASSIFIER]
     )
-    """List of models to classify the qubit states"""
+    """List of models to classify the qubit states."""
     savedir: Optional[str] = " "
-    """Dumping folder of the classification results"""
+    """Dumping folder of the classification results."""
 
 
 ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", int)])
@@ -59,7 +68,7 @@ class SingleShotClassificationData(Data):
     nshots: int
     """Number of shots."""
     savedir: str
-    """Dumping folder of the classification results"""
+    """Dumping folder of the classification results."""
     qubit_frequencies: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
@@ -67,7 +76,7 @@ class SingleShotClassificationData(Data):
     classifiers_list: Optional[list[str]] = field(
         default_factory=lambda: [DEFAULT_CLASSIFIER]
     )
-    """List of models to classify the qubit states"""
+    """List of models to classify the qubit states."""
 
 
 @dataclass
@@ -110,8 +119,8 @@ class SingleShotClassificationResults(Results):
     def __contains__(self, key: QubitId):
         """Checking if key is in Results.
 
-        Overwritten because classifiers_hpars is empty when running
-        the default_classifier.
+        Overwritten because classifiers_hpars is empty when running the
+        default_classifier.
         """
         return all(
             key in getattr(self, field.name)
@@ -179,19 +188,21 @@ def _acquisition(
     # state1_sequence: RX - MZ
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
+    native = platform.natives.single_qubit
     sequences, all_ro_pulses = [], []
     for state in [0, 1]:
-        sequence = PulseSequence()
-        RX_pulses = {}
         ro_pulses = {}
-        for qubit in targets:
-            RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-            ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-                qubit, start=RX_pulses[qubit].finish
-            )
-            if state == 1:
-                sequence.add(RX_pulses[qubit])
-            sequence.add(ro_pulses[qubit])
+        sequence = PulseSequence()
+        for q in targets:
+            ro_sequence = native[q].MZ()
+            ro_pulses[q] = ro_sequence[0][1].id
+            sequence += ro_sequence
+
+        if state == 1:
+            rx_sequence = PulseSequence()
+            for q in targets:
+                rx_sequence += native[q].RX()
+            sequence = rx_sequence | sequence
 
         sequences.append(sequence)
         all_ro_pulses.append(ro_pulses)
@@ -199,38 +210,36 @@ def _acquisition(
     data = SingleShotClassificationData(
         nshots=params.nshots,
         qubit_frequencies={
-            qubit: platform.qubits[qubit].drive_frequency for qubit in targets
+            qubit: platform.config(platform.qubits[qubit].drive).frequency
+            for qubit in targets
         },
         classifiers_list=params.classifiers_list,
         savedir=params.savedir,
     )
 
-    options = ExecutionParameters(
+    options = dict(
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
     )
 
     if params.unrolling:
-        results = platform.execute_pulse_sequences(sequences, options)
+        results = platform.execute(sequences, **options)
     else:
-        results = [
-            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
-        ]
+        results = {}
+        for sequence in sequences:
+            results.update(platform.execute([sequence], **options))
 
-    for ig, (state, ro_pulses) in enumerate(zip([0, 1], all_ro_pulses)):
+    for state, ro_pulses in zip([0, 1], all_ro_pulses):
         for qubit in targets:
-            serial = ro_pulses[qubit].serial
-            if params.unrolling:
-                result = results[serial][ig]
-            else:
-                result = results[ig][serial]
+            serial = ro_pulses[qubit]
+            result = results[serial]
             data.register_qubit(
                 ClassificationType,
                 (qubit),
                 dict(
-                    i=result.voltage_i,
-                    q=result.voltage_q,
+                    i=result[..., 0],
+                    q=result[..., 1],
                     state=[state] * params.nshots,
                 ),
             )
