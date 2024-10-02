@@ -404,9 +404,8 @@ def _plot(
 def _update(
     results: SingleShotClassificationResults, platform: Platform, target: QubitId
 ):
-    channel = platform.qubits[target].acquisition
-    update.iq_angle(results.rotation_angle[target], platform, channel)
-    update.threshold(results.threshold[target], platform, channel)
+    update.iq_angle(results.rotation_angle[target], platform, target)
+    update.threshold(results.threshold[target], platform, target)
 
 
 single_shot_classification = Routine(_acquisition, _fit, _plot, _update)
