@@ -59,7 +59,7 @@ class DispersiveShiftResults(Results):
         "Evaluate the dispersive shift"
         return {
             key: (self.frequency_state_zero[key] - self.frequency_state_one[key]) / 2
-            for key in self.frequency_state_zero.keys()
+            for key in self.frequency_state_zero
         }
 
 
