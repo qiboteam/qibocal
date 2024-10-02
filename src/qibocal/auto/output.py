@@ -212,7 +212,7 @@ class Output:
             platpath = path / UPDATED_PLATFORM
 
         platpath.mkdir(parents=True, exist_ok=True)
-        # dump_platform(platform, platpath)
+        platform.dump(platpath)
 
     def _export_stats(self):
         """Export task statistics.
