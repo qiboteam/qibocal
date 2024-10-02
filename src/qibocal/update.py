@@ -58,7 +58,9 @@ def drive_amplitude(amp: Union[float, tuple, list], platform: Platform, qubit: Q
     """Update drive frequency value in platform for specific qubit."""
     if isinstance(amp, Iterable):
         amp = amp[0]
-    # platform.natives.single_qubit[qubit].RX.amplitude = float(amp)
+    channel, pulse = platform.natives.single_qubit[qubit].RX[0]
+    new_pulse = replace(pulse, amplitude=amp)
+    platform.natives.single_qubit[qubit].RX[0] = (channel, new_pulse)
 
 
 def drive_duration(
@@ -67,7 +69,9 @@ def drive_duration(
     """Update drive duration value in platform for specific qubit."""
     if isinstance(duration, Iterable):
         duration = duration[0]
-    # platform.natives.single_qubit[qubit].RX.duration = int(duration)
+    channel, pulse = platform.natives.single_qubit[qubit].RX[0]
+    new_pulse = replace(pulse, duration=duration)
+    platform.natives.single_qubit[qubit].RX[0] = (channel, new_pulse)
 
 
 def crosstalk_matrix(
