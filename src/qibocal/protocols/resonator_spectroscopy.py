@@ -350,10 +350,6 @@ def _update(results: ResonatorSpectroscopyResults, platform: Platform, target: Q
         update.readout_amplitude(results.amplitude[target], platform, target)
         if results.attenuation[target] is not None:
             update.readout_attenuation(results.attenuation[target], platform, target)
-    else:
-        update.bare_resonator_frequency(
-            results.bare_frequency[target], platform, target
-        )
 
 
 resonator_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
