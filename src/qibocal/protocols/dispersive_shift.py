@@ -57,10 +57,11 @@ class DispersiveShiftResults(Results):
     @property
     def chi(self):
         "Evaluate the dispersive shift"
-        return {key:(
-            self.frequency_state_zero[key]
-            - self.frequency_state_one[key]
-        ) / 2 for key in self.frequency_state_zero.keys()}
+        return {
+            key: (self.frequency_state_zero[key] - self.frequency_state_one[key]) / 2
+            for key in self.frequency_state_zero.keys()
+        }
+
 
 DispersiveShiftType = np.dtype(
     [
@@ -270,7 +271,6 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
             row=1,
             col=2,
         )
-
         if fit is not None:
             freqrange = np.linspace(
                 min(frequencies),
@@ -295,50 +295,51 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
                 col=1,
             )
 
-    if fit is not None:
-        fig.add_trace(
-            go.Scatter(
-                x=[
-                    fit.best_freq[target] * HZ_TO_GHZ,
-                    fit.best_freq[target] * HZ_TO_GHZ,
-                ],
-                y=[
-                    np.min(np.concatenate((data_0.signal, data_1.signal))),
-                    np.max(np.concatenate((data_0.signal, data_1.signal))),
-                ],
-                mode="lines",
-                line=go.scatter.Line(color="orange", width=3, dash="dash"),
-                name="Best frequency",
-            ),
-            row=1,
-            col=1,
-        )
-
-        fig.add_vline(
-            x=fit.best_freq[target] * HZ_TO_GHZ,
-            line=dict(color="orange", width=3, dash="dash"),
-            row=1,
-            col=1,
-        )
-        fitting_report = table_html(
-            table_dict(
-                target,
-                [
-                    "State Zero Frequency [Hz]",
-                    "State One Frequency [Hz]",
-                    "Chi [Hz]",
-                    "Best Frequency [Hz]",
-                ],
-                np.round(
-                    [
-                        fit_data_0["frequency_state_zero"][target],
-                        fit_data_1["frequency_state_one"][target],
-                        fit.chi[target],
-                        fit.best_freq[target],
-                    ]
+    if fit_data_0 != None or fit_data_1 != None:
+        if fit_data_0.keys() == fit_data_1.keys():
+            fig.add_trace(
+                go.Scatter(
+                    x=[
+                        fit.best_freq[target] * HZ_TO_GHZ,
+                        fit.best_freq[target] * HZ_TO_GHZ,
+                    ],
+                    y=[
+                        np.min(np.concatenate((data_0.signal, data_1.signal))),
+                        np.max(np.concatenate((data_0.signal, data_1.signal))),
+                    ],
+                    mode="lines",
+                    line=go.scatter.Line(color="orange", width=3, dash="dash"),
+                    name="Best frequency",
                 ),
+                row=1,
+                col=1,
             )
-        )
+
+            fig.add_vline(
+                x=fit.best_freq[target] * HZ_TO_GHZ,
+                line=dict(color="orange", width=3, dash="dash"),
+                row=1,
+                col=1,
+            )
+            fitting_report = table_html(
+                table_dict(
+                    target,
+                    [
+                        "State Zero Frequency [Hz]",
+                        "State One Frequency [Hz]",
+                        "Chi [Hz]",
+                        "Best Frequency [Hz]",
+                    ],
+                    np.round(
+                        [
+                            fit_data_0["frequency_state_zero"][target],
+                            fit_data_1["frequency_state_one"][target],
+                            fit.chi[target],
+                            fit.best_freq[target],
+                        ]
+                    ),
+                )
+            )
     fig.update_layout(
         showlegend=True,
         xaxis_title="Frequency [GHz]",
@@ -361,8 +362,6 @@ def _update(results: DispersiveShiftResults, platform: Platform, target: QubitId
     )
     g = np.sqrt(results.chi[target] * delta)
     update.coupling(g, platform, target)
-
-
 
 
 dispersive_shift = Routine(_acquisition, _fit, _plot, _update)
