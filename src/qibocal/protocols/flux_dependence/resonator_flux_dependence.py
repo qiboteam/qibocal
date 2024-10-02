@@ -230,7 +230,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     return ResonatorFluxResults(
         resonator_freq=resonator_freq,
         bare_resonator_freq=bare_resonator_freq,
-        coupling=coupling,
+        coupling=coupling * GHZ_TO_HZ,
         fitted_parameters=fitted_parameters,
     )
 
