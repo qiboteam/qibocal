@@ -14,7 +14,8 @@ from qibocal.protocols.two_qubit_interaction.cross_resonance.cross_resonance imp
 
 CrossResonanceType = np.dtype(
     [
-        ("prob", np.float64),
+        ("magnitude", np.float64),
+        ("phase", np.float64),
         ("length", np.int64),
     ]
 )
@@ -36,11 +37,11 @@ class CrossResonanceSeqResults(Results):
 class CrossResonanceSeqData(Data):
     """Data structure for Cross Resonance Gate Calibration using Sequences.
     targets: [target, control]
-    I:
-        Q_C: Pulse(omega_T, t) 
+    0(I):
+        Q_C: Pulse(omega_T, t)  - MZ
         Q_T: wait               - MZ
-    X:
-        Q_C: RX   - Pulse(omega_T, t) 
+    1(X):
+        Q_C: RX   - Pulse(omega_T, t)  - MZ
         Q_T:      - wait               - MZ
     """
     data: dict[QubitId, npt.NDArray[CrossResonanceType]] = field(default_factory=dict)
@@ -57,16 +58,13 @@ def _acquisition(
     
     
     for pair in targets:
-        for ctr_setup in STATES:
-            for tgt_setup in STATES:
+        for tgt_setup in STATES:
+            for ctr_setup in STATES:
             # sweep the parameter
                 for duration in params.duration_range:
                     target, control = pair
-                # tgt_native_rx:NativePulse = platform.qubits[target].native_gates.RX.pulse(start=0)
-                # ctr_native_rx:NativePulse = platform.qubits[control].native_gates.RX.pulse(start=0)
-
-                    ctr_native_rx = platform.create_RX_pulse(control, 0)
-                    tgt_native_rx = platform.create_RX_pulse(target, 0)
+                    tgt_native_rx:NativePulse = platform.qubits[target].native_gates.RX.pulse(start=0)
+                    ctr_native_rx:NativePulse = platform.qubits[control].native_gates.RX.pulse(start=0)
 
                     sequence = PulseSequence()
                     next_start = 0
@@ -80,7 +78,7 @@ def _acquisition(
                         next_start = max(ctr_native_rx.finish, next_start)
                     
                     cr_pulse: Pulse = Pulse(start=next_start,
-                                    duration=4,
+                                    duration=duration,
                                     amplitude=ctr_native_rx.amplitude,
                                     frequency=tgt_native_rx.frequency,   # control frequency
                                     relative_phase=0,
@@ -102,21 +100,23 @@ def _acquisition(
                         ExecutionParameters(
                             nshots=params.nshots,
                             relaxation_time=params.relaxation_time,
-                            acquisition_type=AcquisitionType.DISCRIMINATION,
-                            # acquisition_type=AcquisitionType.INTEGRATION,
-                            averaging_mode=AveragingMode.SINGLESHOT,
-                            # averaging_mode=AveragingMode.CYCLIC,
+                            #acquisition_type=AcquisitionType.DISCRIMINATION,
+                            acquisition_type=AcquisitionType.INTEGRATION,
+                            #averaging_mode=AveragingMode.SINGLESHOT,
+                            averaging_mode=AveragingMode.CYCLIC,
                         ),
                     )
 
                     # Store Results
                     for qubit in pair:
-                        probability = results[qubit].probability(state=0)
+                        mag = results[qubit].magnitude
+                        phi = results[qubit].phase
                         data.register_qubit(
                             CrossResonanceType,
                             (qubit, target, control, tgt_setup, ctr_setup),
                             dict(
-                                prob=[probability],
+                                magnitude=[mag],
+                                phase = [phi],
                                 length=[duration],
                             ),
                     )
@@ -142,13 +142,13 @@ def _plot(data: CrossResonanceSeqData, target: QubitPairId, fit: CrossResonanceS
             x_data = data.data[ro_qubit, target[0], target[1], STATES[1], ctr_setup]
             fig.add_trace(
                 go.Scatter(
-                    x=i_data.length, y=i_data.prob, 
+                    x=i_data.length, y=i_data.magnitude, 
                     name= f"Target: |{STATES[0]}>, Control: |{ctr_setup}>",
                 ),
             )
             fig.add_trace(
                 go.Scatter(
-                    x=x_data.length, y=x_data.prob, 
+                    x=x_data.length, y=x_data.magnitude, 
                     name= f"Target: |{STATES[1]}>, Control: |{ctr_setup}>",
                     mode='lines', line={'dash': 'dash'}, 
                 ),
