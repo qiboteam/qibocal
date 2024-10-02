@@ -204,6 +204,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 ),
                 maxfev=100000,
             )
+
             fitted_parameters[qubit] = {
                 "w_max": data.qubit_frequency[qubit] * HZ_TO_GHZ,
                 "xj": 0,
@@ -217,7 +218,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             }
             sweetspot = -data.offset[qubit] / data.matrix_element[qubit]
             resonator_freq[qubit] = fit_function(sweetspot, *popt) * GHZ_TO_HZ
-            coupling[qubit] = popt[0]
+            coupling[qubit] = popt[0] * GHZ_TO_HZ
             bare_resonator_freq[qubit] = popt[1] * GHZ_TO_HZ
         except ValueError as e:
             log.error(
@@ -226,11 +227,10 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 "Lowering the value of `threshold` in `extract_*_feature`"
                 "should fix the problem."
             )
-
     return ResonatorFluxResults(
         resonator_freq=resonator_freq,
         bare_resonator_freq=bare_resonator_freq,
-        coupling=coupling * GHZ_TO_HZ,
+        coupling=coupling,
         fitted_parameters=fitted_parameters,
     )
 
@@ -268,7 +268,6 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
 
 
 def _update(results: ResonatorFluxResults, platform: Platform, qubit: QubitId):
-    pass
     update.bare_resonator_frequency(results.bare_resonator_freq[qubit], platform, qubit)
     update.readout_frequency(results.resonator_freq[qubit], platform, qubit)
     update.coupling(results.coupling[qubit], platform, qubit)
