@@ -54,6 +54,13 @@ class DispersiveShiftResults(Results):
     def state_one(self):
         return {key: value for key, value in asdict(self).items() if "one" in key}
 
+    @property
+    def chi(self):
+        "Evaluate the dispersive shift"
+        return {key:(
+            self.frequency_state_zero[key]
+            - self.frequency_state_one[key]
+        ) / 2 for key in self.frequency_state_zero.keys()}
 
 DispersiveShiftType = np.dtype(
     [
@@ -189,7 +196,7 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
             q_measures = data_i.q
 
             iq_couples[i].append(np.stack((i_measures, q_measures), axis=-1))
-        # for each qubit find the iq couple of 0-1 states that maximize the distance
+
     iq_couples = np.array(iq_couples)
 
     for idx, qubit in enumerate(qubits):
@@ -222,7 +229,6 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
             "phase [rad]",
         ),
     )
-    # iterate over multiple data folders
 
     fitting_report = ""
 
@@ -327,7 +333,7 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
                     [
                         fit_data_0["frequency_state_zero"][target],
                         fit_data_1["frequency_state_one"][target],
-                        chi(fit_data_0, fit_data_1, target),
+                        fit.chi[target],
                         fit.best_freq[target],
                     ]
                 ),
@@ -349,21 +355,14 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
 def _update(results: DispersiveShiftResults, platform: Platform, target: QubitId):
     update.readout_frequency(results.best_freq[target], platform, target)
     fit_data_0 = results.state_zero
-    fit_data_1 = results.state_one
     delta = np.abs(
         platform.qubits[target].drive_frequency
         - fit_data_0["frequency_state_zero"][target]
     )
-    g = np.sqrt(chi(fit_data_0, fit_data_1, target) * delta)
+    g = np.sqrt(results.chi[target] * delta)
     update.coupling(g, platform, target)
 
 
-def chi(fit_data_0, fit_data_1, target):
-    "Evaluate the dispersive shift"
-    return (
-        fit_data_0["frequency_state_zero"][target]
-        - fit_data_1["frequency_state_one"][target]
-    ) / 2
 
 
 dispersive_shift = Routine(_acquisition, _fit, _plot, _update)
