@@ -14,8 +14,7 @@ from qibocal.protocols.two_qubit_interaction.cross_resonance.cross_resonance imp
 
 CrossResonanceType = np.dtype(
     [
-        ("magnitude", np.float64),
-        ("phase", np.float64),
+        ("prob", np.float64),
         ("length", np.int64),
     ]
 )
