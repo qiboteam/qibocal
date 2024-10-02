@@ -601,14 +601,14 @@ def layer_circuit(
     random_indexes = []
     if isinstance(target, (str, int)):
         nqubits = 1
-        rb_gen_layer = rb_gen.layer_gen_single_qubit()
+        rb_gen_layer = rb_gen.layer_gen_single_qubit
     elif isinstance(target, Tuple):  # Tuple for qubit pair
         nqubits = 2
-        rb_gen_layer = rb_gen.layer_gen_two_qubit()
+        rb_gen_layer = rb_gen.layer_gen_two_qubit
     # Build each layer, there will be depth many in the final circuit.
     for _ in range(depth):
         # Generate a layer.
-        new_layer, random_index = rb_gen_layer
+        new_layer, random_index = rb_gen_layer()
         random_indexes.append(random_index)
         new_circuit = Circuit(nqubits)
         if nqubits == 1:
