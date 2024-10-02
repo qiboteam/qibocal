@@ -72,6 +72,8 @@ from .two_qubit_interaction import (
     cz_virtualz_signal,
 )
 
+from .frustration.rabi import frustration_rabi
+
 
 class Operation(Enum):
     resonator_spectroscopy = resonator_spectroscopy
@@ -141,3 +143,4 @@ class Operation(Enum):
     cross_resonance_chevron_frequency = cross_resonance_chevron_frequency
     cross_resonance_sequences = cross_resonance_sequences
     state_tomography = state_tomography
+    frustration_rabi = frustration_rabi
