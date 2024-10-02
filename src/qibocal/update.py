@@ -7,7 +7,7 @@ import numpy as np
 from pydantic import BaseModel
 from qibolab import Platform
 
-from qibocal.auto.operation import QubitId, QubitPairId
+from qibocal.auto.operation import ChannelId, QubitId, QubitPairId
 
 CLASSIFICATION_PARAMS = [
     "threshold",
@@ -82,35 +82,23 @@ def crosstalk_matrix(
     platform.qubits[qubit].crosstalk_matrix[flux_qubit] = float(matrix_element)
 
 
-def iq_angle(angle: float, platform: Platform, qubit: QubitId):
-    """Update iq angle value in platform for specific qubit."""
-    # platform.qubits[qubit].iq_angle = float(angle)
-    pass
+def replace(model: BaseModel, **update):
+    """Replace interface for pydantic models."""
+    return model.model_copy(update=update)
 
 
-def threshold(threshold: float, platform: Platform, qubit: QubitId):
-    # platform.qubits[qubit].threshold = float(threshold)
-    pass
+def iq_angle(angle: float, platform: Platform, channel: ChannelId):
+    """Update classification iq angle value in platform for specific acquisition channel."""
+    platform.parameters.configs[channel] = replace(
+        platform.config(channel), iq_angle=angle
+    )
 
 
-def mean_gnd_states(gnd_state: list, platform: Platform, qubit: QubitId):
-    """Update mean ground state value in platform for specific qubit."""
-    # platform.qubits[qubit].mean_gnd_states = gnd_state
-
-
-def mean_exc_states(exc_state: list, platform: Platform, qubit: QubitId):
-    """Update mean excited state value in platform for specific qubit."""
-    # platform.qubits[qubit].mean_exc_states = exc_state
-
-
-def readout_fidelity(fidelity: float, platform: Platform, qubit: QubitId):
-    """Update fidelity of single shot classification."""
-    # platform.qubits[qubit].readout_fidelity = float(fidelity)
-
-
-def assignment_fidelity(fidelity: float, platform: Platform, qubit: QubitId):
-    """Update fidelity of single shot classification."""
-    # platform.qubits[qubit].assignment_fidelity = float(fidelity)
+def threshold(threshold: float, platform: Platform, channel: ChannelId):
+    """Update classification threshold value in platform for specific acquisition channel."""
+    platform.parameters.configs[channel] = replace(
+        platform.config(channel), threshold=threshold
+    )
 
 
 def virtual_phases(

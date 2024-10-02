@@ -404,12 +404,9 @@ def _plot(
 def _update(
     results: SingleShotClassificationResults, platform: Platform, target: QubitId
 ):
-    update.iq_angle(results.rotation_angle[target], platform, target)
-    update.threshold(results.threshold[target], platform, target)
-    update.mean_gnd_states(results.mean_gnd_states[target], platform, target)
-    update.mean_exc_states(results.mean_exc_states[target], platform, target)
-    update.readout_fidelity(results.fidelity[target], platform, target)
-    update.assignment_fidelity(results.assignment_fidelity[target], platform, target)
+    channel = platform.qubits[target].acquisition
+    update.iq_angle(results.rotation_angle[target], platform, channel)
+    update.threshold(results.threshold[target], platform, channel)
 
 
 single_shot_classification = Routine(_acquisition, _fit, _plot, _update)
