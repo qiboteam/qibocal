@@ -77,15 +77,17 @@ def crosstalk_matrix(
     platform.qubits[qubit].crosstalk_matrix[flux_qubit] = float(matrix_element)
 
 
-def iq_angle(angle: float, platform: Platform, channel: ChannelId):
-    """Update classification iq angle value in platform for specific acquisition channel."""
+def iq_angle(angle: float, platform: Platform, qubit: ChannelId):
+    """Update classification iq angle value in platform for specific qubit."""
+    channel = platform.qubits[qubit].acquisition
     platform.parameters.configs[channel] = replace(
         platform.config(channel), iq_angle=angle
     )
 
 
-def threshold(threshold: float, platform: Platform, channel: ChannelId):
-    """Update classification threshold value in platform for specific acquisition channel."""
+def threshold(threshold: float, platform: Platform, qubit: ChannelId):
+    """Update classification threshold value in platform for specific qubit."""
+    channel = platform.qubits[qubit].acquisition
     platform.parameters.configs[channel] = replace(
         platform.config(channel), threshold=threshold
     )
