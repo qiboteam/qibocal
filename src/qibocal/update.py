@@ -7,7 +7,7 @@ import numpy as np
 from pydantic import BaseModel
 from qibolab import Platform
 
-from qibocal.auto.operation import ChannelId, QubitId, QubitPairId
+from qibocal.auto.operation import QubitId, QubitPairId
 
 CLASSIFICATION_PARAMS = [
     "threshold",
@@ -77,7 +77,7 @@ def crosstalk_matrix(
     platform.qubits[qubit].crosstalk_matrix[flux_qubit] = float(matrix_element)
 
 
-def iq_angle(angle: float, platform: Platform, qubit: ChannelId):
+def iq_angle(angle: float, platform: Platform, qubit: QubitId):
     """Update classification iq angle value in platform for specific qubit."""
     channel = platform.qubits[qubit].acquisition
     platform.parameters.configs[channel] = replace(
@@ -85,7 +85,7 @@ def iq_angle(angle: float, platform: Platform, qubit: ChannelId):
     )
 
 
-def threshold(threshold: float, platform: Platform, qubit: ChannelId):
+def threshold(threshold: float, platform: Platform, qubit: QubitId):
     """Update classification threshold value in platform for specific qubit."""
     channel = platform.qubits[qubit].acquisition
     platform.parameters.configs[channel] = replace(
