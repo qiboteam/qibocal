@@ -57,10 +57,11 @@ class DispersiveShiftResults(Results):
     @property
     def chi(self):
         "Evaluate the dispersive shift"
-        return {key:(
-            self.frequency_state_zero[key]
-            - self.frequency_state_one[key]
-        ) / 2 for key in self.frequency_state_zero.keys()}
+        return {
+            key: (self.frequency_state_zero[key] - self.frequency_state_one[key]) / 2
+            for key in self.frequency_state_zero.keys()
+        }
+
 
 DispersiveShiftType = np.dtype(
     [
@@ -361,8 +362,6 @@ def _update(results: DispersiveShiftResults, platform: Platform, target: QubitId
     )
     g = np.sqrt(results.chi[target] * delta)
     update.coupling(g, platform, target)
-
-
 
 
 dispersive_shift = Routine(_acquisition, _fit, _plot, _update)
