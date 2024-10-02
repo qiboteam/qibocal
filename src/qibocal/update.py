@@ -25,22 +25,17 @@ def replace(model: BaseModel, **update):
 
 def readout_frequency(freq: float, platform: Platform, qubit: QubitId):
     """Update readout frequency value in platform for specific qubit."""
-    # mz = platform.qubits[qubit].native_gates.MZ
-    # freq_hz = int(freq)
-    # mz.frequency = freq_hz
-    # if mz.if_frequency is not None:
-    #    mz.if_frequency = freq_hz - platform.qubits[qubit].readout.lo_frequency
-    # platform.qubits[qubit].readout_frequency = freq_hz
-
-
-def bare_resonator_frequency(freq: float, platform: Platform, qubit: QubitId):
-    """Update rbare frequency value in platform for specific qubit."""
-    # platform.qubits[qubit].bare_resonator_frequency = int(freq)
+    channel = platform.qubits[qubit].probe
+    platform.parameters.configs[channel] = replace(
+        platform.config(channel), frequency=freq
+    )
 
 
 def readout_amplitude(amp: float, platform: Platform, qubit: QubitId):
     """Update readout amplitude value in platform for specific qubit."""
-    # platform.natives.single_qubit[qubit].MZ.amplitude = float(amp)
+    channel, pulse = platform.natives.single_qubit[qubit].MZ[0]
+    new_pulse = replace(pulse, probe=replace(pulse.probe, amplitude=amp))
+    platform.natives.single_qubit[qubit].MZ[0] = (channel, new_pulse)
 
 
 def readout_attenuation(att: int, platform: Platform, qubit: QubitId):
@@ -80,11 +75,6 @@ def crosstalk_matrix(
 ):
     """Update crosstalk_matrix element."""
     platform.qubits[qubit].crosstalk_matrix[flux_qubit] = float(matrix_element)
-
-
-def replace(model: BaseModel, **update):
-    """Replace interface for pydantic models."""
-    return model.model_copy(update=update)
 
 
 def iq_angle(angle: float, platform: Platform, channel: ChannelId):
