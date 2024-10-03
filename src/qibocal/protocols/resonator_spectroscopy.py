@@ -17,6 +17,7 @@ from qibolab import (
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.result import magnitude, phase
+from qibocal.update import replace
 
 from .utils import (
     PowerLevel,
@@ -191,13 +192,13 @@ def _acquisition(
 
     for q in targets:
         natives = platform.natives.single_qubit[q]
-        ro_sequence = natives.MZ.create_sequence()
-        ro_pulses[q] = ro_sequence[0][1]
+        channel, pulse = natives.MZ()[0]
 
         if params.amplitude is not None:
-            ro_pulses[q].amplitude = params.amplitude
+            probe = replace(pulse.probe, amplitude=params.amplitude)
+            pulse = replace(pulse, probe=probe)
 
-        amplitudes[q] = ro_pulses[q].probe.amplitude
+        amplitudes[q] = pulse.probe.amplitude
 
         if params.attenuation is not None:
             raise NotImplementedError
@@ -209,7 +210,8 @@ def _acquisition(
             attenuation = None
 
         attenuations[q] = attenuation
-        sequence.concatenate(ro_sequence)
+        ro_pulses[q] = pulse
+        sequence |= [(channel, pulse)]
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(

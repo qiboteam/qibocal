@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from typing import Union
 
 import numpy as np
+from pydantic import BaseModel
 from qibolab import Platform
 
 from qibocal.auto.operation import QubitId, QubitPairId
@@ -15,6 +16,11 @@ CLASSIFICATION_PARAMS = [
     "mean_exc_states",
     "classifier_hpars",
 ]
+
+
+def replace(model: BaseModel, **update):
+    """Replace interface for pydantic models."""
+    return model.model_copy(update=update)
 
 
 def readout_frequency(freq: float, platform: Platform, qubit: QubitId):
