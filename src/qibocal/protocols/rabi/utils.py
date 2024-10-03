@@ -5,6 +5,7 @@ from qibolab import Delay, Platform, PulseSequence
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, QubitId
+from qibocal.update import replace
 
 from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
 
@@ -231,20 +232,19 @@ def sequence_amplitude(
     durations = {}
     for q in targets:
         natives = platform.natives.single_qubit[q]
-        qd_sequence = natives.RX()
-        ro_sequence = natives.MZ()
+        qd_channel, qd_pulse = natives.RX()[0]
+        ro_channel, ro_pulse = natives.MZ()[0]
 
-        qd_pulses[q] = qd_sequence[0][1]
         if params.pulse_length is not None:
-            qd_pulses[q].duration = params.pulse_length
-        durations[q] = qd_pulses[q].duration
+            qd_pulse = replace(qd_pulse, duration=params.pulse_length)
 
-        ro_pulses[q] = ro_sequence[0][1]
+        durations[q] = qd_pulse.duration
+        qd_pulses[q] = qd_pulse
+        ro_pulses[q] = ro_pulse
 
-        qubit = platform.qubits[q]
-        sequence.append((qubit.drive, qd_pulses[q]))
-        sequence.append((qubit.acquisition, Delay(duration=durations[q])))
-        sequence.extend(ro_sequence)
+        sequence.append((qd_channel, qd_pulses[q]))
+        sequence.append((ro_channel, Delay(duration=durations[q])))
+        sequence.append((ro_channel, ro_pulse))
     return sequence, qd_pulses, ro_pulses, durations
 
 
@@ -262,23 +262,23 @@ def sequence_length(
     amplitudes = {}
     for q in targets:
         natives = platform.natives.single_qubit[q]
-        qd_sequence = natives.RX()
-        ro_sequence = natives.MZ()
+        qd_channel, qd_pulse = natives.RX()[0]
+        ro_channel, ro_pulse = natives.MZ()[0]
 
-        qd_pulses[q] = qd_sequence[0][1]
         if params.pulse_amplitude is not None:
-            qd_pulses[q].amplitude = params.pulse_amplitude
-        amplitudes[q] = qd_pulses[q].amplitude
+            qd_pulse = replace(qd_pulse, amplitude=params.pulse_amplitude)
 
-        ro_pulses[q] = ro_sequence[0][1]
-        qubit = platform.qubits[q]
-        sequence.append((qubit.drive, qd_pulses[q]))
+        amplitudes[q] = qd_pulse.amplitude
+        qd_pulses[q] = qd_pulse
+        ro_pulses[q] = ro_pulse
+
+        sequence.append((qd_channel, qd_pulse))
         if use_align:
-            sequence.align([qubit.drive, qubit.acquisition])
+            sequence.align([qd_channel, ro_channel])
         else:
             delays[q] = Delay(duration=16)
-            sequence.append((qubit.acquisition, delays[q]))
-        sequence.extend(ro_sequence)
+            sequence.append((ro_channel, delays[q]))
+        sequence.append((ro_channel, ro_pulse))
 
     return sequence, qd_pulses, delays, ro_pulses, amplitudes
 
