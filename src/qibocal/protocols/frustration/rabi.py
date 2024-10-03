@@ -70,9 +70,7 @@ def _acquisition(
 
     # create a sequence of pulses for the experiment
     
-    ro_pulses = {}
     durations = {}
-
 
     data = RabiAmplitudeData(durations=durations, qubit_ros=params.measure_qubits)
     for qubit in targets:

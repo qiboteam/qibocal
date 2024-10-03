@@ -73,6 +73,7 @@ from .two_qubit_interaction import (
 )
 
 from .frustration.rabi import frustration_rabi
+from .frustration.ramsey import frustration_ramsey
 
 
 class Operation(Enum):
@@ -144,3 +145,4 @@ class Operation(Enum):
     cross_resonance_sequences = cross_resonance_sequences
     state_tomography = state_tomography
     frustration_rabi = frustration_rabi
+    frustration_ramsey = frustration_ramsey
