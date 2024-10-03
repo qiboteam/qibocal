@@ -211,7 +211,7 @@ def _acquisition(
 
         attenuations[q] = attenuation
         ro_pulses[q] = pulse
-        sequence |= [(channel, pulse)]
+        sequence.append((channel, pulse))
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
