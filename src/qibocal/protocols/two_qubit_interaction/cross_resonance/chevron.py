@@ -26,7 +26,7 @@ STATES = ["I", "X"]
 
 @dataclass
 class CrossResonanceChevronParameters(Parameters):
-    """cross resonance chevron runcard inputs."""
+    """Cross Resonance Chevron runcard inputs."""
 
     pulse_duration_start: float
     """Initial pi pulse duration [ns]."""
@@ -60,7 +60,7 @@ class CrossResonanceChevronParameters(Parameters):
 
 @dataclass
 class CrossResonanceChevronResults(Results):
-    """cross resonance chevron outputs."""
+    """Cross Resonance Chevron outputs."""
 
 
 @dataclass
@@ -88,7 +88,7 @@ def _acquisition(
     platform: Platform,
     targets: list[QubitPairId],
 ) -> CrossResonanceChevronData:
-    """Data acquisition for cross resonance chevron."""
+    """Data acquisition for Cross Resonance Chevron."""
 
     data = CrossResonanceChevronData()
 

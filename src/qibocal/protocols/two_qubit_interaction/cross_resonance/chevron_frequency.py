@@ -25,7 +25,7 @@ CrossResonanceChevronFrequencyType = np.dtype(
 
 @dataclass
 class CrossResonanceChevronFrequencyParameters(Parameters):
-    """ResonatorSpectroscopy runcard inputs."""
+    """Cross resonance chevron frequency runcard inputs."""
 
     pulse_duration_start: float
     """Initial pi pulse duration [ns]."""
@@ -57,12 +57,12 @@ STATES = [0, 1]
 
 @dataclass
 class CrossResonanceChevronFrequencyResults(Results):
-    """Chevron wih Frequency Cross Resonance Calibration outputs."""
+    """Chevron wih frequency Cross pulse calibration outputs."""
 
 
 @dataclass
 class CrossResonanceChevronFrequencyData(Data):
-    """Data structure for Chevron wih Frequency."""
+    """Data structure for chevron wih frequency."""
 
     data: dict[QubitId, npt.NDArray[CrossResonanceChevronFrequencyType]] = field(
         default_factory=dict
@@ -85,7 +85,7 @@ def _acquisition(
     platform: Platform,
     targets: list[QubitPairId],
 ) -> CrossResonanceChevronFrequencyData:
-    """Data acquisition for Chevron wih Frequency."""
+    """Data acquisition for chevron wih frequency."""
 
     data = CrossResonanceChevronFrequencyData()
     for pair in targets:
@@ -158,7 +158,7 @@ def _acquisition(
 def _fit(
     data:CrossResonanceChevronFrequencyData,
 ) -> CrossResonanceChevronFrequencyResults:
-    """Post-processing function for Chevron wih Frequency."""
+    """Post-processing function for chevron with frequency."""
     return CrossResonanceChevronFrequencyResults()
 
 
@@ -168,7 +168,7 @@ def _plot(
     fit: CrossResonanceChevronFrequencyResults,
 ):
     pair = target
-    """Plotting function for Chevron wih Frequency and Duration."""
+    """Plotting function for chevron wih frequency and duration."""
     figs = []
     for qubit in pair:
         fig = make_subplots(
@@ -201,4 +201,4 @@ def _plot(
     return figs, ""
 
 cross_resonance_chevron_frequency = Routine(_acquisition, _fit, _plot)
-"""CrossResonanceChevronFrequency Routine object."""
+"""Cross resonance chevron with frequency routine object."""
