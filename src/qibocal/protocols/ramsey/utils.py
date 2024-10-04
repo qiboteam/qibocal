@@ -5,7 +5,8 @@ from qibolab import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
-from scipy.signal import find_peaks
+
+from qibocal.protocols.utils import GHZ_TO_HZ, fallback_period, guess_period
 
 POPT_EXCEPTION = [0, 0, 0, 0, 1]
 """Fit parameters output to handle exceptions"""
@@ -20,8 +21,8 @@ THRESHOLD = 0.5
 def ramsey_sequence(
     platform: Platform,
     qubit: QubitId,
-    wait: Optional[int] = 0,
-    detuning: Optional[int] = 0,
+    wait: int = 0,
+    detuning: Optional[int] = None,
 ):
     """Pulse sequence used in Ramsey (detuned) experiments.
 
@@ -40,8 +41,9 @@ def ramsey_sequence(
     )
 
     # apply detuning:
-    first_pi_half_pulse.frequency += detuning
-    second_pi_half_pulse.frequency += detuning
+    if detuning is not None:
+        first_pi_half_pulse.frequency += detuning
+        second_pi_half_pulse.frequency += detuning
     readout_pulse = platform.create_qubit_readout_pulse(
         qubit, start=second_pi_half_pulse.finish
     )
@@ -69,17 +71,13 @@ def fitting(x: list, y: list, errors: list = None) -> list:
     y = (y - y_min) / delta_y
     x = (x - x_min) / delta_x
     err = errors / delta_y if errors is not None else None
-    ft = np.fft.rfft(y)
-    freqs = np.fft.rfftfreq(len(y), x[1] - x[0])
-    mags = abs(ft)
-    local_maxima = find_peaks(mags, threshold=THRESHOLD)[0]
-    index = local_maxima[0] if len(local_maxima) > 0 else None
-    # 0.5 hardcoded guess for less than one oscillation
-    f = freqs[index] * 2 * np.pi if index is not None else 0.5
+
+    period = fallback_period(guess_period(x, y))
+    omega = 2 * np.pi / period
     p0 = [
         0.5,
         0.5,
-        f,
+        omega,
         0,
         1,
     ]
@@ -113,3 +111,35 @@ def fitting(x: list, y: list, errors: list = None) -> list:
         perr[4] / delta_x,
     ]
     return popt, perr
+
+
+def process_fit(
+    popt: list[float], perr: list[float], qubit_frequency: float, detuning: float
+):
+    """Processing Ramsey fitting results."""
+
+    delta_fitting = popt[2] / (2 * np.pi)
+    if detuning is not None:
+        sign = np.sign(detuning)
+        delta_phys = int(sign * (delta_fitting * GHZ_TO_HZ - np.abs(detuning)))
+    else:
+        delta_phys = int(delta_fitting * GHZ_TO_HZ)
+
+    corrected_qubit_frequency = int(qubit_frequency - delta_phys)
+    t2 = 1 / popt[4]
+    new_frequency = [
+        corrected_qubit_frequency,
+        perr[2] * GHZ_TO_HZ / (2 * np.pi),
+    ]
+    t2 = [t2, perr[4] * (t2**2)]
+
+    delta_phys_measure = [
+        -delta_phys,
+        perr[2] * GHZ_TO_HZ / (2 * np.pi),
+    ]
+    delta_fitting_measure = [
+        -delta_fitting * GHZ_TO_HZ,
+        perr[2] * GHZ_TO_HZ / (2 * np.pi),
+    ]
+
+    return new_frequency, t2, delta_phys_measure, delta_fitting_measure, popt

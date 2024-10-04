@@ -1,0 +1,20 @@
+platform: qw11q
+
+targets: [D1]
+
+actions:
+  # - id: dispersive_shift
+
+  #   operation: dispersive_shift
+  #   parameters:
+  #       freq_width: 10_000_000
+  #       freq_step: 100_000
+
+
+    - id: resonator_amplitude
+
+      operation: resonator_amplitude
+      parameters:
+          amplitude_step: 0.0005
+          amplitude_start: 0.001
+          amplitude_stop: 0.005

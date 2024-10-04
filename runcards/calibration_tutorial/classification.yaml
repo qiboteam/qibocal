@@ -1,6 +1,6 @@
-platform: <platform_name>
+platform: qw11q
 
-qubits: [0]
+targets: [D1]
 
 actions:
   - id: single shot classification 1

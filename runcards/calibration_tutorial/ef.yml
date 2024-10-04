@@ -1,0 +1,13 @@
+targets: [D4]
+
+actions:
+  - id: qubit spectroscopy
+
+    operation: qubit_spectroscopy_ef
+    parameters:
+        drive_amplitude: 0.09
+        drive_duration: 4000
+        freq_width: 20_000_000
+        freq_step: 100_000
+        nshots: 1024
+        relaxation_time: 50_000

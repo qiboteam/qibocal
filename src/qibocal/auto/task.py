@@ -1,34 +1,97 @@
 """Action execution tracker."""
 
 import copy
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
-from statistics import mode
-from typing import Optional
+from typing import Any, NewType, Optional, Union
 
+import yaml
 from qibolab.platform import Platform
-from qibolab.serialize import dump_platform
+from qibolab.qubits import QubitId, QubitPairId
 
+from .. import protocols
 from ..config import log
-from ..protocols import Operation
 from .mode import ExecutionMode
-from .operation import Data, DummyPars, Results, Routine, dummy_operation
-from .runcard import Action, Id, Targets
+from .operation import Data, DummyPars, OperationId, Results, Routine, dummy_operation
 
-MAX_PRIORITY = int(1e9)
-"""A number bigger than whatever will be manually typed. But not so insanely big not to fit in a native integer."""
+Id = NewType("Id", str)
+"""Action identifiers type."""
+
+Targets = Union[list[QubitId], list[QubitPairId], list[tuple[QubitId, ...]]]
+"""Elements to be calibrated by a single protocol."""
+
+SINGLE_ACTION = "action.yml"
+
+
+@dataclass
+class Action:
+    """Action specification in the runcard."""
+
+    id: Id
+    """Action unique identifier."""
+    operation: OperationId
+    """Operation to be performed by the executor."""
+    targets: Optional[Targets] = None
+    """Local qubits (optional)."""
+    update: bool = True
+    """Runcard update mechanism."""
+    parameters: Optional[dict[str, Any]] = None
+    """Input parameters, either values or provider reference."""
+
+    def dump(self, path: Path):
+        """Dump single action to yaml."""
+        (path / SINGLE_ACTION).write_text(yaml.safe_dump(asdict(self)))
+
+    @classmethod
+    def load(cls, path):
+        """Load action from yaml."""
+        return cls(**yaml.safe_load((path / SINGLE_ACTION).read_text(encoding="utf-8")))
+
+    @classmethod
+    def cast(cls, source: Union[dict, "Action"], operation: Optional[str] = None):
+        """Cast an action source to an action."""
+        if isinstance(source, Action):
+            return source
+
+        if operation is not None:
+            source["operation"] = operation
+
+        return cls(**source)
+
+
+@dataclass(frozen=True)
+class TaskId:
+    """Unique identifier for executed tasks."""
+
+    id: Id
+    iteration: int
+
+    def __str__(self):
+        """Coincise representation."""
+        return f"{self.id}-{self.iteration}"
+
+
 DEFAULT_NSHOTS = 100
 """Default number on shots when the platform is not provided."""
-TaskId = tuple[Id, int]
-"""Unique identifier for executed tasks."""
-PLATFORM_DIR = "platform"
-"""Folder where platform will be dumped."""
 
 
 @dataclass
 class Task:
     action: Action
     """Action object parsed from Runcard."""
+    operation: Routine
+
+    def __post_init__(self):
+        # validate parameters
+        self.operation.parameters_type.load(self.action.parameters)
+
+    @classmethod
+    def load(cls, path: Path):
+        action = Action.load(path)
+        return cls(action=action, operation=getattr(protocols, action.operation))
+
+    def dump(self, path):
+        self.action.dump(path)
 
     @property
     def targets(self) -> Targets:
@@ -39,14 +102,6 @@ class Task:
     def id(self) -> Id:
         """Task Id."""
         return self.action.id
-
-    @property
-    def operation(self):
-        """Routine object from Operation Enum."""
-        if self.action.operation is None:
-            raise RuntimeError("No operation specified")
-
-        return Operation[self.action.operation].value
 
     @property
     def parameters(self):
@@ -60,12 +115,11 @@ class Task:
 
     def run(
         self,
-        platform: Platform = None,
-        targets: Targets = list,
-        mode: ExecutionMode = None,
-        folder: Path = None,
-    ):
-
+        platform: Optional[Platform] = None,
+        targets: Optional[Targets] = None,
+        mode: Optional[ExecutionMode] = None,
+        folder: Optional[Path] = None,
+    ) -> "Completed":
         if self.targets is None:
             self.action.targets = targets
 
@@ -90,7 +144,7 @@ class Task:
             operation = dummy_operation
             parameters = DummyPars()
 
-        if mode.name in ["autocalibration", "acquire"]:
+        if ExecutionMode.ACQUIRE in mode:
             if operation.platform_dependent and operation.targets_dependent:
                 completed.data, completed.data_time = operation.acquisition(
                     parameters,
@@ -102,7 +156,7 @@ class Task:
                 completed.data, completed.data_time = operation.acquisition(
                     parameters, platform=platform
                 )
-        if mode.name in ["autocalibration", "fit"]:
+        if ExecutionMode.FIT in mode:
             completed.results, completed.results_time = operation.fit(completed.data)
         return completed
 
@@ -118,10 +172,9 @@ class Completed:
 
         once tasks will be immutable, a separate `iteration` attribute should
         be added
-
     """
-    folder: Path
-    """Folder with data and results."""
+    path: Optional[Path] = None
+    """Folder contaning data and results files for task."""
     _data: Optional[Data] = None
     """Protocol data."""
     _results: Optional[Results] = None
@@ -135,50 +188,59 @@ class Completed:
         self.task = copy.deepcopy(self.task)
 
     @property
-    def datapath(self):
-        """Path contaning data and results file for task."""
-        path = self.folder / "data" / f"{self.task.id}"
-        if not path.is_dir():
-            path.mkdir(parents=True)
-        return path
+    def data(self):
+        """Access task's data."""
+        if self._data is None:
+            Data = self.task.operation.data_type
+            self._data = Data.load(self.path)
+        return self._data
+
+    @data.setter
+    def data(self, value):
+        self._data = value
 
     @property
     def results(self):
         """Access task's results."""
         if self._results is None:
             Results = self.task.operation.results_type
-            self._results = Results.load(self.datapath)
+            self._results = Results.load(self.path)
         return self._results
 
     @results.setter
-    def results(self, results: Results):
-        """Set and store results."""
-        self._results = results
-        self._results.save(self.datapath)
+    def results(self, value):
+        self._results = value
 
-    @property
-    def data(self):
-        """Access task's data."""
-        if self._data is None:
-            Data = self.task.operation.data_type
-            self._data = Data.load(self.datapath)
-        return self._data
+    def dump(self):
+        """Dump object to disk."""
+        if self.path is None:
+            raise ValueError("No known path where to dump execution results.")
 
-    @data.setter
-    def data(self, data: Data):
-        """Set and store data."""
-        self._data = data
-        self._data.save(self.datapath)
+        self.path.mkdir(parents=True, exist_ok=True)
+        self.task.dump(self.path)
+        if self._data is not None:
+            self._data.save(self.path)
+        if self._results is not None:
+            self._results.save(self.path)
 
-    def update_platform(self, platform: Platform, update: bool):
-        """Perform update on platform' parameters by looping over qubits or pairs."""
-        if self.task.update and update:
-            for qubit in self.task.targets:
-                try:
-                    self.task.operation.update(self.results, platform, qubit)
-                except KeyError:
-                    log.warning(
-                        f"Skipping update of qubit {qubit} due to error in fit."
-                    )
-            (self.datapath / PLATFORM_DIR).mkdir(parents=True, exist_ok=True)
-            dump_platform(platform, self.datapath / PLATFORM_DIR)
+    def flush(self):
+        """Dump disk, and release from memory."""
+        self.dump()
+        self._data = None
+        self._results = None
+
+    @classmethod
+    def load(cls, path: Path):
+        """Loading completed from path."""
+
+        task = Task.load(path)
+        return cls(path=path, task=task)
+
+    def update_platform(self, platform: Platform):
+        """Perform update on platform' parameters by looping over qubits or
+        pairs."""
+        for qubit in self.task.targets:
+            try:
+                self.task.operation.update(self.results, platform, qubit)
+            except KeyError:
+                log.warning(f"Skipping update of qubit {qubit} due to error in fit.")

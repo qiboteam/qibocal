@@ -1,0 +1,11 @@
+platform: qw11q
+
+targets: [D1]
+
+actions:
+  - id: flipping
+
+    operation: flipping
+    parameters:
+        nflips_max: 20
+        nflips_step: 1

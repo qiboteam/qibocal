@@ -1,6 +1,12 @@
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from qibolab.platform import Platform
+from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
+from scipy.optimize import curve_fit
+
+from qibocal.auto.operation import Parameters
 
 from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
 
@@ -215,3 +221,120 @@ def period_correction_factor(phase: float):
 
     x = phase / np.pi
     return np.round(1 + x) - x
+
+
+def sequence_amplitude(
+    targets: list[QubitId], params: Parameters, platform: Platform
+) -> tuple[PulseSequence, dict, dict, dict]:
+    """Return sequence for rabi amplitude."""
+    sequence = PulseSequence()
+    qd_pulses = {}
+    ro_pulses = {}
+    durations = {}
+    for qubit in targets:
+        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+        if params.pulse_length is not None:
+            qd_pulses[qubit].duration = params.pulse_length
+
+        durations[qubit] = qd_pulses[qubit].duration
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=qd_pulses[qubit].finish
+        )
+        sequence.add(qd_pulses[qubit])
+        sequence.add(ro_pulses[qubit])
+    return sequence, qd_pulses, ro_pulses, durations
+
+
+def sequence_length(
+    targets: list[QubitId], params: Parameters, platform: Platform
+) -> tuple[PulseSequence, dict, dict, dict]:
+    """Return sequence for rabi length."""
+    sequence = PulseSequence()
+    qd_pulses = {}
+    ro_pulses = {}
+    amplitudes = {}
+    for qubit in targets:
+        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
+            qubit, start=0, duration=params.pulse_duration_start
+        )
+        if params.pulse_amplitude is not None:
+            qd_pulses[qubit].amplitude = params.pulse_amplitude
+        amplitudes[qubit] = qd_pulses[qubit].amplitude
+
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=qd_pulses[qubit].finish
+        )
+        sequence.add(qd_pulses[qubit])
+        sequence.add(ro_pulses[qubit])
+    return sequence, qd_pulses, ro_pulses, amplitudes
+
+
+def fit_length_function(
+    x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
+):
+    inf_bounds = [0, -1, 0, -np.pi, 0] if signal else [0, 0, 0, -np.pi, 0]
+    popt, perr = curve_fit(
+        rabi_length_function,
+        x,
+        y,
+        p0=guess,
+        maxfev=100000,
+        bounds=(
+            inf_bounds,
+            [1, 1, np.inf, np.pi, np.inf],
+        ),
+        sigma=sigma,
+    )
+    x_min = x_limits[0]
+    x_max = x_limits[1]
+    y_min = y_limits[0]
+    y_max = y_limits[1]
+    if signal is False:
+        popt = [
+            popt[0],
+            popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
+            popt[2] * (x_max - x_min),
+            popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
+            popt[4] / (x_max - x_min),
+        ]
+        perr = np.sqrt(np.diag(perr))
+    else:
+        popt = [  # change it according to the fit function
+            (y_max - y_min) * (popt[0] + 1 / 2) + y_min,
+            (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
+            popt[2] * (x_max - x_min),
+            popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
+            popt[4] / (x_max - x_min),
+        ]
+
+    pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
+    return popt, perr, pi_pulse_parameter
+
+
+def fit_amplitude_function(
+    x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
+):
+    popt, perr = curve_fit(
+        rabi_amplitude_function,
+        x,
+        y,
+        p0=guess,
+        maxfev=100000,
+        bounds=(
+            [0, 0, 0, 0],
+            [1, 1, np.inf, 2 * np.pi],
+        ),
+        sigma=sigma,
+    )
+    if signal is False:
+        perr = np.sqrt(np.diag(perr))
+    else:
+        popt = [  # Change it according to fit function changes
+            y_limits[0] + (y_limits[1] - y_limits[0]) * popt[0],
+            (y_limits[1] - y_limits[0]) * popt[1],
+            popt[2] * (x_limits[1] - x_limits[0]),
+            popt[3] - 2 * np.pi * x_limits[0] / (x_limits[1] - x_limits[0]) / popt[2],
+        ]
+    pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
+
+    return popt, perr, pi_pulse_parameter

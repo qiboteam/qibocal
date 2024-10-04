@@ -87,8 +87,8 @@ def _acquisition(
         # save data as often as defined by points
 
         for qubit in targets:
-            RX_pulses[qubit].start = RX90_pulses1[qubit].finish + wait / 2
-            RX90_pulses2[qubit].start = RX_pulses[qubit].finish + wait / 2
+            RX_pulses[qubit].start = RX90_pulses1[qubit].finish + wait // 2
+            RX90_pulses2[qubit].start = RX_pulses[qubit].finish + wait // 2
             ro_pulses[qubit].start = RX90_pulses2[qubit].finish
 
         sequences.append(deepcopy(sequence))
@@ -126,8 +126,8 @@ def _acquisition(
 
 def _fit(data: SpinEchoData) -> SpinEchoResults:
     """Post-processing for SpinEcho."""
-    t2Echos, fitted_parameters, chi2 = exponential_fit_probability(data)
-    return SpinEchoResults(t2Echos, fitted_parameters, chi2)
+    t2Echos, fitted_parameters, pcovs, chi2 = exponential_fit_probability(data)
+    return SpinEchoResults(t2Echos, fitted_parameters, pcovs, chi2)
 
 
 def _plot(data: SpinEchoData, target: QubitId, fit: SpinEchoResults = None):
