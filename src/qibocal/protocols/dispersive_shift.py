@@ -319,7 +319,7 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
                     ]
                 )
 
-    fitting_report = table_html(table_dict(target, table_entries, table_values))
+            fitting_report = table_html(table_dict(target, table_entries, table_values))
     fig.update_layout(
         showlegend=True,
         xaxis_title="Frequency [GHz]",
