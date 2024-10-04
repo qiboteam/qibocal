@@ -311,7 +311,7 @@ def _fit(data: ResCrosstalkData) -> ResCrosstalkResults:
                 crosstalk_matrix[target_qubit][flux_qubit] = (
                     popt[0] * data.matrix_element[target_qubit]
                 )
-            except ValueError as e:
+            except (ValueError, RuntimeError) as e:
                 log.error(
                     f"Off-diagonal flux fit failed for qubit {flux_qubit} due to {e}."
                 )
