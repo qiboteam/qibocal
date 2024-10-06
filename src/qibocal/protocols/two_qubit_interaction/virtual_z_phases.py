@@ -16,6 +16,7 @@ from qibolab import (
     Pulse,
     PulseSequence,
     Sweeper,
+    VirtualZ,
 )
 from scipy.optimize import curve_fit
 
@@ -113,10 +114,10 @@ def create_sequence(
     control_qubit: QubitId,
     ordered_pair: list[QubitId, QubitId],
     native: Literal["CZ", "iSWAP"],
-    parking: bool,
     dt: float,
-    amplitude: float = None,
-    duration: float = None,
+    parking: bool,
+    amplitude: float,
+    duration: float,
 ) -> tuple[
     PulseSequence,
     dict[QubitId, Pulse],
@@ -140,7 +141,7 @@ def create_sequence(
     flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
     flux_channel = platform.qubits[ordered_pair[1]].flux
     flux_pulses = [
-        (ch, pulse) for (ch, pulse) in flux_sequence if isinstance(pulse, Pulse)
+        (ch, pulse) for (ch, pulse) in flux_sequence if not isinstance(pulse, VirtualZ)
     ]
     channel, flux_pulse = flux_pulses[0]
     if amplitude is not None:
@@ -149,19 +150,26 @@ def create_sequence(
         flux_pulses[0] = (channel, replace(flux_pulse, duration=duration))
     sequence |= flux_pulses
 
-    theta_sequence = PulseSequence()
-    if dt > 0:
-        theta_sequence += [
-            (platform.qubits[target_qubit].drive, Delay(duration=dt)),
-            (platform.qubits[control_qubit].drive, Delay(duration=dt)),
+    theta_start = flux_sequence.duration
+    theta_sequence = PulseSequence(
+        [
+            (
+                platform.qubits[target_qubit].drive,
+                Delay(duration=flux_sequence.duration + dt),
+            ),
+            (
+                platform.qubits[control_qubit].drive,
+                Delay(duration=flux_sequence.duration + dt),
+            ),
         ]
+    )
     # R90 (angle to be swept)
     theta_sequence += target_natives.R(theta=np.pi / 2, phi=0)
     theta_pulse = theta_sequence[-1][1]
     # X
     if setup == "X":
         theta_sequence += control_natives.RX()
-    sequence |= theta_sequence
+    sequence += theta_sequence
 
     # M
     sequence |= target_natives.MZ() + control_natives.MZ()
@@ -222,7 +230,9 @@ def _acquisition(
                     params.dt,
                     params.parking,
                     params.flux_pulse_amplitude,
+                    params.flux_pulse_duration,
                 )
+
                 sweeper = Sweeper(
                     parameter=Parameter.relative_phase,
                     range=(params.theta_start, params.theta_end, params.theta_step),
