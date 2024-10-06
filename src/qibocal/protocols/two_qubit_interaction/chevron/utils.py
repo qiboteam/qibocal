@@ -33,18 +33,17 @@ def chevron_sequence(
     sequence += high_natives.RX()
 
     flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
-
-    sequence |= [
-        (ch, pulse) for ch, pulse in flux_sequence if not isinstance(pulse, VirtualZ)
-    ]
-    # TODO: Handle parking properly
     if parking:
-        raise NotImplementedError
-        for pulse in flux_sequence:
-            if pulse.qubit not in ordered_pair:
-                pulse.start = COUPLER_PULSE_START
-                pulse.duration = COUPLER_PULSE_DURATION
-                sequence.add(pulse)
+        sequence |= [
+            (ch, pulse)
+            for ch, pulse in flux_sequence
+            if not isinstance(pulse, VirtualZ)
+        ]
+    else:
+        target_channels = {platform.qubits[q].flux for q in ordered_pair}
+        sequence |= [
+            (ch, pulse) for ch, pulse in flux_sequence if ch in target_channels
+        ]
 
     # add readout
     sequence |= low_natives.MZ() + high_natives.MZ()
