@@ -6,6 +6,7 @@ import numpy as np
 from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
 
 from qibocal.auto.operation import QubitPairId, Routine
+from qibocal.result import magnitude
 
 from .utils import order_pair
 from .virtual_z_phases import (
@@ -72,7 +73,6 @@ def _acquisition(
             for setup in ("I", "X"):
                 (
                     sequence,
-                    virtual_z_phase,
                     theta_pulse,
                     data.amplitudes[ord_pair],
                     data.durations[ord_pair],
@@ -86,33 +86,31 @@ def _acquisition(
                     params.dt,
                     params.parking,
                     params.flux_pulse_amplitude,
-                )
-                data.vphases[ord_pair] = dict(virtual_z_phase)
-                theta = np.arange(
-                    params.theta_start,
-                    params.theta_end,
-                    params.theta_step,
-                    dtype=float,
-                )
-                sweeper = Sweeper(
-                    Parameter.relative_phase,
-                    theta,
-                    pulses=[theta_pulse],
-                    type=SweeperType.ABSOLUTE,
-                )
-                results = platform.sweep(
-                    sequence,
-                    ExecutionParameters(
-                        nshots=params.nshots,
-                        relaxation_time=params.relaxation_time,
-                        acquisition_type=AcquisitionType.INTEGRATION,
-                        averaging_mode=AveragingMode.CYCLIC,
-                    ),
-                    sweeper,
+                    params.flux_pulse_duration,
                 )
 
-                result_target = results[target_q].magnitude
-                result_control = results[control_q].magnitude
+                sweeper = Sweeper(
+                    parameter=Parameter.relative_phase,
+                    range=(params.theta_start, params.theta_end, params.theta_step),
+                    pulses=[theta_pulse],
+                )
+                results = platform.execute(
+                    [sequence],
+                    [[sweeper]],
+                    nshots=params.nshots,
+                    relaxation_time=params.relaxation_time,
+                    acquisition_type=AcquisitionType.INTEGRATION,
+                    averaging_mode=AveragingMode.CYCLIC,
+                )
+
+                ro_target = list(
+                    sequence.channel(platform.qubits[target_q].acquisition)
+                )[-1]
+                ro_control = list(
+                    sequence.channel(platform.qubits[control_q].acquisition)
+                )[-1]
+                result_target = magnitude(results[ro_target.id])
+                result_control = magnitude(results[ro_control.id])
 
                 data.register_qubit(
                     VirtualZPhasesType,
