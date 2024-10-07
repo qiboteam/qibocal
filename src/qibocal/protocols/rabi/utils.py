@@ -27,7 +27,7 @@ def rabi_length_function(x, offset, amplitude, period, phase, t2_inv):
     )
 
 
-def plot(data, qubit, fit):
+def plot(data, qubit, fit, projection = 'Z'):
     quantity, title, fitting = extract_rabi(data)
     figures = []
     fitting_report = ""
@@ -42,8 +42,7 @@ def plot(data, qubit, fit):
             "phase [rad]",
         ),
     )
-
-    qubit_data = data[qubit]
+    qubit_data = data[(qubit, projection)]
 
     rabi_parameters = getattr(qubit_data, quantity)
     fig.add_trace(
@@ -51,7 +50,7 @@ def plot(data, qubit, fit):
             x=rabi_parameters,
             y=qubit_data.signal,
             opacity=1,
-            name="Signal",
+            name=f"Signal <{projection}>",
             showlegend=True,
             legendgroup="Signal",
         ),
@@ -63,7 +62,7 @@ def plot(data, qubit, fit):
             x=rabi_parameters,
             y=qubit_data.phase,
             opacity=1,
-            name="Phase",
+            name=f"Phase <{projection}>",
             showlegend=True,
             legendgroup="Phase",
         ),

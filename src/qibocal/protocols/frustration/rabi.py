@@ -36,7 +36,8 @@ class RabiAmplitudeParameters(Parameters):
 class RabiAmplitudeResults(Results):
     """RabiAmplitude for frustration test results outputs."""
 
-
+PROJECTIONS = ['X', 'Y', 'Z']
+"""Standard projections for measurements."""
 
 RabiAmpType = np.dtype(
     [("amp", np.float64), ("prob", np.float64), ("error", np.float64)]
@@ -54,9 +55,35 @@ class RabiAmplitudeData(Data):
     qubit_ros: list[QubitId] = None
     """Measured qubits."""
 
-    data: dict[QubitId, QubitId, npt.NDArray[RabiAmpType]] = field(default_factory=dict)
+    data: dict[QubitId, QubitId, str, npt.NDArray[RabiAmpType]] = field(default_factory=dict)
     """Raw data acquired."""
 
+
+def ro_projection_pulse(platform: Platform, qubit, start=0, projection = 'X'):
+    sequence = PulseSequence()
+    """Create a readout pulse for a given qubit."""
+    if projection == PROJECTIONS[2]:
+        return platform.create_qubit_readout_pulse(qubit, start=start)
+    elif projection == PROJECTIONS[1]:
+        drive_pulse = platform.create_RX90_pulse(qubit, start=start)
+        sequence.add(drive_pulse)
+        sequence.add(
+            platform.create_qubit_readout_pulse(
+                qubit, 
+                start=drive_pulse.finish)
+        )
+    elif projection == PROJECTIONS[0]:
+        drive_pulse = platform.create_RX90_pulse(qubit, start=start, relative_phase=90)
+        sequence.add(drive_pulse)
+        sequence.add(
+            platform.create_qubit_readout_pulse(
+                qubit, 
+                start=drive_pulse.finish)
+        )
+    else:
+        raise ValueError(f"Invalid projection {projection}")
+
+    return sequence
 
 def _acquisition(
     params: RabiAmplitudeParameters, platform: Platform, targets: list[QubitId]
@@ -67,68 +94,74 @@ def _acquisition(
     to find the drive pulse amplitude that creates a rotation of a desired angle.
     In the case of quantum frustrated qubits, exciting one of the qubits should change the state of another one sharing the same frequency. 
     """
-
+    
     # create a sequence of pulses for the experiment
     
     durations = {}
 
     data = RabiAmplitudeData(durations=durations, qubit_ros=params.measure_qubits)
     for qubit in targets:
-        sequence = PulseSequence()
-        qd_pulse = platform.create_RX_pulse(qubit, start=0)
+        for projection in PROJECTIONS:
+            sequence = PulseSequence()
+            qd_pulse = platform.create_RX_pulse(qubit, start=0)
 
-        if params.pulse_length is None:
-            durations[qubit] = qd_pulse.duration
-        else:
-            qd_pulse.duration = params.pulse_length 
-            durations[qubit] = params.pulse_length
+            if params.pulse_length is None:
+                durations[qubit] = qd_pulse.duration
+            else:
+                qd_pulse.duration = params.pulse_length 
+                durations[qubit] = params.pulse_length
 
-        sequence.add(qd_pulse)
+            sequence.add(qd_pulse)
 
-        if params.measure_qubits is None:
-            ro_qubits = [qubit]
-        else:
-            ro_qubits = params.measure_qubits
+            if params.measure_qubits is None:
+                ro_qubits = [qubit]
+            else:
+                ro_qubits = params.measure_qubits
 
-        for ro_qubit in ro_qubits:
-            sequence.add(platform.create_qubit_readout_pulse(ro_qubit, start=qd_pulse.finish))
+            for ro_qubit in ro_qubits:
+                sequence.add(ro_projection_pulse(
+                        platform,
+                        qubit=ro_qubit, 
+                        start=qd_pulse.finish,
+                        projection=projection)
+                        )
 
-        # define the parameter to sweep and its range:
-        # qubit drive pulse amplitude
-        qd_pulse_amplitude_range = np.arange(
-            params.min_amp_factor,
-            params.max_amp_factor,
-            params.step_amp_factor,
-        )
-        sweeper_amplitude = Sweeper(
-            parameter= Parameter.amplitude,
-            values = qd_pulse_amplitude_range,
-            pulses = [qd_pulse],
-            type = SweeperType.FACTOR,
-        )
- 
-        results = platform.sweep(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.DISCRIMINATION,
-                averaging_mode=AveragingMode.SINGLESHOT,
-            ),
-            sweeper_amplitude,
-        )
-
-        for ro_qubit in  ro_qubits:
-            prob = results[ro_qubit].probability(state=1)
-            data.register_qubit(
-                dtype = RabiAmpType,
-                data_keys = (qubit, ro_qubit), 
-                data_dict=dict(
-                    amp=qd_pulse.amplitude * qd_pulse_amplitude_range,
-                    prob=prob.tolist(),
-                    error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
-                ),
+            # define the parameter to sweep and its range:
+            # qubit drive pulse amplitude
+            qd_pulse_amplitude_range = np.arange(
+                params.min_amp_factor,
+                params.max_amp_factor,
+                params.step_amp_factor,
             )
+            sweeper_amplitude = Sweeper(
+                parameter= Parameter.amplitude,
+                values = qd_pulse_amplitude_range,
+                pulses = [qd_pulse],
+                type = SweeperType.FACTOR,
+            )
+    
+            results = platform.sweep(
+                sequence,
+                ExecutionParameters(
+                    nshots=params.nshots,
+                    relaxation_time=params.relaxation_time,
+                    acquisition_type=AcquisitionType.DISCRIMINATION,
+                    averaging_mode=AveragingMode.SINGLESHOT,
+                ),
+                sweeper_amplitude,
+            )
+
+            for ro_qubit in  ro_qubits:
+                prob = results[ro_qubit].probability(state=1)
+                data.register_qubit(
+                    dtype = RabiAmpType,
+                    data_keys = (qubit, ro_qubit, projection), 
+                    data_dict=dict(
+                        amp=qd_pulse.amplitude * qd_pulse_amplitude_range,
+                        prob=prob.tolist(),
+                        error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
+                    ),
+                )
     
     return data
 
@@ -151,34 +184,35 @@ def _plot(data: RabiAmplitudeData, target: QubitId, fit: RabiAmplitudeResults = 
 
     fig = go.Figure()
     for ro_qubit in ro_qubits:
-        qubit_data = data.data[target, ro_qubit]
+        for projection in PROJECTIONS:
+            qubit_data = data.data[target, ro_qubit, projection]
 
-        probs = qubit_data.prob
-        error_bars = qubit_data.error
+            probs = qubit_data.prob
+            error_bars = qubit_data.error
 
-        rabi_parameters = getattr(qubit_data, "amp")
-        fig.add_trace(
-                go.Scatter(
-                    x=rabi_parameters,
-                    y=qubit_data.prob,
-                    opacity=1,
-                    name=f"Qubit {ro_qubit} |1> Probability",
-                    showlegend=True,
-                    legendgroup=f"Prob Qubit {ro_qubit}",
-                    mode="lines",
-                ))
-        fig.add_trace(
-                go.Scatter(
-                    x=np.concatenate((rabi_parameters, rabi_parameters[::-1])),
-                    y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
-                    fill="toself",
-                    fillcolor=COLORBAND,
-                    line=dict(color=COLORBAND_LINE),
-                    showlegend=False,
-                    legendgroup=f"Prob Qubit {ro_qubit}",
-                    name=f"Errors Q{ro_qubit}",
-                ),
-        )
+            rabi_parameters = getattr(qubit_data, "amp")
+            fig.add_trace(
+                    go.Scatter(
+                        x=rabi_parameters,
+                        y=qubit_data.prob,
+                        opacity=1,
+                        name=f"Q{ro_qubit} <{projection}> ",
+                        showlegend=True,
+                        legendgroup=f"Prob Qubit {ro_qubit}",
+                        mode="lines",
+                    ))
+            fig.add_trace(
+                    go.Scatter(
+                        x=np.concatenate((rabi_parameters, rabi_parameters[::-1])),
+                        y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
+                        fill="toself",
+                        fillcolor=COLORBAND,
+                        line=dict(color=COLORBAND_LINE),
+                        showlegend=False,
+                        legendgroup=f"Prob Qubit {ro_qubit}",
+                        name=f"Errors Q{ro_qubit}",
+                    ),
+            )
 
     figures.append(fig)
 

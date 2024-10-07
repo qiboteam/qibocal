@@ -17,6 +17,9 @@ from qibocal.config import log
 
 from . import utils
 
+PROJECTIONS = ['Z', 'Y', 'X']
+"""Standard projections for measurements."""
+
 
 @dataclass
 class RabiAmplitudeVoltParameters(Parameters):
@@ -30,6 +33,7 @@ class RabiAmplitudeVoltParameters(Parameters):
     """Step amplitude multiplicative factor."""
     pulse_length: Optional[float]
     """RX pulse duration [ns]."""
+    projections: Optional[list[str]] = field(default_factory=lambda: [PROJECTIONS[0]])
 
 
 @dataclass
@@ -60,6 +64,24 @@ class RabiAmplitudeVoltData(Data):
     """Raw data acquired."""
 
 
+def ro_projection_pulse(platform: Platform, qubit, start=0, projection = PROJECTIONS[0]):
+    """Create a readout pulse for a given qubit."""
+    qd_pulse = platform.create_RX90_pulse(qubit, start=start)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=qd_pulse.finish)
+
+    if projection == PROJECTIONS[0]:   
+        qd_pulse.amplitude = 0
+    elif projection == PROJECTIONS[1]:
+        qd_pulse.relative_phase=0
+    elif projection == PROJECTIONS[2]:
+        qd_pulse.relative_phase=180
+    else:
+        raise ValueError(f"Invalid measurement <{projection}>")
+    
+    
+    return qd_pulse, ro_pulse
+
+
 def _acquisition(
     params: RabiAmplitudeVoltParameters, platform: Platform, targets: list[QubitId]
 ) -> RabiAmplitudeVoltData:
@@ -70,60 +92,76 @@ def _acquisition(
     """
 
     # create a sequence of pulses for the experiment
-    sequence = PulseSequence()
+    
     qd_pulses = {}
     ro_pulses = {}
     durations = {}
-    for qubit in targets:
-        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        if params.pulse_length is not None:
-            qd_pulses[qubit].duration = params.pulse_length
+    projection_pulse = {}
 
-        durations[qubit] = qd_pulses[qubit].duration
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
+    data = RabiAmplitudeVoltData()
+
+    for projection in params.projections:
+        sequence = PulseSequence()
+        for qubit in targets:
+            qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+            if params.pulse_length is not None:
+                qd_pulses[qubit].duration = params.pulse_length
+
+            durations[qubit] = qd_pulses[qubit].duration
+            projection_pulse[qubit], ro_pulses[qubit] = ro_projection_pulse(
+                platform, qubit, start=qd_pulses[qubit].finish, projection=projection  
+            )
+            dummy_qd = platform.create_RX90_pulse(qubit, start=0)
+            dummy_qd.amplitude = 0
+            dummy_qd.duration = 4
+            #sequence.add(dummy_qd)
+            
+            sequence.add(qd_pulses[qubit])
+            sequence.add(projection_pulse[qubit])
+            sequence.add(ro_pulses[qubit])
+
+            print(sequence)
+
+        # define the parameter to sweep and its range:
+        # qubit drive pulse amplitude
+        qd_pulse_amplitude_range = np.arange(
+            params.min_amp_factor,
+            params.max_amp_factor,
+            params.step_amp_factor,
         )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
+        sweeper = Sweeper(
+            Parameter.amplitude,
+            qd_pulse_amplitude_range,
+            [qd_pulses[qubit] for qubit in targets],
+            type=SweeperType.FACTOR,
+        )
 
-    # define the parameter to sweep and its range:
-    # qubit drive pulse amplitude
-    qd_pulse_amplitude_range = np.arange(
-        params.min_amp_factor,
-        params.max_amp_factor,
-        params.step_amp_factor,
-    )
-    sweeper = Sweeper(
-        Parameter.amplitude,
-        qd_pulse_amplitude_range,
-        [qd_pulses[qubit] for qubit in targets],
-        type=SweeperType.FACTOR,
-    )
+        data.durations=durations
 
-    data = RabiAmplitudeVoltData(durations=durations)
-
-    # sweep the parameter
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
-        sweeper,
-    )
-    for qubit in targets:
-        result = results[ro_pulses[qubit].serial]
-        data.register_qubit(
-            RabiAmpVoltType,
-            (qubit),
-            dict(
-                amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
-                signal=result.magnitude,
-                phase=result.phase,
+        # sweep the parameter
+        results = platform.sweep(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
             ),
+            sweeper,
         )
+
+        for qubit in targets:
+            result = results[ro_pulses[qubit].serial]
+            data.register_qubit(
+                RabiAmpVoltType,
+                (qubit, projection),
+                dict(
+                    amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
+                    signal=result.magnitude,
+                    phase=result.phase,
+                ),
+            )
+    
     return data
 
 
@@ -135,7 +173,7 @@ def _fit(data: RabiAmplitudeVoltData) -> RabiAmplitudeVoltResults:
     fitted_parameters = {}
 
     for qubit in qubits:
-        qubit_data = data[qubit]
+        qubit_data = data[(qubit, PROJECTIONS[0])]
 
         rabi_parameter = qubit_data.amp
         voltages = qubit_data.signal
@@ -193,8 +231,19 @@ def _plot(
     data: RabiAmplitudeVoltData, target: QubitId, fit: RabiAmplitudeVoltResults = None
 ):
     """Plotting function for RabiAmplitude."""
-    return utils.plot(data, target, fit)
 
+    figs = []
+    fit_report = None
+    for projection in PROJECTIONS:
+        if ((target, projection)) not in data.data:
+            continue
+        if projection==PROJECTIONS[0]:
+            fig, fit_report = utils.plot(data, target, fit , projection=projection)
+        else:
+            fig, _ = utils.plot(data, target, fit = None, projection=projection)
+        figs.extend(fig)
+
+    return figs, fit_report
 
 def _update(results: RabiAmplitudeVoltResults, platform: Platform, target: QubitId):
     update.drive_amplitude(results.amplitude[target], platform, target)
