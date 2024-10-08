@@ -1,11 +1,13 @@
 """Action execution tracker."""
 
 import copy
+import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, NewType, Optional, Union
 
 import yaml
+from qibo import Circuit
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
@@ -21,6 +23,7 @@ Targets = Union[list[QubitId], list[QubitPairId], list[tuple[QubitId, ...]]]
 """Elements to be calibrated by a single protocol."""
 
 SINGLE_ACTION = "action.yml"
+CIRCUIT = "circuit.json"
 
 
 @dataclass
@@ -40,6 +43,12 @@ class Action:
 
     def dump(self, path: Path):
         """Dump single action to yaml."""
+        if self.parameters is not None:
+            for param, value in self.parameters.items():
+                if type(value) is Circuit:
+                    circuit_file = open(CIRCUIT, "w")
+                    json.dump(value.raw, circuit_file)
+                    self.parameters[param] = str(CIRCUIT)
         (path / SINGLE_ACTION).write_text(yaml.safe_dump(asdict(self)))
 
     @classmethod
