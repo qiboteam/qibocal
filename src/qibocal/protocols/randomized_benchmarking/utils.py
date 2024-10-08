@@ -585,7 +585,7 @@ def twoq_rb_acquisition(
 
 def layer_circuit(
     rb_gen: Callable, depth: int, target, interleave: str = None
-) -> tuple[Circuit, dict]:
+) -> tuple[Circuit, list]:
     """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`
     and a dictionary with random indexes used to select the clifford gates.
 
