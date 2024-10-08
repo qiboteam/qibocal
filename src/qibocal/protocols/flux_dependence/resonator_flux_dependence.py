@@ -37,9 +37,14 @@ class ResonatorFluxResults(Results):
     """ResonatoFlux outputs."""
 
     resonator_freq: dict[QubitId, float] = field(default_factory=dict)
-    bare_resonator_freq: dict[QubitId, float] = field(default_factory=dict)
     coupling: dict[QubitId, float] = field(default_factory=dict)
     """Qubit-resonator coupling."""
+    asymmetry: dict[QubitId, float] = field(default_factory=dict)
+    """Asymmetry between junctions."""
+    sweetspot: dict[QubitId, float] = field(default_factory=dict)
+    """Sweetspot for each qubit."""
+    matrix_element: dict[QubitId, float] = field(default_factory=dict)
+    """Sweetspot for each qubit."""
     fitted_parameters: dict[QubitId, float] = field(default_factory=dict)
 
 
@@ -169,7 +174,10 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     coupling = {}
     resonator_freq = {}
     bare_resonator_freq = {}
+    asymmetry = {}
     fitted_parameters = {}
+    sweetspot = {}
+    matrix_element = {}
     for qubit in qubits:
         qubit_data = data[qubit]
         biases = qubit_data.bias
@@ -179,17 +187,17 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             frequencies, biases, signal, "min" if data.resonator_type == "2D" else "max"
         )
 
-        def fit_function(x, g, resonator_freq):
+        def fit_function(x, g, d, offset, normalization):
             return utils.transmon_readout_frequency(
                 xi=x,
                 w_max=data.qubit_frequency[qubit] * HZ_TO_GHZ,
                 xj=0,
-                d=0,
-                normalization=data.matrix_element[qubit],
-                offset=data.offset[qubit],
+                d=d,
+                normalization=normalization,
+                offset=offset,
                 crosstalk_element=1,
                 charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
-                resonator_freq=resonator_freq,
+                resonator_freq=data.bare_resonator_frequency[qubit] * HZ_TO_GHZ,
                 g=g,
             )
 
@@ -199,25 +207,27 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 biases,
                 frequencies * HZ_TO_GHZ,
                 bounds=(
-                    [0, data.bare_resonator_frequency[qubit] * HZ_TO_GHZ - 0.2],
-                    [0.5, data.bare_resonator_frequency[qubit] * HZ_TO_GHZ + 0.2],
+                    [0, 0, data.offset[qubit] - 1, data.matrix_element[qubit] - 1],
+                    [0.5, 1, data.offset[qubit] + 1, data.matrix_element[qubit] + 1],
                 ),
                 maxfev=100000,
             )
             fitted_parameters[qubit] = {
                 "w_max": data.qubit_frequency[qubit] * HZ_TO_GHZ,
                 "xj": 0,
-                "d": 0,
-                "normalization": data.matrix_element[qubit],
-                "offset": data.offset[qubit],
+                "d": popt[1],
+                "normalization": popt[3],
+                "offset": popt[2],
                 "crosstalk_element": 1,
                 "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
-                "resonator_freq": popt[1],
+                "resonator_freq": data.bare_resonator_frequency[qubit] * HZ_TO_GHZ,
                 "g": popt[0],
             }
-            sweetspot = -data.offset[qubit] / data.matrix_element[qubit]
-            resonator_freq[qubit] = fit_function(sweetspot, *popt) * GHZ_TO_HZ
+            sweetspot[qubit] = -data.offset[qubit] / data.matrix_element[qubit]
+            matrix_element[qubit] = popt[3]
+            resonator_freq[qubit] = fit_function(sweetspot[qubit], *popt) * GHZ_TO_HZ
             coupling[qubit] = popt[0]
+            asymmetry[qubit] = popt[1]
             bare_resonator_freq[qubit] = popt[1] * GHZ_TO_HZ
         except ValueError as e:
             log.error(
@@ -229,8 +239,10 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
     return ResonatorFluxResults(
         resonator_freq=resonator_freq,
-        bare_resonator_freq=bare_resonator_freq,
         coupling=coupling,
+        matrix_element=matrix_element,
+        sweetspot=sweetspot,
+        asymmetry=asymmetry,
         fitted_parameters=fitted_parameters,
     )
 
@@ -247,16 +259,23 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
                 target,
                 [
                     "Coupling g [MHz]",
-                    "Bare resonator freq [Hz]",
                     "Dressed resonator freq [Hz]",
+                    "Asymmetry",
+                    "Sweetspot [V]",
+                    "Flux dependence [V]^-1",
                     "Chi [MHz]",
                 ],
                 [
                     np.round(fit.coupling[target] * 1e3, 2),
-                    np.round(fit.bare_resonator_freq[target], 6),
                     np.round(fit.resonator_freq[target], 6),
+                    np.round(fit.asymmetry[target], 3),
+                    np.round(fit.sweetspot[target], 4),
+                    np.round(fit.matrix_element[target], 4),
                     np.round(
-                        (fit.bare_resonator_freq[target] - fit.resonator_freq[target])
+                        (
+                            data.bare_resonator_frequency[target]
+                            - fit.resonator_freq[target]
+                        )
                         * 1e-6,
                         2,
                     ),
@@ -269,9 +288,11 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
 
 def _update(results: ResonatorFluxResults, platform: Platform, qubit: QubitId):
     pass
-    update.bare_resonator_frequency(results.bare_resonator_freq[qubit], platform, qubit)
     update.readout_frequency(results.resonator_freq[qubit], platform, qubit)
     update.coupling(results.coupling[qubit], platform, qubit)
+    update.asymmetry(results.coupling[qubit], platform, qubit)
+    update.sweetspot(results.sweetspot[qubit], platform, qubit)
+    update.crosstalk_matrix(results.matrix_element[qubit], platform, qubit, qubit)
 
 
 resonator_flux = Routine(_acquisition, _fit, _plot, _update)

@@ -236,11 +236,7 @@ def _fit(data: ResCrosstalkData) -> ResCrosstalkResults:
             diagonal.coupling[qubit] if condition else data.coupling[qubit]
         )
 
-        bare_resonator_frequency[qubit] = (
-            diagonal.bare_resonator_freq[qubit]
-            if condition
-            else data.bare_resonator_frequency[qubit]
-        )
+        bare_resonator_frequency[qubit] = data.bare_resonator_frequency[qubit]
         resonator_frequency[qubit] = (
             diagonal.resonator_freq[qubit]
             if condition
@@ -324,7 +320,6 @@ def _fit(data: ResCrosstalkData) -> ResCrosstalkResults:
 
     return ResCrosstalkResults(
         resonator_freq=resonator_frequency,
-        bare_resonator_freq=bare_resonator_frequency,
         resonator_frequency_bias_point=resonator_frequency_bias_point,
         coupling=coupling,
         crosstalk_matrix=crosstalk_matrix,
@@ -341,19 +336,12 @@ def _plot(data: ResCrosstalkData, fit: ResCrosstalkResults, target: QubitId):
         labels = [
             "Resonator Frequency at Sweetspot [Hz]",
             "Coupling g [MHz]",
-            "Resonaor Frequency at Bias point [Hz]",
-            "Bare Resonator Frequency [Hz]",
-            "Chi [MHz]",
+            "Resonator Frequency at Bias point [Hz]",
         ]
         values = [
             np.round(fit.resonator_freq[target], 4),
             np.round(fit.coupling[target] * 1e3, 2),
             np.round(fit.resonator_frequency_bias_point[target], 4),
-            np.round(fit.bare_resonator_freq[target], 4),
-            np.round(
-                (fit.bare_resonator_freq[target] - fit.resonator_freq[target]) * 1e-6,
-                2,
-            ),
         ]
         for flux_qubit in fit.crosstalk_matrix[target]:
             if flux_qubit != target:
