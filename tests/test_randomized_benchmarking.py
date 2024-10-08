@@ -191,9 +191,9 @@ def test_generate_inv_dict_cliffords_file(tmp_path):
 def test_layer_circuit_single_qubit(mocker, depth):
     qubit = 0
     rb_gen = RB_Generator(123)
-    single_qubit_spy = mocker.spy(rb_gen, 'layer_gen_single_qubit')
-    two_qubit_spy = mocker.spy(rb_gen, 'layer_gen_two_qubit')
-    
+    single_qubit_spy = mocker.spy(rb_gen, "layer_gen_single_qubit")
+    two_qubit_spy = mocker.spy(rb_gen, "layer_gen_two_qubit")
+
     circuit, indices = layer_circuit(rb_gen, depth, qubit)
 
     # assert that generator was called expected number of times
@@ -213,9 +213,9 @@ def test_layer_circuit_single_qubit(mocker, depth):
 def test_layer_circuit_two_qubit(mocker, depth):
     qubit_pair = (0, 1)
     rb_gen = RB_Generator(123, file="2qubitCliffs.json")
-    single_qubit_spy = mocker.spy(rb_gen, 'layer_gen_single_qubit')
-    two_qubit_spy = mocker.spy(rb_gen, 'layer_gen_two_qubit')
-    
+    single_qubit_spy = mocker.spy(rb_gen, "layer_gen_single_qubit")
+    two_qubit_spy = mocker.spy(rb_gen, "layer_gen_two_qubit")
+
     circuit, indices = layer_circuit(rb_gen, depth, qubit_pair)
 
     # assert that generator was called expected number of times
