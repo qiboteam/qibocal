@@ -46,9 +46,10 @@ class Action:
         if self.parameters is not None:
             for param, value in self.parameters.items():
                 if type(value) is Circuit:
-                    circuit_file = open(CIRCUIT, "w")
+                    circuit_path = path / CIRCUIT
+                    circuit_file = open(circuit_path, "w")
                     json.dump(value.raw, circuit_file)
-                    self.parameters[param] = str(CIRCUIT)
+                    self.parameters[param] = str(circuit_path)
         (path / SINGLE_ACTION).write_text(yaml.safe_dump(asdict(self)))
 
     @classmethod
