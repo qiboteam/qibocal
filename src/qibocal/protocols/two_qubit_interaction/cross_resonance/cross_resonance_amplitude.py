@@ -15,32 +15,36 @@ from qibolab.pulses import Pulse, Rectangular, PulseType, Gaussian
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 
-CrossResonanceType = np.dtype(
+CrossResonanceAmplitudeType = np.dtype(
     [
         ("prob", np.float64),
-        ("length", np.int64),
+        ("amp", np.float64),
+        ("error", np.float64),
     ]
 )
-"""Custom dtype for Cross Resonance Gate Calibration."""
+"""Custom dtype for Cross Resonance Amplitude Gate Calibration."""
+
 STATES = [0,1]
 
 @dataclass
-class CrossResonanceParameters(Parameters):
-    """Cross Resonance Gate Calibration runcard inputs."""
+class CrossResonanceAmplitudeParameters(Parameters):
+    """Cross Resonance Amplitude Gate Calibration runcard inputs."""
 
-    pulse_duration_start: float
-    """Initial pi pulse duration [ns]."""
-    pulse_duration_end: float
-    """Final pi pulse duration [ns]."""
-    pulse_duration_step: float
-    """Step pi pulse duration [ns]."""
-
+    min_amp_factor: float
+    """Minimum amplitude multiplicative factor."""
+    max_amp_factor: float
+    """Maximum amplitude multiplicative factor."""
+    step_amp_factor: float
+    """Step amplitude multiplicative factor."""
+    pulse_length: Optional[int] = None
+    """CR pulse duration [ns]."""
     pulse_amplitude: Optional[float] = None
+    """CR pulse amplitude [ns]."""
 
     @property
-    def duration_range(self):
+    def amplitude_factor_range(self):
         return np.arange(
-            self.pulse_duration_start, self.pulse_duration_end, self.pulse_duration_step
+            self.min_amp_factor, self.max_amp_factor, self.step_amp_factor
         )
 
 
@@ -53,16 +57,18 @@ class CrossResonanceResults(Results):
 class CrossResonanceData(Data):
     """Data structure for rCross Resonance Gate Calibration."""
 
-    data: dict[QubitId, npt.NDArray[CrossResonanceType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[CrossResonanceAmplitudeType]] = field(default_factory=dict)
     """Raw data acquired."""
 
 
 def _acquisition(
-    params: CrossResonanceParameters, platform: Platform, targets: list[QubitPairId]
+    params: CrossResonanceAmplitudeParameters, platform: Platform, targets: list[QubitPairId]
 ) -> CrossResonanceData:
     """Data acquisition for Cross Resonance Gate Calibration."""
 
     data = CrossResonanceData()
+    
+
 
     for pair in targets:
         for ctr_setup  in STATES:
@@ -70,6 +76,11 @@ def _acquisition(
                 target, control = pair
                 tgt_native_rx:NativePulse = platform.qubits[target].native_gates.RX.pulse(start=0)
                 ctr_native_rx:NativePulse = platform.qubits[control].native_gates.RX.pulse(start=0)
+
+                if params.pulse_length is not None:
+                    pulse_duration = params.pulse_length
+                else:
+                    pulse_duration = tgt_native_rx.duration
 
                 sequence = PulseSequence()
                 next_start = 0
@@ -82,7 +93,7 @@ def _acquisition(
                     next_start = max(ctr_native_rx.finish, next_start)
                 
                 cr_pulse: Pulse = Pulse(start=next_start,
-                                duration=4,
+                                duration=pulse_duration,
                                 amplitude=ctr_native_rx.amplitude,
                                 frequency=tgt_native_rx.frequency,   # control frequency
                                 relative_phase=0,
@@ -99,11 +110,11 @@ def _acquisition(
                 for qubit in pair:
                     sequence.add(platform.create_qubit_readout_pulse(qubit, start=cr_pulse.finish))
 
-                sweeper_duration = Sweeper(
-                    parameter = Parameter.duration,
-                    values = params.duration_range,
+                sweeper_amplitude = Sweeper(
+                    parameter = Parameter.amplitude,
+                    values = params.amplitude_factor_range,
                     pulses=[cr_pulse],
-                    type=SweeperType.ABSOLUTE,
+                    type=SweeperType.FACTOR,
                 )
 
                 results = platform.sweep(
@@ -114,18 +125,19 @@ def _acquisition(
                         acquisition_type=AcquisitionType.DISCRIMINATION,
                         averaging_mode=AveragingMode.SINGLESHOT,
                     ),
-                    sweeper_duration,
+                    sweeper_amplitude,
                 )
 
                 # store the results
                 for qubit in pair:
-                    probability = results[qubit].probability(state=1)
+                    prob = results[qubit].probability(state=1)
                     data.register_qubit(
-                        CrossResonanceType,
+                        CrossResonanceAmplitudeType,
                         (qubit, target, control, tgt_setup, ctr_setup),
                         dict(
-                            prob=probability,
-                            length=params.duration_range,
+                            prob=prob.tolist(),
+                            amp=cr_pulse.amplitude * params.amplitude_factor_range,
+                            error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
                         ),
                     )
 
@@ -148,22 +160,24 @@ def _plot(data: CrossResonanceData, target: QubitPairId, fit: CrossResonanceResu
         for ctr_setup in STATES:
             i_data = data.data[ro_qubit, target[0], target[1], STATES[0], ctr_setup]
             x_data = data.data[ro_qubit, target[0], target[1], STATES[1], ctr_setup]
+
+            cr_parameters = getattr(i_data, 'amp')
             fig.add_trace(
                 go.Scatter(
-                    x=i_data.length, y=i_data.prob, 
+                    x=cr_parameters, y=i_data.prob, 
                     name= f"Target: |{STATES[0]}>, Control: |{ctr_setup}>",
                 ),
             )
             fig.add_trace(
                 go.Scatter(
-                    x=x_data.length, y=x_data.prob, 
+                    x=cr_parameters, y=x_data.prob, 
                     name= f"Target: |{STATES[1]}>, Control: |{ctr_setup}>",
                     mode='lines', line={'dash': 'dash'}, 
                 ),
             )
             fig.update_layout(
                 title=f"Qubit {ro_qubit}",
-                xaxis_title="CR Pulse Length (ns)",
+                xaxis_title="CR Pulse Amplitude (a.u.)",
                 yaxis_title="Excited State Probability",
             )
 
@@ -171,5 +185,5 @@ def _plot(data: CrossResonanceData, target: QubitPairId, fit: CrossResonanceResu
 
     return figs, ""
 
-cross_resonance = Routine(_acquisition, _fit, _plot)
-"""CrossResonance Sequences Routine object."""
+cross_resonance_amplitude = Routine(_acquisition, _fit, _plot)
+"""CrossResonance Amplitude Routine object."""

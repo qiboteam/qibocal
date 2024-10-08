@@ -64,12 +64,16 @@ from .two_qubit_interaction import (
     chevron_signal,
     chsh_circuits,
     chsh_pulses,
-    cross_resonance,
+    cz_virtualz,
+    cz_virtualz_signal,
+)
+
+from .two_qubit_interaction import (
+    cross_resonance_length,
+    cross_resonance_amplitude,
     cross_resonance_chevron,
     cross_resonance_sequences,
     cross_resonance_chevron_frequency,
-    cz_virtualz,
-    cz_virtualz_signal,
 )
 
 from .frustration.rabi import frustration_rabi
@@ -139,7 +143,8 @@ class Operation(Enum):
     coupler_chevron = coupler_chevron
     flipping_signal = flipping_signal
     calibrate_state_discrimination = calibrate_state_discrimination
-    cross_resonance = cross_resonance
+    cross_resonance_length = cross_resonance_length
+    cross_resonance_amplitude = cross_resonance_amplitude
     cross_resonance_chevron = cross_resonance_chevron
     cross_resonance_chevron_frequency = cross_resonance_chevron_frequency
     cross_resonance_sequences = cross_resonance_sequences

@@ -10,7 +10,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
-from qibocal.protocols.two_qubit_interaction.cross_resonance.cross_resonance import CrossResonanceParameters
+from qibocal.protocols.two_qubit_interaction.cross_resonance.cross_resonance_length import CrossResonanceParameters
 
 CrossResonanceType = np.dtype(
     [
