@@ -62,19 +62,19 @@ def locate_tomography_file(runcard):
 
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_auto_command(runcard, update, tmp_path):
+def test_run_command(runcard, update, tmp_path):
     """Test auto command pipeline."""
     runcard = runcard[0]
 
     locate_tomography_file(runcard)
 
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
-    outpath = tmp_path / "auto_test"
+    outpath = tmp_path / "run_test"
     runner = CliRunner()
     runner.invoke(
         command,
         [
-            "auto",
+            "run",
             str(tmp_path / SINGLE_ACTION_RUNCARD),
             "-o",
             str(outpath),

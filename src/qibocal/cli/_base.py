@@ -8,10 +8,10 @@ import yaml
 
 from ..auto.runcard import Runcard
 from .acquisition import acquire as acquisition
-from .autocalibration import autocalibrate
 from .compare import compare_reports
 from .fit import fit as fitting
 from .report import report as reporting
+from .run import protocols_execution
 from .update import update as updating
 from .upload import upload_report
 
@@ -58,8 +58,8 @@ def command():
     default=None,
     help="Name of the Qibo backend.,",
 )
-def auto(runcard, folder, force, update, platform, backend):
-    """Autocalibration.
+def run(runcard, folder, force, update, platform, backend):
+    """Execute the qubit calibration.
 
     Arguments:
 
@@ -72,7 +72,7 @@ def auto(runcard, folder, force, update, platform, backend):
     if backend is not None:
         runcard.backend = backend
 
-    autocalibrate(runcard, folder, force, update)
+    protocols_execution(runcard, folder, force, update)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
