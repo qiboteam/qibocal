@@ -12,7 +12,7 @@ def create_mermin_circuit(qubits, native=True, theta=None):
     Native defaults to only using GPI2 and GPI gates.
     """
     if not theta:
-        theta = ((n-1)*0.25*np.pi)%(2*np.pi)
+        theta = ((n - 1) * 0.25 * np.pi) % (2 * np.pi)
     # TODO: implement condition better
     # if qubits[1] != 2:
     #     raise ValueError('The center qubit should be in qubits[1]!')

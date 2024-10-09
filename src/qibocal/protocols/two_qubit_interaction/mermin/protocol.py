@@ -11,10 +11,16 @@ from ...readout_mitigation_matrix import readout_mitigation_matrix
 from ...utils import calculate_frequencies
 from .circuits import create_mermin_circuits
 from .pulses import create_mermin_sequences
-from .utils import compute_mermin, get_mermin_polynomial, get_readout_basis, get_mermin_coefficients
+from .utils import (
+    compute_mermin,
+    get_mermin_coefficients,
+    get_mermin_polynomial,
+    get_readout_basis,
+)
 
 MITIGATION_MATRIX_FILE = "mitigation_matrix"
 """File where readout mitigation matrix is stored."""
+
 
 @dataclass
 class MerminParameters(Parameters):
@@ -98,7 +104,11 @@ class MerminData(Data):
         freqs = []
         for i in readout_basis:
             freqs.append(
-                {state[1]: value for state, value in mermin_data.items() if state[0] == i}
+                {
+                    state[1]: value
+                    for state, value in mermin_data.items()
+                    if state[0] == i
+                }
             )
 
         return freqs
@@ -132,14 +142,13 @@ class MerminResults(Results):
         return key in [(target, control) for target, control, _ in self.mermin]
 
 
-
 def _acquisition_pulses(
     params: MerminParameters,
     platform: Platform,
     targets: list[QubitId],
 ) -> MerminData:
     r"""Data acquisition for CHSH protocol using pulse sequences."""
-    
+
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
     data = CHSHData(thetas=thetas.tolist())
 
@@ -158,7 +167,7 @@ def _acquisition_pulses(
         )
 
         mitigation_results, _ = readout_mitigation_matrix.fit(mitigation_data)
-        
+
     for theta in thetas:
         mermin_sequences = create_mermin_sequences(
             platform, targets, readout_basis=readout_basis, theta=theta
@@ -207,7 +216,6 @@ def _acquisition_circuits(
     for basis, circuit in mermin_circuits.items():
         results = circuit(nshots=params.nshots)
         data.register_basis(targets, basis, results.frequencies())
-        
 
     # mermin_bare = compute_mermin(frequencies=mermin_frequencies, mermin_coefficients)
 
@@ -219,15 +227,15 @@ def _plot(data: MerminData, fit: MerminResults, targets: list[QubitId]):
     figures = []
 
     n = len(target)
-    classical_bound = 2**(n//2)
-    quantum_bound = 2**((n-1)/2)*(2**(n//2))
+    classical_bound = 2 ** (n // 2)
+    quantum_bound = 2 ** ((n - 1) / 2) * (2 ** (n // 2))
 
     fig = go.Figure(layout_yaxis_range=[-3, 3])
     if fit is not None:
         fig.add_trace(
             go.Scatter(
                 x=data.thetas,
-                y=fit.mermin[*targets], #TODO: FIX
+                y=fit.mermin[*targets],  # TODO: FIX
                 name="Bare",
             )
         )
@@ -235,7 +243,7 @@ def _plot(data: MerminData, fit: MerminResults, targets: list[QubitId]):
             fig.add_trace(
                 go.Scatter(
                     x=data.thetas,
-                    y=fit.mermin_mitigated[*targets], #TODO: FIX
+                    y=fit.mermin_mitigated[*targets],  # TODO: FIX
                     name="Mitigated",
                 )
             )
