@@ -47,8 +47,7 @@ class Action:
             for param, value in self.parameters.items():
                 if type(value) is Circuit:
                     circuit_path = path / CIRCUIT
-                    circuit_file = open(circuit_path, "w")
-                    json.dump(value.raw, circuit_file)
+                    circuit_path.write_text(json.dumps(value.raw))
                     self.parameters[param] = str(circuit_path)
         (path / SINGLE_ACTION).write_text(yaml.safe_dump(asdict(self)))
 
