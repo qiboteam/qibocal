@@ -6,8 +6,9 @@ from pathlib import Path
 from typing import Any, NewType, Optional, Union
 
 import yaml
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId, QubitPairId
+from qibolab import Platform
+
+from qibocal.auto.operation import QubitId, QubitPairId
 
 from .. import protocols
 from ..config import log
