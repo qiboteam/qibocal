@@ -212,7 +212,6 @@ def _acquisition(
                     pulses=[theta_pulse],
                     type=SweeperType.ABSOLUTE,
                 )
-
                 sweeper_amplitude = Sweeper(
                     Parameter.amplitude,
                     amplitude_range / amplitude,
@@ -401,10 +400,10 @@ def _plot(
         rows=2,
         cols=2,
         subplot_titles=(
-            f"Qubit {qubits[0]} {data.native} angle",
-            f"Qubit {qubits[0]} Leakage",
-            f"Qubit {qubits[1]} {data.native} angle",
-            f"Qubit {qubits[1]} Leakage",
+            f"Qubit {target[0]} {data.native} angle",
+            f"Qubit {target[0]} Leakage",
+            f"Qubit {target[1]} {data.native} angle",
+            f"Qubit {target[1]} Leakage",
         ),
     )
     if fit is not None:
