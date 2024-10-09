@@ -1,15 +1,37 @@
-def compute_mermin(frequencies):
+from qibo.symbols import X, Y
+from qibo.hamiltonians import SymbolicHamiltonian
+
+def compute_mermin(frequencies, mermin_coefficients, i):
     """Computes the chsh inequality out of the frequencies of the 4 circuits executed."""
+    assert len(frequencies)==len(mermin_coefficients)
     m = 0
-    aux = 0
-    for freq in frequencies:
+    for j, freq in enumerate(frequencies):
         for key in freq.keys():
-            if (
-                aux == 3
-            ):  # This value sets where the minus sign is in the CHSH inequality
-                m -= freq[key] * (-1) ** (sum([int(key[i]) for i in range(len(key))]))
-            else:
-                m += freq[key] * (-1) ** (sum([int(key[i]) for i in range(len(key))]))
-        aux += 1
+            m += mermin_coefficients[j] * freq[key][i] * (-1) ** (sum([int(key[k]) for k in range(len(key))]))
     nshots = sum(freq[x] for x in freq)
-    return m / nshots
+    try:
+        return m / nshots
+    except ZeroDivisionError:
+        log.warning("Zero number of shots, returning zero.")
+        return 0
+
+
+def get_mermin_polynomial(n):
+    assert n>1
+    m0 = X(0)
+    m0p = Y(0)
+    for i in range(1, n):
+        mn = m0*(X(i)+Y(i))+m0p*(X(i)-Y(i))
+        mnp = m0*(Y(i)-X(i))+m0p*(X(i)+Y(i))
+        m0 = mn.expand()
+        m0p = mnp.expand()
+    m = m0/2**((n-1)//2)
+    return SymbolicHamiltonian(m.expand())
+
+
+def get_readout_basis(mermin_polynomial):
+    return [[factor.name[0] for factor in term.factors] for term in mermin_polynomial.terms]            
+
+
+def get_mermin_coefficients(mermin_polynomial):
+    return [term.coefficient.real for term in mermin_polynomial.terms]
