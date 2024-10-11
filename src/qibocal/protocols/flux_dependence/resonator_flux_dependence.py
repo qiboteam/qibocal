@@ -13,9 +13,9 @@ from qibolab import (
 )
 from scipy.optimize import curve_fit
 
-from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.config import log
+from qibocal.result import magnitude, phase
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, extract_feature, table_dict, table_html
 from . import utils
@@ -89,6 +89,12 @@ def _acquisition(
     # create a sequence of pulses for the experiment:
     # MZ
 
+    delta_frequency_range = np.arange(
+        -params.freq_width / 2, params.freq_width / 2, params.freq_step
+    )
+    delta_offset_range = np.arange(
+        -params.bias_width / 2, params.bias_width / 2, params.bias_step
+    )
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
     ro_pulses = {}
@@ -97,39 +103,37 @@ def _acquisition(
     offset = {}
     matrix_element = {}
     charging_energy = {}
-    for qubit in targets:
-        qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
-        bare_resonator_frequency[qubit] = platform.qubits[
-            qubit
-        ].bare_resonator_frequency
-        matrix_element[qubit] = platform.qubits[qubit].crosstalk_matrix[qubit]
-        offset[qubit] = -platform.qubits[qubit].sweetspot * matrix_element[qubit]
-        charging_energy[qubit] = -platform.qubits[qubit].anharmonicity
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
-        sequence.add(ro_pulses[qubit])
+    freq_sweepers = []
+    offset_sweepers = []
+    for q in targets:
+        ro_sequence = platform.natives.single_qubit[q].MZ()
+        ro_pulses[q] = ro_sequence[0][1]
+        sequence += ro_sequence
 
-    # define the parameters to sweep and their range:
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
-    freq_sweeper = Sweeper(
-        Parameter.frequency,
-        delta_frequency_range,
-        [ro_pulses[qubit] for qubit in targets],
-        type=SweeperType.OFFSET,
-    )
+        qubit = platform.qubits[q]
+        offset0 = platform.config(qubit.flux).offset
+        freq0 = platform.config(qubit.probe).frequency
 
-    delta_bias_range = np.arange(
-        -params.bias_width / 2, params.bias_width / 2, params.bias_step
-    )
-    sweepers = [
-        Sweeper(
-            Parameter.bias,
-            delta_bias_range,
-            qubits=[platform.qubits[qubit] for qubit in targets],
-            type=SweeperType.OFFSET,
+        freq_sweepers.append(
+            Sweeper(
+                parameter=Parameter.frequency,
+                values=freq0 + delta_frequency_range,
+                channels=[qubit.probe],
+            )
         )
-    ]
+        offset_sweepers.append(
+            Sweeper(
+                parameter=Parameter.offset,
+                values=offset0 + delta_offset_range,
+                channels=[qubit.flux],
+            )
+        )
+
+        qubit_frequency[q] = platform.config(qubit.drive).frequency
+        bare_resonator_frequency[q] = 0  # qubit.bare_resonator_frequency
+        matrix_element[q] = 1  # qubit.crosstalk_matrix[q]
+        offset[q] = -offset0 * matrix_element[q]
+        charging_energy[q] = 0  # -qubit.anharmonicity
 
     data = ResonatorFluxData(
         resonator_type=platform.resonator_type,
@@ -139,25 +143,24 @@ def _acquisition(
         bare_resonator_frequency=bare_resonator_frequency,
         charging_energy=charging_energy,
     )
-    options = ExecutionParameters(
+    results = platform.execute(
+        [sequence],
+        [offset_sweepers, freq_sweepers],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    for bias_sweeper in sweepers:
-        results = platform.sweep(sequence, options, bias_sweeper, freq_sweeper)
-        # retrieve the results for every qubit
-        for qubit in targets:
-            result = results[ro_pulses[qubit].serial]
-            sweetspot = platform.qubits[qubit].sweetspot
-            data.register_qubit(
-                qubit,
-                signal=result.magnitude,
-                phase=result.phase,
-                freq=delta_frequency_range + ro_pulses[qubit].frequency,
-                bias=delta_bias_range + sweetspot,
-            )
+    # retrieve the results for every qubit
+    for i, qubit in enumerate(targets):
+        result = results[ro_pulses[qubit].id]
+        data.register_qubit(
+            qubit,
+            signal=magnitude(result),
+            phase=phase(result),
+            freq=freq_sweepers[i].values,
+            bias=offset_sweepers[i].values,
+        )
     return data
 
 
@@ -271,9 +274,10 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
 
 
 def _update(results: ResonatorFluxResults, platform: Platform, qubit: QubitId):
-    update.bare_resonator_frequency(results.bare_resonator_freq[qubit], platform, qubit)
-    update.readout_frequency(results.resonator_freq[qubit], platform, qubit)
-    update.coupling(results.coupling[qubit], platform, qubit)
+    pass
+    # update.bare_resonator_frequency(results.bare_resonator_freq[qubit], platform, qubit)
+    # update.readout_frequency(results.resonator_freq[qubit], platform, qubit)
+    # update.coupling(results.coupling[qubit], platform, qubit)
 
 
 resonator_flux = Routine(_acquisition, _fit, _plot, _update)

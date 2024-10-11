@@ -6,6 +6,7 @@ import numpy.typing as npt
 from qibolab import (
     AcquisitionType,
     AveragingMode,
+    Delay,
     Parameter,
     Platform,
     PulseSequence,
@@ -13,10 +14,10 @@ from qibolab import (
 )
 from scipy.optimize import curve_fit
 
-from qibocal import update
 from qibocal.auto.operation import Data, QubitId, Results, Routine
 from qibocal.config import log
-from qibocal.protocols.qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
+from qibocal.result import magnitude, phase
+from qibocal.update import replace
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, extract_feature, table_dict, table_html
 from . import utils
@@ -88,81 +89,91 @@ def _acquisition(
 ) -> QubitFluxData:
     """Data acquisition for QubitFlux Experiment."""
 
+    delta_frequency_range = np.arange(
+        -params.freq_width / 2, params.freq_width / 2, params.freq_step
+    )
+    delta_offset_range = np.arange(
+        -params.bias_width / 2, params.bias_width / 2, params.bias_step
+    )
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
     qubit_frequency = {}
-    for qubit in targets:
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=params.drive_duration
-        )
-        qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
+    freq_sweepers = []
+    offset_sweepers = []
+    for q in targets:
+        natives = platform.natives.single_qubit[q]
+        qd_channel, qd_pulse = natives.RX()[0]
+        ro_channel, ro_pulse = natives.MZ()[0]
+
+        qd_pulse = replace(qd_pulse, duration=params.drive_duration)
+        if params.drive_amplitude is not None:
+            qd_pulse = replace(qd_pulse, amplitude=params.drive_amplitude)
 
         if params.transition == "02":
-            if platform.qubits[qubit].anharmonicity:
-                qd_pulses[qubit].frequency -= platform.qubits[qubit].anharmonicity / 2
-            else:
-                qd_pulses[qubit].frequency -= DEFAULT_ANHARMONICITY / 2
+            raise NotImplementedError
+            # TODO: Change ``frequency0`` when implementing this
+            # if platform.qubits[qubit].anharmonicity:
+            #    qd_pulses[qubit].frequency -= platform.qubits[qubit].anharmonicity / 2
+            # else:
+            #    qd_pulses[qubit].frequency -= DEFAULT_ANHARMONICITY / 2
 
-        if params.drive_amplitude is not None:
-            qd_pulses[qubit].amplitude = params.drive_amplitude
+        qd_pulses[q] = qd_pulse
+        ro_pulses[q] = ro_pulse
+        qubit_frequency[q] = frequency0 = platform.config(qd_channel).frequency
 
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
+        sequence.append((qd_channel, qd_pulse))
+        sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
+        sequence.append((ro_channel, ro_pulse))
+
+        # define the parameters to sweep and their range:
+
+        freq_sweepers.append(
+            Sweeper(
+                parameter=Parameter.frequency,
+                values=frequency0 + delta_frequency_range,
+                channels=[qd_channel],
+            )
         )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
 
-    # define the parameters to sweep and their range:
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
-    freq_sweeper = Sweeper(
-        Parameter.frequency,
-        delta_frequency_range,
-        pulses=[qd_pulses[qubit] for qubit in targets],
-        type=SweeperType.OFFSET,
-    )
-
-    delta_bias_range = np.arange(
-        -params.bias_width / 2, params.bias_width / 2, params.bias_step
-    )
-    sweepers = [
-        Sweeper(
-            Parameter.bias,
-            delta_bias_range,
-            qubits=[platform.qubits[qubit] for qubit in targets],
-            type=SweeperType.OFFSET,
+        flux_channel = platform.qubits[q].flux
+        offset0 = platform.config(flux_channel).offset
+        offset_sweepers.append(
+            Sweeper(
+                parameter=Parameter.offset,
+                values=offset0 + delta_offset_range,
+                channels=[flux_channel],
+            )
         )
-    ]
 
     data = QubitFluxData(
         resonator_type=platform.resonator_type,
         charging_energy={
-            qubit: -platform.qubits[qubit].anharmonicity for qubit in targets
+            qubit: 0
+            for qubit in targets
+            # qubit: -platform.qubits[qubit].anharmonicity for qubit in targets
         },
         qubit_frequency=qubit_frequency,
     )
-    options = ExecutionParameters(
+    results = platform.execute(
+        [sequence],
+        [offset_sweepers, freq_sweepers],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    for bias_sweeper in sweepers:
-        results = platform.sweep(sequence, options, bias_sweeper, freq_sweeper)
-        # retrieve the results for every qubit
-        for qubit in targets:
-            result = results[ro_pulses[qubit].serial]
-            sweetspot = platform.qubits[qubit].sweetspot
-            data.register_qubit(
-                qubit,
-                signal=result.magnitude,
-                phase=result.phase,
-                freq=delta_frequency_range + qd_pulses[qubit].frequency,
-                bias=delta_bias_range + sweetspot,
-            )
+    # retrieve the results for every qubit
+    for i, qubit in enumerate(targets):
+        result = results[ro_pulses[qubit].id]
+        data.register_qubit(
+            qubit,
+            signal=magnitude(result),
+            phase=phase(result),
+            freq=freq_sweepers[i].values,
+            bias=offset_sweepers[i].values,
+        )
     return data
 
 
@@ -272,9 +283,10 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
 
 
 def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
-    update.drive_frequency(results.frequency[qubit], platform, qubit)
-    update.sweetspot(results.sweetspot[qubit], platform, qubit)
-    update.crosstalk_matrix(results.matrix_element[qubit], platform, qubit, qubit)
+    pass
+    # update.drive_frequency(results.frequency[qubit], platform, qubit)
+    # update.sweetspot(results.sweetspot[qubit], platform, qubit)
+    # update.crosstalk_matrix(results.matrix_element[qubit], platform, qubit, qubit)
 
 
 qubit_flux = Routine(_acquisition, _fit, _plot, _update)
