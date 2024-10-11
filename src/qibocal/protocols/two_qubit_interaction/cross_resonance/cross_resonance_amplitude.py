@@ -11,7 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibolab.pulses import PulseSequence
 from qibolab.native import NativePulse
 from qibolab.qubits import QubitId, QubitPairId
-from qibolab.pulses import Pulse, Rectangular, PulseType, Gaussian
+from qibolab.pulses import Pulse, Rectangular, PulseType, GaussianSquare
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 
@@ -67,54 +67,49 @@ def _acquisition(
     """Data acquisition for Cross Resonance Gate Calibration."""
 
     data = CrossResonanceData()
-    
-
-
     for pair in targets:
-        for ctr_setup  in STATES:
-            for tgt_setup in STATES:
-                target, control = pair
-                tgt_native_rx:NativePulse = platform.qubits[target].native_gates.RX.pulse(start=0)
-                ctr_native_rx:NativePulse = platform.qubits[control].native_gates.RX.pulse(start=0)
-
-                if params.pulse_length is not None:
-                    pulse_duration = params.pulse_length
-                else:
-                    pulse_duration = tgt_native_rx.duration
-
+        target, control = pair
+        for ctr_setup in STATES:   
+            for tgt_setup in STATES: 
+                ctr_native_rx = platform.create_RX_pulse(control, start = 0)
+                tgt_native_rx = platform.create_RX_pulse(target, start = 0)
+                
                 sequence = PulseSequence()
-                next_start = 0
-                if tgt_setup == STATES[1]:
-                    sequence.add(tgt_native_rx)
-                    next_start = tgt_native_rx.finish
 
                 if ctr_setup == STATES[1]:
                     sequence.add(ctr_native_rx)
-                    next_start = max(ctr_native_rx.finish, next_start)
-                
-                cr_pulse: Pulse = Pulse(start=next_start,
-                                duration=pulse_duration,
-                                amplitude=ctr_native_rx.amplitude,
-                                frequency=tgt_native_rx.frequency,   # control frequency
-                                relative_phase=0,
-                                shape=Gaussian(5),
-                                qubit=control,
-                                channel= ctr_native_rx.channel ,type=PulseType.DRIVE
-                                )
 
+                if tgt_setup == STATES[1]:
+                    sequence.add(tgt_native_rx)
+
+                next_start = max(tgt_native_rx.finish, ctr_native_rx.finish)
+                
+                cr_pulse = Pulse(start = next_start,
+                                 duration = ctr_native_rx.duration,
+                                 amplitude = ctr_native_rx.amplitude,
+                                 frequency = tgt_native_rx.frequency,
+                                 relative_phase=0,
+                                 channel=ctr_native_rx.channel,
+                                 shape = GaussianSquare(0.9,5),
+                                 type = PulseType.DRIVE,
+                                 qubit = control,
+                                 )
+
+                if params.pulse_length is not None:
+                    cr_pulse.duration = params.pulse_length
                 if params.pulse_amplitude is not None:
                     cr_pulse.amplitude = params.pulse_amplitude
                 
                 sequence.add(cr_pulse)
 
                 for qubit in pair:
-                    sequence.add(platform.create_qubit_readout_pulse(qubit, start=cr_pulse.finish))
+                    sequence.add(platform.create_qubit_readout_pulse(qubit=qubit, start=cr_pulse.finish))
 
                 sweeper_amplitude = Sweeper(
                     parameter = Parameter.amplitude,
-                    values = params.amplitude_factor_range,
+                    values = cr_pulse.amplitude*params.amplitude_factor_range,
                     pulses=[cr_pulse],
-                    type=SweeperType.FACTOR,
+                    type=SweeperType.ABSOLUTE,
                 )
 
                 results = platform.sweep(
@@ -127,7 +122,7 @@ def _acquisition(
                     ),
                     sweeper_amplitude,
                 )
-
+                
                 # store the results
                 for qubit in pair:
                     prob = results[qubit].probability(state=1)
@@ -153,13 +148,14 @@ def _fit(
 
 def _plot(data: CrossResonanceData, target: QubitPairId, fit: CrossResonanceResults):
     """Plotting function for Cross Resonance Gate Calibration."""
-
+    tgt, ctr = target
     figs = []
-    for ro_qubit in target:
+    for ro_qubit in [tgt, ctr]:
         fig = go.Figure()
         for ctr_setup in STATES:
-            i_data = data.data[ro_qubit, target[0], target[1], STATES[0], ctr_setup]
-            x_data = data.data[ro_qubit, target[0], target[1], STATES[1], ctr_setup]
+            #(qubit, target, control, tgt_setup, ctr_setup)
+            i_data = data.data[ro_qubit, tgt, ctr, STATES[0], ctr_setup]
+            x_data = data.data[ro_qubit, tgt, ctr, STATES[1], ctr_setup]
 
             cr_parameters = getattr(i_data, 'amp')
             fig.add_trace(
@@ -168,6 +164,8 @@ def _plot(data: CrossResonanceData, target: QubitPairId, fit: CrossResonanceResu
                     name= f"Target: |{STATES[0]}>, Control: |{ctr_setup}>",
                 ),
             )
+
+            cr_parameters = getattr(x_data, 'amp')
             fig.add_trace(
                 go.Scatter(
                     x=cr_parameters, y=x_data.prob, 
