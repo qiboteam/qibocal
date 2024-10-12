@@ -30,6 +30,7 @@ Parameters
 ^^^^^^^^^^
 
 .. autoclass:: qibocal.protocols.ramsey.ramsey.RamseyParameters
+  :noindex:
 
 
 Example
@@ -80,6 +81,7 @@ Parameters
 ^^^^^^^^^^
 
 .. autoclass:: qibocal.protocols.ramsey.ramsey_signal.RamseySignalParameters
+  :noindex:
 
 Example
 ^^^^^^^
