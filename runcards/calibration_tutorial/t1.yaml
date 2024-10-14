@@ -1,6 +1,6 @@
-platform: <platform_name>
+platform: qw11q
 
-qubits: [0]
+targets: [D1]
 
 actions:
 
@@ -8,8 +8,8 @@ actions:
 
     operation: t1
     parameters:
-        delay_before_readout_end: 200000
-        delay_before_readout_start: 50
+        delay_before_readout_end: 100_000
+        delay_before_readout_start: 10
         delay_before_readout_step: 1000
         nshots: 1024
         relaxation_time: 300000
