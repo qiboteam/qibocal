@@ -212,6 +212,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 ),
                 maxfev=100000,
             )
+
             fitted_parameters[qubit] = {
                 "w_max": data.qubit_frequency[qubit] * HZ_TO_GHZ,
                 "xj": 0,
@@ -236,7 +237,6 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 "Lowering the value of `threshold` in `extract_*_feature`"
                 "should fix the problem."
             )
-
     return ResonatorFluxResults(
         resonator_freq=resonator_freq,
         coupling=coupling,
@@ -287,7 +287,6 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
 
 
 def _update(results: ResonatorFluxResults, platform: Platform, qubit: QubitId):
-    pass
     update.readout_frequency(results.resonator_freq[qubit], platform, qubit)
     update.coupling(results.coupling[qubit], platform, qubit)
     update.asymmetry(results.coupling[qubit], platform, qubit)
