@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Optional
 
 import numpy as np
@@ -10,51 +10,49 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Routine
-from qibocal.config import log
-
-from ..utils import GHZ_TO_HZ, chi2_reduced, table_dict, table_html
+from ...auto.operation import Routine
+from ...config import log
+from ..utils import table_dict, table_html
 from .ramsey import (
+    COLORBAND,
+    COLORBAND_LINE,
     RamseySignalData,
     RamseySignalParameters,
     RamseySignalResults,
+    RamseyType,
     _update,
 )
-from .utils import fitting, ramsey_fit, ramsey_sequence
-
-COLORBAND = "rgba(0,100,80,0.2)"
-COLORBAND_LINE = "rgba(255,255,255,0)"
+from .utils import fitting, process_fit, ramsey_fit, ramsey_sequence
 
 
 @dataclass
 class RamseyZZParameters(RamseySignalParameters):
-    """Ramsey runcard inputs."""
+    """RamseyZZ runcard inputs."""
 
     target_qubit: Optional[QubitId] = None
+    """Target qubit that will be excited."""
 
 
 @dataclass
 class RamseyZZResults(RamseySignalResults):
-    """Ramsey outputs."""
+    """RamseyZZ outputs."""
 
-    chi2: dict[QubitId, tuple[float, Optional[float]]]
-    """Chi squared estimate mean value and error. """
-
-    def __contains__(self, key: QubitId):
-        return True
-
-
-RamseyZZType = np.dtype(
-    [("wait", np.float64), ("prob", np.float64), ("errors", np.float64)]
-)
-"""Custom dtype for coherence routines."""
+    def __contains__(self, qubit: QubitId):
+        # TODO: to be improved
+        return all(
+            list(getattr(self, field.name))[0][0] == qubit
+            for field in fields(self)
+            if isinstance(getattr(self, field.name), dict)
+        )
 
 
 @dataclass
 class RamseyZZData(RamseySignalData):
-    """Ramsey acquisition outputs."""
+    """RamseyZZ acquisition outputs."""
 
-    data: dict[tuple[QubitId, str], npt.NDArray[RamseyZZType]] = field(
+    target_qubit: Optional[QubitId] = None
+    """Qubit that will be excited."""
+    data: dict[tuple[QubitId, str], npt.NDArray[RamseyType]] = field(
         default_factory=dict
     )
     """Raw data acquired."""
@@ -65,23 +63,10 @@ def _acquisition(
     platform: Platform,
     targets: list[QubitId],
 ) -> RamseyZZData:
-    """Data acquisition for Ramsey Experiment (detuned).
+    """Data acquisition for RamseyZZ Experiment.
 
-    The protocol consists in applying the following pulse sequence
-    RX90 - wait - RX90 - MZ
-    for different waiting times `wait`.
-    The range of waiting times is defined through the attributes
-    `delay_between_pulses_*` available in `RamseyParameters`. The final range
-    will be constructed using `np.arange`.
-    It is possible to detune the drive frequency using the parameter `detuning` in
-    RamseyParameters which will increment the drive frequency accordingly.
-    Currently when `detuning==0` it will be performed a sweep over the waiting values
-    if `detuning` is not zero, all sequences with different waiting value will be
-    executed sequentially. By providing the option `unrolling=True` in RamseyParameters
-    the sequences will be unrolled when the frequency is detuned.
-    The following protocol will display on the y-axis the probability of finding the ground
-    state, therefore it is advise to execute it only after having performed the single
-    shot classification. Error bars are provided as binomial distribution error.
+    Standard Ramsey experiment repeated twice.
+    In the second execution one qubit is brought to the excited state.
     """
 
     waits = np.arange(
@@ -97,210 +82,130 @@ def _acquisition(
         averaging_mode=AveragingMode.SINGLESHOT,
     )
 
-    sequence_I = PulseSequence()
-    sequence_X = PulseSequence()
-
     data = RamseyZZData(
         detuning=params.detuning,
         qubit_freqs={
             qubit: platform.qubits[qubit].native_gates.RX.frequency for qubit in targets
         },
+        target_qubit=params.target_qubit,
     )
 
-    if not params.unrolling:
-        for qubit in targets:
-            sequence_I += ramsey_sequence(
-                platform=platform, qubit=qubit, detuning=params.detuning
-            )
-            sequence_X += ramsey_sequence(
-                platform=platform,
-                qubit=qubit,
-                detuning=params.detuning,
-                target_qubit=params.target_qubit,
-            )
-
-        sweeper_I = Sweeper(
-            Parameter.start,
-            waits,
-            [sequence_I.get_qubit_pulses(qubit).qd_pulses[-1] for qubit in targets],
-            type=SweeperType.ABSOLUTE,
-        )
-
-        sweeper_X = Sweeper(
-            Parameter.start,
-            waits,
-            [sequence_X.get_qubit_pulses(qubit).qd_pulses[-1] for qubit in targets],
-            type=SweeperType.ABSOLUTE,
-        )
-
-        # execute the sweep
-        results_I = platform.sweep(
-            sequence_I,
-            options,
-            sweeper_I,
-        )
-        results_X = platform.sweep(
-            sequence_X,
-            options,
-            sweeper_X,
-        )
-        for qubit in targets:
-            probs_I = results_I[qubit].probability(state=1)
-            # The probability errors are the standard errors of the binomial distribution
-            errors_I = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs_I]
-            probs_X = results_X[qubit].probability(state=1)
-            # The probability errors are the standard errors of the binomial distribution
-            errors_X = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs_X]
-            data.register_qubit(
-                RamseyZZType,
-                (qubit, "I"),
-                dict(
-                    wait=waits,
-                    prob=probs_I,
-                    errors=errors_I,
-                ),
-            )
-
-            data.register_qubit(
-                RamseyZZType,
-                (qubit, "X"),
-                dict(
-                    wait=waits,
-                    prob=probs_X,
-                    errors=errors_X,
-                ),
-            )
-
-    if params.unrolling:
-        sequences_I, all_ro_pulses_I = [], []
-        sequences_X, all_ro_pulses_X = [], []
-        for wait in waits:
-            sequence_I = PulseSequence()
-            sequence_X = PulseSequence()
+    for setup in ["I", "X"]:
+        sequence = PulseSequence()
+        if not params.unrolling:
             for qubit in targets:
-                sequence_I += ramsey_sequence(
-                    platform=platform, qubit=qubit, wait=wait, detuning=params.detuning
-                )
-                sequence_X += ramsey_sequence(
+                sequence += ramsey_sequence(
                     platform=platform,
                     qubit=qubit,
-                    wait=wait,
                     detuning=params.detuning,
-                    target_qubit=params.target_qubit,
+                    target_qubit=params.target_qubit if setup == "X" else None,
                 )
 
-            sequences_I.append(sequence_I)
-            all_ro_pulses_I.append(sequence_I.ro_pulses)
-            sequences_X.append(sequence_X)
-            all_ro_pulses_X.append(sequence_X.ro_pulses)
+            sweeper = Sweeper(
+                Parameter.start,
+                waits,
+                [sequence.get_qubit_pulses(qubit).qd_pulses[-1] for qubit in targets],
+                type=SweeperType.ABSOLUTE,
+            )
 
-        results_I = platform.execute_pulse_sequences(sequences_I, options)
-        results_X = platform.execute_pulse_sequences(sequences_X, options)
+            # execute the sweep
+            results = platform.sweep(
+                sequence,
+                options,
+                sweeper,
+            )
 
-        # We dont need ig as every serial is different
-        for ig, (wait, ro_pulses) in enumerate(zip(waits, all_ro_pulses_I)):
             for qubit in targets:
-                serial = ro_pulses[qubit].serial
-                if params.unrolling:
-                    result = results_I[serial][0]
-                else:
-                    result = results_I[ig][serial]
-                prob = result.probability()
-                error = np.sqrt(prob * (1 - prob) / params.nshots)
+                probs = results[qubit].probability(state=1)
+                # The probability errors are the standard errors of the binomial distribution
+                errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
                 data.register_qubit(
-                    RamseyZZType,
-                    (qubit, "I"),
+                    RamseyType,
+                    (qubit, setup),
                     dict(
-                        wait=np.array([wait]),
-                        prob=np.array([prob]),
-                        errors=np.array([error]),
+                        wait=waits,
+                        prob=probs,
+                        errors=errors,
                     ),
                 )
 
-        for ig, (wait, ro_pulses) in enumerate(zip(waits, all_ro_pulses_X)):
-            for qubit in targets:
-                serial = ro_pulses[qubit].serial
-                if params.unrolling:
-                    result = results_X[serial][0]
-                else:
-                    result = results_X[ig][serial]
-                prob = result.probability()
-                error = np.sqrt(prob * (1 - prob) / params.nshots)
-                data.register_qubit(
-                    RamseyZZType,
-                    (qubit, "X"),
-                    dict(
-                        wait=np.array([wait]),
-                        prob=np.array([prob]),
-                        errors=np.array([error]),
-                    ),
-                )
+        if params.unrolling:
+            sequences, all_ro_pulses = [], []
+            for wait in waits:
+                sequence = PulseSequence()
+                for qubit in targets:
+                    sequence += ramsey_sequence(
+                        platform=platform,
+                        qubit=qubit,
+                        wait=wait,
+                        detuning=params.detuning,
+                        target_qubit=params.target_qubit if setup == "X" else None,
+                    )
+
+                sequences.append(sequence)
+                all_ro_pulses.append(sequence.ro_pulses)
+
+            results = platform.execute_pulse_sequences(sequences, options)
+
+            # We dont need ig as every serial is different
+            for ig, (wait, ro_pulses) in enumerate(zip(waits, all_ro_pulses)):
+                for qubit in targets:
+                    serial = ro_pulses[qubit].serial
+                    if params.unrolling:
+                        result = results[serial][0]
+                    else:
+                        result = results[ig][serial]
+                    prob = result.probability()
+                    error = np.sqrt(prob * (1 - prob) / params.nshots)
+                    data.register_qubit(
+                        RamseyType,
+                        (qubit, setup),
+                        dict(
+                            wait=np.array([wait]),
+                            prob=np.array([prob]),
+                            errors=np.array([error]),
+                        ),
+                    )
 
     return data
 
 
 def _fit(data: RamseyZZData) -> RamseyZZResults:
-    r"""Fitting routine for Ramsey experiment. The used model is
-    .. math::
+    """Fitting procedure for RamseyZZ protocol.
 
-        y = p_0 + p_1 sin \Big(p_2 x + p_3 \Big) e^{-x p_4}.
+    Standard Ramsey fitting procedure is applied for both version of
+    the experiment.
+
     """
-    qubits = data.qubits
     waits = data.waits
     popts = {}
     freq_measure = {}
     t2_measure = {}
     delta_phys_measure = {}
     delta_fitting_measure = {}
-    chi2 = {}
-    for qubit in qubits:
+    for qubit in data.qubits:
         for setup in ["I", "X"]:
             qubit_data = data[qubit, setup]
             qubit_freq = data.qubit_freqs[qubit]
             probs = qubit_data["prob"]
             try:
                 popt, perr = fitting(waits, probs, qubit_data.errors)
-
-                delta_fitting = popt[2] / (2 * np.pi)
-                sign = np.sign(data.detuning) if data.detuning != 0 else 1
-                delta_phys = int(
-                    sign * (delta_fitting * GHZ_TO_HZ - np.abs(data.detuning))
-                )
-                corrected_qubit_frequency = int(qubit_freq - delta_phys)
-                t2 = 1 / popt[4]
-                # TODO: check error formula
-                freq_measure[qubit, setup] = (
-                    corrected_qubit_frequency,
-                    perr[2] * GHZ_TO_HZ / (2 * np.pi),
-                )
-                t2_measure[qubit, setup] = (t2, perr[4] * (t2**2))
-                popts[qubit, setup] = popt
-                # TODO: check error formula
-                delta_phys_measure[qubit, setup] = (
-                    -delta_phys,
-                    perr[2] * GHZ_TO_HZ / (2 * np.pi),
-                )
-                delta_fitting_measure[qubit, setup] = (
-                    -delta_fitting * GHZ_TO_HZ,
-                    perr[2] * GHZ_TO_HZ / (2 * np.pi),
-                )
-                chi2[qubit, setup] = (
-                    chi2_reduced(
-                        probs,
-                        ramsey_fit(waits, *popts[qubit]),
-                        qubit_data.errors,
-                    ),
-                    np.sqrt(2 / len(probs)),
-                )
+                (
+                    freq_measure[qubit, setup],
+                    t2_measure[qubit, setup],
+                    delta_phys_measure[qubit, setup],
+                    delta_fitting_measure[qubit, setup],
+                    popts[qubit, setup],
+                ) = process_fit(popt, perr, qubit_freq, data.detuning)
             except Exception as e:
                 log.warning(f"Ramsey fitting failed for qubit {qubit} due to {e}.")
     return RamseyZZResults(
+        detuning=data.detuning,
         frequency=freq_measure,
         t2=t2_measure,
         delta_phys=delta_phys_measure,
         delta_fitting=delta_fitting_measure,
         fitted_parameters=popts,
-        chi2=chi2,
     )
 
 
@@ -381,15 +286,16 @@ def _plot(data: RamseyZZData, target: QubitId, fit: RamseyZZResults = None):
         )
         fitting_report = table_html(
             table_dict(
-                target,
+                data.target_qubit,
                 [
                     "ZZ  [kHz]",
                 ],
                 [
                     np.round(
-                        fit.frequency[target, "X"][0] - fit.frequency[target, "I"][0]
-                    )
-                    * 1e-3,
+                        (fit.frequency[target, "X"][0] - fit.frequency[target, "I"][0])
+                        * 1e-3,
+                        0,
+                    ),
                 ],
             )
         )
