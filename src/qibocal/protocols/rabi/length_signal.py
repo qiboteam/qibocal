@@ -17,6 +17,7 @@ from qibocal.config import log
 
 from . import utils
 
+PROJECTIONS = ['Z', 'Y', 'X']
 
 @dataclass
 class RabiLengthVoltParameters(Parameters):
@@ -117,12 +118,12 @@ def _acquisition(
         ),
         sweeper,
     )
-
+    projection = PROJECTIONS[0]
     for qubit in targets:
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
             RabiLenVoltType,
-            (qubit),
+            (qubit, projection),
             dict(
                 length=qd_pulse_duration_range,
                 signal=result.magnitude,
@@ -140,7 +141,7 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
     durations = {}
 
     for qubit in qubits:
-        qubit_data = data[qubit]
+        qubit_data = data[(qubit, PROJECTIONS[0])]
         rabi_parameter = qubit_data.length
         voltages = qubit_data.signal
 

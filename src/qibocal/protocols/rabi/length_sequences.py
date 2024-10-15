@@ -15,6 +15,7 @@ from .length_signal import (
     _update,
 )
 
+PROJECTIONS = ['Z', 'Y', 'X']
 
 def _acquisition(
     params: RabiLengthVoltParameters, platform: Platform, targets: list[QubitId]
@@ -74,7 +75,7 @@ def _acquisition(
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
                 RabiLenVoltType,
-                (qubit),
+                (qubit,    PROJECTIONS[0] ),
                 dict(
                     length=np.array([duration]),
                     signal=np.array([result.magnitude]),

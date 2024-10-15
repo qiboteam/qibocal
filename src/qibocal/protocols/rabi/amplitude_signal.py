@@ -31,7 +31,7 @@ class RabiAmplitudeVoltParameters(Parameters):
     """Maximum amplitude multiplicative factor."""
     step_amp_factor: float
     """Step amplitude multiplicative factor."""
-    pulse_length: Optional[float]
+    pulse_length: Optional[float] = None
     """RX pulse duration [ns]."""
     projections: Optional[list[str]] = field(default_factory=lambda: [PROJECTIONS[0]])
 
@@ -110,12 +110,7 @@ def _acquisition(
             durations[qubit] = qd_pulses[qubit].duration
             projection_pulse[qubit], ro_pulses[qubit] = ro_projection_pulse(
                 platform, qubit, start=qd_pulses[qubit].finish, projection=projection  
-            )
-            dummy_qd = platform.create_RX90_pulse(qubit, start=0)
-            dummy_qd.amplitude = 0
-            dummy_qd.duration = 4
-            #sequence.add(dummy_qd)
-            
+            )  
             sequence.add(qd_pulses[qubit])
             sequence.add(projection_pulse[qubit])
             sequence.add(ro_pulses[qubit])

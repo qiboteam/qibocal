@@ -42,7 +42,10 @@ def plot(data, qubit, fit, projection = 'Z'):
             "phase [rad]",
         ),
     )
-    qubit_data = data[(qubit, projection)]
+    if ((qubit, projection) in data.data.keys()):
+        qubit_data = data[(qubit, projection)]
+    else:
+        qubit_data = data[(qubit)]
 
     rabi_parameters = getattr(qubit_data, quantity)
     fig.add_trace(
