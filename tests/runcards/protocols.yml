@@ -457,7 +457,7 @@ actions:
       nshots: 1024
 
 
-  - id: ramsey
+  - id: ramsey zz
     operation: ramsey_zz
     targets: [0]
     parameters:
@@ -465,6 +465,18 @@ actions:
       delay_between_pulses_end: 20
       delay_between_pulses_step: 1
       detuning: 0
+      target_qubit: 1
+      nshots: 1024
+
+  - id: ramsey zz unrolling
+    operation: ramsey_zz
+    targets: [0]
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 20
+      delay_between_pulses_step: 1
+      detuning: 0
+      unrolling: true
       target_qubit: 1
       nshots: 1024
 
