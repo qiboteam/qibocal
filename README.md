@@ -80,6 +80,7 @@ Feel free to check
 [![arXiv](https://img.shields.io/badge/arXiv-2303.10397-b31b1b.svg)](https://arxiv.org/abs/2303.10397)
 [![DOI](https://zenodo.org/badge/511836317.svg)](https://zenodo.org/badge/latestdoi/511836317)
 
-
+A non-exhaustive list of possible routines to be implemented in Qibocal is collected
+[here](doc/dev/README.md).
 
 If you use the package please refer to [the documentation](https://qibo.science/qibo/stable/appendix/citing-qibo.html#publications) for citation instructions
