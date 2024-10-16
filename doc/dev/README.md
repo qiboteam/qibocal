@@ -1,7 +1,7 @@
 # Qibocal Roadmap
 
 ## Protocols
-### <font color="green">High Priority</font>
+### High Priority
 #### Single qubit
 
 - Rabi and flipping to calibrate pi/2 rotations (https://web.physics.ucsb.edu/~martinisgroup/theses/Chen2018.pdf par. 5.9)
@@ -23,7 +23,7 @@
 - Measure ZZ coupling in couplers (flux amplitude vs coupling) (Manenti Motta, par. 14.8.4)
 - Improve and test iSWAP implementation
 
-### <font color="green">Low Priority</font>
+### Low Priority
 #### Single Qubit
 
 - Calibrate the other qubit states
