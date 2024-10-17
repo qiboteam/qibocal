@@ -8,7 +8,6 @@ from typing import Optional
 
 from qibo.backends import construct_backend
 from qibolab import Platform
-from qibolab.serialize import dump_platform
 
 from ..config import log
 from ..version import __version__
@@ -213,7 +212,7 @@ class Output:
             platpath = path / UPDATED_PLATFORM
 
         platpath.mkdir(parents=True, exist_ok=True)
-        dump_platform(platform, platpath)
+        # dump_platform(platform, platpath)
 
     def _export_stats(self):
         """Export task statistics.

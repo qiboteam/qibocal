@@ -1,6 +1,8 @@
 import numpy as np
+from qibolab import Delay, Platform, PulseSequence
 from scipy.optimize import curve_fit
 
+from qibocal.auto.operation import QubitId
 from qibocal.config import log
 
 from ..utils import chi2_reduced
@@ -26,6 +28,47 @@ def average_single_shots(data_type, single_shots):
             {name: values[name].mean(axis=0) for name in values.dtype.names},
         )
     return data
+
+
+def spin_echo_sequence(platform: Platform, targets: list[QubitId], wait: int = 0):
+    """Create pulse sequence for spin-echo routine.
+
+    Spin Echo 3 Pulses: RX(pi/2) - wait t(rotates z) - RX(pi) - wait t(rotates z) - RX(pi/2) - readout
+    """
+    sequence = PulseSequence()
+    all_delays = []
+    for qubit in targets:
+        natives = platform.natives.single_qubit[qubit]
+        qd_channel, rx90_pulse = natives.R(theta=np.pi / 2)[0]
+        _, rx_pulse = natives.RX()[0]
+        ro_channel, ro_pulse = natives.MZ()[0]
+
+        delays = [
+            Delay(duration=wait),
+            Delay(duration=wait),
+            Delay(duration=wait),
+            Delay(duration=wait),
+        ]
+
+        sequence.extend(
+            [
+                (qd_channel, rx90_pulse),
+                (qd_channel, delays[0]),
+                (qd_channel, rx_pulse),
+                (qd_channel, delays[1]),
+                (qd_channel, rx90_pulse),
+                (
+                    ro_channel,
+                    Delay(duration=2 * rx90_pulse.duration + rx_pulse.duration),
+                ),
+                (ro_channel, delays[2]),
+                (ro_channel, delays[3]),
+                (ro_channel, ro_pulse),
+            ]
+        )
+        all_delays.extend(delays)
+
+    return sequence, all_delays
 
 
 def exp_decay(x, *p):
