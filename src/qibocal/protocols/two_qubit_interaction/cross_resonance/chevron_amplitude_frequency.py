@@ -17,7 +17,7 @@ from .utils import STATES
 
 CrossResonanceChevronFrequencyType = np.dtype(
     [
-        ("length", np.float64),
+        ("amp", np.float64),
         ("freq", np.int64),
         ("prob", np.float64),
     ]
@@ -201,5 +201,5 @@ def _plot(
             
     return figs, ""
 
-cross_resonance_chevron_frequency = Routine(_acquisition, _fit, _plot)
+cross_resonance_chevron_amplitude_frequency = Routine(_acquisition, _fit, _plot)
 """CrossResonanceChevronFrequency Routine object."""

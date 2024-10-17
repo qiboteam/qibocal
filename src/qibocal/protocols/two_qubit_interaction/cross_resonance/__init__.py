@@ -1,4 +1,3 @@
-from .chevron   import cross_resonance_chevron
 from .length    import cross_resonance_length
 from .length_sequences import cross_resonance_length_sequences
 from .amplitude import cross_resonance_amplitude
