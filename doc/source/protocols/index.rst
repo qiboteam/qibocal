@@ -31,4 +31,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     avoided_crossing
     readout_optimization
     standard_rb
+    chevron
+    virtual_z
+    state_tomographies
     references
