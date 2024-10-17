@@ -83,7 +83,7 @@ Feel free to check
 
 If you use the package please refer to [the documentation](https://qibo.science/qibo/stable/appendix/citing-qibo.html#publications) for citation instructions
 
-## Missing protocols
+## Ongoing development
 
 A non-exhaustive list of possible protocols to be implemented in Qibocal is collected
 [here](doc/dev/README.md).
