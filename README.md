@@ -59,9 +59,9 @@ targets: [0]
 
 ```
 ### How to run protocols
-To run the protocols specified in the ```runcard```, Qibocal uses the `qq auto` command
+To run the protocols specified in the ```runcard```, Qibocal uses the `qq run` command
 ```sh
-qq auto <runcard> -o <output_folder>
+qq run <runcard> -o <output_folder>
 ```
 if ```<output_folder>``` is specified, the results will be saved in it, otherwise ```qq``` will automatically create a default folder containing the current date and the username.
 
