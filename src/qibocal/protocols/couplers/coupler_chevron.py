@@ -112,6 +112,7 @@ def _aquisition(
             results[ordered_pair[0]].probability(state=1),
             results[ordered_pair[1]].probability(state=1),
         )
+    data.label = "Probability of state |1>"
 
     return data
 
