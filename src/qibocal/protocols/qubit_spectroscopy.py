@@ -112,8 +112,10 @@ def _acquisition(
         signal = magnitude(result)
         _phase = phase(result)
         if len(signal.shape) > 1:
-            signal, error_signal = np.mean(signal, axis=0), np.std(signal, axis=0)
-            _phase, error_phase = np.mean(_phase, axis=0), np.std(_phase, axis=0)
+            error_signal = np.std(signal, axis=0, ddof=1) / np.sqrt(signal.shape[0])
+            signal = np.mean(signal, axis=0)
+            error_phase = np.std(_phase, axis=0, ddof=1) / np.sqrt(_phase.shape[0])
+            _phase = np.mean(_phase, axis=0)
         else:
             error_signal, error_phase = 0, 0
         data.register_qubit(
