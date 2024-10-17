@@ -1,7 +1,7 @@
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
+from qibolab.pulses import PulseSequence, PulseType
 from qibolab.qubits import QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
@@ -81,16 +81,27 @@ def _aquisition(
 
         sequence += ro_pulse1 + ro_pulse2
 
+        coupler_flux_pulses = [p for p in native_gate.coupler_pulses(*pair)]
+        assert (
+            len(coupler_flux_pulses) == 1
+        ), f"coupler_chevron expects exactly one coupler flux pulse, but {len(coupler_flux_pulses)} are present."
+        qubit_flux_pulses = [
+            p for p in native_gate.get_qubit_pulses(*pair) if p.type is PulseType.FLUX
+        ]
+        assert all(
+            len(list(filter(lambda x: x.qubit == q, qubit_flux_pulses))) < 2
+            for q in pair
+        ), f"coupler_chevron expects no more than 1 flux pulse for each qubit, but more are present for the pair {pair}"
         sweeper_amplitude = Sweeper(
             Parameter.amplitude,
             delta_amplitude_range,
-            pulses=[p for p in native_gate.coupler_pulses(*pair)][:1],
+            pulses=coupler_flux_pulses,
             type=SweeperType.FACTOR,
         )
         sweeper_duration = Sweeper(
             Parameter.duration,
             delta_duration_range,
-            pulses=[p for p in native_gate.coupler_pulses(*pair)],
+            pulses=coupler_flux_pulses + qubit_flux_pulses,
         )
 
         results = platform.sweep(
