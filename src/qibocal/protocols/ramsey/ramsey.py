@@ -4,14 +4,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import (
-    AcquisitionType,
-    AveragingMode,
-    Parameter,
-    Platform,
-    PulseSequence,
-    Sweeper,
-)
+from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
 
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.config import log
@@ -137,30 +130,30 @@ def _acquisition(
             )
 
     if params.unrolling:
-        raise NotImplementedError
-
         sequences, all_ro_pulses = [], []
         for wait in waits:
-            sequence = PulseSequence()
-            for qubit in targets:
-                sequence += ramsey_sequence(
-                    platform=platform, qubit=qubit, wait=wait, detuning=params.detuning
-                )
-
+            sequence, _ = ramsey_sequence(platform, targets, wait)
             sequences.append(sequence)
-            all_ro_pulses.append(sequence.ro_pulses)
+            all_ro_pulses.append(
+                {
+                    qubit: list(sequence.channel(platform.qubits[qubit].acquisition))[0]
+                    for qubit in targets
+                }
+            )
 
-        results = platform.execute_pulse_sequences(sequences, options)
+        results = platform.execute(
+            sequences,
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.DISCRIMINATION,
+            averaging_mode=AveragingMode.SINGLESHOT,
+            updates=updates,
+        )
 
-        # We dont need ig as every serial is different
-        for ig, (wait, ro_pulses) in enumerate(zip(waits, all_ro_pulses)):
+        for wait, ro_pulses in zip(waits, all_ro_pulses):
             for qubit in targets:
-                serial = ro_pulses[qubit].serial
-                if params.unrolling:
-                    result = results[serial][0]
-                else:
-                    result = results[ig][serial]
-                prob = result.probability()
+                result = results[ro_pulses[qubit].id]
+                prob = probability(result, state=1)
                 error = np.sqrt(prob * (1 - prob) / params.nshots)
                 data.register_qubit(
                     RamseyType,

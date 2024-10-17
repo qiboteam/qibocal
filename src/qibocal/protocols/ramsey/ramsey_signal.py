@@ -4,14 +4,7 @@ from typing import Optional, Union
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import (
-    AcquisitionType,
-    AveragingMode,
-    Parameter,
-    Platform,
-    PulseSequence,
-    Sweeper,
-)
+from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.config import log
@@ -146,35 +139,35 @@ def _acquisition(
             )
 
     else:
-        raise NotImplementedError
-
         sequences, all_ro_pulses = [], []
         for wait in waits:
-            sequence = PulseSequence()
-            for qubit in targets:
-                sequence += ramsey_sequence(
-                    platform=platform, qubit=qubit, wait=wait, detuning=params.detuning
-                )
-
+            sequence, _ = ramsey_sequence(platform, targets, wait)
             sequences.append(sequence)
-            all_ro_pulses.append(sequence.ro_pulses)
+            all_ro_pulses.append(
+                {
+                    qubit: list(sequence.channel(platform.qubits[qubit].acquisition))[0]
+                    for qubit in targets
+                }
+            )
 
-        results = platform.execute_pulse_sequences(sequences, options)
+        results = platform.execute(
+            sequences,
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+            updates=updates,
+        )
 
-        # We dont need ig as everty serial is different
-        for ig, (wait, ro_pulses) in enumerate(zip(waits, all_ro_pulses)):
+        for wait, ro_pulses in zip(waits, all_ro_pulses):
             for qubit in targets:
-                serial = ro_pulses[qubit].serial
-                if params.unrolling:
-                    result = results[serial][0]
-                else:
-                    result = results[ig][serial]
+                result = results[ro_pulses[qubit].id]
                 data.register_qubit(
                     RamseySignalType,
                     (qubit),
                     dict(
                         wait=np.array([wait]),
-                        signal=np.array([result.magnitude]),
+                        signal=np.array([magnitude(result)]),
                     ),
                 )
 

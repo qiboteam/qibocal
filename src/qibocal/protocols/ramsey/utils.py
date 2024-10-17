@@ -18,6 +18,7 @@ THRESHOLD = 0.5
 def ramsey_sequence(
     platform: Platform,
     targets: list[QubitId],
+    wait: int = 0,
 ):
     """Pulse sequence used in Ramsey (detuned) experiments.
 
@@ -33,8 +34,8 @@ def ramsey_sequence(
         qd_channel, qd_pulse = natives.R(theta=np.pi / 2)[0]
         ro_channel, ro_pulse = natives.MZ()[0]
 
-        qd_delay = Delay(duration=0)
-        ro_delay = Delay(duration=0)
+        qd_delay = Delay(duration=wait)
+        ro_delay = Delay(duration=wait)
 
         sequence.extend(
             [
