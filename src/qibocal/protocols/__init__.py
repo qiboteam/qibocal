@@ -74,10 +74,12 @@ from .two_qubit_interaction import (
     optimize_two_qubit_gate,
 )
 from .two_qubit_interaction import (
-    cross_resonance,
-    cross_resonance_chevron,
-    cross_resonance_sequences,
+    cross_resonance_length
+    cross_resonance_length_sequences
+    cross_resonance_amplitude
+    cross_resonance_chevron_length
     cross_resonance_chevron_frequency
+    cross_resonance_chevron_amplitude_frequency
 )
 from .two_qubit_state_tomography import two_qubit_state_tomography
 

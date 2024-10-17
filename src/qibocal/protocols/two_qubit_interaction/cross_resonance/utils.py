@@ -5,6 +5,9 @@ from qibolab.native import NativePulse
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
+STATES = ["I", "X"]
+"""Setup states for the cross resonance gate calibration: {Identity, RX}."""
+
 def cr_pulse_sequence(platform: Platform, pair: QubitPairId, setup: tuple, duration:int=0, amplitude:int = None):
     target, control = pair
     tgt_setup, ctr_setup = setup

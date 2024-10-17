@@ -10,7 +10,8 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
-from qibocal.protocols.two_qubit_interaction.cross_resonance.cross_resonance import CrossResonanceParameters
+from qibocal.protocols.two_qubit_interaction.cross_resonance.cross_resonance_length import CrossResonanceParameters
+from .utils import STATES
 
 CrossResonanceType = np.dtype(
     [
@@ -19,7 +20,6 @@ CrossResonanceType = np.dtype(
         ("length", np.int64),
     ]
 )
-STATES = [0,1]
 """Custom dtype for Cross Resonance Gate Calibration using Sequences."""
 
 
@@ -35,8 +35,15 @@ class CrossResonanceSeqResults(Results):
 
 @dataclass
 class CrossResonanceSeqData(Data):
-    """Data structure for Cross Resonance Gate Calibration using Sequences."""
-    
+    """Data structure for Cross Resonance Gate Calibration using Sequences.
+    targets: [target, control]
+    0(I):
+        Q_C: Pulse(omega_T, t)  - MZ
+        Q_T: wait               - MZ
+    1(X):
+        Q_C: RX   - Pulse(omega_T, t)  - MZ
+        Q_T:      - wait               - MZ
+    """
     data: dict[QubitId, npt.NDArray[CrossResonanceType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -157,5 +164,5 @@ def _plot(data: CrossResonanceSeqData, target: QubitPairId, fit: CrossResonanceS
     return figs, ""
 
 
-cross_resonance_sequences = Routine(_acquisition, _fit, _plot)
-"""CrossResonance Sequences Routine object."""
+cross_resonance_length_sequences = Routine(_acquisition, _fit, _plot)
+"""CrossResonance Routine object."""

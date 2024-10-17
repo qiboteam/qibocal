@@ -14,6 +14,7 @@ from qibolab.qubits import QubitId, QubitPairId
 from qibolab.pulses import Pulse, Rectangular, PulseType, Gaussian
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
+from .utils import STATES
 
 CrossResonanceType = np.dtype(
     [
@@ -22,7 +23,6 @@ CrossResonanceType = np.dtype(
     ]
 )
 """Custom dtype for Cross Resonance Gate Calibration."""
-STATES = [0,1]
 
 @dataclass
 class CrossResonanceParameters(Parameters):
@@ -82,7 +82,7 @@ def _acquisition(
                     next_start = max(ctr_native_rx.finish, next_start)
                 
                 cr_pulse: Pulse = Pulse(start=next_start,
-                                duration=4,
+                                duration=params.pulse_duration_start,
                                 amplitude=ctr_native_rx.amplitude,
                                 frequency=tgt_native_rx.frequency,   # control frequency
                                 relative_phase=0,
@@ -171,5 +171,5 @@ def _plot(data: CrossResonanceData, target: QubitPairId, fit: CrossResonanceResu
 
     return figs, ""
 
-cross_resonance = Routine(_acquisition, _fit, _plot)
-"""CrossResonance Routine object."""
+cross_resonance_length = Routine(_acquisition, _fit, _plot)
+"""CrossResonance Sequences Routine object."""

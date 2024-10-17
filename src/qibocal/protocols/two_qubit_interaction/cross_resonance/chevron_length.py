@@ -10,8 +10,9 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId, QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
-
 from qibocal.auto.operation import Data, Parameters, Results, Routine
+
+from .utils import STATES
 
 CrossResonanceChevronType = np.dtype(
     [
@@ -22,11 +23,9 @@ CrossResonanceChevronType = np.dtype(
 )
 """Custom dtype for cross resonance chevron."""
 
-STATES = ["I", "X"]
-
 @dataclass
 class CrossResonanceChevronParameters(Parameters):
-    """Cross Resonance Chevron runcard inputs."""
+    """cross resonance chevron runcard inputs."""
 
     pulse_duration_start: float
     """Initial pi pulse duration [ns]."""
@@ -60,7 +59,7 @@ class CrossResonanceChevronParameters(Parameters):
 
 @dataclass
 class CrossResonanceChevronResults(Results):
-    """Cross Resonance Chevron outputs."""
+    """cross resonance chevron outputs."""
 
 
 @dataclass
@@ -88,7 +87,7 @@ def _acquisition(
     platform: Platform,
     targets: list[QubitPairId],
 ) -> CrossResonanceChevronData:
-    """Data acquisition for Cross Resonance Chevron."""
+    """Data acquisition for cross resonance chevron."""
 
     data = CrossResonanceChevronData()
 
@@ -196,5 +195,5 @@ def _plot(
     return figs, ""
 
 
-cross_resonance_chevron = Routine(_acquisition, _fit, _plot)
+cross_resonance_chevron_length = Routine(_acquisition, _fit, _plot)
 """CrossResonanceChevron Routine object."""
