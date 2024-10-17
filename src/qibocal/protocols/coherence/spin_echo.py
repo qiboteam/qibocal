@@ -1,17 +1,17 @@
-from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
 
 from qibocal.auto.operation import QubitId, Routine
+from qibocal.result import probability
 
 from ..utils import table_dict, table_html
 from . import t1
 from .spin_echo_signal import SpinEchoSignalParameters, SpinEchoSignalResults, _update
-from .utils import exp_decay, exponential_fit_probability
+from .utils import exp_decay, exponential_fit_probability, spin_echo_sequence
 
 
 @dataclass
@@ -40,27 +40,7 @@ def _acquisition(
 ) -> SpinEchoData:
     """Data acquisition for SpinEcho"""
     # create a sequence of pulses for the experiment:
-    # Spin Echo 3 Pulses: RX(pi/2) - wait t(rotates z) - RX(pi) - wait t(rotates z) - RX(pi/2) - readout
-    ro_pulses = {}
-    RX90_pulses1 = {}
-    RX_pulses = {}
-    RX90_pulses2 = {}
-    sequence = PulseSequence()
-    for qubit in targets:
-        RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
-        RX_pulses[qubit] = platform.create_RX_pulse(
-            qubit, start=RX90_pulses1[qubit].finish
-        )
-        RX90_pulses2[qubit] = platform.create_RX90_pulse(
-            qubit, start=RX_pulses[qubit].finish
-        )
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=RX90_pulses2[qubit].finish
-        )
-        sequence.add(RX90_pulses1[qubit])
-        sequence.add(RX_pulses[qubit])
-        sequence.add(RX90_pulses2[qubit])
-        sequence.add(ro_pulses[qubit])
+    sequence, delays = spin_echo_sequence(platform, targets)
 
     # define the parameter to sweep and its range:
     # delay between pulses
@@ -70,7 +50,15 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
-    options = ExecutionParameters(
+    sweeper = Sweeper(
+        parameter=Parameter.duration,
+        values=ro_wait_range,
+        pulses=delays,
+    )
+
+    results = platform.execute(
+        [sequence],
+        [[sweeper]],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.DISCRIMINATION,
@@ -78,45 +66,20 @@ def _acquisition(
     )
 
     data = SpinEchoData()
-    sequences, all_ro_pulses = [], []
-    # sweep the parameter
-    for wait in ro_wait_range:
-        # save data as often as defined by points
-
-        for qubit in targets:
-            RX_pulses[qubit].start = RX90_pulses1[qubit].finish + wait // 2
-            RX90_pulses2[qubit].start = RX_pulses[qubit].finish + wait // 2
-            ro_pulses[qubit].start = RX90_pulses2[qubit].finish
-
-        sequences.append(deepcopy(sequence))
-        all_ro_pulses.append(deepcopy(sequence).ro_pulses)
-
-    if params.unrolling:
-        results = platform.execute_pulse_sequences(sequences, options)
-
-    elif not params.unrolling:
-        results = [
-            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
-        ]
-
-    for ig, (wait, ro_pulses) in enumerate(zip(ro_wait_range, all_ro_pulses)):
-        for qubit in targets:
-            serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
-            if params.unrolling:
-                result = results[serial][0]
-            else:
-                result = results[ig][serial]
-            prob = result.probability(state=0)
-            error = np.sqrt(prob * (1 - prob) / params.nshots)
-            data.register_qubit(
-                t1.CoherenceProbType,
-                (qubit),
-                dict(
-                    wait=np.array([wait]),
-                    prob=np.array([prob]),
-                    error=np.array([error]),
-                ),
-            )
+    for qubit in targets:
+        ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+        result = results[ro_pulse.id]
+        prob = probability(result, state=0)
+        error = np.sqrt(prob * (1 - prob) / params.nshots)
+        data.register_qubit(
+            t1.CoherenceProbType,
+            (qubit),
+            dict(
+                wait=ro_wait_range,
+                prob=prob,
+                error=error,
+            ),
+        )
 
     return data
 
