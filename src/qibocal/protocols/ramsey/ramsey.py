@@ -15,6 +15,7 @@ from qibolab import (
 
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.config import log
+from qibocal.result import probability
 
 from ..utils import chi2_reduced, table_dict, table_html
 from .ramsey_signal import (
@@ -87,44 +88,42 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
-    options = ExecutionParameters(
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.SINGLESHOT,
-    )
-
-    sequence = PulseSequence()
-
     data = RamseyData(
         detuning=params.detuning,
         qubit_freqs={
-            qubit: platform.qubits[qubit].native_gates.RX.frequency for qubit in targets
+            qubit: platform.config(platform.qubits[qubit].drive).frequency
+            for qubit in targets
         },
     )
 
-    if not params.unrolling:
-        sequence = PulseSequence()
+    updates = []
+    if params.detuning != 0:
         for qubit in targets:
-            sequence += ramsey_sequence(
-                platform=platform, qubit=qubit, detuning=params.detuning
-            )
+            channel = platform.qubits[qubit].drive
+            f0 = platform.config(channel).frequency
+            updates.append({channel: {"frequency": f0 + params.detuning}})
 
+    if not params.unrolling:
+        sequence, delays = ramsey_sequence(platform, targets)
         sweeper = Sweeper(
-            Parameter.start,
-            waits,
-            [sequence.get_qubit_pulses(qubit).qd_pulses[-1] for qubit in targets],
-            type=SweeperType.ABSOLUTE,
+            parameter=Parameter.duration,
+            values=waits,
+            pulses=delays,
         )
 
         # execute the sweep
-        results = platform.sweep(
-            sequence,
-            options,
-            sweeper,
+        results = platform.execute(
+            [sequence],
+            [[sweeper]],
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.DISCRIMINATION,
+            averaging_mode=AveragingMode.SINGLESHOT,
+            updates=updates,
         )
         for qubit in targets:
-            probs = results[qubit].probability(state=1)
+            ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+            probs = probability(results[ro_pulse.id], state=1)
             # The probability errors are the standard errors of the binomial distribution
             errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
             data.register_qubit(
@@ -138,6 +137,8 @@ def _acquisition(
             )
 
     if params.unrolling:
+        raise NotImplementedError
+
         sequences, all_ro_pulses = [], []
         for wait in waits:
             sequence = PulseSequence()
