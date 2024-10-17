@@ -8,7 +8,7 @@ import numpy as np
 import numpy.typing as npt
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
-from qm import generate_qua_script
+from qm import CompilerOptionArguments, generate_qua_script
 from qm.qua import *  # nopycln: import
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualang_tools.results import fetching_tool
@@ -241,6 +241,11 @@ def _acquisition(
         if save_sequences:
             sequence_st = declare_stream()
 
+        # force offset setting due to bug in QOP320
+        for qb in platform.qubits.values():
+            if qb.flux is not None:
+                set_dc_offset(qb.flux.name, "single", qb.sweetspot)
+
         with for_(
             m, 0, m < num_of_sequences, m + 1
         ):  # QUA for_ loop over the random sequences
@@ -377,12 +382,15 @@ def _acquisition(
     # Open the quantum machine
     config = generate_config(platform, list(platform.qubits.keys()))
     qm = qmm.open_qm(config)
-    # Send the QUA program to the OPX, which compiles and executes it
-    job = qm.execute(rb)
 
     if params.debug:
         with open("qua_script.py", "w") as file:
             file.write(generate_qua_script(rb, config))
+
+    # Send the QUA program to the OPX, which compiles and executes it
+    job = qm.execute(
+        rb, compiler_options=CompilerOptionArguments(flags=["not-strict-timing"])
+    )
 
     # Get results from QUA program
     if state_discrimination:
