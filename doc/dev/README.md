@@ -1,6 +1,5 @@
 # Qibocal Roadmap
 
-## Protocols
 ### High Priority
 #### Single qubit
 
@@ -14,6 +13,7 @@
 - Improve readout amplitude optimization with the outliers probability
 (https://escholarship.org/content/qt0g29b4p0/qt0g29b4p0.pdf?t=prk0gj)
 - Cryoscope (https://arxiv.org/pdf/1907.04818, https://github.com/qua-platform/qua-libs/blob/main/Quantum-Control-Applications/Superconducting/Single-Flux-Tunable-Transmon/Use%20Case%201%20-%20Paraoanu%20Lab%20-%20Cryoscope/readme.md)
+- Optimal control with randomize benchmarking (https://arxiv.org/pdf/1403.0035)
 
 #### Two qubits
 
@@ -33,6 +33,7 @@
 - Measurement tomography https://arxiv.org/pdf/1310.6448.pdf
 - XY-Z timing
 (https://escholarship.org/content/qt0g29b4p0/qt0g29b4p0.pdf?t=prk0gj par. 5.10)
-- Optimal control with randomize benchmarking (https://arxiv.org/pdf/1403.0035)
 - Quantum volume
 - Gate Set Tomography
+- Process Tomography
+- Study Qubit AC-Stark effect
