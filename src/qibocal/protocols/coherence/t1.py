@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 from qibolab import (
     AcquisitionType,
     AveragingMode,
+    Delay,
     Parameter,
     Platform,
     PulseSequence,
@@ -14,6 +15,7 @@ from qibolab import (
 )
 
 from qibocal.auto.operation import Data, QubitId, Routine
+from qibocal.result import probability
 
 from ..utils import table_dict, table_html
 from . import t1_signal, utils
@@ -72,16 +74,21 @@ def _acquisition(
 
     # create a sequence of pulses for the experiment
     # RX - wait t - MZ
-    qd_pulses = {}
+    delays = {}
     ro_pulses = {}
     sequence = PulseSequence()
-    for qubit in targets:
-        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].duration
-        )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
+    for q in targets:
+        natives = platform.natives.single_qubit[q]
+        qd_channel, qd_pulse = natives.RX()[0]
+        ro_channel, ro_pulse = natives.MZ()[0]
+
+        ro_pulses[q] = ro_pulse
+        delays[q] = Delay(duration=0)
+
+        sequence.append((qd_channel, qd_pulse))
+        sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
+        sequence.append((ro_channel, delays[q]))
+        sequence.append((ro_channel, ro_pulse))
 
     # define the parameter to sweep and its range:
     # wait time before readout
@@ -92,29 +99,26 @@ def _acquisition(
     )
 
     sweeper = Sweeper(
-        Parameter.start,
-        ro_wait_range,
-        [ro_pulses[qubit] for qubit in targets],
-        type=SweeperType.ABSOLUTE,
+        parameter=Parameter.duration,
+        values=ro_wait_range,
+        pulses=[delays[q] for q in targets],
     )
 
     data = T1Data()
 
     # sweep the parameter
     # execute the pulse sequence
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
-        ),
-        sweeper,
+    results = platform.execute(
+        [sequence],
+        [[sweeper]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
 
     for qubit in targets:
-        probs = results[ro_pulses[qubit].serial].probability(state=1)
+        probs = probability(results[ro_pulses[qubit].id], state=1)
         errors = np.sqrt(probs * (1 - probs) / params.nshots)
         data.register_qubit(
             CoherenceProbType,
