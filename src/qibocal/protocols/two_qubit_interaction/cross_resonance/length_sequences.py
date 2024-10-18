@@ -13,7 +13,7 @@ from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.protocols.two_qubit_interaction.cross_resonance.length import CrossResonanceParameters
 from .utils import STATES
 
-CrossResonanceType = np.dtype(
+CrossResonanceSignalType = np.dtype(
     [
         ("magnitude", np.float64),
         ("phase", np.float64),
@@ -35,16 +35,9 @@ class CrossResonanceSeqResults(Results):
 
 @dataclass
 class CrossResonanceSeqData(Data):
-    """Data structure for Cross Resonance Gate Calibration using Sequences.
-    targets: [target, control]
-    0(I):
-        Q_C: Pulse(omega_T, t)  - MZ
-        Q_T: wait               - MZ
-    1(X):
-        Q_C: RX   - Pulse(omega_T, t)  - MZ
-        Q_T:      - wait               - MZ
-    """
-    data: dict[QubitId, npt.NDArray[CrossResonanceType]] = field(default_factory=dict)
+    """Data structure for Cross Resonance Gate Calibration using Sequences."""
+
+    data: dict[QubitId, npt.NDArray[CrossResonanceSignalType]] = field(default_factory=dict)
     """Raw data acquired."""
 
 def _acquisition(
@@ -112,7 +105,7 @@ def _acquisition(
                         mag = results[qubit].magnitude
                         phi = results[qubit].phase
                         data.register_qubit(
-                            CrossResonanceType,
+                            CrossResonanceSignalType,
                             (qubit, target, control, tgt_setup, ctr_setup),
                             dict(
                                 magnitude=[mag],

@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
+from qibolab.pulses import PulseSequence, Pulse, GaussianSquare, PulseType
 from qibolab.qubits import QubitId, QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal.protocols.utils import HZ_TO_GHZ
@@ -94,29 +94,38 @@ def _acquisition(
         for setup in STATES:      
             sequence = PulseSequence()
             target_drive_freq = platform.qubits[target].native_gates.RX.frequency
-            
-            # add a RX control pulse if the setup is |1>
-            if setup == STATES[1]:
-                rx_control = platform.create_RX_pulse(control, 0)
-                pulse = platform.create_RX_pulse(control, rx_control.finish)
+            rx_control = platform.create_RX_pulse(control, 0)
+    
+            next_start = 0
+            if setup == STATES[1]:   
+                next_start = rx_control.finish # add a RX control pulse if the setup is |X>
                 sequence.add(rx_control)
-            else:
-                pulse = platform.create_RX_pulse(control, 0)
-
-            pulse.frequency = target_drive_freq
+            
+            # Cross resonance pulse
+            cr_pulse: Pulse = Pulse(start = next_start,
+                                 duration = rx_control.duration,
+                                 amplitude = rx_control.amplitude,
+                                 frequency = target_drive_freq,
+                                 relative_phase=0,
+                                 channel=rx_control.channel,
+                                 shape = GaussianSquare(0.9,5),
+                                 type = PulseType.DRIVE,
+                                 qubit = control,
+                                 )
+            
             if params.pulse_amplitude is not None:
-                pulse.amplitude = params.pulse_amplitude
-            sequence.add(pulse)
+                cr_pulse.amplitude = params.pulse_amplitude
+            sequence.add(cr_pulse)
 
             # add readout pulses
             for qubit in pair:
-                sequence.add(platform.create_qubit_readout_pulse(qubit, start=pulse.finish))
+                sequence.add(platform.create_qubit_readout_pulse(qubit, start=cr_pulse.finish))
                 
             # create a duration sweeper for the pulse duration
             sweeper_duration = Sweeper(
                 Parameter.duration,
                 params.duration_range,
-                pulses=[pulse],
+                pulses=[cr_pulse],
                 type=SweeperType.ABSOLUTE,
             )
 
@@ -124,7 +133,7 @@ def _acquisition(
             sweeper_frequency = Sweeper(
                 Parameter.frequency,
                 params.frequency_range,
-                pulses=[pulse],
+                pulses=[cr_pulse],
                 type=SweeperType.OFFSET,
             )
 
@@ -142,14 +151,13 @@ def _acquisition(
             )
 
             # store the results for each qubit in the pair in the data object
-            # NOTE: Change this to use standard qibocal>auto>operation>Data>register_qubit
             for qubit in pair:
                 data.register_qubit(
                     dtype=CrossResonanceChevronFrequencyType,
                     key=(qubit, target, control, setup),
                     prob=results[qubit].probability(state=1),
                     length=params.duration_range,
-                    freq=pulse.frequency + params.frequency_range,
+                    freq=cr_pulse.frequency + params.frequency_range,
                 )
 
     # return the data

@@ -16,7 +16,7 @@ from qibolab.pulses import Pulse, Rectangular, PulseType, GaussianSquare
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from .utils import STATES
 
-CrossResonanceAmplitudeType = np.dtype(
+CrossResonanceType = np.dtype(
     [
         ("prob", np.float64),
         ("amp", np.float64),
@@ -56,7 +56,7 @@ class CrossResonanceResults(Results):
 class CrossResonanceData(Data):
     """Data structure for rCross Resonance Gate Calibration."""
 
-    data: dict[QubitId, npt.NDArray[CrossResonanceAmplitudeType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[CrossResonanceType]] = field(default_factory=dict)
     """Raw data acquired."""
 
 
@@ -83,7 +83,7 @@ def _acquisition(
 
                 next_start = max(tgt_native_rx.finish, ctr_native_rx.finish)
                 
-                cr_pulse = Pulse(start = next_start,
+                cr_pulse: Pulse = Pulse(start = next_start,
                                  duration = ctr_native_rx.duration,
                                  amplitude = ctr_native_rx.amplitude,
                                  frequency = tgt_native_rx.frequency,
@@ -126,7 +126,7 @@ def _acquisition(
                 for qubit in pair:
                     prob = results[qubit].probability(state=1)
                     data.register_qubit(
-                        CrossResonanceAmplitudeType,
+                        CrossResonanceType,
                         (qubit, target, control, tgt_setup, ctr_setup),
                         dict(
                             prob=prob.tolist(),

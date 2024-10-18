@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
+from qibolab.pulses import PulseSequence, PulseType, GaussianSquare, Pulse
 from qibolab.qubits import QubitId, QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal.auto.operation import Data, Parameters, Results, Routine
@@ -16,12 +16,12 @@ from .utils import STATES
 
 CrossResonanceChevronType = np.dtype(
     [
-        ("prob", np.float64),
         ("length", np.int64),
         ("amp", np.float64),
+        ("prob", np.float64),
     ]
 )
-"""Custom dtype for cross resonance chevron."""
+"""Custom dtype for cross resonance chevron calibration."""
 
 @dataclass
 class CrossResonanceChevronParameters(Parameters):
@@ -96,33 +96,43 @@ def _acquisition(
             target, control = pair
             sequence = PulseSequence()
             target_drive_freq = platform.qubits[target].native_gates.RX.frequency
+            rx_control = platform.create_RX_pulse(control, 0)
 
+            next_start = 0
             if setup == STATES[1]:
-                rx_control = platform.create_RX_pulse(control, 0)
-                pulse = platform.create_RX_pulse(control, rx_control.finish)
+                next_start = rx_control.finish
                 sequence.add(rx_control)
-            else:
-                pulse = platform.create_RX_pulse(control, 0)
 
-            pulse.frequency = target_drive_freq
+            # Cross resonance pulse
+            cr_pulse: Pulse = Pulse(start = next_start,
+                                 duration = rx_control.duration,
+                                 amplitude = rx_control.amplitude,
+                                 frequency = target_drive_freq,
+                                 relative_phase=0,
+                                 channel=rx_control.channel,
+                                 shape = GaussianSquare(0.9,5),
+                                 type = PulseType.DRIVE,
+                                 qubit = control,
+                                 )
+            
             if params.pulse_amplitude is not None:
-                pulse.amplitude = params.pulse_amplitude
-            sequence.add(pulse)
+                cr_pulse.amplitude = params.pulse_amplitude
+            sequence.add(cr_pulse)
             sequence.add(
-                platform.create_qubit_readout_pulse(target, start=pulse.finish)
+                platform.create_qubit_readout_pulse(target, start=cr_pulse.finish)
             )
 
             sweeper_duration = Sweeper(
                 Parameter.duration,
                 params.duration_range,
-                pulses=[pulse],
+                pulses=[cr_pulse],
                 type=SweeperType.ABSOLUTE,
             )
 
             sweeper_amplitude = Sweeper(
                 Parameter.amplitude,
-                pulse.amplitude * params.amplitude_factor_range,
-                pulses=[pulse],
+                cr_pulse.amplitude * params.amplitude_factor_range,
+                pulses=[cr_pulse],
                 type=SweeperType.FACTOR,
             )
 
@@ -139,13 +149,13 @@ def _acquisition(
             )
 
             # store the results
-            prob1 = results[target].probability(state=1)
+            prob = results[target].probability(state=1)
             data.register_qubit(
                 dtype=CrossResonanceChevronType,
                 key=(target, control, setup),
-                prob=prob1,
+                prob=prob,
                 length=params.duration_range,
-                amp=pulse.amplitude * params.amplitude_factor_range,
+                amp=cr_pulse.amplitude * params.amplitude_factor_range,
             )
     # finally, save the remaining data
     return data

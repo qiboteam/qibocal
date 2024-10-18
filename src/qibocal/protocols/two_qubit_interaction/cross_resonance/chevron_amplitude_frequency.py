@@ -12,6 +12,7 @@ from qibolab.qubits import QubitId, QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal.protocols.utils import HZ_TO_GHZ
 from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibolab.pulses import Pulse, Rectangular, PulseType, GaussianSquare
 
 from .utils import STATES
 
@@ -29,23 +30,25 @@ CrossResonanceChevronFrequencyType = np.dtype(
 class CrossResonanceChevronFrequencyParameters(Parameters):
     """ResonatorSpectroscopy runcard inputs."""
 
-    pulse_duration_start: float
-    """Initial pi pulse duration [ns]."""
-    pulse_duration_end: float
-    """Final pi pulse duration [ns]."""
-    pulse_duration_step: float
-    """Step pi pulse duration [ns]."""
+    min_amp_factor: float
+    """Initial CR pulse amplitude [a.u.]."""
+    max_amp_factor: float
+    """Final CR pulse amplitude [a.u.]."""
+    step_amp_factor: float
+    """Step CR pulse amplitude [a.u.]."""
     freq_width: int
     """Frequency range."""
     freq_step: int
     """Frequency step size."""
-
     pulse_amplitude: Optional[float] = None
+    """Maximum pulse amplitude [a.u.]."""
+    pulse_duration: Optional[int] = None
+    """Pulse duration [ns]."""
 
     @property
-    def duration_range(self):
+    def amplitude_factor(self):
         return np.arange(
-            self.pulse_duration_start, self.pulse_duration_end, self.pulse_duration_step
+            self.min_amp_factor, self.max_amp_factor, self.step_amp_factor
         )
     
     @property
@@ -70,15 +73,20 @@ class CrossResonanceChevronFrequencyData(Data):
     )
     """Raw data acquired."""
 
-    def register_qubit(self, dtype, key, prob, freq, length):
+    def register_qubit(self, dtype, data_key, data:dict):
         """Store output for single qubit."""
-        size = len(freq) * len(length)
-        frequency, duration = np.meshgrid(freq, length)
+
+        prob = data["prob"]
+        freq = data["freq"]
+        amp = data["amp"]
+
+        size = len(freq) * len(amp)
+        frequency, amplitude = np.meshgrid(freq, amp)
         ar = np.empty(size, dtype=dtype)
         ar["freq"] = frequency.ravel()
-        ar["length"] = duration.ravel()
+        ar["amp"] = amplitude.ravel()
         ar["prob"] = prob.ravel()
-        self.data[key] = np.rec.array(ar)
+        self.data[data_key] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -94,37 +102,50 @@ def _acquisition(
         for setup in STATES:      
             sequence = PulseSequence()
             target_drive_freq = platform.qubits[target].native_gates.RX.frequency
+            rx_control = platform.create_RX_pulse(control, 0)
             
             # add a RX control pulse if the setup is |1>
+            next_start=0
             if setup == STATES[1]:
-                rx_control = platform.create_RX_pulse(control, 0)
-                pulse = platform.create_RX_pulse(control, rx_control.finish)
+                next_start = rx_control.finish
                 sequence.add(rx_control)
-            else:
-                pulse = platform.create_RX_pulse(control, 0)
 
-            pulse.frequency = target_drive_freq
+            cr_pulse: Pulse = Pulse(start = next_start,
+                                 duration = rx_control.duration,
+                                 amplitude = rx_control.amplitude,
+                                 frequency = target_drive_freq,
+                                 relative_phase=0,
+                                 channel=rx_control.channel,
+                                 shape = GaussianSquare(0.9,5),
+                                 type = PulseType.DRIVE,
+                                 qubit = control,
+                                 )
+
+            cr_pulse.frequency = target_drive_freq
             if params.pulse_amplitude is not None:
-                pulse.amplitude = params.pulse_amplitude
-            sequence.add(pulse)
+                cr_pulse.amplitude = params.pulse_amplitude
+            if params.pulse_duration is not None:
+                cr_pulse.duration = params.pulse_duration
+
+            sequence.add(cr_pulse)
 
             # add readout pulses
             for qubit in pair:
-                sequence.add(platform.create_qubit_readout_pulse(qubit, start=pulse.finish))
+                sequence.add(platform.create_qubit_readout_pulse(qubit, start=cr_pulse.finish))
                 
             # create a duration sweeper for the pulse duration
-            sweeper_duration = Sweeper(
-                Parameter.duration,
-                params.duration_range,
-                pulses=[pulse],
-                type=SweeperType.ABSOLUTE,
+            sweeper_amplitude = Sweeper(
+                Parameter.amplitude,
+                params.amplitude_factor,
+                pulses=[cr_pulse],
+                type=SweeperType.FACTOR,
             )
 
             # create a frequency sweeper for the pulse frequency
             sweeper_frequency = Sweeper(
                 Parameter.frequency,
                 params.frequency_range,
-                pulses=[pulse],
+                pulses=[cr_pulse],
                 type=SweeperType.OFFSET,
             )
 
@@ -137,22 +158,24 @@ def _acquisition(
                     acquisition_type=AcquisitionType.DISCRIMINATION,
                     averaging_mode=AveragingMode.SINGLESHOT,
                 ),
-                sweeper_duration,
+                sweeper_amplitude,
                 sweeper_frequency,
             )
 
             # store the results for each qubit in the pair in the data object
             # NOTE: Change this to use standard qibocal>auto>operation>Data>register_qubit
             for qubit in pair:
+                prob = results[qubit].probability(state=1)
                 data.register_qubit(
-                    dtype=CrossResonanceChevronFrequencyType,
-                    key=(qubit, target, control, setup),
-                    prob=results[qubit].probability(state=1),
-                    length=params.duration_range,
-                    freq=pulse.frequency + params.frequency_range,
+                    CrossResonanceChevronFrequencyType,
+                    (qubit, target, control, setup),
+                    dict(
+                        prob=prob,
+                        amp=params.amplitude_factor*cr_pulse.amplitude,
+                        freq=cr_pulse.frequency + params.frequency_range,
+                        )
                 )
 
-    # return the data
     return data
 
 
@@ -184,7 +207,7 @@ def _plot(
             qubit_data = data.data[qubit, pair[0], pair[1], setup]
             fig.add_trace(
                 go.Heatmap(
-                    x=qubit_data.length,
+                    x=qubit_data.amp,
                     y=qubit_data.freq * HZ_TO_GHZ,
                     z=qubit_data.prob,
                     name=f"Control at |{setup}>",
@@ -193,7 +216,7 @@ def _plot(
                 row=1,
                 col=i+1,
             )
-            fig.update_xaxes(title_text="Pulse Duration [ns]", row=1, col=i+1)
+            fig.update_xaxes(title_text="Pulse Amplitude [a.u.]", row=1, col=i+1)
             fig.update_yaxes(title_text="Frequency [GHz]", row=1, col=i+1)
         fig.update_layout(coloraxis={'colorscale':'Plasma'})
         figs.append(fig)
