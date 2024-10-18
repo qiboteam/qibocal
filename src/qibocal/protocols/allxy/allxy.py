@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AveragingMode, Platform, PulseSequence
+from qibolab import AveragingMode, Delay, Platform, PulseSequence
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 
@@ -90,27 +90,19 @@ def _acquisition(
             )
 
     # execute the pulse sequence
-    options = ExecutionParameters(
-        nshots=params.nshots, averaging_mode=AveragingMode.CYCLIC
-    )
+    options = dict(nshots=params.nshots, averaging_mode=AveragingMode.CYCLIC)
     if params.unrolling:
-        results = platform.execute_pulse_sequences(sequences, options)
+        results = platform.execute(sequences, **options)
     else:
-        results = [
-            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
-        ]
+        results = {}
+        for sequence in sequences:
+            results.update(platform.execute([sequence], **options))
 
-    for ig, (gates, ro_pulses) in enumerate(zip(gatelist, all_ro_pulses)):
+    for gates, ro_pulses in zip(gatelist, all_ro_pulses):
         gate = "-".join(gates)
         for qubit in targets:
-            serial = ro_pulses[qubit].serial
-            if params.unrolling:
-                prob = results[serial][ig].probability(0)
-                z_proj = 2 * prob - 1
-            else:
-                prob = results[ig][serial].probability(0)
-                z_proj = 2 * prob - 1
-
+            prob = 1 - results[ro_pulses[qubit].id]
+            z_proj = 2 * prob - 1
             errors = 2 * np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
                 AllXYType,
@@ -135,85 +127,44 @@ def add_gate_pair_pulses_to_sequence(
     readout_delay=0,
     beta_param=None,
 ):
-    pulse_duration = platform.create_RX_pulse(qubit, start=0).duration
-    # All gates have equal pulse duration
-
-    sequence_duration = sequence.get_qubit_pulses(qubit).duration + sequence_delay
-    pulse_start = sequence.get_qubit_pulses(qubit).duration + sequence_delay
-
+    natives = platform.natives.single_qubit[qubit]
     for gate in gates:
         if gate == "I":
             pass
 
         if gate == "Xp":
-            if beta_param == None:
-                RX_pulse = platform.create_RX_pulse(
-                    qubit,
-                    start=pulse_start,
-                )
+            if beta_param is None:
+                rx_sequence = natives.RX()
             else:
-                RX_pulse = platform.create_RX_drag_pulse(
-                    qubit,
-                    start=pulse_start,
-                    beta=beta_param,
-                )
-            sequence.add(RX_pulse)
+                raise NotImplementedError
+            sequence += rx_sequence
 
         if gate == "X9":
-            if beta_param == None:
-                RX90_pulse = platform.create_RX90_pulse(
-                    qubit,
-                    start=pulse_start,
-                )
+            if beta_param is None:
+                rx90_sequence = natives.R(theta=np.pi / 2)
             else:
-                RX90_pulse = platform.create_RX90_drag_pulse(
-                    qubit,
-                    start=pulse_start,
-                    beta=beta_param,
-                )
-            sequence.add(RX90_pulse)
+                raise NotImplementedError
+            sequence += rx90_sequence
 
         if gate == "Yp":
             if beta_param == None:
-                RY_pulse = platform.create_RX_pulse(
-                    qubit,
-                    start=pulse_start,
-                    relative_phase=np.pi / 2,
-                )
+                ry_sequence = natives.R(phi=np.pi / 2)
             else:
-                RY_pulse = platform.create_RX_drag_pulse(
-                    qubit,
-                    start=pulse_start,
-                    relative_phase=np.pi / 2,
-                    beta=beta_param,
-                )
-            sequence.add(RY_pulse)
+                raise NotImplementedError
+            sequence += ry_sequence
 
         if gate == "Y9":
             if beta_param == None:
-                RY90_pulse = platform.create_RX90_pulse(
-                    qubit,
-                    start=pulse_start,
-                    relative_phase=np.pi / 2,
-                )
+                ry90_sequence = natives.R(theta=np.pi / 2, phi=np.pi / 2)
             else:
-                RY90_pulse = platform.create_RX90_drag_pulse(
-                    qubit,
-                    start=pulse_start,
-                    relative_phase=np.pi / 2,
-                    beta=beta_param,
-                )
-            sequence.add(RY90_pulse)
-
-        sequence_duration += pulse_duration
-        pulse_start = sequence_duration
+                raise NotImplementedError
+            sequence += ry90_sequence
 
     # RO pulse starting just after pair of gates
-    ro_pulse = platform.create_qubit_readout_pulse(
-        qubit, start=sequence_duration + readout_delay
-    )
-
-    sequence.add(ro_pulse)
+    qd_channel = platform.qubits[qubit].drive
+    ro_channel, ro_pulse = natives.MZ()[0]
+    sequence.append((ro_channel, Delay(duration=sequence.channel_duration(qd_channel))))
+    sequence.append((ro_channel, ro_pulse))
     return sequence, ro_pulse
 
 
