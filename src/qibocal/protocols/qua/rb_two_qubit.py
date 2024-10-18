@@ -34,6 +34,11 @@ def _acquisition(
 ) -> QuaTwoQubitRbData:
     assert len(targets) == 1
     qubit1, qubit2 = targets[0]
+    try:
+        qubit1 = int(qubit1)
+        qubit2 = int(qubit2)
+    except ValueError:
+        pass
 
     cz_sequence, phases = platform.pairs[(qubit1, qubit2)].native_gates.CZ.sequence()
     if cz_sequence[0].qubit != qubit1:
@@ -125,10 +130,13 @@ def _acquisition(
     # create RB experiment from configuration and defined functions
     config = generate_config(platform, platform.qubits.keys(), targets=[qubit1, qubit2])
 
+    # for debugging when there is an error
+    # from qm import generate_qua_script
+    # from qm.qua import program
     # with open("rb2q_qua_config.py", "w") as file:
-    #     with program() as prog:
-    #         align()
-    #     file.write(generate_qua_script(prog, config))
+    #    with program() as prog:
+    #        align()
+    #    file.write(generate_qua_script(prog, config))
 
     rb = TwoQubitRb(
         config=config,
@@ -148,6 +156,11 @@ def _acquisition(
         circuit_depths=params.circuit_depths,
         num_circuits_per_depth=params.num_circuits_per_depth,
         num_shots_per_circuit=params.num_shots_per_circuit,
+        offsets=[
+            (qb.flux.name, qb.sweetspot)
+            for qb in platform.qubits.values()
+            if qb.flux is not None
+        ],
         debug=params.debug,
     )
 

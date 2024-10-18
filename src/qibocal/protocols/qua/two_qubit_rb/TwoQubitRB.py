@@ -176,6 +176,7 @@ class TwoQubitRb:
         sequence_depths: list[int],
         num_repeats: int,
         num_averages: int,
+        offsets: list[tuple[str, float]],
     ):
         with program() as prog:
             sequence_depth = declare(int)
@@ -191,6 +192,10 @@ class TwoQubitRb:
                 qe: declare_input_stream(int, name=f"{qe}_is", size=self._buffer_length)
                 for qe in self._rb_baker.all_elements
             }
+
+            # force offset setting due to bug in QOP320
+            for qb, offset in offsets:
+                set_dc_offset(qb, "single", offset)
 
             assign(progress, 0)
             with for_each_(sequence_depth, sequence_depths):
@@ -249,6 +254,7 @@ class TwoQubitRb:
         circuit_depths: List[int],
         num_circuits_per_depth: int,
         num_shots_per_circuit: int,
+        offsets: Optional[list[tuple[str, float]]] = None,
         debug: Optional[str] = None,
         **kwargs,
     ):
@@ -264,9 +270,10 @@ class TwoQubitRb:
             num_shots_per_circuit (int): The number of shots per particular circuit.
             debug (str): If not ``None`` it dumps the QUA script and config in a file with the given name.
         """
-
+        if offsets is None:
+            offsets = []
         prog = self._gen_qua_program(
-            circuit_depths, num_circuits_per_depth, num_shots_per_circuit
+            circuit_depths, num_circuits_per_depth, num_shots_per_circuit, offsets
         )
 
         if debug is not None:
