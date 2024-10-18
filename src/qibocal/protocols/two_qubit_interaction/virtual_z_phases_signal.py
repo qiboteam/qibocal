@@ -99,7 +99,7 @@ def _acquisition(
                 )
                 sweeper = Sweeper(
                     Parameter.relative_phase,
-                    theta - data.vphases[ord_pair][target_q],
+                    theta,
                     pulses=[theta_pulse],
                     type=SweeperType.ABSOLUTE,
                 )
