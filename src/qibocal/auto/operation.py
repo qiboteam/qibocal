@@ -17,6 +17,7 @@ from .serialize import deserialize, load, serialize
 
 QubitId = Union[str, int]
 QubitPairId = tuple[QubitId, QubitId]
+ChannelId = str
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""

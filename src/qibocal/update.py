@@ -25,22 +25,17 @@ def replace(model: BaseModel, **update):
 
 def readout_frequency(freq: float, platform: Platform, qubit: QubitId):
     """Update readout frequency value in platform for specific qubit."""
-    # mz = platform.qubits[qubit].native_gates.MZ
-    # freq_hz = int(freq)
-    # mz.frequency = freq_hz
-    # if mz.if_frequency is not None:
-    #    mz.if_frequency = freq_hz - platform.qubits[qubit].readout.lo_frequency
-    # platform.qubits[qubit].readout_frequency = freq_hz
-
-
-def bare_resonator_frequency(freq: float, platform: Platform, qubit: QubitId):
-    """Update rbare frequency value in platform for specific qubit."""
-    # platform.qubits[qubit].bare_resonator_frequency = int(freq)
+    channel = platform.qubits[qubit].probe
+    platform.parameters.configs[channel] = replace(
+        platform.config(channel), frequency=freq
+    )
 
 
 def readout_amplitude(amp: float, platform: Platform, qubit: QubitId):
     """Update readout amplitude value in platform for specific qubit."""
-    # platform.natives.single_qubit[qubit].MZ.amplitude = float(amp)
+    channel, pulse = platform.natives.single_qubit[qubit].MZ[0]
+    new_pulse = replace(pulse, probe=replace(pulse.probe, amplitude=amp))
+    platform.natives.single_qubit[qubit].MZ[0] = (channel, new_pulse)
 
 
 def readout_attenuation(att: int, platform: Platform, qubit: QubitId):
@@ -63,7 +58,9 @@ def drive_amplitude(amp: Union[float, tuple, list], platform: Platform, qubit: Q
     """Update drive frequency value in platform for specific qubit."""
     if isinstance(amp, Iterable):
         amp = amp[0]
-    # platform.natives.single_qubit[qubit].RX.amplitude = float(amp)
+    channel, pulse = platform.natives.single_qubit[qubit].RX[0]
+    new_pulse = replace(pulse, amplitude=amp)
+    platform.natives.single_qubit[qubit].RX[0] = (channel, new_pulse)
 
 
 def drive_duration(
@@ -72,7 +69,9 @@ def drive_duration(
     """Update drive duration value in platform for specific qubit."""
     if isinstance(duration, Iterable):
         duration = duration[0]
-    # platform.natives.single_qubit[qubit].RX.duration = int(duration)
+    channel, pulse = platform.natives.single_qubit[qubit].RX[0]
+    new_pulse = replace(pulse, duration=duration)
+    platform.natives.single_qubit[qubit].RX[0] = (channel, new_pulse)
 
 
 def crosstalk_matrix(
@@ -83,34 +82,19 @@ def crosstalk_matrix(
 
 
 def iq_angle(angle: float, platform: Platform, qubit: QubitId):
-    """Update iq angle value in platform for specific qubit."""
-    # platform.qubits[qubit].iq_angle = float(angle)
-    pass
+    """Update classification iq angle value in platform for specific qubit."""
+    channel = platform.qubits[qubit].acquisition
+    platform.parameters.configs[channel] = replace(
+        platform.config(channel), iq_angle=angle
+    )
 
 
 def threshold(threshold: float, platform: Platform, qubit: QubitId):
-    # platform.qubits[qubit].threshold = float(threshold)
-    pass
-
-
-def mean_gnd_states(gnd_state: list, platform: Platform, qubit: QubitId):
-    """Update mean ground state value in platform for specific qubit."""
-    # platform.qubits[qubit].mean_gnd_states = gnd_state
-
-
-def mean_exc_states(exc_state: list, platform: Platform, qubit: QubitId):
-    """Update mean excited state value in platform for specific qubit."""
-    # platform.qubits[qubit].mean_exc_states = exc_state
-
-
-def readout_fidelity(fidelity: float, platform: Platform, qubit: QubitId):
-    """Update fidelity of single shot classification."""
-    # platform.qubits[qubit].readout_fidelity = float(fidelity)
-
-
-def assignment_fidelity(fidelity: float, platform: Platform, qubit: QubitId):
-    """Update fidelity of single shot classification."""
-    # platform.qubits[qubit].assignment_fidelity = float(fidelity)
+    """Update classification threshold value in platform for specific qubit."""
+    channel = platform.qubits[qubit].acquisition
+    platform.parameters.configs[channel] = replace(
+        platform.config(channel), threshold=threshold
+    )
 
 
 def virtual_phases(
