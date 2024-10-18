@@ -129,7 +129,7 @@ def _aquisition(
 
 
 def _fit(data: ChevronData) -> Results:
-    """ "Results for ChevronCouplers."""
+    """Results for ChevronCouplers."""
     return Results()
 
 
