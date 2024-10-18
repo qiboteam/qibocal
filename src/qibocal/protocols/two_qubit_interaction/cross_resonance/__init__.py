@@ -4,3 +4,4 @@ from .amplitude import cross_resonance_amplitude
 from .chevron_length import cross_resonance_chevron_length
 from .chevron_frequency import cross_resonance_chevron_frequency
 from .chevron_amplitude_frequency import cross_resonance_chevron_amplitude_frequency
+from .chevron_coupler import cross_resonance_chevron_coupler
