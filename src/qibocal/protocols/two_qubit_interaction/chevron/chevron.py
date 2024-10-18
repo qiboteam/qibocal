@@ -109,6 +109,9 @@ class ChevronData(Data):
     """Sweetspot value for high frequency qubit."""
     data: dict[QubitPairId, npt.NDArray[ChevronType]] = field(default_factory=dict)
 
+    label: Optional[str] = None
+    """Label for the data."""
+
     def register_qubit(self, low_qubit, high_qubit, length, amp, prob_low, prob_high):
         """Store output for single qubit."""
         size = len(length) * len(amp)
@@ -308,7 +311,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     fig.update_layout(
         xaxis_title="Duration [ns]",
         xaxis2_title="Duration [ns]",
-        yaxis_title="Amplitude [a.u.]",
+        yaxis_title=data.label or "Amplitude [a.u.]",
         legend=dict(orientation="h"),
     )
     fig.update_layout(
