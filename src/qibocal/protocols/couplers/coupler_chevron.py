@@ -15,7 +15,7 @@ from ..two_qubit_interaction.chevron.chevron import (
 from ..two_qubit_interaction.utils import order_pair
 
 
-def _aquisition(
+def _acquisition(
     params: ChevronParameters,
     platform: Platform,
     targets: list[QubitPairId],
@@ -137,5 +137,5 @@ def plot(data: ChevronData, fit: Results, target):
     return _plot(data, None, target)
 
 
-coupler_chevron = Routine(_aquisition, _fit, plot, two_qubit_gates=True)
+coupler_chevron = Routine(_acquisition, _fit, plot, two_qubit_gates=True)
 """Coupler cz/swap flux routine."""
