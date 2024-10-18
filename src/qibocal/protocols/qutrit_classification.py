@@ -2,12 +2,9 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
-from qibolab import AcquisitionType, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
+from qibolab import AcquisitionType, Platform, PulseSequence
 
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import QubitId, Routine
 from qibocal.fitting.classifier import run
 from qibocal.protocols.classification import (
     ClassificationType,

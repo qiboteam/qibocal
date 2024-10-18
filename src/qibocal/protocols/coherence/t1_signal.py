@@ -4,14 +4,18 @@ from typing import Union
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Delay,
+    Parameter,
+    Platform,
+    PulseSequence,
+    Sweeper,
+)
 
-from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.result import magnitude, phase
 
 from ..utils import table_dict, table_html
 from . import utils
@@ -80,16 +84,21 @@ def _acquisition(
 
     # create a sequence of pulses for the experiment
     # RX - wait t - MZ
-    qd_pulses = {}
+    delays = {}
     ro_pulses = {}
     sequence = PulseSequence()
-    for qubit in targets:
-        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].duration
-        )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
+    for q in targets:
+        natives = platform.natives.single_qubit[q]
+        qd_channel, qd_pulse = natives.RX()[0]
+        ro_channel, ro_pulse = natives.MZ()[0]
+
+        ro_pulses[q] = ro_pulse
+        delays[q] = Delay(duration=0)
+
+        sequence.append((qd_channel, qd_pulse))
+        sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
+        sequence.append((ro_channel, delays[q]))
+        sequence.append((ro_channel, ro_pulse))
 
     # define the parameter to sweep and its range:
     # wait time before readout
@@ -100,38 +109,36 @@ def _acquisition(
     )
 
     sweeper = Sweeper(
-        Parameter.start,
-        ro_wait_range,
-        [ro_pulses[qubit] for qubit in targets],
-        type=SweeperType.ABSOLUTE,
+        parameter=Parameter.duration,
+        values=ro_wait_range,
+        pulses=[delays[q] for q in targets],
     )
 
     # sweep the parameter
     # execute the pulse sequence
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=(
-                AveragingMode.SINGLESHOT if params.single_shot else AveragingMode.CYCLIC
-            ),
+    results = platform.execute(
+        [sequence],
+        [[sweeper]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=(
+            AveragingMode.SINGLESHOT if params.single_shot else AveragingMode.CYCLIC
         ),
-        sweeper,
     )
 
     data = T1SignalData()
-    for qubit in targets:
-        result = results[ro_pulses[qubit].serial]
+    for q in targets:
+        result = results[ro_pulses[q].id]
+        signal = magnitude(result)
         if params.single_shot:
-            _waits = np.array(len(result.magnitude) * [ro_wait_range])
+            _waits = np.array(len(signal) * [ro_wait_range])
         else:
             _waits = ro_wait_range
         data.register_qubit(
             utils.CoherenceType,
-            (qubit),
-            dict(wait=_waits, signal=result.magnitude, phase=result.phase),
+            (q),
+            dict(wait=_waits, signal=signal, phase=phase(result)),
         )
 
     return data
@@ -208,7 +215,8 @@ def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
 
 
 def _update(results: T1SignalResults, platform: Platform, target: QubitId):
-    update.t1(results.t1[target], platform, target)
+    pass
+    # update.t1(results.t1[target], platform, target)
 
 
 t1_signal = Routine(_acquisition, _fit, _plot, _update)

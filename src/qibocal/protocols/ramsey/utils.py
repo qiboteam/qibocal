@@ -1,11 +1,8 @@
-from typing import Optional
-
 import numpy as np
-from qibolab import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
+from qibolab import Delay, Platform, PulseSequence
 from scipy.optimize import curve_fit
 
+from qibocal.auto.operation import QubitId
 from qibocal.protocols.utils import GHZ_TO_HZ, fallback_period, guess_period
 
 POPT_EXCEPTION = [0, 0, 0, 0, 1]
@@ -20,36 +17,40 @@ THRESHOLD = 0.5
 
 def ramsey_sequence(
     platform: Platform,
-    qubit: QubitId,
+    targets: list[QubitId],
     wait: int = 0,
-    detuning: Optional[int] = None,
 ):
     """Pulse sequence used in Ramsey (detuned) experiments.
 
     The pulse sequence is the following:
 
     RX90 -- wait -- RX90 -- MZ
-
-    If detuning is specified the RX90 pulses will be sent to
-    frequency = drive_frequency + detuning
     """
-
+    delays = []
     sequence = PulseSequence()
-    first_pi_half_pulse = platform.create_RX90_pulse(qubit, start=0)
-    second_pi_half_pulse = platform.create_RX90_pulse(
-        qubit, start=first_pi_half_pulse.finish + wait
-    )
+    for qubit in targets:
+        natives = platform.natives.single_qubit[qubit]
 
-    # apply detuning:
-    if detuning is not None:
-        first_pi_half_pulse.frequency += detuning
-        second_pi_half_pulse.frequency += detuning
-    readout_pulse = platform.create_qubit_readout_pulse(
-        qubit, start=second_pi_half_pulse.finish
-    )
+        qd_channel, qd_pulse = natives.R(theta=np.pi / 2)[0]
+        ro_channel, ro_pulse = natives.MZ()[0]
 
-    sequence.add(first_pi_half_pulse, second_pi_half_pulse, readout_pulse)
-    return sequence
+        qd_delay = Delay(duration=wait)
+        ro_delay = Delay(duration=wait)
+
+        sequence.extend(
+            [
+                (qd_channel, qd_pulse),
+                (qd_channel, qd_delay),
+                (qd_channel, qd_pulse),
+                (ro_channel, Delay(duration=2 * qd_pulse.duration)),
+                (ro_channel, ro_delay),
+                (ro_channel, ro_pulse),
+            ]
+        )
+
+        delays.extend([qd_delay, ro_delay])
+
+    return sequence, delays
 
 
 def ramsey_fit(x, offset, amplitude, delta, phase, decay):

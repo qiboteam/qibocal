@@ -7,13 +7,10 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import (
     HZ_TO_GHZ,

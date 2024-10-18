@@ -1,7 +1,7 @@
 import numpy as np
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitPairId
+from qibolab import Platform, PulseSequence, VirtualZ
+
+from qibocal.auto.operation import QubitPairId
 
 from ..utils import order_pair
 
@@ -26,54 +26,27 @@ def chevron_sequence(
     sequence = PulseSequence()
     ordered_pair = order_pair(pair, platform)
     # initialize in system in 11 state
-
+    low_natives = platform.natives.single_qubit[ordered_pair[0]]
+    high_natives = platform.natives.single_qubit[ordered_pair[1]]
     if native == "CZ":
-        initialize_lowfreq = platform.create_RX_pulse(
-            ordered_pair[0], start=0, relative_phase=0
-        )
-        sequence.add(initialize_lowfreq)
+        sequence += low_natives.RX()
+    sequence += high_natives.RX()
 
-    initialize_highfreq = platform.create_RX_pulse(
-        ordered_pair[1], start=0, relative_phase=0
-    )
-    sequence.add(initialize_highfreq)
-
-    flux_sequence, _ = getattr(platform, f"create_{native}_pulse_sequence")(
-        qubits=(ordered_pair[1], ordered_pair[0]),
-        start=initialize_highfreq.finish,
-    )
-
-    sequence.add(flux_sequence.get_qubit_pulses(ordered_pair[0]))
-    sequence.add(flux_sequence.get_qubit_pulses(ordered_pair[1]))
-
-    delay_measurement = duration_max
-
-    if platform.couplers:
-        coupler_pulse = flux_sequence.coupler_pulses(
-            platform.pairs[tuple(ordered_pair)].coupler.name
-        )
-        sequence.add(coupler_pulse)
-        delay_measurement = max(duration_max, coupler_pulse.duration)
-
+    flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
     if parking:
-        for pulse in flux_sequence:
-            if pulse.qubit not in ordered_pair:
-                pulse.start = COUPLER_PULSE_START
-                pulse.duration = COUPLER_PULSE_DURATION
-                sequence.add(pulse)
+        sequence |= [
+            (ch, pulse)
+            for ch, pulse in flux_sequence
+            if not isinstance(pulse, VirtualZ)
+        ]
+    else:
+        target_channels = {platform.qubits[q].flux for q in ordered_pair}
+        sequence |= [
+            (ch, pulse) for ch, pulse in flux_sequence if ch in target_channels
+        ]
 
     # add readout
-    measure_lowfreq = platform.create_qubit_readout_pulse(
-        ordered_pair[0],
-        start=initialize_highfreq.finish + delay_measurement + dt,
-    )
-    measure_highfreq = platform.create_qubit_readout_pulse(
-        ordered_pair[1],
-        start=initialize_highfreq.finish + delay_measurement + dt,
-    )
-
-    sequence.add(measure_lowfreq)
-    sequence.add(measure_highfreq)
+    sequence |= low_natives.MZ() + high_natives.MZ()
 
     return sequence
 

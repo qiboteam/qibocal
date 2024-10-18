@@ -3,11 +3,10 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId
+from qibolab import Platform
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.protocols import classification
 from qibocal.protocols.utils import HZ_TO_GHZ, table_dict, table_html
 

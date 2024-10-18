@@ -1,13 +1,16 @@
 from typing import Optional
 
 import numpy as np
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitPairId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Platform,
+    PulseSequence,
+    Sweeper,
+)
 
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import QubitPairId, Routine
 
 from ..two_qubit_interaction.utils import order_pair
 from .coupler_resonator_spectroscopy import _fit, _plot, _update

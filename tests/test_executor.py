@@ -8,14 +8,13 @@ from typing import Optional
 
 import pytest
 from qibolab import Platform, create_platform
-from qibolab.qubits import QubitId
 
 import qibocal
 import qibocal.protocols
 from qibocal import Executor
 from qibocal.auto.history import History
 from qibocal.auto.mode import ExecutionMode
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.auto.runcard import Action
 from qibocal.protocols import flipping
 
