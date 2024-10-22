@@ -117,20 +117,11 @@ def _acquisition(
 
             for qubit in targets:
                 probs = results[qubit].probability(state=1)
-                # The probability errors are the standard errors of the binomial distribution
                 errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
-                data.register_qubit(
-                    RamseyType,
-                    (qubit, setup),
-                    dict(
-                        wait=waits,
-                        prob=probs,
-                        errors=errors,
-                    ),
-                )
 
         else:
             sequences, all_ro_pulses = [], []
+            probs, errors = [], []
             for wait in waits:
                 sequence = PulseSequence()
                 for qubit in targets:
@@ -149,18 +140,20 @@ def _acquisition(
 
             for wait, ro_pulses in zip(waits, all_ro_pulses):
                 for qubit in targets:
-                    result = results[ro_pulses[qubit].serial][0]
-                    prob = result.probability()
-                    error = np.sqrt(prob * (1 - prob) / params.nshots)
-                    data.register_qubit(
-                        RamseyType,
-                        (qubit, setup),
-                        dict(
-                            wait=np.array([wait]),
-                            prob=np.array([prob]),
-                            errors=np.array([error]),
-                        ),
-                    )
+                    prob = results[ro_pulses[qubit].serial][0].probability(state=1)
+                    probs.append(prob)
+                    errors.append(np.sqrt(prob * (1 - prob) / params.nshots))
+
+        for qubit in targets:
+            data.register_qubit(
+                RamseyType,
+                (qubit, setup),
+                dict(
+                    wait=waits,
+                    prob=probs,
+                    errors=errors,
+                ),
+            )
 
     return data
 
