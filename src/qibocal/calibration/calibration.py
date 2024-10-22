@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pydantic import BaseModel, ConfigDict, Field
 
 # from qibolab._core.identifier import QubitId, QubitPairId
@@ -113,3 +115,7 @@ class Calibration(Model):
     """Readout mitigation matrix."""
     flux_crosstalk_matrix: str = None
     """Crosstalk flux matrix."""
+
+    def dump(self, path: Path):
+        """Dump platform."""
+        (path / CALIBRATION).write_text(self.model_dump_json(indent=4))
