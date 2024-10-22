@@ -3,6 +3,9 @@ from pydantic import BaseModel, ConfigDict, Field
 # from qibolab._core.identifier import QubitId, QubitPairId
 # from qibolab._core.serialize import NdArray
 
+CALIBRATION = "calibration.json"
+"""Calibration file."""
+
 
 class Model(BaseModel):
     """Global qibolab model, holding common configurations."""
