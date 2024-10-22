@@ -91,8 +91,8 @@ def _acquisition(
     )
 
     for setup in ["I", "X"]:
-        sequence = PulseSequence()
         if not params.unrolling:
+            sequence = PulseSequence()
             for qubit in targets:
                 sequence += ramsey_sequence(
                     platform=platform,
