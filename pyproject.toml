@@ -18,7 +18,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
 qibolab = "^0.1.8"
-qibo = "^0.2.6"
+qibo = "^0.2.12"
 numpy = "^1.26.4"
 scipy = "^1.10.1"
 pandas = { version = "^2.2.2", extras = ["html"] }
