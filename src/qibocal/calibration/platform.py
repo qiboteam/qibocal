@@ -2,12 +2,9 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from qibolab import Platform, create_platform
+from qibolab import Platform, create_dummy, create_platform
 
-from .calibration import Calibration
-
-CALIBRATION = "calibration.json"
-"""Calibration file."""
+from .calibration import CALIBRATION, Calibration
 
 
 @dataclass
@@ -22,6 +19,10 @@ class CalibrationPlatform:
     @property
     def natives(self):
         return self.platform.natives
+
+    @property
+    def qubits(self):
+        return self.platform.qubits
 
     @property
     def parameters(self):
@@ -42,10 +43,16 @@ class CalibrationPlatform:
 
 def create_calibration_platform(name: str) -> CalibrationPlatform:
 
-    path = Path(os.getenv("QIBOLAB_PLATFORMS"))
-    platform = create_platform(name)
-    calibration = Calibration.model_validate_json(
-        (path / name / CALIBRATION).read_text()
-    )
+    if name == "dummy":
+        platform = create_dummy()
+        calibration = Calibration.model_validate_json(
+            (Path(__file__).parent / "dummy.json").read_text()
+        )
+    else:
+        path = Path(os.getenv("QIBOLAB_PLATFORMS"))
+        platform = create_platform(name)
+        calibration = Calibration.model_validate_json(
+            (path / name / CALIBRATION).read_text()
+        )
 
     return CalibrationPlatform(platform=platform, calibration=calibration)

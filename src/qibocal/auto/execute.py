@@ -11,11 +11,11 @@ from pathlib import Path
 from typing import Optional, Union
 
 from qibo.backends import construct_backend
-from qibolab import Platform, create_platform
 
 from qibocal import protocols
 from qibocal.config import log
 
+from ..calibration import CalibrationPlatform, create_calibration_platform
 from .history import History
 from .mode import AUTOCALIBRATION, ExecutionMode
 from .operation import Routine
@@ -71,7 +71,7 @@ class Executor:
     """The execution history, with results and exit states."""
     targets: Targets
     """Qubits/Qubit Pairs to be calibrated."""
-    platform: Platform
+    platform: CalibrationPlatform
     """Qubits' platform."""
     update: bool = True
     """Runcard update mechanism."""
@@ -98,12 +98,12 @@ class Executor:
             _register(self.name, self)
 
     @classmethod
-    def create(cls, name: str, platform: Union[Platform, str, None] = None):
+    def create(cls, name: str, platform: Union[CalibrationPlatform, str, None] = None):
         """Load list of protocols."""
         platform = (
             platform
-            if isinstance(platform, Platform)
-            else create_platform(
+            if isinstance(platform, CalibrationPlatform)
+            else create_calibration_platform(
                 platform
                 if platform is not None
                 else os.environ.get("QIBO_PLATFORM", "dummy")
@@ -251,7 +251,7 @@ class Executor:
         self,
         path: os.PathLike,
         force: bool = False,
-        platform: Union[Platform, str, None] = None,
+        platform: Union[CalibrationPlatform, str, None] = None,
         update: Optional[bool] = None,
         targets: Optional[Targets] = None,
     ):
@@ -261,7 +261,7 @@ class Executor:
 
         backend = construct_backend(backend="qibolab", platform=platform)
         platform = self.platform = backend.platform
-        assert isinstance(platform, Platform)
+        assert isinstance(platform, CalibrationPlatform)
 
         if update is not None:
             self.update = update
@@ -310,7 +310,7 @@ class Executor:
         name: str,
         path: os.PathLike,
         force: bool = False,
-        platform: Union[Platform, str, None] = None,
+        platform: Union[CalibrationPlatform, str, None] = None,
         update: Optional[bool] = None,
         targets: Optional[Targets] = None,
     ):
