@@ -30,6 +30,7 @@ Parameters
 ^^^^^^^^^^
 
 .. autoclass:: qibocal.protocols.ramsey.ramsey.RamseyParameters
+  :noindex:
 
 
 Example
@@ -80,6 +81,7 @@ Parameters
 ^^^^^^^^^^
 
 .. autoclass:: qibocal.protocols.ramsey.ramsey_signal.RamseySignalParameters
+  :noindex:
 
 Example
 ^^^^^^^
@@ -98,6 +100,44 @@ Example
 .. image:: ramsey_signal.png
 
 Note that in this case error bars will not be provided.
+
+
+Measuring the ZZ coupling with a Ramsey experiment
+---------------------------------------------------
+
+By repeating the Ramsey experiment while putting one of the neighbor qubits in
+state :math:`\ket{1}` we can have an estimate on the ZZ coupling :math:`\zeta`.
+The ZZ coupling :math:`\zeta` is a residual interaction which leads to shifts in
+the frequency of the qubit when one of the neighbor is in the excited state.
+Given that through a Ramsey experiment we can measure carefully the frequency of the qubit,
+by comparing the outcome of a standard Ramsey experiment with the outcome when one of the neighbor
+qubit is excited we can infer the ZZ coupling term :math:`\zeta`. For superconducting platforms
+without tunable couplers such terms is expected to be of the order of a few hundred kHz.
+
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.ramsey.ramsey_zz.RamseyZZParameters
+    :noindex:
+
+
+Example
+^^^^^^^
+
+.. code-block:: yaml
+
+    - id: ramsey zz
+      operation: ramsey_zz
+      parameters:
+        delay_between_pulses_end: 2000
+        delay_between_pulses_start: 10
+        delay_between_pulses_step: 50
+        detuning: 500000
+        nshots: 1024
+        target_qubit: D1
+
+
+.. image:: ramsey_zz.png
 
 Requirements
 ^^^^^^^^^^^^
