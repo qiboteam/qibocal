@@ -38,7 +38,9 @@ class DispersiveShiftResults(Results):
     frequencies: dict[QubitId, list[float]]
     """Qubit peak frequencies."""
     fitted_parameters: dict[QubitId, list[list[float]]]
-    """Fitted parameters."""
+    """Fitted parameters. The first element is the resonator frequency when the
+    qubit is in the ground state, the second one when the qubit is in the first excited
+    state."""
     best_freq: dict[QubitId, float]
     """Readout frequency that maximizes the distance of ground and excited states in iq-plane"""
 
