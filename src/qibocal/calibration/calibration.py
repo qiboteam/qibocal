@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
-from qibolab._core.identifier import QubitId, QubitPairId
-from qibolab._core.serialize import NdArray
+
+# from qibolab._core.identifier import QubitId, QubitPairId
+# from qibolab._core.serialize import NdArray
 
 
 class Model(BaseModel):
@@ -34,6 +35,16 @@ class Qubit(Model):
     sweetspot: float = 0
     """Qubit sweetspot [V]."""
 
+    @property
+    def anharmonicity(self):
+        """Anharmonicity of the qubit in Hz."""
+        return self.omega_12 - self.omega_01
+
+    @property
+    def charging_energy(self):
+        """Charging energy Ec."""
+        return -self.anharmonicity
+
 
 class Readout(Model):
     """Readout parameters."""
@@ -46,6 +57,9 @@ class Readout(Model):
     """Ground state position in IQ plane."""
     excited_state: list[float] = Field(default_factory=list)
     """Excited state position in IQ plane."""
+
+    # TODO: drop one of the two between readout and assignment fidelities
+    # TODO: possibly rename one of them fidelity
 
 
 class Coherence(Model):
@@ -62,22 +76,22 @@ class Coherence(Model):
 class QubitCalibration(Model):
     """Container for calibration of single qubit."""
 
-    resonator: Resonator
+    resonator: Resonator = Field(default_factory=Resonator)
     """Resonator calibration."""
-    qubit: Qubit
+    qubit: Qubit = Field(default_factory=Qubit)
     """Qubit calibration."""
-    readout: Readout
+    readout: Readout = Field(default_factory=Readout)
     """Readout information."""
-    coherence: Coherence
+    coherence: Coherence = Field(default_factory=Coherence)
     """Coherence times of the qubit."""
-    rb_fidelity: float
+    rb_fidelity: float = 0
     """Standard rb pulse fidelity."""
 
 
 class TwoQubitCalibration(Model):
     """Container for calibration of qubit pair."""
 
-    gate_fidelity: float = 0
+    rb_fidelity: float = 0
     """Two qubit standard rb fidelity."""
     cz_fidelity: float = 0
     """CZ interleaved rb fidelity."""
@@ -86,11 +100,13 @@ class TwoQubitCalibration(Model):
 class Calibration(Model):
     """Calibration container."""
 
-    single_qubits: dict[QubitId, QubitCalibration] = Field(default_factory=dict)
+    single_qubits: dict[str, QubitCalibration] = Field(default_factory=dict)
     """Dict with single qubit calibration."""
-    two_qubits: dict[QubitPairId, TwoQubitCalibration] = Field(default_factory=dict)
+    # TODO: dump pair as str instead of tuple
+    two_qubits: dict[tuple, TwoQubitCalibration] = Field(default_factory=dict)
     """Dict with qubit pairs calibration."""
-    readout_mitigation_matrix: NdArray = None
+    # TODO: fix this as well
+    readout_mitigation_matrix: str = None
     """Readout mitigation matrix."""
-    flux_crosstalk_matrix: NdArray = None
+    flux_crosstalk_matrix: str = None
     """Crosstalk flux matrix."""
