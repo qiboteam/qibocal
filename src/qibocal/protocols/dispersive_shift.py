@@ -42,7 +42,7 @@ class DispersiveShiftResults(Results):
     best_freq: dict[QubitId, float]
     """Readout frequency that maximizes the distance of ground and excited states in iq-plane"""
 
-    def chi(self, target):
+    def chi(self, target: QubitId) -> float:
         "Evaluate the dispersive shift"
         freq = self.frequencies[target]
         return (freq[0] - freq[1]) / 2
