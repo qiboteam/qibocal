@@ -35,7 +35,7 @@ def readout_frequency(freq: float, platform: Platform, qubit: QubitId):
 
 def bare_resonator_frequency(freq: float, platform: Platform, qubit: QubitId):
     """Update rbare frequency value in platform for specific qubit."""
-    # platform.qubits[qubit].bare_resonator_frequency = int(freq)
+    platform.calibration.single_qubits[qubit].resonator.bare_frequency = int(freq)
 
 
 def readout_amplitude(amp: float, platform: Platform, qubit: QubitId):
