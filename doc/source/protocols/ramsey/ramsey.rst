@@ -116,6 +116,7 @@ Parameters
 ^^^^^^^^^^
 
 .. autoclass:: qibocal.protocols.ramsey.ramsey_zz.RamseyZZParameters
+    :noindex:
 
 
 Example
