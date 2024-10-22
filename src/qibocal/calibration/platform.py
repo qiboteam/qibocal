@@ -6,6 +6,9 @@ from qibolab import Platform, create_platform
 
 from .calibration import Calibration
 
+CALIBRATION = "calibration.json"
+"""Calibration file."""
+
 
 @dataclass
 class CalibrationPlatform:
@@ -37,7 +40,12 @@ class CalibrationPlatform:
         return cls(platform, calibration)
 
 
-# def create_calibration_platform(name: str) -> CalibrationPlatform:
+def create_calibration_platform(name: str) -> CalibrationPlatform:
 
-#     platform = create_platform(name)
-#     calibration = Calibration.
+    path = Path(os.getenv("QIBOLAB_PLATFORMS"))
+    platform = create_platform(name)
+    calibration = Calibration.model_validate_json(
+        (path / name / CALIBRATION).read_text()
+    )
+
+    return CalibrationPlatform(platform=platform, calibration=calibration)
