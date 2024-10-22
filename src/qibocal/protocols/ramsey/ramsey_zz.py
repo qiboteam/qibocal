@@ -129,7 +129,7 @@ def _acquisition(
                     ),
                 )
 
-        if params.unrolling:
+        else:
             sequences, all_ro_pulses = [], []
             for wait in waits:
                 sequence = PulseSequence()
@@ -147,14 +147,9 @@ def _acquisition(
 
             results = platform.execute_pulse_sequences(sequences, options)
 
-            # We dont need ig as every serial is different
-            for ig, (wait, ro_pulses) in enumerate(zip(waits, all_ro_pulses)):
+            for wait, ro_pulses in zip(waits, all_ro_pulses):
                 for qubit in targets:
-                    serial = ro_pulses[qubit].serial
-                    if params.unrolling:
-                        result = results[serial][0]
-                    else:
-                        result = results[ig][serial]
+                    result = results[ro_pulses[qubit].serial][0]
                     prob = result.probability()
                     error = np.sqrt(prob * (1 - prob) / params.nshots)
                     data.register_qubit(
