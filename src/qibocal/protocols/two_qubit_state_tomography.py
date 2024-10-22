@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibo import Circuit, gates
 from qibo.backends import GlobalBackend, NumpyBackend
-from qibo.quantum_info import fidelity
+from qibo.quantum_info import fidelity, partial_trace
 from qibo.result import QuantumState
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
@@ -150,8 +150,8 @@ def _acquisition(
                 traced_qubits = tuple(
                     q for q in range(nqubits) if q not in (2 * i, 2 * i + 1)
                 )
-                data.ideal[pair] = simulator.partial_trace(
-                    simulation_result.state(), traced_qubits, nqubits
+                data.ideal[pair] = partial_trace(
+                    simulation_result.state(), traced_qubits
                 )
 
     return data
