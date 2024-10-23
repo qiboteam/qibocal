@@ -6,6 +6,7 @@ from ..auto.history import History
 from ..auto.mode import AUTOCALIBRATION
 from ..auto.output import Metadata, Output
 from ..auto.runcard import Runcard
+from ..calibration import CalibrationPlatform
 from .report import report
 
 
@@ -18,7 +19,8 @@ def autocalibrate(runcard: Runcard, folder: Path, force, update):
     """
     # rename for brevity
     backend = construct_backend(backend=runcard.backend, platform=runcard.platform)
-    platform = backend.platform
+    platform = CalibrationPlatform.from_platform(backend.platform)
+
     if platform is None:
         raise ValueError("Qibocal requires a Qibolab platform to run.")
 
