@@ -3,7 +3,6 @@
 from collections.abc import Iterable
 from typing import Union
 
-import numpy as np
 from pydantic import BaseModel
 from qibolab import Platform
 
@@ -93,24 +92,19 @@ def threshold(threshold: float, platform: Platform, qubit: QubitId):
     pass
 
 
-def mean_gnd_states(gnd_state: list, platform: Platform, qubit: QubitId):
+def mean_gnd_states(ground_state: list, platform: Platform, qubit: QubitId):
     """Update mean ground state value in platform for specific qubit."""
-    # platform.qubits[qubit].mean_gnd_states = gnd_state
+    platform.calibration.single_qubits[qubit].readout.ground_state = ground_state
 
 
-def mean_exc_states(exc_state: list, platform: Platform, qubit: QubitId):
+def mean_exc_states(excited_state: list, platform: Platform, qubit: QubitId):
     """Update mean excited state value in platform for specific qubit."""
-    # platform.qubits[qubit].mean_exc_states = exc_state
+    platform.calibration.single_qubits[qubit].readout.excited_state = excited_state
 
 
 def readout_fidelity(fidelity: float, platform: Platform, qubit: QubitId):
     """Update fidelity of single shot classification."""
-    # platform.qubits[qubit].readout_fidelity = float(fidelity)
-
-
-def assignment_fidelity(fidelity: float, platform: Platform, qubit: QubitId):
-    """Update fidelity of single shot classification."""
-    # platform.qubits[qubit].assignment_fidelity = float(fidelity)
+    platform.calibration.single_qubits[qubit].readout.fidelity = float(fidelity)
 
 
 def virtual_phases(
@@ -165,25 +159,25 @@ def iSWAP_amplitude(amp: float, platform: Platform, pair: QubitPairId):
 def t1(t1: int, platform: Platform, qubit: QubitId):
     """Update t1 value in platform for specific qubit."""
     if isinstance(t1, Iterable):
-        platform.qubits[qubit].T1 = int(t1[0])
+        platform.calibration.single_qubits[qubit].t1 = int(t1[0])
     else:
-        platform.qubits[qubit].T1 = int(t1)
+        platform.calibration.single_qubits[qubit].t1 = int(t1)
 
 
 def t2(t2: int, platform: Platform, qubit: QubitId):
     """Update t2 value in platform for specific qubit."""
     if isinstance(t2, Iterable):
-        platform.qubits[qubit].T2 = int(t2[0])
+        platform.calibration.single_qubits[qubit].t2 = int(t2[0])
     else:
-        platform.qubits[qubit].T2 = int(t2)
+        platform.calibration.single_qubits[qubit].t2 = int(t2)
 
 
 def t2_spin_echo(t2_spin_echo: float, platform: Platform, qubit: QubitId):
     """Update t2 echo value in platform for specific qubit."""
     if isinstance(t2_spin_echo, Iterable):
-        platform.qubits[qubit].T2_spin_echo = int(t2_spin_echo[0])
+        platform.calibration.single_qubits[qubit].t2_spin_echo = int(t2_spin_echo[0])
     else:
-        platform.qubits[qubit].T2_spin_echo = int(t2_spin_echo)
+        platform.calibration.single_qubits[qubit].t2_spin_echo = int(t2_spin_echo)
 
 
 def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
@@ -196,10 +190,11 @@ def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
 
 def sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):
     """Update sweetspot parameter in platform for specific qubit."""
-    platform.qubits[qubit].sweetspot = float(sweetspot)
+    platform.calibration.single_qubits[qubit].qubit.sweetspot = float(sweetspot)
 
 
 def frequency_12_transition(frequency: int, platform: Platform, qubit: QubitId):
+    platform.calibration.single_qubits[qubit].qubit.omega_12 = int(frequency)
     platform.qubits[qubit].native_gates.RX12.frequency = int(frequency)
 
 
@@ -222,17 +217,13 @@ def twpa_power(power: float, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].twpa.local_oscillator.power = float(power)
 
 
-def anharmonicity(anharmonicity: float, platform: Platform, qubit: QubitId):
-    platform.qubits[qubit].anharmonicity = int(anharmonicity)
-
-
 def asymmetry(asymmetry: float, platform: Platform, qubit: QubitId):
-    platform.qubits[qubit].asymmetry = float(asymmetry)
+    platform.calibration.single_qubits[qubit].asymmetry = float(asymmetry)
 
 
-def coupling(g: float, platform: Platform, qubit: QubitId):
-    platform.qubits[qubit].g = float(g)
+# def coupling(g: float, platform: Platform, qubit: QubitId):
+#     platform.qubits[qubit].g = float(g)
 
 
-def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):
-    platform.qubits[qubit].kernel = kernel
+# def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):
+#     platform.qubits[qubit].kernel = kernel

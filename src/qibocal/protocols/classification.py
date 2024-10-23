@@ -409,7 +409,6 @@ def _update(
     update.mean_gnd_states(results.mean_gnd_states[target], platform, target)
     update.mean_exc_states(results.mean_exc_states[target], platform, target)
     update.readout_fidelity(results.fidelity[target], platform, target)
-    update.assignment_fidelity(results.assignment_fidelity[target], platform, target)
 
 
 single_shot_classification = Routine(_acquisition, _fit, _plot, _update)
