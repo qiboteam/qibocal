@@ -54,17 +54,19 @@ class Qubit(Model):
 class Readout(Model):
     """Readout parameters."""
 
-    assignment_fidelity: float = 0
-    """Assignment fidelity."""
-    readout_fidelity: float = 0
+    fidelity: float = 0
     """Readout fidelity."""
+    effective_temperature: float = 0
+    """Qubit effective temperature."""
     ground_state: list[float] = Field(default_factory=list)
     """Ground state position in IQ plane."""
     excited_state: list[float] = Field(default_factory=list)
     """Excited state position in IQ plane."""
 
-    # TODO: drop one of the two between readout and assignment fidelities
-    # TODO: possibly rename one of them fidelity
+    @property
+    def assignment_fidelity(self):
+        """Assignment fidelity."""
+        return (1 + self.fidelity) / 2
 
 
 class Coherence(Model):
