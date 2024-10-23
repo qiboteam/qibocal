@@ -7,8 +7,8 @@ from typing import Optional, Union
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibo import Circuit, gates
-from qibo.backends import GlobalBackend, NumpyBackend, matrices
+from qibo import Circuit, gates, get_backend
+from qibo.backends import NumpyBackend, matrices
 from qibo.quantum_info import fidelity, partial_trace
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
@@ -102,7 +102,7 @@ def _acquisition(
     if params.circuit is None:
         params.circuit = Circuit(len(targets))
 
-    backend = GlobalBackend()
+    backend = get_backend()
     backend.platform = platform
     transpiler = dummy_transpiler(backend)
 

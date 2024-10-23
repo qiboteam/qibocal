@@ -1,6 +1,5 @@
 import numpy as np
-from qibo import Circuit, gates, set_backend
-from qibo.backends import GlobalBackend
+from qibo import Circuit, gates, get_backend, set_backend
 
 from qibocal.auto.transpile import (
     dummy_transpiler,
@@ -24,13 +23,12 @@ def test_padd_circuit():
 
 
 def test_execute_transpiled_circuit():
-
     circuit = Circuit(2)
     circuit.add(gates.X(0))
     circuit.add(gates.X(1))
     qubit_map = [1, 2]
     set_backend("qibolab", platform="dummy")
-    backend = GlobalBackend()
+    backend = get_backend()
     transpiler = dummy_transpiler(backend)
     transpiled_circuit, _ = execute_transpiled_circuit(
         circuit, qubit_map, backend, transpiler=transpiler
@@ -46,13 +44,12 @@ def test_execute_transpiled_circuit():
 
 
 def test_execute_transpiled_circuits():
-
     circuit = Circuit(2)
     circuit.add(gates.X(0))
     circuit.add(gates.X(1))
     qubit_map = [1, 2]
     set_backend("qibolab", platform="dummy")
-    backend = GlobalBackend()
+    backend = get_backend()
     transpiler = dummy_transpiler(backend)
     transpiled_circuits, _ = execute_transpiled_circuits(
         [circuit], [qubit_map], backend, transpiler=transpiler

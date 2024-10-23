@@ -8,7 +8,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibo.backends import GlobalBackend
+from qibo import get_backend
 from qibolab import ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
@@ -45,6 +45,7 @@ class CHSHParameters(Parameters):
 
     bell_states: list
     """List with Bell states to compute CHSH.
+
     The following notation it is used:
     0 -> |00>+|11>
     1 -> |00>-|11>
@@ -157,7 +158,6 @@ class CHSHResults(Results):
 
         While key is a QubitPairId both chsh and chsh_mitigated contain
         an additional key which represents the basis chosen.
-
         """
 
         return key in [(target, control) for target, control, _ in self.chsh]
@@ -220,7 +220,7 @@ def _acquisition_circuits(
         bell_states=params.bell_states,
         thetas=thetas.tolist(),
     )
-    backend = GlobalBackend()
+    backend = get_backend()
     backend.platform = platform
     transpiler = dummy_transpiler(backend)
     qubit_map = [i for i in range(platform.nqubits)]
