@@ -521,7 +521,7 @@ actions:
     parameters:
       nshots: 10
       savedir: "cls_results"
-      classifiers_list: ["qubit_fit","naive_bayes", "linear_svm"]
+      classifiers_list: ["qubit_fit"]
 
   - id: readout characterization
     operation: readout_characterization
@@ -953,7 +953,6 @@ actions:
     operation: qutrit_classification
     parameters:
       nshots: 1000
-      classifiers_list: ["naive_bayes", "decision_tree"]
 
   - id: avoided crossing
     operation: avoided_crossing

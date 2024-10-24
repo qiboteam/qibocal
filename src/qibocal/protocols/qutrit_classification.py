@@ -1,21 +1,18 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-import numpy as np
 from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Routine
-from qibocal.fitting.classifier import run
+from qibocal.auto.operation import Results, Routine
 from qibocal.protocols.classification import (
     ClassificationType,
     SingleShotClassificationData,
     SingleShotClassificationParameters,
-    SingleShotClassificationResults,
 )
-from qibocal.protocols.utils import MESH_SIZE, evaluate_grid, plot_results
+from qibocal.protocols.utils import plot_results
 
 COLUMNWIDTH = 600
 LEGEND_FONT_SIZE = 20
@@ -28,11 +25,6 @@ DEFAULT_CLASSIFIER = "naive_bayes"
 class QutritClassificationParameters(SingleShotClassificationParameters):
     """SingleShotClassification runcard inputs."""
 
-    classifiers_list: Optional[list[str]] = field(
-        default_factory=lambda: [DEFAULT_CLASSIFIER]
-    )
-    """List of models to classify the qubit states"""
-
 
 @dataclass
 class QutritClassificationData(SingleShotClassificationData):
@@ -40,6 +32,11 @@ class QutritClassificationData(SingleShotClassificationData):
         default_factory=lambda: [DEFAULT_CLASSIFIER]
     )
     """List of models to classify the qubit states"""
+
+
+@dataclass
+class QutritClassificationResults(Results):
+    """Qutrit classification results"""
 
 
 def _acquisition(
@@ -114,58 +111,14 @@ def _acquisition(
     return data
 
 
-def _fit(data: QutritClassificationData) -> SingleShotClassificationResults:
-    qubits = data.qubits
-
-    benchmark_tables = {}
-    models_dict = {}
-    y_tests = {}
-    x_tests = {}
-    hpars = {}
-    y_test_predict = {}
-    grid_preds_dict = {}
-    for qubit in qubits:
-        qubit_data = data.data[qubit]
-        benchmark_table, y_test, x_test, models, names, hpars_list = run.train_qubit(
-            data, qubit
-        )
-        benchmark_tables[qubit] = benchmark_table.values.tolist()
-        models_dict[qubit] = models
-        y_tests[qubit] = y_test.tolist()
-        x_tests[qubit] = x_test.tolist()
-        hpars[qubit] = {}
-        y_preds = []
-        grid_preds = []
-
-        grid = evaluate_grid(qubit_data)
-        for i, model_name in enumerate(names):
-            hpars[qubit][model_name] = hpars_list[i]
-            try:
-                y_preds.append(models[i].predict_proba(x_test)[:, 1].tolist())
-            except AttributeError:
-                y_preds.append(models[i].predict(x_test).tolist())
-            grid_preds.append(
-                np.round(np.reshape(models[i].predict(grid), (MESH_SIZE, MESH_SIZE)))
-                .astype(np.int64)
-                .tolist()
-            )
-        y_test_predict[qubit] = y_preds
-        grid_preds_dict[qubit] = grid_preds
-    return SingleShotClassificationResults(
-        benchmark_table=benchmark_tables,
-        names=names,
-        classifiers_hpars=hpars,
-        models=models_dict,
-        savedir=data.savedir,
-        y_preds=y_test_predict,
-        grid_preds=grid_preds_dict,
-    )
+def _fit(data: QutritClassificationData) -> QutritClassificationResults:
+    return QutritClassificationResults()
 
 
 def _plot(
     data: QutritClassificationData,
     target: QubitId,
-    fit: SingleShotClassificationResults,
+    fit: QutritClassificationResults,
 ):
     figures = plot_results(data, target, 3, fit)
     fitting_report = ""

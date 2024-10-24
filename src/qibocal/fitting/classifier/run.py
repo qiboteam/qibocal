@@ -14,27 +14,13 @@ from sklearn.metrics import accuracy_score
 from . import data
 
 CLS_MODULES = [
-    "linear_svm",
-    "ada_boost",
-    "gaussian_process",
-    "naive_bayes",
     "qubit_fit",
-    "random_forest",
-    "rbf_svm",
     "qblox_fit",
-    "decision_tree",
 ]
 
 PRETTY_NAME = [
-    "Linear SVM",
-    "Ada Boost",
-    "Gaussian Process",
-    "Naive Bayes",
     "Qubit Fit",
-    "Random Forest",
-    "RBF SVM",
     "Qblox Fit",
-    "Decision Tree",
 ]
 
 

@@ -149,13 +149,7 @@ def _acquisition(
     Args:
         nshots (int): number of times the pulse sequence will be repeated.
         classifiers (list): list of classifiers, the available ones are:
-            - linear_svm
-            - ada_boost
-            - gaussian_process
-            - naive_bayes
             - qubit_fit
-            - random_forest
-            - rbf_svm
             - qblox_fit.
         The default value is `["qubit_fit"]`.
         savedir (str): Dumping folder of the classification results.
@@ -170,7 +164,7 @@ def _acquisition(
             parameters:
             nshots: 5000
             savedir: "single_shot"
-            classifiers_list: ["qubit_fit","naive_bayes", "linear_svm"]
+            classifiers_list: ["qubit_fit"]
 
     """
 
