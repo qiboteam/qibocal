@@ -10,7 +10,7 @@ CALIBRATION = "calibration.json"
 
 
 class Model(BaseModel):
-    """Global qibolab model, holding common configurations."""
+    """Global model, holding common configurations."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -22,9 +22,8 @@ class Resonator(Model):
     """Bare resonator frequency [Hz]."""
     dressed_frequency: Optional[float] = None
     """Dressed resonator frequency [Hz]."""
-    depletion_time: int = 0
+    depletion_time: Optional[int] = None
     """Depletion time [ns]."""
-
     # TODO: Add something related to resonator calibration
 
 
@@ -32,9 +31,9 @@ class Qubit(Model):
     """Representation of Qubit parameters"""
 
     omega_01: Optional[float] = None
-    """"0->1 transition frequency."""
+    """"0->1 transition frequency [Hz]."""
     omega_12: Optional[float] = None
-    """1->2 transition frequency."""
+    """1->2 transition frequency [Hz]."""
     asymmetry: Optional[float] = None
     """Junctions asymmetry."""
     sweetspot: Optional[float] = None
@@ -42,12 +41,12 @@ class Qubit(Model):
 
     @property
     def anharmonicity(self):
-        """Anharmonicity of the qubit in Hz."""
+        """Anharmonicity of the qubit [Hz]."""
         return self.omega_12 - self.omega_01
 
     @property
     def charging_energy(self):
-        """Charging energy Ec."""
+        """Charging energy Ec [Hz]."""
         return -self.anharmonicity
 
 
@@ -72,11 +71,11 @@ class Readout(Model):
 class Coherence(Model):
     """Coherence times of qubit."""
 
-    t1: int = 0
+    t1: Optional[int] = 0
     """Relaxation time [ns]."""
-    t2: int = 0
+    t2: Optional[int] = 0
     """T2 of the qubit [ns]."""
-    t2_spin_echo: int = 0
+    t2_spin_echo: Optional[int] = 0
     """T2 hanh echo [ns]."""
 
 
@@ -109,15 +108,13 @@ class Calibration(Model):
 
     single_qubits: dict[QubitId, QubitCalibration] = Field(default_factory=dict)
     """Dict with single qubit calibration."""
-    # TODO: dump pair as str instead of tuple
     two_qubits: dict[QubitPairId, TwoQubitCalibration] = Field(default_factory=dict)
     """Dict with qubit pairs calibration."""
-    # TODO: fix this as well
     readout_mitigation_matrix: Optional[NdArray] = None
     """Readout mitigation matrix."""
     flux_crosstalk_matrix: Optional[NdArray] = None
     """Crosstalk flux matrix."""
 
     def dump(self, path: Path):
-        """Dump platform."""
+        """Dump calibration model."""
         (path / CALIBRATION).write_text(self.model_dump_json(indent=4))
