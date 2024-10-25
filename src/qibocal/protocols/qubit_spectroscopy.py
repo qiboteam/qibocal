@@ -117,7 +117,7 @@ def _acquisition(
             error_phase = np.std(_phase, axis=0, ddof=1) / np.sqrt(_phase.shape[0])
             _phase = np.mean(_phase, axis=0)
         else:
-            error_signal, error_phase = 0, 0
+            error_signal, error_phase = None, None
         data.register_qubit(
             ResSpecType,
             (qubit),
@@ -170,7 +170,9 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
 
 
 def _update(results: QubitSpectroscopyResults, platform: Platform, target: QubitId):
-    pass
+    platform.calibration.single_qubits[target].qubit.frequency_01 = results.frequency[
+        target
+    ]
     # update.drive_frequency(results.frequency[target], platform, target)
 
 
