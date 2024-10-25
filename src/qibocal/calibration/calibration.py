@@ -1,9 +1,9 @@
 from pathlib import Path
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
-
-# from qibolab._core.identifier import QubitId, QubitPairId
-# from qibolab._core.serialize import NdArray
+from qibolab._core.identifier import QubitId, QubitPairId
+from qibolab._core.serialize import NdArray
 
 CALIBRATION = "calibration.json"
 """Calibration file."""
@@ -18,9 +18,9 @@ class Model(BaseModel):
 class Resonator(Model):
     """Representation of resonator parameters."""
 
-    bare_frequency: float = 0
+    bare_frequency: Optional[float] = None
     """Bare resonator frequency [Hz]."""
-    dressed_frequency: float = 0
+    dressed_frequency: Optional[float] = None
     """Dressed resonator frequency [Hz]."""
     depletion_time: int = 0
     """Depletion time [ns]."""
@@ -31,13 +31,13 @@ class Resonator(Model):
 class Qubit(Model):
     """Representation of Qubit parameters"""
 
-    omega_01: float = 0
+    omega_01: Optional[float] = None
     """"0->1 transition frequency."""
-    omega_12: float = 0
+    omega_12: Optional[float] = None
     """1->2 transition frequency."""
-    asymmetry: float = 0
+    asymmetry: Optional[float] = None
     """Junctions asymmetry."""
-    sweetspot: float = 0
+    sweetspot: Optional[float] = None
     """Qubit sweetspot [V]."""
 
     @property
@@ -54,9 +54,9 @@ class Qubit(Model):
 class Readout(Model):
     """Readout parameters."""
 
-    fidelity: float = 0
+    fidelity: Optional[float] = None
     """Readout fidelity."""
-    effective_temperature: float = 0
+    effective_temperature: Optional[float] = None
     """Qubit effective temperature."""
     ground_state: list[float] = Field(default_factory=list)
     """Ground state position in IQ plane."""
@@ -91,31 +91,31 @@ class QubitCalibration(Model):
     """Readout information."""
     coherence: Coherence = Field(default_factory=Coherence)
     """Coherence times of the qubit."""
-    rb_fidelity: float = 0
+    rb_fidelity: Optional[float] = None
     """Standard rb pulse fidelity."""
 
 
 class TwoQubitCalibration(Model):
     """Container for calibration of qubit pair."""
 
-    rb_fidelity: float = 0
+    rb_fidelity: Optional[float] = None
     """Two qubit standard rb fidelity."""
-    cz_fidelity: float = 0
+    cz_fidelity: Optional[float] = None
     """CZ interleaved rb fidelity."""
 
 
 class Calibration(Model):
     """Calibration container."""
 
-    single_qubits: dict[str, QubitCalibration] = Field(default_factory=dict)
+    single_qubits: dict[QubitId, QubitCalibration] = Field(default_factory=dict)
     """Dict with single qubit calibration."""
     # TODO: dump pair as str instead of tuple
-    two_qubits: dict[tuple, TwoQubitCalibration] = Field(default_factory=dict)
+    two_qubits: dict[QubitPairId, TwoQubitCalibration] = Field(default_factory=dict)
     """Dict with qubit pairs calibration."""
     # TODO: fix this as well
-    readout_mitigation_matrix: str = None
+    readout_mitigation_matrix: Optional[NdArray] = None
     """Readout mitigation matrix."""
-    flux_crosstalk_matrix: str = None
+    flux_crosstalk_matrix: Optional[NdArray] = None
     """Crosstalk flux matrix."""
 
     def dump(self, path: Path):
