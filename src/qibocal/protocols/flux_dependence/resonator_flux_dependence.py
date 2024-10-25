@@ -17,6 +17,7 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.config import log
 from qibocal.result import magnitude, phase
 
+from ... import update
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, extract_feature, table_dict, table_html
 from . import utils
 
@@ -130,10 +131,12 @@ def _acquisition(
         )
 
         qubit_frequency[q] = platform.config(qubit.drive).frequency
-        bare_resonator_frequency[q] = 0  # qubit.bare_resonator_frequency
-        matrix_element[q] = 1  # qubit.crosstalk_matrix[q]
+        bare_resonator_frequency[q] = platform.calibration.single_qubits[
+            q
+        ].resonator.bare_frequency
+        matrix_element[q] = platform.calibration.get_crosstalk_element(q, q)
         offset[q] = -offset0 * matrix_element[q]
-        charging_energy[q] = 0  # -qubit.anharmonicity
+        charging_energy[q] = platform.calibration.single_qubits[q].qubit.charging_energy
 
     data = ResonatorFluxData(
         resonator_type=platform.resonator_type,
@@ -274,9 +277,9 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
 
 
 def _update(results: ResonatorFluxResults, platform: Platform, qubit: QubitId):
-    pass
-    # update.bare_resonator_frequency(results.bare_resonator_freq[qubit], platform, qubit)
+    update.bare_resonator_frequency(results.bare_resonator_freq[qubit], platform, qubit)
     # update.readout_frequency(results.resonator_freq[qubit], platform, qubit)
+    # TODO: add coupling somewhere
     # update.coupling(results.coupling[qubit], platform, qubit)
 
 

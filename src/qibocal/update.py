@@ -83,11 +83,7 @@ def crosstalk_matrix(
         platform.calibration.flux_crosstalk_matrix = np.zeros(
             (platform.calibration.nqubits, platform.calibration.nqubits)
         )
-
-    a, b = platform.calibration.qubits.index(qubit), platform.calibration.qubits.index(
-        flux_qubit
-    )
-    platform.calibration.flux_crosstalk_matrix[a, b] = float(matrix_element)
+    platform.calibration.set_crosstalk_element(qubit, flux_qubit, matrix_element)
 
 
 def iq_angle(angle: float, platform: Platform, qubit: QubitId):

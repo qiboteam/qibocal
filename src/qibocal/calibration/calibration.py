@@ -128,3 +128,12 @@ class Calibration(Model):
     @property
     def nqubits(self) -> int:
         return len(self.qubits)
+
+    # TODO: add crosstalk object where I can do this
+    def get_crosstalk_element(self, qubit1: QubitId, qubit2: QubitId):
+        a, b = self.qubits.index(qubit1), self.qubits.index(qubit2)
+        return self.flux_crosstalk_matrix[a, b]
+
+    def set_crosstalk_element(self, qubit1: QubitId, qubit2: QubitId, value: float):
+        a, b = self.qubits.index(qubit1), self.qubits.index(qubit2)
+        self.flux_crosstalk_matrix[a, b] = value
