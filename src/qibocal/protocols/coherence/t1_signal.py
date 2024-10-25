@@ -17,6 +17,7 @@ from qibolab import (
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.result import magnitude, phase
 
+from ... import update
 from ..utils import table_dict, table_html
 from . import utils
 
@@ -215,8 +216,7 @@ def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
 
 
 def _update(results: T1SignalResults, platform: Platform, target: QubitId):
-    pass
-    # update.t1(results.t1[target], platform, target)
+    update.t1(results.t1[target], platform, target)
 
 
 t1_signal = Routine(_acquisition, _fit, _plot, _update)

@@ -3,6 +3,7 @@
 from collections.abc import Iterable
 from typing import Union
 
+import numpy as np
 from pydantic import BaseModel
 from qibolab import Platform
 
@@ -78,7 +79,15 @@ def crosstalk_matrix(
     matrix_element: float, platform: Platform, qubit: QubitId, flux_qubit: QubitId
 ):
     """Update crosstalk_matrix element."""
-    platform.qubits[qubit].crosstalk_matrix[flux_qubit] = float(matrix_element)
+    if platform.calibration.flux_crosstalk_matrix is None:
+        platform.calibration.flux_crosstalk_matrix = np.zeros(
+            (platform.calibration.nqubits, platform.calibration.nqubits)
+        )
+
+    a, b = platform.calibration.qubits.index(qubit), platform.calibration.qubits.index(
+        flux_qubit
+    )
+    platform.calibration.flux_crosstalk_matrix[a, b] = float(matrix_element)
 
 
 def iq_angle(angle: float, platform: Platform, qubit: QubitId):
@@ -159,25 +168,29 @@ def iSWAP_amplitude(amp: float, platform: Platform, pair: QubitPairId):
 def t1(t1: int, platform: Platform, qubit: QubitId):
     """Update t1 value in platform for specific qubit."""
     if isinstance(t1, Iterable):
-        platform.calibration.single_qubits[qubit].t1 = int(t1[0])
+        platform.calibration.single_qubits[qubit].coherence.t1 = int(t1[0])
     else:
-        platform.calibration.single_qubits[qubit].t1 = int(t1)
+        platform.calibration.single_qubits[qubit].coherence.t1 = int(t1)
 
 
 def t2(t2: int, platform: Platform, qubit: QubitId):
     """Update t2 value in platform for specific qubit."""
     if isinstance(t2, Iterable):
-        platform.calibration.single_qubits[qubit].t2 = int(t2[0])
+        platform.calibration.single_qubits[qubit].coherence.t2 = int(t2[0])
     else:
-        platform.calibration.single_qubits[qubit].t2 = int(t2)
+        platform.calibration.single_qubits[qubit].coherence.t2 = int(t2)
 
 
 def t2_spin_echo(t2_spin_echo: float, platform: Platform, qubit: QubitId):
     """Update t2 echo value in platform for specific qubit."""
     if isinstance(t2_spin_echo, Iterable):
-        platform.calibration.single_qubits[qubit].t2_spin_echo = int(t2_spin_echo[0])
+        platform.calibration.single_qubits[qubit].coherence.t2_spin_echo = int(
+            t2_spin_echo[0]
+        )
     else:
-        platform.calibration.single_qubits[qubit].t2_spin_echo = int(t2_spin_echo)
+        platform.calibration.single_qubits[qubit].coherence.t2_spin_echo = int(
+            t2_spin_echo
+        )
 
 
 def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
