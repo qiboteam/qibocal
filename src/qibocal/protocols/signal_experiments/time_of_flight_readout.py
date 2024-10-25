@@ -21,6 +21,8 @@ class TimeOfFlightReadoutParameters(Parameters):
     """Amplitude of the readout pulse."""
     window_size: Optional[int] = 10
     """Window size for the moving average."""
+    qubit_state: Optional[int] = 0
+    """Window size for the moving average."""
 
 
 @dataclass
@@ -52,9 +54,15 @@ def _acquisition(
 
     sequence = PulseSequence()
 
+    drive_pulses = {}
     ro_pulses = {}
+    _ro_start = 0
     for qubit in targets:
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
+        if params.qubit_state == 1:
+            drive_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+            sequence.add(drive_pulses[qubit])
+            _ro_start = drive_pulses[qubit].finish
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=_ro_start)
         if params.readout_amplitude is not None:
             ro_pulses[qubit].amplitude = params.readout_amplitude
         sequence.add(ro_pulses[qubit])
