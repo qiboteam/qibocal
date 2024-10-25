@@ -148,7 +148,6 @@ class Calibration(Model):
     """Crosstalk flux matrix."""
 
     def dump(self, path: Path):
-<<<<<<< HEAD
         """Dump calibration model."""
         (path / CALIBRATION).write_text(self.model_dump_json(indent=4))
 
@@ -170,7 +169,3 @@ class Calibration(Model):
     def set_crosstalk_element(self, qubit1: QubitId, qubit2: QubitId, value: float):
         a, b = self.qubits.index(qubit1), self.qubits.index(qubit2)
         self.flux_crosstalk_matrix[a, b] = value
-=======
-        """Dump platform."""
-        (path / CALIBRATION).write_text(self.model_dump_json(indent=4))
->>>>>>> df453005 (refactor: Calibration platform as inheritance of Platform)
