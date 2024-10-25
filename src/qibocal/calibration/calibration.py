@@ -30,10 +30,12 @@ class Resonator(Model):
 class Qubit(Model):
     """Representation of Qubit parameters"""
 
-    omega_01: Optional[float] = None
+    frequency_01: Optional[float] = None
     """"0->1 transition frequency [Hz]."""
-    omega_12: Optional[float] = None
+    frequency_12: Optional[float] = None
     """1->2 transition frequency [Hz]."""
+    maximum_frequency: Optional[float] = None
+    """Maximum transition frequency [Hz]."""
     asymmetry: Optional[float] = None
     """Junctions asymmetry."""
     sweetspot: Optional[float] = None
@@ -42,7 +44,7 @@ class Qubit(Model):
     @property
     def anharmonicity(self):
         """Anharmonicity of the qubit [Hz]."""
-        return self.omega_12 - self.omega_01
+        return self.frequency_12 - self.frequency_01
 
     @property
     def charging_energy(self):
@@ -118,3 +120,11 @@ class Calibration(Model):
     def dump(self, path: Path):
         """Dump calibration model."""
         (path / CALIBRATION).write_text(self.model_dump_json(indent=4))
+
+    @property
+    def qubits(self) -> list:
+        return list(self.single_qubits)
+
+    @property
+    def nqubits(self) -> int:
+        return len(self.qubits)

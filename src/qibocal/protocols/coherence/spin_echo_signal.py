@@ -8,6 +8,7 @@ from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
 from qibocal.auto.operation import Parameters, QubitId, Results, Routine
 from qibocal.result import magnitude, phase
 
+from ... import update
 from ..utils import table_dict, table_html
 from .t1_signal import T1SignalData
 from .utils import CoherenceType, exp_decay, exponential_fit, spin_echo_sequence
@@ -171,8 +172,7 @@ def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults 
 
 
 def _update(results: SpinEchoSignalResults, platform: Platform, target: QubitId):
-    pass
-    # update.t2_spin_echo(results.t2_spin_echo[target], platform, target)
+    update.t2_spin_echo(results.t2_spin_echo[target], platform, target)
 
 
 spin_echo_signal = Routine(_acquisition, _fit, _plot, _update)

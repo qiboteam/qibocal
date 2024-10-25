@@ -19,6 +19,7 @@ from qibocal.config import log
 from qibocal.result import magnitude, phase
 from qibocal.update import replace
 
+from ... import update
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, extract_feature, table_dict, table_html
 from . import utils
 from .resonator_flux_dependence import ResonatorFluxParameters
@@ -283,10 +284,13 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
 
 
 def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
-    pass
     # update.drive_frequency(results.frequency[qubit], platform, qubit)
-    # update.sweetspot(results.sweetspot[qubit], platform, qubit)
-    # update.crosstalk_matrix(results.matrix_element[qubit], platform, qubit, qubit)
+    # TODO: shall we add also frequency_10 here?
+    update.sweetspot(results.sweetspot[qubit], platform, qubit)
+    platform.calibration.single_qubits[qubit].qubit.maximum_frequency = int(
+        results.frequency[qubit]
+    )
+    update.crosstalk_matrix(results.matrix_element[qubit], platform, qubit, qubit)
 
 
 qubit_flux = Routine(_acquisition, _fit, _plot, _update)
