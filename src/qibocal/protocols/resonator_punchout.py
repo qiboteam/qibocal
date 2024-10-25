@@ -14,6 +14,7 @@ from qibolab import (
     Sweeper,
 )
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.result import magnitude, phase
 
@@ -256,9 +257,11 @@ def _plot(
 
 
 def _update(results: ResonatorPunchoutResults, platform: Platform, target: QubitId):
-    pass
     # update.readout_frequency(results.readout_frequency[target], platform, target)
-    # update.bare_resonator_frequency(results.bare_frequency[target], platform, target)
+    update.bare_resonator_frequency(results.bare_frequency[target], platform, target)
+    update.dressed_resonator_frequency(
+        results.readout_frequency[target], platform, target
+    )
     # update.readout_amplitude(results.readout_amplitude[target], platform, target)
 
 

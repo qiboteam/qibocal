@@ -38,6 +38,11 @@ def bare_resonator_frequency(freq: float, platform: Platform, qubit: QubitId):
     platform.calibration.single_qubits[qubit].resonator.bare_frequency = int(freq)
 
 
+def dressed_resonator_frequency(freq: float, platform: Platform, qubit: QubitId):
+    """Update rbare frequency value in platform for specific qubit."""
+    platform.calibration.single_qubits[qubit].resonator.dressed_frequency = int(freq)
+
+
 def readout_amplitude(amp: float, platform: Platform, qubit: QubitId):
     """Update readout amplitude value in platform for specific qubit."""
     # platform.natives.single_qubit[qubit].MZ.amplitude = float(amp)
