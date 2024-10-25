@@ -10,6 +10,7 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.config import log
 from qibocal.result import magnitude
 
+from ... import update
 from ..utils import table_dict, table_html
 from .utils import fitting, process_fit, ramsey_fit, ramsey_sequence
 
@@ -283,11 +284,10 @@ def _plot(data: RamseySignalData, target: QubitId, fit: RamseySignalResults = No
 
 
 def _update(results: RamseySignalResults, platform: Platform, target: QubitId):
-    pass
     # if results.detuning is not None:
     #    update.drive_frequency(results.frequency[target][0], platform, target)
     # else:
-    #    update.t2(results.t2[target][0], platform, target)
+    update.t2(results.t2[target][0], platform, target)
 
 
 ramsey_signal = Routine(_acquisition, _fit, _plot, _update)
