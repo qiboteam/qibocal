@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from qibolab import Platform, create_platform
+from qibolab._core.platform.load import PLATFORMS
 
 from .calibration import CALIBRATION, Calibration
 
@@ -22,7 +23,7 @@ class CalibrationPlatform(Platform):
                 (Path(__file__).parent / "dummy.json").read_text()
             )
         else:
-            path = Path(os.getenv("QIBOLAB_PLATFORMS")) / name
+            path = Path(os.getenv(PLATFORMS)) / name
             calibration = Calibration.model_validate_json(
                 (path / CALIBRATION).read_text()
             )
