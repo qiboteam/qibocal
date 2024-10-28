@@ -143,12 +143,12 @@ def create_sequence(
     theta_pulse = platform.create_RX90_pulse(
         target_qubit,
         start=flux_sequence.finish + dt,
-        relative_phase=virtual_z_phase[target_qubit],
+        relative_phase=0,
     )
     RX_pulse_end = platform.create_RX_pulse(
         control_qubit,
         start=flux_sequence.finish + dt,
-        relative_phase=virtual_z_phase[control_qubit],
+        relative_phase=0,
     )
     measure_target = platform.create_qubit_readout_pulse(
         target_qubit, start=theta_pulse.finish
