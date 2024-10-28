@@ -11,7 +11,8 @@ Parameters
 
 Example
 ^^^^^^^
-It follows a runcard example of this experiment.
+
+Below is an example runcard for this experiment.
 
 .. code-block:: yaml
 
