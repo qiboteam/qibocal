@@ -17,11 +17,12 @@ def create_mermin_sequence(platform, qubits, theta=None):
     for qubit in qubits:
         sequence.add(
             platform.create_RX90_pulse(
-                qubit[0], start=0, relative_phase=virtual_z_phases[qubit] + np.pi / 2
+                qubit, start=0, relative_phase=virtual_z_phases[qubit] + np.pi / 2
             )
         )
 
     # TODO: Not hardcode topology
+    # print(qubits)
 
     # qubits[0] needs to be the center qubit where everything is connected
     for i in range(1, len(qubits)):
@@ -58,6 +59,7 @@ def create_mermin_sequences(platform, qubits, readout_basis, theta):
             platform, qubits, theta=theta
         )
         t = sequence.finish
+        # print(basis)
         for i, base in enumerate(basis):
             if base == "X":
                 sequence.add(

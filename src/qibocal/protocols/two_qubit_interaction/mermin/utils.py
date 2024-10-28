@@ -13,7 +13,7 @@ def compute_mermin(frequencies, mermin_coefficients, i):
                 * freq[key][i]
                 * (-1) ** (sum([int(key[k]) for k in range(len(key))]))
             )
-    nshots = sum(freq[x] for x in freq)
+    nshots = sum(freq[x][i] for x in freq)
     try:
         return m / nshots
     except ZeroDivisionError:
@@ -36,7 +36,7 @@ def get_mermin_polynomial(n):
 
 def get_readout_basis(mermin_polynomial):
     return [
-        [factor.name[0] for factor in term.factors] for term in mermin_polynomial.terms
+        "".join([factor.name[0] for factor in term.factors]) for term in mermin_polynomial.terms
     ]
 
 
