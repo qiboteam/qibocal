@@ -5,8 +5,8 @@ Parameters
 ^^^^^^^^^^
 
 .. autoclass::
-	qibocal.protocols.two_qubit_interaction.chevron.chevron.ChevronParameters
-	:noindex:
+    qibocal.protocols.two_qubit_interaction.chevron.chevron.ChevronParameters
+    :noindex:
 
 Example
 ^^^^^^^
