@@ -6,8 +6,7 @@ from typing import Callable, Iterable, Optional, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
-from qibo import gates
-from qibo.backends import GlobalBackend
+from qibo import gates, get_backend
 from qibo.config import raise_error
 from qibo.models import Circuit
 from qibolab.platform import Platform
@@ -69,7 +68,6 @@ SINGLE_QUBIT_CLIFFORDS = {
 }
 
 NPULSES_PER_CLIFFORD = 1.875
-
 """
 Global phases that could appear in the Clifford group we defined in the "2q_cliffords.json" file
 due to the gates we selected to generate the Clifford group.
@@ -352,7 +350,7 @@ def setup(
         tuple: A tuple containing the experiment data, noise model, and backend.
     """
 
-    backend = GlobalBackend()
+    backend = get_backend()
     backend.platform = platform
     # For simulations, a noise model can be added.
     noise_model = None
@@ -402,7 +400,6 @@ def get_circuits(
             - circuits (list): List of generated circuits.
             - indexes (dict): Dictionary containing the random indexes for each qubit and depth.
             - npulses_per_clifford (float): Number of pulses per Clifford.
-
     """
     circuits = []
     indexes = {}
@@ -452,7 +449,6 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
 
     Returns:
         list: List of executed circuits.
-
     """
     # Execute the circuits
     transpiler = dummy_transpiler(backend)

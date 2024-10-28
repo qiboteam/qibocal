@@ -4,8 +4,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.express as px
-from qibo import gates
-from qibo.backends import GlobalBackend
+from qibo import gates, get_backend
 from qibo.models import Circuit
 from qibolab import ExecutionParameters
 from qibolab.platform import Platform
@@ -97,7 +96,7 @@ def _acquisition(
     data = ReadoutMitigationMatrixData(
         nshots=params.nshots, qubit_list=[list(qq) for qq in targets]
     )
-    backend = GlobalBackend()
+    backend = get_backend()
     backend.platform = platform
     transpiler = dummy_transpiler(backend)
     qubit_map = [i for i in range(platform.nqubits)]
