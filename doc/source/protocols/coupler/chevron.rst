@@ -5,7 +5,7 @@ Parameters
 ^^^^^^^^^^
 
 .. autoclass::
-   qibocal.protocols.couplers.coupler_chevron.ChevronCouplersParameters
+   qibocal.protocols.two_qubit_interaction.chevron.chevron.ChevronParameters
    :noindex:
 
 
