@@ -1,4 +1,3 @@
-import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -6,20 +5,11 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibo.backends import GlobalBackend
 from qibolab import ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId, QubitPairId
+from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
-from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
-from qibocal.config import log
-
-from ...readout_mitigation_matrix import (
-    ReadoutMitigationMatrixParameters as mitigation_params,
-)
-from ...readout_mitigation_matrix import _acquisition as mitigation_acquisition
-from ...readout_mitigation_matrix import _fit as mitigation_fit
 
 from ...readout_mitigation_matrix import readout_mitigation_matrix
 from ...utils import calculate_frequencies
@@ -59,7 +49,7 @@ class MerminData(Data):
     mitigation_matrix: dict[tuple[QubitId, ...], npt.NDArray] = field(
         default_factory=dict
     )
-    targets=None
+    targets = None
     """Mitigation matrix computed using the readout_mitigation_matrix protocol."""
 
     def save(self, path: Path):
@@ -74,7 +64,6 @@ class MerminData(Data):
         #     },
         # )
         # super().save(path=path)
-    
 
     @classmethod
     def load(cls, path: Path):
@@ -338,13 +327,12 @@ def _fit(data: MerminData) -> MerminResults:
     """Fitting for CHSH protocol."""
     results = {}
     mitigated_results = {}
-    
+
     n = len(data.targets)
     mermin_polynomial = get_mermin_polynomial(n)
     readout_basis = get_readout_basis(mermin_polynomial)
     mermin_coefficients = get_mermin_coefficients(mermin_polynomial)
     freq = data.merge_frequencies(data.targets, readout_basis)
-
 
     if data.mitigation_matrix:
         matrix = data.mitigation_matrix[pair]

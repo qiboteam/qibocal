@@ -36,7 +36,8 @@ def get_mermin_polynomial(n):
 
 def get_readout_basis(mermin_polynomial):
     return [
-        "".join([factor.name[0] for factor in term.factors]) for term in mermin_polynomial.terms
+        "".join([factor.name[0] for factor in term.factors])
+        for term in mermin_polynomial.terms
     ]
 
 
