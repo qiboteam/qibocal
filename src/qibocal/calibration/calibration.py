@@ -1,20 +1,24 @@
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, Optional, Union
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, PlainSerializer
-from qibolab._core.identifier import QubitId, QubitPairId
 from qibolab._core.serialize import NdArray
+
+QubitId = Annotated[Union[int, str], Field(union_mode="left_to_right")]
+"""Qubit name."""
+
+QubitPairId = Annotated[
+    tuple[QubitId, QubitId],
+    BeforeValidator(lambda p: tuple(p.split("-")) if isinstance(p, str) else p),
+    PlainSerializer(lambda p: f"{p[0]}-{p[1]}"),
+]
+"""Qubit pair name."""
 
 CALIBRATION = "calibration.json"
 """Calibration file."""
 
-# TODO: convert to int if used only for coherence values
-Measure = Annotated[
-    tuple[float, Optional[float]],
-    BeforeValidator(lambda p: tuple(p.split("+/-")) if isinstance(p, str) else p),
-    PlainSerializer(lambda p: f"{p[0]}+/-{p[1]}"),
-]
-"""Measure serialized in runcard."""
+Measure = list[float]
+"""Measured is represented as two values: mean and error."""
 
 
 class Model(BaseModel):
@@ -61,8 +65,17 @@ class Qubit(Model):
 
     @property
     def josephson_energy(self):
-        """Josephson energy [Hz]."""
-        # TODO: Add josephson energy
+        """Josephson energy [Hz].
+
+        The following formula is the inversion of the maximum frequency
+        obtained from the flux dependence protoco.
+
+        """
+        return (
+            (self.maximum_frequency + self.charging_energy) ** 2
+            / 8
+            / self.charging_energy
+        )
 
 
 class Readout(Model):
@@ -70,6 +83,8 @@ class Readout(Model):
 
     fidelity: Optional[float] = None
     """Readout fidelity."""
+    coupling: Optional[float] = None
+    """Readout coupling [Hz]."""
     effective_temperature: Optional[float] = None
     """Qubit effective temperature."""
     ground_state: list[float] = Field(default_factory=list)
@@ -109,6 +124,8 @@ class TwoQubitCalibration(Model):
     """Two qubit standard rb fidelity."""
     cz_fidelity: Optional[Measure] = None
     """CZ interleaved rb fidelity."""
+    coupling: Optional[float] = None
+    """Qubit-qubit coupling."""
 
 
 class Calibration(Model):
