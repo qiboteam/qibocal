@@ -13,10 +13,8 @@ from qibolab import AcquisitionType, AveragingMode, Platform, Qubit
 
 from qibocal.config import log
 
+from ..calibration.calibration import QubitId, QubitPairId
 from .serialize import deserialize, load, serialize
-
-QubitId = Union[str, int]
-QubitPairId = tuple[QubitId, QubitId]
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
