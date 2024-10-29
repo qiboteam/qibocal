@@ -3,11 +3,12 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence, Readout
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 
+from ...result import magnitude, phase
 from ..utils import table_dict, table_html
 from . import utils
 
@@ -32,16 +33,6 @@ class ZenoSignalData(Data):
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, signal, phase):
-        """Store output for single qubit."""
-        ar = np.empty((1,), dtype=ZenoSignalType)
-        ar["signal"] = signal
-        ar["phase"] = phase
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
-
 
 @dataclass
 class ZenoSignalResults(Results):
@@ -53,6 +44,25 @@ class ZenoSignalResults(Results):
     """Raw fitting output."""
     pcov: dict[QubitId, list[float]]
     """Approximate covariance of fitted parameters."""
+
+
+def zeno_sequence(
+    platform: Platform, targets: list[QubitId], readouts: int
+) -> tuple[PulseSequence, dict[QubitId, int]]:
+    """Generating sequence for Zeno experiment."""
+
+    sequence = PulseSequence()
+    readout_duration = {}
+    for q in targets:
+        natives = platform.natives.single_qubit[q]
+        _, ro_pulse = natives.MZ()[0]
+        readout_duration[q] = ro_pulse.duration
+        sequence |= natives.RX()
+
+        for _ in range(readouts):
+            sequence |= natives.MZ()
+
+    return sequence, readout_duration
 
 
 def _acquisition(
@@ -69,44 +79,37 @@ def _acquisition(
     Reference: https://link.aps.org/accepted/10.1103/PhysRevLett.118.240401.
     """
 
-    # create sequence of pulses:
-    sequence = PulseSequence()
-    RX_pulses = {}
-    ro_pulses = {}
-    ro_pulse_duration = {}
-    for qubit in targets:
-        RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        sequence.add(RX_pulses[qubit])
-        start = RX_pulses[qubit].finish
-        ro_pulses[qubit] = []
-        for _ in range(params.readouts):
-            ro_pulse = platform.create_qubit_readout_pulse(qubit, start=start)
-            start += ro_pulse.duration
-            sequence.add(ro_pulse)
-            ro_pulses[qubit].append(ro_pulse)
-        ro_pulse_duration[qubit] = ro_pulse.duration
-
-    # create a DataUnits object to store the results
+    sequence, ro_pulse_duration = zeno_sequence(platform, targets, params.readouts)
     data = ZenoSignalData(readout_duration=ro_pulse_duration)
 
-    # execute the first pulse sequence
-    results = platform.execute_pulse_sequence(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
+    results = platform.execute(
+        [sequence],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
     )
 
-    # retrieve and store the results for every qubit
     for qubit in targets:
-        for ro_pulse in ro_pulses[qubit]:
-            result = results[ro_pulse.serial]
-            data.register_qubit(
-                qubit=qubit, signal=result.magnitude, phase=result.phase
-            )
+        res = []
+        readouts = [
+            pulse
+            for pulse in sequence.channel(platform.qubits[qubit].acquisition)
+            if isinstance(pulse, Readout)
+        ]
+        for i in range(params.readouts):
+            ro_pulse = readouts[i]
+            res.append(results[ro_pulse.id])
+
+        data.register_qubit(
+            utils.CoherenceType,
+            (qubit),
+            dict(
+                wait=np.arange(params.readouts) + 1,
+                signal=magnitude(res),
+                phase=phase(res),
+            ),
+        )
     return data
 
 
@@ -165,8 +168,8 @@ def _plot(data: ZenoSignalData, fit: ZenoSignalResults, target: QubitId):
                 target,
                 ["T1", "Readout Pulse"],
                 [
-                    np.round(fit.zeno_t1[target]),
-                    np.round(fit.zeno_t1[target] * data.readout_duration[target]),
+                    np.round(fit.zeno_t1[target][0]),
+                    np.round(fit.zeno_t1[target][0] * data.readout_duration[target]),
                 ],
             )
         )

@@ -3,13 +3,14 @@ from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, Platform, Readout
 
 from qibocal.auto.operation import QubitId, Routine
 
+from ...result import probability
 from ..utils import table_dict, table_html
 from . import t1, utils
-from .zeno_signal import ZenoSignalParameters, ZenoSignalResults, _update
+from .zeno_signal import ZenoSignalParameters, ZenoSignalResults, _update, zeno_sequence
 
 
 @dataclass
@@ -45,50 +46,39 @@ def _acquisition(
     Reference: https://link.aps.org/accepted/10.1103/PhysRevLett.118.240401.
     """
 
-    # create sequence of pulses:
-    sequence = PulseSequence()
-    RX_pulses = {}
-    ro_pulses = {}
-    ro_pulse_duration = {}
-    for qubit in targets:
-        RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        sequence.add(RX_pulses[qubit])
-        start = RX_pulses[qubit].finish
-        ro_pulses[qubit] = []
-        for _ in range(params.readouts):
-            ro_pulse = platform.create_qubit_readout_pulse(qubit, start=start)
-            start += ro_pulse.duration
-            sequence.add(ro_pulse)
-            ro_pulses[qubit].append(ro_pulse)
-        ro_pulse_duration[qubit] = ro_pulse.duration
+    sequence, readout_duration = zeno_sequence(
+        platform, targets, readouts=params.readouts
+    )
+    data = ZenoData(readout_duration=readout_duration)
 
-    # create a DataUnits object to store the results
-    data = ZenoData(readout_duration=ro_pulse_duration)
-
-    # execute the first pulse sequence
-    results = platform.execute_pulse_sequence(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
-        ),
+    results = platform.execute(
+        [sequence],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
 
-    # retrieve and store the results for every qubit
-    probs = {qubit: [] for qubit in targets}
     for qubit in targets:
-        for ro_pulse in ro_pulses[qubit]:
-            probs[qubit].append(results[ro_pulse.serial].probability(state=1))
-        errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs[qubit]]
+        probs = []
+        readouts = [
+            pulse
+            for pulse in sequence.channel(platform.qubits[qubit].acquisition)
+            if isinstance(pulse, Readout)
+        ]
+        for i in range(params.readouts):
+            ro_pulse = readouts[i]
+            probs.append(probability(results[ro_pulse.id], state=1))
+
         data.register_qubit(
             t1.CoherenceProbType,
             (qubit),
             dict(
-                wait=np.arange(1, len(probs[qubit]) + 1),
-                prob=probs[qubit],
-                error=errors,
+                wait=np.arange(params.readouts) + 1,
+                prob=np.array(probs),
+                error=np.array(
+                    [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
+                ),
             ),
         )
     return data
@@ -114,7 +104,7 @@ def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
     qubit_data = data[target]
     probs = qubit_data.prob
     error_bars = qubit_data.error
-    readouts = np.arange(1, len(qubit_data.prob) + 1)
+    readouts = qubit_data.wait
 
     fig = go.Figure(
         [
@@ -160,8 +150,8 @@ def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
                 target,
                 ["T1 [ns]", "Readout Pulse [ns]", "chi2 reduced"],
                 [
-                    fit.zeno_t1[target],
                     np.array(fit.zeno_t1[target]) * data.readout_duration[target],
+                    (data.readout_duration[target], 0),
                     fit.chi2[target],
                 ],
                 display_error=True,
