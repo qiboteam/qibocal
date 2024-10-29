@@ -1,5 +1,5 @@
 import numpy as np
-from qibolab import AcquisitionType, AveragingMode, Delay, Platform, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, Platform
 
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.result import magnitude, phase
@@ -15,23 +15,6 @@ def _acquisition(
 
     In this experiment the different delays are executing using a for loop on software.
     """
-
-    delays = {}
-    ro_pulses = {}
-    qd_pulses = {}
-    sequence = PulseSequence()
-    for q in targets:
-        natives = platform.natives.single_qubit[q]
-        qd_channel, qd_pulse = natives.RX()[0]
-        ro_channel, ro_pulse = natives.MZ()[0]
-
-        ro_pulses[q] = ro_pulse
-        qd_pulses[q] = qd_pulse
-        delays[q] = Delay(duration=0)
-        sequence.append((qd_channel, qd_pulse))
-        sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
-        sequence.append((ro_channel, delays[q]))
-        sequence.append((ro_channel, ro_pulse))
 
     ro_wait_range = np.arange(
         params.delay_before_readout_start,

@@ -1,8 +1,10 @@
 import numpy as np
-from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, Platform
 
 from qibocal.auto.operation import QubitId, Routine
 
+from ...result import magnitude, phase
+from ..ramsey.utils import ramsey_sequence
 from .t2_signal import T2SignalData, T2SignalParameters, _fit, _plot, _update
 from .utils import CoherenceType
 
@@ -12,29 +14,13 @@ def _acquisition(
     platform: Platform,
     targets: list[QubitId],
 ) -> T2SignalData:
-    """Data acquisition for Ramsey Experiment (detuned)."""
-    # create a sequence of pulses for the experiment
-    # RX90 - t - RX90 - MZ
-    ro_pulses = {}
-    RX90_pulses1 = {}
-    RX90_pulses2 = {}
-    sequence = PulseSequence()
-    for qubit in targets:
-        RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
-        RX90_pulses2[qubit] = platform.create_RX90_pulse(
-            qubit,
-            start=RX90_pulses1[qubit].finish,
-        )
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=RX90_pulses2[qubit].finish
-        )
-        sequence.add(RX90_pulses1[qubit])
-        sequence.add(RX90_pulses2[qubit])
-        sequence.add(ro_pulses[qubit])
+    """Data acquisition for T2 experiment.
 
-    # define the parameter to sweep and its range:
+    In this experiment the different delays are executing using a for loop on software.
+
+    """
+
     waits = np.arange(
-        # wait time between RX90 pulses
         params.delay_between_pulses_start,
         params.delay_between_pulses_end,
         params.delay_between_pulses_step,
@@ -42,31 +28,25 @@ def _acquisition(
 
     data = T2SignalData()
 
-    # sweep the parameter
     for wait in waits:
-        for qubit in targets:
-            RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
-            ro_pulses[qubit].start = RX90_pulses2[qubit].finish
-
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
-            ),
+        sequence, _ = ramsey_sequence(platform, targets, wait=wait)
+        results = platform.execute(
+            [sequence],
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
         )
         for qubit in targets:
-            result = results[ro_pulses[qubit].serial]
+            ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+            result = results[ro_pulse.id]
             data.register_qubit(
                 CoherenceType,
                 (qubit),
                 dict(
                     wait=np.array([wait]),
-                    signal=np.array([result.magnitude]),
-                    phase=np.array([result.phase]),
+                    signal=magnitude(np.array([result])),
+                    phase=phase(np.array([result])),
                 ),
             )
     return data
