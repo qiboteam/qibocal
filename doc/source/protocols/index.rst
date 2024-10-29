@@ -35,6 +35,4 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     virtual_z
     state_tomographies
     coupler/chevron
-    coupler/qubit_spectroscopy
-    coupler/resonator_spectroscopy
     references
