@@ -102,7 +102,7 @@ def _acquisition(
     )
 
     updates = []
-    if params.detuning != 0:
+    if params.detuning is not None:
         for qubit in targets:
             channel = platform.qubits[qubit].drive
             f0 = platform.config(channel).frequency
@@ -287,7 +287,7 @@ def _update(results: RamseySignalResults, platform: Platform, target: QubitId):
     # if results.detuning is not None:
     #    update.drive_frequency(results.frequency[target][0], platform, target)
     # else:
-    update.t2(results.t2[target][0], platform, target)
+    update.t2(results.t2[target], platform, target)
 
 
 ramsey_signal = Routine(_acquisition, _fit, _plot, _update)

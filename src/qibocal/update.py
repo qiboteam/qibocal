@@ -168,30 +168,17 @@ def iSWAP_amplitude(amp: float, platform: Platform, pair: QubitPairId):
 
 def t1(t1: int, platform: Platform, qubit: QubitId):
     """Update t1 value in platform for specific qubit."""
-    if isinstance(t1, Iterable):
-        platform.calibration.single_qubits[qubit].coherence.t1 = int(t1[0])
-    else:
-        platform.calibration.single_qubits[qubit].coherence.t1 = int(t1)
+    platform.calibration.single_qubits[qubit].t1 = t1
 
 
 def t2(t2: int, platform: Platform, qubit: QubitId):
     """Update t2 value in platform for specific qubit."""
-    if isinstance(t2, Iterable):
-        platform.calibration.single_qubits[qubit].coherence.t2 = int(t2[0])
-    else:
-        platform.calibration.single_qubits[qubit].coherence.t2 = int(t2)
+    platform.calibration.single_qubits[qubit].t2 = t2
 
 
 def t2_spin_echo(t2_spin_echo: float, platform: Platform, qubit: QubitId):
     """Update t2 echo value in platform for specific qubit."""
-    if isinstance(t2_spin_echo, Iterable):
-        platform.calibration.single_qubits[qubit].coherence.t2_spin_echo = int(
-            t2_spin_echo[0]
-        )
-    else:
-        platform.calibration.single_qubits[qubit].coherence.t2_spin_echo = int(
-            t2_spin_echo
-        )
+    platform.calibration.single_qubits[qubit].t2_spin_echo = t2_spin_echo
 
 
 def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
