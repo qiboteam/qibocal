@@ -222,8 +222,8 @@ def asymmetry(asymmetry: float, platform: Platform, qubit: QubitId):
     platform.calibration.single_qubits[qubit].asymmetry = float(asymmetry)
 
 
-# def coupling(g: float, platform: Platform, qubit: QubitId):
-#     platform.qubits[qubit].g = float(g)
+def coupling(g: float, platform: Platform, qubit: QubitId):
+    platform.calibration.single_qubits[qubit].readout.coupling = float(g)
 
 
 # def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):
