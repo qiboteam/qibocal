@@ -4,15 +4,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import (
-    AcquisitionType,
-    AveragingMode,
-    Delay,
-    Parameter,
-    Platform,
-    PulseSequence,
-    Sweeper,
-)
+from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
 
 from qibocal.auto.operation import Data, QubitId, Routine
 from qibocal.result import probability
@@ -54,44 +46,12 @@ class T1Data(Data):
 def _acquisition(
     params: T1Parameters, platform: Platform, targets: list[QubitId]
 ) -> T1Data:
-    r"""Data acquisition for T1 experiment.
-    In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
-    (e.g. amplitude damping channel), it is possible that, at the time of measurement, after the delay,
-    the qubit will not be excited anymore. The larger the delay time is, the more likely is the qubit to
-    fall to the ground state. The goal of the experiment is to characterize the decay rate of the qubit
-    towards the ground state.
+    """Data acquisition for T1 experiment."""
 
-    Args:
-        params:
-        platform (Platform): Qibolab platform object
-        targets (list): list of target qubits to perform the action
-        delay_before_readout_start (int): Initial time delay before ReadOut
-        delay_before_readout_end (list): Maximum time delay before ReadOut
-        delay_before_readout_step (int): Scan range step for the delay before ReadOut
-        software_averages (int): Number of executions of the routine for averaging results
-        points (int): Save data results in a file every number of points
-    """
+    sequence, ro_pulses, delays = t1_signal.t1_sequence(
+        platform=platform, targets=targets
+    )
 
-    # create a sequence of pulses for the experiment
-    # RX - wait t - MZ
-    delays = {}
-    ro_pulses = {}
-    sequence = PulseSequence()
-    for q in targets:
-        natives = platform.natives.single_qubit[q]
-        qd_channel, qd_pulse = natives.RX()[0]
-        ro_channel, ro_pulse = natives.MZ()[0]
-
-        ro_pulses[q] = ro_pulse
-        delays[q] = Delay(duration=0)
-
-        sequence.append((qd_channel, qd_pulse))
-        sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
-        sequence.append((ro_channel, delays[q]))
-        sequence.append((ro_channel, ro_pulse))
-
-    # define the parameter to sweep and its range:
-    # wait time before readout
     ro_wait_range = np.arange(
         params.delay_before_readout_start,
         params.delay_before_readout_end,
@@ -106,8 +66,6 @@ def _acquisition(
 
     data = T1Data()
 
-    # sweep the parameter
-    # execute the pulse sequence
     results = platform.execute(
         [sequence],
         [[sweeper]],
