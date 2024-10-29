@@ -1,12 +1,20 @@
 from pathlib import Path
-from typing import Optional
+from typing import Annotated, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, PlainSerializer
 from qibolab._core.identifier import QubitId, QubitPairId
 from qibolab._core.serialize import NdArray
 
 CALIBRATION = "calibration.json"
 """Calibration file."""
+
+# TODO: convert to int if used only for coherence values
+Measure = Annotated[
+    tuple[float, Optional[float]],
+    BeforeValidator(lambda p: tuple(p.split("+/-")) if isinstance(p, str) else p),
+    PlainSerializer(lambda p: f"{p[0]}+/-{p[1]}"),
+]
+"""Measure serialized in runcard."""
 
 
 class Model(BaseModel):
@@ -51,6 +59,11 @@ class Qubit(Model):
         """Charging energy Ec [Hz]."""
         return -self.anharmonicity
 
+    @property
+    def josephson_energy(self):
+        """Josephson energy [Hz]."""
+        # TODO: Add josephson energy
+
 
 class Readout(Model):
     """Readout parameters."""
@@ -70,17 +83,6 @@ class Readout(Model):
         return (1 + self.fidelity) / 2
 
 
-class Coherence(Model):
-    """Coherence times of qubit."""
-
-    t1: Optional[int] = 0
-    """Relaxation time [ns]."""
-    t2: Optional[int] = 0
-    """T2 of the qubit [ns]."""
-    t2_spin_echo: Optional[int] = 0
-    """T2 hanh echo [ns]."""
-
-
 class QubitCalibration(Model):
     """Container for calibration of single qubit."""
 
@@ -90,18 +92,22 @@ class QubitCalibration(Model):
     """Qubit calibration."""
     readout: Readout = Field(default_factory=Readout)
     """Readout information."""
-    coherence: Coherence = Field(default_factory=Coherence)
-    """Coherence times of the qubit."""
-    rb_fidelity: Optional[float] = None
+    t1: Optional[Measure] = None
+    """Relaxation time [ns]."""
+    t2: Optional[Measure] = None
+    """T2 of the qubit [ns]."""
+    t2_spin_echo: Optional[Measure] = None
+    """T2 hanh echo [ns]."""
+    rb_fidelity: Optional[Measure] = None
     """Standard rb pulse fidelity."""
 
 
 class TwoQubitCalibration(Model):
     """Container for calibration of qubit pair."""
 
-    rb_fidelity: Optional[float] = None
+    rb_fidelity: Optional[Measure] = None
     """Two qubit standard rb fidelity."""
-    cz_fidelity: Optional[float] = None
+    cz_fidelity: Optional[Measure] = None
     """CZ interleaved rb fidelity."""
 
 
@@ -123,10 +129,12 @@ class Calibration(Model):
 
     @property
     def qubits(self) -> list:
+        """List of qubits available in the model."""
         return list(self.single_qubits)
 
     @property
     def nqubits(self) -> int:
+        """Number of qubits available."""
         return len(self.qubits)
 
     # TODO: add crosstalk object where I can do this

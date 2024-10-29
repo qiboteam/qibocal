@@ -23,12 +23,7 @@
                     0.0
                 ]
             },
-            "coherence": {
-                "t1": 0.0,
-                "t2": 0.0,
-                "t2_spin_echo": 0
-            },
-            "rb_fidelity": 0.5
+            "rb_fidelity": null
         },
         "1": {
             "resonator": {
@@ -53,12 +48,7 @@
                     0.25
                 ]
             },
-            "coherence": {
-                "t1": 0.0,
-                "t2": 0.0,
-                "t2_spin_echo": 0
-            },
-            "rb_fidelity": 0.5
+            "rb_fidelity": null
         },
         "2": {
             "resonator": {
@@ -83,12 +73,7 @@
                     0.5
                 ]
             },
-            "coherence": {
-                "t1": 0.0,
-                "t2": 0.0,
-                "t2_spin_echo": 0
-            },
-            "rb_fidelity": 0.5
+            "rb_fidelity": null
         },
         "3": {
             "resonator": {
@@ -113,12 +98,7 @@
                     0.75
                 ]
             },
-            "coherence": {
-                "t1": 0.0,
-                "t2": 0.0,
-                "t2_spin_echo": 0
-            },
-            "rb_fidelity": 0.5
+            "rb_fidelity": null
         },
         "4": {
             "resonator": {
@@ -143,12 +123,7 @@
                     1.0
                 ]
             },
-            "coherence": {
-                "t1": 0.0,
-                "t2": 0.0,
-                "t2_spin_echo": 0
-            },
-            "rb_fidelity":0.5
+            "rb_fidelity": null
         }
     },
     "two_qubits": {

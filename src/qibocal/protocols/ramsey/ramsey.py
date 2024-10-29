@@ -90,7 +90,7 @@ def _acquisition(
     )
 
     updates = []
-    if params.detuning != 0:
+    if params.detuning is not None:
         for qubit in targets:
             channel = platform.qubits[qubit].drive
             f0 = platform.config(channel).frequency
