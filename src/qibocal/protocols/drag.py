@@ -1,4 +1,3 @@
-from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -79,11 +78,13 @@ def _acquisition(
     See https://arxiv.org/pdf/1504.06597.pdf Fig. 2 (c).
     """
 
-    # TODO: remove hardcoded anharmonicity
-    data = DragTuningData(anharmonicity={qubit: 211e6 * HZ_TO_GHZ for qubit in targets})
-
-    # define the parameter to sweep and its range:
-    # qubit drive DRAG pulse beta parameter
+    data = DragTuningData(
+        anharmonicity={
+            qubit: platform.calibration.single_qubits[qubit].qubit.anharmonicity
+            * HZ_TO_GHZ
+            for qubit in targets
+        }
+    )
     beta_param_range = np.arange(params.beta_start, params.beta_end, params.beta_step)
 
     sequences, all_ro_pulses = [], []
@@ -94,20 +95,22 @@ def _acquisition(
             natives = platform.natives.single_qubit[q]
             qd_channel, qd_pulse = natives.RX()[0]
             ro_channel, ro_pulse = natives.MZ()[0]
-            replace(
+
+            drag = replace(
                 qd_pulse,
                 envelope=Drag(
                     rel_sigma=qd_pulse.envelope.rel_sigma,
                     beta=beta_param / data.anharmonicity[q],
                 ),
             )
-            drag_negative_amplitude = deepcopy(qd_pulse)
-            replace(drag_negative_amplitude, relative_phase=np.pi)
+            drag_negative = replace(drag, relative_phase=np.pi)
 
-            sequence.append((qd_channel, qd_pulse))
-            sequence.append((qd_channel, drag_negative_amplitude))
+            # TODO: here we can add pairs of this in a for loop
+            sequence.append((qd_channel, drag))
+            sequence.append((qd_channel, drag_negative))
 
             sequence.append((ro_channel, ro_pulse))
+
         sequences.append(sequence)
         all_ro_pulses.append(
             {
