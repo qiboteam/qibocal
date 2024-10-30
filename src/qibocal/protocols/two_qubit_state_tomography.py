@@ -303,7 +303,7 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitP
         return [fig_measurements], fitting_report
 
     measured = np.array(fit.measured_density_matrix_real[target]) + 1j * np.array(
-        fit.measured_raw_density_matrix_imag[target]
+        fit.measured_density_matrix_imag[target]
     )
     fig = plot_reconstruction(data.ideal[target], measured)
 
