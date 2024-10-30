@@ -166,10 +166,10 @@ def _plot(data: ZenoSignalData, fit: ZenoSignalResults, target: QubitId):
         fitting_report = table_html(
             table_dict(
                 target,
-                ["T1", "Readout Pulse"],
+                ["T1 [ns]", "Readout Pulse"],
                 [
-                    np.round(fit.zeno_t1[target][0]),
                     np.round(fit.zeno_t1[target][0] * data.readout_duration[target]),
+                    np.round(data.readout_duration[target]),
                 ],
             )
         )
