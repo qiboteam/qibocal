@@ -195,7 +195,7 @@ def sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):
 
 
 def frequency_12_transition(frequency: int, platform: Platform, qubit: QubitId):
-    platform.calibration.single_qubits[qubit].qubit.omega_12 = int(frequency)
+    platform.calibration.single_qubits[qubit].qubit.frequency_12 = int(frequency)
     platform.qubits[qubit].native_gates.RX12.frequency = int(frequency)
 
 

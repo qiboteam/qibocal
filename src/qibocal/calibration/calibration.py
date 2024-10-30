@@ -36,6 +36,13 @@ class Resonator(Model):
     """Dressed resonator frequency [Hz]."""
     depletion_time: Optional[int] = None
     """Depletion time [ns]."""
+
+    @property
+    def dispersive_shift(self):
+        """Dispersive shift."""
+        return self.bare_frequency - self.dressed_frequency
+
+    # TODO: Add setter for dispersive shift as well
     # TODO: Add something related to resonator calibration
 
 
