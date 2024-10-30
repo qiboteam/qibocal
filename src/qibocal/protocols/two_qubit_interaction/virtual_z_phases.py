@@ -88,7 +88,6 @@ class VirtualZPhasesData(Data):
     data: dict[tuple, npt.NDArray[VirtualZPhasesType]] = field(default_factory=dict)
     native: str = "CZ"
     thetas: list = field(default_factory=list)
-    vphases: dict[QubitPairId, dict[QubitId, float]] = field(default_factory=dict)
     amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
     durations: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
 
@@ -127,9 +126,7 @@ def create_sequence(
     )
     RX_pulse_start = platform.create_RX_pulse(control_qubit, start=0, relative_phase=0)
 
-    flux_sequence, virtual_z_phase = getattr(
-        platform, f"create_{native}_pulse_sequence"
-    )(
+    flux_sequence, _ = getattr(platform, f"create_{native}_pulse_sequence")(
         (ordered_pair[1], ordered_pair[0]),
         start=max(Y90_pulse.finish, RX_pulse_start.finish),
     )
@@ -139,7 +136,6 @@ def create_sequence(
 
     if duration is not None:
         flux_sequence.get_qubit_pulses(ordered_pair[1])[0].duration = duration
-
     theta_pulse = platform.create_RX90_pulse(
         target_qubit,
         start=flux_sequence.finish + dt,
@@ -177,10 +173,8 @@ def create_sequence(
             if pulse.qubit not in ordered_pair:
                 pulse.duration = theta_pulse.finish
                 sequence.add(pulse)
-
     return (
         sequence,
-        virtual_z_phase,
         theta_pulse,
         flux_sequence.get_qubit_pulses(ordered_pair[1])[0].amplitude,
         flux_sequence.get_qubit_pulses(ordered_pair[1])[0].duration,
@@ -222,7 +216,6 @@ def _acquisition(
             for setup in ("I", "X"):
                 (
                     sequence,
-                    virtual_z_phase,
                     theta_pulse,
                     data.amplitudes[ord_pair],
                     data.durations[ord_pair],
@@ -237,7 +230,6 @@ def _acquisition(
                     params.parking,
                     params.flux_pulse_amplitude,
                 )
-                data.vphases[ord_pair] = dict(virtual_z_phase)
                 theta = np.arange(
                     params.theta_start,
                     params.theta_end,

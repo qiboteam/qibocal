@@ -164,7 +164,6 @@ def _acquisition(
             for setup in ("I", "X"):
                 (
                     sequence,
-                    virtual_z_phase,
                     theta_pulse,
                     amplitude,
                     data.durations[ord_pair],

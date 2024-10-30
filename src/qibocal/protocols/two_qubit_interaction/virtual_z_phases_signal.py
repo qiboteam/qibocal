@@ -75,7 +75,6 @@ def _acquisition(
             for setup in ("I", "X"):
                 (
                     sequence,
-                    virtual_z_phase,
                     theta_pulse,
                     data.amplitudes[ord_pair],
                     data.durations[ord_pair],
@@ -90,7 +89,6 @@ def _acquisition(
                     params.parking,
                     params.flux_pulse_amplitude,
                 )
-                data.vphases[ord_pair] = dict(virtual_z_phase)
                 theta = np.arange(
                     params.theta_start,
                     params.theta_end,
