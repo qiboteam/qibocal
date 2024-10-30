@@ -100,6 +100,7 @@ def _acquisition(
 
     The flipping experiment correct the delta amplitude in the qubit drive pulse. We measure a qubit after applying
     a Rx(pi/2) and N flips (Rx(pi) rotations). After fitting we can obtain the delta amplitude to refine pi pulses.
+    On the y axis we measure the magnitude in the IQ plane.
 
     Args:
         params (:class:`FlippingSignalParameters`): input parameters
