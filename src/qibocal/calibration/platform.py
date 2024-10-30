@@ -25,7 +25,7 @@ class CalibrationPlatform(Platform):
             calibration = Calibration.model_validate_json(
                 (path / CALIBRATION).read_text()
             )
-
+        # TODO: this is loading twice a platform
         return cls(**vars(platform), calibration=calibration)
 
     def dump(self, path: Path):
