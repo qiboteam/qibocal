@@ -15,6 +15,7 @@ from qibocal.protocols.utils import (
     table_html,
 )
 
+from ..result import probability
 from .flipping_signal import (
     FlippingSignalData,
     FlippingSignalParameters,
@@ -62,6 +63,7 @@ def _acquisition(
 
     The flipping experiment correct the delta amplitude in the qubit drive pulse. We measure a qubit after applying
     a Rx(pi/2) and N flips (Rx(pi) rotations). After fitting we can obtain the delta amplitude to refine pi pulses.
+    On the y axis we measure the excited state probability.
 
     Args:
         params (:class:`SingleShotClassificationParameters`): input parameters
@@ -76,22 +78,22 @@ def _acquisition(
         resonator_type=platform.resonator_type,
         delta_amplitude=params.delta_amplitude,
         pi_pulse_amplitudes={
-            qubit: platform.qubits[qubit].native_gates.RX.amplitude for qubit in targets
+            qubit: platform.natives.single_qubit[qubit].RX[0][1].amplitude
+            for qubit in targets
         },
     )
 
-    options = ExecutionParameters(
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.SINGLESHOT,
-    )
+    options = {
+        "nshots": params.nshots,
+        "relaxation_time": params.relaxation_time,
+        "acquisition_type": AcquisitionType.DISCRIMINATION,
+        "averaging_mode": AveragingMode.SINGLESHOT,
+    }
 
-    # sweep the parameter
-    sequences, all_ro_pulses = [], []
+    sequences = []
+
     flips_sweep = range(0, params.nflips_max, params.nflips_step)
     for flips in flips_sweep:
-        # create a sequence of pulses for the experiment
         sequence = PulseSequence()
         for qubit in targets:
             sequence += flipping_sequence(
@@ -102,36 +104,32 @@ def _acquisition(
             )
 
         sequences.append(sequence)
-        all_ro_pulses.append(sequence.ro_pulses)
 
-    # execute the pulse sequence
     if params.unrolling:
-        results = platform.execute_pulse_sequences(sequences, options)
+        results = platform.execute(sequences, **options)
+    else:
+        results = [platform.execute([sequence], **options) for sequence in sequences]
 
-    elif not params.unrolling:
-        results = [
-            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
-        ]
-
-    for ig, (flips, ro_pulses) in enumerate(zip(flips_sweep, all_ro_pulses)):
+    for i in range(len(sequences)):
         for qubit in targets:
-            serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
+            ro_pulse = list(sequences[i].channel(platform.qubits[qubit].acquisition))[
+                -1
+            ]
             if params.unrolling:
-                result = results[serial][0]
+                result = results[ro_pulse.id]
             else:
-                result = results[ig][serial]
-            prob = result.probability(state=1)
+                result = results[i][ro_pulse.id]
+            prob = probability(result, state=1)
             error = np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
                 FlippingType,
                 (qubit),
                 dict(
-                    flips=np.array([flips]),
+                    flips=np.array([flips_sweep[i]]),
                     prob=np.array([prob]),
                     error=np.array([error]),
                 ),
             )
-
     return data
 
 

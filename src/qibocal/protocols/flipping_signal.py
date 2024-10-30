@@ -17,6 +17,8 @@ from qibocal.protocols.utils import (
     table_html,
 )
 
+from ..result import magnitude
+
 
 @dataclass
 class FlippingSignalParameters(Parameters):
@@ -67,26 +69,23 @@ class FlippingSignalData(Data):
 def flipping_sequence(
     platform: Platform, qubit: QubitId, delta_amplitude: float, flips: int
 ):
+    """Pulse sequence for flipping experiment."""
 
     sequence = PulseSequence()
-    RX90_pulse = platform.create_RX90_pulse(qubit, start=0)
-    sequence.add(RX90_pulse)
-    # execute sequence RX(pi/2) - [RX(pi) - RX(pi)] from 0...flips times - RO
-    start1 = RX90_pulse.duration
-    drive_amplitude = platform.qubits[qubit].native_gates.RX.amplitude
+    natives = platform.natives.single_qubit[qubit]
+    sequence |= natives.R(theta=np.pi / 2)
+
     for _ in range(flips):
-        RX_pulse1 = platform.create_RX_pulse(qubit, start=start1)
-        RX_pulse1.amplitude = drive_amplitude + delta_amplitude
-        start2 = start1 + RX_pulse1.duration
-        RX_pulse2 = platform.create_RX_pulse(qubit, start=start2)
-        RX_pulse2.amplitude = drive_amplitude + delta_amplitude
 
-        sequence.add(RX_pulse1)
-        sequence.add(RX_pulse2)
-        start1 = start2 + RX_pulse2.duration
+        qd_channel, rx_pulse = natives.RX()[0]
 
-    # add ro pulse at the end of the sequence
-    sequence.add(platform.create_qubit_readout_pulse(qubit, start=start1))
+        rx_detuned = update.replace(
+            rx_pulse, amplitude=rx_pulse.amplitude + delta_amplitude
+        )
+        sequence.append((qd_channel, rx_detuned))
+        sequence.append((qd_channel, rx_detuned))
+
+    sequence |= natives.MZ()
 
     return sequence
 
@@ -115,22 +114,21 @@ def _acquisition(
         resonator_type=platform.resonator_type,
         delta_amplitude=params.delta_amplitude,
         pi_pulse_amplitudes={
-            qubit: platform.qubits[qubit].native_gates.RX.amplitude for qubit in targets
+            qubit: platform.natives.single_qubit[qubit].RX[0][1].amplitude
+            for qubit in targets
         },
     )
 
-    options = ExecutionParameters(
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
-        averaging_mode=AveragingMode.CYCLIC,
-    )
+    options = {
+        "nshots": params.nshots,
+        "relaxation_time": params.relaxation_time,
+        "acquisition_type": AcquisitionType.INTEGRATION,
+        "averaging_mode": AveragingMode.CYCLIC,
+    }
 
-    # sweep the parameter
-    sequences, all_ro_pulses = [], []
+    sequences = []
     flips_sweep = range(0, params.nflips_max, params.nflips_step)
     for flips in flips_sweep:
-        # create a sequence of pulses for the experiment
         sequence = PulseSequence()
         for qubit in targets:
             sequence += flipping_sequence(
@@ -141,30 +139,27 @@ def _acquisition(
             )
 
         sequences.append(sequence)
-        all_ro_pulses.append(sequence.ro_pulses)
 
-    # execute the pulse sequence
     if params.unrolling:
-        results = platform.execute_pulse_sequences(sequences, options)
+        results = platform.execute(sequences, **options)
+    else:
+        results = [platform.execute([sequence], **options) for sequence in sequences]
 
-    elif not params.unrolling:
-        results = [
-            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
-        ]
-
-    for ig, (flips, ro_pulses) in enumerate(zip(flips_sweep, all_ro_pulses)):
+    for i in range(len(sequences)):
         for qubit in targets:
-            serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
+            ro_pulse = list(sequences[i].channel(platform.qubits[qubit].acquisition))[
+                -1
+            ]
             if params.unrolling:
-                result = results[serial][0]
+                result = results[ro_pulse.id]
             else:
-                result = results[ig][serial]
+                result = results[i][ro_pulse.id]
             data.register_qubit(
                 FlippingType,
                 (qubit),
                 dict(
-                    flips=np.array([flips]),
-                    signal=np.array([result.magnitude]),
+                    flips=np.array([flips_sweep[i]]),
+                    signal=magnitude(result),
                 ),
             )
 
