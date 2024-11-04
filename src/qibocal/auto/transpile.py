@@ -112,7 +112,7 @@ def dummy_transpiler(backend) -> Optional[Passes]:
     """
     if backend.name == "qibolab":
         unroller = Unroller(NativeGates.default())
-        return Passes(connectivity=backend.platform.topology, passes=[unroller])
+        return Passes(connectivity=backend.platform.pairs, passes=[unroller])
     return None
 
 

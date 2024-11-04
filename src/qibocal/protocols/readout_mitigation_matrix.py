@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -40,6 +40,14 @@ class ReadoutMitigationMatrixResults(Results):
     """Matrix containing measurement matrices for each state."""
 
 
+ReadoutMitigationMatrixId = tuple[Tuple[QubitId, ...], str, str]
+"""Data identifier for single list of qubits.
+
+Tuple[QubitId, ...] is the qubits which have been passed on as parameters.
+The two strings represents the expected state and the measured state.
+"""
+
+
 @dataclass
 class ReadoutMitigationMatrixData(Data):
     """ReadoutMitigationMatrix acquisition outputs."""
@@ -48,10 +56,12 @@ class ReadoutMitigationMatrixData(Data):
     """List of qubit ids"""
     nshots: int
     """Number of shots"""
-    data: dict = field(default_factory=dict)
+    data: dict[ReadoutMitigationMatrixId, float] = field(default_factory=dict)
     """Raw data acquited."""
 
-    def add(self, qubits, state, freqs):
+    def add(self, qubits: list[QubitId], state: str, freqs: dict[str, int]):
+        """Adding frequency to data."""
+
         for result_state, freq in freqs.items():
             self.data[
                 qubits
@@ -79,6 +89,7 @@ class ReadoutMitigationMatrixData(Data):
                 ] = 0
 
     def __getitem__(self, qubits):
+        """Retrieve data for single qubits list."""
         return {
             index: value
             for index, value in self.data.items()
@@ -97,43 +108,34 @@ def _acquisition(
     backend = GlobalBackend()
     backend.platform = platform
     transpiler = dummy_transpiler(backend)
-    qubit_map = [i for i in range(platform.nqubits)]
+
     for qubits in targets:
         nqubits = len(qubits)
         for i in range(2**nqubits):
             state = format(i, f"0{nqubits}b")
             if params.pulses:
                 sequence = PulseSequence()
+                ro_pulses = {}
                 for q, bit in enumerate(state):
+                    natives = platform.natives.single_qubit[qubits[q]]
                     if bit == "1":
-                        sequence.add(
-                            platform.create_RX_pulse(
-                                qubits[q], start=0, relative_phase=0
-                            )
-                        )
-                measurement_start = sequence.finish
-                for q in range(len(state)):
-                    MZ_pulse = platform.create_MZ_pulse(
-                        qubits[q], start=measurement_start
-                    )
-                    sequence.add(MZ_pulse)
-                results = platform.execute_pulse_sequence(
-                    sequence, ExecutionParameters(nshots=params.nshots)
-                )
+                        sequence |= natives.RX()
+                    sequence |= natives.MZ()
+                    ro_pulses[qubits[q]] = list(
+                        sequence.channel(platform.qubits[qubits[q]].acquisition)
+                    )[-1]
+                results = platform.execute([sequence], nshots=params.nshots)
                 data.add(
-                    tuple(qubits), state, calculate_frequencies(results, tuple(qubits))
+                    tuple(qubits), state, calculate_frequencies(results, ro_pulses)
                 )
             else:
-                c = Circuit(
-                    platform.nqubits,
-                    wire_names=[str(i) for i in range(platform.nqubits)],
-                )
+                c = Circuit(len(qubits))
                 for q, bit in enumerate(state):
                     if bit == "1":
-                        c.add(gates.X(qubits[q]))
-                    c.add(gates.M(qubits[q]))
+                        c.add(gates.X(q))
+                    c.add(gates.M(q))
                 _, results = execute_transpiled_circuit(
-                    c, qubit_map, backend, nshots=params.nshots, transpiler=transpiler
+                    c, qubits, backend, nshots=params.nshots, transpiler=transpiler
                 )
                 data.add(tuple(qubits), state, dict(results.frequencies()))
     return data
@@ -145,6 +147,8 @@ def _fit(data: ReadoutMitigationMatrixData) -> ReadoutMitigationMatrixResults:
     measurement_matrix = {}
     for qubit in data.qubit_list:
         qubit_data = data[qubit]
+
+        # TODO: simplify this computation
         matrix = np.zeros((2 ** len(qubit), 2 ** len(qubit)))
         computational_basis = [
             format(i, f"0{len(qubit)}b") for i in range(2 ** len(qubit))
@@ -192,7 +196,7 @@ def _plot(
             y=computational_basis[::-1],
             text_auto=True,
             labels={
-                "x": "Prepeared States",
+                "x": "Prepared States",
                 "y": "Measured States",
                 "color": "Probabilities",
             },
@@ -202,6 +206,8 @@ def _plot(
         figs.append(fig)
     return figs, fitting_report
 
+
+# TODO: add update function
 
 readout_mitigation_matrix = Routine(_acquisition, _fit, _plot)
 """Readout mitigation matrix protocol."""
