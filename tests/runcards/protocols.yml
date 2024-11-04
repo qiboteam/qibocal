@@ -456,6 +456,30 @@ actions:
       detuning: 0
       nshots: 1024
 
+
+  - id: ramsey zz
+    operation: ramsey_zz
+    targets: [0]
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 20
+      delay_between_pulses_step: 1
+      detuning: 0
+      target_qubit: 1
+      nshots: 1024
+
+  - id: ramsey zz unrolling
+    operation: ramsey_zz
+    targets: [0]
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 20
+      delay_between_pulses_step: 1
+      detuning: 0
+      unrolling: true
+      target_qubit: 1
+      nshots: 1024
+
   - id: calibrate_state_discrimination
     operation: calibrate_state_discrimination
     parameters:
@@ -497,7 +521,7 @@ actions:
     parameters:
       nshots: 10
       savedir: "cls_results"
-      classifiers_list: ["qubit_fit","naive_bayes", "linear_svm"]
+      classifiers_list: ["qubit_fit"]
 
   - id: readout characterization
     operation: readout_characterization
@@ -929,7 +953,6 @@ actions:
     operation: qutrit_classification
     parameters:
       nshots: 1000
-      classifiers_list: ["naive_bayes", "decision_tree"]
 
   - id: avoided crossing
     operation: avoided_crossing

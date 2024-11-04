@@ -81,5 +81,9 @@ Feel free to check
 [![DOI](https://zenodo.org/badge/511836317.svg)](https://zenodo.org/badge/latestdoi/511836317)
 
 
-
 If you use the package please refer to [the documentation](https://qibo.science/qibo/stable/appendix/citing-qibo.html#publications) for citation instructions
+
+## Ongoing development
+
+A non-exhaustive list of possible protocols to be implemented in Qibocal is collected
+[here](doc/dev/README.md).

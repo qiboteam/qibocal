@@ -18,7 +18,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
 qibolab = "^0.1.8"
-qibo = "^0.2.6"
+qibo = "^0.2.12"
 numpy = "^1.26.4"
 scipy = "^1.10.1"
 pandas = { version = "^2.2.2", extras = ["html"] }
@@ -28,15 +28,10 @@ jinja2 = "^3.1.2"
 plotly = "^5.22.0"
 dash = "^2.6.0"
 skops = "^0.10.0"
-scikit-learn = "^1.2.1"
 matplotlib = { version = "^3.7.0", optional = true }
 seaborn = { version = "^0.12.2", optional = true }
 pydot = { version = "^1.4.2", optional = true }
-skl2onnx = { version = "^1.14.0", optional = true }
 pyyaml = "^6.0"
-onnxruntime = { version = "^1.14.1", optional = true }
-# TODO: drop this when https://github.com/onnx/onnx/issues/6267 is solved
-onnx = { version = "<1.16.2", optional = true }
 
 [tool.poetry.group.test]
 optional = true
@@ -46,6 +41,7 @@ pylint = "^2.17"
 pytest = "^7.1.2"
 pytest-cov = "^3.0.0"
 pytest-env = "^0.8.1"
+pytest-mock = "^3.14.0"
 
 [tool.poetry.group.docs]
 optional = true
@@ -68,7 +64,7 @@ devtools = "^0.10.0"
 
 [tool.poetry.extras]
 
-classify = ["matplotlib", "seaborn", "skl2onnx", "onnxruntime"]
+classify = ["matplotlib", "seaborn", "skl2onnx"]
 viz = ["pydot"]
 
 [build-system]

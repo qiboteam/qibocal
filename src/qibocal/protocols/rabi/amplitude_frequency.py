@@ -161,7 +161,7 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         x = (amps - x_min) / (x_max - x_min)
         y = (y - y_min) / (y_max - y_min)
 
-        period = fallback_period(guess_period(amps, y))
+        period = fallback_period(guess_period(x, y))
         pguess = [0.5, 0.5, period, 0]
 
         try:
