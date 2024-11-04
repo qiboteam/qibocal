@@ -55,7 +55,7 @@ It follows an example of the experiment parameters.
         freq_width: 1000000
 
 
-After running `qq auto`, the experiment is executed and the result will looks like
+After running `qq run`, the experiment is executed and the result will looks like
 the following picture.
 
 .. image:: dispersive_shift.png

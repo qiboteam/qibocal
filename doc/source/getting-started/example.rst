@@ -29,4 +29,4 @@ Run the routine
 
 .. code-block::
 
-    qq auto example.yml -o resonator_spectroscopy_routine
+    qq run example.yml -o resonator_spectroscopy_routine

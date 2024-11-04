@@ -25,7 +25,7 @@ action["operation"] = "flipping"
 ACTION = Action(**action)
 
 
-# TODO: this is essentially a proto `qq auto` invocation, it should be simplified as
+# TODO: this is essentially a proto `qq run` invocation, it should be simplified as
 # much as possible in the library, and made available in conftest
 @pytest.fixture
 def fake_output(tmp_path: Path) -> tuple[Output, Path]:
