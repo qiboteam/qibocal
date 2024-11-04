@@ -161,11 +161,15 @@ class Calibration(Model):
         """Number of qubits available."""
         return len(self.qubits)
 
+    def qubit_index(self, qubit: QubitId):
+        """Return qubit index from platform qubits."""
+        return self.qubits.index(qubit)
+
     # TODO: add crosstalk object where I can do this
     def get_crosstalk_element(self, qubit1: QubitId, qubit2: QubitId):
-        a, b = self.qubits.index(qubit1), self.qubits.index(qubit2)
+        a, b = self.qubit_index(qubit1), self.qubit_index(qubit2)
         return self.flux_crosstalk_matrix[a, b]
 
     def set_crosstalk_element(self, qubit1: QubitId, qubit2: QubitId, value: float):
-        a, b = self.qubits.index(qubit1), self.qubits.index(qubit2)
+        a, b = self.qubit_index(qubit1), self.qubit_index(qubit2)
         self.flux_crosstalk_matrix[a, b] = value

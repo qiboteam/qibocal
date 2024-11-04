@@ -46,6 +46,16 @@ DELAY_FIT_PERCENTAGE = 10
 """Percentage of the first and last points used to fit the cable delay."""
 
 
+def int_to_binary(number: int, length: int) -> str:
+    """Conversion from int to binary for fixed number of bits."""
+    return format(number, f"0{length}b")
+
+
+def computational_basis(length: int) -> list[str]:
+    """Return computational basis at fixed length."""
+    return [int_to_binary(i, length) for i in range(2**length)]
+
+
 def effective_qubit_temperature(
     prob_0: NDArray, prob_1: NDArray, qubit_frequency: float, nshots: int
 ):
