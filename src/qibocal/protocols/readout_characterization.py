@@ -96,9 +96,9 @@ def _acquisition(
             ro_channel = natives.MZ()[0][0]
             if state == 1:
                 sequence |= natives.RX()
-            for _ in range(2):
-                sequence.append((ro_channel, Delay(duration=params.delay)))
-                sequence |= natives.MZ()
+            sequence |= natives.MZ()
+            sequence.append((ro_channel, Delay(duration=params.delay)))
+            sequence |= natives.MZ()
 
         # execute the pulse sequence
         results = platform.execute(
