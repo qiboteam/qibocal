@@ -179,11 +179,18 @@ def project_psd(matrix):
 def _fit(data: StateTomographyData) -> StateTomographyResults:
     """Post-processing for two qubit state tomography.
 
-    Uses the standard linear inversion algorithm described in
-    https://en.wikipedia.org/wiki/Quantum_tomography#Linear_inversion
-    to reconstruct the density matrix.
-    The matrix is also post projected after the linear inversion
-    using ``project_psd``.
+    Uses a linear inversion algorithm to reconstruct the density matrix
+    from measurements, with the following steps:
+    1. Construct a linear transformation M, from density matrix
+    to Born-probabilities in the space of all two-qubit measurement bases
+    (in our case XX, XY, XZ, YX, YY, YZ, ZX, ZY, ZZ).
+    2. Invert M to get the transformation from Born-probabilities to
+    density matrices.
+    3. Calculate vector of Born-probabilities from experimental measurements (frequencies).
+    4. Map this vector to a density matrix (``measured_raw_density_matrix``) using the
+    inverse of M from step 2.
+    5. Project the calculated density matrix to the space of positive semidefinite
+    matrices (``measured_density_matrix``) using the function ``project_psd``.
     """
     rotations = [
         np.kron(rotation_matrix(basis1), rotation_matrix(basis2))
@@ -296,7 +303,7 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitP
         return [fig_measurements], fitting_report
 
     measured = np.array(fit.measured_density_matrix_real[target]) + 1j * np.array(
-        fit.measured_raw_density_matrix_imag[target]
+        fit.measured_density_matrix_imag[target]
     )
     fig = plot_reconstruction(data.ideal[target], measured)
 
