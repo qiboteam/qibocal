@@ -1,9 +1,13 @@
 platform: dummy
 
-targets: [0,1]
+targets: [2,0,3]
 
 
 actions:
+  - id: mermin
+    operation: mermin
+    parameters:
+      ntheta: 10
 
 #   - id: resoantor_amplitude
 #     operation: resonator_amplitude

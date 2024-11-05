@@ -13,7 +13,6 @@ from qibocal.auto.operation import Data, Parameters, Results, Routine
 
 from ...readout_mitigation_matrix import readout_mitigation_matrix
 from ...utils import calculate_frequencies
-from .circuits import create_mermin_circuits
 from .pulses import create_mermin_sequences
 from .utils import (
     compute_mermin,
@@ -157,85 +156,85 @@ class MerminResults(Results):
         return key in [target for target in self.mermin]
 
 
-def _acquisition_pulses(
+def _acquisition(
     params: MerminParameters,
     platform: Platform,
-    targets: list[QubitId],
+    targets: list[list[QubitId]],
 ) -> MerminData:
     r"""Data acquisition for CHSH protocol using pulse sequences."""
 
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
     data = MerminData(thetas=thetas.tolist())
-    # targets = list(targets[0])
-    n = len(targets)
-    # print(targets, n)
+    for qubits in targets:
+        # n = len(targets)
+        mermin_polynomial = get_mermin_polynomial(len(targets))
+        readout_basis = get_readout_basis(mermin_polynomial)
+        # mermin_coefficients = get_mermin_coefficients(mermin_polynomial)
+
+        if params.apply_error_mitigation:
+            mitigation_data, _ = readout_mitigation_matrix.acquisition(
+                readout_mitigation_matrix.parameters_type.load(
+                    dict(pulses=True, nshots=params.nshots)
+                ),
+                platform,
+                [targets],
+            )
+
+            # mitigation_results, _ = readout_mitigation_matrix.fit(mitigation_data)
+
+        for theta in thetas:
+            mermin_sequences = create_mermin_sequences(
+                platform, qubits, readout_basis=readout_basis, theta=theta
+            )
+            options = ExecutionParameters(nshots=params.nshots)
+
+            # mermin_frequencies = []
+            for basis, sequence in mermin_sequences.items():
+                results = platform.execute_pulse_sequence(sequence, options=options)
+                frequencies = calculate_frequencies(results, targets)
+                data.register_basis(targets, basis, frequencies)
+
+    return data
+
+
+def _fit(data: MerminData) -> MerminResults:
+    """Fitting for CHSH protocol."""
+    results = {}
+    mitigated_results = {}
+
+    n = len(data.targets)
     mermin_polynomial = get_mermin_polynomial(n)
     readout_basis = get_readout_basis(mermin_polynomial)
     mermin_coefficients = get_mermin_coefficients(mermin_polynomial)
+    freq = data.merge_frequencies(data.targets, readout_basis)
 
-    if params.apply_error_mitigation:
-        mitigation_data, _ = readout_mitigation_matrix.acquisition(
-            readout_mitigation_matrix.parameters_type.load(
-                dict(pulses=True, nshots=params.nshots)
-            ),
-            platform,
-            [targets],
-        )
+    if data.mitigation_matrix:
+        matrix = data.mitigation_matrix[pair]
+        mitigated_freq_list = []
+        for freq_basis in freq:
+            mitigated_freq = {format(i, f"0{n}b"): [] for i in range(2**n)}
+            for i in range(len(data.thetas)):
+                freq_array = np.zeros(2**n)
+                for k, v in freq_basis.items():
+                    freq_array[int(k, 2)] = v[i]
+                freq_array = freq_array.reshape(-1, 1)
+                for j, val in enumerate(matrix @ freq_array):
+                    mitigated_freq[format(j, f"0{n}b")].append(float(val))
+            mitigated_freq_list.append(mitigated_freq)
+    print(freq, mermin_coefficients)
+    results["".join(data.targets)] = [
+        compute_mermin(freq, mermin_coefficients, l) for l in range(len(data.thetas))
+    ]
 
-        mitigation_results, _ = readout_mitigation_matrix.fit(mitigation_data)
-
-    for theta in thetas:
-        mermin_sequences = create_mermin_sequences(
-            platform, targets, readout_basis=readout_basis, theta=theta
-        )
-        options = ExecutionParameters(nshots=params.nshots)
-
-        mermin_frequencies = []
-        for basis, sequence in mermin_sequences.items():
-            results = platform.execute_pulse_sequence(sequence, options=options)
-            frequencies = calculate_frequencies(results, targets)
-            data.register_basis(targets, basis, frequencies)
-
-    return data
-
-
-def _acquisition_circuits(
-    params: MerminParameters,
-    platform: Platform,
-    targets: list[tuple[QubitId]],
-) -> MerminData:
-    r"""Data acquisition for CHSH protocol using pulse sequences."""
-
-    thetas = np.linspace(0, 2 * np.pi, params.ntheta)
-    data = MerminData(thetas=thetas.tolist())
-    targets = list(targets[0])
-    n = len(targets)
-    mermin_polynomial = get_mermin_polynomial(n)
-    readout_basis = get_readout_basis(mermin_polynomial)
-    mermin_coefficients = get_mermin_coefficients(mermin_polynomial)
-
-    if params.apply_error_mitigation:
-        mitigation_data, _ = readout_mitigation_matrix.acquisition(
-            readout_mitigation_matrix.parameters_type.load(
-                dict(pulses=False, nshots=params.nshots)
-            ),
-            platform,
-            [targets],
-        )
-
-        mitigation_results, _ = readout_mitigation_matrix.fit(mitigation_data)
-
-    mermin_circuits = create_mermin_circuits(
-        targets, native=params.native, readout_basis=readout_basis
-    )
-
-    for basis, circuit in mermin_circuits.items():
-        results = circuit(nshots=params.nshots)
-        data.register_basis(targets, basis, results.frequencies())
-
-    # mermin_bare = compute_mermin(frequencies=mermin_frequencies, mermin_coefficients)
-
-    return data
+    if data.mitigation_matrix:
+        mitigated_results["".join(data.targets)] = [
+            compute_mermin(mitigated_freq_list, mermin_coefficients, l)
+            for l in range(len(data.thetas))
+        ]
+    print(results)
+    # print(type(results[0]))
+    print(mitigated_results)
+    return MerminResults(mermin=results, mermin_mitigated=mitigated_results)
 
 
 def _plot(data: MerminData, fit: MerminResults, target):
@@ -323,45 +322,4 @@ def _plot(data: MerminData, fit: MerminResults, target):
     return figures, ""
 
 
-def _fit(data: MerminData) -> MerminResults:
-    """Fitting for CHSH protocol."""
-    results = {}
-    mitigated_results = {}
-
-    n = len(data.targets)
-    mermin_polynomial = get_mermin_polynomial(n)
-    readout_basis = get_readout_basis(mermin_polynomial)
-    mermin_coefficients = get_mermin_coefficients(mermin_polynomial)
-    freq = data.merge_frequencies(data.targets, readout_basis)
-
-    if data.mitigation_matrix:
-        matrix = data.mitigation_matrix[pair]
-        mitigated_freq_list = []
-        for freq_basis in freq:
-            mitigated_freq = {format(i, f"0{n}b"): [] for i in range(2**n)}
-            for i in range(len(data.thetas)):
-                freq_array = np.zeros(2**n)
-                for k, v in freq_basis.items():
-                    freq_array[int(k, 2)] = v[i]
-                freq_array = freq_array.reshape(-1, 1)
-                for j, val in enumerate(matrix @ freq_array):
-                    mitigated_freq[format(j, f"0{n}b")].append(float(val))
-            mitigated_freq_list.append(mitigated_freq)
-    print(freq, mermin_coefficients)
-    results["".join(data.targets)] = [
-        compute_mermin(freq, mermin_coefficients, l) for l in range(len(data.thetas))
-    ]
-
-    if data.mitigation_matrix:
-        mitigated_results["".join(data.targets)] = [
-            compute_mermin(mitigated_freq_list, mermin_coefficients, l)
-            for l in range(len(data.thetas))
-        ]
-    print(results)
-    # print(type(results[0]))
-    print(mitigated_results)
-    return MerminResults(mermin=results, mermin_mitigated=mitigated_results)
-
-
-mermin_pulses = Routine(_acquisition_pulses, _fit, _plot)
-mermin_circuits = Routine(_acquisition_circuits, _fit, _plot)
+mermin = Routine(_acquisition, _fit, _plot)

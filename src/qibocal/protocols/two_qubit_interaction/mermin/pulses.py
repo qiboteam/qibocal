@@ -7,9 +7,9 @@ from qibolab.pulses import PulseSequence
 def create_mermin_sequence(platform, qubits, theta=None):
     """Creates the pulse sequence to generate the bell states and with a theta-measurement"""
 
-    n = len(qubits)
+    nqubits = len(qubits)
     if not theta:
-        theta = ((n - 1) * 0.25 * np.pi) % (2 * np.pi)
+        theta = ((nqubits - 1) * 0.25 * np.pi) % (2 * np.pi)
 
     virtual_z_phases = defaultdict(int)
     sequence = PulseSequence()
@@ -27,7 +27,7 @@ def create_mermin_sequence(platform, qubits, theta=None):
     # qubits[0] needs to be the center qubit where everything is connected
     for i in range(1, len(qubits)):
         (cz_sequence1, cz_virtual_z_phases) = platform.create_CZ_pulse_sequence(
-            [qubits[0]] + [qubits[i]], sequence.finish + 8
+            [qubits[0]] + [qubits[i]], sequence.finish + 8  # TODO: ask for the 8
         )
         sequence.add(cz_sequence1)
         for qubit in cz_virtual_z_phases:
