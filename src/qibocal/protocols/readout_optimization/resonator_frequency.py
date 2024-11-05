@@ -4,7 +4,14 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, Parameter, Platform, PulseSequence, Sweeper
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Platform,
+    PulseSequence,
+    Sweeper,
+)
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
@@ -78,23 +85,16 @@ def _acquisition(
 
     """
 
-    # create 2 sequences of pulses for the experiment:
-    # sequence_0: I  - MZ
-    # sequence_1: RX - MZ
-
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence_0 = PulseSequence()
     sequence_1 = PulseSequence()
     ro_pulses = {}
-    qd_pulses = {}
     for qubit in targets:
-        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
-        )
-        sequence_0.add(ro_pulses[qubit])
-        sequence_1.add(qd_pulses[qubit])
-        sequence_1.add(ro_pulses[qubit])
+        natives = platform.natives.single_qubit[qubit]
+
+        sequence_0 |= natives.MZ()
+
+        sequence_1 |= natives.RX()
+        sequence_1 |= natives.MZ()
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
@@ -102,52 +102,58 @@ def _acquisition(
     )
 
     data = ResonatorFrequencyData(resonator_type=platform.resonator_type)
-    sweeper = Sweeper(
-        Parameter.frequency,
-        delta_frequency_range,
-        pulses=[ro_pulses[qubit] for qubit in targets],
-        type=SweeperType.OFFSET,
+
+    sweepers = [
+        Sweeper(
+            parameter=Parameter.frequency,
+            values=platform.config(platform.qubits[q].probe).frequency
+            + delta_frequency_range,
+            channels=[platform.qubits[q].probe],
+        )
+        for q in targets
+    ]
+
+    results_0 = platform.execute(
+        [sequence_0],
+        [sweepers],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
 
-    results_0 = platform.sweep(
-        sequence_0,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-        ),
-        sweeper,
+    results_1 = platform.execute(
+        [sequence_1],
+        [sweepers],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
-
-    results_1 = platform.sweep(
-        sequence_1,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-        ),
-        sweeper,
-    )
-
     # retrieve the results for every qubit
     for qubit in targets:
         for k, freq in enumerate(delta_frequency_range):
-            i_values = []
-            q_values = []
-            states = []
-            for i, results in enumerate([results_0, results_1]):
-                result = results[ro_pulses[qubit].serial]
-                i_values.extend(result.voltage_i[k])
-                q_values.extend(result.voltage_q[k])
-                states.extend([i] * len(result.voltage_i[k]))
-
+            iq0 = results_0[
+                list(sequence_0.channel(platform.qubits[qubit].acquisition))[-1].id
+            ]
+            iq1 = results_1[
+                list(sequence_1.channel(platform.qubits[qubit].acquisition))[-1].id
+            ]
+            iqs = np.concatenate((iq0, iq1))
             model = QubitFit()
-            model.fit(np.stack((i_values, q_values), axis=-1), np.array(states))
+            model.fit(iqs[:, k, :], np.array([0] * params.nshots + [1] * params.nshots))
             data.register_qubit(
                 ResonatorFrequencyType,
                 (qubit),
                 dict(
-                    freq=np.array([(ro_pulses[qubit].frequency + freq)]),
+                    freq=np.array(
+                        [
+                            (
+                                platform.config(platform.qubits[qubit].probe).frequency
+                                + freq
+                            )
+                        ]
+                    ),
                     assignment_fidelity=np.array([model.assignment_fidelity]),
                     angle=np.array([model.angle]),
                     threshold=np.array([model.threshold]),
