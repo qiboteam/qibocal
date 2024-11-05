@@ -58,14 +58,14 @@ def create_mermin_sequences(platform, qubits, readout_basis, theta):
         sequence, virtual_z_phases = create_mermin_sequence(
             platform, qubits, theta=theta
         )
-        t = sequence.finish
+        # t = sequence.finish
         # print(basis)
         for i, base in enumerate(basis):
             if base == "X":
                 sequence.add(
                     platform.create_RX90_pulse(
                         qubits[i],
-                        start=t,
+                        start=sequence.finish,
                         relative_phase=virtual_z_phases[qubits[i]] + np.pi / 2,
                     )
                 )
@@ -73,15 +73,15 @@ def create_mermin_sequences(platform, qubits, readout_basis, theta):
                 sequence.add(
                     platform.create_RX90_pulse(
                         qubits[i],
-                        start=t,
+                        start=sequence.finish,
                         relative_phase=virtual_z_phases[qubits[i]],
                     )
                 )
         measurement_start = sequence.finish
 
         for qubit in qubits:
-            MZ_pulse = platform.create_MZ_pulse(qubit, start=measurement_start)
-            sequence.add(MZ_pulse)
+            sequence.add(platform.create_MZ_pulse(qubit, start=measurement_start))
+
         mermin_sequences[basis] = sequence
 
     return mermin_sequences
