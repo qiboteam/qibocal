@@ -199,13 +199,17 @@ def _plot(
 def _update(
     results: ReadoutMitigationMatrixData, platform: Platform, target: list[QubitId]
 ):
+    # create empty matrix if it doesn't exist
     if platform.calibration.readout_mitigation_matrix is None:
         platform.calibration.readout_mitigation_matrix = lil_matrix(
             (2**platform.calibration.nqubits, 2**platform.calibration.nqubits)
         )
 
+    # compute indices
     mask = sum(1 << platform.calibration.qubit_index(i) for i in target)
     indices = [i for i in range(2**platform.calibration.nqubits) if (i & mask) == i]
+
+    # update matrix
     platform.calibration.readout_mitigation_matrix[np.ix_(indices, indices)] = (
         results.readout_mitigation_matrix[tuple(target)]
     )

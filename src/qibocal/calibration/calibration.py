@@ -2,7 +2,8 @@ from pathlib import Path
 from typing import Annotated, Optional, Union
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, PlainSerializer
-from qibolab._core.serialize import NdArray
+
+from .serialize import SparseArray
 
 QubitId = Annotated[Union[int, str], Field(union_mode="left_to_right")]
 """Qubit name."""
@@ -142,9 +143,9 @@ class Calibration(Model):
     """Dict with single qubit calibration."""
     two_qubits: dict[QubitPairId, TwoQubitCalibration] = Field(default_factory=dict)
     """Dict with qubit pairs calibration."""
-    readout_mitigation_matrix: Optional[NdArray] = None
+    readout_mitigation_matrix: Optional[SparseArray] = None
     """Readout mitigation matrix."""
-    flux_crosstalk_matrix: Optional[NdArray] = None
+    flux_crosstalk_matrix: Optional[SparseArray] = None
     """Crosstalk flux matrix."""
 
     def dump(self, path: Path):
