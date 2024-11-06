@@ -95,10 +95,11 @@ def _acquisition(
             natives = platform.natives.single_qubit[qubit]
             ro_channel = natives.MZ()[0][0]
             if state == 1:
-                sequence |= natives.RX()
-            sequence |= natives.MZ()
+                sequence += natives.RX()
+            sequence.append((ro_channel, Delay(duration=natives.RX()[0][1].duration)))
+            sequence += natives.MZ()
             sequence.append((ro_channel, Delay(duration=params.delay)))
-            sequence |= natives.MZ()
+            sequence += natives.MZ()
 
         # execute the pulse sequence
         results = platform.execute(

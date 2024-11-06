@@ -91,10 +91,8 @@ def _acquisition(
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
 
-        sequence_0 |= natives.MZ()
-
-        sequence_1 |= natives.RX()
-        sequence_1 |= natives.MZ()
+        sequence_0 += natives.MZ()
+        sequence_1 += natives.RX() | natives.MZ()
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(

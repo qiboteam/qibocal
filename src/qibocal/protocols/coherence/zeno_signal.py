@@ -57,10 +57,10 @@ def zeno_sequence(
         natives = platform.natives.single_qubit[q]
         _, ro_pulse = natives.MZ()[0]
         readout_duration[q] = ro_pulse.duration
-        sequence |= natives.RX()
-
-        for _ in range(readouts):
-            sequence |= natives.MZ()
+        qubit_sequence = natives.RX() | natives.MZ()
+        for _ in range(readouts - 1):
+            qubit_sequence += natives.MZ()
+        sequence += qubit_sequence
 
     return sequence, readout_duration
 
