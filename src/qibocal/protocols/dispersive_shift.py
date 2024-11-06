@@ -97,7 +97,7 @@ def _acquisition(
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
         sequence_0 += natives.MZ()
-        sequence_1 += (natives.RX() | natives.MZ())
+        sequence_1 += natives.RX() | natives.MZ()
 
     delta_frequency_range = np.arange(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
