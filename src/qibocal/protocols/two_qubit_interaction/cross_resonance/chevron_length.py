@@ -206,6 +206,8 @@ def _plot(
             row=1,
             col=i+1,
         )
+        fig.update_xaxes(title_text="Pulse Duration [ns]", row=1, col=i+1)
+        fig.update_yaxes(title_text="Pulse Amplitude [a.u.]", row=1, col=i+1)
     fig.update_layout(coloraxis={'colorscale':'Plasma'})
     
     figs.append(fig)
