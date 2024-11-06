@@ -8,10 +8,11 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibolab.pulses import PulseSequence
+from qibolab.pulses import Pulse, PulseSequence, PulseType
+from qibolab.pulses import Gaussian, Drag, Rectangular, GaussianSquare
+
 from qibolab.native import NativePulse
 from qibolab.qubits import QubitId, QubitPairId
-from qibolab.pulses import Pulse, Rectangular, PulseType, GaussianSquare
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from .utils import STATES
@@ -39,12 +40,18 @@ class CrossResonanceAmplitudeParameters(Parameters):
     """CR pulse duration [ns]."""
     pulse_amplitude: Optional[float] = None
     """CR pulse amplitude [ns]."""
-
+    shape: Optional[str] = "Rectangular()"
+    """CR pulse shape parameters."""
     @property
     def amplitude_factor_range(self):
         return np.arange(
             self.min_amp_factor, self.max_amp_factor, self.step_amp_factor
         )
+    """Amplitude factor range."""
+    @property
+    def pulse_shape(self):
+        return eval(self.shape)
+    """Cross Resonance Pulse shape."""
 
 
 @dataclass
@@ -89,7 +96,7 @@ def _acquisition(
                                  frequency = tgt_native_rx.frequency,
                                  relative_phase=0,
                                  channel=ctr_native_rx.channel,
-                                 shape = GaussianSquare(0.9,5),
+                                 shape = params.pulse_shape,
                                  type = PulseType.DRIVE,
                                  qubit = control,
                                  )

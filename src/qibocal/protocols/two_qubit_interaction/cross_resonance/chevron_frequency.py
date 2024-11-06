@@ -7,11 +7,12 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence, Pulse, GaussianSquare, PulseType
 from qibolab.qubits import QubitId, QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal.protocols.utils import HZ_TO_GHZ
 from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibolab.pulses import Pulse, PulseSequence, PulseType
+from qibolab.pulses import Gaussian, Drag, Rectangular, GaussianSquare
 
 from .utils import STATES
 
@@ -41,6 +42,12 @@ class CrossResonanceChevronFrequencyParameters(Parameters):
     """Frequency step size."""
 
     pulse_amplitude: Optional[float] = None
+    shape: Optional[str] = "Rectangular()"
+    """CR pulse shape parameters."""
+    @property
+    def pulse_shape(self):
+        return eval(self.shape)
+    """Cross Resonance Pulse shape."""
 
     @property
     def duration_range(self):
@@ -108,7 +115,7 @@ def _acquisition(
                                  frequency = target_drive_freq,
                                  relative_phase=0,
                                  channel=rx_control.channel,
-                                 shape = GaussianSquare(0.9,5),
+                                 shape = params.pulse_shape,
                                  type = PulseType.DRIVE,
                                  qubit = control,
                                  )

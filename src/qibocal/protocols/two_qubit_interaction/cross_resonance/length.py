@@ -7,13 +7,12 @@ import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
-
-from qibolab.pulses import PulseSequence
 from qibolab.native import NativePulse
 from qibolab.qubits import QubitId, QubitPairId
-from qibolab.pulses import Pulse, Rectangular, PulseType, Gaussian
-
 from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibolab.pulses import Pulse, PulseSequence, PulseType
+from qibolab.pulses import Gaussian, Drag, Rectangular, GaussianSquare
+
 from .utils import STATES
 
 CrossResonanceType = np.dtype(
@@ -34,14 +33,20 @@ class CrossResonanceParameters(Parameters):
     """Final pi pulse duration [ns]."""
     pulse_duration_step: float
     """Step pi pulse duration [ns]."""
-
     pulse_amplitude: Optional[float] = None
-
+    """CR pulse amplitude [ns]."""
+    shape: Optional[str] = "Rectangular()"
+    """CR pulse shape."""
     @property
     def duration_range(self):
         return np.arange(
             self.pulse_duration_start, self.pulse_duration_end, self.pulse_duration_step
         )
+    """Pulse duration range."""
+    @property
+    def pulse_shape(self):
+        return eval(self.shape)
+    """Cross Resonance Pulse shape."""
 
 
 @dataclass
@@ -51,7 +56,7 @@ class CrossResonanceResults(Results):
 
 @dataclass
 class CrossResonanceData(Data):
-    """Data structure for rCross Resonance Gate Calibration."""
+    """Data structure for Cross Resonance Gate Calibration."""
 
     data: dict[QubitId, npt.NDArray[CrossResonanceType]] = field(default_factory=dict)
     """Raw data acquired."""
@@ -65,14 +70,15 @@ def _acquisition(
     data = CrossResonanceData()
 
     for pair in targets:
-        for ctr_setup  in STATES:
-            for tgt_setup in STATES:
+        for tgt_setup in STATES:
+            for ctr_setup in STATES:
                 target, control = pair
                 tgt_native_rx:NativePulse = platform.qubits[target].native_gates.RX.pulse(start=0)
                 ctr_native_rx:NativePulse = platform.qubits[control].native_gates.RX.pulse(start=0)
 
                 sequence = PulseSequence()
                 next_start = 0
+                
                 if tgt_setup == STATES[1]:
                     sequence.add(tgt_native_rx)
                     next_start = tgt_native_rx.finish
@@ -86,7 +92,7 @@ def _acquisition(
                                 amplitude=ctr_native_rx.amplitude,
                                 frequency=tgt_native_rx.frequency,   # control frequency
                                 relative_phase=0,
-                                shape=Gaussian(5),
+                                shape=params.pulse_shape,
                                 qubit=control,
                                 channel= ctr_native_rx.channel ,type=PulseType.DRIVE
                                 )
@@ -172,4 +178,4 @@ def _plot(data: CrossResonanceData, target: QubitPairId, fit: CrossResonanceResu
     return figs, ""
 
 cross_resonance_length = Routine(_acquisition, _fit, _plot)
-"""CrossResonance Sequences Routine object."""
+"""CrossResonance Length Routine object."""

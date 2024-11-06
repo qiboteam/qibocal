@@ -7,10 +7,11 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence, PulseType, GaussianSquare, Pulse
 from qibolab.qubits import QubitId, QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibolab.pulses import Pulse, PulseSequence, PulseType
+from qibolab.pulses import Gaussian, Drag, Rectangular, GaussianSquare
 
 from qibocal.protocols.two_qubit_interaction.utils import order_pair
 
@@ -43,9 +44,15 @@ class CrossResonanceChevronParameters(Parameters):
     """CR pulse amplitude maximum."""
     amplitude_step_factor: float
     """CR pulse amplitude step."""
-
+    
     pulse_amplitude: Optional[float] = None
     pulse_duration: Optional[int] = None
+    shape: Optional[str] = "Rectangular()"
+    """CR pulse shape parameters."""
+    @property
+    def pulse_shape(self):
+        return eval(self.shape)
+    """Cross Resonance Pulse shape."""
 
     @property
     def amplitude_factor_range(self):
@@ -126,7 +133,7 @@ def _acquisition(
                                  frequency = target_drive_freq,
                                  relative_phase=0,
                                  channel=rx_control.channel,
-                                 shape = GaussianSquare(0.9,5),
+                                 shape = params.pulse_shape,
                                  type = PulseType.DRIVE,
                                  qubit = control,
                                  )

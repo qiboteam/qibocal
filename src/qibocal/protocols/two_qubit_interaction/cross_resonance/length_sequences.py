@@ -6,11 +6,12 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId, QubitPairId
-
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.protocols.two_qubit_interaction.cross_resonance.length import CrossResonanceParameters
+from qibolab.pulses import Pulse, PulseSequence, PulseType
+from qibolab.pulses import Gaussian, Drag, Rectangular, GaussianSquare
+
 from .utils import STATES
 
 CrossResonanceSignalType = np.dtype(
@@ -44,7 +45,6 @@ def _acquisition(
     params: CrossResonanceSeqParameters, platform: Platform, targets: list[QubitPairId]
 ) -> CrossResonanceSeqData:
     """Data acquisition for Cross Resonance Gate Calibration using Sequences."""
-    from qibolab.pulses import Pulse, Rectangular, PulseType, Gaussian
     from qibolab.native import NativePulse
 
     data = CrossResonanceSeqData()
@@ -53,7 +53,6 @@ def _acquisition(
     for pair in targets:
         for tgt_setup in STATES:
             for ctr_setup in STATES:
-            # sweep the parameter
                 for duration in params.duration_range:
                     target, control = pair
                     tgt_native_rx:NativePulse = platform.qubits[target].native_gates.RX.pulse(start=0)
@@ -71,14 +70,14 @@ def _acquisition(
                         next_start = max(ctr_native_rx.finish, next_start)
                     
                     cr_pulse: Pulse = Pulse(start=next_start,
-                                    duration=duration,
-                                    amplitude=ctr_native_rx.amplitude,
-                                    frequency=tgt_native_rx.frequency,   # control frequency
-                                    relative_phase=0,
-                                    shape=Rectangular(),
-                                    qubit=control,
-                                    channel= ctr_native_rx.channel ,type=PulseType.DRIVE
-                                    )
+                                duration=duration,
+                                amplitude=ctr_native_rx.amplitude,
+                                frequency=tgt_native_rx.frequency,   # control frequency
+                                relative_phase=0,
+                                shape=params.pulse_shape,
+                                qubit=control,
+                                channel= ctr_native_rx.channel ,type=PulseType.DRIVE
+                                )
 
                     if params.pulse_amplitude is not None:
                         cr_pulse.amplitude = params.pulse_amplitude
@@ -149,7 +148,7 @@ def _plot(data: CrossResonanceSeqData, target: QubitPairId, fit: CrossResonanceS
             fig.update_layout(
                 title=f"Qubit {ro_qubit}: {label}",
                 xaxis_title="CR Pulse Length (ns)",
-                yaxis_title="Excited State Probability",
+                yaxis_title="Signal (a.u.)",
             )
 
         figs.append(fig)
