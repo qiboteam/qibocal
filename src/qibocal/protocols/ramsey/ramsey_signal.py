@@ -140,8 +140,6 @@ def _acquisition(
             )
 
     else:
-        raise NotImplementedError
-
         sequences, all_ro_pulses = [], []
         for wait in waits:
             sequence, _ = ramsey_sequence(platform, targets, wait)

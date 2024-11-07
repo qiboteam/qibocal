@@ -108,7 +108,9 @@ def _acquisition(
             # TODO: here we can add pairs of this in a for loop
             sequence.append((qd_channel, drag))
             sequence.append((qd_channel, drag_negative))
-sequence.append((ro_channel, Delay(duration=drag.duration + drag_negative.duration)))
+            sequence.append(
+                (ro_channel, Delay(duration=drag.duration + drag_negative.duration))
+            )
             sequence.append((ro_channel, ro_pulse))
 
         sequences.append(sequence)

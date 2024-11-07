@@ -130,8 +130,6 @@ def _acquisition(
             )
 
     if params.unrolling:
-        raise NotImplementedError
-
         sequences, all_ro_pulses = [], []
         for wait in waits:
             sequence, _ = ramsey_sequence(platform, targets, wait)
