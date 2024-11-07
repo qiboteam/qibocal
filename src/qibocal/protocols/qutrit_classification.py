@@ -11,6 +11,8 @@ from qibocal.protocols.classification import (
 )
 from qibocal.protocols.utils import plot_results
 
+from ..auto.operation import Results
+
 COLUMNWIDTH = 600
 LEGEND_FONT_SIZE = 20
 TITLE_SIZE = 25
