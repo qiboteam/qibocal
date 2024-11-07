@@ -13,11 +13,10 @@ from qibolab import (
 )
 from scipy.optimize import curve_fit
 
+from ... import update
 from ...auto.operation import Data, Parameters, QubitId, Results, Routine
 from ...config import log
 from ...result import magnitude, phase
-
-from ... import update
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, extract_feature, table_dict, table_html
 from . import utils
 
