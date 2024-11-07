@@ -1,11 +1,12 @@
 from dataclasses import asdict, dataclass, field
 
 import numpy as np
-from qibolab import Parameter, Platform, PulseSequence, Sweeper
+from qibolab import Delay, Parameter, Platform, PulseSequence, Sweeper
 
-from qibocal import update
 from qibocal.auto.operation import QubitId, Routine
+from qibocal.update import replace
 
+from ..result import magnitude, phase
 from .qubit_spectroscopy import (
     QubitSpectroscopyData,
     QubitSpectroscopyParameters,
@@ -14,9 +15,6 @@ from .qubit_spectroscopy import (
 )
 from .resonator_spectroscopy import ResSpecType
 from .utils import spectroscopy_plot, table_dict, table_html
-
-DEFAULT_ANHARMONICITY = 300e6
-"""Initial guess for anharmonicity."""
 
 
 @dataclass
@@ -68,50 +66,44 @@ def _acquisition(
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
     ro_pulses = {}
-    qd_pulses = {}
-    rx_pulses = {}
     amplitudes = {}
+    sweepers = []
     drive_frequencies = {}
-    for qubit in targets:
-        rx_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        drive_frequencies[qubit] = rx_pulses[qubit].frequency
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=rx_pulses[qubit].finish, duration=params.drive_duration
-        )
 
-        if platform.qubits[qubit].native_gates.RX12.frequency is None:
-
-            qd_pulses[qubit].frequency = (
-                rx_pulses[qubit].frequency + DEFAULT_ANHARMONICITY
-            )
-        else:
-            qd_pulses[qubit].frequency = platform.qubits[
-                qubit
-            ].native_gates.RX12.frequency
-
-        if params.drive_amplitude is not None:
-            qd_pulses[qubit].amplitude = params.drive_amplitude
-
-        amplitudes[qubit] = qd_pulses[qubit].amplitude
-
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
-        )
-        sequence.add(rx_pulses[qubit])
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
-
-    # define the parameter to sweep and its range:
-    # sweep only before qubit frequency
     delta_frequency_range = np.arange(
         -params.freq_width, params.freq_width, params.freq_step
     )
-    sweeper = Sweeper(
-        Parameter.frequency,
-        delta_frequency_range,
-        pulses=[qd_pulses[qubit] for qubit in targets],
-        type=SweeperType.OFFSET,
-    )
+    for qubit in targets:
+        natives = platform.natives.single_qubit[qubit]
+
+        qd_channel, qd_pulse = natives.RX()[0]
+        qd12_channel, qd12_pulse = natives.RX12()[0]
+        ro_channel, ro_pulse = natives.MZ()[0]
+
+        qd_pulse = replace(qd_pulse, duration=params.drive_duration)
+        if params.drive_amplitude is not None:
+            qd_pulse = replace(qd_pulse, amplitude=params.drive_amplitude)
+
+        amplitudes[qubit] = qd12_pulse.amplitude
+        ro_pulses[qubit] = ro_pulse
+
+        sequence.append((qd_channel, qd_pulse))
+        sequence.append((qd12_channel, Delay(duration=qd_pulse.duration)))
+        sequence.append((qd12_channel, qd12_pulse))
+        sequence.append(
+            (ro_channel, Delay(duration=qd_pulse.duration + qd12_pulse.duration))
+        )
+        sequence.append((ro_channel, ro_pulse))
+
+        f0 = platform.config(qd12_channel).frequency
+        drive_frequencies[qubit] = f0
+        sweepers.append(
+            Sweeper(
+                parameter=Parameter.frequency,
+                values=f0 + delta_frequency_range,
+                channels=[qd_channel],
+            )
+        )
 
     # Create data structure for data acquisition.
     data = QubitSpectroscopyEFData(
@@ -120,25 +112,38 @@ def _acquisition(
         drive_frequencies=drive_frequencies,
     )
 
-    results = platform.sweep(
-        sequence,
-        params.execution_parameters,
-        sweeper,
+    results = platform.execute(
+        [sequence],
+        [sweepers],
+        **params.execution_parameters,
     )
 
     # retrieve the results for every qubit
     for qubit, ro_pulse in ro_pulses.items():
-        result = results[ro_pulse.serial]
+        result = results[ro_pulse.id]
+
+        f0 = platform.config(platform.qubits[qubit].drive_qudits[1, 2]).frequency
         # store the results
+
+        signal = magnitude(result)
+        _phase = phase(result)
+        if len(signal.shape) > 1:
+            error_signal = np.std(signal, axis=0, ddof=1) / np.sqrt(signal.shape[0])
+            signal = np.mean(signal, axis=0)
+            error_phase = np.std(_phase, axis=0, ddof=1) / np.sqrt(_phase.shape[0])
+            _phase = np.mean(_phase, axis=0)
+        else:
+            error_signal, error_phase = None, None
+
         data.register_qubit(
             ResSpecType,
             (qubit),
             dict(
-                signal=result.average.magnitude,
-                phase=result.average.phase,
-                freq=delta_frequency_range + qd_pulses[qubit].frequency,
-                error_signal=result.average.std,
-                error_phase=result.phase_std,
+                signal=signal,
+                phase=_phase,
+                freq=delta_frequency_range + f0,
+                error_signal=error_signal,
+                error_phase=error_phase,
             ),
         )
     return data
@@ -193,8 +198,11 @@ def _plot(
 
 def _update(results: QubitSpectroscopyEFResults, platform: Platform, target: QubitId):
     """Update w12 frequency"""
-    update.frequency_12_transition(results.frequency[target], platform, target)
-    update.anharmonicity(results.anharmonicity[target], platform, target)
+    # update.frequency_12_transition(results.frequency[target], platform, target)
+    platform.calibration.single_qubits[target].qubit.frequency_12 = results.frequency[
+        target
+    ]
+    # update.anharmonicity(results.anharmonicity[target], platform, target)
 
 
 qubit_spectroscopy_ef = Routine(_acquisition, fit_ef, _plot, _update)

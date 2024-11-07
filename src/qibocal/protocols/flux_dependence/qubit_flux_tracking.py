@@ -13,7 +13,7 @@ from qibolab import (
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.config import raise_error
 
-from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
+# from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
 from . import qubit_flux_dependence, utils
 
 

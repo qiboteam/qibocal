@@ -17,7 +17,6 @@ from qibocal import update
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.config import log
 
-from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
 from ..utils import HZ_TO_GHZ, extract_feature, table_dict, table_html
 from . import utils
 from .qubit_flux_dependence import (
