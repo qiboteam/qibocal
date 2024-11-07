@@ -101,8 +101,12 @@ class PowerLevel(str, Enum):
     high = "high"
     low = "low"
 
+def lorentzian(frequency, amplitude, center, sigma, offset, a1=0):
+    df = (frequency - center)
+    background = offset+ a1*df*1e-9
+    return lorentzian_(frequency, amplitude, center, sigma, 0.0)+background
 
-def lorentzian(frequency, amplitude, center, sigma, offset):
+def lorentzian_(frequency, amplitude, center, sigma, offset):
     # http://openafox.com/science/peak-function-derivations.html
     return (amplitude / np.pi) * (
         sigma / ((frequency - center) ** 2 + sigma**2)
@@ -133,12 +137,14 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         ]  # Argmin = Returns the indices of the minimum values along an axis.
         guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
         guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
+        guess_amp_slope = (voltages.max()-voltages.min())/(frequencies.max()-frequencies.min())
 
     initial_parameters = [
         guess_amp,
         guess_center,
         guess_sigma,
         guess_offset,
+        guess_amp_slope,
     ]
     # fit the model with the data and guessed parameters
     try:

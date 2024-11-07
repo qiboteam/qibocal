@@ -31,6 +31,8 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
     """Attenuation maximum value [dB]."""
     step_att: int
     """Attenuation step [dB]."""
+    phase_delay: float = None
+    """Phase delay correction in rad/MHz (us). By default no correction is performed."""
 
 
 @dataclass
@@ -132,11 +134,16 @@ def _acquisition(
     # retrieve the results for every qubit
     for qubit in targets:
         result = results[ro_pulses[qubit].serial]
+        frequency =delta_frequency_range + ro_pulses[qubit].frequency
+        phase = result.average.phase
+        if params.phase_delay is not None:
+            phase = np.unwrap(phase)
+        
         data.register_qubit(
             qubit,
             signal=result.magnitude,
-            phase=result.phase,
-            freq=delta_frequency_range + ro_pulses[qubit].frequency,
+            phase=phase,
+            freq=frequency,
             att=attenuation_range,
         )
 

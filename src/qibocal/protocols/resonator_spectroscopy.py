@@ -100,6 +100,9 @@ class ResonatorSpectroscopyParameters(Parameters):
     Otherwise the default attenuation defined on the platform runcard will be used"""
     hardware_average: bool = True
     """By default hardware average will be performed."""
+    phase_delay: float = None
+    """Phase delay correction in rad/MHz (us). By default no correction is performed."""
+
 
     def __post_init__(self):
         if isinstance(self.power_level, str):
@@ -232,12 +235,20 @@ def _acquisition(
     for qubit in targets:
         result = results[ro_pulses[qubit].serial]
         # store the results
+        frequency =delta_frequency_range + ro_pulses[qubit].frequency
+        
+        if params.phase_delay is not None:
+            phase = result.average.phase
+            phase = np.unwrap(phase)-(frequency-frequency[0])*1e-6*params.phase_delay
+        else:
+            phase = result.average.phase
+
         data.register_qubit(
             ResSpecType,
             (qubit),
             dict(
                 signal=result.average.magnitude,
-                phase=result.average.phase,
+                phase=phase,
                 freq=delta_frequency_range + ro_pulses[qubit].frequency,
                 error_signal=result.average.std,
                 error_phase=result.phase_std,

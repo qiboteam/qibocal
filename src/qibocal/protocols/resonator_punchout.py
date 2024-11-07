@@ -33,6 +33,8 @@ class ResonatorPunchoutParameters(Parameters):
     """Step amplitude multiplicative factor."""
     amplitude: float = None
     """Initial readout amplitude."""
+    phase_delay: float = None
+    """Phase delay correction in rad/MHz (us). By default no correction is performed."""
 
 
 @dataclass
@@ -147,10 +149,15 @@ def _acquisition(
     for qubit, ro_pulse in ro_pulses.items():
         # average signal, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulse.serial]
+        frequency =delta_frequency_range + ro_pulses[qubit].frequency
+        phase = result.average.phase
+        if params.phase_delay is not None:
+            phase = np.unwrap(phase)-(frequency-frequency[0])*1e-6*params.phase_delay
+
         data.register_qubit(
             qubit,
             signal=result.magnitude,
-            phase=result.phase,
+            phase=phase,
             freq=delta_frequency_range + ro_pulse.frequency,
             amp=amplitude_range * amplitudes[qubit],
         )
