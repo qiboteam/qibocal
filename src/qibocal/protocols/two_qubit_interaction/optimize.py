@@ -112,8 +112,6 @@ class OptimizeTwoQubitGateData(Data):
     """Angles swept."""
     native: str = "CZ"
     """Native two qubit gate."""
-    vphases: dict[QubitPairId, dict[QubitId, float]] = field(default_factory=dict)
-    """Virtual phases for each qubit."""
     amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
     """"Amplitudes swept."""
     durations: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
@@ -166,7 +164,6 @@ def _acquisition(
             for setup in ("I", "X"):
                 (
                     sequence,
-                    virtual_z_phase,
                     theta_pulse,
                     amplitude,
                     data.durations[ord_pair],
@@ -181,7 +178,6 @@ def _acquisition(
                     params.parking,
                     params.flux_pulse_amplitude_min,
                 )
-                data.vphases[ord_pair] = dict(virtual_z_phase)
                 theta = np.arange(
                     params.theta_start,
                     params.theta_end,
@@ -208,7 +204,7 @@ def _acquisition(
 
                 sweeper_theta = Sweeper(
                     Parameter.relative_phase,
-                    theta - data.vphases[ord_pair][target_q],
+                    theta,
                     pulses=[theta_pulse],
                     type=SweeperType.ABSOLUTE,
                 )
@@ -246,7 +242,7 @@ def _acquisition(
                     target_q,
                     control_q,
                     setup,
-                    theta - data.vphases[ord_pair][target_q],
+                    theta,
                     data.amplitudes[ord_pair],
                     data.durations[ord_pair],
                     result_control,
@@ -293,7 +289,7 @@ def _fit(
                     try:
                         popt, _ = curve_fit(
                             fit_function,
-                            np.array(data.thetas) - data.vphases[ord_pair][target],
+                            np.array(data.thetas),
                             target_data,
                             p0=pguess,
                             bounds=(
