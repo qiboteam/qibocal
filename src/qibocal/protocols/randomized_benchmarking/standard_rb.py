@@ -224,4 +224,14 @@ def _plot(
     return [fig], fitting_report
 
 
-standard_rb = Routine(_acquisition, _fit, _plot)
+def _update(results: StandardRBResult, platform: Platform, target: QubitId):
+    """Write rb fidelity in calibration."""
+
+    # TODO: shall we use the gate fidelity or the pulse fidelity
+    platform.calibration.single_qubits[target].rb_fidelity = [
+        results.fidelity[target],
+        results.fit_uncertainties[target][1] / 2,
+    ]
+
+
+standard_rb = Routine(_acquisition, _fit, _plot, _update)

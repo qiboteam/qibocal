@@ -18,7 +18,7 @@ QubitPairId = Annotated[
 CALIBRATION = "calibration.json"
 """Calibration file."""
 
-Measure = list[float]
+Measure = list[Optional[float]]
 """Measured is represented as two values: mean and error."""
 
 
