@@ -260,7 +260,7 @@ class Executor:
             platform = self.platform
 
         backend = construct_backend(backend="qibolab", platform=platform)
-        platform = self.platform = backend.platform
+        platform = self.platform = CalibrationPlatform.from_platform(backend.platform)
         assert isinstance(platform, CalibrationPlatform)
 
         if update is not None:
