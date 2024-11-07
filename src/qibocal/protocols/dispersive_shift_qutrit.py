@@ -92,17 +92,14 @@ def _acquisition(
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
         # prepare 0 and measure
-        sequence_0 |= natives.MZ()
+        sequence_0 += natives.MZ()
 
         # prepare 1 and measure
-        sequence_1 |= natives.RX()
-        sequence_1 |= natives.MZ()
+        sequence_1 += natives.RX() | natives.MZ()
 
         # prepare 2 and measure
-        sequence_2 |= natives.RX()
         assert natives.RX12 is not None, f"Missing RX12 calibration for qubit {qubit}"
-        sequence_2 |= natives.RX12()
-        sequence_2 |= natives.MZ()
+        sequence_2 = (natives.RX() + natives.RX12()) | natives.MZ()
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
