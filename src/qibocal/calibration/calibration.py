@@ -99,6 +99,8 @@ class Readout(Model):
     """Ground state position in IQ plane."""
     excited_state: list[float] = Field(default_factory=list)
     """Excited state position in IQ plane."""
+    qudits_frequency: dict[int, float] = Field(default_factory=dict)
+    """Dictionary mapping state with readout frequency."""
 
     @property
     def assignment_fidelity(self):

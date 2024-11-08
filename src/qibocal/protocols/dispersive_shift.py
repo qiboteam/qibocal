@@ -325,9 +325,15 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
 def _update(results: DispersiveShiftResults, platform: Platform, target: QubitId):
     update.readout_frequency(results.best_freq[target], platform, target)
     if results.frequencies[target] is not None:
-        delta = platform.qubits[target].drive_frequency - results.frequencies[target][0]
+        delta = (
+            platform.calibration.single_qubits[target].qubit.frequency_01
+            - results.frequencies[target][0]
+        )
         g = np.sqrt(np.abs(results.chi(target) * delta))
         update.coupling(g, platform, target)
+        platform.calibration.single_qubits[target].readout.qudits_frequency[1] = (
+            results.frequencies[target][1]
+        )
 
 
 dispersive_shift = Routine(_acquisition, _fit, _plot, _update)
