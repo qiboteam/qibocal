@@ -11,7 +11,6 @@ from .coherence.zeno import zeno
 from .dispersive_shift import dispersive_shift
 from .dispersive_shift_qutrit import dispersive_shift_qutrit
 from .drag import drag_tuning
-from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
 from .flux_dependence.qubit_crosstalk import qubit_crosstalk
 from .flux_dependence.qubit_flux_dependence import qubit_flux
@@ -71,7 +70,6 @@ __all__ = [
     "dispersive_shift",
     "dispersive_shift_qutrit",
     "drag_tuning",
-    "fast_reset",
     "flipping",
     "qubit_crosstalk",
     "qubit_flux",
