@@ -8,9 +8,6 @@ from .coherence.t1_signal import t1_signal
 from .coherence.t2 import t2
 from .coherence.t2_signal import t2_signal
 from .coherence.zeno import zeno
-from .couplers.coupler_chevron import coupler_chevron
-from .couplers.coupler_qubit_spectroscopy import coupler_qubit_spectroscopy
-from .couplers.coupler_resonator_spectroscopy import coupler_resonator_spectroscopy
 from .dispersive_shift import dispersive_shift
 from .dispersive_shift_qutrit import dispersive_shift_qutrit
 from .drag import drag_tuning
@@ -71,9 +68,6 @@ __all__ = [
     "t2",
     "t2_signal",
     "zeno",
-    "coupler_chevron",
-    "coupler_qubit_spectroscopy",
-    "coupler_resonator_spectroscopy",
     "dispersive_shift",
     "dispersive_shift_qutrit",
     "drag_tuning",
