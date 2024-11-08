@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -6,7 +7,8 @@ import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import QubitId, Routine
+from qibocal import update
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import (
     fallback_period,
@@ -16,26 +18,60 @@ from qibocal.protocols.utils import (
 )
 
 from ..result import probability
-from .flipping_signal import (
-    FlippingSignalData,
-    FlippingSignalParameters,
-    FlippingSignalResults,
-    _update,
-    flipping_fit,
-    flipping_sequence,
-)
 from .utils import COLORBAND, COLORBAND_LINE, chi2_reduced
 
 
+def flipping_sequence(
+    platform: Platform, qubit: QubitId, delta_amplitude: float, flips: int
+):
+    """Pulse sequence for flipping experiment."""
+
+    sequence = PulseSequence()
+    natives = platform.natives.single_qubit[qubit]
+    sequence |= natives.R(theta=np.pi / 2)
+
+    for _ in range(flips):
+
+        qd_channel, rx_pulse = natives.RX()[0]
+
+        rx_detuned = update.replace(
+            rx_pulse, amplitude=rx_pulse.amplitude + delta_amplitude
+        )
+        sequence.append((qd_channel, rx_detuned))
+        sequence.append((qd_channel, rx_detuned))
+
+    sequence |= natives.MZ()
+
+    return sequence
+
+
 @dataclass
-class FlippingParameters(FlippingSignalParameters):
+class FlippingParameters(Parameters):
     """Flipping runcard inputs."""
 
+    nflips_max: int
+    """Maximum number of flips ([RX(pi) - RX(pi)] sequences). """
+    nflips_step: int
+    """Flip step."""
+    unrolling: bool = False
+    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
+    Defaults to ``False``."""
+    delta_amplitude: float = 0
+    """Amplitude detuning."""
+
 
 @dataclass
-class FlippingResults(FlippingSignalResults):
+class FlippingResults(Results):
     """Flipping outputs."""
 
+    amplitude: dict[QubitId, Union[float, list[float]]]
+    """Drive amplitude for each qubit."""
+    delta_amplitude: dict[QubitId, Union[float, list[float]]]
+    """Difference in amplitude between initial value and fit."""
+    delta_amplitude_detuned: dict[QubitId, Union[float, list[float]]]
+    """Difference in amplitude between detuned value and fit."""
+    fitted_parameters: dict[QubitId, dict[str, float]]
+    """Raw fitting output."""
     chi2: dict[QubitId, list[float]] = field(default_factory=dict)
     """Chi squared estimate mean value and error. """
 
@@ -46,9 +82,15 @@ FlippingType = np.dtype(
 
 
 @dataclass
-class FlippingData(FlippingSignalData):
+class FlippingData(Data):
     """Flipping acquisition outputs."""
 
+    resonator_type: str
+    """Resonator type."""
+    delta_amplitude: float
+    """Amplitude detuning."""
+    pi_pulse_amplitudes: dict[QubitId, float]
+    """Pi pulse amplitudes for each qubit."""
     data: dict[QubitId, npt.NDArray[FlippingType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -131,6 +173,10 @@ def _acquisition(
                 ),
             )
     return data
+
+
+def flipping_fit(x, offset, amplitude, omega, phase, gamma):
+    return np.sin(x * omega + phase) * amplitude * np.exp(-x * gamma) + offset
 
 
 def _fit(data: FlippingData) -> FlippingResults:
@@ -308,6 +354,10 @@ def _plot(data: FlippingData, target: QubitId, fit: FlippingResults = None):
     figures.append(fig)
 
     return figures, fitting_report
+
+
+def _update(results: FlippingResults, platform: Platform, qubit: QubitId):
+    update.drive_amplitude(results.amplitude[qubit], platform, qubit)
 
 
 flipping = Routine(_acquisition, _fit, _plot, _update)

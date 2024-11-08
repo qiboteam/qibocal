@@ -3,33 +3,61 @@ from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Platform, Readout
+from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence, Readout
 
-from qibocal.auto.operation import QubitId, Routine
+from qibocal import update
+from qibocal.auto.operation import Parameters, QubitId, Results, Routine
 
 from ...result import probability
 from ..utils import table_dict, table_html
 from . import t1, utils
-from .zeno_signal import ZenoSignalParameters, ZenoSignalResults, _update, zeno_sequence
 
 
 @dataclass
-class ZenoParameters(ZenoSignalParameters):
+class ZenoParameters(Parameters):
     """Zeno runcard inputs."""
+
+    readouts: int
+    "Number of readout pulses"
+
+
+@dataclass
+class ZenoResults(Results):
+    """Zeno outputs."""
+
+    zeno_t1: dict[QubitId, int]
+    """T1 for each qubit."""
+    fitted_parameters: dict[QubitId, dict[str, float]]
+    """Raw fitting output."""
+    pcov: dict[QubitId, list[float]]
+    """Approximate covariance of fitted parameters."""
+    chi2: dict[QubitId, tuple[float, Optional[float]]]
+    """Chi squared estimate mean value and error."""
+
+
+def zeno_sequence(
+    platform: Platform, targets: list[QubitId], readouts: int
+) -> tuple[PulseSequence, dict[QubitId, int]]:
+    """Generating sequence for Zeno experiment."""
+
+    sequence = PulseSequence()
+    readout_duration = {}
+    for q in targets:
+        natives = platform.natives.single_qubit[q]
+        _, ro_pulse = natives.MZ()[0]
+        readout_duration[q] = ro_pulse.duration
+        qubit_sequence = natives.RX() | natives.MZ()
+        for _ in range(readouts - 1):
+            qubit_sequence += natives.MZ()
+        sequence += qubit_sequence
+
+    return sequence, readout_duration
 
 
 @dataclass
 class ZenoData(t1.T1Data):
     readout_duration: dict[QubitId, float] = field(default_factory=dict)
     """Readout durations for each qubit"""
-
-
-@dataclass
-class ZenoResults(ZenoSignalResults):
-    """Zeno outputs."""
-
-    chi2: dict[QubitId, tuple[float, Optional[float]]]
-    """Chi squared estimate mean value and error."""
 
 
 def _acquisition(
@@ -169,6 +197,10 @@ def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
     figures.append(fig)
 
     return figures, fitting_report
+
+
+def _update(results: ZenoResults, platform: Platform, qubit: QubitId):
+    update.t1(results.zeno_t1[qubit], platform, qubit)
 
 
 zeno = Routine(_acquisition, _fit, _plot, _update)
