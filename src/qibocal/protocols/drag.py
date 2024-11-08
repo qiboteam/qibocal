@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Drag, Platform, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, Delay, Drag, Platform, PulseSequence
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine

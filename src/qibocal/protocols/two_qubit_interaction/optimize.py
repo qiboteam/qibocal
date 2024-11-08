@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
+from qibolab import Platform
 from scipy.optimize import curve_fit
 
 from qibocal import update
@@ -22,8 +22,7 @@ from qibocal.auto.operation import (
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
-from .utils import order_pair
-from .virtual_z_phases import create_sequence, fit_function
+from .virtual_z_phases import fit_function
 
 
 @dataclass
@@ -155,108 +154,109 @@ def _acquisition(
     Repetition of correct virtual phase experiment for several amplitude and duration values.
     """
 
-    theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
-    data = OptimizeTwoQubitGateData(
-        thetas=theta_absolute.tolist(), native=params.native
-    )
-    for pair in targets:
-        # order the qubits so that the low frequency one is the first
-        ord_pair = order_pair(pair, platform)
+    # theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
+    # data = OptimizeTwoQubitGateData(
+    #     thetas=theta_absolute.tolist(), native=params.native
+    # )
+    # for pair in targets:
+    #     # order the qubits so that the low frequency one is the first
+    #     ord_pair = order_pair(pair, platform)
 
-        for target_q, control_q in (
-            (ord_pair[0], ord_pair[1]),
-            (ord_pair[1], ord_pair[0]),
-        ):
-            for setup in ("I", "X"):
-                (
-                    sequence,
-                    virtual_z_phase,
-                    theta_pulse,
-                    amplitude,
-                    data.durations[ord_pair],
-                ) = create_sequence(
-                    platform,
-                    setup,
-                    target_q,
-                    control_q,
-                    ord_pair,
-                    params.native,
-                    params.dt,
-                    params.parking,
-                    params.flux_pulse_amplitude_min,
-                )
-                data.vphases[ord_pair] = dict(virtual_z_phase)
-                theta = np.arange(
-                    params.theta_start,
-                    params.theta_end,
-                    params.theta_step,
-                    dtype=float,
-                )
+    #     for target_q, control_q in (
+    #         (ord_pair[0], ord_pair[1]),
+    #         (ord_pair[1], ord_pair[0]),
+    #     ):
+    #         for setup in ("I", "X"):
+    #             (
+    #                 sequence,
+    #                 virtual_z_phase,
+    #                 theta_pulse,
+    #                 amplitude,
+    #                 data.durations[ord_pair],
+    #             ) = create_sequence(
+    #                 platform,
+    #                 setup,
+    #                 target_q,
+    #                 control_q,
+    #                 ord_pair,
+    #                 params.native,
+    #                 params.dt,
+    #                 params.parking,
+    #                 params.flux_pulse_amplitude_min,
+    #             )
+    #             data.vphases[ord_pair] = dict(virtual_z_phase)
+    #             theta = np.arange(
+    #                 params.theta_start,
+    #                 params.theta_end,
+    #                 params.theta_step,
+    #                 dtype=float,
+    #             )
 
-                amplitude_range = np.arange(
-                    params.flux_pulse_amplitude_min,
-                    params.flux_pulse_amplitude_max,
-                    params.flux_pulse_amplitude_step,
-                    dtype=float,
-                )
+    #             amplitude_range = np.arange(
+    #                 params.flux_pulse_amplitude_min,
+    #                 params.flux_pulse_amplitude_max,
+    #                 params.flux_pulse_amplitude_step,
+    #                 dtype=float,
+    #             )
 
-                duration_range = np.arange(
-                    params.duration_min,
-                    params.duration_max,
-                    params.duration_step,
-                    dtype=float,
-                )
+    #             duration_range = np.arange(
+    #                 params.duration_min,
+    #                 params.duration_max,
+    #                 params.duration_step,
+    #                 dtype=float,
+    #             )
 
-                data.amplitudes[ord_pair] = amplitude_range.tolist()
-                data.durations[ord_pair] = duration_range.tolist()
+    #             data.amplitudes[ord_pair] = amplitude_range.tolist()
+    #             data.durations[ord_pair] = duration_range.tolist()
 
-                sweeper_theta = Sweeper(
-                    Parameter.relative_phase,
-                    theta - data.vphases[ord_pair][target_q],
-                    pulses=[theta_pulse],
-                    type=SweeperType.ABSOLUTE,
-                )
+    # sweeper_theta = Sweeper(
+    #     Parameter.relative_phase,
+    #     theta - data.vphases[ord_pair][target_q],
+    #     pulses=[theta_pulse],
+    #     type=SweeperType.ABSOLUTE,
+    # )
 
-                sweeper_amplitude = Sweeper(
-                    Parameter.amplitude,
-                    amplitude_range / amplitude,
-                    pulses=[sequence.qf_pulses[0]],
-                    type=SweeperType.FACTOR,
-                )
+    # sweeper_amplitude = Sweeper(
+    #     Parameter.amplitude,
+    #     amplitude_range / amplitude,
+    #     pulses=[sequence.qf_pulses[0]],
+    #     type=SweeperType.FACTOR,
+    # )
 
-                sweeper_duration = Sweeper(
-                    Parameter.duration,
-                    duration_range,
-                    pulses=[sequence.qf_pulses[0]],
-                    type=SweeperType.ABSOLUTE,
-                )
+    # sweeper_duration = Sweeper(
+    #     Parameter.duration,
+    #     duration_range,
+    #     pulses=[sequence.qf_pulses[0]],
+    #     type=SweeperType.ABSOLUTE,
+    # )
 
-                results = platform.sweep(
-                    sequence,
-                    ExecutionParameters(
-                        nshots=params.nshots,
-                        relaxation_time=params.relaxation_time,
-                        acquisition_type=AcquisitionType.DISCRIMINATION,
-                        averaging_mode=AveragingMode.CYCLIC,
-                    ),
-                    sweeper_duration,
-                    sweeper_amplitude,
-                    sweeper_theta,
-                )
+    # results = platform.sweep(
+    #     sequence,
+    #     ExecutionParameters(
+    #         nshots=params.nshots,
+    #         relaxation_time=params.relaxation_time,
+    #         acquisition_type=AcquisitionType.DISCRIMINATION,
+    #         averaging_mode=AveragingMode.CYCLIC,
+    #     ),
+    #     sweeper_duration,
+    #     sweeper_amplitude,
+    #     sweeper_theta,
+    # )
 
-                result_target = results[target_q].probability(1)
-                result_control = results[control_q].probability(1)
-                data.register_qubit(
-                    target_q,
-                    control_q,
-                    setup,
-                    theta - data.vphases[ord_pair][target_q],
-                    data.amplitudes[ord_pair],
-                    data.durations[ord_pair],
-                    result_control,
-                    result_target,
-                )
-    return data
+    #             result_target = results[target_q].probability(1)
+    #             result_control = results[control_q].probability(1)
+    #             data.register_qubit(
+    #                 target_q,
+    #                 control_q,
+    #                 setup,
+    #                 theta - data.vphases[ord_pair][target_q],
+    #                 data.amplitudes[ord_pair],
+    #                 data.durations[ord_pair],
+    #                 result_control,
+    #                 result_target,
+    #             )
+    # return data
+    return None
 
 
 def _fit(

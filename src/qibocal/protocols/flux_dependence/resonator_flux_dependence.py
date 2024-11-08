@@ -103,6 +103,8 @@ def _acquisition(
     qubit_frequency = {}
     bare_resonator_frequency = {}
     charging_energy = {}
+    matrix_element = {}
+    offset = {}
     freq_sweepers = []
     offset_sweepers = []
     for q in targets:

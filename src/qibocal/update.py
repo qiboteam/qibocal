@@ -120,22 +120,23 @@ def readout_fidelity(fidelity: float, platform: Platform, qubit: QubitId):
 def virtual_phases(
     phases: dict[QubitId, float], native: str, platform: Platform, pair: QubitPairId
 ):
-    """Update virtual phases for given qubits in pair in results."""
-    virtual_z_pulses = {
-        pulse.qubit.name: pulse
-        for pulse in getattr(platform.pairs[pair].native_gates, native).pulses
-        if isinstance(pulse, VirtualZPulse)
-    }
-    for qubit_id, phase in phases.items():
-        if qubit_id in virtual_z_pulses:
-            virtual_z_pulses[qubit_id].phase = phase
-        else:
-            virtual_z_pulses[qubit_id] = VirtualZPulse(
-                phase=phase, qubit=platform.qubits[qubit_id]
-            )
-            getattr(platform.pairs[pair].native_gates, native).pulses.append(
-                virtual_z_pulses[qubit_id]
-            )
+    pass
+    # """Update virtual phases for given qubits in pair in results."""
+    # virtual_z_pulses = {
+    #     pulse.qubit.name: pulse
+    #     for pulse in getattr(platform.pairs[pair].native_gates, native).pulses
+    #     if isinstance(pulse, VirtualZPulse)
+    # }
+    # for qubit_id, phase in phases.items():
+    #     if qubit_id in virtual_z_pulses:
+    #         virtual_z_pulses[qubit_id].phase = phase
+    #     else:
+    #         virtual_z_pulses[qubit_id] = VirtualZPulse(
+    #             phase=phase, qubit=platform.qubits[qubit_id]
+    #         )
+    #         getattr(platform.pairs[pair].native_gates, native).pulses.append(
+    #             virtual_z_pulses[qubit_id]
+    #         )
 
 
 def CZ_duration(duration: int, platform: Platform, pair: QubitPairId):
@@ -183,10 +184,11 @@ def t2_spin_echo(t2_spin_echo: float, platform: Platform, qubit: QubitId):
 
 def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
     """Update beta parameter value in platform for specific qubit."""
-    pulse = platform.qubits[qubit].native_gates.RX.pulse(start=0)
-    rel_sigma = pulse.shape.rel_sigma
-    drag_pulse = pulses.Drag(rel_sigma=rel_sigma, beta=beta)
-    platform.qubits[qubit].native_gates.RX.shape = repr(drag_pulse)
+    pass
+    # pulse = platform.qubits[qubit].native_gates.RX.pulse(start=0)
+    # rel_sigma = pulse.shape.rel_sigma
+    # drag_pulse = pulses.Drag(rel_sigma=rel_sigma, beta=beta)
+    # platform.qubits[qubit].native_gates.RX.shape = repr(drag_pulse)
 
 
 def sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):

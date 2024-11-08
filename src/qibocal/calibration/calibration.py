@@ -171,8 +171,8 @@ class Calibration(Model):
     # TODO: add crosstalk object where I can do this
     def get_crosstalk_element(self, qubit1: QubitId, qubit2: QubitId):
         a, b = self.qubit_index(qubit1), self.qubit_index(qubit2)
-        return self.flux_crosstalk_matrix[a, b]
+        return self.flux_crosstalk_matrix[a, b]  # pylint: disable=E1136
 
     def set_crosstalk_element(self, qubit1: QubitId, qubit2: QubitId, value: float):
         a, b = self.qubit_index(qubit1), self.qubit_index(qubit2)
-        self.flux_crosstalk_matrix[a, b] = value
+        self.flux_crosstalk_matrix[a, b] = value  # pylint: disable=E1137

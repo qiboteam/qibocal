@@ -31,6 +31,7 @@ from qibocal.auto.operation import (
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
+from ...update import replace
 from .utils import order_pair
 
 

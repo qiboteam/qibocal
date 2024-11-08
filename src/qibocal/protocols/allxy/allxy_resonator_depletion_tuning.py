@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AveragingMode, Platform, PulseSequence
+from qibolab import AveragingMode, Platform
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 
@@ -70,23 +70,14 @@ def _acquisition(
     delays = np.arange(params.delay_start, params.delay_end, params.delay_step)
     # sweep the parameters
     for delay in delays:
-
         sequences, all_ro_pulses = [], []
         for gates in allxy.gatelist:
-            sequences.append(PulseSequence())
-            all_ro_pulses.append({})
             for qubit in targets:
-                sequences[-1], all_ro_pulses[-1][qubit] = (
-                    allxy.add_gate_pair_pulses_to_sequence(
-                        platform,
-                        gates,
-                        qubit,
-                        sequences[-1],
-                        beta_param=params.beta_param,
-                        readout_delay=params.readout_delay,
-                        sequence_delay=delay,
-                    )
+                sequence, ro_pulse = allxy.allxy_sequence(
+                    platform, gates, qubit, beta_param=params.beta_param
                 )
+                sequences.append(sequence)
+                all_ro_pulses.append({qubit: ro_pulse})
         options = dict(nshots=params.nshots, averaging_mode=AveragingMode.CYCLIC)
         if params.unrolling:
             results = platform.execute(sequences, **options)

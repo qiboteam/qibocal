@@ -6,10 +6,10 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence
 
-from ...auto.operation import Data, Parameters, QubitId, Results, Routine
-from ...result import magnitude
-from ...update import replace
-from ..utils import table_dict, table_html
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.protocols.utils import table_dict, table_html
+from qibocal.result import magnitude
+from qibocal.update import replace
 
 
 @dataclass
