@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AveragingMode, Delay, Platform, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, Delay, Platform, PulseSequence
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 
@@ -78,19 +78,21 @@ def _acquisition(
     # create a Data object to store the results
     data = AllXYData(beta_param=params.beta_param)
 
-    # repeat the experiment as many times as defined by software_averages
-    # for iteration in range(params.software_averages):
     sequences, all_ro_pulses = [], []
     for gates in gatelist:
-        sequences.append(PulseSequence())
-        all_ro_pulses.append({})
         for qubit in targets:
-            sequences[-1], all_ro_pulses[-1][qubit] = add_gate_pair_pulses_to_sequence(
-                platform, gates, qubit, sequences[-1], beta_param=params.beta_param
+            sequence, ro_pulse = allxy_sequence(
+                platform, gates, qubit, beta_param=params.beta_param
             )
+            sequences.append(sequence)
+            all_ro_pulses.append({qubit: ro_pulse})
 
     # execute the pulse sequence
-    options = dict(nshots=params.nshots, averaging_mode=AveragingMode.CYCLIC)
+    options = dict(
+        nshots=params.nshots,
+        averaging_mode=AveragingMode.CYCLIC,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+    )
     if params.unrolling:
         results = platform.execute(sequences, **options)
     else:
@@ -101,8 +103,8 @@ def _acquisition(
     for gates, ro_pulses in zip(gatelist, all_ro_pulses):
         gate = "-".join(gates)
         for qubit in targets:
-            prob = 1 - results[ro_pulses[qubit].id]
-            z_proj = 2 * prob - 1
+            prob = results[ro_pulses[qubit].id]
+            z_proj = 1 - 2 * prob
             errors = 2 * np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
                 AllXYType,
@@ -118,16 +120,19 @@ def _acquisition(
     return data
 
 
-def add_gate_pair_pulses_to_sequence(
+def allxy_sequence(
     platform: Platform,
     gates,
     qubit,
-    sequence,
-    sequence_delay=0,
-    readout_delay=0,
+    sequence_delay=None,
+    readout_delay=None,
     beta_param=None,
 ):
     natives = platform.natives.single_qubit[qubit]
+    qd_channel, _ = natives.RX()[0]
+    sequence = PulseSequence()
+    if sequence_delay is not None:
+        sequence.append((qd_channel, Delay(duration=sequence_delay)))
     for gate in gates:
         if gate == "I":
             pass
@@ -163,7 +168,20 @@ def add_gate_pair_pulses_to_sequence(
     # RO pulse starting just after pair of gates
     qd_channel = platform.qubits[qubit].drive
     ro_channel, ro_pulse = natives.MZ()[0]
-    sequence.append((ro_channel, Delay(duration=sequence.channel_duration(qd_channel))))
+    if readout_delay is not None:
+        sequence.append(
+            (
+                ro_channel,
+                Delay(duration=sequence.channel_duration(qd_channel) + readout_delay),
+            )
+        )
+    else:
+        sequence.append(
+            (
+                ro_channel,
+                Delay(duration=sequence.channel_duration(qd_channel) + readout_delay),
+            )
+        )
     sequence.append((ro_channel, ro_pulse))
     return sequence, ro_pulse
 
