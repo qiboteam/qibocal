@@ -66,7 +66,7 @@ class ResonatorPunchoutData(Data):
 
     resonator_type: str
     """Resonator type."""
-    amplitudes: dict[QubitId, float]
+    amplitudes: dict[QubitId, float] = field(default_factory=dict)
     """Amplitudes provided by the user."""
     data: dict[QubitId, npt.NDArray[ResPunchoutType]] = field(default_factory=dict)
     """Raw data acquired."""
