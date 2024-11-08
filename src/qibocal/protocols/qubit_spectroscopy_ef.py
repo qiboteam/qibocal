@@ -95,17 +95,15 @@ def _acquisition(
         )
         sequence.append((ro_channel, ro_pulse))
 
-        f0 = platform.config(qd12_channel).frequency
-        drive_frequencies[qubit] = f0
+        drive_frequencies[qubit] = platform.config(qd_channel).frequency
         sweepers.append(
             Sweeper(
                 parameter=Parameter.frequency,
-                values=f0 + delta_frequency_range,
+                values=platform.config(qd12_channel).frequency + delta_frequency_range,
                 channels=[qd_channel],
             )
         )
 
-    # Create data structure for data acquisition.
     data = QubitSpectroscopyEFData(
         resonator_type=platform.resonator_type,
         amplitudes=amplitudes,
@@ -123,7 +121,6 @@ def _acquisition(
         result = results[ro_pulse.id]
 
         f0 = platform.config(platform.qubits[qubit].drive_qudits[1, 2]).frequency
-        # store the results
 
         signal = magnitude(result)
         _phase = phase(result)
@@ -202,7 +199,6 @@ def _update(results: QubitSpectroscopyEFResults, platform: Platform, target: Qub
     platform.calibration.single_qubits[target].qubit.frequency_12 = results.frequency[
         target
     ]
-    # update.anharmonicity(results.anharmonicity[target], platform, target)
 
 
 qubit_spectroscopy_ef = Routine(_acquisition, fit_ef, _plot, _update)
