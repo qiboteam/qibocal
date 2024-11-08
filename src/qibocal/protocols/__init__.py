@@ -1,5 +1,4 @@
 from .allxy.allxy import allxy
-from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
 from .allxy.allxy_resonator_depletion_tuning import allxy_resonator_depletion_tuning
 from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
@@ -64,7 +63,6 @@ from .two_qubit_state_tomography import two_qubit_state_tomography
 
 __all__ = [
     "allxy",
-    "allxy_drag_pulse_tuning",
     "single_shot_classification",
     "spin_echo",
     "spin_echo_signal",
