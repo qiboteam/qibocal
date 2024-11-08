@@ -12,6 +12,7 @@ from qibocal.auto.operation import QubitId, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
+from ...result import probability
 from ..utils import HZ_TO_GHZ, chi2_reduced, fallback_period, guess_period
 from .length_frequency_signal import (
     RabiLengthFreqSignalData,
@@ -69,56 +70,60 @@ def _acquisition(
 ) -> RabiLengthFreqData:
     """Data acquisition for Rabi experiment sweeping length."""
 
-    sequence, qd_pulses, ro_pulses, amplitudes = sequence_length(
+    sequence, qd_pulses, delays, ro_pulses, amplitudes = sequence_length(
         targets, params, platform
     )
 
-    # qubit drive pulse length
-    length_range = np.arange(
+    sweep_range = (
         params.pulse_duration_start,
         params.pulse_duration_end,
         params.pulse_duration_step,
     )
-    sweeper_len = Sweeper(
-        Parameter.duration,
-        length_range,
-        [qd_pulses[qubit] for qubit in targets],
-        type=SweeperType.ABSOLUTE,
-    )
+    if params.interpolated_sweeper:
+        len_sweeper = Sweeper(
+            parameter=Parameter.duration_interpolated,
+            range=sweep_range,
+            pulses=[qd_pulses[q] for q in targets],
+        )
+    else:
+        len_sweeper = Sweeper(
+            parameter=Parameter.duration,
+            range=sweep_range,
+            pulses=[qd_pulses[q] for q in targets] + [delays[q] for q in targets],
+        )
 
-    # qubit drive pulse amplitude
     frequency_range = np.arange(
         params.min_freq,
         params.max_freq,
         params.step_freq,
     )
-    sweeper_freq = Sweeper(
-        Parameter.frequency,
-        frequency_range,
-        [qd_pulses[qubit] for qubit in targets],
-        type=SweeperType.OFFSET,
-    )
+    freq_sweepers = {}
+    for qubit in targets:
+        channel = platform.qubits[qubit].drive
+        freq_sweepers[qubit] = Sweeper(
+            parameter=Parameter.frequency,
+            values=platform.config(channel).frequency + frequency_range,
+            channels=[channel],
+        )
 
     data = RabiLengthFreqData(amplitudes=amplitudes)
 
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
-        ),
-        sweeper_len,
-        sweeper_freq,
+    results = platform.execute(
+        [sequence],
+        [[len_sweeper], [freq_sweepers[q] for q in targets]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
+
     for qubit in targets:
-        result = results[ro_pulses[qubit].serial]
-        prob = result.probability(state=1)
+        result = results[ro_pulses[qubit].id]
+        prob = probability(result, state=1)
         data.register_qubit(
             qubit=qubit,
-            freq=qd_pulses[qubit].frequency + frequency_range,
-            lens=length_range,
+            freq=freq_sweepers[qubit].values,
+            lens=len_sweeper.values,
             prob=prob.tolist(),
             error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
         )
