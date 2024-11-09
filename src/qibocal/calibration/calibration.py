@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Annotated, Optional, Union
 
+import numpy as np
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, PlainSerializer
 
 from .serialize import NdArray, SparseArray
@@ -170,9 +171,13 @@ class Calibration(Model):
 
     # TODO: add crosstalk object where I can do this
     def get_crosstalk_element(self, qubit1: QubitId, qubit2: QubitId):
+        if self.flux_crosstalk_matrix is None:
+            self.flux_crosstalk_matrix = np.zeros((self.nqubits, self.nqubits))
         a, b = self.qubit_index(qubit1), self.qubit_index(qubit2)
         return self.flux_crosstalk_matrix[a, b]  # pylint: disable=E1136
 
     def set_crosstalk_element(self, qubit1: QubitId, qubit2: QubitId, value: float):
+        if self.flux_crosstalk_matrix is None:
+            self.flux_crosstalk_matrix = np.zeros((self.nqubits, self.nqubits))
         a, b = self.qubit_index(qubit1), self.qubit_index(qubit2)
         self.flux_crosstalk_matrix[a, b] = value  # pylint: disable=E1137

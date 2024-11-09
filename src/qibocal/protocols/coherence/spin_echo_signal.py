@@ -26,6 +26,7 @@ class SpinEchoSignalParameters(Parameters):
     """Step delay between pulses [ns]."""
     single_shot: bool = False
     """If ``True`` save single shot signal data."""
+    unrolling: bool = False
 
 
 @dataclass

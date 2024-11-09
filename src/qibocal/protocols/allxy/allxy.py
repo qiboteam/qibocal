@@ -179,7 +179,7 @@ def allxy_sequence(
         sequence.append(
             (
                 ro_channel,
-                Delay(duration=sequence.channel_duration(qd_channel) + readout_delay),
+                Delay(duration=sequence.channel_duration(qd_channel)),
             )
         )
     sequence.append((ro_channel, ro_pulse))

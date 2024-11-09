@@ -13,7 +13,6 @@ from qibolab import (
 )
 from scipy.optimize import curve_fit
 
-from ... import update
 from ...auto.operation import Data, Parameters, QubitId, Results, Routine
 from ...config import log
 from ...result import magnitude, phase
@@ -298,7 +297,8 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
 
 
 def _update(results: ResonatorFluxResults, platform: Platform, qubit: QubitId):
-    update.bare_resonator_frequency(results.bare_resonator_freq[qubit], platform, qubit)
+    pass
+    # update.bare_resonator_frequency(results.bare_resonator_freq[qubit], platform, qubit)
     # update.readout_frequency(results.resonator_freq[qubit], platform, qubit)
     # TODO: add coupling somewhere
     # update.coupling(results.coupling[qubit], platform, qubit)

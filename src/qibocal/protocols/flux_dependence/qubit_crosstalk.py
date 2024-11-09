@@ -134,8 +134,7 @@ def _acquisition(
         maximum_frequency[qubit] = platform.calibration.single_qubits[
             qubit
         ].qubit.maximum_frequency
-        index = platform.calibration.qubit_index(qubit)
-        matrix_element[qubit] = platform.calibration.flux_crosstalk_matrix[index, index]
+        matrix_element[qubit] = platform.calibration.get_crosstalk_element(qubit, qubit)
         charging_energy[qubit] = platform.calibration.single_qubits[
             qubit
         ].qubit.charging_energy

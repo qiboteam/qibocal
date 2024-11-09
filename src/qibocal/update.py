@@ -141,7 +141,6 @@ def virtual_phases(
 
 def CZ_duration(duration: int, platform: Platform, pair: QubitPairId):
     """Update CZ duration for specific pair."""
-    pass
     # for pulse in platform.pairs[pair].native_gates.CZ.pulses:
     #     if pulse.qubit.name == pair[1]:
     #         pulse.duration = int(duration)
@@ -149,7 +148,6 @@ def CZ_duration(duration: int, platform: Platform, pair: QubitPairId):
 
 def CZ_amplitude(amp: float, platform: Platform, pair: QubitPairId):
     """Update CZ amplitude for specific pair."""
-    pass
     # for pulse in platform.pairs[pair].native_gates.CZ.pulses:
     #     if pulse.qubit.name == pair[1]:
     #         pulse.amplitude = float(amp)
@@ -157,16 +155,16 @@ def CZ_amplitude(amp: float, platform: Platform, pair: QubitPairId):
 
 def iSWAP_duration(duration: int, platform: Platform, pair: QubitPairId):
     """Update iSWAP_duration duration for specific pair."""
-    for pulse in platform.pairs[pair].native_gates.iSWAP.pulses:
-        if pulse.qubit.name == pair[1]:
-            pulse.duration = int(duration)
+    # for pulse in platform.pairs[pair].native_gates.iSWAP.pulses:
+    #     if pulse.qubit.name == pair[1]:
+    #         pulse.duration = int(duration)
 
 
 def iSWAP_amplitude(amp: float, platform: Platform, pair: QubitPairId):
     """Update iSWAP_duration amplitude for specific pair."""
-    for pulse in platform.pairs[pair].native_gates.iSWAP.pulses:
-        if pulse.qubit.name == pair[1]:
-            pulse.amplitude = float(amp)
+    # for pulse in platform.pairs[pair].native_gates.iSWAP.pulses:
+    #     if pulse.qubit.name == pair[1]:
+    #         pulse.amplitude = float(amp)
 
 
 def t1(t1: int, platform: Platform, qubit: QubitId):
