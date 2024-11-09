@@ -11,6 +11,7 @@ from qibocal.auto.mode import AUTOCALIBRATION, ExecutionMode
 from qibocal.auto.operation import DEFAULT_PARENT_PARAMETERS
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import Task
+from qibocal.calibration.platform import CalibrationPlatform
 from qibocal.protocols.classification import SingleShotClassificationParameters
 from qibocal.protocols.readout_mitigation_matrix import (
     ReadoutMitigationMatrixParameters,
@@ -20,7 +21,7 @@ from qibocal.protocols.readout_mitigation_matrix import (
 @pytest.fixture(scope="module")
 def platform():
     set_backend(backend="qibolab", platform="dummy")
-    return GlobalBackend().platform
+    return CalibrationPlatform.from_platform(GlobalBackend().platform)
 
 
 TARGETS = [0, 1, 2]
@@ -84,16 +85,12 @@ UPDATE_CARD = {
     "actions": [
         {
             "id": "readout frequency",
-            "operation": "resonator_frequency",
+            "operation": "resonator_spectroscopy",
             "parameters": {
                 "freq_width": 10_000_000,
                 "freq_step": 100_000,
+                "power_level": "high",
             },
-        },
-        {
-            "id": "classification",
-            "operation": "single_shot_classification",
-            "parameters": {"nshots": 100},
         },
     ],
 }
@@ -107,9 +104,9 @@ def test_update_argument(platform, global_update, local_update, tmp_path):
     NEW_CARD = modify_card(
         UPDATE_CARD, local_update=local_update, global_update=global_update
     )
-    # platform = deepcopy(GlobalBackend().platform)
-    old_readout_frequency = platform.qubits[0].readout_frequency
-    old_iq_angle = platform.qubits[1].iq_angle
+    old_readout_frequency = platform.calibration.single_qubits[
+        0
+    ].resonator.bare_frequency
     Runcard.load(NEW_CARD).run(
         tmp_path,
         mode=AUTOCALIBRATION,
@@ -117,12 +114,14 @@ def test_update_argument(platform, global_update, local_update, tmp_path):
     )
 
     if local_update and global_update:
-        assert old_readout_frequency != approx(platform.qubits[0].readout_frequency)
-        assert old_iq_angle != approx(platform.qubits[1].iq_angle)
+        assert old_readout_frequency != approx(
+            platform.calibration.single_qubits[0].resonator.bare_frequency
+        )
 
     else:
-        assert old_readout_frequency == approx(platform.qubits[0].readout_frequency)
-        assert old_iq_angle == approx(platform.qubits[1].iq_angle)
+        assert old_readout_frequency == approx(
+            platform.calibration.single_qubits[0].resonator.bare_frequency
+        )
 
 
 @pytest.mark.parametrize(
