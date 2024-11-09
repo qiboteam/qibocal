@@ -117,8 +117,8 @@ def create_sequence(
     native: Literal["CZ", "iSWAP"],
     dt: float,
     parking: bool,
-    amplitude: float,
-    duration: float,
+    amplitude: Optional[float] = None,
+    duration: Optional[float] = None,
 ) -> tuple[
     PulseSequence,
     dict[QubitId, Pulse],
