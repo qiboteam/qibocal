@@ -1,15 +1,14 @@
 import base64
 import io
-from typing import Annotated, Union
+from typing import Annotated, Optional, Union
 
 import numpy as np
 import numpy.typing as npt
 from pydantic import PlainSerializer, PlainValidator
 from scipy.sparse import csr_matrix, lil_matrix
 
+
 # TODO: add tests about this
-
-
 def sparse_serialize(matrix: lil_matrix) -> str:
     """Serialize a lil_matrix to a base64 string."""
     csr_matrix = matrix.tocsr()
@@ -22,7 +21,7 @@ def sparse_serialize(matrix: lil_matrix) -> str:
     return base64.standard_b64encode(buffer.read()).decode()
 
 
-def sparse_deserialize(data: str) -> lil_matrix:
+def sparse_deserialize(data: str) -> Optional[lil_matrix]:
     """Deserialize a base64 string back into a lil_matrix."""
     buffer = io.BytesIO(base64.standard_b64decode(data))
     try:
