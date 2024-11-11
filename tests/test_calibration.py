@@ -21,7 +21,7 @@ def test_serialization_single_qubits(tmp_path):
         cal.single_qubits[i].qubit.maximum_frequency = cal.single_qubits[
             0
         ].qubit.frequency_01
-        cal.single_qubits[i].t1 = [10e6, 1e6]
+        cal.single_qubits[i].t1 = (10e6, 1e6)
 
         assert cal.single_qubits[i].qubit.anharmonicity == -0.2e9
         assert cal.single_qubits[i].qubit.charging_energy == 0.2e9

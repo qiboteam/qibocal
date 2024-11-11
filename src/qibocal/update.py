@@ -169,17 +169,17 @@ def iSWAP_amplitude(amp: float, platform: Platform, pair: QubitPairId):
 
 def t1(t1: int, platform: Platform, qubit: QubitId):
     """Update t1 value in platform for specific qubit."""
-    platform.calibration.single_qubits[qubit].t1 = t1
+    platform.calibration.single_qubits[qubit].t1 = tuple(t1)
 
 
 def t2(t2: int, platform: Platform, qubit: QubitId):
     """Update t2 value in platform for specific qubit."""
-    platform.calibration.single_qubits[qubit].t2 = t2
+    platform.calibration.single_qubits[qubit].t2 = tuple(t2)
 
 
 def t2_spin_echo(t2_spin_echo: float, platform: Platform, qubit: QubitId):
     """Update t2 echo value in platform for specific qubit."""
-    platform.calibration.single_qubits[qubit].t2_spin_echo = t2_spin_echo
+    platform.calibration.single_qubits[qubit].t2_spin_echo = tuple(t2_spin_echo)
 
 
 def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):

@@ -96,7 +96,9 @@ def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
 def _update(results: StandardRBResult, platform: Platform, target: QubitPairId):
     """Write cz fidelity in calibration."""
     # TODO: shall we use the gate fidelity or the pulse fidelity
-    platform.calibration.two_qubits[target].cz_fidelity = results.fidelity_cz[target]
+    platform.calibration.two_qubits[target].cz_fidelity = tuple(
+        results.fidelity_cz[target]
+    )
 
 
 standard_rb_2q_inter = Routine(_acquisition, _fit, _plot, _update)

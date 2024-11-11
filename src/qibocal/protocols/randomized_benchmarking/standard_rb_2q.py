@@ -51,10 +51,10 @@ def _update(results: StandardRBResult, platform: Platform, target: QubitPairId):
     if target not in platform.calibration.two_qubits:
         platform.calibration.two_qubits[target] = TwoQubitCalibration()
 
-    platform.calibration.two_qubits[target].rb_fidelity = [
+    platform.calibration.two_qubits[target].rb_fidelity = (
         results.fidelity[target],
         results.fit_uncertainties[target][1] / 2,
-    ]
+    )
 
 
 standard_rb_2q = Routine(_acquisition, _fit, _plot, _update)
