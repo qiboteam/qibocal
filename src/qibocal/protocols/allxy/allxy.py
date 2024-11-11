@@ -80,12 +80,15 @@ def _acquisition(
 
     sequences, all_ro_pulses = [], []
     for gates in gatelist:
+        sequence = PulseSequence()
+        ro_pulses = {}
         for qubit in targets:
-            sequence, ro_pulse = allxy_sequence(
+            qubit_sequence, ro_pulses[qubit] = allxy_sequence(
                 platform, gates, qubit, beta_param=params.beta_param
             )
-            sequences.append(sequence)
-            all_ro_pulses.append({qubit: ro_pulse})
+            sequence += qubit_sequence
+        sequences.append(sequence)
+        all_ro_pulses.append(ro_pulses)
 
     # execute the pulse sequence
     options = dict(

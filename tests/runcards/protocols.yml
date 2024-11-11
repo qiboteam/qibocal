@@ -322,15 +322,15 @@ actions:
       detuning: 1_000_000
       nshots: 10
 
-  # - id: ramsey_signal_detuned_unrolled
-  #   operation: ramsey_signal
-  #   parameters:
-  #     unrolling: True
-  #     delay_between_pulses_start: 0
-  #     delay_between_pulses_end: 50
-  #     delay_between_pulses_step: 1
-  #     detuning: 1_000_000
-  #     nshots: 10
+  - id: ramsey_signal_detuned_unrolled
+    operation: ramsey_signal
+    parameters:
+      unrolling: True
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 1
+      detuning: 1_000_000
+      nshots: 10
 
   - id: ramsey
     operation: ramsey
@@ -379,15 +379,15 @@ actions:
       detuning: 2_000_000
       nshots: 10
 
-  # - id: ramsey_unrolled_detuned
-  #   operation: ramsey
-  #   parameters:
-  #     unrolling: True
-  #     delay_between_pulses_start: 0
-  #     delay_between_pulses_end: 50
-  #     delay_between_pulses_step: 1
-  #     nshots: 10
-  #     detuning: 1_000_000
+  - id: ramsey_unrolled_detuned
+    operation: ramsey
+    parameters:
+      unrolling: True
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 1
+      nshots: 10
+      detuning: 1_000_000
 
   - id: single shot classification
     operation: single_shot_classification
@@ -420,27 +420,26 @@ actions:
       delay: 0
       nshots: 10
 
-#TODO: to be fixed
-  # - id: allXY
-  #   operation: allxy
-  #   parameters:
-  #     beta_param: null
-  #     nshots: 10
+  - id: allXY
+    operation: allxy
+    parameters:
+      beta_param: null
+      nshots: 10
 
-  # - id: allXY unrolling
-  #   operation: allxy
-  #   parameters:
-  #     beta_param: null
-  #     unrolling: True
-  #     nshots: 10
+  - id: allXY unrolling
+    operation: allxy
+    parameters:
+      beta_param: null
+      unrolling: True
+      nshots: 10
 
-  # - id: resonator_depletion_tuning
-  #   operation: allxy_resonator_depletion_tuning
-  #   parameters:
-  #     delay_start: 1000.0
-  #     delay_end: 3000.0
-  #     delay_step: 1000.0
-  #     nshots: 10
+  - id: resonator_depletion_tuning
+    operation: allxy_resonator_depletion_tuning
+    parameters:
+      delay_start: 1000.0
+      delay_end: 3000.0
+      delay_step: 1000.0
+      nshots: 10
 
 
   - id: drag_pulse_tuning
@@ -520,14 +519,14 @@ actions:
       freq_step: 100_000
       nshots: 10
 
-  # - id: dispersive shift qutrit
-  #   operation: dispersive_shift_qutrit
-  #   #FIXME: add qubit 4 with new release of Qibolab
-  #   targets: [0, 1, 2, 3]
-  #   parameters:
-  #     freq_width: 10_000_000
-  #     freq_step: 100_000
-  #     nshots: 10
+  - id: dispersive shift qutrit
+    operation: dispersive_shift_qutrit
+    #FIXME: add qubit 4 with new release of Qibolab
+    targets: [0, 1, 2, 3]
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 100_000
+      nshots: 10
 
   - id: standard rb percentile
     operation: standard_rb

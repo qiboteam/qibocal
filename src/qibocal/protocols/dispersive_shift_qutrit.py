@@ -99,7 +99,7 @@ def _acquisition(
 
         # prepare 2 and measure
         assert natives.RX12 is not None, f"Missing RX12 calibration for qubit {qubit}"
-        sequence_2 = (natives.RX() + natives.RX12()) | natives.MZ()
+        sequence_2 += (natives.RX() + natives.RX12()) | natives.MZ()
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(

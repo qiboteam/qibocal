@@ -4,7 +4,14 @@ from typing import Optional, Union
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Platform,
+    Readout,
+    Sweeper,
+)
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.config import log
@@ -146,7 +153,13 @@ def _acquisition(
             sequences.append(sequence)
             all_ro_pulses.append(
                 {
-                    qubit: list(sequence.channel(platform.qubits[qubit].acquisition))[0]
+                    qubit: [
+                        pulse
+                        for pulse in list(
+                            sequence.channel(platform.qubits[qubit].acquisition)
+                        )
+                        if isinstance(pulse, Readout)
+                    ][0]
                     for qubit in targets
                 }
             )
