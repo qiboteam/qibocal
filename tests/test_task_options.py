@@ -85,12 +85,8 @@ UPDATE_CARD = {
     "actions": [
         {
             "id": "readout frequency",
-            "operation": "resonator_spectroscopy",
-            "parameters": {
-                "freq_width": 10_000_000,
-                "freq_step": 100_000,
-                "power_level": "high",
-            },
+            "operation": "single_shot_classification",
+            "parameters": {"nshots": 100},
         },
     ],
 }
@@ -104,9 +100,8 @@ def test_update_argument(platform, global_update, local_update, tmp_path):
     NEW_CARD = modify_card(
         UPDATE_CARD, local_update=local_update, global_update=global_update
     )
-    old_readout_frequency = platform.calibration.single_qubits[
-        0
-    ].resonator.bare_frequency
+    old_excited_state = platform.calibration.single_qubits[0].readout.excited_state
+
     Runcard.load(NEW_CARD).run(
         tmp_path,
         mode=AUTOCALIBRATION,
@@ -114,13 +109,13 @@ def test_update_argument(platform, global_update, local_update, tmp_path):
     )
 
     if local_update and global_update:
-        assert old_readout_frequency != approx(
-            platform.calibration.single_qubits[0].resonator.bare_frequency
+        assert old_excited_state != approx(
+            platform.calibration.single_qubits[0].readout.excited_state
         )
 
     else:
-        assert old_readout_frequency == approx(
-            platform.calibration.single_qubits[0].resonator.bare_frequency
+        assert old_excited_state == approx(
+            platform.calibration.single_qubits[0].readout.excited_state
         )
 
 
