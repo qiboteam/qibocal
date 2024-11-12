@@ -7,12 +7,11 @@ import pandas as pd
 import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
-from qibolab.qubits import QubitId
 from scipy import constants
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
-from qibocal.auto.operation import Data, Results
+from qibocal.auto.operation import Data, QubitId, Results
 from qibocal.config import log
 from qibocal.fitting.classifier import run
 from qibocal.protocols.resonator_utils import (
@@ -45,6 +44,16 @@ CONFIDENCE_INTERVAL_SECOND_MASK = 70
 """Confidence interval used to clean outliers."""
 DELAY_FIT_PERCENTAGE = 10
 """Percentage of the first and last points used to fit the cable delay."""
+
+
+def int_to_binary(number: int, length: int) -> str:
+    """Conversion from int to binary for fixed number of bits."""
+    return format(number, f"0{length}b")
+
+
+def computational_basis(length: int) -> list[str]:
+    """Return computational basis at fixed length."""
+    return [int_to_binary(i, length) for i in range(2**length)]
 
 
 def effective_qubit_temperature(
@@ -80,7 +89,7 @@ def effective_qubit_temperature(
     return temp, error
 
 
-def calculate_frequencies(results, qubit_list):
+def calculate_frequencies(results, ro_pulses):
     """Calculates outcome frequencies from individual shots.
     Args:
         results (dict): return of execute_pulse_sequence
@@ -89,7 +98,7 @@ def calculate_frequencies(results, qubit_list):
     Returns:
         dictionary containing frequencies.
     """
-    shots = np.stack([results[i].samples for i in qubit_list]).T
+    shots = np.stack([results[ro_pulses[qubit].id] for qubit in ro_pulses]).T
     values, counts = np.unique(shots, axis=0, return_counts=True)
 
     return {"".join(str(int(i)) for i in v): cnt for v, cnt in zip(values, counts)}

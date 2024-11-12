@@ -1,12 +1,11 @@
 from typing import Optional
 
 import numpy as np
-from qibolab import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
+from qibolab import Delay, Platform, PulseSequence
 from scipy.optimize import curve_fit
 
-from qibocal.protocols.utils import fallback_period, guess_period
+from qibocal.auto.operation import QubitId
+from qibocal.protocols.utils import GHZ_TO_HZ, fallback_period, guess_period
 
 POPT_EXCEPTION = [0, 0, 0, 0, 1]
 """Fit parameters output to handle exceptions"""
@@ -20,35 +19,47 @@ THRESHOLD = 0.5
 
 def ramsey_sequence(
     platform: Platform,
-    qubit: QubitId,
-    wait: Optional[int] = 0,
-    detuning: Optional[int] = 0,
+    targets: list[QubitId],
+    wait: int = 0,
+    target_qubit: Optional[QubitId] = None,
 ):
     """Pulse sequence used in Ramsey (detuned) experiments.
 
     The pulse sequence is the following:
 
     RX90 -- wait -- RX90 -- MZ
-
-    If detuning is specified the RX90 pulses will be sent to
-    frequency = drive_frequency + detuning
     """
-
+    delays = []
     sequence = PulseSequence()
-    first_pi_half_pulse = platform.create_RX90_pulse(qubit, start=0)
-    second_pi_half_pulse = platform.create_RX90_pulse(
-        qubit, start=first_pi_half_pulse.finish + wait
-    )
+    for qubit in targets:
+        natives = platform.natives.single_qubit[qubit]
 
-    # apply detuning:
-    first_pi_half_pulse.frequency += detuning
-    second_pi_half_pulse.frequency += detuning
-    readout_pulse = platform.create_qubit_readout_pulse(
-        qubit, start=second_pi_half_pulse.finish
-    )
+        qd_channel, qd_pulse = natives.R(theta=np.pi / 2)[0]
+        ro_channel, ro_pulse = natives.MZ()[0]
 
-    sequence.add(first_pi_half_pulse, second_pi_half_pulse, readout_pulse)
-    return sequence
+        qd_delay = Delay(duration=wait)
+        ro_delay = Delay(duration=wait)
+
+        sequence.extend(
+            [
+                (qd_channel, qd_pulse),
+                (qd_channel, qd_delay),
+                (qd_channel, qd_pulse),
+                (ro_channel, Delay(duration=2 * qd_pulse.duration)),
+                (ro_channel, ro_delay),
+                (ro_channel, ro_pulse),
+            ]
+        )
+
+        delays.extend([qd_delay, ro_delay])
+        if target_qubit is not None:
+            assert (
+                target_qubit not in targets
+            ), f"Cannot run Ramsey experiment on qubit {target_qubit} if it is already in Ramsey sequence."
+            natives = platform.natives.single_qubit[target_qubit]
+            sequence += natives.RX()
+
+    return sequence, delays
 
 
 def ramsey_fit(x, offset, amplitude, delta, phase, decay):
@@ -110,3 +121,35 @@ def fitting(x: list, y: list, errors: list = None) -> list:
         perr[4] / delta_x,
     ]
     return popt, perr
+
+
+def process_fit(
+    popt: list[float], perr: list[float], qubit_frequency: float, detuning: float
+):
+    """Processing Ramsey fitting results."""
+
+    delta_fitting = popt[2] / (2 * np.pi)
+    if detuning is not None:
+        sign = np.sign(detuning)
+        delta_phys = int(sign * (delta_fitting * GHZ_TO_HZ - np.abs(detuning)))
+    else:
+        delta_phys = int(delta_fitting * GHZ_TO_HZ)
+
+    corrected_qubit_frequency = int(qubit_frequency - delta_phys)
+    t2 = 1 / popt[4]
+    new_frequency = [
+        corrected_qubit_frequency,
+        perr[2] * GHZ_TO_HZ / (2 * np.pi),
+    ]
+    t2 = [t2, perr[4] * (t2**2)]
+
+    delta_phys_measure = [
+        -delta_phys,
+        perr[2] * GHZ_TO_HZ / (2 * np.pi),
+    ]
+    delta_fitting_measure = [
+        -delta_fitting * GHZ_TO_HZ,
+        perr[2] * GHZ_TO_HZ / (2 * np.pi),
+    ]
+
+    return new_frequency, t2, delta_phys_measure, delta_fitting_measure, popt

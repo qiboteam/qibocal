@@ -1,18 +1,23 @@
 from dataclasses import dataclass, field
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Delay,
+    Parameter,
+    Platform,
+    PulseSequence,
+    Sweeper,
+)
 
-from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.result import magnitude, phase
 
+from ... import update
 from ..utils import table_dict, table_html
 from . import utils
 
@@ -57,42 +62,40 @@ class T1SignalData(Data):
         return self
 
 
+def t1_sequence(
+    platform: Platform, targets: list[QubitId], delay: Optional[int] = None
+):
+    """Create sequence for T1 experiment with a given optional delay."""
+    sequence = PulseSequence()
+    ro_pulses, delays = {}, {}
+    for q in targets:
+        natives = platform.natives.single_qubit[q]
+        qd_channel, qd_pulse = natives.RX()[0]
+        ro_channel, ro_pulse = natives.MZ()[0]
+
+        ro_pulses[q] = ro_pulse
+        delays[q] = Delay(duration=0)
+
+        sequence.append((qd_channel, qd_pulse))
+        if delay is not None:
+            sequence.append((ro_channel, Delay(duration=qd_pulse.duration + delay)))
+        else:
+            sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
+        sequence.append((ro_channel, delays[q]))
+        sequence.append((ro_channel, ro_pulse))
+
+    return sequence, ro_pulses, delays
+
+
 def _acquisition(
     params: T1SignalParameters, platform: Platform, targets: list[QubitId]
 ) -> T1SignalData:
-    r"""Data acquisition for T1 experiment.
-    In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
-    (e.g. amplitude damping channel), it is possible that, at the time of measurement, after the delay,
-    the qubit will not be excited anymore. The larger the delay time is, the more likely is the qubit to
-    fall to the ground state. The goal of the experiment is to characterize the decay rate of the qubit
-    towards the ground state.
+    """Data acquisition for T1 experiment.
 
-    Args:
-        params:
-        platform (Platform): Qibolab platform object
-        targets (list): list of target qubits to perform the action
-        delay_before_readout_start (int): Initial time delay before ReadOut
-        delay_before_readout_end (list): Maximum time delay before ReadOut
-        delay_before_readout_step (int): Scan range step for the delay before ReadOut
-        software_averages (int): Number of executions of the routine for averaging results
-        points (int): Save data results in a file every number of points
-    """
+    In this protocol the y axis is the magnitude of signal in the IQ plane."""
 
-    # create a sequence of pulses for the experiment
-    # RX - wait t - MZ
-    qd_pulses = {}
-    ro_pulses = {}
-    sequence = PulseSequence()
-    for qubit in targets:
-        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].duration
-        )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
+    sequence, ro_pulses, delays = t1_sequence(platform, targets)
 
-    # define the parameter to sweep and its range:
-    # wait time before readout
     ro_wait_range = np.arange(
         params.delay_before_readout_start,
         params.delay_before_readout_end,
@@ -100,38 +103,35 @@ def _acquisition(
     )
 
     sweeper = Sweeper(
-        Parameter.start,
-        ro_wait_range,
-        [ro_pulses[qubit] for qubit in targets],
-        type=SweeperType.ABSOLUTE,
+        parameter=Parameter.duration,
+        values=ro_wait_range,
+        pulses=[delays[q] for q in targets],
     )
 
-    # sweep the parameter
-    # execute the pulse sequence
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=(
-                AveragingMode.SINGLESHOT if params.single_shot else AveragingMode.CYCLIC
-            ),
+    results = platform.execute(
+        [sequence],
+        [[sweeper]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=(
+            AveragingMode.SINGLESHOT if params.single_shot else AveragingMode.CYCLIC
         ),
-        sweeper,
     )
 
     data = T1SignalData()
-    for qubit in targets:
-        result = results[ro_pulses[qubit].serial]
+
+    for q in targets:
+        result = results[ro_pulses[q].id]
+        signal = magnitude(result)
         if params.single_shot:
-            _waits = np.array(len(result.magnitude) * [ro_wait_range])
+            _waits = np.array(len(signal) * [ro_wait_range])
         else:
             _waits = ro_wait_range
         data.register_qubit(
             utils.CoherenceType,
-            (qubit),
-            dict(wait=_waits, signal=result.magnitude, phase=result.phase),
+            (q),
+            dict(wait=_waits, signal=signal, phase=phase(result)),
         )
 
     return data

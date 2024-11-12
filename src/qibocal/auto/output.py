@@ -7,9 +7,8 @@ from pathlib import Path
 from typing import Optional
 
 from qibo.backends import construct_backend
-from qibolab import Platform
-from qibolab.serialize import dump_platform
 
+from ..calibration import CalibrationPlatform
 from ..config import log
 from ..version import __version__
 from .history import History
@@ -155,7 +154,7 @@ class Output:
 
     history: History
     meta: Metadata
-    platform: Optional[Platform] = None
+    platform: Optional[CalibrationPlatform] = None
 
     @classmethod
     def load(cls, path: Path):
@@ -202,7 +201,7 @@ class Output:
             self.update_platform(self.platform, path)
 
     @staticmethod
-    def update_platform(platform: Platform, path: Path):
+    def update_platform(platform: CalibrationPlatform, path: Path):
         """Dump platform used.
 
         If the original one is not defined, use the current one as the
@@ -213,7 +212,7 @@ class Output:
             platpath = path / UPDATED_PLATFORM
 
         platpath.mkdir(parents=True, exist_ok=True)
-        dump_platform(platform, platpath)
+        platform.dump(platpath)
 
     def _export_stats(self):
         """Export task statistics.
@@ -234,9 +233,10 @@ class Output:
         force: bool = False,
     ):
         """Process existing output."""
-        self.platform = construct_backend(
+        backend = construct_backend(
             backend=self.meta.backend, platform=self.meta.platform
-        ).platform
+        )
+        self.platform = CalibrationPlatform.from_platform(backend.platform)
         assert self.platform is not None
 
         for task_id, completed in self.history.items():

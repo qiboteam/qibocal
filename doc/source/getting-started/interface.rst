@@ -60,15 +60,15 @@ regarding the protocols executed.
     qq report <output_folder>
 
 
-``qq auto``
+``qq run``
 ^^^^^^^^^^^
 
-The previous commands are put together using ``qq auto`` which will perform data acquisition, post-processing and report generation.
+The previous commands are put together using ``qq run`` which will perform data acquisition, post-processing and report generation.
 When executing multiple protocols they are executed following the actions specified in the runcard.
 
 .. code-block::
 
-    qq auto <path_to_runcard> -o <output_folder>
+    qq run <path_to_runcard> -o <output_folder>
 
 ``qq update``
 ^^^^^^^^^^^^^

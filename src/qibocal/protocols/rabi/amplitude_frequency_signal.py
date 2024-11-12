@@ -7,13 +7,10 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import (
     HZ_TO_GHZ,
@@ -23,6 +20,7 @@ from qibocal.protocols.utils import (
     table_html,
 )
 
+from ...result import magnitude, phase
 from .amplitude_signal import RabiAmplitudeSignalResults
 from .utils import fit_amplitude_function, sequence_amplitude
 
@@ -31,12 +29,12 @@ from .utils import fit_amplitude_function, sequence_amplitude
 class RabiAmplitudeFrequencySignalParameters(Parameters):
     """RabiAmplitudeFrequency runcard inputs."""
 
-    min_amp_factor: float
-    """Minimum amplitude multiplicative factor."""
-    max_amp_factor: float
-    """Maximum amplitude multiplicative factor."""
-    step_amp_factor: float
-    """Step amplitude multiplicative factor."""
+    min_amp: float
+    """Minimum amplitude."""
+    max_amp: float
+    """Maximum amplitude."""
+    step_amp: float
+    """Step amplitude."""
     min_freq: int
     """Minimum frequency as an offset."""
     max_freq: int
@@ -108,53 +106,43 @@ def _acquisition(
         targets, params, platform
     )
 
-    # qubit drive pulse amplitude
-    amplitude_range = np.arange(
-        params.min_amp_factor,
-        params.max_amp_factor,
-        params.step_amp_factor,
-    )
-    sweeper_amp = Sweeper(
-        Parameter.amplitude,
-        amplitude_range,
-        [qd_pulses[qubit] for qubit in targets],
-        type=SweeperType.FACTOR,
-    )
-
-    # qubit drive pulse amplitude
     frequency_range = np.arange(
         params.min_freq,
         params.max_freq,
         params.step_freq,
     )
-    sweeper_freq = Sweeper(
-        Parameter.frequency,
-        frequency_range,
-        [qd_pulses[qubit] for qubit in targets],
-        type=SweeperType.OFFSET,
+    freq_sweepers = {}
+    for qubit in targets:
+        channel = platform.qubits[qubit].drive
+        freq_sweepers[qubit] = Sweeper(
+            parameter=Parameter.frequency,
+            values=platform.config(channel).frequency + frequency_range,
+            channels=[channel],
+        )
+    amp_sweeper = Sweeper(
+        parameter=Parameter.amplitude,
+        range=(params.min_amp, params.max_amp, params.step_amp),
+        pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
     data = RabiAmplitudeFreqSignalData(durations=durations)
 
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
-        sweeper_amp,
-        sweeper_freq,
+    results = platform.execute(
+        [sequence],
+        [[amp_sweeper], [freq_sweepers[q] for q in targets]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
     )
     for qubit in targets:
-        result = results[ro_pulses[qubit].serial]
+        result = results[ro_pulses[qubit].id]
         data.register_qubit(
             qubit=qubit,
-            freq=qd_pulses[qubit].frequency + frequency_range,
-            amp=qd_pulses[qubit].amplitude * amplitude_range,
-            signal=result.magnitude,
-            phase=result.phase,
+            freq=freq_sweepers[qubit].values,
+            amp=amp_sweeper.values,
+            signal=magnitude(result),
+            phase=phase(result),
         )
     return data
 
@@ -185,7 +173,7 @@ def _fit(data: RabiAmplitudeFreqSignalData) -> RabiAmplitudeFrequencySignalResul
         x = (amps - x_min) / (x_max - x_min)
         y = (y - y_min) / (y_max - y_min)
 
-        period = fallback_period(guess_period(amps, y))
+        period = fallback_period(guess_period(x, y))
         pguess = [0.5, 0.5, period, 0]
 
         try:

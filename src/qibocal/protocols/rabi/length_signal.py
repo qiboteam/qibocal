@@ -3,15 +3,13 @@ from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import fallback_period, guess_period
+from qibocal.result import magnitude, phase
 
 from . import utils
 
@@ -28,6 +26,8 @@ class RabiLengthSignalParameters(Parameters):
     """Step pi pulse duration [ns]."""
     pulse_amplitude: Optional[float] = None
     """Pi pulse amplitude. Same for all qubits."""
+    interpolated_sweeper: bool = False
+    """Use real-time interpolation if supported by instruments."""
 
 
 @dataclass
@@ -67,48 +67,48 @@ def _acquisition(
     to find the drive pulse length that creates a rotation of a desired angle.
     """
 
-    sequence, qd_pulses, ro_pulses, amplitudes = utils.sequence_length(
+    sequence, qd_pulses, delays, ro_pulses, amplitudes = utils.sequence_length(
         targets, params, platform
     )
-
-    # define the parameter to sweep and its range:
-    # qubit drive pulse duration time
-    qd_pulse_duration_range = np.arange(
+    sweep_range = (
         params.pulse_duration_start,
         params.pulse_duration_end,
         params.pulse_duration_step,
     )
-
-    sweeper = Sweeper(
-        Parameter.duration,
-        qd_pulse_duration_range,
-        [qd_pulses[qubit] for qubit in targets],
-        type=SweeperType.ABSOLUTE,
-    )
+    if params.interpolated_sweeper:
+        sweeper = Sweeper(
+            parameter=Parameter.duration_interpolated,
+            range=sweep_range,
+            pulses=[qd_pulses[q] for q in targets],
+        )
+    else:
+        sweeper = Sweeper(
+            parameter=Parameter.duration,
+            range=sweep_range,
+            pulses=[qd_pulses[q] for q in targets] + [delays[q] for q in targets],
+        )
 
     data = RabiLengthSignalData(amplitudes=amplitudes)
 
     # execute the sweep
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
-        sweeper,
+    results = platform.execute(
+        [sequence],
+        [[sweeper]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
     )
 
-    for qubit in targets:
-        result = results[ro_pulses[qubit].serial]
+    for q in targets:
+        result = results[ro_pulses[q].id]
         data.register_qubit(
             RabiLenSignalType,
-            (qubit),
+            (q),
             dict(
-                length=qd_pulse_duration_range,
-                signal=result.magnitude,
-                phase=result.phase,
+                length=sweeper.values,
+                signal=magnitude(result),
+                phase=phase(result),
             ),
         )
     return data

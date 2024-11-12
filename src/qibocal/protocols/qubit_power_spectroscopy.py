@@ -4,14 +4,20 @@ from typing import Optional
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Delay,
+    Parameter,
+    Platform,
+    PulseSequence,
+    Sweeper,
+)
 
-from qibocal.auto.operation import Parameters, Results, Routine
+from qibocal.auto.operation import Parameters, QubitId, Results, Routine
 
+from ..result import magnitude, phase
+from ..update import replace
 from .qubit_spectroscopy import QubitSpectroscopyResults
 from .resonator_punchout import ResonatorPunchoutData
 from .utils import HZ_TO_GHZ
@@ -25,16 +31,14 @@ class QubitPowerSpectroscopyParameters(Parameters):
     """Width for frequency sweep relative  to the drive frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
-    min_amp_factor: float
-    """Minimum amplitude multiplicative factor."""
-    max_amp_factor: float
-    """Maximum amplitude multiplicative factor."""
-    step_amp_factor: float
-    """Step amplitude multiplicative factor."""
+    min_amp: float
+    """Minimum amplitude."""
+    max_amp: float
+    """Maximum amplitude."""
+    step_amp: float
+    """Step amplitude."""
     duration: int
     """Drive duration."""
-    amplitude: Optional[float] = None
-    """Initial drive amplitude."""
 
 
 @dataclass
@@ -58,71 +62,61 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
-    amplitudes = {}
-    for qubit in targets:
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=params.duration
-        )
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
-        )
-        if params.amplitude is not None:
-            qd_pulses[qubit].amplitude = params.amplitude
-        amplitudes[qubit] = qd_pulses[qubit].amplitude
-
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
-
-    # define the parameters to sweep and their range:
-    # drive frequency
+    freq_sweepers = {}
     delta_frequency_range = np.arange(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
-    freq_sweeper = Sweeper(
-        Parameter.frequency,
-        delta_frequency_range,
-        [qd_pulses[qubit] for qubit in targets],
-        type=SweeperType.OFFSET,
-    )
-    # drive amplitude
-    amplitude_range = np.arange(
-        params.min_amp_factor, params.max_amp_factor, params.step_amp_factor
-    )
+    for qubit in targets:
+        natives = platform.natives.single_qubit[qubit]
+        qd_channel, qd_pulse = natives.RX()[0]
+        ro_channel, ro_pulse = natives.MZ()[0]
+
+        qd_pulse = replace(qd_pulse, duration=params.duration)
+
+        qd_pulses[qubit] = qd_pulse
+        ro_pulses[qubit] = ro_pulse
+
+        sequence.append((qd_channel, qd_pulse))
+        sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
+        sequence.append((ro_channel, ro_pulse))
+
+        f0 = platform.config(qd_channel).frequency
+        freq_sweepers[qubit] = Sweeper(
+            parameter=Parameter.frequency,
+            values=f0 + delta_frequency_range,
+            channels=[qd_channel],
+        )
+
     amp_sweeper = Sweeper(
-        Parameter.amplitude,
-        amplitude_range,
-        [qd_pulses[qubit] for qubit in targets],
-        type=SweeperType.FACTOR,
+        parameter=Parameter.amplitude,
+        range=(params.min_amp, params.max_amp, params.step_amp),
+        pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
     # data
     data = QubitPowerSpectroscopyData(
-        amplitudes=amplitudes,
         resonator_type=platform.resonator_type,
     )
 
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
-        amp_sweeper,
-        freq_sweeper,
+    results = platform.execute(
+        [sequence],
+        [[amp_sweeper], [freq_sweepers[q] for q in targets]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
     )
 
     # retrieve the results for every qubit
     for qubit, ro_pulse in ro_pulses.items():
         # average signal, phase, i and q over the number of shots defined in the runcard
-        result = results[ro_pulse.serial]
+        result = results[ro_pulse.id]
         data.register_qubit(
             qubit,
-            signal=result.magnitude,
-            phase=result.phase,
-            freq=delta_frequency_range + qd_pulses[qubit].frequency,
-            amp=amplitude_range * amplitudes[qubit],
+            signal=magnitude(result),
+            phase=phase(result),
+            freq=freq_sweepers[qubit].values,
+            amp=amp_sweeper.values,
         )
 
     return data

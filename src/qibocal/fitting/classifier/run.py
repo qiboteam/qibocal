@@ -8,33 +8,20 @@ from typing import List, Optional
 
 import numpy as np
 import pandas as pd
-from qibolab.qubits import QubitId
 from sklearn.metrics import accuracy_score
+
+from qibocal.auto.operation import QubitId
 
 from . import data
 
 CLS_MODULES = [
-    "linear_svm",
-    "ada_boost",
-    "gaussian_process",
-    "naive_bayes",
     "qubit_fit",
-    "random_forest",
-    "rbf_svm",
     "qblox_fit",
-    "decision_tree",
 ]
 
 PRETTY_NAME = [
-    "Linear SVM",
-    "Ada Boost",
-    "Gaussian Process",
-    "Naive Bayes",
     "Qubit Fit",
-    "Random Forest",
-    "RBF SVM",
     "Qblox Fit",
-    "Decision Tree",
 ]
 
 

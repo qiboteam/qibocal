@@ -3,8 +3,6 @@ Basic examples
 
 In this section we are going to explain briefly how to perform
 the calibration of single qubit devices.
-All runcards that are going to be used are available
-`here <https://github.com/qiboteam/qibocal/tree/main/runcards/calibration_tutorial>`_.
 
 Dummy guide for single qubit calibration
 ----------------------------------------

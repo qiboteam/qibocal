@@ -3,14 +3,12 @@ from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
 
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import QubitId, Routine
 
+from ...result import probability
+from ..ramsey.utils import ramsey_sequence
 from ..utils import table_dict, table_html
 from . import t1, t2_signal, utils
 
@@ -46,57 +44,36 @@ def _acquisition(
     platform: Platform,
     targets: list[QubitId],
 ) -> T2Data:
-    """Data acquisition for Ramsey Experiment (detuned)."""
-    # create a sequence of pulses for the experiment
-    # RX90 - t - RX90 - MZ
-    ro_pulses = {}
-    RX90_pulses1 = {}
-    RX90_pulses2 = {}
-    sequence = PulseSequence()
-    for qubit in targets:
-        RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
-        RX90_pulses2[qubit] = platform.create_RX90_pulse(
-            qubit,
-            start=RX90_pulses1[qubit].finish,
-        )
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=RX90_pulses2[qubit].finish
-        )
-        sequence.add(RX90_pulses1[qubit])
-        sequence.add(RX90_pulses2[qubit])
-        sequence.add(ro_pulses[qubit])
+    """Data acquisition for T2 experiment."""
 
-    # define the parameter to sweep and its range:
     waits = np.arange(
-        # wait time between RX90 pulses
         params.delay_between_pulses_start,
         params.delay_between_pulses_end,
         params.delay_between_pulses_step,
     )
 
+    sequence, delays = ramsey_sequence(platform, targets)
+
     data = T2Data()
 
     sweeper = Sweeper(
-        Parameter.start,
-        waits,
-        [RX90_pulses2[qubit] for qubit in targets],
-        type=SweeperType.ABSOLUTE,
+        parameter=Parameter.duration,
+        values=waits,
+        pulses=delays,
     )
 
-    # execute the sweep
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
-        ),
-        sweeper,
+    results = platform.execute(
+        [sequence],
+        [[sweeper]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
 
     for qubit in targets:
-        probs = results[ro_pulses[qubit].serial].probability(state=1)
+        ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+        probs = probability(results[ro_pulse.id], state=1)
         errors = np.sqrt(probs * (1 - probs) / params.nshots)
         data.register_qubit(
             t1.CoherenceProbType, (qubit), dict(wait=waits, prob=probs, error=errors)

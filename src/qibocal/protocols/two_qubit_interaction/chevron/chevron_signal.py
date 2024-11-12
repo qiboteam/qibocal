@@ -4,12 +4,10 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.qubits import QubitPairId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Pulse, Sweeper
 
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import QubitPairId, Routine
+from qibocal.result import magnitude
 
 from ..utils import order_pair
 from .chevron import (
@@ -103,41 +101,45 @@ def _aquisition(
             native=params.native,
         )
 
-        data.native_amplitude[ordered_pair] = (
-            sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0].amplitude
-        )
-        data.sweetspot[ordered_pair] = platform.qubits[ordered_pair[1]].sweetspot
-
+        flux_channel = platform.qubits[ordered_pair[1]].flux
+        flux_pulses = [
+            pulse
+            for pulse in sequence.channel(flux_channel)
+            if isinstance(pulse, Pulse)
+        ]
+        ro_pulses_low = sequence.channel(platform.qubits[ordered_pair[0]].acquisition)
+        ro_pulses_high = sequence.channel(platform.qubits[ordered_pair[1]].acquisition)
+        delay_low, ro_low = list(ro_pulses_low)
+        delay_high, ro_high = list(ro_pulses_high)
         sweeper_amplitude = Sweeper(
-            Parameter.amplitude,
-            params.amplitude_range,
-            pulses=[sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
-            type=SweeperType.FACTOR,
+            parameter=Parameter.amplitude,
+            range=(params.amplitude_min, params.amplitude_max, params.amplitude_step),
+            pulses=flux_pulses,
         )
         sweeper_duration = Sweeper(
-            Parameter.duration,
-            params.duration_range,
-            pulses=[sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
-            type=SweeperType.ABSOLUTE,
+            parameter=Parameter.duration,
+            range=(params.duration_min, params.duration_max, params.duration_step),
+            pulses=flux_pulses + [delay_low, delay_high],
         )
-        results = platform.sweep(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
-            ),
-            sweeper_duration,
-            sweeper_amplitude,
+
+        data.native_amplitude[ordered_pair] = flux_pulses[0].amplitude
+        data.sweetspot[ordered_pair] = platform.config(flux_channel).offset
+
+        results = platform.execute(
+            [sequence],
+            [[sweeper_duration], [sweeper_amplitude]],
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
         )
         data.register_qubit(
             ordered_pair[0],
             ordered_pair[1],
-            params.duration_range,
-            params.amplitude_range * data.native_amplitude[ordered_pair],
-            results[ordered_pair[0]].magnitude,
-            results[ordered_pair[1]].magnitude,
+            sweeper_duration.values,
+            sweeper_amplitude.values,
+            magnitude(results[ro_low.id]),
+            magnitude(results[ro_high.id]),
         )
     return data
 

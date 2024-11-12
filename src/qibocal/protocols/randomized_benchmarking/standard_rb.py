@@ -3,10 +3,9 @@ from typing import Iterable, Optional, TypedDict, Union
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId
+from qibolab import Platform
 
-from qibocal.auto.operation import Parameters, Routine
+from qibocal.auto.operation import Parameters, QubitId, Routine
 
 from ..utils import table_dict, table_html
 from .fitting import exp1B_func
@@ -225,4 +224,14 @@ def _plot(
     return [fig], fitting_report
 
 
-standard_rb = Routine(_acquisition, _fit, _plot)
+def _update(results: StandardRBResult, platform: Platform, target: QubitId):
+    """Write rb fidelity in calibration."""
+
+    # TODO: shall we use the gate fidelity or the pulse fidelity
+    platform.calibration.single_qubits[target].rb_fidelity = (
+        results.fidelity[target],
+        results.fit_uncertainties[target][1] / 2,
+    )
+
+
+standard_rb = Routine(_acquisition, _fit, _plot, _update)

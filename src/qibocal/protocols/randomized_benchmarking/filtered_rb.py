@@ -2,10 +2,9 @@ from dataclasses import dataclass
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId
+from qibolab import Platform
 
-from qibocal.auto.operation import Results, Routine
+from qibocal.auto.operation import QubitId, Results, Routine
 from qibocal.protocols.randomized_benchmarking.utils import rb_acquisition
 from qibocal.protocols.utils import table_dict, table_html
 
@@ -122,5 +121,7 @@ def _plot(
 
     return [fig], fitting_report
 
+
+# TODO: add update function (?)
 
 filtered_rb = Routine(_acquisition, _fit, _plot)

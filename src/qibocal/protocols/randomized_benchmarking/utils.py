@@ -10,10 +10,9 @@ from qibo import gates
 from qibo.backends import GlobalBackend
 from qibo.config import raise_error
 from qibo.models import Circuit
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId, QubitPairId
+from qibolab import Platform
 
-from qibocal.auto.operation import Data, Parameters, Results
+from qibocal.auto.operation import Data, Parameters, QubitId, QubitPairId, Results
 from qibocal.auto.transpile import (
     dummy_transpiler,
     execute_transpiled_circuit,
@@ -585,7 +584,7 @@ def twoq_rb_acquisition(
 
 def layer_circuit(
     rb_gen: Callable, depth: int, target, interleave: str = None
-) -> tuple[Circuit, dict]:
+) -> tuple[Circuit, list]:
     """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`
     and a dictionary with random indexes used to select the clifford gates.
 
@@ -601,14 +600,14 @@ def layer_circuit(
     random_indexes = []
     if isinstance(target, (str, int)):
         nqubits = 1
-        rb_gen_layer = rb_gen.layer_gen_single_qubit()
+        rb_gen_layer = rb_gen.layer_gen_single_qubit
     elif isinstance(target, Tuple):  # Tuple for qubit pair
         nqubits = 2
-        rb_gen_layer = rb_gen.layer_gen_two_qubit()
+        rb_gen_layer = rb_gen.layer_gen_two_qubit
     # Build each layer, there will be depth many in the final circuit.
     for _ in range(depth):
         # Generate a layer.
-        new_layer, random_index = rb_gen_layer
+        new_layer, random_index = rb_gen_layer()
         random_indexes.append(random_index)
         new_circuit = Circuit(nqubits)
         if nqubits == 1:

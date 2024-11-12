@@ -3,17 +3,19 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Platform,
+    PulseSequence,
+    Sweeper,
+)
 from scipy.optimize import curve_fit
 
-from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
-from qibocal.config import log
-
+from ...auto.operation import Data, Parameters, QubitId, Results, Routine
+from ...config import log
+from ...result import magnitude, phase
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, extract_feature, table_dict, table_html
 from . import utils
 
@@ -37,9 +39,15 @@ class ResonatorFluxResults(Results):
     """ResonatoFlux outputs."""
 
     resonator_freq: dict[QubitId, float] = field(default_factory=dict)
-    bare_resonator_freq: dict[QubitId, float] = field(default_factory=dict)
+    """Readout frequency."""
     coupling: dict[QubitId, float] = field(default_factory=dict)
     """Qubit-resonator coupling."""
+    asymmetry: dict[QubitId, float] = field(default_factory=dict)
+    """Asymmetry between junctions."""
+    sweetspot: dict[QubitId, float] = field(default_factory=dict)
+    """Sweetspot for each qubit."""
+    matrix_element: dict[QubitId, float] = field(default_factory=dict)
+    """Sweetspot for each qubit."""
     fitted_parameters: dict[QubitId, float] = field(default_factory=dict)
 
 
@@ -62,12 +70,10 @@ class ResonatorFluxData(Data):
     """Resonator type."""
     qubit_frequency: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
-    offset: dict[QubitId, float] = field(default_factory=dict)
-    """Qubit bias offset."""
     bare_resonator_frequency: dict[QubitId, int] = field(default_factory=dict)
     """Qubit bare resonator frequency power provided by the user."""
-    matrix_element: dict[QubitId, float] = field(default_factory=dict)
     charging_energy: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit charging energy in Hz."""
 
     data: dict[QubitId, npt.NDArray[ResFluxType]] = field(default_factory=dict)
     """Raw data acquired."""
@@ -83,142 +89,157 @@ def _acquisition(
     params: ResonatorFluxParameters, platform: Platform, targets: list[QubitId]
 ) -> ResonatorFluxData:
     """Data acquisition for ResonatorFlux experiment."""
-    # create a sequence of pulses for the experiment:
-    # MZ
 
+    delta_frequency_range = np.arange(
+        -params.freq_width / 2, params.freq_width / 2, params.freq_step
+    )
+    delta_offset_range = np.arange(
+        -params.bias_width / 2, params.bias_width / 2, params.bias_step
+    )
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
     ro_pulses = {}
     qubit_frequency = {}
     bare_resonator_frequency = {}
-    offset = {}
-    matrix_element = {}
     charging_energy = {}
-    for qubit in targets:
-        qubit_frequency[qubit] = platform.qubits[qubit].drive_frequency
-        bare_resonator_frequency[qubit] = platform.qubits[
-            qubit
-        ].bare_resonator_frequency
-        matrix_element[qubit] = platform.qubits[qubit].crosstalk_matrix[qubit]
-        offset[qubit] = -platform.qubits[qubit].sweetspot * matrix_element[qubit]
-        charging_energy[qubit] = -platform.qubits[qubit].anharmonicity
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
-        sequence.add(ro_pulses[qubit])
+    matrix_element = {}
+    offset = {}
+    freq_sweepers = []
+    offset_sweepers = []
+    for q in targets:
+        ro_sequence = platform.natives.single_qubit[q].MZ()
+        ro_pulses[q] = ro_sequence[0][1]
+        sequence += ro_sequence
 
-    # define the parameters to sweep and their range:
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
-    freq_sweeper = Sweeper(
-        Parameter.frequency,
-        delta_frequency_range,
-        [ro_pulses[qubit] for qubit in targets],
-        type=SweeperType.OFFSET,
-    )
+        qubit = platform.qubits[q]
+        offset0 = platform.config(qubit.flux).offset
+        freq0 = platform.config(qubit.probe).frequency
 
-    delta_bias_range = np.arange(
-        -params.bias_width / 2, params.bias_width / 2, params.bias_step
-    )
-    sweepers = [
-        Sweeper(
-            Parameter.bias,
-            delta_bias_range,
-            qubits=[platform.qubits[qubit] for qubit in targets],
-            type=SweeperType.OFFSET,
+        freq_sweepers.append(
+            Sweeper(
+                parameter=Parameter.frequency,
+                values=freq0 + delta_frequency_range,
+                channels=[qubit.probe],
+            )
         )
-    ]
+        offset_sweepers.append(
+            Sweeper(
+                parameter=Parameter.offset,
+                values=offset0 + delta_offset_range,
+                channels=[qubit.flux],
+            )
+        )
+
+        qubit_frequency[q] = platform.config(qubit.drive).frequency
+        bare_resonator_frequency[q] = platform.calibration.single_qubits[
+            q
+        ].resonator.bare_frequency
+        matrix_element[q] = platform.calibration.get_crosstalk_element(q, q)
+        offset[q] = -offset0 * matrix_element[q]
+        charging_energy[q] = platform.calibration.single_qubits[q].qubit.charging_energy
 
     data = ResonatorFluxData(
         resonator_type=platform.resonator_type,
         qubit_frequency=qubit_frequency,
-        offset=offset,
-        matrix_element=matrix_element,
         bare_resonator_frequency=bare_resonator_frequency,
         charging_energy=charging_energy,
     )
-    options = ExecutionParameters(
+    results = platform.execute(
+        [sequence],
+        [offset_sweepers, freq_sweepers],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    for bias_sweeper in sweepers:
-        results = platform.sweep(sequence, options, bias_sweeper, freq_sweeper)
-        # retrieve the results for every qubit
-        for qubit in targets:
-            result = results[ro_pulses[qubit].serial]
-            sweetspot = platform.qubits[qubit].sweetspot
-            data.register_qubit(
-                qubit,
-                signal=result.magnitude,
-                phase=result.phase,
-                freq=delta_frequency_range + ro_pulses[qubit].frequency,
-                bias=delta_bias_range + sweetspot,
-            )
+    # retrieve the results for every qubit
+    for i, qubit in enumerate(targets):
+        result = results[ro_pulses[qubit].id]
+        data.register_qubit(
+            qubit,
+            signal=magnitude(result),
+            phase=phase(result),
+            freq=freq_sweepers[i].values,
+            bias=offset_sweepers[i].values,
+        )
     return data
 
 
 def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
-    """
-    Post-processing for QubitFlux Experiment. See arxiv:0703002
-    Fit frequency as a function of current for the flux qubit spectroscopy
-    data (QubitFluxData): data object with information on the feature response at each current point.
+    """PostProcessing for resonator_flux protocol.
+
+    After applying a mask on the 2D data, the signal is fitted using
+    the expected resonator_freq vs flux behavior.
+    The fitting procedure requires the knowledge of the bare resonator frequency,
+    the charging energy Ec and the maximum qubit frequency which is assumed to be
+    the frequency at which the qubit is placed.
+    The protocol aims at extracting the sweetspot, the flux coefficient, the coupling,
+    the asymmetry and the dressed resonator frequency.
     """
 
-    qubits = data.qubits
     coupling = {}
     resonator_freq = {}
-    bare_resonator_freq = {}
+    asymmetry = {}
     fitted_parameters = {}
-    for qubit in qubits:
+    sweetspot = {}
+    matrix_element = {}
+
+    for qubit in data.qubits:
         qubit_data = data[qubit]
         biases = qubit_data.bias
         frequencies = qubit_data.freq
         signal = qubit_data.signal
+
+        # extract signal from 2D plot based on SNR mask
         frequencies, biases = extract_feature(
             frequencies, biases, signal, "min" if data.resonator_type == "2D" else "max"
         )
 
-        def fit_function(x, g, resonator_freq):
+        # define fit function
+        def fit_function(
+            x: float, g: float, d: float, offset: float, normalization: float
+        ):
+            """Fit function for resonator flux dependence."""
             return utils.transmon_readout_frequency(
                 xi=x,
                 w_max=data.qubit_frequency[qubit] * HZ_TO_GHZ,
                 xj=0,
-                d=0,
-                normalization=data.matrix_element[qubit],
-                offset=data.offset[qubit],
+                d=d,
+                normalization=normalization,
+                offset=offset,
                 crosstalk_element=1,
                 charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
-                resonator_freq=resonator_freq,
+                resonator_freq=data.bare_resonator_frequency[qubit] * HZ_TO_GHZ,
                 g=g,
             )
 
         try:
-            popt, perr = curve_fit(
+            popt, _ = curve_fit(
                 fit_function,
                 biases,
                 frequencies * HZ_TO_GHZ,
                 bounds=(
-                    [0, data.bare_resonator_frequency[qubit] * HZ_TO_GHZ - 0.2],
-                    [0.5, data.bare_resonator_frequency[qubit] * HZ_TO_GHZ + 0.2],
+                    [0, 0, -1, 0.5],
+                    [0.5, 1, 1, +1],
                 ),
                 maxfev=100000,
             )
             fitted_parameters[qubit] = {
                 "w_max": data.qubit_frequency[qubit] * HZ_TO_GHZ,
                 "xj": 0,
-                "d": 0,
-                "normalization": data.matrix_element[qubit],
-                "offset": data.offset[qubit],
+                "d": popt[1],
+                "normalization": popt[3],
+                "offset": popt[2],
                 "crosstalk_element": 1,
                 "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
-                "resonator_freq": popt[1],
+                "resonator_freq": data.bare_resonator_frequency[qubit] * HZ_TO_GHZ,
                 "g": popt[0],
             }
-            sweetspot = -data.offset[qubit] / data.matrix_element[qubit]
-            resonator_freq[qubit] = fit_function(sweetspot, *popt) * GHZ_TO_HZ
+            matrix_element[qubit] = popt[3]
+            sweetspot[qubit] = (np.round(popt[2]) - popt[2]) / popt[3]
+            resonator_freq[qubit] = fit_function(sweetspot[qubit], *popt) * GHZ_TO_HZ
             coupling[qubit] = popt[0]
-            bare_resonator_freq[qubit] = popt[1] * GHZ_TO_HZ
+            asymmetry[qubit] = popt[1]
         except ValueError as e:
             log.error(
                 f"Error in resonator_flux protocol fit: {e} "
@@ -226,11 +247,12 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 "Lowering the value of `threshold` in `extract_*_feature`"
                 "should fix the problem."
             )
-
     return ResonatorFluxResults(
         resonator_freq=resonator_freq,
-        bare_resonator_freq=bare_resonator_freq,
         coupling=coupling,
+        matrix_element=matrix_element,
+        sweetspot=sweetspot,
+        asymmetry=asymmetry,
         fitted_parameters=fitted_parameters,
     )
 
@@ -247,16 +269,23 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
                 target,
                 [
                     "Coupling g [MHz]",
-                    "Bare resonator freq [Hz]",
                     "Dressed resonator freq [Hz]",
+                    "Asymmetry",
+                    "Sweetspot [V]",
+                    "Flux dependence [V]^-1",
                     "Chi [MHz]",
                 ],
                 [
                     np.round(fit.coupling[target] * 1e3, 2),
-                    np.round(fit.bare_resonator_freq[target], 6),
                     np.round(fit.resonator_freq[target], 6),
+                    np.round(fit.asymmetry[target], 3),
+                    np.round(fit.sweetspot[target], 4),
+                    np.round(fit.matrix_element[target], 4),
                     np.round(
-                        (fit.bare_resonator_freq[target] - fit.resonator_freq[target])
+                        (
+                            data.bare_resonator_frequency[target]
+                            - fit.resonator_freq[target]
+                        )
                         * 1e-6,
                         2,
                     ),
@@ -269,9 +298,10 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
 
 def _update(results: ResonatorFluxResults, platform: Platform, qubit: QubitId):
     pass
-    update.bare_resonator_frequency(results.bare_resonator_freq[qubit], platform, qubit)
-    update.readout_frequency(results.resonator_freq[qubit], platform, qubit)
-    update.coupling(results.coupling[qubit], platform, qubit)
+    # update.bare_resonator_frequency(results.bare_resonator_freq[qubit], platform, qubit)
+    # update.readout_frequency(results.resonator_freq[qubit], platform, qubit)
+    # TODO: add coupling somewhere
+    # update.coupling(results.coupling[qubit], platform, qubit)
 
 
 resonator_flux = Routine(_acquisition, _fit, _plot, _update)
