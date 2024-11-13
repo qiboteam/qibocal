@@ -93,7 +93,6 @@ def create_chsh_circuits(
                     c.add(gates.GPI2(qubits[i], p[i] + np.pi / 2))
                 else:
                     c.add(gates.H(qubits[i]))
-        for qubit in qubits:
-            c.add(gates.M(qubit))
+        c.add(gates.M(*qubits))
         chsh_circuits[basis] = c
     return chsh_circuits

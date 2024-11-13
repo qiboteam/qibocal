@@ -134,7 +134,7 @@ def _acquisition(
                 for q, bit in enumerate(state):
                     if bit == "1":
                         c.add(gates.X(qubits[q]))
-                    c.add(gates.M(qubits[q]))
+                c.add(gates.M(*[qubits[i] for i in range(len(state))]))
                 _, results = execute_transpiled_circuit(
                     c, qubit_map, backend, nshots=params.nshots, transpiler=transpiler
                 )
