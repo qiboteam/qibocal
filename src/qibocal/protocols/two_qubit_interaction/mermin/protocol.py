@@ -36,7 +36,9 @@ class MerminParameters(Parameters):
     """Error mitigation model"""
 
 
-MerminType = np.dtype([("basis", object), ("state", object), ("frequency", int)])
+MerminType = np.dtype(
+    [("theta", float), ("basis", object), ("state", object), ("frequency", int)]
+)
 
 
 @dataclass
@@ -47,122 +49,20 @@ class MerminData(Data):
     """Angles probed."""
     data: dict[list[QubitId], npt.NDArray[MerminType]] = field(default_factory=dict)
     """Raw data acquired."""
-    # data: dict[list, list, str] = field(default_factory=dict)
-    # """Raw data acquired."""
-    mitigation_matrix: dict[tuple[QubitId, ...], npt.NDArray] = field(
+    mitigation_matrix: dict[list[QubitId], npt.NDArray[np.float64]] = field(
         default_factory=dict
     )
-    targets = None
     """Mitigation matrix computed using the readout_mitigation_matrix protocol."""
-
-    @property
-    def qubits(self):
-        """Access qubits from data structure."""
-        return [q for q in self.data]
-
-    # def save(self, path: Path):
-    #     """Saving data including mitigation matrix."""
-    #     pass
-    # np.savez(
-    #     path / f"{MITIGATION_MATRIX_FILE}.npz",
-    #     self.mitigation_matrix
-    #     **{
-    #         json.dumps(tuple(targets)): self.mitigation_matrix[control, target]
-    #         for control, target, _ in self.data
-    #     },
-    # )
-    # super().save(path=path)
-
-    # @classmethod
-    # def load(cls, path: Path):
-    #     """Custom loading to acco   modate mitigation matrix"""
-    # pass
-    # instance = super().load(path=path)
-    # # load readout mitigation matrix
-    # mitigation_matrix = super().load_data(
-    #     path=path, filename=MITIGATION_MATRIX_FILE
-    # )
-    # instance.mitigation_matrix = mitigation_matrix
-    # return instance
-
-    # def register_basis(self, targets, basis, frequencies):
-    #     """Store output for single qubit."""
-    #     n = len(targets)
-    #     self.targets = targets
-    #     computational_basis = [format(i, f"0{n}b") for i in range(2**n)]
-
-    #     # Add zero if state do not appear in state
-    #     # could be removed by using high number of shots
-    #     for i in computational_basis:
-    #         if i not in frequencies:
-    #             frequencies[i] = 0
-
-    #     # print(basis)
-    #     # print(frequencies.items())
-    #     for state, freq in frequencies.items():
-    #         # print(state, freq)
-    #         # print(self.data)
-    #         if ("".join(targets), basis, state) in self.data:
-    #             self.data["".join(targets), basis, state] = np.concatenate(
-    #                 (
-    #                     self.data["".join(targets), basis, state],
-    #                     np.array([freq]),
-    #                 )
-    #             )
-    #         else:
-    #             self.data["".join(targets), basis, state] = np.array([freq])
-
-    def merge_frequencies(self, targets, readout_basis):
-        """Merge frequencies with different measurement basis."""
-        # mermin_polynomial = get_mermin_polynomial(len(targets))
-        # readout_basis = get_readout_basis(mermin_polynomial)
-
-        freqs = []
-        mermin_data = {
-            (index[1], index[2]): value
-            for index, value in self.data.items()
-            if index[0] == "".join(targets)
-        }
-
-        freqs = []
-        for i in readout_basis:
-            freqs.append(
-                {
-                    state[1]: value
-                    for state, value in mermin_data.items()
-                    if state[0] == i
-                }
-            )
-
-        return freqs
-
-    @property
-    def params(self):
-        """Convert non-arrays attributes into dict."""
-        data_dict = super().params
-        data_dict.pop("mitigation_matrix")
-
-        return data_dict
 
 
 @dataclass
 class MerminResults(Results):
     """Mermin Results class."""
 
-    mermin: dict[list, float] = field(default_factory=dict)
+    mermin: dict[tuple[QubitId, ...], npt.NDArray[np.float64]] = field(
+        default_factory=dict
+    )
     """Raw Mermin value."""
-    mermin_mitigated: dict[list, float] = field(default_factory=dict)
-    """Mitigated Mermin value."""
-
-    def __contains__(self, key: list):
-        """Check if key is in class.
-
-        While key is a QubitPairId both chsh and chsh_mitigated contain
-        an additional key which represents the basis chosen.
-
-        """
-
-        return key in [target for target in self.mermin]
 
 
 def _acquisition(
@@ -175,22 +75,21 @@ def _acquisition(
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
     data = MerminData(thetas=thetas.tolist())
     # import pdb; pdb.set_trace()
+    if params.apply_error_mitigation:
+        mitigation_data, _ = readout_mitigation_matrix.acquisition(
+            readout_mitigation_matrix.parameters_type.load(
+                dict(pulses=True, nshots=params.nshots)
+            ),
+            platform,
+            targets,
+        )
+
+        mitigation_results, _ = readout_mitigation_matrix.fit(mitigation_data)
+        data.mitigation_matrix = mitigation_results.readout_mitigation_matrix
+
     for qubits in targets:
-        # n = len(targets)
         mermin_polynomial = get_mermin_polynomial(len(qubits))
         readout_basis = get_readout_basis(mermin_polynomial)
-        # mermin_coefficients = get_mermin_coefficients(mermin_polynomial)
-
-        if params.apply_error_mitigation:
-            mitigation_data, _ = readout_mitigation_matrix.acquisition(
-                readout_mitigation_matrix.parameters_type.load(
-                    dict(pulses=True, nshots=params.nshots)
-                ),
-                platform,
-                [targets],
-            )
-
-            # mitigation_results, _ = readout_mitigation_matrix.fit(mitigation_data)
 
         for theta in thetas:
             mermin_sequences = create_mermin_sequences(
@@ -201,54 +100,55 @@ def _acquisition(
             for basis, sequence in mermin_sequences.items():
                 results = platform.execute_pulse_sequence(sequence, options=options)
                 frequencies = calculate_frequencies(results, qubits)
-                for state, frequency in frequencies.items():
+                for state, frequency in enumerate(frequencies.values()):
                     data.register_qubit(
                         MerminType,
-                        (qubits),
+                        tuple(qubits),
                         dict(
+                            theta=np.array([theta]),
                             basis=np.array([basis]),
-                            state=np.array([state]),
+                            state=np.array(
+                                [str(format(state, f"0{len(qubits)}b"))]
+                            ),  # TODO: Drop this (maybe)
                             frequency=np.array([frequency]),
                         ),
                     )
-
     return data
 
 
 def _fit(data: MerminData) -> MerminResults:
     """Fitting for CHSH protocol."""
-    results = {}
-    mitigated_results = {}
-
-    mermin_polynomial = get_mermin_polynomial(len(data.qubits))
-    readout_basis = get_readout_basis(mermin_polynomial)
+    targets = list(data.data.keys())
+    results = {qubits: [] for qubits in targets}
+    mermin_polynomial = get_mermin_polynomial(len(targets))
+    basis = np.unique(data.data[targets[0]].basis)
     mermin_coefficients = get_mermin_coefficients(mermin_polynomial)
-    # freq = data.merge_frequencies(data.targets, readout_basis)
-
-    print("BBBBBBBBB", data.mitigation_matrix)
-    if data.mitigation_matrix:
-        matrix = data.mitigation_matrix[pair]
-        mitigated_freq_list = []
-        for freq_basis in freq:
-            mitigated_freq = {format(i, f"0{n}b"): [] for i in range(2**n)}
-            for i in range(len(data.thetas)):
-                freq_array = np.zeros(2**n)
-                for k, v in freq_basis.items():
-                    freq_array[int(k, 2)] = v[i]
-                freq_array = freq_array.reshape(-1, 1)
-                for j, val in enumerate(matrix @ freq_array):
-                    mitigated_freq[format(j, f"0{n}b")].append(float(val))
-            mitigated_freq_list.append(mitigated_freq)
-    results["".join(data.targets)] = [
-        compute_mermin(freq, mermin_coefficients, l) for l in range(len(data.thetas))
-    ]
-
-    if data.mitigation_matrix:
-        mitigated_results["".join(data.targets)] = [
-            compute_mermin(mitigated_freq_list, mermin_coefficients, l)
-            for l in range(len(data.thetas))
-        ]
-    return MerminResults(mermin=results, mermin_mitigated=mitigated_results)
+    for qubits in targets:
+        for theta in data.thetas:
+            qubit_data = data.data[qubits]
+            if data.mitigation_matrix:
+                outputs = []
+                for base in basis:
+                    # TODO: missing for loop on basis
+                    state_freq = qubit_data[
+                        (qubit_data.basis == base) & (qubit_data.theta == theta)
+                    ].frequency
+                    mitigated_output = np.dot(
+                        data.mitigation_matrix[qubits],
+                        state_freq,
+                    )
+                    outputs.append(
+                        {
+                            format(i, f"0{len(qubits)}b"): freq
+                            for i, freq in enumerate(mitigated_output)
+                        }
+                    )
+            else:
+                outputs = qubit_data  # TODO: this is wrong
+            results[tuple(qubits)].append(compute_mermin(outputs, mermin_coefficients))
+    return MerminResults(
+        mermin=results,
+    )  # mitigated_results)
 
 
 def _plot(data: MerminData, fit: MerminResults, target):

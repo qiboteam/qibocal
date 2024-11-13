@@ -7,7 +7,6 @@ from qibolab.pulses import PulseSequence
 def create_mermin_sequence(platform, qubits, theta=None):
     """Creates the pulse sequence to generate the bell states and with a theta-measurement"""
 
-    print(qubits)
     nqubits = len(qubits)
     if not theta:
         theta = ((nqubits - 1) * 0.25 * np.pi) % (2 * np.pi)
@@ -23,7 +22,6 @@ def create_mermin_sequence(platform, qubits, theta=None):
         )
 
     # TODO: Not hardcode topology
-    # print(qubits)
 
     # qubits[0] needs to be the center qubit where everything is connected
     for i in range(1, len(qubits)):
@@ -60,7 +58,6 @@ def create_mermin_sequences(platform, qubits, readout_basis, theta):
             platform, qubits, theta=theta
         )
         # t = sequence.finish
-        # print(basis)
         for i, base in enumerate(basis):
             if base == "X":
                 sequence.add(
@@ -84,5 +81,4 @@ def create_mermin_sequences(platform, qubits, readout_basis, theta):
             sequence.add(platform.create_MZ_pulse(qubit, start=measurement_start))
 
         mermin_sequences[basis] = sequence
-
     return mermin_sequences

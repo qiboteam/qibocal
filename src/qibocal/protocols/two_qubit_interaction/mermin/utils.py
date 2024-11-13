@@ -2,7 +2,7 @@ from qibo.hamiltonians import SymbolicHamiltonian
 from qibo.symbols import X, Y
 
 
-def compute_mermin(frequencies, mermin_coefficients, i):
+def compute_mermin(frequencies, mermin_coefficients):
     """Computes the chsh inequality out of the frequencies of the 4 circuits executed."""
     assert len(frequencies) == len(mermin_coefficients)
     m = 0
@@ -10,12 +10,12 @@ def compute_mermin(frequencies, mermin_coefficients, i):
         for key in freq.keys():
             m += (
                 mermin_coefficients[j]
-                * freq[key][i]
+                * freq[key]
                 * (-1) ** (sum([int(key[k]) for k in range(len(key))]))
             )
-    nshots = sum(freq[x][i] for x in freq)
+    nshots = sum(freq[x] for x in freq)
     try:
-        return m / nshots
+        return float(m / nshots)
     except ZeroDivisionError:
         log.warning("Zero number of shots, returning zero.")
         return 0

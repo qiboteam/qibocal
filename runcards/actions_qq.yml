@@ -4,10 +4,24 @@ targets: [[2,0,3], [2,1,3]]
 
 
 actions:
+  # - id: cz virtual signal
+  #   operation: correct_virtual_z_phases_signal
+  #   targets: [[0, 2],[1,2]]
+  #   parameters:
+  #     theta_start: 0
+  #     theta_end: 180
+  #     theta_step: 10
+  #     flux_pulse_amplitude: 0.5
+  #     flux_pulse_duration: 10
+  #     native: CZ
+  #     dt: 0
+  #     parking: True
+
   - id: mermin
     operation: mermin
     parameters:
       ntheta: 10
+      apply_error_mitigation: True
 
 #   - id: resoantor_amplitude
 #     operation: resonator_amplitude
