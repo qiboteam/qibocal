@@ -7,49 +7,21 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 import scipy
-from qibolab.execution_parameters import (
+import scipy.signal
+from plotly.subplots import make_subplots
+from qibolab import (
     AcquisitionType,
     AveragingMode,
-    ExecutionParameters,
+    Delay,
+    Platform,
+    Pulse,
+    PulseSequence,
+    Rectangular,
 )
-from qibolab.platform import Platform
-from qibolab.pulses import Custom, FluxPulse, PulseSequence
-from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 
-from ..utils import table_dict, table_html
-
-
-def exponential_decay(x, a, t):
-    return 1 + a * np.exp(-x / t)
-
-
-def single_exponential_correction(
-    A: float,
-    tau: float,
-):
-    """
-    Calculate the best FIR and IIR filter taps to correct for an exponential decay
-    (undershoot or overshoot) of the shape
-    `1 + A * exp(-t/tau)`.
-    Args:
-        A: The exponential decay pre-factor.
-        tau: The time constant for the exponential decay, given in ns.
-    Returns:
-        A tuple of two items.
-        The first is a list of 2 FIR (feedforward) taps starting at 0 and spaced `Ts` apart.
-        The second is a single IIR (feedback) tap.
-    """
-    tau *= 1e-9
-    Ts = 1e-9  # sampling rate
-    k1 = Ts + 2 * tau * (A + 1)
-    k2 = Ts - 2 * tau * (A + 1)
-    c1 = Ts + 2 * tau
-    c2 = Ts - 2 * tau
-    feedback_tap = [-k2 / k1]
-    feedforward_taps = list(np.array([c1, c2]) / k1)
-    return feedforward_taps, feedback_tap
+from ..ramsey.utils import fitting, ramsey_fit
 
 
 @dataclass
@@ -73,12 +45,17 @@ class CryoscopeParameters(Parameters):
 class CryoscopeResults(Results):
     """Cryoscope outputs."""
 
-    pass
+    fitted_parameters: dict[tuple[QubitId, str], list[float]] = field(
+        default_factory=dict
+    )
+    """Fitted parameters for every qubit."""
+
+    # TODO: to be fixed
+    def __contains__(self, key):
+        return True
 
 
-CryoscopeType = np.dtype(
-    [("duration", int), ("prob_0", np.float64), ("prob_1", np.float64)]
-)
+CryoscopeType = np.dtype([("duration", int), ("prob_1", np.float64)])
 """Custom dtype for Cryoscope."""
 
 
@@ -89,50 +66,52 @@ def generate_sequences(
     params: CryoscopeParameters,
 ):
 
-    ry90 = platform.create_RX90_pulse(
-        qubit,
-        start=0,
-        relative_phase=np.pi / 2,
-    )
+    native = platform.natives.single_qubit[qubit]
 
-    # apply a detuning flux pulse
-    flux_pulse = FluxPulse(
-        start=ry90.finish + params.padding,
-        duration=duration,
-        amplitude=params.flux_pulse_amplitude,
-        shape=Custom(np.ones(duration)),
-        channel=platform.qubits[qubit].flux.name,
-        qubit=qubit,
-    )
+    drive_channel, ry90 = native.R(theta=np.pi / 2, phi=np.pi / 2)[0]
+    _, rx90 = native.R(theta=np.pi / 2)[0]
+    ro_channel, ro_pulse = native.MZ()[0]
+    flux_channel = platform.qubits[qubit].flux
 
-    rx90 = platform.create_RX90_pulse(
-        qubit,
-        start=ry90.finish + params.duration_max + params.padding,
-    )
-
-    ry90_second = platform.create_RX90_pulse(
-        qubit,
-        start=ry90.finish + params.duration_max + params.padding,
-        relative_phase=np.pi / 2,
-    )
-
-    ro = platform.create_qubit_readout_pulse(
-        qubit, start=max(rx90.finish, ry90_second.finish)
+    flux_pulse = Pulse(
+        duration=duration, amplitude=params.flux_pulse_amplitude, envelope=Rectangular()
     )
 
     # create the sequences
-    sequence_x = PulseSequence(
-        ry90,
-        flux_pulse,
-        ry90_second,
-        ro,
+    sequence_x, sequence_y = PulseSequence(), PulseSequence()
+
+    sequence_x.extend(
+        [
+            (drive_channel, ry90),
+            (flux_channel, Delay(duration=ry90.duration)),
+            (flux_channel, flux_pulse),
+            (drive_channel, Delay(duration=params.duration_max + 100)),
+            (drive_channel, ry90),
+            (
+                ro_channel,
+                Delay(
+                    duration=ry90.duration + params.duration_max + 100 + ry90.duration
+                ),
+            ),
+            (ro_channel, ro_pulse),
+        ]
     )
 
-    sequence_y = PulseSequence(
-        ry90,
-        flux_pulse,
-        rx90,
-        ro,
+    sequence_y.extend(
+        [
+            (drive_channel, ry90),
+            (flux_channel, Delay(duration=rx90.duration)),
+            (flux_channel, flux_pulse),
+            (drive_channel, Delay(duration=params.duration_max + 100)),
+            (drive_channel, rx90),
+            (
+                ro_channel,
+                Delay(
+                    duration=ry90.duration + params.duration_max + 100 + rx90.duration
+                ),
+            ),
+            (ro_channel, ro_pulse),
+        ]
     )
     return sequence_x, sequence_y
 
@@ -153,15 +132,13 @@ def _acquisition(
     platform: Platform,
     targets: list[QubitId],
 ) -> CryoscopeData:
-    # define sequences of pulses to be executed
+
     data = CryoscopeData(
         flux_pulse_amplitude=params.flux_pulse_amplitude,
     )
 
     sequences_x = []
-    sequences_x_ro_pulses = []
     sequences_y = []
-    sequences_y_ro_pulses = []
 
     duration_range = np.arange(
         params.duration_min, params.duration_max, params.duration_step
@@ -180,141 +157,264 @@ def _acquisition(
 
         sequences_x.append(sequence_x)
         sequences_y.append(sequence_y)
-        sequences_x_ro_pulses.append(sequence_x.ro_pulses)
-        sequences_y_ro_pulses.append(sequence_y.ro_pulses)
 
-    options = ExecutionParameters(
+    options = dict(
         nshots=params.nshots,
         acquisition_type=AcquisitionType.DISCRIMINATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    results_x = [
-        platform.execute_pulse_sequence(sequence, options) for sequence in sequences_x
-    ]
-    results_y = [
-        platform.execute_pulse_sequence(sequence, options) for sequence in sequences_y
-    ]
+    results_x = [platform.execute([sequence], **options) for sequence in sequences_x]
+    results_y = [platform.execute([sequence], **options) for sequence in sequences_y]
 
-    for ig, (duration, ro_pulses) in enumerate(
-        zip(duration_range, sequences_x_ro_pulses)
-    ):
+    for ig, (duration, sequence) in enumerate(zip(duration_range, sequences_x)):
         for qubit in targets:
-            serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
-            result = results_x[ig][serial]
+            ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+            result = results_x[ig][ro_pulse.id]
             data.register_qubit(
                 CryoscopeType,
                 (qubit, "MX"),
                 dict(
                     duration=np.array([duration]),
-                    prob_0=result.probability(state=0),
-                    prob_1=result.probability(state=1),
+                    prob_1=result,
                 ),
             )
-    for ig, (duration, ro_pulses) in enumerate(
-        zip(duration_range, sequences_y_ro_pulses)
-    ):
+
+    for ig, (duration, sequence) in enumerate(zip(duration_range, sequences_y)):
         for qubit in targets:
-            serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
-        result = results_y[ig][serial]
-        data.register_qubit(
-            CryoscopeType,
-            (qubit, "MY"),
-            dict(
-                duration=np.array([duration]),
-                prob_0=result.probability(state=0),
-                prob_1=result.probability(state=1),
-            ),
-        )
+            ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+            result = results_y[ig][ro_pulse.id]
+            data.register_qubit(
+                CryoscopeType,
+                (qubit, "MY"),
+                dict(
+                    duration=np.array([duration]),
+                    prob_1=result,
+                ),
+            )
 
     return data
 
 
 def _fit(data: CryoscopeData) -> CryoscopeResults:
-    return CryoscopeResults()
+
+    fitted_parameters = {}
+    for qubit, setup in data.data:
+        qubit_data = data[qubit, setup]
+        x = qubit_data.duration
+        y = 2 * qubit_data.prob_1 - 1
+
+        popt, _ = fitting(x, y)
+
+        fitted_parameters[qubit, setup] = popt
+
+    return CryoscopeResults(fitted_parameters=fitted_parameters)
 
 
 def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     """Cryoscope plots."""
 
-    fig = go.Figure()
-    qubit_X_data = data[(target, "MX")]
-    qubit_Y_data = data[(target, "MY")]
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+    )
+    duration = data[(target, "MX")].duration
+    X_exp = 2 * data[(target, "MX")].prob_1 - 1
+    Y_exp = 2 * data[(target, "MY")].prob_1 - 1
 
-    X_exp = qubit_X_data.prob_1 - qubit_X_data.prob_0
-    Y_exp = qubit_Y_data.prob_0 - qubit_Y_data.prob_1
-    phase = np.unwrap(np.angle(X_exp + 1.0j * Y_exp))
+    fig.add_trace(
+        go.Scatter(
+            x=duration,
+            y=X_exp,
+            name="X",
+        ),
+        row=1,
+        col=1,
+    )
 
+    fig.add_trace(
+        go.Scatter(
+            x=duration,
+            y=Y_exp,
+            name="Y",
+        ),
+        row=1,
+        col=1,
+    )
+
+    if fit is not None:
+        x = np.linspace(np.min(duration), np.max(duration), 100)
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=ramsey_fit(x, *fit.fitted_parameters[target, "MX"]),
+                name="Fit X",
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=ramsey_fit(x, *fit.fitted_parameters[target, "MY"]),
+                name="Fit Y",
+            ),
+            row=1,
+            col=1,
+        )
+    # detuning = np.unwrap(np.arctan2(qubit_Y_data.prob_1, qubit_X_data.prob_1))
+
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_X_data.duration,
+    #         y=detuning,
+    #         name="detuning",
+    #     ),
+    #     row=2,
+    #     col=1,
+    # )
+
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_X_data.duration,
+    #         y=[fit.fitted_parameters[target, "MY"][2]]*len(qubit_X_data.duration),
+    #         name="expected detuning",
+    #     ),
+    #     row=2,
+    #     col=1,
+    # )
+
+    # X_exp = 2*qubit_X_data.prob_1 - 1
+    # Y_exp = 2*qubit_Y_data.prob_1 - 1
+
+    # phase = np.angle(X_exp + 1j*Y_exp)
+    # unwrap = np.unwrap(phase)
+
+    # def normalize_sincos(
+    #     data,
+    #     window_size_frac=500,
+    #     window_size=None,
+    #     do_envelope=True):
+
+    #     if window_size is None:
+    #         window_size = len(data) // window_size_frac
+
+    #         # window size for savgol filter must be odd
+    #         window_size -= (window_size + 1) % 2
+    #     mean_data_r = scipy.signal.savgol_filter(data.real, window_size, 0, 0)
+    #     mean_data_i = scipy.signal.savgol_filter(data.imag, window_size, 0, 0)
+
+    #     mean_data = mean_data_r + 1j * mean_data_i
+
+    #     if do_envelope:
+    #         envelope = np.sqrt(
+    #             scipy.signal.savgol_filter(
+    #                 (np.abs(
+    #                     data -
+    #                     mean_data))**2,
+    #                 window_size,
+    #                 0,
+    #                 0))
+    #     else:
+    #         envelope = 1
+    #     norm_data = ((data - mean_data) / envelope)
+    #     return norm_data
+
+    norm_data = X_exp + 1j * Y_exp
+
+    # def fft_based_freq_guess_complex(y):
+    #     """
+    #     guess the shape of a sinusoidal complex signal y (in multiples of
+    #         sampling rate), by selecting the peak in the fft.
+    #     return guess (f, ph, off, amp) for the model
+    #         y = amp*exp(2pi i f t + ph) + off.
+    #     """
+    #     fft = np.fft.fft(y)[1:len(y)]
+    #     freq_guess_idx = np.argmax(np.abs(fft))
+    #     if freq_guess_idx >= len(y) // 2:
+    #         freq_guess_idx -= len(y)
+    #     freq_guess = 1 / len(y) * (freq_guess_idx + 1)
+
+    #     phase_guess = np.angle(fft[freq_guess_idx]) + np.pi / 2
+    #     amp_guess = np.absolute(fft[freq_guess_idx]) / len(y)
+    #     offset_guess = np.mean(y)
+
+    #     return freq_guess, phase_guess, offset_guess, amp_guess
+
+    # sampling_rate = 1
+    # demod_freq = - \
+    #             fft_based_freq_guess_complex(norm_data)[
+    #                 0] * sampling_rate
+    # print("DEMOD FREQ", demod_freq)
+    # demod_data = np.exp(
+    #         2 * np.pi * 1j * duration * demod_freq) * (norm_data)
+    # phase = np.unwrap(np.angle(demod_data))
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=duration,
+    #         y=phase,
+    #         name="detuning1",
+    #     ),
+    #     row=2,
+    #     col=1,
+    # )
+    # print(demod_freq)
+    # print(fit.fitted_parameters[target, "MY"][2])
+    # print(fit.fitted_parameters[target, "MY"][2]/2/np.pi)
+
+    demod_freq = -fit.fitted_parameters[target, "MY"][2] / 2 / np.pi
+    demod_data = np.exp(2 * np.pi * 1j * duration * demod_freq) * (norm_data)
+    phase = np.unwrap(np.angle(demod_data))
     detuning = scipy.signal.savgol_filter(
-        phase / 2 / np.pi,
-        13,
-        3,
-        deriv=1,
-        delta=1,
+        phase / (2 * np.pi), window_length=7, polyorder=2, deriv=1
     )
 
-    # TODO: understand why it works
-    step_response_freq = detuning / np.average(
-        detuning[-int(len(qubit_X_data.duration) / 2) :]
-    )
-    step_response_volt = np.sqrt(step_response_freq)
+    # def get_real_detuning(detuning, demod_freq, sampling_rate, nyquist_order):
 
+    #     real_detuning = detuning-demod_freq+sampling_rate*nyquist_order
+    #     return real_detuning
+
+    # real_detuning = get_real_detuning(detuning, demod_freq, 1, 0)
     fig.add_trace(
         go.Scatter(
-            x=qubit_X_data.duration,
-            y=step_response_volt,
-            name="Volt response",
-        )
+            x=duration,
+            y=detuning,
+            name="detuning",
+        ),
+        row=2,
+        col=1,
     )
-    fig.add_trace(
-        go.Scatter(
-            x=qubit_X_data.duration,
-            y=np.ones(len(qubit_X_data.duration)),
-            name="Ideal response",
-        )
-    )
-
-    from scipy import optimize
-
-    [A, tau], _ = optimize.curve_fit(
-        exponential_decay,
-        qubit_X_data.duration,
-        step_response_volt,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=qubit_X_data.duration,
-            y=exponential_decay(qubit_X_data.duration, A, tau),
-            name="Fit",
-        )
-    )
-
-    fir, iir = single_exponential_correction(A, tau)
-    from scipy import signal
-
-    no_filter = exponential_decay(qubit_X_data.duration, A, tau)
-    step_response_th = np.ones(len(qubit_X_data))
-    with_filter = no_filter * signal.lfilter(fir, [1, -iir[0]], step_response_th)
-
-    fig.add_trace(
-        go.Scatter(x=qubit_X_data.duration, y=with_filter, name="With filter"),
-    )
-
-    fig.update_layout(
-        xaxis_title="Flux pulse duration [ns]",
-        yaxis_title="Waveform [a.u.]",
-    )
-
-    fitting_report = table_html(
-        table_dict(
-            target,
-            ["FIR", "IIR"],
-            [fir, iir],
-            display_error=False,
-        )
-    )
-
-    return [fig], fitting_report
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_X_data.duration,
+    #         y=real_detuning,
+    #         name="real detuning",
+    #     )
+    # )
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_X_data.duration,
+    #         y=Y_exp,
+    #         name="Y_EXP",
+    #     )
+    # )
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_X_data.duration,
+    #         y=norm_data.real,
+    #         name="X",
+    #     )
+    # )
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=qubit_X_data.duration,
+    #         y=norm_data.imag,
+    #         name="Y",
+    #     )
+    # )
+    return [fig], ""
 
 
 cryoscope = Routine(_acquisition, _fit, _plot)
