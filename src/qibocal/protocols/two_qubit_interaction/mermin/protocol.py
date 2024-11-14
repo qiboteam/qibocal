@@ -172,7 +172,6 @@ def _fit(data: MerminData) -> MerminResults:
 
 def _plot(data: MerminData, fit: MerminResults, target):
     """Plotting function for Mermin protocol."""
-    print(fit)
     figures = []
     targets = data.targets
 
