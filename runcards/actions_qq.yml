@@ -4,6 +4,22 @@ targets: [[2,0,3], [2,1,3]]
 
 
 actions:
+
+  - id: optimize cz
+    operation: optimize_two_qubit_gate
+    targets: [[0,2]]
+    parameters:
+      flux_pulse_amplitude_min: -0.249
+      flux_pulse_amplitude_max: -0.248
+      flux_pulse_amplitude_step: 0.0001
+      duration_max: 32
+      duration_min: 29
+      duration_step: 1
+      native: CZ
+      theta_start: 0
+      theta_end: 7
+      theta_step: 1
+      relaxation_time: 50_000
   # - id: cz virtual signal
   #   operation: correct_virtual_z_phases_signal
   #   targets: [[0, 2],[1,2]]

@@ -20,9 +20,6 @@ from .utils import (
     get_readout_basis,
 )
 
-MITIGATION_MATRIX_FILE = "mitigation_matrix"
-"""File where readout mitigation matrix is stored."""
-
 
 @dataclass
 class MerminParameters(Parameters):
@@ -84,7 +81,7 @@ def _acquisition(
     platform: Platform,
     targets: list[list[QubitId]],
 ) -> MerminData:
-    r"""Data acquisition for CHSH protocol using pulse sequences."""
+    r"""Data acquisition for Mermin protocol using pulse sequences."""
 
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
     data = MerminData(thetas=thetas.tolist())
@@ -128,7 +125,7 @@ def _acquisition(
 
 
 def _fit(data: MerminData) -> MerminResults:
-    """Fitting for CHSH protocol."""
+    """Fitting for Mermin protocol."""
     targets = data.targets
     results = {qubits: [] for qubits in targets}
     mitigated_results = {qubits: [] for qubits in targets}
@@ -188,7 +185,7 @@ def _plot(data: MerminData, fit: MerminResults, target):
         fig.add_trace(
             go.Scatter(
                 x=data.thetas,
-                y=fit.mermin[target],  # TODO: FIX
+                y=fit.mermin[target],
                 name="Bare",
             )
         )
@@ -196,7 +193,7 @@ def _plot(data: MerminData, fit: MerminResults, target):
             fig.add_trace(
                 go.Scatter(
                     x=data.thetas,
-                    y=fit.mermin_mitigated[target],  # TODO: FIX
+                    y=fit.mermin_mitigated[target],
                     name="Mitigated",
                 )
             )
