@@ -73,6 +73,11 @@ class MerminResults(Results):
     )
     """Raw Mermin value."""
 
+    mermin_mitigated: dict[tuple[QubitId, ...], npt.NDArray[np.float64]] = field(
+        default_factory=dict
+    )
+    """Mitigated Mermin value."""
+
 
 def _acquisition(
     params: MerminParameters,
@@ -83,7 +88,6 @@ def _acquisition(
 
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
     data = MerminData(thetas=thetas.tolist())
-    # import pdb; pdb.set_trace()
     if params.apply_error_mitigation:
         mitigation_data, _ = readout_mitigation_matrix.acquisition(
             readout_mitigation_matrix.parameters_type.load(
@@ -116,9 +120,7 @@ def _acquisition(
                         dict(
                             theta=np.array([theta]),
                             basis=np.array([basis]),
-                            state=np.array(
-                                [str(format(state, f"0{len(qubits)}b"))]
-                            ),  # TODO: Drop this (maybe)
+                            state=np.array([str(format(state, f"0{len(qubits)}b"))]),
                             frequency=np.array([frequency]),
                         ),
                     )
@@ -129,6 +131,7 @@ def _fit(data: MerminData) -> MerminResults:
     """Fitting for CHSH protocol."""
     targets = data.targets
     results = {qubits: [] for qubits in targets}
+    mitigated_results = {qubits: [] for qubits in targets}
     mermin_polynomial = get_mermin_polynomial(len(targets))
     basis = np.unique(data.data[targets[0]].basis)
     mermin_coefficients = get_mermin_coefficients(mermin_polynomial)
@@ -137,8 +140,8 @@ def _fit(data: MerminData) -> MerminResults:
             qubit_data = data.data[qubits]
             if data.mitigation_matrix:
                 outputs = []
+                mitigated_outputs = []
                 for base in basis:
-                    # TODO: missing for loop on basis
                     state_freq = qubit_data[
                         (qubit_data.basis == base) & (qubit_data.theta == theta)
                     ].frequency
@@ -146,18 +149,28 @@ def _fit(data: MerminData) -> MerminResults:
                         data.mitigation_matrix[qubits],
                         state_freq,
                     )
-                    outputs.append(
+                    mitigated_outputs.append(
                         {
                             format(i, f"0{len(qubits)}b"): freq
                             for i, freq in enumerate(mitigated_output)
                         }
                     )
-            else:
-                outputs = qubit_data  # TODO: this is wrong
-            results[tuple(qubits)].append(compute_mermin(outputs, mermin_coefficients))
+                    outputs.append(
+                        {
+                            format(i, f"0{len(qubits)}b"): freq
+                            for i, freq in enumerate(state_freq)
+                        }
+                    )
+                mitigated_results[tuple(qubits)].append(
+                    compute_mermin(mitigated_outputs, mermin_coefficients)
+                )
+                results[tuple(qubits)].append(
+                    compute_mermin(outputs, mermin_coefficients)
+                )
     return MerminResults(
         mermin=results,
-    )  # mitigated_results)
+        mermin_mitigated=mitigated_results,
+    )
 
 
 def _plot(data: MerminData, fit: MerminResults, target):
@@ -175,7 +188,7 @@ def _plot(data: MerminData, fit: MerminResults, target):
         fig.add_trace(
             go.Scatter(
                 x=data.thetas,
-                y=fit.mermin["".join(data.targets)],  # TODO: FIX
+                y=fit.mermin[target],  # TODO: FIX
                 name="Bare",
             )
         )
@@ -183,7 +196,7 @@ def _plot(data: MerminData, fit: MerminResults, target):
             fig.add_trace(
                 go.Scatter(
                     x=data.thetas,
-                    y=fit.mermin_mitigated["".join(data.targets)],  # TODO: FIX
+                    y=fit.mermin_mitigated[target],  # TODO: FIX
                     name="Mitigated",
                 )
             )
