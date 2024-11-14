@@ -11,7 +11,7 @@ from qibolab.qubits import QubitId
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 
 from ...readout_mitigation_matrix import readout_mitigation_matrix
-from ...utils import calculate_frequencies
+from ...utils import STRING_TYPE, calculate_frequencies
 from .pulses import create_mermin_sequences
 from .utils import (
     compute_mermin,
@@ -37,7 +37,12 @@ class MerminParameters(Parameters):
 
 
 MerminType = np.dtype(
-    [("theta", float), ("basis", object), ("state", object), ("frequency", int)]
+    [
+        ("theta", float),
+        ("basis", STRING_TYPE),
+        ("state", STRING_TYPE),
+        ("frequency", int),
+    ]
 )
 
 
@@ -153,6 +158,7 @@ def _fit(data: MerminData) -> MerminResults:
 
 def _plot(data: MerminData, fit: MerminResults, target):
     """Plotting function for Mermin protocol."""
+    print(fit)
     figures = []
     targets = data.targets
 

@@ -45,6 +45,7 @@ CONFIDENCE_INTERVAL_SECOND_MASK = 70
 """Confidence interval used to clean outliers."""
 DELAY_FIT_PERCENTAGE = 10
 """Percentage of the first and last points used to fit the cable delay."""
+STRING_TYPE = "<U100"
 
 
 def effective_qubit_temperature(
