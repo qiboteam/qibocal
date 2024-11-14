@@ -27,7 +27,7 @@ Parameters
 ^^^^^^^^^^
 
 .. autoclass:: qibocal.protocols.qubit_spectroscopy.QubitSpectroscopyParameters
-
+  :noindex:
 
 How to execute a qubit spectroscopy experiment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -96,6 +96,7 @@ Parameters
 ^^^^^^^^^^
 
 .. autoclass:: qibocal.protocols.qubit_spectroscopy_ef.QubitSpectroscopyEFParameters
+  :noindex:
 
 How to execute a qubit spectroscopy experiment
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

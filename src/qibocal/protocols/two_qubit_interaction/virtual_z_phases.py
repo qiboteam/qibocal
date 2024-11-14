@@ -88,7 +88,6 @@ class VirtualZPhasesData(Data):
     data: dict[tuple, npt.NDArray[VirtualZPhasesType]] = field(default_factory=dict)
     native: str = "CZ"
     thetas: list = field(default_factory=list)
-    vphases: dict[QubitPairId, dict[QubitId, float]] = field(default_factory=dict)
     amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
     durations: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
 
@@ -127,9 +126,7 @@ def create_sequence(
     )
     RX_pulse_start = platform.create_RX_pulse(control_qubit, start=0, relative_phase=0)
 
-    flux_sequence, virtual_z_phase = getattr(
-        platform, f"create_{native}_pulse_sequence"
-    )(
+    flux_sequence, _ = getattr(platform, f"create_{native}_pulse_sequence")(
         (ordered_pair[1], ordered_pair[0]),
         start=max(Y90_pulse.finish, RX_pulse_start.finish),
     )
@@ -139,16 +136,15 @@ def create_sequence(
 
     if duration is not None:
         flux_sequence.get_qubit_pulses(ordered_pair[1])[0].duration = duration
-
     theta_pulse = platform.create_RX90_pulse(
         target_qubit,
         start=flux_sequence.finish + dt,
-        relative_phase=virtual_z_phase[target_qubit],
+        relative_phase=0,
     )
     RX_pulse_end = platform.create_RX_pulse(
         control_qubit,
         start=flux_sequence.finish + dt,
-        relative_phase=virtual_z_phase[control_qubit],
+        relative_phase=0,
     )
     measure_target = platform.create_qubit_readout_pulse(
         target_qubit, start=theta_pulse.finish
@@ -177,10 +173,8 @@ def create_sequence(
             if pulse.qubit not in ordered_pair:
                 pulse.duration = theta_pulse.finish
                 sequence.add(pulse)
-
     return (
         sequence,
-        virtual_z_phase,
         theta_pulse,
         flux_sequence.get_qubit_pulses(ordered_pair[1])[0].amplitude,
         flux_sequence.get_qubit_pulses(ordered_pair[1])[0].duration,
@@ -222,7 +216,6 @@ def _acquisition(
             for setup in ("I", "X"):
                 (
                     sequence,
-                    virtual_z_phase,
                     theta_pulse,
                     data.amplitudes[ord_pair],
                     data.durations[ord_pair],
@@ -237,7 +230,6 @@ def _acquisition(
                     params.parking,
                     params.flux_pulse_amplitude,
                 )
-                data.vphases[ord_pair] = dict(virtual_z_phase)
                 theta = np.arange(
                     params.theta_start,
                     params.theta_end,
@@ -246,7 +238,7 @@ def _acquisition(
                 )
                 sweeper = Sweeper(
                     Parameter.relative_phase,
-                    theta - data.vphases[ord_pair][target_q],
+                    theta,
                     pulses=[theta_pulse],
                     type=SweeperType.ABSOLUTE,
                 )
@@ -310,7 +302,7 @@ def _fit(
             try:
                 popt, _ = curve_fit(
                     fit_function,
-                    np.array(data.thetas) - data.vphases[pair][target],
+                    np.array(data.thetas),
                     target_data,
                     p0=pguess,
                     bounds=(
@@ -332,7 +324,7 @@ def _fit(
                     fitted_parameters[target_q, control_q, "X"][2]
                     - fitted_parameters[target_q, control_q, "I"][2]
                 )
-                virtual_phase[pair][target_q] = fitted_parameters[
+                virtual_phase[pair][target_q] = -fitted_parameters[
                     target_q, control_q, "I"
                 ][2]
 
@@ -348,7 +340,6 @@ def _fit(
                 )
         except KeyError:
             pass  # exception covered above
-
     return VirtualZPhasesResults(
         native=data.native,
         flux_pulse_amplitude=data.amplitudes,
@@ -390,7 +381,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
         fig = fig1 if (target_q, control_q) == qubits else fig2
         fig.add_trace(
             go.Scatter(
-                x=np.array(thetas) + data.vphases[qubits][target_q],
+                x=np.array(thetas),
                 y=target_prob,
                 name=f"{setup} sequence",
                 legendgroup=setup,
@@ -401,7 +392,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
 
         fig.add_trace(
             go.Scatter(
-                x=np.array(thetas) + data.vphases[qubits][control_q],
+                x=np.array(thetas),
                 y=control_prob,
                 name=f"{setup} sequence",
                 legendgroup=setup,
@@ -414,9 +405,9 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
             fitted_parameters = fit.fitted_parameters[target_q, control_q, setup]
             fig.add_trace(
                 go.Scatter(
-                    x=angle_range + data.vphases[qubits][target_q],
+                    x=angle_range,
                     y=fit_function(
-                        angle_range - data.vphases[qubits][target_q],
+                        angle_range,
                         *fitted_parameters,
                     ),
                     name="Fit",

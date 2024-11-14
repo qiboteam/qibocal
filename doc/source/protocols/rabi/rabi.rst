@@ -60,7 +60,7 @@ It follows an example of the experiment parameters.
 To run properly this experiment it is important to set the
 `relaxation_time` higher than the qubit `T1`.
 
-After running `qq auto`, the experiment is executed and the result will looks like
+After running `qq run`, the experiment is executed and the result will looks like
 the following picture.
 
 .. image:: rabi_amplitude.png
