@@ -135,13 +135,21 @@ def _fit(data: MerminData) -> MerminResults:
     for qubits in targets:
         for theta in data.thetas:
             qubit_data = data.data[qubits]
-            if data.mitigation_matrix:
-                outputs = []
-                mitigated_outputs = []
-                for base in basis:
-                    state_freq = qubit_data[
-                        (qubit_data.basis == base) & (qubit_data.theta == theta)
-                    ].frequency
+            outputs = []
+            mitigated_outputs = []
+            for base in basis:
+
+                data_filter = (qubit_data.basis == base) & (qubit_data.theta == theta)
+                state_freq = qubit_data[data_filter].frequency
+
+                outputs.append(
+                    {
+                        format(i, f"0{len(qubits)}b"): freq
+                        for i, freq in enumerate(state_freq)
+                    }
+                )
+
+                if data.mitigation_matrix:
                     mitigated_output = np.dot(
                         data.mitigation_matrix[qubits],
                         state_freq,
@@ -152,18 +160,11 @@ def _fit(data: MerminData) -> MerminResults:
                             for i, freq in enumerate(mitigated_output)
                         }
                     )
-                    outputs.append(
-                        {
-                            format(i, f"0{len(qubits)}b"): freq
-                            for i, freq in enumerate(state_freq)
-                        }
-                    )
+            if data.mitigation_matrix:
                 mitigated_results[tuple(qubits)].append(
                     compute_mermin(mitigated_outputs, mermin_coefficients)
                 )
-                results[tuple(qubits)].append(
-                    compute_mermin(outputs, mermin_coefficients)
-                )
+            results[tuple(qubits)].append(compute_mermin(outputs, mermin_coefficients))
     return MerminResults(
         mermin=results,
         mermin_mitigated=mitigated_results,
