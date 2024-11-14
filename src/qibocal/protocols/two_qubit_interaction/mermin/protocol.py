@@ -185,7 +185,7 @@ def _plot(data: MerminData, fit: MerminResults, target):
         fig.add_trace(
             go.Scatter(
                 x=data.thetas,
-                y=fit.mermin[target],
+                y=fit.mermin[tuple(target)],
                 name="Bare",
             )
         )
@@ -193,7 +193,7 @@ def _plot(data: MerminData, fit: MerminResults, target):
             fig.add_trace(
                 go.Scatter(
                     x=data.thetas,
-                    y=fit.mermin_mitigated[target],
+                    y=fit.mermin_mitigated[tuple(target)],
                     name="Mitigated",
                 )
             )
