@@ -59,6 +59,10 @@ class MerminData(Data):
     )
     """Mitigation matrix computed using the readout_mitigation_matrix protocol."""
 
+    @property
+    def targets(self):
+        return list(self.data.keys())
+
 
 @dataclass
 class MerminResults(Results):
@@ -123,7 +127,7 @@ def _acquisition(
 
 def _fit(data: MerminData) -> MerminResults:
     """Fitting for CHSH protocol."""
-    targets = list(data.data.keys())
+    targets = data.targets
     results = {qubits: [] for qubits in targets}
     mermin_polynomial = get_mermin_polynomial(len(targets))
     basis = np.unique(data.data[targets[0]].basis)
