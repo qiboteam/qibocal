@@ -175,9 +175,9 @@ def _plot(data: MerminData, fit: MerminResults, target):
     figures = []
     targets = data.targets
 
-    n = len(targets)
-    classical_bound = 2 ** (n // 2)
-    quantum_bound = 2 ** ((n - 1) / 2) * (2 ** (n // 2))
+    n_targets = len(targets)
+    classical_bound = 2 ** (n_targets // 2)
+    quantum_bound = 2 ** ((n_targets - 1) / 2) * (2 ** (n_targets // 2))
 
     fig = go.Figure(layout_yaxis_range=[-3, 3])
     if fit is not None:
