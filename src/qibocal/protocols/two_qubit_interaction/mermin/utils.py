@@ -14,11 +14,10 @@ def compute_mermin(frequencies, mermin_coefficients):
                 * (-1) ** (sum([int(key[k]) for k in range(len(key))]))
             )
     nshots = sum(freq[x] for x in freq)
-    try:
+    if nshots != 0:
         return float(m / nshots)
-    except ZeroDivisionError:
-        log.warning("Zero number of shots, returning zero.")
-        return 0
+
+    return 0
 
 
 def get_mermin_polynomial(n):
