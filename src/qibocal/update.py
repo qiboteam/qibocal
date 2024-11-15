@@ -115,7 +115,7 @@ def virtual_phases(
     native_sequence = getattr(platform.natives.two_qubit[pair], native)
     new_native = PulseSequence()
     if len(native_sequence) > 1:
-        new_native += native_sequence[0]
+        new_native.append(native_sequence[0])
     else:
         new_native = native_sequence
     for qubit, phase in phases.items():
