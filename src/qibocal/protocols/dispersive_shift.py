@@ -331,6 +331,9 @@ def _update(results: DispersiveShiftResults, platform: Platform, target: QubitId
         )
         g = np.sqrt(np.abs(results.chi(target) * delta))
         update.coupling(g, platform, target)
+        update.dressed_resonator_frequency(
+            results.frequencies[target][0], platform, target
+        )
         platform.calibration.single_qubits[target].readout.qudits_frequency[1] = (
             results.frequencies[target][1]
         )

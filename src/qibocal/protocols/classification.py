@@ -403,6 +403,9 @@ def _update(
     update.mean_gnd_states(results.mean_gnd_states[target], platform, target)
     update.mean_exc_states(results.mean_exc_states[target], platform, target)
     update.readout_fidelity(results.fidelity[target], platform, target)
+    platform.calibration.single_qubits[target].readout.effective_temperature = (
+        results.effective_temperature[target][0]
+    )
 
 
 single_shot_classification = Routine(_acquisition, _fit, _plot, _update)

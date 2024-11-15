@@ -8,6 +8,7 @@ from qibocal.auto.operation import Parameters, QubitId, Results, Routine
 from qibocal.result import magnitude, phase
 from qibocal.update import replace
 
+from .. import update
 from .resonator_spectroscopy import ResonatorSpectroscopyData, ResSpecType
 from .utils import chi2_reduced, lorentzian, lorentzian_fit, spectroscopy_plot
 
@@ -173,7 +174,7 @@ def _update(results: QubitSpectroscopyResults, platform: Platform, target: Qubit
     platform.calibration.single_qubits[target].qubit.frequency_01 = results.frequency[
         target
     ]
-    # update.drive_frequency(results.frequency[target], platform, target)
+    update.drive_frequency(results.frequency[target], platform, target)
 
 
 qubit_spectroscopy = Routine(_acquisition, _fit, _plot, _update)

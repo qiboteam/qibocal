@@ -316,6 +316,9 @@ def _update(
     results: ReadoutCharacterizationResults, platform: Platform, target: QubitId
 ):
     update.readout_fidelity(results.fidelity[target], platform, target)
+    platform.calibration.single_qubits[target].readout.effective_temperature = (
+        results.effective_temperature[target][0]
+    )
 
 
 readout_characterization = Routine(_acquisition, _fit, _plot, _update)

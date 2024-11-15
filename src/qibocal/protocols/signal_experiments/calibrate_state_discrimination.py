@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 
 SAMPLES_FACTOR = 16
@@ -238,8 +239,7 @@ def _plot(
 def _update(
     results: CalibrateStateDiscriminationResults, platform: Platform, qubit: QubitId
 ):
-    pass
-    # update.kernel(results.data[qubit], platform, qubit)
+    update.kernel(results.data[qubit], platform, qubit)
 
 
 calibrate_state_discrimination = Routine(_acquisition, _fit, _plot, _update)

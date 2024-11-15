@@ -297,10 +297,10 @@ def _plot(data: RamseySignalData, target: QubitId, fit: RamseySignalResults = No
 
 
 def _update(results: RamseySignalResults, platform: Platform, target: QubitId):
-    # if results.detuning is not None:
-    #    update.drive_frequency(results.frequency[target][0], platform, target)
-    # else:
-    update.t2(results.t2[target], platform, target)
+    if results.detuning is not None:
+        update.drive_frequency(results.frequency[target][0], platform, target)
+    else:
+        update.t2(results.t2[target], platform, target)
 
 
 ramsey_signal = Routine(_acquisition, _fit, _plot, _update)

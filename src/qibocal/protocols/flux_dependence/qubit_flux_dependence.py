@@ -272,8 +272,9 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
 
 
 def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
-    # update.drive_frequency(results.frequency[qubit], platform, qubit)
+    update.drive_frequency(results.frequency[qubit], platform, qubit)
     update.sweetspot(results.sweetspot[qubit], platform, qubit)
+    update.flux_offset(results.sweetspot[qubit], platform, qubit)
     platform.calibration.single_qubits[qubit].qubit.maximum_frequency = int(
         results.frequency[qubit]
     )

@@ -14,6 +14,7 @@ from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routi
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
+from .... import update
 from ..utils import fit_flux_amplitude, order_pair
 from .utils import COLORAXIS, chevron_fit, chevron_sequence
 
@@ -318,13 +319,12 @@ def _update(results: ChevronResults, platform: Platform, target: QubitPairId):
 
     if target not in results.duration:
         target = (target[1], target[0])
-
-    # getattr(update, f"{results.native}_duration")(
-    #    results.duration[target], platform, target
-    # )
-    # getattr(update, f"{results.native}_amplitude")(
-    #    results.amplitude[target], platform, target
-    # )
+    getattr(update, f"{results.native}_duration")(
+        results.duration[target], platform, target
+    )
+    getattr(update, f"{results.native}_amplitude")(
+        results.amplitude[target], platform, target
+    )
 
 
 chevron = Routine(_aquisition, _fit, _plot, _update, two_qubit_gates=True)

@@ -6,6 +6,7 @@ from qibolab import Delay, Parameter, Platform, PulseSequence, Sweeper
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.update import replace
 
+from .. import update
 from ..result import magnitude, phase
 from .qubit_spectroscopy import (
     QubitSpectroscopyData,
@@ -195,7 +196,7 @@ def _plot(
 
 def _update(results: QubitSpectroscopyEFResults, platform: Platform, target: QubitId):
     """Update w12 frequency"""
-    # update.frequency_12_transition(results.frequency[target], platform, target)
+    update.frequency_12_transition(results.frequency[target], platform, target)
     platform.calibration.single_qubits[target].qubit.frequency_12 = results.frequency[
         target
     ]

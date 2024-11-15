@@ -13,6 +13,7 @@ from qibolab import (
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.update import replace
 
+from ... import update
 from ...result import magnitude, phase
 from . import amplitude_signal, utils
 
@@ -119,8 +120,8 @@ def _plot(
 
 def _update(results: RabiAmplitudeEFResults, platform: Platform, target: QubitId):
     """Update RX2 amplitude_signal"""
-    # update.drive_12_amplitude(results.amplitude[target], platform, target)
-    # update.drive_12_duration(results.length[target], platform, target)
+    update.drive_12_amplitude(results.amplitude[target], platform, target)
+    update.drive_12_duration(results.length[target], platform, target)
 
 
 rabi_amplitude_ef = Routine(_acquisition, amplitude_signal._fit, _plot, _update)

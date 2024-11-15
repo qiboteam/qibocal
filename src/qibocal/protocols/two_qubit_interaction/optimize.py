@@ -474,9 +474,9 @@ def _update(
 ):
     # FIXME: quick fix for qubit order
     target = tuple(sorted(target))
-    update.virtual_phases(
-        results.best_virtual_phase[target], results.native, platform, target
-    )
+    # update.virtual_phases(
+    #     results.best_virtual_phase[target], results.native, platform, target
+    # )
     getattr(update, f"{results.native}_duration")(
         results.best_dur[target], platform, target
     )
