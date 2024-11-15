@@ -2,14 +2,13 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Routine
+from qibocal.auto.operation import Data, QubitId, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
+from qibocal.result import probability
 
 from ..utils import chi2_reduced, fallback_period, guess_period
 from . import utils
@@ -45,7 +44,9 @@ class RabiAmplitudeData(Data):
 
 
 def _acquisition(
-    params: RabiAmplitudeParameters, platform: Platform, targets: list[QubitId]
+    params: RabiAmplitudeParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
 ) -> RabiAmplitudeData:
     r"""
     Data acquisition for Rabi experiment sweeping amplitude.
@@ -53,43 +54,34 @@ def _acquisition(
     to find the drive pulse amplitude that creates a rotation of a desired angle.
     """
 
-    sequence, qd_pulses, _, durations = utils.sequence_amplitude(
+    sequence, qd_pulses, ro_pulses, durations = utils.sequence_amplitude(
         targets, params, platform
     )
-    # define the parameter to sweep and its range:
-    # qubit drive pulse amplitude
-    qd_pulse_amplitude_range = np.arange(
-        params.min_amp_factor,
-        params.max_amp_factor,
-        params.step_amp_factor,
-    )
+
     sweeper = Sweeper(
-        Parameter.amplitude,
-        qd_pulse_amplitude_range,
-        [qd_pulses[qubit] for qubit in targets],
-        type=SweeperType.FACTOR,
+        parameter=Parameter.amplitude,
+        range=(params.min_amp, params.max_amp, params.step_amp),
+        pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
     data = RabiAmplitudeData(durations=durations)
 
     # sweep the parameter
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
-        ),
-        sweeper,
+    results = platform.execute(
+        [sequence],
+        [[sweeper]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
     for qubit in targets:
-        prob = results[qubit].probability(state=1)
+        prob = probability(results[ro_pulses[qubit].id], state=1)
         data.register_qubit(
             RabiAmpType,
             (qubit),
             dict(
-                amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
+                amp=sweeper.values,
                 prob=prob.tolist(),
                 error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
             ),
@@ -144,7 +136,9 @@ def _plot(data: RabiAmplitudeData, target: QubitId, fit: RabiAmplitudeResults = 
     return utils.plot_probabilities(data, target, fit)
 
 
-def _update(results: RabiAmplitudeResults, platform: Platform, target: QubitId):
+def _update(
+    results: RabiAmplitudeResults, platform: CalibrationPlatform, target: QubitId
+):
     update.drive_amplitude(results.amplitude[target], platform, target)
     update.drive_duration(results.length[target], platform, target)
 

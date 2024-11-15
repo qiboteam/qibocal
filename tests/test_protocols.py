@@ -1,4 +1,4 @@
-"""Test routines' acquisition method using dummy_couplers platform."""
+"""Test routines' acquisition method using dummy platform."""
 
 import pathlib
 
@@ -21,7 +21,7 @@ from qibocal.protocols.rabi.utils import (
 SINGLE_ACTION_RUNCARD = "action.yml"
 PLATFORM = create_platform("dummy")
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/"
-RUNCARDS_NAMES = ["protocols.yml", "rb_noise_protocols.yml", "protocols_couplers.yml"]
+RUNCARDS_NAMES = ["protocols.yml", "rb_noise_protocols.yml"]
 
 INVOKER_OPTIONS = dict(catch_exceptions=False)
 """Generate errors when calling qq."""

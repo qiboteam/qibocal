@@ -49,9 +49,9 @@ It follows an example of the experiment parameters.
     - id: Rabi amplitude
       operation: rabi_amplitude
       parameters:
-        min_amp_factor: 0.1
-        max_amp_factor: 1.
-        step_amp_factor: 0.01
+        min_amp: 0.1
+        max_amp: 1.
+        step_amp: 0.01
         pulse_length: 40
         nshots: 3000
         relaxation_time: 50000
@@ -94,9 +94,9 @@ It follows an example runcard and plot for the signal exepriment
     - id: Rabi signal
       operation: rabi_amplitude_signal
       parameters:
-        min_amp_factor: 0.2
-        max_amp_factor: 1.
-        step_amp_factor: 0.01
+        min_amp: 0.2
+        max_amp: 1.
+        step_amp: 0.01
         pulse_length: 40
         nshots: 3000
         relaxation_time: 50000
@@ -125,9 +125,9 @@ It follows an example of runcard and a generated report.
     - id: Rabi ef
       operation: rabi_amplitude_ef
       parameters:
-        min_amp_factor: 0.2
-        max_amp_factor: 1.
-        step_amp_factor: 0.01
+        min_amp: 0.2
+        max_amp: 1.
+        step_amp: 0.01
         pulse_length: 400
         nshots: 3000
         relaxation_time: 50000

@@ -1,6 +1,8 @@
 import numpy as np
+from qibolab import Delay, Platform, PulseSequence
 from scipy.optimize import curve_fit
 
+from qibocal.auto.operation import QubitId
 from qibocal.config import log
 
 from ..utils import chi2_reduced
@@ -28,6 +30,47 @@ def average_single_shots(data_type, single_shots):
     return data
 
 
+def spin_echo_sequence(platform: Platform, targets: list[QubitId], wait: int = 0):
+    """Create pulse sequence for spin-echo routine.
+
+    Spin Echo 3 Pulses: RX(pi/2) - wait t(rotates z) - RX(pi) - wait t(rotates z) - RX(pi/2) - readout
+    """
+    sequence = PulseSequence()
+    all_delays = []
+    for qubit in targets:
+        natives = platform.natives.single_qubit[qubit]
+        qd_channel, rx90_pulse = natives.R(theta=np.pi / 2)[0]
+        _, rx_pulse = natives.RX()[0]
+        ro_channel, ro_pulse = natives.MZ()[0]
+
+        delays = [
+            Delay(duration=wait),
+            Delay(duration=wait),
+            Delay(duration=wait),
+            Delay(duration=wait),
+        ]
+
+        sequence.extend(
+            [
+                (qd_channel, rx90_pulse),
+                (qd_channel, delays[0]),
+                (qd_channel, rx_pulse),
+                (qd_channel, delays[1]),
+                (qd_channel, rx90_pulse),
+                (
+                    ro_channel,
+                    Delay(duration=2 * rx90_pulse.duration + rx_pulse.duration),
+                ),
+                (ro_channel, delays[2]),
+                (ro_channel, delays[3]),
+                (ro_channel, ro_pulse),
+            ]
+        )
+        all_delays.extend(delays)
+
+    return sequence, all_delays
+
+
 def exp_decay(x, *p):
     return p[0] - p[1] * np.exp(-1 * x / p[2])
 
@@ -41,10 +84,7 @@ def exponential_fit(data, zeno=False):
 
     for qubit in qubits:
         voltages = data[qubit].signal
-        if zeno:
-            times = np.arange(1, len(data[qubit].signal) + 1)
-        else:
-            times = data[qubit].wait
+        times = data[qubit].wait
 
         try:
             y_max = np.max(voltages)
@@ -72,7 +112,7 @@ def exponential_fit(data, zeno=False):
             )
             popt = [
                 (y_max - y_min) * popt[0] + y_min,
-                (y_max - y_min) * popt[1] * np.exp(x_min * popt[2] / (x_max - x_min)),
+                (y_max - y_min) * popt[1] * np.exp(x_min / popt[2] / (x_max - x_min)),
                 popt[2] * (x_max - x_min),
             ]
             fitted_parameters[qubit] = popt
@@ -94,10 +134,8 @@ def exponential_fit_probability(data, zeno=False):
     pcovs = {}
 
     for qubit in qubits:
-        if zeno:
-            times = np.arange(1, len(data[qubit].signal) + 1)
-        else:
-            times = data[qubit].wait
+
+        times = data[qubit].wait
         x_max = np.max(times)
         x_min = np.min(times)
         x = (times - x_min) / (x_max - x_min)
@@ -123,9 +161,10 @@ def exponential_fit_probability(data, zeno=False):
             )
             popt = [
                 popt[0],
-                popt[1] * np.exp(x_min * popt[2] / (x_max - x_min)),
+                popt[1] * np.exp(x_min / (x_max - x_min) / popt[2]),
                 popt[2] * (x_max - x_min),
             ]
+
             pcovs[qubit] = pcov.tolist()
             fitted_parameters[qubit] = popt
             dec = popt[2]

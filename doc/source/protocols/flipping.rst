@@ -27,27 +27,13 @@ It follows a runcard example of this experiment.
 	- id: flipping
 	  operation: flipping
 	  parameters:
-	    detuning: 0.05
+	    delta_amplitude: 0.05
 	    nflips_max: 30
 	    nflips_step: 1
 
 The expected output is the following:
 
 .. image:: flipping.png
-
-Qibocal provides also a "signal" version of this routine, it follows a possible runcard
-with its report.
-
-.. code-block:: yaml
-
-    - id: flipping
-      operation: flipping_signal
-      parameters:
-        detuning: -0.5
-        nflips_max: 20
-        nflips_step: 1
-
-.. image:: flipping_signal.png
 
 Requirements
 ^^^^^^^^^^^^

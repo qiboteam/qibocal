@@ -1,15 +1,15 @@
 from dataclasses import dataclass, field
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
+from qibolab import AcquisitionType, AveragingMode, PulseSequence
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Routine
+from qibocal import update
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import (
     fallback_period,
@@ -18,26 +18,61 @@ from qibocal.protocols.utils import (
     table_html,
 )
 
-from .flipping_signal import (
-    FlippingSignalData,
-    FlippingSignalParameters,
-    FlippingSignalResults,
-    _update,
-    flipping_fit,
-    flipping_sequence,
-)
+from ..result import probability
 from .utils import COLORBAND, COLORBAND_LINE, chi2_reduced
 
 
+def flipping_sequence(
+    platform: CalibrationPlatform, qubit: QubitId, delta_amplitude: float, flips: int
+):
+    """Pulse sequence for flipping experiment."""
+
+    sequence = PulseSequence()
+    natives = platform.natives.single_qubit[qubit]
+    sequence |= natives.R(theta=np.pi / 2)
+
+    for _ in range(flips):
+
+        qd_channel, rx_pulse = natives.RX()[0]
+
+        rx_detuned = update.replace(
+            rx_pulse, amplitude=rx_pulse.amplitude + delta_amplitude
+        )
+        sequence.append((qd_channel, rx_detuned))
+        sequence.append((qd_channel, rx_detuned))
+
+    sequence |= natives.MZ()
+
+    return sequence
+
+
 @dataclass
-class FlippingParameters(FlippingSignalParameters):
+class FlippingParameters(Parameters):
     """Flipping runcard inputs."""
 
+    nflips_max: int
+    """Maximum number of flips ([RX(pi) - RX(pi)] sequences). """
+    nflips_step: int
+    """Flip step."""
+    unrolling: bool = False
+    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
+    Defaults to ``False``."""
+    delta_amplitude: float = 0
+    """Amplitude detuning."""
+
 
 @dataclass
-class FlippingResults(FlippingSignalResults):
+class FlippingResults(Results):
     """Flipping outputs."""
 
+    amplitude: dict[QubitId, Union[float, list[float]]]
+    """Drive amplitude for each qubit."""
+    delta_amplitude: dict[QubitId, Union[float, list[float]]]
+    """Difference in amplitude between initial value and fit."""
+    delta_amplitude_detuned: dict[QubitId, Union[float, list[float]]]
+    """Difference in amplitude between detuned value and fit."""
+    fitted_parameters: dict[QubitId, dict[str, float]]
+    """Raw fitting output."""
     chi2: dict[QubitId, list[float]] = field(default_factory=dict)
     """Chi squared estimate mean value and error. """
 
@@ -48,16 +83,22 @@ FlippingType = np.dtype(
 
 
 @dataclass
-class FlippingData(FlippingSignalData):
+class FlippingData(Data):
     """Flipping acquisition outputs."""
 
+    resonator_type: str
+    """Resonator type."""
+    delta_amplitude: float
+    """Amplitude detuning."""
+    pi_pulse_amplitudes: dict[QubitId, float]
+    """Pi pulse amplitudes for each qubit."""
     data: dict[QubitId, npt.NDArray[FlippingType]] = field(default_factory=dict)
     """Raw data acquired."""
 
 
 def _acquisition(
     params: FlippingParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> FlippingData:
     r"""
@@ -65,10 +106,11 @@ def _acquisition(
 
     The flipping experiment correct the delta amplitude in the qubit drive pulse. We measure a qubit after applying
     a Rx(pi/2) and N flips (Rx(pi) rotations). After fitting we can obtain the delta amplitude to refine pi pulses.
+    On the y axis we measure the excited state probability.
 
     Args:
         params (:class:`SingleShotClassificationParameters`): input parameters
-        platform (:class:`Platform`): Qibolab's platform
+        platform (:class:`CalibrationPlatform`): Qibolab's platform
         qubits (dict): dict of target :class:`Qubit` objects to be characterized
 
     Returns:
@@ -79,22 +121,22 @@ def _acquisition(
         resonator_type=platform.resonator_type,
         delta_amplitude=params.delta_amplitude,
         pi_pulse_amplitudes={
-            qubit: platform.qubits[qubit].native_gates.RX.amplitude for qubit in targets
+            qubit: platform.natives.single_qubit[qubit].RX[0][1].amplitude
+            for qubit in targets
         },
     )
 
-    options = ExecutionParameters(
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.SINGLESHOT,
-    )
+    options = {
+        "nshots": params.nshots,
+        "relaxation_time": params.relaxation_time,
+        "acquisition_type": AcquisitionType.DISCRIMINATION,
+        "averaging_mode": AveragingMode.SINGLESHOT,
+    }
 
-    # sweep the parameter
-    sequences, all_ro_pulses = [], []
+    sequences = []
+
     flips_sweep = range(0, params.nflips_max, params.nflips_step)
     for flips in flips_sweep:
-        # create a sequence of pulses for the experiment
         sequence = PulseSequence()
         for qubit in targets:
             sequence += flipping_sequence(
@@ -105,37 +147,37 @@ def _acquisition(
             )
 
         sequences.append(sequence)
-        all_ro_pulses.append(sequence.ro_pulses)
 
-    # execute the pulse sequence
     if params.unrolling:
-        results = platform.execute_pulse_sequences(sequences, options)
+        results = platform.execute(sequences, **options)
+    else:
+        results = [platform.execute([sequence], **options) for sequence in sequences]
 
-    elif not params.unrolling:
-        results = [
-            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
-        ]
-
-    for ig, (flips, ro_pulses) in enumerate(zip(flips_sweep, all_ro_pulses)):
+    for i in range(len(sequences)):
         for qubit in targets:
-            serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
+            ro_pulse = list(sequences[i].channel(platform.qubits[qubit].acquisition))[
+                -1
+            ]
             if params.unrolling:
-                result = results[serial][0]
+                result = results[ro_pulse.id]
             else:
-                result = results[ig][serial]
-            prob = result.probability(state=1)
+                result = results[i][ro_pulse.id]
+            prob = probability(result, state=1)
             error = np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
                 FlippingType,
                 (qubit),
                 dict(
-                    flips=np.array([flips]),
+                    flips=np.array([flips_sweep[i]]),
                     prob=np.array([prob]),
                     error=np.array([error]),
                 ),
             )
-
     return data
+
+
+def flipping_fit(x, offset, amplitude, omega, phase, gamma):
+    return np.sin(x * omega + phase) * amplitude * np.exp(-x * gamma) + offset
 
 
 def _fit(data: FlippingData) -> FlippingResults:
@@ -313,6 +355,10 @@ def _plot(data: FlippingData, target: QubitId, fit: FlippingResults = None):
     figures.append(fig)
 
     return figures, fitting_report
+
+
+def _update(results: FlippingResults, platform: CalibrationPlatform, qubit: QubitId):
+    update.drive_amplitude(results.amplitude[qubit], platform, qubit)
 
 
 flipping = Routine(_acquisition, _fit, _plot, _update)

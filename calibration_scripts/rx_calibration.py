@@ -13,10 +13,10 @@ with Executor.open(
     e.platform.settings.nshots = 2000
 
     rabi_output = e.rabi_amplitude(
-        min_amp_factor=0.5,
-        max_amp_factor=1.5,
-        step_amp_factor=0.01,
-        pulse_length=e.platform.qubits[target].native_gates.RX.duration,
+        min_amp=0.0,
+        max_amp=2,
+        step_amp=0.01,
+        pulse_length=e.platform.natives.single_qubit[target].RX[0][1].duration,
     )
     # update only if chi2 is satisfied
     if rabi_output.results.chi2[target][0] > 2:
@@ -43,10 +43,10 @@ with Executor.open(
         ramsey_output.update_platform(e.platform)
 
     rabi_output_2 = e.rabi_amplitude(
-        min_amp_factor=0.5,
-        max_amp_factor=1.5,
-        step_amp_factor=0.01,
-        pulse_length=e.platform.qubits[target].native_gates.RX.duration,
+        min_amp=0,
+        max_amp=0.2,
+        step_amp=0.01,
+        pulse_length=e.platform.natives.single_qubit[target].RX[0][1].duration,
     )
     # update only if chi2 is satisfied
     if rabi_output_2.results.chi2[target][0] > 2:
@@ -61,10 +61,10 @@ with Executor.open(
         )
 
     rabi_output_3 = e.rabi_amplitude(
-        min_amp_factor=0.5,
-        max_amp_factor=1.5,
-        step_amp_factor=0.01,
-        pulse_length=e.platform.qubits[target].native_gates.RX.duration,
+        min_amp=0,
+        max_amp=0.2,
+        step_amp=0.01,
+        pulse_length=e.platform.natives.single_qubit[target].RX[0][1].duration,
     )
     # update only if chi2 is satisfied
     if rabi_output_3.results.chi2[target][0] > 2:
