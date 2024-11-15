@@ -198,7 +198,7 @@ def _acquisition(
     assert len(targets) == 1
     target = targets[0]
     qubit = f"drive{target}"
-    resonator = f"readout{target}" if target is not None else f"readout{target}"
+    resonator = f"readout{target}"
     save_sequences = params.save_sequences
     apply_inverse = params.apply_inverse
     relaxation_time = params.relaxation_time
