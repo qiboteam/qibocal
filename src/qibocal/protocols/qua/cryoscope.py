@@ -312,11 +312,11 @@ def _fit(data: CryoscopeQuaData) -> CryoscopeQuaResults:
         step_response_volt = calculate_step_response(data, qubit)
 
         total_len = data.total_len
-        xplot = np.arange(0, total_len + 0.1, 1)
         ## Fit step response with exponential
         [A, tau], _ = curve_fit(
             expdecay,
-            xplot[zeros_before_pulse : const_flux_len + zeros_before_pulse],
+            np.arange(0, const_flux_len, 1),
+            # xplot[zeros_before_pulse : const_flux_len + zeros_before_pulse],
             step_response_volt,
         )
         results.alpha[qubit] = A
@@ -331,9 +331,10 @@ def _fit(data: CryoscopeQuaData) -> CryoscopeQuaResults:
 def _plot(data: CryoscopeQuaData, target: QubitId, fit: CryoscopeQuaResults):
     const_flux_len = data.const_flux_len
     zeros_before_pulse = data.zeros_before_pulse
-    xplot = np.arange(0, data.total_len + 0.1, 1)[
-        zeros_before_pulse : const_flux_len + zeros_before_pulse
-    ]
+    # xplot = np.arange(0, data.total_len + 0.1, 1)[
+    #    zeros_before_pulse : const_flux_len + zeros_before_pulse
+    # ]
+    xplot = np.arange(0, const_flux_len, 1)
     A = fit.alpha[target]
     tau = fit.tau[target]
     fir = np.array(fit.fir[target])
