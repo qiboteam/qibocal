@@ -56,10 +56,6 @@ class RbOnDeviceParameters(Parameters):
         if self.seed is None:
             self.seed = np.random.randint(0, int(1e6))
 
-    def __post_init__(self):
-        if self.seed is None:
-            self.seed = np.random.randint(0, int(1e6))
-
 
 def generate_sequence(max_circuit_depth, seed):
     sequence = declare(int, size=max_circuit_depth + 1)
@@ -399,9 +395,6 @@ def _acquisition(
     job = qm.execute(
         rb, compiler_options=CompilerOptionArguments(flags=["not-strict-timing"])
     )
-
-    with open("qua_script.py", "w") as file:
-        file.write(generate_qua_script(rb, config))
 
     # Get results from QUA program
     if state_discrimination:
