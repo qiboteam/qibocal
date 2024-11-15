@@ -4,7 +4,14 @@ from typing import Optional, Union
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Platform,
+    Readout,
+    Sweeper,
+)
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.config import log
@@ -146,7 +153,13 @@ def _acquisition(
             sequences.append(sequence)
             all_ro_pulses.append(
                 {
-                    qubit: list(sequence.channel(platform.qubits[qubit].acquisition))[0]
+                    qubit: [
+                        pulse
+                        for pulse in list(
+                            sequence.channel(platform.qubits[qubit].acquisition)
+                        )
+                        if isinstance(pulse, Readout)
+                    ][0]
                     for qubit in targets
                 }
             )
@@ -284,10 +297,10 @@ def _plot(data: RamseySignalData, target: QubitId, fit: RamseySignalResults = No
 
 
 def _update(results: RamseySignalResults, platform: Platform, target: QubitId):
-    # if results.detuning is not None:
-    #    update.drive_frequency(results.frequency[target][0], platform, target)
-    # else:
-    update.t2(results.t2[target], platform, target)
+    if results.detuning is not None:
+        update.drive_frequency(results.frequency[target][0], platform, target)
+    else:
+        update.t2(results.t2[target], platform, target)
 
 
 ramsey_signal = Routine(_acquisition, _fit, _plot, _update)

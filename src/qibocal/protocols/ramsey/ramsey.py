@@ -4,7 +4,14 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Platform,
+    Readout,
+    Sweeper,
+)
 
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.config import log
@@ -75,7 +82,6 @@ def _acquisition(
     """
 
     waits = np.arange(
-        # wait time between RX90 pulses
         params.delay_between_pulses_start,
         params.delay_between_pulses_end,
         params.delay_between_pulses_step,
@@ -128,15 +134,20 @@ def _acquisition(
                     errors=errors,
                 ),
             )
-
-    if params.unrolling:
+    else:
         sequences, all_ro_pulses = [], []
         for wait in waits:
             sequence, _ = ramsey_sequence(platform, targets, wait)
             sequences.append(sequence)
             all_ro_pulses.append(
                 {
-                    qubit: list(sequence.channel(platform.qubits[qubit].acquisition))[0]
+                    qubit: [
+                        pulse
+                        for pulse in list(
+                            sequence.channel(platform.qubits[qubit].acquisition)
+                        )
+                        if isinstance(pulse, Readout)
+                    ][0]
                     for qubit in targets
                 }
             )

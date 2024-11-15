@@ -233,9 +233,10 @@ class Output:
         force: bool = False,
     ):
         """Process existing output."""
-        self.platform = construct_backend(
+        backend = construct_backend(
             backend=self.meta.backend, platform=self.meta.platform
-        ).platform
+        )
+        self.platform = CalibrationPlatform.from_platform(backend.platform)
         assert self.platform is not None
 
         for task_id, completed in self.history.items():

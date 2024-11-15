@@ -66,7 +66,7 @@ class ResonatorPunchoutData(Data):
 
     resonator_type: str
     """Resonator type."""
-    amplitudes: dict[QubitId, float]
+    amplitudes: dict[QubitId, float] = field(default_factory=dict)
     """Amplitudes provided by the user."""
     data: dict[QubitId, npt.NDArray[ResPunchoutType]] = field(default_factory=dict)
     """Raw data acquired."""
@@ -257,12 +257,12 @@ def _plot(
 
 
 def _update(results: ResonatorPunchoutResults, platform: Platform, target: QubitId):
-    # update.readout_frequency(results.readout_frequency[target], platform, target)
+    update.readout_frequency(results.readout_frequency[target], platform, target)
     update.bare_resonator_frequency(results.bare_frequency[target], platform, target)
     update.dressed_resonator_frequency(
         results.readout_frequency[target], platform, target
     )
-    # update.readout_amplitude(results.readout_amplitude[target], platform, target)
+    update.readout_amplitude(results.readout_amplitude[target], platform, target)
 
 
 resonator_punchout = Routine(_acquisition, _fit, _plot, _update)

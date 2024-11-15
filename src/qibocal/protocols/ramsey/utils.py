@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 from qibolab import Delay, Platform, PulseSequence
 from scipy.optimize import curve_fit
@@ -19,6 +21,7 @@ def ramsey_sequence(
     platform: Platform,
     targets: list[QubitId],
     wait: int = 0,
+    target_qubit: Optional[QubitId] = None,
 ):
     """Pulse sequence used in Ramsey (detuned) experiments.
 
@@ -49,6 +52,12 @@ def ramsey_sequence(
         )
 
         delays.extend([qd_delay, ro_delay])
+        if target_qubit is not None:
+            assert (
+                target_qubit not in targets
+            ), f"Cannot run Ramsey experiment on qubit {target_qubit} if it is already in Ramsey sequence."
+            natives = platform.natives.single_qubit[target_qubit]
+            sequence += natives.RX()
 
     return sequence, delays
 

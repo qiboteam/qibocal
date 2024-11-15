@@ -122,4 +122,6 @@ def _plot(
     return [fig], fitting_report
 
 
+# TODO: add update function (?)
+
 filtered_rb = Routine(_acquisition, _fit, _plot)

@@ -1,8 +1,10 @@
 from pathlib import Path
 from typing import Annotated, Optional, Union
 
+import numpy as np
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, PlainSerializer
-from qibolab._core.serialize import NdArray
+
+from .serialize import NdArray, SparseArray
 
 QubitId = Annotated[Union[int, str], Field(union_mode="left_to_right")]
 """Qubit name."""
@@ -17,7 +19,7 @@ QubitPairId = Annotated[
 CALIBRATION = "calibration.json"
 """Calibration file."""
 
-Measure = list[float]
+Measure = tuple[float, Optional[float]]
 """Measured is represented as two values: mean and error."""
 
 
@@ -98,6 +100,8 @@ class Readout(Model):
     """Ground state position in IQ plane."""
     excited_state: list[float] = Field(default_factory=list)
     """Excited state position in IQ plane."""
+    qudits_frequency: dict[int, float] = Field(default_factory=dict)
+    """Dictionary mapping state with readout frequency."""
 
     @property
     def assignment_fidelity(self):
@@ -142,7 +146,7 @@ class Calibration(Model):
     """Dict with single qubit calibration."""
     two_qubits: dict[QubitPairId, TwoQubitCalibration] = Field(default_factory=dict)
     """Dict with qubit pairs calibration."""
-    readout_mitigation_matrix: Optional[NdArray] = None
+    readout_mitigation_matrix: Optional[SparseArray] = None
     """Readout mitigation matrix."""
     flux_crosstalk_matrix: Optional[NdArray] = None
     """Crosstalk flux matrix."""
@@ -161,11 +165,19 @@ class Calibration(Model):
         """Number of qubits available."""
         return len(self.qubits)
 
+    def qubit_index(self, qubit: QubitId):
+        """Return qubit index from platform qubits."""
+        return self.qubits.index(qubit)
+
     # TODO: add crosstalk object where I can do this
     def get_crosstalk_element(self, qubit1: QubitId, qubit2: QubitId):
-        a, b = self.qubits.index(qubit1), self.qubits.index(qubit2)
-        return self.flux_crosstalk_matrix[a, b]
+        if self.flux_crosstalk_matrix is None:
+            self.flux_crosstalk_matrix = np.zeros((self.nqubits, self.nqubits))
+        a, b = self.qubit_index(qubit1), self.qubit_index(qubit2)
+        return self.flux_crosstalk_matrix[a, b]  # pylint: disable=E1136
 
     def set_crosstalk_element(self, qubit1: QubitId, qubit2: QubitId, value: float):
-        a, b = self.qubits.index(qubit1), self.qubits.index(qubit2)
-        self.flux_crosstalk_matrix[a, b] = value
+        if self.flux_crosstalk_matrix is None:
+            self.flux_crosstalk_matrix = np.zeros((self.nqubits, self.nqubits))
+        a, b = self.qubit_index(qubit1), self.qubit_index(qubit2)
+        self.flux_crosstalk_matrix[a, b] = value  # pylint: disable=E1137

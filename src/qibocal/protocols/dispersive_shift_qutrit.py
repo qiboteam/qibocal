@@ -1,4 +1,3 @@
-from copy import deepcopy
 from dataclasses import asdict, dataclass
 
 import numpy as np
@@ -23,6 +22,7 @@ from qibocal.protocols.utils import (
     table_html,
 )
 
+from ..result import magnitude, phase
 from .dispersive_shift import DispersiveShiftData, DispersiveShiftParameters
 from .resonator_spectroscopy import ResSpecType
 
@@ -74,9 +74,9 @@ def _acquisition(
     params: DispersiveShiftParameters, platform: Platform, targets: list[QubitId]
 ) -> DispersiveShiftQutritData:
     r"""
-    Data acquisition for dispersive shift experiment.
-    Perform spectroscopy on the readout resonator, with the qubit in ground and excited state, showing
-    the resonator shift produced by the coupling between the resonator and the qubit.
+    Data acquisition for dispersive shift qutrit experiment.
+    Perform spectroscopy on the readout resonator, with the qubit in ground, excited state and
+    second excited state showing the resonator shift produced by the coupling between the resonator and the qubit.
 
     Args:
         params (DispersiveShiftParameters): experiment's parameters
@@ -85,26 +85,21 @@ def _acquisition(
 
     """
 
-    # create 3 sequences of pulses for the experiment:
-    # sequence_0: I  - MZ
-    # sequence_1: RX - MZ
-    # sequence_2: RX - RX12 - MZ
-
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence_0 = PulseSequence()
     sequence_1 = PulseSequence()
     sequence_2 = PulseSequence()
 
     for qubit in targets:
-        rx_pulse = platform.create_RX_pulse(qubit, start=0)
-        rx_12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish)
-        ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
-        sequence_1.add(rx_pulse)
-        sequence_2.add(rx_pulse, rx_12_pulse)
-        for sequence in [sequence_0, sequence_1, sequence_2]:
-            readout_pulse = deepcopy(ro_pulse)
-            readout_pulse.start = sequence.qd_pulses.finish
-            sequence.add(readout_pulse)
+        natives = platform.natives.single_qubit[qubit]
+        # prepare 0 and measure
+        sequence_0 += natives.MZ()
+
+        # prepare 1 and measure
+        sequence_1 += natives.RX() | natives.MZ()
+
+        # prepare 2 and measure
+        assert natives.RX12 is not None, f"Missing RX12 calibration for qubit {qubit}"
+        sequence_2 += (natives.RX() + natives.RX12()) | natives.MZ()
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
@@ -113,36 +108,37 @@ def _acquisition(
 
     data = DispersiveShiftQutritData(resonator_type=platform.resonator_type)
 
-    for state, sequence in enumerate([sequence_0, sequence_1, sequence_2]):
-        sweeper = Sweeper(
-            Parameter.frequency,
-            delta_frequency_range,
-            pulses=list(sequence.ro_pulses),
-            type=SweeperType.OFFSET,
+    sweepers = [
+        Sweeper(
+            parameter=Parameter.frequency,
+            values=platform.config(platform.qubits[q].probe).frequency
+            + delta_frequency_range,
+            channels=[platform.qubits[q].probe],
         )
+        for q in targets
+    ]
 
-        results = platform.sweep(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
-            ),
-            sweeper,
-        )
+    results = platform.execute(
+        [sequence_0, sequence_1, sequence_2],
+        [sweepers],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
+    )
 
-        for qubit in targets:
-            result = results[qubit].average
-            # store the results
+    for qubit in targets:
+        ro_frequency = platform.config(platform.qubits[qubit].probe).frequency
+        for state, sequence in enumerate([sequence_0, sequence_1, sequence_2]):
+            ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+            result = results[ro_pulse.id]
             data.register_qubit(
                 ResSpecType,
                 (qubit, state),
                 dict(
-                    freq=sequence.get_qubit_pulses(qubit).ro_pulses[0].frequency
-                    + delta_frequency_range,
-                    signal=result.magnitude,
-                    phase=result.phase,
+                    freq=ro_frequency + delta_frequency_range,
+                    signal=magnitude(result),
+                    phase=phase(result),
                 ),
             )
 

@@ -32,8 +32,6 @@ class QubitFluxParameters(ResonatorFluxParameters):
     drive_amplitude: Optional[float] = None
     """Drive amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
-    transition: Optional[str] = "01"
-    """Flux spectroscopy transition type ("01" or "02"). Default value is 01"""
     drive_duration: int = 2000
     """Duration of the drive pulse."""
 
@@ -42,13 +40,13 @@ class QubitFluxParameters(ResonatorFluxParameters):
 class QubitFluxResults(Results):
     """QubitFlux outputs."""
 
-    sweetspot: dict[QubitId, float]
+    sweetspot: dict[QubitId, float] = field(default_factory=dict)
     """Sweetspot for each qubit."""
-    frequency: dict[QubitId, float]
+    frequency: dict[QubitId, float] = field(default_factory=dict)
     """Drive frequency for each qubit."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]] = field(default_factory=dict)
     """Raw fitting output."""
-    matrix_element: dict[QubitId, float]
+    matrix_element: dict[QubitId, float] = field(default_factory=dict)
     """V_ii coefficient."""
 
 
@@ -96,7 +94,7 @@ def _acquisition(
     delta_offset_range = np.arange(
         -params.bias_width / 2, params.bias_width / 2, params.bias_step
     )
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
+
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
@@ -112,14 +110,6 @@ def _acquisition(
         if params.drive_amplitude is not None:
             qd_pulse = replace(qd_pulse, amplitude=params.drive_amplitude)
 
-        if params.transition == "02":
-            raise NotImplementedError
-            # TODO: Change ``frequency0`` when implementing this
-            # if platform.qubits[qubit].anharmonicity:
-            #    qd_pulses[qubit].frequency -= platform.qubits[qubit].anharmonicity / 2
-            # else:
-            #    qd_pulses[qubit].frequency -= DEFAULT_ANHARMONICITY / 2
-
         qd_pulses[q] = qd_pulse
         ro_pulses[q] = ro_pulse
         qubit_frequency[q] = frequency0 = platform.config(qd_channel).frequency
@@ -129,7 +119,6 @@ def _acquisition(
         sequence.append((ro_channel, ro_pulse))
 
         # define the parameters to sweep and their range:
-
         freq_sweepers.append(
             Sweeper(
                 parameter=Parameter.frequency,
@@ -151,9 +140,8 @@ def _acquisition(
     data = QubitFluxData(
         resonator_type=platform.resonator_type,
         charging_energy={
-            qubit: 0
+            qubit: platform.calibration.single_qubits[qubit].qubit.charging_energy
             for qubit in targets
-            # qubit: -platform.qubits[qubit].anharmonicity for qubit in targets
         },
         qubit_frequency=qubit_frequency,
     )
@@ -165,7 +153,7 @@ def _acquisition(
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    # retrieve the results for every qubit
+
     for i, qubit in enumerate(targets):
         result = results[ro_pulses[qubit].id]
         data.register_qubit(
@@ -284,9 +272,9 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
 
 
 def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
-    # update.drive_frequency(results.frequency[qubit], platform, qubit)
-    # TODO: shall we add also frequency_10 here?
+    update.drive_frequency(results.frequency[qubit], platform, qubit)
     update.sweetspot(results.sweetspot[qubit], platform, qubit)
+    update.flux_offset(results.sweetspot[qubit], platform, qubit)
     platform.calibration.single_qubits[qubit].qubit.maximum_frequency = int(
         results.frequency[qubit]
     )

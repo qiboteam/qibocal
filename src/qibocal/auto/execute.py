@@ -256,12 +256,16 @@ class Executor:
         targets: Optional[Targets] = None,
     ):
         """Initialize execution."""
-        if platform is None:
+        if platform is None or isinstance(platform, CalibrationPlatform):
             platform = self.platform
+        elif isinstance(platform, str):
+            platform = self.platform = create_calibration_platform(platform)
+        else:
+            platform = self.platform = CalibrationPlatform.from_platform(platform)
 
-        backend = construct_backend(backend="qibolab", platform=platform)
-        platform = self.platform = backend.platform
         assert isinstance(platform, CalibrationPlatform)
+
+        backend = construct_backend(backend="qibolab", platform=platform.name)
 
         if update is not None:
             self.update = update

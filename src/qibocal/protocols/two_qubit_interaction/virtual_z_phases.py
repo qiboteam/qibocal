@@ -31,6 +31,8 @@ from qibocal.auto.operation import (
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
+from ... import update
+from ...update import replace
 from .utils import order_pair
 
 
@@ -116,8 +118,8 @@ def create_sequence(
     native: Literal["CZ", "iSWAP"],
     dt: float,
     parking: bool,
-    amplitude: float,
-    duration: float,
+    amplitude: Optional[float] = None,
+    duration: Optional[float] = None,
 ) -> tuple[
     PulseSequence,
     dict[QubitId, Pulse],
@@ -478,12 +480,12 @@ def _update(results: VirtualZPhasesResults, platform: Platform, target: QubitPai
     # update.virtual_phases(
     #    results.virtual_phase[target], results.native, platform, target
     # )
-    # getattr(update, f"{results.native}_duration")(
-    #    results.flux_pulse_duration[target], platform, target
-    # )
-    # getattr(update, f"{results.native}_amplitude")(
-    #    results.flux_pulse_amplitude[target], platform, target
-    # )
+    getattr(update, f"{results.native}_duration")(
+        results.flux_pulse_duration[target], platform, target
+    )
+    getattr(update, f"{results.native}_amplitude")(
+        results.flux_pulse_amplitude[target], platform, target
+    )
 
 
 correct_virtual_z_phases = Routine(

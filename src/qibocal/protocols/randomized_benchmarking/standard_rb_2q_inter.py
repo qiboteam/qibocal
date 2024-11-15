@@ -49,7 +49,10 @@ def _acquisition(
 
     fidelity = {}
     for target in targets:
-        fidelity[target] = platform.pairs[target].gate_fidelity
+        assert (
+            target in platform.calibration.two_qubits
+        ), "Pair not calibrated, run standard 2q rb before interleaved version"
+        fidelity[target] = platform.calibration.two_qubits[target].rb_fidelity
     data.fidelity = fidelity
 
     return data
@@ -71,16 +74,14 @@ def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
 
     fidelity_cz = {}
     for qubit in qubits:
-        if qubit in data.fidelity and data.fidelity[qubit] is not None:
-            fid_cz = results.fidelity[qubit] / data.fidelity[qubit][0]
-            uncertainty_cz = np.sqrt(
-                1
-                / data.fidelity[qubit][0] ** 2
-                * results.fit_uncertainties[qubit][1] ** 2
-                + (results.fidelity[qubit] / data.fidelity[qubit][0] ** 2) ** 2
-                * data.fidelity[qubit][1] ** 2
-            )
-            fidelity_cz[qubit] = [fid_cz, uncertainty_cz]
+        fid_cz = results.fidelity[qubit] / data.fidelity[qubit][0]
+        # TODO: check this error formula
+        uncertainty_cz = np.sqrt(
+            1 / data.fidelity[qubit][0] ** 2 * results.fit_uncertainties[qubit][1] ** 2
+            + (results.fidelity[qubit] / data.fidelity[qubit][0] ** 2) ** 2
+            * data.fidelity[qubit][1] ** 2
+        )
+        fidelity_cz[qubit] = [fid_cz, uncertainty_cz]
 
     return StandardRB2QInterResult(
         results.fidelity,
@@ -92,4 +93,12 @@ def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
     )
 
 
-standard_rb_2q_inter = Routine(_acquisition, _fit, _plot)
+def _update(results: StandardRBResult, platform: Platform, target: QubitPairId):
+    """Write cz fidelity in calibration."""
+    # TODO: shall we use the gate fidelity or the pulse fidelity
+    platform.calibration.two_qubits[target].cz_fidelity = tuple(
+        results.fidelity_cz[target]
+    )
+
+
+standard_rb_2q_inter = Routine(_acquisition, _fit, _plot, _update)

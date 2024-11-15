@@ -11,6 +11,9 @@ from qibocal.protocols.classification import (
 )
 from qibocal.protocols.utils import plot_results
 
+from ..auto.operation import Results
+from ..config import log
+
 COLUMNWIDTH = 600
 LEGEND_FONT_SIZE = 20
 TITLE_SIZE = 25
@@ -59,49 +62,96 @@ def _acquisition(
     """
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
-    states_sequences = [PulseSequence() for _ in range(3)]
-    ro_pulses = {}
+    states = [0, 1, 2]
+    sequences, all_ro_pulses = [], []
+    native = platform.natives.single_qubit
+
+    updates = []
     for qubit in targets:
-        rx_pulse = platform.create_RX_pulse(qubit, start=0)
-        rx12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish)
-        drive_pulses = [rx_pulse, rx12_pulse]
-        ro_pulses[qubit] = []
-        for i, sequence in enumerate(states_sequences):
-            sequence.add(*drive_pulses[:i])
-            start = drive_pulses[i - 1].finish if i != 0 else 0
-            ro_pulses[qubit].append(
-                platform.create_qubit_readout_pulse(qubit, start=start)
+        channel = platform.qubits[qubit].probe
+        try:
+            updates.append(
+                {
+                    channel: {
+                        "frequency": platform.calibration.single_qubits[
+                            qubit
+                        ].readout.qudits_frequency[1]
+                    }
+                }
             )
-            sequence.add(ro_pulses[qubit][-1])
+        except KeyError:
+            log.warning(f"No readout frequency for state 1 for qubit {qubit}.")
+
+    for state in states:
+        ro_pulses = {}
+        sequence = PulseSequence()
+        for q in targets:
+            ro_sequence = native[q].MZ()
+            ro_pulses[q] = ro_sequence[0][1].id
+            sequence += ro_sequence
+
+        if state == 1:
+            rx_sequence = PulseSequence()
+            for q in targets:
+                rx_sequence += native[q].RX()
+            sequence = rx_sequence | sequence
+
+        if state == 2:
+            rx12_sequence = PulseSequence()
+            for q in targets:
+                rx12_sequence += native[q].RX() | native[q].RX12()
+            sequence = rx12_sequence | sequence
+
+        sequences.append(sequence)
+        all_ro_pulses.append(ro_pulses)
 
     data = QutritClassificationData(
         nshots=params.nshots,
         classifiers_list=params.classifiers_list,
         savedir=params.savedir,
     )
-    states_results = []
-    for sequence in states_sequences:
-        states_results.append(
-            platform.execute_pulse_sequence(
-                sequence,
-                ExecutionParameters(
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.INTEGRATION,
-                ),
-            )
-        )
 
+    options = dict(
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+    )
+
+    updates = []
     for qubit in targets:
-        for state, state_result in enumerate(states_results):
-            result = state_result[ro_pulses[qubit][state].serial]
+        channel = platform.qubits[qubit].probe
+        try:
+            # we readout at the readout frequency of |1> for better discrimination
+            updates.append(
+                {
+                    channel: {
+                        "frequency": platform.calibration.single_qubits[
+                            qubit
+                        ].readout.qudits_frequency[1]
+                    }
+                }
+            )
+        except KeyError:
+            log.warning(f"No readout frequency for state 1 for qubit {qubit}.")
+
+    if params.unrolling:
+        results = platform.execute(sequences, **options, updates=updates)
+    else:
+        results = {}
+        for sequence in sequences:
+            results.update(platform.execute([sequence], **options, updates=updates))
+
+    for state, ro_pulses in zip(states, all_ro_pulses):
+        for qubit in targets:
+            serial = ro_pulses[qubit]
+            result = results[serial]
             data.register_qubit(
                 ClassificationType,
                 (qubit),
                 dict(
+                    i=result[..., 0],
+                    q=result[..., 1],
                     state=[state] * params.nshots,
-                    i=result.voltage_i,
-                    q=result.voltage_q,
                 ),
             )
 

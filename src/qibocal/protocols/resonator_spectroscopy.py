@@ -343,13 +343,8 @@ def _plot(
 
 def _update(results: ResonatorSpectroscopyResults, platform: Platform, target: QubitId):
     update.readout_frequency(results.frequency[target], platform, target)
-
-    # if this condition is satifisfied means that we are in the low power regime
-    # therefore we update also the readout amplitude
     if len(results.bare_frequency) == 0:
         update.readout_amplitude(results.amplitude[target], platform, target)
-        if results.attenuation[target] is not None:
-            update.readout_attenuation(results.attenuation[target], platform, target)
     else:
         update.bare_resonator_frequency(
             results.bare_frequency[target], platform, target

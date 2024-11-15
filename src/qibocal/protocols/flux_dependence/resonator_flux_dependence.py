@@ -103,6 +103,8 @@ def _acquisition(
     qubit_frequency = {}
     bare_resonator_frequency = {}
     charging_energy = {}
+    matrix_element = {}
+    offset = {}
     freq_sweepers = []
     offset_sweepers = []
     for q in targets:
@@ -296,10 +298,11 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
 
 
 def _update(results: ResonatorFluxResults, platform: Platform, qubit: QubitId):
-    update.bare_resonator_frequency(results.bare_resonator_freq[qubit], platform, qubit)
-    # update.readout_frequency(results.resonator_freq[qubit], platform, qubit)
-    # TODO: add coupling somewhere
-    # update.coupling(results.coupling[qubit], platform, qubit)
+    update.dressed_resonator_frequency(results.resonator_freq[qubit], platform, qubit)
+    update.readout_frequency(results.resonator_freq[qubit], platform, qubit)
+    update.coupling(results.coupling[qubit], platform, qubit)
+    update.flux_offset(results.sweetspot[qubit], platform, qubit)
+    update.sweetspot(results.sweetspot[qubit], platform, qubit)
 
 
 resonator_flux = Routine(_acquisition, _fit, _plot, _update)

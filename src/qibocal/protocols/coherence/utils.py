@@ -84,10 +84,7 @@ def exponential_fit(data, zeno=False):
 
     for qubit in qubits:
         voltages = data[qubit].signal
-        if zeno:
-            times = np.arange(1, len(data[qubit].signal) + 1)
-        else:
-            times = data[qubit].wait
+        times = data[qubit].wait
 
         try:
             y_max = np.max(voltages)
@@ -115,7 +112,7 @@ def exponential_fit(data, zeno=False):
             )
             popt = [
                 (y_max - y_min) * popt[0] + y_min,
-                (y_max - y_min) * popt[1] * np.exp(x_min * popt[2] / (x_max - x_min)),
+                (y_max - y_min) * popt[1] * np.exp(x_min / popt[2] / (x_max - x_min)),
                 popt[2] * (x_max - x_min),
             ]
             fitted_parameters[qubit] = popt
@@ -137,10 +134,8 @@ def exponential_fit_probability(data, zeno=False):
     pcovs = {}
 
     for qubit in qubits:
-        if zeno:
-            times = np.arange(1, len(data[qubit].signal) + 1)
-        else:
-            times = data[qubit].wait
+
+        times = data[qubit].wait
         x_max = np.max(times)
         x_min = np.min(times)
         x = (times - x_min) / (x_max - x_min)
@@ -166,9 +161,10 @@ def exponential_fit_probability(data, zeno=False):
             )
             popt = [
                 popt[0],
-                popt[1] * np.exp(x_min * popt[2] / (x_max - x_min)),
+                popt[1] * np.exp(x_min / (x_max - x_min) / popt[2]),
                 popt[2] * (x_max - x_min),
             ]
+
             pcovs[qubit] = pcov.tolist()
             fitted_parameters[qubit] = popt
             dec = popt[2]
