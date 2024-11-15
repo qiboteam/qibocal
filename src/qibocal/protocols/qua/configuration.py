@@ -46,6 +46,22 @@ def drive_waveforms(platform, qubit):
     ) | drive_waveform_components(qubit, "q", envelope_q.data)
 
 
+def flux_waveforms(platform, qubit):
+    _waveforms = {}
+    for (q1, q2), pair in platform.pairs.items():
+        cz = pair.native_gates.CZ
+        if cz is not None:
+            seq, _ = cz.sequence()
+            pulse = seq[0]
+            if pulse.qubit == qubit:
+                other = q2 if q1 == qubit else q1
+                _waveforms[f"cz_{qubit}_{other}"] = {
+                    "type": "constant",
+                    "sample": pulse.amplitude,
+                }
+    return _waveforms
+
+
 def waveforms(platform, qubits):
     _waveforms = {
         "zero": {
@@ -64,6 +80,7 @@ def waveforms(platform, qubits):
     )
     for q in qubits:
         _waveforms.update(drive_waveforms(platform, q))
+        _waveforms.update(flux_waveforms(platform, q))
     return _waveforms
 
 
@@ -80,6 +97,25 @@ def drive_pulses(platform, qubit):
             },
             "digital_marker": "ON",
         }
+    return _pulses
+
+
+def flux_pulses(platform, qubit):
+    _pulses = {}
+    for (q1, q2), pair in platform.pairs.items():
+        cz = pair.native_gates.CZ
+        if cz is not None:
+            seq, _ = cz.sequence()
+            pulse = seq[0]
+            if pulse.qubit == qubit:
+                other = q2 if q1 == qubit else q1
+                _pulses[f"cz_{qubit}_{other}"] = {
+                    "operation": "control",
+                    "length": pulse.duration,
+                    "waveforms": {
+                        "single": f"cz_{qubit}_{other}",
+                    },
+                }
     return _pulses
 
 
@@ -103,6 +139,7 @@ def pulses(platform, qubits):
     }
     for q in qubits:
         _pulses.update(drive_pulses(platform, q))
+        _pulses.update(flux_pulses(platform, q))
     return _pulses
 
 
@@ -142,7 +179,7 @@ def register_element(config, qubit, time_of_flight, smearing):
         config.register_flux_element(qubit)
 
 
-def generate_config(platform, qubits):
+def generate_config(platform, qubits, targets=None):
     con = [
         instr
         for instr in platform.instruments.values()
@@ -154,6 +191,9 @@ def generate_config(platform, qubits):
         register_element(config, qubit, con.time_of_flight, con.smearing)
         config.elements[f"readout{q}"]["operations"]["measure"] = f"mz_{q}"
         config.elements[f"drive{q}"]["operations"] = native_operations(q)
+        if targets is not None and q == targets[0]:
+            q1, q2 = targets
+            config.elements[f"flux{q}"]["operations"]["cz"] = f"cz_{q1}_{q2}"
     config.pulses = pulses(platform, qubits)
     config.waveforms = waveforms(platform, qubits)
     config.integration_weights = integration_weights(platform, qubits)
