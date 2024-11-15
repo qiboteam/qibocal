@@ -10,7 +10,6 @@ from qibo import gates
 from qibo.backends import GlobalBackend
 from qibo.config import raise_error
 from qibo.models import Circuit
-from qibolab import Platform
 
 from qibocal.auto.operation import Data, Parameters, QubitId, QubitPairId, Results
 from qibocal.auto.transpile import (
@@ -18,6 +17,7 @@ from qibocal.auto.transpile import (
     execute_transpiled_circuit,
     execute_transpiled_circuits,
 )
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import raise_error
 from qibocal.protocols.randomized_benchmarking import noisemodels
 from qibocal.protocols.randomized_benchmarking.dict_utils import (
@@ -335,7 +335,7 @@ class StandardRBResult(Results):
 
 def setup(
     params: Parameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     single_qubit: bool = True,
     interleave: Optional[str] = None,
 ):
@@ -484,7 +484,7 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
 
 def rb_acquisition(
     params: Parameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
     add_inverse_layer: bool = True,
     interleave: str = None,
@@ -531,7 +531,7 @@ def rb_acquisition(
 
 def twoq_rb_acquisition(
     params: Parameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitPairId],
     add_inverse_layer: bool = True,
     interleave: str = None,

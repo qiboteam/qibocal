@@ -4,16 +4,10 @@ from typing import Optional, Union
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import (
-    AcquisitionType,
-    AveragingMode,
-    Parameter,
-    Platform,
-    Readout,
-    Sweeper,
-)
+from qibolab import AcquisitionType, AveragingMode, Parameter, Readout, Sweeper
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.result import magnitude
 
@@ -85,7 +79,7 @@ class RamseySignalData(Data):
 
 def _acquisition(
     params: RamseySignalParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> RamseySignalData:
     """Data acquisition for Ramsey Experiment (detuned)."""
@@ -296,7 +290,9 @@ def _plot(data: RamseySignalData, target: QubitId, fit: RamseySignalResults = No
     return figures, fitting_report
 
 
-def _update(results: RamseySignalResults, platform: Platform, target: QubitId):
+def _update(
+    results: RamseySignalResults, platform: CalibrationPlatform, target: QubitId
+):
     if results.detuning is not None:
         update.drive_frequency(results.frequency[target][0], platform, target)
     else:

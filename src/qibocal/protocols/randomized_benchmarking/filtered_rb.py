@@ -2,9 +2,9 @@ from dataclasses import dataclass
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import Platform
 
 from qibocal.auto.operation import QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.randomized_benchmarking.utils import rb_acquisition
 from qibocal.protocols.utils import table_dict, table_html
 
@@ -23,7 +23,7 @@ class FilteredRBResult(Results):
 
 def _acquisition(
     params: FilteredRBParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> RBData:
     """The data acquisition stage of Filtered Randomized Benchmarking.
@@ -34,7 +34,7 @@ def _acquisition(
 
     Args:
         params : All parameters in one object.
-        platform : Platform the experiment is executed on.
+        platform : CalibrationPlatform the experiment is executed on.
         target : list of qubits the experiment is executed on.
 
     Returns:

@@ -8,13 +8,13 @@ from qibolab import (
     AveragingMode,
     Delay,
     Parameter,
-    Platform,
     PulseSequence,
     Sweeper,
 )
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.result import magnitude, phase
 from qibocal.update import replace
@@ -83,7 +83,7 @@ class QubitFluxData(Data):
 
 def _acquisition(
     params: QubitFluxParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> QubitFluxData:
     """Data acquisition for QubitFlux Experiment."""
@@ -271,7 +271,7 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
     return figures, ""
 
 
-def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
+def _update(results: QubitFluxResults, platform: CalibrationPlatform, qubit: QubitId):
     update.drive_frequency(results.frequency[qubit], platform, qubit)
     update.sweetspot(results.sweetspot[qubit], platform, qubit)
     update.flux_offset(results.sweetspot[qubit], platform, qubit)

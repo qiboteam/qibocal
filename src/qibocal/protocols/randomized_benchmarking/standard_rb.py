@@ -3,9 +3,9 @@ from typing import Iterable, Optional, TypedDict, Union
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import Platform
 
 from qibocal.auto.operation import Parameters, QubitId, Routine
+from qibocal.calibration import CalibrationPlatform
 
 from ..utils import table_dict, table_html
 from .fitting import exp1B_func
@@ -69,7 +69,7 @@ class StandardRBParameters(Parameters):
 
 def _acquisition(
     params: StandardRBParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> RBData:
     """The data acquisition stage of Standard Randomized Benchmarking.
@@ -80,7 +80,7 @@ def _acquisition(
 
     Args:
         params: All parameters in one object.
-        platform: Platform the experiment is executed on.
+        platform: CalibrationPlatform the experiment is executed on.
         target: list of qubits the experiment is executed on.
 
     Returns:
@@ -224,7 +224,7 @@ def _plot(
     return [fig], fitting_report
 
 
-def _update(results: StandardRBResult, platform: Platform, target: QubitId):
+def _update(results: StandardRBResult, platform: CalibrationPlatform, target: QubitId):
     """Write rb fidelity in calibration."""
 
     # TODO: shall we use the gate fidelity or the pulse fidelity

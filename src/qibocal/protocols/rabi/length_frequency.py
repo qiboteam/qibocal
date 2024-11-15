@@ -6,9 +6,10 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal.auto.operation import QubitId, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
@@ -66,7 +67,9 @@ class RabiLengthFreqData(RabiLengthFreqSignalData):
 
 
 def _acquisition(
-    params: RabiLengthFrequencyParameters, platform: Platform, targets: list[QubitId]
+    params: RabiLengthFrequencyParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
 ) -> RabiLengthFreqData:
     """Data acquisition for Rabi experiment sweeping length."""
 

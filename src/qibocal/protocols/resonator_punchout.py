@@ -5,17 +5,11 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import (
-    AcquisitionType,
-    AveragingMode,
-    Parameter,
-    Platform,
-    PulseSequence,
-    Sweeper,
-)
+from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
 from .utils import HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
@@ -85,7 +79,7 @@ class ResonatorPunchoutData(Data):
 
 def _acquisition(
     params: ResonatorPunchoutParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> ResonatorPunchoutData:
     """Data acquisition for Punchout over amplitude."""
@@ -256,7 +250,9 @@ def _plot(
     return figures, fitting_report
 
 
-def _update(results: ResonatorPunchoutResults, platform: Platform, target: QubitId):
+def _update(
+    results: ResonatorPunchoutResults, platform: CalibrationPlatform, target: QubitId
+):
     update.readout_frequency(results.readout_frequency[target], platform, target)
     update.bare_resonator_frequency(results.bare_frequency[target], platform, target)
     update.dressed_resonator_frequency(

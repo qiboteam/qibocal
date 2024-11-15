@@ -1,8 +1,7 @@
 from dataclasses import dataclass
 
-from qibolab import Platform
-
 from qibocal.auto.operation import QubitPairId, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.randomized_benchmarking.standard_rb import (
     StandardRBParameters,
     _plot,
@@ -27,7 +26,7 @@ class StandardRB2QParameters(StandardRBParameters):
 
 def _acquisition(
     params: StandardRB2QParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitPairId],
 ) -> RB2QData:
     """Data acquisition for two qubit Standard Randomized Benchmarking."""
@@ -42,7 +41,9 @@ def _fit(data: RB2QData) -> StandardRBResult:
     return results
 
 
-def _update(results: StandardRBResult, platform: Platform, target: QubitPairId):
+def _update(
+    results: StandardRBResult, platform: CalibrationPlatform, target: QubitPairId
+):
     """Write rb fidelity in calibration."""
     # FIXME: error raised by qq fit
     if isinstance(target, list):

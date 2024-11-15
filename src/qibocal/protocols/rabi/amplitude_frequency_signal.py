@@ -7,10 +7,11 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import (
     HZ_TO_GHZ,
@@ -97,7 +98,7 @@ class RabiAmplitudeFreqSignalData(Data):
 
 def _acquisition(
     params: RabiAmplitudeFrequencySignalParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> RabiAmplitudeFreqSignalData:
     """Data acquisition for Rabi experiment sweeping amplitude."""
@@ -290,7 +291,9 @@ def _plot(
 
 
 def _update(
-    results: RabiAmplitudeFrequencySignalResults, platform: Platform, target: QubitId
+    results: RabiAmplitudeFrequencySignalResults,
+    platform: CalibrationPlatform,
+    target: QubitId,
 ):
     update.drive_duration(results.length[target], platform, target)
     update.drive_amplitude(results.amplitude[target], platform, target)

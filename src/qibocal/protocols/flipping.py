@@ -4,11 +4,12 @@ from typing import Union
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, PulseSequence
 from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import (
     fallback_period,
@@ -22,7 +23,7 @@ from .utils import COLORBAND, COLORBAND_LINE, chi2_reduced
 
 
 def flipping_sequence(
-    platform: Platform, qubit: QubitId, delta_amplitude: float, flips: int
+    platform: CalibrationPlatform, qubit: QubitId, delta_amplitude: float, flips: int
 ):
     """Pulse sequence for flipping experiment."""
 
@@ -97,7 +98,7 @@ class FlippingData(Data):
 
 def _acquisition(
     params: FlippingParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> FlippingData:
     r"""
@@ -109,7 +110,7 @@ def _acquisition(
 
     Args:
         params (:class:`SingleShotClassificationParameters`): input parameters
-        platform (:class:`Platform`): Qibolab's platform
+        platform (:class:`CalibrationPlatform`): Qibolab's platform
         qubits (dict): dict of target :class:`Qubit` objects to be characterized
 
     Returns:
@@ -356,7 +357,7 @@ def _plot(data: FlippingData, target: QubitId, fit: FlippingResults = None):
     return figures, fitting_report
 
 
-def _update(results: FlippingResults, platform: Platform, qubit: QubitId):
+def _update(results: FlippingResults, platform: CalibrationPlatform, qubit: QubitId):
     update.drive_amplitude(results.amplitude[qubit], platform, qubit)
 
 

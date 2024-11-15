@@ -3,9 +3,10 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Delay, Platform, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, Delay, PulseSequence
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 
 
 @dataclass
@@ -64,7 +65,7 @@ gatelist = [
 
 def _acquisition(
     params: AllXYParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> AllXYData:
     r"""
@@ -124,7 +125,7 @@ def _acquisition(
 
 
 def allxy_sequence(
-    platform: Platform,
+    platform: CalibrationPlatform,
     gates,
     qubit,
     sequence_delay=None,

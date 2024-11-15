@@ -49,7 +49,6 @@ from .two_qubit_interaction import (
     chevron,
     chevron_signal,
     correct_virtual_z_phases,
-    correct_virtual_z_phases_signal,
     optimize_two_qubit_gate,
 )
 from .two_qubit_state_tomography import two_qubit_state_tomography
@@ -93,7 +92,6 @@ __all__ = [
     "chevron",
     "chevron_signal",
     "correct_virtual_z_phases",
-    "correct_virtual_z_phases_signal",
     "state_tomography",
     "allxy_resonator_depletion_tuning",
     "two_qubit_state_tomography",

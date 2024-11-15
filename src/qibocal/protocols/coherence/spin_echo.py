@@ -3,9 +3,10 @@ from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal.auto.operation import QubitId, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.result import probability
 
 from ..utils import table_dict, table_html
@@ -35,7 +36,7 @@ class SpinEchoData(t1.T1Data):
 
 def _acquisition(
     params: SpinEchoParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> SpinEchoData:
     """Data acquisition for SpinEcho"""

@@ -672,19 +672,6 @@ actions:
       native: iSWAP
       parking: True
 
-  - id: iswap virtual signal
-    operation: correct_virtual_z_phases_signal
-    targets: [[0, 2],[1,2]]
-    parameters:
-      theta_start: 0
-      theta_end: 180
-      theta_step: 10
-      flux_pulse_amplitude: 0.5
-      flux_pulse_duration: 10
-      native: iSWAP
-      dt: 0
-      parking: True
-
   - id: cz_virtual_phase
     operation: correct_virtual_z_phases
     targets: [[0, 2],[1,2]]
@@ -696,19 +683,6 @@ actions:
       flux_pulse_duration: 10
       dt: 0
       native: CZ
-      parking: True
-
-  - id: cz virtual signal
-    operation: correct_virtual_z_phases_signal
-    targets: [[0, 2],[1,2]]
-    parameters:
-      theta_start: 0
-      theta_end: 180
-      theta_step: 10
-      flux_pulse_amplitude: 0.5
-      flux_pulse_duration: 10
-      native: CZ
-      dt: 0
       parking: True
 
   - id: readout_mitigation_matrix pulses

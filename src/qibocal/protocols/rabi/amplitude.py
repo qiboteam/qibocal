@@ -2,10 +2,11 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal import update
 from qibocal.auto.operation import Data, QubitId, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.result import probability
 
@@ -43,7 +44,9 @@ class RabiAmplitudeData(Data):
 
 
 def _acquisition(
-    params: RabiAmplitudeParameters, platform: Platform, targets: list[QubitId]
+    params: RabiAmplitudeParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
 ) -> RabiAmplitudeData:
     r"""
     Data acquisition for Rabi experiment sweeping amplitude.
@@ -133,7 +136,9 @@ def _plot(data: RabiAmplitudeData, target: QubitId, fit: RabiAmplitudeResults = 
     return utils.plot_probabilities(data, target, fit)
 
 
-def _update(results: RabiAmplitudeResults, platform: Platform, target: QubitId):
+def _update(
+    results: RabiAmplitudeResults, platform: CalibrationPlatform, target: QubitId
+):
     update.drive_amplitude(results.amplitude[target], platform, target)
     update.drive_duration(results.length[target], platform, target)
 

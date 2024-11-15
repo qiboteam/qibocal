@@ -3,15 +3,10 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import (
-    AcquisitionType,
-    AveragingMode,
-    Parameter,
-    Platform,
-    PulseSequence,
-    Sweeper,
-)
+from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 from scipy.optimize import curve_fit
+
+from qibocal.calibration import CalibrationPlatform
 
 from ... import update
 from ...auto.operation import Data, Parameters, QubitId, Results, Routine
@@ -87,7 +82,9 @@ class ResonatorFluxData(Data):
 
 
 def _acquisition(
-    params: ResonatorFluxParameters, platform: Platform, targets: list[QubitId]
+    params: ResonatorFluxParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
 ) -> ResonatorFluxData:
     """Data acquisition for ResonatorFlux experiment."""
 
@@ -297,7 +294,9 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
     return figures, ""
 
 
-def _update(results: ResonatorFluxResults, platform: Platform, qubit: QubitId):
+def _update(
+    results: ResonatorFluxResults, platform: CalibrationPlatform, qubit: QubitId
+):
     update.dressed_resonator_frequency(results.resonator_freq[qubit], platform, qubit)
     update.readout_frequency(results.resonator_freq[qubit], platform, qubit)
     update.coupling(results.coupling[qubit], platform, qubit)

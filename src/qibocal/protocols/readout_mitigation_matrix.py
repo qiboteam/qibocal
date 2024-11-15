@@ -7,11 +7,12 @@ import plotly.express as px
 from qibo import gates
 from qibo.backends import GlobalBackend
 from qibo.models import Circuit
-from qibolab import Platform, PulseSequence
+from qibolab import PulseSequence
 from scipy.sparse import lil_matrix
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
 from .utils import calculate_frequencies, computational_basis
@@ -108,7 +109,7 @@ class ReadoutMitigationMatrixData(Data):
 
 def _acquisition(
     params: ReadoutMitigationMatrixParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[list[QubitId]],
 ) -> ReadoutMitigationMatrixData:
     data = ReadoutMitigationMatrixData(
@@ -197,7 +198,9 @@ def _plot(
 
 
 def _update(
-    results: ReadoutMitigationMatrixData, platform: Platform, target: list[QubitId]
+    results: ReadoutMitigationMatrixData,
+    platform: CalibrationPlatform,
+    target: list[QubitId],
 ):
     # create empty matrix if it doesn't exist
     if platform.calibration.readout_mitigation_matrix is None:

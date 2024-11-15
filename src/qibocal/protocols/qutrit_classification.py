@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
-from qibolab import AcquisitionType, Platform, PulseSequence
+from qibolab import AcquisitionType, PulseSequence
 
 from qibocal.auto.operation import QubitId, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.classification import (
     ClassificationType,
     SingleShotClassificationData,
@@ -41,7 +42,7 @@ class QutritClassificationResults(Results):
 
 def _acquisition(
     params: QutritClassificationParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> QutritClassificationData:
     """

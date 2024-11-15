@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import pandas as pd
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, Platform, PulseSequence
+from qibolab import AcquisitionType, PulseSequence
 from sklearn.metrics import roc_auc_score, roc_curve
 
 from qibocal import update
@@ -20,6 +20,7 @@ from qibocal.auto.operation import (
     Routine,
 )
 from qibocal.auto.serialize import serialize
+from qibocal.calibration import CalibrationPlatform
 from qibocal.fitting.classifier import run
 from qibocal.protocols.utils import (
     LEGEND_FONT_SIZE,
@@ -151,7 +152,7 @@ class SingleShotClassificationResults(Results):
 
 def _acquisition(
     params: SingleShotClassificationParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> SingleShotClassificationData:
     """
@@ -396,7 +397,9 @@ def _plot(
 
 
 def _update(
-    results: SingleShotClassificationResults, platform: Platform, target: QubitId
+    results: SingleShotClassificationResults,
+    platform: CalibrationPlatform,
+    target: QubitId,
 ):
     update.iq_angle(results.rotation_angle[target], platform, target)
     update.threshold(results.threshold[target], platform, target)

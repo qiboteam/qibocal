@@ -5,17 +5,11 @@ from typing import Optional, Union
 import numpy as np
 import numpy.typing as npt
 from _collections_abc import Callable
-from qibolab import (
-    AcquisitionType,
-    AveragingMode,
-    Parameter,
-    Platform,
-    PulseSequence,
-    Sweeper,
-)
+from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 from qibocal.update import replace
 
@@ -169,7 +163,9 @@ class ResonatorSpectroscopyData(Data):
 
 
 def _acquisition(
-    params: ResonatorSpectroscopyParameters, platform: Platform, targets: list[QubitId]
+    params: ResonatorSpectroscopyParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
 ) -> ResonatorSpectroscopyData:
     """Data acquisition for resonator spectroscopy."""
     # create a sequence of pulses for the experiment:
@@ -318,7 +314,11 @@ def _plot(
     return FITS[data.fit_function].plot(data, target, fit)
 
 
-def _update(results: ResonatorSpectroscopyResults, platform: Platform, target: QubitId):
+def _update(
+    results: ResonatorSpectroscopyResults,
+    platform: CalibrationPlatform,
+    target: QubitId,
+):
     update.readout_frequency(results.frequency[target], platform, target)
     if len(results.bare_frequency) == 0:
         update.readout_amplitude(results.amplitude[target], platform, target)

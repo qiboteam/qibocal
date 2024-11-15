@@ -3,10 +3,11 @@ from typing import Union
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal import update
 from qibocal.auto.operation import Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 
 from ...result import magnitude, phase
 from ..ramsey.utils import ramsey_sequence
@@ -51,7 +52,7 @@ class T2SignalData(t1_signal.T1SignalData):
 
 def _acquisition(
     params: T2SignalParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> T2SignalData:
     """Data acquisition for T2 experiment.
@@ -174,7 +175,7 @@ def _plot(data: T2SignalData, target: QubitId, fit: T2SignalResults = None):
     return figures, fitting_report
 
 
-def _update(results: T2SignalResults, platform: Platform, target: QubitId):
+def _update(results: T2SignalResults, platform: CalibrationPlatform, target: QubitId):
     update.t2(results.t2[target], platform, target)
 
 

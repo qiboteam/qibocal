@@ -4,10 +4,11 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Delay, Drag, Platform, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, Delay, Drag, PulseSequence
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.result import probability
 from qibocal.update import replace
@@ -70,7 +71,7 @@ class DragTuningData(Data):
 
 def _acquisition(
     params: DragTuningParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> DragTuningData:
     r"""
@@ -297,7 +298,7 @@ def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
     return figures, fitting_report
 
 
-def _update(results: DragTuningResults, platform: Platform, target: QubitId):
+def _update(results: DragTuningResults, platform: CalibrationPlatform, target: QubitId):
     # TODO: implement update
     pass
     # try:

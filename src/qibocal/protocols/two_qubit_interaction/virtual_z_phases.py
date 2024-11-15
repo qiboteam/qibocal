@@ -12,7 +12,6 @@ from qibolab import (
     AveragingMode,
     Delay,
     Parameter,
-    Platform,
     Pulse,
     PulseSequence,
     Sweeper,
@@ -28,6 +27,7 @@ from qibocal.auto.operation import (
     Results,
     Routine,
 )
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
@@ -110,7 +110,7 @@ class VirtualZPhasesData(Data):
 
 
 def create_sequence(
-    platform: Platform,
+    platform: CalibrationPlatform,
     setup: Literal["I", "X"],
     target_qubit: QubitId,
     control_qubit: QubitId,
@@ -186,7 +186,7 @@ def create_sequence(
 
 def _acquisition(
     params: VirtualZPhasesParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitPairId],
 ) -> VirtualZPhasesData:
     r"""
@@ -473,7 +473,9 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
     return [fig1, fig2], "".join(fitting_report)  # target and control qubit
 
 
-def _update(results: VirtualZPhasesResults, platform: Platform, target: QubitPairId):
+def _update(
+    results: VirtualZPhasesResults, platform: CalibrationPlatform, target: QubitPairId
+):
     target = tuple(sorted(target))
     update.virtual_phases(
         results.virtual_phase[target], results.native, platform, target

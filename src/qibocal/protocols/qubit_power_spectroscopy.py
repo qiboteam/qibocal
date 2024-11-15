@@ -9,12 +9,12 @@ from qibolab import (
     AveragingMode,
     Delay,
     Parameter,
-    Platform,
     PulseSequence,
     Sweeper,
 )
 
 from qibocal.auto.operation import Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 
 from ..result import magnitude, phase
 from ..update import replace
@@ -48,7 +48,7 @@ class QubitPowerSpectroscopyData(ResonatorPunchoutData):
 
 def _acquisition(
     params: QubitPowerSpectroscopyParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> QubitPowerSpectroscopyData:
     """Perform a qubit spectroscopy experiment with different amplitudes.
