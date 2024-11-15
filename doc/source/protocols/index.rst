@@ -1,3 +1,4 @@
+.. _calibration_routines:
 Protocols
 =========
 
@@ -28,11 +29,9 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     allxy
     flipping
     readout_mitigation_matrix
-    avoided_crossing
     readout_optimization
     standard_rb
     chevron
     virtual_z
     state_tomographies
-    coupler/chevron
     references
