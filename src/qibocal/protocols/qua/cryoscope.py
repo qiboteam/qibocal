@@ -245,7 +245,7 @@ def exponential_correction(A, tau, Ts=1e-9):
     k2 = Ts - 2 * tau * (A + 1)
     c1 = Ts + 2 * tau
     c2 = Ts - 2 * tau
-    feedback_tap = k2 / k1
+    feedback_tap = -k2 / k1
     feedforward_taps = np.array([c1, c2]) / k1
     return feedforward_taps, feedback_tap
 
