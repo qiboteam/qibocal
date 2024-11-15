@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import matplotlib.pyplot as plt
@@ -6,7 +6,7 @@ import mpld3
 import numpy as np
 import numpy.typing as npt
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId, QubitPairId
+from qibolab.qubits import QubitId
 from qm import generate_qua_script, qua
 from qm.qua import (
     align,
@@ -45,14 +45,15 @@ class CryoscopeQuaParameters(Parameters):
     """Beginning of the flux pulse (before we put zeros to see the rising time)."""
     zeros_after_pulse: int = 20
     """End of the flux pulse (after we put zeros to see the falling time)"""
+    other_qubits: list[QubitId] = field(default_factory=list)
+    """Qubits to set the bias offset to zero (parking)."""
     script_file: Optional[str] = None
     "If enabled it dumps the qua script in a file with the given name."
 
 
 CryoscopeQuaType = np.dtype(
     [
-        ("state", np.int32),
-        ("sequences", np.int32),
+        ("state", float),
     ]
 )
 
@@ -62,7 +63,7 @@ class CryoscopeQuaData(Data):
     const_flux_len: int
     zeros_before_pulse: int
     zeros_after_pulse: int
-    data: dict[QubitId, npt.NDArray[np.int32]]
+    data: dict[QubitId, npt.NDArray[CryoscopeQuaType]] = field(default_factory=dict)
 
     @property
     def total_len(self):
@@ -87,14 +88,10 @@ def baked_waveform(waveform, pulse_duration, config, flux):
 
 
 def _acquisition(
-    params: CryoscopeQuaParameters, platform: Platform, targets: list[QubitPairId]
+    params: CryoscopeQuaParameters, platform: Platform, targets: list[QubitId]
 ) -> CryoscopeQuaData:
     assert len(targets) == 1
-    target, other = targets[0]
-    freq0 = platform.qubits[target].native_gates.RX.frequency
-    freq1 = platform.qubits[other].native_gates.RX.frequency
-    if freq1 > freq0:
-        target, other = other, target
+    target = targets[0]
 
     const_flux_len = params.const_flux_len
     flux_amp = params.flux_amplitude
@@ -102,7 +99,6 @@ def _acquisition(
     res_name = f"readout{target}"
     qbit_name = f"drive{target}"
     flux = f"flux{target}"
-    other_flux_element = f"flux{other}"
     # This threshold is further towards the ground IQ blob to increase the initialization fidelity
     # initialization_threshold = -0.00025
 
@@ -113,10 +109,10 @@ def _acquisition(
     flux_waveform = np.array(
         [0.0] * zeros_before_pulse + list(flux_pulse) + [0.0] * zeros_after_pulse
     )
+    total_len = const_flux_len + zeros_before_pulse + zeros_after_pulse
 
     # Baked flux pulse segments
     config = generate_config(platform, list(platform.qubits.keys()))
-    total_len = const_flux_len + zeros_before_pulse + zeros_after_pulse
     square_pulse_segments = baked_waveform(flux_waveform, total_len, config, flux)
     step_response = [1.0] * const_flux_len
 
@@ -139,8 +135,9 @@ def _acquisition(
         )  # Boolean flag to switch between x90 and y90 for state measurement
 
         # Set the flux line offset of the other qubit to 0
-        qua.set_dc_offset(flux, "single", 0)
-        qua.set_dc_offset(other_flux_element, "single", 0)
+        # qua.set_dc_offset(flux, "single", 0)
+        for q in params.other_qubits:
+            qua.set_dc_offset(f"flux{q}", "single", 0)
 
         with for_(n, 0, n < params.nshots, n + 1):
             # Notice it's <= to include t_max (This is only for integers!)
@@ -172,7 +169,7 @@ def _acquisition(
                     # State readout
                     align(qbit_name, res_name)
                     measure(
-                        "readout",
+                        "measure",
                         res_name,
                         None,
                         dual_demod.full("cos", "out1", "sin", "out2", I),
@@ -212,7 +209,14 @@ def _acquisition(
     # At the end of the program, fetch the non-averaged results to get the error-bars
     results = fetching_tool(job, data_list=["state"])
     state = results.fetch_all()[0]
-    return CryoscopeQuaData(total_len=total_len, data={target: {"state": state}})
+
+    data = CryoscopeQuaData(
+        const_flux_len=const_flux_len,
+        zeros_before_pulse=zeros_before_pulse,
+        zeros_after_pulse=zeros_after_pulse,
+    )
+    data.register_qubit(CryoscopeQuaType, target, {"state": state})
+    return data
 
 
 # Exponential decay
@@ -272,21 +276,14 @@ def filter_calc(exponential):
 
 @dataclass
 class CryoscopeQuaResults(Results):
-    pass
+    alpha: dict[QubitId, float] = field(default_factory=dict)
+    tau: dict[QubitId, float] = field(default_factory=dict)
+    fir: dict[QubitId, float] = field(default_factory=dict)
+    iir: dict[QubitId, float] = field(default_factory=dict)
 
 
-def _fit(data: CryoscopeQuaData) -> CryoscopeQuaResults:
-    pass
-
-
-def _plot(data: CryoscopeQuaData, target: QubitId, fit: CryoscopeQuaResults):
-    total_len = data.total_len
-    zeros_before_pulse = data.zeros_before_pulse
-    const_flux_len = data.const_flux_len
-    state = data.data[target]["state"]
-
-    xplot = np.arange(0, total_len + 0.1, 1)
-
+def calculate_step_response(data: CryoscopeQuaData, qubit: QubitId) -> npt.NDArray:
+    state = data[qubit]["state"]
     Sxx = state[:, 0] * 2 - 1  # Bloch vector projection along X
     Syy = state[:, 1] * 2 - 1  # Bloch vector projection along Y
     S = Sxx + 1j * Syy  # Bloch vector
@@ -295,29 +292,53 @@ def _plot(data: CryoscopeQuaData, target: QubitId, fit: CryoscopeQuaResults):
     phase = phase - phase[-1]
     # Qubit detuning
     detuning = signal.savgol_filter(
-        phase[zeros_before_pulse : const_flux_len + zeros_before_pulse] / 2 / np.pi,
+        phase[data.zeros_before_pulse : data.const_flux_len + data.zeros_before_pulse]
+        / 2
+        / np.pi,
         21,
         2,
         deriv=1,
         delta=0.001,
     )
     # Step response
-    step_response_freq = detuning / np.average(detuning[-int(const_flux_len / 4)])
-    step_response_volt = np.sqrt(
-        detuning / np.average(detuning[-int(const_flux_len / 4)])
-    )
+    return np.sqrt(detuning / np.average(detuning[-int(data.const_flux_len / 4)]))
 
-    ## Fit step response with exponential
-    [A, tau], _ = curve_fit(
-        expdecay,
-        xplot[zeros_before_pulse : const_flux_len + zeros_before_pulse],
-        step_response_volt,
-    )
-    print(f"A: {A}\ntau: {tau}")
 
-    ## Derive IIR and FIR corrections
-    fir, iir = filter_calc(exponential=[(A, tau)])
-    print(f"FIR: {fir}\nIIR: {iir}")
+def _fit(data: CryoscopeQuaData) -> CryoscopeQuaResults:
+    results = CryoscopeQuaResults()
+    for qubit in data.qubits:
+        zeros_before_pulse = data.zeros_before_pulse
+        const_flux_len = data.const_flux_len
+        step_response_volt = calculate_step_response(data, qubit)
+
+        total_len = data.total_len
+        xplot = np.arange(0, total_len + 0.1, 1)
+        ## Fit step response with exponential
+        [A, tau], _ = curve_fit(
+            expdecay,
+            xplot[zeros_before_pulse : const_flux_len + zeros_before_pulse],
+            step_response_volt,
+        )
+        results.alpha[qubit] = A
+        results.tau[qubit] = tau
+        ## Derive IIR and FIR corrections
+        fir, iir = filter_calc(exponential=[(A, tau)])
+        results.fir[qubit] = list(fir)
+        results.iir[qubit] = list(iir)
+    return results
+
+
+def _plot(data: CryoscopeQuaData, target: QubitId, fit: CryoscopeQuaResults):
+    const_flux_len = data.const_flux_len
+    zeros_before_pulse = data.zeros_before_pulse
+    xplot = np.arange(0, data.total_len + 0.1, 1)[
+        zeros_before_pulse : const_flux_len + zeros_before_pulse
+    ]
+    A = fit.alpha[target]
+    tau = fit.tau[target]
+    fir = np.array(fit.fir[target])
+    iir = np.array(fit.iir[target])
+    step_response_volt = calculate_step_response(data, target)
 
     ## Derive responses and plots
     # Ideal response
@@ -343,15 +364,14 @@ def _plot(data: CryoscopeQuaData, target: QubitId, fit: CryoscopeQuaResults):
     )
 
     # Plot all data
-    fig = plt.figure(figsize=(16, 6))
+    fig = plt.figure(figsize=(20, 6))
     plt.rcParams.update({"font.size": 13})
-    plt.figure()
     plt.suptitle("Cryoscope with filter implementation")
     plt.subplot(121)
     plt.plot(xplot, step_response_volt, "o-", label="Data")
     plt.plot(xplot, expdecay(xplot, A, tau), label="Fit")
-    plt.axhline(y=1.01)
-    plt.axhline(y=0.99)
+    # plt.axhline(y=1.01)
+    # plt.axhline(y=0.99)
     plt.xlabel("Flux pulse duration [ns]")
     plt.ylabel("Step response")
     plt.legend()
