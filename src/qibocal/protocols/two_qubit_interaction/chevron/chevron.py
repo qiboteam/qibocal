@@ -316,9 +316,9 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
 def _update(results: ChevronResults, platform: Platform, target: QubitPairId):
     if isinstance(target, list):
         target = tuple(target)
-
     if target not in results.duration:
         target = (target[1], target[0])
+
     getattr(update, f"{results.native}_duration")(
         results.duration[target], platform, target
     )

@@ -5,7 +5,7 @@ from typing import Union
 
 import numpy as np
 from pydantic import BaseModel
-from qibolab import Platform
+from qibolab import Platform, PulseSequence, VirtualZ
 
 from qibocal.auto.operation import QubitId, QubitPairId
 
@@ -112,43 +112,46 @@ def readout_fidelity(fidelity: float, platform: Platform, qubit: QubitId):
 def virtual_phases(
     phases: dict[QubitId, float], native: str, platform: Platform, pair: QubitPairId
 ):
-    pass
-    # """Update virtual phases for given qubits in pair in results."""
-    # virtual_z_pulses = {
-    #     pulse.qubit.name: pulse
-    #     for pulse in getattr(platform.pairs[pair].native_gates, native).pulses
-    #     if isinstance(pulse, VirtualZPulse)
-    # }
-    # for qubit_id, phase in phases.items():
-    #     if qubit_id in virtual_z_pulses:
-    #         virtual_z_pulses[qubit_id].phase = phase
-    #     else:
-    #         virtual_z_pulses[qubit_id] = VirtualZPulse(
-    #             phase=phase, qubit=platform.qubits[qubit_id]
-    #         )
-    #         getattr(platform.pairs[pair].native_gates, native).pulses.append(
-    #             virtual_z_pulses[qubit_id]
-    #         )
+    native_sequence = getattr(platform.natives.two_qubit[pair], native)
+    new_native = PulseSequence()
+    if len(native_sequence) > 1:
+        new_native += native_sequence[0]
+    else:
+        new_native = native_sequence
+    for qubit, phase in phases.items():
+        new_native.append((platform.qubits[qubit].drive, VirtualZ(phase=phase)))
+
+    platform.update(
+        {f"native_gates.two_qubit.{f'{pair[0]}-{pair[1]}'}.{native}": new_native}
+    )
 
 
 def CZ_duration(duration: int, platform: Platform, pair: QubitPairId):
     """Update CZ duration for specific pair."""
-    platform.update({f"native_gates.two_qubit.{pair}.CZ.0.1.duration": duration})
+    platform.update(
+        {f"native_gates.two_qubit.{f'{pair[0]}-{pair[1]}'}.CZ.0.1.duration": duration}
+    )
 
 
 def CZ_amplitude(amp: float, platform: Platform, pair: QubitPairId):
     """Update CZ amplitude for specific pair."""
-    platform.update({f"native_gates.two_qubit.{pair}.CZ.0.1.amp": amp})
+    platform.update(
+        {f"native_gates.two_qubit.{f'{pair[0]}-{pair[1]}'}.CZ.0.1.amplitude": amp}
+    )
 
 
 def iSWAP_duration(duration: int, platform: Platform, pair: QubitPairId):
     """Update iSWAP_duration duration for specific pair."""
-    platform.update({f"native_gates.two_qubit.{pair}.CZ.0.1.duration": duration})
+    platform.update(
+        {f"native_gates.two_qubit.{f'{pair[0]}-{pair[1]}'}.CZ.0.1.duration": duration}
+    )
 
 
 def iSWAP_amplitude(amp: float, platform: Platform, pair: QubitPairId):
     """Update iSWAP_duration amplitude for specific pair."""
-    platform.update({f"native_gates.two_qubit.{pair}.CZ.0.1.amp": amp})
+    platform.update(
+        {f"native_gates.two_qubit.{f'{pair[0]}-{pair[1]}'}.CZ.0.1.amplitude": amp}
+    )
 
 
 def t1(t1: int, platform: Platform, qubit: QubitId):

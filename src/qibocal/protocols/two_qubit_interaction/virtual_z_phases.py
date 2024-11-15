@@ -474,12 +474,10 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
 
 
 def _update(results: VirtualZPhasesResults, platform: Platform, target: QubitPairId):
-    # FIXME: quick fix for qubit order
-    qubit_pair = tuple(sorted(target))
     target = tuple(sorted(target))
-    # update.virtual_phases(
-    #    results.virtual_phase[target], results.native, platform, target
-    # )
+    update.virtual_phases(
+        results.virtual_phase[target], results.native, platform, target
+    )
     getattr(update, f"{results.native}_duration")(
         results.flux_pulse_duration[target], platform, target
     )

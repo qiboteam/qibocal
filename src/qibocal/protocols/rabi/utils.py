@@ -342,7 +342,7 @@ def fit_amplitude_function(
     )
     if signal is False:
         perr = np.sqrt(np.diag(perr))
-    if y_limits is not None and x_limits is not None:
+    if None not in y_limits and None not in x_limits:
         popt = [
             y_limits[0] + (y_limits[1] - y_limits[0]) * popt[0],
             (y_limits[1] - y_limits[0]) * popt[1],
