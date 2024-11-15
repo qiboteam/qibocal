@@ -101,9 +101,6 @@ class ResonatorSpectroscopyParameters(Parameters):
     amplitude: Optional[float] = None
     """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
-    attenuation: Optional[int] = None
-    """Readout attenuation (optional). If defined, same attenuation will be used in all qubits.
-    Otherwise the default attenuation defined on the platform runcard will be used"""
     hardware_average: bool = True
     """By default hardware average will be performed."""
 
@@ -134,10 +131,6 @@ class ResonatorSpectroscopyResults(Results):
         default_factory=dict,
     )
     """Readout amplitude for each qubit."""
-    attenuation: Optional[dict[QubitId, int]] = field(
-        default_factory=dict,
-    )
-    """Readout attenuation [dB] for each qubit."""
 
     def __contains__(self, key: QubitId):
         return all(
@@ -165,8 +158,6 @@ class ResonatorSpectroscopyData(Data):
     """Raw data acquired."""
     power_level: Optional[PowerLevel] = None
     """Power regime of the resonator."""
-    attenuations: Optional[dict[QubitId, int]] = field(default_factory=dict)
-    """Readout attenuation [dB] for each qubit"""
 
     @classmethod
     def load(cls, path):
@@ -188,7 +179,6 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     amplitudes = {}
-    attenuations = {}
 
     for q in targets:
         natives = platform.natives.single_qubit[q]
@@ -200,16 +190,6 @@ def _acquisition(
 
         amplitudes[q] = pulse.probe.amplitude
 
-        if params.attenuation is not None:
-            raise NotImplementedError
-            platform.qubits[q].readout.attenuation = params.attenuation
-
-        try:
-            attenuation = platform.config(platform.qubits[q].probe).attenuation
-        except AttributeError:
-            attenuation = None
-
-        attenuations[q] = attenuation
         ro_pulses[q] = pulse
         sequence.append((channel, pulse))
 
@@ -231,7 +211,6 @@ def _acquisition(
         resonator_type=platform.resonator_type,
         power_level=params.power_level,
         amplitudes=amplitudes,
-        attenuations=attenuations,
         fit_function=params.fit_function,
         phase_sign=params.phase_sign,
     )
@@ -322,7 +301,6 @@ def _fit(
             error_fit_pars=error_fit_pars,
             chi2_reduced=chi2,
             amplitude=data.amplitudes,
-            attenuation=data.attenuations,
         )
     return ResonatorSpectroscopyResults(
         frequency=frequency,
@@ -330,7 +308,6 @@ def _fit(
         error_fit_pars=error_fit_pars,
         chi2_reduced=chi2,
         amplitude=data.amplitudes,
-        attenuation=data.attenuations,
     )
 
 

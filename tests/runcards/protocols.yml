@@ -48,6 +48,7 @@ actions:
       freq_step: 50_000
       amplitude: 0.022
       power_level: low
+      fit_function: s21
       nshots: 10
 
   - id: qubit spectroscopy average
@@ -449,6 +450,15 @@ actions:
       beta_end: 0.1
       beta_step: 0.01
       nshots: 10
+
+  - id: drag_pulse_tuning_unrolling
+    operation: drag_tuning
+    parameters:
+      beta_start: 0
+      beta_end: 0.1
+      beta_step: 0.01
+      nshots: 10
+      unrolling: true
 
   - id: spin_echo
     operation: spin_echo
