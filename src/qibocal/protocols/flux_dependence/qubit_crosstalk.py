@@ -8,7 +8,6 @@ from qibolab import (
     AveragingMode,
     Delay,
     Parameter,
-    Platform,
     PulseSequence,
     Sweeper,
 )
@@ -16,6 +15,7 @@ from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import QubitId, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
 from ...result import magnitude, phase
@@ -92,7 +92,7 @@ class QubitCrosstalkResults(QubitFluxResults):
 
 def _acquisition(
     params: QubitCrosstalkParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> QubitCrosstalkData:
     """Data acquisition for Crosstalk Experiment."""
@@ -315,7 +315,9 @@ def _plot(data: QubitCrosstalkData, fit: QubitCrosstalkResults, target: QubitId)
     return figures, fitting_report
 
 
-def _update(results: QubitCrosstalkResults, platform: Platform, qubit: QubitId):
+def _update(
+    results: QubitCrosstalkResults, platform: CalibrationPlatform, qubit: QubitId
+):
     """Update crosstalk matrix."""
 
     for flux_qubit, element in results.crosstalk_matrix[qubit].items():

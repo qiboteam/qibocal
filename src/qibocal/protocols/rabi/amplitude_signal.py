@@ -3,10 +3,11 @@ from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import fallback_period, guess_period
 from qibocal.result import magnitude, phase
@@ -57,7 +58,9 @@ class RabiAmplitudeSignalData(Data):
 
 
 def _acquisition(
-    params: RabiAmplitudeSignalParameters, platform: Platform, targets: list[QubitId]
+    params: RabiAmplitudeSignalParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
 ) -> RabiAmplitudeSignalData:
     r"""
     Data acquisition for Rabi experiment sweeping amplitude.
@@ -152,7 +155,9 @@ def _plot(
     return utils.plot(data, target, fit)
 
 
-def _update(results: RabiAmplitudeSignalResults, platform: Platform, target: QubitId):
+def _update(
+    results: RabiAmplitudeSignalResults, platform: CalibrationPlatform, target: QubitId
+):
     update.drive_amplitude(results.amplitude[target], platform, target)
     update.drive_duration(results.length[target], platform, target)
 

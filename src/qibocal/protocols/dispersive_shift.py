@@ -4,17 +4,11 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import (
-    AcquisitionType,
-    AveragingMode,
-    Parameter,
-    Platform,
-    PulseSequence,
-    Sweeper,
-)
+from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
     HZ_TO_GHZ,
     lorentzian,
@@ -79,7 +73,9 @@ class DispersiveShiftData(Data):
 
 
 def _acquisition(
-    params: DispersiveShiftParameters, platform: Platform, targets: list[QubitId]
+    params: DispersiveShiftParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
 ) -> DispersiveShiftData:
     r"""
     Data acquisition for dispersive shift experiment.
@@ -88,7 +84,7 @@ def _acquisition(
 
     Args:
         params (DispersiveShiftParameters): experiment's parameters
-        platform (Platform): Qibolab platform object
+        platform (CalibrationPlatform): Qibolab platform object
         targets (list): list of target qubits to perform the action
     """
 
@@ -322,7 +318,9 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
     return figures, fitting_report
 
 
-def _update(results: DispersiveShiftResults, platform: Platform, target: QubitId):
+def _update(
+    results: DispersiveShiftResults, platform: CalibrationPlatform, target: QubitId
+):
     update.readout_frequency(results.best_freq[target], platform, target)
     if results.frequencies[target] is not None:
         delta = (
@@ -331,6 +329,9 @@ def _update(results: DispersiveShiftResults, platform: Platform, target: QubitId
         )
         g = np.sqrt(np.abs(results.chi(target) * delta))
         update.coupling(g, platform, target)
+        update.dressed_resonator_frequency(
+            results.frequencies[target][0], platform, target
+        )
         platform.calibration.single_qubits[target].readout.qudits_frequency[1] = (
             results.frequencies[target][1]
         )

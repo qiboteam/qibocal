@@ -7,13 +7,15 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Pulse, Sweeper
+from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
+from .... import update
 from ..utils import fit_flux_amplitude, order_pair
 from .utils import COLORAXIS, chevron_fit, chevron_sequence
 
@@ -112,14 +114,14 @@ class ChevronData(Data):
 
 def _aquisition(
     params: ChevronParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitPairId],
 ) -> ChevronData:
     r"""Perform an CZ experiment between pairs of qubits by changing its
     frequency.
 
     Args:
-        platform: Platform to use.
+        platform: CalibrationPlatform to use.
         params: Experiment parameters.
         targets (list): List of pairs to use sequentially.
 
@@ -312,19 +314,20 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     return [fig], fitting_report
 
 
-def _update(results: ChevronResults, platform: Platform, target: QubitPairId):
+def _update(
+    results: ChevronResults, platform: CalibrationPlatform, target: QubitPairId
+):
     if isinstance(target, list):
         target = tuple(target)
-
     if target not in results.duration:
         target = (target[1], target[0])
 
-    # getattr(update, f"{results.native}_duration")(
-    #    results.duration[target], platform, target
-    # )
-    # getattr(update, f"{results.native}_amplitude")(
-    #    results.amplitude[target], platform, target
-    # )
+    getattr(update, f"{results.native}_duration")(
+        results.duration[target], platform, target
+    )
+    getattr(update, f"{results.native}_amplitude")(
+        results.amplitude[target], platform, target
+    )
 
 
 chevron = Routine(_aquisition, _fit, _plot, _update, two_qubit_gates=True)

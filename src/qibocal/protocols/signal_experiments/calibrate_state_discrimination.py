@@ -5,9 +5,11 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, PulseSequence
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 
 SAMPLES_FACTOR = 16
 
@@ -64,7 +66,7 @@ class CalibrateStateDiscriminationData(Data):
 
 def _acquisition(
     params: CalibrateStateDiscriminationParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> CalibrateStateDiscriminationData:
     r"""
@@ -74,7 +76,7 @@ def _acquisition(
 
     Args:
         params (CalibrateStateDiscriminationParameters): experiment's parameters
-        platform (Platform): Qibolab platform object
+        platform (CalibrationPlatform): Qibolab platform object
         qubits (dict): list of target qubits to perform the action
 
     """
@@ -236,10 +238,11 @@ def _plot(
 
 
 def _update(
-    results: CalibrateStateDiscriminationResults, platform: Platform, qubit: QubitId
+    results: CalibrateStateDiscriminationResults,
+    platform: CalibrationPlatform,
+    qubit: QubitId,
 ):
-    pass
-    # update.kernel(results.data[qubit], platform, qubit)
+    update.kernel(results.data[qubit], platform, qubit)
 
 
 calibrate_state_discrimination = Routine(_acquisition, _fit, _plot, _update)

@@ -2619,21 +2619,18 @@ torch = ["torch (>=2.1.1,<2.4)"]
 
 [[package]]
 name = "qibolab"
-version = "0.2.1"
+version = "0.2.2"
 description = "Quantum hardware module and drivers for Qibo"
 optional = false
-python-versions = "<3.13,>=3.9"
-files = [
-    {file = "qibolab-0.2.1-py3-none-any.whl", hash = "sha256:781ad1aeb60d6733c10a926e903ebfed98f44150d60b819c73f7c22de7ccdd02"},
-    {file = "qibolab-0.2.1.tar.gz", hash = "sha256:023fdbb1e807b8f899e99c025b2136ecdecba69e55b4192835f643072d1209b4"},
-]
+python-versions = ">=3.9,<3.13"
+files = []
+develop = false
 
 [package.dependencies]
-numpy = ">=1.26.4,<2.0.0"
-pydantic = ">=2.6.4,<3.0.0"
-qibo = ">=0.2.8,<0.3.0"
-scipy = ">=1.13.0,<2.0.0"
-setuptools = ">67.0.0"
+numpy = "^1.26.4"
+pydantic = "^2.6.4"
+qibo = "^0.2.8"
+scipy = "^1.13.0"
 
 [package.extras]
 bluefors = ["pyyaml (>=6.0.2,<7.0.0)"]
@@ -2644,6 +2641,12 @@ qm = ["qm-qua (==1.1.6)", "qualang-tools (>=0.15.0,<0.16.0)"]
 rfsoc = ["qibosoq (>=0.1.2,<0.2)"]
 twpa = ["pyvisa-py (==0.5.3)", "qcodes (>=0.37.0,<0.38.0)", "qcodes_contrib_drivers (==0.18.0)"]
 zh = ["laboneq (==2.25.0)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/qiboteam/qibolab.git"
+reference = "HEAD"
+resolved_reference = "ed8b3cccfee6eca0906f5ab8a69289f5bed1adc7"
 
 [[package]]
 name = "recommonmark"
@@ -3508,4 +3511,4 @@ viz = ["pydot"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "d50ecbce1e06b582ed9cd1148ec6cf98e884880c665994b884a7327847ccc68e"
+content-hash = "10c07eb600389aa3ce90c77e2fff18a070f255409ebe3333f117ee770c72ec5a"

@@ -370,26 +370,6 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
             label = "Qubit Frequency [Hz]"
             freq = fit.frequency
 
-        if data.attenuations:
-            if data.attenuations[qubit] is not None:
-                if show_error_bars:
-                    labels = [label, "Amplitude", "Attenuation", "Chi2 Reduced"]
-                    values = [
-                        (
-                            freq[qubit],
-                            fit.error_fit_pars[qubit][1],
-                        ),
-                        (data.amplitudes[qubit], 0),
-                        (data.attenuations[qubit], 0),
-                        fit.chi2_reduced[qubit],
-                    ]
-                else:
-                    labels = [label, "Amplitude", "Attenuation"]
-                    values = [
-                        freq[qubit],
-                        data.amplitudes[qubit],
-                        data.attenuations[qubit],
-                    ]
         if data.amplitudes[qubit] is not None:
             if show_error_bars:
                 labels = [label, "Amplitude", "Chi2 reduced"]
@@ -519,11 +499,10 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
             row=1,
             col=1,
         )
-
         fig_raw.add_trace(
             go.Scatter(
                 x=np.concatenate((frequencies, frequencies[::-1])),
-                y=np.concatenate((phase + errors_phase), (phase - errors_phase[::-1])),
+                y=np.concatenate((phase + errors_phase, (phase - errors_phase)[::-1])),
                 fill="toself",
                 fillcolor=COLORBAND,
                 line=dict(color=COLORBAND_LINE),
@@ -714,12 +693,11 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
                 row=1,
                 col=1,
             )
-
             fig_calibrated.add_trace(
                 go.Scatter(
                     x=np.concatenate((frequencies, frequencies[::-1])),
                     y=np.concatenate(
-                        (phase + errors_phase), (phase - errors_phase[::-1])
+                        (phase + errors_phase, (phase - errors_phase)[::-1])
                     ),
                     fill="toself",
                     fillcolor=COLORBAND,

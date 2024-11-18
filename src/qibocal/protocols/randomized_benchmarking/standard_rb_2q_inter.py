@@ -1,9 +1,9 @@
 from dataclasses import dataclass, fields
 
 import numpy as np
-from qibolab import Platform
 
 from qibocal.auto.operation import QubitPairId, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.randomized_benchmarking.standard_rb import _plot
 from qibocal.protocols.randomized_benchmarking.standard_rb_2q import (
     StandardRB2QParameters,
@@ -40,7 +40,7 @@ class StandardRB2QInterResult(StandardRBResult):
 
 def _acquisition(
     params: StandardRB2QInterParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitPairId],
 ) -> RB2QInterData:
     """Data acquisition for two qubit Interleaved Randomized Benchmarking."""
@@ -93,7 +93,9 @@ def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
     )
 
 
-def _update(results: StandardRBResult, platform: Platform, target: QubitPairId):
+def _update(
+    results: StandardRBResult, platform: CalibrationPlatform, target: QubitPairId
+):
     """Write cz fidelity in calibration."""
     # TODO: shall we use the gate fidelity or the pulse fidelity
     platform.calibration.two_qubits[target].cz_fidelity = tuple(

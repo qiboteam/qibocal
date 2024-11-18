@@ -4,9 +4,10 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AveragingMode, Platform, PulseSequence
+from qibolab import AveragingMode, PulseSequence
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 
 from . import allxy
 
@@ -54,7 +55,7 @@ class AllXYResonatorData(Data):
 
 def _acquisition(
     params: AllXYResonatorParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> AllXYResonatorData:
     r"""

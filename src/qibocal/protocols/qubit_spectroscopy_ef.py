@@ -1,11 +1,13 @@
 from dataclasses import asdict, dataclass, field
 
 import numpy as np
-from qibolab import Delay, Parameter, Platform, PulseSequence, Sweeper
+from qibolab import Delay, Parameter, PulseSequence, Sweeper
 
 from qibocal.auto.operation import QubitId, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.update import replace
 
+from .. import update
 from ..result import magnitude, phase
 from .qubit_spectroscopy import (
     QubitSpectroscopyData,
@@ -48,7 +50,9 @@ def fit_ef(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
 
 
 def _acquisition(
-    params: QubitSpectroscopyEFParameters, platform: Platform, targets: list[QubitId]
+    params: QubitSpectroscopyEFParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
 ) -> QubitSpectroscopyEFData:
     """Data acquisition for qubit spectroscopy ef protocol.
 
@@ -193,9 +197,11 @@ def _plot(
     return figures, report
 
 
-def _update(results: QubitSpectroscopyEFResults, platform: Platform, target: QubitId):
+def _update(
+    results: QubitSpectroscopyEFResults, platform: CalibrationPlatform, target: QubitId
+):
     """Update w12 frequency"""
-    # update.frequency_12_transition(results.frequency[target], platform, target)
+    update.frequency_12_transition(results.frequency[target], platform, target)
     platform.calibration.single_qubits[target].qubit.frequency_12 = results.frequency[
         target
     ]

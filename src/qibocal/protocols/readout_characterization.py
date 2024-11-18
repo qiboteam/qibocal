@@ -4,10 +4,11 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, Delay, Platform, PulseSequence, Readout
+from qibolab import AcquisitionType, Delay, PulseSequence, Readout
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
     effective_qubit_temperature,
     format_error_single_cell,
@@ -73,7 +74,7 @@ class ReadoutCharacterizationData(Data):
 
 def _acquisition(
     params: ReadoutCharacterizationParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> ReadoutCharacterizationData:
     """Data acquisition for resonator spectroscopy."""
@@ -313,9 +314,14 @@ def _plot(
 
 
 def _update(
-    results: ReadoutCharacterizationResults, platform: Platform, target: QubitId
+    results: ReadoutCharacterizationResults,
+    platform: CalibrationPlatform,
+    target: QubitId,
 ):
     update.readout_fidelity(results.fidelity[target], platform, target)
+    platform.calibration.single_qubits[target].readout.effective_temperature = (
+        results.effective_temperature[target][0]
+    )
 
 
 readout_characterization = Routine(_acquisition, _fit, _plot, _update)

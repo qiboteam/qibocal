@@ -3,9 +3,10 @@ from typing import Union
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
 from ... import update
@@ -47,7 +48,7 @@ class SpinEchoSignalData(T1SignalData):
 
 def _acquisition(
     params: SpinEchoSignalParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> SpinEchoSignalData:
     """Data acquisition for SpinEcho"""
@@ -172,7 +173,9 @@ def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults 
     return figures, fitting_report
 
 
-def _update(results: SpinEchoSignalResults, platform: Platform, target: QubitId):
+def _update(
+    results: SpinEchoSignalResults, platform: CalibrationPlatform, target: QubitId
+):
     update.t2_spin_echo(results.t2_spin_echo[target], platform, target)
 
 

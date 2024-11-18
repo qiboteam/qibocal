@@ -12,7 +12,6 @@ from qibo import Circuit, gates
 from qibo.backends import GlobalBackend, NumpyBackend
 from qibo.quantum_info import fidelity, partial_trace
 from qibo.result import QuantumState
-from qibolab import Platform
 
 from qibocal.auto.operation import (
     DATAFILE,
@@ -23,6 +22,7 @@ from qibocal.auto.operation import (
     Routine,
 )
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
+from qibocal.calibration import CalibrationPlatform
 
 from .state_tomography import StateTomographyParameters, plot_reconstruction
 from .utils import table_dict, table_html
@@ -90,7 +90,9 @@ class StateTomographyResults(Results):
 
 
 def _acquisition(
-    params: StateTomographyParameters, platform: Platform, targets: list[QubitPairId]
+    params: StateTomographyParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitPairId],
 ) -> StateTomographyData:
     """Acquisition protocol for two qubit state tomography experiment."""
     qubits = [q for pair in targets for q in pair]

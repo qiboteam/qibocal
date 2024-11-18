@@ -3,10 +3,11 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal import update
 from qibocal.auto.operation import Parameters, QubitId, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.rabi.length_signal import (
     RabiLengthSignalData,
@@ -56,7 +57,7 @@ class RabiLengthData(RabiLengthSignalData):
 
 
 def _acquisition(
-    params: RabiLengthParameters, platform: Platform, targets: list[QubitId]
+    params: RabiLengthParameters, platform: CalibrationPlatform, targets: list[QubitId]
 ) -> RabiLengthData:
     r"""
     Data acquisition for RabiLength Experiment.
@@ -157,7 +158,7 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
     return RabiLengthResults(durations, amplitudes, fitted_parameters, chi2)
 
 
-def _update(results: RabiLengthResults, platform: Platform, target: QubitId):
+def _update(results: RabiLengthResults, platform: CalibrationPlatform, target: QubitId):
     update.drive_duration(results.length[target], platform, target)
     update.drive_amplitude(results.amplitude[target], platform, target)
 

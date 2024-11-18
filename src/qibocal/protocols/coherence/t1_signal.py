@@ -9,12 +9,12 @@ from qibolab import (
     AveragingMode,
     Delay,
     Parameter,
-    Platform,
     PulseSequence,
     Sweeper,
 )
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
 from ... import update
@@ -63,7 +63,7 @@ class T1SignalData(Data):
 
 
 def t1_sequence(
-    platform: Platform, targets: list[QubitId], delay: Optional[int] = None
+    platform: CalibrationPlatform, targets: list[QubitId], delay: Optional[int] = None
 ):
     """Create sequence for T1 experiment with a given optional delay."""
     sequence = PulseSequence()
@@ -88,7 +88,7 @@ def t1_sequence(
 
 
 def _acquisition(
-    params: T1SignalParameters, platform: Platform, targets: list[QubitId]
+    params: T1SignalParameters, platform: CalibrationPlatform, targets: list[QubitId]
 ) -> T1SignalData:
     """Data acquisition for T1 experiment.
 
@@ -207,7 +207,7 @@ def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
     return figures, fitting_report
 
 
-def _update(results: T1SignalResults, platform: Platform, target: QubitId):
+def _update(results: T1SignalResults, platform: CalibrationPlatform, target: QubitId):
     update.t1(results.t1[target], platform, target)
 
 

@@ -120,12 +120,6 @@ A possible runcard to assess how the resonator frequency changes by varying flux
         relaxation_time: 1000
 
 
-From this protocol it is possible to extract both the bare and the dressed resonator frequency
-as well as an estimate for the coupling :math:`g_0`.
-It is suggested to run this protocol only after executing the qubit flux dependence experiment
-since some of the coefficients required can be computed with that experiment.
-
-
 .. image:: resonator_flux.png
 
 Requirements
@@ -133,41 +127,3 @@ Requirements
 
 - :ref:`resonator_punchout`
 - :ref:`qubit_flux`
-
-Qubit flux dependence (tracking)
---------------------------------
-
-As we saw above both the resonator and the qubit are affected by an external flux.
-In the qubit flux dependence the measurement is performed at fixed readout frequency.
-To take into account how the transmon shifts in frequency when probing the qubit we have
-another experiment `qubit_flux_tracking`.
-
-Parameters
-^^^^^^^^^^
-
-.. autoclass:: qibocal.protocols.flux_dependence.qubit_flux_tracking.QubitFluxTrackParameters
-  :noindex:
-
-Example
-^^^^^^^
-
-Here is a possible runcard:
-
-.. code-block:: yaml
-
-    - id: qubit flux dependence
-      operation: qubit_flux_tracking
-      parameters:
-        bias_step: 0.001
-        bias_width: 0.05
-        drive_amplitude: 0.002
-        drive_duration: 4000
-        freq_step: 200000
-        freq_width: 10000000
-        nshots: 1024
-        relaxation_time: 20000
-
-Requirements
-^^^^^^^^^^^^
-
-- :ref:`resonator_flux`

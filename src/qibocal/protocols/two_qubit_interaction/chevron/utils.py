@@ -1,7 +1,8 @@
 import numpy as np
-from qibolab import Platform, PulseSequence, VirtualZ
+from qibolab import PulseSequence, VirtualZ
 
 from qibocal.auto.operation import QubitPairId
+from qibocal.calibration import CalibrationPlatform
 
 from ..utils import order_pair
 
@@ -14,7 +15,7 @@ COUPLER_PULSE_DURATION = 100
 
 
 def chevron_sequence(
-    platform: Platform,
+    platform: CalibrationPlatform,
     pair: QubitPairId,
     duration_max: int,
     parking: bool = False,

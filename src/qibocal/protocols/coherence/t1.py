@@ -4,9 +4,10 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal.auto.operation import Data, QubitId, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.result import probability
 
 from ..utils import table_dict, table_html
@@ -44,7 +45,7 @@ class T1Data(Data):
 
 
 def _acquisition(
-    params: T1Parameters, platform: Platform, targets: list[QubitId]
+    params: T1Parameters, platform: CalibrationPlatform, targets: list[QubitId]
 ) -> T1Data:
     """Data acquisition for T1 experiment."""
 

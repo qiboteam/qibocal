@@ -4,9 +4,10 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Pulse, Sweeper
+from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 
 from qibocal.auto.operation import QubitPairId, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude
 
 from ..utils import order_pair
@@ -72,7 +73,7 @@ class ChevronSignalData(ChevronData):
 
 def _aquisition(
     params: ChevronSignalParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitPairId],
 ) -> ChevronSignalData:
     r"""
@@ -80,7 +81,7 @@ def _aquisition(
 
     Args:
         params: Experiment parameters.
-        platform: Platform to use.
+        platform: CalibrationPlatform to use.
         targets (list): List of pairs to use sequentially.
 
     Returns:

@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Pulse, Sweeper
+from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 from scipy.optimize import curve_fit
 
 from qibocal import update
@@ -19,6 +19,7 @@ from qibocal.auto.operation import (
     Results,
     Routine,
 )
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
@@ -146,7 +147,7 @@ class OptimizeTwoQubitGateData(Data):
 
 def _acquisition(
     params: OptimizeTwoQubitGateParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitPairId],
 ) -> OptimizeTwoQubitGateData:
     r"""
@@ -469,13 +470,15 @@ def _plot(
 
 
 def _update(
-    results: OptimizeTwoQubitGateResults, platform: Platform, target: QubitPairId
+    results: OptimizeTwoQubitGateResults,
+    platform: CalibrationPlatform,
+    target: QubitPairId,
 ):
     # FIXME: quick fix for qubit order
     target = tuple(sorted(target))
-    update.virtual_phases(
-        results.best_virtual_phase[target], results.native, platform, target
-    )
+    # update.virtual_phases(
+    #     results.best_virtual_phase[target], results.native, platform, target
+    # )
     getattr(update, f"{results.native}_duration")(
         results.best_dur[target], platform, target
     )

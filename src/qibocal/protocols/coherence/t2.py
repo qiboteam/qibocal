@@ -3,9 +3,10 @@ from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Parameter, Platform, Sweeper
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal.auto.operation import QubitId, Routine
+from qibocal.calibration import CalibrationPlatform
 
 from ...result import probability
 from ..ramsey.utils import ramsey_sequence
@@ -41,7 +42,7 @@ class T2Data(t1.T1Data):
 
 def _acquisition(
     params: T2Parameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> T2Data:
     """Data acquisition for T2 experiment."""

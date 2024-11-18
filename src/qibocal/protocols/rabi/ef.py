@@ -5,14 +5,15 @@ from qibolab import (
     AveragingMode,
     Delay,
     Parameter,
-    Platform,
     PulseSequence,
     Sweeper,
 )
 
 from qibocal.auto.operation import QubitId, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.update import replace
 
+from ... import update
 from ...result import magnitude, phase
 from . import amplitude_signal, utils
 
@@ -33,7 +34,9 @@ class RabiAmplitudeEFData(amplitude_signal.RabiAmplitudeSignalData):
 
 
 def _acquisition(
-    params: RabiAmplitudeEFParameters, platform: Platform, targets: list[QubitId]
+    params: RabiAmplitudeEFParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
 ) -> RabiAmplitudeEFData:
     r"""
     Data acquisition for Rabi EF experiment sweeping amplitude.
@@ -117,10 +120,12 @@ def _plot(
     return figures, report
 
 
-def _update(results: RabiAmplitudeEFResults, platform: Platform, target: QubitId):
+def _update(
+    results: RabiAmplitudeEFResults, platform: CalibrationPlatform, target: QubitId
+):
     """Update RX2 amplitude_signal"""
-    # update.drive_12_amplitude(results.amplitude[target], platform, target)
-    # update.drive_12_duration(results.length[target], platform, target)
+    update.drive_12_amplitude(results.amplitude[target], platform, target)
+    update.drive_12_duration(results.length[target], platform, target)
 
 
 rabi_amplitude_ef = Routine(_acquisition, amplitude_signal._fit, _plot, _update)

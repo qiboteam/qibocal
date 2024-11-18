@@ -5,10 +5,11 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, Delay, Platform, PulseSequence
+from qibolab import AcquisitionType, Delay, PulseSequence
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.utils import table_dict, table_html
 from qibocal.update import replace
@@ -62,7 +63,7 @@ class ResonatorAmplitudeResults(Results):
 
 def _acquisition(
     params: ResonatorAmplitudeParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> ResonatorAmplitudeData:
     r"""
@@ -73,7 +74,7 @@ def _acquisition(
 
     Args:
         params (:class:`ResonatorAmplitudeParameters`): input parameters
-        platform (:class:`Platform`): Qibolab's platform
+        platform (:class:`CalibrationPlatform`): Qibolab's platform
         targets (list): list of QubitIds to be characterized
 
     Returns:
@@ -197,7 +198,9 @@ def _plot(
     return figures, fitting_report
 
 
-def _update(results: ResonatorAmplitudeResults, platform: Platform, target: QubitId):
+def _update(
+    results: ResonatorAmplitudeResults, platform: CalibrationPlatform, target: QubitId
+):
     update.readout_amplitude(results.best_amp[target], platform, target)
     update.iq_angle(results.best_angle[target], platform, target)
     update.threshold(results.best_threshold[target], platform, target)

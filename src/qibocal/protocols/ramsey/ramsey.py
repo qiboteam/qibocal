@@ -4,16 +4,10 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import (
-    AcquisitionType,
-    AveragingMode,
-    Parameter,
-    Platform,
-    Readout,
-    Sweeper,
-)
+from qibolab import AcquisitionType, AveragingMode, Parameter, Readout, Sweeper
 
 from qibocal.auto.operation import QubitId, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.result import probability
 
@@ -59,7 +53,7 @@ class RamseyData(RamseySignalData):
 
 def _acquisition(
     params: RamseyParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> RamseyData:
     """Data acquisition for Ramsey Experiment (detuned).

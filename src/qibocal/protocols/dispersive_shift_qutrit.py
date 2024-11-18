@@ -3,16 +3,10 @@ from dataclasses import asdict, dataclass
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import (
-    AcquisitionType,
-    AveragingMode,
-    Parameter,
-    Platform,
-    PulseSequence,
-    Sweeper,
-)
+from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal.auto.operation import QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
@@ -71,7 +65,9 @@ class DispersiveShiftQutritData(DispersiveShiftData):
 
 
 def _acquisition(
-    params: DispersiveShiftParameters, platform: Platform, targets: list[QubitId]
+    params: DispersiveShiftParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
 ) -> DispersiveShiftQutritData:
     r"""
     Data acquisition for dispersive shift qutrit experiment.
@@ -80,7 +76,7 @@ def _acquisition(
 
     Args:
         params (DispersiveShiftParameters): experiment's parameters
-        platform (Platform): Qibolab platform object
+        platform (CalibrationPlatform): Qibolab platform object
         targets (list): list of target qubits to perform the action
 
     """

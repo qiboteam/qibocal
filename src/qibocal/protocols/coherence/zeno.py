@@ -3,10 +3,11 @@ from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence, Readout
+from qibolab import AcquisitionType, AveragingMode, PulseSequence, Readout
 
 from qibocal import update
 from qibocal.auto.operation import Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 
 from ...result import probability
 from ..utils import table_dict, table_html
@@ -36,7 +37,7 @@ class ZenoResults(Results):
 
 
 def zeno_sequence(
-    platform: Platform, targets: list[QubitId], readouts: int
+    platform: CalibrationPlatform, targets: list[QubitId], readouts: int
 ) -> tuple[PulseSequence, dict[QubitId, int]]:
     """Generating sequence for Zeno experiment."""
 
@@ -62,7 +63,7 @@ class ZenoData(t1.T1Data):
 
 def _acquisition(
     params: ZenoParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> ZenoData:
     """
@@ -199,7 +200,7 @@ def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
     return figures, fitting_report
 
 
-def _update(results: ZenoResults, platform: Platform, qubit: QubitId):
+def _update(results: ZenoResults, platform: CalibrationPlatform, qubit: QubitId):
     update.t1(results.zeno_t1[qubit], platform, qubit)
 
 

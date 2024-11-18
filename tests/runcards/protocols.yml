@@ -48,6 +48,7 @@ actions:
       freq_step: 50_000
       amplitude: 0.022
       power_level: low
+      fit_function: s21
       nshots: 10
 
   - id: qubit spectroscopy average
@@ -450,6 +451,15 @@ actions:
       beta_step: 0.01
       nshots: 10
 
+  - id: drag_pulse_tuning_unrolling
+    operation: drag_tuning
+    parameters:
+      beta_start: 0
+      beta_end: 0.1
+      beta_step: 0.01
+      nshots: 10
+      unrolling: true
+
   - id: spin_echo
     operation: spin_echo
     parameters:
@@ -662,19 +672,6 @@ actions:
       native: iSWAP
       parking: True
 
-  - id: iswap virtual signal
-    operation: correct_virtual_z_phases_signal
-    targets: [[0, 2],[1,2]]
-    parameters:
-      theta_start: 0
-      theta_end: 180
-      theta_step: 10
-      flux_pulse_amplitude: 0.5
-      flux_pulse_duration: 10
-      native: iSWAP
-      dt: 0
-      parking: True
-
   - id: cz_virtual_phase
     operation: correct_virtual_z_phases
     targets: [[0, 2],[1,2]]
@@ -686,19 +683,6 @@ actions:
       flux_pulse_duration: 10
       dt: 0
       native: CZ
-      parking: True
-
-  - id: cz virtual signal
-    operation: correct_virtual_z_phases_signal
-    targets: [[0, 2],[1,2]]
-    parameters:
-      theta_start: 0
-      theta_end: 180
-      theta_step: 10
-      flux_pulse_amplitude: 0.5
-      flux_pulse_duration: 10
-      native: CZ
-      dt: 0
       parking: True
 
   - id: readout_mitigation_matrix pulses

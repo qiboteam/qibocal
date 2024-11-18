@@ -2,12 +2,14 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
-from qibolab import Delay, Parameter, Platform, PulseSequence, Sweeper
+from qibolab import Delay, Parameter, PulseSequence, Sweeper
 
 from qibocal.auto.operation import Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 from qibocal.update import replace
 
+from .. import update
 from .resonator_spectroscopy import ResonatorSpectroscopyData, ResSpecType
 from .utils import chi2_reduced, lorentzian, lorentzian_fit, spectroscopy_plot
 
@@ -51,7 +53,9 @@ class QubitSpectroscopyData(ResonatorSpectroscopyData):
 
 
 def _acquisition(
-    params: QubitSpectroscopyParameters, platform: Platform, targets: list[QubitId]
+    params: QubitSpectroscopyParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
 ) -> QubitSpectroscopyData:
     """Data acquisition for qubit spectroscopy."""
     # create a sequence of pulses for the experiment:
@@ -169,11 +173,13 @@ def _plot(data: QubitSpectroscopyData, target: QubitId, fit: QubitSpectroscopyRe
     return spectroscopy_plot(data, target, fit)
 
 
-def _update(results: QubitSpectroscopyResults, platform: Platform, target: QubitId):
+def _update(
+    results: QubitSpectroscopyResults, platform: CalibrationPlatform, target: QubitId
+):
     platform.calibration.single_qubits[target].qubit.frequency_01 = results.frequency[
         target
     ]
-    # update.drive_frequency(results.frequency[target], platform, target)
+    update.drive_frequency(results.frequency[target], platform, target)
 
 
 qubit_spectroscopy = Routine(_acquisition, _fit, _plot, _update)

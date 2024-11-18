@@ -3,9 +3,10 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Delay, Platform, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, Delay, PulseSequence
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 
 
 @dataclass
@@ -64,15 +65,15 @@ gatelist = [
 
 def _acquisition(
     params: AllXYParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> AllXYData:
     r"""
     Data acquisition for allXY experiment.
-    The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
+    The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the 0 state)
     is subjected to two back-to-back single-qubit gates and measured. In each round, we run 21 different gate pairs:
-    ideally, the first 5 return the qubit to |0>, the next 12 drive it to superposition state, and the last 4 put the
-    qubit in |1> state.
+    ideally, the first 5 return the qubit to 0, the next 12 drive it to superposition state, and the last 4 put the
+    qubit in 1 state.
     """
 
     # create a Data object to store the results
@@ -124,7 +125,7 @@ def _acquisition(
 
 
 def allxy_sequence(
-    platform: Platform,
+    platform: CalibrationPlatform,
     gates,
     qubit,
     sequence_delay=None,
