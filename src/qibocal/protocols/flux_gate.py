@@ -1,4 +1,4 @@
-"""FluxGate experiment, corrects distortions."""
+"""FluxGate experiment, implementation of Z gate using flux pulse."""
 
 from dataclasses import dataclass, field
 
@@ -114,12 +114,12 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    results = [platform.execute([sequence], **options) for sequence in sequences]
+    results = platform.execute(sequences, **options)
 
-    for ig, (duration, sequence) in enumerate(zip(duration_range, sequences)):
+    for duration, sequence in zip(duration_range, sequences):
         for qubit in targets:
             ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
-            result = results[ig][ro_pulse.id]
+            result = results[ro_pulse.id]
             data.register_qubit(
                 FluxGateType,
                 (qubit),
@@ -142,7 +142,6 @@ def _fit(data: FluxGateData) -> FluxGateResults:
         y = qubit_data.prob_1
 
         popt, _ = fitting(x, y)
-
         fitted_parameters[qubit] = popt
         detuning[qubit] = popt[2] / (2 * np.pi) * GHZ_TO_HZ
 

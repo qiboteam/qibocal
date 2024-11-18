@@ -1,4 +1,4 @@
-"""FluxAmplitudeFrequency experiment, corrects distortions."""
+"""Experiment to compute detuning from flux pulses."""
 
 from dataclasses import dataclass, field
 
@@ -16,9 +16,6 @@ from qibolab import (
 )
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
-
-# from ..ramsey.utils import fitting, ramsey_fit
-# from ..utils import table_dict, table_html, GHZ_TO_HZ
 
 
 @dataclass
@@ -39,6 +36,8 @@ class FluxAmplitudeFrequencyParameters(Parameters):
 class FluxAmplitudeFrequencyResults(Results):
     """FluxAmplitudeFrequency outputs."""
 
+    detuning: dict[QubitId, float] = field(default_factory=dict)
+    """Frequency detuning."""
     fitted_parameters: dict[tuple[QubitId, str], list[float]] = field(
         default_factory=dict
     )
@@ -59,7 +58,7 @@ def generate_sequences(
     amplitude: float,
     duration: int,
 ):
-
+    """Compute sequences at fixed amplitude of flux pulse for <X> and <Y>"""
     native = platform.natives.single_qubit[qubit]
 
     drive_channel, ry90 = native.R(theta=np.pi / 2, phi=np.pi / 2)[0]
@@ -155,13 +154,13 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    results_x = [platform.execute([sequence], **options) for sequence in sequences_x]
-    results_y = [platform.execute([sequence], **options) for sequence in sequences_y]
+    results_x = platform.execute(sequences_x, **options)
+    results_y = platform.execute(sequences_y, **options)
 
-    for ig, (amplitude, sequence) in enumerate(zip(amplitude_range, sequences_x)):
+    for amplitude, sequence in zip(amplitude_range, sequences_x):
         for qubit in targets:
             ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
-            result = results_x[ig][ro_pulse.id]
+            result = results_x[ro_pulse.id]
             data.register_qubit(
                 FluxAmplitudeFrequencyType,
                 (qubit, "MX"),
@@ -171,10 +170,10 @@ def _acquisition(
                 ),
             )
 
-    for ig, (amplitude, sequence) in enumerate(zip(amplitude_range, sequences_y)):
+    for amplitude, sequence in zip(amplitude_range, sequences_y):
         for qubit in targets:
             ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
-            result = results_y[ig][ro_pulse.id]
+            result = results_y[ro_pulse.id]
             data.register_qubit(
                 FluxAmplitudeFrequencyType,
                 (qubit, "MY"),
@@ -190,6 +189,7 @@ def _acquisition(
 def _fit(data: FluxAmplitudeFrequencyData) -> FluxAmplitudeFrequencyResults:
 
     fitted_parameters = {}
+    detuning = {}
     qubits = np.unique([i[0] for i in data.data])
 
     for qubit in qubits:
@@ -198,11 +198,14 @@ def _fit(data: FluxAmplitudeFrequencyData) -> FluxAmplitudeFrequencyResults:
         Y_exp = 2 * data[qubit, "MY"].prob_1 - 1
 
         phase = np.unwrap(np.angle(X_exp + 1j * Y_exp))
-        detuning = phase / data.flux_pulse_duration / 2 / np.pi
+        det = phase / data.flux_pulse_duration / 2 / np.pi
 
-        fitted_parameters[qubit] = np.polyfit(amplitudes, detuning, 2).tolist()
+        fitted_parameters[qubit] = np.polyfit(amplitudes, det, 2).tolist()
+        detuning[qubit] = det.tolist()
 
-    return FluxAmplitudeFrequencyResults(fitted_parameters=fitted_parameters)
+    return FluxAmplitudeFrequencyResults(
+        detuning=detuning, fitted_parameters=fitted_parameters
+    )
 
 
 def _plot(
@@ -215,19 +218,15 @@ def _plot(
     fig = go.Figure()
 
     amplitude = data[(target, "MX")].amplitude
-    X_exp = 2 * data[(target, "MX")].prob_1 - 1
-    Y_exp = 2 * data[(target, "MY")].prob_1 - 1
-    phase = np.unwrap(np.angle(X_exp + 1j * Y_exp))
-    detuning = phase / 2 / np.pi / data.flux_pulse_duration
 
-    fig.add_trace(
-        go.Scatter(
-            x=amplitude,
-            y=detuning,
-            name="Detuning",
-        )
-    )
     if fit is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=amplitude,
+                y=fit.detuning[target],
+                name="Detuning",
+            )
+        )
         fig.add_trace(
             go.Scatter(
                 x=amplitude,
