@@ -9,10 +9,12 @@ from qibolab import (
     AcquisitionType,
     AveragingMode,
     Delay,
+    Parameter,
     Platform,
     Pulse,
     PulseSequence,
     Rectangular,
+    Sweeper,
 )
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
@@ -52,13 +54,17 @@ FluxAmplitudeFrequencyType = np.dtype([("amplitude", float), ("prob_1", np.float
 """Custom dtype for FluxAmplitudeFrequency."""
 
 
-def generate_sequences(
+def ramsey_flux(
     platform: Platform,
     qubit: QubitId,
     amplitude: float,
     duration: int,
+    measure: str,
 ):
     """Compute sequences at fixed amplitude of flux pulse for <X> and <Y>"""
+
+    assert measure in ["X", "Y"]
+
     native = platform.natives.single_qubit[qubit]
 
     drive_channel, ry90 = native.R(theta=np.pi / 2, phi=np.pi / 2)[0]
@@ -69,38 +75,39 @@ def generate_sequences(
     flux_pulse = Pulse(duration=duration, amplitude=amplitude, envelope=Rectangular())
 
     # create the sequences
-    sequence_x, sequence_y = PulseSequence(), PulseSequence()
+    sequence = PulseSequence()
 
-    sequence_x.extend(
-        [
-            (drive_channel, ry90),
-            (flux_channel, Delay(duration=ry90.duration)),
-            (flux_channel, flux_pulse),
-            (drive_channel, Delay(duration=flux_pulse.duration)),
-            (drive_channel, ry90),
-            (
-                ro_channel,
-                Delay(duration=ry90.duration + flux_pulse.duration + ry90.duration),
-            ),
-            (ro_channel, ro_pulse),
-        ]
-    )
-
-    sequence_y.extend(
-        [
-            (drive_channel, ry90),
-            (flux_channel, Delay(duration=rx90.duration)),
-            (flux_channel, flux_pulse),
-            (drive_channel, Delay(duration=flux_pulse.duration)),
-            (drive_channel, rx90),
-            (
-                ro_channel,
-                Delay(duration=ry90.duration + flux_pulse.duration + rx90.duration),
-            ),
-            (ro_channel, ro_pulse),
-        ]
-    )
-    return sequence_x, sequence_y
+    if measure == "X":
+        sequence.extend(
+            [
+                (drive_channel, ry90),
+                (flux_channel, Delay(duration=ry90.duration)),
+                (flux_channel, flux_pulse),
+                (drive_channel, Delay(duration=flux_pulse.duration)),
+                (drive_channel, ry90),
+                (
+                    ro_channel,
+                    Delay(duration=ry90.duration + flux_pulse.duration + ry90.duration),
+                ),
+                (ro_channel, ro_pulse),
+            ]
+        )
+    else:
+        sequence.extend(
+            [
+                (drive_channel, ry90),
+                (flux_channel, Delay(duration=rx90.duration)),
+                (flux_channel, flux_pulse),
+                (drive_channel, Delay(duration=flux_pulse.duration)),
+                (drive_channel, rx90),
+                (
+                    ro_channel,
+                    Delay(duration=ry90.duration + flux_pulse.duration + rx90.duration),
+                ),
+                (ro_channel, ro_pulse),
+            ]
+        )
+    return sequence
 
 
 @dataclass
@@ -123,30 +130,9 @@ def _acquisition(
     data = FluxAmplitudeFrequencyData(
         flux_pulse_duration=params.duration,
     )
-
-    sequences_x = []
-    sequences_y = []
-
-    amplitude_range = np.arange(
+    amplitudes = np.arange(
         params.amplitude_min, params.amplitude_max, params.amplitude_step
     )
-
-    for amplitude in amplitude_range:
-        sequence_x = PulseSequence()
-        sequence_y = PulseSequence()
-
-        for qubit in targets:
-            qubit_sequence_x, qubit_sequence_y = generate_sequences(
-                platform,
-                qubit,
-                duration=params.duration,
-                amplitude=amplitude,
-            )
-            sequence_x += qubit_sequence_x
-            sequence_y += qubit_sequence_y
-
-        sequences_x.append(sequence_x)
-        sequences_y.append(sequence_y)
 
     options = dict(
         nshots=params.nshots,
@@ -154,32 +140,37 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    results_x = platform.execute(sequences_x, **options)
-    results_y = platform.execute(sequences_y, **options)
-
-    for amplitude, sequence in zip(amplitude_range, sequences_x):
+    for measure in ["X", "Y"]:
+        sequence = PulseSequence()
         for qubit in targets:
-            ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
-            result = results_x[ro_pulse.id]
-            data.register_qubit(
-                FluxAmplitudeFrequencyType,
-                (qubit, "MX"),
-                dict(
-                    amplitude=np.array([amplitude]),
-                    prob_1=result,
-                ),
+            sequence += ramsey_flux(
+                platform,
+                qubit,
+                duration=params.duration,
+                amplitude=params.amplitude_max / 2,
+                measure=measure,
             )
 
-    for amplitude, sequence in zip(amplitude_range, sequences_y):
+        sweeper = Sweeper(
+            parameter=Parameter.amplitude,
+            range=(params.amplitude_min, params.amplitude_max, params.amplitude_step),
+            pulses=[
+                pulse[1]
+                for pulse in sequence
+                if pulse[0] in [platform.qubits[target].flux for target in targets]
+                and isinstance(pulse[1], Pulse)
+            ],
+        )
+        result = platform.execute([sequence], [[sweeper]], **options)
+
         for qubit in targets:
             ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
-            result = results_y[ro_pulse.id]
             data.register_qubit(
                 FluxAmplitudeFrequencyType,
-                (qubit, "MY"),
+                (qubit, measure),
                 dict(
-                    amplitude=np.array([amplitude]),
-                    prob_1=result,
+                    amplitude=amplitudes,
+                    prob_1=result[ro_pulse.id],
                 ),
             )
 
@@ -190,19 +181,20 @@ def _fit(data: FluxAmplitudeFrequencyData) -> FluxAmplitudeFrequencyResults:
 
     fitted_parameters = {}
     detuning = {}
-    qubits = np.unique([i[0] for i in data.data])
+    qubits = np.unique([i[0] for i in data.data]).tolist()
 
     for qubit in qubits:
-        amplitudes = data[qubit, "MX"].amplitude
-        X_exp = 2 * data[qubit, "MX"].prob_1 - 1
-        Y_exp = 2 * data[qubit, "MY"].prob_1 - 1
+        amplitudes = data[qubit, "X"].amplitude
+        X_exp = 1 - 2 * data[qubit, "X"].prob_1
+        Y_exp = 1 - 2 * data[qubit, "Y"].prob_1
 
         phase = np.unwrap(np.angle(X_exp + 1j * Y_exp))
+        # normalize phase ?
+        phase -= phase[0]
         det = phase / data.flux_pulse_duration / 2 / np.pi
 
         fitted_parameters[qubit] = np.polyfit(amplitudes, det, 2).tolist()
         detuning[qubit] = det.tolist()
-
     return FluxAmplitudeFrequencyResults(
         detuning=detuning, fitted_parameters=fitted_parameters
     )
@@ -217,7 +209,7 @@ def _plot(
 
     fig = go.Figure()
 
-    amplitude = data[(target, "MX")].amplitude
+    amplitude = data[(target, "X")].amplitude
 
     if fit is not None:
         fig.add_trace(

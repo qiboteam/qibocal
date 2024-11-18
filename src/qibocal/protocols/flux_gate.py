@@ -9,10 +9,12 @@ from qibolab import (
     AcquisitionType,
     AveragingMode,
     Delay,
+    Parameter,
     Platform,
     Pulse,
     PulseSequence,
     Rectangular,
+    Sweeper,
 )
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
@@ -70,43 +72,49 @@ def _acquisition(
         flux_pulse_amplitude=params.flux_pulse_amplitude,
     )
 
-    sequences = []
     duration_range = np.arange(
         params.duration_min, params.duration_max, params.duration_step
     )
 
-    # TODO: implement unrolling / sweepers
-    for duration in duration_range:
-        sequence = PulseSequence()
+    sequence = PulseSequence()
 
-        for qubit in targets:
-            qubit_sequence = PulseSequence()
-            native = platform.natives.single_qubit[qubit]
+    flux_pulses = {}
+    delays = []
+    for qubit in targets:
+        qubit_sequence = PulseSequence()
+        native = platform.natives.single_qubit[qubit]
 
-            drive_channel, rx90 = native.R(theta=np.pi / 2)[0]
-            ro_channel, ro_pulse = native.MZ()[0]
-            flux_channel = platform.qubits[qubit].flux
-            flux_pulse = Pulse(
-                duration=duration,
-                amplitude=params.flux_pulse_amplitude,
-                envelope=Rectangular(),
-            )
-            qubit_sequence.extend(
-                [
-                    (drive_channel, rx90),
-                    (flux_channel, Delay(duration=rx90.duration)),
-                    (flux_channel, flux_pulse),
-                    (drive_channel, Delay(duration=flux_pulse.duration)),
-                    (drive_channel, rx90),
-                    (
-                        ro_channel,
-                        Delay(duration=flux_pulse.duration + 2 * rx90.duration),
-                    ),
-                    (ro_channel, ro_pulse),
-                ]
-            )
-            sequence += qubit_sequence
-        sequences.append(sequence)
+        drive_channel, rx90 = native.R(theta=np.pi / 2)[0]
+        ro_channel, ro_pulse = native.MZ()[0]
+        flux_channel = platform.qubits[qubit].flux
+        flux_pulses[qubit] = Pulse(
+            duration=params.duration_max,
+            amplitude=params.flux_pulse_amplitude,
+            envelope=Rectangular(),
+        )
+        drive_delay = Delay(duration=flux_pulses[qubit].duration)
+        ro_delay = Delay(duration=flux_pulses[qubit].duration + 2 * rx90.duration)
+        qubit_sequence.extend(
+            [
+                (drive_channel, rx90),
+                (flux_channel, Delay(duration=rx90.duration)),
+                (flux_channel, flux_pulses[qubit]),
+                (drive_channel, drive_delay),
+                (drive_channel, rx90),
+                (
+                    ro_channel,
+                    ro_delay,
+                ),
+                (ro_channel, ro_pulse),
+            ]
+        )
+        delays += [drive_delay, ro_delay]
+        sequence += qubit_sequence
+    sweeper = Sweeper(
+        parameter=Parameter.duration,
+        values=duration_range,
+        pulses=list(flux_pulses.values()) + delays,
+    )
 
     options = dict(
         nshots=params.nshots,
@@ -114,20 +122,18 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    results = platform.execute(sequences, **options)
+    results = platform.execute([sequence], [[sweeper]], **options)
 
-    for duration, sequence in zip(duration_range, sequences):
-        for qubit in targets:
-            ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
-            result = results[ro_pulse.id]
-            data.register_qubit(
-                FluxGateType,
-                (qubit),
-                dict(
-                    duration=np.array([duration]),
-                    prob_1=result,
-                ),
-            )
+    for qubit in targets:
+        ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+        data.register_qubit(
+            FluxGateType,
+            (qubit),
+            dict(
+                duration=duration_range,
+                prob_1=results[ro_pulse.id],
+            ),
+        )
 
     return data
 
@@ -152,6 +158,7 @@ def _plot(data: FluxGateData, fit: FluxGateResults, target: QubitId):
     """FluxGate plots."""
 
     fig = go.Figure()
+    fitting_report = ""
     qubit_data = data[target]
 
     fig.add_trace(
@@ -171,19 +178,18 @@ def _plot(data: FluxGateData, fit: FluxGateResults, target: QubitId):
                 name="Fit",
             )
         )
+        fitting_report = table_html(
+            table_dict(
+                target,
+                ["Flux pulse amplitude", "Detuning [Hz]"],
+                [data.flux_pulse_amplitude, fit.detuning[target]],
+            )
+        )
 
     fig.update_layout(
         showlegend=True,
         xaxis_title="Time [ns]",
         yaxis_title="Excited state probability",
-    )
-
-    fitting_report = table_html(
-        table_dict(
-            target,
-            ["Flux pulse amplitude", "Detuning [Hz]"],
-            [data.flux_pulse_amplitude, fit.detuning[target]],
-        )
     )
 
     return [fig], fitting_report

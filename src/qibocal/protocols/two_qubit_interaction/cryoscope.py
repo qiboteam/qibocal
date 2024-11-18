@@ -323,14 +323,14 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
 
     fig = go.Figure()
     duration = data[(target, "MX")].duration
-
-    fig.add_trace(
-        go.Scatter(
-            x=duration,
-            y=fit.step_response[target],
-            name="step response",
-        ),
-    )
+    if fit is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=duration,
+                y=fit.step_response[target],
+                name="step response",
+            ),
+        )
 
     return [fig], ""
 
