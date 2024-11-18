@@ -21,7 +21,7 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 
 from ..ramsey.utils import fitting
 
-FULL_WAVEFORM = np.concatenate([np.zeros(20), np.ones(160), np.zeros(20)])
+FULL_WAVEFORM = np.concatenate([np.zeros(10), np.ones(50), np.zeros(10)])
 """Full waveform to be played."""
 
 
@@ -37,6 +37,7 @@ class CryoscopeParameters(Parameters):
     """Flux pulse duration step."""
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
+    unrolling: bool = True
 
 
 @dataclass
@@ -182,35 +183,38 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    # TODO: by default the sequence are unrolled (implement sweepers(?))
-    results_x = platform.execute(sequences_x, **options)
-    results_y = platform.execute(sequences_y, **options)
+    if params.unrolling:
+        results_x = platform.execute(sequences_x, **options)
+        results_y = platform.execute(sequences_y, **options)
+    else:
+        results_x = [
+            platform.execute([sequence], **options) for sequence in sequences_x
+        ]
+        results_y = [
+            platform.execute([sequence], **options) for sequence in sequences_y
+        ]
 
-    for duration, sequence in zip(duration_range, sequences_x):
-        for qubit in targets:
-            ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
-            result = results_x[ro_pulse.id]
-            data.register_qubit(
-                CryoscopeType,
-                (qubit, "MX"),
-                dict(
-                    duration=np.array([duration]),
-                    prob_1=result,
-                ),
-            )
-
-    for duration, sequence in zip(duration_range, sequences_y):
-        for qubit in targets:
-            ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
-            result = results_y[ro_pulse.id]
-            data.register_qubit(
-                CryoscopeType,
-                (qubit, "MY"),
-                dict(
-                    duration=np.array([duration]),
-                    prob_1=result,
-                ),
-            )
+    for measure, results, sequence in zip(
+        ["MX", "MY"], [results_x, results_y], [sequences_x, sequences_y]
+    ):
+        for i, (duration, sequence) in enumerate(zip(duration_range, sequence)):
+            for qubit in targets:
+                ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[
+                    -1
+                ]
+                result = (
+                    results[ro_pulse.id]
+                    if params.unrolling
+                    else results[i][ro_pulse.id]
+                )
+                data.register_qubit(
+                    CryoscopeType,
+                    (qubit, measure),
+                    dict(
+                        duration=np.array([duration]),
+                        prob_1=result,
+                    ),
+                )
 
     return data
 
@@ -242,7 +246,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
     for qubit, setup in data.data:
         qubit_data = data[qubit, setup]
         x = qubit_data.duration
-        y = 2 * qubit_data.prob_1 - 1
+        y = 1 - 2 * qubit_data.prob_1
 
         popt, _ = fitting(x, y)
 
@@ -253,8 +257,8 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
     for qubit in qubits:
 
         sampling_rate = 1 / (x[1] - x[0])
-        X_exp = 2 * data[(qubit, "MX")].prob_1 - 1
-        Y_exp = 2 * data[(qubit, "MY")].prob_1 - 1
+        X_exp = 1 - 2 * data[(qubit, "MX")].prob_1
+        Y_exp = 1 - 2 * data[(qubit, "MY")].prob_1
 
         norm_data = X_exp + 1j * Y_exp
 
@@ -289,17 +293,12 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         ).tolist()
 
         # params from flux_amplitude_frequency_protocol
-
-        # params = [
-        # 1.8820154223083199,
-        # 0.004516592884924419,
-        # 0.0002868968122209718,
-        # ] D1
-        params = [  # D2
-            2.0578,
-            -0.065,
-            0.00147,
-        ]
+        params = [1.9412681243469971, -0.012534948170662627, 0.0005454772278201887]
+        # params = [  # D2
+        #     2.0578,
+        #     -0.065,
+        #     0.00147,
+        # ]
 
         # invert frequency amplitude formula
         p = np.poly1d(params)
@@ -323,12 +322,21 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
 
     fig = go.Figure()
     duration = data[(target, "MX")].duration
+
+    fig.add_trace(
+        go.Scatter(
+            x=duration,
+            y=FULL_WAVEFORM,
+            name="exepcted waveform",
+        ),
+    )
+
     if fit is not None:
         fig.add_trace(
             go.Scatter(
                 x=duration,
                 y=fit.step_response[target],
-                name="step response",
+                name="derived waveform",
             ),
         )
 
