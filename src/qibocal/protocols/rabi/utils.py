@@ -238,6 +238,8 @@ def sequence_amplitude(
         if params.pulse_length is not None:
             qd_pulse = replace(qd_pulse, duration=params.pulse_length)
 
+        # added the following line
+        qd_pulse.amplitude = 2 * qd_pulse.amplitude
         durations[q] = qd_pulse.duration
         qd_pulses[q] = qd_pulse
         ro_pulses[q] = ro_pulse
@@ -268,6 +270,8 @@ def sequence_length(
         if params.pulse_amplitude is not None:
             qd_pulse = replace(qd_pulse, amplitude=params.pulse_amplitude)
 
+        # check following line
+        qd_pulse.amplitude = 2 * qd_pulse.amplitude
         amplitudes[q] = qd_pulse.amplitude
         qd_pulses[q] = qd_pulse
         ro_pulses[q] = ro_pulse
