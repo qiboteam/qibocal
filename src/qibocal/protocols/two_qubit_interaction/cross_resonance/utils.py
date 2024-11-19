@@ -8,38 +8,22 @@ from qibolab.qubits import QubitId, QubitPairId
 STATES = ["I", "X"]
 """Setup states for the cross resonance gate calibration: {Identity, RX}."""
 
-def cr_pulse_sequence(platform: Platform, pair: QubitPairId, setup: tuple, duration:int=0, amplitude:int = None):
-    target, control = pair
-    tgt_setup, ctr_setup = setup
-    tgt_native_rx:NativePulse = platform.qubits[target].native_gates.RX.pulse(start=0)
-    ctr_native_rx:NativePulse = platform.qubits[control].native_gates.RX.pulse(start=0)
+PROJECTIONS = ['Z', 'Y', 'X']
+"""Standard projections for measurements."""
 
-    sequence = PulseSequence()
-    next_start = 0
-    if tgt_setup == 1:
-        sequence.add(tgt_native_rx)
-        next_start = tgt_native_rx.finish
 
-    if ctr_setup == 1:
-        sequence.add(ctr_native_rx)
-        next_start = max(ctr_native_rx.finish, next_start)
+def ro_projection_pulse(platform: Platform, qubit, start=0, projection = PROJECTIONS[0]):
+    """Create a readout pulse for a given qubit."""
+    qd_pulse = platform.create_RX90_pulse(qubit, start=start)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=qd_pulse.finish)
+
+    if projection == PROJECTIONS[0]:   
+        qd_pulse.amplitude = 0
+    elif projection == PROJECTIONS[1]:
+        qd_pulse.relative_phase=0
+    elif projection == PROJECTIONS[2]:
+        qd_pulse.relative_phase=180
+    else:
+        raise ValueError(f"Invalid measurement <{projection}>")
     
-    cr_pulse: Pulse = Pulse(start=next_start,
-                    duration=duration,
-                    amplitude=ctr_native_rx.amplitude,
-                    frequency=tgt_native_rx.frequency,   # control frequency
-                    relative_phase=0,
-                    shape=Gaussian(5),
-                    qubit=control,
-                    channel= ctr_native_rx.channel ,type=PulseType.DRIVE
-                    )
-
-    if amplitude is not None:
-        cr_pulse.amplitude = amplitude
-
-    sequence.add(cr_pulse)
-
-    #for qubit in pair:
-    sequence.add(platform.create_qubit_readout_pulse(target, start=cr_pulse.finish))
-
-    return sequence, cr_pulse
+    return qd_pulse, ro_pulse

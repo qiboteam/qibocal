@@ -15,7 +15,7 @@ from qibolab.native import NativePulse
 from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
-from .utils import STATES
+from .utils import STATES, PROJECTIONS, ro_projection_pulse
 
 CrossResonanceType = np.dtype(
     [
@@ -42,6 +42,9 @@ class CrossResonanceAmplitudeParameters(Parameters):
     """CR pulse amplitude [ns]."""
     shape: Optional[str] = "Rectangular()"
     """CR pulse shape parameters."""
+    projections: Optional[list[str]] = field(default_factory=lambda: [PROJECTIONS[0]])
+    """Measurement porjection"""
+
     @property
     def amplitude_factor_range(self):
         return np.arange(
@@ -71,76 +74,85 @@ def _acquisition(
     params: CrossResonanceAmplitudeParameters, platform: Platform, targets: list[QubitPairId]
 ) -> CrossResonanceData:
     """Data acquisition for Cross Resonance Gate Calibration."""
-
+    
+    ro_pulses = {}
+    
     data = CrossResonanceData()
     for pair in targets:
         target, control = pair
         for ctr_setup in STATES:   
             for tgt_setup in STATES: 
-                ctr_native_rx = platform.create_RX_pulse(control, start = 0)
-                tgt_native_rx = platform.create_RX_pulse(target, start = 0)
-                
-                sequence = PulseSequence()
+                for projection in params.projections:
+                    ctr_native_rx = platform.create_RX_pulse(control, start = 0)
+                    tgt_native_rx = platform.create_RX_pulse(target, start = 0)
+                    
+                    sequence = PulseSequence()
 
-                if ctr_setup == STATES[1]:
-                    sequence.add(ctr_native_rx)
+                    if ctr_setup == STATES[1]:
+                        sequence.add(ctr_native_rx)
 
-                if tgt_setup == STATES[1]:
-                    sequence.add(tgt_native_rx)
+                    if tgt_setup == STATES[1]:
+                        sequence.add(tgt_native_rx)
 
-                next_start = max(tgt_native_rx.finish, ctr_native_rx.finish)
-                
-                cr_pulse: Pulse = Pulse(start = next_start,
-                                 duration = ctr_native_rx.duration,
-                                 amplitude = ctr_native_rx.amplitude,
-                                 frequency = tgt_native_rx.frequency,
-                                 relative_phase=0,
-                                 channel=ctr_native_rx.channel,
-                                 shape = params.pulse_shape,
-                                 type = PulseType.DRIVE,
-                                 qubit = control,
-                                 )
+                    next_start = max(tgt_native_rx.finish, ctr_native_rx.finish)
+                    
+                    cr_pulse: Pulse = Pulse(start = next_start,
+                                    duration = ctr_native_rx.duration,
+                                    amplitude = ctr_native_rx.amplitude,
+                                    frequency = tgt_native_rx.frequency,
+                                    relative_phase=0,
+                                    channel=ctr_native_rx.channel,
+                                    shape = params.pulse_shape,
+                                    type = PulseType.DRIVE,
+                                    qubit = control,
+                                    )
 
-                if params.pulse_length is not None:
-                    cr_pulse.duration = params.pulse_length
-                if params.pulse_amplitude is not None:
-                    cr_pulse.amplitude = params.pulse_amplitude
-                
-                sequence.add(cr_pulse)
+                    if params.pulse_length is not None:
+                        cr_pulse.duration = params.pulse_length
+                    if params.pulse_amplitude is not None:
+                        cr_pulse.amplitude = params.pulse_amplitude
+                    
+                    sequence.add(cr_pulse)
 
-                for qubit in pair:
-                    sequence.add(platform.create_qubit_readout_pulse(qubit=qubit, start=cr_pulse.finish))
+                    projection_pulse = {}
+                    for qubit in pair:
+                        #sequence.add(platform.create_qubit_readout_pulse(qubit=qubit, start=cr_pulse.finish))
+                        projection_pulse[qubit], ro_pulses[qubit] = ro_projection_pulse(
+                            platform, qubit, start=cr_pulse.finish, projection=projection  
+                        )
+                        sequence.add(projection_pulse[qubit])
+                        sequence.add(ro_pulses[qubit]) 
 
-                sweeper_amplitude = Sweeper(
-                    parameter = Parameter.amplitude,
-                    values = cr_pulse.amplitude*params.amplitude_factor_range,
-                    pulses=[cr_pulse],
-                    type=SweeperType.ABSOLUTE,
-                )
-
-                results = platform.sweep(
-                    sequence,
-                    ExecutionParameters(
-                        nshots=params.nshots,
-                        relaxation_time=params.relaxation_time,
-                        acquisition_type=AcquisitionType.DISCRIMINATION,
-                        averaging_mode=AveragingMode.SINGLESHOT,
-                    ),
-                    sweeper_amplitude,
-                )
-                
-                # store the results
-                for qubit in pair:
-                    prob = results[qubit].probability(state=1)
-                    data.register_qubit(
-                        CrossResonanceType,
-                        (qubit, target, control, tgt_setup, ctr_setup),
-                        dict(
-                            prob=prob.tolist(),
-                            amp=cr_pulse.amplitude * params.amplitude_factor_range,
-                            error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
-                        ),
+                    sweeper_amplitude = Sweeper(
+                        parameter = Parameter.amplitude,
+                        values = cr_pulse.amplitude*params.amplitude_factor_range,
+                        pulses=[cr_pulse],
+                        type=SweeperType.ABSOLUTE,
                     )
+
+                    results = platform.sweep(
+                        sequence,
+                        ExecutionParameters(
+                            nshots=params.nshots,
+                            relaxation_time=params.relaxation_time,
+                            acquisition_type=AcquisitionType.DISCRIMINATION,
+                            averaging_mode=AveragingMode.SINGLESHOT,
+                        ),
+                        sweeper_amplitude,
+                    )
+                    
+                    # store the results
+                    for qubit in pair:
+                        prob = results[qubit].probability(state=1)
+                        data.register_qubit(
+                            CrossResonanceType,
+                            (qubit, target, control, tgt_setup, ctr_setup, projection),
+                            dict(
+                                prob=prob.tolist(),
+                                amp=cr_pulse.amplitude * params.amplitude_factor_range,
+                                error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
+                            ),
+                        )
 
     return data
 
@@ -156,36 +168,40 @@ def _plot(data: CrossResonanceData, target: QubitPairId, fit: CrossResonanceResu
     """Plotting function for Cross Resonance Gate Calibration."""
     tgt, ctr = target
     figs = []
+    
     for ro_qubit in [tgt, ctr]:
-        fig = go.Figure()
-        for ctr_setup in STATES:
-            #(qubit, target, control, tgt_setup, ctr_setup)
-            i_data = data.data[ro_qubit, tgt, ctr, STATES[0], ctr_setup]
-            x_data = data.data[ro_qubit, tgt, ctr, STATES[1], ctr_setup]
+        for projection in PROJECTIONS:
+            fig = go.Figure()
+            if ((ro_qubit, tgt, ctr, STATES[0], STATES[0], projection)) not in data.data:
+                continue
+            for ctr_setup in STATES:
+                #(qubit, target, control, tgt_setup, ctr_setup)
+                i_data = data.data[ro_qubit, tgt, ctr, STATES[0], ctr_setup, projection]
+                x_data = data.data[ro_qubit, tgt, ctr, STATES[1], ctr_setup, projection]
 
-            cr_parameters = getattr(i_data, 'amp')
-            fig.add_trace(
-                go.Scatter(
-                    x=cr_parameters, y=i_data.prob, 
-                    name= f"Target: |{STATES[0]}>, Control: |{ctr_setup}>",
-                ),
-            )
+                cr_parameters = getattr(i_data, 'amp')
+                fig.add_trace(
+                    go.Scatter(
+                        x=cr_parameters, y=i_data.prob, 
+                        name= f"Target: |{STATES[0]}>, Control: |{ctr_setup}>",
+                    ),
+                )
 
-            cr_parameters = getattr(x_data, 'amp')
-            fig.add_trace(
-                go.Scatter(
-                    x=cr_parameters, y=x_data.prob, 
-                    name= f"Target: |{STATES[1]}>, Control: |{ctr_setup}>",
-                    mode='lines', line={'dash': 'dash'}, 
-                ),
-            )
-            fig.update_layout(
-                title=f"Qubit {ro_qubit}",
-                xaxis_title="CR Pulse Amplitude (a.u.)",
-                yaxis_title="Excited State Probability",
-            )
+                cr_parameters = getattr(x_data, 'amp')
+                fig.add_trace(
+                    go.Scatter(
+                        x=cr_parameters, y=x_data.prob, 
+                        name= f"Target: |{STATES[1]}>, Control: |{ctr_setup}>",
+                        mode='lines', line={'dash': 'dash'}, 
+                    ),
+                )
+                fig.update_layout(
+                    title=f"Qubit {ro_qubit}",
+                    xaxis_title="CR Pulse Amplitude (a.u.)",
+                    yaxis_title=f"|{projection}> Probability",
+                )
 
-        figs.append(fig)
+            figs.append(fig)
 
     return figs, ""
 

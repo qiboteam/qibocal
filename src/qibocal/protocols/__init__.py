@@ -32,6 +32,7 @@ from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
 from .qutrit_classification import qutrit_classification
 from .rabi.amplitude import rabi_amplitude
 from .rabi.amplitude_signal import rabi_amplitude_signal
+from .rabi.amplitude_frequency_signal import rabi_amplitude_frequency_signal
 from .rabi.ef import rabi_amplitude_ef
 from .rabi.length import rabi_length
 from .rabi.length_sequences import rabi_length_sequences
@@ -91,6 +92,7 @@ class Operation(Enum):
     rabi_length_sequences = rabi_length_sequences
     rabi_amplitude_signal = rabi_amplitude_signal
     rabi_length_signal = rabi_length_signal
+    rabi_amplitude_frequency_signal = rabi_amplitude_frequency_signal
     ramsey = ramsey
     ramsey_signal = ramsey_signal
     t1 = t1
@@ -109,7 +111,6 @@ class Operation(Enum):
     dispersive_shift = dispersive_shift
     chevron = chevron
     chevron_signal = chevron_signal
-    cz_virtualz = cz_virtualz
     standard_rb = standard_rb
     standard_rb_2q = standard_rb_2q
     readout_characterization = readout_characterization
@@ -133,7 +134,8 @@ class Operation(Enum):
     dispersive_shift_qutrit = dispersive_shift_qutrit
     coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
     coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
-    cz_virtualz_signal = cz_virtualz_signal
+    correct_virtual_z_phases = correct_virtual_z_phases
+    correct_virtual_z_phases_signal = correct_virtual_z_phases_signal
     coupler_chevron = coupler_chevron
     flipping_signal = flipping_signal
     calibrate_state_discrimination = calibrate_state_discrimination
@@ -142,5 +144,7 @@ class Operation(Enum):
     cross_resonance_amplitude = cross_resonance_amplitude,
     cross_resonance_chevron_length= cross_resonance_chevron_length,
     cross_resonance_chevron_frequency = cross_resonance_chevron_frequency,
-    cross_resonance_chevron_amplitude_frequency=cross_resonance_chevron_amplitude_frequency,
+    cross_resonance_chevron_amplitude_frequency = cross_resonance_chevron_amplitude_frequency,
     cross_resonance_chevron_coupler = cross_resonance_chevron_coupler
+    optimize_two_qubit_gate = optimize_two_qubit_gate
+    
