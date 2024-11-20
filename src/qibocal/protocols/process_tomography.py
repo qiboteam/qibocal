@@ -152,16 +152,6 @@ def _acquisition(
     return data
 
 
-@dataclass
-class ProcessTomographyResults(Results):
-    """Tomography results."""
-
-    estimated_chi_real: dict[Target, list[list[float]]] = field(default_factory=dict)
-    estimated_chi_imag: dict[Target, list[list[float]]] = field(default_factory=dict)
-    target_chi_real: dict[Target, list[list[float]]] = field(default_factory=dict)
-    target_chi_imag: dict[Target, list[list[float]]] = field(default_factory=dict)
-
-
 GATE_MAP = {
     None: lambda q: gates.I(q),
     "x180": lambda q: gates.RX(q, theta=np.pi),
@@ -300,6 +290,16 @@ def calculate_chi(rho_estimates, operators=None, preparation_rotations=None):
     return kappa.dot(rho_estimates.flatten()).reshape((d, d))
 
 
+@dataclass
+class ProcessTomographyResults(Results):
+    """Tomography results."""
+
+    estimated_chi_real: dict[Target, list[list[float]]] = field(default_factory=dict)
+    estimated_chi_imag: dict[Target, list[list[float]]] = field(default_factory=dict)
+    target_chi_real: dict[Target, list[list[float]]] = field(default_factory=dict)
+    target_chi_imag: dict[Target, list[list[float]]] = field(default_factory=dict)
+
+
 def _fit(data: ProcessTomographyResults) -> ProcessTomographyResults:
     prerotations = data.prerotations
     postrotations = data.postrotations
@@ -332,29 +332,6 @@ def _fit(data: ProcessTomographyResults) -> ProcessTomographyResults:
         results.target_chi_imag[target] = target_chi.imag.tolist()
 
     return results
-
-
-def plot_chi(estimated, target):
-    fig = make_subplots(rows=1, cols=2, subplot_titles=("Reconstruction", "Exact"))
-    fig.add_trace(
-        go.Heatmap(z=estimated, coloraxis="coloraxis"),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Heatmap(z=target, coloraxis="coloraxis"),
-        row=1,
-        col=2,
-    )
-    fig.update_layout(
-        coloraxis=dict(
-            colorscale="plasma",
-        ),
-    )
-    # Flip the y-axes
-    fig.update_yaxes(autorange="reversed", row=1, col=1)
-    fig.update_yaxes(autorange="reversed", row=1, col=2)
-    return fig
 
 
 def _plot(data: ProcessTomographyData, fit: ProcessTomographyResults, target: Target):
