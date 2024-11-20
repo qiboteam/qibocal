@@ -185,6 +185,7 @@ def _acquisition(
         nshots=params.nshots,
         niter=params.niter,
     )
+    data.circuits[targets[0]] = []
 
     for depth in params.depths:
         indices = np.random.randint(0, NCLIFFORDS, size=(params.niter, depth))
@@ -248,6 +249,7 @@ def _acquisition(
         data.register_qubit(
             RBType, (targets[0][0], targets[0][1], depth), {"samples": samples}
         )
+        data.circuits[targets[0]].extend(ids.tolist() for ids in indices)
 
     return data
 
