@@ -1,3 +1,9 @@
+"""Process tomography based on https://arxiv.org/abs/quant-ph/9610001
+
+Can be used to reconstruct the channel corresponding to the implementation
+of a gate or sequence of gates on quantum hardware.
+"""
+
 from collections import defaultdict
 from dataclasses import dataclass, field
 from itertools import product
@@ -27,16 +33,18 @@ ProcessTomographyType = np.dtype(
         ("probabilities", float),
     ]
 )
-"""Custom dtype for tomography."""
+"""Custom dtype for process tomography."""
 
 Target = Union[QubitId, QubitPairId]
+"""Process tomography works on both single and two qubit circuits."""
 Moments = list[Union[tuple[str], tuple[str, str]]]
+"""Compact rerpresentation of a circuit on one or two qubits."""
 
 
 @dataclass
 class ProcessTomographyParameters(Parameters):
     circuit: Moments = field(default_factory=list)
-    """Gates to perform process tomography on."""
+    """Circuit for which we reconstruct the channel."""
 
     def __post_init__(self):
         self.circuit = [tuple(moment) for moment in self.circuit]
@@ -47,14 +55,22 @@ class ProcessTomographyData(Data):
     """Tomography data."""
 
     prerotations: Moments
+    """Gates used for state preparation."""
     circuit: Moments
+    """Circuit for which we reconstruct the channel."""
     postrotations: Moments
+    """Gates used for rotating to different basis before measurement."""
     data: dict[Target, npt.NDArray[ProcessTomographyType]] = field(default_factory=dict)
+    """Measurement probabilities for all state preparations and measurement bases."""
 
 
 def compile(
     moments: Moments, platform: Platform, qubits: list[QubitId]
 ) -> PulseSequence:
+    """Compile a circuit given in ``Moments`` format to a qibolab ``PulseSequence``.
+
+    Supports only the following gates: ['cz', 'x180', 'y180', 'x90', 'y90', '-x90', '-y90'].
+    """
     sequence = PulseSequence()
     phases = defaultdict(float)
     for moment in moments:
@@ -109,6 +125,14 @@ def compile(
 
 
 def calculate_probabilities(samples: npt.NDArray) -> npt.NDArray:
+    """Converts measurement samples to probabilities.
+
+    Args:
+        samples: Array of shape ``(nshots, nqubits)``.
+
+        Returns:
+            Array of probabilities of shape ``(2 ** nqubits,)``.
+    """
     nshots, nqubits = samples.shape
     values, counts = np.unique(samples, axis=0, return_counts=True)
     freqs = {"".join([str(x) for x in v]): c for v, c in zip(values, counts)}
@@ -120,7 +144,7 @@ def calculate_probabilities(samples: npt.NDArray) -> npt.NDArray:
 def _acquisition(
     params: ProcessTomographyParameters, platform: Platform, targets: list[Target]
 ) -> ProcessTomographyData:
-    """Acquisition protocol for two qubit state tomography experiment."""
+    """Acquisition protocol for process tomography experiment on one or two qubits."""
     assert len(targets) == 1
     if not isinstance(targets[0], QubitId):
         qubits = list(targets[0])
