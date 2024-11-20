@@ -176,11 +176,10 @@ def _fit(data: MerminData) -> MerminResults:
 def _plot(data: MerminData, fit: MerminResults, target):
     """Plotting function for Mermin protocol."""
     figures = []
-    targets = data.targets
 
-    n_targets = len(targets)
-    classical_bound = 2 ** (n_targets // 2)
-    quantum_bound = 2 ** ((n_targets - 1) / 2) * (2 ** (n_targets // 2))
+    n_qubits = len(target)
+    classical_bound = 2 ** (n_qubits // 2)
+    quantum_bound = 2 ** ((n_qubits - 1) / 2) * (2 ** (n_qubits // 2))
 
     fig = go.Figure(
         layout_yaxis_range=[-quantum_bound - PLOT_PADDING, quantum_bound + PLOT_PADDING]
