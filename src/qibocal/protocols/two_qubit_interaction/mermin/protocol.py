@@ -89,9 +89,7 @@ def _acquisition(
     data = MerminData(thetas=thetas.tolist())
     if params.apply_error_mitigation:
         mitigation_data, _ = readout_mitigation_matrix.acquisition(
-            readout_mitigation_matrix.parameters_type.load(
-                dict(pulses=True, nshots=params.nshots)
-            ),
+            readout_mitigation_matrix.parameters_type.load(dict(nshots=params.nshots)),
             platform,
             targets,
         )

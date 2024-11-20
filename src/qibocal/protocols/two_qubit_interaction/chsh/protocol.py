@@ -174,7 +174,7 @@ def _acquisition_pulses(
 
     if params.apply_error_mitigation:
         mitigation_data = mitigation_acquisition(
-            mitigation_params(pulses=True, nshots=params.nshots), platform, targets
+            mitigation_params(nshots=params.nshots), platform, targets
         )
         mitigation_results = mitigation_fit(mitigation_data)
 
@@ -226,7 +226,7 @@ def _acquisition_circuits(
     qubit_map = [i for i in range(platform.nqubits)]
     if params.apply_error_mitigation:
         mitigation_data = mitigation_acquisition(
-            mitigation_params(pulses=False, nshots=params.nshots), platform, targets
+            mitigation_params(nshots=params.nshots), platform, targets
         )
         mitigation_results = mitigation_fit(mitigation_data)
     for pair in targets:
