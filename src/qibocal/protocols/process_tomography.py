@@ -8,6 +8,7 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibo import Circuit, gates
+from qibo.backends import NumpyBackend
 from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -304,6 +305,7 @@ def _fit(data: ProcessTomographyResults) -> ProcessTomographyResults:
     postrotations = data.postrotations
     n = len(postrotations)
     results = ProcessTomographyResults()
+    backend = NumpyBackend()
     for target, values in data.data.items():
         probs = values["probabilities"]
         estimated_rhos = np.array(
@@ -317,7 +319,9 @@ def _fit(data: ProcessTomographyResults) -> ProcessTomographyResults:
         )
 
         target_rhos = [
-            to_circuit([rot] + data.circuit, density_matrix=True)().state()
+            backend.execute_circuit(
+                to_circuit([rot] + data.circuit, density_matrix=True)
+            ).state()
             for rot in prerotations
         ]
         target_chi = calculate_chi(target_rhos, preparation_rotations=prerotations)
@@ -347,24 +351,59 @@ def plot_chi(estimated, target):
             colorscale="plasma",
         ),
     )
-    # Flip the y-axes for both subplots
-    fig.update_yaxes(
-        autorange="reversed", row=1, col=1  # Flip the y-axis  # First subplot
-    )
-    fig.update_yaxes(
-        autorange="reversed", row=1, col=2  # Flip the y-axis  # Second subplot
-    )
+    # Flip the y-axes
+    fig.update_yaxes(autorange="reversed", row=1, col=1)
+    fig.update_yaxes(autorange="reversed", row=1, col=2)
     return fig
 
 
 def _plot(data: ProcessTomographyData, fit: ProcessTomographyResults, target: Target):
     """Plotting for two qubit state tomography."""
     fitting_report = ""
-    fig_real = plot_chi(fit.estimated_chi_real[target], fit.target_chi_real[target])
-    fig_imag = plot_chi(fit.estimated_chi_imag[target], fit.target_chi_imag[target])
-    fig_real.update_layout(title="Real")
-    fig_imag.update_layout(title="Imag")
-    return [fig_real, fig_imag], fitting_report
+
+    fig = make_subplots(
+        rows=2,
+        cols=2,
+        subplot_titles=(
+            "Re(Reconstruction)",
+            "Re(Exact)",
+            "Im(Reconstruction)",
+            "Im(Exact)",
+        ),
+        vertical_spacing=0.1,
+        horizontal_spacing=0.08,
+    )
+    fig.add_trace(
+        go.Heatmap(z=fit.estimated_chi_real[target], coloraxis="coloraxis"),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Heatmap(z=fit.target_chi_real[target], coloraxis="coloraxis"),
+        row=1,
+        col=2,
+    )
+    fig.add_trace(
+        go.Heatmap(z=fit.estimated_chi_imag[target], coloraxis="coloraxis"),
+        row=2,
+        col=1,
+    )
+    fig.add_trace(
+        go.Heatmap(z=fit.target_chi_imag[target], coloraxis="coloraxis"),
+        row=2,
+        col=2,
+    )
+    fig.update_layout(
+        height=800,
+        coloraxis=dict(
+            colorscale="RdBu",
+        ),
+    )
+    # Flip the y-axes
+    for row in range(1, 3):
+        for col in range(1, 3):
+            fig.update_yaxes(autorange="reversed", row=row, col=col)
+    return [fig], fitting_report
 
 
 process_tomography = Routine(_acquisition, _fit, _plot)
