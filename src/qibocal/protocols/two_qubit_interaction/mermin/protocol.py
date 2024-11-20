@@ -20,6 +20,8 @@ from .utils import (
     get_readout_basis,
 )
 
+PLOT_PADDING = 0.2
+
 
 @dataclass
 class MerminParameters(Parameters):
@@ -180,7 +182,9 @@ def _plot(data: MerminData, fit: MerminResults, target):
     classical_bound = 2 ** (n_targets // 2)
     quantum_bound = 2 ** ((n_targets - 1) / 2) * (2 ** (n_targets // 2))
 
-    fig = go.Figure(layout_yaxis_range=[-quantum_bound - 0.2, quantum_bound + 0.2])
+    fig = go.Figure(
+        layout_yaxis_range=[-quantum_bound - PLOT_PADDING, quantum_bound + PLOT_PADDING]
+    )
     if fit is not None:
         fig.add_trace(
             go.Scatter(
