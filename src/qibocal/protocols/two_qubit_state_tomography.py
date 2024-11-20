@@ -96,11 +96,6 @@ def _acquisition(
 
     if params.circuit is None:
         params.circuit = Circuit(len(qubits))
-        params.circuit.add(gates.GPI2(0, phi=np.pi / 2))
-        params.circuit.add(gates.GPI2(1, phi=np.pi / 2))
-        params.circuit.add(gates.CZ(0, 1))
-        params.circuit.add(gates.X(0))
-        params.circuit.add(gates.GPI2(1, phi=np.pi / 2))
 
     backend = GlobalBackend()
     backend.platform = platform

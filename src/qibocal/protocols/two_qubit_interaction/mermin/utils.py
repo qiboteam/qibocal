@@ -7,7 +7,7 @@ def compute_mermin(frequencies, mermin_coefficients):
     assert len(frequencies) == len(mermin_coefficients)
     m = 0
     for j, freq in enumerate(frequencies):
-        for key in freq.keys():
+        for key in freq:
             m += (
                 mermin_coefficients[j]
                 * freq[key]

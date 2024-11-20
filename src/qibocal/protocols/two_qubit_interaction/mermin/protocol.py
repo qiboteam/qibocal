@@ -58,7 +58,7 @@ class MerminData(Data):
 
     @property
     def targets(self):
-        return list(self.data.keys())
+        return list(self.data)
 
 
 @dataclass
@@ -81,7 +81,7 @@ def _acquisition(
     platform: Platform,
     targets: list[list[QubitId]],
 ) -> MerminData:
-    r"""Data acquisition for Mermin protocol using pulse sequences."""
+    """Data acquisition for Mermin protocol using pulse sequences."""
 
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
     data = MerminData(thetas=thetas.tolist())
@@ -129,10 +129,10 @@ def _fit(data: MerminData) -> MerminResults:
     targets = data.targets
     results = {qubits: [] for qubits in targets}
     mitigated_results = {qubits: [] for qubits in targets}
-    mermin_polynomial = get_mermin_polynomial(len(targets))
     basis = np.unique(data.data[targets[0]].basis)
-    mermin_coefficients = get_mermin_coefficients(mermin_polynomial)
     for qubits in targets:
+        mermin_polynomial = get_mermin_polynomial(len(qubits))
+        mermin_coefficients = get_mermin_coefficients(mermin_polynomial)
         for theta in data.thetas:
             qubit_data = data.data[qubits]
             outputs = []
@@ -180,7 +180,7 @@ def _plot(data: MerminData, fit: MerminResults, target):
     classical_bound = 2 ** (n_targets // 2)
     quantum_bound = 2 ** ((n_targets - 1) / 2) * (2 ** (n_targets // 2))
 
-    fig = go.Figure(layout_yaxis_range=[-3, 3])
+    fig =  go.Figure(layout_yaxis_range=[-quantum_bound-0.2, quantum_bound+0.2])
     if fit is not None:
         fig.add_trace(
             go.Scatter(

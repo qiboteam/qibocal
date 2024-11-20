@@ -8,7 +8,7 @@ def create_mermin_sequence(platform, qubits, theta=None):
     """Creates the pulse sequence to generate the bell states and with a theta-measurement"""
 
     nqubits = len(qubits)
-    if not theta:
+    if theta is None:
         theta = ((nqubits - 1) * 0.25 * np.pi) % (2 * np.pi)
 
     virtual_z_phases = defaultdict(int)
