@@ -181,7 +181,7 @@ class AbstractData:
         """Load data stored in a npz file."""
         file = path / f"{filename}.npz"
         if file.is_file():
-            raw_data_dict = dict(np.load(file, allow_pickle=True))
+            raw_data_dict = dict(np.load(file))
             data_dict = {}
 
             for data_key, array in raw_data_dict.items():
