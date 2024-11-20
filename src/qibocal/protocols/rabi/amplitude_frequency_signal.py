@@ -44,6 +44,8 @@ class RabiAmplitudeFrequencySignalParameters(Parameters):
     """Frequency to use as step for the scan."""
     pulse_length: Optional[float] = None
     """RX pulse duration [ns]."""
+    pihalf_pulse: Optional[bool] = True
+    """Calibration of native pihalf pulse, if false calibrates pi pulse"""
 
 
 @dataclass
@@ -75,6 +77,8 @@ class RabiAmplitudeFreqSignalData(Data):
         default_factory=dict
     )
     """Raw data acquired."""
+    pihalf_pulse: bool
+    """Pi or Pi_half calibration"""
 
     def register_qubit(self, qubit, freq, amp, signal, phase):
         """Store output for single qubit."""
@@ -127,6 +131,7 @@ def _acquisition(
     )
 
     data = RabiAmplitudeFreqSignalData(durations=durations)
+    data.pihalf_pulse = params.pihalf_pulse
 
     results = platform.execute(
         [sequence],
@@ -198,6 +203,7 @@ def _fit(data: RabiAmplitudeFreqSignalData) -> RabiAmplitudeFrequencySignalResul
         length=data.durations,
         fitted_parameters=fitted_parameters,
         frequency=fitted_frequencies,
+        pihalf_pulse=data.pihalf_pulse,
     )
 
 
@@ -296,7 +302,9 @@ def _update(
     target: QubitId,
 ):
     update.drive_duration(results.length[target], platform, target)
-    update.drive_amplitude(results.amplitude[target], platform, target)
+    update.drive_amplitude(
+        results.amplitude[target], results.pihalf_pulse, platform, target
+    )
     update.drive_frequency(results.frequency[target], platform, target)
 
 

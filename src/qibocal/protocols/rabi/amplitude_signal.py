@@ -27,6 +27,8 @@ class RabiAmplitudeSignalParameters(Parameters):
     """Step amplitude."""
     pulse_length: Optional[float] = None
     """RX pulse duration [ns]."""
+    pihalf_pulse: Optional[bool] = True
+    """Calibration of native pihalf pulse, if false calibrates pi pulse"""
 
 
 @dataclass
@@ -39,6 +41,8 @@ class RabiAmplitudeSignalResults(Results):
     """Drive pulse duration. Same for all qubits."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitted parameters."""
+    pihalf_pulse: bool
+    """Pi or Pi_half calibration"""
 
 
 RabiAmpSignalType = np.dtype(
@@ -55,6 +59,8 @@ class RabiAmplitudeSignalData(Data):
     """Pulse durations provided by the user."""
     data: dict[QubitId, npt.NDArray[RabiAmpSignalType]] = field(default_factory=dict)
     """Raw data acquired."""
+    pihalf_pulse: bool
+    """Pi or Pi_half calibration"""
 
 
 def _acquisition(
@@ -80,6 +86,7 @@ def _acquisition(
     )
 
     data = RabiAmplitudeSignalData(durations=durations)
+    data.pihalf_pulse = params.pihalf_pulse
 
     # sweep the parameter
     results = platform.execute(
@@ -142,7 +149,7 @@ def _fit(data: RabiAmplitudeSignalData) -> RabiAmplitudeSignalResults:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
     return RabiAmplitudeSignalResults(
-        pi_pulse_amplitudes, data.durations, fitted_parameters
+        pi_pulse_amplitudes, data.durations, fitted_parameters, data.pihalf_pulse
     )
 
 
@@ -158,7 +165,9 @@ def _plot(
 def _update(
     results: RabiAmplitudeSignalResults, platform: CalibrationPlatform, target: QubitId
 ):
-    update.drive_amplitude(results.amplitude[target], platform, target)
+    update.drive_amplitude(
+        results.amplitude[target], results.pihalf_pulse, platform, target
+    )
     update.drive_duration(results.length[target], platform, target)
 
 

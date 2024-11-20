@@ -39,6 +39,8 @@ class RabiLengthFrequencySignalParameters(Parameters):
     """Frequency to use as step for the scan."""
     pulse_amplitude: Optional[float] = None
     """Pi pulse amplitude. Same for all qubits."""
+    pihalf_pulse: Optional[bool] = True
+    """Calibration of native pihalf pulse, if false calibrates pi pulse"""
     interpolated_sweeper: bool = False
     """Use real-time interpolation if supported by instruments."""
 
@@ -72,6 +74,8 @@ class RabiLengthFreqSignalData(Data):
         default_factory=dict
     )
     """Raw data acquired."""
+    pihalf_pulse: bool
+    """Pi or Pi_half calibration"""
 
     def register_qubit(self, qubit, freq, lens, signal, phase):
         """Store output for single qubit."""
@@ -137,6 +141,7 @@ def _acquisition(
         )
 
     data = RabiLengthFreqSignalData(amplitudes=amplitudes)
+    data.pihalf_pulse = params.pihalf_pulse
 
     results = platform.execute(
         [sequence],
@@ -207,6 +212,7 @@ def _fit(data: RabiLengthFreqSignalData) -> RabiLengthFrequencySignalResults:
         amplitude=data.amplitudes,
         fitted_parameters=fitted_parameters,
         frequency=fitted_frequencies,
+        pihalf_pulse=data.pihalf_pulse,
     )
 
 
@@ -305,7 +311,9 @@ def _update(
     platform: CalibrationPlatform,
     target: QubitId,
 ):
-    update.drive_amplitude(results.amplitude[target], platform, target)
+    update.drive_amplitude(
+        results.amplitude[target], results.pihalf_pulse, platform, target
+    )
     update.drive_duration(results.length[target], platform, target)
     update.drive_frequency(results.frequency[target], platform, target)
 

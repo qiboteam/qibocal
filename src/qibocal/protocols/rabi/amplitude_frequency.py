@@ -60,6 +60,9 @@ class RabiAmplitudeFreqData(RabiAmplitudeFreqSignalData):
     data: dict[QubitId, npt.NDArray[RabiAmpFreqType]] = field(default_factory=dict)
     """Raw data acquired."""
 
+    pihalf_pulse: bool
+    """Pi or Pi_half calibration"""
+
     def register_qubit(self, qubit, freq, amp, prob, error):
         """Store output for single qubit."""
         size = len(freq) * len(amp)
@@ -102,6 +105,7 @@ def _acquisition(
     )
 
     data = RabiAmplitudeFreqData(durations=durations)
+    data.pihalf_pulse = params.pihalf_pulse
 
     results = platform.execute(
         [sequence],
@@ -186,6 +190,7 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         fitted_parameters=fitted_parameters,
         frequency=fitted_frequencies,
         chi2=chi2,
+        pihalf_pulse=data.pihalf_pulse,
     )
 
 

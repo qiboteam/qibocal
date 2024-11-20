@@ -54,11 +54,16 @@ def drive_frequency(
     platform.update({f"configs.{drive_channel}.frequency": freq})
 
 
-def drive_amplitude(amp: Union[float, tuple, list], platform: Platform, qubit: QubitId):
+def drive_amplitude(
+    amp: Union[float, tuple, list], pi_half: bool, platform: Platform, qubit: QubitId
+):
     """Update drive frequency value in platform for specific qubit."""
     if isinstance(amp, Iterable):
         amp = amp[0]
-    platform.update({f"native_gates.single_qubit.{qubit}.RX.0.1.amplitude": amp})
+    if pi_half:
+        platform.update({f"native_gates.single_qubit.{qubit}.RX90.0.1.amplitude": amp})
+    else:
+        platform.update({f"native_gates.single_qubit.{qubit}.RX.0.1.amplitude": amp})
 
 
 def drive_duration(
