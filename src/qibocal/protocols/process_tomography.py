@@ -16,6 +16,8 @@ from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 
+from .utils import table_dict, table_html
+
 PREROTATIONS = [None, "x180", "y90", "-x90"]
 POSTROTATIONS = [None, "-y90", "x90"]
 
@@ -178,6 +180,11 @@ def to_circuit(moments: Moments, density_matrix: bool = False) -> Circuit:
     return circuit
 
 
+def simulate_circuit(circuit: Circuit):
+    backend = NumpyBackend()
+    return backend.execute_circuit(circuit)
+
+
 def basis_matrices(rotations: list[tuple[str]]) -> list[npt.NDArray]:
     matrices = []
     for rotation in rotations:
@@ -230,7 +237,10 @@ def rotate_to_ideal(rhos, rotations):
     d = len(rotations)
     ideal_basis = calculate_ideal_basis(int(np.sqrt(d)))
     experiment_basis = np.array(
-        [to_circuit([rot], density_matrix=True)().state() for rot in rotations]
+        [
+            simulate_circuit(to_circuit([rot], density_matrix=True)).state()
+            for rot in rotations
+        ]
     )
     rotation = ideal_basis.reshape((d, d)).dot(
         np.linalg.inv(experiment_basis.reshape((d, d)))
@@ -305,7 +315,6 @@ def _fit(data: ProcessTomographyResults) -> ProcessTomographyResults:
     postrotations = data.postrotations
     n = len(postrotations)
     results = ProcessTomographyResults()
-    backend = NumpyBackend()
     for target, values in data.data.items():
         probs = values["probabilities"]
         estimated_rhos = np.array(
@@ -319,7 +328,7 @@ def _fit(data: ProcessTomographyResults) -> ProcessTomographyResults:
         )
 
         target_rhos = [
-            backend.execute_circuit(
+            simulate_circuit(
                 to_circuit([rot] + data.circuit, density_matrix=True)
             ).state()
             for rot in prerotations
@@ -336,7 +345,13 @@ def _fit(data: ProcessTomographyResults) -> ProcessTomographyResults:
 
 def _plot(data: ProcessTomographyData, fit: ProcessTomographyResults, target: Target):
     """Plotting for two qubit state tomography."""
-    fitting_report = ""
+    fitting_report = table_html(
+        table_dict(
+            [target],
+            ["Target circuit"],
+            [str(data.circuit)],
+        )
+    )
 
     fig = make_subplots(
         rows=2,
