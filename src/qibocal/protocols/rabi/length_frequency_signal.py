@@ -68,14 +68,14 @@ RabiLenFreqSignalType = np.dtype(
 class RabiLengthFreqSignalData(Data):
     """RabiLengthFreqSignal data acquisition."""
 
+    pihalf_pulse: bool
+    """Pi or Pi_half calibration"""
     amplitudes: dict[QubitId, float] = field(default_factory=dict)
     """Pulse amplitudes provided by the user."""
     data: dict[QubitId, npt.NDArray[RabiLenFreqSignalType]] = field(
         default_factory=dict
     )
     """Raw data acquired."""
-    pihalf_pulse: bool
-    """Pi or Pi_half calibration"""
 
     def register_qubit(self, qubit, freq, lens, signal, phase):
         """Store output for single qubit."""

@@ -57,11 +57,11 @@ RabiAmpFreqType = np.dtype(
 class RabiAmplitudeFreqData(RabiAmplitudeFreqSignalData):
     """RabiAmplitudeFreq data acquisition."""
 
-    data: dict[QubitId, npt.NDArray[RabiAmpFreqType]] = field(default_factory=dict)
-    """Raw data acquired."""
-
     pihalf_pulse: bool
     """Pi or Pi_half calibration"""
+
+    data: dict[QubitId, npt.NDArray[RabiAmpFreqType]] = field(default_factory=dict)
+    """Raw data acquired."""
 
     def register_qubit(self, qubit, freq, amp, prob, error):
         """Store output for single qubit."""
