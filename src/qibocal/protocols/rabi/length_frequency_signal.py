@@ -49,6 +49,8 @@ class RabiLengthFrequencySignalParameters(Parameters):
 class RabiLengthFrequencySignalResults(RabiLengthSignalResults):
     """RabiLengthFrequency outputs."""
 
+    pihalf_pulse: bool
+    """Pi or Pi_half calibration"""
     frequency: dict[QubitId, Union[float, list[float]]]
     """Drive frequency for each qubit."""
 

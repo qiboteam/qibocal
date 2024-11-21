@@ -54,6 +54,8 @@ class RabiAmplitudeFrequencySignalResults(RabiAmplitudeSignalResults):
 
     frequency: dict[QubitId, Union[float, list[float]]]
     """Drive frequency for each qubit."""
+    pihalf_pulse: bool
+    """Pi or Pi_half calibration"""
 
 
 RabiAmpFreqSignalType = np.dtype(

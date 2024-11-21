@@ -37,12 +37,12 @@ RabiAmpType = np.dtype(
 class RabiAmplitudeData(Data):
     """RabiAmplitude data acquisition."""
 
+    pihalf_pulse: bool
+    """Pi or Pi_half calibration"""
     durations: dict[QubitId, float] = field(default_factory=dict)
     """Pulse durations provided by the user."""
     data: dict[QubitId, npt.NDArray[RabiAmpType]] = field(default_factory=dict)
     """Raw data acquired."""
-    pihalf_pulse: bool
-    """Pi or Pi_half calibration"""
 
 
 def _acquisition(
