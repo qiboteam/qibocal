@@ -29,6 +29,9 @@ Rabi rate is larger than the decay and the pure dephasing rate,
 
 where :math:`\Omega_R` is the Rabi frequency and :math:`\tau` the decay time.
 
+In qibocal we implemented also another version of the Rabi experiment which can be used to tune the amplitude (duration) of the drive pulse in order
+to excite the qubit from the ground state up to state :math:`\frac{\ket{0}+\ket{1}}{\sqrt{2}}`.
+
 Parameters
 ^^^^^^^^^^
 
@@ -102,6 +105,30 @@ It follows an example runcard and plot for the signal exepriment
         relaxation_time: 50000
 
 .. image:: rabi_signal.png
+
+In all the previous examples we run Rabi experiments for calibrating the amplitude (duration) of the drive pulse
+to excite the qubit from the ground state up to state :math:`\frac{\ket{0}+\ket{1}}{\sqrt{2}}`.
+All the prievious example runcard can be modified to calibrate the amplitude (duration) of the drive pulse
+to excite the qubit from the ground state up to state :math:`\ket{1}` by simply setting the `RX90` parameter to `False`. 
+
+In the following we show an example runcard
+
+.. code-block:: yaml
+
+
+    - id: Rabi signal
+      operation: rabi_amplitude_signal
+      parameters:
+        min_amp: 0.2
+        max_amp: 1.
+        step_amp: 0.01
+        pulse_length: 40
+        nshots: 3000
+        relaxation_time: 50000
+	RX90: False
+
+..
+   _Remember image and modify runcard!
 
 Requirements
 ^^^^^^^^^^^^
