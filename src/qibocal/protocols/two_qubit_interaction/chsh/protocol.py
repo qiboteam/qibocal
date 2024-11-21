@@ -76,14 +76,16 @@ class CHSHData(Data):
 
     def save(self, path: Path):
         """Saving data including mitigation matrix."""
-
-        np.savez(
-            path / f"{MITIGATION_MATRIX_FILE}.npz",
-            **{
-                json.dumps((control, target)): self.mitigation_matrix[control, target]
-                for control, target, _, _, _ in self.data
-            },
-        )
+        if self.mitigation_matrix:
+            np.savez(
+                path / f"{MITIGATION_MATRIX_FILE}.npz",
+                **{
+                    json.dumps((control, target)): self.mitigation_matrix[
+                        control, target
+                    ]
+                    for control, target, _, _, _ in self.data
+                },
+            )
         super().save(path=path)
 
     @classmethod
