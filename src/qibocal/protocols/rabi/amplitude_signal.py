@@ -27,8 +27,8 @@ class RabiAmplitudeSignalParameters(Parameters):
     """Step amplitude."""
     pulse_length: Optional[float] = None
     """RX pulse duration [ns]."""
-    pihalf_pulse: Optional[bool] = True
-    """Calibration of native pihalf pulse, if false calibrates pi pulse"""
+    rx90: bool = False
+    """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
 
 
 @dataclass

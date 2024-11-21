@@ -27,8 +27,8 @@ class RabiLengthSignalParameters(Parameters):
     """Step pi pulse duration [ns]."""
     pulse_amplitude: Optional[float] = None
     """Pi pulse amplitude. Same for all qubits."""
-    pihalf_pulse: Optional[bool] = True
-    """Calibration of native pihalf pulse, if false calibrates pi pulse"""
+    rx90: bool = False
+    """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
     interpolated_sweeper: bool = False
     """Use real-time interpolation if supported by instruments."""
 

@@ -44,8 +44,8 @@ class RabiAmplitudeFrequencySignalParameters(Parameters):
     """Frequency to use as step for the scan."""
     pulse_length: Optional[float] = None
     """RX pulse duration [ns]."""
-    rx90: Optional[bool] = True
-    """Calibration of native pihalf pulse, if false calibrates pi pulse"""
+    rx90: bool = False
+    """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
 
 
 @dataclass
