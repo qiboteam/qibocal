@@ -79,7 +79,7 @@ def _acquisition(
     """Data acquisition for Rabi experiment sweeping length."""
 
     sequence, qd_pulses, delays, ro_pulses, amplitudes = sequence_length(
-        targets, params, platform
+        targets, params, platform, params.rx90
     )
 
     sweep_range = (

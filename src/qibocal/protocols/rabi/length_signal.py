@@ -77,7 +77,7 @@ def _acquisition(
     """
 
     sequence, qd_pulses, delays, ro_pulses, amplitudes = utils.sequence_length(
-        targets, params, platform
+        targets, params, platform, params.rx90
     )
     sweep_range = (
         params.pulse_duration_start,

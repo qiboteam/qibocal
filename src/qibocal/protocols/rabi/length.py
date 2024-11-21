@@ -35,6 +35,8 @@ class RabiLengthParameters(Parameters):
     """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
     interpolated_sweeper: bool = False
     """Use real-time interpolation if supported by instruments."""
+    rx90: bool = False
+    """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
 
 
 @dataclass
@@ -70,7 +72,7 @@ def _acquisition(
     """
 
     sequence, qd_pulses, delays, ro_pulses, amplitudes = utils.sequence_length(
-        targets, params, platform, use_align=params.interpolated_sweeper
+        targets, params, platform, params.rx90, use_align=params.interpolated_sweeper
     )
     sweep_range = (
         params.pulse_duration_start,

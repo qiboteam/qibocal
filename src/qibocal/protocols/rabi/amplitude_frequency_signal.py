@@ -110,7 +110,7 @@ def _acquisition(
     """Data acquisition for Rabi experiment sweeping amplitude."""
 
     sequence, qd_pulses, ro_pulses, durations = sequence_amplitude(
-        targets, params, platform
+        targets, params, platform, params.rx90
     )
 
     frequency_range = np.arange(
