@@ -70,19 +70,19 @@ def _acquisition(
         for i in range(2**nqubits):
             state = format(i, f"0{nqubits}b")
             c = Circuit(
-                platform.nqubits,
+                nqubits,
             )
             for q, bit in enumerate(state):
                 if bit == "1":
-                    c.add(gates.X(qubits[q]))
-            c.add(gates.M(*[qubits[i] for i in range(len(state))]))
+                    c.add(gates.X(q))
+            c.add(gates.M(*range(nqubits)))
             _, results = execute_transpiled_circuit(
-                c, qubit_map, backend, nshots=params.nshots, transpiler=transpiler
+                c, qubits, backend, nshots=params.nshots, transpiler=transpiler
             )
             frequencies = np.zeros(2 ** len(qubits))
-            for state, freq in results.frequencies().items():
-                frequencies[int(state, 2)] = freq
-            for freq in frequencies:  # TODO: Remove this loop?
+            for i, freq in results.frequencies().items():
+                frequencies[int(i, 2)] = freq
+            for freq in frequencies:
                 data.register_qubit(
                     ReadoutMitigationMatrixType,
                     (qubits),
@@ -102,7 +102,7 @@ def _fit(data: ReadoutMitigationMatrixData) -> ReadoutMitigationMatrixResults:
         mitigation_matrix = []
         for state in range(2 ** len(qubits)):
             mitigation_matrix.append(qubit_data[qubit_data.state == state].frequency)
-        mitigation_matrix = np.vstack(mitigation_matrix)
+        mitigation_matrix = np.vstack(mitigation_matrix) / data.nshots
         try:
             readout_mitigation_matrix[tuple(qubits)] = np.linalg.inv(
                 mitigation_matrix
@@ -128,7 +128,8 @@ def _plot(
         computational_basis = [
             format(i, f"0{len(target)}b") for i in range(2 ** len(target))
         ]
-        z = np.array(fit.readout_mitigation_matrix[tuple(target)]) * data.nshots
+        measurement_matrix = np.linalg.inv(fit.readout_mitigation_matrix[tuple(target)])
+        z = measurement_matrix
         fig = px.imshow(
             z,
             x=computational_basis,
