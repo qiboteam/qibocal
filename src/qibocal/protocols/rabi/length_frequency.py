@@ -51,6 +51,9 @@ RabiLenFreqType = np.dtype(
 class RabiLengthFreqData(RabiLengthFreqSignalData):
     """RabiLengthFreq data acquisition."""
 
+    pihalf_pulse: bool
+    """Pi or Pi_half calibration"""
+
     data: dict[QubitId, npt.NDArray[RabiLenFreqType]] = field(default_factory=dict)
     """Raw data acquired."""
 
