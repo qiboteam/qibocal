@@ -76,14 +76,16 @@ class CHSHData(Data):
 
     def save(self, path: Path):
         """Saving data including mitigation matrix."""
-
-        np.savez(
-            path / f"{MITIGATION_MATRIX_FILE}.npz",
-            **{
-                json.dumps((control, target)): self.mitigation_matrix[control, target]
-                for control, target, _, _, _ in self.data
-            },
-        )
+        if self.mitigation_matrix:
+            np.savez(
+                path / f"{MITIGATION_MATRIX_FILE}.npz",
+                **{
+                    json.dumps((control, target)): self.mitigation_matrix[
+                        control, target
+                    ]
+                    for control, target, _, _, _ in self.data
+                },
+            )
         super().save(path=path)
 
     @classmethod
@@ -223,7 +225,6 @@ def _acquisition_circuits(
     backend = GlobalBackend()
     backend.platform = platform
     transpiler = dummy_transpiler(backend)
-    qubit_map = [i for i in range(platform.nqubits)]
     if params.apply_error_mitigation:
         mitigation_data = mitigation_acquisition(
             mitigation_params(nshots=params.nshots), platform, targets
@@ -242,8 +243,6 @@ def _acquisition_circuits(
         for bell_state in params.bell_states:
             for theta in thetas:
                 chsh_circuits = create_chsh_circuits(
-                    platform,
-                    qubits=pair,
                     bell_state=bell_state,
                     theta=theta,
                     native=params.native,
@@ -254,7 +253,7 @@ def _acquisition_circuits(
                         nshots=params.nshots,
                         transpiler=transpiler,
                         backend=backend,
-                        qubit_map=qubit_map,
+                        qubit_map=pair,
                     )
                     frequencies = result.frequencies()
                     data.register_basis(pair, bell_state, basis, frequencies)
