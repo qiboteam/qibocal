@@ -109,7 +109,7 @@ It follows an example runcard and plot for the signal exepriment
 In all the previous examples we run Rabi experiments for calibrating the amplitude (duration) of the drive pulse
 to excite the qubit from the ground state up to state :math:`\frac{\ket{0}+\ket{1}}{\sqrt{2}}`.
 All the prievious example runcard can be modified to calibrate the amplitude (duration) of the drive pulse
-to excite the qubit from the ground state up to state :math:`\ket{1}` by simply setting the `RX90` parameter to `False`. 
+to excite the qubit from the ground state up to state :math:`\ket{1}` by simply setting the `RX90` parameter to `False`.
 
 In the following we show an example runcard
 
