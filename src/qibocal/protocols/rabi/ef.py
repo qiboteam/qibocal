@@ -84,8 +84,7 @@ def _acquisition(
         pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
-    data = RabiAmplitudeEFData(durations=durations)
-    data.pihalf_pulse = params.pihalf_pulse
+    data = RabiAmplitudeEFData(durations=durations, pihalf_pulse=params.rx90)
 
     # sweep the parameter
     results = platform.execute(

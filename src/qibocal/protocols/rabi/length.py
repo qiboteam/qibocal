@@ -92,8 +92,7 @@ def _acquisition(
             pulses=[qd_pulses[q] for q in targets] + [delays[q] for q in targets],
         )
 
-    data = RabiLengthData(amplitudes=amplitudes)
-    data.pihalf_pulse = params.rx90
+    data = RabiLengthData(amplitudes=amplitudes, pihalf_pulse=params.rx90)
 
     # execute the sweep
     results = platform.execute(

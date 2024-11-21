@@ -142,8 +142,7 @@ def _acquisition(
             channels=[channel],
         )
 
-    data = RabiLengthFreqSignalData(amplitudes=amplitudes)
-    data.pihalf_pulse = params.rx90
+    data = RabiLengthFreqSignalData(amplitudes=amplitudes, pihalf_pulse=params.rx90)
 
     results = platform.execute(
         [sequence],

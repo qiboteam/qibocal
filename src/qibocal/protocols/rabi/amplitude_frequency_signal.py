@@ -132,8 +132,7 @@ def _acquisition(
         pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
-    data = RabiAmplitudeFreqSignalData(durations=durations)
-    data.pihalf_pulse = params.rx90
+    data = RabiAmplitudeFreqSignalData(durations=durations, pihalf_pulse=params.rx90)
 
     results = platform.execute(
         [sequence],
