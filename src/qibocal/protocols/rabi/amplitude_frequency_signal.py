@@ -42,10 +42,10 @@ class RabiAmplitudeFrequencySignalParameters(Parameters):
     """Maximum frequency as an offset."""
     step_freq: int
     """Frequency to use as step for the scan."""
-    pulse_length: Optional[float] = None
-    """RX pulse duration [ns]."""
     rx90: bool = False
     """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
+    pulse_length: Optional[float] = None
+    """RX pulse duration [ns]."""
 
 
 @dataclass
@@ -71,14 +71,14 @@ RabiAmpFreqSignalType = np.dtype(
 class RabiAmplitudeFreqSignalData(Data):
     """RabiAmplitudeFreqSignal data acquisition."""
 
+    pihalf_pulse: bool
+    """Pi or Pi_half calibration"""
     durations: dict[QubitId, float] = field(default_factory=dict)
     """Pulse durations provided by the user."""
     data: dict[QubitId, npt.NDArray[RabiAmpFreqSignalType]] = field(
         default_factory=dict
     )
     """Raw data acquired."""
-    pihalf_pulse: bool
-    """Pi or Pi_half calibration"""
 
     def register_qubit(self, qubit, freq, amp, signal, phase):
         """Store output for single qubit."""
