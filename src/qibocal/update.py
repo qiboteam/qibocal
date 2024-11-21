@@ -67,14 +67,19 @@ def drive_amplitude(
 
 
 def drive_duration(
-    duration: Union[int, tuple, list], platform: Platform, qubit: QubitId
+    duration: Union[int, tuple, list], pi_half: bool, platform: Platform, qubit: QubitId
 ):
     """Update drive duration value in platform for specific qubit."""
     if isinstance(duration, Iterable):
         duration = duration[0]
-    platform.update(
-        {f"native_gates.single_qubit.{qubit}.RX.0.1.duration": int(duration)}
-    )
+    if pi_half:
+        platform.update(
+            {f"native_gates.single_qubit.{qubit}.RX90.0.1.duration": int(duration)}
+        )
+    else:
+        platform.update(
+            {f"native_gates.single_qubit.{qubit}.RX.0.1.duration": int(duration)}
+        )
 
 
 def crosstalk_matrix(

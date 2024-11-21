@@ -168,7 +168,9 @@ def _update(
     update.drive_amplitude(
         results.amplitude[target], results.pihalf_pulse, platform, target
     )
-    update.drive_duration(results.length[target], platform, target)
+    update.drive_duration(
+        results.length[target], results.pihalf_pulse, platform, target
+    )
 
 
 rabi_amplitude_signal = Routine(_acquisition, _fit, _plot, _update)

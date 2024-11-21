@@ -301,7 +301,9 @@ def _update(
     platform: CalibrationPlatform,
     target: QubitId,
 ):
-    update.drive_duration(results.length[target], platform, target)
+    update.drive_duration(
+        results.length[target], results.pihalf_pulse, platform, target
+    )
     update.drive_amplitude(
         results.amplitude[target], results.pihalf_pulse, platform, target
     )

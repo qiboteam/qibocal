@@ -314,7 +314,9 @@ def _update(
     update.drive_amplitude(
         results.amplitude[target], results.pihalf_pulse, platform, target
     )
-    update.drive_duration(results.length[target], platform, target)
+    update.drive_duration(
+        results.length[target], results.pihalf_pulse, platform, target
+    )
     update.drive_frequency(results.frequency[target], platform, target)
 
 
