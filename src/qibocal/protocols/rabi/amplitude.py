@@ -67,7 +67,6 @@ def _acquisition(
     )
 
     data = RabiAmplitudeData(durations=durations, pihalf_pulse=params.rx90)
-    data.pihalf_pulse = params.rx90
 
     # sweep the parameter
     results = platform.execute(
