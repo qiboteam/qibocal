@@ -44,7 +44,7 @@ class RabiAmplitudeFrequencySignalParameters(Parameters):
     """Frequency to use as step for the scan."""
     pulse_length: Optional[float] = None
     """RX pulse duration [ns]."""
-    pihalf_pulse: Optional[bool] = True
+    rx90: Optional[bool] = True
     """Calibration of native pihalf pulse, if false calibrates pi pulse"""
 
 
@@ -131,7 +131,7 @@ def _acquisition(
     )
 
     data = RabiAmplitudeFreqSignalData(durations=durations)
-    data.pihalf_pulse = params.pihalf_pulse
+    data.pihalf_pulse = params.rx90
 
     results = platform.execute(
         [sequence],

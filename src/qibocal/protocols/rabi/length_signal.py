@@ -98,7 +98,7 @@ def _acquisition(
         )
 
     data = RabiLengthSignalData(amplitudes=amplitudes)
-    data.pihalf_pulse = params.pihalf_pulse
+    data.pihalf_pulse = params.rx90
 
     # execute the sweep
     results = platform.execute(

@@ -110,6 +110,7 @@ def _acquisition(
         )
 
     data = RabiLengthFreqData(amplitudes=amplitudes)
+    data.pihalf_pulse = params.rx90
 
     results = platform.execute(
         [sequence],
