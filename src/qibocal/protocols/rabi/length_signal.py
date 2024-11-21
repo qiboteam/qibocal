@@ -171,7 +171,9 @@ def _update(
     update.drive_duration(
         results.length[target], results.pihalf_pulse, platform, target
     )
-    update.drive_amplitude(results.amplitude[target], platform, target)
+    update.drive_amplitude(
+        results.amplitude[target], results.pihalf_pulse, platform, target
+    )
 
 
 def _plot(data: RabiLengthSignalData, fit: RabiLengthSignalResults, target: QubitId):
