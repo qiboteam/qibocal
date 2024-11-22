@@ -84,7 +84,10 @@ def _acquisition(
         pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
-    data = RabiAmplitudeEFData(durations=durations, rx90=params.rx90)
+    if params.rx90:
+        raise ValueError("Use RX90 = False")
+
+    data = RabiAmplitudeEFData(durations=durations, rx90=False)
 
     # sweep the parameter
     results = platform.execute(
