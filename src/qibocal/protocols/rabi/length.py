@@ -31,7 +31,7 @@ class RabiLengthParameters(Parameters):
     """Step pi pulse duration [ns]."""
     pulse_amplitude: Optional[float] = None
     """Pi pulse amplitude. Same for all qubits."""
-    pihalf_pulse: bool = False
+    rx90: bool = False
     """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
     interpolated_sweeper: bool = False
     """Use real-time interpolation if supported by instruments."""
@@ -43,7 +43,7 @@ class RabiLengthParameters(Parameters):
 class RabiLengthResults(RabiLengthSignalResults):
     """RabiLength outputs."""
 
-    pihalf_pulse: bool
+    rx90: bool
     """Pi or Pi_half calibration"""
     chi2: dict[QubitId, list[float]] = field(default_factory=dict)
 
@@ -92,7 +92,7 @@ def _acquisition(
             pulses=[qd_pulses[q] for q in targets] + [delays[q] for q in targets],
         )
 
-    data = RabiLengthData(amplitudes=amplitudes, pihalf_pulse=params.rx90)
+    data = RabiLengthData(amplitudes=amplitudes, rx90=params.rx90)
 
     # execute the sweep
     results = platform.execute(
@@ -161,18 +161,12 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
-    return RabiLengthResults(
-        durations, amplitudes, fitted_parameters, data.pihalf_pulse, chi2
-    )
+    return RabiLengthResults(durations, amplitudes, fitted_parameters, data.rx90, chi2)
 
 
 def _update(results: RabiLengthResults, platform: CalibrationPlatform, target: QubitId):
-    update.drive_duration(
-        results.length[target], results.pihalf_pulse, platform, target
-    )
-    update.drive_amplitude(
-        results.amplitude[target], results.pihalf_pulse, platform, target
-    )
+    update.drive_duration(results.length[target], results.rx90, platform, target)
+    update.drive_amplitude(results.amplitude[target], results.rx90, platform, target)
 
 
 def _plot(data: RabiLengthData, fit: RabiLengthResults, target: QubitId):

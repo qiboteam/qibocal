@@ -1,0 +1,15 @@
+platform: dummy
+
+targets: [1]
+
+actions:
+
+- id: Rabi length
+  operation: rabi_length_signal
+  parameters:
+    pulse_duration_start: 20
+    pulse_duration_end: 100
+    pulse_duration_step: 0.2
+    pulse_amplitude: 0.1
+    nshots: 3000
+    relaxation_time: 50000

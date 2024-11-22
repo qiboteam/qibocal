@@ -33,7 +33,7 @@ class RabiLengthFrequencyParameters(RabiLengthFrequencySignalParameters):
 class RabiLengthFrequencyResults(RabiLengthFrequencySignalResults):
     """RabiLengthFrequency outputs."""
 
-    pihalf_pulse: bool
+    rx90: bool
     """Pi or Pi_half calibration"""
     chi2: dict[QubitId, list[float]] = field(default_factory=dict)
 
@@ -53,7 +53,7 @@ RabiLenFreqType = np.dtype(
 class RabiLengthFreqData(RabiLengthFreqSignalData):
     """RabiLengthFreq data acquisition."""
 
-    pihalf_pulse: bool
+    rx90: bool
     """Pi or Pi_half calibration"""
 
     data: dict[QubitId, npt.NDArray[RabiLenFreqType]] = field(default_factory=dict)
@@ -114,7 +114,7 @@ def _acquisition(
             channels=[channel],
         )
 
-    data = RabiLengthFreqData(amplitudes=amplitudes, pihalf_pulse=params.rx90)
+    data = RabiLengthFreqData(amplitudes=amplitudes, rx90=params.rx90)
 
     results = platform.execute(
         [sequence],

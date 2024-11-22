@@ -43,7 +43,7 @@ class RabiLengthSignalResults(Results):
     """Pi pulse amplitude. Same for all qubits."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
-    pihalf_pulse: bool
+    rx90: bool
     """Pi or Pi_half calibration"""
 
 
@@ -57,7 +57,7 @@ RabiLenSignalType = np.dtype(
 class RabiLengthSignalData(Data):
     """RabiLength acquisition outputs."""
 
-    pihalf_pulse: bool
+    rx90: bool
     """Pi or Pi_half calibration"""
     amplitudes: dict[QubitId, float] = field(default_factory=dict)
     """Pulse durations provided by the user."""
@@ -77,7 +77,7 @@ def _acquisition(
     """
 
     sequence, qd_pulses, delays, ro_pulses, amplitudes = utils.sequence_length(
-        targets, params, platform, params.rx90
+        targets, params, platform, params.rx90, use_align=params.interpolated_sweeper
     )
     sweep_range = (
         params.pulse_duration_start,
@@ -97,9 +97,8 @@ def _acquisition(
             pulses=[qd_pulses[q] for q in targets] + [delays[q] for q in targets],
         )
 
-    data = RabiLengthSignalData(amplitudes=amplitudes, pihalf_pulse=params.rx90)
+    data = RabiLengthSignalData(amplitudes=amplitudes, rx90=params.rx90)
 
-    # execute the sweep
     results = platform.execute(
         [sequence],
         [[sweeper]],
@@ -160,19 +159,15 @@ def _fit(data: RabiLengthSignalData) -> RabiLengthSignalResults:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
     return RabiLengthSignalResults(
-        durations, data.amplitudes, fitted_parameters, data.pihalf_pulse
+        durations, data.amplitudes, fitted_parameters, data.rx90
     )
 
 
 def _update(
     results: RabiLengthSignalResults, platform: CalibrationPlatform, target: QubitId
 ):
-    update.drive_duration(
-        results.length[target], results.pihalf_pulse, platform, target
-    )
-    update.drive_amplitude(
-        results.amplitude[target], results.pihalf_pulse, platform, target
-    )
+    update.drive_duration(results.length[target], results.rx90, platform, target)
+    update.drive_amplitude(results.amplitude[target], results.rx90, platform, target)
 
 
 def _plot(data: RabiLengthSignalData, fit: RabiLengthSignalResults, target: QubitId):

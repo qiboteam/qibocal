@@ -49,7 +49,7 @@ class RabiLengthFrequencySignalParameters(Parameters):
 class RabiLengthFrequencySignalResults(RabiLengthSignalResults):
     """RabiLengthFrequency outputs."""
 
-    pihalf_pulse: bool
+    rx90: bool
     """Pi or Pi_half calibration"""
     frequency: dict[QubitId, Union[float, list[float]]]
     """Drive frequency for each qubit."""
@@ -70,7 +70,7 @@ RabiLenFreqSignalType = np.dtype(
 class RabiLengthFreqSignalData(Data):
     """RabiLengthFreqSignal data acquisition."""
 
-    pihalf_pulse: bool
+    rx90: bool
     """Pi or Pi_half calibration"""
     amplitudes: dict[QubitId, float] = field(default_factory=dict)
     """Pulse amplitudes provided by the user."""
@@ -142,7 +142,7 @@ def _acquisition(
             channels=[channel],
         )
 
-    data = RabiLengthFreqSignalData(amplitudes=amplitudes, pihalf_pulse=params.rx90)
+    data = RabiLengthFreqSignalData(amplitudes=amplitudes, rx90=params.rx90)
 
     results = platform.execute(
         [sequence],
@@ -213,7 +213,7 @@ def _fit(data: RabiLengthFreqSignalData) -> RabiLengthFrequencySignalResults:
         amplitude=data.amplitudes,
         fitted_parameters=fitted_parameters,
         frequency=fitted_frequencies,
-        pihalf_pulse=data.pihalf_pulse,
+        rx90=data.rx90,
     )
 
 
@@ -312,12 +312,8 @@ def _update(
     platform: CalibrationPlatform,
     target: QubitId,
 ):
-    update.drive_amplitude(
-        results.amplitude[target], results.pihalf_pulse, platform, target
-    )
-    update.drive_duration(
-        results.length[target], results.pihalf_pulse, platform, target
-    )
+    update.drive_amplitude(results.amplitude[target], results.rx90, platform, target)
+    update.drive_duration(results.length[target], results.rx90, platform, target)
     update.drive_frequency(results.frequency[target], platform, target)
 
 

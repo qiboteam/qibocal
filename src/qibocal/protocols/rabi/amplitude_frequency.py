@@ -57,7 +57,7 @@ RabiAmpFreqType = np.dtype(
 class RabiAmplitudeFreqData(RabiAmplitudeFreqSignalData):
     """RabiAmplitudeFreq data acquisition."""
 
-    pihalf_pulse: bool
+    rx90: bool
     """Pi or Pi_half calibration"""
 
     data: dict[QubitId, npt.NDArray[RabiAmpFreqType]] = field(default_factory=dict)
@@ -104,7 +104,7 @@ def _acquisition(
         pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
-    data = RabiAmplitudeFreqData(durations=durations, pihalf_pulse=params.rx90)
+    data = RabiAmplitudeFreqData(durations=durations, rx90=params.rx90)
 
     results = platform.execute(
         [sequence],
@@ -189,7 +189,7 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         fitted_parameters=fitted_parameters,
         frequency=fitted_frequencies,
         chi2=chi2,
-        pihalf_pulse=data.pihalf_pulse,
+        rx90=data.rx90,
     )
 
 

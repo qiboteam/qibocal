@@ -37,7 +37,7 @@ RabiAmpType = np.dtype(
 class RabiAmplitudeData(Data):
     """RabiAmplitude data acquisition."""
 
-    pihalf_pulse: bool
+    rx90: bool
     """Pi or Pi_half calibration"""
     durations: dict[QubitId, float] = field(default_factory=dict)
     """Pulse durations provided by the user."""
@@ -66,7 +66,7 @@ def _acquisition(
         pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
-    data = RabiAmplitudeData(durations=durations, pihalf_pulse=params.rx90)
+    data = RabiAmplitudeData(durations=durations, rx90=params.rx90)
 
     # sweep the parameter
     results = platform.execute(
@@ -131,7 +131,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
     return RabiAmplitudeResults(
-        pi_pulse_amplitudes, durations, fitted_parameters, data.pihalf_pulse, chi2
+        pi_pulse_amplitudes, durations, fitted_parameters, data.rx90, chi2
     )
 
 
@@ -143,12 +143,8 @@ def _plot(data: RabiAmplitudeData, target: QubitId, fit: RabiAmplitudeResults = 
 def _update(
     results: RabiAmplitudeResults, platform: CalibrationPlatform, target: QubitId
 ):
-    update.drive_amplitude(
-        results.amplitude[target], results.pihalf_pulse, platform, target
-    )
-    update.drive_duration(
-        results.length[target], results.pihalf_pulse, platform, target
-    )
+    update.drive_amplitude(results.amplitude[target], results.rx90, platform, target)
+    update.drive_duration(results.length[target], results.rx90, platform, target)
 
 
 rabi_amplitude = Routine(_acquisition, _fit, _plot, _update)

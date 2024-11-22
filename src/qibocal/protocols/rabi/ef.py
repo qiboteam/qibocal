@@ -84,7 +84,7 @@ def _acquisition(
         pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
-    data = RabiAmplitudeEFData(durations=durations, pihalf_pulse=params.rx90)
+    data = RabiAmplitudeEFData(durations=durations, rx90=params.rx90)
 
     # sweep the parameter
     results = platform.execute(
@@ -123,12 +123,8 @@ def _update(
     results: RabiAmplitudeEFResults, platform: CalibrationPlatform, target: QubitId
 ):
     """Update RX2 amplitude_signal"""
-    update.drive_12_amplitude(
-        results.amplitude[target], results.pihalf_pulse, platform, target
-    )
-    update.drive_12_duration(
-        results.length[target], results.pihalf_pulse, platform, target
-    )
+    update.drive_12_amplitude(results.amplitude[target], results.rx90, platform, target)
+    update.drive_12_duration(results.length[target], results.rx90, platform, target)
 
 
 rabi_amplitude_ef = Routine(_acquisition, amplitude_signal._fit, _plot, _update)

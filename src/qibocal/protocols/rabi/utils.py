@@ -226,7 +226,7 @@ def sequence_amplitude(
     targets: list[QubitId],
     params: Parameters,
     platform: Platform,
-    pulse: bool,  # if true calibrate pi_half pulse
+    rx90: bool,
 ) -> tuple[PulseSequence, dict, dict, dict]:
     """Return sequence for rabi amplitude."""
 
@@ -246,7 +246,7 @@ def sequence_amplitude(
         qd_pulses[q] = qd_pulse
         ro_pulses[q] = ro_pulse
 
-        if pulse:
+        if rx90:
             sequence.append((qd_channel, qd_pulses[q]))
 
         sequence.append((qd_channel, qd_pulses[q]))
@@ -259,7 +259,7 @@ def sequence_length(
     targets: list[QubitId],
     params: Parameters,
     platform: Platform,
-    pulse: bool,  # if true calibrate pi_half pulse
+    rx90: bool,
     use_align: bool = True,
 ) -> tuple[PulseSequence, dict, dict, dict]:
     """Return sequence for rabi length."""
@@ -281,7 +281,7 @@ def sequence_length(
         ro_pulses[q] = ro_pulse
         qd_pulses[q] = qd_pulse
 
-        if pulse:
+        if rx90:
             sequence.append((qd_channel, qd_pulse))
 
         sequence.append((qd_channel, qd_pulse))
