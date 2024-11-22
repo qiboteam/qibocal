@@ -260,7 +260,7 @@ def sequence_length(
     params: Parameters,
     platform: Platform,
     pulse: bool,  # if true calibrate pi_half pulse
-    use_align: bool = False,
+    use_align: bool = True,
 ) -> tuple[PulseSequence, dict, dict, dict]:
     """Return sequence for rabi length."""
 
@@ -278,8 +278,8 @@ def sequence_length(
             qd_pulse = replace(qd_pulse, amplitude=params.pulse_amplitude)
 
         amplitudes[q] = qd_pulse.amplitude
-        qd_pulses[q] = qd_pulse
         ro_pulses[q] = ro_pulse
+        qd_pulses[q] = qd_pulse
 
         if pulse:
             sequence.append((qd_channel, qd_pulse))
