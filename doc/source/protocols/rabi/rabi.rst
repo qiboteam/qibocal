@@ -108,7 +108,7 @@ It follows an example runcard and plot for the signal exepriment
 
 In all the previous examples we run Rabi experiments for calibrating the amplitude (duration) of the drive pulse
 to excite the qubit from the ground state up to state :math:`\ket{1}`.
-All the prievious example runcard can be modified to calibrate the amplitude (duration) of the drive pulse
+All these example runcards can be modified to calibrate the amplitude (duration) of the drive pulse
 to excite the qubit from the ground state up to state :math:`\frac{\ket{0}-i\ket{1}}{\sqrt{2}}` by simply setting the `rx90` parameter to `True`.
 
 In the following we show an example runcard
@@ -119,16 +119,15 @@ In the following we show an example runcard
     - id: Rabi signal
       operation: rabi_amplitude_signal
       parameters:
-        min_amp: 0.2
-        max_amp: 1.
-        step_amp: 0.01
+        min_amp: 0.01
+        max_amp: 0.16
+        step_amp: 0.002
         pulse_length: 40
-        nshots: 3000
+        nshots: 1024
         relaxation_time: 50000
-	RX90: False
+	rx90: True
 
-..
-   _Remember image and modify runcard!
+.. image:: rabi_amplitude_rx90
 
 Requirements
 ^^^^^^^^^^^^
