@@ -33,8 +33,6 @@ class RabiLengthFrequencyParameters(RabiLengthFrequencySignalParameters):
 class RabiLengthFrequencyResults(RabiLengthFrequencySignalResults):
     """RabiLengthFrequency outputs."""
 
-    rx90: bool
-    """Pi or Pi_half calibration"""
     chi2: dict[QubitId, list[float]] = field(default_factory=dict)
 
 
