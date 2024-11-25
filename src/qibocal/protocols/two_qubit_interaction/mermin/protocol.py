@@ -39,7 +39,7 @@ MerminType = np.dtype(
     [
         ("theta", float),
         ("basis", STRING_TYPE),
-        ("state", STRING_TYPE),
+        ("state", int),
         ("frequency", int),
     ]
 )
@@ -117,7 +117,7 @@ def _acquisition(
                         dict(
                             theta=np.array([theta]),
                             basis=np.array([basis]),
-                            state=np.array([str(format(state, f"0{len(qubits)}b"))]),
+                            state=np.array([state]),
                             frequency=np.array([frequency]),
                         ),
                     )
@@ -133,14 +133,18 @@ def _fit(data: MerminData) -> MerminResults:
     for qubits in targets:
         mermin_polynomial = get_mermin_polynomial(len(qubits))
         mermin_coefficients = get_mermin_coefficients(mermin_polynomial)
+
         for theta in data.thetas:
             qubit_data = data.data[qubits]
             outputs = []
             mitigated_outputs = []
             for base in basis:
-
+                frequencies = np.zeros(2 ** len(qubits))
                 data_filter = (qubit_data.basis == base) & (qubit_data.theta == theta)
+                filtered_data = qubit_data[data_filter]
                 state_freq = qubit_data[data_filter].frequency
+                for state, freq in zip(filtered_data.state, filtered_data.frequency):
+                    frequencies[state] = freq
 
                 outputs.append(
                     {
@@ -152,7 +156,7 @@ def _fit(data: MerminData) -> MerminResults:
                 if data.mitigation_matrix:
                     mitigated_output = np.dot(
                         data.mitigation_matrix[qubits],
-                        state_freq,
+                        frequencies,
                     )
                     mitigated_outputs.append(
                         {
