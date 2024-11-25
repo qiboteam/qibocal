@@ -17,6 +17,9 @@ from qibolab import (
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 
+INITIAL_DELAY = 100
+"""Initial delay for both drive and flux channels."""
+
 
 @dataclass
 class XYZTimingParameters(Parameters):
@@ -32,7 +35,6 @@ class XYZTimingParameters(Parameters):
     """Flux pulse amplitude."""
     flux_pulse_duration: int
     """Flux pulse amplitude."""
-    unrolling: bool = False
 
 
 @dataclass
@@ -62,7 +64,7 @@ class XYZTimingData(Data):
 
 def xyz_sequence(
     params: XYZTimingParameters, platform: Platform, delay: int, qubit: QubitId
-):
+) -> tuple[PulseSequence,]:
 
     qubit_sequence = PulseSequence()
     native = platform.natives.single_qubit[qubit]
@@ -76,21 +78,17 @@ def xyz_sequence(
     )
 
     my_delay = int(delay - (params.flux_pulse_duration - rx_pulse.duration) / 2)
-    if delay > 0:
-        pulse_delay = Delay(duration=my_delay)
-        channel = flux_channel
-        ro_delay = Delay(duration=my_delay + flux_pulse.duration)
-
-    else:
-        pulse_delay = Delay(duration=-my_delay)
-        ro_delay = Delay(duration=-my_delay + rx_pulse.duration)
-        channel = drive_channel
+    assert params.delay_min + 100 > 0, "Minimum delay allowed is 100."
     qubit_sequence.extend(
         [
-            (channel, pulse_delay),
+            (drive_channel, Delay(duration=INITIAL_DELAY)),
+            (flux_channel, Delay(duration=INITIAL_DELAY + my_delay)),
             (drive_channel, rx_pulse),
             (flux_channel, flux_pulse),
-            (ro_channel, ro_delay),
+            (
+                ro_channel,
+                Delay(duration=INITIAL_DELAY + my_delay + flux_pulse.duration),
+            ),
             (ro_channel, ro_pulse),
         ]
     )
@@ -122,16 +120,12 @@ def _acquisition(
             seq += xyz_sequence(params, platform, delay, qubit)
         sequences.append(seq)
 
-    results = (
-        platform.execute(sequences, **options)
-        if params.unrolling
-        else [platform.execute([sequence], **options) for sequence in sequences]
-    )
+    results = [platform.execute([sequence], **options) for sequence in sequences]
 
     for i, sequence in enumerate(sequences):
         for qubit in targets:
             ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
-            result = results if params.unrolling else results[i]
+            result = results[i]
             data.register_qubit(
                 XYZTimingType,
                 (qubit),
@@ -146,18 +140,7 @@ def _acquisition(
 
 def _fit(data: XYZTimingData) -> XYZTimingResults:
 
-    fitted_parameters = {}
-    detuning = {}
-    # for qubit in data.qubits:
-    #     qubit_data = data[qubit]
-    #     x = qubit_data.duration
-    #     y = qubit_data.prob_1
-
-    #     popt, _ = fitting(x, y)
-    #     fitted_parameters[qubit] = popt
-    #     detuning[qubit] = popt[2] / (2 * np.pi) * GHZ_TO_HZ
-
-    return XYZTimingResults(detuning=detuning, fitted_parameters=fitted_parameters)
+    return XYZTimingResults()
 
 
 def _plot(data: XYZTimingData, fit: XYZTimingResults, target: QubitId):
@@ -181,22 +164,6 @@ def _plot(data: XYZTimingData, fit: XYZTimingResults, target: QubitId):
             name="0",
         )
     )
-    # if fit is not None:
-    #     x = np.linspace(np.min(qubit_data.duration), np.max(qubit_data.duration), 100)
-    #     fig.add_trace(
-    #         go.Scatter(
-    #             x=x,
-    #             y=ramsey_fit(x, *fit.fitted_parameters[target]),
-    #             name="Fit",
-    #         )
-    #     )
-    #     fitting_report = table_html(
-    #         table_dict(
-    #             target,
-    #             ["Flux pulse amplitude", "Detuning [Hz]"],
-    #             [data.flux_pulse_amplitude, fit.detuning[target]],
-    #         )
-    #     )
 
     fig.update_layout(
         showlegend=True,
