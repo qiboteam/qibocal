@@ -84,8 +84,7 @@ def _acquisition(
         pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
-    if params.rx90:
-        raise ValueError("Use RX90 = False")
+    assert not params.rx90, "Rabi ef available only for RX pulses."
 
     data = RabiAmplitudeEFData(durations=durations, rx90=False)
 
