@@ -7,24 +7,18 @@ import plotly.express as px
 from qibo import gates
 from qibo.backends import GlobalBackend
 from qibo.models import Circuit
-from qibolab import ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
 from qibocal.config import log
 
-from .utils import calculate_frequencies
-
 
 @dataclass
 class ReadoutMitigationMatrixParameters(Parameters):
     """ReadoutMitigationMatrix matrix inputs."""
 
-    pulses: Optional[bool] = True
-    """Get readout mitigation matrix using pulses. If False gates will be used."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -37,10 +31,14 @@ class ReadoutMitigationMatrixResults(Results):
         field(default_factory=dict)
     )
     """Readout mitigation matrices (inverse of measurement matrix)."""
-    measurement_matrix: dict[tuple[QubitId, ...], npt.NDArray[np.float64]] = field(
-        default_factory=dict
-    )
-    """Matrix containing measurement matrices for each state."""
+
+
+ReadoutMitigationMatrixType = np.dtype(
+    [
+        ("state", int),
+        ("frequency", np.float64),
+    ]
+)
 
 
 @dataclass
@@ -53,40 +51,6 @@ class ReadoutMitigationMatrixData(Data):
     """Number of shots"""
     data: dict = field(default_factory=dict)
     """Raw data acquited."""
-
-    def add(self, qubits, state, freqs):
-        for result_state, freq in freqs.items():
-            self.data[
-                qubits
-                + (
-                    state,
-                    result_state,
-                )
-            ] = freq
-
-        for basis in [format(i, f"0{len(qubits)}b") for i in range(2 ** len(qubits))]:
-            if (
-                qubits
-                + (
-                    state,
-                    basis,
-                )
-                not in self.data
-            ):
-                self.data[
-                    qubits
-                    + (
-                        state,
-                        basis,
-                    )
-                ] = 0
-
-    def __getitem__(self, qubits):
-        return {
-            index: value
-            for index, value in self.data.items()
-            if qubits == list(index[: len(index) - 2])
-        }
 
 
 def _acquisition(
@@ -105,74 +69,51 @@ def _acquisition(
         nqubits = len(qubits)
         for i in range(2**nqubits):
             state = format(i, f"0{nqubits}b")
-            if params.pulses:
-                sequence = PulseSequence()
-                for q, bit in enumerate(state):
-                    if bit == "1":
-                        sequence.add(
-                            platform.create_RX_pulse(
-                                qubits[q], start=0, relative_phase=0
-                            )
-                        )
-                measurement_start = sequence.finish
-                for q in range(len(state)):
-                    MZ_pulse = platform.create_MZ_pulse(
-                        qubits[q], start=measurement_start
-                    )
-                    sequence.add(MZ_pulse)
-                results = platform.execute_pulse_sequence(
-                    sequence, ExecutionParameters(nshots=params.nshots)
+            c = Circuit(
+                nqubits,
+            )
+            for q, bit in enumerate(state):
+                if bit == "1":
+                    c.add(gates.X(q))
+            c.add(gates.M(*range(nqubits)))
+            _, results = execute_transpiled_circuit(
+                c, qubits, backend, nshots=params.nshots, transpiler=transpiler
+            )
+            frequencies = np.zeros(2 ** len(qubits))
+            for i, freq in results.frequencies().items():
+                frequencies[int(i, 2)] = freq
+            for freq in frequencies:
+                data.register_qubit(
+                    ReadoutMitigationMatrixType,
+                    (qubits),
+                    dict(
+                        state=np.array([int(state, 2)]),
+                        frequency=freq,
+                    ),
                 )
-                data.add(
-                    tuple(qubits), state, calculate_frequencies(results, tuple(qubits))
-                )
-            else:
-                c = Circuit(
-                    platform.nqubits,
-                    wire_names=[str(i) for i in range(platform.nqubits)],
-                )
-                for q, bit in enumerate(state):
-                    if bit == "1":
-                        c.add(gates.X(qubits[q]))
-                c.add(gates.M(*[qubits[i] for i in range(len(state))]))
-                _, results = execute_transpiled_circuit(
-                    c, qubit_map, backend, nshots=params.nshots, transpiler=transpiler
-                )
-                data.add(tuple(qubits), state, dict(results.frequencies()))
     return data
 
 
 def _fit(data: ReadoutMitigationMatrixData) -> ReadoutMitigationMatrixResults:
     """Post processing for readout mitigation matrix protocol."""
     readout_mitigation_matrix = {}
-    measurement_matrix = {}
-    for qubit in data.qubit_list:
-        qubit_data = data[qubit]
-        matrix = np.zeros((2 ** len(qubit), 2 ** len(qubit)))
-        computational_basis = [
-            format(i, f"0{len(qubit)}b") for i in range(2 ** len(qubit))
-        ]
-        for state in computational_basis:
-            column = np.zeros(2 ** len(qubit))
-            qubit_state_data = {
-                index: value
-                for index, value in qubit_data.items()
-                if index[-2] == state
-            }
-            for index, value in qubit_state_data.items():
-                column[(int(index[-1], 2))] = value / data.nshots
-            matrix[:, int(state, 2)] = np.flip(column)
-
-        measurement_matrix[tuple(qubit)] = matrix.tolist()
+    for qubits in data.qubit_list:
+        qubit_data = data.data[tuple(qubits)]
+        mitigation_matrix = []
+        for state in range(2 ** len(qubits)):
+            mitigation_matrix.append(qubit_data[qubit_data.state == state].frequency)
+        mitigation_matrix = np.vstack(mitigation_matrix) / data.nshots
         try:
-            readout_mitigation_matrix[tuple(qubit)] = np.linalg.inv(matrix).tolist()
+            readout_mitigation_matrix[tuple(qubits)] = np.linalg.inv(
+                mitigation_matrix
+            ).tolist()
         except np.linalg.LinAlgError as e:
             log.warning(f"ReadoutMitigationMatrix: the fitting was not succesful. {e}")
-
-    return ReadoutMitigationMatrixResults(
+    res = ReadoutMitigationMatrixResults(
         readout_mitigation_matrix=readout_mitigation_matrix,
-        measurement_matrix=measurement_matrix,
     )
+
+    return res
 
 
 def _plot(
@@ -187,12 +128,12 @@ def _plot(
         computational_basis = [
             format(i, f"0{len(target)}b") for i in range(2 ** len(target))
         ]
-        z = fit.measurement_matrix[tuple(target)]
-
+        measurement_matrix = np.linalg.inv(fit.readout_mitigation_matrix[tuple(target)])
+        z = measurement_matrix
         fig = px.imshow(
             z,
             x=computational_basis,
-            y=computational_basis[::-1],
+            y=computational_basis,
             text_auto=True,
             labels={
                 "x": "Prepeared States",

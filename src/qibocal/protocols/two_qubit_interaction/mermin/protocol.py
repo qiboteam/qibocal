@@ -20,6 +20,8 @@ from .utils import (
     get_readout_basis,
 )
 
+PLOT_PADDING = 0.2
+
 
 @dataclass
 class MerminParameters(Parameters):
@@ -87,9 +89,7 @@ def _acquisition(
     data = MerminData(thetas=thetas.tolist())
     if params.apply_error_mitigation:
         mitigation_data, _ = readout_mitigation_matrix.acquisition(
-            readout_mitigation_matrix.parameters_type.load(
-                dict(pulses=True, nshots=params.nshots)
-            ),
+            readout_mitigation_matrix.parameters_type.load(dict(nshots=params.nshots)),
             platform,
             targets,
         )
@@ -174,13 +174,14 @@ def _fit(data: MerminData) -> MerminResults:
 def _plot(data: MerminData, fit: MerminResults, target):
     """Plotting function for Mermin protocol."""
     figures = []
-    targets = data.targets
 
-    n_targets = len(targets)
-    classical_bound = 2 ** (n_targets // 2)
-    quantum_bound = 2 ** ((n_targets - 1) / 2) * (2 ** (n_targets // 2))
+    n_qubits = len(target)
+    classical_bound = 2 ** (n_qubits // 2)
+    quantum_bound = 2 ** ((n_qubits - 1) / 2) * (2 ** (n_qubits // 2))
 
-    fig = go.Figure(layout_yaxis_range=[-quantum_bound - 0.2, quantum_bound + 0.2])
+    fig = go.Figure(
+        layout_yaxis_range=[-quantum_bound - PLOT_PADDING, quantum_bound + PLOT_PADDING]
+    )
     if fit is not None:
         fig.add_trace(
             go.Scatter(
