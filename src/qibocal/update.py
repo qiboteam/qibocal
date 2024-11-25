@@ -55,24 +55,24 @@ def drive_frequency(
 
 
 def drive_amplitude(
-    amp: Union[float, tuple, list], pi_half: bool, platform: Platform, qubit: QubitId
+    amp: Union[float, tuple, list], rx90: bool, platform: Platform, qubit: QubitId
 ):
     """Update drive frequency value in platform for specific qubit."""
     if isinstance(amp, Iterable):
         amp = amp[0]
-    if pi_half:
+    if rx90:
         platform.update({f"native_gates.single_qubit.{qubit}.RX90.0.1.amplitude": amp})
     else:
         platform.update({f"native_gates.single_qubit.{qubit}.RX.0.1.amplitude": amp})
 
 
 def drive_duration(
-    duration: Union[int, tuple, list], pi_half: bool, platform: Platform, qubit: QubitId
+    duration: Union[int, tuple, list], rx90: bool, platform: Platform, qubit: QubitId
 ):
     """Update drive duration value in platform for specific qubit."""
     if isinstance(duration, Iterable):
         duration = duration[0]
-    if pi_half:
+    if rx90:
         platform.update(
             {f"native_gates.single_qubit.{qubit}.RX90.0.1.duration": int(duration)}
         )
