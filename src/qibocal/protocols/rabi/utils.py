@@ -260,7 +260,7 @@ def sequence_length(
     params: Parameters,
     platform: Platform,
     rx90: bool,
-    use_align: bool = True,
+    use_align: bool = False,
 ) -> tuple[PulseSequence, dict, dict, dict]:
     """Return sequence for rabi length."""
 
