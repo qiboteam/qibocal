@@ -125,8 +125,8 @@ def _update(
     results: RabiAmplitudeEFResults, platform: CalibrationPlatform, target: QubitId
 ):
     """Update RX2 amplitude_signal"""
-    update.drive_12_amplitude(results.amplitude[target], results.rx90, platform, target)
-    update.drive_12_duration(results.length[target], results.rx90, platform, target)
+    update.drive_12_amplitude(results.amplitude[target], platform, target)
+    update.drive_12_duration(results.length[target], platform, target)
 
 
 rabi_amplitude_ef = Routine(_acquisition, amplitude_signal._fit, _plot, _update)
