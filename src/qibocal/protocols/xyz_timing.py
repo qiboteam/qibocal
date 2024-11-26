@@ -17,9 +17,6 @@ from qibolab import (
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 
-INITIAL_DELAY = 100
-"""Initial delay for both drive and flux channels."""
-
 
 @dataclass
 class XYZTimingParameters(Parameters):
@@ -51,6 +48,11 @@ XYZTimingType = np.dtype([("duration", int), ("prob_1", np.float64)])
 """Custom dtype for XYZTiming."""
 
 
+def _convert(delay: int, flux_duration: int, drive_duration: int):
+    """Convert delay between center of pulses into delay for start of pulses."""
+    return int(delay - (flux_duration - drive_duration) / 2)
+
+
 @dataclass
 class XYZTimingData(Data):
     """XYZTiming acquisition outputs."""
@@ -77,17 +79,24 @@ def xyz_sequence(
         envelope=Rectangular(),
     )
 
-    my_delay = int(delay - (params.flux_pulse_duration - rx_pulse.duration) / 2)
-    assert params.delay_min + 100 > 0, "Minimum delay allowed is 100."
+    delay_between_starts = _convert(
+        delay, params.flux_pulse_duration, rx_pulse.duration
+    )
+    delay_between_starts_min = _convert(
+        params.delay_min, params.flux_pulse_duration, rx_pulse.duration
+    )
+    initial_delay = -delay_between_starts_min if delay_between_starts_min < 0 else 0
     qubit_sequence.extend(
         [
-            (drive_channel, Delay(duration=INITIAL_DELAY)),
-            (flux_channel, Delay(duration=INITIAL_DELAY + my_delay)),
+            (drive_channel, Delay(duration=initial_delay)),
+            (flux_channel, Delay(duration=initial_delay + delay_between_starts)),
             (drive_channel, rx_pulse),
             (flux_channel, flux_pulse),
             (
                 ro_channel,
-                Delay(duration=INITIAL_DELAY + my_delay + flux_pulse.duration),
+                Delay(
+                    duration=initial_delay + delay_between_starts + flux_pulse.duration
+                ),
             ),
             (ro_channel, ro_pulse),
         ]
