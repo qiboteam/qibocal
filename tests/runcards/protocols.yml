@@ -685,6 +685,15 @@ actions:
       native: CZ
       parking: True
 
+  - id: chsh_pulses
+    operation: chsh_pulses
+    targets: [[0, 2], [2, 3]]
+    parameters:
+      bell_states: [0]
+      ntheta: 20
+      native: True
+      apply_error_mitigation: True
+
   - id: readout_mitigation_matrix pulses
     operation: readout_mitigation_matrix
     targets: [[0,1,2],[1,2]]
