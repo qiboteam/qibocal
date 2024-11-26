@@ -197,6 +197,7 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
         fitted_parameters=fitted_parameters,
         frequency=fitted_frequencies,
         chi2=chi2,
+        rx90=data.rx90,
     )
 
 
