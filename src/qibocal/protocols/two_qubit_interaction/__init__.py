@@ -1,4 +1,5 @@
 from .chevron import chevron, chevron_signal
+from .chsh import chsh_pulses
 from .optimize import optimize_two_qubit_gate
 from .virtual_z_phases import correct_virtual_z_phases
 
