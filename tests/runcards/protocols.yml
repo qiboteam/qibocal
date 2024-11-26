@@ -188,7 +188,7 @@ actions:
       pulse_length: 30
       nshots: 1024
       rx90: True
-      
+
   - id: rabi amplitude frequency
     operation: rabi_amplitude_frequency
     parameters:
@@ -213,7 +213,7 @@ actions:
       pulse_length: 30
       nshots: 1024
       rx90: True
-      
+
   - id: rabi amplitude frequency_signal
     operation: rabi_amplitude_frequency_signal
     parameters:
@@ -238,7 +238,7 @@ actions:
       pulse_length: 30
       nshots: 1024
       rx90: True
-      
+
   - id: rabi_ef
     operation: rabi_amplitude_ef
     #FIXME: add RX12 for qubit 4
@@ -268,7 +268,7 @@ actions:
       pulse_amplitude: 0.5
       nshots: 1024
       rx90: True
-      
+
   - id: rabi length signal
     operation: rabi_length_signal
     parameters:
