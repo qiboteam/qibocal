@@ -96,7 +96,7 @@ def _acquisition(
 
         mitigation_results, _ = readout_mitigation_matrix.fit(mitigation_data)
         data.mitigation_matrix = mitigation_results.readout_mitigation_matrix
-
+    platform.connect()
     for qubits in targets:
         mermin_polynomial = get_mermin_polynomial(len(qubits))
         readout_basis = get_readout_basis(mermin_polynomial)
