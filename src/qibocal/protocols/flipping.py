@@ -358,7 +358,7 @@ def _plot(data: FlippingData, target: QubitId, fit: FlippingResults = None):
 
 
 def _update(results: FlippingResults, platform: CalibrationPlatform, qubit: QubitId):
-    update.drive_amplitude(results.amplitude[qubit], rx90 = False, platform, qubit)
+    update.drive_amplitude(results.amplitude[qubit], platform, qubit, rx90=False)
 
 
 flipping = Routine(_acquisition, _fit, _plot, _update)
