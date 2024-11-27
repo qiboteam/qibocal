@@ -149,7 +149,7 @@ def _acquisition(
         pulse_amplitudes={
             qubit: (
                 platform.natives.single_qubit[qubit].RX90[0][1].amplitude
-                if rx90
+                if params.rx90
                 else platform.natives.single_qubit[qubit].RX[0][1].amplitude
             )
             for qubit in targets
