@@ -152,7 +152,7 @@ def _acquisition(
                 if rx90
                 else platform.natives.single_qubit[qubit].RX[0][1].amplitude
             )
-            for qubit in targets
+            for qubit in targets,
         }
         rx90=params.rx90,
     )
