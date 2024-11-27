@@ -130,14 +130,13 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         ]  # Argmax = Returns the indices of the maximum values along an axis.
         guess_sigma = abs(frequencies[np.argmin(voltages)] - guess_center)
         guess_amp = (np.max(voltages) - guess_offset) * guess_sigma * np.pi
-
     else:
         guess_center = frequencies[
             np.argmin(voltages)
         ]  # Argmin = Returns the indices of the minimum values along an axis.
         guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
         guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
-        guess_amp_slope = (voltages.max()-voltages.min())/(frequencies.max()-frequencies.min())
+    guess_amp_slope = (voltages[frequencies.argmax()]-voltages[frequencies.argmin()])/(frequencies.max()-frequencies.min())
 
     initial_parameters = [
         guess_amp,
@@ -146,6 +145,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         guess_offset,
         guess_amp_slope,
     ]
+
     # fit the model with the data and guessed parameters
     try:
         if hasattr(data, "error_signal"):
