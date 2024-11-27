@@ -146,7 +146,7 @@ def _acquisition(
     data = FlippingData(
         resonator_type=platform.resonator_type,
         delta_amplitude=params.delta_amplitude,
-        pulse_amplitudes = {
+        pulse_amplitudes={
             qubit: (
                 platform.natives.single_qubit[qubit].RX90[0][1].amplitude
                 if rx90
