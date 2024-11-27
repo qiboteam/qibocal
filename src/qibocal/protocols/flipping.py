@@ -147,11 +147,11 @@ def _acquisition(
         resonator_type=platform.resonator_type,
         delta_amplitude=params.delta_amplitude,
         pulse_amplitudes={
-            for qubit in targets:
-                if rx90:
-                    qubit: platform.natives.single_qubit[qubit].RX90[0][1].amplitude
-                else:
-                    qubit: platform.natives.single_qubit[qubit].RX[0][1].amplitude
+            if rx90:
+                qubit: platform.natives.single_qubit[qubit].RX90[0][1].amplitude
+            else:
+                qubit: platform.natives.single_qubit[qubit].RX[0][1].amplitude
+            for qubit in targets
         },
         rx90=params.rx90,
     )
