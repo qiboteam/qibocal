@@ -4,7 +4,7 @@ from copy import deepcopy
 
 import pytest
 from pytest import approx
-from qibo.backends import GlobalBackend, set_backend
+from qibo.backends import get_backend, set_backend
 
 from qibocal import protocols
 from qibocal.auto.mode import AUTOCALIBRATION, ExecutionMode
@@ -20,7 +20,7 @@ from qibocal.protocols.readout_mitigation_matrix import (
 @pytest.fixture(scope="module")
 def platform():
     set_backend(backend="qibolab", platform="dummy")
-    return GlobalBackend().platform
+    return get_backend().platform
 
 
 TARGETS = [0, 1, 2]
@@ -107,7 +107,7 @@ def test_update_argument(platform, global_update, local_update, tmp_path):
     NEW_CARD = modify_card(
         UPDATE_CARD, local_update=local_update, global_update=global_update
     )
-    # platform = deepcopy(GlobalBackend().platform)
+    # platform = deepcopy(get_backend().platform)
     old_readout_frequency = platform.qubits[0].readout_frequency
     old_iq_angle = platform.qubits[1].iq_angle
     Runcard.load(NEW_CARD).run(
