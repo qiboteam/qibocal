@@ -37,7 +37,7 @@ The expected output is the following:
 
 .. image:: flipping.png
 
-If the same experiment is run setting the `rx90: True` the flipping is performed to calibrate the amplitude of the :math:`R_x(\pi/2)` rotation  
+If the same experiment is run setting the `rx90: True` the flipping is performed to calibrate the amplitude of the :math:`R_x(\pi/2)` rotation
 
 .. code-block:: yaml
 
