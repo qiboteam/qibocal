@@ -95,10 +95,10 @@ class FlippingResults(Results):
     """Difference in amplitude between detuned value and fit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
-    chi2: dict[QubitId, list[float]] = field(default_factory=dict)
-    """Chi squared estimate mean value and error. """
     rx90: bool
     """Pi or Pi_half calibration"""
+    chi2: dict[QubitId, list[float]] = field(default_factory=dict)
+    """Chi squared estimate mean value and error. """
 
 
 FlippingType = np.dtype(
@@ -116,10 +116,10 @@ class FlippingData(Data):
     """Amplitude detuning."""
     pulse_amplitudes: dict[QubitId, float]
     """Pulse amplitudes for each qubit."""
-    data: dict[QubitId, npt.NDArray[FlippingType]] = field(default_factory=dict)
-    """Raw data acquired."""
     rx90: bool
     """Pi or Pi_half calibration"""
+    data: dict[QubitId, npt.NDArray[FlippingType]] = field(default_factory=dict)
+    """Raw data acquired."""
 
 
 def _acquisition(
@@ -303,8 +303,8 @@ def _fit(data: FlippingData) -> FlippingResults:
         delta_amplitude,
         delta_amplitude_detuned,
         fitted_parameters,
+        data.rx90,
         chi2,
-        rx90=data.rx90,
     )
 
 
