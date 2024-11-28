@@ -7,7 +7,7 @@ from typing import Callable, Iterable, Optional, Tuple, Union
 import numpy as np
 import numpy.typing as npt
 from qibo import gates
-from qibo.backends import GlobalBackend
+from qibo.backends import get_backend
 from qibo.config import raise_error
 from qibo.models import Circuit
 
@@ -351,7 +351,7 @@ def setup(
         tuple: A tuple containing the experiment data, noise model, and backend.
     """
 
-    backend = GlobalBackend()
+    backend = get_backend()
     backend.platform = platform
     # For simulations, a noise model can be added.
     noise_model = None
