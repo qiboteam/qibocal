@@ -883,19 +883,11 @@ actions:
       native: False
       apply_error_mitigation: True
 
-  - id: readout_mitigation_matrix pulses
+  - id: readout_mitigation_matrix
     operation: readout_mitigation_matrix
     targets: [[0,1,2],[1,2]]
     parameters:
       nshots: 10
-      pulses: True
-
-  - id: readout_mitigation_matrix circuits
-    operation: readout_mitigation_matrix
-    targets: [[0,1,2],[1,2]]
-    parameters:
-      nshots: 10
-      pulses: False
 
   - id: twpa frequency
     operation: twpa_frequency
@@ -1019,3 +1011,10 @@ actions:
     parameters:
       nshots: 1024
       circuit: tests/circuit2q.json
+
+  - id: mermin
+    targets: [[2,0,3],[2,1,3]]
+    operation: mermin
+    parameters:
+      ntheta: 10
+      apply_error_mitigation: True
