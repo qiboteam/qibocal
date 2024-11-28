@@ -970,13 +970,13 @@ lxml = ["lxml"]
 
 [[package]]
 name = "huggingface-hub"
-version = "0.26.2"
+version = "0.26.3"
 description = "Client library to download and publish models, datasets and other repos on the huggingface.co hub"
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "huggingface_hub-0.26.2-py3-none-any.whl", hash = "sha256:98c2a5a8e786c7b2cb6fdeb2740893cba4d53e312572ed3d8afafda65b128c46"},
-    {file = "huggingface_hub-0.26.2.tar.gz", hash = "sha256:b100d853465d965733964d123939ba287da60a547087783ddff8a323f340332b"},
+    {file = "huggingface_hub-0.26.3-py3-none-any.whl", hash = "sha256:e66aa99e569c2d5419240a9e553ad07245a5b1300350bfbc5a4945cf7432991b"},
+    {file = "huggingface_hub-0.26.3.tar.gz", hash = "sha256:90e1fe62ffc26757a073aaad618422b899ccf9447c2bba8c902a90bef5b42e1d"},
 ]
 
 [package.dependencies]
@@ -2650,7 +2650,7 @@ bluefors = ["pyyaml (>=6.0.2,<7.0.0)"]
 emulator = ["qutip (>=5.0.2,<6.0.0)"]
 los = ["pyvisa-py (==0.5.3)", "qcodes (>=0.37.0,<0.38.0)", "qcodes_contrib_drivers (==0.18.0)"]
 qblox = ["pyvisa-py (==0.5.3)", "qblox-instruments (==0.12.0)", "qcodes (>=0.37.0,<0.38.0)", "qcodes_contrib_drivers (==0.18.0)"]
-qm = ["qm-qua (==1.1.6)", "qualang-tools (>=0.15.0,<0.16.0)"]
+qm = ["qm-qua (==1.2.1)", "qualang-tools (>=0.15.0,<0.16.0)"]
 rfsoc = ["qibosoq (>=0.1.2,<0.2)"]
 twpa = ["pyvisa-py (==0.5.3)", "qcodes (>=0.37.0,<0.38.0)", "qcodes_contrib_drivers (==0.18.0)"]
 zh = ["laboneq (==2.25.0)"]
@@ -2659,7 +2659,7 @@ zh = ["laboneq (==2.25.0)"]
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
 reference = "pi_half"
-resolved_reference = "88d0fd10cd5cbf685997f5acd26defb38b5e6927"
+resolved_reference = "7579f0c85b6ed2ac4a9729e016f57dc0b0c42ff0"
 
 [[package]]
 name = "recommonmark"
