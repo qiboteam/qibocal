@@ -235,10 +235,16 @@ def _plot(
             row=1,
             col=1,
         )
+
+        if data.rx90:
+            pulse_name = "Pi-half pulse"
+        else:
+            pulse_name = "Pi pulse"
+
         fitting_report = table_html(
             table_dict(
                 target,
-                ["Optimal rabi frequency", "Pi-pulse amplitude"],
+                ["Optimal rabi frequency", f"{pulse_name} amplitude"],
                 [
                     fit.frequency[target],
                     f"{fit.amplitude[target][0]:.6f} +- {fit.amplitude[target][1]:.6f} [a.u.]",

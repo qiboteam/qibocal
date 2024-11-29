@@ -167,7 +167,7 @@ def _update(results: RabiLengthResults, platform: CalibrationPlatform, target: Q
 
 def _plot(data: RabiLengthData, fit: RabiLengthResults, target: QubitId):
     """Plotting function for RabiLength experiment."""
-    return utils.plot_probabilities(data, target, fit)
+    return utils.plot_probabilities(data, target, fit, data.rx90)
 
 
 rabi_length = Routine(_acquisition, _fit, _plot, _update)

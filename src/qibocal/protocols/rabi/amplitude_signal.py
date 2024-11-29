@@ -158,7 +158,7 @@ def _plot(
     fit: RabiAmplitudeSignalResults = None,
 ):
     """Plotting function for RabiAmplitude."""
-    return utils.plot(data, target, fit)
+    return utils.plot(data, target, fit, data.rx90)
 
 
 def _update(

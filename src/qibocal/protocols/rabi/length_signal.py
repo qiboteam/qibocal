@@ -172,7 +172,7 @@ def _update(
 
 def _plot(data: RabiLengthSignalData, fit: RabiLengthSignalResults, target: QubitId):
     """Plotting function for RabiLength experiment."""
-    return utils.plot(data, target, fit)
+    return utils.plot(data, target, fit, data.rx90)
 
 
 rabi_length_signal = Routine(_acquisition, _fit, _plot, _update)

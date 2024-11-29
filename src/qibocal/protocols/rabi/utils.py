@@ -32,7 +32,7 @@ def rabi_length_function(x, offset, amplitude, period, phase, t2_inv):
     )
 
 
-def plot(data, qubit, fit):
+def plot(data, qubit, fit, rx90):
     quantity, title, fitting = extract_rabi(data)
     figures = []
     fitting_report = ""
@@ -94,11 +94,15 @@ def plot(data, qubit, fit):
             row=1,
             col=1,
         )
+        if rx90:
+            pulse_name = "Pi-half pulse"
+        else:
+            pulse_name = "Pi pulse"
 
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["Pi pulse amplitude [a.u.]", "Pi pulse length [ns]"],
+                [f"{pulse_name} amplitude [a.u.]", f"{pulse_name} length [ns]"],
                 [np.round(fit.amplitude[qubit], 3), np.round(fit.length[qubit], 3)],
             )
         )
@@ -116,7 +120,7 @@ def plot(data, qubit, fit):
     return figures, fitting_report
 
 
-def plot_probabilities(data, qubit, fit):
+def plot_probabilities(data, qubit, fit, rx90):
     quantity, title, fitting = extract_rabi(data)
     figures = []
     fitting_report = ""
@@ -165,11 +169,19 @@ def plot_probabilities(data, qubit, fit):
                 marker_color="rgb(255, 130, 67)",
             ),
         )
+        if rx90:
+            pulse_name = "Pi-half pulse"
+        else:
+            pulse_name = "Pi pulse"
 
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["Pi pulse amplitude [a.u.]", "Pi pulse length [ns]", "chi2 reduced"],
+                [
+                    f"{pulse_name} amplitude [a.u.]",
+                    f"{pulse_name} length [ns]",
+                    "chi2 reduced",
+                ],
                 [fit.amplitude[qubit], fit.length[qubit], fit.chi2[qubit]],
                 display_error=True,
             )
