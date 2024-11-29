@@ -49,8 +49,6 @@ If the same experiment is run setting the `rx90: True` the flipping is performed
 	    nflips_step: 1
 	    rx90: True
 
-The expected output is the following:
-
 Requirements
 ^^^^^^^^^^^^
 
