@@ -2606,13 +2606,13 @@ files = [
 
 [[package]]
 name = "qibo"
-version = "0.2.14"
+version = "0.2.13"
 description = "A framework for quantum computing with hardware acceleration."
 optional = false
 python-versions = "<3.13,>=3.9"
 files = [
-    {file = "qibo-0.2.14-py3-none-any.whl", hash = "sha256:4641280f6f5afbdc6042c8e234b4c384b3085b2885b2138fa5a4fa4d70ba5366"},
-    {file = "qibo-0.2.14.tar.gz", hash = "sha256:e3d21a8eb1b2625e80d3b86adc4d59ac0bdd00c60daed75d45ac7ad9a57e3907"},
+    {file = "qibo-0.2.13-py3-none-any.whl", hash = "sha256:2c67234fdbdd7bfceed4df0fe8d3d9bede9354c4e18b2c061098b002c665e0f3"},
+    {file = "qibo-0.2.13.tar.gz", hash = "sha256:3a815f2262b4d38d57127653df83dbbcbe7e941e8fb9a53c8a107f303b270dc4"},
 ]
 
 [package.dependencies]
