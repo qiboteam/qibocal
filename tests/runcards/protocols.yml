@@ -611,6 +611,7 @@ actions:
       nflips_step: 1
       nshots: 50
       unrolling: True
+      rx90: True
 
 
   - id: dispersive shift

@@ -49,6 +49,8 @@ def flipping_sequence(
             sequence.append((qd_channel, qd_detuned))
             sequence.append((qd_channel, qd_detuned))
 
+        sequence |= natives.MZ()
+
     else:
         sequence |= natives.R(theta=np.pi / 2)
 
