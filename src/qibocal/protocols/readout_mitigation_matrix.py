@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 import plotly.express as px
 from qibo import gates
-from qibo.backends import GlobalBackend
+from qibo.backends import get_backend
 from qibo.models import Circuit
 from qibolab import PulseSequence
 from scipy.sparse import lil_matrix
@@ -115,7 +115,7 @@ def _acquisition(
     data = ReadoutMitigationMatrixData(
         nshots=params.nshots, qubit_list=[list(qq) for qq in targets]
     )
-    backend = GlobalBackend()
+    backend = get_backend()
     backend.platform = platform
     transpiler = dummy_transpiler(backend)
 
