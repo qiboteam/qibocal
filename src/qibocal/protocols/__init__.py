@@ -12,9 +12,11 @@ from .dispersive_shift import dispersive_shift
 from .dispersive_shift_qutrit import dispersive_shift_qutrit
 from .drag import drag_tuning
 from .flipping import flipping
+from .flux_amplitude_frequency import flux_amplitude_frequency
 from .flux_dependence.qubit_crosstalk import qubit_crosstalk
 from .flux_dependence.qubit_flux_dependence import qubit_flux
 from .flux_dependence.resonator_flux_dependence import resonator_flux
+from .flux_gate import flux_gate
 from .qubit_power_spectroscopy import qubit_power_spectroscopy
 from .qubit_spectroscopy import qubit_spectroscopy
 from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
@@ -49,6 +51,7 @@ from .two_qubit_interaction import (
     chevron,
     chevron_signal,
     correct_virtual_z_phases,
+    cryoscope,
     optimize_two_qubit_gate,
 )
 from .two_qubit_state_tomography import two_qubit_state_tomography
@@ -103,5 +106,8 @@ __all__ = [
     "standard_rb_2q",
     "standard_rb_2q_inter",
     "optimize_two_qubit_gate",
+    "cryoscope",
     "ramsey_zz",
+    "flux_gate",
+    "flux_amplitude_frequency",
 ]
