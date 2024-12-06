@@ -254,7 +254,7 @@ def _fit(data: FlippingData) -> FlippingResults:
             correction = popt[2] / 2
 
             if data.rx90:
-                correction = correction / 2
+                correction /= 2
 
             corrected_amplitudes[qubit] = [
                 float(detuned_pulse_amplitude * np.pi / (np.pi + correction)),
