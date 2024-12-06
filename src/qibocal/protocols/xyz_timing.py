@@ -3,16 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import (
-    AcquisitionType,
-    AveragingMode,
-    Delay,
-    Parameter,
-    Pulse,
-    PulseSequence,
-    Rectangular,
-    Sweeper,
-)
+from qibolab import AcquisitionType, AveragingMode, Custom, Delay, Pulse, PulseSequence
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.calibration.calibration import QubitId
@@ -57,71 +48,84 @@ def _acquisition(
 
     data = XYZTimingData()
     natives = platform.natives.single_qubit
-    delays = np.arange(
+    durations = np.arange(
         0,
         params.delay_stop,
         params.delay_step,
     )
-    sequence = PulseSequence()
     flux_delays = []
-    for qubit in targets:
-        drive_channel = platform.qubits[qubit].drive
-        flux_channel = platform.qubits[qubit].flux
-        ro_channel = platform.qubits[qubit].acquisition
-        drive_pulse = natives[qubit].RX()[0]
-        readout_pulse = natives[qubit].MZ()[0]
+    sequences = []
+    ro_pulses = []
+    for duration in durations:
+        ro_pulses.append([])
+        for qubit in targets:
+            sequence = PulseSequence()
+            drive_channel = platform.qubits[qubit].drive
+            flux_channel = platform.qubits[qubit].flux
+            ro_channel = platform.qubits[qubit].acquisition
+            drive_pulse = natives[qubit].RX()[0]
+            readout_pulse = natives[qubit].MZ()[0]
 
-        flux_pulse = Pulse(
-            duration=params.flux_pulse_duration,
-            amplitude=params.flux_amplitude,
-            relative_phase=0,
-            envelope=Rectangular(),
-        )
-        qd_delay = Delay(duration=params.flux_pulse_duration)
-        flux_delay = Delay(duration=0)
-        flux_delays.append(flux_delay)
+            flux_pulse = Pulse(
+                duration=params.flux_pulse_duration,
+                amplitude=params.flux_amplitude,
+                relative_phase=0,
+                envelope=Custom(
+                    i_=np.concatenate([np.zeros(duration), np.ones(50), np.zeros(10)]),
+                    q_=np.zeros(duration),
+                ),
+            )
+            # flux_pulse = Pulse(
+            #     duration=params.flux_pulse_duration,
+            #     amplitude=params.flux_amplitude,
+            #     relative_phase=0,
+            #     envelope=Rectangular(),
+            # )
+            qd_delay = Delay(duration=params.flux_pulse_duration)
+            # flux_delay = Delay(duration=0)
+            # flux_delays.append(flux_delay)
 
-        sequence.extend(
-            [
-                (drive_channel, qd_delay),
-                drive_pulse,
-                (flux_channel, flux_delay),
-                (flux_channel, flux_pulse),
-            ]
-        )
-        sequence.align([drive_channel, flux_channel, ro_channel])
-        sequence.append(readout_pulse)
-
-    sweeper = Sweeper(
-        parameter=Parameter.duration,
-        values=delays,
-        pulses=flux_delays,
-    )
+            sequence.extend(
+                [
+                    (drive_channel, qd_delay),
+                    drive_pulse,
+                    (flux_channel, flux_pulse),
+                ]
+            )
+            sequence.align([drive_channel, flux_channel, ro_channel])
+            sequence.append(readout_pulse)
+            sequences.append(sequence)
+            ro_pulses[-1].append(readout_pulse)
+    # sweeper = Sweeper(
+    #     parameter=Parameter.duration,
+    #     values=delays,
+    #     pulses=flux_delays,
+    # )
 
     results = platform.execute(
-        [sequence],
-        [[sweeper]],
+        sequences,
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.DISCRIMINATION,
         averaging_mode=AveragingMode.SINGLESHOT,
     )
-
-    for qubit in targets:
-        ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))
-        ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
-        probs = probability(results[ro_pulse.id], state=1)
-        # The probability errors are the standard errors of the binomial distribution
-        errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
-        data.register_qubit(
-            XYZTimingType,
-            (qubit),
-            dict(
-                delay=delays,
-                prob=probs,
-                errors=errors,
-            ),
-        )
+    for i, duration in enumerate(durations):
+        for j, qubit in enumerate(targets):
+            ro_pulse = ro_pulses[i][j][1]
+            print(ro_pulse)
+            prob = probability(results[ro_pulse.id], state=1)
+            print(prob)
+            # The probability errors are the standard errors of the binomial distribution
+            error = np.sqrt(prob * (1 - prob) / params.nshots)
+            data.register_qubit(
+                XYZTimingType,
+                (qubit),
+                dict(
+                    delay=np.array([duration]),
+                    prob=np.array([prob]),
+                    errors=np.array([error]),
+                ),
+            )
     return data
 
 
