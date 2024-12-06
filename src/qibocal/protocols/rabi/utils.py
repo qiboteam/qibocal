@@ -243,11 +243,7 @@ def sequence_amplitude(
     for q in targets:
         natives = platform.natives.single_qubit[q]
 
-        if rx90:
-            qd_channel, qd_pulse = natives.RX90()[0]
-        else:
-            qd_channel, qd_pulse = natives.RX()[0]
-
+        qd_channel, qd_pulse = natives.RX90()[0] if rx90 else natives.RX()[0]
         ro_channel, ro_pulse = natives.MZ()[0]
 
         if params.pulse_length is not None:
@@ -283,11 +279,7 @@ def sequence_length(
     for q in targets:
         natives = platform.natives.single_qubit[q]
 
-        if rx90:
-            qd_channel, qd_pulse = natives.RX90()[0]
-        else:
-            qd_channel, qd_pulse = natives.RX()[0]
-
+        qd_channel, qd_pulse = natives.RX90()[0] if rx90 else natives.RX()[0]
         ro_channel, ro_pulse = natives.MZ()[0]
 
         if params.pulse_amplitude is not None:
