@@ -12,6 +12,7 @@ from qibocal.result import probability
 
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
+PADDING_FLUX = 10
 
 
 @dataclass
@@ -23,9 +24,8 @@ class XYZTimingResults(Results):
 class XYZTimingParameters(Parameters):
 
     flux_amplitude: float
-    delay_step: float
-    delay_stop: float
-    flux_pulse_duration: float
+    delay_step: int
+    delay_stop: int
 
 
 XYZTimingType = np.dtype(
@@ -36,6 +36,8 @@ XYZTimingType = np.dtype(
 @dataclass
 class XYZTimingData(Data):
 
+    pulse_duration: dict[QubitId, int]
+    """Duration of the drive and flux pulse"""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -46,16 +48,21 @@ def _acquisition(
     targets: list[QubitId],
 ) -> XYZTimingData:
 
-    data = XYZTimingData()
     natives = platform.natives.single_qubit
     durations = np.arange(
-        0,
+        1,
         params.delay_stop,
         params.delay_step,
     )
     flux_delays = []
     sequences = []
     ro_pulses = []
+    drive_durations = {}
+    for qubit in targets:
+        drive_pulse = natives[qubit].RX()[0]
+        drive_durations[qubit] = int(drive_pulse[1].duration)
+
+    data = XYZTimingData(pulse_duration=drive_durations)
     for duration in durations:
         ro_pulses.append([])
         for qubit in targets:
@@ -65,25 +72,24 @@ def _acquisition(
             ro_channel = platform.qubits[qubit].acquisition
             drive_pulse = natives[qubit].RX()[0]
             readout_pulse = natives[qubit].MZ()[0]
-
+            drive_duration = int(drive_pulse[1].duration)
+            total_flux_duration = duration + drive_duration + PADDING_FLUX
             flux_pulse = Pulse(
-                duration=params.flux_pulse_duration,
+                duration=total_flux_duration,
                 amplitude=params.flux_amplitude,
                 relative_phase=0,
                 envelope=Custom(
-                    i_=np.concatenate([np.zeros(duration), np.ones(50), np.zeros(10)]),
-                    q_=np.zeros(duration),
+                    i_=np.concatenate(
+                        [
+                            np.zeros(duration),
+                            np.ones(drive_duration),
+                            np.zeros(PADDING_FLUX),
+                        ]
+                    ),
+                    q_=np.zeros(total_flux_duration),
                 ),
             )
-            # flux_pulse = Pulse(
-            #     duration=params.flux_pulse_duration,
-            #     amplitude=params.flux_amplitude,
-            #     relative_phase=0,
-            #     envelope=Rectangular(),
-            # )
-            qd_delay = Delay(duration=params.flux_pulse_duration)
-            # flux_delay = Delay(duration=0)
-            # flux_delays.append(flux_delay)
+            qd_delay = Delay(duration=drive_duration)
 
             sequence.extend(
                 [
@@ -96,11 +102,6 @@ def _acquisition(
             sequence.append(readout_pulse)
             sequences.append(sequence)
             ro_pulses[-1].append(readout_pulse)
-    # sweeper = Sweeper(
-    #     parameter=Parameter.duration,
-    #     values=delays,
-    #     pulses=flux_delays,
-    # )
 
     results = platform.execute(
         sequences,
@@ -112,9 +113,7 @@ def _acquisition(
     for i, duration in enumerate(durations):
         for j, qubit in enumerate(targets):
             ro_pulse = ro_pulses[i][j][1]
-            print(ro_pulse)
             prob = probability(results[ro_pulse.id], state=1)
-            print(prob)
             # The probability errors are the standard errors of the binomial distribution
             error = np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
@@ -139,10 +138,11 @@ def _plot(data: XYZTimingData, target: QubitId, fit: XYZTimingResults = None):
     delays = qubit_data.delay
     probs = qubit_data.prob
     error_bars = qubit_data.errors
+    x = delays - data.pulse_duration[target]
     fig = go.Figure(
         [
             go.Scatter(
-                x=delays,
+                x=x,
                 y=probs,
                 opacity=1,
                 name="Probability of State 0",
@@ -151,7 +151,7 @@ def _plot(data: XYZTimingData, target: QubitId, fit: XYZTimingResults = None):
                 mode="lines",
             ),
             go.Scatter(
-                x=np.concatenate((delays, delays[::-1])),
+                x=np.concatenate((x, x[::-1])),
                 y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
                 fill="toself",
                 fillcolor=COLORBAND,
