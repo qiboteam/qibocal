@@ -12,7 +12,9 @@ after the initial flip, in the over rotations one the final state will be closer
 By fitting the resulting data with a sinusoidal function, we can determine the delta amplitude, which allows us to refine the
 :math:`\pi` pulse amplitude.
 
-We implemented also a version of the flipping protocol to calibrate the drive pulse amplitude of the :math:`R_x(\pi/2)` rotations, in this case each :math:`R_x(\pi)` rotation is replaced by two math:`R_x(\pi/2)` rotations.
+We implemented also a version of the flipping protocol to calibrate the drive pulse amplitude of the :math:`R_x(\pi/2)` rotations,
+in this case each :math:`R_x(\pi)` rotation is replaced by two :math:`R_x(\pi/2)` rotations.
+The main reasons for implementing protocols to fine tune the `R_x(\pi/2)` rotations are explained in :ref:`rabi`.
 
 Parameters
 ^^^^^^^^^^
@@ -47,7 +49,7 @@ If the same experiment is run setting the `rx90: True` the flipping is performed
 	    delta_amplitude: 0.05
 	    nflips_max: 30
 	    nflips_step: 1
-	    rx90: True
+        rx90: True
 
 Requirements
 ^^^^^^^^^^^^
