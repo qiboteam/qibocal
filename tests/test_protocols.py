@@ -170,7 +170,7 @@ def test_extract_rabi():
         extract_rabi(RabiAmplitudeEFData)
 
 
-def test_extract_rabi():
+def test_extract_rabi_rx90():
     assert extract_rabi(RabiAmplitudeData(rx90=True)) == (
         "amp",
         "Amplitude [dimensionless]",

@@ -36,34 +36,27 @@ def flipping_sequence(
 
     if rx90:
         sequence |= natives.RX90()
-
-        for _ in range(flips):
-            qd_channel, qd_pulse = natives.RX90()[0]
-
-            qd_detuned = update.replace(
-                qd_pulse, delta_amplitude=qd_pulse.amplitude + delta_amplitude
-            )
-
-            sequence.append((qd_channel, qd_detuned))
-            sequence.append((qd_channel, qd_detuned))
-            sequence.append((qd_channel, qd_detuned))
-            sequence.append((qd_channel, qd_detuned))
-
-        sequence |= natives.MZ()
-
     else:
         sequence |= natives.R(theta=np.pi / 2)
 
-        for _ in range(flips):
+    for _ in range(flips):
+
+        if rx90:
+            qd_channel, qd_pulse = natives.RX90()[0]
+        else:
             qd_channel, qd_pulse = natives.RX()[0]
 
-            qd_detuned = update.replace(
-                qd_pulse, amplitude=qd_pulse.amplitude + delta_amplitude
-            )
+        qd_detuned = update.replace(
+            qd_pulse, delta_amplitude=qd_pulse.amplitude + delta_amplitude
+        )
+        sequence.append((qd_channel, qd_detuned))
+        sequence.append((qd_channel, qd_detuned))
+
+        if rx90:
             sequence.append((qd_channel, qd_detuned))
             sequence.append((qd_channel, qd_detuned))
 
-        sequence |= natives.MZ()
+    sequence |= natives.MZ()
 
     return sequence
 
