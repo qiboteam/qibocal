@@ -42,6 +42,8 @@ class RabiAmplitudeFrequencySignalParameters(Parameters):
     """Maximum frequency as an offset."""
     step_freq: int
     """Frequency to use as step for the scan."""
+    rx90: bool = False
+    """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
     pulse_length: Optional[float] = None
     """RX pulse duration [ns]."""
 
@@ -52,6 +54,8 @@ class RabiAmplitudeFrequencySignalResults(RabiAmplitudeSignalResults):
 
     frequency: dict[QubitId, Union[float, list[float]]]
     """Drive frequency for each qubit."""
+    rx90: bool
+    """Pi or Pi_half calibration"""
 
 
 RabiAmpFreqSignalType = np.dtype(
@@ -69,6 +73,8 @@ RabiAmpFreqSignalType = np.dtype(
 class RabiAmplitudeFreqSignalData(Data):
     """RabiAmplitudeFreqSignal data acquisition."""
 
+    rx90: bool
+    """Pi or Pi_half calibration"""
     durations: dict[QubitId, float] = field(default_factory=dict)
     """Pulse durations provided by the user."""
     data: dict[QubitId, npt.NDArray[RabiAmpFreqSignalType]] = field(
@@ -104,7 +110,7 @@ def _acquisition(
     """Data acquisition for Rabi experiment sweeping amplitude."""
 
     sequence, qd_pulses, ro_pulses, durations = sequence_amplitude(
-        targets, params, platform
+        targets, params, platform, params.rx90
     )
 
     frequency_range = np.arange(
@@ -126,7 +132,7 @@ def _acquisition(
         pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
-    data = RabiAmplitudeFreqSignalData(durations=durations)
+    data = RabiAmplitudeFreqSignalData(durations=durations, rx90=params.rx90)
 
     results = platform.execute(
         [sequence],
@@ -198,6 +204,7 @@ def _fit(data: RabiAmplitudeFreqSignalData) -> RabiAmplitudeFrequencySignalResul
         length=data.durations,
         fitted_parameters=fitted_parameters,
         frequency=fitted_frequencies,
+        rx90=data.rx90,
     )
 
 
@@ -272,10 +279,12 @@ def _plot(
             row=1,
             col=2,
         )
+        pulse_name = "Pi-half pulse" if data.rx90 else "Pi pulse"
+
         fitting_report = table_html(
             table_dict(
                 target,
-                ["Optimal rabi frequency", "Pi-pulse amplitude"],
+                ["Optimal rabi frequency", f"{pulse_name} amplitude"],
                 [
                     fit.frequency[target],
                     f"{fit.amplitude[target]:.6f} [a.u]",
@@ -295,8 +304,8 @@ def _update(
     platform: CalibrationPlatform,
     target: QubitId,
 ):
-    update.drive_duration(results.length[target], platform, target)
-    update.drive_amplitude(results.amplitude[target], platform, target)
+    update.drive_duration(results.length[target], results.rx90, platform, target)
+    update.drive_amplitude(results.amplitude[target], results.rx90, platform, target)
     update.drive_frequency(results.frequency[target], platform, target)
 
 

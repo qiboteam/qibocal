@@ -31,6 +31,8 @@ class RabiLengthParameters(Parameters):
     """Step pi pulse duration [ns]."""
     pulse_amplitude: Optional[float] = None
     """Pi pulse amplitude. Same for all qubits."""
+    rx90: bool = False
+    """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
     interpolated_sweeper: bool = False
     """Use real-time interpolation if supported by instruments."""
 
@@ -66,7 +68,7 @@ def _acquisition(
     """
 
     sequence, qd_pulses, delays, ro_pulses, amplitudes = utils.sequence_length(
-        targets, params, platform, use_align=params.interpolated_sweeper
+        targets, params, platform, params.rx90, use_align=params.interpolated_sweeper
     )
     sweep_range = (
         params.pulse_duration_start,
@@ -86,7 +88,7 @@ def _acquisition(
             pulses=[qd_pulses[q] for q in targets] + [delays[q] for q in targets],
         )
 
-    data = RabiLengthData(amplitudes=amplitudes)
+    data = RabiLengthData(amplitudes=amplitudes, rx90=params.rx90)
 
     # execute the sweep
     results = platform.execute(
@@ -155,17 +157,17 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
-    return RabiLengthResults(durations, amplitudes, fitted_parameters, chi2)
+    return RabiLengthResults(durations, amplitudes, fitted_parameters, data.rx90, chi2)
 
 
 def _update(results: RabiLengthResults, platform: CalibrationPlatform, target: QubitId):
-    update.drive_duration(results.length[target], platform, target)
-    update.drive_amplitude(results.amplitude[target], platform, target)
+    update.drive_duration(results.length[target], results.rx90, platform, target)
+    update.drive_amplitude(results.amplitude[target], results.rx90, platform, target)
 
 
 def _plot(data: RabiLengthData, fit: RabiLengthResults, target: QubitId):
     """Plotting function for RabiLength experiment."""
-    return utils.plot_probabilities(data, target, fit)
+    return utils.plot_probabilities(data, target, fit, data.rx90)
 
 
 rabi_length = Routine(_acquisition, _fit, _plot, _update)

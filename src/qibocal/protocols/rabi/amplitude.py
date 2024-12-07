@@ -37,6 +37,8 @@ RabiAmpType = np.dtype(
 class RabiAmplitudeData(Data):
     """RabiAmplitude data acquisition."""
 
+    rx90: bool
+    """Pi or Pi_half calibration"""
     durations: dict[QubitId, float] = field(default_factory=dict)
     """Pulse durations provided by the user."""
     data: dict[QubitId, npt.NDArray[RabiAmpType]] = field(default_factory=dict)
@@ -55,7 +57,7 @@ def _acquisition(
     """
 
     sequence, qd_pulses, ro_pulses, durations = utils.sequence_amplitude(
-        targets, params, platform
+        targets, params, platform, params.rx90
     )
 
     sweeper = Sweeper(
@@ -64,7 +66,7 @@ def _acquisition(
         pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
-    data = RabiAmplitudeData(durations=durations)
+    data = RabiAmplitudeData(durations=durations, rx90=params.rx90)
 
     # sweep the parameter
     results = platform.execute(
@@ -128,19 +130,21 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
 
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
-    return RabiAmplitudeResults(pi_pulse_amplitudes, durations, fitted_parameters, chi2)
+    return RabiAmplitudeResults(
+        pi_pulse_amplitudes, durations, fitted_parameters, data.rx90, chi2
+    )
 
 
 def _plot(data: RabiAmplitudeData, target: QubitId, fit: RabiAmplitudeResults = None):
     """Plotting function for RabiAmplitude."""
-    return utils.plot_probabilities(data, target, fit)
+    return utils.plot_probabilities(data, target, fit, data.rx90)
 
 
 def _update(
     results: RabiAmplitudeResults, platform: CalibrationPlatform, target: QubitId
 ):
-    update.drive_amplitude(results.amplitude[target], platform, target)
-    update.drive_duration(results.length[target], platform, target)
+    update.drive_amplitude(results.amplitude[target], results.rx90, platform, target)
+    update.drive_duration(results.length[target], results.rx90, platform, target)
 
 
 rabi_amplitude = Routine(_acquisition, _fit, _plot, _update)

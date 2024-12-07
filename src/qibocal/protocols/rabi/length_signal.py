@@ -27,6 +27,8 @@ class RabiLengthSignalParameters(Parameters):
     """Step pi pulse duration [ns]."""
     pulse_amplitude: Optional[float] = None
     """Pi pulse amplitude. Same for all qubits."""
+    rx90: bool = False
+    """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
     interpolated_sweeper: bool = False
     """Use real-time interpolation if supported by instruments."""
 
@@ -41,6 +43,8 @@ class RabiLengthSignalResults(Results):
     """Pi pulse amplitude. Same for all qubits."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    rx90: bool
+    """Pi or Pi_half calibration"""
 
 
 RabiLenSignalType = np.dtype(
@@ -53,6 +57,8 @@ RabiLenSignalType = np.dtype(
 class RabiLengthSignalData(Data):
     """RabiLength acquisition outputs."""
 
+    rx90: bool
+    """Pi or Pi_half calibration"""
     amplitudes: dict[QubitId, float] = field(default_factory=dict)
     """Pulse durations provided by the user."""
     data: dict[QubitId, npt.NDArray[RabiLenSignalType]] = field(default_factory=dict)
@@ -71,7 +77,7 @@ def _acquisition(
     """
 
     sequence, qd_pulses, delays, ro_pulses, amplitudes = utils.sequence_length(
-        targets, params, platform
+        targets, params, platform, params.rx90, use_align=params.interpolated_sweeper
     )
     sweep_range = (
         params.pulse_duration_start,
@@ -91,9 +97,8 @@ def _acquisition(
             pulses=[qd_pulses[q] for q in targets] + [delays[q] for q in targets],
         )
 
-    data = RabiLengthSignalData(amplitudes=amplitudes)
+    data = RabiLengthSignalData(amplitudes=amplitudes, rx90=params.rx90)
 
-    # execute the sweep
     results = platform.execute(
         [sequence],
         [[sweeper]],
@@ -153,19 +158,21 @@ def _fit(data: RabiLengthSignalData) -> RabiLengthSignalResults:
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
-    return RabiLengthSignalResults(durations, data.amplitudes, fitted_parameters)
+    return RabiLengthSignalResults(
+        durations, data.amplitudes, fitted_parameters, data.rx90
+    )
 
 
 def _update(
     results: RabiLengthSignalResults, platform: CalibrationPlatform, target: QubitId
 ):
-    update.drive_duration(results.length[target], platform, target)
-    update.drive_amplitude(results.amplitude[target], platform, target)
+    update.drive_duration(results.length[target], results.rx90, platform, target)
+    update.drive_amplitude(results.amplitude[target], results.rx90, platform, target)
 
 
 def _plot(data: RabiLengthSignalData, fit: RabiLengthSignalResults, target: QubitId):
     """Plotting function for RabiLength experiment."""
-    return utils.plot(data, target, fit)
+    return utils.plot(data, target, fit, data.rx90)
 
 
 rabi_length_signal = Routine(_acquisition, _fit, _plot, _update)

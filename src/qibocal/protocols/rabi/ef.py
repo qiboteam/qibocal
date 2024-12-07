@@ -84,9 +84,10 @@ def _acquisition(
         pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
-    data = RabiAmplitudeEFData(durations=durations)
+    assert not params.rx90, "Rabi ef available only for RX pulses."
 
-    # sweep the parameter
+    data = RabiAmplitudeEFData(durations=durations, rx90=False)
+
     # sweep the parameter
     results = platform.execute(
         [sequence],
@@ -114,7 +115,7 @@ def _plot(
     data: RabiAmplitudeEFData, target: QubitId, fit: RabiAmplitudeEFResults = None
 ):
     """Plotting function for RabiAmplitude."""
-    figures, report = utils.plot(data, target, fit)
+    figures, report = utils.plot(data, target, fit, data.rx90)
     if report is not None:
         report = report.replace("Pi pulse", "Pi pulse 12")
     return figures, report
