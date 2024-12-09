@@ -151,7 +151,7 @@ def _plot(data: CpmgData, target: QubitId, fit: CpmgResults = None):
         fitting_report = table_html(
             table_dict(
                 target,
-                ["T2 Spin Echo [ns]", "chi2 reduced"],
+                ["T2", "chi2 reduced"],
                 [fit.t2_spin_echo[target], fit.chi2[target]],
                 display_error=True,
             )
