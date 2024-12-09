@@ -30,43 +30,53 @@ def average_single_shots(data_type, single_shots):
     return data
 
 
-def spin_echo_sequence(platform: Platform, targets: list[QubitId], wait: int = 0):
-    """Create pulse sequence for spin-echo routine.
+def dynamical_decoupling_sequence(
+    platform: Platform,
+    targets: list[QubitId],
+    wait: int = 0,
+    n: int = 1,
+    kind: str = "CPMG",
+) -> tuple[PulseSequence, list[Delay]]:
+    """Create dynamical decoupling sequence.
 
-    Spin Echo 3 Pulses: RX(pi/2) - wait t(rotates z) - RX(pi) - wait t(rotates z) - RX(pi/2) - readout
+    Two sequences are available:
+    - CP: RX90 (wait RX wait )^N RX90
+    - CPMG: RX90 (wait RY wait )^N RX90
     """
+
+    assert kind in ["CPMG", "CP"], f"Unknown sequence {kind}, please use CP or CPMG"
     sequence = PulseSequence()
     all_delays = []
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
         qd_channel, rx90_pulse = natives.R(theta=np.pi / 2)[0]
-        _, rx_pulse = natives.RX()[0]
+        _, pulse = natives.R(phi=np.pi / 2)[0] if kind == "CPMG" else natives.RX()[0]
         ro_channel, ro_pulse = natives.MZ()[0]
 
-        delays = [
-            Delay(duration=wait),
-            Delay(duration=wait),
-            Delay(duration=wait),
-            Delay(duration=wait),
-        ]
+        drive_delays = 2 * n * [Delay(duration=wait)]
+        ro_delays = 2 * n * [Delay(duration=wait)]
 
-        sequence.extend(
-            [
-                (qd_channel, rx90_pulse),
-                (qd_channel, delays[0]),
-                (qd_channel, rx_pulse),
-                (qd_channel, delays[1]),
-                (qd_channel, rx90_pulse),
-                (
-                    ro_channel,
-                    Delay(duration=2 * rx90_pulse.duration + rx_pulse.duration),
-                ),
-                (ro_channel, delays[2]),
-                (ro_channel, delays[3]),
-                (ro_channel, ro_pulse),
-            ]
+        sequence.append((qd_channel, rx90_pulse))
+
+        for i in range(n):
+            sequence.append((qd_channel, drive_delays[2 * i]))
+            sequence.append((ro_channel, ro_delays[2 * i]))
+            sequence.append((qd_channel, pulse))
+            sequence.append((qd_channel, drive_delays[2 * i + 1]))
+            sequence.append((ro_channel, ro_delays[2 * i + 1]))
+
+        sequence.append((qd_channel, rx90_pulse))
+
+        sequence.append(
+            (
+                ro_channel,
+                Delay(duration=2 * rx90_pulse.duration + n * pulse.duration),
+            )
         )
-        all_delays.extend(delays)
+
+        sequence.append((ro_channel, ro_pulse))
+        all_delays.extend(drive_delays)
+        all_delays.extend(ro_delays)
 
     return sequence, all_delays
 

@@ -468,14 +468,23 @@ actions:
       delay_between_pulses_step: 1
       nshots: 10
 
-  - id: spin_echo unrolling
+  - id: spin_echo
     operation: spin_echo
     parameters:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 5
       delay_between_pulses_step: 1
       nshots: 10
-      unrolling: true
+
+
+  - id: CPMG
+    operation: cpmg
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 400
+      delay_between_pulses_step: 10
+      nshots: 10
+      n: 4
 
   - id: spin_echo_signal
     operation: spin_echo_signal
@@ -494,16 +503,6 @@ actions:
       delay_between_pulses_step: 1
       single_shot: True
       nshots: 10
-
-  - id: spin_echo_signal unrolling
-    operation: spin_echo_signal
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 5
-      delay_between_pulses_step: 1
-      nshots: 10
-      unrolling: true
-
 
   - id: flipping
     operation: flipping

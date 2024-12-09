@@ -12,7 +12,12 @@ from qibocal.result import magnitude, phase
 from ... import update
 from ..utils import table_dict, table_html
 from .t1_signal import T1SignalData
-from .utils import CoherenceType, exp_decay, exponential_fit, spin_echo_sequence
+from .utils import (
+    CoherenceType,
+    dynamical_decoupling_sequence,
+    exp_decay,
+    exponential_fit,
+)
 
 
 @dataclass
@@ -26,8 +31,6 @@ class SpinEchoSignalParameters(Parameters):
     delay_between_pulses_step: int
     """Step delay between pulses [ns]."""
     single_shot: bool = False
-    """If ``True`` save single shot signal data."""
-    unrolling: bool = False
 
 
 @dataclass
@@ -53,11 +56,11 @@ def _acquisition(
 ) -> SpinEchoSignalData:
     """Data acquisition for SpinEcho"""
     # create a sequence of pulses for the experiment:
-    sequence, delays = spin_echo_sequence(platform, targets)
+    sequence, delays = dynamical_decoupling_sequence(platform, targets, kind="CP")
 
     # define the parameter to sweep and its range:
     # delay between pulses
-    ro_wait_range = np.arange(
+    wait_range = np.arange(
         params.delay_between_pulses_start,
         params.delay_between_pulses_end,
         params.delay_between_pulses_step,
@@ -65,7 +68,7 @@ def _acquisition(
 
     sweeper = Sweeper(
         parameter=Parameter.duration,
-        values=ro_wait_range,
+        values=wait_range / 2,
         pulses=delays,
     )
 
@@ -86,9 +89,9 @@ def _acquisition(
         result = results[ro_pulse.id]
         signal = magnitude(result)
         if params.single_shot:
-            _wait = np.array(len(signal) * [ro_wait_range])
+            _wait = np.array(len(signal) * [wait_range])
         else:
-            _wait = ro_wait_range
+            _wait = wait_range
         data.register_qubit(
             CoherenceType,
             (qubit),
