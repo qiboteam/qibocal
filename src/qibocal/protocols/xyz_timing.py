@@ -3,7 +3,9 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+from qibo.models.error_mitigation import curve_fit
 from qibolab import AcquisitionType, AveragingMode, Custom, Delay, Pulse, PulseSequence
+from scipy import special
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.calibration.calibration import QubitId
@@ -17,7 +19,9 @@ PADDING_FLUX = 10
 
 @dataclass
 class XYZTimingResults(Results):
-    pass
+    fitted_parameters: dict[QubitId, list[float]]
+    fitted_errors: dict[QubitId, list[float]]
+    delays: dict[QubitId, float]
 
 
 @dataclass
@@ -128,8 +132,46 @@ def _acquisition(
     return data
 
 
+def fit_function(x, a, b, c, d):
+    return a + b * (special.erf(x - c) - special.erf(x + d))
+
+
 def _fit(data: XYZTimingData) -> XYZTimingResults:
-    return XYZTimingResults()
+    qubits = data.qubits
+    params = {}
+    errors = {}
+    delays = {}
+    for qubit in qubits:
+        data_qubit = qubits[qubit]
+        delay = data_qubit.delay
+        prob = data_qubit.prob
+        err = data_qubit.errors
+        initial_pars = [
+            1,
+            -0.5,
+            data.pulse_duration[qubit] / 2,
+            data.pulse_duration[qubit] / 2,
+        ]
+        fit_parameters, perr = curve_fit(
+            fit_function,
+            delay - data.pulse_duration[qubit],
+            prob,
+            p0=initial_pars,
+            sigma=err,
+        )
+
+        err = np.sqrt(np.diag(perr)).tolist()
+        params[qubit] = fit_parameters
+        errors[qubit] = err
+        delays[qubit] = [
+            (fit_parameters[3] - fit_parameters[2]) / 2,
+            np.linalg.norm([err[2], err[3]]) / 2,
+        ]
+    return XYZTimingResults(
+        fitted_parameters=params,
+        fitted_errors=errors,
+        delays=delays,
+    )
 
 
 def _plot(data: XYZTimingData, target: QubitId, fit: XYZTimingResults = None):
