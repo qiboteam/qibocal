@@ -12,6 +12,8 @@ from qibocal.calibration.calibration import QubitId
 from qibocal.calibration.platform import CalibrationPlatform
 from qibocal.result import probability
 
+from .utils import table_dict, table_html
+
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
 PADDING_FLUX = 10
@@ -132,8 +134,8 @@ def _acquisition(
     return data
 
 
-def fit_function(x, a, b, c, d):
-    return a + b * (special.erf(x - c) - special.erf(x + d))
+def fit_function(x, a, b, c, d, e):
+    return a + b * (special.erf(e * x - c) - special.erf(e * x + d))
 
 
 def _fit(data: XYZTimingData) -> XYZTimingResults:
@@ -142,15 +144,16 @@ def _fit(data: XYZTimingData) -> XYZTimingResults:
     errors = {}
     delays = {}
     for qubit in qubits:
-        data_qubit = qubits[qubit]
+        data_qubit = data.data[qubit]
         delay = data_qubit.delay
         prob = data_qubit.prob
         err = data_qubit.errors
         initial_pars = [
             1,
-            -0.5,
+            0.5,
             data.pulse_duration[qubit] / 2,
             data.pulse_duration[qubit] / 2,
+            1,
         ]
         fit_parameters, perr = curve_fit(
             fit_function,
@@ -161,11 +164,11 @@ def _fit(data: XYZTimingData) -> XYZTimingResults:
         )
 
         err = np.sqrt(np.diag(perr)).tolist()
-        params[qubit] = fit_parameters
+        params[qubit] = fit_parameters.tolist()
         errors[qubit] = err
         delays[qubit] = [
-            (fit_parameters[3] - fit_parameters[2]) / 2,
-            np.linalg.norm([err[2], err[3]]) / 2,
+            (fit_parameters[2] - fit_parameters[3]) / (2 * fit_parameters[4]),
+            float(np.linalg.norm([err[2], err[3]]) / 2) / fit_parameters[4] ** 2,
         ]
     return XYZTimingResults(
         fitted_parameters=params,
@@ -181,13 +184,23 @@ def _plot(data: XYZTimingData, target: QubitId, fit: XYZTimingResults = None):
     probs = qubit_data.prob
     error_bars = qubit_data.errors
     x = delays - data.pulse_duration[target]
+    fitting_report = ""
     fig = go.Figure(
         [
             go.Scatter(
                 x=x,
                 y=probs,
                 opacity=1,
-                name="Probability of State 0",
+                name="Probability of State 1",
+                showlegend=True,
+                legendgroup="Probability of State 1",
+                mode="lines",
+            ),
+            go.Scatter(
+                x=x,
+                y=fit_function(x, *fit.fitted_parameters[target]),
+                opacity=1,
+                name="Fit",
                 showlegend=True,
                 legendgroup="Probability of State 0",
                 mode="lines",
@@ -203,15 +216,29 @@ def _plot(data: XYZTimingData, target: QubitId, fit: XYZTimingResults = None):
             ),
         ]
     )
+    if fit is not None:
+        fig.add_vline(
+            x=fit.delays[target][0],
+            line=dict(color="grey", width=3, dash="dash"),
+        )
+        fitting_report = table_html(
+            table_dict(
+                target,
+                ["Flux pulse delay [ns]"],
+                [fit.delays[target]],
+                display_error=True,
+            )
+        )
+
     fig.update_layout(
         showlegend=True,
         xaxis_title="Time [ns]",
-        yaxis_title="Ground state probability",
+        yaxis_title="Excited state probability",
     )
 
     figures.append(fig)
 
-    return figures, ""
+    return figures, fitting_report
 
 
 xyz_timing = Routine(_acquisition, _fit, _plot)
