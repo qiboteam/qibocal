@@ -34,10 +34,7 @@ def flipping_sequence(
     sequence = PulseSequence()
     natives = platform.natives.single_qubit[qubit]
 
-    if rx90:
-        sequence |= natives.RX90()
-    else:
-        sequence |= natives.R(theta=np.pi / 2)
+    sequence |= natives.R(theta=np.pi / 2)
 
     for _ in range(flips):
 
