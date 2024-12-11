@@ -133,7 +133,7 @@ In the following we show an example runcard for the amplitude calibration of the
         pulse_length: 40
         nshots: 1024
         relaxation_time: 50000
-	rx90: True
+        rx90: True
 
 .. image:: rabi_amplitude_rx90
 

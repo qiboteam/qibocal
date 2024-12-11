@@ -28,12 +28,12 @@ It follows a runcard example of this experiment.
 
 .. code-block:: yaml
 
-	- id: flipping
-	  operation: flipping
-	  parameters:
-	    delta_amplitude: 0.05
-	    nflips_max: 30
-	    nflips_step: 1
+    - id: flipping
+      operation: flipping
+      parameters:
+        delta_amplitude: 0.05
+        nflips_max: 30
+        nflips_step: 1
 
 The expected output is the following:
 
@@ -43,12 +43,12 @@ If the same experiment is run setting the `rx90: True` the flipping is performed
 
 .. code-block:: yaml
 
-	- id: flipping
-	  operation: flipping
-	  parameters:
-	    delta_amplitude: 0.05
-	    nflips_max: 30
-	    nflips_step: 1
+    - id: flipping
+      operation: flipping
+      parameters:
+        delta_amplitude: 0.05
+        nflips_max: 30
+        nflips_step: 1
         rx90: True
 
 Requirements
