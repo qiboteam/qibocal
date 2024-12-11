@@ -44,7 +44,7 @@ def flipping_sequence(
             qd_channel, qd_pulse = natives.RX()[0]
 
         qd_detuned = update.replace(
-            qd_pulse, delta_amplitude=qd_pulse.amplitude + delta_amplitude
+            qd_pulse, amplitude=qd_pulse.amplitude + delta_amplitude
         )
         sequence.append((qd_channel, qd_detuned))
         sequence.append((qd_channel, qd_detuned))
