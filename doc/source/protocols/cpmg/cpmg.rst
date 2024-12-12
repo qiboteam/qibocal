@@ -4,15 +4,16 @@ CPMG sequence
 In this section we show how to run the dynamical decoupling sequence CPMG.
 
 The CPMG sequence consists in applying N equally spaced :math:`\pi` pulses
-within two :math:`\pi` pulses. By increasing the number of :math:`\pi` pulses :math:`T_2`
-should increase until reaching the :math:`2 T_1` limit.
+within two :math:`\pi / 2` pulses. By increasing the number of :math:`\pi` pulses :math:`T_2`
+should increase since the estimation is less sensitive to noises of the type :math:`1/f`
+eventually reaching the :math:`2 T_1` limit.
 
 
 The fit is again a dumped exponential of the following form:
 
 .. math::
 
-    p_e(t) = A + B  e^{ - t / T_2}
+    p_e(t) = A + B  e^{ - t / T^{(N)}_2}
 
 
 Parameters
