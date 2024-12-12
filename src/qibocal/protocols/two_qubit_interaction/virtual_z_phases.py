@@ -52,7 +52,7 @@ class VirtualZPhasesParameters(Parameters):
     """Amplitude of flux pulse implementing CZ."""
     flux_pulse_duration: Optional[float] = None
     """Duration of flux pulse implementing CZ."""
-    dt: Optional[float] = 20
+    dt: Optional[float] = 0
     """Time delay between flux pulses and readout."""
     parking: bool = True
     """Wether to park non interacting qubits or not."""
@@ -176,6 +176,9 @@ def create_sequence(
     # M
     sequence |= target_natives.MZ() + control_natives.MZ()
 
+    # sequence.add(platform.create_RX_pulse("D3", start=0))
+    # sequence.add(platform.create_RX_pulse("D3", start=80, relative_phase=np.pi))
+    print(sequence)
     return (
         sequence,
         theta_pulse,
@@ -229,8 +232,8 @@ def _acquisition(
                     control_q,
                     ordered_pair,
                     params.native,
-                    params.dt,
                     params.parking,
+                    params.dt,
                     params.flux_pulse_amplitude,
                     params.flux_pulse_duration,
                 )
