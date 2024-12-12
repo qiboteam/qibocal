@@ -1,16 +1,20 @@
 import numpy as np
+import plotly.graph_objects as go
 from qibolab import Delay, Platform, PulseSequence
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import QubitId
 from qibocal.config import log
 
-from ..utils import chi2_reduced
+from ..utils import chi2_reduced, table_dict, table_html
 
 CoherenceType = np.dtype(
     [("wait", np.float64), ("signal", np.float64), ("phase", np.float64)]
 )
 """Custom dtype for coherence routines."""
+
+COLORBAND = "rgba(0,100,80,0.2)"
+COLORBAND_LINE = "rgba(255,255,255,0)"
 
 
 def average_single_shots(data_type, single_shots):
@@ -192,3 +196,72 @@ def exponential_fit_probability(data, zeno=False):
             log.warning(f"Exponential decay fit failed for qubit {qubit} due to {e}")
 
     return decay, fitted_parameters, pcovs, chi2
+
+
+def plot(data, target: QubitId, fit=None) -> tuple[list[go.Figure], str]:
+    """Plotting function for spin-echo or CPMG protocol."""
+
+    figures = []
+    fitting_report = ""
+    qubit_data = data[target]
+    waits = qubit_data.wait
+    probs = qubit_data.prob
+    error_bars = qubit_data.error
+
+    fig = go.Figure(
+        [
+            go.Scatter(
+                x=waits,
+                y=probs,
+                opacity=1,
+                name="Probability of 1",
+                showlegend=True,
+                legendgroup="Probability of 1",
+                mode="lines",
+            ),
+            go.Scatter(
+                x=np.concatenate((waits, waits[::-1])),
+                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
+                fill="toself",
+                fillcolor=COLORBAND,
+                line=dict(color=COLORBAND_LINE),
+                showlegend=True,
+                name="Errors",
+            ),
+        ]
+    )
+
+    if fit is not None:
+        waitrange = np.linspace(
+            min(waits),
+            max(waits),
+            2 * len(qubit_data),
+        )
+        params = fit.fitted_parameters[target]
+
+        fig.add_trace(
+            go.Scatter(
+                x=waitrange,
+                y=exp_decay(waitrange, *params),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+            ),
+        )
+        fitting_report = table_html(
+            table_dict(
+                target,
+                ["T2", "chi2 reduced"],
+                [fit.t2[target], fit.chi2[target]],
+                display_error=True,
+            )
+        )
+
+    fig.update_layout(
+        showlegend=True,
+        xaxis_title="Time [ns]",
+        yaxis_title="Probability of State 1",
+    )
+
+    figures.append(fig)
+
+    return figures, fitting_report

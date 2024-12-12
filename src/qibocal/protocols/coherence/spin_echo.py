@@ -2,17 +2,15 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
-import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import probability
 
-from ..utils import table_dict, table_html
 from . import t1
 from .spin_echo_signal import SpinEchoSignalParameters, SpinEchoSignalResults, _update
-from .utils import dynamical_decoupling_sequence, exp_decay, exponential_fit_probability
+from .utils import dynamical_decoupling_sequence, exponential_fit_probability, plot
 
 
 @dataclass
@@ -91,77 +89,5 @@ def _fit(data: SpinEchoData) -> SpinEchoResults:
     return SpinEchoResults(t2Echos, fitted_parameters, pcovs, chi2)
 
 
-def _plot(data: SpinEchoData, target: QubitId, fit: SpinEchoResults = None):
-    """Plotting for SpinEcho"""
-
-    figures = []
-    # iterate over multiple data folders
-    fitting_report = ""
-
-    qubit_data = data[target]
-    waits = qubit_data.wait
-    probs = qubit_data.prob
-    error_bars = qubit_data.error
-
-    fig = go.Figure(
-        [
-            go.Scatter(
-                x=waits,
-                y=probs,
-                opacity=1,
-                name="Probability of 1",
-                showlegend=True,
-                legendgroup="Probability of 1",
-                mode="lines",
-            ),
-            go.Scatter(
-                x=np.concatenate((waits, waits[::-1])),
-                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
-                fill="toself",
-                fillcolor=t1.COLORBAND,
-                line=dict(color=t1.COLORBAND_LINE),
-                showlegend=True,
-                name="Errors",
-            ),
-        ]
-    )
-
-    if fit is not None:
-        # add fitting trace
-        waitrange = np.linspace(
-            min(waits),
-            max(waits),
-            2 * len(qubit_data),
-        )
-        params = fit.fitted_parameters[target]
-
-        fig.add_trace(
-            go.Scatter(
-                x=waitrange,
-                y=exp_decay(waitrange, *params),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
-            ),
-        )
-        fitting_report = table_html(
-            table_dict(
-                target,
-                ["T2 Spin Echo [ns]", "chi2 reduced"],
-                [fit.t2_spin_echo[target], fit.chi2[target]],
-                display_error=True,
-            )
-        )
-
-    fig.update_layout(
-        showlegend=True,
-        xaxis_title="Time [ns]",
-        yaxis_title="Probability of State 1",
-    )
-
-    figures.append(fig)
-
-    return figures, fitting_report
-
-
-spin_echo = Routine(_acquisition, _fit, _plot, _update)
+spin_echo = Routine(_acquisition, _fit, plot, _update)
 """SpinEcho Routine object."""

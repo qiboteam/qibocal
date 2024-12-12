@@ -37,7 +37,7 @@ class SpinEchoSignalParameters(Parameters):
 class SpinEchoSignalResults(Results):
     """SpinEchoSignal outputs."""
 
-    t2_spin_echo: dict[QubitId, Union[float, list[float]]]
+    t2: dict[QubitId, Union[float, list[float]]]
     """T2 echo for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -160,7 +160,7 @@ def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults 
             table_dict(
                 target,
                 ["T2 Spin Echo [ns]"],
-                [np.round(fit.t2_spin_echo[target])],
+                [np.round(fit.t2[target])],
                 display_error=True,
             )
         )
@@ -179,7 +179,7 @@ def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults 
 def _update(
     results: SpinEchoSignalResults, platform: CalibrationPlatform, target: QubitId
 ):
-    update.t2_spin_echo(results.t2_spin_echo[target], platform, target)
+    update.t2_spin_echo(results.t2[target], platform, target)
 
 
 spin_echo_signal = Routine(_acquisition, _fit, _plot, _update)
