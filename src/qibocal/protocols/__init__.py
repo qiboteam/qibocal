@@ -1,6 +1,7 @@
 from .allxy.allxy import allxy
 from .allxy.allxy_resonator_depletion_tuning import allxy_resonator_depletion_tuning
 from .classification import single_shot_classification
+from .coherence.cpmg import cpmg
 from .coherence.spin_echo import spin_echo
 from .coherence.spin_echo_signal import spin_echo_signal
 from .coherence.t1 import t1
@@ -104,4 +105,5 @@ __all__ = [
     "standard_rb_2q_inter",
     "optimize_two_qubit_gate",
     "ramsey_zz",
+    "cpmg",
 ]
