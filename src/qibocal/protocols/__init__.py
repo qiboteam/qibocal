@@ -75,6 +75,7 @@ from .two_qubit_interaction import (
     optimize_two_qubit_gate,
 )
 from .two_qubit_state_tomography import two_qubit_state_tomography
+from .z.cryoscope_signal import cryoscope_signal
 
 __all__ = [
     "allxy",
@@ -150,4 +151,5 @@ __all__ = [
     "standard_rb_2q_inter",
     "optimize_two_qubit_gate",
     "ramsey_zz",
+    "cryoscope_signal",
 ]
