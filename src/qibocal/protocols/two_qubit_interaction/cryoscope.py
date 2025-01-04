@@ -16,13 +16,17 @@ from qibolab import (
     Pulse,
     PulseSequence,
 )
+from scipy.optimize import least_squares
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.protocols.ramsey.utils import fitting
 
-from ..ramsey.utils import fitting
-
-FULL_WAVEFORM = np.concatenate([np.zeros(10), np.ones(50), np.zeros(10)])
+FULL_WAVEFORM = np.concatenate([np.zeros(10), np.ones(90)])
 """Full waveform to be played."""
+START = 10
+"""Flux pulse start"""
+SAMPLING_RATE = 1
+"""Instrument sampling rate in GHz"""  # CONTROLLARE UNITA' DI MISURA
 
 
 @dataclass
@@ -54,6 +58,14 @@ class CryoscopeResults(Results):
     """Flux amplitude computed from detuning."""
     step_response: dict[QubitId, list[float]] = field(default_factory=dict)
     """Waveform normalized to 1."""
+    A: dict[QubitId, list[float]] = field(default_factory=dict)
+    """A parameters for the exp decay approximation"""
+    tau: dict[QubitId, list[float]] = field(default_factory=dict)
+    """time decay constant in exp decay approximation"""
+    fir: dict[QubitId, list[float]] = field(default_factory=dict)
+    """feedforward taps"""
+    iir: dict[QubitId, list[float]] = field(default_factory=dict)
+    """feedback taps"""
 
     # TODO: to be fixed
     def __contains__(self, key):
@@ -219,6 +231,33 @@ def _acquisition(
     return data
 
 
+def residuals(params, step_response, t):
+    duration = len(t)
+    g, tau, A = params
+    expmodel = step_response / (g * (1 + A * np.exp(-(t - START) / tau)))
+    return expmodel - FULL_WAVEFORM[:duration]
+
+
+def exponential_params(step_response, t):
+    init_guess = [1, 1, 1]
+    result = least_squares(residuals, init_guess, args=(step_response, t))
+    return result.x
+
+
+def filter_calc(params):
+    g, tau, A = params
+    alpha = 1 - np.exp(-1 / (SAMPLING_RATE * tau * (1 + A)))
+    k = A / ((1 + A) * (1 - alpha)) if A < 0 else A / (1 + A - alpha)
+    b0 = (1 - k + k * alpha) * g
+    b1 = -(1 - k) * (1 - alpha) * g
+    a0 = 1 * g
+    a1 = -(1 - alpha) * g
+
+    a = [a0, a1]  # feedback
+    b = [b0, b1]  # feedforward
+    return a, b
+
+
 def _fit(data: CryoscopeData) -> CryoscopeResults:
     """Postprocessing for cryoscope experiment.
 
@@ -243,12 +282,16 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
     detuning = {}
     amplitude = {}
     step_response = {}
+    alpha = {}
+    time_decay = {}
+    feedforward_taps = {}
+    feedback_taps = {}
     for qubit, setup in data.data:
         qubit_data = data[qubit, setup]
-        x = qubit_data.duration
+        t = qubit_data.duration
         y = 1 - 2 * qubit_data.prob_1
 
-        popt, _ = fitting(x, y)
+        popt, _ = fitting(t, y)
 
         fitted_parameters[qubit, setup] = popt
 
@@ -256,7 +299,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 
     for qubit in qubits:
 
-        sampling_rate = 1 / (x[1] - x[0])
+        sampling_rate = 1 / (t[1] - t[0])
         X_exp = 1 - 2 * data[(qubit, "MX")].prob_1
         Y_exp = 1 - 2 * data[(qubit, "MY")].prob_1
 
@@ -271,7 +314,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         derivative_window_size += (derivative_window_size + 1) % 2
 
         # find demodulatation frequency
-        demod_data = np.exp(2 * np.pi * 1j * x * demod_freq) * (norm_data)
+        demod_data = np.exp(2 * np.pi * 1j * t * demod_freq) * (norm_data)
 
         # compute phase
         phase = np.unwrap(np.angle(demod_data))
@@ -309,11 +352,20 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             np.array(amplitude[qubit]) / data.flux_pulse_amplitude
         ).tolist()
 
+        # Derive IIR and FIR corrections
+        exp_params = exponential_params(step_response[qubit], t)
+        feedback_taps[qubit], feedforward_taps[qubit] = filter_calc(exp_params)
+        _, time_decay[qubit], alpha[qubit] = exp_params
+
     return CryoscopeResults(
         amplitude=amplitude,
         detuning=detuning,
         step_response=step_response,
         fitted_parameters=fitted_parameters,
+        A=alpha,
+        tau=time_decay,
+        fir=feedforward_taps,
+        iir=feedback_taps,
     )
 
 
