@@ -16,13 +16,18 @@ from qibolab import (
     Pulse,
     PulseSequence,
 )
+from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 
 from ..ramsey.utils import fitting
 
-FULL_WAVEFORM = np.concatenate([np.zeros(10), np.ones(50), np.zeros(10)])
+FULL_WAVEFORM = np.concatenate([np.zeros(10), np.ones(90)])
 """Full waveform to be played."""
+TS = 1e-9
+"""sampling rate for QM"""
+CONST_FLUX_LEN = 90
+"""FLUX_PULSE_LEN"""
 
 
 @dataclass
@@ -54,6 +59,14 @@ class CryoscopeResults(Results):
     """Flux amplitude computed from detuning."""
     step_response: dict[QubitId, list[float]] = field(default_factory=dict)
     """Waveform normalized to 1."""
+    A: dict[QubitId, list[float]] = field(default_factory=dict)
+    """A parameters for the exp decay approximation"""
+    tau: dict[QubitId, list[float]] = field(default_factory=dict)
+    """time decay constant in exp decay approximation"""
+    fir: dict[QubitId, list[float]] = field(default_factory=dict)
+    """feedforward taps"""
+    iir: dict[QubitId, list[float]] = field(default_factory=dict)
+    """feedback taps"""
 
     # TODO: to be fixed
     def __contains__(self, key):
@@ -107,7 +120,7 @@ def generate_sequences(
     sequence_y.extend(
         [
             (drive_channel, ry90),
-            (flux_channel, Delay(duration=rx90.duration)),
+            (flux_channel, Delay(duration=ry90.duration)),
             (flux_channel, flux_pulse),
             (drive_channel, Delay(duration=params.duration_max + 100)),
             (drive_channel, rx90),
@@ -219,6 +232,61 @@ def _acquisition(
     return data
 
 
+# exponential function for fit (add g to test the difference)
+def expdecay(x, a, t):
+    """Exponential decay defined as 1 + a * np.exp(-x / t).
+
+    :param x: numpy array for the time vector in ns
+    :param a: float for the exponential amplitude
+    :param t: float for the exponential decay time in ns
+    :return: numpy array for the exponential decay
+    """
+    return 1 + a * np.exp(-x / t)
+
+
+# consider if add g how to correct this function
+def exponential_correction(A, tau):
+    """Derive FIR and IIR filter taps based on a the exponential coefficients A and tau from 1 + a * np.exp(-x / t).
+
+    :param A: amplitude of the exponential decay
+    :param tau: decay time of the exponential decay
+    :return: FIR and IIR taps
+    """
+    tau = tau * TS
+    k1 = TS + 2 * tau * (A + 1)
+    k2 = TS - 2 * tau * (A + 1)
+    c1 = TS + 2 * tau
+    c2 = TS - 2 * tau
+    feedback_tap = -k2 / k1
+    feedforward_taps = np.array([c1, c2]) / k1
+    return feedforward_taps, feedback_tap
+
+
+# this needs to be changed to work with the _fit function
+def filter_calc(exponential):
+    """Derive FIR and IIR filter taps based on a list of exponential coefficients.
+
+    :param exponential: exponential coefficients defined as [(A1, tau1), (A2, tau2)]
+    :return: FIR and IIR taps as [fir], [iir]
+    """
+    ##NOTE: for now it's actually useless to have the function to be able to take as argument a list of tuples instead of a single tuple
+    # Initialization based on the number of exponential coefficients
+    b = np.zeros((2, len(exponential)))
+    feedback_taps = np.zeros(len(exponential))
+    # Derive feedback tap for each set of exponential coefficients
+    for i, (A, tau) in enumerate(exponential):
+        b[:, i], feedback_taps[i] = exponential_correction(A, tau)
+    # Derive feddback tap for each set of exponential coefficients
+    feedforward_taps = b[:, 0]
+    for i in range(len(exponential) - 1):
+        feedforward_taps = np.convolve(feedforward_taps, b[:, i + 1])
+    # feedforward taps are bounded to +/- 2
+    if np.abs(max(feedforward_taps)) >= 2:
+        feedforward_taps = 2 * feedforward_taps / max(feedforward_taps)
+
+    return feedforward_taps, feedback_taps
+
+
 def _fit(data: CryoscopeData) -> CryoscopeResults:
     """Postprocessing for cryoscope experiment.
 
@@ -243,12 +311,16 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
     detuning = {}
     amplitude = {}
     step_response = {}
+    alpha = {}
+    time_decay = {}
+    feedforward_taps = {}
+    feedback_taps = {}
     for qubit, setup in data.data:
         qubit_data = data[qubit, setup]
-        x = qubit_data.duration
+        t = qubit_data.duration
         y = 1 - 2 * qubit_data.prob_1
 
-        popt, _ = fitting(x, y)
+        popt, _ = fitting(t, y)
 
         fitted_parameters[qubit, setup] = popt
 
@@ -256,7 +328,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 
     for qubit in qubits:
 
-        sampling_rate = 1 / (x[1] - x[0])
+        sampling_rate = 1 / (t[1] - t[0])
         X_exp = 1 - 2 * data[(qubit, "MX")].prob_1
         Y_exp = 1 - 2 * data[(qubit, "MY")].prob_1
 
@@ -271,7 +343,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         derivative_window_size += (derivative_window_size + 1) % 2
 
         # find demodulatation frequency
-        demod_data = np.exp(2 * np.pi * 1j * x * demod_freq) * (norm_data)
+        demod_data = np.exp(2 * np.pi * 1j * t * demod_freq) * (norm_data)
 
         # compute phase
         phase = np.unwrap(np.angle(demod_data))
@@ -309,11 +381,40 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             np.array(amplitude[qubit]) / data.flux_pulse_amplitude
         ).tolist()
 
+        ##START POST PROCESSING TO RETRIVE IIR AND FIR COEFFICIENTS
+
+        # original total_len is computed as follows: total_len = const_flux_len + zeros_before_pulse + zeros_after_pulse
+        # so in this case should be computed as the len of the FULL_WAVEFORM to be played
+        total_len = len(FULL_WAVEFORM)
+        ## Fit step response with exponential
+        # pdb.set_trace()
+
+        [A, tau], _ = curve_fit(
+            expdecay,
+            t,
+            # np.arange(0, len(step_response[qubit]), 1),  # TODO: fix len
+            # xplot[zeros_before_pulse : const_flux_len + zeros_before_pulse],
+            # devo cambiare questa step response perchè non deve essere lunga quanto tutto il detuning ma semplicemente quanto la parte di detuning corrispondente
+            # all'invio del segnale
+            step_response[qubit],
+        )
+        alpha[qubit] = A
+        time_decay[qubit] = tau
+
+        ## Derive IIR and FIR corrections
+        fir, iir = filter_calc(exponential=[(A, tau)])
+        feedforward_taps[qubit] = list(fir)
+        feedback_taps[qubit] = list(iir)
+
     return CryoscopeResults(
         amplitude=amplitude,
         detuning=detuning,
         step_response=step_response,
         fitted_parameters=fitted_parameters,
+        A=alpha,
+        tau=time_decay,
+        fir=feedforward_taps,
+        iir=feedback_taps,
     )
 
 
@@ -339,6 +440,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
                 name="derived waveform",
             ),
         )
+    # add table back when results attributes are not empty
 
     return [fig], ""
 
