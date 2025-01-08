@@ -17,10 +17,11 @@ from qibolab import (
     PulseSequence,
 )
 from scipy.optimize import curve_fit
+from scipy.signal import lfilter, lfilter_zi
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
-
-from ..ramsey.utils import fitting
+from qibocal.protocols.ramsey.utils import fitting
+from qibocal.protocols.utils import table_dict, table_html
 
 FULL_WAVEFORM = np.concatenate([np.zeros(10), np.ones(90)])
 """Full waveform to be played."""
@@ -386,8 +387,6 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         # original total_len is computed as follows: total_len = const_flux_len + zeros_before_pulse + zeros_after_pulse
         # so in this case should be computed as the len of the FULL_WAVEFORM to be played
         total_len = len(FULL_WAVEFORM)
-        ## Fit step response with exponential
-        # pdb.set_trace()
 
         [A, tau], _ = curve_fit(
             expdecay,
@@ -432,6 +431,8 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
         ),
     )
 
+    fitting_report = None
+
     if fit is not None:
         fig.add_trace(
             go.Scatter(
@@ -440,9 +441,45 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
                 name="derived waveform",
             ),
         )
-    # add table back when results attributes are not empty
 
-    return [fig], ""
+        zi = (
+            lfilter_zi(fit.fir[target], fit.iir[target]) * fit.step_response[target][0]
+        )  # to review
+        signal, _ = lfilter(
+            fit.fir[target], fit.iir[target], fit.step_response[target], zi=zi
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=duration,
+                y=fit.step_response[target],
+                name="derived waveform",
+            ),
+        )
+
+        A = fit.A[target]
+        tau = fit.tau[target]
+        fir = np.array(fit.fir[target])
+        iir = np.array(fit.iir[target])
+
+        fitting_report = table_html(
+            table_dict(
+                target,
+                ["A", "tau", "FIR", "IIR"],
+                [
+                    (A,),
+                    (tau,),
+                    (fir,),
+                    (iir,),
+                ],
+            )
+        )
+
+    return [fig], fitting_report
 
 
-cryoscope = Routine(_acquisition, _fit, _plot)
+def _update(results: CryoscopeResults, platform: Platform, target: QubitId):
+    pass
+
+
+cryoscope = Routine(_acquisition, _fit, _plot, _update)
