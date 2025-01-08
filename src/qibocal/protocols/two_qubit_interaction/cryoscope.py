@@ -256,8 +256,12 @@ def filter_calc(params):
     a1 = -(1 - alpha) * g
 
     a = [a0, a1]  # feedback
-    b = [b0, b1]  # feedforward
-    return a, b
+    b = np.array([b0, b1])  # feedforward
+
+    if np.max(b) >= 2:
+        b = 2 * b / max(b)
+
+    return a, b.tolist()
 
 
 def _fit(data: CryoscopeData) -> CryoscopeResults:
