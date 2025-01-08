@@ -38,10 +38,6 @@ class VirtualZPhasesParameters(Parameters):
     iSWAP and CZ are the possible options.
 
     """
-    flux_pulse_amplitude: Optional[float] = None
-    """Amplitude of flux pulse implementing CZ."""
-    flux_pulse_duration: Optional[float] = None
-    """Duration of flux pulse implementing CZ."""
     dt: Optional[float] = 20
     """Time delay between flux pulses and readout."""
     parking: bool = True
@@ -62,10 +58,6 @@ class VirtualZPhasesResults(Results):
     """Virtual Z phase correction."""
     leakage: dict[QubitPairId, dict[QubitId, float]]
     """Leakage on control qubit for pair."""
-    flux_pulse_amplitude: dict[QubitPairId, float]
-    """Amplitude of flux pulse implementing CZ."""
-    flux_pulse_duration: dict[QubitPairId, int]
-    """Duration of flux pulse implementing CZ."""
 
     def __contains__(self, key: QubitPairId):
         """Check if key is in class.
@@ -88,8 +80,6 @@ class VirtualZPhasesData(Data):
     data: dict[tuple, npt.NDArray[VirtualZPhasesType]] = field(default_factory=dict)
     native: str = "CZ"
     thetas: list = field(default_factory=list)
-    amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
-    durations: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
 
     def __getitem__(self, pair):
         return {
@@ -112,9 +102,6 @@ def create_sequence(
     duration: float = None,
 ) -> tuple[
     PulseSequence,
-    dict[QubitId, Pulse],
-    dict[QubitId, Pulse],
-    dict[QubitId, Pulse],
     dict[QubitId, Pulse],
 ]:
     """Create the experiment PulseSequence."""
@@ -173,12 +160,8 @@ def create_sequence(
             if pulse.qubit not in ordered_pair:
                 pulse.duration = theta_pulse.finish
                 sequence.add(pulse)
-    return (
-        sequence,
-        theta_pulse,
-        flux_sequence.get_qubit_pulses(ordered_pair[1])[0].amplitude,
-        flux_sequence.get_qubit_pulses(ordered_pair[1])[0].duration,
-    )
+
+    return sequence, theta_pulse
 
 
 def _acquisition(
@@ -217,8 +200,6 @@ def _acquisition(
                 (
                     sequence,
                     theta_pulse,
-                    data.amplitudes[ord_pair],
-                    data.durations[ord_pair],
                 ) = create_sequence(
                     platform,
                     setup,
@@ -228,7 +209,6 @@ def _acquisition(
                     params.native,
                     params.dt,
                     params.parking,
-                    params.flux_pulse_amplitude,
                 )
                 theta = np.arange(
                     params.theta_start,
@@ -342,8 +322,6 @@ def _fit(
             pass  # exception covered above
     return VirtualZPhasesResults(
         native=data.native,
-        flux_pulse_amplitude=data.amplitudes,
-        flux_pulse_duration=data.durations,
         angle=angle,
         virtual_phase=virtual_phase,
         fitted_parameters=fitted_parameters,
@@ -436,21 +414,6 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
                     )
                 )
             )
-    fitting_report.add(
-        table_html(
-            table_dict(
-                [qubits[1], qubits[1]],
-                [
-                    "Flux pulse amplitude [a.u.]",
-                    "Flux pulse duration [ns]",
-                ],
-                [
-                    np.round(data.amplitudes[qubits], 4),
-                    np.round(data.durations[qubits], 4),
-                ],
-            )
-        )
-    )
 
     fig1.update_layout(
         title_text=f"Phase correction Qubit {qubits[0]}",
@@ -473,16 +436,9 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
 
 def _update(results: VirtualZPhasesResults, platform: Platform, target: QubitPairId):
     # FIXME: quick fix for qubit order
-    qubit_pair = tuple(sorted(target))
     target = tuple(sorted(target))
     update.virtual_phases(
         results.virtual_phase[target], results.native, platform, target
-    )
-    getattr(update, f"{results.native}_duration")(
-        results.flux_pulse_duration[target], platform, target
-    )
-    getattr(update, f"{results.native}_amplitude")(
-        results.flux_pulse_amplitude[target], platform, target
     )
 
 
