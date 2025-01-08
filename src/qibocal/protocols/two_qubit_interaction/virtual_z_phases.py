@@ -98,8 +98,7 @@ def create_sequence(
     native: str,
     parking: bool,
     dt: float,
-    amplitude: float = None,
-    duration: float = None,
+    flux_pulse_max_duration: float = None,
 ) -> tuple[
     PulseSequence,
     dict[QubitId, Pulse],
@@ -118,11 +117,10 @@ def create_sequence(
         start=max(Y90_pulse.finish, RX_pulse_start.finish),
     )
 
-    if amplitude is not None:
-        flux_sequence.get_qubit_pulses(ordered_pair[1])[0].amplitude = amplitude
-
-    if duration is not None:
-        flux_sequence.get_qubit_pulses(ordered_pair[1])[0].duration = duration
+    if flux_pulse_max_duration is not None:
+        flux_sequence.get_qubit_pulses(ordered_pair[1])[
+            0
+        ].duration = flux_pulse_max_duration
     theta_pulse = platform.create_RX90_pulse(
         target_qubit,
         start=flux_sequence.finish + dt,
