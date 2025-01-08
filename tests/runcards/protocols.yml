@@ -480,7 +480,7 @@ actions:
   - id: CPMG
     operation: cpmg
     parameters:
-      delay_between_pulses_start: 0
+      delay_between_pulses_start: 330
       delay_between_pulses_end: 400
       delay_between_pulses_step: 10
       nshots: 10
