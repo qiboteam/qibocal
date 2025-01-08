@@ -49,12 +49,9 @@ def _acquisition(
     )
     for q in targets:
         # this is assuming that RX and RX90 have the same duration
-        assert (
-            params.delay_between_pulses_start / 2 / params.n
-            >= platform.natives.single_qubit[q].RX()[0][1].duration
-        ), (
+        assert params.delay_between_pulses_start / 2 / params.n >= 1, (
             f"Initial delay too short for qubit {q}, "
-            f"minimum delay should be {platform.natives.single_qubit[q].RX()[0][1].duration * 2 * params.n}"
+            f"minimum delay should be {params.delay_between_pulses_start * 2 * params.n}"
         )
     sweeper = Sweeper(
         parameter=Parameter.duration,

@@ -55,6 +55,12 @@ def _acquisition(
         pulses=delays,
     )
 
+    for q in targets:
+        # this is assuming that RX and RX90 have the same duration
+        assert params.delay_between_pulses_start / 2 >= 1, (
+            f"Initial delay too short for qubit {q}, "
+            f"minimum delay should be {params.delay_between_pulses_start * 2}"
+        )
     results = platform.execute(
         [sequence],
         [[sweeper]],
