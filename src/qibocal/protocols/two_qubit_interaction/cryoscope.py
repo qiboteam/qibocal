@@ -17,9 +17,11 @@ from qibolab import (
     PulseSequence,
 )
 from scipy.optimize import least_squares
+from scipy.signal import lfilter, lfilter_zi
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.protocols.ramsey.utils import fitting
+from qibocal.protocols.utils import table_dict, table_html
 
 FULL_WAVEFORM = np.concatenate([np.zeros(10), np.ones(90)])
 """Full waveform to be played."""
@@ -383,7 +385,17 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
         ),
     )
 
+    fitting_report = None
+
     if fit is not None:
+
+        zi = (
+            lfilter_zi(fit.fir[target], fit.iir[target]) * fit.step_response[target][0]
+        )  # to review
+        signal, _ = lfilter(
+            fit.fir[target], fit.iir[target], fit.step_response[target], zi=zi
+        )
+
         fig.add_trace(
             go.Scatter(
                 x=duration,
@@ -392,7 +404,37 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
             ),
         )
 
-    return [fig], ""
+        fig.add_trace(
+            go.Scatter(
+                x=duration,
+                y=signal,
+                name="filtered waveform",
+            ),
+        )
+
+        A = fit.A[target]
+        tau = fit.tau[target]
+        fir = np.array(fit.fir[target])
+        iir = np.array(fit.iir[target])
+
+        fitting_report = table_html(
+            table_dict(
+                target,
+                ["A", "tau", "FIR", "IIR"],
+                [
+                    (A,),
+                    (tau,),
+                    (fir,),
+                    (iir,),
+                ],
+            )
+        )
+
+    return [fig], fitting_report
 
 
-cryoscope = Routine(_acquisition, _fit, _plot)
+def _update(results: CryoscopeResults, platform: Platform, target: QubitId):
+    pass
+
+
+cryoscope = Routine(_acquisition, _fit, _plot, _update)
