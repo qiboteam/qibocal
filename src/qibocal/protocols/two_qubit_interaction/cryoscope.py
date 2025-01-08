@@ -19,6 +19,7 @@ from qibolab import (
 from scipy.optimize import curve_fit
 from scipy.signal import lfilter, lfilter_zi
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.protocols.ramsey.utils import fitting
 from qibocal.protocols.utils import table_dict, table_html
@@ -479,7 +480,8 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
 
 
 def _update(results: CryoscopeResults, platform: Platform, target: QubitId):
-    pass
+    update.feedback(results.fir[target], platform, target)
+    update.feedforward(results.iir[target], platform, target)
 
 
 cryoscope = Routine(_acquisition, _fit, _plot, _update)
