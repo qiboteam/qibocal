@@ -460,14 +460,18 @@ actions:
 
   - id: spin_echo
     operation: spin_echo
+    # since 0 has different RX duration
+    targets: [1,2,3]
     parameters:
-      delay_between_pulses_start: 10
-      delay_between_pulses_end: 20
+      delay_between_pulses_start: 42
+      delay_between_pulses_end: 100
       delay_between_pulses_step: 1
       nshots: 10
 
   - id: CPMG
     operation: cpmg
+    # since 0 has different RX duration
+    targets: [1,2,3]
     parameters:
       delay_between_pulses_start: 330
       delay_between_pulses_end: 400
@@ -477,17 +481,21 @@ actions:
 
   - id: spin_echo_signal
     operation: spin_echo_signal
+    # since 0 has different RX duration
+    targets: [1,2,3]
     parameters:
-      delay_between_pulses_start: 10
-      delay_between_pulses_end: 20
+      delay_between_pulses_start: 50
+      delay_between_pulses_end: 100
       delay_between_pulses_step: 1
       nshots: 10
 
   - id: spin_echo_signal_single_shot
     operation: spin_echo_signal
+    # since 0 has different RX duration
+    targets: [1,2,3]
     parameters:
-      delay_between_pulses_start: 10
-      delay_between_pulses_end: 20
+      delay_between_pulses_start: 50
+      delay_between_pulses_end: 100
       delay_between_pulses_step: 1
       single_shot: True
       nshots: 10

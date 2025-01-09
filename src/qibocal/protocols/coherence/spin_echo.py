@@ -49,18 +49,25 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
+    durations = []
+    for q in targets:
+        # this is assuming that RX and RX90 have the same duration
+        duration = platform.natives.single_qubit[q].RX()[0][1].duration
+        durations.append(duration)
+        assert (params.delay_between_pulses_start - duration) / 2 >= 1, (
+            f"Initial delay too short for qubit {q}, "
+            f"minimum delay should be {2 + duration}"
+        )
+    assert (
+        len(set(durations)) == 1
+    ), "Cannot run on mulitple qubit with different RX duration."
+
     sweeper = Sweeper(
         parameter=Parameter.duration,
-        values=wait_range / 2,
+        values=(wait_range - durations[0]) / 2,
         pulses=delays,
     )
 
-    for q in targets:
-        # this is assuming that RX and RX90 have the same duration
-        assert params.delay_between_pulses_start / 2 >= 1, (
-            f"Initial delay too short for qubit {q}, "
-            f"minimum delay should be {params.delay_between_pulses_start * 2}"
-        )
     results = platform.execute(
         [sequence],
         [[sweeper]],
