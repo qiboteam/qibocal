@@ -264,7 +264,6 @@ actions:
       nshots: 1024
 
   - id: t1_signal_single_shot
-    priority: 0
     operation: t1_signal
     parameters:
       delay_before_readout_start: 0
@@ -296,7 +295,6 @@ actions:
       nshots: 10
 
   - id: t2_signal_single_shot
-    priority: 0
     operation: t2_signal
     parameters:
       delay_between_pulses_start: 16
@@ -464,7 +462,7 @@ actions:
     operation: spin_echo
     parameters:
       delay_between_pulses_start: 10
-      delay_between_pulses_end: 5
+      delay_between_pulses_end: 20
       delay_between_pulses_step: 1
       nshots: 10
 
@@ -480,17 +478,16 @@ actions:
   - id: spin_echo_signal
     operation: spin_echo_signal
     parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 5
+      delay_between_pulses_start: 10
+      delay_between_pulses_end: 20
       delay_between_pulses_step: 1
       nshots: 10
 
   - id: spin_echo_signal_single_shot
-    priority: 0
     operation: spin_echo_signal
     parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 5
+      delay_between_pulses_start: 10
+      delay_between_pulses_end: 20
       delay_between_pulses_step: 1
       single_shot: True
       nshots: 10
