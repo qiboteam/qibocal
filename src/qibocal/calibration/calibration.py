@@ -65,6 +65,8 @@ class Qubit(Model):
     @property
     def anharmonicity(self):
         """Anharmonicity of the qubit [Hz]."""
+        if self.frequency_12 is None:
+            return 0
         return self.frequency_12 - self.frequency_01
 
     @property

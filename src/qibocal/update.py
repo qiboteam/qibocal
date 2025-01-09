@@ -54,22 +54,32 @@ def drive_frequency(
     platform.update({f"configs.{drive_channel}.frequency": freq})
 
 
-def drive_amplitude(amp: Union[float, tuple, list], platform: Platform, qubit: QubitId):
+def drive_amplitude(
+    amp: Union[float, tuple, list], rx90: bool, platform: Platform, qubit: QubitId
+):
     """Update drive frequency value in platform for specific qubit."""
     if isinstance(amp, Iterable):
         amp = amp[0]
-    platform.update({f"native_gates.single_qubit.{qubit}.RX.0.1.amplitude": amp})
+    if rx90:
+        platform.update({f"native_gates.single_qubit.{qubit}.RX90.0.1.amplitude": amp})
+    else:
+        platform.update({f"native_gates.single_qubit.{qubit}.RX.0.1.amplitude": amp})
 
 
 def drive_duration(
-    duration: Union[int, tuple, list], platform: Platform, qubit: QubitId
+    duration: Union[int, tuple, list], rx90: bool, platform: Platform, qubit: QubitId
 ):
     """Update drive duration value in platform for specific qubit."""
     if isinstance(duration, Iterable):
         duration = duration[0]
-    platform.update(
-        {f"native_gates.single_qubit.{qubit}.RX.0.1.duration": int(duration)}
-    )
+    if rx90:
+        platform.update(
+            {f"native_gates.single_qubit.{qubit}.RX90.0.1.duration": int(duration)}
+        )
+    else:
+        platform.update(
+            {f"native_gates.single_qubit.{qubit}.RX.0.1.duration": int(duration)}
+        )
 
 
 def crosstalk_matrix(

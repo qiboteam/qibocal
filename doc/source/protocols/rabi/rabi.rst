@@ -29,6 +29,17 @@ Rabi rate is larger than the decay and the pure dephasing rate,
 
 where :math:`\Omega_R` is the Rabi frequency and :math:`\tau` the decay time.
 
+
+Since many routines and protocols in quantum computing are based on `R_x(\pi/2)` rotations, in qibocal we implemented
+also another version of the Rabi experiment which can be used to tune the amplitude (duration) of the drive pulse in order
+to excite the qubit from the ground state up to state :math:`\frac{\ket{0}-i\ket{1}}{\sqrt{2}}`.
+
+The possibility to calibrate an `R_x(\pi/2)` rotation as native gate allows us to remove the errors that could arise from assuming that the `R_x(\pi/2)` amplitude (duration)
+is exactly half that of the `R_x(\pi)` amplitude (duration). This assumption presumes a perfectly linear response of the qubit to the drive pulse, which is
+often not the case due to nonlinearities in the qubit's response or imperfections in the pulse shaping :cite:p:`Chen2018MetrologyOQ`.
+
+In this case the pulse sequence is the same as before with the only difference that instead of a single `R_x(\pi)` pulse we use two concatenated `R_x(\pi/2)` pulses.
+
 Parameters
 ^^^^^^^^^^
 
@@ -102,6 +113,29 @@ It follows an example runcard and plot for the signal exepriment
         relaxation_time: 50000
 
 .. image:: rabi_signal.png
+
+In all the previous examples we run Rabi experiments for calibrating the amplitude (duration) of the drive pulse
+to excite the qubit from the ground state up to state :math:`\ket{1}`.
+All these example runcards can be modified to calibrate the amplitude (duration) of the drive pulse
+to excite the qubit from the ground state up to state :math:`\frac{\ket{0}-i\ket{1}}{\sqrt{2}}` by simply setting the `rx90` parameter to `True`.
+
+In the following we show an example runcard for the amplitude calibration of the `R_x(\pi/2)`.
+
+.. code-block:: yaml
+
+
+    - id: Rabi signal
+      operation: rabi_amplitude_signal
+      parameters:
+        min_amp: 0.01
+        max_amp: 0.16
+        step_amp: 0.002
+        pulse_length: 40
+        nshots: 1024
+        relaxation_time: 50000
+        rx90: True
+
+.. image:: rabi_amplitude_rx90
 
 Requirements
 ^^^^^^^^^^^^
