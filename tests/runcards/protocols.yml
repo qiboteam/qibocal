@@ -777,19 +777,11 @@ actions:
       native: CZ
       parking: True
 
-  - id: readout_mitigation_matrix pulses
+  - id: readout_mitigation_matrix
     operation: readout_mitigation_matrix
     targets: [[0,1,2],[1,2]]
     parameters:
       nshots: 10
-      pulses: True
-
-  - id: readout_mitigation_matrix circuits
-    operation: readout_mitigation_matrix
-    targets: [[0,1,2],[1,2]]
-    parameters:
-      nshots: 10
-      pulses: False
 
   - id: resonator_amplitude
     operation: resonator_amplitude
