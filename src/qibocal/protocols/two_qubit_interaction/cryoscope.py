@@ -60,8 +60,8 @@ class CryoscopeResults(Results):
     """Flux amplitude computed from detuning."""
     step_response: dict[QubitId, list[float]] = field(default_factory=dict)
     """Waveform normalized to 1."""
-    A: dict[QubitId, list[float]] = field(default_factory=dict)
-    """A parameters for the exp decay approximation"""
+    exp_amplitude: dict[QubitId, list[float]] = field(default_factory=dict)
+    """amplitude parameters for the exp decay approximation"""
     tau: dict[QubitId, list[float]] = field(default_factory=dict)
     """time decay constant in exp decay approximation"""
     fir: dict[QubitId, list[float]] = field(default_factory=dict)
@@ -246,7 +246,7 @@ def expdecay(x, a, t):
 
 
 # consider if add g how to correct this function
-def exponential_correction(A, tau):
+def exponential_correction(exp_amplitude, tau):
     """Derive FIR and IIR filter taps based on a the exponential coefficients A and tau from 1 + a * np.exp(-x / t).
 
     :param A: amplitude of the exponential decay
@@ -254,8 +254,8 @@ def exponential_correction(A, tau):
     :return: FIR and IIR taps
     """
     tau = tau * TS
-    k1 = TS + 2 * tau * (A + 1)
-    k2 = TS - 2 * tau * (A + 1)
+    k1 = TS + 2 * tau * (exp_amplitude + 1)
+    k2 = TS - 2 * tau * (exp_amplitude + 1)
     c1 = TS + 2 * tau
     c2 = TS - 2 * tau
     feedback_tap = -k2 / k1
@@ -318,10 +318,10 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
     feedback_taps = {}
     for qubit, setup in data.data:
         qubit_data = data[qubit, setup]
-        t = qubit_data.duration
+        x = qubit_data.duration
         y = 1 - 2 * qubit_data.prob_1
 
-        popt, _ = fitting(t, y)
+        popt, _ = fitting(x, y)
 
         fitted_parameters[qubit, setup] = popt
 
@@ -329,7 +329,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 
     for qubit in qubits:
 
-        sampling_rate = 1 / (t[1] - t[0])
+        sampling_rate = 1 / (x[1] - x[0])
         X_exp = 1 - 2 * data[(qubit, "MX")].prob_1
         Y_exp = 1 - 2 * data[(qubit, "MY")].prob_1
 
@@ -344,7 +344,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         derivative_window_size += (derivative_window_size + 1) % 2
 
         # find demodulatation frequency
-        demod_data = np.exp(2 * np.pi * 1j * t * demod_freq) * (norm_data)
+        demod_data = np.exp(2 * np.pi * 1j * x * demod_freq) * (norm_data)
 
         # compute phase
         phase = np.unwrap(np.angle(demod_data))
@@ -388,20 +388,19 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         # so in this case should be computed as the len of the FULL_WAVEFORM to be played
         total_len = len(FULL_WAVEFORM)
 
-        [A, tau], _ = curve_fit(
+        [exp_amplitude, tau], _ = curve_fit(
             expdecay,
-            t,
-            # np.arange(0, len(step_response[qubit]), 1),  # TODO: fix len
+            x,  # check if correct
             # xplot[zeros_before_pulse : const_flux_len + zeros_before_pulse],
             # devo cambiare questa step response perchè non deve essere lunga quanto tutto il detuning ma semplicemente quanto la parte di detuning corrispondente
             # all'invio del segnale
             step_response[qubit],
         )
-        alpha[qubit] = A
+        alpha[qubit] = exp_amplitude
         time_decay[qubit] = tau
 
         ## Derive IIR and FIR corrections
-        fir, iir = filter_calc(exponential=[(A, tau)])
+        fir, iir = filter_calc(exponential=[(exp_amplitude, tau)])
         feedforward_taps[qubit] = list(fir)
         feedback_taps[qubit] = list(iir)
 
@@ -410,7 +409,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         detuning=detuning,
         step_response=step_response,
         fitted_parameters=fitted_parameters,
-        A=alpha,
+        exp_amplitude=alpha,
         tau=time_decay,
         fir=feedforward_taps,
         iir=feedback_taps,
@@ -457,7 +456,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
             ),
         )
 
-        A = fit.A[target]
+        exp_amplitude = fit.exp_amplitude[target]
         tau = fit.tau[target]
         fir = np.array(fit.fir[target])
         iir = np.array(fit.iir[target])
@@ -467,7 +466,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
                 target,
                 ["A", "tau", "FIR", "IIR"],
                 [
-                    (A,),
+                    (exp_amplitude,),
                     (tau,),
                     (fir,),
                     (iir,),
