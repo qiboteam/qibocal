@@ -103,6 +103,5 @@ __all__ = [
     "standard_rb_2q",
     "standard_rb_2q_inter",
     "optimize_two_qubit_gate",
-    "mermin",
     "ramsey_zz",
 ]
