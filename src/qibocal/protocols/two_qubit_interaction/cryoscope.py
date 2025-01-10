@@ -234,14 +234,14 @@ def _acquisition(
 
 
 def residuals(params, step_response, t):
-    duration = len(t)
     g, tau, A = params
     expmodel = step_response / (g * (1 + A * np.exp(-(t - START) / tau)))
-    return expmodel - FULL_WAVEFORM[:duration]
+    return expmodel - FULL_WAVEFORM[: len(t)]
 
 
-def exponential_params(step_response, t):
+def exponential_params(step_response, acquisition_time):
     init_guess = [1, 1, 1]
+    t = np.arange(0, acquisition_time, 1)
     result = least_squares(residuals, init_guess, args=(step_response, t))
     return result.x
 
@@ -294,10 +294,10 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
     feedback_taps = {}
     for qubit, setup in data.data:
         qubit_data = data[qubit, setup]
-        t = qubit_data.duration
+        x = qubit_data.duration
         y = 1 - 2 * qubit_data.prob_1
 
-        popt, _ = fitting(t, y)
+        popt, _ = fitting(x, y)
 
         fitted_parameters[qubit, setup] = popt
 
@@ -305,7 +305,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 
     for qubit in qubits:
 
-        sampling_rate = 1 / (t[1] - t[0])
+        sampling_rate = 1 / (x[1] - x[0])
         X_exp = 1 - 2 * data[(qubit, "MX")].prob_1
         Y_exp = 1 - 2 * data[(qubit, "MY")].prob_1
 
@@ -320,7 +320,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         derivative_window_size += (derivative_window_size + 1) % 2
 
         # find demodulatation frequency
-        demod_data = np.exp(2 * np.pi * 1j * t * demod_freq) * (norm_data)
+        demod_data = np.exp(2 * np.pi * 1j * x * demod_freq) * (norm_data)
 
         # compute phase
         phase = np.unwrap(np.angle(demod_data))
@@ -359,7 +359,8 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         ).tolist()
 
         # Derive IIR and FIR corrections
-        exp_params = exponential_params(step_response[qubit], t)
+        acquisition_time = len(x)
+        exp_params = exponential_params(step_response[qubit], acquisition_time)
         feedback_taps[qubit], feedforward_taps[qubit] = filter_calc(exp_params)
         _, time_decay[qubit], alpha[qubit] = exp_params
 
