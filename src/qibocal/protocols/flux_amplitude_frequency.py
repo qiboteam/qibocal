@@ -1,10 +1,12 @@
 """Experiment to compute detuning from flux pulses."""
 
 from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
@@ -18,6 +20,7 @@ from qibolab import (
 )
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 
 
 @dataclass
@@ -32,6 +35,10 @@ class FluxAmplitudeFrequencyParameters(Parameters):
     """Flux pulse amplitude step."""
     duration: float
     """Flux pulse duration."""
+    flux_qubit: Optional[QubitId] = None
+    """For measuring flux crosstalk."""
+    target_qubit_flux_amplitude: float = 0
+    """Flux pulse amplitude to bias away qubit from sweetstpot."""
 
 
 @dataclass
@@ -40,10 +47,15 @@ class FluxAmplitudeFrequencyResults(Results):
 
     detuning: dict[QubitId, float] = field(default_factory=dict)
     """Frequency detuning."""
-    fitted_parameters: dict[tuple[QubitId, str], list[float]] = field(
+    flux: dict[QubitId, float] = field(default_factory=dict)
+    """Frequency detuning."""
+    fitted_parameters_detuning: dict[tuple[QubitId, str], list[float]] = field(
         default_factory=dict
     )
     """Fitted parameters for every qubit."""
+    fitted_parameters_flux: dict[tuple[QubitId, str], list[float]] = field(
+        default_factory=dict
+    )
 
     # TODO: to be fixed
     def __contains__(self, key):
@@ -60,6 +72,8 @@ def ramsey_flux(
     amplitude: float,
     duration: int,
     measure: str,
+    target_qubit: QubitId,
+    target_amplitude: float,
 ):
     """Compute sequences at fixed amplitude of flux pulse for <X> and <Y>"""
 
@@ -70,7 +84,9 @@ def ramsey_flux(
     drive_channel, ry90 = native.R(theta=np.pi / 2, phi=np.pi / 2)[0]
     _, rx90 = native.R(theta=np.pi / 2)[0]
     ro_channel, ro_pulse = native.MZ()[0]
-    flux_channel = platform.qubits[qubit].flux
+    flux_channel = platform.qubits[
+        target_qubit if target_qubit is not None else qubit
+    ].flux
 
     flux_pulse = Pulse(duration=duration, amplitude=amplitude, envelope=Rectangular())
 
@@ -107,6 +123,18 @@ def ramsey_flux(
                 (ro_channel, ro_pulse),
             ]
         )
+
+    if target_qubit is not None:
+        flux_channel = platform.qubits[qubit].flux
+        flux_pulse = Pulse(
+            duration=duration, amplitude=target_amplitude, envelope=Rectangular()
+        )
+        sequence.extend(
+            [
+                (flux_channel, Delay(duration=ry90.duration)),
+                (flux_channel, flux_pulse),
+            ]
+        )
     return sequence
 
 
@@ -116,6 +144,10 @@ class FluxAmplitudeFrequencyData(Data):
 
     flux_pulse_duration: float
     """Flux pulse amplitude."""
+    qubit_frequency: dict = field(default_factory=dict)
+    """Frequency of the qubits."""
+    detuning: dict = field(default_factory=dict)
+    """Detuning of the qubits."""
     data: dict[tuple[QubitId, str], npt.NDArray[FluxAmplitudeFrequencyType]] = field(
         default_factory=dict
     )
@@ -127,8 +159,25 @@ def _acquisition(
     targets: list[QubitId],
 ) -> FluxAmplitudeFrequencyData:
 
+    detuning = {
+        qubit: (
+            0
+            if params.flux_qubit is None
+            else platform.calibration.single_qubits[qubit].qubit.detuning(
+                params.target_qubit_flux_amplitude
+            )
+        )
+        for qubit in targets
+    }
+    qubit_frequency = {
+        qubit: platform.calibration.single_qubits[qubit].qubit.frequency_01 / 1e9
+        for qubit in targets
+    }
+
     data = FluxAmplitudeFrequencyData(
         flux_pulse_duration=params.duration,
+        qubit_frequency=qubit_frequency,
+        detuning=detuning,
     )
     amplitudes = np.arange(
         params.amplitude_min, params.amplitude_max, params.amplitude_step
@@ -149,6 +198,8 @@ def _acquisition(
                 duration=params.duration,
                 amplitude=params.amplitude_max / 2,
                 measure=measure,
+                target_amplitude=params.target_qubit_flux_amplitude,
+                target_qubit=params.flux_qubit,
             )
 
         sweeper = Sweeper(
@@ -157,7 +208,13 @@ def _acquisition(
             pulses=[
                 pulse[1]
                 for pulse in sequence
-                if pulse[0] in [platform.qubits[target].flux for target in targets]
+                if pulse[0]
+                in [
+                    platform.qubits[
+                        params.flux_qubit if params.flux_qubit is not None else target
+                    ].flux
+                    for target in targets
+                ]
                 and isinstance(pulse[1], Pulse)
             ],
         )
@@ -179,24 +236,29 @@ def _acquisition(
 
 def _fit(data: FluxAmplitudeFrequencyData) -> FluxAmplitudeFrequencyResults:
 
-    fitted_parameters = {}
+    fitted_parameters_detuning = {}
+    fitted_parameters_flux = {}
     detuning = {}
+    flux = {}
     qubits = np.unique([i[0] for i in data.data]).tolist()
-
     for qubit in qubits:
         amplitudes = data[qubit, "X"].amplitude
         X_exp = 1 - 2 * data[qubit, "X"].prob_1
         Y_exp = 1 - 2 * data[qubit, "Y"].prob_1
-
         phase = np.unwrap(np.angle(X_exp + 1j * Y_exp))
-        # normalize phase ?
-        phase -= phase[0]
-        det = phase / data.flux_pulse_duration / 2 / np.pi
-
-        fitted_parameters[qubit] = np.polyfit(amplitudes, det, 2).tolist()
+        other_det = data.detuning[qubit]
+        f = data.qubit_frequency[qubit]
+        det = -phase / data.flux_pulse_duration / 2 / np.pi + other_det
+        derived_flux = 1 / np.pi * np.arccos(((f + det) / f) ** 2)
+        flux[qubit] = derived_flux.tolist()
+        fitted_parameters_detuning[qubit] = np.polyfit(amplitudes, det, 2).tolist()
+        fitted_parameters_flux[qubit] = np.polyfit(amplitudes, derived_flux, 1).tolist()
         detuning[qubit] = det.tolist()
     return FluxAmplitudeFrequencyResults(
-        detuning=detuning, fitted_parameters=fitted_parameters
+        detuning=detuning,
+        fitted_parameters_detuning=fitted_parameters_detuning,
+        flux=flux,
+        fitted_parameters_flux=fitted_parameters_flux,
     )
 
 
@@ -207,7 +269,10 @@ def _plot(
 ):
     """FluxAmplitudeFrequency plots."""
 
-    fig = go.Figure()
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+    )
 
     amplitude = data[(target, "X")].amplitude
 
@@ -217,23 +282,56 @@ def _plot(
                 x=amplitude,
                 y=fit.detuning[target],
                 name="Detuning",
-            )
+            ),
+            row=1,
+            col=1,
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=amplitude,
+                y=fit.flux[target],
+                name="Flux",
+            ),
+            row=1,
+            col=2,
         )
         fig.add_trace(
             go.Scatter(
                 x=amplitude,
-                y=np.polyval(fit.fitted_parameters[target], amplitude),
+                y=np.polyval(fit.fitted_parameters_detuning[target], amplitude),
                 name="fit",
-            )
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=amplitude,
+                y=np.polyval(fit.fitted_parameters_flux[target], amplitude),
+                name="fit",
+            ),
+            row=1,
+            col=2,
         )
 
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Flux pulse amplitude [a.u.]",
-        yaxis_title="Detuning [GHz]",
+        xaxis1_title="Flux pulse amplitude [a.u.]",
+        xaxis2_title="Flux pulse amplitude [a.u.]",
+        yaxis1_title="Detuning [GHz]",
+        yaxis2_title="Flux [Phi0]",
     )
 
     return [fig], ""
+
+
+def _update(
+    results: FluxAmplitudeFrequencyResults,
+    platform: CalibrationPlatform,
+    target: QubitId,
+):
+    pass
 
 
 flux_amplitude_frequency = Routine(_acquisition, _fit, _plot)

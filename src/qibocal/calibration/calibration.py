@@ -61,6 +61,8 @@ class Qubit(Model):
     """Junctions asymmetry."""
     sweetspot: Optional[float] = None
     """Qubit sweetspot [V]."""
+    detuning_flux_params: Optional[list] = None
+    """Mapping from flux amplitude to detuning."""
 
     @property
     def anharmonicity(self):
@@ -87,6 +89,11 @@ class Qubit(Model):
             / 8
             / self.charging_energy
         )
+
+    def detuning(self, amplitude):
+        if self.detuning_flux_params is None:
+            return 0
+        return np.polyval(self.detuning_flux_params, amplitude)
 
 
 class Readout(Model):
