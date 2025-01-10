@@ -74,7 +74,7 @@ def _acquisition(
     """Data acquisition for Rabi experiment sweeping length."""
 
     sequence, qd_pulses, delays, ro_pulses, amplitudes = sequence_length(
-        targets, params, platform
+        targets, params, platform, params.rx90
     )
 
     sweep_range = (
@@ -109,7 +109,7 @@ def _acquisition(
             channels=[channel],
         )
 
-    data = RabiLengthFreqData(amplitudes=amplitudes)
+    data = RabiLengthFreqData(amplitudes=amplitudes, rx90=params.rx90)
 
     results = platform.execute(
         [sequence],
@@ -197,6 +197,7 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
         fitted_parameters=fitted_parameters,
         frequency=fitted_frequencies,
         chi2=chi2,
+        rx90=data.rx90,
     )
 
 
@@ -245,10 +246,12 @@ def _plot(
             row=1,
             col=1,
         )
+        pulse_name = "Pi-half pulse" if data.rx90 else "Pi pulse"
+
         fitting_report = table_html(
             table_dict(
                 target,
-                ["Optimal rabi frequency", "Pi-pulse duration"],
+                ["Optimal rabi frequency", f"{pulse_name} duration"],
                 [
                     fit.frequency[target],
                     f"{fit.length[target][0]:.2f} +- {fit.length[target][1]:.2f} ns",

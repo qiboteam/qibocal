@@ -4,7 +4,7 @@ from copy import deepcopy
 
 import pytest
 from pytest import approx
-from qibo.backends import GlobalBackend, set_backend
+from qibo.backends import get_backend, set_backend
 
 from qibocal import protocols
 from qibocal.auto.mode import AUTOCALIBRATION, ExecutionMode
@@ -21,7 +21,7 @@ from qibocal.protocols.readout_mitigation_matrix import (
 @pytest.fixture(scope="module")
 def platform():
     set_backend(backend="qibolab", platform="dummy")
-    return CalibrationPlatform.from_platform(GlobalBackend().platform)
+    return CalibrationPlatform.from_platform(get_backend().platform)
 
 
 TARGETS = [0, 1, 2]

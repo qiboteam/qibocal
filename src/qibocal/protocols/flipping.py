@@ -23,23 +23,35 @@ from .utils import COLORBAND, COLORBAND_LINE, chi2_reduced
 
 
 def flipping_sequence(
-    platform: CalibrationPlatform, qubit: QubitId, delta_amplitude: float, flips: int
+    platform: CalibrationPlatform,
+    qubit: QubitId,
+    delta_amplitude: float,
+    flips: int,
+    rx90: bool,
 ):
     """Pulse sequence for flipping experiment."""
 
     sequence = PulseSequence()
     natives = platform.natives.single_qubit[qubit]
+
     sequence |= natives.R(theta=np.pi / 2)
 
     for _ in range(flips):
 
-        qd_channel, rx_pulse = natives.RX()[0]
+        if rx90:
+            qd_channel, qd_pulse = natives.RX90()[0]
+        else:
+            qd_channel, qd_pulse = natives.RX()[0]
 
-        rx_detuned = update.replace(
-            rx_pulse, amplitude=rx_pulse.amplitude + delta_amplitude
+        qd_detuned = update.replace(
+            qd_pulse, amplitude=qd_pulse.amplitude + delta_amplitude
         )
-        sequence.append((qd_channel, rx_detuned))
-        sequence.append((qd_channel, rx_detuned))
+        sequence.append((qd_channel, qd_detuned))
+        sequence.append((qd_channel, qd_detuned))
+
+        if rx90:
+            sequence.append((qd_channel, qd_detuned))
+            sequence.append((qd_channel, qd_detuned))
 
     sequence |= natives.MZ()
 
@@ -59,6 +71,8 @@ class FlippingParameters(Parameters):
     Defaults to ``False``."""
     delta_amplitude: float = 0
     """Amplitude detuning."""
+    rx90: bool = False
+    """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
 
 
 @dataclass
@@ -73,6 +87,8 @@ class FlippingResults(Results):
     """Difference in amplitude between detuned value and fit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    rx90: bool
+    """Pi or Pi_half calibration"""
     chi2: dict[QubitId, list[float]] = field(default_factory=dict)
     """Chi squared estimate mean value and error. """
 
@@ -90,8 +106,10 @@ class FlippingData(Data):
     """Resonator type."""
     delta_amplitude: float
     """Amplitude detuning."""
-    pi_pulse_amplitudes: dict[QubitId, float]
-    """Pi pulse amplitudes for each qubit."""
+    pulse_amplitudes: dict[QubitId, float]
+    """Pulse amplitudes for each qubit."""
+    rx90: bool
+    """Pi or Pi_half calibration"""
     data: dict[QubitId, npt.NDArray[FlippingType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -120,10 +138,13 @@ def _acquisition(
     data = FlippingData(
         resonator_type=platform.resonator_type,
         delta_amplitude=params.delta_amplitude,
-        pi_pulse_amplitudes={
-            qubit: platform.natives.single_qubit[qubit].RX[0][1].amplitude
+        pulse_amplitudes={
+            qubit: getattr(
+                platform.natives.single_qubit[qubit], "RX90" if params.rx90 else "RX"
+            )[0][1].amplitude
             for qubit in targets
         },
+        rx90=params.rx90,
     )
 
     options = {
@@ -144,6 +165,7 @@ def _acquisition(
                 qubit=qubit,
                 delta_amplitude=params.delta_amplitude,
                 flips=flips,
+                rx90=params.rx90,
             )
 
         sequences.append(sequence)
@@ -197,9 +219,7 @@ def _fit(data: FlippingData) -> FlippingResults:
     chi2 = {}
     for qubit in qubits:
         qubit_data = data[qubit]
-        detuned_pi_pulse_amplitude = (
-            data.pi_pulse_amplitudes[qubit] + data.delta_amplitude
-        )
+        detuned_pulse_amplitude = data.pulse_amplitudes[qubit] + data.delta_amplitude
         y = qubit_data.prob
         x = qubit_data.flips
 
@@ -222,10 +242,14 @@ def _fit(data: FlippingData) -> FlippingResults:
             perr = np.sqrt(np.diag(perr)).tolist()
             popt = popt.tolist()
             correction = popt[2] / 2
+
+            if data.rx90:
+                correction /= 2
+
             corrected_amplitudes[qubit] = [
-                float(detuned_pi_pulse_amplitude * np.pi / (np.pi + correction)),
+                float(detuned_pulse_amplitude * np.pi / (np.pi + correction)),
                 float(
-                    detuned_pi_pulse_amplitude
+                    detuned_pulse_amplitude
                     * np.pi
                     * 1
                     / (np.pi + correction) ** 2
@@ -237,11 +261,9 @@ def _fit(data: FlippingData) -> FlippingResults:
             fitted_parameters[qubit] = popt
 
             delta_amplitude_detuned[qubit] = [
-                -correction * detuned_pi_pulse_amplitude / (np.pi + correction),
+                -correction * detuned_pulse_amplitude / (np.pi + correction),
                 np.abs(
-                    np.pi
-                    * detuned_pi_pulse_amplitude
-                    * np.power(np.pi + correction, -2)
+                    np.pi * detuned_pulse_amplitude * np.power(np.pi + correction, -2)
                 )
                 * perr[2]
                 / 2,
@@ -267,6 +289,7 @@ def _fit(data: FlippingData) -> FlippingResults:
         delta_amplitude,
         delta_amplitude_detuned,
         fitted_parameters,
+        data.rx90,
         chi2,
     )
 
@@ -358,7 +381,7 @@ def _plot(data: FlippingData, target: QubitId, fit: FlippingResults = None):
 
 
 def _update(results: FlippingResults, platform: CalibrationPlatform, qubit: QubitId):
-    update.drive_amplitude(results.amplitude[qubit], platform, qubit)
+    update.drive_amplitude(results.amplitude[qubit], results.rx90, platform, qubit)
 
 
 flipping = Routine(_acquisition, _fit, _plot, _update)
