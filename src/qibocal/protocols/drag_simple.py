@@ -27,9 +27,8 @@ class DragTuningSimpleParameters(drag.DragTuningParameters):
 class DragTuningSimpleResults(drag.DragTuningResults):
     """DragTuningSimple outputs."""
 
-    # TODO: to be removed
     def __contains__(self, key):
-        return True
+        return key in self.betas
 
 
 @dataclass
