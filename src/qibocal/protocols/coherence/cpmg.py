@@ -54,9 +54,9 @@ def _acquisition(
         durations.append(duration)
         assert (
             params.delay_between_pulses_start - params.n * duration
-        ) / 2 / params.n >= 1, (
+        ) / 2 / params.n >= 0, (
             f"Initial delay too short for qubit {q}, "
-            f"minimum delay should be {params.n (2 + duration)}"
+            f"minimum delay should be {params.n * duration}"
         )
 
     assert (
