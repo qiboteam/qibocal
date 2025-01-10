@@ -17,6 +17,7 @@ from qibolab import (
     Sweeper,
 )
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 
 
@@ -236,4 +237,8 @@ def _plot(
     return [fig], ""
 
 
-flux_amplitude_frequency = Routine(_acquisition, _fit, _plot)
+def _update(results: FluxAmplitudeFrequencyResults, platform: Platform, qubit: QubitId):
+    update.flux_coefficients(results.fitted_parameters[qubit], platform, qubit)
+
+
+flux_amplitude_frequency = Routine(_acquisition, _fit, _plot, _update)
