@@ -867,7 +867,7 @@ actions:
       relaxation_time: 50_000
 
 
-  - id: cryoscope amplitude
+  - id: flux_amplitude_dep
     operation: flux_amplitude_frequency
     parameters:
       amplitude_min: 0.1
@@ -875,6 +875,18 @@ actions:
       amplitude_step: 0.1
       duration: 50
       relaxation_time: 50_000
+
+  - id: flux_amplitude_dep_crosstalk
+    operation: flux_amplitude_frequency
+    targets: [0]
+    parameters:
+      amplitude_min: 0.1
+      amplitude_max: 1
+      amplitude_step: 0.1
+      duration: 50
+      relaxation_time: 50_000
+      crosstalk_qubit: 1
+      flux_pulse_amplitude: 0.2
 
 
   - id: flux_gate
