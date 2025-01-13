@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 
+# import pdb
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
@@ -143,6 +144,8 @@ class CryoscopeData(Data):
 
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
+    flux_coefficients: dict[QubitId, list[float]] = field(default_factory=dict)
+    """Flux - amplitude relation coefficients obtained from flux_amplitude_frequency routine"""
     data: dict[tuple[QubitId, str], npt.NDArray[CryoscopeType]] = field(
         default_factory=dict
     )
@@ -169,6 +172,11 @@ def _acquisition(
     data = CryoscopeData(
         flux_pulse_amplitude=params.flux_pulse_amplitude,
     )
+
+    for qubit in targets:
+        data.flux_coefficients[qubit] = platform.calibration.single_qubits[
+            qubit
+        ].qubit.flux_coefficients
 
     sequences_x = []
     sequences_y = []
@@ -229,6 +237,7 @@ def _acquisition(
                         prob_1=result,
                     ),
                 )
+                # pdb.set_trace()
 
     return data
 
@@ -303,6 +312,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 
     qubits = np.unique([i[0] for i in data.data]).tolist()
 
+    #    pdb.set_trace()
     for qubit in qubits:
 
         sampling_rate = 1 / (x[1] - x[0])
@@ -342,7 +352,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         ).tolist()
 
         # params from flux_amplitude_frequency_protocol
-        params = qubit.flux_coefficients
+        params = data.flux_coefficients[qubit]
         # params = [1.9412681243469971, -0.012534948170662627, 0.0005454772278201887]
         # params = [  # D2
         #     2.0578,
