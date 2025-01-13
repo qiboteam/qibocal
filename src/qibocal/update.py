@@ -230,3 +230,17 @@ def coupling(g: float, platform: Platform, qubit: QubitId):
 def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):
     ro_channel = platform.qubits[qubit].acquisition
     platform.update({f"configs.{ro_channel}.kernel": kernel})
+
+
+def feedback(feedback: list[float], platform: Platform, qubit: QubitId):
+    """Update flux pulse feedback filter parameter in platform for specific qubit."""
+    platform.update(
+        {f"configs.{platform.qubits[qubit].flux}.filter.feedback": feedback}
+    )
+
+
+def feedforward(feedforward: list[float], platform: Platform, qubit: QubitId):
+    """Update flux pulse feedforward parameter in platform for specific qubit."""
+    platform.update(
+        {f"configs.{platform.qubits[qubit].flux}.filter.feedback": feedforward}
+    )
