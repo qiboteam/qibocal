@@ -19,8 +19,11 @@ from qibolab import (
     Sweeper,
 )
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
+
+from .utils import HZ_TO_GHZ, table_dict, table_html
 
 
 @dataclass
@@ -35,16 +38,25 @@ class FluxAmplitudeFrequencyParameters(Parameters):
     """Flux pulse amplitude step."""
     duration: float
     """Flux pulse duration."""
-    flux_qubit: Optional[QubitId] = None
-    """For measuring flux crosstalk."""
-    target_qubit_flux_amplitude: float = 0
-    """Flux pulse amplitude to bias away qubit from sweetstpot."""
+    crosstalk_qubit: Optional[QubitId] = None
+    """If provided a flux pulse will be applied on this qubit.
+
+    Enable to compute the crosstalk matrix.
+
+    """
+    flux_pulse_amplitude: float = 0
+    """Flux pulse amplitude on target qubits to bias from sweetstpot.
+
+    It should be provided only if crosstalk is not None.
+    """
 
 
 @dataclass
 class FluxAmplitudeFrequencyResults(Results):
     """FluxAmplitudeFrequency outputs."""
 
+    crosstalk: bool = False
+    """Check if this is crosstalk protocol."""
     detuning: dict[QubitId, float] = field(default_factory=dict)
     """Frequency detuning."""
     flux: dict[QubitId, float] = field(default_factory=dict)
@@ -142,6 +154,8 @@ def ramsey_flux(
 class FluxAmplitudeFrequencyData(Data):
     """FluxAmplitudeFrequency acquisition outputs."""
 
+    crosstalk_qubit: Optional[QubitId]
+    """Qubit where crosstalk will be measured."""
     flux_pulse_duration: float
     """Flux pulse amplitude."""
     qubit_frequency: dict = field(default_factory=dict)
@@ -162,19 +176,20 @@ def _acquisition(
     detuning = {
         qubit: (
             0
-            if params.flux_qubit is None
+            if params.crosstalk_qubit is None
             else platform.calibration.single_qubits[qubit].qubit.detuning(
-                params.target_qubit_flux_amplitude
+                params.flux_pulse_amplitude
             )
         )
         for qubit in targets
     }
     qubit_frequency = {
-        qubit: platform.calibration.single_qubits[qubit].qubit.frequency_01 / 1e9
+        qubit: platform.calibration.single_qubits[qubit].qubit.frequency_01 * HZ_TO_GHZ
         for qubit in targets
     }
 
     data = FluxAmplitudeFrequencyData(
+        crosstalk_qubit=params.crosstalk_qubit,
         flux_pulse_duration=params.duration,
         qubit_frequency=qubit_frequency,
         detuning=detuning,
@@ -198,8 +213,8 @@ def _acquisition(
                 duration=params.duration,
                 amplitude=params.amplitude_max / 2,
                 measure=measure,
-                target_amplitude=params.target_qubit_flux_amplitude,
-                target_qubit=params.flux_qubit,
+                target_amplitude=params.flux_pulse_amplitude,
+                target_qubit=params.crosstalk_qubit,
             )
 
         sweeper = Sweeper(
@@ -211,7 +226,11 @@ def _acquisition(
                 if pulse[0]
                 in [
                     platform.qubits[
-                        params.flux_qubit if params.flux_qubit is not None else target
+                        (
+                            params.crosstalk_qubit
+                            if params.crosstalk_qubit is not None
+                            else target
+                        )
                     ].flux
                     for target in targets
                 ]
@@ -238,23 +257,28 @@ def _fit(data: FluxAmplitudeFrequencyData) -> FluxAmplitudeFrequencyResults:
 
     fitted_parameters_detuning = {}
     fitted_parameters_flux = {}
+    crosstalk = data.crosstalk_qubit
     detuning = {}
     flux = {}
     qubits = np.unique([i[0] for i in data.data]).tolist()
     for qubit in qubits:
         amplitudes = data[qubit, "X"].amplitude
-        X_exp = 1 - 2 * data[qubit, "X"].prob_1
+        X_exp = 2 * data[qubit, "X"].prob_1 - 1
+        # TODO: check if sign of Y_exp is correct
         Y_exp = 1 - 2 * data[qubit, "Y"].prob_1
         phase = np.unwrap(np.angle(X_exp + 1j * Y_exp))
+        # normalization required to avoid problems with arccos
+        phase -= phase[0]
         other_det = data.detuning[qubit]
         f = data.qubit_frequency[qubit]
-        det = -phase / data.flux_pulse_duration / 2 / np.pi + other_det
+        det = phase / data.flux_pulse_duration / 2 / np.pi + other_det
         derived_flux = 1 / np.pi * np.arccos(((f + det) / f) ** 2)
         flux[qubit] = derived_flux.tolist()
         fitted_parameters_detuning[qubit] = np.polyfit(amplitudes, det, 2).tolist()
         fitted_parameters_flux[qubit] = np.polyfit(amplitudes, derived_flux, 1).tolist()
         detuning[qubit] = det.tolist()
     return FluxAmplitudeFrequencyResults(
+        crosstalk=crosstalk,
         detuning=detuning,
         fitted_parameters_detuning=fitted_parameters_detuning,
         flux=flux,
@@ -273,7 +297,7 @@ def _plot(
         rows=1,
         cols=2,
     )
-
+    fitting_report = ""
     amplitude = data[(target, "X")].amplitude
 
     if fit is not None:
@@ -314,16 +338,45 @@ def _plot(
             row=1,
             col=2,
         )
+        if fit.crosstalk is None:
+            fitting_report = table_html(
+                table_dict(
+                    target,
+                    [
+                        "Flux coefficients",
+                        "Flux normalization",
+                    ],
+                    [
+                        [
+                            np.round(i, 3)
+                            for i in fit.fitted_parameters_detuning[target]
+                        ],
+                        np.round(fit.fitted_parameters_flux[target][0], 3),
+                    ],
+                )
+            )
+        else:
+            fitting_report = table_html(
+                table_dict(
+                    target,
+                    [
+                        f"Flux crosstalk with {fit.crosstalk}",
+                    ],
+                    [
+                        np.round(fit.fitted_parameters_flux[target][0], 4),
+                    ],
+                )
+            )
 
     fig.update_layout(
         showlegend=True,
         xaxis1_title="Flux pulse amplitude [a.u.]",
         xaxis2_title="Flux pulse amplitude [a.u.]",
         yaxis1_title="Detuning [GHz]",
-        yaxis2_title="Flux [Phi0]",
+        yaxis2_title="Flux [Flux quantum]",
     )
 
-    return [fig], ""
+    return [fig], fitting_report
 
 
 def _update(
@@ -331,7 +384,16 @@ def _update(
     platform: CalibrationPlatform,
     target: QubitId,
 ):
-    pass
+    if results.crosstalk is None:
+        platform.calibration.single_qubits[target].qubit.detuning_flux_params = (
+            results.fitted_parameters_detuning[target]
+        )
+
+    # TODO: needs to be inverted
+    flux_qubit = results.crosstalk if results.crosstalk is not None else target
+    update.crosstalk_matrix(
+        results.fitted_parameters_flux[target][0], platform, target, flux_qubit
+    )
 
 
-flux_amplitude_frequency = Routine(_acquisition, _fit, _plot)
+flux_amplitude_frequency = Routine(_acquisition, _fit, _plot, _update)
