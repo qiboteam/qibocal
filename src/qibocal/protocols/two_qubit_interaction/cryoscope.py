@@ -342,7 +342,8 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         ).tolist()
 
         # params from flux_amplitude_frequency_protocol
-        params = [1.9412681243469971, -0.012534948170662627, 0.0005454772278201887]
+        params = qubit.flux_coefficients
+        # params = [1.9412681243469971, -0.012534948170662627, 0.0005454772278201887]
         # params = [  # D2
         #     2.0578,
         #     -0.065,
