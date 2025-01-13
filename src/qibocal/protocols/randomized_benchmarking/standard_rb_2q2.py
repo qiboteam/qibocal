@@ -1,7 +1,6 @@
 import json
 from dataclasses import dataclass
 
-# from qibocal.cli.report import report#
 from qibo import Circuit
 from qibolab.platform import Platform
 from qibolab.qubits import QubitPairId
@@ -41,17 +40,23 @@ def _acquisition(
     xxx = twoq_rb_acquisition(params, platform, targets)
     # print("ACQUISITION PRINT LOL")
     # print(xxx)
+
     return xxx  # twoq_rb_acquisition(params, platform, targets)
 
 
 def save_circuits(bibi_circuits):
     print("\n\nSaving circuits to json\n\n")
 
-    for i in range(0, len(bibi_circuits)):
+    for i in range(
+        0,
+        len(
+            bibi_circuits,
+        ),
+    ):
         temp_dict = bibi_circuits[i].raw
         # if i == 0:
         # print(temp_dict)
-        with open("bibi_circuit_" + str(i) + ".json", "w") as f:
+        with open("my_result_" + str(i) + ".json", "w") as f:
             json.dump(temp_dict, f)
 
 
@@ -59,7 +64,7 @@ def load_circuits(bibi_circuits, N):
     print("\n\nLoading circuits from json\n\n")
 
     for i in range(0, N):
-        with open("bibi_circuit_" + str(i) + ".json") as f:
+        with open("my_result_" + str(i) + ".json") as f:
             cd = json.load(f)
             c = Circuit(2)
             c = c.from_dict(cd)
@@ -72,6 +77,8 @@ def _fit(data: RB2QData) -> StandardRBResult:
 
     from .utils import bibi_circuits
 
+    bibi_circuits.sort(key=lambda c: len(c.gates_of_type("cz")))
+
     i = 0
     for c in bibi_circuits:
         print("Summary of circuit number " + str(i))
@@ -81,11 +88,7 @@ def _fit(data: RB2QData) -> StandardRBResult:
         print(c)
         i = i + 1
 
-    # circuit = Circuit(2)
-    # print(qibo.list_available_backends())
-
-    # bibi_circuits.sort(key = lambda c: len(c.gates_of_type("cz")))
-    # print("TESTING SAVE/LOAD OF CIRCUITS\n")
+    print("TESTING SAVE/LOAD OF CIRCUITS\n")
 
     save_circuits(bibi_circuits)
     bibi_circuits_loaded = []

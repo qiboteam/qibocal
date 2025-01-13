@@ -7,58 +7,103 @@ from qibo.models import Circuit
 
 SINGLE_QUBIT_CLIFFORDS_NAMES = {
     # Virtual gates
-    "": gates.I,
-    "minusX,minusY": lambda q: gates.U3(q, 0, np.pi / 2, np.pi / 2),  # Z
-    "sqrtX,sqrtMinusY,sqrtMinusX": lambda q: gates.U3(
-        q, 0, -np.pi / 2, 0
-    ),  # gates.RZ(q, np.pi / 2)
-    "sqrtX,sqrtY,sqrtMinusX": lambda q: gates.U3(
-        q, 0, np.pi / 2, 0
-    ),  # gates.RZ(q, -np.pi / 2)
+    "": lambda q: [gates.I(q)],
+    "minusX,minusY": lambda q: [gates.RZ(q, np.pi)],  # Z
+    "sqrtX,sqrtMinusY,sqrtMinusX": lambda q: [
+        gates.RZ(q, np.pi / 2)
+    ],  # gates.RZ(q, np.pi / 2)
+    "sqrtX,sqrtY,sqrtMinusX": lambda q: [
+        gates.RZ(q, -np.pi / 2)
+    ],  # gates.RZ(q, -np.pi / 2)
     # pi rotations
-    "minusX": lambda q: gates.U3(q, np.pi, -np.pi, 0),  # X
-    "minusY": lambda q: gates.U3(q, np.pi, 0, 0),  # Y
+    "minusX": lambda q: [
+        gates.GPI2(q, 0),
+        gates.GPI2(q, np.pi / 2),
+        gates.GPI2(q, 0),
+        gates.GPI2(q, np.pi / 2),
+    ],  # X
+    "minusY": lambda q: [
+        gates.GPI2(q, np.pi / 2),
+        gates.GPI2(q, np.pi),
+        gates.GPI2(q, np.pi / 2),
+        gates.GPI2(q, np.pi),
+    ],  # Y
     # pi/2 rotations
-    "sqrtX": lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),  # Rx(pi/2)
-    "sqrtMinusX": lambda q: gates.U3(q, -np.pi / 2, -np.pi / 2, np.pi / 2),  # Rx(-pi/2)
-    "sqrtY": lambda q: gates.U3(q, np.pi / 2, 0, 0),  # Ry(pi/2)
-    "sqrtMinusY": lambda q: gates.U3(q, -np.pi / 2, 0, 0),  # Ry(-pi/2)
+    "sqrtX": lambda q: [gates.GPI2(q, 0), gates.GPI2(q, np.pi2)],  # Rx(pi/2)
+    "sqrtMinusX": lambda q: [gates.GPI2(q, np.pi)],  # Rx(-pi/2)
+    "sqrtY": lambda q: [gates.GPI2(q, np.pi / 2), gates.GPI2(q, np.pi)],  # Ry(pi/2)
+    "sqrtMinusY": lambda q: [gates.GPI2(q, -np.pi / 2)],  # Ry(-pi/2)
     # 2pi/3 rotations
-    "sqrtX,sqrtY": lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, 0),  # Rx(pi/2)Ry(pi/2)
-    "sqrtX,sqrtMinusY": lambda q: gates.U3(
-        q, np.pi / 2, -np.pi / 2, np.pi
-    ),  # Rx(pi/2)Ry(-pi/2)
-    "sqrtMinusX,sqrtY": lambda q: gates.U3(
-        q, np.pi / 2, np.pi / 2, 0
-    ),  # Rx(-pi/2)Ry(pi/2)
-    "sqrtMinusX,sqrtMinusY": lambda q: gates.U3(
-        q, np.pi / 2, np.pi / 2, -np.pi
-    ),  # Rx(-pi/2)Ry(-pi/2)
-    "sqrtY,sqrtX": lambda q: gates.U3(q, np.pi / 2, 0, np.pi / 2),  # Ry(pi/2)Rx(pi/2)
-    "sqrtY,sqrtMinusX": lambda q: gates.U3(
-        q, np.pi / 2, 0, -np.pi / 2
-    ),  # Ry(pi/2)Rx(-pi/2)
-    "sqrtMinusY,sqrtX": lambda q: gates.U3(
-        q, np.pi / 2, -np.pi, np.pi / 2
-    ),  # Ry(-pi/2)Rx(pi/2)
-    "sqrtMinusY,sqrtMinusX": lambda q: gates.U3(
-        q, np.pi / 2, np.pi, -np.pi / 2
-    ),  # Ry(-pi/2)Rx(-pi/2)
+    "sqrtX,sqrtY": lambda q: [
+        gates.GPI2(q, 0),
+        gates.GPI2(q, np.pi / 2),
+        gates.GPI2(q, np.pi / 2),
+        gates.GPI2(q, np.pi),
+    ],  # Rx(pi/2)Ry(pi/2)
+    "sqrtX,sqrtMinusY": lambda q: [
+        gates.GPI2(q, 0),
+        gates.GPI2(q, np.pi2),
+        gates.GPI2(q, -np.pi / 2),
+        gates.GPI2(q, np.pi),
+    ],  # Rx(pi/2)Ry(-pi/2)
+    "sqrtMinusX,sqrtY": lambda q: [
+        gates.GPI2(q, np.pi, gates.GPI2(q, np.pi / 2)),
+        gates.GPI2(q, np.pi / 2),
+        gates.GPI2(q, np.pi),
+    ],  # Rx(-pi/2)Ry(pi/2)
+    "sqrtMinusX,sqrtMinusY": lambda q: [
+        gates.GPI2(q, np.pi),
+        gates.GPI2(q, -np.pi / 2),
+    ],  # Rx(-pi/2)Ry(-pi/2)
+    "sqrtY,sqrtX": lambda q: [
+        gates.GPI2(q, np.pi / 2),
+        gates.GPI2(q, 0),
+    ],  # Ry(pi/2)Rx(pi/2)
+    "sqrtY,sqrtMinusX": lambda q: [
+        gates.GPI2(q, np.pi / 2),
+        gates.GPI2(q, np.pi),
+    ],  # Ry(pi/2)Rx(-pi/2)
+    "sqrtMinusY,sqrtX": lambda q: [
+        gates.GPI2(q, -np.pi / 2),
+        gates.GPI2(q, 0),
+    ],  # Ry(-pi/2)Rx(pi/2)
+    "sqrtMinusY,sqrtMinusX": lambda q: [
+        gates.GPI2(q, -np.pi / 2),
+        gates.GPI2(q, np.pi),
+        gates.GPI2(q, np.pi),
+        gates.GPI2(q, np.pi),
+    ],  # Ry(-pi/2)Rx(-pi/2)
     # Hadamard-like
-    "minusX,sqrtY": lambda q: gates.U3(q, np.pi / 2, -np.pi, 0),  # X Ry(pi/2)
-    "minusX,sqrtMinusY": lambda q: gates.U3(q, np.pi / 2, 0, np.pi),  # X Ry(-pi/2)
-    "minusY,sqrtX": lambda q: gates.U3(
-        q, np.pi / 2, np.pi / 2, np.pi / 2
-    ),  # Y Rx(pi/2)
-    "minusY,sqrtMinusX": lambda q: gates.U3(
-        q, np.pi / 2, -np.pi / 2, -np.pi / 2
-    ),  # Y Rx(-pi/2)
-    "sqrtX,sqrtY,sqrtX": lambda q: gates.U3(
-        q, np.pi, -np.pi / 4, np.pi / 4
-    ),  # Rx(pi/2)Ry(pi/2)Rx(pi/2)
-    "sqrtX,sqrtMinusY,sqrtX": lambda q: gates.U3(
-        q, np.pi, np.pi / 4, -np.pi / 4
-    ),  # Rx(-pi/2)Ry(pi/2)Rx(-pi/2)
+    "minusX,sqrtY": lambda q: [
+        gates.GPI2(q, 0),
+        gates.GPI2(q, 0),
+        gates.GPI2(q, np.pi / 2),
+    ],  # X Ry(pi/2)
+    "minusX,sqrtMinusY": lambda q: [
+        gates.GPI2(q, 0),
+        gates.GPI2(q, 0),
+        gates.GPI2(q, -np.pi / 2),
+    ],  # X Ry(-pi/2)
+    "minusY,sqrtX": lambda q: [
+        gates.GPI2(q, np.pi / 2),
+        gates.GPI2(q, np.pi / 2),
+        gates.GPI2(q, 0),
+    ],  # Y Rx(pi/2)
+    "minusY,sqrtMinusX": lambda q: [
+        gates.GPI2(q, np.pi),
+        gates.GPI2(q, np.pi),
+        gates.GPI2(q, np.pi),
+    ],  # Y Rx(-pi/2)
+    "sqrtX,sqrtY,sqrtX": lambda q: [
+        gates.GPI2(q, 0),
+        gates.GPI2(q, np.pi / 2),
+        gates.GPI2(q, 0),
+    ],  # Rx(pi/2)Ry(pi/2)Rx(pi/2)
+    "sqrtX,sqrtMinusY,sqrtX": lambda q: [
+        gates.GPI2(q, np.pi),
+        gates.GPI2(q, np.pi / 2),
+        gates.GPI2(q, np.pi),
+    ],  # Rx(-pi/2)Ry(pi/2)Rx(-pi/2)
 }
 
 
@@ -192,11 +237,12 @@ def clifford_to_pulses(clifford):
     pulses = 0
     for clifford in clifford_list:
         values_with_1, values_with_2, value_with_CZ = separator(clifford)
-
-        if SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_1](0).name != "id":
-            pulses += 2  # This assumes a U3 transpiled into 2 pulses
-        if SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_2](1).name != "id":
-            pulses += 2  # This assumes a U3 transpiled into 2 pulses
+        pulses += len(SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_1](0))
+        pulses += len(SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_2](1))
+        # if SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_1](0).name != "id":
+        #     pulses += 2  # This assumes a U3 transpiled into 2 pulses
+        # if SINGLE_QUBIT_CLIFFORDS_NAMES[values_with_2](1).name != "id":
+        #     pulses += 2  # This assumes a U3 transpiled into 2 pulses
         if value_with_CZ:
             pulses += 1  # This assumes a CZ without parking so 1 pulse
 
