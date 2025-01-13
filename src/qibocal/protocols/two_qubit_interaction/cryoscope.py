@@ -20,6 +20,7 @@ from qibolab import (
 from scipy.optimize import least_squares
 from scipy.signal import lfilter, lfilter_zi
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.protocols.ramsey.utils import fitting
 from qibocal.protocols.utils import table_dict, table_html
@@ -61,7 +62,7 @@ class CryoscopeResults(Results):
     """Flux amplitude computed from detuning."""
     step_response: dict[QubitId, list[float]] = field(default_factory=dict)
     """Waveform normalized to 1."""
-    A: dict[QubitId, list[float]] = field(default_factory=dict)
+    exp_amplitude: dict[QubitId, list[float]] = field(default_factory=dict)
     """A parameters for the exp decay approximation"""
     tau: dict[QubitId, list[float]] = field(default_factory=dict)
     """time decay constant in exp decay approximation"""
@@ -243,8 +244,8 @@ def _acquisition(
 
 
 def residuals(params, step_response, t):
-    g, tau, A = params
-    expmodel = step_response / (g * (1 + A * np.exp(-(t - START) / tau)))
+    g, tau, exp_amplitude = params
+    expmodel = step_response / (g * (1 + exp_amplitude * np.exp(-(t - START) / tau)))
     return expmodel - FULL_WAVEFORM[: len(t)]
 
 
@@ -256,9 +257,13 @@ def exponential_params(step_response, acquisition_time):
 
 
 def filter_calc(params):
-    g, tau, A = params
-    alpha = 1 - np.exp(-1 / (SAMPLING_RATE * tau * (1 + A)))
-    k = A / ((1 + A) * (1 - alpha)) if A < 0 else A / (1 + A - alpha)
+    g, tau, exp_amplitude = params
+    alpha = 1 - np.exp(-1 / (SAMPLING_RATE * tau * (1 + exp_amplitude)))
+    k = (
+        exp_amplitude / ((1 + exp_amplitude) * (1 - alpha))
+        if exp_amplitude < 0
+        else exp_amplitude / (1 + exp_amplitude - alpha)
+    )
     b0 = (1 - k + k * alpha) * g
     b1 = -(1 - k) * (1 - alpha) * g
     a0 = 1 * g
@@ -380,7 +385,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         detuning=detuning,
         step_response=step_response,
         fitted_parameters=fitted_parameters,
-        A=alpha,
+        exp_amplitude=alpha,
         tau=time_decay,
         fir=feedforward_taps,
         iir=feedback_taps,
@@ -428,7 +433,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
             ),
         )
 
-        A = fit.A[target]
+        exp_amplitude = fit.exp_amplitude[target]
         tau = fit.tau[target]
         fir = np.array(fit.fir[target])
         iir = np.array(fit.iir[target])
@@ -438,7 +443,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
                 target,
                 ["A", "tau", "FIR", "IIR"],
                 [
-                    (A,),
+                    (exp_amplitude,),
                     (tau,),
                     (fir,),
                     (iir,),
@@ -450,7 +455,8 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
 
 
 def _update(results: CryoscopeResults, platform: Platform, target: QubitId):
-    pass
+    update.feedback(results.fir[target], platform, target)
+    update.feedforward(results.iir[target], platform, target)
 
 
 cryoscope = Routine(_acquisition, _fit, _plot, _update)
