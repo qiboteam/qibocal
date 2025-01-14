@@ -439,7 +439,7 @@ def get_circuits(
     return circuits, indexes, npulses_per_clifford
 
 
-def execute_circuits(circuits, targets, params, backend, single_qubit=True):
+def execute_circuits(circuits, targets, params, platform, single_qubit=True):
     """
     Executes a list of circuits on a given backend.
 
@@ -455,7 +455,7 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
 
     """
     # Execute the circuits
-    transpiler = dummy_transpiler(backend)
+    transpiler = dummy_transpiler(platform)
     qubit_maps = (
         [[i] for i in targets] * (len(params.depths) * params.niter)
         if single_qubit
@@ -465,7 +465,7 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
         _, executed_circuits = execute_transpiled_circuits(
             circuits,
             qubit_maps=qubit_maps,
-            backend=backend,
+            platform=platform,
             nshots=params.nshots,
             transpiler=transpiler,
         )
@@ -474,7 +474,7 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
             execute_transpiled_circuit(
                 circuit,
                 qubit_map=qubit_map,
-                backend=backend,
+                platform=platform,
                 nshots=params.nshots,
                 transpiler=transpiler,
             )[1]

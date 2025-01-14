@@ -1,16 +1,21 @@
 from typing import Optional
 
 from qibo import Circuit
-from qibo.backends.abstract import Backend
+from qibo.backends import construct_backend, get_backend
 from qibo.transpiler.pipeline import Passes
 from qibo.transpiler.unroller import NativeGates, Unroller
+from qibolab.platform import Platform
+from qibolab.platform.load import available_platforms
 from qibolab.qubits import QubitId
+
+AVAILABLE_PLATFORMS = available_platforms() + ["dummy"]
+"""Available platforms in Qibolab."""
 
 
 def transpile_circuits(
     circuits: list[Circuit],
     qubit_maps: list[list[QubitId]],
-    backend: Backend,
+    platform: Platform,
     transpiler: Optional[Passes],
 ):
     """Transpile and pad `circuits` according to the platform.
@@ -28,14 +33,13 @@ def transpile_circuits(
         are all string or all integers.
     """
     transpiled_circuits = []
-
-    qubits = list(backend.platform.qubits)
+    qubits = list(platform.qubits)
     if isinstance(qubit_maps[0][0], str):
         for i, qubit_map in enumerate(qubit_maps):
             qubit_map = map(lambda x: qubits.index(x), qubit_map)
             qubit_maps[i] = list(qubit_map)
-    if backend.name == "qibolab":
-        platform_nqubits = backend.platform.nqubits
+    if platform.name in AVAILABLE_PLATFORMS:
+        platform_nqubits = platform.nqubits
         for circuit, qubit_map in zip(circuits, qubit_maps):
             new_circuit = pad_circuit(platform_nqubits, circuit, qubit_map)
             transpiled_circ, _ = transpiler(new_circuit)
@@ -48,7 +52,7 @@ def transpile_circuits(
 def execute_transpiled_circuits(
     circuits: list[Circuit],
     qubit_maps: list[list[QubitId]],
-    backend: Backend,
+    platform: Platform,
     transpiler: Optional[Passes],
     initial_states=None,
     nshots=1000,
@@ -66,9 +70,13 @@ def execute_transpiled_circuits(
     transpiled_circuits = transpile_circuits(
         circuits,
         qubit_maps,
-        backend,
+        platform,
         transpiler,
     )
+    if platform.name in AVAILABLE_PLATFORMS:
+        backend = construct_backend(backend="qibolab", platform=platform)
+    else:
+        backend = get_backend()
     return transpiled_circuits, backend.execute_circuits(
         transpiled_circuits, initial_states=initial_states, nshots=nshots
     )
@@ -77,7 +85,7 @@ def execute_transpiled_circuits(
 def execute_transpiled_circuit(
     circuit: Circuit,
     qubit_map: list[QubitId],
-    backend: Backend,
+    platform: Platform,
     transpiler: Optional[Passes],
     initial_state=None,
     nshots=1000,
@@ -96,22 +104,26 @@ def execute_transpiled_circuit(
     transpiled_circ = transpile_circuits(
         [circuit],
         [qubit_map],
-        backend,
+        platform,
         transpiler,
     )[0]
+    if platform.name in AVAILABLE_PLATFORMS:
+        backend = construct_backend(backend="qibolab", platform=platform)
+    else:
+        backend = get_backend()
     return transpiled_circ, backend.execute_circuit(
         transpiled_circ, initial_state=initial_state, nshots=nshots
     )
 
 
-def dummy_transpiler(backend) -> Optional[Passes]:
+def dummy_transpiler(platform) -> Optional[Passes]:
     """
     If the backend is `qibolab`, a transpiler with just an unroller is returned,
     otherwise None.
     """
-    if backend.name == "qibolab":
+    if platform.name in AVAILABLE_PLATFORMS:
         unroller = Unroller(NativeGates.default())
-        return Passes(connectivity=backend.platform.topology, passes=[unroller])
+        return Passes(connectivity=platform.topology, passes=[unroller])
     return None
 
 

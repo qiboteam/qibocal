@@ -252,7 +252,7 @@ def _acquisition_circuits(
                         circuit,
                         nshots=params.nshots,
                         transpiler=transpiler,
-                        backend=backend,
+                        platform=platform,
                         qubit_map=pair,
                     )
                     frequencies = result.frequencies()

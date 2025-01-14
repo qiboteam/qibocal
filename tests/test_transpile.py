@@ -31,9 +31,10 @@ def test_execute_transpiled_circuit():
     qubit_map = [1, 2]
     set_backend("qibolab", platform="dummy")
     backend = get_backend()
-    transpiler = dummy_transpiler(backend)
+    platform = backend.platform
+    transpiler = dummy_transpiler(platform)
     transpiled_circuit, _ = execute_transpiled_circuit(
-        circuit, qubit_map, backend, transpiler=transpiler
+        circuit, qubit_map, platform, transpiler=transpiler
     )
     true_circuit = Circuit(5)
     true_circuit.add(gates.GPI2(1, np.pi / 2))
@@ -53,9 +54,10 @@ def test_execute_transpiled_circuits():
     qubit_map = [1, 2]
     set_backend("qibolab", platform="dummy")
     backend = get_backend()
-    transpiler = dummy_transpiler(backend)
+    platform = backend.platform
+    transpiler = dummy_transpiler(platform)
     transpiled_circuits, _ = execute_transpiled_circuits(
-        [circuit], [qubit_map], backend, transpiler=transpiler
+        [circuit], [qubit_map], platform, transpiler=transpiler
     )
     true_circuit = Circuit(5)
     true_circuit.add(gates.GPI2(1, np.pi / 2))

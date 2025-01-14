@@ -8,7 +8,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibo import Circuit, gates
-from qibo.backends import NumpyBackend, get_backend, matrices
+from qibo.backends import NumpyBackend, matrices
 from qibo.quantum_info import fidelity, partial_trace
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
@@ -102,9 +102,7 @@ def _acquisition(
     if params.circuit is None:
         params.circuit = Circuit(len(targets))
 
-    backend = get_backend()
-    backend.platform = platform
-    transpiler = dummy_transpiler(backend)
+    transpiler = dummy_transpiler(platform)
 
     data = StateTomographyData(
         circuit=params.circuit, targets={target: i for i, target in enumerate(targets)}
@@ -121,7 +119,7 @@ def _acquisition(
         _, results = execute_transpiled_circuit(
             basis_circuit,
             targets,
-            backend,
+            platform,
             nshots=params.nshots,
             transpiler=transpiler,
         )
