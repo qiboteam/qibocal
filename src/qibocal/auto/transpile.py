@@ -8,8 +8,19 @@ from qibolab.platform import Platform
 from qibolab.platform.load import available_platforms
 from qibolab.qubits import QubitId
 
-AVAILABLE_PLATFORMS = available_platforms() + ["dummy"]
-"""Available platforms in Qibolab."""
+
+def _get_platforms():
+    """Qibolab platforms."""
+    try:
+        platforms = available_platforms()
+    except RuntimeError:
+        platforms = []
+
+    return platforms + ["dummy"]
+
+
+AVAILABLE_PLATFORMS = _get_platforms()
+"""Available qibolab platforms."""
 
 
 def transpile_circuits(
@@ -33,12 +44,12 @@ def transpile_circuits(
         are all string or all integers.
     """
     transpiled_circuits = []
-    qubits = list(platform.qubits)
-    if isinstance(qubit_maps[0][0], str):
-        for i, qubit_map in enumerate(qubit_maps):
-            qubit_map = map(lambda x: qubits.index(x), qubit_map)
-            qubit_maps[i] = list(qubit_map)
     if platform.name in AVAILABLE_PLATFORMS:
+        qubits = list(platform.qubits)
+        if isinstance(qubit_maps[0][0], str):
+            for i, qubit_map in enumerate(qubit_maps):
+                qubit_map = map(lambda x: qubits.index(x), qubit_map)
+                qubit_maps[i] = list(qubit_map)
         platform_nqubits = platform.nqubits
         for circuit, qubit_map in zip(circuits, qubit_maps):
             new_circuit = pad_circuit(platform_nqubits, circuit, qubit_map)

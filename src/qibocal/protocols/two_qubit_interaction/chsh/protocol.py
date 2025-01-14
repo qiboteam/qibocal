@@ -8,7 +8,6 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibo.backends import get_backend
 from qibolab import ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
@@ -222,9 +221,7 @@ def _acquisition_circuits(
         bell_states=params.bell_states,
         thetas=thetas.tolist(),
     )
-    backend = get_backend()
-    backend.platform = platform
-    transpiler = dummy_transpiler(backend)
+    transpiler = dummy_transpiler(platform)
     if params.apply_error_mitigation:
         mitigation_data = mitigation_acquisition(
             mitigation_params(nshots=params.nshots), platform, targets
