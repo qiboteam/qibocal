@@ -2,7 +2,6 @@
 
 from dataclasses import dataclass, field
 
-# import pdb
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
@@ -175,6 +174,11 @@ def _acquisition(
     )
 
     for qubit in targets:
+        assert (
+            platform.calibration.single_qubits[qubit].qubit.flux_coefficients
+            is not None
+        ), "Cannot run cryoscope without flux coefficients, run cryoscope amplitude before the cryoscope"
+
         data.flux_coefficients[qubit] = platform.calibration.single_qubits[
             qubit
         ].qubit.flux_coefficients
@@ -238,7 +242,6 @@ def _acquisition(
                         prob_1=result,
                     ),
                 )
-                # pdb.set_trace()
 
     return data
 
@@ -317,7 +320,6 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 
     qubits = np.unique([i[0] for i in data.data]).tolist()
 
-    #    pdb.set_trace()
     for qubit in qubits:
 
         sampling_rate = 1 / (x[1] - x[0])
