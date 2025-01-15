@@ -75,9 +75,8 @@ def _acquisition(
             for setup in ("I", "X"):
                 (
                     sequence,
+                    _,
                     theta_pulse,
-                    data.amplitudes[ord_pair],
-                    data.durations[ord_pair],
                 ) = create_sequence(
                     platform,
                     setup,
@@ -87,7 +86,6 @@ def _acquisition(
                     params.native,
                     params.dt,
                     params.parking,
-                    params.flux_pulse_amplitude,
                 )
                 theta = np.arange(
                     params.theta_start,
