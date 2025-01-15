@@ -10,11 +10,11 @@ import scipy.signal
 from qibolab import (
     AcquisitionType,
     AveragingMode,
-    Custom,
     Delay,
     Platform,
     Pulse,
     PulseSequence,
+    Rectangular,
 )
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
@@ -22,7 +22,7 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from ..ramsey.utils import fitting
 
 FULL_WAVEFORM = np.concatenate([np.zeros(10), np.ones(50), np.zeros(10)])
-"""Full waveform to be played."""
+# """Full waveform to be played."""
 
 
 @dataclass
@@ -81,7 +81,8 @@ def generate_sequences(
     flux_pulse = Pulse(
         duration=duration,
         amplitude=params.flux_pulse_amplitude,
-        envelope=Custom(i_=FULL_WAVEFORM[:duration], q_=np.zeros(duration)),
+        envelope=Rectangular(),
+        # envelope=Custom(i_=FULL_WAVEFORM[:duration], q_=np.zeros(duration)),
     )
 
     # create the sequences
@@ -129,6 +130,8 @@ class CryoscopeData(Data):
 
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
+    detuning_flux_params: dict[QubitId, list] = field(default_factory=dict)
+    """Flux pulse detuning parameters."""
     data: dict[tuple[QubitId, str], npt.NDArray[CryoscopeType]] = field(
         default_factory=dict
     )
@@ -154,6 +157,10 @@ def _acquisition(
     """
     data = CryoscopeData(
         flux_pulse_amplitude=params.flux_pulse_amplitude,
+        detuning_flux_params={
+            qubit: platform.calibration.single_qubits[qubit].qubit.detuning_flux_params
+            for qubit in targets
+        },
     )
 
     sequences_x = []
@@ -257,25 +264,24 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
     for qubit in qubits:
 
         sampling_rate = 1 / (x[1] - x[0])
-        X_exp = 1 - 2 * data[(qubit, "MX")].prob_1
+        X_exp = 2 * data[(qubit, "MX")].prob_1 - 1
         Y_exp = 1 - 2 * data[(qubit, "MY")].prob_1
 
         norm_data = X_exp + 1j * Y_exp
 
         # demodulation frequency found by fitting sinusoidal
-        demod_freq = -fitted_parameters[qubit, "MY"][2] / 2 / np.pi * sampling_rate
-
+        demod_freq = -fitted_parameters[qubit, "MX"][2] / 2 / np.pi * sampling_rate
         # to be used in savgol_filter
         derivative_window_length = 7 / sampling_rate
         derivative_window_size = max(3, int(derivative_window_length * sampling_rate))
         derivative_window_size += (derivative_window_size + 1) % 2
 
         # find demodulatation frequency
-        demod_data = np.exp(2 * np.pi * 1j * x * demod_freq) * (norm_data)
+        demod_data = np.exp(2 * np.pi * 1j * x * np.abs(demod_freq)) * (norm_data)
 
         # compute phase
         phase = np.unwrap(np.angle(demod_data))
-
+        phase -= phase[0]
         # compute detuning
         raw_detuning = (
             scipy.signal.savgol_filter(
@@ -286,25 +292,13 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             )
             * sampling_rate
         )
-
-        # real detuning (reintroducing demod_freq)
         detuning[qubit] = (
-            raw_detuning - demod_freq + sampling_rate * nyquist_order
+            raw_detuning + demod_freq + sampling_rate * nyquist_order
         ).tolist()
-
-        # params from flux_amplitude_frequency_protocol
-        params = [1.9412681243469971, -0.012534948170662627, 0.0005454772278201887]
-        # params = [  # D2
-        #     2.0578,
-        #     -0.065,
-        #     0.00147,
-        # ]
-
         # invert frequency amplitude formula
-        p = np.poly1d(params)
+        p = np.poly1d(data.detuning_flux_params[qubit])
         amplitude[qubit] = [max((p - freq).roots).real for freq in detuning[qubit]]
 
-        # compute step response
         step_response[qubit] = (
             np.array(amplitude[qubit]) / data.flux_pulse_amplitude
         ).tolist()
@@ -326,8 +320,8 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     fig.add_trace(
         go.Scatter(
             x=duration,
-            y=FULL_WAVEFORM,
-            name="exepcted waveform",
+            y=np.ones(len(duration)),
+            name="expected waveform",
         ),
     )
 
