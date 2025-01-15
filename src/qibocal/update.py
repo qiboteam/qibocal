@@ -242,5 +242,5 @@ def feedback(feedback: list[float], platform: Platform, qubit: QubitId):
 def feedforward(feedforward: list[float], platform: Platform, qubit: QubitId):
     """Update flux pulse feedforward parameter in platform for specific qubit."""
     platform.update(
-        {f"configs.{platform.qubits[qubit].flux}.filter.feedback": feedforward}
+        {f"configs.{platform.qubits[qubit].flux}.filter.feedforward": feedforward}
     )
