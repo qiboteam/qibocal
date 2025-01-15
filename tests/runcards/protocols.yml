@@ -796,8 +796,6 @@ actions:
       theta_start: 0
       theta_end: 180
       theta_step: 10
-      flux_pulse_amplitude: 0.5
-      flux_pulse_duration: 10
       dt: 0
       native: iSWAP
       parking: True
@@ -809,8 +807,6 @@ actions:
       theta_start: 0
       theta_end: 180
       theta_step: 10
-      flux_pulse_amplitude: 0.5
-      flux_pulse_duration: 10
       native: iSWAP
       dt: 0
       parking: True
@@ -822,8 +818,6 @@ actions:
       theta_start: 0
       theta_end: 180
       theta_step: 10
-      flux_pulse_amplitude: 0.5
-      flux_pulse_duration: 10
       dt: 0
       native: CZ
       parking: True
@@ -835,8 +829,6 @@ actions:
       theta_start: 0
       theta_end: 180
       theta_step: 10
-      flux_pulse_amplitude: 0.5
-      flux_pulse_duration: 10
       native: CZ
       dt: 0
       parking: True
