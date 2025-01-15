@@ -11,7 +11,8 @@
                 "frequency_12": 4700000000.0,
                 "maximum_frequency": 4000000000.0,
                 "asymmetry": 0.0,
-                "sweetspot": 0.0
+                "sweetspot": 0.0,
+                "detuning_flux_params": [2, 0, 0]
             },
             "readout": {
                 "fidelity": 0.0,
@@ -37,7 +38,8 @@
                 "frequency_12": 4855663000.0,
                 "maximum_frequency": 4000000000.0,
                 "asymmetry": 0.0,
-                "sweetspot": 0.0
+                "sweetspot": 0.0,
+                "detuning_flux_params": [2, 0, 0]
             },
             "readout": {
                 "fidelity": 0.0,
@@ -63,7 +65,8 @@
                 "frequency_12": 2700000000.0,
                 "maximum_frequency": 4000000000.0,
                 "asymmetry": 0.0,
-                "sweetspot": 0.0
+                "sweetspot": 0.0,
+                "detuning_flux_params": [2, 0, 0]
             },
             "readout": {
                 "fidelity": 0.0,
@@ -89,7 +92,8 @@
                 "frequency_12": 5855663000.0,
                 "maximum_frequency": 4000000000.0,
                 "asymmetry": 0.0,
-                "sweetspot": 0.0
+                "sweetspot": 0.0,
+                "detuning_flux_params": [2, 0, 0]
             },
             "readout": {
                 "fidelity": 0.0,
@@ -115,7 +119,8 @@
                 "frequency_12": 5855663000.0,
                 "maximum_frequency": 4000000000.0,
                 "asymmetry": 0.0,
-                "sweetspot": 0.0
+                "sweetspot": 0.0,
+                "detuning_flux_params": [2, 0, 0]
             },
             "readout": {
                 "fidelity": 0.0,
