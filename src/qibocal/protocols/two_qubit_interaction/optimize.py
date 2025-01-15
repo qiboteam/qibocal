@@ -11,7 +11,6 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
-from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
@@ -19,7 +18,7 @@ from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
 from .utils import order_pair
-from .virtual_z_phases import create_sequence, fit_function
+from .virtual_z_phases import create_sequence, fit_sinusoid, phase_diff
 
 
 @dataclass
@@ -164,9 +163,8 @@ def _acquisition(
             for setup in ("I", "X"):
                 (
                     sequence,
+                    flux_pulse,
                     theta_pulse,
-                    amplitude,
-                    data.durations[ord_pair],
                 ) = create_sequence(
                     platform,
                     setup,
@@ -176,7 +174,7 @@ def _acquisition(
                     params.native,
                     params.dt,
                     params.parking,
-                    params.flux_pulse_amplitude_min,
+                    flux_pulse_max_duration=params.duration_max,
                 )
                 theta = np.arange(
                     params.theta_start,
@@ -211,15 +209,15 @@ def _acquisition(
 
                 sweeper_amplitude = Sweeper(
                     Parameter.amplitude,
-                    amplitude_range / amplitude,
-                    pulses=[sequence.qf_pulses[0]],
+                    amplitude_range / flux_pulse.amplitude,
+                    pulses=[flux_pulse],
                     type=SweeperType.FACTOR,
                 )
 
                 sweeper_duration = Sweeper(
                     Parameter.duration,
                     duration_range,
-                    pulses=[sequence.qf_pulses[0]],
+                    pulses=[flux_pulse],
                     type=SweeperType.ABSOLUTE,
                 )
 
@@ -280,28 +278,12 @@ def _fit(
                             )
                         )
                     ]
-                    pguess = [
-                        np.max(target_data) - np.min(target_data),
-                        np.mean(target_data),
-                        np.pi,
-                    ]
 
                     try:
-                        popt, _ = curve_fit(
-                            fit_function,
-                            np.array(data.thetas),
-                            target_data,
-                            p0=pguess,
-                            bounds=(
-                                (0, -np.max(target_data), 0),
-                                (np.max(target_data), np.max(target_data), 2 * np.pi),
-                            ),
-                        )
-
+                        params = fit_sinusoid(np.array(data.thetas), target_data)
                         fitted_parameters[
                             target, control, setup, amplitude, duration
-                        ] = popt.tolist()
-
+                        ] = params
                     except Exception as e:
                         log.warning(
                             f"Fit failed for pair ({target, control}) due to {e}."
@@ -312,13 +294,13 @@ def _fit(
                         pair,
                         list(pair)[::-1],
                     ):
-                        angles[target_q, control_q, amplitude, duration] = abs(
+                        angles[target_q, control_q, amplitude, duration] = phase_diff(
                             fitted_parameters[
                                 target_q, control_q, "X", amplitude, duration
-                            ][2]
-                            - fitted_parameters[
+                            ][2],
+                            fitted_parameters[
                                 target_q, control_q, "I", amplitude, duration
-                            ][2]
+                            ][2],
                         )
                         virtual_phases[ord_pair[0], ord_pair[1], amplitude, duration][
                             target_q

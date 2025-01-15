@@ -101,7 +101,8 @@ def create_sequence(
     flux_pulse_max_duration: float = None,
 ) -> tuple[
     PulseSequence,
-    dict[QubitId, Pulse],
+    Pulse,
+    Pulse,
 ]:
     """Create the experiment PulseSequence."""
 
@@ -117,10 +118,10 @@ def create_sequence(
         start=max(Y90_pulse.finish, RX_pulse_start.finish),
     )
 
+    flux_pulse = flux_sequence.get_qubit_pulses(ordered_pair[1])[0]
     if flux_pulse_max_duration is not None:
-        flux_sequence.get_qubit_pulses(ordered_pair[1])[
-            0
-        ].duration = flux_pulse_max_duration
+        flux_pulse.duration = flux_pulse_max_duration
+
     theta_pulse = platform.create_RX90_pulse(
         target_qubit,
         start=flux_sequence.finish + dt,
@@ -159,7 +160,7 @@ def create_sequence(
                 pulse.duration = theta_pulse.finish
                 sequence.add(pulse)
 
-    return sequence, theta_pulse
+    return sequence, flux_pulse, theta_pulse
 
 
 def _acquisition(
@@ -197,6 +198,7 @@ def _acquisition(
             for setup in ("I", "X"):
                 (
                     sequence,
+                    _,
                     theta_pulse,
                 ) = create_sequence(
                     platform,
@@ -245,10 +247,36 @@ def _acquisition(
     return data
 
 
-def fit_function(x, amplitude, offset, phase):
+def sinusoid(x, amplitude, offset, phase):
     """Sinusoidal fit function."""
-    # return p0 + p1 * np.sin(2*np.pi*p2 * x + p3)
     return np.sin(x + phase) * amplitude + offset
+
+
+def phase_diff(phase_1, phase_2):
+    """Return the phase difference of two sinusoids, normalized in the range [0, pi]."""
+    return np.arccos(np.cos(phase_1 - phase_2))
+
+
+def fit_sinusoid(thetas, data):
+    """Fit sinusoid to the given data."""
+    pguess = [
+        np.max(data) - np.min(data),
+        np.mean(data),
+        np.pi,
+    ]
+
+    popt, _ = curve_fit(
+        sinusoid,
+        thetas,
+        data,
+        p0=pguess,
+        bounds=(
+            (0, -np.max(data), 0),
+            (np.max(data), np.max(data), 2 * np.pi),
+        ),
+    )
+
+    return popt.tolist()
 
 
 def _fit(
@@ -272,23 +300,9 @@ def _fit(
         leakage[pair] = {}
         for target, control, setup in data[pair]:
             target_data = data[pair][target, control, setup].target
-            pguess = [
-                np.max(target_data) - np.min(target_data),
-                np.mean(target_data),
-                np.pi,
-            ]
             try:
-                popt, _ = curve_fit(
-                    fit_function,
-                    np.array(data.thetas),
-                    target_data,
-                    p0=pguess,
-                    bounds=(
-                        (0, -np.max(target_data), 0),
-                        (np.max(target_data), np.max(target_data), 2 * np.pi),
-                    ),
-                )
-                fitted_parameters[target, control, setup] = popt.tolist()
+                params = fit_sinusoid(np.array(data.thetas), target_data)
+                fitted_parameters[target, control, setup] = params
 
             except Exception as e:
                 log.warning(f"CZ fit failed for pair ({target, control}) due to {e}.")
@@ -298,9 +312,9 @@ def _fit(
                 pair,
                 list(pair)[::-1],
             ):
-                angle[target_q, control_q] = abs(
-                    fitted_parameters[target_q, control_q, "X"][2]
-                    - fitted_parameters[target_q, control_q, "I"][2]
+                angle[target_q, control_q] = phase_diff(
+                    fitted_parameters[target_q, control_q, "X"][2],
+                    fitted_parameters[target_q, control_q, "I"][2],
                 )
                 virtual_phase[pair][target_q] = -fitted_parameters[
                     target_q, control_q, "I"
@@ -327,7 +341,6 @@ def _fit(
     )
 
 
-# TODO: remove str
 def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPairId):
     """Plot routine for VirtualZPhases."""
     pair_data = data[target]
@@ -382,7 +395,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
             fig.add_trace(
                 go.Scatter(
                     x=angle_range,
-                    y=fit_function(
+                    y=sinusoid(
                         angle_range,
                         *fitted_parameters,
                     ),
