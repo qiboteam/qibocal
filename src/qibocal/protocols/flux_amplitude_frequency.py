@@ -173,16 +173,19 @@ def _acquisition(
     targets: list[QubitId],
 ) -> FluxAmplitudeFrequencyData:
 
-    detuning = {
-        qubit: (
-            0
-            if params.crosstalk_qubit is None
-            else platform.calibration.single_qubits[qubit].qubit.detuning(
+    detuning = {}
+    for qubit in targets:
+        if params.crosstalk_qubit is None and params.amplitude_min == 0:
+            detuning[qubit] = 0
+        elif params.crosstalk_qubit is not None:
+            detuning[qubit] = platform.calibration.single_qubits[qubit].qubit.detuning(
                 params.flux_pulse_amplitude
             )
-        )
-        for qubit in targets
-    }
+        else:
+            detuning[qubit] = platform.calibration.single_qubits[qubit].qubit.detuning(
+                params.amplitude_min
+            )
+
     qubit_frequency = {
         qubit: platform.calibration.single_qubits[qubit].qubit.frequency_01 * HZ_TO_GHZ
         for qubit in targets
@@ -272,6 +275,7 @@ def _fit(data: FluxAmplitudeFrequencyData) -> FluxAmplitudeFrequencyResults:
         other_det = data.detuning[qubit]
         f = data.qubit_frequency[qubit]
         det = phase / data.flux_pulse_duration / 2 / np.pi + other_det
+        det[np.abs(det) < 1e-3] = 0
         derived_flux = 1 / np.pi * np.arccos(((f + det) / f) ** 2)
         flux[qubit] = derived_flux.tolist()
         fitted_parameters_detuning[qubit] = np.polyfit(amplitudes, det, 2).tolist()
