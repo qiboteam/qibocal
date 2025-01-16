@@ -197,15 +197,6 @@ def _plot(data: XYZTimingData, target: QubitId, fit: XYZTimingResults = None):
                 mode="lines",
             ),
             go.Scatter(
-                x=x,
-                y=fit_function(x, *fit.fitted_parameters[target]),
-                opacity=1,
-                name="Fit",
-                showlegend=True,
-                legendgroup="Probability of State 0",
-                mode="lines",
-            ),
-            go.Scatter(
                 x=np.concatenate((x, x[::-1])),
                 y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
                 fill="toself",
@@ -217,6 +208,17 @@ def _plot(data: XYZTimingData, target: QubitId, fit: XYZTimingResults = None):
         ]
     )
     if fit is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=fit_function(x, *fit.fitted_parameters[target]),
+                opacity=1,
+                name="Fit",
+                showlegend=True,
+                legendgroup="Probability of State 0",
+                mode="lines",
+            ),
+        )
         fig.add_vline(
             x=fit.delays[target][0],
             line=dict(color="grey", width=3, dash="dash"),
