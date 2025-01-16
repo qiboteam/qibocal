@@ -687,6 +687,18 @@ actions:
       niter: 5
       nshots: 50
 
+  - id: qubit_readout_frequency
+    operation: qubit_readout_frequency
+    targets: [[0,2]]
+    parameters:
+      resonator_freq_width: 10
+      resonator_freq_step: 10
+      flux_pulse_amplitude_min: 0
+      flux_pulse_amplitude_max: 1
+      flux_pulse_amplitude_step: 0.2
+      nshots: 10
+
+
   # - id: standard rb 2q interleaved
   #   operation: standard_rb_2q_inter
   #   targets: [[0,2]]

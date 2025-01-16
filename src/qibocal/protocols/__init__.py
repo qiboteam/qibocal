@@ -37,6 +37,7 @@ from .randomized_benchmarking.standard_rb_2q import standard_rb_2q
 from .randomized_benchmarking.standard_rb_2q_inter import standard_rb_2q_inter
 from .readout_characterization import readout_characterization
 from .readout_mitigation_matrix import readout_mitigation_matrix
+from .readout_optimization.qubit_readout_frequency import qubit_readout_frequency
 from .readout_optimization.resonator_amplitude import resonator_amplitude
 from .resonator_punchout import resonator_punchout
 from .resonator_spectroscopy import resonator_spectroscopy
@@ -104,4 +105,5 @@ __all__ = [
     "standard_rb_2q_inter",
     "optimize_two_qubit_gate",
     "ramsey_zz",
+    "qubit_readout_frequency",
 ]
