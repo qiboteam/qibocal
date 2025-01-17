@@ -10,11 +10,11 @@ import scipy.signal
 from qibolab import (
     AcquisitionType,
     AveragingMode,
-    Custom,
     Delay,
     Platform,
     Pulse,
     PulseSequence,
+    Rectangular,
 )
 from scipy.optimize import least_squares
 from scipy.signal import lfilter, lfilter_zi
@@ -24,12 +24,12 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.protocols.ramsey.utils import fitting
 from qibocal.protocols.utils import table_dict, table_html
 
-FULL_WAVEFORM = np.concatenate([np.zeros(10), np.ones(90)])
-"""Full waveform to be played."""
-START = 10
-"""Flux pulse start"""
+# FULL_WAVEFORM = np.concatenate([np.zeros(10), np.ones(90)])
+# """Full waveform to be played."""
+# START = 10
+# """Flux pulse start"""
 SAMPLING_RATE = 1
-"""Instrument sampling rate in GHz"""  # CONTROLLARE UNITA' DI MISURA
+"""Instrument sampling rate in GSamples"""
 
 
 @dataclass
@@ -96,7 +96,7 @@ def generate_sequences(
     flux_pulse = Pulse(
         duration=duration,
         amplitude=params.flux_pulse_amplitude,
-        envelope=Custom(i_=FULL_WAVEFORM[:duration], q_=np.zeros(duration)),
+        envelope=Rectangular(),  # =Custom(i_=FULL_WAVEFORM[:duration], q_=np.zeros(duration)),
     )
 
     # create the sequences
@@ -247,9 +247,10 @@ def _acquisition(
 
 
 def residuals(params, step_response, t):
+    start = 0
     g, tau, exp_amplitude = params
-    expmodel = step_response / (g * (1 + exp_amplitude * np.exp(-(t - START) / tau)))
-    return expmodel - FULL_WAVEFORM[: len(t)]
+    expmodel = step_response / (g * (1 + exp_amplitude * np.exp(-(t - start) / tau)))
+    return expmodel - np.ones(len(t))
 
 
 def exponential_params(step_response, acquisition_time):
@@ -400,7 +401,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     fig.add_trace(
         go.Scatter(
             x=duration,
-            y=FULL_WAVEFORM,
+            y=np.ones(len(duration)),
             name="exepcted waveform",
         ),
     )
