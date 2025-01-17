@@ -272,13 +272,16 @@ def filter_calc(params):
     a0 = 1 * g
     a1 = -(1 - alpha) * g
 
-    a = [a0, a1]  # feedback
+    a = np.array([a0, a1])  # feedback
     b = np.array([b0, b1])  # feedforward
 
-    if np.max(b) >= 2:
-        b = 2 * b / max(b)
+    if np.max(np.abs(b)) >= 2:
+        b = 2 * b / abs(max(b))
 
-    return a, b.tolist()
+    if np.max(np.abs(a)) >= 1:
+        a / abs(max(a))
+
+    return a.tolist(), b.tolist()
 
 
 def _fit(data: CryoscopeData) -> CryoscopeResults:
@@ -360,12 +363,6 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 
         # params from flux_amplitude_frequency_protocol
         params = data.flux_coefficients[qubit]
-        # params = [1.9412681243469971, -0.012534948170662627, 0.0005454772278201887]
-        # params = [  # D2
-        #     2.0578,
-        #     -0.065,
-        #     0.00147,
-        # ]
 
         # invert frequency amplitude formula
         p = np.poly1d(params)
