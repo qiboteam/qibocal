@@ -17,17 +17,18 @@ from qibolab import (
     Rectangular,
 )
 from scipy.optimize import least_squares
-from scipy.signal import lfilter, lfilter_zi
+from scipy.signal import lfilter
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.protocols.ramsey.utils import fitting
 from qibocal.protocols.utils import table_dict, table_html
 
-# FULL_WAVEFORM = np.concatenate([np.zeros(10), np.ones(90)])
-# """Full waveform to be played."""
-# START = 10
-# """Flux pulse start"""
+# TODO: remove hard-coded QM parameters
+FEEDFORWARD_MAX = 2 - 2**-16
+"""Maximum feedforward tap value"""
+FEEDBACK_MAX = 1 - 2**-20
+"""Maximum feedback tap value"""
 SAMPLING_RATE = 1
 """Instrument sampling rate in GSamples"""
 
@@ -248,41 +249,42 @@ def _acquisition(
 
 def residuals(params, step_response, t):
     start = 0
-    g, tau, exp_amplitude = params
-    expmodel = step_response / (g * (1 + exp_amplitude * np.exp(-(t - start) / tau)))
+    tau, exp_amplitude = params
+    expmodel = step_response / (1 + exp_amplitude * np.exp(-(t - start) / tau))
     return expmodel - np.ones(len(t))
 
 
 def exponential_params(step_response, acquisition_time):
-    init_guess = [1, 1, 1]
+    init_guess = [1, 1]
     t = np.arange(0, acquisition_time, 1)
     result = least_squares(residuals, init_guess, args=(step_response, t))
     return result.x
 
 
 def filter_calc(params):
-    g, tau, exp_amplitude = params
+    tau, exp_amplitude = params
     alpha = 1 - np.exp(-1 / (SAMPLING_RATE * tau * (1 + exp_amplitude)))
     k = (
         exp_amplitude / ((1 + exp_amplitude) * (1 - alpha))
         if exp_amplitude < 0
         else exp_amplitude / (1 + exp_amplitude - alpha)
     )
-    b0 = (1 - k + k * alpha) * g
-    b1 = -(1 - k) * (1 - alpha) * g
-    a0 = 1 * g
-    a1 = -(1 - alpha) * g
+    b0 = 1 - k + k * alpha
+    b1 = -(1 - k) * (1 - alpha)
+    a0 = 1
+    a1 = -(1 - alpha)
 
-    a = np.array([a0, a1])  # feedback
-    b = np.array([b0, b1])  # feedforward
+    feedback_taps = np.array([a0, a1])
+    feedforward_taps = np.array([b0, b1])
 
-    if np.max(np.abs(b)) >= 2:
-        b = 2 * b / abs(max(b))
+    if np.max(np.abs(feedforward_taps)) > FEEDFORWARD_MAX:
+        feedforward_taps = 2 * feedforward_taps / abs(max(feedforward_taps))
 
-    if np.max(np.abs(a)) >= 1:
-        a / abs(max(a))
+    if np.any(np.abs(feedback_taps) > FEEDBACK_MAX):
+        feedback_taps[feedback_taps > FEEDBACK_MAX] = FEEDBACK_MAX
+        feedback_taps[feedback_taps < -FEEDBACK_MAX] = -FEEDBACK_MAX
 
-    return a.tolist(), b.tolist()
+    return feedback_taps.tolist(), feedforward_taps.tolist()
 
 
 def _fit(data: CryoscopeData) -> CryoscopeResults:
@@ -378,7 +380,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         acquisition_time = len(x)
         exp_params = exponential_params(step_response[qubit], acquisition_time)
         feedback_taps[qubit], feedforward_taps[qubit] = filter_calc(exp_params)
-        _, time_decay[qubit], alpha[qubit] = exp_params
+        time_decay[qubit], alpha[qubit] = exp_params
 
     return CryoscopeResults(
         amplitude=amplitude,
@@ -410,12 +412,10 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
 
     if fit is not None:
 
-        zi = (
-            lfilter_zi(fit.fir[target], fit.iir[target]) * fit.step_response[target][0]
-        )  # to review
-        signal, _ = lfilter(
-            fit.fir[target], fit.iir[target], fit.step_response[target], zi=zi
-        )
+        # zi = (
+        #    lfilter_zi(fit.fir[target], fit.iir[target]) * fit.step_response[target][0]
+        # )  # to review
+        signal = lfilter(fit.fir[target], fit.iir[target], fit.step_response[target])
 
         fig.add_trace(
             go.Scatter(
