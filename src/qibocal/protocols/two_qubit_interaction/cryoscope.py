@@ -455,8 +455,8 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
 
 
 def _update(results: CryoscopeResults, platform: Platform, target: QubitId):
-    update.feedback(results.fir[target], platform, target)
-    update.feedforward(results.iir[target], platform, target)
+    update.feedforward(results.fir[target], platform, target)
+    update.feedback(results.iir[target], platform, target)
 
 
 cryoscope = Routine(_acquisition, _fit, _plot, _update)
