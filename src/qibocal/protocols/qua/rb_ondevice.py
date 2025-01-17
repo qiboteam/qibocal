@@ -381,12 +381,12 @@ def _acquisition(
     ###########################
     # Open the quantum machine
     config = generate_config(platform, list(platform.qubits.keys()))
-    qm = qmm.open_qm(config)
 
     if params.script_file:
         with open(params.script_file, "w") as file:
             file.write(generate_qua_script(rb, config))
 
+    qm = qmm.open_qm(config)
     # Send the QUA program to the OPX, which compiles and executes it
     job = qm.execute(
         rb, compiler_options=CompilerOptionArguments(flags=["not-strict-timing"])
