@@ -21,17 +21,26 @@ PADDING_FLUX = 10
 
 @dataclass
 class XYZTimingResults(Results):
+    """Outputs of the xyz-timing protocol."""
+
     fitted_parameters: dict[QubitId, list[float]]
+    """Output parameters of the fitted function."""
     fitted_errors: dict[QubitId, list[float]]
+    """Errors of the fit parameters."""
     delays: dict[QubitId, float]
+    """Flux-drive delays."""
 
 
 @dataclass
 class XYZTimingParameters(Parameters):
+    """XYZ-timing runcard inputs."""
 
     flux_amplitude: float
+    """Amplitude of the flux pulse."""
     delay_step: int
+    """Sweeper step value of the relative starts."""
     delay_stop: int
+    """Sweeper stop value of the relative starts."""
 
 
 XYZTimingType = np.dtype(
@@ -53,14 +62,13 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> XYZTimingData:
-
+    """Data acquisition for drive-flux channels timing"""
     natives = platform.natives.single_qubit
     durations = np.arange(
         1,
         params.delay_stop,
         params.delay_step,
     )
-    flux_delays = []
     sequences = []
     ro_pulses = []
     drive_durations = {}
@@ -120,7 +128,6 @@ def _acquisition(
         for j, qubit in enumerate(targets):
             ro_pulse = ro_pulses[i][j][1]
             prob = probability(results[ro_pulse.id], state=1)
-            # The probability errors are the standard errors of the binomial distribution
             error = np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
                 XYZTimingType,
@@ -139,6 +146,7 @@ def fit_function(x, a, b, c, d, e):
 
 
 def _fit(data: XYZTimingData) -> XYZTimingResults:
+    """Post-processing for drive-flux channels timing"""
     qubits = data.qubits
     params = {}
     errors = {}
@@ -178,6 +186,7 @@ def _fit(data: XYZTimingData) -> XYZTimingResults:
 
 
 def _plot(data: XYZTimingData, target: QubitId, fit: XYZTimingResults = None):
+    """Plotting function for drive-flux channels timing"""
     figures = []
     qubit_data = data.data[target]
     delays = qubit_data.delay
