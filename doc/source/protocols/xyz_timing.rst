@@ -31,6 +31,5 @@ It follows a runcard example of this experiment and the report.
         delay_step: 1
         delay_stop: 100
         flux_amplitude: 0.3
-        nshots: 5000The expected output is the following:
 
 .. image:: xyz_timing.png
