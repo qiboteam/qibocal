@@ -1,8 +1,8 @@
 XYZ-TIMING
 ==========
 
-This routine is evaluating the different time of arrival of the flux and drive
-pulse to the qubit. These delays are usually originated by the differences in
+This protocol is evaluating the different time of arrival of the flux and drive
+pulse to the qubit. These delays are usually caused by differences in
 cable length or by the electronics.
 
 In this procedure, we vary the relative start times of the flux and drive pulses,
