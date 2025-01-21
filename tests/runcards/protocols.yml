@@ -850,3 +850,10 @@ actions:
     parameters:
       nshots: 1024
       circuit: tests/circuit2q.json
+
+  - id: xyz_timing
+    operation: xyz_timing
+    parameters:
+      delay_step: 1
+      delay_stop: 10
+      flux_amplitude: 0.3

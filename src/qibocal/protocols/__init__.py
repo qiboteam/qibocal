@@ -52,6 +52,7 @@ from .two_qubit_interaction import (
     optimize_two_qubit_gate,
 )
 from .two_qubit_state_tomography import two_qubit_state_tomography
+from .xyz_timing import xyz_timing
 
 __all__ = [
     "allxy",
@@ -104,4 +105,5 @@ __all__ = [
     "standard_rb_2q_inter",
     "optimize_two_qubit_gate",
     "ramsey_zz",
+    "xyz_timing",
 ]

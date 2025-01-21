@@ -33,5 +33,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     standard_rb
     chevron
     virtual_z
+    xyz_timing
     state_tomographies
+
     references
