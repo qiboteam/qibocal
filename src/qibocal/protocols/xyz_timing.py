@@ -16,7 +16,6 @@ from .utils import table_dict, table_html
 
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
-PADDING_FLUX = 10
 
 
 @dataclass
@@ -87,7 +86,7 @@ def _acquisition(
             drive_pulse = natives[qubit].RX()[0]
             readout_pulse = natives[qubit].MZ()[0]
             drive_duration = int(drive_pulse[1].duration)
-            total_flux_duration = duration + drive_duration + PADDING_FLUX
+            total_flux_duration = duration + drive_duration
             flux_pulse = Pulse(
                 duration=total_flux_duration,
                 amplitude=params.flux_amplitude,
@@ -97,7 +96,6 @@ def _acquisition(
                         [
                             np.zeros(duration),
                             np.ones(drive_duration),
-                            np.zeros(PADDING_FLUX),
                         ]
                     ),
                     q_=np.zeros(total_flux_duration),
@@ -142,6 +140,7 @@ def _acquisition(
 
 
 def fit_function(x, a, b, c, d, e):
+    """Fit function of the xyz-timing protocol"""
     return a + b * (special.erf(e * x - c) - special.erf(e * x + d))
 
 
