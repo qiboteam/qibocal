@@ -146,11 +146,10 @@ def fit_function(x, a, b, c, d, e):
 
 def _fit(data: XYZTimingData) -> XYZTimingResults:
     """Post-processing for drive-flux channels timing"""
-    qubits = data.qubits
     params = {}
     errors = {}
     delays = {}
-    for qubit in qubits:
+    for qubit in data.qubits:
         data_qubit = data.data[qubit]
         delay = data_qubit.delay
         prob = data_qubit.prob
