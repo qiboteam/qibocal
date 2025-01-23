@@ -17,7 +17,7 @@ def report_css_styles(path: pathlib.Path):
 
 
 def report_script(path: pathlib.Path):
-    """HTML string containing path of css file."""
+    """HTML string containing path of js file."""
     return f"<script>\n{pathlib.Path(path).read_text()}\n</script>"
 
 
