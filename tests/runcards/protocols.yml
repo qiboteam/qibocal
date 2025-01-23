@@ -551,6 +551,23 @@ actions:
       nshots: 10
       unrolling: true
 
+  - id: drag_pulse_simple
+    operation: drag_simple
+    parameters:
+      beta_start: 0
+      beta_end: 0.1
+      beta_step: 0.01
+      nshots: 10
+
+  - id: drag_pulse_simple_unrolling
+    operation: drag_simple
+    parameters:
+      beta_start: 0
+      beta_end: 0.1
+      beta_step: 0.01
+      nshots: 10
+      unrolling: true
+
   - id: spin_echo
     operation: spin_echo
     parameters:

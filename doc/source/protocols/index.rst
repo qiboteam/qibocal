@@ -28,6 +28,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     dispersive_shift
     allxy
     flipping
+    drag/drag
     readout_mitigation_matrix
     readout_optimization
     standard_rb

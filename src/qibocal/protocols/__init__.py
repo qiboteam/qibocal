@@ -11,6 +11,7 @@ from .coherence.zeno import zeno
 from .dispersive_shift import dispersive_shift
 from .dispersive_shift_qutrit import dispersive_shift_qutrit
 from .drag import drag_tuning
+from .drag_simple import drag_simple
 from .flipping import flipping
 from .flux_dependence.qubit_crosstalk import qubit_crosstalk
 from .flux_dependence.qubit_flux_dependence import qubit_flux
@@ -104,4 +105,5 @@ __all__ = [
     "standard_rb_2q_inter",
     "optimize_two_qubit_gate",
     "ramsey_zz",
+    "drag_simple",
 ]
