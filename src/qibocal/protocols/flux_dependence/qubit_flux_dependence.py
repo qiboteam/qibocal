@@ -183,12 +183,15 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        biases = qubit_data.bias
-        frequencies = qubit_data.freq
+        interval_biases = qubit_data.bias
+        interval_frequencies = qubit_data.freq
         signal = qubit_data.signal
 
         frequencies, biases = extract_feature(
-            frequencies, biases, signal, "max" if data.resonator_type == "2D" else "min"
+            interval_frequencies,
+            interval_biases,
+            signal,
+            "max" if data.resonator_type == "2D" else "min",
         )
 
         def fit_function(x, w_max, normalization, offset):
@@ -223,7 +226,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
             }
             frequency[qubit] = popt[0] * GHZ_TO_HZ
-            middle_bias = (np.max(biases) + np.min(biases)) / 2
+            middle_bias = (np.max(interval_biases) + np.min(interval_biases)) / 2
             sweetspot[qubit] = (
                 np.round(popt[1] * middle_bias + popt[2]) - popt[2]
             ) / popt[1]
