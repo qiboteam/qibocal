@@ -47,6 +47,8 @@ class CryoscopeParameters(Parameters):
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
     unrolling: bool = True
+    fir: int = 20
+    """Number of feedforward taps to be optimized after IIR."""
 
 
 @dataclass
@@ -74,9 +76,8 @@ class CryoscopeResults(Results):
     feedback_taps: dict[QubitId, list[float]] = field(default_factory=dict)
     """feedback taps"""
 
-    # TODO: to be fixed
     def __contains__(self, key):
-        return True
+        return key in self.feedforward_taps
 
 
 CryoscopeType = np.dtype([("duration", int), ("prob_1", np.float64)])
@@ -148,6 +149,8 @@ class CryoscopeData(Data):
 
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
+    fir: int
+    """Number of feedforward taps to be optimized after IIR."""
     flux_coefficients: dict[QubitId, list[float]] = field(default_factory=dict)
     """Flux - amplitude relation coefficients obtained from flux_amplitude_frequency routine"""
     data: dict[tuple[QubitId, str], npt.NDArray[CryoscopeType]] = field(
@@ -174,6 +177,7 @@ def _acquisition(
     + 100 ns (following the paper).
     """
     data = CryoscopeData(
+        fir=params.fir,
         flux_pulse_amplitude=params.flux_pulse_amplitude,
     )
 
@@ -279,12 +283,9 @@ def filter_calc(params):
     feedback_taps = np.array([a0, a1])
     feedforward_taps = np.array([b0, b1])
 
-    # if np.max(np.abs(feedforward_taps)) > FEEDFORWARD_MAX:
-    #     feedforward_taps = 2 * feedforward_taps / abs(max(feedforward_taps))
-
-    # if np.any(np.abs(feedback_taps) > FEEDBACK_MAX):
-    #     feedback_taps[feedback_taps > FEEDBACK_MAX] = FEEDBACK_MAX
-    #     feedback_taps[feedback_taps < -FEEDBACK_MAX] = -FEEDBACK_MAX
+    if np.any(np.abs(feedback_taps) > FEEDBACK_MAX):
+        feedback_taps[feedback_taps > FEEDBACK_MAX] = FEEDBACK_MAX
+        feedback_taps[feedback_taps < -FEEDBACK_MAX] = -FEEDBACK_MAX
 
     return feedback_taps.tolist(), feedforward_taps.tolist()
 
@@ -390,7 +391,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         )
         # FIR corrections
 
-        taps = 20
+        taps = data.fir
         baseline = g[qubit]
         x0 = [1] + (taps - 1) * [0]
 
@@ -398,9 +399,16 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             yc = lfilter(x, 1, iir_correction)
             return np.mean(np.abs(yc - baseline)) / np.abs(baseline)
 
-        fir = cma.fmin2(fir_cost_function, x0, 0.5)[0]
+        fir = cma.fmin2(
+            fir_cost_function, x0, 0.5, options={"verb_filenameprefix": ""}
+        )[0]
 
         feedforward_taps[qubit] = np.convolve(feedforward_taps_iir[qubit], fir).tolist()
+
+        if np.max(np.abs(feedforward_taps[qubit])) > FEEDFORWARD_MAX:
+            feedforward_taps[qubit] = (
+                2 * feedforward_taps[qubit] / abs(max(feedforward_taps[qubit]))
+            )
 
     return CryoscopeResults(
         amplitude=amplitude,
@@ -422,9 +430,6 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     duration = data[(target, "MX")].duration
 
     fitting_report = None
-    print(fit.feedback_taps)
-    print(fit.feedforward_taps)
-    print(fit.feedforward_taps_iir)
     if fit is not None:
 
         iir_corrections = lfilter(
