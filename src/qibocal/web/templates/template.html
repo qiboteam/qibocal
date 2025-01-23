@@ -136,7 +136,11 @@
       <div
         class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
         <h1>{{ title }}</h1>
-        <button class="button-export" id="export-pdf">Export to pdf</button>
+        <div class="button-container">
+          <button id="export-pdf">Export to pdf</button>
+          <button id="export-platform" onclick="redirectToPlatform()">Calibrated platform</button>
+          <button id="export-runcard" onclick="redirectToRuncard()">Runcard</button>
+        </div>
       </div>
       <p>
         Platform: {{ report.meta.get('platform')}}<br>
@@ -204,44 +208,7 @@
     integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa"
     crossorigin="anonymous"></script>
 
-  <script>
-
-       var exportPDFButton = document.getElementById("export-pdf");
-
-       exportPDFButton.addEventListener("click", function() {
-
-        document.body.classList.add("impresion");
-
-        var doc = new jsPDF({orientation: 'landscape',});
-
-        var iframes = document.querySelectorAll("iframe.gh-fit")
-        source = ""
-        for(var id = 0; id < iframes.length; id++) {
-            var win = iframes[id].contentWindow
-            var doc = win.document
-            var html = doc.documentElement
-            var body = doc.body
-            var ifrm = iframes[id] // or win.frameElement
-            source = source + html
-        }
-
-        print(source)
-
-        doc.fromHTML(source, 0, 0, {
-        width: 210,
-        margins: {
-            left: 10,
-            right: 10,
-            top: 10,
-            bottom: 10
-        }
-        });
-
-        // Guardar el PDF
-        doc.save("report.pdf");
-    });
-    </script>
-
+    {{ js_script }}
 </body>
 
 </html>
