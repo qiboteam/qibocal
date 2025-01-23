@@ -152,6 +152,16 @@ actions:
       pulse_length: 30
       nshots: 1024
 
+  - id: rabi
+    operation: rabi_amplitude
+    parameters:
+      min_amp: 0.0
+      max_amp: 1.0
+      step_amp: 0.1
+      pulse_length: 30
+      nshots: 1024
+      rx90: True
+
   - id: rabi without nshots
     operation: rabi_amplitude
     parameters:
@@ -169,8 +179,43 @@ actions:
       pulse_length: 30
       nshots: 1024
 
+  - id: rabi signal
+    operation: rabi_amplitude_signal
+    parameters:
+      min_amp: 0.0
+      max_amp: 1.0
+      step_amp: 0.1
+      pulse_length: 30
+      nshots: 1024
+      rx90: True
+
   - id: rabi amplitude frequency
     operation: rabi_amplitude_frequency
+    parameters:
+      min_amp: 0.0
+      max_amp: 1.0
+      step_amp: 0.1
+      min_freq: -100_000
+      max_freq: 100_000
+      step_freq: 10_000
+      pulse_length: 30
+      nshots: 1024
+
+  - id: rabi amplitude frequency
+    operation: rabi_amplitude_frequency
+    parameters:
+      min_amp: 0.0
+      max_amp: 1.0
+      step_amp: 0.1
+      min_freq: -100_000
+      max_freq: 100_000
+      step_freq: 10_000
+      pulse_length: 30
+      nshots: 1024
+      rx90: True
+
+  - id: rabi amplitude frequency_signal
+    operation: rabi_amplitude_frequency_signal
     parameters:
       min_amp: 0.0
       max_amp: 1.0
@@ -192,7 +237,7 @@ actions:
       step_freq: 10_000
       pulse_length: 30
       nshots: 1024
-
+      rx90: True
 
   - id: rabi_ef
     operation: rabi_amplitude_ef
@@ -214,6 +259,16 @@ actions:
       pulse_amplitude: 0.5
       nshots: 1024
 
+  - id: rabi length
+    operation: rabi_length
+    parameters:
+      pulse_duration_start: 4
+      pulse_duration_end: 84
+      pulse_duration_step: 8
+      pulse_amplitude: 0.5
+      nshots: 1024
+      rx90: True
+
   - id: rabi length signal
     operation: rabi_length_signal
     parameters:
@@ -221,10 +276,45 @@ actions:
       pulse_duration_end: 84
       pulse_duration_step: 8
       pulse_amplitude: 0.5
-      nshots: 10
+      nshots: 1024
+
+  - id: rabi length signal
+    operation: rabi_length_signal
+    parameters:
+      pulse_duration_start: 4
+      pulse_duration_end: 84
+      pulse_duration_step: 8
+      pulse_amplitude: 0.5
+      nshots: 1024
+      rx90: True
 
   - id: rabi length frequency
     operation: rabi_length_frequency
+    parameters:
+      pulse_duration_start: 4
+      pulse_duration_end: 84
+      pulse_duration_step: 8
+      min_freq: -100_000
+      max_freq: 100_000
+      step_freq: 10_000
+      pulse_amplitude: 0.5
+      nshots: 1024
+
+  - id: rabi length frequency
+    operation: rabi_length_frequency
+    parameters:
+      pulse_duration_start: 4
+      pulse_duration_end: 84
+      pulse_duration_step: 8
+      min_freq: -100_000
+      max_freq: 100_000
+      step_freq: 10_000
+      pulse_amplitude: 0.5
+      nshots: 1024
+      rx90: True
+
+  - id: rabi length frequency_signal
+    operation: rabi_length_frequency_signal
     parameters:
       pulse_duration_start: 4
       pulse_duration_end: 84
@@ -246,6 +336,7 @@ actions:
       step_freq: 10_000
       pulse_amplitude: 0.5
       nshots: 1024
+      rx90: True
 
   - id: t1
     operation: t1
@@ -458,6 +549,23 @@ actions:
       nshots: 10
       unrolling: true
 
+  - id: drag_pulse_simple
+    operation: drag_simple
+    parameters:
+      beta_start: 0
+      beta_end: 0.1
+      beta_step: 0.01
+      nshots: 10
+
+  - id: drag_pulse_simple_unrolling
+    operation: drag_simple
+    parameters:
+      beta_start: 0
+      beta_end: 0.1
+      beta_step: 0.01
+      nshots: 10
+      unrolling: true
+
   - id: spin_echo
     operation: spin_echo
     # since 0 has different RX duration
@@ -515,6 +623,7 @@ actions:
       nflips_step: 1
       nshots: 50
       unrolling: True
+      rx90: True
 
 
   - id: dispersive shift
@@ -680,19 +789,11 @@ actions:
       native: CZ
       parking: True
 
-  - id: readout_mitigation_matrix pulses
+  - id: readout_mitigation_matrix
     operation: readout_mitigation_matrix
     targets: [[0,1,2],[1,2]]
     parameters:
       nshots: 10
-      pulses: True
-
-  - id: readout_mitigation_matrix circuits
-    operation: readout_mitigation_matrix
-    targets: [[0,1,2],[1,2]]
-    parameters:
-      nshots: 10
-      pulses: False
 
   - id: resonator_amplitude
     operation: resonator_amplitude
