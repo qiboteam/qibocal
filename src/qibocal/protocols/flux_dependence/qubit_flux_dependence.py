@@ -223,7 +223,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
             }
             frequency[qubit] = popt[0] * GHZ_TO_HZ
-            middle_bias = np.median(biases)
+            middle_bias = (np.max(biases) + np.min(biases)) / 2
             sweetspot[qubit] = (
                 np.round(popt[1] * middle_bias + popt[2]) - popt[2]
             ) / popt[1]
