@@ -279,13 +279,14 @@ def transmon_readout_frequency(
          xi (float): bias of target qubit
          xj (float): bias of neighbor qubit
          w_max (float): maximum frequency  :math:`w_{max} = \sqrt{8 E_j E_c}
-         sweetspot (float): sweetspot [V].
-         matrix_element(float): diagonal crosstalk matrix element
-         crosstalk_element(float): off-diagonal crosstalk matrix element
          d (float): asymmetry between the two junctions of the transmon.
                     Typically denoted as :math:`d`. :math:`d = (E_J^1 - E_J^2) / (E_J^1 + E_J^2)`.
+         normalization(float): diagonal crosstalk matrix element
+         offset (float): phase_offset [V].
+         crosstalk_element(float): off-diagonal crosstalk matrix element
          resonator_freq (float): bare resonator frequency [GHz]
          g (float): readout coupling.
+         charging_energy (float): Ec / h (GHz)
 
      Returns:
          (float): resonator frequency as a function of bias.
