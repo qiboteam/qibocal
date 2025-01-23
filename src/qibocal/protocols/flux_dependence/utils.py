@@ -205,11 +205,10 @@ def G_f_d(xi, xj, offset, d, crosstalk_element, normalization):
         xi (float): bias of target qubit
         xj (float): bias of neighbor qubit
         offset (float): phase_offset [V].
-        matrix_element(float): diagonal crosstalk matrix element
-        crosstalk_element(float): off-diagonal crosstalk matrix element
         d (float): asymmetry between the two junctions of the transmon.
                    Typically denoted as :math:`d`. :math:`d = (E_J^1 - E_J^2) / (E_J^1 + E_J^2)`.
-        normalization (float): Normalize diagonal element to 1
+        crosstalk_element(float): off-diagonal crosstalk matrix element
+        normalization(float): diagonal crosstalk matrix element
     Returns:
         (float)
     """
@@ -237,11 +236,11 @@ def transmon_frequency(
         xi (float): bias of target qubit
         xj (float): bias of neighbor qubit
         w_max (float): maximum frequency  :math:`w_{max} = \sqrt{8 E_j E_c}
-        sweetspot (float): sweetspot [V].
-        matrix_element(float): diagonal crosstalk matrix element
-        crosstalk_element(float): off-diagonal crosstalk matrix element
         d (float): asymmetry between the two junctions of the transmon.
                    Typically denoted as :math:`d`. :math:`d = (E_J^1 - E_J^2) / (E_J^1 + E_J^2)`.
+        normalization(float): diagonal crosstalk matrix element
+        offset (float): phase_offset [V].
+        crosstalk_element(float): off-diagonal crosstalk matrix element
         charging_energy (float): Ec / h (GHz)
 
      Returns:

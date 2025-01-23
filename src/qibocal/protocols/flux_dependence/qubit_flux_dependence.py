@@ -165,9 +165,14 @@ def _acquisition(
 
 def _fit(data: QubitFluxData) -> QubitFluxResults:
     """
-    Post-processing for QubitFlux Experiment. See arxiv:0703002
-    Fit frequency as a function of current for the flux qubit spectroscopy
-    data (QubitFluxData): data object with information on the feature response at each current point.
+    Post-processing for QubitFlux Experiment. See `arXiv:0703002 <https://arxiv.org/abs/cond-mat/0703002>`_.
+    Fit frequency as a function of current for the flux qubit spectroscopy data.
+    All possible sweetspots :math:`x` are evaluated by the function
+    :math:`x p_1 + p_2 = k`, for integers :math:`k`, where :math:`p_1` and :math:`p_2`
+    are respectively the normalization and the offset, as defined in
+    :mod:`qibocal.protocols.flux_dependence.utils.transmon_frequency`.
+    The code returns the sweetspot that is closest to the bias
+    in the middle of the swept interval.
     """
 
     qubits = data.qubits
@@ -219,9 +224,6 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
             }
             frequency[qubit] = popt[0] * GHZ_TO_HZ
             middle_bias = np.median(biases)
-            # solution to x*popt[1] + popt[2] = k
-            # such that x is close to 0
-            # to avoid errors due to periodicity
             sweetspot[qubit] = (
                 np.round(popt[1] * middle_bias + popt[2]) - popt[2]
             ) / popt[1]
