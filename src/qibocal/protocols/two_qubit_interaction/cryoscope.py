@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 
+import cma
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
@@ -66,9 +67,11 @@ class CryoscopeResults(Results):
     """A parameters for the exp decay approximation"""
     tau: dict[QubitId, list[float]] = field(default_factory=dict)
     """time decay constant in exp decay approximation"""
-    fir: dict[QubitId, list[float]] = field(default_factory=dict)
+    feedforward_taps: dict[QubitId, list[float]] = field(default_factory=dict)
     """feedforward taps"""
-    iir: dict[QubitId, list[float]] = field(default_factory=dict)
+    feedforward_taps_iir: dict[QubitId, list[float]] = field(default_factory=dict)
+    """feedforward taps for IIR"""
+    feedback_taps: dict[QubitId, list[float]] = field(default_factory=dict)
     """feedback taps"""
 
     # TODO: to be fixed
@@ -248,21 +251,20 @@ def _acquisition(
 
 
 def residuals(params, step_response, t):
-    start = 0
-    tau, exp_amplitude = params
-    expmodel = step_response / (1 + exp_amplitude * np.exp(-(t - start) / tau))
+    tau, exp_amplitude, g = params
+    expmodel = step_response / (g * (1 + exp_amplitude * np.exp(-t / tau)))
     return expmodel - np.ones(len(t))
 
 
 def exponential_params(step_response, acquisition_time):
-    init_guess = [1, 1]
+    init_guess = [1, 10, 1]
     t = np.arange(0, acquisition_time, 1)
     result = least_squares(residuals, init_guess, args=(step_response, t))
     return result.x
 
 
 def filter_calc(params):
-    tau, exp_amplitude = params
+    tau, exp_amplitude, _ = params
     alpha = 1 - np.exp(-1 / (SAMPLING_RATE * tau * (1 + exp_amplitude)))
     k = (
         exp_amplitude / ((1 + exp_amplitude) * (1 - alpha))
@@ -277,12 +279,12 @@ def filter_calc(params):
     feedback_taps = np.array([a0, a1])
     feedforward_taps = np.array([b0, b1])
 
-    if np.max(np.abs(feedforward_taps)) > FEEDFORWARD_MAX:
-        feedforward_taps = 2 * feedforward_taps / abs(max(feedforward_taps))
+    # if np.max(np.abs(feedforward_taps)) > FEEDFORWARD_MAX:
+    #     feedforward_taps = 2 * feedforward_taps / abs(max(feedforward_taps))
 
-    if np.any(np.abs(feedback_taps) > FEEDBACK_MAX):
-        feedback_taps[feedback_taps > FEEDBACK_MAX] = FEEDBACK_MAX
-        feedback_taps[feedback_taps < -FEEDBACK_MAX] = -FEEDBACK_MAX
+    # if np.any(np.abs(feedback_taps) > FEEDBACK_MAX):
+    #     feedback_taps[feedback_taps > FEEDBACK_MAX] = FEEDBACK_MAX
+    #     feedback_taps[feedback_taps < -FEEDBACK_MAX] = -FEEDBACK_MAX
 
     return feedback_taps.tolist(), feedforward_taps.tolist()
 
@@ -312,7 +314,9 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
     amplitude = {}
     step_response = {}
     alpha = {}
+    g = {}
     time_decay = {}
+    feedforward_taps_iir = {}
     feedforward_taps = {}
     feedback_taps = {}
     for qubit, setup in data.data:
@@ -376,11 +380,27 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             np.array(amplitude[qubit]) / data.flux_pulse_amplitude
         ).tolist()
 
-        # Derive IIR and FIR corrections
+        # Derive IIR
         acquisition_time = len(x)
         exp_params = exponential_params(step_response[qubit], acquisition_time)
-        feedback_taps[qubit], feedforward_taps[qubit] = filter_calc(exp_params)
-        time_decay[qubit], alpha[qubit] = exp_params
+        feedback_taps[qubit], feedforward_taps_iir[qubit] = filter_calc(exp_params)
+        time_decay[qubit], alpha[qubit], g[qubit] = exp_params
+        iir_correction = lfilter(
+            feedforward_taps_iir[qubit], feedback_taps[qubit], step_response[qubit]
+        )
+        # FIR corrections
+
+        taps = 20
+        baseline = g[qubit]
+        x0 = [1] + (taps - 1) * [0]
+
+        def fir_cost_function(x):
+            yc = lfilter(x, 1, iir_correction)
+            return np.mean(np.abs(yc - baseline)) / np.abs(baseline)
+
+        fir = cma.fmin2(fir_cost_function, x0, 0.5)[0]
+
+        feedforward_taps[qubit] = np.convolve(feedforward_taps_iir[qubit], fir).tolist()
 
     return CryoscopeResults(
         amplitude=amplitude,
@@ -389,8 +409,9 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         fitted_parameters=fitted_parameters,
         exp_amplitude=alpha,
         tau=time_decay,
-        fir=feedforward_taps,
-        iir=feedback_taps,
+        feedforward_taps=feedforward_taps,
+        feedforward_taps_iir=feedforward_taps_iir,
+        feedback_taps=feedback_taps,
     )
 
 
@@ -400,43 +421,51 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     fig = go.Figure()
     duration = data[(target, "MX")].duration
 
-    fig.add_trace(
-        go.Scatter(
-            x=duration,
-            y=np.ones(len(duration)),
-            name="exepcted waveform",
-        ),
-    )
-
     fitting_report = None
-
+    print(fit.feedback_taps)
+    print(fit.feedforward_taps)
+    print(fit.feedforward_taps_iir)
     if fit is not None:
 
-        # zi = (
-        #    lfilter_zi(fit.fir[target], fit.iir[target]) * fit.step_response[target][0]
-        # )  # to review
-        signal = lfilter(fit.fir[target], fit.iir[target], fit.step_response[target])
+        iir_corrections = lfilter(
+            fit.feedforward_taps_iir[target],
+            fit.feedback_taps[target],
+            fit.step_response[target],
+        )
+        all_corrections = lfilter(
+            fit.feedforward_taps[target],
+            fit.feedback_taps[target],
+            fit.step_response[target],
+        )
 
         fig.add_trace(
             go.Scatter(
                 x=duration,
                 y=fit.step_response[target],
-                name="derived waveform",
+                name="Uncorrected waveform",
             ),
         )
 
         fig.add_trace(
             go.Scatter(
                 x=duration,
-                y=signal,
-                name="filtered waveform",
+                y=iir_corrections,
+                name="IIR corrections",
+            ),
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=duration,
+                y=all_corrections,
+                name="FIR + IIR corrections",
             ),
         )
 
         exp_amplitude = fit.exp_amplitude[target]
         tau = fit.tau[target]
-        fir = np.array(fit.fir[target])
-        iir = np.array(fit.iir[target])
+        fir = np.array(fit.feedforward_taps[target])
+        iir = np.array(fit.feedback_taps[target])
 
         fitting_report = table_html(
             table_dict(
@@ -455,8 +484,8 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
 
 
 def _update(results: CryoscopeResults, platform: Platform, target: QubitId):
-    update.feedforward(results.fir[target], platform, target)
-    update.feedback(results.iir[target], platform, target)
+    update.feedforward(results.feedforward_taps[target], platform, target)
+    update.feedback(results.feedback_taps[target], platform, target)
 
 
 cryoscope = Routine(_acquisition, _fit, _plot, _update)
