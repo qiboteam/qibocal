@@ -10,7 +10,7 @@ from qibocal.auto.operation import Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
 from ...result import probability
-from ..utils import table_dict, table_html
+from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
 from . import t1, utils
 
 
@@ -150,8 +150,8 @@ def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
                 x=np.concatenate((readouts, readouts[::-1])),
                 y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
                 fill="toself",
-                fillcolor=t1.COLORBAND,
-                line=dict(color=t1.COLORBAND_LINE),
+                fillcolor=COLORBAND,
+                line=dict(color=COLORBAND_LINE),
                 showlegend=True,
                 name="Errors",
             ),

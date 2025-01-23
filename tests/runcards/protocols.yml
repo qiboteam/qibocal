@@ -355,7 +355,6 @@ actions:
       nshots: 1024
 
   - id: t1_signal_single_shot
-    priority: 0
     operation: t1_signal
     parameters:
       delay_before_readout_start: 0
@@ -387,7 +386,6 @@ actions:
       nshots: 10
 
   - id: t2_signal_single_shot
-    priority: 0
     operation: t2_signal
     parameters:
       delay_between_pulses_start: 16
@@ -570,48 +568,45 @@ actions:
 
   - id: spin_echo
     operation: spin_echo
+    # since 0 has different RX duration
+    targets: [1,2,3]
     parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 5
+      delay_between_pulses_start: 42
+      delay_between_pulses_end: 100
       delay_between_pulses_step: 1
       nshots: 10
 
-  - id: spin_echo unrolling
-    operation: spin_echo
+  - id: CPMG
+    operation: cpmg
+    # since 0 has different RX duration
+    targets: [1,2,3]
     parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 5
-      delay_between_pulses_step: 1
+      delay_between_pulses_start: 330
+      delay_between_pulses_end: 400
+      delay_between_pulses_step: 10
       nshots: 10
-      unrolling: true
+      n: 4
 
   - id: spin_echo_signal
     operation: spin_echo_signal
+    # since 0 has different RX duration
+    targets: [1,2,3]
     parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 5
+      delay_between_pulses_start: 50
+      delay_between_pulses_end: 100
       delay_between_pulses_step: 1
       nshots: 10
 
   - id: spin_echo_signal_single_shot
-    priority: 0
     operation: spin_echo_signal
+    # since 0 has different RX duration
+    targets: [1,2,3]
     parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 5
+      delay_between_pulses_start: 50
+      delay_between_pulses_end: 100
       delay_between_pulses_step: 1
       single_shot: True
       nshots: 10
-
-  - id: spin_echo_signal unrolling
-    operation: spin_echo_signal
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 5
-      delay_between_pulses_step: 1
-      nshots: 10
-      unrolling: true
-
 
   - id: flipping
     operation: flipping
