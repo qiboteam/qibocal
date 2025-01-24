@@ -83,8 +83,8 @@ def _acquisition(
             drive_channel = platform.qubits[qubit].drive
             flux_channel = platform.qubits[qubit].flux
             ro_channel = platform.qubits[qubit].acquisition
-            drive_pulse = natives[qubit].RX()[0]
-            readout_pulse = natives[qubit].MZ()[0]
+            drive_channel, drive_pulse = natives[qubit].RX()[0]
+            readout_channel, readout_pulse = natives[qubit].MZ()[0]
             drive_duration = int(drive_pulse[1].duration)
             total_flux_duration = duration + drive_duration
             flux_pulse = Pulse(
