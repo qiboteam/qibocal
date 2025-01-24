@@ -34,7 +34,7 @@ class ResonatorFluxParameters(Parameters):
 class ResonatorFluxResults(Results):
     """ResonatoFlux outputs."""
 
-    resonator_freq: dict[QubitId, float] = field(default_factory=dict)
+    frequency: dict[QubitId, float] = field(default_factory=dict)
     """Readout frequency."""
     coupling: dict[QubitId, float] = field(default_factory=dict)
     """Qubit-resonator coupling."""
@@ -167,7 +167,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     """PostProcessing for resonator_flux protocol.
 
     After applying a mask on the 2D data, the signal is fitted using
-    the expected resonator_freq vs flux behavior.
+    the expected frequency vs flux behavior.
     The fitting procedure requires the knowledge of the bare resonator frequency,
     the charging energy Ec and the maximum qubit frequency which is assumed to be
     the frequency at which the qubit is placed.
@@ -246,7 +246,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 "should fix the problem."
             )
     return ResonatorFluxResults(
-        resonator_freq=resonator_freq,
+        frequency=resonator_freq,
         coupling=coupling,
         matrix_element=matrix_element,
         sweetspot=sweetspot,
@@ -275,15 +275,12 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
                 ],
                 [
                     np.round(fit.coupling[target] * 1e3, 2),
-                    np.round(fit.resonator_freq[target], 6),
+                    np.round(fit.frequency[target], 6),
                     np.round(fit.asymmetry[target], 3),
                     np.round(fit.sweetspot[target], 4),
                     np.round(fit.matrix_element[target], 4),
                     np.round(
-                        (
-                            data.bare_resonator_frequency[target]
-                            - fit.resonator_freq[target]
-                        )
+                        (data.bare_resonator_frequency[target] - fit.frequency[target])
                         * 1e-6,
                         2,
                     ),
@@ -298,7 +295,7 @@ def _update(
     results: ResonatorFluxResults, platform: CalibrationPlatform, qubit: QubitId
 ):
     update.dressed_resonator_frequency(results.resonator_freq[qubit], platform, qubit)
-    update.readout_frequency(results.resonator_freq[qubit], platform, qubit)
+    update.readout_frequency(results.frequency[qubit], platform, qubit)
     update.coupling(results.coupling[qubit], platform, qubit)
     update.flux_offset(results.sweetspot[qubit], platform, qubit)
     update.sweetspot(results.sweetspot[qubit], platform, qubit)
