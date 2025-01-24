@@ -71,6 +71,26 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
             row=1,
             col=1,
         )
+        fig.add_trace(
+            go.Scatter(
+                x=[
+                    fit.frequency[qubit] * HZ_TO_GHZ,
+                ],
+                y=[
+                    fit.sweetspot[qubit],
+                ],
+                mode="markers",
+                marker=dict(
+                    size=8,
+                    color="black",
+                    symbol="cross",
+                ),
+                name=f"Sweetspot",
+                showlegend=True,
+            ),
+            row=1,
+            col=1,
+        )
 
     fig.update_xaxes(
         title_text=f"Frequency [GHz]",
