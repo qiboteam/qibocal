@@ -294,7 +294,7 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
 def _update(
     results: ResonatorFluxResults, platform: CalibrationPlatform, qubit: QubitId
 ):
-    update.dressed_resonator_frequency(results.resonator_freq[qubit], platform, qubit)
+    update.dressed_resonator_frequency(results.frequency[qubit], platform, qubit)
     update.readout_frequency(results.frequency[qubit], platform, qubit)
     update.coupling(results.coupling[qubit], platform, qubit)
     update.flux_offset(results.sweetspot[qubit], platform, qubit)
