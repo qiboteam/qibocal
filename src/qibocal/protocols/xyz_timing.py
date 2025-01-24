@@ -15,7 +15,9 @@ from qibocal.result import probability
 from .utils import table_dict, table_html
 
 COLORBAND = "rgba(0,100,80,0.2)"
+"""Color of the error bands."""
 COLORBAND_LINE = "rgba(255,255,255,0)"
+"""Color of the plot line."""
 
 
 @dataclass
