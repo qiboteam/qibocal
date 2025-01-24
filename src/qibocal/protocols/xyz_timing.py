@@ -78,10 +78,10 @@ def _acquisition(
         drive_durations[qubit] = int(drive_pulse[1].duration)
 
     data = XYZTimingData(pulse_duration=drive_durations)
+    sequence = PulseSequence()
     for duration in durations:
         ro_pulses.append([])
         for qubit in targets:
-            sequence = PulseSequence()
             drive_channel = platform.qubits[qubit].drive
             flux_channel = platform.qubits[qubit].flux
             ro_channel = platform.qubits[qubit].acquisition
@@ -114,11 +114,11 @@ def _acquisition(
             )
             sequence.align([drive_channel, flux_channel, ro_channel])
             sequence.append(readout_pulse)
-            sequences.append(sequence)
+            # sequences.append(sequence)
             ro_pulses[-1].append(readout_pulse)
 
     results = platform.execute(
-        sequences,
+        [sequence],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.DISCRIMINATION,
