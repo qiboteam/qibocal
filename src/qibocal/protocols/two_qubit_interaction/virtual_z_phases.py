@@ -46,16 +46,14 @@ class VirtualZPhasesParameters(Parameters):
     """Final angle for the low frequency qubit measurement in radians."""
     theta_step: float
     """Step size for the theta sweep in radians."""
-    native: Literal["CZ", "iSWAP"] = "CZ"
-    """Two qubit interaction to be calibrated."""
-    flux_pulse_amplitude: Optional[float] = None
-    """Amplitude of flux pulse implementing CZ."""
-    flux_pulse_duration: Optional[float] = None
-    """Duration of flux pulse implementing CZ."""
+    native: str = "CZ"
+    """Two qubit interaction to be calibrated.
+
+    iSWAP and CZ are the possible options.
+
+    """
     dt: Optional[float] = 20
     """Time delay between flux pulses and readout."""
-    parking: bool = True
-    """Wether to park non interacting qubits or not."""
 
 
 @dataclass
@@ -72,17 +70,12 @@ class VirtualZPhasesResults(Results):
     """Virtual Z phase correction."""
     leakage: dict[QubitPairId, dict[QubitId, float]]
     """Leakage on control qubit for pair."""
-    flux_pulse_amplitude: dict[QubitPairId, float]
-    """Amplitude of flux pulse implementing CZ."""
-    flux_pulse_duration: dict[QubitPairId, int]
-    """Duration of flux pulse implementing CZ."""
 
     def __contains__(self, key: QubitPairId):
         """Check if key is in class.
         While key is a QubitPairId both chsh and chsh_mitigated contain
         an additional key which represents the basis chosen.
         """
-        # TODO: fix this (failing only for qq report)
         return key in [
             (target, control) for target, control, _ in self.fitted_parameters
         ]
@@ -98,8 +91,6 @@ class VirtualZPhasesData(Data):
     data: dict[tuple, npt.NDArray[VirtualZPhasesType]] = field(default_factory=dict)
     native: str = "CZ"
     thetas: list = field(default_factory=list)
-    amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
-    durations: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
 
     def __getitem__(self, pair):
         return {
@@ -117,15 +108,11 @@ def create_sequence(
     ordered_pair: list[QubitId, QubitId],
     native: Literal["CZ", "iSWAP"],
     dt: float,
-    parking: bool,
-    amplitude: Optional[float] = None,
-    duration: Optional[float] = None,
+    flux_pulse_max_duration: float = None,
 ) -> tuple[
     PulseSequence,
-    dict[QubitId, Pulse],
-    dict[QubitId, Pulse],
-    dict[QubitId, Pulse],
-    dict[QubitId, Pulse],
+    Pulse,
+    Pulse,
 ]:
     """Create the experiment PulseSequence."""
 
@@ -138,30 +125,40 @@ def create_sequence(
     # X
     if setup == "X":
         sequence += control_natives.RX()
+    else:
+        sequence.append(
+            (platform.qubits[control_qubit].drive, Delay(duration=sequence.duration))
+        )
+
+    drive_duration = sequence.duration
 
     # CZ
     flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
-    flux_channel = platform.qubits[ordered_pair[1]].flux
     flux_pulses = [
-        (ch, pulse) for (ch, pulse) in flux_sequence if not isinstance(pulse, VirtualZ)
+        (ch, pulse) for ch, pulse in flux_sequence if not isinstance(pulse, VirtualZ)
     ]
-    channel, flux_pulse = flux_pulses[0]
-    if amplitude is not None:
-        flux_pulses[0] = (channel, replace(flux_pulse, amplitude=amplitude))
-    if duration is not None:
-        flux_pulses[0] = (channel, replace(flux_pulse, duration=duration))
-    sequence |= flux_pulses
 
-    theta_start = flux_sequence.duration
+    if flux_pulse_max_duration is not None:
+        flux_pulses[0] = (
+            flux_pulses[0][0],
+            replace(flux_pulses[0][1], duration=flux_pulse_max_duration),
+        )
+
+    _, flux_pulse = flux_pulses[0]
+    flux_sequence = PulseSequence(flux_pulses)
+    sequence |= flux_sequence
+
+    flux_duration = flux_sequence.duration + dt
+
     theta_sequence = PulseSequence(
         [
             (
                 platform.qubits[target_qubit].drive,
-                Delay(duration=flux_sequence.duration + dt),
+                Delay(duration=flux_duration),
             ),
             (
                 platform.qubits[control_qubit].drive,
-                Delay(duration=flux_sequence.duration + dt),
+                Delay(duration=flux_duration),
             ),
         ]
     )
@@ -171,17 +168,46 @@ def create_sequence(
     # X
     if setup == "X":
         theta_sequence += control_natives.RX()
+
     sequence += theta_sequence
 
+    ro_target_delay = Delay(duration=flux_duration)
+    ro_control_delay = Delay(duration=flux_duration)
     # M
-    sequence |= target_natives.MZ() + control_natives.MZ()
-
-    return (
-        sequence,
-        theta_pulse,
-        flux_pulses[0][1].amplitude,
-        flux_pulses[0][1].duration,
+    ro_sequence = PulseSequence(
+        [
+            (
+                platform.qubits[target_qubit].acquisition,
+                Delay(duration=drive_duration),
+            ),
+            (
+                platform.qubits[control_qubit].acquisition,
+                Delay(duration=drive_duration),
+            ),
+            (
+                platform.qubits[target_qubit].acquisition,
+                ro_target_delay,
+            ),
+            (
+                platform.qubits[control_qubit].acquisition,
+                ro_control_delay,
+            ),
+            (
+                platform.qubits[target_qubit].acquisition,
+                Delay(duration=theta_sequence.duration),
+            ),
+            (
+                platform.qubits[control_qubit].acquisition,
+                Delay(duration=theta_sequence.duration),
+            ),
+            target_natives.MZ()[0],
+            control_natives.MZ()[0],
+        ]
     )
+
+    sequence += ro_sequence
+
+    return sequence, flux_pulse, theta_pulse, [ro_target_delay, ro_control_delay]
 
 
 def _acquisition(
@@ -219,9 +245,9 @@ def _acquisition(
             for setup in ("I", "X"):
                 (
                     sequence,
+                    _,
                     theta_pulse,
-                    data.amplitudes[ordered_pair],
-                    data.durations[ordered_pair],
+                    _,
                 ) = create_sequence(
                     platform,
                     setup,
@@ -230,11 +256,7 @@ def _acquisition(
                     ordered_pair,
                     params.native,
                     params.dt,
-                    params.parking,
-                    params.flux_pulse_amplitude,
-                    params.flux_pulse_duration,
                 )
-
                 sweeper = Sweeper(
                     parameter=Parameter.relative_phase,
                     range=(params.theta_start, params.theta_end, params.theta_step),
@@ -269,10 +291,36 @@ def _acquisition(
     return data
 
 
-def fit_function(x, amplitude, offset, phase):
+def sinusoid(x, amplitude, offset, phase):
     """Sinusoidal fit function."""
-    # return p0 + p1 * np.sin(2*np.pi*p2 * x + p3)
     return np.sin(x + phase) * amplitude + offset
+
+
+def phase_diff(phase_1, phase_2):
+    """Return the phase difference of two sinusoids, normalized in the range [0, pi]."""
+    return np.arccos(np.cos(phase_1 - phase_2))
+
+
+def fit_sinusoid(thetas, data):
+    """Fit sinusoid to the given data."""
+    pguess = [
+        np.max(data) - np.min(data),
+        np.mean(data),
+        np.pi,
+    ]
+
+    popt, _ = curve_fit(
+        sinusoid,
+        thetas,
+        data,
+        p0=pguess,
+        bounds=(
+            (0, -np.max(data), 0),
+            (np.max(data), np.max(data), 2 * np.pi),
+        ),
+    )
+
+    return popt.tolist()
 
 
 def _fit(
@@ -296,23 +344,9 @@ def _fit(
         leakage[pair] = {}
         for target, control, setup in data[pair]:
             target_data = data[pair][target, control, setup].target
-            pguess = [
-                np.max(target_data) - np.min(target_data),
-                np.mean(target_data),
-                np.pi,
-            ]
             try:
-                popt, _ = curve_fit(
-                    fit_function,
-                    np.array(data.thetas),
-                    target_data,
-                    p0=pguess,
-                    bounds=(
-                        (0, -np.max(target_data), 0),
-                        (np.max(target_data), np.max(target_data), 2 * np.pi),
-                    ),
-                )
-                fitted_parameters[target, control, setup] = popt.tolist()
+                params = fit_sinusoid(np.array(data.thetas), target_data)
+                fitted_parameters[target, control, setup] = params
 
             except Exception as e:
                 log.warning(f"CZ fit failed for pair ({target, control}) due to {e}.")
@@ -322,9 +356,9 @@ def _fit(
                 pair,
                 list(pair)[::-1],
             ):
-                angle[target_q, control_q] = abs(
-                    fitted_parameters[target_q, control_q, "X"][2]
-                    - fitted_parameters[target_q, control_q, "I"][2]
+                angle[target_q, control_q] = phase_diff(
+                    fitted_parameters[target_q, control_q, "X"][2],
+                    fitted_parameters[target_q, control_q, "I"][2],
                 )
                 virtual_phase[pair][target_q] = -fitted_parameters[
                     target_q, control_q, "I"
@@ -344,8 +378,6 @@ def _fit(
             pass  # exception covered above
     return VirtualZPhasesResults(
         native=data.native,
-        flux_pulse_amplitude=data.amplitudes,
-        flux_pulse_duration=data.durations,
         angle=angle,
         virtual_phase=virtual_phase,
         fitted_parameters=fitted_parameters,
@@ -353,7 +385,6 @@ def _fit(
     )
 
 
-# TODO: remove str
 def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPairId):
     """Plot routine for VirtualZPhases."""
     pair_data = data[target]
@@ -408,7 +439,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
             fig.add_trace(
                 go.Scatter(
                     x=angle_range,
-                    y=fit_function(
+                    y=sinusoid(
                         angle_range,
                         *fitted_parameters,
                     ),
@@ -438,21 +469,6 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
                     )
                 )
             )
-    fitting_report.add(
-        table_html(
-            table_dict(
-                [qubits[1], qubits[1]],
-                [
-                    "Flux pulse amplitude [a.u.]",
-                    "Flux pulse duration [ns]",
-                ],
-                [
-                    np.round(data.amplitudes[qubits], 4),
-                    np.round(data.durations[qubits], 4),
-                ],
-            )
-        )
-    )
 
     fig1.update_layout(
         title_text=f"Phase correction Qubit {qubits[0]}",
@@ -476,15 +492,10 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
 def _update(
     results: VirtualZPhasesResults, platform: CalibrationPlatform, target: QubitPairId
 ):
+    # FIXME: quick fix for qubit order
     target = tuple(sorted(target))
     update.virtual_phases(
         results.virtual_phase[target], results.native, platform, target
-    )
-    getattr(update, f"{results.native}_duration")(
-        results.flux_pulse_duration[target], platform, target
-    )
-    getattr(update, f"{results.native}_amplitude")(
-        results.flux_pulse_amplitude[target], platform, target
     )
 
 

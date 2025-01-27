@@ -31,6 +31,10 @@ def generate_figures_and_report(
     It operates on a completed `node` and a specific protocol `target`, generating
     a report outcome (cf. `ReportOutcome`).
     """
+    # TODO: remove temporary fix
+    if isinstance(target, list):
+        target = tuple(target)
+
     if node.results is None:
         # plot acquisition data
         return node.task.operation.report(data=node.data, fit=None, target=target)
