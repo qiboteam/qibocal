@@ -7,8 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
-from scipy.optimize import curve_fit
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal import update
 from qibocal.auto.operation import (
@@ -24,7 +23,7 @@ from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
 from .utils import order_pair
-from .virtual_z_phases import create_sequence, fit_function
+from .virtual_z_phases import create_sequence, fit_sinusoid, phase_diff
 
 
 @dataclass
@@ -49,10 +48,8 @@ class OptimizeTwoQubitGateParameters(Parameters):
     """Maximum duration of flux pulse swept."""
     duration_step: int
     """Step duration of flux pulse swept."""
-    dt: Optional[float] = 20
+    dt: Optional[float] = 0
     """Time delay between flux pulses and readout."""
-    parking: bool = True
-    """Wether to park non interacting qubits or not."""
     native: str = "CZ"
     """Two qubit interaction to be calibrated.
 
@@ -169,34 +166,19 @@ def _acquisition(
             for setup in ("I", "X"):
                 (
                     sequence,
+                    flux_pulse,
                     theta_pulse,
-                    _,
-                    _,
+                    ro_delays,
                 ) = create_sequence(
-                    platform=platform,
-                    setup=setup,
-                    target_qubit=target_q,
-                    control_qubit=control_q,
-                    ordered_pair=ordered_pair,
-                    native=params.native,
-                    dt=params.dt,
-                    parking=params.parking,
+                    platform,
+                    setup,
+                    target_q,
+                    control_q,
+                    ordered_pair,
+                    params.native,
+                    params.dt,
+                    flux_pulse_max_duration=params.duration_max,
                 )
-
-                ro_pulses_low = sequence.channel(
-                    platform.qubits[ordered_pair[0]].acquisition
-                )
-                ro_pulses_high = sequence.channel(
-                    platform.qubits[ordered_pair[1]].acquisition
-                )
-                delay_low, ro_low = list(ro_pulses_low)
-                delay_high, ro_high = list(ro_pulses_high)
-                flux_channel = platform.qubits[ordered_pair[1]].flux
-                flux_pulses = [
-                    pulse
-                    for pulse in sequence.channel(flux_channel)
-                    if isinstance(pulse, Pulse)
-                ]
 
                 sweeper_theta = Sweeper(
                     parameter=Parameter.relative_phase,
@@ -210,7 +192,7 @@ def _acquisition(
                         params.flux_pulse_amplitude_max,
                         params.flux_pulse_amplitude_step,
                     ),
-                    pulses=flux_pulses,
+                    pulses=[flux_pulse],
                 )
 
                 sweeper_duration = Sweeper(
@@ -220,9 +202,15 @@ def _acquisition(
                         params.duration_max,
                         params.duration_step,
                     ),
-                    pulses=flux_pulses + [delay_low, delay_high],
+                    pulses=[flux_pulse] + ro_delays,
                 )
 
+                ro_target = list(
+                    sequence.channel(platform.qubits[target_q].acquisition)
+                )[-1]
+                ro_control = list(
+                    sequence.channel(platform.qubits[control_q].acquisition)
+                )[-1]
                 results = platform.execute(
                     [sequence],
                     [[sweeper_duration], [sweeper_amplitude], [sweeper_theta]],
@@ -241,8 +229,8 @@ def _acquisition(
                     sweeper_theta.values,
                     sweeper_amplitude.values,
                     sweeper_duration.values,
-                    results[ro_low.id],
-                    results[ro_high.id],
+                    results[ro_control.id],
+                    results[ro_target.id],
                 )
     return data
 
@@ -276,28 +264,12 @@ def _fit(
                             )
                         )
                     ]
-                    pguess = [
-                        np.max(target_data) - np.min(target_data),
-                        np.mean(target_data),
-                        np.pi,
-                    ]
 
                     try:
-                        popt, _ = curve_fit(
-                            fit_function,
-                            np.array(data.thetas),
-                            target_data,
-                            p0=pguess,
-                            bounds=(
-                                (0, -np.max(target_data), 0),
-                                (np.max(target_data), np.max(target_data), 2 * np.pi),
-                            ),
-                        )
-
+                        params = fit_sinusoid(np.array(data.thetas), target_data)
                         fitted_parameters[
                             target, control, setup, amplitude, duration
-                        ] = popt.tolist()
-
+                        ] = params
                     except Exception as e:
                         log.warning(
                             f"Fit failed for pair ({target, control}) due to {e}."
@@ -308,13 +280,13 @@ def _fit(
                         pair,
                         list(pair)[::-1],
                     ):
-                        angles[target_q, control_q, amplitude, duration] = abs(
+                        angles[target_q, control_q, amplitude, duration] = phase_diff(
                             fitted_parameters[
                                 target_q, control_q, "X", amplitude, duration
-                            ][2]
-                            - fitted_parameters[
+                            ][2],
+                            fitted_parameters[
                                 target_q, control_q, "I", amplitude, duration
-                            ][2]
+                            ][2],
                         )
                         virtual_phases[ord_pair[0], ord_pair[1], amplitude, duration][
                             target_q
@@ -421,7 +393,7 @@ def _plot(
                     y=amps,
                     z=cz,
                     zmin=np.pi / 2,
-                    zmax=3 * np.pi / 2,
+                    zmax=np.pi,
                     name="{fit.native} angle",
                     colorbar_x=-0.1,
                     colorscale="RdBu",
@@ -476,9 +448,9 @@ def _update(
 ):
     # FIXME: quick fix for qubit order
     target = tuple(sorted(target))
-    # update.virtual_phases(
-    #     results.best_virtual_phase[target], results.native, platform, target
-    # )
+    update.virtual_phases(
+        results.best_virtual_phase[target], results.native, platform, target
+    )
     getattr(update, f"{results.native}_duration")(
         results.best_dur[target], platform, target
     )
