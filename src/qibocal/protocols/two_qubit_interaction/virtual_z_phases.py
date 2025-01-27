@@ -148,10 +148,19 @@ def create_sequence(
     flux_sequence = PulseSequence(flux_pulses)
     sequence |= flux_sequence
 
-    flux_duration = flux_sequence.duration + dt
+    flux_duration = flux_sequence.duration
+    dt_delay = Delay(duration=dt)
 
     theta_sequence = PulseSequence(
         [
+            (
+                platform.qubits[target_qubit].drive,
+                dt_delay,
+            ),
+            (
+                platform.qubits[control_qubit].drive,
+                dt_delay,
+            ),
             (
                 platform.qubits[target_qubit].drive,
                 Delay(duration=flux_duration),
