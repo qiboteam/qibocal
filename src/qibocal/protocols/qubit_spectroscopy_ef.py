@@ -16,7 +16,7 @@ from .qubit_spectroscopy import (
     _fit,
 )
 from .resonator_spectroscopy import ResSpecType
-from .utils import spectroscopy_plot, table_dict, table_html
+from .utils import readout_frequency, spectroscopy_plot, table_dict, table_html
 
 
 @dataclass
@@ -117,6 +117,10 @@ def _acquisition(
     results = platform.execute(
         [sequence],
         [sweepers],
+        updates=[
+            {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
+            for q in targets
+        ],
         **params.execution_parameters,
     )
 

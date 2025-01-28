@@ -11,7 +11,13 @@ from qibocal.update import replace
 
 from .. import update
 from .resonator_spectroscopy import ResonatorSpectroscopyData, ResSpecType
-from .utils import chi2_reduced, lorentzian, lorentzian_fit, spectroscopy_plot
+from .utils import (
+    chi2_reduced,
+    lorentzian,
+    lorentzian_fit,
+    readout_frequency,
+    spectroscopy_plot,
+)
 
 
 @dataclass
@@ -105,6 +111,10 @@ def _acquisition(
     results = platform.execute(
         [sequence],
         [sweepers],
+        updates=[
+            {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
+            for q in targets
+        ],
         **params.execution_parameters,
     )
 
