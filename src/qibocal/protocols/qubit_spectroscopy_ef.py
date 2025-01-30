@@ -84,9 +84,9 @@ def _acquisition(
         qd12_channel, qd12_pulse = natives.RX12()[0]
         ro_channel, ro_pulse = natives.MZ()[0]
 
-        qd_pulse = replace(qd_pulse, duration=params.drive_duration)
+        qd12_pulse = replace(qd12_pulse, duration=params.drive_duration)
         if params.drive_amplitude is not None:
-            qd_pulse = replace(qd_pulse, amplitude=params.drive_amplitude)
+            qd12_pulse = replace(qd12_pulse, amplitude=params.drive_amplitude)
 
         amplitudes[qubit] = qd12_pulse.amplitude
         ro_pulses[qubit] = ro_pulse
@@ -104,7 +104,7 @@ def _acquisition(
             Sweeper(
                 parameter=Parameter.frequency,
                 values=platform.config(qd12_channel).frequency + delta_frequency_range,
-                channels=[qd_channel],
+                channels=[qd12_channel],
             )
         )
 
