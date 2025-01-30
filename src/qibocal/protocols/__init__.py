@@ -154,4 +154,11 @@ __all__ = [
     "optimize_two_qubit_gate",
     "mermin",
     "ramsey_zz",
+    "cross_resonance_length",
+    "cross_resonance_length_sequences",
+    "cross_resonance_amplitude",
+    "cross_resonance_chevron_length",
+    "cross_resonance_chevron_frequency",
+    "cross_resonance_chevron_amplitude_frequency",
+    "cross_resonance_chevron_coupler",
 ]
