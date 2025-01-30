@@ -9,7 +9,7 @@ from ..auto.runcard import Runcard
 from .report import report
 
 
-def autocalibrate(runcard: Runcard, folder: Path, force, update):
+def protocols_execution(runcard: Runcard, folder: Path, force, update):
     """Autocalibration.
 
     Arguments:

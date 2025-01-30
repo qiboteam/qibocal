@@ -75,10 +75,8 @@ def _acquisition(
             for setup in ("I", "X"):
                 (
                     sequence,
-                    virtual_z_phase,
+                    _,
                     theta_pulse,
-                    data.amplitudes[ord_pair],
-                    data.durations[ord_pair],
                 ) = create_sequence(
                     platform,
                     setup,
@@ -88,9 +86,7 @@ def _acquisition(
                     params.native,
                     params.dt,
                     params.parking,
-                    params.flux_pulse_amplitude,
                 )
-                data.vphases[ord_pair] = dict(virtual_z_phase)
                 theta = np.arange(
                     params.theta_start,
                     params.theta_end,
@@ -99,7 +95,7 @@ def _acquisition(
                 )
                 sweeper = Sweeper(
                     Parameter.relative_phase,
-                    theta - data.vphases[ord_pair][target_q],
+                    theta,
                     pulses=[theta_pulse],
                     type=SweeperType.ABSOLUTE,
                 )

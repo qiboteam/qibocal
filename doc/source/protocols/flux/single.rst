@@ -16,9 +16,8 @@ of GHz, which leads to several applications including quantum logical gates.
 
 The transmon frequency as a function of the external flux can be expressed as :cite:p:`Barrett_2023`
 
-.. math::
-
-    f_q(\Phi) = \Bigg( f_q^{\text{max}} + \frac{E_C}{h} \Bigg)  \sqrt[4]{d^2 + (1-d^2)\cos^2\Big( \pi \frac{\Phi}{\Phi_0}\Big)} - \frac{E_C}{h} \,
+.. math:: f_q(\Phi) = \Bigg( f_q^{\text{max}} + \frac{E_C}{h} \Bigg)  \sqrt[4]{d^2 + (1-d^2)\cos^2\Big( \pi \frac{\Phi}{\Phi_0}\Big)} - \frac{E_C}{h} \,
+    :label: transmon
 
 where :math:`f_{\text{max}} = ( \sqrt{8 E_C E_J} - E_C) / h` is the maximum qubit frequency,
 :math:`d` is the junctions asymmetry, :math:`E_C` is the charging energy,
@@ -76,6 +75,14 @@ The expected output is the following:
 From the acquired data this protocol estimates the flux insensitive point "sweetspot",
 which corresponds to the flux value where the frequency is maximed, as well as the drive frequency
 and the diagonal crosstalk coefficient :math:`V_{ii}`.
+
+.. note::
+
+    From the cosinusoidal term in the transmon equation :math:numref:`transmon`, it is clear that the
+    sweetspot is not unique.
+    In this protocol, Qibocal returns the sweetspot that is closest to the bias
+    that is in the middle of the swept interval.
+
 Both the sweetspot and the :math:`C_{ii}` can be understood by writing the full expression for
 the flux felt by qubit :math:`i` :cite:p:`Barrett_2023`:
 

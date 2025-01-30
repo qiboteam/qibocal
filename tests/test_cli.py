@@ -19,7 +19,7 @@ def test_qq_update(update, tmp_path, monkeypatch):
     runner = CliRunner()
     runner.invoke(
         command,
-        ["auto", str(DUMMY_ACTION), "-o", str(output_folder), "-f", update],
+        ["run", str(DUMMY_ACTION), "-o", str(output_folder), "-f", update],
         catch_exceptions=False,
     )
 
@@ -85,8 +85,8 @@ def test_compare_report_dates(tmp_path):
     compare_dir = tmp_path / "compare_dir"
 
     runner = CliRunner()
-    runner.invoke(command, ["auto", str(DUMMY_COMPARE), "-o", str(report_dir_1), "-f"])
-    runner.invoke(command, ["auto", str(DUMMY_COMPARE), "-o", str(report_dir_2), "-f"])
+    runner.invoke(command, ["run", str(DUMMY_COMPARE), "-o", str(report_dir_1), "-f"])
+    runner.invoke(command, ["run", str(DUMMY_COMPARE), "-o", str(report_dir_2), "-f"])
 
     runner.invoke(
         command,

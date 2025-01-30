@@ -8,8 +8,8 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibo import Circuit, gates
-from qibo.backends import GlobalBackend, NumpyBackend, matrices
-from qibo.quantum_info import fidelity
+from qibo.backends import NumpyBackend, get_backend, matrices
+from qibo.quantum_info import fidelity, partial_trace
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
@@ -102,7 +102,7 @@ def _acquisition(
     if params.circuit is None:
         params.circuit = Circuit(len(targets))
 
-    backend = GlobalBackend()
+    backend = get_backend()
     backend.platform = platform
     transpiler = dummy_transpiler(backend)
 
@@ -148,9 +148,7 @@ def _fit(data: StateTomographyData) -> StateTomographyResults:
     total_density_matrix = NumpyBackend().execute_circuit(circuit=circuit).state()
     for i, qubit in enumerate(data.targets):
         traced_qubits = [q for q in range(len(data.qubits)) if q != i]
-        target_density_matrix = NumpyBackend().partial_trace_density_matrix(
-            total_density_matrix, traced_qubits, len(data.qubits)
-        )
+        target_density_matrix = partial_trace(total_density_matrix, traced_qubits)
         x_exp = 1 - 2 * np.mean(data[qubit, "X"].samples)
         y_exp = 1 - 2 * np.mean(data[qubit, "Y"].samples)
         z_exp = 1 - 2 * np.mean(data[qubit, "Z"].samples)
