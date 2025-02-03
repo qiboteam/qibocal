@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -11,6 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
+from qibocal.protocols.utils import fallback_period, guess_period
 
 from . import utils
 
@@ -33,9 +34,9 @@ class RabiLengthSignalParameters(Parameters):
 class RabiLengthSignalResults(Results):
     """RabiLengthSignal outputs."""
 
-    length: dict[QubitId, tuple[int, Optional[float]]]
+    length: dict[QubitId, Union[int, list[float]]]
     """Pi pulse duration for each qubit."""
-    amplitude: dict[QubitId, tuple[float, Optional[float]]]
+    amplitude: dict[QubitId, Union[float, list[float]]]
     """Pi pulse amplitude. Same for all qubits."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -84,7 +85,6 @@ def _acquisition(
         [qd_pulses[qubit] for qubit in targets],
         type=SweeperType.ABSOLUTE,
     )
-
     data = RabiLengthSignalData(amplitudes=amplitudes)
 
     # execute the sweep
@@ -132,8 +132,8 @@ def _fit(data: RabiLengthSignalData) -> RabiLengthSignalResults:
         x = (rabi_parameter - x_min) / (x_max - x_min)
         y = (voltages - y_min) / (y_max - y_min) - 1 / 2
 
-        f = utils.guess_frequency(x, y)
-        pguess = [0, np.sign(y[0]) * 0.5, 1 / f, 0, 0]
+        period = fallback_period(guess_period(x, y))
+        pguess = [0, np.sign(y[0]) * 0.5, period, 0, 0]
         try:
             popt, _, pi_pulse_parameter = utils.fit_length_function(
                 x,

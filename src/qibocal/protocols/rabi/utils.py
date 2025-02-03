@@ -5,7 +5,6 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
-from scipy.signal import find_peaks
 
 from qibocal.auto.operation import Parameters
 
@@ -270,17 +269,6 @@ def sequence_length(
     return sequence, qd_pulses, ro_pulses, amplitudes
 
 
-def guess_frequency(x, y):
-    """Return fft frequency estimation given a sinusoidal plot."""
-    # Guessing period using fourier transform
-    ft = np.fft.rfft(y)
-    mags = abs(ft)
-    local_maxima = find_peaks(mags, threshold=10)[0]
-    index = local_maxima[0] if len(local_maxima) > 0 else None
-    # 0.5 hardcoded guess for less than one oscillation
-    return x[index] / (x[1] - x[0]) if index is not None else 0.5
-
-
 def fit_length_function(
     x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
 ):
@@ -333,8 +321,8 @@ def fit_amplitude_function(
         p0=guess,
         maxfev=100000,
         bounds=(
-            [0, 0, 0, -np.pi],
-            [1, 1, np.inf, np.pi],
+            [0, 0, 0, 0],
+            [1, 1, np.inf, 2 * np.pi],
         ),
         sigma=sigma,
     )

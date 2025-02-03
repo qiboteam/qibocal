@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -14,8 +14,8 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 
-from ..utils import GHZ_TO_HZ, table_dict, table_html
-from .utils import fitting, ramsey_fit, ramsey_sequence
+from ..utils import table_dict, table_html
+from .utils import fitting, process_fit, ramsey_fit, ramsey_sequence
 
 
 @dataclass
@@ -28,7 +28,7 @@ class RamseySignalParameters(Parameters):
     """Final delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_step: int
     """Step delay between RX(pi/2) pulses in ns."""
-    detuning: Optional[int] = 0
+    detuning: Optional[int] = None
     """Frequency detuning [Hz] (optional).
         If 0 standard Ramsey experiment is performed."""
     unrolling: bool = False
@@ -40,13 +40,15 @@ class RamseySignalParameters(Parameters):
 class RamseySignalResults(Results):
     """Ramsey outputs."""
 
-    frequency: dict[QubitId, tuple[float, Optional[float]]]
+    detuning: float
+    """Qubit frequency detuning."""
+    frequency: dict[QubitId, Union[float, list[float]]]
     """Drive frequency [GHz] for each qubit."""
-    t2: dict[QubitId, tuple[float, Optional[float]]]
+    t2: dict[QubitId, Union[float, list[float]]]
     """T2 for each qubit [ns]."""
-    delta_phys: dict[QubitId, tuple[float, Optional[float]]]
+    delta_phys: dict[QubitId, Union[float, list[float]]]
     """Drive frequency [Hz] correction for each qubit."""
-    delta_fitting: dict[QubitId, tuple[float, Optional[float]]]
+    delta_fitting: dict[QubitId, Union[float, list[float]]]
     """Raw drive frequency [Hz] correction for each qubit.
        including the detuning."""
     fitted_parameters: dict[QubitId, list[float]]
@@ -61,7 +63,7 @@ RamseySignalType = np.dtype([("wait", np.float64), ("signal", np.float64)])
 class RamseySignalData(Data):
     """Ramsey acquisition outputs."""
 
-    detuning: int
+    detuning: Optional[int] = None
     """Frequency detuning [Hz]."""
     qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
     """Qubit freqs for each qubit."""
@@ -194,29 +196,18 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
         signal = qubit_data["signal"]
         try:
             popt, perr = fitting(waits, signal)
-            delta_fitting = popt[2] / (2 * np.pi)
-            sign = np.sign(data.detuning) if data.detuning != 0 else 1
-            delta_phys = int(sign * (delta_fitting * GHZ_TO_HZ - np.abs(data.detuning)))
-            corrected_qubit_frequency = int(qubit_freq - delta_phys)
-            t2 = 1 / popt[4]
-            freq_measure[qubit] = (
-                corrected_qubit_frequency,
-                perr[2] * GHZ_TO_HZ / (2 * np.pi),
-            )
-            t2_measure[qubit] = (t2, perr[4] * (t2**2))
-            popts[qubit] = popt
-            delta_phys_measure[qubit] = (
-                delta_phys,
-                perr[2] * GHZ_TO_HZ / (2 * np.pi),
-            )
-            delta_fitting_measure[qubit] = (
-                delta_fitting * GHZ_TO_HZ,
-                perr[2] * GHZ_TO_HZ / (2 * np.pi),
-            )
+            (
+                freq_measure[qubit],
+                t2_measure[qubit],
+                delta_phys_measure[qubit],
+                delta_fitting_measure[qubit],
+                popts[qubit],
+            ) = process_fit(popt, perr, qubit_freq, data.detuning)
         except Exception as e:
             log.warning(f"Ramsey fitting failed for qubit {qubit} due to {e}.")
 
     return RamseySignalResults(
+        detuning=data.detuning,
         frequency=freq_measure,
         t2=t2_measure,
         delta_phys=delta_phys_measure,
@@ -295,7 +286,10 @@ def _plot(data: RamseySignalData, target: QubitId, fit: RamseySignalResults = No
 
 
 def _update(results: RamseySignalResults, platform: Platform, target: QubitId):
-    update.drive_frequency(results.frequency[target][0], platform, target)
+    if results.detuning is not None:
+        update.drive_frequency(results.frequency[target][0], platform, target)
+    else:
+        update.t2(results.t2[target][0], platform, target)
 
 
 ramsey_signal = Routine(_acquisition, _fit, _plot, _update)

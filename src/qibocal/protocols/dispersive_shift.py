@@ -1,4 +1,4 @@
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
@@ -35,24 +35,19 @@ class DispersiveShiftParameters(Parameters):
 class DispersiveShiftResults(Results):
     """Dispersive shift outputs."""
 
-    frequency_state_zero: dict[QubitId, float]
-    """State zero frequency."""
-    frequency_state_one: dict[QubitId, float]
-    """State one frequency."""
-    fitted_parameters_state_zero: dict[QubitId, list[float]]
-    """Fitted parameters state zero."""
-    fitted_parameters_state_one: dict[QubitId, list[float]]
-    """Fitted parameters state one."""
+    frequencies: dict[QubitId, list[float]]
+    """Qubit peak frequencies."""
+    fitted_parameters: dict[QubitId, list[list[float]]]
+    """Fitted parameters. The first element is the resonator frequency when the
+    qubit is in the ground state, the second one when the qubit is in the first excited
+    state."""
     best_freq: dict[QubitId, float]
     """Readout frequency that maximizes the distance of ground and excited states in iq-plane"""
 
-    @property
-    def state_zero(self):
-        return {key: value for key, value in asdict(self).items() if "zero" in key}
-
-    @property
-    def state_one(self):
-        return {key: value for key, value in asdict(self).items() if "one" in key}
+    def chi(self, target: QubitId) -> float:
+        "Evaluate the dispersive shift"
+        freq = self.frequencies[target]
+        return (freq[0] - freq[1]) / 2
 
 
 DispersiveShiftType = np.dtype(
@@ -167,44 +162,44 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     qubits = data.qubits
     iq_couples = [[], []]  # axis 0: states, axis 1: qubit
 
-    frequency_0 = {}
-    frequency_1 = {}
+    res_frequencies = {}
     best_freqs = {}
-    fitted_parameters_0 = {}
-    fitted_parameters_1 = {}
+    fitted_parameters = {}
 
-    for i in range(2):
-        for qubit in qubits:
+    for qubit in qubits:
+        freq = []
+        fit_params = []
+        for i in range(2):
             data_i = data[qubit, i]
             fit_result = lorentzian_fit(
                 data_i, resonator_type=data.resonator_type, fit="resonator"
             )
-            if fit_result is not None:
-                if i == 0:
-                    frequency_0[qubit], fitted_parameters_0[qubit], _ = fit_result
-                else:
-                    frequency_1[qubit], fitted_parameters_1[qubit], _ = fit_result
+            if fit_result is None:
+                freq = fit_params = None
+                break
 
-            i_measures = data_i.i
-            q_measures = data_i.q
+            freq.append(fit_result[0])
+            fit_params.append(fit_result[1])
 
-            iq_couples[i].append(np.stack((i_measures, q_measures), axis=-1))
-        # for each qubit find the iq couple of 0-1 states that maximize the distance
-    iq_couples = np.array(iq_couples)
+        res_frequencies[qubit] = freq
+        fitted_parameters[qubit] = fit_params
 
     for idx, qubit in enumerate(qubits):
-        frequencies = data[qubit, 0].freq
+        for i in range(2):
+            data_i = data[qubit, i]
+            i_measures = data_i.i
+            q_measures = data_i.q
+            iq_couples[i].append(np.stack((i_measures, q_measures), axis=-1))
 
+        frequencies = data[qubit, 0].freq
         max_index = np.argmax(
             np.linalg.norm(iq_couples[0][idx] - iq_couples[1][idx], axis=-1)
         )
         best_freqs[qubit] = frequencies[max_index]
 
     return DispersiveShiftResults(
-        frequency_state_zero=frequency_0,
-        frequency_state_one=frequency_1,
-        fitted_parameters_state_one=fitted_parameters_1,
-        fitted_parameters_state_zero=fitted_parameters_0,
+        frequencies=res_frequencies,
+        fitted_parameters=fitted_parameters,
         best_freq=best_freqs,
     )
 
@@ -222,21 +217,17 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
             "phase [rad]",
         ),
     )
-    # iterate over multiple data folders
 
     fitting_report = ""
 
     data_0 = data[target, 0]
     data_1 = data[target, 1]
-    fit_data_0 = fit.state_zero if fit is not None else None
-    fit_data_1 = fit.state_one if fit is not None else None
 
-    for i, label, q_data, data_fit in list(
+    for i, label, q_data in list(
         zip(
             (0, 1),
             ("State 0", "State 1"),
             (data_0, data_1),
-            (fit_data_0, fit_data_1),
         )
     ):
         opacity = 1
@@ -264,79 +255,73 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
             row=1,
             col=2,
         )
-
         if fit is not None:
-            freqrange = np.linspace(
-                min(frequencies),
-                max(frequencies),
-                2 * len(q_data),
-            )
-            params = data_fit[
-                (
-                    "fitted_parameters_state_zero"
-                    if i == 0
-                    else "fitted_parameters_state_one"
-                )
-            ][target]
-            fig.add_trace(
-                go.Scatter(
-                    x=freqrange,
-                    y=lorentzian(freqrange, *params),
-                    name=f"{label} Fit",
-                    line=go.scatter.Line(dash="dot"),
-                ),
+            fig.add_vline(
+                x=fit.best_freq[target] * HZ_TO_GHZ,
+                line=dict(color="orange", width=3, dash="dash"),
                 row=1,
                 col=1,
             )
-
-    if fit is not None:
-        fig.add_trace(
-            go.Scatter(
-                x=[
-                    fit.best_freq[target] * HZ_TO_GHZ,
-                    fit.best_freq[target] * HZ_TO_GHZ,
-                ],
-                y=[
-                    np.min(np.concatenate((data_0.signal, data_1.signal))),
-                    np.max(np.concatenate((data_0.signal, data_1.signal))),
-                ],
-                mode="lines",
-                line=go.scatter.Line(color="orange", width=3, dash="dash"),
-                name="Best frequency",
-            ),
-            row=1,
-            col=1,
-        )
-
-        fig.add_vline(
-            x=fit.best_freq[target] * HZ_TO_GHZ,
-            line=dict(color="orange", width=3, dash="dash"),
-            row=1,
-            col=1,
-        )
-        fitting_report = table_html(
-            table_dict(
-                target,
+            table_entries = [
+                "Best Frequency [Hz]",
+            ]
+            table_values = np.round(
                 [
+                    fit.best_freq[target],
+                ]
+            )
+
+            if fit.frequencies[target] is not None:
+                freqrange = np.linspace(
+                    min(frequencies),
+                    max(frequencies),
+                    2 * len(q_data),
+                )
+                params = fit.fitted_parameters[target][i]
+                fig.add_trace(
+                    go.Scatter(
+                        x=freqrange,
+                        y=lorentzian(freqrange, *params),
+                        name=f"{label} Fit",
+                        line=go.scatter.Line(dash="dot"),
+                    ),
+                    row=1,
+                    col=1,
+                )
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=[
+                            fit.best_freq[target] * HZ_TO_GHZ,
+                            fit.best_freq[target] * HZ_TO_GHZ,
+                        ],
+                        y=[
+                            np.min(np.concatenate((data_0.signal, data_1.signal))),
+                            np.max(np.concatenate((data_0.signal, data_1.signal))),
+                        ],
+                        mode="lines",
+                        line=go.scatter.Line(color="orange", width=3, dash="dash"),
+                        name="Best frequency",
+                    ),
+                    row=1,
+                    col=1,
+                )
+                table_entries = [
                     "State Zero Frequency [Hz]",
                     "State One Frequency [Hz]",
                     "Chi [Hz]",
                     "Best Frequency [Hz]",
-                ],
-                np.round(
+                ]
+                table_values = np.round(
                     [
-                        fit_data_0["frequency_state_zero"][target],
-                        fit_data_1["frequency_state_one"][target],
-                        (
-                            fit_data_0["frequency_state_zero"][target]
-                            - fit_data_1["frequency_state_one"][target]
-                        )
-                        / 2,
+                        fit.frequencies[target][0],
+                        fit.frequencies[target][1],
+                        fit.chi(target),
                         fit.best_freq[target],
                     ]
-                ),
-            )
-        )
+                )
+
+            fitting_report = table_html(table_dict(target, table_entries, table_values))
     fig.update_layout(
         showlegend=True,
         xaxis_title="Frequency [GHz]",
@@ -352,6 +337,10 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
 
 def _update(results: DispersiveShiftResults, platform: Platform, target: QubitId):
     update.readout_frequency(results.best_freq[target], platform, target)
+    if results.frequencies[target] is not None:
+        delta = platform.qubits[target].drive_frequency - results.frequencies[target][0]
+        g = np.sqrt(np.abs(results.chi(target) * delta))
+        update.coupling(g, platform, target)
 
 
 dispersive_shift = Routine(_acquisition, _fit, _plot, _update)

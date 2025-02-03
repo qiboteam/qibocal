@@ -1,54 +1,118 @@
 """Track execution history."""
 
+from collections import defaultdict
+from dataclasses import dataclass, field
+from functools import singledispatchmethod
 from pathlib import Path
+from typing import Iterator, Optional
 
-from qibocal.config import raise_error
-
-from .runcard import Id
-from .task import Completed
+from .task import Completed, Id, TaskId
 
 
-def add_timings_to_meta(meta, history):
-    for task_id in history:
-        completed = history[task_id]
-        if task_id not in meta:
-            meta[task_id] = {}
-
-        if "acquisition" not in meta[task_id] and completed.data_time > 0:
-            meta[task_id]["acquisition"] = completed.data_time
-        if "fit" not in meta[task_id] and completed.results_time > 0:
-            meta[task_id]["fit"] = completed.results_time
-        if "acquisition" in meta[task_id]:
-            meta[task_id]["tot"] = meta[task_id]["acquisition"]
-        if "fit" in meta[task_id]:
-            meta[task_id]["tot"] += meta[task_id]["fit"]
-
-    return meta
-
-
-class History(dict[Id, Completed]):
+@dataclass
+class History:
     """Execution history.
 
-    This is not only used for logging and debugging, but it is an actual part
-    of the execution itself, since later routines can retrieve the output of
-    former ones from here.
-
+    This is not only used for logging and debugging, but it is an actual
+    part of the execution itself, since later routines can retrieve the
+    output of former ones from here.
     """
+
+    _tasks: dict[Id, list[Completed]] = field(default_factory=lambda: defaultdict(list))
+    """List of completed tasks.
+
+    .. note::
+
+        Representing the object as a map of sequences makes it smoother to identify the
+        iterations of a given task, since they are already grouped together.
+    """
+    _order: list[TaskId] = field(default_factory=list)
+    """Record of the execution order."""
+
+    @singledispatchmethod
+    def __contains__(self, elem: Id):
+        """Check whether a generic or specific task has been completed."""
+        return elem in self._tasks
+
+    @__contains__.register
+    def _(self, elem: TaskId):
+        return len(self._tasks.get(elem.id, [])) > elem.iteration
+
+    @singledispatchmethod
+    def __getitem__(self, _):
+        """Access a generic or specific task."""
+        raise NotImplementedError
+
+    @__getitem__.register(str)
+    def _(self, key: Id) -> list[Completed]:
+        return self._tasks[key]
+
+    @__getitem__.register
+    def _(self, key: TaskId) -> Completed:
+        return self._tasks[key.id][key.iteration]
+
+    def __iter__(self) -> Iterator[TaskId]:
+        """Iterate individual tasks identifiers.
+
+        It follows the execution order.
+        """
+        return iter(self._order)
+
+    def values(self) -> Iterator[Completed]:
+        """Iterate individual tasks according to the execution order."""
+        return (self[task_id] for task_id in self)
+
+    def items(self) -> Iterator[tuple[TaskId, Completed]]:
+        """Consistent iteration over individual tasks and their ids."""
+        return ((task_id, self[task_id]) for task_id in self)
 
     @classmethod
     def load(cls, path: Path):
-        """To be defined"""
+        """To be defined."""
         instance = cls()
         for protocol in (path / "data").glob("*"):
             instance.push(Completed.load(protocol))
         return instance
 
-    def push(self, completed: Completed):
+    def push(self, completed: Completed) -> TaskId:
         """Adding completed task to history."""
-        if completed.task.id in self:
-            # patch to make sure that calling fit after acquire works
-            if self[completed.task.id]._results is not None:
-                raise_error(KeyError, f"{completed.task.id} already in History.")
-        self[completed.task.id] = completed
+        id = completed.task.id
+        self._tasks[id].append(completed)
+        task_id = TaskId(id=id, iteration=len(self._tasks[id]) - 1)
+        self._order.append(task_id)
+        return task_id
 
-    # TODO: implemet time_travel()
+    @staticmethod
+    def route(task_id: TaskId, folder: Path) -> Path:
+        """Determine the path related to a completed task given TaskId.
+
+        `folder` should be usually the general output folder, used by Qibocal to store
+        all the execution results. Cf. :cls:`qibocal.auto.output.Output`.
+        """
+        return folder / "data" / f"{task_id}"
+
+    def flush(self, output: Optional[Path] = None):
+        """Flush all content to disk.
+
+        Specifying `output` is possible to select which folder should be considered as
+        the general Qibocal output folder. Cf. :cls:`qibocal.auto.output.Output`.
+        """
+        for task_id, completed in self.items():
+            if output is not None:
+                completed.path = self.route(task_id, output)
+            completed.flush()
+
+    # TODO: implement time_travel()
+
+
+class DummyHistory:
+    """Empty History object, used by `qq compare`.
+
+    Used for comparing multiple reports, as their history is not saved.
+    """
+
+    def flush(self, output=None):
+        pass
+
+    def items(self):
+        return tuple()

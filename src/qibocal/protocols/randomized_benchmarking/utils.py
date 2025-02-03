@@ -7,9 +7,10 @@ from typing import Callable, Iterable, Optional, Tuple, Union
 import numpy as np
 import numpy.typing as npt
 from qibo import gates
-from qibo.backends import GlobalBackend
+from qibo.backends import get_backend
 from qibo.config import raise_error
 from qibo.models import Circuit
+from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.operation import Data, Parameters, Results
@@ -121,6 +122,7 @@ def random_circuits(
     inverse_layer=True,
     single_qubit=True,
     file_inv=pathlib.Path(),
+    interleave=None,
 ) -> Iterable:
     """Returns random (self-inverting) Clifford circuits."""
 
@@ -128,7 +130,7 @@ def random_circuits(
     indexes = defaultdict(list)
     for _ in range(niter):
         for target in targets:
-            circuit, random_index = layer_circuit(rb_gen, depth, target)
+            circuit, random_index = layer_circuit(rb_gen, depth, target, interleave)
             if inverse_layer:
                 add_inverse_layer(circuit, rb_gen, single_qubit, file_inv)
             add_measurement_layer(circuit)
@@ -307,6 +309,14 @@ class RB2QData(RBData):
 
 
 @dataclass
+class RB2QInterData(RB2QData):
+    """The output of the acquisition function."""
+
+    fidelity: dict[QubitPairId, list] = field(default_factory=dict)
+    """The interleaved fidelity of this qubit."""
+
+
+@dataclass
 class StandardRBResult(Results):
     """Standard RB outputs."""
 
@@ -314,17 +324,21 @@ class StandardRBResult(Results):
     """The overall fidelity of this qubit."""
     pulse_fidelity: dict[QubitId, float]
     """The pulse fidelity of the gates acting on this qubit."""
-    fit_parameters: dict[QubitId, tuple[float, float, float]]
+    fit_parameters: dict[QubitId, list[float]]
     """Raw fitting parameters."""
-    fit_uncertainties: dict[QubitId, tuple[float, float, float]]
+    fit_uncertainties: dict[QubitId, list[float]]
     """Fitting parameters uncertainties."""
-    error_bars: dict[QubitId, Optional[Union[float, list[float]]]] = None
+    error_bars: dict[QubitId, Optional[Union[float, list[float]]]] = field(
+        default_factory=dict
+    )
     """Error bars for y."""
 
 
 def setup(
     params: Parameters,
+    platform: Platform,
     single_qubit: bool = True,
+    interleave: Optional[str] = None,
 ):
     """
     Set up the randomized benchmarking experiment backend, noise model and data class.
@@ -332,12 +346,14 @@ def setup(
     Args:
         params (Parameters): The parameters for the experiment.
         single_qubit (bool, optional): Flag indicating whether the experiment is for a single qubit or two qubits. Defaults to True.
+        interleave: (str, optional): The type of interleaving to apply. Defaults to None.
 
     Returns:
         tuple: A tuple containing the experiment data, noise model, and backend.
     """
 
-    backend = GlobalBackend()
+    backend = get_backend()
+    backend.platform = platform
     # For simulations, a noise model can be added.
     noise_model = None
     if params.noise_model is not None:
@@ -350,7 +366,12 @@ def setup(
         noise_model = getattr(noisemodels, params.noise_model)(params.noise_params)
         params.noise_params = noise_model.params.tolist()
     # Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
-    cls = RBData if single_qubit else RB2QData
+    if single_qubit:
+        cls = RBData
+    elif interleave is not None:
+        cls = RB2QInterData
+    else:
+        cls = RB2QData
     data = cls(
         depths=params.depths,
         uncertainties=params.uncertainties,
@@ -404,6 +425,7 @@ def get_circuits(
             add_inverse_layer,
             single_qubit,
             inv_file,
+            interleave,
         )
 
         circuits.extend(circuits_depth)
@@ -463,6 +485,7 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
 
 def rb_acquisition(
     params: Parameters,
+    platform: Platform,
     targets: list[QubitId],
     add_inverse_layer: bool = True,
     interleave: str = None,
@@ -480,7 +503,7 @@ def rb_acquisition(
     Returns:
         RBData: The depths, samples, and ground state probability of each experiment in the scan.
     """
-    data, noise_model, backend = setup(params, single_qubit=True)
+    data, noise_model, backend = setup(params, platform, single_qubit=True)
     circuits, indexes, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, noise_model, single_qubit=True
     )
@@ -509,10 +532,11 @@ def rb_acquisition(
 
 def twoq_rb_acquisition(
     params: Parameters,
+    platform: Platform,
     targets: list[QubitPairId],
     add_inverse_layer: bool = True,
     interleave: str = None,
-) -> RB2QData:
+) -> Union[RB2QData, RB2QInterData]:
     """
     The data acquisition stage of two qubit Standard Randomized Benchmarking.
 
@@ -526,7 +550,7 @@ def twoq_rb_acquisition(
         RB2QData: The acquired data for two qubit randomized benchmarking.
     """
 
-    data, noise_model, backend = setup(params, single_qubit=False)
+    data, noise_model, backend = setup(params, platform, single_qubit=False)
     circuits, indexes, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, noise_model, single_qubit=False
     )
@@ -559,37 +583,45 @@ def twoq_rb_acquisition(
     return data
 
 
-def layer_circuit(rb_gen: Callable, depth: int, target) -> tuple[Circuit, dict]:
+def layer_circuit(
+    rb_gen: Callable, depth: int, target, interleave: str = None
+) -> tuple[Circuit, list]:
     """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`
     and a dictionary with random indexes used to select the clifford gates.
 
     Args:
         layer_gen (Callable): Should return gates or a full circuit specifying a layer.
         depth (int): Number of layers.
+        interleave (str, optional): Interleaving pattern for the circuits. Defaults to None.
 
     Returns:
         Circuit: with `depth` many layers.
     """
     full_circuit = None
     random_indexes = []
-    if isinstance(target, int):  # int for qubit
+    if isinstance(target, (str, int)):
         nqubits = 1
-        rb_gen_layer = rb_gen.layer_gen_single_qubit()
+        rb_gen_layer = rb_gen.layer_gen_single_qubit
     elif isinstance(target, Tuple):  # Tuple for qubit pair
         nqubits = 2
-        rb_gen_layer = rb_gen.layer_gen_two_qubit()
+        rb_gen_layer = rb_gen.layer_gen_two_qubit
     # Build each layer, there will be depth many in the final circuit.
     for _ in range(depth):
         # Generate a layer.
-        new_layer, random_index = rb_gen_layer
+        new_layer, random_index = rb_gen_layer()
+        random_indexes.append(random_index)
         new_circuit = Circuit(nqubits)
         if nqubits == 1:
             new_circuit.add(new_layer)
         elif nqubits == 2:
             for gate in new_layer:
                 new_circuit.add(gate)
-
-        random_indexes.append(random_index)
+            # FIXME: General interleave
+            if interleave == "CZ":
+                interleaved_clifford = rb_gen.two_qubit_cliffords["13"]
+                interleaved_clifford_gate = clifford2gates(interleaved_clifford)
+                new_circuit.add(interleaved_clifford_gate)
+                random_indexes.append("13")
 
         if full_circuit is None:  # instantiate in first loop
             full_circuit = Circuit(new_circuit.nqubits)

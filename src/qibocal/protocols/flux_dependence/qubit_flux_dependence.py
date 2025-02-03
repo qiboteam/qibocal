@@ -165,9 +165,14 @@ def _acquisition(
 
 def _fit(data: QubitFluxData) -> QubitFluxResults:
     """
-    Post-processing for QubitFlux Experiment. See arxiv:0703002
-    Fit frequency as a function of current for the flux qubit spectroscopy
-    data (QubitFluxData): data object with information on the feature response at each current point.
+    Post-processing for QubitFlux Experiment. See `arXiv:0703002 <https://arxiv.org/abs/cond-mat/0703002>`_.
+    Fit frequency as a function of current for the flux qubit spectroscopy data.
+    All possible sweetspots :math:`x` are evaluated by the function
+    :math:`x p_1 + p_2 = k`, for integers :math:`k`, where :math:`p_1` and :math:`p_2`
+    are respectively the normalization and the offset, as defined in
+    :mod:`qibocal.protocols.flux_dependence.utils.transmon_frequency`.
+    The code returns the sweetspot that is closest to the bias
+    in the middle of the swept interval.
     """
 
     qubits = data.qubits
@@ -178,12 +183,15 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        biases = qubit_data.bias
-        frequencies = qubit_data.freq
+        interval_biases = qubit_data.bias
+        interval_frequencies = qubit_data.freq
         signal = qubit_data.signal
 
         frequencies, biases = extract_feature(
-            frequencies, biases, signal, "max" if data.resonator_type == "2D" else "min"
+            interval_frequencies,
+            interval_biases,
+            signal,
+            "max" if data.resonator_type == "2D" else "min",
         )
 
         def fit_function(x, w_max, normalization, offset):
@@ -218,8 +226,10 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
             }
             frequency[qubit] = popt[0] * GHZ_TO_HZ
-            # sweetspot obtain by solving transmon_frequency == w_max
-            sweetspot[qubit] = -popt[2] / popt[1]
+            middle_bias = (np.max(interval_biases) + np.min(interval_biases)) / 2
+            sweetspot[qubit] = (
+                np.round(popt[1] * middle_bias + popt[2]) - popt[2]
+            ) / popt[1]
             matrix_element[qubit] = popt[1]
         except ValueError as e:
             log.error(
@@ -247,6 +257,7 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
         fit_function=utils.transmon_frequency,
     )
     if fit is not None:
+
         fitting_report = table_html(
             table_dict(
                 target,

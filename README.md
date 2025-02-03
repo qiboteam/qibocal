@@ -7,8 +7,6 @@ Qibocal provides Quantum Characterization Validation and Verification protocols 
 
 Qibocal key features:
 
-- Automatization of calibration protocols.
-
 - Declarative inputs using runcard.
 
 - Generation of a report.
@@ -61,9 +59,9 @@ targets: [0]
 
 ```
 ### How to run protocols
-To run the protocols specified in the ```runcard```, Qibocal uses the `qq auto` command
+To run the protocols specified in the ```runcard```, Qibocal uses the `qq run` command
 ```sh
-qq auto <runcard> -o <output_folder>
+qq run <runcard> -o <output_folder>
 ```
 if ```<output_folder>``` is specified, the results will be saved in it, otherwise ```qq``` will automatically create a default folder containing the current date and the username.
 
@@ -83,5 +81,9 @@ Feel free to check
 [![DOI](https://zenodo.org/badge/511836317.svg)](https://zenodo.org/badge/latestdoi/511836317)
 
 
-
 If you use the package please refer to [the documentation](https://qibo.science/qibo/stable/appendix/citing-qibo.html#publications) for citation instructions
+
+## Ongoing development
+
+A non-exhaustive list of possible protocols to be implemented in Qibocal is collected
+[here](doc/dev/README.md).

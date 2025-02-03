@@ -1,3 +1,4 @@
+import os
 import pathlib
 
 import pytest
@@ -5,7 +6,39 @@ from click.testing import CliRunner
 
 from qibocal.cli._base import command
 
-DUMMY_ACTION = pathlib.Path(__file__).parent / "runcards" / "dummy_action.yml"
+test_runcards_dir = pathlib.Path(__file__).parent / "runcards"
+DUMMY_ACTION = test_runcards_dir / "dummy_action.yml"
+DUMMY_COMPARE = test_runcards_dir / "dummy_compare.yml"
+
+
+@pytest.mark.parametrize("update", ["--update", "--no-update"])
+def test_qq_update(update, tmp_path, monkeypatch):
+    """Testing qq update using mock."""
+
+    output_folder = tmp_path / "out"
+    runner = CliRunner()
+    runner.invoke(
+        command,
+        ["run", str(DUMMY_ACTION), "-o", str(output_folder), "-f", update],
+        catch_exceptions=False,
+    )
+
+    platforms = tmp_path / "platforms"
+    (platforms / "dummy").mkdir(parents=True, exist_ok=True)
+    monkeypatch.setenv("QIBOLAB_PLATFORMS", str(platforms))
+
+    runner = CliRunner()
+    if not update:
+        while pytest.raises(FileNotFoundError):
+            runner.invoke(
+                command, ["update", str(output_folder)], catch_exceptions=False
+            )
+
+    runner.invoke(command, ["update", str(output_folder)], catch_exceptions=False)
+    new_parameters = (
+        pathlib.Path(os.getenv("QIBOLAB_PLATFORMS")) / "dummy" / "parameters.json"
+    )
+    assert new_parameters.exists()
 
 
 def test_fit_command(tmp_path):
@@ -44,3 +77,18 @@ def test_fit_command(tmp_path):
         catch_exceptions=False,
     )
     # fit after acquisition different folder
+
+
+def test_compare_report_dates(tmp_path):
+    report_dir_1 = tmp_path / "report_dir_1"
+    report_dir_2 = tmp_path / "report_dir_2"
+    compare_dir = tmp_path / "compare_dir"
+
+    runner = CliRunner()
+    runner.invoke(command, ["run", str(DUMMY_COMPARE), "-o", str(report_dir_1), "-f"])
+    runner.invoke(command, ["run", str(DUMMY_COMPARE), "-o", str(report_dir_2), "-f"])
+
+    runner.invoke(
+        command,
+        ["compare", str(report_dir_1), str(report_dir_2), "-o", str(compare_dir), "-f"],
+    )
