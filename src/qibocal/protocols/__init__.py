@@ -30,6 +30,7 @@ from .flux_dependence.resonator_flux_dependence import resonator_flux
 from .qubit_power_spectroscopy import qubit_power_spectroscopy
 from .qubit_spectroscopy import qubit_spectroscopy
 from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
+from .qubit_vz import qubit_vz
 from .qutrit_classification import qutrit_classification
 from .rabi.amplitude import rabi_amplitude
 from .rabi.amplitude_frequency import rabi_amplitude_frequency
@@ -108,6 +109,7 @@ __all__ = [
     "resonator_flux",
     "qubit_spectroscopy",
     "qubit_spectroscopy_ef",
+    "qubit_vz",
     "qutrit_classification",
     "rabi_amplitude",
     "rabi_amplitude_signal",
