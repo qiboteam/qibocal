@@ -5,14 +5,12 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
+from qibocal.result import magnitude, phase
 
 from .utils import HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
 
@@ -25,14 +23,12 @@ class ResonatorPunchoutParameters(Parameters):
     """Width for frequency sweep relative  to the readout frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
-    min_amp_factor: float
+    min_amp: float
     """Minimum amplitude multiplicative factor."""
-    max_amp_factor: float
+    max_amp: float
     """Maximum amplitude multiplicative factor."""
-    step_amp_factor: float
+    step_amp: float
     """Step amplitude multiplicative factor."""
-    amplitude: float = None
-    """Initial readout amplitude."""
 
 
 @dataclass
@@ -64,7 +60,7 @@ class ResonatorPunchoutData(Data):
 
     resonator_type: str
     """Resonator type."""
-    amplitudes: dict[QubitId, float]
+    amplitudes: dict[QubitId, float] = field(default_factory=dict)
     """Amplitudes provided by the user."""
     data: dict[QubitId, npt.NDArray[ResPunchoutType]] = field(default_factory=dict)
     """Raw data acquired."""
@@ -83,47 +79,44 @@ class ResonatorPunchoutData(Data):
 
 def _acquisition(
     params: ResonatorPunchoutParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> ResonatorPunchoutData:
     """Data acquisition for Punchout over amplitude."""
     # create a sequence of pulses for the experiment:
     # MZ
 
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
-    sequence = PulseSequence()
-
-    ro_pulses = {}
-    amplitudes = {}
-    for qubit in targets:
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
-        if params.amplitude is not None:
-            ro_pulses[qubit].amplitude = params.amplitude
-
-        amplitudes[qubit] = ro_pulses[qubit].amplitude
-        sequence.add(ro_pulses[qubit])
-
     # define the parameters to sweep and their range:
     # resonator frequency
     delta_frequency_range = np.arange(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
-    freq_sweeper = Sweeper(
-        Parameter.frequency,
-        delta_frequency_range,
-        [ro_pulses[qubit] for qubit in targets],
-        type=SweeperType.OFFSET,
-    )
 
-    # amplitude
-    amplitude_range = np.arange(
-        params.min_amp_factor, params.max_amp_factor, params.step_amp_factor
-    )
+    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
+    ro_pulses = {}
+    amplitudes = {}
+    freq_sweepers = {}
+    sequence = PulseSequence()
+    for qubit in targets:
+        natives = platform.natives.single_qubit[qubit]
+        ro_channel, ro_pulse = natives.MZ()[0]
+
+        ro_pulses[qubit] = ro_pulse
+        amplitudes[qubit] = ro_pulse.probe.amplitude
+        sequence.append((ro_channel, ro_pulse))
+
+        probe = platform.qubits[qubit].probe
+        f0 = platform.config(probe).frequency
+        freq_sweepers[qubit] = Sweeper(
+            parameter=Parameter.frequency,
+            values=f0 + delta_frequency_range,
+            channels=[probe],
+        )
+
     amp_sweeper = Sweeper(
-        Parameter.amplitude,
-        amplitude_range,
-        [ro_pulses[qubit] for qubit in targets],
-        type=SweeperType.FACTOR,
+        parameter=Parameter.amplitude,
+        range=(params.min_amp, params.max_amp, params.step_amp),
+        pulses=[ro_pulses[qubit] for qubit in targets],
     )
 
     data = ResonatorPunchoutData(
@@ -131,28 +124,25 @@ def _acquisition(
         resonator_type=platform.resonator_type,
     )
 
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
-        amp_sweeper,
-        freq_sweeper,
+    results = platform.execute(
+        [sequence],
+        [[amp_sweeper], [freq_sweepers[q] for q in targets]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
     )
 
     # retrieve the results for every qubit
     for qubit, ro_pulse in ro_pulses.items():
         # average signal, phase, i and q over the number of shots defined in the runcard
-        result = results[ro_pulse.serial]
+        result = results[ro_pulse.id]
         data.register_qubit(
             qubit,
-            signal=result.magnitude,
-            phase=result.phase,
-            freq=delta_frequency_range + ro_pulse.frequency,
-            amp=amplitude_range * amplitudes[qubit],
+            signal=magnitude(result),
+            phase=phase(result),
+            freq=freq_sweepers[qubit].values,
+            amp=amp_sweeper.values,
         )
 
     return data
@@ -260,9 +250,14 @@ def _plot(
     return figures, fitting_report
 
 
-def _update(results: ResonatorPunchoutResults, platform: Platform, target: QubitId):
+def _update(
+    results: ResonatorPunchoutResults, platform: CalibrationPlatform, target: QubitId
+):
     update.readout_frequency(results.readout_frequency[target], platform, target)
     update.bare_resonator_frequency(results.bare_frequency[target], platform, target)
+    update.dressed_resonator_frequency(
+        results.readout_frequency[target], platform, target
+    )
     update.readout_amplitude(results.readout_amplitude[target], platform, target)
 
 

@@ -3,18 +3,17 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Parameters, Routine
+from qibocal.auto.operation import Parameters, QubitId, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.rabi.length_signal import (
     RabiLengthSignalData,
     RabiLengthSignalResults,
 )
+from qibocal.result import probability
 
 from ..utils import chi2_reduced, fallback_period, guess_period
 from . import utils
@@ -32,6 +31,10 @@ class RabiLengthParameters(Parameters):
     """Step pi pulse duration [ns]."""
     pulse_amplitude: Optional[float] = None
     """Pi pulse amplitude. Same for all qubits."""
+    rx90: bool = False
+    """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
+    interpolated_sweeper: bool = False
+    """Use real-time interpolation if supported by instruments."""
 
 
 @dataclass
@@ -56,7 +59,7 @@ class RabiLengthData(RabiLengthSignalData):
 
 
 def _acquisition(
-    params: RabiLengthParameters, platform: Platform, targets: list[QubitId]
+    params: RabiLengthParameters, platform: CalibrationPlatform, targets: list[QubitId]
 ) -> RabiLengthData:
     r"""
     Data acquisition for RabiLength Experiment.
@@ -64,45 +67,46 @@ def _acquisition(
     to find the drive pulse length that creates a rotation of a desired angle.
     """
 
-    sequence, qd_pulses, _, amplitudes = utils.sequence_length(
-        targets, params, platform
+    sequence, qd_pulses, delays, ro_pulses, amplitudes = utils.sequence_length(
+        targets, params, platform, params.rx90, use_align=params.interpolated_sweeper
     )
-    # define the parameter to sweep and its range:
-    # qubit drive pulse duration time
-    qd_pulse_duration_range = np.arange(
+    sweep_range = (
         params.pulse_duration_start,
         params.pulse_duration_end,
         params.pulse_duration_step,
     )
+    if params.interpolated_sweeper:
+        sweeper = Sweeper(
+            parameter=Parameter.duration_interpolated,
+            range=sweep_range,
+            pulses=[qd_pulses[q] for q in targets],
+        )
+    else:
+        sweeper = Sweeper(
+            parameter=Parameter.duration,
+            range=sweep_range,
+            pulses=[qd_pulses[q] for q in targets] + [delays[q] for q in targets],
+        )
 
-    sweeper = Sweeper(
-        Parameter.duration,
-        qd_pulse_duration_range,
-        [qd_pulses[qubit] for qubit in targets],
-        type=SweeperType.ABSOLUTE,
-    )
-
-    data = RabiLengthData(amplitudes=amplitudes)
+    data = RabiLengthData(amplitudes=amplitudes, rx90=params.rx90)
 
     # execute the sweep
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
-        ),
-        sweeper,
+    results = platform.execute(
+        [sequence],
+        [[sweeper]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
 
-    for qubit in targets:
-        prob = results[qubit].probability(state=1)
+    for q in targets:
+        prob = probability(results[ro_pulses[q].id], state=1)
         data.register_qubit(
             RabiLenType,
-            (qubit),
+            (q),
             dict(
-                length=qd_pulse_duration_range,
+                length=sweeper.values,
                 prob=prob,
                 error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
             ),
@@ -153,17 +157,17 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
-    return RabiLengthResults(durations, amplitudes, fitted_parameters, chi2)
+    return RabiLengthResults(durations, amplitudes, fitted_parameters, data.rx90, chi2)
 
 
-def _update(results: RabiLengthResults, platform: Platform, target: QubitId):
-    update.drive_duration(results.length[target], platform, target)
-    update.drive_amplitude(results.amplitude[target], platform, target)
+def _update(results: RabiLengthResults, platform: CalibrationPlatform, target: QubitId):
+    update.drive_duration(results.length[target], results.rx90, platform, target)
+    update.drive_amplitude(results.amplitude[target], results.rx90, platform, target)
 
 
 def _plot(data: RabiLengthData, fit: RabiLengthResults, target: QubitId):
     """Plotting function for RabiLength experiment."""
-    return utils.plot_probabilities(data, target, fit)
+    return utils.plot_probabilities(data, target, fit, data.rx90)
 
 
 rabi_length = Routine(_acquisition, _fit, _plot, _update)

@@ -4,20 +4,19 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
+from qibolab import AcquisitionType, AveragingMode, Delay, Drag, PulseSequence
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
+from qibocal.result import probability
+from qibocal.update import replace
 
 from .utils import (
     COLORBAND,
     COLORBAND_LINE,
-    HZ_TO_GHZ,
     chi2_reduced,
     fallback_period,
     guess_period,
@@ -25,9 +24,8 @@ from .utils import (
     table_html,
 )
 
+
 # TODO: add errors in fitting
-
-
 @dataclass
 class DragTuningParameters(Parameters):
     """DragTuning runcard inputs."""
@@ -41,6 +39,8 @@ class DragTuningParameters(Parameters):
     unrolling: bool = False
     """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
     Defaults to ``False``."""
+    nflips: int = 1
+    """Repetitions of (Xpi - Xmpi)."""
 
 
 @dataclass
@@ -64,15 +64,13 @@ DragTuningType = np.dtype(
 class DragTuningData(Data):
     """DragTuning acquisition outputs."""
 
-    anharmonicity: dict[QubitId, float] = field(default_factory=dict)
-    """Anharmonicity of each qubit."""
     data: dict[QubitId, npt.NDArray[DragTuningType]] = field(default_factory=dict)
     """Raw data acquired."""
 
 
 def _acquisition(
     params: DragTuningParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> DragTuningData:
     r"""
@@ -80,72 +78,91 @@ def _acquisition(
     See https://arxiv.org/pdf/1504.06597.pdf Fig. 2 (c).
     """
 
-    data = DragTuningData(
-        anharmonicity={
-            qubit: platform.qubits[qubit].anharmonicity * HZ_TO_GHZ for qubit in targets
-        }
-    )
-    # define the parameter to sweep and its range:
-    # qubit drive DRAG pulse beta parameter
+    data = DragTuningData()
     beta_param_range = np.arange(params.beta_start, params.beta_end, params.beta_step)
 
     sequences, all_ro_pulses = [], []
     for beta_param in beta_param_range:
         sequence = PulseSequence()
         ro_pulses = {}
-        for qubit in targets:
-            RX_drag_pulse = platform.create_RX_drag_pulse(
-                qubit, start=0, beta=beta_param / data.anharmonicity[qubit]
-            )
-            RX_drag_pulse_minus = platform.create_RX_drag_pulse(
-                qubit,
-                start=RX_drag_pulse.finish,
-                beta=beta_param / data.anharmonicity[qubit],
-                relative_phase=np.pi,
-            )
-            ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-                qubit, start=RX_drag_pulse_minus.finish
-            )
+        for q in targets:
+            natives = platform.natives.single_qubit[q]
+            qd_channel, qd_pulse = natives.RX()[0]
+            ro_channel, ro_pulse = natives.MZ()[0]
 
-            sequence.add(RX_drag_pulse)
-            sequence.add(RX_drag_pulse_minus)
-            sequence.add(ro_pulses[qubit])
-        sequences.append(sequence)
-        all_ro_pulses.append(ro_pulses)
-
-    options = ExecutionParameters(
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.SINGLESHOT,
-    )
-    # execute the pulse sequence
-    if params.unrolling:
-        results = platform.execute_pulse_sequences(sequences, options)
-
-    elif not params.unrolling:
-        results = [
-            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
-        ]
-
-    for ig, (beta, ro_pulses) in enumerate(zip(beta_param_range, all_ro_pulses)):
-        for qubit in targets:
-            serial = ro_pulses[qubit].serial
-            if params.unrolling:
-                result = results[serial][ig]
-            else:
-                result = results[ig][serial]
-            prob = result.probability(state=0)
-            # store the results
-            data.register_qubit(
-                DragTuningType,
-                (qubit),
-                dict(
-                    prob=np.array([prob]),
-                    error=np.array([np.sqrt(prob * (1 - prob) / params.nshots)]),
-                    beta=np.array([beta]),
+            drag = replace(
+                qd_pulse,
+                envelope=Drag(
+                    rel_sigma=qd_pulse.envelope.rel_sigma,
+                    beta=beta_param,
                 ),
             )
+            drag_negative = replace(drag, relative_phase=np.pi)
+
+            for _ in range(params.nflips):
+                sequence.append((qd_channel, drag))
+                sequence.append((qd_channel, drag_negative))
+            sequence.append(
+                (
+                    ro_channel,
+                    Delay(
+                        duration=params.nflips
+                        * (drag.duration + drag_negative.duration)
+                    ),
+                )
+            )
+            sequence.append((ro_channel, ro_pulse))
+
+        sequences.append(sequence)
+        all_ro_pulses.append(
+            {
+                qubit: list(sequence.channel(platform.qubits[q].acquisition))[-1]
+                for qubit in targets
+            }
+        )
+
+    options = {
+        "nshots": params.nshots,
+        "relaxation_time": params.relaxation_time,
+        "acquisition_type": AcquisitionType.DISCRIMINATION,
+        "averaging_mode": AveragingMode.SINGLESHOT,
+    }
+
+    # execute the pulse sequence
+    if params.unrolling:
+        results = platform.execute(sequences, **options)
+        for beta, ro_pulses in zip(beta_param_range, all_ro_pulses):
+            for qubit in targets:
+                result = results[ro_pulses[qubit].id]
+                prob = probability(result, state=0)
+                # store the results
+                data.register_qubit(
+                    DragTuningType,
+                    (qubit),
+                    dict(
+                        prob=np.array([prob]),
+                        error=np.array([np.sqrt(prob * (1 - prob) / params.nshots)]),
+                        beta=np.array([beta]),
+                    ),
+                )
+    else:
+        for i, sequence in enumerate(sequences):
+            result = platform.execute([sequence], **options)
+            for qubit in targets:
+                ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[
+                    -1
+                ]
+                prob = probability(result[ro_pulse.id], state=0)
+                # store the results
+                data.register_qubit(
+                    DragTuningType,
+                    (qubit),
+                    dict(
+                        prob=np.array([prob]),
+                        error=np.array([np.sqrt(prob * (1 - prob) / params.nshots)]),
+                        beta=np.array([beta_param_range[i]]),
+                    ),
+                )
 
     return data
 
@@ -162,22 +179,27 @@ def _fit(data: DragTuningData) -> DragTuningResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        beta_params = qubit_data.beta
-        prob = qubit_data.prob
 
+        # normalize prob
+        prob = qubit_data.prob
+        prob_min = np.min(prob)
+        prob_max = np.max(prob)
+        normalized_prob = (prob - prob_min) / (prob_max - prob_min)
+
+        # normalize beta
+        beta_params = qubit_data.beta
         beta_min = np.min(beta_params)
         beta_max = np.max(beta_params)
         normalized_beta = (beta_params - beta_min) / (beta_max - beta_min)
 
         # Guessing period using fourier transform
-        period = fallback_period(guess_period(normalized_beta, prob))
+        period = fallback_period(guess_period(normalized_beta, normalized_prob))
         pguess = [0.5, 0.5, period, 0]
-
         try:
             popt, _ = curve_fit(
                 drag_fit,
                 normalized_beta,
-                prob,
+                normalized_prob,
                 p0=pguess,
                 maxfev=100000,
                 bounds=(
@@ -187,8 +209,8 @@ def _fit(data: DragTuningData) -> DragTuningResults:
                 sigma=qubit_data.error,
             )
             translated_popt = [
-                popt[0],
-                popt[1],
+                popt[0] * (prob_max - prob_min) + prob_min,
+                popt[1] * (prob_max - prob_min),
                 popt[2] * (beta_max - beta_min),
                 popt[3] - 2 * np.pi * beta_min / popt[2] / (beta_max - beta_min),
             ]
@@ -280,17 +302,12 @@ def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
     return figures, fitting_report
 
 
-def _update(results: DragTuningResults, platform: Platform, target: QubitId):
-    try:
-        update.drag_pulse_beta(
-            results.betas[target] / platform.qubits[target].anharmonicity / HZ_TO_GHZ,
-            platform,
-            target,
-        )
-    except ZeroDivisionError:
-        log.warning(
-            f"Beta parameter cannot be updated since the anharmoncity for qubit {target} is 0."
-        )
+def _update(results: DragTuningResults, platform: CalibrationPlatform, target: QubitId):
+    update.drag_pulse_beta(
+        results.betas[target],
+        platform,
+        target,
+    )
 
 
 drag_tuning = Routine(_acquisition, _fit, _plot, _update)

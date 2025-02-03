@@ -3,15 +3,14 @@ from typing import Union
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Parameters, Results, Routine
+from qibocal.auto.operation import Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 
+from ...result import magnitude, phase
+from ..ramsey.utils import ramsey_sequence
 from ..utils import table_dict, table_html
 from . import t1_signal, t2, utils
 
@@ -53,69 +52,54 @@ class T2SignalData(t1_signal.T1SignalData):
 
 def _acquisition(
     params: T2SignalParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> T2SignalData:
-    """Data acquisition for Ramsey Experiment (detuned)."""
-    # create a sequence of pulses for the experiment
-    # RX90 - t - RX90 - MZ
-    ro_pulses = {}
-    RX90_pulses1 = {}
-    RX90_pulses2 = {}
-    sequence = PulseSequence()
-    for qubit in targets:
-        RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
-        RX90_pulses2[qubit] = platform.create_RX90_pulse(
-            qubit,
-            start=RX90_pulses1[qubit].finish,
-        )
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=RX90_pulses2[qubit].finish
-        )
-        sequence.add(RX90_pulses1[qubit])
-        sequence.add(RX90_pulses2[qubit])
-        sequence.add(ro_pulses[qubit])
+    """Data acquisition for T2 experiment.
 
-    # define the parameter to sweep and its range:
+    In this protocol the y axis is the magnitude of signal in the IQ plane.
+
+    """
+
     waits = np.arange(
-        # wait time between RX90 pulses
         params.delay_between_pulses_start,
         params.delay_between_pulses_end,
         params.delay_between_pulses_step,
     )
 
-    sweeper = Sweeper(
-        Parameter.start,
-        waits,
-        [RX90_pulses2[qubit] for qubit in targets],
-        type=SweeperType.ABSOLUTE,
-    )
-
-    # execute the sweep
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=(
-                AveragingMode.SINGLESHOT if params.single_shot else AveragingMode.CYCLIC
-            ),
-        ),
-        sweeper,
-    )
+    sequence, delays = ramsey_sequence(platform, targets)
 
     data = T2SignalData()
-    for qubit in targets:
-        result = results[ro_pulses[qubit].serial]
+
+    sweeper = Sweeper(
+        parameter=Parameter.duration,
+        values=waits,
+        pulses=delays,
+    )
+
+    results = platform.execute(
+        [sequence],
+        [[sweeper]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=(
+            AveragingMode.SINGLESHOT if params.single_shot else AveragingMode.CYCLIC
+        ),
+    )
+
+    for q in targets:
+        ro_pulse = list(sequence.channel(platform.qubits[q].acquisition))[-1]
+        result = results[ro_pulse.id]
+        signal = magnitude(result)
         if params.single_shot:
-            _waits = np.array(len(result.magnitude) * [waits])
+            _waits = np.array(len(signal) * [waits])
         else:
             _waits = waits
         data.register_qubit(
             utils.CoherenceType,
-            (qubit),
-            dict(wait=_waits, signal=result.magnitude, phase=result.phase),
+            (q),
+            dict(wait=_waits, signal=signal, phase=phase(result)),
         )
     return data
 
@@ -191,7 +175,7 @@ def _plot(data: T2SignalData, target: QubitId, fit: T2SignalResults = None):
     return figures, fitting_report
 
 
-def _update(results: T2SignalResults, platform: Platform, target: QubitId):
+def _update(results: T2SignalResults, platform: CalibrationPlatform, target: QubitId):
     update.t2(results.t2[target], platform, target)
 
 

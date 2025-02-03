@@ -2,16 +2,13 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
-import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import QubitId, Routine
+from qibocal.calibration import CalibrationPlatform
 
-from ..utils import table_dict, table_html
+from ...result import probability
+from ..ramsey.utils import ramsey_sequence
 from . import t1, t2_signal, utils
 
 
@@ -43,60 +40,39 @@ class T2Data(t1.T1Data):
 
 def _acquisition(
     params: T2Parameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> T2Data:
-    """Data acquisition for Ramsey Experiment (detuned)."""
-    # create a sequence of pulses for the experiment
-    # RX90 - t - RX90 - MZ
-    ro_pulses = {}
-    RX90_pulses1 = {}
-    RX90_pulses2 = {}
-    sequence = PulseSequence()
-    for qubit in targets:
-        RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
-        RX90_pulses2[qubit] = platform.create_RX90_pulse(
-            qubit,
-            start=RX90_pulses1[qubit].finish,
-        )
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=RX90_pulses2[qubit].finish
-        )
-        sequence.add(RX90_pulses1[qubit])
-        sequence.add(RX90_pulses2[qubit])
-        sequence.add(ro_pulses[qubit])
+    """Data acquisition for T2 experiment."""
 
-    # define the parameter to sweep and its range:
     waits = np.arange(
-        # wait time between RX90 pulses
         params.delay_between_pulses_start,
         params.delay_between_pulses_end,
         params.delay_between_pulses_step,
     )
 
+    sequence, delays = ramsey_sequence(platform, targets)
+
     data = T2Data()
 
     sweeper = Sweeper(
-        Parameter.start,
-        waits,
-        [RX90_pulses2[qubit] for qubit in targets],
-        type=SweeperType.ABSOLUTE,
+        parameter=Parameter.duration,
+        values=waits,
+        pulses=delays,
     )
 
-    # execute the sweep
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
-        ),
-        sweeper,
+    results = platform.execute(
+        [sequence],
+        [[sweeper]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
 
     for qubit in targets:
-        probs = results[ro_pulses[qubit].serial].probability(state=1)
+        ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+        probs = probability(results[ro_pulse.id], state=1)
         errors = np.sqrt(probs * (1 - probs) / params.nshots)
         data.register_qubit(
             t1.CoherenceProbType, (qubit), dict(wait=waits, prob=probs, error=errors)
@@ -115,80 +91,5 @@ def _fit(data: T2Data) -> T2Results:
     return T2Results(t2s, fitted_parameters, pcovs, chi2)
 
 
-def _plot(data: T2Data, target: QubitId, fit: T2Results = None):
-    """Plotting function for Ramsey Experiment."""
-
-    figures = []
-    fitting_report = ""
-    qubit_data = data[target]
-    waits = qubit_data.wait
-    probs = qubit_data.prob
-    error_bars = qubit_data.error
-
-    fig = go.Figure(
-        [
-            go.Scatter(
-                x=waits,
-                y=probs,
-                opacity=1,
-                name="Probability of 1",
-                showlegend=True,
-                legendgroup="Probability of 1",
-                mode="lines",
-            ),
-            go.Scatter(
-                x=np.concatenate((waits, waits[::-1])),
-                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
-                fill="toself",
-                fillcolor=t1.COLORBAND,
-                line=dict(color=t1.COLORBAND_LINE),
-                showlegend=True,
-                name="Errors",
-            ),
-        ]
-    )
-
-    if fit is not None:
-        # add fitting trace
-        waitrange = np.linspace(
-            min(qubit_data.wait),
-            max(qubit_data.wait),
-            2 * len(qubit_data),
-        )
-
-        params = fit.fitted_parameters[target]
-        fig.add_trace(
-            go.Scatter(
-                x=waitrange,
-                y=utils.exp_decay(
-                    waitrange,
-                    *params,
-                ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
-            )
-        )
-        fitting_report = table_html(
-            table_dict(
-                target,
-                [
-                    "T2 [ns]",
-                    "chi2 reduced",
-                ],
-                [fit.t2[target], fit.chi2[target]],
-                display_error=True,
-            )
-        )
-    fig.update_layout(
-        showlegend=True,
-        xaxis_title="Time [ns]",
-        yaxis_title="Probability of State 1",
-    )
-
-    figures.append(fig)
-
-    return figures, fitting_report
-
-
-t2 = Routine(_acquisition, _fit, _plot, t2_signal._update)
+t2 = Routine(_acquisition, _fit, utils.plot, t2_signal._update)
 """T2 Routine object."""
