@@ -12,7 +12,7 @@ from qibocal.config import log
 from qibocal.result import magnitude
 
 from ... import update
-from ..utils import table_dict, table_html
+from ..utils import readout_frequency, table_dict, table_html
 from .utils import fitting, process_fit, ramsey_fit, ramsey_sequence
 
 
@@ -103,6 +103,10 @@ def _acquisition(
     )
 
     updates = []
+    updates += [
+        {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
+        for q in targets
+    ]
     if params.detuning is not None:
         for qubit in targets:
             channel = platform.qubits[qubit].drive
@@ -121,11 +125,10 @@ def _acquisition(
         results = platform.execute(
             [sequence],
             [[sweeper]],
-            nshots=params.nshots,
+            updates=updates,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
             averaging_mode=AveragingMode.CYCLIC,
-            updates=updates,
         )
         for qubit in targets:
             ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]

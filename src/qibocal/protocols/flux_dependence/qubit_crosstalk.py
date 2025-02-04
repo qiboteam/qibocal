@@ -20,7 +20,14 @@ from qibocal.config import log
 
 from ...result import magnitude, phase
 from ...update import replace
-from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, extract_feature, table_dict, table_html
+from ..utils import (
+    GHZ_TO_HZ,
+    HZ_TO_GHZ,
+    extract_feature,
+    readout_frequency,
+    table_dict,
+    table_html,
+)
 from . import utils
 from .qubit_flux_dependence import (
     QubitFluxData,
@@ -190,6 +197,11 @@ def _acquisition(
         if qubit in params.bias_point:
             channel = platform.qubits[qubit].flux
             updates.append({channel: {"offset": params.bias_point[qubit]}})
+
+    updates += [
+        {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
+        for q in targets
+    ]
 
     for flux_qubit, offset_sweeper in zip(params.flux_qubits, offset_sweepers):
         results = platform.execute(

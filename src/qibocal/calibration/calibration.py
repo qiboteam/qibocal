@@ -38,6 +38,8 @@ class Resonator(Model):
     """Dressed resonator frequency [Hz]."""
     depletion_time: Optional[int] = None
     """Depletion time [ns]."""
+    bare_frequency_amplitude: Optional[float] = None
+    """Readout amplitude at high frequency."""
 
     @property
     def dispersive_shift(self):

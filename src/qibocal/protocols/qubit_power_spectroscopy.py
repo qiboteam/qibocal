@@ -20,7 +20,7 @@ from ..result import magnitude, phase
 from ..update import replace
 from .qubit_spectroscopy import QubitSpectroscopyResults
 from .resonator_punchout import ResonatorPunchoutData
-from .utils import HZ_TO_GHZ
+from .utils import HZ_TO_GHZ, readout_frequency
 
 
 @dataclass
@@ -101,6 +101,10 @@ def _acquisition(
     results = platform.execute(
         [sequence],
         [[amp_sweeper], [freq_sweepers[q] for q in targets]],
+        updates=[
+            {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
+            for q in targets
+        ],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
