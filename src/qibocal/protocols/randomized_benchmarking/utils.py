@@ -169,7 +169,7 @@ def number_to_str(
     if isinstance(uncertainty, Number):
         if precision is None:
             precision = (significant_digit(uncertainty) + 1) or 3
-        return f"{value:.{precision}f} \u00B1 {uncertainty:.{precision}f}"
+        return f"{value:.{precision}f} \u00b1 {uncertainty:.{precision}f}"
 
     # If any uncertainty is None, return the value with precision
     if any(u is None for u in uncertainty):
@@ -181,7 +181,7 @@ def number_to_str(
 
     # Check if both uncertainties are equal up to precision
     if np.round(uncertainty[0], precision) == np.round(uncertainty[1], precision):
-        return f"{value:.{precision}f} \u00B1 {uncertainty[0]:.{precision}f}"
+        return f"{value:.{precision}f} \u00b1 {uncertainty[0]:.{precision}f}"
 
     return f"{value:.{precision}f} +{uncertainty[1]:.{precision}f} / -{uncertainty[0]:.{precision}f}"
 

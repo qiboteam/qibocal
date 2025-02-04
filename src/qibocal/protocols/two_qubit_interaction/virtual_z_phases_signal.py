@@ -19,7 +19,10 @@ from .virtual_z_phases import (
     _fit,
 )
 from .virtual_z_phases import _plot as _plot_prob
-from .virtual_z_phases import _update, create_sequence
+from .virtual_z_phases import (
+    _update,
+    create_sequence,
+)
 
 
 @dataclass

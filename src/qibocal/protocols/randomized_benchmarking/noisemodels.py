@@ -1,4 +1,4 @@
-""" Custom error models are build here for making it possible to pass
+"""Custom error models are build here for making it possible to pass
 strings describing the error model via runcards in qibocal.
 They inherit from the qibo noise NoiseModel module and are prebuild.
 """
