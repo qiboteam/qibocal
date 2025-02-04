@@ -12,7 +12,12 @@ from qibocal.result import magnitude, phase
 from ... import update
 from ..utils import table_dict, table_html
 from .t1_signal import T1SignalData
-from .utils import CoherenceType, exp_decay, exponential_fit, spin_echo_sequence
+from .utils import (
+    CoherenceType,
+    dynamical_decoupling_sequence,
+    exp_decay,
+    exponential_fit,
+)
 
 
 @dataclass
@@ -26,15 +31,13 @@ class SpinEchoSignalParameters(Parameters):
     delay_between_pulses_step: int
     """Step delay between pulses [ns]."""
     single_shot: bool = False
-    """If ``True`` save single shot signal data."""
-    unrolling: bool = False
 
 
 @dataclass
 class SpinEchoSignalResults(Results):
     """SpinEchoSignal outputs."""
 
-    t2_spin_echo: dict[QubitId, Union[float, list[float]]]
+    t2: dict[QubitId, Union[float, list[float]]]
     """T2 echo for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -53,19 +56,33 @@ def _acquisition(
 ) -> SpinEchoSignalData:
     """Data acquisition for SpinEcho"""
     # create a sequence of pulses for the experiment:
-    sequence, delays = spin_echo_sequence(platform, targets)
+    sequence, delays = dynamical_decoupling_sequence(platform, targets, kind="CP")
 
     # define the parameter to sweep and its range:
     # delay between pulses
-    ro_wait_range = np.arange(
+    wait_range = np.arange(
         params.delay_between_pulses_start,
         params.delay_between_pulses_end,
         params.delay_between_pulses_step,
     )
 
+    durations = []
+    for q in targets:
+        # this is assuming that RX and RX90 have the same duration
+        duration = platform.natives.single_qubit[q].RX()[0][1].duration
+        durations.append(duration)
+        assert (params.delay_between_pulses_start - duration) / 2 >= 0, (
+            f"Initial delay too short for qubit {q}, "
+            f"minimum delay should be {duration}"
+        )
+
+    assert (
+        len(set(durations)) == 1
+    ), "Cannot run on mulitple qubit with different RX duration."
+
     sweeper = Sweeper(
         parameter=Parameter.duration,
-        values=ro_wait_range,
+        values=(wait_range - durations[0]) / 2,
         pulses=delays,
     )
 
@@ -86,9 +103,9 @@ def _acquisition(
         result = results[ro_pulse.id]
         signal = magnitude(result)
         if params.single_shot:
-            _wait = np.array(len(signal) * [ro_wait_range])
+            _wait = np.array(len(signal) * [wait_range])
         else:
-            _wait = ro_wait_range
+            _wait = wait_range
         data.register_qubit(
             CoherenceType,
             (qubit),
@@ -157,7 +174,7 @@ def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults 
             table_dict(
                 target,
                 ["T2 Spin Echo [ns]"],
-                [np.round(fit.t2_spin_echo[target])],
+                [np.round(fit.t2[target])],
                 display_error=True,
             )
         )
@@ -176,7 +193,7 @@ def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults 
 def _update(
     results: SpinEchoSignalResults, platform: CalibrationPlatform, target: QubitId
 ):
-    update.t2_spin_echo(results.t2_spin_echo[target], platform, target)
+    update.t2_spin_echo(results.t2[target], platform, target)
 
 
 spin_echo_signal = Routine(_acquisition, _fit, _plot, _update)

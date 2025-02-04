@@ -22,12 +22,14 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     t1/t1
     t2/t2
     t2_echo/t2_echo
+    cpmg/cpmg
     flux/single
     flux/crosstalk
     singleshot
     dispersive_shift
     allxy
     flipping
+    drag/drag
     readout_mitigation_matrix
     readout_optimization
     standard_rb

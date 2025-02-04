@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
-import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal.auto.operation import QubitId, Routine
@@ -10,7 +9,6 @@ from qibocal.calibration import CalibrationPlatform
 
 from ...result import probability
 from ..ramsey.utils import ramsey_sequence
-from ..utils import table_dict, table_html
 from . import t1, t2_signal, utils
 
 
@@ -93,80 +91,5 @@ def _fit(data: T2Data) -> T2Results:
     return T2Results(t2s, fitted_parameters, pcovs, chi2)
 
 
-def _plot(data: T2Data, target: QubitId, fit: T2Results = None):
-    """Plotting function for Ramsey Experiment."""
-
-    figures = []
-    fitting_report = ""
-    qubit_data = data[target]
-    waits = qubit_data.wait
-    probs = qubit_data.prob
-    error_bars = qubit_data.error
-
-    fig = go.Figure(
-        [
-            go.Scatter(
-                x=waits,
-                y=probs,
-                opacity=1,
-                name="Probability of 1",
-                showlegend=True,
-                legendgroup="Probability of 1",
-                mode="lines",
-            ),
-            go.Scatter(
-                x=np.concatenate((waits, waits[::-1])),
-                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
-                fill="toself",
-                fillcolor=t1.COLORBAND,
-                line=dict(color=t1.COLORBAND_LINE),
-                showlegend=True,
-                name="Errors",
-            ),
-        ]
-    )
-
-    if fit is not None:
-        # add fitting trace
-        waitrange = np.linspace(
-            min(qubit_data.wait),
-            max(qubit_data.wait),
-            2 * len(qubit_data),
-        )
-
-        params = fit.fitted_parameters[target]
-        fig.add_trace(
-            go.Scatter(
-                x=waitrange,
-                y=utils.exp_decay(
-                    waitrange,
-                    *params,
-                ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
-            )
-        )
-        fitting_report = table_html(
-            table_dict(
-                target,
-                [
-                    "T2 [ns]",
-                    "chi2 reduced",
-                ],
-                [fit.t2[target], fit.chi2[target]],
-                display_error=True,
-            )
-        )
-    fig.update_layout(
-        showlegend=True,
-        xaxis_title="Time [ns]",
-        yaxis_title="Probability of State 1",
-    )
-
-    figures.append(fig)
-
-    return figures, fitting_report
-
-
-t2 = Routine(_acquisition, _fit, _plot, t2_signal._update)
+t2 = Routine(_acquisition, _fit, utils.plot, t2_signal._update)
 """T2 Routine object."""
