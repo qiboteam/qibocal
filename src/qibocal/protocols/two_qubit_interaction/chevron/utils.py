@@ -47,11 +47,13 @@ def chevron_sequence(
     sequence.append((flux_channel, Delay(duration=drive_duration)))
     sequence.append((flux_channel, flux_pulse))
 
+    parking_pulses = []
     if parking:
         for ch, pulse in raw_flux_sequence:
             if not isinstance(pulse, VirtualZ) and ch != flux_channel:
                 sequence.append((ch, Delay(duration=drive_duration)))
                 sequence.append((ch, pulse))
+                parking_pulses.append(pulse)
 
     flux_duration = max(flux_pulse.duration, raw_flux_sequence.duration)
 
@@ -79,7 +81,12 @@ def chevron_sequence(
     # add readout
     sequence += low_natives.MZ() + high_natives.MZ()
 
-    return sequence, flux_pulse, [ro_low_delay, ro_high_delay]
+    return (
+        sequence,
+        flux_pulse,
+        parking_pulses,
+        [ro_low_delay, ro_high_delay, drive_delay],
+    )
 
 
 # fitting function for single row in chevron plot (rabi-like curve)
