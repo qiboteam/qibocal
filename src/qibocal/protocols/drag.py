@@ -7,6 +7,7 @@ import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, Delay, Drag, PulseSequence
 from scipy.optimize import curve_fit
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
@@ -16,7 +17,6 @@ from qibocal.update import replace
 from .utils import (
     COLORBAND,
     COLORBAND_LINE,
-    HZ_TO_GHZ,
     chi2_reduced,
     fallback_period,
     guess_period,
@@ -24,9 +24,8 @@ from .utils import (
     table_html,
 )
 
+
 # TODO: add errors in fitting
-
-
 @dataclass
 class DragTuningParameters(Parameters):
     """DragTuning runcard inputs."""
@@ -40,6 +39,8 @@ class DragTuningParameters(Parameters):
     unrolling: bool = False
     """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
     Defaults to ``False``."""
+    nflips: int = 1
+    """Repetitions of (Xpi - Xmpi)."""
 
 
 @dataclass
@@ -63,8 +64,6 @@ DragTuningType = np.dtype(
 class DragTuningData(Data):
     """DragTuning acquisition outputs."""
 
-    anharmonicity: dict[QubitId, float] = field(default_factory=dict)
-    """Anharmonicity of each qubit."""
     data: dict[QubitId, npt.NDArray[DragTuningType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -79,13 +78,7 @@ def _acquisition(
     See https://arxiv.org/pdf/1504.06597.pdf Fig. 2 (c).
     """
 
-    data = DragTuningData(
-        anharmonicity={
-            qubit: platform.calibration.single_qubits[qubit].qubit.anharmonicity
-            * HZ_TO_GHZ
-            for qubit in targets
-        }
-    )
+    data = DragTuningData()
     beta_param_range = np.arange(params.beta_start, params.beta_end, params.beta_step)
 
     sequences, all_ro_pulses = [], []
@@ -101,16 +94,22 @@ def _acquisition(
                 qd_pulse,
                 envelope=Drag(
                     rel_sigma=qd_pulse.envelope.rel_sigma,
-                    beta=beta_param / data.anharmonicity[q],
+                    beta=beta_param,
                 ),
             )
             drag_negative = replace(drag, relative_phase=np.pi)
 
-            # TODO: here we can add pairs of this in a for loop
-            sequence.append((qd_channel, drag))
-            sequence.append((qd_channel, drag_negative))
+            for _ in range(params.nflips):
+                sequence.append((qd_channel, drag))
+                sequence.append((qd_channel, drag_negative))
             sequence.append(
-                (ro_channel, Delay(duration=drag.duration + drag_negative.duration))
+                (
+                    ro_channel,
+                    Delay(
+                        duration=params.nflips
+                        * (drag.duration + drag_negative.duration)
+                    ),
+                )
             )
             sequence.append((ro_channel, ro_pulse))
 
@@ -180,22 +179,27 @@ def _fit(data: DragTuningData) -> DragTuningResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        beta_params = qubit_data.beta
-        prob = qubit_data.prob
 
+        # normalize prob
+        prob = qubit_data.prob
+        prob_min = np.min(prob)
+        prob_max = np.max(prob)
+        normalized_prob = (prob - prob_min) / (prob_max - prob_min)
+
+        # normalize beta
+        beta_params = qubit_data.beta
         beta_min = np.min(beta_params)
         beta_max = np.max(beta_params)
         normalized_beta = (beta_params - beta_min) / (beta_max - beta_min)
 
         # Guessing period using fourier transform
-        period = fallback_period(guess_period(normalized_beta, prob))
+        period = fallback_period(guess_period(normalized_beta, normalized_prob))
         pguess = [0.5, 0.5, period, 0]
-
         try:
             popt, _ = curve_fit(
                 drag_fit,
                 normalized_beta,
-                prob,
+                normalized_prob,
                 p0=pguess,
                 maxfev=100000,
                 bounds=(
@@ -205,8 +209,8 @@ def _fit(data: DragTuningData) -> DragTuningResults:
                 sigma=qubit_data.error,
             )
             translated_popt = [
-                popt[0],
-                popt[1],
+                popt[0] * (prob_max - prob_min) + prob_min,
+                popt[1] * (prob_max - prob_min),
                 popt[2] * (beta_max - beta_min),
                 popt[3] - 2 * np.pi * beta_min / popt[2] / (beta_max - beta_min),
             ]
@@ -299,18 +303,11 @@ def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
 
 
 def _update(results: DragTuningResults, platform: CalibrationPlatform, target: QubitId):
-    # TODO: implement update
-    pass
-    # try:
-    #     update.drag_pulse_beta(
-    #         results.betas[target] / platform.qubits[target].anharmonicity / HZ_TO_GHZ,
-    #         platform,
-    #         target,
-    #     )
-    # except ZeroDivisionError:
-    #     log.warning(
-    #         f"Beta parameter cannot be updated since the anharmoncity for qubit {target} is 0."
-    #     )
+    update.drag_pulse_beta(
+        results.betas[target],
+        platform,
+        target,
+    )
 
 
 drag_tuning = Routine(_acquisition, _fit, _plot, _update)

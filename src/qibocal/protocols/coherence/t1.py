@@ -13,9 +13,6 @@ from qibocal.result import probability
 from ..utils import table_dict, table_html
 from . import t1_signal, utils
 
-COLORBAND = "rgba(0,100,80,0.2)"
-COLORBAND_LINE = "rgba(255,255,255,0)"
-
 
 @dataclass
 class T1Parameters(t1_signal.T1SignalParameters):
@@ -125,8 +122,8 @@ def _plot(data: T1Data, target: QubitId, fit: T1Results = None):
                 x=np.concatenate((waits, waits[::-1])),
                 y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
                 fill="toself",
-                fillcolor=COLORBAND,
-                line=dict(color=COLORBAND_LINE),
+                fillcolor=utils.COLORBAND,
+                line=dict(color=utils.COLORBAND_LINE),
                 showlegend=True,
                 name="Errors",
             ),
