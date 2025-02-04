@@ -211,22 +211,25 @@ class ComparedReport:
             merged_table = None
             merge_columns = {"Qubit", "Parameters"}
             for i, table in enumerate(tables):
-                a = pd.read_html(io.StringIO(table))[0]
-                a = a.rename(
-                    columns={
-                        col: f"{col}\n{self.report_paths[i].name}"
-                        for col in set(a.columns) - merge_columns
-                    }
-                )
-                if merged_table is None:
-                    merged_table = a
-                else:
-                    merged_table = pd.merge(merged_table, a, on=list(merge_columns))
+                if len(table) > 0:
+                    a = pd.read_html(io.StringIO(table))[0]
+                    a = a.rename(
+                        columns={
+                            col: f"{col}\n{self.report_paths[i].name}"
+                            for col in set(a.columns) - merge_columns
+                        }
+                    )
+                    if merged_table is None:
+                        merged_table = a
+                    else:
+                        merged_table = pd.merge(merged_table, a, on=list(merge_columns))
         except ValueError:
             merged_table = pd.DataFrame(
                 [], columns=["An error occurred when performing the fit."]
             )
-        fitting_report = merged_table.to_html(
-            classes="fitting-table", index=False, border=0, escape=False
-        )
-        return figures_html, fitting_report
+        if merged_table is not None:
+            fitting_report = merged_table.to_html(
+                classes="fitting-table", index=False, border=0, escape=False
+            )
+            return figures_html, fitting_report
+        return figures_html, ""
