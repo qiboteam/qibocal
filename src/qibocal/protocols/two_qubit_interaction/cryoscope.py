@@ -407,8 +407,10 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 
         if np.max(np.abs(feedforward_taps[qubit])) > FEEDFORWARD_MAX:
             feedforward_taps[qubit] = (
-                2 * feedforward_taps[qubit] / abs(max(feedforward_taps[qubit]))
-            )
+                2
+                * np.array(feedforward_taps[qubit])
+                / abs(max(feedforward_taps[qubit]))
+            ).tolist()
 
     return CryoscopeResults(
         amplitude=amplitude,
