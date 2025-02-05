@@ -4,15 +4,15 @@ from qibo import Circuit
 from qibo.backends import construct_backend, get_backend
 from qibo.transpiler.pipeline import Passes
 from qibo.transpiler.unroller import NativeGates, Unroller
+from qibolab import MetaBackend
 from qibolab.platform import Platform
-from qibolab.platform.load import available_platforms
 from qibolab.qubits import QubitId
 
 
 def _get_platforms():
     """Qibolab platforms."""
     try:
-        platforms = available_platforms()
+        platforms = list(MetaBackend().list_available())
     except RuntimeError:
         platforms = []
 
