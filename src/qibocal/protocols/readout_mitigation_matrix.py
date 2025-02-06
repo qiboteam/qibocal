@@ -124,25 +124,30 @@ def _plot(
     fitting_report = ""
     figs = []
     if fit is not None:
-        computational_basis = [
-            format(i, f"0{len(target)}b") for i in range(2 ** len(target))
-        ]
-        measurement_matrix = np.linalg.inv(fit.readout_mitigation_matrix[tuple(target)])
-        z = measurement_matrix
-        fig = px.imshow(
-            z,
-            x=computational_basis,
-            y=computational_basis,
-            text_auto=True,
-            labels={
-                "x": "Prepeared States",
-                "y": "Measured States",
-                "color": "Probabilities",
-            },
-            width=700,
-            height=700,
-        )
-        figs.append(fig)
+        if tuple(target) in fit.readout_mitigation_matrix:
+            computational_basis = [
+                format(i, f"0{len(target)}b") for i in range(2 ** len(target))
+            ]
+            # use pinv since it should be already invertibile
+            # however when casting to list we could lose precision
+            measurement_matrix = np.linalg.pinv(
+                fit.readout_mitigation_matrix[tuple(target)]
+            )
+            z = measurement_matrix
+            fig = px.imshow(
+                z,
+                x=computational_basis,
+                y=computational_basis,
+                text_auto=True,
+                labels={
+                    "x": "Prepeared States",
+                    "y": "Measured States",
+                    "color": "Probabilities",
+                },
+                width=700,
+                height=700,
+            )
+            figs.append(fig)
     return figs, fitting_report
 
 
