@@ -7,8 +7,7 @@ from typing import Callable, Iterable, Optional, Tuple, Union
 import numpy as np
 import numpy.typing as npt
 from qibo import gates
-from qibo.backends import get_backend
-from qibo.config import raise_error
+from qibo.backends import construct_backend
 from qibo.models import Circuit
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
@@ -19,8 +18,6 @@ from qibocal.auto.transpile import (
     execute_transpiled_circuit,
     execute_transpiled_circuits,
 )
-from qibocal.config import raise_error
-from qibocal.protocols.randomized_benchmarking import noisemodels
 from qibocal.protocols.randomized_benchmarking.dict_utils import (
     SINGLE_QUBIT_CLIFFORDS_NAMES,
     calculate_pulses_clifford,
@@ -118,7 +115,6 @@ def random_circuits(
     targets: list[Union[QubitId, QubitPairId]],
     niter,
     rb_gen,
-    noise_model=None,
     inverse_layer=True,
     single_qubit=True,
     file_inv=pathlib.Path(),
@@ -134,8 +130,6 @@ def random_circuits(
             if inverse_layer:
                 add_inverse_layer(circuit, rb_gen, single_qubit, file_inv)
             add_measurement_layer(circuit)
-            if noise_model is not None:
-                circuit = noise_model.apply(circuit)
             circuits.append(circuit)
             indexes[target].append(random_index)
 
@@ -341,7 +335,7 @@ def setup(
     interleave: Optional[str] = None,
 ):
     """
-    Set up the randomized benchmarking experiment backend, noise model and data class.
+    Set up the randomized benchmarking experiment backend and data class.
 
     Args:
         params (Parameters): The parameters for the experiment.
@@ -349,22 +343,9 @@ def setup(
         interleave: (str, optional): The type of interleaving to apply. Defaults to None.
 
     Returns:
-        tuple: A tuple containing the experiment data, noise model, and backend.
+        tuple: A tuple containing the experiment data and backend.
     """
-
-    backend = get_backend()
-    backend.platform = platform
-    # For simulations, a noise model can be added.
-    noise_model = None
-    if params.noise_model is not None:
-        if backend.name == "qibolab":
-            raise_error(
-                ValueError,
-                "Backend qibolab (%s) does not perform noise models simulation. ",
-            )
-
-        noise_model = getattr(noisemodels, params.noise_model)(params.noise_params)
-        params.noise_params = noise_model.params.tolist()
+    backend = construct_backend(backend="qibolab", platform=platform)
     # Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     if single_qubit:
         cls = RBData
@@ -380,12 +361,10 @@ def setup(
         niter=params.niter,
     )
 
-    return data, noise_model, backend
+    return data, backend
 
 
-def get_circuits(
-    params, targets, add_inverse_layer, interleave, noise_model, single_qubit=True
-):
+def get_circuits(params, targets, add_inverse_layer, interleave, single_qubit=True):
     """
     Generate randomized benchmarking circuits.
 
@@ -394,7 +373,6 @@ def get_circuits(
         targets (list): List of target qubit IDs.
         add_inverse_layer (bool): Flag indicating whether to add an inverse layer to the circuits.
         interleave (str): String indicating whether to interleave the circuits with the given gate.
-        noise_model (str): Noise model string.
         single_qubit (bool, optional): Flag indicating whether to generate single qubit circuits.
 
     Returns:
@@ -421,7 +399,6 @@ def get_circuits(
             qubits_ids,
             params.niter,
             rb_gen,
-            noise_model,
             add_inverse_layer,
             single_qubit,
             inv_file,
@@ -455,6 +432,7 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
 
     """
     # Execute the circuits
+    platform = backend.platform
     transpiler = dummy_transpiler(backend)
     qubit_maps = (
         [[i] for i in targets] * (len(params.depths) * params.niter)
@@ -503,9 +481,9 @@ def rb_acquisition(
     Returns:
         RBData: The depths, samples, and ground state probability of each experiment in the scan.
     """
-    data, noise_model, backend = setup(params, platform, single_qubit=True)
+    data, backend = setup(params, platform, single_qubit=True)
     circuits, indexes, npulses_per_clifford = get_circuits(
-        params, targets, add_inverse_layer, interleave, noise_model, single_qubit=True
+        params, targets, add_inverse_layer, interleave, single_qubit=True
     )
     executed_circuits = execute_circuits(circuits, targets, params, backend)
 
@@ -549,10 +527,10 @@ def twoq_rb_acquisition(
     Returns:
         RB2QData: The acquired data for two qubit randomized benchmarking.
     """
-
-    data, noise_model, backend = setup(params, platform, single_qubit=False)
+    targets = [tuple(pair) if isinstance(pair, list) else pair for pair in targets]
+    data, backend = setup(params, platform, single_qubit=False)
     circuits, indexes, npulses_per_clifford = get_circuits(
-        params, targets, add_inverse_layer, interleave, noise_model, single_qubit=False
+        params, targets, add_inverse_layer, interleave, single_qubit=False
     )
     executed_circuits = execute_circuits(
         circuits, targets, params, backend, single_qubit=False

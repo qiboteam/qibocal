@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 import plotly.express as px
 from qibo import gates
-from qibo.backends import get_backend
+from qibo.backends import construct_backend
 from qibo.models import Circuit
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
@@ -61,8 +61,7 @@ def _acquisition(
     data = ReadoutMitigationMatrixData(
         nshots=params.nshots, qubit_list=[list(qq) for qq in targets]
     )
-    backend = get_backend()
-    backend.platform = platform
+    backend = construct_backend("qibolab", platform=platform)
     transpiler = dummy_transpiler(backend)
     qubit_map = [i for i in range(platform.nqubits)]
     for qubits in targets:
@@ -125,25 +124,30 @@ def _plot(
     fitting_report = ""
     figs = []
     if fit is not None:
-        computational_basis = [
-            format(i, f"0{len(target)}b") for i in range(2 ** len(target))
-        ]
-        measurement_matrix = np.linalg.inv(fit.readout_mitigation_matrix[tuple(target)])
-        z = measurement_matrix
-        fig = px.imshow(
-            z,
-            x=computational_basis,
-            y=computational_basis,
-            text_auto=True,
-            labels={
-                "x": "Prepeared States",
-                "y": "Measured States",
-                "color": "Probabilities",
-            },
-            width=700,
-            height=700,
-        )
-        figs.append(fig)
+        if tuple(target) in fit.readout_mitigation_matrix:
+            computational_basis = [
+                format(i, f"0{len(target)}b") for i in range(2 ** len(target))
+            ]
+            # use pinv since it should be already invertibile
+            # however when casting to list we could lose precision
+            measurement_matrix = np.linalg.pinv(
+                fit.readout_mitigation_matrix[tuple(target)]
+            )
+            z = measurement_matrix
+            fig = px.imshow(
+                z,
+                x=computational_basis,
+                y=computational_basis,
+                text_auto=True,
+                labels={
+                    "x": "Prepeared States",
+                    "y": "Measured States",
+                    "color": "Probabilities",
+                },
+                width=700,
+                height=700,
+            )
+            figs.append(fig)
     return figs, fitting_report
 
 
