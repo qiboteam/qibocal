@@ -103,7 +103,7 @@ def execute_transpiled_circuit(
     )
 
 
-def dummy_transpiler(backend: Backend) -> Optional[Passes]:
+def dummy_transpiler(backend: Backend) -> Passes:
     """
     If the backend is `qibolab`, a transpiler with just an unroller is returned,
     otherwise None.
