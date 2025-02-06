@@ -1,11 +1,12 @@
 from typing import Optional
 
-from qibo import Circuit
+from qibo import Circuit, gates
 from qibo.backends import construct_backend, get_backend
 from qibo.transpiler.pipeline import Passes
 from qibo.transpiler.unroller import NativeGates, Unroller
 from qibolab import MetaBackend
 from qibolab.platform import Platform
+from qibolab.platform.platform import PulseSequence
 from qibolab.qubits import QubitId
 
 
@@ -122,19 +123,57 @@ def execute_transpiled_circuit(
         backend = construct_backend(backend="qibolab", platform=platform)
     else:
         backend = get_backend()
+    set_compiler(backend)
     return transpiled_circ, backend.execute_circuit(
         transpiled_circ, initial_state=initial_state, nshots=nshots
     )
 
 
-def dummy_transpiler(platform, native_gates: Optional[list] = None) -> Optional[Passes]:
+def get_natives(platform):
+    pairs = list(platform.pairs.values())[0]
+    qubit = list(platform.qubits.values())[0]
+    two_qubit_natives = list(pairs.native_gates.raw.keys())
+    single_qubit_natives = list(qubit.native_gates.raw.keys())
+    # import pdb; pdb.set_trace()
+    # Solve Qibo-Qibolab mismatch
+    single_qubit_natives.append("RZ")
+    single_qubit_natives.append("Z")
+    single_qubit_natives.remove("RX12")
+    replacements = {
+        "RX": "GPI2",
+        "MZ": "M",
+    }
+    new_single_natives = [replacements.get(i, i) for i in single_qubit_natives]
+    natives = new_single_natives + two_qubit_natives
+    return natives
+
+
+def set_compiler(backend):
+    platform = backend.platform
+    natives = get_natives(platform)
+    compiler = backend.compiler
+    for native in natives:
+        gate = getattr(gates, native)
+        if gate not in compiler.rules:
+            # TODO: this code is working only with pairs
+            def rule(qubits_ids, platform, parameters=None):
+                pulses = getattr(
+                    platform.pairs[tuple(qubits_ids[1])].native_gates, native
+                ).pulses
+                return PulseSequence(pulses), {}
+
+            backend.compiler[gate] = rule
+
+
+def dummy_transpiler(platform) -> Optional[Passes]:
     """
     If the backend is `qibolab`, a transpiler with just an unroller is returned,
     otherwise None.
     """
     if platform.name in AVAILABLE_PLATFORMS:
-        if native_gates is None:
-            native_gates = NativeGates.default()
+        native_gates = get_natives(platform)
+        native_gates = list(map(lambda x: getattr(gates, x), native_gates))
+
         unroller = Unroller(NativeGates.from_gatelist(native_gates))
         return Passes(connectivity=platform.topology, passes=[unroller])
 

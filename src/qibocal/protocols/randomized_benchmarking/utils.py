@@ -441,9 +441,7 @@ def get_circuits(
     return circuits, indexes, npulses_per_clifford
 
 
-def execute_circuits(
-    circuits, targets, params, backend, native_gates=None, single_qubit=True
-):
+def execute_circuits(circuits, targets, params, backend, single_qubit=True):
     """
     Executes a list of circuits on a given backend.
 
@@ -570,7 +568,7 @@ def twoq_rb_acquisition(
     natives = single_qubit_natives + two_qubit_natives
     natives = list(map(lambda x: getattr(gates, x), natives))
     executed_circuits = execute_circuits(
-        circuits, targets, params, platform, native_gates=natives, single_qubit=False
+        circuits, targets, params, backend, single_qubit=False
     )
 
     samples = []
