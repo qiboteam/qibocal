@@ -3,6 +3,7 @@ from functools import reduce
 import numpy as np
 import pytest
 
+from qibocal.protocols.randomized_benchmarking import fitting
 from qibocal.protocols.randomized_benchmarking.dict_utils import load_inverse_cliffords
 from qibocal.protocols.randomized_benchmarking.utils import (
     RB_Generator,
