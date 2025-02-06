@@ -353,7 +353,6 @@ def setup(
     """
 
     backend = get_backend()
-    backend.platform = platform
     # For simulations, a noise model can be added.
     noise_model = None
     if params.noise_model is not None:
@@ -556,7 +555,6 @@ def twoq_rb_acquisition(
     circuits, indexes, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, noise_model, single_qubit=False
     )
-    # backend.natives doesn't work because it returns a GPI gate
     # To retrieve the native gates we suppose all the qubits/pairs in the platform
     # have the same
     two_qubit_natives = list(platform.pairs[targets[0]].native_gates.raw.keys())
@@ -564,11 +562,11 @@ def twoq_rb_acquisition(
         "GPI2",
         "RZ",
         "M",
-    ]  # list(platform.qubits[targets[0][0]].native_gates.raw.keys())
+    ]
     natives = single_qubit_natives + two_qubit_natives
     natives = list(map(lambda x: getattr(gates, x), natives))
     executed_circuits = execute_circuits(
-        circuits, targets, params, backend, native_gates=natives, single_qubit=False
+        circuits, targets, params, platform, native_gates=natives, single_qubit=False
     )
 
     samples = []

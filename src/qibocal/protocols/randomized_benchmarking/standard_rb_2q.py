@@ -31,7 +31,6 @@ def _acquisition(
     targets: list[QubitPairId],
 ) -> RB2QData:
     """Data acquisition for two qubit Standard Randomized Benchmarking."""
-
     return twoq_rb_acquisition(params, platform, targets)
 
 
