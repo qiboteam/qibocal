@@ -7,7 +7,7 @@ from typing import Callable, Iterable, Optional, Tuple, Union
 import numpy as np
 import numpy.typing as npt
 from qibo import gates
-from qibo.backends import get_backend
+from qibo.backends import construct_backend, get_backend
 from qibo.config import raise_error
 from qibo.models import Circuit
 from qibolab.platform import Platform
@@ -15,6 +15,7 @@ from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.operation import Data, Parameters, Results
 from qibocal.auto.transpile import (
+    AVAILABLE_PLATFORMS,
     dummy_transpiler,
     execute_transpiled_circuit,
     execute_transpiled_circuits,
@@ -351,9 +352,10 @@ def setup(
     Returns:
         tuple: A tuple containing the experiment data, noise model, and backend.
     """
-
-    backend = get_backend()
-    backend.platform = platform
+    if platform.name in AVAILABLE_PLATFORMS:
+        backend = construct_backend(backend="qibolab", platform=platform)
+    else:
+        backend = get_backend()
     # For simulations, a noise model can be added.
     noise_model = None
     if params.noise_model is not None:
@@ -439,7 +441,7 @@ def get_circuits(
     return circuits, indexes, npulses_per_clifford
 
 
-def execute_circuits(circuits, targets, params, platform, single_qubit=True):
+def execute_circuits(circuits, targets, params, backend, single_qubit=True):
     """
     Executes a list of circuits on a given backend.
 
@@ -455,6 +457,7 @@ def execute_circuits(circuits, targets, params, platform, single_qubit=True):
 
     """
     # Execute the circuits
+    platform = backend.platform
     transpiler = dummy_transpiler(platform)
     qubit_maps = (
         [[i] for i in targets] * (len(params.depths) * params.niter)
@@ -549,7 +552,7 @@ def twoq_rb_acquisition(
     Returns:
         RB2QData: The acquired data for two qubit randomized benchmarking.
     """
-
+    targets = [tuple(pair) if isinstance(pair, list) else pair for pair in targets]
     data, noise_model, backend = setup(params, platform, single_qubit=False)
     circuits, indexes, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, noise_model, single_qubit=False
