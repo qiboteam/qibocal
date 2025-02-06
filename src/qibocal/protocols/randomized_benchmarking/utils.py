@@ -439,7 +439,9 @@ def get_circuits(
     return circuits, indexes, npulses_per_clifford
 
 
-def execute_circuits(circuits, targets, params, platform, single_qubit=True):
+def execute_circuits(
+    circuits, targets, params, platform, native_gates=None, single_qubit=True
+):
     """
     Executes a list of circuits on a given backend.
 
@@ -455,7 +457,8 @@ def execute_circuits(circuits, targets, params, platform, single_qubit=True):
 
     """
     # Execute the circuits
-    transpiler = dummy_transpiler(platform)
+    transpiler = dummy_transpiler(platform, native_gates)
+    backend = get_backend()
     qubit_maps = (
         [[i] for i in targets] * (len(params.depths) * params.niter)
         if single_qubit
@@ -549,13 +552,23 @@ def twoq_rb_acquisition(
     Returns:
         RB2QData: The acquired data for two qubit randomized benchmarking.
     """
-
     data, noise_model, backend = setup(params, platform, single_qubit=False)
     circuits, indexes, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, noise_model, single_qubit=False
     )
+    # backend.natives doesn't work because it returns a GPI gate
+    # To retrieve the native gates we suppose all the qubits/pairs in the platform
+    # have the same
+    two_qubit_natives = list(platform.pairs[targets[0]].native_gates.raw.keys())
+    single_qubit_natives = [
+        "GPI2",
+        "RZ",
+        "M",
+    ]  # list(platform.qubits[targets[0][0]].native_gates.raw.keys())
+    natives = single_qubit_natives + two_qubit_natives
+    natives = list(map(lambda x: getattr(gates, x), natives))
     executed_circuits = execute_circuits(
-        circuits, targets, params, backend, single_qubit=False
+        circuits, targets, params, backend, native_gates=natives, single_qubit=False
     )
 
     samples = []

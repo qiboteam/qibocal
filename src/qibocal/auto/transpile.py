@@ -127,15 +127,16 @@ def execute_transpiled_circuit(
     )
 
 
-def dummy_transpiler(platform) -> Optional[Passes]:
+def dummy_transpiler(platform, native_gates: Optional[list] = None) -> Optional[Passes]:
     """
     If the backend is `qibolab`, a transpiler with just an unroller is returned,
     otherwise None.
     """
     if platform.name in AVAILABLE_PLATFORMS:
-        unroller = Unroller(NativeGates.default())
+        if native_gates is None:
+            native_gates = NativeGates.default()
+        unroller = Unroller(NativeGates.from_gatelist(native_gates))
         return Passes(connectivity=platform.topology, passes=[unroller])
-    return None
 
 
 def pad_circuit(nqubits, circuit: Circuit, qubit_map: list[int]) -> Circuit:
