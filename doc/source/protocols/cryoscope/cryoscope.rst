@@ -35,13 +35,11 @@ and then we can extract an estimate of the effective flux pulse :math:`\Phi_Q(t)
 
 
 
-
-
 Flux amplitude frequency
 ------
 
-
-
+In Qibocal implementation of Cryoscope is necessary to run a flux amplitude-frequency experiment before performing a cryoscope experiment.
+This auxiliary routine is used determine the coefficients of the quadratic relationship between the qubit frequency and the flux pulse amplitude in the vicinity of the sweetspot.
 
 Parameters
 ^^^^^^^^^^
