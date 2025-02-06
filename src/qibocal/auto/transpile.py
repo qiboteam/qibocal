@@ -157,9 +157,11 @@ def set_compiler(backend):
         if gate not in compiler.rules:
             # TODO: this code is working only with pairs
             def rule(qubits_ids, platform, parameters=None):
-                pulses = getattr(
-                    platform.pairs[tuple(qubits_ids[1])].native_gates, native
-                ).pulses
+                if len(qubits_ids[1]) == 1:
+                    native_gate = platform.qubits[tuple(qubits_ids[1])].native_gates
+                else:
+                    native_gate = platform.pairs[tuple(qubits_ids[1])].native_gates
+                pulses = getattr(native_gate, native).pulses
                 return PulseSequence(pulses), {}
 
             backend.compiler[gate] = rule
