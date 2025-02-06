@@ -29,9 +29,9 @@ SINGLE_QUBIT_CLIFFORDS_NAMES = {
         gates.GPI2(q, np.pi),
     ],  # Y
     # pi/2 rotations
-    "sqrtX": lambda q: [gates.GPI2(q, 0), gates.GPI2(q, np.pi2)],  # Rx(pi/2)
+    "sqrtX": lambda q: [gates.GPI2(q, 0)],  # Rx(pi/2)
     "sqrtMinusX": lambda q: [gates.GPI2(q, np.pi)],  # Rx(-pi/2)
-    "sqrtY": lambda q: [gates.GPI2(q, np.pi / 2), gates.GPI2(q, np.pi)],  # Ry(pi/2)
+    "sqrtY": lambda q: [gates.GPI2(q, np.pi / 2)],  # Ry(pi/2)
     "sqrtMinusY": lambda q: [gates.GPI2(q, -np.pi / 2)],  # Ry(-pi/2)
     # 2pi/3 rotations
     "sqrtX,sqrtY": lambda q: [
@@ -42,7 +42,7 @@ SINGLE_QUBIT_CLIFFORDS_NAMES = {
     ],  # Rx(pi/2)Ry(pi/2)
     "sqrtX,sqrtMinusY": lambda q: [
         gates.GPI2(q, 0),
-        gates.GPI2(q, np.pi2),
+        gates.GPI2(q, np.pi / 2),
         gates.GPI2(q, -np.pi / 2),
         gates.GPI2(q, np.pi),
     ],  # Rx(pi/2)Ry(-pi/2)

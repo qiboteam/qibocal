@@ -146,14 +146,14 @@ def random_circuits(
             if noise_model is not None:
                 circuit = noise_model.apply(circuit)
             circuits.append(circuit)
-            print("WHERE IS MY CIRCUIT?")
+            # print("WHERE IS MY CIRCUIT?")
             i = 0
             for c in circuits:
                 # print("Summary of circuit number " + str(i))
                 # print(c.summary())
                 # print("Counting CZ gates")
                 # print(len(c.gates_of_type("cz")))
-                print(c)
+                # print(c)
                 i = i + 1
             indexes[target].append(random_index)
 
@@ -322,8 +322,8 @@ class RB2QData(RBData):
         for depth in self.depths:
             data_list = np.array(self.data[qubits[0], qubits[1], depth].tolist())
             data_list = data_list.reshape((-1, self.nshots))
-            print("WHERE ARE MY PROBS?")
-            print(data_list)
+            # print("WHERE ARE MY PROBS?")
+            # print(data_list)
             probs.append(np.count_nonzero(1 - data_list, axis=1) / data_list.shape[1])
             yyy = probs
             print("This are probs\n")
@@ -680,11 +680,11 @@ def add_inverse_layer(
             clifford_matrices_inv = np.load(path)
 
         if circuit.depth > 0:
-            print("Summary of circuit number ")
-            print(circuit.summary())
-            print(circuit)
-            print("circuit depth with no inverse or measurement\n")
-            print(circuit.depth)
+            # print("Summary of circuit number ")
+            # print(circuit.summary())
+            # print(circuit)
+            # print("circuit depth with no inverse or measurement\n")
+            # print(circuit.depth)
             clifford = circuit.unitary()
 
             cliffords = [clifford * global_phase for global_phase in GLOBAL_PHASES]
@@ -723,7 +723,7 @@ def add_measurement_layer(circuit: Circuit):
     """
     circuit.add(gates.M(*range(circuit.nqubits)))
 
-    print("Hello!\n")
+    # print("Hello!\n")
 
 
 def fit(qubits, data):
