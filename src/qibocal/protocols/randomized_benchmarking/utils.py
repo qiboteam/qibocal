@@ -433,7 +433,7 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
     """
     # Execute the circuits
     platform = backend.platform
-    transpiler = dummy_transpiler(platform)
+    transpiler = dummy_transpiler(backend)
     qubit_maps = (
         [[i] for i in targets] * (len(params.depths) * params.niter)
         if single_qubit
@@ -443,7 +443,7 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
         _, executed_circuits = execute_transpiled_circuits(
             circuits,
             qubit_maps=qubit_maps,
-            platform=platform,
+            backend=backend,
             nshots=params.nshots,
             transpiler=transpiler,
         )
@@ -452,7 +452,7 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
             execute_transpiled_circuit(
                 circuit,
                 qubit_map=qubit_map,
-                platform=platform,
+                backend=backend,
                 nshots=params.nshots,
                 transpiler=transpiler,
             )[1]

@@ -1,17 +1,16 @@
 from typing import Optional
 
 from qibo import Circuit
-from qibo.backends import construct_backend
+from qibo.backends import Backend
 from qibo.transpiler.pipeline import Passes
 from qibo.transpiler.unroller import NativeGates, Unroller
-from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 
 def transpile_circuits(
     circuits: list[Circuit],
     qubit_maps: list[list[QubitId]],
-    platform: Platform,
+    backend: Backend,
     transpiler: Optional[Passes],
 ):
     """Transpile and pad `circuits` according to the platform.
@@ -29,6 +28,7 @@ def transpile_circuits(
         are all string or all integers.
     """
     transpiled_circuits = []
+    platform = backend.platform
     qubits = list(platform.qubits)
     if isinstance(qubit_maps[0][0], str):
         for i, qubit_map in enumerate(qubit_maps):
@@ -46,7 +46,7 @@ def transpile_circuits(
 def execute_transpiled_circuits(
     circuits: list[Circuit],
     qubit_maps: list[list[QubitId]],
-    platform: Platform,
+    backend: Backend,
     transpiler: Optional[Passes],
     initial_states=None,
     nshots=1000,
@@ -64,10 +64,9 @@ def execute_transpiled_circuits(
     transpiled_circuits = transpile_circuits(
         circuits,
         qubit_maps,
-        platform,
+        backend,
         transpiler,
     )
-    backend = construct_backend(backend="qibolab", platform=platform)
     return transpiled_circuits, backend.execute_circuits(
         transpiled_circuits, initial_states=initial_states, nshots=nshots
     )
@@ -76,7 +75,7 @@ def execute_transpiled_circuits(
 def execute_transpiled_circuit(
     circuit: Circuit,
     qubit_map: list[QubitId],
-    platform: Platform,
+    backend: Backend,
     transpiler: Optional[Passes],
     initial_state=None,
     nshots=1000,
@@ -95,23 +94,22 @@ def execute_transpiled_circuit(
     transpiled_circ = transpile_circuits(
         [circuit],
         [qubit_map],
-        platform,
+        backend,
         transpiler,
     )[0]
 
-    backend = construct_backend(backend="qibolab", platform=platform)
     return transpiled_circ, backend.execute_circuit(
         transpiled_circ, initial_state=initial_state, nshots=nshots
     )
 
 
-def dummy_transpiler(platform) -> Optional[Passes]:
+def dummy_transpiler(backend: Backend) -> Optional[Passes]:
     """
     If the backend is `qibolab`, a transpiler with just an unroller is returned,
     otherwise None.
     """
     unroller = Unroller(NativeGates.default())
-    return Passes(connectivity=platform.topology, passes=[unroller])
+    return Passes(connectivity=backend.platform.topology, passes=[unroller])
 
 
 def pad_circuit(nqubits, circuit: Circuit, qubit_map: list[int]) -> Circuit:
