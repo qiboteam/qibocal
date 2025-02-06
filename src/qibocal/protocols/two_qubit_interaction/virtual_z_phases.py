@@ -38,10 +38,6 @@ class VirtualZPhasesParameters(Parameters):
     iSWAP and CZ are the possible options.
 
     """
-    flux_pulse_amplitude: Optional[float] = None
-    """Amplitude of flux pulse implementing CZ."""
-    flux_pulse_duration: Optional[float] = None
-    """Duration of flux pulse implementing CZ."""
     dt: Optional[float] = 20
     """Time delay between flux pulses and readout."""
     parking: bool = True
@@ -62,10 +58,6 @@ class VirtualZPhasesResults(Results):
     """Virtual Z phase correction."""
     leakage: dict[QubitPairId, dict[QubitId, float]]
     """Leakage on control qubit for pair."""
-    flux_pulse_amplitude: dict[QubitPairId, float]
-    """Amplitude of flux pulse implementing CZ."""
-    flux_pulse_duration: dict[QubitPairId, int]
-    """Duration of flux pulse implementing CZ."""
 
     def __contains__(self, key: QubitPairId):
         """Check if key is in class.
@@ -88,8 +80,6 @@ class VirtualZPhasesData(Data):
     data: dict[tuple, npt.NDArray[VirtualZPhasesType]] = field(default_factory=dict)
     native: str = "CZ"
     thetas: list = field(default_factory=list)
-    amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
-    durations: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
 
     def __getitem__(self, pair):
         return {
@@ -108,14 +98,11 @@ def create_sequence(
     native: str,
     parking: bool,
     dt: float,
-    amplitude: float = None,
-    duration: float = None,
+    flux_pulse_max_duration: float = None,
 ) -> tuple[
     PulseSequence,
-    dict[QubitId, Pulse],
-    dict[QubitId, Pulse],
-    dict[QubitId, Pulse],
-    dict[QubitId, Pulse],
+    Pulse,
+    Pulse,
 ]:
     """Create the experiment PulseSequence."""
 
@@ -131,11 +118,10 @@ def create_sequence(
         start=max(Y90_pulse.finish, RX_pulse_start.finish),
     )
 
-    if amplitude is not None:
-        flux_sequence.get_qubit_pulses(ordered_pair[1])[0].amplitude = amplitude
+    flux_pulse = flux_sequence.get_qubit_pulses(ordered_pair[1])[0]
+    if flux_pulse_max_duration is not None:
+        flux_pulse.duration = flux_pulse_max_duration
 
-    if duration is not None:
-        flux_sequence.get_qubit_pulses(ordered_pair[1])[0].duration = duration
     theta_pulse = platform.create_RX90_pulse(
         target_qubit,
         start=flux_sequence.finish + dt,
@@ -173,12 +159,8 @@ def create_sequence(
             if pulse.qubit not in ordered_pair:
                 pulse.duration = theta_pulse.finish
                 sequence.add(pulse)
-    return (
-        sequence,
-        theta_pulse,
-        flux_sequence.get_qubit_pulses(ordered_pair[1])[0].amplitude,
-        flux_sequence.get_qubit_pulses(ordered_pair[1])[0].duration,
-    )
+
+    return sequence, flux_pulse, theta_pulse
 
 
 def _acquisition(
@@ -216,9 +198,8 @@ def _acquisition(
             for setup in ("I", "X"):
                 (
                     sequence,
+                    _,
                     theta_pulse,
-                    data.amplitudes[ord_pair],
-                    data.durations[ord_pair],
                 ) = create_sequence(
                     platform,
                     setup,
@@ -228,7 +209,6 @@ def _acquisition(
                     params.native,
                     params.dt,
                     params.parking,
-                    params.flux_pulse_amplitude,
                 )
                 theta = np.arange(
                     params.theta_start,
@@ -267,10 +247,36 @@ def _acquisition(
     return data
 
 
-def fit_function(x, amplitude, offset, phase):
+def sinusoid(x, amplitude, offset, phase):
     """Sinusoidal fit function."""
-    # return p0 + p1 * np.sin(2*np.pi*p2 * x + p3)
     return np.sin(x + phase) * amplitude + offset
+
+
+def phase_diff(phase_1, phase_2):
+    """Return the phase difference of two sinusoids, normalized in the range [0, pi]."""
+    return np.arccos(np.cos(phase_1 - phase_2))
+
+
+def fit_sinusoid(thetas, data):
+    """Fit sinusoid to the given data."""
+    pguess = [
+        np.max(data) - np.min(data),
+        np.mean(data),
+        np.pi,
+    ]
+
+    popt, _ = curve_fit(
+        sinusoid,
+        thetas,
+        data,
+        p0=pguess,
+        bounds=(
+            (0, -np.max(data), 0),
+            (np.max(data), np.max(data), 2 * np.pi),
+        ),
+    )
+
+    return popt.tolist()
 
 
 def _fit(
@@ -294,23 +300,9 @@ def _fit(
         leakage[pair] = {}
         for target, control, setup in data[pair]:
             target_data = data[pair][target, control, setup].target
-            pguess = [
-                np.max(target_data) - np.min(target_data),
-                np.mean(target_data),
-                np.pi,
-            ]
             try:
-                popt, _ = curve_fit(
-                    fit_function,
-                    np.array(data.thetas),
-                    target_data,
-                    p0=pguess,
-                    bounds=(
-                        (0, -np.max(target_data), 0),
-                        (np.max(target_data), np.max(target_data), 2 * np.pi),
-                    ),
-                )
-                fitted_parameters[target, control, setup] = popt.tolist()
+                params = fit_sinusoid(np.array(data.thetas), target_data)
+                fitted_parameters[target, control, setup] = params
 
             except Exception as e:
                 log.warning(f"CZ fit failed for pair ({target, control}) due to {e}.")
@@ -320,9 +312,9 @@ def _fit(
                 pair,
                 list(pair)[::-1],
             ):
-                angle[target_q, control_q] = abs(
-                    fitted_parameters[target_q, control_q, "X"][2]
-                    - fitted_parameters[target_q, control_q, "I"][2]
+                angle[target_q, control_q] = phase_diff(
+                    fitted_parameters[target_q, control_q, "X"][2],
+                    fitted_parameters[target_q, control_q, "I"][2],
                 )
                 virtual_phase[pair][target_q] = -fitted_parameters[
                     target_q, control_q, "I"
@@ -342,8 +334,6 @@ def _fit(
             pass  # exception covered above
     return VirtualZPhasesResults(
         native=data.native,
-        flux_pulse_amplitude=data.amplitudes,
-        flux_pulse_duration=data.durations,
         angle=angle,
         virtual_phase=virtual_phase,
         fitted_parameters=fitted_parameters,
@@ -351,7 +341,6 @@ def _fit(
     )
 
 
-# TODO: remove str
 def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPairId):
     """Plot routine for VirtualZPhases."""
     pair_data = data[target]
@@ -406,7 +395,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
             fig.add_trace(
                 go.Scatter(
                     x=angle_range,
-                    y=fit_function(
+                    y=sinusoid(
                         angle_range,
                         *fitted_parameters,
                     ),
@@ -436,21 +425,6 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
                     )
                 )
             )
-    fitting_report.add(
-        table_html(
-            table_dict(
-                [qubits[1], qubits[1]],
-                [
-                    "Flux pulse amplitude [a.u.]",
-                    "Flux pulse duration [ns]",
-                ],
-                [
-                    np.round(data.amplitudes[qubits], 4),
-                    np.round(data.durations[qubits], 4),
-                ],
-            )
-        )
-    )
 
     fig1.update_layout(
         title_text=f"Phase correction Qubit {qubits[0]}",
@@ -473,16 +447,9 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
 
 def _update(results: VirtualZPhasesResults, platform: Platform, target: QubitPairId):
     # FIXME: quick fix for qubit order
-    qubit_pair = tuple(sorted(target))
     target = tuple(sorted(target))
     update.virtual_phases(
         results.virtual_phase[target], results.native, platform, target
-    )
-    getattr(update, f"{results.native}_duration")(
-        results.flux_pulse_duration[target], platform, target
-    )
-    getattr(update, f"{results.native}_amplitude")(
-        results.flux_pulse_amplitude[target], platform, target
     )
 
 

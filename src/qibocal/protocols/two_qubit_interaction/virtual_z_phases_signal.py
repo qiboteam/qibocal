@@ -19,7 +19,10 @@ from .virtual_z_phases import (
     _fit,
 )
 from .virtual_z_phases import _plot as _plot_prob
-from .virtual_z_phases import _update, create_sequence
+from .virtual_z_phases import (
+    _update,
+    create_sequence,
+)
 
 
 @dataclass
@@ -75,9 +78,8 @@ def _acquisition(
             for setup in ("I", "X"):
                 (
                     sequence,
+                    _,
                     theta_pulse,
-                    data.amplitudes[ord_pair],
-                    data.durations[ord_pair],
                 ) = create_sequence(
                     platform,
                     setup,
@@ -87,7 +89,6 @@ def _acquisition(
                     params.native,
                     params.dt,
                     params.parking,
-                    params.flux_pulse_amplitude,
                 )
                 theta = np.arange(
                     params.theta_start,

@@ -242,9 +242,7 @@ def _fit(data: ResCrosstalkData) -> ResCrosstalkResults:
             diagonal.matrix_element[qubit] if condition else data.matrix_element[qubit]
         )
         resonator_frequency[qubit] = (
-            diagonal.resonator_freq[qubit]
-            if condition
-            else data.resonator_frequency[qubit]
+            diagonal.frequency[qubit] if condition else data.resonator_frequency[qubit]
         )
         offset[qubit] = (
             diagonal.fitted_parameters[qubit]["offset"]
@@ -328,7 +326,7 @@ def _fit(data: ResCrosstalkData) -> ResCrosstalkResults:
             crosstalk_matrix[target_qubit][flux_qubit] = matrix_element[qubit]
 
     return ResCrosstalkResults(
-        resonator_freq=resonator_frequency,
+        frequency=resonator_frequency,
         asymmetry=asymmetry,
         resonator_frequency_bias_point=resonator_frequency_bias_point,
         coupling=coupling,
@@ -350,7 +348,7 @@ def _plot(data: ResCrosstalkData, fit: ResCrosstalkResults, target: QubitId):
             "Resonator Frequency at Bias point [Hz]",
         ]
         values = [
-            np.round(fit.resonator_freq[target], 4),
+            np.round(fit.frequency[target], 4),
             np.round(fit.coupling[target] * 1e3, 2),
             np.round(fit.asymmetry[target], 2),
             np.round(fit.resonator_frequency_bias_point[target], 4),

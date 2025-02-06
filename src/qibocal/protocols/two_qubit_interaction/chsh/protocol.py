@@ -179,6 +179,7 @@ def _acquisition_pulses(
         )
         mitigation_results = mitigation_fit(mitigation_data)
 
+    platform.connect()
     for pair in targets:
         if params.apply_error_mitigation:
             try:
