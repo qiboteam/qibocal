@@ -1,6 +1,6 @@
 import numpy as np
-from qibo import Circuit, gates, set_backend
-from qibo.backends import get_backend
+from qibo import Circuit, gates
+from qibo.backends import construct_backend
 
 from qibocal.auto.transpile import (
     dummy_transpiler,
@@ -29,12 +29,10 @@ def test_execute_transpiled_circuit():
     circuit.add(gates.X(0))
     circuit.add(gates.X(1))
     qubit_map = [1, 2]
-    set_backend("qibolab", platform="dummy")
-    backend = get_backend()
-    platform = backend.platform
-    transpiler = dummy_transpiler(platform)
+    backend = construct_backend("qibolab", platform="dummy")
+    transpiler = dummy_transpiler(backend)
     transpiled_circuit, _ = execute_transpiled_circuit(
-        circuit, qubit_map, platform, transpiler=transpiler
+        circuit, qubit_map, backend, transpiler=transpiler
     )
     true_circuit = Circuit(5)
     true_circuit.add(gates.GPI2(1, np.pi / 2))
@@ -52,12 +50,10 @@ def test_execute_transpiled_circuits():
     circuit.add(gates.X(0))
     circuit.add(gates.X(1))
     qubit_map = [1, 2]
-    set_backend("qibolab", platform="dummy")
-    backend = get_backend()
-    platform = backend.platform
-    transpiler = dummy_transpiler(platform)
+    backend = construct_backend("qibolab", platform="dummy")
+    transpiler = dummy_transpiler(backend)
     transpiled_circuits, _ = execute_transpiled_circuits(
-        [circuit], [qubit_map], platform, transpiler=transpiler
+        [circuit], [qubit_map], backend, transpiler=transpiler
     )
     true_circuit = Circuit(5)
     true_circuit.add(gates.GPI2(1, np.pi / 2))

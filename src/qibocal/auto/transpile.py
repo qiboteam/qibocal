@@ -1,33 +1,17 @@
 from typing import Optional
 
 from qibo import Circuit, gates
-from qibo.backends import construct_backend, get_backend
+from qibo.backends import Backend
 from qibo.transpiler.pipeline import Passes
 from qibo.transpiler.unroller import NativeGates, Unroller
-from qibolab import MetaBackend
-from qibolab.platform import Platform
-from qibolab.platform.platform import PulseSequence
+from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
-
-
-def _get_platforms():
-    """Qibolab platforms."""
-    try:
-        platforms = list(MetaBackend().list_available())
-    except RuntimeError:
-        platforms = []
-
-    return platforms + ["dummy"]
-
-
-AVAILABLE_PLATFORMS = _get_platforms()
-"""Available qibolab platforms."""
 
 
 def transpile_circuits(
     circuits: list[Circuit],
     qubit_maps: list[list[QubitId]],
-    platform: Platform,
+    backend: Backend,
     transpiler: Optional[Passes],
 ):
     """Transpile and pad `circuits` according to the platform.
@@ -45,26 +29,25 @@ def transpile_circuits(
         are all string or all integers.
     """
     transpiled_circuits = []
-    if platform.name in AVAILABLE_PLATFORMS:
-        qubits = list(platform.qubits)
-        if isinstance(qubit_maps[0][0], str):
-            for i, qubit_map in enumerate(qubit_maps):
-                qubit_map = map(lambda x: qubits.index(x), qubit_map)
-                qubit_maps[i] = list(qubit_map)
-        platform_nqubits = platform.nqubits
-        for circuit, qubit_map in zip(circuits, qubit_maps):
-            new_circuit = pad_circuit(platform_nqubits, circuit, qubit_map)
-            transpiled_circ, _ = transpiler(new_circuit)
-            transpiled_circuits.append(transpiled_circ)
-    else:
-        transpiled_circuits = circuits
+    platform = backend.platform
+    qubits = list(platform.qubits)
+    if isinstance(qubit_maps[0][0], str):
+        for i, qubit_map in enumerate(qubit_maps):
+            qubit_map = map(lambda x: qubits.index(x), qubit_map)
+            qubit_maps[i] = list(qubit_map)
+    platform_nqubits = platform.nqubits
+    for circuit, qubit_map in zip(circuits, qubit_maps):
+        new_circuit = pad_circuit(platform_nqubits, circuit, qubit_map)
+        transpiled_circ, _ = transpiler(new_circuit)
+        transpiled_circuits.append(transpiled_circ)
+
     return transpiled_circuits
 
 
 def execute_transpiled_circuits(
     circuits: list[Circuit],
     qubit_maps: list[list[QubitId]],
-    platform: Platform,
+    backend: Backend,
     transpiler: Optional[Passes],
     initial_states=None,
     nshots=1000,
@@ -82,13 +65,9 @@ def execute_transpiled_circuits(
     transpiled_circuits = transpile_circuits(
         circuits,
         qubit_maps,
-        platform,
+        backend,
         transpiler,
     )
-    if platform.name in AVAILABLE_PLATFORMS:
-        backend = construct_backend(backend="qibolab", platform=platform)
-    else:
-        backend = get_backend()
     return transpiled_circuits, backend.execute_circuits(
         transpiled_circuits, initial_states=initial_states, nshots=nshots
     )
@@ -97,7 +76,7 @@ def execute_transpiled_circuits(
 def execute_transpiled_circuit(
     circuit: Circuit,
     qubit_map: list[QubitId],
-    platform: Platform,
+    backend: Backend,
     transpiler: Optional[Passes],
     initial_state=None,
     nshots=1000,
@@ -116,14 +95,9 @@ def execute_transpiled_circuit(
     transpiled_circ = transpile_circuits(
         [circuit],
         [qubit_map],
-        platform,
+        backend,
         transpiler,
     )[0]
-    if platform.name in AVAILABLE_PLATFORMS:
-        backend = construct_backend(backend="qibolab", platform=platform)
-    else:
-        backend = get_backend()
-    set_compiler(backend)
     return transpiled_circ, backend.execute_circuit(
         transpiled_circ, initial_state=initial_state, nshots=nshots
     )
@@ -152,12 +126,10 @@ def get_natives(platform):
     return natives
 
 
-def set_compiler(backend):
+def set_compiler(backend, natives):
     """
     Set the compiler to execute the native gates defined by the platform.
     """
-    platform = backend.platform
-    natives = get_natives(platform)
     compiler = backend.compiler
     for native in natives:
         gate = getattr(gates, native)
@@ -174,17 +146,17 @@ def set_compiler(backend):
             backend.compiler[gate] = rule
 
 
-def dummy_transpiler(platform) -> Optional[Passes]:
+def dummy_transpiler(backend: Backend) -> Passes:
     """
     If the backend is `qibolab`, a transpiler with just an unroller is returned,
     otherwise None.
     """
-    if platform.name in AVAILABLE_PLATFORMS:
-        native_gates = get_natives(platform)
-        native_gates = list(map(lambda x: getattr(gates, x), native_gates))
-
-        unroller = Unroller(NativeGates.from_gatelist(native_gates))
-        return Passes(connectivity=platform.topology, passes=[unroller])
+    platform = backend.platform
+    native_gates = get_natives(platform)
+    set_compiler(backend, native_gates)
+    native_gates = list(map(lambda x: getattr(gates, x), native_gates))
+    unroller = Unroller(NativeGates.from_gatelist(native_gates))
+    return Passes(connectivity=platform.topology, passes=[unroller])
 
 
 def pad_circuit(nqubits, circuit: Circuit, qubit_map: list[int]) -> Circuit:
