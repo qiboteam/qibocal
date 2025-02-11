@@ -130,11 +130,15 @@ def execute_transpiled_circuit(
 
 
 def get_natives(platform):
+    """
+    Return the list of native gates defined in the `platform`.
+    This function assumes the native gates to be the same for each
+    qubit and pair.
+    """
     pairs = list(platform.pairs.values())[0]
     qubit = list(platform.qubits.values())[0]
     two_qubit_natives = list(pairs.native_gates.raw.keys())
     single_qubit_natives = list(qubit.native_gates.raw.keys())
-    # import pdb; pdb.set_trace()
     # Solve Qibo-Qibolab mismatch
     single_qubit_natives.append("RZ")
     single_qubit_natives.append("Z")
@@ -149,13 +153,16 @@ def get_natives(platform):
 
 
 def set_compiler(backend):
+    """
+    Set the compiler to execute the native gates defined by the platform.
+    """
     platform = backend.platform
     natives = get_natives(platform)
     compiler = backend.compiler
     for native in natives:
         gate = getattr(gates, native)
         if gate not in compiler.rules:
-            # TODO: this code is working only with pairs
+
             def rule(qubits_ids, platform, parameters=None):
                 if len(qubits_ids[1]) == 1:
                     native_gate = platform.qubits[tuple(qubits_ids[1])].native_gates
