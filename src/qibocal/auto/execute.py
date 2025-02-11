@@ -104,11 +104,7 @@ class Executor:
         platform = (
             platform
             if isinstance(platform, Platform)
-            else create_platform(
-                platform
-                if platform is not None
-                else os.environ.get("QIBO_PLATFORM", "dummy")
-            )
+            else create_platform(platform if platform is not None else "dummy")
         )
         return cls(
             name=name,
