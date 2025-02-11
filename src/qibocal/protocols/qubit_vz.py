@@ -138,6 +138,14 @@ def _fit(data: QubitVzData) -> QubitVzResults:
             phi,
             prob,
             p0=pguess,
+            bounds=(
+                [0.0, pguess[1] / 2.0, pguess[2] / 2.0],
+                [
+                    2 * np.pi,
+                    min(1.0, pguess[1] + pguess[1] / 2.0),
+                    min(1.0, pguess[2] + pguess[2] / 2.0),
+                ],
+            ),
         )
         popt = popt.tolist()
         fitted_parameters[qubit] = popt
