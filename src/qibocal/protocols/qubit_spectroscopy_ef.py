@@ -99,7 +99,9 @@ def _acquisition(
         )
         sequence.append((ro_channel, ro_pulse))
 
-        drive_frequencies[qubit] = platform.config(qd_channel).frequency
+        drive_frequencies[qubit] = platform.calibration.single_qubits[
+            qubit
+        ].qubit.frequency_01
         sweepers.append(
             Sweeper(
                 parameter=Parameter.frequency,
@@ -118,7 +120,11 @@ def _acquisition(
         [sequence],
         [sweepers],
         updates=[
-            {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
+            {
+                platform.qubits[q].probe: {
+                    "frequency": readout_frequency(q, platform, state=1)
+                }
+            }
             for q in targets
         ],
         **params.execution_parameters,
