@@ -13,7 +13,7 @@ The expected population oscillation pattern follows:
 
 where :math:`\Delta=\omega_1 - \omega_2`,  and :math:`g` is the coupling constant for the two qubits.
 
-The pulse sequence used to calibrate the CZ gate is the same as the one for the iSWAP gate, with the addition of an initial :math:`\pi` pulse applied to the qubit with the lower frequency so that both qubits are initially prepared in the :math:`\ket{1}`.
+The pulse sequence used to calibrate the CZ gate is the same as the one for the iSWAP gate, with the addition of an initial :math:`\pi` pulse applied to the qubit with the lower frequency so that both qubits are initially prepared in the :math:`\ket{1}`. With this sequence the CZ gate is implemented leveraging the avoided crossing between the states :math:`\ket{11}` and :math:`\ket{20}`.
 
 Parameters
 ^^^^^^^^^^
