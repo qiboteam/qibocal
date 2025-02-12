@@ -17,6 +17,10 @@ Qibocal key features:
 
 Qibocal documentation is available [here](https://qibo.science/qibocal/stable/).
 
+>[!NOTE]
+> Qibocal `main` contains some breaking changes compared to `0.1` versions. 
+> A small guide about the main differences can be found [`here`](changes.md).
+
 ## Installation
 
 The package can be installed by source:
