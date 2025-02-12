@@ -15,7 +15,7 @@ from qibolab.native import NativePulse
 from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
-from .utils import STATES, PROJECTIONS, ro_projection_pulse
+from .utils import STATES, BASIS, ro_projection_pulse
 
 CrossResonanceType = np.dtype(
     [
@@ -42,7 +42,7 @@ class CrossResonanceAmplitudeParameters(Parameters):
     """CR pulse amplitude [ns]."""
     shape: Optional[str] = "Rectangular()"
     """CR pulse shape parameters."""
-    projections: Optional[list[str]] = field(default_factory=lambda: [PROJECTIONS[0]])
+    projections: Optional[list[str]] = field(default_factory=lambda: [BASIS[0]])
     """Measurement porjection"""
 
     @property
@@ -170,7 +170,7 @@ def _plot(data: CrossResonanceData, target: QubitPairId, fit: CrossResonanceResu
     figs = []
     
     for ro_qubit in [tgt, ctr]:
-        for projection in PROJECTIONS:
+        for projection in BASIS:
             fig = go.Figure()
             if ((ro_qubit, tgt, ctr, STATES[0], STATES[0], projection)) not in data.data:
                 continue

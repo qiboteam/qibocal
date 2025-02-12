@@ -37,6 +37,7 @@ class CrossResonanceParameters(Parameters):
     """CR pulse amplitude [ns]."""
     shape: Optional[str] = "Rectangular()"
     """CR pulse shape."""
+    
     @property
     def duration_range(self):
         return np.arange(
@@ -58,6 +59,9 @@ class CrossResonanceResults(Results):
 class CrossResonanceData(Data):
     """Data structure for Cross Resonance Gate Calibration."""
 
+    targets: list[QubitPairId] = field(default_factory=list)
+    """Targets for the Cross Resonance Gate Calibration stored as pair of [target, control]."""
+
     data: dict[QubitId, npt.NDArray[CrossResonanceType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -67,7 +71,7 @@ def _acquisition(
 ) -> CrossResonanceData:
     """Data acquisition for Cross Resonance Gate Calibration."""
 
-    data = CrossResonanceData()
+    data = CrossResonanceData(targets=targets)
 
     for pair in targets:
         for tgt_setup in STATES:

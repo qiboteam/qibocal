@@ -111,7 +111,7 @@ def _acquisition(
     )
 
     for basis in BASIS:
-        basis_circuit = deepcopy(params.circuit)
+        basis_circuit: Circuit = deepcopy(params.circuit)
         # FIXME: https://github.com/qiboteam/qibo/issues/1318
         if basis != "Z":
             for i in range(len(targets)):
