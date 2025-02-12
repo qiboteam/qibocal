@@ -1,5 +1,5 @@
 ## Changes in `main`
-After the merge of #990, Qibocal is compatible with Qibolab 0.2.
+After the merge of [#990](https://github.com/qiboteam/qibocal/pull/990), Qibocal is compatible with Qibolab 0.2.
 For this reason, a small internal refactoring and some breaking changes were required.
 The main differences concern the acquisition functions and the protocol parameters:
 - The amplitudes are no longer relative to the values defined in the platform, but to
