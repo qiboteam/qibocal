@@ -2,7 +2,7 @@ Chevron
 =======
 
 In order to implement a two-qubit gate in superconducting quantum computing, it is necessary to bring the two qubits near resonance using specific pulse sequences.
-The Chevron routine implemented in qibocal can be used to calibrate both CZ and iSWAP gates.
+The Chevron protocol implemented in Qibocal can be used to calibrate both CZ and iSWAP gates.
 
 The pulse sequence used to calibrate the iSWAP gate consists of a :math:`\pi` pulse followed by a flux pulse of varying amplitude and duration, applied to the qubit with the highest frequency.
 The initial :math:`pi` pulse brings the qubit into the state :math:`\ket{1}` while the flux pulse detunes its frequency near resonance with the second qubit.
