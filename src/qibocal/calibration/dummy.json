@@ -3,7 +3,7 @@
         "0": {
             "resonator": {
                 "bare_frequency": 0.0,
-                "dressed_frequency": 5200000000.0,
+                "dressed_frequency": null,
                 "depletion_time": 0
             },
             "qubit": {
@@ -74,7 +74,10 @@
                 "excited_state": [
                     0.0,
                     0.5
-                ]
+                ],
+                "qudits_frequency": {
+                    "1": 6100000000.0
+                }
             },
             "rb_fidelity": null
         },
@@ -100,7 +103,10 @@
                 "excited_state": [
                     0.0,
                     0.75
-                ]
+                ],
+                "qudits_frequency": {
+                    "1": 5800000000.0
+                }
             },
             "rb_fidelity": null
         },
@@ -126,7 +132,10 @@
                 "excited_state": [
                     0.0,
                     1.0
-                ]
+                ],
+                "qudits_frequency": {
+                    "1": 5500000000.0
+                }
             },
             "rb_fidelity": null
         }
