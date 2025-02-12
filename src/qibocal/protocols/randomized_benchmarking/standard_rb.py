@@ -111,8 +111,7 @@ def _plot(
     Returns:
         tuple[list[go.Figure], str]:
     """
-    if isinstance(target, list):
-        target = tuple(target)
+    target = tuple(target) if isinstance(target, list) else target
     qubit = target
     fig = go.Figure()
     fitting_report = ""

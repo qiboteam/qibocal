@@ -44,9 +44,7 @@ def _acquisition(
     targets: list[QubitPairId],
 ) -> RB2QInterData:
     """Data acquisition for two qubit Interleaved Randomized Benchmarking."""
-
     data = twoq_rb_acquisition(params, platform, targets, interleave=params.interleave)
-
     fidelity = {}
     for target in targets:
         assert (
@@ -54,7 +52,6 @@ def _acquisition(
         ), "Pair not calibrated, run standard 2q rb before interleaved version"
         fidelity[target] = platform.calibration.two_qubits[target].rb_fidelity
     data.fidelity = fidelity
-
     return data
 
 
@@ -71,7 +68,6 @@ def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
 
     qubits = data.pairs
     results = fit(qubits, data)
-
     fidelity_cz = {}
     for qubit in qubits:
         fid_cz = results.fidelity[qubit] / data.fidelity[qubit][0]
@@ -98,6 +94,7 @@ def _update(
 ):
     """Write cz fidelity in calibration."""
     # TODO: shall we use the gate fidelity or the pulse fidelity
+    target = tuple(target)
     platform.calibration.two_qubits[target].cz_fidelity = tuple(
         results.fidelity_cz[target]
     )

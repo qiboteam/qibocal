@@ -527,7 +527,7 @@ def twoq_rb_acquisition(
         RB2QData: The acquired data for two qubit randomized benchmarking.
     """
     targets = [tuple(pair) if isinstance(pair, list) else pair for pair in targets]
-    data, backend = setup(params, platform, single_qubit=False)
+    data, backend = setup(params, platform, single_qubit=False, interleave=interleave)
     circuits, indexes, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, single_qubit=False
     )

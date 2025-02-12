@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 import pytest
-from qibolab import Platform
+from qibolab import Platform, create_platform
 
 import qibocal
 import qibocal.protocols
@@ -145,6 +145,12 @@ def test_init(tmp_path: Path, executor: Executor):
 
     assert executor.meta is not None
     assert executor.meta.start is not None
+
+    init(path, force=True, platform="dummy")
+    assert executor.platform.name == "dummy"
+
+    init(path, force=True, platform=create_platform("dummy"))
+    assert executor.platform.name == "dummy"
 
 
 def test_close(tmp_path: Path, executor: Executor):

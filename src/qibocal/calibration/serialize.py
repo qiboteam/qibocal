@@ -24,15 +24,12 @@ def sparse_serialize(matrix: lil_matrix) -> str:
 def sparse_deserialize(data: str) -> Optional[lil_matrix]:
     """Deserialize a base64 string back into a lil_matrix."""
     buffer = io.BytesIO(base64.standard_b64decode(data))
-    try:
-        shape = np.load(buffer, allow_pickle=True)
-        indices_array = np.load(buffer, allow_pickle=True)
-        indptr_array = np.load(buffer, allow_pickle=True)
-        data_array = np.load(buffer, allow_pickle=True)
-        csr = csr_matrix((data_array, indices_array, indptr_array), shape=shape)
-        return lil_matrix(csr)
-    except EOFError:
-        return None
+    shape = np.load(buffer, allow_pickle=True)
+    data_array = np.load(buffer, allow_pickle=True)
+    indices_array = np.load(buffer, allow_pickle=True)
+    indptr_array = np.load(buffer, allow_pickle=True)
+    csr = csr_matrix((data_array, indices_array, indptr_array), shape=shape)
+    return lil_matrix(csr)
 
 
 SparseArray = Annotated[
@@ -52,9 +49,6 @@ def ndarray_serialize(ar: npt.NDArray) -> str:
 
 def ndarray_deserialize(x: Union[str, npt.NDArray]) -> npt.NDArray:
     """Deserialize array."""
-    if isinstance(x, np.ndarray):
-        return x
-
     buffer = io.BytesIO()
     buffer.write(base64.standard_b64decode(x))
     buffer.seek(0)

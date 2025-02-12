@@ -9,11 +9,10 @@ from ..utils import fallback_period, guess_period
 def order_pair(pair: QubitPairId, platform: Platform) -> tuple[QubitId, QubitId]:
     """Order a pair of qubits by drive frequency."""
     q0, q1 = pair
+
     drive0 = platform.config(platform.qubits[q0].drive)
     drive1 = platform.config(platform.qubits[q1].drive)
-    if drive0.frequency > drive1.frequency:
-        return q1, q0
-    return q0, q1
+    return (q1, q0) if drive0.frequency > drive1.frequency else (q0, q1)
 
 
 def fit_flux_amplitude(matrix, amps, times):

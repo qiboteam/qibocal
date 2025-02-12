@@ -311,8 +311,8 @@ def _update(
 ):
     if isinstance(target, list):
         target = tuple(target)
-    if target not in results.duration:
-        target = (target[1], target[0])
+
+    target = target[::-1] if target not in results.duration else target
 
     getattr(update, f"{results.native}_duration")(
         results.duration[target], platform, target
