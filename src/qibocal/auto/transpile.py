@@ -111,8 +111,8 @@ def get_natives(platform):
     """
     pairs = list(platform.pairs.values())[0]
     qubit = list(platform.qubits.values())[0]
-    two_qubit_natives = list(pairs.native_gates.raw.keys())
-    single_qubit_natives = list(qubit.native_gates.raw.keys())
+    two_qubit_natives = list(pairs.native_gates.raw)
+    single_qubit_natives = list(qubit.native_gates.raw)
     # Solve Qibo-Qibolab mismatch
     single_qubit_natives.append("RZ")
     single_qubit_natives.append("Z")
