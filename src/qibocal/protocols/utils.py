@@ -1147,44 +1147,6 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
         ),
     )
     figures.append(fig)
-
-    if fit is not None and len(models_name) != 1:
-        fig_benchmarks = make_subplots(
-            rows=1,
-            cols=3,
-            horizontal_spacing=SPACING,
-            vertical_spacing=SPACING,
-            subplot_titles=(
-                "accuracy",
-                "testing time [s]",
-                "training time [s]",
-            ),
-            # pylint: disable=E1101
-        )
-        for i, model in enumerate(models_name):
-            for plot in range(3):
-                fig_benchmarks.add_trace(
-                    go.Scatter(
-                        x=[model],
-                        y=[fit.benchmark_table[qubit][i][plot]],
-                        mode="markers",
-                        showlegend=False,
-                        marker=dict(size=10, color=get_color_state1(i)),
-                    ),
-                    row=1,
-                    col=plot + 1,
-                )
-
-        fig_benchmarks.update_yaxes(type="log", row=1, col=2)
-        fig_benchmarks.update_yaxes(type="log", row=1, col=3)
-        fig_benchmarks.update_layout(
-            autosize=False,
-            height=COLUMNWIDTH,
-            width=COLUMNWIDTH * 3,
-            title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
-        )
-
-        figures.append(fig_benchmarks)
     return figures
 
 
