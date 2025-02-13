@@ -1057,26 +1057,25 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
         column_width=[COLUMNWIDTH] * len(models_name),
     )
 
-    for i, model in enumerate(models_name):
-        if fit is not None:
-            predictions = fit.grid_preds[qubit][i]
-            fig.add_trace(
-                go.Contour(
-                    x=grid[:, 0],
-                    y=grid[:, 1],
-                    z=np.array(predictions).flatten(),
-                    showscale=False,
-                    colorscale=[get_color_state0(i), get_color_state1(i)],
-                    opacity=0.2,
-                    name="Score",
-                    hoverinfo="skip",
-                    showlegend=True,
-                ),
-                row=1,
-                col=i + 1,
-            )
+    if fit is not None:
+        predictions = fit.grid_preds[qubit]
+        fig.add_trace(
+            go.Contour(
+                x=grid[:, 0],
+                y=grid[:, 1],
+                z=np.array(predictions).flatten(),
+                showscale=False,
+                colorscale=[get_color_state0(0), get_color_state1(0)],
+                opacity=0.2,
+                name="Score",
+                hoverinfo="skip",
+                showlegend=True,
+            ),
+            row=1,
+            col=1,
+        )
 
-        model = run.pretty_name(model)
+        model = "qubit fit"  # run.pretty_name(model)
         max_x = max(grid[:, 0])
         max_y = max(grid[:, 1])
         min_x = min(grid[:, 0])
@@ -1097,7 +1096,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
                     marker=dict(size=3),
                 ),
                 row=1,
-                col=i + 1,
+                col=1,
             )
 
             fig.add_trace(
@@ -1111,14 +1110,14 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
                     marker=dict(size=10),
                 ),
                 row=1,
-                col=i + 1,
+                col=1,
             )
 
         fig.update_xaxes(
             title_text=f"i [a.u.]",
             range=[min_x, max_x],
             row=1,
-            col=i + 1,
+            col=1,
             autorange=False,
             rangeslider=dict(visible=False),
         )
@@ -1128,7 +1127,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             scaleanchor="x",
             scaleratio=1,
             row=1,
-            col=i + 1,
+            col=1,
         )
 
     fig.update_layout(

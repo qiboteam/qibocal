@@ -1,6 +1,4 @@
-import json
-import pathlib
-from dataclasses import asdict, dataclass, field, fields
+from dataclasses import dataclass, field, fields
 from typing import Optional
 
 import numpy as np
@@ -11,9 +9,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal import update
-from qibocal.auto.operation import RESULTSFILE, Data, Parameters, Results, Routine
-from qibocal.auto.serialize import serialize
-from qibocal.fitting.classifier import run
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.utils import (
     evaluate_grid,
@@ -98,24 +94,25 @@ class SingleShotClassificationResults(Results):
             and field.name != "classifiers_hpars"
         )
 
-    def save(self, path):
-        classifiers = run.import_classifiers(self.names)
-        for qubit in self.model:
-            for i, mod in enumerate(classifiers):
-                if self.savedir == " ":
-                    save_path = pathlib.Path(path)
-                else:
-                    save_path = pathlib.Path(self.savedir)
+    # def save(self, path):
+    # pass
+    # classifiers = run.import_classifiers(self.names)
+    # for qubit in self.model:
+    #     for i, mod in enumerate(classifiers):
+    #         if self.savedir == " ":
+    #             save_path = pathlib.Path(path)
+    #         else:
+    #             save_path = pathlib.Path(self.savedir)
 
-                classifier = run.Classifier(mod, save_path / f"qubit{qubit}")
-                classifier.savedir.mkdir(parents=True, exist_ok=True)
-                dump_dir = classifier.base_dir / classifier.name / classifier.name
-                classifier.dump()(self.model[qubit][i], dump_dir)
-                classifier.dump_hyper(self.classifiers_hpars[qubit][classifier.name])
-        asdict_class = asdict(self)
-        asdict_class.pop("model")
-        asdict_class.pop("classifiers_hpars")
-        (path / f"{RESULTSFILE}.json").write_text(json.dumps(serialize(asdict_class)))
+    #         classifier = run.Classifier(mod, save_path / f"qubit{qubit}")
+    #         classifier.savedir.mkdir(parents=True, exist_ok=True)
+    #         dump_dir = classifier.base_dir / classifier.name / classifier.name
+    #         classifier.dump()(self.model[qubit][i], dump_dir)
+    #         classifier.dump_hyper(self.classifiers_hpars[qubit][classifier.name])
+    # asdict_class = asdict(self)
+    # asdict_class.pop("model")
+    # asdict_class.pop("classifiers_hpars")
+    # (path / f"{RESULTSFILE}.json").write_text(json.dumps(serialize(asdict_class)))
 
 
 def _acquisition(
@@ -229,10 +226,13 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     effective_temperature = {}
     for qubit in qubits:
         qubit_data = data.data[qubit]
-        iq_values = data["i", "q"]
-        states = data["state"]
+        i_values = qubit_data["i"]
+        q_values = qubit_data["q"]
+        iq_values = np.stack((i_values, q_values), axis=-1)
+        states = qubit_data["state"]
         model = QubitFit()
         model.fit(iq_values, states)
+        # import pdb; pdb.set_trace()
         grid = evaluate_grid(qubit_data)
         grid_preds = model.predict(grid)
         threshold[qubit] = model.threshold
@@ -241,12 +241,12 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         mean_exc_states[qubit] = model.iq_mean1.tolist()
         fidelity[qubit] = model.fidelity
         assignment_fidelity[qubit] = model.assignment_fidelity
+        iq_state0 = iq_values[states == 0]
         predictions_state0 = model.predict(iq_state0.tolist())
         effective_temperature[qubit] = model.effective_temperature(
             predictions_state0, data.qubit_frequencies[qubit]
         )
-        y_test_predict[qubit] = y_preds
-        grid_preds_dict[qubit] = grid_preds
+        grid_preds_dict[qubit] = grid_preds.tolist()
     return SingleShotClassificationResults(
         threshold=threshold,
         rotation_angle=rotation_angle,
@@ -266,6 +266,7 @@ def _plot(
 ):
     fitting_report = ""
     figures = plot_results(data, target, 2, fit)
+    # print("QQQQQQQ", fit)
     if fit is not None:
         fitting_report = table_html(
             table_dict(
