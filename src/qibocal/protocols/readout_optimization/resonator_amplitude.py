@@ -32,6 +32,8 @@ class ResonatorAmplitudeParameters(Parameters):
 
 ResonatorAmplitudeType = np.dtype(
     [
+        ("i_values", np.float64),
+        ("q_values", np.float64),
         ("error", np.float64),
         ("amp", np.float64),
         ("angle", np.float64),
@@ -132,6 +134,8 @@ def _acquisition(
                 ResonatorAmplitudeType,
                 (qubit),
                 dict(
+                    i_values=i_values,
+                    q_values=q_values,
                     amp=np.array([new_amp]),
                     error=np.array([error]),
                     angle=np.array([model.angle]),
