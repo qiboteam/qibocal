@@ -138,7 +138,7 @@ def calculate_probabilities(samples: npt.NDArray) -> npt.NDArray:
     freqs = {"".join([str(x) for x in v]): c for v, c in zip(values, counts)}
     assert sum(freqs.values()) == nshots
     outcomes = ["{:b}".format(x).zfill(nqubits) for x in range(2**nqubits)]
-    return np.array([freqs[x] / nshots for x in outcomes])
+    return np.array([freqs.get(x, 0) / nshots for x in outcomes])
 
 
 def _acquisition(
