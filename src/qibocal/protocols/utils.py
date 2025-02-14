@@ -1044,7 +1044,6 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
     """
     figures = []
     qubit_data = data.data[qubit]
-    grid = evaluate_grid(qubit_data)
 
     fig = make_subplots(
         rows=1,
@@ -1052,6 +1051,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
     )
 
     if fit is not None:
+        grid = evaluate_grid(qubit_data)
         predictions = fit.grid_preds[qubit]
         fig.add_trace(
             go.Contour(

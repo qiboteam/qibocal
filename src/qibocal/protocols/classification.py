@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
@@ -67,19 +67,6 @@ class SingleShotClassificationResults(Results):
     """Assignment fidelity evaluated only with the `qubit_fit` model."""
     effective_temperature: dict[QubitId, float] = field(default_factory=dict)
     """Qubit effective temperature from Boltzmann distribution."""
-
-    def __contains__(self, key: QubitId):
-        """Checking if key is in Results.
-
-        Overwritten because classifiers_hpars is empty when running
-        the default_classifier.
-        """
-        return all(
-            key in getattr(self, field.name)
-            for field in fields(self)
-            if isinstance(getattr(self, field.name), dict)
-            and field.name != "classifiers_hpars"
-        )
 
 
 def _acquisition(
@@ -174,7 +161,6 @@ def train_classifier(data, qubit):
     qubit_data = data.data[qubit]
     i_values = qubit_data["i"]
     q_values = qubit_data["q"]
-    iq_values = np.stack((i_values, q_values), axis=-1)
     states = qubit_data["state"]
     model = QubitFit()
     model.fit(i_values, q_values, states)
@@ -184,28 +170,15 @@ def train_classifier(data, qubit):
 def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     qubits = data.qubits
 
-    benchmark_tables = {}
-    models_dict = {}
-    y_tests = {}
-    x_tests = {}
-    hpars = {}
     threshold = {}
     rotation_angle = {}
     mean_gnd_states = {}
     mean_exc_states = {}
     fidelity = {}
     assignment_fidelity = {}
-    y_test_predict = {}
     grid_preds_dict = {}
     effective_temperature = {}
     for qubit in qubits:
-        # qubit_data = data.data[qubit]
-        # i_values = qubit_data["i"]
-        # q_values = qubit_data["q"]
-        # iq_values = np.stack((i_values, q_values), axis=-1)
-        # states = qubit_data["state"]
-        # model = QubitFit()
-        # model.fit(i_values, q_values, states)
         model = train_classifier(data, qubit)
         grid = evaluate_grid(qubit_data)
         grid_preds = model.predict(grid)
