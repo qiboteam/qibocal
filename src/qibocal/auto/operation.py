@@ -159,6 +159,7 @@ class AbstractData:
     def _to_json(self, path: Path, filename: str):
         """Helper function to dump to json."""
         if self.params:
+            print("AAAAAA", self.params)
             (path / f"{filename}.json").write_text(
                 json.dumps(serialize(self.params), indent=4)
             )

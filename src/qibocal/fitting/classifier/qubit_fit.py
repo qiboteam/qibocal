@@ -74,17 +74,17 @@ class QubitFit:
     probability_error: float = None
     effective_qubit_temperature: float = None
 
-    def fit(self, iq_coordinates: list, states: list):
+    def fit(self, i_coordinates: list, q_coordinates: list, states: list):
         r"""Evaluate the model's parameters given the
         `iq_coordinates` and their relative ``states`
         (reference: <https://arxiv.org/abs/1004.4323>).
         """
+        iq_coordinates = np.stack((i_coordinates, q_coordinates), axis=-1)
         iq_state1 = iq_coordinates[(states == 1)]
         iq_state0 = iq_coordinates[(states == 0)]
-        self.iq_mean0 = np.mean(iq_state0, axis=0)
-        self.iq_mean1 = np.mean(iq_state1, axis=0)
-
-        vector01 = self.iq_mean1 - self.iq_mean0
+        iq_mean0 = np.mean(iq_state0, axis=0)
+        iq_mean1 = np.mean(iq_state1, axis=0)
+        vector01 = iq_mean1 - iq_mean0
         self.angle = -1 * atan2(vector01[1], vector01[0])
 
         # rotate
@@ -115,6 +115,8 @@ class QubitFit:
         self.probability_error = np.sum(np.absolute(states - predictions)) / len(
             predictions
         )
+        self.iq_mean0 = iq_mean0.tolist()
+        self.iq_mean1 = iq_mean1.tolist()
 
     def effective_temperature(self, predictions, qubit_frequency: float):
         """Calculate effective qubit temperature."""

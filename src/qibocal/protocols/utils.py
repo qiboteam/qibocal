@@ -14,7 +14,6 @@ from scipy.signal import find_peaks
 
 from qibocal.auto.operation import Data, Results
 from qibocal.config import log
-from qibocal.fitting.classifier import run
 from qibocal.protocols.resonator_utils import (
     cable_delay,
     circle_fit,
@@ -1044,39 +1043,33 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
         fit (Results): fit results
     """
     figures = []
-    models_name = data.classifiers_list
     qubit_data = data.data[qubit]
-    grid = evaluate_grid(qubit_data)
 
     fig = make_subplots(
         rows=1,
-        cols=len(models_name),
-        horizontal_spacing=SPACING * 3 / len(models_name) * 3,
-        vertical_spacing=SPACING,
-        subplot_titles=[run.pretty_name(model) for model in models_name],
-        column_width=[COLUMNWIDTH] * len(models_name),
+        cols=1,
     )
 
-    for i, model in enumerate(models_name):
-        if fit is not None:
-            predictions = fit.grid_preds[qubit][i]
-            fig.add_trace(
-                go.Contour(
-                    x=grid[:, 0],
-                    y=grid[:, 1],
-                    z=np.array(predictions).flatten(),
-                    showscale=False,
-                    colorscale=[get_color_state0(i), get_color_state1(i)],
-                    opacity=0.2,
-                    name="Score",
-                    hoverinfo="skip",
-                    showlegend=True,
-                ),
-                row=1,
-                col=i + 1,
-            )
+    if fit is not None:
+        grid = evaluate_grid(qubit_data)
+        predictions = fit.grid_preds[qubit]
+        fig.add_trace(
+            go.Contour(
+                x=grid[:, 0],
+                y=grid[:, 1],
+                z=np.array(predictions).flatten(),
+                showscale=False,
+                colorscale=[get_color_state0(0), get_color_state1(0)],
+                opacity=0.2,
+                name="Score",
+                hoverinfo="skip",
+                showlegend=True,
+            ),
+            row=1,
+            col=1,
+        )
 
-        model = run.pretty_name(model)
+        model = "qubit fit"  # run.pretty_name(model)
         max_x = max(grid[:, 0])
         max_y = max(grid[:, 1])
         min_x = min(grid[:, 0])
@@ -1097,7 +1090,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
                     marker=dict(size=3),
                 ),
                 row=1,
-                col=i + 1,
+                col=1,
             )
 
             fig.add_trace(
@@ -1111,14 +1104,14 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
                     marker=dict(size=10),
                 ),
                 row=1,
-                col=i + 1,
+                col=1,
             )
 
         fig.update_xaxes(
             title_text=f"i [a.u.]",
             range=[min_x, max_x],
             row=1,
-            col=i + 1,
+            col=1,
             autorange=False,
             rangeslider=dict(visible=False),
         )
@@ -1128,14 +1121,12 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             scaleanchor="x",
             scaleratio=1,
             row=1,
-            col=i + 1,
+            col=1,
         )
 
     fig.update_layout(
         autosize=False,
-        height=COLUMNWIDTH,
-        width=COLUMNWIDTH * len(models_name),
-        title=dict(text="Results", font=dict(size=TITLE_SIZE)),
+        title=dict(text="Results"),
         legend=dict(
             orientation="h",
             yanchor="bottom",
@@ -1147,44 +1138,6 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
         ),
     )
     figures.append(fig)
-
-    if fit is not None and len(models_name) != 1:
-        fig_benchmarks = make_subplots(
-            rows=1,
-            cols=3,
-            horizontal_spacing=SPACING,
-            vertical_spacing=SPACING,
-            subplot_titles=(
-                "accuracy",
-                "testing time [s]",
-                "training time [s]",
-            ),
-            # pylint: disable=E1101
-        )
-        for i, model in enumerate(models_name):
-            for plot in range(3):
-                fig_benchmarks.add_trace(
-                    go.Scatter(
-                        x=[model],
-                        y=[fit.benchmark_table[qubit][i][plot]],
-                        mode="markers",
-                        showlegend=False,
-                        marker=dict(size=10, color=get_color_state1(i)),
-                    ),
-                    row=1,
-                    col=plot + 1,
-                )
-
-        fig_benchmarks.update_yaxes(type="log", row=1, col=2)
-        fig_benchmarks.update_yaxes(type="log", row=1, col=3)
-        fig_benchmarks.update_layout(
-            autosize=False,
-            height=COLUMNWIDTH,
-            width=COLUMNWIDTH * 3,
-            title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
-        )
-
-        figures.append(fig_benchmarks)
     return figures
 
 
