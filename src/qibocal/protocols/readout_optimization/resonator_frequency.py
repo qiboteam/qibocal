@@ -146,7 +146,7 @@ def _acquisition(
                 states.extend([i] * len(result.voltage_i[:, k]))
 
             model = QubitFit()
-            model.fit(np.stack((i_values, q_values), axis=-1), np.array(states))
+            model.fit(i_values, q_values, np.array(states))
             data.register_qubit(
                 ResonatorFrequencyType,
                 (qubit),
