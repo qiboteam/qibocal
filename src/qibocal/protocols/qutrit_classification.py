@@ -1,5 +1,4 @@
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
@@ -28,15 +27,14 @@ class QutritClassificationParameters(SingleShotClassificationParameters):
 
 @dataclass
 class QutritClassificationData(SingleShotClassificationData):
-    classifiers_list: Optional[list[str]] = field(
-        default_factory=lambda: [DEFAULT_CLASSIFIER]
-    )
-    """List of models to classify the qubit states"""
+    pass
 
 
 @dataclass
 class QutritClassificationResults(Results):
     """Qutrit classification results"""
+
+    pass
 
 
 def _acquisition(
@@ -50,11 +48,6 @@ def _acquisition(
 
     Args:
         nshots (int): number of times the pulse sequence will be repeated.
-        classifiers (list): list of classifiers, the available ones are:
-            - naive_bayes
-            - nn
-            - random_forest
-            - decision_tree
         The default value is `["naive_bayes"]`.
         savedir (str): Dumping folder of the classification results.
         If not given, the dumping folder will be the report one.
@@ -79,8 +72,6 @@ def _acquisition(
 
     data = QutritClassificationData(
         nshots=params.nshots,
-        classifiers_list=params.classifiers_list,
-        savedir=params.savedir,
     )
     states_results = []
     for sequence in states_sequences:
