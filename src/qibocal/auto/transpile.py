@@ -109,7 +109,7 @@ def execute_transpiled_circuit(
     )
 
 
-def get_natives(platform):
+def natives(platform):
     """
     Return the list of native gates defined in the `platform`.
     This function assumes the native gates to be the same for each
@@ -139,13 +139,14 @@ def create_rule(native):
     return rule
 
 
-def set_compiler(backend, natives):
+def set_compiler(backend, natives_):
     """
     Set the compiler to execute the native gates defined by the platform.
     """
     compiler = backend.compiler
+    print("EEEEEEE", backend.natives)
     rules = {}
-    for native in natives:
+    for native in natives_:
         gate = getattr(gates, native)
         if gate not in compiler.rules:
             rules[gate] = create_rule(native)
@@ -163,7 +164,7 @@ def dummy_transpiler(backend: Backend) -> Passes:
     :func:`set_compiler`).
     """
     platform = backend.platform
-    native_gates = get_natives(platform)
+    native_gates = natives(platform)
     set_compiler(backend, native_gates)
     native_gates = [getattr(gates, x) for x in native_gates]
     unroller = Unroller(NativeGates.from_gatelist(native_gates))
