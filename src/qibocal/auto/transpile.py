@@ -144,7 +144,6 @@ def set_compiler(backend, natives_):
     Set the compiler to execute the native gates defined by the platform.
     """
     compiler = backend.compiler
-    print("EEEEEEE", backend.natives)
     rules = {}
     for native in natives_:
         gate = getattr(gates, native)
