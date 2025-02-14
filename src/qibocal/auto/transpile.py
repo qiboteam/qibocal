@@ -109,8 +109,8 @@ def get_natives(platform):
     This function assumes the native gates to be the same for each
     qubit and pair.
     """
-    pairs = list(platform.pairs.values())[0]
-    qubit = list(platform.qubits.values())[0]
+    pairs = next(iter(platform.pairs.values()))
+    qubit = next(iter(platform.qubits.values()))
     two_qubit_natives = list(pairs.native_gates.raw)
     single_qubit_natives = list(qubit.native_gates.raw)
     # Solve Qibo-Qibolab mismatch
@@ -122,8 +122,7 @@ def get_natives(platform):
         "MZ": "M",
     }
     new_single_natives = [replacements.get(i, i) for i in single_qubit_natives]
-    natives = new_single_natives + two_qubit_natives
-    return natives
+    return new_single_natives + two_qubit_natives
 
 
 def set_compiler(backend, natives):
@@ -154,7 +153,7 @@ def dummy_transpiler(backend: Backend) -> Passes:
     platform = backend.platform
     native_gates = get_natives(platform)
     set_compiler(backend, native_gates)
-    native_gates = list(map(lambda x: getattr(gates, x), native_gates))
+    native_gates = [getattr(gates, x) for x in native_gates]
     unroller = Unroller(NativeGates.from_gatelist(native_gates))
     return Passes(connectivity=platform.topology, passes=[unroller])
 
