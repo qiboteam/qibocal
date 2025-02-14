@@ -85,7 +85,6 @@ def _acquisition(
     data = ResonatorAmplitudeData()
     for qubit in targets:
         error = 1
-        old_amp = platform.qubits[qubit].native_gates.MZ.amplitude
         new_amp = params.amplitude_start
         while error > params.error_threshold and new_amp <= params.amplitude_stop:
             platform.qubits[qubit].native_gates.MZ.amplitude = new_amp
@@ -105,7 +104,6 @@ def _acquisition(
                     threshold=np.array([model.threshold]),
                 ),
             )
-            platform.qubits[qubit].native_gates.MZ.amplitude = old_amp
             new_amp += params.amplitude_step
     return data
 
