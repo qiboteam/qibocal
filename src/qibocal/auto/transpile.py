@@ -115,9 +115,9 @@ def get_natives(platform):
     This function assumes the native gates to be the same for each
     qubit and pair.
     """
-    pairs = next(iter(platform.pairs.values()))
+    pair = next(iter(platform.pairs.values()))
     qubit = next(iter(platform.qubits.values()))
-    two_qubit_natives = list(pairs.native_gates.raw)
+    two_qubit_natives = list(pair.native_gates.raw)
     single_qubit_natives = list(qubit.native_gates.raw)
     # Solve Qibo-Qibolab mismatch
     single_qubit_natives.append("RZ")
