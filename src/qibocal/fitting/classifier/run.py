@@ -241,9 +241,7 @@ def train_qubit(
         )
         hpars_list.append(hyperpars)
         classifier.dump_hyper(hyperpars)
-        pdb.set_trace()
         model = classifier.create_model(hyperpars)
-
         results, _y_pred, model, _ = benchmarking(
             model, x_train, y_train, x_test, y_test
         )
