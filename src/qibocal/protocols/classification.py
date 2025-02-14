@@ -179,6 +179,11 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     grid_preds_dict = {}
     effective_temperature = {}
     for qubit in qubits:
+        qubit_data = data.data[qubit]
+        i_values = qubit_data["i"]
+        q_values = qubit_data["q"]
+        iq_values = np.stack((i_values, q_values), axis=-1)
+        states = qubit_data["state"]
         model = train_classifier(data, qubit)
         grid = evaluate_grid(qubit_data)
         grid_preds = model.predict(grid)
