@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field, fields
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -32,12 +31,6 @@ class SingleShotClassificationParameters(Parameters):
     unrolling: bool = False
     """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
     Defaults to ``False``."""
-    classifiers_list: Optional[list[str]] = field(
-        default_factory=lambda: [DEFAULT_CLASSIFIER]
-    )
-    """List of model to classify the qubit states"""
-    savedir: Optional[str] = " "
-    """Dumping folder of the classification results"""
 
 
 ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", int)])
@@ -48,16 +41,10 @@ ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", i
 class SingleShotClassificationData(Data):
     nshots: int
     """Number of shots."""
-    savedir: str
-    """Dumping folder of the classification results"""
     qubit_frequencies: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
-    classifiers_list: Optional[list[str]] = field(
-        default_factory=lambda: [DEFAULT_CLASSIFIER]
-    )
-    """List of model to classify the qubit states"""
 
 
 @dataclass
@@ -94,26 +81,6 @@ class SingleShotClassificationResults(Results):
             and field.name != "classifiers_hpars"
         )
 
-    # def save(self, path):
-    # pass
-    # classifiers = run.import_classifiers(self.names)
-    # for qubit in self.model:
-    #     for i, mod in enumerate(classifiers):
-    #         if self.savedir == " ":
-    #             save_path = pathlib.Path(path)
-    #         else:
-    #             save_path = pathlib.Path(self.savedir)
-
-    #         classifier = run.Classifier(mod, save_path / f"qubit{qubit}")
-    #         classifier.savedir.mkdir(parents=True, exist_ok=True)
-    #         dump_dir = classifier.base_dir / classifier.name / classifier.name
-    #         classifier.dump()(self.model[qubit][i], dump_dir)
-    #         classifier.dump_hyper(self.classifiers_hpars[qubit][classifier.name])
-    # asdict_class = asdict(self)
-    # asdict_class.pop("model")
-    # asdict_class.pop("classifiers_hpars")
-    # (path / f"{RESULTSFILE}.json").write_text(json.dumps(serialize(asdict_class)))
-
 
 def _acquisition(
     params: SingleShotClassificationParameters,
@@ -139,7 +106,6 @@ def _acquisition(
             parameters:
             nshots: 5000
             savedir: "single_shot"
-            classifiers_list: ["qubit_fit"]
 
     """
 
@@ -165,15 +131,6 @@ def _acquisition(
         sequences.append(sequence)
         all_ro_pulses.append(ro_pulses)
 
-    data = SingleShotClassificationData(
-        nshots=params.nshots,
-        qubit_frequencies={
-            qubit: platform.qubits[qubit].drive_frequency for qubit in targets
-        },
-        classifiers_list=params.classifiers_list,
-        savedir=params.savedir,
-    )
-
     options = ExecutionParameters(
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
@@ -187,6 +144,12 @@ def _acquisition(
             platform.execute_pulse_sequence(sequence, options) for sequence in sequences
         ]
 
+    data = SingleShotClassificationData(
+        nshots=params.nshots,
+        qubit_frequencies={
+            qubit: platform.qubits[qubit].drive_frequency for qubit in targets
+        },
+    )
     for ig, (state, ro_pulses) in enumerate(zip([0, 1], all_ro_pulses)):
         for qubit in targets:
             serial = ro_pulses[qubit].serial
@@ -207,6 +170,17 @@ def _acquisition(
     return data
 
 
+def train_classifier(data, qubit):
+    qubit_data = data.data[qubit]
+    i_values = qubit_data["i"]
+    q_values = qubit_data["q"]
+    iq_values = np.stack((i_values, q_values), axis=-1)
+    states = qubit_data["state"]
+    model = QubitFit()
+    model.fit(i_values, q_values, states)
+    return model
+
+
 def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     qubits = data.qubits
 
@@ -225,14 +199,14 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     grid_preds_dict = {}
     effective_temperature = {}
     for qubit in qubits:
-        qubit_data = data.data[qubit]
-        i_values = qubit_data["i"]
-        q_values = qubit_data["q"]
-        iq_values = np.stack((i_values, q_values), axis=-1)
-        states = qubit_data["state"]
-        model = QubitFit()
-        model.fit(iq_values, states)
-        # import pdb; pdb.set_trace()
+        # qubit_data = data.data[qubit]
+        # i_values = qubit_data["i"]
+        # q_values = qubit_data["q"]
+        # iq_values = np.stack((i_values, q_values), axis=-1)
+        # states = qubit_data["state"]
+        # model = QubitFit()
+        # model.fit(i_values, q_values, states)
+        model = train_classifier(data, qubit)
         grid = evaluate_grid(qubit_data)
         grid_preds = model.predict(grid)
         threshold[qubit] = model.threshold
@@ -266,7 +240,6 @@ def _plot(
 ):
     fitting_report = ""
     figures = plot_results(data, target, 2, fit)
-    # print("QQQQQQQ", fit)
     if fit is not None:
         fitting_report = table_html(
             table_dict(

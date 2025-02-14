@@ -14,7 +14,6 @@ from scipy.signal import find_peaks
 
 from qibocal.auto.operation import Data, Results
 from qibocal.config import log
-from qibocal.fitting.classifier import run
 from qibocal.protocols.resonator_utils import (
     cable_delay,
     circle_fit,
@@ -1044,17 +1043,12 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
         fit (Results): fit results
     """
     figures = []
-    models_name = data.classifiers_list
     qubit_data = data.data[qubit]
     grid = evaluate_grid(qubit_data)
 
     fig = make_subplots(
         rows=1,
-        cols=len(models_name),
-        horizontal_spacing=SPACING * 3 / len(models_name) * 3,
-        vertical_spacing=SPACING,
-        subplot_titles=[run.pretty_name(model) for model in models_name],
-        column_width=[COLUMNWIDTH] * len(models_name),
+        cols=1,
     )
 
     if fit is not None:
@@ -1132,9 +1126,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
 
     fig.update_layout(
         autosize=False,
-        height=COLUMNWIDTH,
-        width=COLUMNWIDTH * len(models_name),
-        title=dict(text="Results", font=dict(size=TITLE_SIZE)),
+        title=dict(text="Results"),
         legend=dict(
             orientation="h",
             yanchor="bottom",

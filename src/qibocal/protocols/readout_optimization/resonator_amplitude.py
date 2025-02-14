@@ -5,14 +5,13 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
-from qibocal.fitting.classifier.qubit_fit import QubitFit
+from qibocal.protocols.classification import _acquisition as cl_acq
+from qibocal.protocols.classification import train_classifier
 from qibocal.protocols.utils import table_dict, table_html
 
 
@@ -91,51 +90,16 @@ def _acquisition(
         new_amp = params.amplitude_start
         while error > params.error_threshold and new_amp <= params.amplitude_stop:
             platform.qubits[qubit].native_gates.MZ.amplitude = new_amp
-            sequence_0 = PulseSequence()
-            sequence_1 = PulseSequence()
-
-            qd_pulses = platform.create_RX_pulse(qubit, start=0)
-            ro_pulses = platform.create_qubit_readout_pulse(
-                qubit, start=qd_pulses.finish
-            )
-            sequence_0.add(ro_pulses)
-            sequence_1.add(qd_pulses)
-            sequence_1.add(ro_pulses)
-
-            state0_results = platform.execute_pulse_sequence(
-                sequence_0,
-                ExecutionParameters(
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.INTEGRATION,
-                ),
-            )
-
-            state1_results = platform.execute_pulse_sequence(
-                sequence_1,
-                ExecutionParameters(
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.INTEGRATION,
-                ),
-            )
-            result0 = state0_results[ro_pulses.serial]
-            result1 = state1_results[ro_pulses.serial]
-
-            i_values = np.concatenate((result0.voltage_i, result1.voltage_i))
-            q_values = np.concatenate((result0.voltage_q, result1.voltage_q))
-            iq_values = np.stack((i_values, q_values), axis=-1)
-            nshots = int(len(i_values) / 2)
-            states = [0] * nshots + [1] * nshots
-            model = QubitFit()
-            model.fit(iq_values, np.array(states))
+            params.unrolling = False
+            cl_data = cl_acq(params, platform, targets)
+            model = train_classifier(cl_data, qubit)
             error = model.probability_error
             data.register_qubit(
                 ResonatorAmplitudeType,
                 (qubit),
                 dict(
-                    i_values=i_values,
-                    q_values=q_values,
+                    i_values=cl_data.data[qubit]["i"],
+                    q_values=cl_data.data[qubit]["q"],
                     amp=np.array([new_amp]),
                     error=np.array([error]),
                     angle=np.array([model.angle]),

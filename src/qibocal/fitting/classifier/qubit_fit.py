@@ -74,11 +74,12 @@ class QubitFit:
     probability_error: float = None
     effective_qubit_temperature: float = None
 
-    def fit(self, iq_coordinates: list, states: list):
+    def fit(self, i_coordinates: list, q_coordinates: list, states: list):
         r"""Evaluate the model's parameters given the
         `iq_coordinates` and their relative ``states`
         (reference: <https://arxiv.org/abs/1004.4323>).
         """
+        iq_coordinates = np.stack((i_coordinates, q_coordinates), axis=-1)
         iq_state1 = iq_coordinates[(states == 1)]
         iq_state0 = iq_coordinates[(states == 0)]
         self.iq_mean0 = np.mean(iq_state0, axis=0)
