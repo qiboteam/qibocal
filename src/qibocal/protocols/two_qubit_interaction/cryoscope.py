@@ -17,7 +17,7 @@ from qibolab import (
     PulseSequence,
     Rectangular,
 )
-from scipy.optimize import least_squares
+from scipy.optimize import curve_fit
 from scipy.signal import lfilter
 
 from qibocal import update
@@ -185,7 +185,7 @@ def _acquisition(
         assert (
             platform.calibration.single_qubits[qubit].qubit.flux_coefficients
             is not None
-        ), "Cannot run cryoscope without flux coefficients, run cryoscope amplitude before the cryoscope"
+        ), f"Cannot run cryoscope without flux coefficients, run cryoscope amplitude on qubit {qubit} before the cryoscope"
 
         data.flux_coefficients[qubit] = platform.calibration.single_qubits[
             qubit
@@ -254,17 +254,23 @@ def _acquisition(
     return data
 
 
-def residuals(params, step_response, t):
-    tau, exp_amplitude, g = params
-    expmodel = step_response / (g * (1 + exp_amplitude * np.exp(-t / tau)))
-    return expmodel - np.ones(len(t))
+def expmodel(t, tau, exp_amplitude, g, step_response):
+    return step_response / (g * (1 + exp_amplitude * np.exp(-t / tau)))
 
 
 def exponential_params(step_response, acquisition_time):
-    init_guess = [1, 10, 1]
     t = np.arange(0, acquisition_time, 1)
-    result = least_squares(residuals, init_guess, args=(step_response, t))
-    return result.x
+    init_guess = [1, 10, 1]
+
+    popt, _ = curve_fit(
+        lambda t, tau, exp_amplitude, g: expmodel(
+            t, tau, exp_amplitude, g, step_response
+        ),
+        t,
+        np.ones(len(t)),
+        p0=init_guess,
+    )
+    return popt
 
 
 def filter_calc(params):
@@ -471,18 +477,14 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
 
         exp_amplitude = fit.exp_amplitude[target]
         tau = fit.tau[target]
-        fir = np.array(fit.feedforward_taps[target])
-        iir = np.array(fit.feedback_taps[target])
 
         fitting_report = table_html(
             table_dict(
                 target,
-                ["A", "tau", "FIR", "IIR"],
+                ["A", "tau"],
                 [
                     (exp_amplitude,),
                     (tau,),
-                    (fir,),
-                    (iir,),
                 ],
             )
         )
