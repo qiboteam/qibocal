@@ -189,8 +189,8 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         grid_preds = model.predict(grid)
         threshold[qubit] = model.threshold
         rotation_angle[qubit] = model.angle
-        mean_gnd_states[qubit] = model.iq_mean0.tolist()
-        mean_exc_states[qubit] = model.iq_mean1.tolist()
+        mean_gnd_states[qubit] = model.iq_mean0
+        mean_exc_states[qubit] = model.iq_mean1
         fidelity[qubit] = model.fidelity
         assignment_fidelity[qubit] = model.assignment_fidelity
         iq_state0 = iq_values[states == 0]
