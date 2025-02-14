@@ -101,7 +101,7 @@ def generate_sequences(
     flux_pulse = Pulse(
         duration=duration,
         amplitude=params.flux_pulse_amplitude,
-        envelope=Rectangular(),  # =Custom(i_=FULL_WAVEFORM[:duration], q_=np.zeros(duration)),
+        envelope=Rectangular(),
     )
 
     # create the sequences
