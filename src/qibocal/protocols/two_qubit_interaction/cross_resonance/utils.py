@@ -5,6 +5,8 @@ from qibolab.native import NativePulse
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
+from typing import Literal
+
 from numpy import pi
 STATES = ["I", "X"]
 """Setup states for the cross resonance gate calibration: {Identity, RX}."""
@@ -18,12 +20,14 @@ def ro_projection_pulse(platform: Platform, qubit, start=0, projection = BASIS[0
     qd_pulse: DrivePulse = platform.create_RX90_pulse(qubit, start=start)
     ro_pulse: ReadoutPulse = platform.create_qubit_readout_pulse(qubit, start=qd_pulse.finish)
 
-    if projection == BASIS[0]:   
-        qd_pulse.amplitude = 0
+    if projection == BASIS[0]: 
+        qd_pulse.relative_phase=pi/2
+        ro_pulse.relative_phase= 0  
     elif projection == BASIS[1]:
-        qd_pulse.relative_phase=0
+        qd_pulse.relative_phase= 0 # 355/113 ~ pi (err:1e-7)
+        ro_pulse.relative_phase= pi # 355/113 ~ pi (err:1e-7)
     elif projection == BASIS[2]:
-        qd_pulse.relative_phase= pi # 355/113 ~ pi (err:1e-7)
+        qd_pulse.amplitude = 0 
     else:
         raise ValueError(f"Invalid measurement <{projection}>")
     

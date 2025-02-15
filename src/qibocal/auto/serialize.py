@@ -22,6 +22,11 @@ def serialize(raw: dict):
 def load(key):
     """Evaluate key converting string of lists to tuples."""
     raw_load = json.loads(key)
-    if isinstance(raw_load, list):
-        return tuple(raw_load)
-    return raw_load
+
+    def to_tuple(raw):
+        if isinstance(raw, list):
+            return tuple([to_tuple(item) for item in raw])
+        else:
+            return raw
+        
+    return to_tuple(raw_load)

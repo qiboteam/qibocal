@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -12,37 +12,51 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibolab.native import NativePulse
 from qibolab.qubits import QubitId, QubitPairId
 from qibocal.auto.operation import Data, Parameters, Results, Routine
-from qibolab.pulses import Pulse, PulseSequence, PulseType
-from qibolab.pulses import Gaussian, Drag, Rectangular, GaussianSquare
+from qibolab.pulses import Pulse, PulseSequence, PulseShape, PulseType, Gaussian, Drag, Rectangular, GaussianSquare, DrivePulse
 
 from .utils import STATES, BASIS, ro_projection_pulse
-from .length import CrossResonanceType, CrossResonanceData, CrossResonanceParameters
+from .length import CrossResonanceType, CrossResonanceParameters
 from qibo.backends import matrices
+from typing import Literal
 
-projections: list[str] = BASIS
+
+type_basis = Literal[BASIS]
+"""Measurement basis type for the Cross Resonance CNOT calibration."""
+
+type_setup = Literal[STATES]
+"""Measurement basis type for the Cross Resonance CNOT calibration."""
+
+projections: list[type_basis] = BASIS
 """Projections to measure for the Cross Resonance CNOT calibration."""
+
+
+
+@dataclass
+class CrossResonanceCNOTData(Data):
+    """Data structure for Cross Resonance CNOT calibration."""
+
+    data: dict[(QubitPairId, type_setup, type_basis), 
+               npt.NDArray[CrossResonanceType]] = field(default_factory=dict)
+    """Raw data acquired."""
+
 
 @dataclass
 class CrossResonanceCNOTParameters(CrossResonanceParameters):
     """Cross Resonance Gate Calibration runcard inputs."""
-    gate_duration: int = 400
-    """ CNOT target pulse duration ."""
+    
+    pulse_shape: str = None
+    """Pulse shape for the CR pulse. Options: 'gaussian', 'drag', 'rectangular'."""
 
-    echo_amplitude: float = 0.0
-    """Echo pulse amplitude."""
+    target_amplitude: float = 0.0
+    """Traget pulse amplitude for correction."""
 
-    verbose: bool = False
-    """Flag to print additional information."""
-
-    #set global verbose
-    _verbose = verbose
 
 @dataclass
 class  CrossResonanceCNOTResults(Results):
     """Cross Resonance Gate Calibration outputs."""
 
-    exp_t: dict[QubitPairId, dict[QubitId, str, str, dict[list[float],list[float],list[float]] ]] = field(default_factory=dict)
-     #          pair(Target, Control), qubit, control state, basis, expectation value
+    exp_t: dict[QubitPairId, dict[str, str, dict[list[float],list[float],list[float]] ]] = field(default_factory=dict)
+     #          pair(Target, Control), control state, basis, expectation value
     """Expectation values for each basis in the Pauli group as a function of the pulse length."""
 
     measured_density_matrix: dict[QubitId, int, list] = field(default_factory=dict)
@@ -51,28 +65,26 @@ class  CrossResonanceCNOTResults(Results):
 
 def _acquisition(
     params: CrossResonanceCNOTParameters, platform: Platform, targets: list[QubitPairId]
-) -> CrossResonanceData:
+) -> CrossResonanceCNOTData:
     """Data acquisition for Cross Resonance Gate Calibration.
     The gate consists on a pi/2 pulse on the target qubit followed by a CR pulse on the control qubit.
     The control qubit is prepared in either the |0> or |1> state and the target qubit is prepared in the |+> state.
-        Target:     --[X/2]---[CR]--[RX(x)]-[RO]--
-                               |
-        Control:    -----------.------------[RO]--
+        Target:     --[X/2]---[Pulse(omega_t, amp_t)]---[RO]--
+                               
+        Control:    ----------[Pulse(omega_t, amp_c)]------------[RO]--
     """
 
     print("Starting Cross Resonance CNOT calibration")
-    data = CrossResonanceData()
+    data = CrossResonanceCNOTData()
     
     ro_pulses = {}
 
     for pair in targets:
         for ctr_setup in STATES:
-            for basis in projections:
+            for basis in BASIS:
                 target, control = pair
                 tgt_native_rx:NativePulse = platform.qubits[target].native_gates.RX90.pulse(start=0)
                 ctr_native_rx:NativePulse = platform.qubits[control].native_gates.RX.pulse(start=0)
-
-                print(f"Target: {target}, Control: {control}, Setup: {ctr_setup}, Projection: {basis}")
 
                 sequence = PulseSequence()
                 next_start = 0
@@ -84,37 +96,41 @@ def _acquisition(
                     sequence.add(ctr_native_rx)
                     next_start = max(ctr_native_rx.finish, next_start)
                 
-                cr_pulse: Pulse = Pulse(start=next_start,
+                if params.pulse_shape is None:
+                    shape = Rectangular()
+
+                cr_pulse: DrivePulse = DrivePulse(start=next_start,
                                 duration=params.pulse_duration_start,
                                 amplitude=ctr_native_rx.amplitude,
                                 frequency=tgt_native_rx.frequency,   # target frequency at control qubit
                                 relative_phase=0,
-                                shape=params.pulse_shape,
-                                qubit=control,
+                                shape=shape,
                                 channel= ctr_native_rx.channel, 
-                                type=PulseType.DRIVE
+                                qubit=control,
                                 )
-
+                
                 if params.pulse_amplitude is not None:
                     cr_pulse.amplitude = params.pulse_amplitude
                 
+                cr_pulse_tgt = tgt_native_rx.copy()
+                cr_pulse_tgt.amplitude = params.target_amplitude
+                cr_pulse_tgt.start = next_start
+
                 sequence.add(cr_pulse)
+                sequence.add(cr_pulse_tgt)
 
-                tgt_rx_:NativePulse = platform.qubits[target].native_gates.RX90.pulse(start=0)
-
-                projection_pulse = {}
-                for qubit in pair:
-                    projection_pulse[qubit], ro_pulses[qubit] = ro_projection_pulse(
-                        platform, qubit, start=cr_pulse.finish, projection=basis  
-                    )
-                    sequence.add(projection_pulse[qubit])
-                    sequence.add(ro_pulses[qubit]) 
+                # Add readout pulses    
+                projection_pulse, ro_pulses = ro_projection_pulse(
+                    platform, target, start=cr_pulse.finish, projection=basis  
+                )
+                sequence.add(projection_pulse)
+                sequence.add(ro_pulses) 
 
                 sweeper_duration = Sweeper(
                     parameter = Parameter.duration,
                     values = params.duration_range,
-                    pulses=[cr_pulse],
-                    type=SweeperType.ABSOLUTE,
+                    pulses = [cr_pulse, cr_pulse_tgt],
+                    type = SweeperType.ABSOLUTE,
                 )
 
                 results = platform.sweep(
@@ -129,46 +145,49 @@ def _acquisition(
                 )
 
                 # store the results
-                for qubit in pair:
-                    probability = results[qubit].probability(state=1)
-                    data.register_qubit(
-                        CrossResonanceType,
-                        (qubit, target, control, ctr_setup, basis),
-                        dict(
+                probability = results[target].probability(state=1)
+                
+                data.register_qubit(
+                    CrossResonanceType,
+                    data_keys=(
+                        QubitPairId(target, control), 
+                        ctr_setup, 
+                        basis
+                    ),
+                    data_dict=dict(
                             prob=probability,
                             length=params.duration_range,
                         ),
-                    )
-                    print((qubit, target, control, ctr_setup, basis))
+                )
+
 
     return data
 
 
-def _fit(data: CrossResonanceData) -> CrossResonanceCNOTResults:
+def _fit(data: CrossResonanceCNOTData) -> CrossResonanceCNOTResults:
     """Post-processing function for Cross Resonance Gate Calibration."""
     measured_density_matrix = {}
     #raise NotImplementedError("Fitting function not implemented yet.")
-    if not data.targets:
-        data.targets = list(set([key[1:3] for key in data.data.keys()]))
 
-    print(f"Starting Cross Resonance CNOT calibration fitting on targets {data.targets}")
+    list_pairs = list(set([key[0] for key in data.data.keys()]))
+
+    print(f"Starting Cross Resonance CNOT calibration fitting on targets {list_pairs}")
     exp_t = {}
     # Calculate expectation values as a function of the pulse length
-    for i, pair in enumerate(data.targets):
+    for i, (target, control) in enumerate(list_pairs):
         for ctr_setup in STATES:  
-            for qubit in pair:
                 _exp_t = {} # expectation values for each basis in the Pauli group as a function of the pulse length
                 x = {} # pulse length
                 for basis in BASIS:
-                    if (qubit, pair[0], pair[1], ctr_setup, basis) not in data.data:
-                        print(f"All basis need to be measured for fitting {qubit}.")
+                    if ((target,control), ctr_setup, basis) not in data.data:
+                        print(f"All basis need to be measured for fitting {target}.")
                         break
-                    x = data.data[qubit, pair[0], pair[1], ctr_setup, basis].length
+                    x = data.data[(target,control), ctr_setup, basis].length
                     _exp_t[basis] = {'duration': x.tolist(),
-                                    'exp_real': np.real(1 - 2 * data.data[qubit, pair[0], pair[1], ctr_setup, basis].prob).tolist(),
-                                    'exp_imag': np.imag(1 - 2 * data.data[qubit, pair[0], pair[1], ctr_setup, basis].prob).tolist()}
+                                    'exp_real': np.real(1 - 2 * data.data[(target,control), ctr_setup, basis].prob).tolist(),
+                                    'exp_imag': np.imag(1 - 2 * data.data[(target,control), ctr_setup, basis].prob).tolist()}
                                     
-                exp_t[qubit, pair[0], pair[1], ctr_setup] = _exp_t
+                exp_t[(target, control), ctr_setup] = _exp_t
     
     # # Calculate the expectation values for a rabi pulse
     # results.exp_t = exp_t
@@ -224,7 +243,7 @@ def _fit(data: CrossResonanceData) -> CrossResonanceCNOTResults:
     return results
 
 
-def _plot(data: CrossResonanceData, target: QubitPairId, fit: CrossResonanceCNOTResults):
+def _plot(data: CrossResonanceCNOTData, target: QubitPairId, fit: CrossResonanceCNOTResults):
     """Plotting function for Cross Resonance Gate Calibration."""
     print(fit)
     figs = []
