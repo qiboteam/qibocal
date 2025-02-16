@@ -254,13 +254,16 @@ def _acquisition(
     return data
 
 
-def expmodel(t, tau, exp_amplitude, g):
-    return g * (1 + exp_amplitude * np.exp(-t / tau))
-
-
 def exponential_params(step_response, acquisition_time):
     t = np.arange(0, acquisition_time, 1)
-    popt, _ = curve_fit(expmodel, t, step_response)
+    init_guess = [1, 10, 1]
+    target = np.ones(len(t))
+
+    def expmodel(t, tau, exp_amplitude, g):
+        return step_response / (g * (1 + exp_amplitude * np.exp(-t / tau)))
+
+    popt, _ = curve_fit(expmodel, t, target, p0=init_guess, method="trf")
+
     return popt
 
 
