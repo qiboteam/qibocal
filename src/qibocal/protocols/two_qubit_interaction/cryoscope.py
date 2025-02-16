@@ -17,7 +17,7 @@ from qibolab import (
     PulseSequence,
     Rectangular,
 )
-from scipy.optimize import least_squares
+from scipy.optimize import curve_fit
 from scipy.signal import lfilter
 
 from qibocal import update
@@ -254,17 +254,17 @@ def _acquisition(
     return data
 
 
-def residuals(params, step_response, t):
-    tau, exp_amplitude, g = params
-    expmodel = step_response / (g * (1 + exp_amplitude * np.exp(-t / tau)))
-    return expmodel - np.ones(len(t))
-
-
 def exponential_params(step_response, acquisition_time):
-    init_guess = [1, 10, 1]
     t = np.arange(0, acquisition_time, 1)
-    result = least_squares(residuals, init_guess, args=(step_response, t))
-    return result.x
+    init_guess = [1, 10, 1]
+    target = np.ones(len(t))
+
+    def expmodel(t, tau, exp_amplitude, g):
+        return step_response / (g * (1 + exp_amplitude * np.exp(-t / tau)))
+
+    popt, _ = curve_fit(expmodel, t, target, p0=init_guess)
+
+    return popt
 
 
 def filter_calc(params):
