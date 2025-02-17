@@ -1,11 +1,17 @@
 from typing import Optional
 
-from qibo import Circuit
+from qibo import Circuit, gates
 from qibo.backends import Backend
 from qibo.transpiler.pipeline import Passes
 from qibo.transpiler.unroller import NativeGates, Unroller
+from qibolab._core.compilers import Compiler
 
 from qibocal.auto.operation import QubitId
+
+REPLACEMENTS = {
+    "RX": "GPI2",
+    "MZ": "M",
+}
 
 
 def transpile_circuits(
@@ -98,19 +104,67 @@ def execute_transpiled_circuit(
         backend,
         transpiler,
     )[0]
-
     return transpiled_circ, backend.execute_circuit(
         transpiled_circ, initial_state=initial_state, nshots=nshots
     )
 
 
+def natives(platform):
+    """
+    Return the list of native gates defined in the `platform`.
+    This function assumes the native gates to be the same for each
+    qubit and pair.
+    """
+    pair = next(iter(platform.pairs))
+    qubit = next(iter(platform.qubits))
+    two_qubit_natives = list(platform.natives.two_qubit[pair].model_fields)
+    single_qubit_natives = list(platform.natives.single_qubit[qubit].model_fields)
+    # Solve Qibo-Qibolab mismatch
+    single_qubit_natives.append("RZ")
+    single_qubit_natives.append("Z")
+    single_qubit_natives.remove("RX12")
+    single_qubit_natives.remove("RX90")
+    single_qubit_natives.remove("CP")
+    new_single_natives = [REPLACEMENTS.get(i, i) for i in single_qubit_natives]
+    return new_single_natives + two_qubit_natives
+
+
+def create_rule(native):
+    def rule(gate, native):
+        return native.ensure(gate.__class__.__name__).create_sequence()
+
+    return rule
+
+
+def set_compiler(backend, natives_):
+    """
+    Set the compiler to execute the native gates defined by the platform.
+    """
+    compiler = backend.compiler
+    rules = {}
+    for native in natives_:
+        gate = getattr(gates, native)
+        if gate not in compiler.rules:
+            rules[gate] = create_rule(native)
+        else:
+            rules[gate] = compiler.rules[gate]
+    rules[gates.I] = compiler.rules[gates.I]
+    backend.compiler = Compiler(rules=rules)
+
+
 def dummy_transpiler(backend: Backend) -> Passes:
     """
     If the backend is `qibolab`, a transpiler with just an unroller is returned,
-    otherwise None.
+    otherwise `None`. This function overwrites the compiler defined in the
+    backend, taking into account the native gates defined in the`platform` (see
+    :func:`set_compiler`).
     """
-    unroller = Unroller(NativeGates.default())
-    return Passes(connectivity=backend.platform.pairs, passes=[unroller])
+    platform = backend.platform
+    native_gates = natives(platform)
+    set_compiler(backend, native_gates)
+    native_gates = [getattr(gates, x) for x in native_gates]
+    unroller = Unroller(NativeGates.from_gatelist(native_gates))
+    return Passes(connectivity=platform.pairs, passes=[unroller])
 
 
 def pad_circuit(nqubits, circuit: Circuit, qubit_map: list[int]) -> Circuit:
