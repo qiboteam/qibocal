@@ -122,18 +122,16 @@ def natives(platform) -> dict[str, NativeContainer]:
     two_qubit_natives_container = platform.natives.two_qubit[pair]
     single_qubit_natives_container = platform.natives.single_qubit[qubit]
     single_qubit_natives = list(single_qubit_natives_container.model_fields)
+    two_qubit_natives = list(two_qubit_natives_container.model_fields)
     # Solve Qibo-Qibolab mismatch
     single_qubit_natives.append("RZ")
     single_qubit_natives.append("Z")
     single_qubit_natives.remove("RX12")
     single_qubit_natives.remove("RX90")
     single_qubit_natives.remove("CP")
-    single_qubit_natives = list(
-        map(lambda x: REPLACEMENTS.get(x, x), single_qubit_natives)
-    )
+    single_qubit_natives = [REPLACEMENTS.get(x, x) for x in single_qubit_natives]
     return {i: platform.natives.single_qubit[qubit] for i in single_qubit_natives} | {
-        i: platform.natives.two_qubit[pair]
-        for i in list(two_qubit_natives_container.model_fields)
+        i: platform.natives.two_qubit[pair] for i in two_qubit_natives
     }
 
 
