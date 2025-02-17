@@ -9,72 +9,49 @@ Qibocal also allows executing protocols without the standard :ref:`interface <in
 In the following tutorial we show how to run a single protocol using Qibocal as a library.
 For this particular example we will focus on the `t1_signal protocol
 <https://github.com/qiboteam/qibocal/blob/main/src/qibocal/protocols/coherence/t1_signal.py>`_ (see also :ref:`t1`).
+The fastest way consists in using the `Executor` class in the following way
 
 .. code-block:: python
 
-    import pathlib
-    from qibolab import create_platform
-
     from qibocal.auto.execute import Executor
     from qibocal.auto.mode import ExecutionMode
-    from qibocal.protocols import t1_signal
 
-    # allocate platform
-    platform = create_platform("....")
+    with Executor.open(
+        "myexec", # arbitrary name for executor
+        path="test_t1_signal", # path where the data will be stored
+        platform="dummy", # platform to be used
+        targets=[0], # qubits on which the experiment will be executed
+    ) as e:
 
-    #creare executor
-    executor = Executor.create(
-      platform=platform,
-      output=pathlib.Path("experiment_data")
-    )
+        # your experiments go here
 
 The executor is responsible of running the routines on a platform and eventually store the history of multiple experiments.
-``t1_signal``, that we import, is a :class:`qibocal.auto.operation.Routine` object which contains all the necessary
-methods to execute the experiment.
+The context manager `with` provides an easy way to connect and disconnect from the platform.
 
 In order to run an experiment the user needs to specify its parameters.
 The user can check which parameters need to be provided either by checking the
 documentation of the specific protocol or by simply inspecting ``protocol.parameters_type``.
-For ``t1_signal`` we define the parameters in the following way:
+To run a `t1_signal` experiment is necessary to use invoke the protocol inside the `with` statement
 
 .. code-block:: python
 
-    t1_params = {
-        "id": "t1_experiment",
-        "targets": [0],  # we are defining here which qubits to analyze
-        "operation": "t1_signal",
-        "parameters": {
-            "delay_before_readout_start": 0,
-            "delay_before_readout_end": 20_000,
-            "delay_before_readout_step": 50,
-        },
-    }
+    output = e.t1_signal(delay_before_readout_start=0,
+                         delay_before_readout_end=20_000,
+                         delay_before_readout_step=50)
 
 
-After defining the parameters, the user can perform the acquisition using
-``executor.run_protocol`` which accepts the following parameters:
-
-* ``protocol`` (:class:`qibocal.auto.operation.Routine`): protocol
-* ``parameters`` (Dict): parameters dictionary
-* ``mode`` (:class:`qibocal.auto.mode.ExecutionMode`): can be ExecutionMode.ACQUIRE or ExecutionMode.FIT
-
-.. code-block:: python
-
-    executor.run_protocol(t1_signal, t1_params, ExecutionMode.ACQUIRE)
-    executor.run_protocol(t1_signal, t1_params, ExecutionMode.FIT)
-
-In this way we have first executed the acquisition part of the experiment and then performed the fit on the acquired data.
+By default acquisition and fitting are performed.
 
 The user can now use the raw data acquired by the quantum processor to perform
 an arbitrary post-processing analysis. This is one of the main advantages of this API
 compared to the cli execution.
 
-The history, that contains both the raw data (added with :attr:`qibocal.auto.mode.ExecutionMode.ACQUIRE`) and the fit data (added with :attr:`qibocal.auto.mode.ExecutionMode.FIT`) can be accessed:
+Both the raw data and the fit data can be accessed from the history attribute of the `Executor`.
 
 .. code-block:: python
 
-    history = executor.history
-    t1_res = history["t1_experiment"]  # id of the protocol
+    history = e.history
+    t1_res = history["t1_signal"][0]
 
     data = t1_res.data  # raw data
     results = t1_res.results  # fit data

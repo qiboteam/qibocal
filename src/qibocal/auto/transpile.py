@@ -1,10 +1,17 @@
 from typing import Optional
 
-from qibo import Circuit
-from qibo.backends.abstract import Backend
+from qibo import Circuit, gates
+from qibo.backends import Backend
 from qibo.transpiler.pipeline import Passes
 from qibo.transpiler.unroller import NativeGates, Unroller
+from qibolab.compilers.compiler import Compiler
+from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
+
+REPLACEMENTS = {
+    "RX": "GPI2",
+    "MZ": "M",
+}
 
 
 def transpile_circuits(
@@ -28,20 +35,18 @@ def transpile_circuits(
         are all string or all integers.
     """
     transpiled_circuits = []
-
-    qubits = list(backend.platform.qubits)
+    platform = backend.platform
+    qubits = list(platform.qubits)
     if isinstance(qubit_maps[0][0], str):
         for i, qubit_map in enumerate(qubit_maps):
             qubit_map = map(lambda x: qubits.index(x), qubit_map)
             qubit_maps[i] = list(qubit_map)
-    if backend.name == "qibolab":
-        platform_nqubits = backend.platform.nqubits
-        for circuit, qubit_map in zip(circuits, qubit_maps):
-            new_circuit = pad_circuit(platform_nqubits, circuit, qubit_map)
-            transpiled_circ, _ = transpiler(new_circuit)
-            transpiled_circuits.append(transpiled_circ)
-    else:
-        transpiled_circuits = circuits
+    platform_nqubits = platform.nqubits
+    for circuit, qubit_map in zip(circuits, qubit_maps):
+        new_circuit = pad_circuit(platform_nqubits, circuit, qubit_map)
+        transpiled_circ, _ = transpiler(new_circuit)
+        transpiled_circuits.append(transpiled_circ)
+
     return transpiled_circuits
 
 
@@ -104,15 +109,65 @@ def execute_transpiled_circuit(
     )
 
 
-def dummy_transpiler(backend) -> Optional[Passes]:
+def natives(platform):
+    """
+    Return the list of native gates defined in the `platform`.
+    This function assumes the native gates to be the same for each
+    qubit and pair.
+    """
+    pair = next(iter(platform.pairs.values()))
+    qubit = next(iter(platform.qubits.values()))
+    two_qubit_natives = list(pair.native_gates.raw)
+    single_qubit_natives = list(qubit.native_gates.raw)
+    # Solve Qibo-Qibolab mismatch
+    single_qubit_natives.append("RZ")
+    single_qubit_natives.append("Z")
+    single_qubit_natives.remove("RX12")
+    new_single_natives = [REPLACEMENTS.get(i, i) for i in single_qubit_natives]
+    return new_single_natives + two_qubit_natives
+
+
+def create_rule(native):
+    def rule(qubits_ids, platform, parameters=None):
+        if len(qubits_ids[1]) == 1:
+            native_gate = platform.qubits[tuple(qubits_ids[1])].native_gates
+        else:
+            native_gate = platform.pairs[tuple(qubits_ids[1])].native_gates
+        pulses = getattr(native_gate, native).pulses
+        return PulseSequence(pulses), {}
+
+    return rule
+
+
+def set_compiler(backend, natives_):
+    """
+    Set the compiler to execute the native gates defined by the platform.
+    """
+    compiler = backend.compiler
+    rules = {}
+    for native in natives_:
+        gate = getattr(gates, native)
+        if gate not in compiler.rules:
+            rules[gate] = create_rule(native)
+        else:
+            rules[gate] = compiler.rules[gate]
+    rules[gates.I] = compiler.rules[gates.I]
+    backend.compiler = Compiler(rules=rules)
+
+
+def dummy_transpiler(backend: Backend) -> Passes:
     """
     If the backend is `qibolab`, a transpiler with just an unroller is returned,
-    otherwise None.
+    otherwise `None`. This function overwrites the compiler defined in the
+    backend, taking into account the native gates defined in the`platform` (see
+    :func:`set_compiler`).
     """
-    if backend.name == "qibolab":
-        unroller = Unroller(NativeGates.default())
-        return Passes(connectivity=backend.platform.topology, passes=[unroller])
-    return None
+    platform = backend.platform
+    native_gates = natives(platform)
+    set_compiler(backend, native_gates)
+    native_gates = [getattr(gates, x) for x in native_gates]
+    unroller = Unroller(NativeGates.from_gatelist(native_gates))
+    return Passes(connectivity=platform.topology, passes=[unroller])
 
 
 def pad_circuit(nqubits, circuit: Circuit, qubit_map: list[int]) -> Circuit:

@@ -177,7 +177,6 @@ def fake_platform(tmp_path, monkeypatch):
 
 
 def test_default_executor(tmp_path: Path, fake_platform: str, monkeypatch):
-    monkeypatch.setenv("QIBO_PLATFORM", fake_platform)
     reload(qibocal)
     assert qibocal.DEFAULT_EXECUTOR.platform.name == "dummy"
 
