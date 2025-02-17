@@ -141,7 +141,7 @@ def create_rule(name, natives):
     """Create rule for gate name given container natives."""
 
     def rule(gate: gates.Gate, natives: NativeContainer) -> PulseSequence:
-        return natives[name].create_sequence()
+        return natives.ensure(name).create_sequence()
 
     return rule
 
