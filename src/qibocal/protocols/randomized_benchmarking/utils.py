@@ -582,6 +582,8 @@ def layer_circuit(
     elif isinstance(target, Tuple):  # Tuple for qubit pair
         nqubits = 2
         rb_gen_layer = rb_gen.layer_gen_two_qubit
+    else:
+        raise NotImplementedError("RB with more than 2 qubits is not implemented")
     # Build each layer, there will be depth many in the final circuit.
     for _ in range(depth):
         # Generate a layer.
@@ -634,7 +636,7 @@ def add_inverse_layer(
 
             cliffords = [clifford * global_phase for global_phase in GLOBAL_PHASES]
             cliffords_inv = [np.linalg.inv(clifford).round(3) for clifford in cliffords]
-
+            index_inv = None
             for clifford_inv in cliffords_inv:
                 clifford_inv += 0.0 + 0.0j
                 clifford_inv_str = np.array2string(clifford_inv, separator=",")
