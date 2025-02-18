@@ -102,8 +102,14 @@ def _acquisition(
     simulator = NumpyBackend()
     transpiler = dummy_transpiler(backend)
 
+    # Simulating the quantum state
     simulated_state = simulator.execute_circuit(deepcopy(params.circuit))
     data = StateTomographyData(simulated=simulated_state)
+
+    # Print simulated quantum state
+    print("Simulated Quantum State:")
+    print(simulated_state)
+
     for basis1, basis2 in TWO_QUBIT_BASIS:
         basis_circuit = deepcopy(params.circuit)
         # FIXME: https://github.com/qiboteam/qibo/issues/1318
@@ -222,6 +228,23 @@ def _fit(data: StateTomographyData) -> StateTomographyResults:
     for pair, probs in probabilities.items():
         measured_rho = inverse_measurement.dot(probs).reshape((4, 4))
         measured_rho_proj = project_psd(measured_rho)
+
+    # Print BASIS
+    print(f"\n### Qubit Pair {pair} ###")
+    for basis1, basis2 in TWO_QUBIT_BASIS:
+        print(f"Measurement Basis: {basis1}{basis2}")
+
+    # print(f"Raw Density Matrix:\n{measured_rho}")
+    # print(f"Trace of Raw Density Matrix: {np.trace(measured_rho)}")
+
+    # print(f"Projected Density Matrix:\n{measured_rho_proj}")
+    # print(f"Trace of Projected Density Matrix: {np.trace(measured_rho_proj)}")
+
+    # Normalize
+    if not np.isclose(np.trace(measured_rho_proj), 1.0):
+        measured_rho_proj /= np.trace(measured_rho_proj)
+        # print(f"Normalized Projected Density Matrix:\n{measured_rho_proj}")
+        #    phase_correction = np.angle(np.trace(measured_rho_proj @ np.linalg.inv(ideal_rho)))
 
         results.measured_raw_density_matrix_real[pair] = measured_rho.real.tolist()
         results.measured_raw_density_matrix_imag[pair] = measured_rho.imag.tolist()
