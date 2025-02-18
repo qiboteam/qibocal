@@ -35,9 +35,20 @@ projections: list[type_basis] = BASIS
 class CrossResonanceCNOTData(Data):
     """Data structure for Cross Resonance CNOT calibration."""
 
-    data: dict[(QubitPairId, type_setup, type_basis), 
+    data: dict[(QubitPairId, str, str), 
                npt.NDArray[CrossResonanceType]] = field(default_factory=dict)
     """Raw data acquired."""
+
+    native: str = "CNOT"
+    """Native gate for the calibration."""
+
+
+    def __getitem__(self, pair):
+        return {
+            index: value
+            for index, value in self.data.items()
+            if set(pair).issubset(index)
+        }
 
 
 @dataclass
@@ -59,8 +70,8 @@ class  CrossResonanceCNOTResults(Results):
      #          pair(Target, Control), control state, basis, expectation value
     """Expectation values for each basis in the Pauli group as a function of the pulse length."""
 
-    measured_density_matrix: dict[QubitId, int, list] = field(default_factory=dict)
-    """Complex measured density matrix."""
+    #measured_density_matrix: dict[QubitId, int, list] = field(default_factory=dict)
+    #"""Complex measured density matrix."""
 
 
 def _acquisition(
@@ -150,7 +161,7 @@ def _acquisition(
                 data.register_qubit(
                     CrossResonanceType,
                     data_keys=(
-                        QubitPairId(target, control), 
+                        (target, control), 
                         ctr_setup, 
                         basis
                     ),
@@ -167,27 +178,23 @@ def _acquisition(
 def _fit(data: CrossResonanceCNOTData) -> CrossResonanceCNOTResults:
     """Post-processing function for Cross Resonance Gate Calibration."""
     measured_density_matrix = {}
-    #raise NotImplementedError("Fitting function not implemented yet.")
 
     list_pairs = list(set([key[0] for key in data.data.keys()]))
 
-    print(f"Starting Cross Resonance CNOT calibration fitting on targets {list_pairs}")
     exp_t = {}
     # Calculate expectation values as a function of the pulse length
     for i, (target, control) in enumerate(list_pairs):
+        _exp_t = {}
         for ctr_setup in STATES:  
-                _exp_t = {} # expectation values for each basis in the Pauli group as a function of the pulse length
-                x = {} # pulse length
-                for basis in BASIS:
-                    if ((target,control), ctr_setup, basis) not in data.data:
-                        print(f"All basis need to be measured for fitting {target}.")
-                        break
-                    x = data.data[(target,control), ctr_setup, basis].length
-                    _exp_t[basis] = {'duration': x.tolist(),
-                                    'exp_real': np.real(1 - 2 * data.data[(target,control), ctr_setup, basis].prob).tolist(),
-                                    'exp_imag': np.imag(1 - 2 * data.data[(target,control), ctr_setup, basis].prob).tolist()}
-                                    
-                exp_t[(target, control), ctr_setup] = _exp_t
+            for basis in BASIS:
+                if ((target,control), ctr_setup, basis) not in data.data:
+                    print(f"All basis need to be measured for fitting {target}.")
+                    break
+                _exp_t[ctr_setup, basis] = {
+                                'duration': (data.data[(target,control), ctr_setup, basis].length).tolist(),
+                                'exp_real': np.real(1 - 2 * data.data[(target,control), ctr_setup, basis].prob).tolist(),
+                                'exp_imag': np.imag(1 - 2 * data.data[(target,control), ctr_setup, basis].prob).tolist()}
+        exp_t[(target, control)] = _exp_t              
     
     # # Calculate the expectation values for a rabi pulse
     # results.exp_t = exp_t
@@ -245,33 +252,39 @@ def _fit(data: CrossResonanceCNOTData) -> CrossResonanceCNOTResults:
 
 def _plot(data: CrossResonanceCNOTData, target: QubitPairId, fit: CrossResonanceCNOTResults):
     """Plotting function for Cross Resonance Gate Calibration."""
-    print(fit)
+
+    pair = tuple(target)
     figs = []
-    for ro_qubit in target:
+    if True:
         fig = make_subplots(rows=len(BASIS), cols=1)
         show_legend = True
         # Make a subplot for each projection
         for projection in BASIS:
-            # Check if it exists
-            if (ro_qubit, target[0], target[1], STATES[0], projection) not in data.data:
-                continue
-            
-            # Add a subplot
             for ctr_setup in STATES:
                 if fit is not None:
-                    _data = fit.exp_t[ro_qubit, target[0], target[1], ctr_setup][projection]
+                    _data = fit.exp_t[pair][ctr_setup, projection]
+                    fig.add_trace(
+                        go.Scatter(
+                            x=_data['duration'], y=_data['exp_real'], 
+                            name= f"Control in |{ctr_setup}>",
+                            mode="lines+markers",
+                            line = dict(color="blue" if ctr_setup == STATES[0] else "red"),
+                            showlegend=show_legend,
+                        ),
+                        row = BASIS.index(projection)+1, col =1,
+                    )
                 else:
-                    _data = data.data[ro_qubit, target[0], target[1], ctr_setup, projection]
-                fig.add_trace(
-                    go.Scatter(
-                        x=_data.length, y=_data.prob, 
-                        name= f"Control in |{ctr_setup}>",
-                        mode="lines+markers",
-                        line = dict(color="blue" if ctr_setup == STATES[0] else "red"),
-                        showlegend=show_legend,
-                    ),
-                    row = BASIS.index(projection)+1, col =1,
-                )
+                    _data = data.data[pair, ctr_setup, projection]
+                    fig.add_trace(
+                        go.Scatter(
+                            x=_data.length, y=_data.prob, 
+                            name= f"Control in |{ctr_setup}>",
+                            mode="lines+markers",
+                            line = dict(color="blue" if ctr_setup == STATES[0] else "red"),
+                            showlegend=show_legend,
+                        ),
+                        row = BASIS.index(projection)+1, col =1,
+                    )
             show_legend = False
 
         for projection in BASIS:
@@ -285,7 +298,7 @@ def _plot(data: CrossResonanceCNOTData, target: QubitPairId, fit: CrossResonance
                              row=BASIS.index(projection)+1, col=1)
 
         fig.update_layout(
-            title=f"Qubit {ro_qubit}",
+            title=f"Qubit {target}",
             xaxis_title="CR Pulse Length (ns)",
             height=800, 
         )
