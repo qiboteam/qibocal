@@ -4,14 +4,11 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
     HZ_TO_GHZ,
     lorentzian,
@@ -19,6 +16,8 @@ from qibocal.protocols.utils import (
     table_dict,
     table_html,
 )
+
+from ..result import magnitude, phase, unpack
 
 
 @dataclass
@@ -74,7 +73,9 @@ class DispersiveShiftData(Data):
 
 
 def _acquisition(
-    params: DispersiveShiftParameters, platform: Platform, targets: list[QubitId]
+    params: DispersiveShiftParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
 ) -> DispersiveShiftData:
     r"""
     Data acquisition for dispersive shift experiment.
@@ -83,75 +84,57 @@ def _acquisition(
 
     Args:
         params (DispersiveShiftParameters): experiment's parameters
-        platform (Platform): Qibolab platform object
+        platform (CalibrationPlatform): Qibolab platform object
         targets (list): list of target qubits to perform the action
-
     """
 
-    # create 2 sequences of pulses for the experiment:
-    # sequence_0: I  - MZ
-    # sequence_1: RX - MZ
-
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence_0 = PulseSequence()
     sequence_1 = PulseSequence()
-    ro_pulses = {}
-    qd_pulses = {}
     for qubit in targets:
-        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].duration
-        )
-        sequence_0.add(ro_pulses[qubit])
-        sequence_1.add(qd_pulses[qubit])
-        sequence_1.add(ro_pulses[qubit])
+        natives = platform.natives.single_qubit[qubit]
+        sequence_0 += natives.MZ()
+        sequence_1 += natives.RX() | natives.MZ()
 
-    # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
 
-    # create a DataUnits objects to store the results
     data = DispersiveShiftData(resonator_type=platform.resonator_type)
-    sweeper = Sweeper(
-        Parameter.frequency,
-        delta_frequency_range,
-        pulses=[ro_pulses[qubit] for qubit in targets],
-        type=SweeperType.OFFSET,
-    )
 
-    execution_pars = ExecutionParameters(
+    sweepers = [
+        Sweeper(
+            parameter=Parameter.frequency,
+            values=platform.config(platform.qubits[q].probe).frequency
+            + delta_frequency_range,
+            channels=[platform.qubits[q].probe],
+        )
+        for q in targets
+    ]
+
+    results = platform.execute(
+        [sequence_0, sequence_1],
+        [sweepers],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    results_0 = platform.sweep(
-        sequence_0,
-        execution_pars,
-        sweeper,
-    )
 
-    results_1 = platform.sweep(
-        sequence_1,
-        execution_pars,
-        sweeper,
-    )
-
-    # retrieve the results for every qubit
     for qubit in targets:
-        for i, results in enumerate([results_0, results_1]):
-            result = results[ro_pulses[qubit].serial].average
-            # store the results
+        ro_frequency = platform.config(platform.qubits[qubit].probe).frequency
+        for state, sequence in enumerate([sequence_0, sequence_1]):
+            ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+            result = results[ro_pulse.id]
+            i, q = unpack(result)
             data.register_qubit(
                 DispersiveShiftType,
-                (qubit, i),
+                (qubit, state),
                 dict(
-                    freq=ro_pulses[qubit].frequency + delta_frequency_range,
-                    signal=result.magnitude,
-                    phase=result.phase,
-                    i=result.voltage_i,
-                    q=result.voltage_q,
+                    freq=ro_frequency + delta_frequency_range,
+                    signal=magnitude(result),
+                    phase=phase(result),
+                    i=i,
+                    q=q,
                 ),
             )
     return data
@@ -335,12 +318,23 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
     return figures, fitting_report
 
 
-def _update(results: DispersiveShiftResults, platform: Platform, target: QubitId):
+def _update(
+    results: DispersiveShiftResults, platform: CalibrationPlatform, target: QubitId
+):
     update.readout_frequency(results.best_freq[target], platform, target)
     if results.frequencies[target] is not None:
-        delta = platform.qubits[target].drive_frequency - results.frequencies[target][0]
+        delta = (
+            platform.calibration.single_qubits[target].qubit.frequency_01
+            - results.frequencies[target][0]
+        )
         g = np.sqrt(np.abs(results.chi(target) * delta))
         update.coupling(g, platform, target)
+        update.dressed_resonator_frequency(
+            results.frequencies[target][0], platform, target
+        )
+        platform.calibration.single_qubits[target].readout.qudits_frequency[1] = (
+            results.frequencies[target][1]
+        )
 
 
 dispersive_shift = Routine(_acquisition, _fit, _plot, _update)

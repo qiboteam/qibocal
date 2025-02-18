@@ -4,12 +4,10 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
+from qibolab import AveragingMode, PulseSequence
 
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 
 from . import allxy
 
@@ -24,6 +22,13 @@ class AllXYResonatorParameters(Parameters):
     """Final delay parameter for resonator depletion."""
     delay_step: float
     """Step delay parameter for resonator depletion."""
+    readout_delay: int = 1000
+    """Delay on readout."""
+    unrolling: bool = False
+    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
+    Defaults to ``False``."""
+    beta_param: float = None
+    """Beta parameter for drag pulse."""
 
 
 @dataclass
@@ -50,7 +55,7 @@ class AllXYResonatorData(Data):
 
 def _acquisition(
     params: AllXYResonatorParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> AllXYResonatorData:
     r"""
@@ -65,45 +70,47 @@ def _acquisition(
 
     delays = np.arange(params.delay_start, params.delay_end, params.delay_step)
     # sweep the parameters
-    for delay_param in delays:
+    for delay in delays:
+        sequences, all_ro_pulses = [], []
         for gates in allxy.gatelist:
-            # create a sequence of pulses
-            ro_pulses = {}
             sequence = PulseSequence()
+            ro_pulses = {}
             for qubit in targets:
-                ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
-                sequence.add(ro_pulse)
-                sequence, ro_pulses[qubit] = allxy.add_gate_pair_pulses_to_sequence(
+                qubit_sequence, ro_pulses[qubit] = allxy.allxy_sequence(
                     platform,
                     gates,
                     qubit,
-                    sequence,
-                    sequence_delay=int(
-                        delay_param
-                    ),  # We need conversion to int due to devices for now
+                    beta_param=params.beta_param,
+                    sequence_delay=delay,
                     readout_delay=1000,
                 )
+                sequence += qubit_sequence
+            sequences.append(sequence)
+            all_ro_pulses.append(ro_pulses)
+        options = dict(nshots=params.nshots, averaging_mode=AveragingMode.CYCLIC)
+        if params.unrolling:
+            results = platform.execute(sequences, **options)
+        else:
+            results = {}
+            for sequence in sequences:
+                results.update(platform.execute([sequence], **options))
 
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(
-                sequence,
-                ExecutionParameters(
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    averaging_mode=AveragingMode.CYCLIC,
-                ),
-            )
-
-            # retrieve the results for every qubit
+        for gates, ro_pulses in zip(allxy.gatelist, all_ro_pulses):
+            gate = "-".join(gates)
             for qubit in targets:
-                z_proj = 2 * results[ro_pulses[qubit].serial].probability(0) - 1
-                # store the results
-                gate = "-".join(gates)
+                prob = 1 - results[ro_pulses[qubit].id]
+                z_proj = 2 * prob - 1
+                errors = 2 * np.sqrt(prob * (1 - prob) / params.nshots)
                 data.register_qubit(
                     allxy.AllXYType,
-                    (qubit, float(delay_param)),
-                    dict(prob=np.array([z_proj]), gate=np.array([gate])),
+                    (qubit, float(delay)),
+                    dict(
+                        prob=np.array([z_proj]),
+                        gate=np.array([gate]),
+                        errors=np.array([errors]),
+                    ),
                 )
+
     return data
 
 

@@ -10,11 +10,10 @@ from plotly.subplots import make_subplots
 from qibo import Circuit, gates
 from qibo.backends import NumpyBackend, construct_backend, matrices
 from qibo.quantum_info import fidelity, partial_trace
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import DATAFILE, Data, Parameters, Results, Routine
+from qibocal.auto.operation import DATAFILE, Data, Parameters, QubitId, Results, Routine
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
+from qibocal.calibration import CalibrationPlatform
 
 from .utils import table_dict, table_html
 
@@ -96,7 +95,9 @@ class StateTomographyResults(Results):
 
 
 def _acquisition(
-    params: StateTomographyParameters, platform: Platform, targets: list[QubitId]
+    params: StateTomographyParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
 ) -> StateTomographyData:
     """Acquisition protocol for single qubit state tomography experiment."""
     if params.circuit is None:

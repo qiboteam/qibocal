@@ -1,4 +1,4 @@
-platform: [dummy, dummy_couplers]
+platform: [dummy]
 
 targets: [0,1]
 
@@ -30,58 +30,16 @@ actions:
       hardware_average: false
 
 
-  - id: resonator high power low attenuation
-    operation: resonator_spectroscopy
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 100_000
-      attenuation: 15
-      power_level: high
-      nshots: 10
-
-
-  - id: resonator low power high attenuation
-    operation: resonator_spectroscopy
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 100_000
-      attenuation: 60
-      power_level: low
-      nshots: 10
-
-
-  - id: resonator low power high attenuation s21
-    operation: resonator_spectroscopy
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 100_000
-      attenuation: 60
-      power_level: low
-      nshots: 10
-      fit_function: s21
-
-
   - id: resonator punchout
     operation: resonator_punchout
     parameters:
       freq_width: 10_000_000
       freq_step: 1_000_000
-      amplitude: 0.04
-      min_amp_factor: 0.005
-      max_amp_factor: 0.3
-      step_amp_factor: 0.005
+      min_amp: 0.005
+      max_amp: 0.3
+      step_amp: 0.005
       nshots: 10
 
-
-  - id: resonator_punchout_attenuation
-    operation: resonator_punchout_attenuation
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 500_000
-      min_att: 4
-      max_att: 60
-      step_att: 4
-      nshots: 10
 
   - id: resonator spectroscopy low power
     operation: resonator_spectroscopy
@@ -90,6 +48,7 @@ actions:
       freq_step: 50_000
       amplitude: 0.022
       power_level: low
+      fit_function: s21
       nshots: 10
 
   - id: qubit spectroscopy average
@@ -106,11 +65,10 @@ actions:
     parameters:
       freq_width: 1_000_000
       freq_step: 10_000
-      min_amp_factor: 0
-      max_amp_factor: 1
-      step_amp_factor: 0.05
+      min_amp: 0
+      max_amp: 1
+      step_amp: 0.05
       duration: 100
-      amplitude: 0.5
 
   - id: qubit spectroscopy singleshot
     operation: qubit_spectroscopy
@@ -156,21 +114,7 @@ actions:
       nshots: 10
 
 
-  - id: resonator flux crosstalk # using ``flux_qubits``
-    operation: resonator_crosstalk
-    parameters:
-      bias_point:
-        0: 0.2
-      freq_width: 10_000_000
-      freq_step: 500_000
-      bias_width: 0.8
-      bias_step:  0.1
-      flux_qubits: [0, 1, 2, 3]
-      nshots: 10
-      relaxation_time: 100
-
-
-  - id: qubit flux dependence #"01" transition
+  - id: qubit flux dependence
     operation: qubit_flux
     parameters:
       freq_width: 150_000_000
@@ -180,33 +124,6 @@ actions:
       drive_amplitude: 0.5
       nshots: 1024
       relaxation_time: 2000
-      transition: "01"
-
-
-  - id: qubit flux dependence 02 #"02" transition
-    operation: qubit_flux
-    parameters:
-      freq_width: 150_000_000
-      freq_step: 500_000
-      bias_width: 0.2
-      bias_step:  0.005
-      drive_amplitude: 0.5
-      nshots: 1024
-      relaxation_time: 2000
-      transition: "02"
-
-
-  - id: qubit flux dependence tracking
-    operation: qubit_flux_tracking
-    parameters:
-      freq_width: 150_000_000
-      freq_step: 500_000
-      bias_width: 0.2
-      bias_step:  0.05
-      drive_duration: 2000
-      nshots: 1024
-      relaxation_time: 2000
-      transition: "01"
 
 
   - id: qubit flux crosstalk # using ``flux_qubits``
@@ -221,7 +138,7 @@ actions:
       bias_width: 0.2
       bias_step:  0.005
       drive_amplitude: 0.5
-      flux_qubits: [0,1]
+      flux_qubits: [2,3]
       nshots: 1024
       relaxation_time: 2000
 
@@ -229,35 +146,80 @@ actions:
   - id: rabi
     operation: rabi_amplitude
     parameters:
-      min_amp_factor: 0.0
-      max_amp_factor: 4.0
-      step_amp_factor: 0.1
+      min_amp: 0.0
+      max_amp: 1.0
+      step_amp: 0.1
       pulse_length: 30
       nshots: 1024
+
+  - id: rabi
+    operation: rabi_amplitude
+    parameters:
+      min_amp: 0.0
+      max_amp: 1.0
+      step_amp: 0.1
+      pulse_length: 30
+      nshots: 1024
+      rx90: True
 
   - id: rabi without nshots
     operation: rabi_amplitude
     parameters:
-      min_amp_factor: 0.0
-      max_amp_factor: 4.0
-      step_amp_factor: 0.1
+      min_amp: 0.0
+      max_amp: 1.0
+      step_amp: 0.1
       pulse_length: 30
 
   - id: rabi signal
     operation: rabi_amplitude_signal
     parameters:
-      min_amp_factor: 0.0
-      max_amp_factor: 4.0
-      step_amp_factor: 0.1
+      min_amp: 0.0
+      max_amp: 1.0
+      step_amp: 0.1
+      pulse_length: 30
+      nshots: 1024
+
+  - id: rabi signal
+    operation: rabi_amplitude_signal
+    parameters:
+      min_amp: 0.0
+      max_amp: 1.0
+      step_amp: 0.1
+      pulse_length: 30
+      nshots: 1024
+      rx90: True
+
+  - id: rabi amplitude frequency
+    operation: rabi_amplitude_frequency
+    parameters:
+      min_amp: 0.0
+      max_amp: 1.0
+      step_amp: 0.1
+      min_freq: -100_000
+      max_freq: 100_000
+      step_freq: 10_000
       pulse_length: 30
       nshots: 1024
 
   - id: rabi amplitude frequency
     operation: rabi_amplitude_frequency
     parameters:
-      min_amp_factor: 0.0
-      max_amp_factor: 4.0
-      step_amp_factor: 0.1
+      min_amp: 0.0
+      max_amp: 1.0
+      step_amp: 0.1
+      min_freq: -100_000
+      max_freq: 100_000
+      step_freq: 10_000
+      pulse_length: 30
+      nshots: 1024
+      rx90: True
+
+  - id: rabi amplitude frequency_signal
+    operation: rabi_amplitude_frequency_signal
+    parameters:
+      min_amp: 0.0
+      max_amp: 1.0
+      step_amp: 0.1
       min_freq: -100_000
       max_freq: 100_000
       step_freq: 10_000
@@ -267,24 +229,24 @@ actions:
   - id: rabi amplitude frequency_signal
     operation: rabi_amplitude_frequency_signal
     parameters:
-      min_amp_factor: 0.0
-      max_amp_factor: 4.0
-      step_amp_factor: 0.1
+      min_amp: 0.0
+      max_amp: 1.0
+      step_amp: 0.1
       min_freq: -100_000
       max_freq: 100_000
       step_freq: 10_000
       pulse_length: 30
       nshots: 1024
-
+      rx90: True
 
   - id: rabi_ef
     operation: rabi_amplitude_ef
     #FIXME: add RX12 for qubit 4
     targets: [0, 1, 2, 3]
     parameters:
-      min_amp_factor: 0.0
-      max_amp_factor: 1.0
-      step_amp_factor: 0.1
+      min_amp: 0.0
+      max_amp: 1.0
+      step_amp: 0.1
       pulse_length: 30
       nshots: 1024
 
@@ -297,6 +259,26 @@ actions:
       pulse_amplitude: 0.5
       nshots: 1024
 
+  - id: rabi length interpolated
+    operation: rabi_length
+    parameters:
+      pulse_duration_start: 4
+      pulse_duration_end: 84
+      pulse_duration_step: 8
+      pulse_amplitude: 0.5
+      nshots: 1024
+      interpolated_sweeper: true
+
+  - id: rabi length
+    operation: rabi_length
+    parameters:
+      pulse_duration_start: 4
+      pulse_duration_end: 84
+      pulse_duration_step: 8
+      pulse_amplitude: 0.5
+      nshots: 1024
+      rx90: True
+
   - id: rabi length signal
     operation: rabi_length_signal
     parameters:
@@ -304,7 +286,40 @@ actions:
       pulse_duration_end: 84
       pulse_duration_step: 8
       pulse_amplitude: 0.5
-      nshots: 10
+      nshots: 1024
+
+  - id: rabi length signal interpolated
+    operation: rabi_length_signal
+    parameters:
+      pulse_duration_start: 4
+      pulse_duration_end: 84
+      pulse_duration_step: 8
+      pulse_amplitude: 0.5
+      nshots: 1024
+      interpolated_sweeper: true
+
+  - id: rabi length signal rx90
+    operation: rabi_length_signal
+    parameters:
+      pulse_duration_start: 4
+      pulse_duration_end: 84
+      pulse_duration_step: 8
+      pulse_amplitude: 0.5
+      nshots: 1024
+      rx90: True
+
+  - id: rabi length frequency interpolated
+    operation: rabi_length_frequency
+    parameters:
+      pulse_duration_start: 4
+      pulse_duration_end: 84
+      pulse_duration_step: 8
+      min_freq: -100_000
+      max_freq: 100_000
+      step_freq: 10_000
+      pulse_amplitude: 0.5
+      nshots: 1024
+      interpolated_sweeper: true
 
   - id: rabi length frequency
     operation: rabi_length_frequency
@@ -318,6 +333,19 @@ actions:
       pulse_amplitude: 0.5
       nshots: 1024
 
+  - id: rabi length frequency
+    operation: rabi_length_frequency
+    parameters:
+      pulse_duration_start: 4
+      pulse_duration_end: 84
+      pulse_duration_step: 8
+      min_freq: -100_000
+      max_freq: 100_000
+      step_freq: 10_000
+      pulse_amplitude: 0.5
+      nshots: 1024
+      rx90: True
+
   - id: rabi length frequency_signal
     operation: rabi_length_frequency_signal
     parameters:
@@ -330,14 +358,31 @@ actions:
       pulse_amplitude: 0.5
       nshots: 1024
 
-  - id: rabi length sequences
-    operation: rabi_length_sequences
+  - id: rabi length frequency_signal interpolated
+    operation: rabi_length_frequency_signal
     parameters:
       pulse_duration_start: 4
       pulse_duration_end: 84
       pulse_duration_step: 8
+      min_freq: -100_000
+      max_freq: 100_000
+      step_freq: 10_000
       pulse_amplitude: 0.5
-      nshots: 10
+      nshots: 1024
+      interpolated_sweeper: true
+
+  - id: rabi length frequency_signal
+    operation: rabi_length_frequency_signal
+    parameters:
+      pulse_duration_start: 4
+      pulse_duration_end: 84
+      pulse_duration_step: 8
+      min_freq: -100_000
+      max_freq: 100_000
+      step_freq: 10_000
+      pulse_amplitude: 0.5
+      nshots: 1024
+      rx90: True
 
   - id: t1
     operation: t1
@@ -356,7 +401,6 @@ actions:
       nshots: 1024
 
   - id: t1_signal_single_shot
-    priority: 0
     operation: t1_signal
     parameters:
       delay_before_readout_start: 0
@@ -365,22 +409,8 @@ actions:
       single_shot: True
       nshots: 1024
 
-  - id: t1 sequences
-    operation: t1_sequences
-    parameters:
-      delay_before_readout_start: 0
-      delay_before_readout_end: 20_000
-      delay_before_readout_step: 2000
-      nshots: 1024
-
   - id: zeno
     operation: zeno
-    parameters:
-      readouts: 10
-      nshots: 10
-
-  - id: zeno_signal
-    operation: zeno_signal
     parameters:
       readouts: 10
       nshots: 10
@@ -402,21 +432,12 @@ actions:
       nshots: 10
 
   - id: t2_signal_single_shot
-    priority: 0
     operation: t2_signal
     parameters:
       delay_between_pulses_start: 16
       delay_between_pulses_end: 20000
       delay_between_pulses_step: 100
       single_shot: True
-      nshots: 10
-
-  - id: t2 sequences
-    operation: t2_sequences
-    parameters:
-      delay_between_pulses_start: 16
-      delay_between_pulses_end: 20000
-      delay_between_pulses_step: 100
       nshots: 10
 
   - id: ramsey_signal
@@ -484,6 +505,12 @@ actions:
     operation: calibrate_state_discrimination
     parameters:
       nshots: 10
+
+  - id: calibrate_state_discrimination unrolling
+    operation: calibrate_state_discrimination
+    parameters:
+      nshots: 10
+      unrolling: true
 
   - id: ramsey_detuned
     operation: ramsey
@@ -556,15 +583,14 @@ actions:
       delay_step: 1000.0
       nshots: 10
 
-
-  - id: allXY drag
-    operation: allxy_drag_pulse_tuning
+  - id: resonator_depletion_tuning unrolling
+    operation: allxy_resonator_depletion_tuning
     parameters:
-      beta_start: 0
-      beta_end: 0.1
-      beta_step: 0.01
+      delay_start: 1000.0
+      delay_end: 3000.0
+      delay_step: 1000.0
       nshots: 10
-
+      unrolling: true
 
   - id: drag_pulse_tuning
     operation: drag_tuning
@@ -574,61 +600,76 @@ actions:
       beta_step: 0.01
       nshots: 10
 
-  - id: spin_echo
-    operation: spin_echo
+  - id: drag_pulse_tuning_unrolling
+    operation: drag_tuning
     parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 5
-      delay_between_pulses_step: 1
-      nshots: 10
-
-  - id: spin_echo unrolling
-    operation: spin_echo
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 5
-      delay_between_pulses_step: 1
+      beta_start: 0
+      beta_end: 0.1
+      beta_step: 0.01
       nshots: 10
       unrolling: true
 
+  - id: drag_pulse_simple
+    operation: drag_simple
+    parameters:
+      beta_start: 0
+      beta_end: 0.1
+      beta_step: 0.01
+      nshots: 10
+
+  - id: drag_pulse_simple_unrolling
+    operation: drag_simple
+    parameters:
+      beta_start: 0
+      beta_end: 0.1
+      beta_step: 0.01
+      nshots: 10
+      unrolling: true
+
+  - id: spin_echo
+    operation: spin_echo
+    # since 0 has different RX duration
+    targets: [1,2,3]
+    parameters:
+      delay_between_pulses_start: 42
+      delay_between_pulses_end: 100
+      delay_between_pulses_step: 1
+      nshots: 10
+
+  - id: CPMG
+    operation: cpmg
+    # since 0 has different RX duration
+    targets: [1,2,3]
+    parameters:
+      delay_between_pulses_start: 330
+      delay_between_pulses_end: 400
+      delay_between_pulses_step: 10
+      nshots: 10
+      n: 4
+
   - id: spin_echo_signal
     operation: spin_echo_signal
+    # since 0 has different RX duration
+    targets: [1,2,3]
     parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 5
+      delay_between_pulses_start: 50
+      delay_between_pulses_end: 100
       delay_between_pulses_step: 1
       nshots: 10
 
   - id: spin_echo_signal_single_shot
-    priority: 0
     operation: spin_echo_signal
+    # since 0 has different RX duration
+    targets: [1,2,3]
     parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 5
+      delay_between_pulses_start: 50
+      delay_between_pulses_end: 100
       delay_between_pulses_step: 1
       single_shot: True
       nshots: 10
 
-  - id: spin_echo_signal unrolling
-    operation: spin_echo_signal
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 5
-      delay_between_pulses_step: 1
-      nshots: 10
-      unrolling: true
-
-
   - id: flipping
     operation: flipping
-    parameters:
-      nflips_max: 10
-      nflips_step: 1
-      nshots: 50
-      delta_amplitude: 0.1
-
-  - id: flipping_signal
-    operation: flipping_signal
     parameters:
       nflips_max: 10
       nflips_step: 1
@@ -642,14 +683,7 @@ actions:
       nflips_step: 1
       nshots: 50
       unrolling: True
-
-  - id: flipping_signal unrolling
-    operation: flipping_signal
-    parameters:
-      nflips_max: 10
-      nflips_step: 1
-      nshots: 50
-      unrolling: True
+      rx90: True
 
 
   - id: dispersive shift
@@ -727,7 +761,7 @@ actions:
 
   - id: standard rb 2q interleaved
     operation: standard_rb_2q_inter
-    targets: [[0,2]]
+    targets: [[1,2]]
     parameters:
       depths: [1, 2, 3, 5]
       niter: 5
@@ -737,9 +771,9 @@ actions:
     operation: chevron
     targets: [[0, 2],[1,2]]
     parameters:
-      amplitude_min_factor: 0.1
-      amplitude_max_factor: 0.6
-      amplitude_step_factor: 0.01
+      amplitude_min: 0.1
+      amplitude_max: 0.6
+      amplitude_step: 0.01
       duration_min: 10
       duration_max: 50
       duration_step: 10
@@ -751,9 +785,9 @@ actions:
     operation: chevron_signal
     targets: [[0, 2],[1,2]]
     parameters:
-      amplitude_min_factor: 0.1
-      amplitude_max_factor: 0.6
-      amplitude_step_factor: 0.01
+      amplitude_min: 0.1
+      amplitude_max: 0.6
+      amplitude_step: 0.01
       duration_min: 10
       duration_max: 50
       duration_step: 1
@@ -765,9 +799,9 @@ actions:
     operation: chevron
     targets: [[0, 2],[1,2]]
     parameters:
-      amplitude_min_factor: 0.1
-      amplitude_max_factor: 0.6
-      amplitude_step_factor: 0.01
+      amplitude_min: 0.1
+      amplitude_max: 0.6
+      amplitude_step: 0.01
       duration_min: 10
       duration_max: 50
       duration_step: 10
@@ -779,9 +813,9 @@ actions:
     operation: chevron_signal
     targets: [[0, 2],[1,2]]
     parameters:
-      amplitude_min_factor: 0.1
-      amplitude_max_factor: 0.6
-      amplitude_step_factor: 0.01
+      amplitude_min: 0.1
+      amplitude_max: 0.6
+      amplitude_step: 0.01
       duration_min: 10
       duration_max: 50
       duration_step: 1
@@ -798,18 +832,6 @@ actions:
       theta_step: 10
       dt: 0
       native: iSWAP
-      parking: True
-
-  - id: iswap virtual signal
-    operation: correct_virtual_z_phases_signal
-    targets: [[0, 2],[1,2]]
-    parameters:
-      theta_start: 0
-      theta_end: 180
-      theta_step: 10
-      native: iSWAP
-      dt: 0
-      parking: True
 
   - id: cz_virtual_phase
     operation: correct_virtual_z_phases
@@ -820,111 +842,12 @@ actions:
       theta_step: 10
       dt: 0
       native: CZ
-      parking: True
-
-  - id: cz virtual signal
-    operation: correct_virtual_z_phases_signal
-    targets: [[0, 2],[1,2]]
-    parameters:
-      theta_start: 0
-      theta_end: 180
-      theta_step: 10
-      native: CZ
-      dt: 0
-      parking: True
-
-  - id : resonator_frequency
-    operation: resonator_frequency
-    parameters:
-      freq_width: 200.e+6
-      freq_step: 25.e+6
-      nshots: 10
-
-  - id: fast reset
-    operation: fast_reset
-    parameters:
-      nshots: 10
-
-  - id: CHSH with pulses
-    operation: chsh_pulses
-    targets: [[0,2],[1,2],[2,3]]
-    parameters:
-      nshots: 1000
-      ntheta: 10
-      bell_states: [0,1,2,3]
-      apply_error_mitigation: True
-
-  - id: CHSH with natives
-    operation: chsh_circuits
-    targets: [[0,2],[1,2]]
-    parameters:
-      nshots: 1000
-      ntheta: 10
-      bell_states: [0,1,2,3]
-      native: True
-      apply_error_mitigation: True
-
-  #FIXME: cannot add pair [0,3]
-  - id: CHSH with circuits
-    operation: chsh_circuits
-    targets: [[0,2],[1,2]]
-    parameters:
-      nshots: 1000
-      ntheta: 2
-      bell_states: [0,1,2,3]
-      native: False
-      apply_error_mitigation: True
 
   - id: readout_mitigation_matrix
     operation: readout_mitigation_matrix
     targets: [[0,1,2],[1,2]]
     parameters:
       nshots: 10
-
-  - id: twpa frequency
-    operation: twpa_frequency
-    parameters:
-      nshots: 10
-      frequency_width: 1_000_000
-      frequency_step: 100_000
-
-  - id: twpa power
-    operation: twpa_power
-    parameters:
-      nshots: 10
-      power_width: 10
-      power_step: 1
-
-  - id: twpa frequency power
-    operation: twpa_frequency_power
-    targets: [0]
-    parameters:
-      frequency_width: 1_000_000
-      frequency_step: 100_000
-      power_width: 10
-      power_step: 1
-
-  - id: twpa_power_SNR
-    operation: twpa_power_snr
-    parameters:
-      freq_width: 500_000_000
-      freq_step: 50_000_000
-      twpa_pow_width: 4
-      twpa_pow_step: 1
-      power_level: low
-      nshots: 10
-      relaxation_time: 2000
-
-  - id: twpa_frequency_SNR
-    operation: twpa_frequency_snr
-    parameters:
-      freq_width: 100_000_000
-      freq_step: 20_000_000
-      twpa_freq_width: 1_000_000_000
-      twpa_freq_step: 200_000_000
-      power_level: low
-      nshots: 10
-      relaxation_time: 20
 
   - id: resonator_amplitude
     operation: resonator_amplitude
@@ -938,15 +861,12 @@ actions:
     parameters:
       nshots: 1000
 
-  - id: avoided crossing
-    operation: avoided_crossing
-    targets: [[2,1],[0,2]]
+  - id: qutrit unrolling
+    targets: [0,1]
+    operation: qutrit_classification
     parameters:
-      freq_width: 100_000_000
-      freq_step: 50_000_000
-      bias_width: 0.2
-      bias_step:  0.05
-      drive_amplitude: 0.5
+      nshots: 1000
+      unrolling: true
 
   - id: optimize cz
     operation: optimize_two_qubit_gate
@@ -1003,10 +923,3 @@ actions:
     parameters:
       nshots: 1024
       circuit: tests/circuit2q.json
-
-  - id: mermin
-    targets: [[2,0,3],[2,1,3]]
-    operation: mermin
-    parameters:
-      ntheta: 10
-      apply_error_mitigation: True

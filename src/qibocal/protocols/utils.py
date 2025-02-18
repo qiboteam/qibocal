@@ -7,12 +7,11 @@ import pandas as pd
 import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
-from qibolab.qubits import QubitId
 from scipy import constants
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
-from qibocal.auto.operation import Data, Results
+from qibocal.auto.operation import Data, QubitId, Results
 from qibocal.config import log
 from qibocal.fitting.classifier import run
 from qibocal.protocols.resonator_utils import (
@@ -81,7 +80,7 @@ def effective_qubit_temperature(
     return temp, error
 
 
-def calculate_frequencies(results, qubit_list):
+def calculate_frequencies(results, ro_pulses):
     """Calculates outcome frequencies from individual shots.
     Args:
         results (dict): return of execute_pulse_sequence
@@ -90,9 +89,8 @@ def calculate_frequencies(results, qubit_list):
     Returns:
         dictionary containing frequencies.
     """
-    shots = np.stack([results[i].samples for i in qubit_list]).T
+    shots = np.stack([results[ro_pulses[qubit].id] for qubit in ro_pulses]).T
     values, counts = np.unique(shots, axis=0, return_counts=True)
-
     return {"".join(str(int(i)) for i in v): cnt for v, cnt in zip(values, counts)}
 
 
@@ -368,26 +366,6 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
             label = "Qubit Frequency [Hz]"
             freq = fit.frequency
 
-        if data.attenuations:
-            if data.attenuations[qubit] is not None:
-                if show_error_bars:
-                    labels = [label, "Amplitude", "Attenuation", "Chi2 Reduced"]
-                    values = [
-                        (
-                            freq[qubit],
-                            fit.error_fit_pars[qubit][1],
-                        ),
-                        (data.amplitudes[qubit], 0),
-                        (data.attenuations[qubit], 0),
-                        fit.chi2_reduced[qubit],
-                    ]
-                else:
-                    labels = [label, "Amplitude", "Attenuation"]
-                    values = [
-                        freq[qubit],
-                        data.amplitudes[qubit],
-                        data.attenuations[qubit],
-                    ]
         if data.amplitudes[qubit] is not None:
             if show_error_bars:
                 labels = [label, "Amplitude", "Chi2 reduced"]
@@ -517,11 +495,10 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
             row=1,
             col=1,
         )
-
         fig_raw.add_trace(
             go.Scatter(
                 x=np.concatenate((frequencies, frequencies[::-1])),
-                y=np.concatenate((phase + errors_phase), (phase - errors_phase[::-1])),
+                y=np.concatenate((phase + errors_phase, (phase - errors_phase)[::-1])),
                 fill="toself",
                 fillcolor=COLORBAND,
                 line=dict(color=COLORBAND_LINE),
@@ -712,12 +689,11 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
                 row=1,
                 col=1,
             )
-
             fig_calibrated.add_trace(
                 go.Scatter(
                     x=np.concatenate((frequencies, frequencies[::-1])),
                     y=np.concatenate(
-                        (phase + errors_phase), (phase - errors_phase[::-1])
+                        (phase + errors_phase, (phase - errors_phase)[::-1])
                     ),
                     fill="toself",
                     fillcolor=COLORBAND,

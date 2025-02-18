@@ -5,15 +5,14 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
+from qibolab import AcquisitionType, Delay, PulseSequence
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.utils import table_dict, table_html
+from qibocal.update import replace
 
 
 @dataclass
@@ -64,7 +63,7 @@ class ResonatorAmplitudeResults(Results):
 
 def _acquisition(
     params: ResonatorAmplitudeParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> ResonatorAmplitudeData:
     r"""
@@ -75,7 +74,7 @@ def _acquisition(
 
     Args:
         params (:class:`ResonatorAmplitudeParameters`): input parameters
-        platform (:class:`Platform`): Qibolab's platform
+        platform (:class:`CalibrationPlatform`): Qibolab's platform
         targets (list): list of QubitIds to be characterized
 
     Returns:
@@ -85,45 +84,42 @@ def _acquisition(
     data = ResonatorAmplitudeData()
     for qubit in targets:
         error = 1
-        old_amp = platform.qubits[qubit].native_gates.MZ.amplitude
+        natives = platform.natives.single_qubit[qubit]
+
+        ro_channel, ro_pulse = natives.MZ()[0]
         new_amp = params.amplitude_start
         while error > params.error_threshold and new_amp <= params.amplitude_stop:
-            platform.qubits[qubit].native_gates.MZ.amplitude = new_amp
+
+            new_ro = replace(ro_pulse, amplitude=new_amp)
             sequence_0 = PulseSequence()
             sequence_1 = PulseSequence()
 
-            qd_pulses = platform.create_RX_pulse(qubit, start=0)
-            ro_pulses = platform.create_qubit_readout_pulse(
-                qubit, start=qd_pulses.finish
-            )
-            sequence_0.add(ro_pulses)
-            sequence_1.add(qd_pulses)
-            sequence_1.add(ro_pulses)
+            qd_channel, qd_pulse = natives.RX()[0]
 
-            state0_results = platform.execute_pulse_sequence(
-                sequence_0,
-                ExecutionParameters(
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.INTEGRATION,
-                ),
+            sequence_1.append((qd_channel, qd_pulse))
+            sequence_1.append((ro_channel, Delay(duration=qd_pulse.duration)))
+            sequence_1.append((ro_channel, new_ro))
+
+            sequence_0.append((ro_channel, new_ro))
+
+            state0_results = platform.execute(
+                [sequence_0],
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
             )
 
-            state1_results = platform.execute_pulse_sequence(
-                sequence_1,
-                ExecutionParameters(
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.INTEGRATION,
-                ),
+            state1_results = platform.execute(
+                [sequence_1],
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
             )
-            result0 = state0_results[ro_pulses.serial]
-            result1 = state1_results[ro_pulses.serial]
+            result0 = state0_results[new_ro.id]
+            result1 = state1_results[new_ro.id]
 
-            i_values = np.concatenate((result0.voltage_i, result1.voltage_i))
-            q_values = np.concatenate((result0.voltage_q, result1.voltage_q))
-            iq_values = np.stack((i_values, q_values), axis=-1)
-            nshots = int(len(i_values) / 2)
+            iq_values = np.concatenate((result0, result1))
+            nshots = params.nshots
             states = [0] * nshots + [1] * nshots
             model = QubitFit()
             model.fit(iq_values, np.array(states))
@@ -138,7 +134,6 @@ def _acquisition(
                     threshold=np.array([model.threshold]),
                 ),
             )
-            platform.qubits[qubit].native_gates.MZ.amplitude = old_amp
             new_amp += params.amplitude_step
     return data
 
@@ -203,7 +198,9 @@ def _plot(
     return figures, fitting_report
 
 
-def _update(results: ResonatorAmplitudeResults, platform: Platform, target: QubitId):
+def _update(
+    results: ResonatorAmplitudeResults, platform: CalibrationPlatform, target: QubitId
+):
     update.readout_amplitude(results.best_amp[target], platform, target)
     update.iq_angle(results.best_angle[target], platform, target)
     update.threshold(results.best_threshold[target], platform, target)

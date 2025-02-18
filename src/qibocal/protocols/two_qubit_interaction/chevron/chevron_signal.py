@@ -4,12 +4,11 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.qubits import QubitPairId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import QubitPairId, Routine
+from qibocal.calibration import CalibrationPlatform
+from qibocal.result import magnitude
 
 from ..utils import order_pair
 from .chevron import (
@@ -74,7 +73,7 @@ class ChevronSignalData(ChevronData):
 
 def _aquisition(
     params: ChevronSignalParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitPairId],
 ) -> ChevronSignalData:
     r"""
@@ -82,7 +81,7 @@ def _aquisition(
 
     Args:
         params: Experiment parameters.
-        platform: Platform to use.
+        platform: CalibrationPlatform to use.
         targets (list): List of pairs to use sequentially.
 
     Returns:
@@ -94,50 +93,50 @@ def _aquisition(
     for pair in targets:
         # order the qubits so that the low frequency one is the first
         ordered_pair = order_pair(pair, platform)
-        sequence = chevron_sequence(
+        sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
             platform=platform,
-            pair=pair,
+            ordered_pair=ordered_pair,
             duration_max=params.duration_max,
             parking=params.parking,
             dt=params.dt,
             native=params.native,
         )
 
-        data.native_amplitude[ordered_pair] = (
-            sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0].amplitude
-        )
-        data.sweetspot[ordered_pair] = platform.qubits[ordered_pair[1]].sweetspot
-
         sweeper_amplitude = Sweeper(
-            Parameter.amplitude,
-            params.amplitude_range,
-            pulses=[sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
-            type=SweeperType.FACTOR,
+            parameter=Parameter.amplitude,
+            range=(params.amplitude_min, params.amplitude_max, params.amplitude_step),
+            pulses=[flux_pulse],
         )
         sweeper_duration = Sweeper(
-            Parameter.duration,
-            params.duration_range,
-            pulses=[sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
-            type=SweeperType.ABSOLUTE,
+            parameter=Parameter.duration,
+            range=(params.duration_min, params.duration_max, params.duration_step),
+            pulses=[flux_pulse] + delays + parking_pulses,
         )
-        results = platform.sweep(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
-            ),
-            sweeper_duration,
-            sweeper_amplitude,
+
+        ro_high = list(sequence.channel(platform.qubits[ordered_pair[1]].acquisition))[
+            -1
+        ]
+        ro_low = list(sequence.channel(platform.qubits[ordered_pair[0]].acquisition))[
+            -1
+        ]
+
+        data.native_amplitude[ordered_pair] = flux_pulse.amplitude
+
+        results = platform.execute(
+            [sequence],
+            [[sweeper_duration], [sweeper_amplitude]],
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
         )
         data.register_qubit(
             ordered_pair[0],
             ordered_pair[1],
-            params.duration_range,
-            params.amplitude_range * data.native_amplitude[ordered_pair],
-            results[ordered_pair[0]].magnitude,
-            results[ordered_pair[1]].magnitude,
+            sweeper_duration.values,
+            sweeper_amplitude.values,
+            magnitude(results[ro_low.id]),
+            magnitude(results[ro_high.id]),
         )
     return data
 
