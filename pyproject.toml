@@ -44,7 +44,7 @@ optional = true
 [tool.poetry.group.docs.dependencies]
 Sphinx = "^5.0.0"
 furo = "^2023.3.27"
-sphinxcontrib-bibtex = "^2.4.1"
+sphinxcontrib-bibtex = "^2.6.3"
 recommonmark = "^0.7.1"
 sphinx_markdown_tables = "^0.0.17"
 sphinx-copybutton = "^0.5.2"
