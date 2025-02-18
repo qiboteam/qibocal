@@ -28,10 +28,10 @@ jinja2 = "^3.1.2"
 plotly = "^5.22.0"
 skops = "^0.11.0"
 
-[tool.poetry.group.test]
+[tool.poetry.group.tests]
 optional = true
 
-[tool.poetry.group.test.dependencies]
+[tool.poetry.group.tests.dependencies]
 pylint = "^2.17"
 pytest = "^7.1.2"
 pytest-cov = "^3.0.0"
