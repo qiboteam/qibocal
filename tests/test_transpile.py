@@ -10,21 +10,6 @@ from qibocal.auto.transpile import (
 )
 
 
-def test_natives():
-    backend = construct_backend("qibolab", platform="dummy")
-    transpiler = dummy_transpiler(backend)
-    assert gates.iSWAP in backend.compiler.rules
-
-    circuit = Circuit(2)
-    circuit.add(gates.iSWAP(0, 1))
-    qubit_map = [1, 2]
-    transpiled_circuit, _ = execute_transpiled_circuit(
-        circuit, qubit_map, backend, transpiler=transpiler
-    )
-    sequence, _ = backend.compiler.compile(transpiled_circuit, backend.platform)
-    assert len(sequence) == 4  # dummy compiles iSWAP in 4 pulses
-
-
 def test_padd_circuit():
     small_circuit = Circuit(2)
     small_circuit.add(gates.X(0))

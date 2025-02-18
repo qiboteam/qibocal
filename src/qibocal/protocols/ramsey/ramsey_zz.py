@@ -4,13 +4,14 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Parameter, Readout, Sweeper
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
+from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.calibration import CalibrationPlatform
-
-from ...auto.operation import QubitId, Routine
+from ...auto.operation import Routine
 from ...config import log
-from ...result import probability
 from ..utils import table_dict, table_html
 from .ramsey import (
     COLORBAND,
@@ -59,7 +60,7 @@ class RamseyZZData(RamseySignalData):
 
 def _acquisition(
     params: RamseyZZParameters,
-    platform: CalibrationPlatform,
+    platform: Platform,
     targets: list[QubitId],
 ) -> RamseyZZData:
     """Data acquisition for RamseyZZ Experiment.
@@ -74,91 +75,72 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
+    options = ExecutionParameters(
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.SINGLESHOT,
+    )
+
     data = RamseyZZData(
         detuning=params.detuning,
         qubit_freqs={
-            qubit: platform.config(platform.qubits[qubit].drive).frequency
-            for qubit in targets
+            qubit: platform.qubits[qubit].native_gates.RX.frequency for qubit in targets
         },
         target_qubit=params.target_qubit,
     )
 
-    updates = []
-    if params.detuning is not None:
-        for qubit in targets:
-            channel = platform.qubits[qubit].drive
-            f0 = platform.config(channel).frequency
-            updates.append({channel: {"frequency": f0 + params.detuning}})
-
     for setup in ["I", "X"]:
         if not params.unrolling:
-            sequence, delays = ramsey_sequence(
-                platform=platform,
-                targets=targets,
-                target_qubit=params.target_qubit if setup == "X" else None,
-            )
+            sequence = PulseSequence()
+            for qubit in targets:
+                sequence += ramsey_sequence(
+                    platform=platform,
+                    qubit=qubit,
+                    detuning=params.detuning,
+                    target_qubit=params.target_qubit if setup == "X" else None,
+                )
 
             sweeper = Sweeper(
-                parameter=Parameter.duration,
-                values=waits,
-                pulses=delays,
+                Parameter.start,
+                waits,
+                [sequence.get_qubit_pulses(qubit).qd_pulses[-1] for qubit in targets],
+                type=SweeperType.ABSOLUTE,
             )
 
             # execute the sweep
-            results = platform.execute(
-                [sequence],
-                [[sweeper]],
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.DISCRIMINATION,
-                averaging_mode=AveragingMode.SINGLESHOT,
-                updates=updates,
+            results = platform.sweep(
+                sequence,
+                options,
+                sweeper,
             )
 
             for qubit in targets:
-                ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[
-                    -1
-                ]
-                probs = probability(results[ro_pulse.id], state=1)
+                probs = results[qubit].probability(state=1)
                 errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
 
         else:
             sequences, all_ro_pulses = [], []
             probs, errors = [], []
             for wait in waits:
-                sequence, _ = ramsey_sequence(
-                    platform=platform,
-                    targets=targets,
-                    wait=wait,
-                    target_qubit=params.target_qubit if setup == "X" else None,
-                )
-                sequences.append(sequence)
-                all_ro_pulses.append(
-                    {
-                        qubit: [
-                            readout
-                            for readout in sequence.channel(
-                                platform.qubits[qubit].acquisition
-                            )
-                            if isinstance(readout, Readout)
-                        ][0]
-                        for qubit in targets
-                    }
-                )
+                sequence = PulseSequence()
+                for qubit in targets:
+                    sequence += ramsey_sequence(
+                        platform=platform,
+                        qubit=qubit,
+                        wait=wait,
+                        detuning=params.detuning,
+                        target_qubit=params.target_qubit if setup == "X" else None,
+                    )
 
-            results = platform.execute(
-                sequences,
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.DISCRIMINATION,
-                averaging_mode=AveragingMode.SINGLESHOT,
-                updates=updates,
-            )
+                sequences.append(sequence)
+                all_ro_pulses.append(sequence.ro_pulses)
+
+            results = platform.execute_pulse_sequences(sequences, options)
 
             for wait, ro_pulses in zip(waits, all_ro_pulses):
                 for qubit in targets:
-                    result = results[ro_pulses[qubit].id]
-                    prob = probability(result, state=1)
+                    prob = results[ro_pulses[qubit].serial][0].probability(state=1)
                     probs.append(prob)
                     errors.append(np.sqrt(prob * (1 - prob) / params.nshots))
 

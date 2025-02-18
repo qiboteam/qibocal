@@ -36,9 +36,10 @@ Example
         parameters:
           freq_width: 40_000_000
           freq_step: 500_000
-          min_amp: 0.1
-          max_amp: 2.4
-          step_amp: 0.3
+          amplitude: 0.03
+          min_amp_factor: 0.1
+          max_amp_factor: 2.4
+          step_amp_factor: 0.3
           nshots: 2048
           relaxation_time: 5000
 
@@ -105,6 +106,35 @@ approximate value, that can later be used to check, in other experiments, that w
 not exciting the qubit by error (if we see a change in amplitude, then maybe the qubit
 state has changed).
 
+It is also possible to run the punchout experiment with attenuation:
+
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.resonator_punchout_attenuation.ResonatorPunchoutAttenuationParameters
+  :noindex:
+
+Example
+^^^^^^^
+
+.. code-block:: yaml
+
+      - id: resonator_punchout_attenuation
+
+        operation: resonator_punchout_attenuation
+        parameters:
+          freq_width: 10_000_000
+          freq_step: 500_000
+          max_att: 60
+          min_att: 4
+          nshots: 1000
+          step_att: 4
+          nshots: 2048
+
+.. image:: resonator_punchout_attenuation.png
+
+Requirements
+^^^^^^^^^^^^
 
 - :ref:`Time Of Flight`
 - :ref:`resonator_spectroscopy` (high power)

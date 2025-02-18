@@ -3,56 +3,21 @@ from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, PulseSequence, Readout
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
+from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
-from qibocal import update
-from qibocal.auto.operation import Parameters, QubitId, Results, Routine
-from qibocal.calibration import CalibrationPlatform
+from qibocal.auto.operation import Routine
 
-from ...result import probability
-from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
+from ..utils import table_dict, table_html
 from . import t1, utils
+from .zeno_signal import ZenoSignalParameters, ZenoSignalResults, _update
 
 
 @dataclass
-class ZenoParameters(Parameters):
+class ZenoParameters(ZenoSignalParameters):
     """Zeno runcard inputs."""
-
-    readouts: int
-    "Number of readout pulses"
-
-
-@dataclass
-class ZenoResults(Results):
-    """Zeno outputs."""
-
-    zeno_t1: dict[QubitId, int]
-    """T1 for each qubit."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitting output."""
-    pcov: dict[QubitId, list[float]]
-    """Approximate covariance of fitted parameters."""
-    chi2: dict[QubitId, tuple[float, Optional[float]]]
-    """Chi squared estimate mean value and error."""
-
-
-def zeno_sequence(
-    platform: CalibrationPlatform, targets: list[QubitId], readouts: int
-) -> tuple[PulseSequence, dict[QubitId, int]]:
-    """Generating sequence for Zeno experiment."""
-
-    sequence = PulseSequence()
-    readout_duration = {}
-    for q in targets:
-        natives = platform.natives.single_qubit[q]
-        _, ro_pulse = natives.MZ()[0]
-        readout_duration[q] = ro_pulse.duration
-        qubit_sequence = natives.RX() | natives.MZ()
-        for _ in range(readouts - 1):
-            qubit_sequence += natives.MZ()
-        sequence += qubit_sequence
-
-    return sequence, readout_duration
 
 
 @dataclass
@@ -61,9 +26,17 @@ class ZenoData(t1.T1Data):
     """Readout durations for each qubit"""
 
 
+@dataclass
+class ZenoResults(ZenoSignalResults):
+    """Zeno outputs."""
+
+    chi2: dict[QubitId, tuple[float, Optional[float]]]
+    """Chi squared estimate mean value and error."""
+
+
 def _acquisition(
     params: ZenoParameters,
-    platform: CalibrationPlatform,
+    platform: Platform,
     targets: list[QubitId],
 ) -> ZenoData:
     """
@@ -75,39 +48,50 @@ def _acquisition(
     Reference: https://link.aps.org/accepted/10.1103/PhysRevLett.118.240401.
     """
 
-    sequence, readout_duration = zeno_sequence(
-        platform, targets, readouts=params.readouts
-    )
-    data = ZenoData(readout_duration=readout_duration)
-
-    results = platform.execute(
-        [sequence],
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.SINGLESHOT,
-    )
-
+    # create sequence of pulses:
+    sequence = PulseSequence()
+    RX_pulses = {}
+    ro_pulses = {}
+    ro_pulse_duration = {}
     for qubit in targets:
-        probs = []
-        readouts = [
-            pulse
-            for pulse in sequence.channel(platform.qubits[qubit].acquisition)
-            if isinstance(pulse, Readout)
-        ]
-        for i in range(params.readouts):
-            ro_pulse = readouts[i]
-            probs.append(probability(results[ro_pulse.id], state=1))
+        RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+        sequence.add(RX_pulses[qubit])
+        start = RX_pulses[qubit].finish
+        ro_pulses[qubit] = []
+        for _ in range(params.readouts):
+            ro_pulse = platform.create_qubit_readout_pulse(qubit, start=start)
+            start += ro_pulse.duration
+            sequence.add(ro_pulse)
+            ro_pulses[qubit].append(ro_pulse)
+        ro_pulse_duration[qubit] = ro_pulse.duration
 
+    # create a DataUnits object to store the results
+    data = ZenoData(readout_duration=ro_pulse_duration)
+
+    # execute the first pulse sequence
+    results = platform.execute_pulse_sequence(
+        sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.DISCRIMINATION,
+            averaging_mode=AveragingMode.SINGLESHOT,
+        ),
+    )
+
+    # retrieve and store the results for every qubit
+    probs = {qubit: [] for qubit in targets}
+    for qubit in targets:
+        for ro_pulse in ro_pulses[qubit]:
+            probs[qubit].append(results[ro_pulse.serial].probability(state=1))
+        errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs[qubit]]
         data.register_qubit(
             t1.CoherenceProbType,
             (qubit),
             dict(
-                wait=np.arange(params.readouts) + 1,
-                prob=np.array(probs),
-                error=np.array(
-                    [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
-                ),
+                wait=np.arange(1, len(probs[qubit]) + 1),
+                prob=probs[qubit],
+                error=errors,
             ),
         )
     return data
@@ -133,7 +117,7 @@ def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
     qubit_data = data[target]
     probs = qubit_data.prob
     error_bars = qubit_data.error
-    readouts = qubit_data.wait
+    readouts = np.arange(1, len(qubit_data.prob) + 1)
 
     fig = go.Figure(
         [
@@ -150,8 +134,8 @@ def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
                 x=np.concatenate((readouts, readouts[::-1])),
                 y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
                 fill="toself",
-                fillcolor=COLORBAND,
-                line=dict(color=COLORBAND_LINE),
+                fillcolor=t1.COLORBAND,
+                line=dict(color=t1.COLORBAND_LINE),
                 showlegend=True,
                 name="Errors",
             ),
@@ -179,8 +163,8 @@ def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
                 target,
                 ["T1 [ns]", "Readout Pulse [ns]", "chi2 reduced"],
                 [
+                    fit.zeno_t1[target],
                     np.array(fit.zeno_t1[target]) * data.readout_duration[target],
-                    (data.readout_duration[target], 0),
                     fit.chi2[target],
                 ],
                 display_error=True,
@@ -198,10 +182,6 @@ def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
     figures.append(fig)
 
     return figures, fitting_report
-
-
-def _update(results: ZenoResults, platform: CalibrationPlatform, qubit: QubitId):
-    update.t1(results.zeno_t1[qubit], platform, qubit)
 
 
 zeno = Routine(_acquisition, _fit, _plot, _update)

@@ -53,6 +53,10 @@ Here is the corresponding plot:
 
 
 To extract the qubit frequency a Lorentzian fit is performed.
+After the post-processing the following parameters will be updated:
+
+* qubit.drive_frequency
+* qubit.native_gates.RX.frequency
 
 Requirements
 ^^^^^^^^^^^^

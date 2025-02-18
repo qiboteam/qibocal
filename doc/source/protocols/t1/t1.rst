@@ -99,3 +99,36 @@ Requirements
 ^^^^^^^^^^^^
 
 - :ref:`rabi`
+
+T1 with for loops
+-----------------
+
+If the instrument driver is not able to perform duration sweepers in real time, we provide
+a protocol where the different waiting time are swept through a python for loop. Such
+execution will be usually slower compared to the one where sweepers are supported but it
+could be useful for debugging purposes.
+
+
+Here is a possible runcard:
+
+.. code-block:: yaml
+
+    - id: T1 with for loops
+      operation: t1_sequences
+      parameters:
+        delay_before_readout_end: 100008
+        delay_before_readout_start: 16
+        delay_before_readout_step: 1000
+        nshots: 2048
+
+
+.. note::
+
+    For ``t1_sequences`` on the y-axis it will be shown the raw output from instruments,
+    not the population of :math:`\ket{1}`.
+
+
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`rabi`

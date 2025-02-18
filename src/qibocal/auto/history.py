@@ -87,7 +87,7 @@ class History:
         """Determine the path related to a completed task given TaskId.
 
         `folder` should be usually the general output folder, used by Qibocal to store
-        all the execution results. Cf. :class:`qibocal.auto.output.Output`.
+        all the execution results. Cf. :cls:`qibocal.auto.output.Output`.
         """
         return folder / "data" / f"{task_id}"
 
@@ -95,7 +95,7 @@ class History:
         """Flush all content to disk.
 
         Specifying `output` is possible to select which folder should be considered as
-        the general Qibocal output folder. Cf. :class:`qibocal.auto.output.Output`.
+        the general Qibocal output folder. Cf. :cls:`qibocal.auto.output.Output`.
         """
         for task_id, completed in self.items():
             if output is not None:

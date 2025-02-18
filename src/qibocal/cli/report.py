@@ -4,20 +4,13 @@ from typing import Optional, Union
 
 import plotly.graph_objects as go
 from jinja2 import Environment, FileSystemLoader
+from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.history import History
-from qibocal.auto.operation import QubitId, QubitPairId
 from qibocal.auto.output import Output
 from qibocal.auto.task import Completed
 from qibocal.config import log
-from qibocal.web.report import (
-    SCRIPT,
-    STYLES,
-    TEMPLATES,
-    Report,
-    report_css_styles,
-    report_script,
-)
+from qibocal.web.report import STYLES, TEMPLATES, Report, report_css_styles
 
 ReportOutcome = tuple[str, list[go.Figure]]
 """Report produced by protocol."""
@@ -31,10 +24,6 @@ def generate_figures_and_report(
     It operates on a completed `node` and a specific protocol `target`, generating
     a report outcome (cf. `ReportOutcome`).
     """
-    # TODO: remove temporary fix
-    if isinstance(target, list):
-        target = tuple(target)
-
     if node.results is None:
         # plot acquisition data
         return node.task.operation.report(data=node.data, fit=None, target=target)
@@ -86,7 +75,6 @@ def report(path: pathlib.Path, history: Optional[History] = None):
     html = template.render(
         is_static=True,
         css_styles=report_css_styles(STYLES),
-        js_script=report_script(SCRIPT),
         path=path,
         title=path.name,
         report=Report(

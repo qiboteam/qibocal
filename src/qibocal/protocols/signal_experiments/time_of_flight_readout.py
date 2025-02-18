@@ -4,13 +4,13 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
+from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
-from qibocal.calibration import CalibrationPlatform
-from qibocal.protocols.utils import table_dict, table_html
-from qibocal.result import magnitude
-from qibocal.update import replace
+from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.protocols.utils import S_TO_NS, table_dict, table_html
 
 
 @dataclass
@@ -46,29 +46,27 @@ class TimeOfFlightReadoutData(Data):
 
 
 def _acquisition(
-    params: TimeOfFlightReadoutParameters,
-    platform: CalibrationPlatform,
-    targets: list[QubitId],
+    params: TimeOfFlightReadoutParameters, platform: Platform, targets: list[QubitId]
 ) -> TimeOfFlightReadoutData:
     """Data acquisition for time of flight experiment."""
 
     sequence = PulseSequence()
 
     ro_pulses = {}
-    native = platform.natives.single_qubit
     for qubit in targets:
-        ro_channel, ro_pulse = native[qubit].MZ()[0]
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
         if params.readout_amplitude is not None:
-            ro_pulse = replace(ro_pulse, amplitude=params.readout_amplitude)
-        ro_pulses[qubit] = ro_pulse
-        sequence.append((ro_channel, ro_pulse))
+            ro_pulses[qubit].amplitude = params.readout_amplitude
+        sequence.add(ro_pulses[qubit])
 
-    results = platform.execute(
-        [sequence],
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.RAW,
-        averaging_mode=AveragingMode.CYCLIC,
+    results = platform.execute_pulse_sequence(
+        sequence,
+        options=ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.RAW,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
     )
 
     data = TimeOfFlightReadoutData(
@@ -77,7 +75,7 @@ def _acquisition(
 
     # retrieve and store the results for every qubit
     for qubit in targets:
-        samples = magnitude(results[ro_pulses[qubit].id])
+        samples = results[ro_pulses[qubit].serial].magnitude
         # store the results
         data.register_qubit(TimeOfFlightReadoutType, (qubit), dict(samples=samples))
     return data
@@ -143,7 +141,9 @@ def _plot(
             line_color="grey",
         )
         fitting_report = table_html(
-            table_dict(target, "Time of flights [ns]", fit.fitted_parameters[target])
+            table_dict(
+                target, "Time of flights [ns]", fit.fitted_parameters[target] * S_TO_NS
+            )
         )
     fig.update_layout(
         showlegend=True,

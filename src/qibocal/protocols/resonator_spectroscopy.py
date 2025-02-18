@@ -5,13 +5,13 @@ from typing import Optional, Union
 import numpy as np
 import numpy.typing as npt
 from _collections_abc import Callable
-from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
+from qibolab.platform import Platform
+from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
-from qibocal.calibration import CalibrationPlatform
-from qibocal.result import magnitude, phase
-from qibocal.update import replace
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 
 from .utils import (
     PowerLevel,
@@ -95,6 +95,9 @@ class ResonatorSpectroscopyParameters(Parameters):
     amplitude: Optional[float] = None
     """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
+    attenuation: Optional[int] = None
+    """Readout attenuation (optional). If defined, same attenuation will be used in all qubits.
+    Otherwise the default attenuation defined on the platform runcard will be used"""
     hardware_average: bool = True
     """By default hardware average will be performed."""
     phase_delay: float = None
@@ -128,6 +131,10 @@ class ResonatorSpectroscopyResults(Results):
         default_factory=dict,
     )
     """Readout amplitude for each qubit."""
+    attenuation: Optional[dict[QubitId, int]] = field(
+        default_factory=dict,
+    )
+    """Readout attenuation [dB] for each qubit."""
 
     def __contains__(self, key: QubitId):
         return all(
@@ -155,6 +162,8 @@ class ResonatorSpectroscopyData(Data):
     """Raw data acquired."""
     power_level: Optional[PowerLevel] = None
     """Power regime of the resonator."""
+    attenuations: Optional[dict[QubitId, int]] = field(default_factory=dict)
+    """Readout attenuation [dB] for each qubit"""
 
     @classmethod
     def load(cls, path):
@@ -166,9 +175,7 @@ class ResonatorSpectroscopyData(Data):
 
 
 def _acquisition(
-    params: ResonatorSpectroscopyParameters,
-    platform: CalibrationPlatform,
-    targets: list[QubitId],
+    params: ResonatorSpectroscopyParameters, platform: Platform, targets: list[QubitId]
 ) -> ResonatorSpectroscopyData:
     """Data acquisition for resonator spectroscopy."""
     # create a sequence of pulses for the experiment:
@@ -178,67 +185,73 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     amplitudes = {}
+    attenuations = {}
 
-    for q in targets:
-        natives = platform.natives.single_qubit[q]
-        channel, pulse = natives.MZ()[0]
+    for qubit in targets:
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
 
         if params.amplitude is not None:
-            probe = replace(pulse.probe, amplitude=params.amplitude)
-            pulse = replace(pulse, probe=probe)
+            ro_pulses[qubit].amplitude = params.amplitude
 
-        amplitudes[q] = pulse.probe.amplitude
+        amplitudes[qubit] = ro_pulses[qubit].amplitude
 
-        ro_pulses[q] = pulse
-        sequence.append((channel, pulse))
+        if params.attenuation is not None:
+            platform.qubits[qubit].readout.attenuation = params.attenuation
+
+        try:
+            attenuation = platform.qubits[qubit].readout.attenuation
+        except AttributeError:
+            attenuation = None
+
+        attenuations[qubit] = attenuation
+        sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
-    sweepers = [
-        Sweeper(
-            parameter=Parameter.frequency,
-            values=platform.config(platform.qubits[q].probe).frequency
-            + delta_frequency_range,
-            channels=[platform.qubits[q].probe],
-        )
-        for q in targets
-    ]
-
+    sweeper = Sweeper(
+        Parameter.frequency,
+        delta_frequency_range,
+        pulses=[ro_pulses[qubit] for qubit in targets],
+        type=SweeperType.OFFSET,
+    )
     data = ResonatorSpectroscopyData(
         resonator_type=platform.resonator_type,
         power_level=params.power_level,
         amplitudes=amplitudes,
+        attenuations=attenuations,
         fit_function=params.fit_function,
         phase_sign=params.phase_sign,
     )
 
-    results = platform.execute(
-        [sequence],
-        [sweepers],
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
-        averaging_mode=AveragingMode.SINGLESHOT,
+    results = platform.sweep(
+        sequence,
+        params.execution_parameters,
+        sweeper,
     )
 
     # retrieve the results for every qubit
-    for q in targets:
-        result = results[ro_pulses[q].id]
+    for qubit in targets:
+        result = results[ro_pulses[qubit].serial]
         # store the results
-        ro_frequency = platform.config(platform.qubits[q].probe).frequency
-        signal = magnitude(result)
-        phase_ = phase(result)
+        frequency =delta_frequency_range + ro_pulses[qubit].frequency
+        
+        if params.phase_delay is not None:
+            phase = result.average.phase
+            phase = np.unwrap(phase)-(frequency-frequency[0])*1e-6*params.phase_delay
+        else:
+            phase = result.average.phase
+
         data.register_qubit(
             ResSpecType,
-            (q),
+            (qubit),
             dict(
-                signal=signal.mean(axis=0),
-                phase=phase_.mean(axis=0),
-                freq=delta_frequency_range + ro_frequency,
-                error_signal=np.std(signal, axis=0, ddof=1) / np.sqrt(signal.shape[0]),
-                error_phase=np.std(phase_, axis=0, ddof=1) / np.sqrt(phase_.shape[0]),
+                signal=result.average.magnitude,
+                phase=phase,
+                freq=delta_frequency_range + ro_pulses[qubit].frequency,
+                error_signal=result.average.std,
+                error_phase=result.phase_std,
             ),
         )
     return data
@@ -300,6 +313,7 @@ def _fit(
             error_fit_pars=error_fit_pars,
             chi2_reduced=chi2,
             amplitude=data.amplitudes,
+            attenuation=data.attenuations,
         )
     return ResonatorSpectroscopyResults(
         frequency=frequency,
@@ -307,6 +321,7 @@ def _fit(
         error_fit_pars=error_fit_pars,
         chi2_reduced=chi2,
         amplitude=data.amplitudes,
+        attenuation=data.attenuations,
     )
 
 
@@ -317,14 +332,15 @@ def _plot(
     return FITS[data.fit_function].plot(data, target, fit)
 
 
-def _update(
-    results: ResonatorSpectroscopyResults,
-    platform: CalibrationPlatform,
-    target: QubitId,
-):
+def _update(results: ResonatorSpectroscopyResults, platform: Platform, target: QubitId):
     update.readout_frequency(results.frequency[target], platform, target)
+
+    # if this condition is satifisfied means that we are in the low power regime
+    # therefore we update also the readout amplitude
     if len(results.bare_frequency) == 0:
         update.readout_amplitude(results.amplitude[target], platform, target)
+        if results.attenuation[target] is not None:
+            update.readout_attenuation(results.attenuation[target], platform, target)
     else:
         update.bare_resonator_frequency(
             results.bare_frequency[target], platform, target

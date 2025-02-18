@@ -1,25 +1,25 @@
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
+from importlib import reload
+from inspect import cleandoc
 from pathlib import Path
 from typing import Optional
 
 import pytest
 from qibolab import Platform, create_platform
+from qibolab.qubits import QubitId
 
 import qibocal
 import qibocal.protocols
 from qibocal import Executor
 from qibocal.auto.history import History
 from qibocal.auto.mode import ExecutionMode
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.auto.runcard import Action
-from qibocal.calibration.platform import (
-    create_calibration_platform,
-)
 from qibocal.protocols import flipping
 
-PLATFORM = create_calibration_platform("dummy")
+PLATFORM = create_platform("dummy")
 PARAMETERS = {
     "id": "flipping",
     "targets": [0, 1, 2],
@@ -38,11 +38,7 @@ ACTION = Action(**action)
 @pytest.mark.parametrize("platform", ["dummy", PLATFORM])
 def test_anonymous_executor(params, platform):
     """Executor without any name."""
-    platform = (
-        platform
-        if isinstance(platform, Platform)
-        else create_calibration_platform(platform)
-    )
+    platform = platform if isinstance(platform, Platform) else create_platform(platform)
     executor = Executor(
         history=History(),
         platform=platform,
@@ -146,12 +142,6 @@ def test_init(tmp_path: Path, executor: Executor):
     assert executor.meta is not None
     assert executor.meta.start is not None
 
-    init(path, force=True, platform="dummy")
-    assert executor.platform.name == "dummy"
-
-    init(path, force=True, platform=create_platform("dummy"))
-    assert executor.platform.name == "dummy"
-
 
 def test_close(tmp_path: Path, executor: Executor):
     path = tmp_path / "my-close-folder"
@@ -165,6 +155,34 @@ def test_close(tmp_path: Path, executor: Executor):
     assert executor.meta is not None
     assert executor.meta.start is not None
     assert executor.meta.end is not None
+
+
+@pytest.fixture
+def fake_platform(tmp_path, monkeypatch):
+    name = "ciao-come-va"
+    platform = tmp_path / "ciao-come-va"
+    platform.mkdir()
+    (platform / "platform.py").write_text(
+        cleandoc(
+            """
+            from qibolab import Platform
+
+            def create():
+                return Platform(42, {}, {}, {})
+            """
+        )
+    )
+    monkeypatch.setenv("QIBOLAB_PLATFORMS", tmp_path)
+    return name
+
+
+def test_default_executor(tmp_path: Path, fake_platform: str, monkeypatch):
+    reload(qibocal)
+    assert qibocal.DEFAULT_EXECUTOR.platform.name == "dummy"
+
+    path = tmp_path / "my-default-exec-folder"
+    qibocal.routines.init(path, platform=fake_platform)
+    assert qibocal.DEFAULT_EXECUTOR.platform.name == 42
 
 
 def test_context_manager(tmp_path: Path, executor: Executor):

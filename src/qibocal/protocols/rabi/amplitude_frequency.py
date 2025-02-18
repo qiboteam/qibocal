@@ -6,10 +6,12 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
+from qibolab.qubits import QubitId
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import QubitId, Routine
-from qibocal.calibration import CalibrationPlatform
+from qibocal.auto.operation import Routine
 from qibocal.config import log
 from qibocal.protocols.utils import (
     HZ_TO_GHZ,
@@ -20,7 +22,6 @@ from qibocal.protocols.utils import (
     table_html,
 )
 
-from ...result import probability
 from .amplitude_frequency_signal import (
     RabiAmplitudeFreqSignalData,
     RabiAmplitudeFrequencySignalParameters,
@@ -73,52 +74,60 @@ class RabiAmplitudeFreqData(RabiAmplitudeFreqSignalData):
 
 
 def _acquisition(
-    params: RabiAmplitudeFrequencyParameters,
-    platform: CalibrationPlatform,
-    targets: list[QubitId],
+    params: RabiAmplitudeFrequencyParameters, platform: Platform, targets: list[QubitId]
 ) -> RabiAmplitudeFreqData:
     """Data acquisition for Rabi experiment sweeping amplitude."""
 
     sequence, qd_pulses, ro_pulses, durations = sequence_amplitude(
-        targets, params, platform, params.rx90
+        targets, params, platform
     )
+
+    # qubit drive pulse amplitude
+    amplitude_range = np.arange(
+        params.min_amp_factor,
+        params.max_amp_factor,
+        params.step_amp_factor,
+    )
+    sweeper_amp = Sweeper(
+        Parameter.amplitude,
+        amplitude_range,
+        [qd_pulses[qubit] for qubit in targets],
+        type=SweeperType.FACTOR,
+    )
+
+    # qubit drive pulse amplitude
     frequency_range = np.arange(
         params.min_freq,
         params.max_freq,
         params.step_freq,
     )
-    freq_sweepers = {}
-    for qubit in targets:
-        channel = platform.qubits[qubit].drive
-        freq_sweepers[qubit] = Sweeper(
-            parameter=Parameter.frequency,
-            values=platform.config(channel).frequency + frequency_range,
-            channels=[channel],
-        )
-    amp_sweeper = Sweeper(
-        parameter=Parameter.amplitude,
-        range=(params.min_amp, params.max_amp, params.step_amp),
-        pulses=[qd_pulses[qubit] for qubit in targets],
+    sweeper_freq = Sweeper(
+        Parameter.frequency,
+        frequency_range,
+        [qd_pulses[qubit] for qubit in targets],
+        type=SweeperType.OFFSET,
     )
 
-    data = RabiAmplitudeFreqData(durations=durations, rx90=params.rx90)
+    data = RabiAmplitudeFreqData(durations=durations)
 
-    results = platform.execute(
-        [sequence],
-        [[amp_sweeper], [freq_sweepers[q] for q in targets]],
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.SINGLESHOT,
+    results = platform.sweep(
+        sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.DISCRIMINATION,
+            averaging_mode=AveragingMode.SINGLESHOT,
+        ),
+        sweeper_amp,
+        sweeper_freq,
     )
-
     for qubit in targets:
-        result = results[ro_pulses[qubit].id]
-        prob = probability(result, state=1)
+        result = results[ro_pulses[qubit].serial]
+        prob = result.probability(state=1)
         data.register_qubit(
             qubit=qubit,
-            freq=freq_sweepers[qubit].values,
-            amp=amp_sweeper.values,
+            freq=qd_pulses[qubit].frequency + frequency_range,
+            amp=qd_pulses[qubit].amplitude * amplitude_range,
             prob=prob.tolist(),
             error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
         )
@@ -162,12 +171,11 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
                 pguess,
                 sigma=error,
                 signal=False,
-                x_limits=(x_min, x_max),
-                y_limits=(y_min, y_max),
             )
+
             fitted_frequencies[qubit] = frequency
             fitted_amplitudes[qubit] = [pi_pulse_parameter, perr[2] / 2]
-            fitted_parameters[qubit] = popt if isinstance(popt, list) else popt.tolist()
+            fitted_parameters[qubit] = popt.tolist()
 
             chi2[qubit] = (
                 chi2_reduced(
@@ -186,7 +194,6 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         fitted_parameters=fitted_parameters,
         frequency=fitted_frequencies,
         chi2=chi2,
-        rx90=data.rx90,
     )
 
 
@@ -214,17 +221,16 @@ def _plot(
 
     figures.append(fig)
 
-    fig.add_trace(
-        go.Heatmap(
-            x=amplitudes,
-            y=frequencies,
-            z=qubit_data.prob,
-        ),
-        row=1,
-        col=1,
-    )
-
     if fit is not None:
+        fig.add_trace(
+            go.Heatmap(
+                x=amplitudes,
+                y=frequencies,
+                z=qubit_data.prob,
+            ),
+            row=1,
+            col=1,
+        )
         fig.add_trace(
             go.Scatter(
                 x=[min(amplitudes), max(amplitudes)],
@@ -235,12 +241,10 @@ def _plot(
             row=1,
             col=1,
         )
-        pulse_name = "Pi-half pulse" if data.rx90 else "Pi pulse"
-
         fitting_report = table_html(
             table_dict(
                 target,
-                ["Optimal rabi frequency", f"{pulse_name} amplitude"],
+                ["Optimal rabi frequency", "Pi-pulse amplitude"],
                 [
                     fit.frequency[target],
                     f"{fit.amplitude[target][0]:.6f} +- {fit.amplitude[target][1]:.6f} [a.u.]",

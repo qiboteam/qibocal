@@ -6,7 +6,6 @@ from ..auto.history import History
 from ..auto.mode import ExecutionMode
 from ..auto.output import Metadata, Output
 from ..auto.runcard import Runcard
-from ..calibration import CalibrationPlatform
 
 
 def acquire(runcard: Runcard, folder: Path, force: bool):
@@ -18,7 +17,7 @@ def acquire(runcard: Runcard, folder: Path, force: bool):
     """
     # rename for brevity
     backend = construct_backend(backend=runcard.backend, platform=runcard.platform)
-    platform = CalibrationPlatform.from_platform(backend.platform)
+    platform = backend.platform
     if platform is None:
         raise ValueError("Qibocal requires a Qibolab platform to run.")
 

@@ -4,11 +4,9 @@ from qibo import Circuit, gates
 from qibo.backends import Backend
 from qibo.transpiler.pipeline import Passes
 from qibo.transpiler.unroller import NativeGates, Unroller
-from qibolab import PulseSequence
-from qibolab._core.compilers import Compiler
-from qibolab._core.native import NativeContainer
-
-from qibocal.auto.operation import QubitId
+from qibolab.compilers.compiler import Compiler
+from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
 REPLACEMENTS = {
     "RX": "GPI2",
@@ -111,35 +109,32 @@ def execute_transpiled_circuit(
     )
 
 
-def natives(platform) -> dict[str, NativeContainer]:
+def natives(platform):
     """
-    Return the dict of native gates name with the associated native container
-    defined in the `platform`. This function assumes the native gates to be the same for each
+    Return the list of native gates defined in the `platform`.
+    This function assumes the native gates to be the same for each
     qubit and pair.
     """
-    pair = next(iter(platform.pairs))
-    qubit = next(iter(platform.qubits))
-    two_qubit_natives_container = platform.natives.two_qubit[pair]
-    single_qubit_natives_container = platform.natives.single_qubit[qubit]
-    single_qubit_natives = list(single_qubit_natives_container.model_fields)
-    two_qubit_natives = list(two_qubit_natives_container.model_fields)
+    pair = next(iter(platform.pairs.values()))
+    qubit = next(iter(platform.qubits.values()))
+    two_qubit_natives = list(pair.native_gates.raw)
+    single_qubit_natives = list(qubit.native_gates.raw)
     # Solve Qibo-Qibolab mismatch
     single_qubit_natives.append("RZ")
     single_qubit_natives.append("Z")
     single_qubit_natives.remove("RX12")
-    single_qubit_natives.remove("RX90")
-    single_qubit_natives.remove("CP")
-    single_qubit_natives = [REPLACEMENTS.get(x, x) for x in single_qubit_natives]
-    return {i: platform.natives.single_qubit[qubit] for i in single_qubit_natives} | {
-        i: platform.natives.two_qubit[pair] for i in two_qubit_natives
-    }
+    new_single_natives = [REPLACEMENTS.get(i, i) for i in single_qubit_natives]
+    return new_single_natives + two_qubit_natives
 
 
-def create_rule(name, natives):
-    """Create rule for gate name given container natives."""
-
-    def rule(gate: gates.Gate, natives: NativeContainer) -> PulseSequence:
-        return natives.ensure(name).create_sequence()
+def create_rule(native):
+    def rule(qubits_ids, platform, parameters=None):
+        if len(qubits_ids[1]) == 1:
+            native_gate = platform.qubits[tuple(qubits_ids[1])].native_gates
+        else:
+            native_gate = platform.pairs[tuple(qubits_ids[1])].native_gates
+        pulses = getattr(native_gate, native).pulses
+        return PulseSequence(pulses), {}
 
     return rule
 
@@ -150,10 +145,10 @@ def set_compiler(backend, natives_):
     """
     compiler = backend.compiler
     rules = {}
-    for name, natives_container in natives_.items():
-        gate = getattr(gates, name)
+    for native in natives_:
+        gate = getattr(gates, native)
         if gate not in compiler.rules:
-            rules[gate] = create_rule(name, natives_container)
+            rules[gate] = create_rule(native)
         else:
             rules[gate] = compiler.rules[gate]
     rules[gates.I] = compiler.rules[gates.I]
@@ -172,7 +167,7 @@ def dummy_transpiler(backend: Backend) -> Passes:
     set_compiler(backend, native_gates)
     native_gates = [getattr(gates, x) for x in native_gates]
     unroller = Unroller(NativeGates.from_gatelist(native_gates))
-    return Passes(connectivity=platform.pairs, passes=[unroller])
+    return Passes(connectivity=platform.topology, passes=[unroller])
 
 
 def pad_circuit(nqubits, circuit: Circuit, qubit_map: list[int]) -> Circuit:

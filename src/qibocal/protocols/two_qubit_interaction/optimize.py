@@ -7,18 +7,13 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
+from qibolab.qubits import QubitId, QubitPairId
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import (
-    Data,
-    Parameters,
-    QubitId,
-    QubitPairId,
-    Results,
-    Routine,
-)
-from qibocal.calibration import CalibrationPlatform
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
@@ -48,8 +43,10 @@ class OptimizeTwoQubitGateParameters(Parameters):
     """Maximum duration of flux pulse swept."""
     duration_step: int
     """Step duration of flux pulse swept."""
-    dt: Optional[float] = 0
+    dt: Optional[float] = 20
     """Time delay between flux pulses and readout."""
+    parking: bool = True
+    """Wether to park non interacting qubits or not."""
     native: str = "CZ"
     """Two qubit interaction to be calibrated.
 
@@ -144,7 +141,7 @@ class OptimizeTwoQubitGateData(Data):
 
 def _acquisition(
     params: OptimizeTwoQubitGateParameters,
-    platform: CalibrationPlatform,
+    platform: Platform,
     targets: list[QubitPairId],
 ) -> OptimizeTwoQubitGateData:
     r"""
@@ -157,81 +154,97 @@ def _acquisition(
     )
     for pair in targets:
         # order the qubits so that the low frequency one is the first
-        ordered_pair = order_pair(pair, platform)
+        ord_pair = order_pair(pair, platform)
 
         for target_q, control_q in (
-            (ordered_pair[0], ordered_pair[1]),
-            (ordered_pair[1], ordered_pair[0]),
+            (ord_pair[0], ord_pair[1]),
+            (ord_pair[1], ord_pair[0]),
         ):
             for setup in ("I", "X"):
                 (
                     sequence,
                     flux_pulse,
                     theta_pulse,
-                    ro_delays,
                 ) = create_sequence(
                     platform,
                     setup,
                     target_q,
                     control_q,
-                    ordered_pair,
+                    ord_pair,
                     params.native,
                     params.dt,
+                    params.parking,
                     flux_pulse_max_duration=params.duration_max,
                 )
+                theta = np.arange(
+                    params.theta_start,
+                    params.theta_end,
+                    params.theta_step,
+                    dtype=float,
+                )
+
+                amplitude_range = np.arange(
+                    params.flux_pulse_amplitude_min,
+                    params.flux_pulse_amplitude_max,
+                    params.flux_pulse_amplitude_step,
+                    dtype=float,
+                )
+
+                duration_range = np.arange(
+                    params.duration_min,
+                    params.duration_max,
+                    params.duration_step,
+                    dtype=float,
+                )
+
+                data.amplitudes[ord_pair] = amplitude_range.tolist()
+                data.durations[ord_pair] = duration_range.tolist()
 
                 sweeper_theta = Sweeper(
-                    parameter=Parameter.relative_phase,
-                    range=(params.theta_start, params.theta_end, params.theta_step),
+                    Parameter.relative_phase,
+                    theta,
                     pulses=[theta_pulse],
+                    type=SweeperType.ABSOLUTE,
                 )
 
                 sweeper_amplitude = Sweeper(
-                    parameter=Parameter.amplitude,
-                    range=(
-                        params.flux_pulse_amplitude_min,
-                        params.flux_pulse_amplitude_max,
-                        params.flux_pulse_amplitude_step,
-                    ),
+                    Parameter.amplitude,
+                    amplitude_range / flux_pulse.amplitude,
                     pulses=[flux_pulse],
+                    type=SweeperType.FACTOR,
                 )
 
                 sweeper_duration = Sweeper(
-                    parameter=Parameter.duration,
-                    range=(
-                        params.duration_min,
-                        params.duration_max,
-                        params.duration_step,
+                    Parameter.duration,
+                    duration_range,
+                    pulses=[flux_pulse],
+                    type=SweeperType.ABSOLUTE,
+                )
+
+                results = platform.sweep(
+                    sequence,
+                    ExecutionParameters(
+                        nshots=params.nshots,
+                        relaxation_time=params.relaxation_time,
+                        acquisition_type=AcquisitionType.DISCRIMINATION,
+                        averaging_mode=AveragingMode.CYCLIC,
                     ),
-                    pulses=[flux_pulse] + ro_delays,
+                    sweeper_duration,
+                    sweeper_amplitude,
+                    sweeper_theta,
                 )
 
-                ro_target = list(
-                    sequence.channel(platform.qubits[target_q].acquisition)
-                )[-1]
-                ro_control = list(
-                    sequence.channel(platform.qubits[control_q].acquisition)
-                )[-1]
-                results = platform.execute(
-                    [sequence],
-                    [[sweeper_duration], [sweeper_amplitude], [sweeper_theta]],
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=AveragingMode.CYCLIC,
-                )
-
-                data.amplitudes[ordered_pair] = sweeper_amplitude.values.tolist()
-                data.durations[ordered_pair] = sweeper_duration.values.tolist()
+                result_target = results[target_q].probability(1)
+                result_control = results[control_q].probability(1)
                 data.register_qubit(
                     target_q,
                     control_q,
                     setup,
-                    sweeper_theta.values,
-                    sweeper_amplitude.values,
-                    sweeper_duration.values,
-                    results[ro_control.id],
-                    results[ro_target.id],
+                    theta,
+                    data.amplitudes[ord_pair],
+                    data.durations[ord_pair],
+                    result_control,
+                    result_target,
                 )
     return data
 
@@ -361,6 +374,7 @@ def _plot(
     """Plot routine for OptimizeTwoQubitGate."""
     fitting_report = ""
     qubits = next(iter(data.amplitudes))[:2]
+
     fig = make_subplots(
         rows=2,
         cols=2,
@@ -388,6 +402,7 @@ def _plot(
                     leakage.append(fit.leakages[qubits[0], qubits[1], i, j][control_q])
 
             condition = [target_q, control_q] == list(target)
+
             fig.add_trace(
                 go.Heatmap(
                     x=durs,
@@ -443,9 +458,7 @@ def _plot(
 
 
 def _update(
-    results: OptimizeTwoQubitGateResults,
-    platform: CalibrationPlatform,
-    target: QubitPairId,
+    results: OptimizeTwoQubitGateResults, platform: Platform, target: QubitPairId
 ):
     # FIXME: quick fix for qubit order
     target = tuple(sorted(target))

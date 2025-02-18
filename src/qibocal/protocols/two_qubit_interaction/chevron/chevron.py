@@ -1,21 +1,23 @@
 """SWAP experiment for two qubit gates, chevron plot."""
 
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
+from qibolab.qubits import QubitPairId
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routine
-from qibocal.calibration import CalibrationPlatform
+from qibocal import update
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
-from .... import update
 from ..utils import fit_flux_amplitude, order_pair
 from .utils import COLORAXIS, chevron_fit, chevron_sequence
 
@@ -24,11 +26,11 @@ from .utils import COLORAXIS, chevron_fit, chevron_sequence
 class ChevronParameters(Parameters):
     """CzFluxTime runcard inputs."""
 
-    amplitude_min: float
+    amplitude_min_factor: float
     """Amplitude minimum."""
-    amplitude_max: float
+    amplitude_max_factor: float
     """Amplitude maximum."""
-    amplitude_step: float
+    amplitude_step_factor: float
     """Amplitude step."""
     duration_min: float
     """Duration minimum."""
@@ -40,8 +42,28 @@ class ChevronParameters(Parameters):
     """Time delay between flux pulses and readout."""
     parking: bool = True
     """Wether to park non interacting qubits or not."""
-    native: Literal["CZ", "iSWAP"] = "CZ"
-    """Two qubit interaction to be calibrated."""
+    native: str = "CZ"
+    """Two qubit interaction to be calibrated.
+
+    iSWAP and CZ are the possible options.
+
+    """
+
+    @property
+    def amplitude_range(self):
+        return np.arange(
+            self.amplitude_min_factor,
+            self.amplitude_max_factor,
+            self.amplitude_step_factor,
+        )
+
+    @property
+    def duration_range(self):
+        return np.arange(
+            self.duration_min,
+            self.duration_max,
+            self.duration_step,
+        )
 
 
 @dataclass
@@ -52,8 +74,12 @@ class ChevronResults(Results):
     """CZ angle."""
     duration: dict[QubitPairId, int]
     """Virtual Z phase correction."""
-    native: Literal["CZ", "iSWAP"] = "CZ"
-    """Two qubit interaction to be calibrated."""
+    native: str = "CZ"
+    """Two qubit interaction to be calibrated.
+
+    iSWAP and CZ are the possible options.
+
+    """
 
 
 ChevronType = np.dtype(
@@ -79,6 +105,8 @@ class ChevronData(Data):
     iSWAP and CZ are the possible options.
 
     """
+    sweetspot: dict[QubitPairId, float] = field(default_factory=dict)
+    """Sweetspot value for high frequency qubit."""
     data: dict[QubitPairId, npt.NDArray[ChevronType]] = field(default_factory=dict)
 
     label: Optional[str] = None
@@ -112,14 +140,14 @@ class ChevronData(Data):
 
 def _aquisition(
     params: ChevronParameters,
-    platform: CalibrationPlatform,
+    platform: Platform,
     targets: list[QubitPairId],
 ) -> ChevronData:
     r"""Perform an CZ experiment between pairs of qubits by changing its
     frequency.
 
     Args:
-        platform: CalibrationPlatform to use.
+        platform: Platform to use.
         params: Experiment parameters.
         targets (list): List of pairs to use sequentially.
 
@@ -131,51 +159,51 @@ def _aquisition(
     data = ChevronData(native=params.native)
     for pair in targets:
         # order the qubits so that the low frequency one is the first
-        ordered_pair = order_pair(pair, platform)
-        sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
+        sequence = chevron_sequence(
             platform=platform,
-            ordered_pair=ordered_pair,
+            pair=pair,
             duration_max=params.duration_max,
             parking=params.parking,
             dt=params.dt,
             native=params.native,
         )
+        ordered_pair = order_pair(pair, platform)
+        # TODO: move in function to avoid code duplications
         sweeper_amplitude = Sweeper(
-            parameter=Parameter.amplitude,
-            range=(params.amplitude_min, params.amplitude_max, params.amplitude_step),
-            pulses=[flux_pulse],
+            Parameter.amplitude,
+            params.amplitude_range,
+            pulses=[sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
+            type=SweeperType.FACTOR,
         )
+        data.native_amplitude[ordered_pair] = (
+            sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0].amplitude
+        )
+        data.sweetspot[ordered_pair] = platform.qubits[ordered_pair[1]].sweetspot
         sweeper_duration = Sweeper(
-            parameter=Parameter.duration,
-            range=(params.duration_min, params.duration_max, params.duration_step),
-            pulses=[flux_pulse] + delays + parking_pulses,
+            Parameter.duration,
+            params.duration_range,
+            pulses=[sequence.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
+            type=SweeperType.ABSOLUTE,
         )
 
-        ro_high = list(sequence.channel(platform.qubits[ordered_pair[1]].acquisition))[
-            -1
-        ]
-        ro_low = list(sequence.channel(platform.qubits[ordered_pair[0]].acquisition))[
-            -1
-        ]
-
-        data.native_amplitude[ordered_pair] = flux_pulse.amplitude
-
-        results = platform.execute(
-            [sequence],
-            [[sweeper_duration], [sweeper_amplitude]],
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.CYCLIC,
+        results = platform.sweep(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.DISCRIMINATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+            sweeper_duration,
+            sweeper_amplitude,
         )
-
         data.register_qubit(
             ordered_pair[0],
             ordered_pair[1],
-            sweeper_duration.values,
-            sweeper_amplitude.values,
-            results[ro_low.id],
-            results[ro_high.id],
+            params.duration_range,
+            params.amplitude_range * data.native_amplitude[ordered_pair],
+            results[ordered_pair[0]].probability(state=1),
+            results[ordered_pair[1]].probability(state=1),
         )
     return data
 
@@ -295,10 +323,11 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
         fitting_report = table_html(
             table_dict(
                 target[1],
-                [f"{fit.native} amplitude", f"{fit.native} duration"],
+                [f"{fit.native} amplitude", f"{fit.native} duration", "Bias point"],
                 [
                     fit.amplitude[target],
                     fit.duration[target],
+                    fit.amplitude[target] + data.sweetspot[target],
                 ],
             )
         )
@@ -306,13 +335,12 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     return [fig], fitting_report
 
 
-def _update(
-    results: ChevronResults, platform: CalibrationPlatform, target: QubitPairId
-):
+def _update(results: ChevronResults, platform: Platform, target: QubitPairId):
     if isinstance(target, list):
         target = tuple(target)
 
-    target = target[::-1] if target not in results.duration else target
+    if target not in results.duration:
+        target = (target[1], target[0])
 
     getattr(update, f"{results.native}_duration")(
         results.duration[target], platform, target

@@ -6,14 +6,15 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
+from qibolab.qubits import QubitId
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import QubitId, Routine
-from qibocal.calibration import CalibrationPlatform
+from qibocal.auto.operation import Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
-from ...result import probability
 from ..utils import HZ_TO_GHZ, chi2_reduced, fallback_period, guess_period
 from .length_frequency_signal import (
     RabiLengthFreqSignalData,
@@ -67,66 +68,60 @@ class RabiLengthFreqData(RabiLengthFreqSignalData):
 
 
 def _acquisition(
-    params: RabiLengthFrequencyParameters,
-    platform: CalibrationPlatform,
-    targets: list[QubitId],
+    params: RabiLengthFrequencyParameters, platform: Platform, targets: list[QubitId]
 ) -> RabiLengthFreqData:
     """Data acquisition for Rabi experiment sweeping length."""
 
-    sequence, qd_pulses, delays, ro_pulses, amplitudes = sequence_length(
-        targets, params, platform, params.rx90
+    sequence, qd_pulses, ro_pulses, amplitudes = sequence_length(
+        targets, params, platform
     )
 
-    sweep_range = (
+    # qubit drive pulse length
+    length_range = np.arange(
         params.pulse_duration_start,
         params.pulse_duration_end,
         params.pulse_duration_step,
     )
-    if params.interpolated_sweeper:
-        len_sweeper = Sweeper(
-            parameter=Parameter.duration_interpolated,
-            range=sweep_range,
-            pulses=[qd_pulses[q] for q in targets],
-        )
-    else:
-        len_sweeper = Sweeper(
-            parameter=Parameter.duration,
-            range=sweep_range,
-            pulses=[qd_pulses[q] for q in targets] + [delays[q] for q in targets],
-        )
+    sweeper_len = Sweeper(
+        Parameter.duration,
+        length_range,
+        [qd_pulses[qubit] for qubit in targets],
+        type=SweeperType.ABSOLUTE,
+    )
 
+    # qubit drive pulse amplitude
     frequency_range = np.arange(
         params.min_freq,
         params.max_freq,
         params.step_freq,
     )
-    freq_sweepers = {}
-    for qubit in targets:
-        channel = platform.qubits[qubit].drive
-        freq_sweepers[qubit] = Sweeper(
-            parameter=Parameter.frequency,
-            values=platform.config(channel).frequency + frequency_range,
-            channels=[channel],
-        )
-
-    data = RabiLengthFreqData(amplitudes=amplitudes, rx90=params.rx90)
-
-    results = platform.execute(
-        [sequence],
-        [[len_sweeper], [freq_sweepers[q] for q in targets]],
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.SINGLESHOT,
+    sweeper_freq = Sweeper(
+        Parameter.frequency,
+        frequency_range,
+        [qd_pulses[qubit] for qubit in targets],
+        type=SweeperType.OFFSET,
     )
 
+    data = RabiLengthFreqData(amplitudes=amplitudes)
+
+    results = platform.sweep(
+        sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.DISCRIMINATION,
+            averaging_mode=AveragingMode.SINGLESHOT,
+        ),
+        sweeper_len,
+        sweeper_freq,
+    )
     for qubit in targets:
-        result = results[ro_pulses[qubit].id]
-        prob = probability(result, state=1)
+        result = results[ro_pulses[qubit].serial]
+        prob = result.probability(state=1)
         data.register_qubit(
             qubit=qubit,
-            freq=freq_sweepers[qubit].values,
-            lens=len_sweeper.values,
+            freq=qd_pulses[qubit].frequency + frequency_range,
+            lens=length_range,
             prob=prob.tolist(),
             error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
         )
@@ -197,7 +192,6 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
         fitted_parameters=fitted_parameters,
         frequency=fitted_frequencies,
         chi2=chi2,
-        rx90=data.rx90,
     )
 
 
@@ -246,12 +240,10 @@ def _plot(
             row=1,
             col=1,
         )
-        pulse_name = "Pi-half pulse" if data.rx90 else "Pi pulse"
-
         fitting_report = table_html(
             table_dict(
                 target,
-                ["Optimal rabi frequency", f"{pulse_name} duration"],
+                ["Optimal rabi frequency", "Pi-pulse duration"],
                 [
                     fit.frequency[target],
                     f"{fit.length[target][0]:.2f} +- {fit.length[target][1]:.2f} ns",

@@ -1,38 +1,24 @@
 """CZ virtual correction experiment for two qubit gates, tune landscape."""
 
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import (
-    AcquisitionType,
-    AveragingMode,
-    Delay,
-    Parameter,
-    Pulse,
-    PulseSequence,
-    Sweeper,
-    VirtualZ,
-)
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
+from qibolab.pulses import Pulse, PulseSequence
+from qibolab.qubits import QubitId, QubitPairId
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import (
-    Data,
-    Parameters,
-    QubitId,
-    QubitPairId,
-    Results,
-    Routine,
-)
-from qibocal.calibration import CalibrationPlatform
+from qibocal import update
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
-from ... import update
-from ...update import replace
 from .utils import order_pair
 
 
@@ -54,6 +40,8 @@ class VirtualZPhasesParameters(Parameters):
     """
     dt: Optional[float] = 20
     """Time delay between flux pulses and readout."""
+    parking: bool = True
+    """Wether to park non interacting qubits or not."""
 
 
 @dataclass
@@ -76,6 +64,7 @@ class VirtualZPhasesResults(Results):
         While key is a QubitPairId both chsh and chsh_mitigated contain
         an additional key which represents the basis chosen.
         """
+        # TODO: fix this (failing only for qq report)
         return key in [
             (target, control) for target, control, _ in self.fitted_parameters
         ]
@@ -101,12 +90,13 @@ class VirtualZPhasesData(Data):
 
 
 def create_sequence(
-    platform: CalibrationPlatform,
-    setup: Literal["I", "X"],
+    platform: Platform,
+    setup: str,
     target_qubit: QubitId,
     control_qubit: QubitId,
     ordered_pair: list[QubitId, QubitId],
-    native: Literal["CZ", "iSWAP"],
+    native: str,
+    parking: bool,
     dt: float,
     flux_pulse_max_duration: float = None,
 ) -> tuple[
@@ -116,112 +106,66 @@ def create_sequence(
 ]:
     """Create the experiment PulseSequence."""
 
-    target_natives = platform.natives.single_qubit[target_qubit]
-    control_natives = platform.natives.single_qubit[control_qubit]
-
     sequence = PulseSequence()
-    # Y90
-    sequence += target_natives.R(theta=np.pi / 2, phi=np.pi / 2)
-    # X
-    if setup == "X":
-        sequence += control_natives.RX()
-    else:
-        sequence.append(
-            (platform.qubits[control_qubit].drive, Delay(duration=sequence.duration))
-        )
 
-    drive_duration = sequence.duration
+    Y90_pulse = platform.create_RX90_pulse(
+        target_qubit, start=0, relative_phase=np.pi / 2
+    )
+    RX_pulse_start = platform.create_RX_pulse(control_qubit, start=0, relative_phase=0)
 
-    # CZ
-    flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
-    flux_pulses = [
-        (ch, pulse) for ch, pulse in flux_sequence if not isinstance(pulse, VirtualZ)
-    ]
+    flux_sequence, _ = getattr(platform, f"create_{native}_pulse_sequence")(
+        (ordered_pair[1], ordered_pair[0]),
+        start=max(Y90_pulse.finish, RX_pulse_start.finish),
+    )
 
+    flux_pulse = flux_sequence.get_qubit_pulses(ordered_pair[1])[0]
     if flux_pulse_max_duration is not None:
-        flux_pulses[0] = (
-            flux_pulses[0][0],
-            replace(flux_pulses[0][1], duration=flux_pulse_max_duration),
+        flux_pulse.duration = flux_pulse_max_duration
+
+    theta_pulse = platform.create_RX90_pulse(
+        target_qubit,
+        start=flux_sequence.finish + dt,
+        relative_phase=0,
+    )
+    RX_pulse_end = platform.create_RX_pulse(
+        control_qubit,
+        start=flux_sequence.finish + dt,
+        relative_phase=0,
+    )
+    measure_target = platform.create_qubit_readout_pulse(
+        target_qubit, start=theta_pulse.finish
+    )
+    measure_control = platform.create_qubit_readout_pulse(
+        control_qubit, start=theta_pulse.finish
+    )
+
+    sequence.add(
+        Y90_pulse,
+        flux_sequence.get_qubit_pulses(ordered_pair[1]),
+        flux_sequence.cf_pulses,
+        theta_pulse,
+        measure_target,
+        measure_control,
+    )
+
+    if setup == "X":
+        sequence.add(
+            RX_pulse_start,
+            RX_pulse_end,
         )
 
-    _, flux_pulse = flux_pulses[0]
-    flux_sequence = PulseSequence(flux_pulses)
-    sequence |= flux_sequence
+    if parking:
+        for pulse in flux_sequence:
+            if pulse.qubit not in ordered_pair:
+                pulse.duration = theta_pulse.finish
+                sequence.add(pulse)
 
-    flux_duration = flux_sequence.duration
-    dt_delay = Delay(duration=dt)
-
-    theta_sequence = PulseSequence(
-        [
-            (
-                platform.qubits[target_qubit].drive,
-                dt_delay,
-            ),
-            (
-                platform.qubits[control_qubit].drive,
-                dt_delay,
-            ),
-            (
-                platform.qubits[target_qubit].drive,
-                Delay(duration=flux_duration),
-            ),
-            (
-                platform.qubits[control_qubit].drive,
-                Delay(duration=flux_duration),
-            ),
-        ]
-    )
-    # R90 (angle to be swept)
-    theta_sequence += target_natives.R(theta=np.pi / 2, phi=0)
-    theta_pulse = theta_sequence[-1][1]
-    # X
-    if setup == "X":
-        theta_sequence += control_natives.RX()
-
-    sequence += theta_sequence
-
-    ro_target_delay = Delay(duration=flux_duration)
-    ro_control_delay = Delay(duration=flux_duration)
-    # M
-    ro_sequence = PulseSequence(
-        [
-            (
-                platform.qubits[target_qubit].acquisition,
-                Delay(duration=drive_duration),
-            ),
-            (
-                platform.qubits[control_qubit].acquisition,
-                Delay(duration=drive_duration),
-            ),
-            (
-                platform.qubits[target_qubit].acquisition,
-                ro_target_delay,
-            ),
-            (
-                platform.qubits[control_qubit].acquisition,
-                ro_control_delay,
-            ),
-            (
-                platform.qubits[target_qubit].acquisition,
-                Delay(duration=theta_sequence.duration),
-            ),
-            (
-                platform.qubits[control_qubit].acquisition,
-                Delay(duration=theta_sequence.duration),
-            ),
-            target_natives.MZ()[0],
-            control_natives.MZ()[0],
-        ]
-    )
-
-    sequence += ro_sequence
-
-    return sequence, flux_pulse, theta_pulse, [ro_target_delay, ro_control_delay]
+    return sequence, flux_pulse, theta_pulse
 
 
 def _acquisition(
     params: VirtualZPhasesParameters,
-    platform: CalibrationPlatform,
+    platform: Platform,
     targets: list[QubitPairId],
 ) -> VirtualZPhasesData:
     r"""
@@ -245,49 +189,52 @@ def _acquisition(
     data = VirtualZPhasesData(thetas=theta_absolute.tolist(), native=params.native)
     for pair in targets:
         # order the qubits so that the low frequency one is the first
-        ordered_pair = order_pair(pair, platform)
+        ord_pair = order_pair(pair, platform)
 
         for target_q, control_q in (
-            (ordered_pair[0], ordered_pair[1]),
-            (ordered_pair[1], ordered_pair[0]),
+            (ord_pair[0], ord_pair[1]),
+            (ord_pair[1], ord_pair[0]),
         ):
             for setup in ("I", "X"):
                 (
                     sequence,
                     _,
                     theta_pulse,
-                    _,
                 ) = create_sequence(
                     platform,
                     setup,
                     target_q,
                     control_q,
-                    ordered_pair,
+                    ord_pair,
                     params.native,
                     params.dt,
+                    params.parking,
+                )
+                theta = np.arange(
+                    params.theta_start,
+                    params.theta_end,
+                    params.theta_step,
+                    dtype=float,
                 )
                 sweeper = Sweeper(
-                    parameter=Parameter.relative_phase,
-                    range=(params.theta_start, params.theta_end, params.theta_step),
+                    Parameter.relative_phase,
+                    theta,
                     pulses=[theta_pulse],
+                    type=SweeperType.ABSOLUTE,
                 )
-                results = platform.execute(
-                    [sequence],
-                    [[sweeper]],
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=AveragingMode.CYCLIC,
+                results = platform.sweep(
+                    sequence,
+                    ExecutionParameters(
+                        nshots=params.nshots,
+                        relaxation_time=params.relaxation_time,
+                        acquisition_type=AcquisitionType.DISCRIMINATION,
+                        averaging_mode=AveragingMode.CYCLIC,
+                    ),
+                    sweeper,
                 )
 
-                ro_target = list(
-                    sequence.channel(platform.qubits[target_q].acquisition)
-                )[-1]
-                ro_control = list(
-                    sequence.channel(platform.qubits[control_q].acquisition)
-                )[-1]
-                result_target = results[ro_target.id]
-                result_control = results[ro_control.id]
+                result_target = results[target_q].probability(1)
+                result_control = results[control_q].probability(1)
 
                 data.register_qubit(
                     VirtualZPhasesType,
@@ -498,9 +445,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
     return [fig1, fig2], "".join(fitting_report)  # target and control qubit
 
 
-def _update(
-    results: VirtualZPhasesResults, platform: CalibrationPlatform, target: QubitPairId
-):
+def _update(results: VirtualZPhasesResults, platform: Platform, target: QubitPairId):
     # FIXME: quick fix for qubit order
     target = tuple(sorted(target))
     update.virtual_phases(

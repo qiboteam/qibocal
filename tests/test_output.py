@@ -75,6 +75,7 @@ def test_new_output():
 def test_output_mkdir():
     path1 = Output.mkdir()
     path2 = Output.mkdir()
+
     assert path1.name.split("-")[3] == "000"
     assert path2.name.split("-")[3] == "001"
 

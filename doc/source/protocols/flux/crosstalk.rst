@@ -62,3 +62,50 @@ Requirements
 ^^^^^^^^^^^^
 
 - :ref:`qubit_flux`
+
+.. _resonator_crosstalk:
+
+Resonator crosstalk
+-------------------
+
+In a similar fashion it is possible to repeat the previous experiment
+by sweeping the readout frequency. Note that in this case it will be
+necessary to bias the qubit away from its sweetspot more to observe
+significant variations.
+
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.flux_dependence.resonator_crosstalk.ResCrosstalkParameters
+  :noindex:
+
+Example
+^^^^^^^
+
+.. code-block:: yaml
+
+    - id: resonator crosstalk
+      operation: resonator_crosstalk
+      targets: [2]
+      parameters:
+        bias_point:
+            2: 0.5
+        bias_step: 0.01
+        bias_width: 0.4
+        flux_qubits: [0, 3]
+        freq_step: 100000
+        freq_width: 6000000
+        nshots: 2000
+
+.. image:: resonator_crosstalk.png
+
+As we can see, even by biasing the qubit away from its sweetspot we are not able to see
+a dependence ( a deviation from the straight line) but only a shift.
+
+The protocols aims at extracting the crosstalk coefficients
+:math:`C_{20}` and :math:`C_{23}`.
+
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`resonator_flux`

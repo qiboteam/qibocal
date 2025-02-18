@@ -9,14 +9,15 @@ import numpy.typing as npt
 from qibo import gates
 from qibo.backends import construct_backend
 from qibo.models import Circuit
+from qibolab.platform import Platform
+from qibolab.qubits import QubitId, QubitPairId
 
-from qibocal.auto.operation import Data, Parameters, QubitId, QubitPairId, Results
+from qibocal.auto.operation import Data, Parameters, Results
 from qibocal.auto.transpile import (
     dummy_transpiler,
     execute_transpiled_circuit,
     execute_transpiled_circuits,
 )
-from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.randomized_benchmarking.dict_utils import (
     SINGLE_QUBIT_CLIFFORDS_NAMES,
     calculate_pulses_clifford,
@@ -329,7 +330,7 @@ class StandardRBResult(Results):
 
 def setup(
     params: Parameters,
-    platform: CalibrationPlatform,
+    platform: Platform,
     single_qubit: bool = True,
     interleave: Optional[str] = None,
 ):
@@ -462,7 +463,7 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
 
 def rb_acquisition(
     params: Parameters,
-    platform: CalibrationPlatform,
+    platform: Platform,
     targets: list[QubitId],
     add_inverse_layer: bool = True,
     interleave: str = None,
@@ -509,7 +510,7 @@ def rb_acquisition(
 
 def twoq_rb_acquisition(
     params: Parameters,
-    platform: CalibrationPlatform,
+    platform: Platform,
     targets: list[QubitPairId],
     add_inverse_layer: bool = True,
     interleave: str = None,
@@ -527,7 +528,7 @@ def twoq_rb_acquisition(
         RB2QData: The acquired data for two qubit randomized benchmarking.
     """
     targets = [tuple(pair) if isinstance(pair, list) else pair for pair in targets]
-    data, backend = setup(params, platform, single_qubit=False, interleave=interleave)
+    data, backend = setup(params, platform, single_qubit=False)
     circuits, indexes, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, single_qubit=False
     )

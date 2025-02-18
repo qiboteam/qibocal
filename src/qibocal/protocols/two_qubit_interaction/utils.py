@@ -1,18 +1,18 @@
 import numpy as np
-from qibolab import Platform
-
-from qibocal.auto.operation import QubitId, QubitPairId
+from qibolab.platform import Platform
+from qibolab.qubits import QubitId, QubitPairId
 
 from ..utils import fallback_period, guess_period
 
 
 def order_pair(pair: QubitPairId, platform: Platform) -> tuple[QubitId, QubitId]:
     """Order a pair of qubits by drive frequency."""
-    q0, q1 = pair
-
-    drive0 = platform.config(platform.qubits[q0].drive)
-    drive1 = platform.config(platform.qubits[q1].drive)
-    return (q1, q0) if drive0.frequency > drive1.frequency else (q0, q1)
+    if (
+        platform.qubits[pair[0]].drive_frequency
+        > platform.qubits[pair[1]].drive_frequency
+    ):
+        return pair[1], pair[0]
+    return pair[0], pair[1]
 
 
 def fit_flux_amplitude(matrix, amps, times):

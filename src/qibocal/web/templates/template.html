@@ -32,18 +32,11 @@
 <body>
 
   <header class="navbar navbar-dark sticky-top p-0">
-    <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6"><span class="fs-4">Qibocal Reports</span></a>
+    <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6" href="/"><span class="fs-4">Qibocal Reports</span></a>
     <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse"
       data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
-    <a href="https://github.com/qiboteam/qibocal" target="_blank" class="btn p-0 border-0 bg-transparent me-3">
-      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="white" class="bi bi-github"
-        viewBox="0 0 16 16">
-        <path
-          d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.6c.4.074.547-.174.547-.387 0-.191-.007-.696-.01-1.366-2.226.483-2.695-1.073-2.695-1.073-.364-.922-.89-1.167-.89-1.167-.727-.497.055-.487.055-.487.803.056 1.226.825 1.226.825.714 1.223 1.872.87 2.33.665.072-.517.28-.87.508-1.07-1.777-.202-3.644-.889-3.644-3.953 0-.872.311-1.587.824-2.146-.083-.203-.357-1.02.078-2.127 0 0 .672-.215 2.2.82a7.684 7.684 0 0 1 4.004 0c1.527-1.035 2.2-.82 2.2-.82.435 1.107.161 1.924.079 2.127.513.559.824 1.274.824 2.146 0 3.072-1.869 3.748-3.653 3.947.287.247.543.735.543 1.482 0 1.07-.01 1.933-.01 2.194 0 .215.145.466.55.387A8 8 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
-      </svg>
-    </a>
   </header>
 
   <div class="container-fluid">
@@ -53,10 +46,10 @@
         <ul class="list-unstyled ps-0">
           {% if report %}
           <li class="mb-1">
-            <button class="btn btn-toggle d-inline-flex align-items-center rounded border-0" data-bs-toggle="collapse"
+            <buttom class="btn btn-toggle d-inline-flex align-items-center rounded border-0" data-bs-toggle="collapse"
               data-bs-target="#home-collapse" aria-expanded="true">
               Home
-            </button>
+            </buttom>
             <div class="collapse show" id="home-collapse">
               <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                 <li><a href="#" class="link-dark d-inline-flex text-decoration-none rounded">
@@ -67,38 +60,24 @@
           <li class="mb-1">
             <button class="btn btn-toggle d-inline-flex align-items-center rounded border-0" data-bs-toggle="collapse"
               data-bs-target="#actions-collapse" aria-expanded="true">
-              Protocols
+              Actions
             </button>
             <div class="collapse show" id="actions-collapse">
               {% for task_id in report.history  %}
                 <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                   <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                     <li><a class="link-dark d-inline-flex text-decoration-none rounded"
-                        href="#{{report.routine_name(task_id)}}"> {{report.routine_name(task_id)}}</a>
-                        {% for target in report.routine_targets(task_id) %}
-                        <div class="collapse show" id="action-collapse">
-                          <ul class="list-unstyled ps-4">
-                            <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-                              <li><a class="link-dark d-inline-flex text-decoration-none rounded"
-                                href="#{{ task_id }}-{{ target }}">  {{target}}</a>
-                                </li>
-                            </ul>
-                          </ul>
-                          {% endfor %}
-                          </div>
-
-
-                      </li>
+                        href="#{{report.routine_name(task_id)}}"> {{report.routine_name(task_id)}}</a></li>
                   </ul>
                 </ul>
               {% endfor %}
             </div>
           </li>
           <li class="mb-1">
-            <button class="btn btn-toggle d-inline-flex align-items-center rounded border-0" data-bs-toggle="collapse"
+            <buttom class="btn btn-toggle d-inline-flex align-items-center rounded border-0" data-bs-toggle="collapse"
               data-bs-target="#summary-collapse" aria-expanded="true">
               Summary
-            </button>
+            </buttom>
             <div class="collapse show" id="summary-collapse">
               <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                 <li><a href="#summary" class="link-dark d-inline-flex text-decoration-none rounded">
@@ -136,11 +115,7 @@
       <div
         class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
         <h1>{{ title }}</h1>
-        <div class="button-container">
-          <button id="export-pdf">Export to pdf</button>
-          <button id="export-platform" onclick="redirectToPlatform()">Calibrated platform</button>
-          <button id="export-runcard" onclick="redirectToRuncard()">Runcard</button>
-        </div>
+        <button class="button-export" id="export-pdf">Export to pdf</button>
       </div>
       <p>
         Platform: {{ report.meta.get('platform')}}<br>
@@ -160,10 +135,10 @@
           class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
           {{ report.routine_name(task_id) }}</h4>
         {% for qubit in report.routine_targets(task_id) %}
-        <div id="{{ task_id }}-{{ qubit }}" style="scroll-margin-top: 4em;">
+        <div id="{{ routine }}-{{ iteration }}-{{ qubit }}" style="scroll-margin-top: 4em;">
             <h5
               class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-              {{ header }} - {{ qubit }}</h5>
+              {{ header }} - Qubit {{ qubit }}</h5>
 
 
             {% set figures, fitting_report = report.plotter(report.history[task_id], qubit) %}
@@ -181,10 +156,10 @@
         class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
         Summary</h3>
 
-      <p>In the table below we show the libraries and respective versions used in {{ report.path }}.</p>
+      <p>In the table below we show the libraries and respective versions used in {{ report.title }}.</p>
 
-      <div class="table-responsive">
-        <table class="table table-striped table-sm w-100">
+      <div class="table-responsive col-md-5 col-lg-3">
+        <table class="table table-striped table-sm">
           <thead>
             <tr>
               <th scope="col">Library</th>
@@ -208,7 +183,44 @@
     integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa"
     crossorigin="anonymous"></script>
 
-    {{ js_script }}
+  <script>
+
+       var exportPDFButton = document.getElementById("export-pdf");
+
+       exportPDFButton.addEventListener("click", function() {
+
+        document.body.classList.add("impresion");
+
+        var doc = new jsPDF({orientation: 'landscape',});
+
+        var iframes = document.querySelectorAll("iframe.gh-fit")
+        source = ""
+        for(var id = 0; id < iframes.length; id++) {
+            var win = iframes[id].contentWindow
+            var doc = win.document
+            var html = doc.documentElement
+            var body = doc.body
+            var ifrm = iframes[id] // or win.frameElement
+            source = source + html
+        }
+
+        print(source)
+
+        doc.fromHTML(source, 0, 0, {
+        width: 210,
+        margins: {
+            left: 10,
+            right: 10,
+            top: 10,
+            bottom: 10
+        }
+        });
+
+        // Guardar el PDF
+        doc.save("report.pdf");
+    });
+    </script>
+
 </body>
 
 </html>

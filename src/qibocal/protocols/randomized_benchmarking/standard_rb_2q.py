@@ -1,13 +1,14 @@
 from dataclasses import dataclass
 
-from qibocal.auto.operation import QubitPairId, Routine
-from qibocal.calibration import CalibrationPlatform
+from qibolab.platform import Platform
+from qibolab.qubits import QubitPairId
+
+from qibocal.auto.operation import Routine
 from qibocal.protocols.randomized_benchmarking.standard_rb import (
     StandardRBParameters,
     _plot,
 )
 
-from ...calibration.calibration import TwoQubitCalibration
 from .utils import RB2QData, StandardRBResult, fit, twoq_rb_acquisition
 
 FILE_CLIFFORDS = "2qubitCliffs.json"
@@ -26,7 +27,7 @@ class StandardRB2QParameters(StandardRBParameters):
 
 def _acquisition(
     params: StandardRB2QParameters,
-    platform: CalibrationPlatform,
+    platform: Platform,
     targets: list[QubitPairId],
 ) -> RB2QData:
     """Data acquisition for two qubit Standard Randomized Benchmarking."""
@@ -41,21 +42,4 @@ def _fit(data: RB2QData) -> StandardRBResult:
     return results
 
 
-def _update(
-    results: StandardRBResult, platform: CalibrationPlatform, target: QubitPairId
-):
-    """Write rb fidelity in calibration."""
-    # FIXME: error raised by qq fit
-    if isinstance(target, list):
-        target = tuple(target)
-
-    if target not in platform.calibration.two_qubits:
-        platform.calibration.two_qubits[target] = TwoQubitCalibration()
-
-    platform.calibration.two_qubits[target].rb_fidelity = (
-        results.fidelity[target],
-        results.fit_uncertainties[target][1] / 2,
-    )
-
-
-standard_rb_2q = Routine(_acquisition, _fit, _plot, _update)
+standard_rb_2q = Routine(_acquisition, _fit, _plot)

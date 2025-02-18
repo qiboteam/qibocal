@@ -4,11 +4,13 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, Delay, PulseSequence, Readout
+from qibolab import AcquisitionType, ExecutionParameters
+from qibolab.platform import Platform
+from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
-from qibocal.calibration import CalibrationPlatform
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.protocols.utils import (
     effective_qubit_temperature,
     format_error_single_cell,
@@ -16,8 +18,6 @@ from qibocal.protocols.utils import (
     table_dict,
     table_html,
 )
-
-from ..result import unpack
 
 
 @dataclass
@@ -74,16 +74,14 @@ class ReadoutCharacterizationData(Data):
 
 def _acquisition(
     params: ReadoutCharacterizationParameters,
-    platform: CalibrationPlatform,
+    platform: Platform,
     targets: list[QubitId],
 ) -> ReadoutCharacterizationData:
     """Data acquisition for resonator spectroscopy."""
 
     data = ReadoutCharacterizationData(
         qubit_frequencies={
-            # TODO: should this be the drive frequency instead?
-            qubit: float(platform.calibration.single_qubits[qubit].qubit.frequency_01)
-            for qubit in targets
+            qubit: platform.qubits[qubit].drive_frequency for qubit in targets
         },
         delay=float(params.delay),
     )
@@ -91,46 +89,55 @@ def _acquisition(
     # FIXME: ADD 1st measurament and post_selection for accurate state preparation ?
 
     for state in [0, 1]:
+        # Define the pulse sequences
+        if state == 1:
+            RX_pulses = {}
+        ro_pulses = {}
         sequence = PulseSequence()
         for qubit in targets:
-            natives = platform.natives.single_qubit[qubit]
-            ro_channel = natives.MZ()[0][0]
+            start = 0
             if state == 1:
-                sequence += natives.RX()
-            sequence.append((ro_channel, Delay(duration=natives.RX()[0][1].duration)))
-            sequence += natives.MZ()
-            sequence.append((ro_channel, Delay(duration=params.delay)))
-            sequence += natives.MZ()
+                RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+                sequence.add(RX_pulses[qubit])
+                start = RX_pulses[qubit].finish
+            ro_pulses[qubit] = []
+            for _ in range(2):
+                ro_pulse = platform.create_qubit_readout_pulse(qubit, start=start)
+                start += ro_pulse.duration + int(
+                    params.delay
+                )  # device required conversion
+                sequence.add(ro_pulse)
+                ro_pulses[qubit].append(ro_pulse)
 
         # execute the pulse sequence
-        results = platform.execute(
-            [sequence],
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
+        results = platform.execute_pulse_sequence(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+            ),
         )
-        results_samples = platform.execute(
-            [sequence],
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
+        results_samples = platform.execute_pulse_sequence(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+            ),
         )
 
         # Save the data
         for qubit in targets:
-            readouts = [
-                pulse
-                for pulse in sequence.channel(platform.qubits[qubit].acquisition)
-                if isinstance(pulse, Readout)
-            ]
-            for j, ro_pulse in enumerate(readouts):
-                i, q = unpack(results[ro_pulse.id])
+            for i, ro_pulse in enumerate(ro_pulses[qubit]):
+                result = results[ro_pulse.serial]
                 data.register_qubit(
                     ReadoutCharacterizationType,
-                    (qubit, state, j),
-                    dict(i=i, q=q),
+                    (qubit, state, i),
+                    dict(i=result.voltage_i, q=result.voltage_q),
                 )
-                data.samples[qubit, state, j] = results_samples[ro_pulse.id].tolist()
+                result_samples = results_samples[ro_pulse.serial]
+                data.samples[qubit, state, i] = result_samples.samples.tolist()
+
     return data
 
 
@@ -314,14 +321,10 @@ def _plot(
 
 
 def _update(
-    results: ReadoutCharacterizationResults,
-    platform: CalibrationPlatform,
-    target: QubitId,
+    results: ReadoutCharacterizationResults, platform: Platform, target: QubitId
 ):
     update.readout_fidelity(results.fidelity[target], platform, target)
-    platform.calibration.single_qubits[target].readout.effective_temperature = (
-        results.effective_temperature[target][0]
-    )
+    update.assignment_fidelity(results.assignment_fidelity[target], platform, target)
 
 
 readout_characterization = Routine(_acquisition, _fit, _plot, _update)

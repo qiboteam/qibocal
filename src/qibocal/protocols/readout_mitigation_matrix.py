@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -7,11 +7,11 @@ import plotly.express as px
 from qibo import gates
 from qibo.backends import construct_backend
 from qibo.models import Circuit
-from scipy.sparse import lil_matrix
+from qibolab.platform import Platform
+from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
-from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
 
@@ -41,14 +41,6 @@ ReadoutMitigationMatrixType = np.dtype(
 )
 
 
-ReadoutMitigationMatrixId = tuple[Tuple[QubitId, ...], str, str]
-"""Data identifier for single list of qubits.
-
-Tuple[QubitId, ...] is the qubits which have been passed on as parameters.
-The two strings represents the expected state and the measured state.
-"""
-
-
 @dataclass
 class ReadoutMitigationMatrixData(Data):
     """ReadoutMitigationMatrix acquisition outputs."""
@@ -57,13 +49,13 @@ class ReadoutMitigationMatrixData(Data):
     """List of qubit ids"""
     nshots: int
     """Number of shots"""
-    data: dict[ReadoutMitigationMatrixId, float] = field(default_factory=dict)
+    data: dict = field(default_factory=dict)
     """Raw data acquited."""
 
 
 def _acquisition(
     params: ReadoutMitigationMatrixParameters,
-    platform: CalibrationPlatform,
+    platform: Platform,
     targets: list[list[QubitId]],
 ) -> ReadoutMitigationMatrixData:
     data = ReadoutMitigationMatrixData(
@@ -71,7 +63,7 @@ def _acquisition(
     )
     backend = construct_backend("qibolab", platform=platform)
     transpiler = dummy_transpiler(backend)
-
+    qubit_map = [i for i in range(platform.nqubits)]
     for qubits in targets:
         nqubits = len(qubits)
         for i in range(2**nqubits):
@@ -92,7 +84,7 @@ def _acquisition(
             for freq in frequencies:
                 data.register_qubit(
                     ReadoutMitigationMatrixType,
-                    (tuple(qubits)),
+                    (qubits),
                     dict(
                         state=np.array([int(state, 2)]),
                         frequency=freq,
@@ -159,26 +151,5 @@ def _plot(
     return figs, fitting_report
 
 
-def _update(
-    results: ReadoutMitigationMatrixData,
-    platform: CalibrationPlatform,
-    target: list[QubitId],
-):
-    # create empty matrix if it doesn't exist
-    if platform.calibration.readout_mitigation_matrix is None:
-        platform.calibration.readout_mitigation_matrix = lil_matrix(
-            (2**platform.calibration.nqubits, 2**platform.calibration.nqubits)
-        )
-
-    # compute indices
-    mask = sum(1 << platform.calibration.qubit_index(i) for i in target)
-    indices = [i for i in range(2**platform.calibration.nqubits) if (i & mask) == i]
-
-    # update matrix
-    platform.calibration.readout_mitigation_matrix[np.ix_(indices, indices)] = (
-        results.readout_mitigation_matrix[tuple(target)]
-    )
-
-
-readout_mitigation_matrix = Routine(_acquisition, _fit, _plot, _update)
+readout_mitigation_matrix = Routine(_acquisition, _fit, _plot)
 """Readout mitigation matrix protocol."""

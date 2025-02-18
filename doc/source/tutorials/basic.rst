@@ -56,7 +56,7 @@ user should make sure to specify an amplitude value sufficiently large.
 It is then possible to visualize a report included in the output folder.
 
 
-.. image:: ../protocols/resonator_spectroscopy/resonator_spectroscopy_high.png
+.. image:: ../protocols/resonator_spectroscopy_high.png
 
 The expected signal is a lorentzian centered around the bare frequency of the resonator.
 
@@ -74,9 +74,9 @@ power we observe this shift it is possible to run a resonator punchout using the
           freq_width: 40_000_000
           freq_step: 500_000
           amplitude: 0.03
-          min_amp: 0.1
-          max_amp: 2.4
-          step_amp: 0.3
+          min_amp_factor: 0.1
+          max_amp_factor: 2.4
+          step_amp_factor: 0.3
           nshots: 2048
           relaxation_time: 5000
 
@@ -111,7 +111,7 @@ Note that in this case we changed the ``power_level`` entry from
 ``high`` to ``low``, this keyword is used by qibocal to upgrade
 correctly the QPU parameters depending on the power regime.
 
-.. image:: ../protocols/resonator_spectroscopy/resonator_spectroscopy_low.png
+.. image:: ../protocols/resonator_spectroscopy_low.png
 
 
 .. note::
@@ -180,9 +180,9 @@ the following runcard:
 
         operation: rabi_amplitude_signal
         parameters:
-            min_amp: 0
-            max_amp: 1.1
-            step_amp: 0.1
+            min_amp_factor: 0
+            max_amp_factor: 1.1
+            step_amp_factor: 0.1
             pulse_length: 40
             relaxation_time: 100_000
             nshots: 1024
@@ -191,7 +191,7 @@ In this particular case we are fixing the duration of the pulse to be 40 ns and 
 a sweep in the drive amplitude to find the correct value. The :math:`\pi` corresponds to
 first half period of the oscillation.
 
-.. image:: ../protocols/rabi/rabi_amplitude.png
+.. image:: ../protocols/rabi_amplitude.png
 
 Classification model
 ^^^^^^^^^^^^^^^^^^^^

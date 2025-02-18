@@ -8,9 +8,8 @@ from typing import Any, NewType, Optional, Union
 
 import yaml
 from qibo import Circuit
-from qibolab import Platform
-
-from qibocal.auto.operation import QubitId, QubitPairId
+from qibolab.platform import Platform
+from qibolab.qubits import QubitId, QubitPairId
 
 from .. import protocols
 from ..config import log

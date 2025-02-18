@@ -5,11 +5,13 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
+from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
-from qibocal.calibration import CalibrationPlatform
+from qibocal.auto.operation import Data, Parameters, Results, Routine
 
 SAMPLES_FACTOR = 16
 
@@ -23,7 +25,6 @@ class CalibrateStateDiscriminationParameters(Parameters):
     """Number of shots."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
-    unrolling: Optional[bool] = False
 
 
 CalibrateStateDiscriminationResType = np.dtype(
@@ -48,6 +49,8 @@ CalibrateStateDiscriminationType = np.dtype(
     [
         ("i", np.float64),
         ("q", np.float64),
+        ("signal", np.float64),
+        ("phase", np.float64),
     ]
 )
 """Custom dtype for CalibrateStateDiscrimination."""
@@ -66,7 +69,7 @@ class CalibrateStateDiscriminationData(Data):
 
 def _acquisition(
     params: CalibrateStateDiscriminationParameters,
-    platform: CalibrationPlatform,
+    platform: Platform,
     targets: list[QubitId],
 ) -> CalibrateStateDiscriminationData:
     r"""
@@ -76,58 +79,67 @@ def _acquisition(
 
     Args:
         params (CalibrateStateDiscriminationParameters): experiment's parameters
-        platform (CalibrationPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): list of target qubits to perform the action
 
     """
 
-    native = platform.natives.single_qubit
-    sequences, all_ro_pulses = [], []
-    for state in [0, 1]:
-        ro_pulses = {}
-        sequence = PulseSequence()
-        for q in targets:
-            ro_sequence = native[q].MZ()
-            ro_pulses[q] = ro_sequence[0][1].id
-            sequence += ro_sequence
-
-        if state == 1:
-            rx_sequence = PulseSequence()
-            for q in targets:
-                rx_sequence += native[q].RX()
-            sequence = rx_sequence | sequence
-
-        sequences.append(sequence)
-        all_ro_pulses.append(ro_pulses)
-
-    options = dict(
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.RAW,
-        averaging_mode=AveragingMode.CYCLIC,
-    )
-
-    if params.unrolling:
-        results = platform.execute(sequences, **options)
-    else:
-        results = {}
-        for sequence in sequences:
-            results.update(platform.execute([sequence], **options))
+    # create 2 sequences of pulses for the experiment:
+    # sequence_0: I  - MZ
+    # sequence_1: RX - MZ
 
     data = CalibrateStateDiscriminationData(resonator_type=platform.resonator_type)
 
-    for state, ro_pulses in zip([0, 1], all_ro_pulses):
-        for qubit in targets:
-            serial = ro_pulses[qubit]
-            result = results[serial]
+    # TODO: test if qibolab supports multiplex with raw acquisition
+    for qubit in targets:
+        sequence_0 = PulseSequence()
+        sequence_1 = PulseSequence()
+        sequence_1.add(platform.create_RX_pulse(qubit, start=0))
+
+        sequence_0.add(
+            platform.create_qubit_readout_pulse(qubit, start=sequence_0.finish)
+        )
+        sequence_1.add(
+            platform.create_qubit_readout_pulse(qubit, start=sequence_1.finish)
+        )
+
+        results_0 = platform.execute_pulse_sequence(
+            sequence_0,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.RAW,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
+
+        results_1 = platform.execute_pulse_sequence(
+            sequence_1,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.RAW,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
+
+        for i, experiment in enumerate(
+            zip([sequence_0, sequence_1], [results_0, results_1])
+        ):
+            sequence, results = experiment
+            result = results[sequence.ro_pulses[0].serial]
+            # store the results
             data.register_qubit(
                 CalibrateStateDiscriminationType,
-                (qubit, state),
+                (qubit, i),
                 dict(
-                    i=result[..., 0],
-                    q=result[..., 1],
+                    signal=result.magnitude,
+                    phase=result.phase,
+                    i=result.voltage_i,
+                    q=result.voltage_q,
                 ),
             )
+
     return data
 
 
@@ -188,48 +200,21 @@ def _plot(
 
         fig.add_trace(
             go.Scatter(
-                x=data[target, 0].i,
-                y=data[target, 0].q,
+                x=np.arange(len(fit.data[target])),
+                y=np.abs(fit.data[target]),
                 opacity=1,
-                name="State 0",
+                name="kernel state 0",
                 showlegend=True,
-                legendgroup="State 0",
+                legendgroup="kernel state 0",
             ),
             row=1,
             col=1,
         )
-
-        fig.add_trace(
-            go.Scatter(
-                x=data[target, 1].i,
-                y=data[target, 1].q,
-                opacity=1,
-                name="State 1",
-                showlegend=True,
-                legendgroup="State 1",
-            ),
-            row=1,
-            col=1,
-        )
-
-        # TODO: check which plot we prefer
-        # fig.add_trace(
-        #     go.Scatter(
-        #         x=np.arange(len(fit.data[target])),
-        #         y=np.abs(fit.data[target]),
-        #         opacity=1,
-        #         name="kernel state 0",
-        #         showlegend=True,
-        #         legendgroup="kernel state 0",
-        #     ),
-        #     row=1,
-        #     col=1,
-        # )
 
         fig.update_layout(
             showlegend=True,
-            xaxis_title="I",
-            yaxis_title="Q",
+            xaxis_title="Kernel samples",
+            yaxis_title="Kernel absolute value",
         )
 
         figures.append(fig)
@@ -238,9 +223,7 @@ def _plot(
 
 
 def _update(
-    results: CalibrateStateDiscriminationResults,
-    platform: CalibrationPlatform,
-    qubit: QubitId,
+    results: CalibrateStateDiscriminationResults, platform: Platform, qubit: QubitId
 ):
     update.kernel(results.data[qubit], platform, qubit)
 

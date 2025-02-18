@@ -1,11 +1,9 @@
-from typing import Optional
-
 import numpy as np
-from qibolab import Delay, PulseSequence, VirtualZ
+from qibolab.platform import Platform
+from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitPairId
 
-from qibocal.auto.operation import QubitPairId
-from qibocal.calibration import CalibrationPlatform
-from qibocal.update import replace
+from ..utils import order_pair
 
 COLORAXIS = ["coloraxis2", "coloraxis1"]
 
@@ -16,75 +14,68 @@ COUPLER_PULSE_DURATION = 100
 
 
 def chevron_sequence(
-    platform: CalibrationPlatform,
-    ordered_pair: QubitPairId,
-    duration_max: Optional[int] = None,
+    platform: Platform,
+    pair: QubitPairId,
+    duration_max: int,
     parking: bool = False,
     native: str = "CZ",
     dt: int = 0,
 ):
     """Chevron pulse sequence."""
+
     sequence = PulseSequence()
-    low_natives = platform.natives.single_qubit[ordered_pair[0]]
-    high_natives = platform.natives.single_qubit[ordered_pair[1]]
+    ordered_pair = order_pair(pair, platform)
+    # initialize in system in 11 state
+
     if native == "CZ":
-        sequence += low_natives.RX()
-    sequence += high_natives.RX()
+        initialize_lowfreq = platform.create_RX_pulse(
+            ordered_pair[0], start=0, relative_phase=0
+        )
+        sequence.add(initialize_lowfreq)
 
-    drive_duration = sequence.duration
-    raw_flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
-    flux_channel, flux_pulse = [
-        (ch, pulse)
-        for ch, pulse in raw_flux_sequence
-        if ch == platform.qubits[ordered_pair[1]].flux
-    ][0]
-
-    if duration_max is not None:
-        flux_pulse = replace(flux_pulse, duration=duration_max)
-
-    sequence.append((flux_channel, Delay(duration=drive_duration)))
-    sequence.append((flux_channel, flux_pulse))
-
-    parking_pulses = []
-    if parking:
-        for ch, pulse in raw_flux_sequence:
-            if not isinstance(pulse, VirtualZ) and ch != flux_channel:
-                sequence.append((ch, Delay(duration=drive_duration)))
-                sequence.append((ch, pulse))
-                parking_pulses.append(pulse)
-
-    flux_duration = max(flux_pulse.duration, raw_flux_sequence.duration)
-
-    ro_low_channel, ro_high_channel = (
-        platform.qubits[ordered_pair[0]].acquisition,
-        platform.qubits[ordered_pair[1]].acquisition,
+    initialize_highfreq = platform.create_RX_pulse(
+        ordered_pair[1], start=0, relative_phase=0
     )
-    ro_low_delay = ro_high_delay = drive_delay = Delay(duration=flux_duration)
-    dt_delay = Delay(duration=dt)
-    drive_channel, second_rx = high_natives.RX()[0]
-    sequence += [
-        (ro_low_channel, Delay(duration=drive_duration)),
-        (ro_high_channel, Delay(duration=drive_duration)),
-        (ro_low_channel, ro_low_delay),
-        (ro_high_channel, ro_high_delay),
-        (ro_low_channel, dt_delay),
-        (ro_high_channel, dt_delay),
-        (drive_channel, drive_delay),
-        (drive_channel, dt_delay),
-        (ro_low_channel, Delay(duration=second_rx.duration)),
-        (ro_high_channel, Delay(duration=second_rx.duration)),
-        (drive_channel, second_rx),
-    ]
+    sequence.add(initialize_highfreq)
+
+    flux_sequence, _ = getattr(platform, f"create_{native}_pulse_sequence")(
+        qubits=(ordered_pair[1], ordered_pair[0]),
+        start=initialize_highfreq.finish,
+    )
+
+    sequence.add(flux_sequence.get_qubit_pulses(ordered_pair[0]))
+    sequence.add(flux_sequence.get_qubit_pulses(ordered_pair[1]))
+
+    delay_measurement = duration_max
+
+    if platform.couplers:
+        coupler_pulse = flux_sequence.coupler_pulses(
+            platform.pairs[tuple(ordered_pair)].coupler.name
+        )
+        sequence.add(coupler_pulse)
+        delay_measurement = max(duration_max, coupler_pulse.duration)
+
+    if parking:
+        for pulse in flux_sequence:
+            if pulse.qubit not in ordered_pair:
+                pulse.start = COUPLER_PULSE_START
+                pulse.duration = COUPLER_PULSE_DURATION
+                sequence.add(pulse)
 
     # add readout
-    sequence += low_natives.MZ() + high_natives.MZ()
-
-    return (
-        sequence,
-        flux_pulse,
-        parking_pulses,
-        [ro_low_delay, ro_high_delay, drive_delay],
+    measure_lowfreq = platform.create_qubit_readout_pulse(
+        ordered_pair[0],
+        start=initialize_highfreq.finish + delay_measurement + dt,
     )
+    measure_highfreq = platform.create_qubit_readout_pulse(
+        ordered_pair[1],
+        start=initialize_highfreq.finish + delay_measurement + dt,
+    )
+
+    sequence.add(measure_lowfreq)
+    sequence.add(measure_highfreq)
+
+    return sequence
 
 
 # fitting function for single row in chevron plot (rabi-like curve)
