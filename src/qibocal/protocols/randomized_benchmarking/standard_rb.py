@@ -3,10 +3,9 @@ from typing import Iterable, Optional, TypedDict, Union
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Parameters, Routine
+from qibocal.auto.operation import Parameters, QubitId, Routine
+from qibocal.calibration import CalibrationPlatform
 
 from ..utils import table_dict, table_html
 from .fitting import exp1B_func
@@ -64,7 +63,7 @@ class StandardRBParameters(Parameters):
 
 def _acquisition(
     params: StandardRBParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> RBData:
     """The data acquisition stage of Standard Randomized Benchmarking.
@@ -75,7 +74,7 @@ def _acquisition(
 
     Args:
         params: All parameters in one object.
-        platform: Platform the experiment is executed on.
+        platform: CalibrationPlatform the experiment is executed on.
         target: list of qubits the experiment is executed on.
 
     Returns:
@@ -112,8 +111,7 @@ def _plot(
     Returns:
         tuple[list[go.Figure], str]:
     """
-    if isinstance(target, list):
-        target = tuple(target)
+    target = tuple(target) if isinstance(target, list) else target
     qubit = target
     fig = go.Figure()
     fitting_report = ""
@@ -219,4 +217,14 @@ def _plot(
     return [fig], fitting_report
 
 
-standard_rb = Routine(_acquisition, _fit, _plot)
+def _update(results: StandardRBResult, platform: CalibrationPlatform, target: QubitId):
+    """Write rb fidelity in calibration."""
+
+    # TODO: shall we use the gate fidelity or the pulse fidelity
+    platform.calibration.single_qubits[target].rb_fidelity = (
+        results.fidelity[target],
+        results.fit_uncertainties[target][1] / 2,
+    )
+
+
+standard_rb = Routine(_acquisition, _fit, _plot, _update)

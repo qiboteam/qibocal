@@ -6,7 +6,7 @@ from typing import Any, Optional, Union
 
 import yaml
 from pydantic.dataclasses import dataclass
-from qibolab.platform import Platform
+from qibolab import Platform
 
 from .. import protocols
 from .execute import Executor

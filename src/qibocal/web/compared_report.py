@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.history import History
+from qibocal.auto.operation import QubitId, QubitPairId
 from qibocal.auto.output import Output
 from qibocal.auto.task import Completed, TaskId
 from qibocal.cli.report import generate_figures_and_report

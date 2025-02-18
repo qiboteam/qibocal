@@ -3,6 +3,8 @@ import os
 import pathlib
 import shutil
 
+from qibolab import locate_platform
+
 from ..auto.output import META, UPDATED_PLATFORM
 from ..config import log, raise_error
 
@@ -18,7 +20,7 @@ def update(path: pathlib.Path):
         raise_error(FileNotFoundError, f"No updated runcard platform found in {path}.")
 
     platform_name = json.loads((path / META).read_text())["platform"]
-    platform_path = pathlib.Path(os.getenv("QIBOLAB_PLATFORMS")) / platform_name
+    platform_path = locate_platform(platform_name)
 
     for filename in os.listdir(new_platform_path):
         shutil.copy(

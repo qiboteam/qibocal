@@ -1,4 +1,4 @@
-"""Test routines' acquisition method using dummy_couplers platform."""
+"""Test routines' acquisition method using dummy platform."""
 
 import pathlib
 
@@ -21,7 +21,8 @@ from qibocal.protocols.rabi.utils import (
 SINGLE_ACTION_RUNCARD = "action.yml"
 PLATFORM = create_platform("dummy")
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/"
-RUNCARDS_NAMES = ["protocols.yml", "protocols_couplers.yml"]
+RUNCARDS_NAMES = ["protocols.yml"]
+
 
 INVOKER_OPTIONS = dict(catch_exceptions=False)
 """Generate errors when calling qq."""
@@ -156,12 +157,27 @@ def test_fit_command(runcard, update, tmp_path):
 
 
 def test_extract_rabi():
-    assert extract_rabi(RabiAmplitudeData()) == (
+    assert extract_rabi(RabiAmplitudeData(rx90=False)) == (
         "amp",
         "Amplitude [dimensionless]",
         rabi_amplitude_function,
     )
-    assert extract_rabi(RabiLengthData()) == (
+    assert extract_rabi(RabiLengthData(rx90=False)) == (
+        "length",
+        "Time [ns]",
+        rabi_length_function,
+    )
+    with pytest.raises(RuntimeError):
+        extract_rabi(RabiAmplitudeEFData)
+
+
+def test_extract_rabi_rx90():
+    assert extract_rabi(RabiAmplitudeData(rx90=True)) == (
+        "amp",
+        "Amplitude [dimensionless]",
+        rabi_amplitude_function,
+    )
+    assert extract_rabi(RabiLengthData(rx90=True)) == (
         "length",
         "Time [ns]",
         rabi_length_function,

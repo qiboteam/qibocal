@@ -1,20 +1,23 @@
-from copy import deepcopy
 from dataclasses import dataclass
 from typing import Union
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
-from qibocal import update
-from qibocal.auto.operation import Parameters, Results, Routine
+from qibocal.auto.operation import Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
+from qibocal.result import magnitude, phase
 
+from ... import update
 from ..utils import table_dict, table_html
 from .t1_signal import T1SignalData
-from .utils import CoherenceType, exp_decay, exponential_fit
+from .utils import (
+    CoherenceType,
+    dynamical_decoupling_sequence,
+    exp_decay,
+    exponential_fit,
+)
 
 
 @dataclass
@@ -27,18 +30,14 @@ class SpinEchoSignalParameters(Parameters):
     """Final delay between pulses [ns]."""
     delay_between_pulses_step: int
     """Step delay between pulses [ns]."""
-    unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
-    Defaults to ``False``."""
     single_shot: bool = False
-    """If ``True`` save single shot signal data."""
 
 
 @dataclass
 class SpinEchoSignalResults(Results):
     """SpinEchoSignal outputs."""
 
-    t2_spin_echo: dict[QubitId, Union[float, list[float]]]
+    t2: dict[QubitId, Union[float, list[float]]]
     """T2 echo for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -52,42 +51,44 @@ class SpinEchoSignalData(T1SignalData):
 
 def _acquisition(
     params: SpinEchoSignalParameters,
-    platform: Platform,
+    platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> SpinEchoSignalData:
     """Data acquisition for SpinEcho"""
     # create a sequence of pulses for the experiment:
-    # Spin Echo 3 Pulses: RX(pi/2) - wait t(rotates z) - RX(pi) - wait t(rotates z) - RX(pi/2) - readout
-    ro_pulses = {}
-    RX90_pulses1 = {}
-    RX_pulses = {}
-    RX90_pulses2 = {}
-    sequence = PulseSequence()
-    for qubit in targets:
-        RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
-        RX_pulses[qubit] = platform.create_RX_pulse(
-            qubit, start=RX90_pulses1[qubit].finish
-        )
-        RX90_pulses2[qubit] = platform.create_RX90_pulse(
-            qubit, start=RX_pulses[qubit].finish
-        )
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=RX90_pulses2[qubit].finish
-        )
-        sequence.add(RX90_pulses1[qubit])
-        sequence.add(RX_pulses[qubit])
-        sequence.add(RX90_pulses2[qubit])
-        sequence.add(ro_pulses[qubit])
+    sequence, delays = dynamical_decoupling_sequence(platform, targets, kind="CP")
 
     # define the parameter to sweep and its range:
     # delay between pulses
-    ro_wait_range = np.arange(
+    wait_range = np.arange(
         params.delay_between_pulses_start,
         params.delay_between_pulses_end,
         params.delay_between_pulses_step,
     )
 
-    options = ExecutionParameters(
+    durations = []
+    for q in targets:
+        # this is assuming that RX and RX90 have the same duration
+        duration = platform.natives.single_qubit[q].RX()[0][1].duration
+        durations.append(duration)
+        assert (params.delay_between_pulses_start - duration) / 2 >= 0, (
+            f"Initial delay too short for qubit {q}, "
+            f"minimum delay should be {duration}"
+        )
+
+    assert (
+        len(set(durations)) == 1
+    ), "Cannot run on mulitple qubit with different RX duration."
+
+    sweeper = Sweeper(
+        parameter=Parameter.duration,
+        values=(wait_range - durations[0]) / 2,
+        pulses=delays,
+    )
+
+    results = platform.execute(
+        [sequence],
+        [[sweeper]],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
@@ -96,55 +97,24 @@ def _acquisition(
         ),
     )
 
-    sequences, all_ro_pulses = [], []
-
-    # sweep the parameter
-    for wait in ro_wait_range:
-        # save data as often as defined by points
-
-        for qubit in targets:
-            RX_pulses[qubit].start = RX90_pulses1[qubit].finish + wait / 2
-            RX90_pulses2[qubit].start = RX_pulses[qubit].finish + wait / 2
-            ro_pulses[qubit].start = RX90_pulses2[qubit].finish
-
-        sequences.append(deepcopy(sequence))
-        all_ro_pulses.append(deepcopy(sequence).ro_pulses)
-
-    if params.unrolling:
-        results = platform.execute_pulse_sequences(sequences, options)
-
-    elif not params.unrolling:
-        results = [
-            platform.execute_pulse_sequence(sequence, options) for sequence in sequences
-        ]
-
     data = SpinEchoSignalData()
-    for ig, (wait, ro_pulses) in enumerate(zip(ro_wait_range, all_ro_pulses)):
-        for qubit in targets:
-            serial = ro_pulses.get_qubit_pulses(qubit)[0].serial
-            if params.unrolling:
-                result = results[serial][0]
-            else:
-                result = results[ig][serial]
-            if params.single_shot:
-                _wait = np.array(len(result.magnitude) * [wait])
-            else:
-                _wait = np.array([wait])
-            data.register_qubit(
-                CoherenceType,
-                (qubit),
-                dict(
-                    wait=_wait,
-                    signal=np.array([result.magnitude]),
-                    phase=np.array([result.phase]),
-                ),
-            )
-
-    if params.single_shot:
-        data.data = {
-            qubit: values.reshape((len(ro_wait_range), params.nshots)).T
-            for qubit, values in data.data.items()
-        }
+    for qubit in targets:
+        ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+        result = results[ro_pulse.id]
+        signal = magnitude(result)
+        if params.single_shot:
+            _wait = np.array(len(signal) * [wait_range])
+        else:
+            _wait = wait_range
+        data.register_qubit(
+            CoherenceType,
+            (qubit),
+            dict(
+                wait=_wait,
+                signal=signal,
+                phase=phase(result),
+            ),
+        )
 
     return data
 
@@ -204,7 +174,7 @@ def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults 
             table_dict(
                 target,
                 ["T2 Spin Echo [ns]"],
-                [np.round(fit.t2_spin_echo[target])],
+                [np.round(fit.t2[target])],
                 display_error=True,
             )
         )
@@ -220,8 +190,10 @@ def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults 
     return figures, fitting_report
 
 
-def _update(results: SpinEchoSignalResults, platform: Platform, target: QubitId):
-    update.t2_spin_echo(results.t2_spin_echo[target], platform, target)
+def _update(
+    results: SpinEchoSignalResults, platform: CalibrationPlatform, target: QubitId
+):
+    update.t2_spin_echo(results.t2[target], platform, target)
 
 
 spin_echo_signal = Routine(_acquisition, _fit, _plot, _update)

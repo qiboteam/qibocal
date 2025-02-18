@@ -105,7 +105,7 @@ This program will upload your report to the server and generate an unique URL.
 
 
 ``qq compare``
-^^^^^^^^^^^^^
+^^^^^^^^^^^^^^
 
 
 Using ``qq compare`` it is possible to compare together two ``Qibocal`` reports.
