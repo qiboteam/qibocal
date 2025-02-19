@@ -193,8 +193,7 @@ class Output:
         self._export_stats()
         (path / META).write_text(json.dumps(self.meta.dump(), indent=4))
 
-        # dump tasks
-        self.history.flush(path)
+        self.history.flush()
 
         # update platform
         if self.platform is not None:
@@ -247,13 +246,14 @@ class Output:
                 and completed.results is not None
             ):
                 raise KeyError(f"{task_id} already contains fitting results.")
-
             # TODO: this is a plain hack, to be fixed together with the task lifecycle
-            # refactor
             self.history._tasks[task_id.id][task_id.iteration] = completed.task.run(
-                platform=self.platform, mode=mode, folder=completed.path
+                platform=self.platform,
+                mode=mode,
+                folder=self.history.task_path(
+                    self.history._executed_task_id(task_id.id), output
+                ),
             )
-            self.history.flush(output)
-
+            self.history.flush()
             if update and completed.task.update:
                 completed.update_platform(platform=self.platform)

@@ -74,21 +74,30 @@ class History:
             instance.push(Completed.load(protocol))
         return instance
 
+    def _pending_task_id(self, _id: Id) -> TaskId:
+        """Retrieve the TaskId of a given task."""
+        return TaskId(id=_id, iteration=len(self._tasks[_id]))
+
+    def _executed_task_id(self, _id: Id) -> TaskId:
+        """Retrieve the TaskId of a given task."""
+        return TaskId(id=_id, iteration=len(self._tasks[_id]) - 1)
+
     def push(self, completed: Completed) -> TaskId:
         """Adding completed task to history."""
         id = completed.task.id
         self._tasks[id].append(completed)
-        task_id = TaskId(id=id, iteration=len(self._tasks[id]) - 1)
+        task_id = self._executed_task_id(id)
         self._order.append(task_id)
         return task_id
 
-    @staticmethod
-    def route(task_id: TaskId, folder: Path) -> Path:
+    def task_path(self, task_id: TaskId, folder: Optional[Path]) -> Path:
         """Determine the path related to a completed task given TaskId.
 
         `folder` should be usually the general output folder, used by Qibocal to store
         all the execution results. Cf. :class:`qibocal.auto.output.Output`.
         """
+        if folder is None:
+            return None
         return folder / "data" / f"{task_id}"
 
     def flush(self, output: Optional[Path] = None):
@@ -97,9 +106,7 @@ class History:
         Specifying `output` is possible to select which folder should be considered as
         the general Qibocal output folder. Cf. :class:`qibocal.auto.output.Output`.
         """
-        for task_id, completed in self.items():
-            if output is not None:
-                completed.path = self.route(task_id, output)
+        for _, completed in self.items():
             completed.flush()
 
     # TODO: implement time_travel()

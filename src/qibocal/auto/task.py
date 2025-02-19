@@ -134,7 +134,6 @@ class Task:
             self.action.targets = targets
 
         completed = Completed(self, folder)
-
         try:
             if platform is not None:
                 if self.parameters.nshots is None:
@@ -153,7 +152,6 @@ class Task:
         except (RuntimeError, AttributeError):
             operation = dummy_operation
             parameters = DummyPars()
-
         if ExecutionMode.ACQUIRE in mode:
             if operation.platform_dependent and operation.targets_dependent:
                 completed.data, completed.data_time = operation.acquisition(
@@ -161,13 +159,14 @@ class Task:
                     platform=platform,
                     targets=self.targets,
                 )
-
             else:
                 completed.data, completed.data_time = operation.acquisition(
                     parameters, platform=platform
                 )
+            completed.dump()
         if ExecutionMode.FIT in mode:
             completed.results, completed.results_time = operation.fit(completed.data)
+            completed.dump()
         return completed
 
 
@@ -223,19 +222,22 @@ class Completed:
 
     def dump(self):
         """Dump object to disk."""
-        if self.path is None:
-            raise ValueError("No known path where to dump execution results.")
-
-        self.path.mkdir(parents=True, exist_ok=True)
-        self.task.dump(self.path)
-        if self._data is not None:
-            self._data.save(self.path)
-        if self._results is not None:
-            self._results.save(self.path)
+        if self.path is not None:
+            self.path.mkdir(parents=True, exist_ok=True)
+            # make sure to dump only once
+            if not (self.path / SINGLE_ACTION).exists():
+                self.task.dump(self.path)
+            if self._data is not None:
+                if self.task.operation.data_type.load(self.path) is None:
+                    self._data.save(self.path)
+            if (
+                self.task.operation.results_type.load(self.path) is None
+                and self._results is not None
+            ):
+                self._results.save(self.path)
 
     def flush(self):
         """Dump disk, and release from memory."""
-        self.dump()
         self._data = None
         self._results = None
 
