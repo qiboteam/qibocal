@@ -18,10 +18,15 @@ def serialize(raw: dict):
     }
 
 
+def _nested_list_to_tuples(raw):
+    """Convert nested lists to nested tuples."""
+    if isinstance(raw, list):
+        return tuple([_nested_list_to_tuples(item) for item in raw])
+    return raw
+
+
 # TODO: distinguish between tuples and strings
 def load(key):
     """Evaluate key converting string of lists to tuples."""
     raw_load = json.loads(key)
-    if isinstance(raw_load, list):
-        return tuple(raw_load)
-    return raw_load
+    return _nested_list_to_tuples(raw_load)
