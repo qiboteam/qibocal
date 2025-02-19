@@ -1,9 +1,11 @@
-name: Tests
+name: Deploy
 
 on:
-  workflow_dispatch:
   push:
   merge_group:
+  release:
+    types:
+      - published
 
 jobs:
   build:
@@ -11,10 +13,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: [3.9, "3.10", "3.11", "3.12"]
-    uses: qiboteam/workflows/.github/workflows/test.yml@v2
+    uses: qiboteam/workflows/.github/workflows/wheels.yml@v2
     with:
       os: ${{ matrix.os }}
       python-version: ${{ matrix.python-version }}
-      doctests: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version != '3.11'}}
+      publish: ${{ github.event_name == 'release' && github.event.action == 'published' && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' }}
       poetry-extras: --with tests,docs --all-extras
     secrets: inherit
