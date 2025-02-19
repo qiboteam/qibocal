@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Callable
 
 from qibocal.auto.history import History
+from qibocal.auto.serialize import _nested_list_to_tuples
 from qibocal.auto.task import TaskId
 
 WEB_DIR = pathlib.Path(__file__).parent
@@ -45,4 +46,5 @@ class Report:
         If not available use the global ones.
         """
         local_targets = self.history[task_id].task.targets
-        return local_targets if len(local_targets) > 0 else self.meta["targets"]
+        targets = local_targets if len(local_targets) > 0 else self.meta["targets"]
+        return _nested_list_to_tuples(targets)

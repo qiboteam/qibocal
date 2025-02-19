@@ -45,10 +45,6 @@ def _update(
     results: StandardRBResult, platform: CalibrationPlatform, target: QubitPairId
 ):
     """Write rb fidelity in calibration."""
-    # FIXME: error raised by qq fit
-    if isinstance(target, list):
-        target = tuple(target)
-
     if target not in platform.calibration.two_qubits:
         platform.calibration.two_qubits[target] = TwoQubitCalibration()
 

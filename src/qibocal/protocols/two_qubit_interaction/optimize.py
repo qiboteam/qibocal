@@ -84,11 +84,10 @@ class OptimizeTwoQubitGateResults(Results):
 
         Additional  manipulations required because of the Results class.
         """
-        # TODO: to be improved
         pairs = {
             (target, control) for target, control, _, _, _ in self.fitted_parameters
         }
-        return tuple(key) in list(pairs)
+        return key in pairs
 
 
 OptimizeTwoQubitGateType = np.dtype(
