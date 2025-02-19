@@ -11,10 +11,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: [3.9, "3.10", "3.11", "3.12"]
-    uses: qiboteam/workflows/.github/workflows/rules-poetry.yml@v2
+    uses: qiboteam/workflows/.github/workflows/test.yml@v2
     with:
       os: ${{ matrix.os }}
       python-version: ${{ matrix.python-version }}
-      doctests: ${{ matrix.os == 'ubuntu-latest'}}
+      doctests: ${{ matrix.os == 'ubuntu-latest' and matrix.python-version != '3.11'}}
       poetry-extras: --with tests,docs --all-extras
     secrets: inherit
