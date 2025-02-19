@@ -28,7 +28,7 @@ jobs:
 
   deploy-docs:
     needs: [evaluate-label]
-    uses: qiboteam/workflows/.github/workflows/deploy-ghpages-latest-stable.yml@v1
+    uses: qiboteam/workflows/.github/workflows/deploy-ghpages-latest-stable.yml@v2
     with:
       python-version: "3.10"
       package-manager: "poetry"
