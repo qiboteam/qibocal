@@ -141,9 +141,9 @@ def _acquisition(
             states = []
             for i, results in enumerate([results_0, results_1]):
                 result = results[ro_pulses[qubit].serial]
-                i_values.extend(result.voltage_i[k])
-                q_values.extend(result.voltage_q[k])
-                states.extend([i] * len(result.voltage_i[k]))
+                i_values.extend(result.voltage_i[:, k])
+                q_values.extend(result.voltage_q[:, k])
+                states.extend([i] * len(result.voltage_i[:, k]))
 
             model = QubitFit()
             model.fit(np.stack((i_values, q_values), axis=-1), np.array(states))
