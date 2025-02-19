@@ -73,6 +73,7 @@ lint-warnings = "pylint src/**/*.py --exit-zero"
 docs = "make -C doc html"
 docs-clean = "make -C doc clean"
 test-docs = "make -C doc doctest"
+types="true"
 
 [tool.pytest.ini_options]
 env = ["QIBO_PLATFORM = dummy"]
