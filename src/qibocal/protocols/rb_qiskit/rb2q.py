@@ -75,8 +75,8 @@ def to_qibolab_sequence(
             cz_sequence, cz_phases = platform.pairs[
                 (qubit0, qubit1)
             ].native_gates.CZ.sequence(start=start)
-            phases[qubit0] -= cz_phases[qubit0]
-            phases[qubit1] -= cz_phases[qubit1]
+            phases[qubit0] += cz_phases[qubit0]
+            phases[qubit1] += cz_phases[qubit1]
             seq += cz_sequence
         else:
             for i, gate in enumerate(pair):
