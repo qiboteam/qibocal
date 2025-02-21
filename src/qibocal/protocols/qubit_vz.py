@@ -80,7 +80,7 @@ def _acquisition(
 
     log.info(f"Built the following sequence:\n {sequence}")
 
-    phi_range = np.arange(0.0, 2 * np.pi, 0.01)
+    phi_range = np.arange(0.0, 2 * np.pi, 0.11)
 
     sweeper = Sweeper(
         Parameter.relative_phase,
