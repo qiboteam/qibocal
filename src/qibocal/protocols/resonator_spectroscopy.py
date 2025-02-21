@@ -150,7 +150,7 @@ class ResonatorSpectroscopyData(Data):
     will apply a minus to the phase data."""
     data: dict[QubitId, npt.NDArray[ResSpecType]] = field(default_factory=dict)
     """Raw data acquired."""
-    power_level: Optional[PowerLevel] = PowerLevel.low
+    power_level: PowerLevel = PowerLevel.low
     """Power regime of the resonator."""
 
     @classmethod

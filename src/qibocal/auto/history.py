@@ -75,11 +75,11 @@ class History:
         return instance
 
     def _pending_task_id(self, _id: Id) -> TaskId:
-        """Retrieve the TaskId of a given task."""
+        """Retrieve the TaskId of a given task to be executed."""
         return TaskId(id=_id, iteration=len(self._tasks[_id]))
 
     def _executed_task_id(self, _id: Id) -> TaskId:
-        """Retrieve the TaskId of a given task."""
+        """Retrieve the TaskId of a given executed task."""
         return TaskId(id=_id, iteration=len(self._tasks[_id]) - 1)
 
     def push(self, completed: Completed) -> TaskId:
