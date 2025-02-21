@@ -127,8 +127,10 @@ def _fit(data: QubitVzData) -> QubitVzResults:
         phi = data[qubit].phi
         prob = data[qubit].prob
 
+        theta_guess = np.argmax(prob) * 2 * np.pi / len(phi)
+        theta_guess = theta_guess if theta_guess <= np.pi else theta_guess - 2 * np.pi
         pguess = [
-            0,
+            theta_guess,
             np.max(prob) - np.min(prob),
             np.min(prob),
         ]
@@ -138,14 +140,6 @@ def _fit(data: QubitVzData) -> QubitVzResults:
             phi,
             prob,
             p0=pguess,
-            bounds=(
-                [0.0, pguess[1] / 2.0, pguess[2] / 2.0],
-                [
-                    2 * np.pi,
-                    min(1.0, pguess[1] + pguess[1] / 2.0),
-                    min(1.0, pguess[2] + pguess[2] / 2.0),
-                ],
-            ),
         )
         popt = popt.tolist()
         fitted_parameters[qubit] = popt
