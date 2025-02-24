@@ -245,9 +245,8 @@ def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):
 def feedback(feedback: list[float], platform: Platform, qubit: QubitId):
     """Update flux pulse feedback filter parameter in platform for specific qubit."""
     feedbackQM = feedback.copy()
-    feedbackQM[1] = -feedbackQM[1]
     platform.update(
-        {f"configs.{platform.qubits[qubit].flux}.filter.feedback": feedbackQM}
+        {f"configs.{platform.qubits[qubit].flux}.filter.feedback": -feedbackQM[1]}
     )
 
 
