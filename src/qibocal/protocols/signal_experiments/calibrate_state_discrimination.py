@@ -236,8 +236,8 @@ def _plot(
         fig.update_layout(
             showlegend=True,
             title="Optimal integration kernel",
-            xaxis_title="I",
-            yaxis_title="Q",
+            xaxis_title="Readout sample",
+            yaxis_title="Normalized weight",
         )
 
         figures.append(fig)
