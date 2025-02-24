@@ -222,24 +222,21 @@ class Completed:
 
     def dump(self):
         """Dump object to disk."""
-        if self.path is not None:
-            self.path.mkdir(parents=True, exist_ok=True)
-            # make sure to dump only once
-            if not (self.path / SINGLE_ACTION).exists():
-                self.task.dump(self.path)
-            if self._data is not None:
-                if self.task.operation.data_type.load(self.path) is None:
-                    self._data.save(self.path)
-            if (
-                self.task.operation.results_type.load(self.path) is None
-                and self._results is not None
-            ):
-                self._results.save(self.path)
+        if self.path is None:
+            return None
 
-    def flush(self):
-        """Dump disk, and release from memory."""
-        self._data = None
-        self._results = None
+        self.path.mkdir(parents=True, exist_ok=True)
+        # make sure to dump only once
+        if not (self.path / SINGLE_ACTION).exists():
+            self.task.dump(self.path)
+        if self._data is not None:
+            if self.task.operation.data_type.load(self.path) is None:
+                self._data.save(self.path)
+        if (
+            self.task.operation.results_type.load(self.path) is None
+            and self._results is not None
+        ):
+            self._results.save(self.path)
 
     @classmethod
     def load(cls, path: Path):

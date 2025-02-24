@@ -65,5 +65,4 @@ class Runcard:
                 mode=mode,
                 output=output,
             )
-            history.flush()
         return instance.history

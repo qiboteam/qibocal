@@ -100,15 +100,6 @@ class History:
             return None
         return folder / "data" / f"{task_id}"
 
-    def flush(self, output: Optional[Path] = None):
-        """Flush all content to disk.
-
-        Specifying `output` is possible to select which folder should be considered as
-        the general Qibocal output folder. Cf. :class:`qibocal.auto.output.Output`.
-        """
-        for _, completed in self.items():
-            completed.flush()
-
     # TODO: implement time_travel()
 
 
@@ -117,9 +108,6 @@ class DummyHistory:
 
     Used for comparing multiple reports, as their history is not saved.
     """
-
-    def flush(self, output=None):
-        pass
 
     def items(self):
         return tuple()

@@ -193,8 +193,6 @@ class Output:
         self._export_stats()
         (path / META).write_text(json.dumps(self.meta.dump(), indent=4))
 
-        self.history.flush()
-
         # update platform
         if self.platform is not None:
             self.update_platform(self.platform, path)
@@ -254,6 +252,5 @@ class Output:
                     self.history._executed_task_id(task_id.id), output
                 ),
             )
-            self.history.flush()
             if update and completed.task.update:
                 completed.update_platform(platform=self.platform)
