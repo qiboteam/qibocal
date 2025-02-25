@@ -133,7 +133,7 @@ def _acquisition(
             results.update(platform.execute([sequence], **options))
 
     intermediate_frequency = {
-        qubit: platform.config(platform.qubits[q].probe).frequency
+        qubit: platform.config(platform.qubits[qubit].probe).frequency
         - _get_lo_frequency(platform, qubit)
         for qubit in targets
     }
@@ -170,10 +170,11 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
 
     for qubit in qubits:
         traces = []
+        freq = data.intermediate_frequency[qubit]
+
         for i in range(2):
             trace = data[qubit, i].i + 1.0j * data[qubit, i].q
             t = np.arange(0, len(trace), 1)
-            freq = np.abs(data.intermediate_frequency[qubit])
 
             # demodulation (we assume that RAW doesn't demodulate)
             trace = np.array(
@@ -183,7 +184,7 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
                 ]
             )
             # apply lowpass filter to remove fast rotating terms
-            trace = lowpass_filter(trace, 2 * freq)
+            trace = lowpass_filter(trace, 2 * np.abs(freq))
             traces.append(trace)
 
         # Calculate the optimal kernel
@@ -193,7 +194,6 @@ def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscrimination
         norm = np.sqrt(np.sum(np.abs(kernel) ** 2))
         max_abs_weight = np.max(np.abs(kernel / norm))
         kernel /= norm * max_abs_weight
-
         kernel_state_zero[qubit] = kernel
 
     return CalibrateStateDiscriminationResults(data=kernel_state_zero)
