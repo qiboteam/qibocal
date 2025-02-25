@@ -116,12 +116,7 @@ class History:
             if output is not None:
                 completed.path = self.route(task_id, output)
             completed.flush()
-        self.dump(output)
-
-    def dump(self, path: Path):
-        """Dumping task order to file."""
-        print(self._order)
-        (path / HISTORY).write_text(json.dumps(self._serialized_order, indent=4))
+        (output / HISTORY).write_text(json.dumps(self._serialized_order, indent=4))
 
     # TODO: implement time_travel()
 
