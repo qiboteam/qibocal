@@ -1,5 +1,7 @@
 """Track execution history."""
 
+import json
+import os
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import singledispatchmethod
@@ -7,6 +9,9 @@ from pathlib import Path
 from typing import Iterator, Optional
 
 from .task import Completed, Id, TaskId
+
+HISTORY = "history.json"
+"""File where protocols order is dumped."""
 
 
 @dataclass
@@ -28,6 +33,10 @@ class History:
     """
     _order: list[TaskId] = field(default_factory=list)
     """Record of the execution order."""
+
+    @property
+    def _serialized_order(self):
+        return [str(i) for i in self._order]
 
     @singledispatchmethod
     def __contains__(self, elem: Id):
@@ -70,7 +79,13 @@ class History:
     def load(cls, path: Path):
         """To be defined."""
         instance = cls()
-        for protocol in (path / "data").glob("*"):
+        if not (path / HISTORY).exists():
+            protocols = sorted((path / "data").glob("*"), key=os.path.getmtime)
+        else:
+            raw_protocols = json.loads((path / HISTORY).read_text())
+            protocols = [path / "data" / protocol for protocol in raw_protocols]
+
+        for protocol in protocols:
             instance.push(Completed.load(protocol))
         return instance
 
@@ -101,6 +116,12 @@ class History:
             if output is not None:
                 completed.path = self.route(task_id, output)
             completed.flush()
+        self.dump(output)
+
+    def dump(self, path: Path):
+        """Dumping task order to file."""
+        print(self._order)
+        (path / HISTORY).write_text(json.dumps(self._serialized_order, indent=4))
 
     # TODO: implement time_travel()
 
