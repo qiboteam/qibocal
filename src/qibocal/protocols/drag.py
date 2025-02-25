@@ -39,6 +39,8 @@ class DragTuningParameters(Parameters):
     unrolling: bool = False
     """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
     Defaults to ``False``."""
+    nflips: int = 1
+    """Repetitions of (Xpi - Xmpi)."""
 
 
 @dataclass
@@ -97,11 +99,17 @@ def _acquisition(
             )
             drag_negative = replace(drag, relative_phase=np.pi)
 
-            # TODO: here we can add pairs of this in a for loop
-            sequence.append((qd_channel, drag))
-            sequence.append((qd_channel, drag_negative))
+            for _ in range(params.nflips):
+                sequence.append((qd_channel, drag))
+                sequence.append((qd_channel, drag_negative))
             sequence.append(
-                (ro_channel, Delay(duration=drag.duration + drag_negative.duration))
+                (
+                    ro_channel,
+                    Delay(
+                        duration=params.nflips
+                        * (drag.duration + drag_negative.duration)
+                    ),
+                )
             )
             sequence.append((ro_channel, ro_pulse))
 

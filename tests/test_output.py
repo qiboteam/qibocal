@@ -68,16 +68,15 @@ def test_new_output():
     path1 = _new_output()
     path1.mkdir()
     path2 = _new_output()
-    assert str(path1.name)[11:14] == "000"
-    assert str(path2.name)[11:14] == "001"
+    assert path1.name.split("-")[3] == "000"
+    assert path2.name.split("-")[3] == "001"
 
 
 def test_output_mkdir():
     path1 = Output.mkdir()
     path2 = Output.mkdir()
-
-    assert str(path1.name)[11:14] == "000"
-    assert str(path2.name)[11:14] == "001"
+    assert path1.name.split("-")[3] == "000"
+    assert path2.name.split("-")[3] == "001"
 
     with pytest.raises(RuntimeError):
         Output.mkdir(path1)

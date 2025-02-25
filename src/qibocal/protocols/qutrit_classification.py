@@ -168,7 +168,7 @@ def _plot(
     target: QubitId,
     fit: QutritClassificationResults,
 ):
-    figures = plot_results(data, target, 3, fit)
+    figures = plot_results(data, target, 3, None)
     fitting_report = ""
     return figures, fitting_report
 

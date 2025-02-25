@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal.auto.operation import QubitPairId, Routine
 from qibocal.calibration import CalibrationPlatform
@@ -93,38 +93,34 @@ def _aquisition(
     for pair in targets:
         # order the qubits so that the low frequency one is the first
         ordered_pair = order_pair(pair, platform)
-        sequence = chevron_sequence(
+        sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
             platform=platform,
-            pair=pair,
+            ordered_pair=ordered_pair,
             duration_max=params.duration_max,
             parking=params.parking,
             dt=params.dt,
             native=params.native,
         )
 
-        flux_channel = platform.qubits[ordered_pair[1]].flux
-        flux_pulses = [
-            pulse
-            for pulse in sequence.channel(flux_channel)
-            if isinstance(pulse, Pulse)
-        ]
-        ro_pulses_low = sequence.channel(platform.qubits[ordered_pair[0]].acquisition)
-        ro_pulses_high = sequence.channel(platform.qubits[ordered_pair[1]].acquisition)
-        delay_low, ro_low = list(ro_pulses_low)
-        delay_high, ro_high = list(ro_pulses_high)
         sweeper_amplitude = Sweeper(
             parameter=Parameter.amplitude,
             range=(params.amplitude_min, params.amplitude_max, params.amplitude_step),
-            pulses=flux_pulses,
+            pulses=[flux_pulse],
         )
         sweeper_duration = Sweeper(
             parameter=Parameter.duration,
             range=(params.duration_min, params.duration_max, params.duration_step),
-            pulses=flux_pulses + [delay_low, delay_high],
+            pulses=[flux_pulse] + delays + parking_pulses,
         )
 
-        data.native_amplitude[ordered_pair] = flux_pulses[0].amplitude
-        data.sweetspot[ordered_pair] = platform.config(flux_channel).offset
+        ro_high = list(sequence.channel(platform.qubits[ordered_pair[1]].acquisition))[
+            -1
+        ]
+        ro_low = list(sequence.channel(platform.qubits[ordered_pair[0]].acquisition))[
+            -1
+        ]
+
+        data.native_amplitude[ordered_pair] = flux_pulse.amplitude
 
         results = platform.execute(
             [sequence],

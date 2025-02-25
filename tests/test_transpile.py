@@ -1,6 +1,6 @@
 import numpy as np
-from qibo import Circuit, gates, set_backend
-from qibo.backends import get_backend
+from qibo import Circuit, gates
+from qibo.backends import construct_backend
 
 from qibocal.auto.transpile import (
     dummy_transpiler,
@@ -8,6 +8,21 @@ from qibocal.auto.transpile import (
     execute_transpiled_circuits,
     pad_circuit,
 )
+
+
+def test_natives():
+    backend = construct_backend("qibolab", platform="dummy")
+    transpiler = dummy_transpiler(backend)
+    assert gates.iSWAP in backend.compiler.rules
+
+    circuit = Circuit(2)
+    circuit.add(gates.iSWAP(0, 1))
+    qubit_map = [1, 2]
+    transpiled_circuit, _ = execute_transpiled_circuit(
+        circuit, qubit_map, backend, transpiler=transpiler
+    )
+    sequence, _ = backend.compiler.compile(transpiled_circuit, backend.platform)
+    assert len(sequence) == 4  # dummy compiles iSWAP in 4 pulses
 
 
 def test_padd_circuit():
@@ -29,8 +44,7 @@ def test_execute_transpiled_circuit():
     circuit.add(gates.X(0))
     circuit.add(gates.X(1))
     qubit_map = [1, 2]
-    set_backend("qibolab", platform="dummy")
-    backend = get_backend()
+    backend = construct_backend("qibolab", platform="dummy")
     transpiler = dummy_transpiler(backend)
     transpiled_circuit, _ = execute_transpiled_circuit(
         circuit, qubit_map, backend, transpiler=transpiler
@@ -51,8 +65,7 @@ def test_execute_transpiled_circuits():
     circuit.add(gates.X(0))
     circuit.add(gates.X(1))
     qubit_map = [1, 2]
-    set_backend("qibolab", platform="dummy")
-    backend = get_backend()
+    backend = construct_backend("qibolab", platform="dummy")
     transpiler = dummy_transpiler(backend)
     transpiled_circuits, _ = execute_transpiled_circuits(
         [circuit], [qubit_map], backend, transpiler=transpiler

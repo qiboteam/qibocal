@@ -44,16 +44,7 @@ CONFIDENCE_INTERVAL_SECOND_MASK = 70
 """Confidence interval used to clean outliers."""
 DELAY_FIT_PERCENTAGE = 10
 """Percentage of the first and last points used to fit the cable delay."""
-
-
-def int_to_binary(number: int, length: int) -> str:
-    """Conversion from int to binary for fixed number of bits."""
-    return format(number, f"0{length}b")
-
-
-def computational_basis(length: int) -> list[str]:
-    """Return computational basis at fixed length."""
-    return [int_to_binary(i, length) for i in range(2**length)]
+STRING_TYPE = "<U100"
 
 
 def effective_qubit_temperature(
@@ -100,7 +91,6 @@ def calculate_frequencies(results, ro_pulses):
     """
     shots = np.stack([results[ro_pulses[qubit].id] for qubit in ro_pulses]).T
     values, counts = np.unique(shots, axis=0, return_counts=True)
-
     return {"".join(str(int(i)) for i in v): cnt for v, cnt in zip(values, counts)}
 
 

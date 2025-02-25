@@ -80,7 +80,7 @@ def _acquisition(
     """Data acquisition for Rabi experiment sweeping amplitude."""
 
     sequence, qd_pulses, ro_pulses, durations = sequence_amplitude(
-        targets, params, platform
+        targets, params, platform, params.rx90
     )
     frequency_range = np.arange(
         params.min_freq,
@@ -101,7 +101,7 @@ def _acquisition(
         pulses=[qd_pulses[qubit] for qubit in targets],
     )
 
-    data = RabiAmplitudeFreqData(durations=durations)
+    data = RabiAmplitudeFreqData(durations=durations, rx90=params.rx90)
 
     results = platform.execute(
         [sequence],
@@ -186,6 +186,7 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         fitted_parameters=fitted_parameters,
         frequency=fitted_frequencies,
         chi2=chi2,
+        rx90=data.rx90,
     )
 
 
@@ -234,10 +235,12 @@ def _plot(
             row=1,
             col=1,
         )
+        pulse_name = "Pi-half pulse" if data.rx90 else "Pi pulse"
+
         fitting_report = table_html(
             table_dict(
                 target,
-                ["Optimal rabi frequency", "Pi-pulse amplitude"],
+                ["Optimal rabi frequency", f"{pulse_name} amplitude"],
                 [
                     fit.frequency[target],
                     f"{fit.amplitude[target][0]:.6f} +- {fit.amplitude[target][1]:.6f} [a.u.]",

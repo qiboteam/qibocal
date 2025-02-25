@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Iterable, Optional, TypedDict, Union
 
 import numpy as np
@@ -51,12 +51,6 @@ class StandardRBParameters(Parameters):
     If ``None``, uses a random seed.
     Defaults is ``None``.
     """
-    noise_model: Optional[str] = None
-    """For simulation purposes, string has to match what is in
-    :mod:`qibocal.protocols.randomized_benchmarking.noisemodels`"""
-    noise_params: Optional[list] = field(default_factory=list)
-    """With this the noise model will be initialized, if not given random
-    values will be used."""
     nshots: int = 10
     """Just to add the default value."""
 
@@ -117,8 +111,7 @@ def _plot(
     Returns:
         tuple[list[go.Figure], str]:
     """
-    if isinstance(target, list):
-        target = tuple(target)
+    target = tuple(target) if isinstance(target, list) else target
     qubit = target
     fig = go.Figure()
     fitting_report = ""
