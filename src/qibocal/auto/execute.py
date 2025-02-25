@@ -104,7 +104,7 @@ class Executor:
             platform
             if isinstance(platform, CalibrationPlatform)
             else create_calibration_platform(
-                platform if platform is not None else "dummy"
+                platform if platform is not None else "fake"
             )
         )
         return cls(
@@ -124,7 +124,6 @@ class Executor:
         """Run single protocol in ExecutionMode mode."""
         task = Task(action=parameters, operation=protocol)
         log.info(f"Executing mode {mode} on {task.action.id}.")
-
         completed = task.run(platform=self.platform, targets=self.targets, mode=mode)
         self.history.push(completed)
 
@@ -263,7 +262,7 @@ class Executor:
 
         assert isinstance(platform, CalibrationPlatform)
 
-        backend = construct_backend(backend="qibolab", platform=platform.name)
+        backend = construct_backend(backend="qibolab", platform=platform)
 
         if update is not None:
             self.update = update

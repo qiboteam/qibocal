@@ -1,5 +1,5 @@
 backend: qibolab
-platform: dummy
+platform: fake
 
 targets: [0]
 

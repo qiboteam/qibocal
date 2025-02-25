@@ -13,7 +13,7 @@ from qibocal.protocols import flipping
 
 PARAMETERS = {
     "id": "flipping",
-    "targets": [0, 1, 2],
+    "targets": [0, 1],
     "parameters": {
         "nflips_max": 20,
         "nflips_step": 2,
@@ -29,7 +29,7 @@ ACTION = Action(**action)
 # much as possible in the library, and made available in conftest
 @pytest.fixture
 def fake_output(tmp_path: Path) -> tuple[Output, Path]:
-    backend = construct_backend(backend="qibolab", platform="dummy")
+    backend = construct_backend(backend="qibolab", platform="fake")
     platform: Platform = backend.platform
     meta = Metadata.generate(tmp_path.name, backend)
     output = Output(History(), meta, platform)

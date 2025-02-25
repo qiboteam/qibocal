@@ -24,7 +24,7 @@ def test_qq_update(update, tmp_path, monkeypatch):
     )
 
     platforms = tmp_path / "platforms"
-    (platforms / "dummy").mkdir(parents=True, exist_ok=True)
+    (platforms / "fake").mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("QIBOLAB_PLATFORMS", str(platforms))
 
     runner = CliRunner()
@@ -36,7 +36,7 @@ def test_qq_update(update, tmp_path, monkeypatch):
 
     runner.invoke(command, ["update", str(output_folder)], catch_exceptions=False)
     new_parameters = (
-        pathlib.Path(os.getenv("QIBOLAB_PLATFORMS")) / "dummy" / "parameters.json"
+        pathlib.Path(os.getenv("QIBOLAB_PLATFORMS")) / "fake" / "parameters.json"
     )
     assert new_parameters.exists()
 

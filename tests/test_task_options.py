@@ -20,11 +20,11 @@ from qibocal.protocols.readout_mitigation_matrix import (
 
 @pytest.fixture(scope="module")
 def platform():
-    set_backend(backend="qibolab", platform="dummy")
+    set_backend(backend="qibolab", platform="fake")
     return CalibrationPlatform.from_platform(get_backend().platform)
 
 
-TARGETS = [0, 1, 2]
+TARGETS = [0, 1]
 DUMMY_CARD = {
     "targets": TARGETS,
     "actions": [

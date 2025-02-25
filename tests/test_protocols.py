@@ -5,9 +5,9 @@ import pathlib
 import pytest
 import yaml
 from click.testing import CliRunner
-from qibolab import create_platform
 
 from qibocal.auto.output import UPDATED_PLATFORM
+from qibocal.calibration import create_calibration_platform
 from qibocal.cli._base import command
 from qibocal.protocols.rabi.amplitude import RabiAmplitudeData
 from qibocal.protocols.rabi.ef import RabiAmplitudeEFData
@@ -19,7 +19,7 @@ from qibocal.protocols.rabi.utils import (
 )
 
 SINGLE_ACTION_RUNCARD = "action.yml"
-PLATFORM = create_platform("dummy")
+PLATFORM = create_calibration_platform("fake")
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/"
 RUNCARDS_NAMES = ["protocols.yml"]
 
