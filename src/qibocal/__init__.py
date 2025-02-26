@@ -5,14 +5,14 @@ from pathlib import Path
 
 from . import protocols
 from .auto.execute import Executor
-from .auto.platforms.fake.platform import FOLDER
+from .auto.platforms.mock.platform import FOLDER
 from .cli import command
 from .version import __version__
 
 __all__ = ["Executor", "protocols", "command", "__version__"]
 
 
-def _add_fake():
+def _add_mock():
     new_folder = str(FOLDER.parent)
     existing_platforms = os.getenv("QIBOLAB_PLATFORMS", "")
     platforms_set = {
@@ -25,9 +25,9 @@ def _add_fake():
         os.environ["QIBOLAB_PLATFORMS"] = updated_platforms
 
 
-_add_fake()
+_add_mock()
 
-DEFAULT_EXECUTOR = Executor.create(".routines", platform="fake")
+DEFAULT_EXECUTOR = Executor.create(".routines", platform="mock")
 """Default executor, registered as a qibocal submodule.
 
 It is defined for streamlined usage of qibocal protocols in simple

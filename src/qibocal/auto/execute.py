@@ -104,7 +104,7 @@ class Executor:
             platform
             if isinstance(platform, CalibrationPlatform)
             else create_calibration_platform(
-                platform if platform is not None else "fake"
+                platform if platform is not None else "mock"
             )
         )
         return cls(

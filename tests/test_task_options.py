@@ -20,7 +20,7 @@ from qibocal.protocols.readout_mitigation_matrix import (
 
 @pytest.fixture(scope="module")
 def platform():
-    set_backend(backend="qibolab", platform="fake")
+    set_backend(backend="qibolab", platform="mock")
     return CalibrationPlatform.from_platform(get_backend().platform)
 
 

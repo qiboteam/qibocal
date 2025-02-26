@@ -9,7 +9,7 @@ from qibolab._core.qubits import Qubit
 FOLDER = pathlib.Path(__file__).parent
 
 
-def create_fake_hardware() -> Hardware:
+def create_mock_hardware() -> Hardware:
     """Create dummy hardware configuration based on the dummy instrument."""
     qubits = {}
     channels = {}
@@ -41,5 +41,5 @@ def create_fake_hardware() -> Hardware:
 
 def create() -> Platform:
     """Create a dummy platform using the dummy instrument."""
-    hardware = create_fake_hardware()
+    hardware = create_mock_hardware()
     return Platform.load(path=FOLDER, **vars(hardware))

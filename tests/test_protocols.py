@@ -19,7 +19,7 @@ from qibocal.protocols.rabi.utils import (
 )
 
 SINGLE_ACTION_RUNCARD = "action.yml"
-PLATFORM = create_calibration_platform("fake")
+PLATFORM = create_calibration_platform("mock")
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/"
 RUNCARDS_NAMES = ["protocols.yml"]
 

@@ -19,7 +19,7 @@ from qibocal.calibration.platform import (
 )
 from qibocal.protocols import flipping
 
-PLATFORM = create_calibration_platform("fake")
+PLATFORM = create_calibration_platform("mock")
 PARAMETERS = {
     "id": "flipping",
     "targets": [0, 1],
@@ -35,7 +35,7 @@ ACTION = Action(**action)
 
 
 @pytest.mark.parametrize("params", [ACTION, PARAMETERS])
-@pytest.mark.parametrize("platform", ["fake", PLATFORM])
+@pytest.mark.parametrize("platform", ["mock", PLATFORM])
 def test_anonymous_executor(params, platform):
     """Executor without any name."""
     platform = (
@@ -57,7 +57,7 @@ def test_anonymous_executor(params, platform):
 
 
 @pytest.mark.parametrize("params", [ACTION, PARAMETERS])
-@pytest.mark.parametrize("platform", ["fake", PLATFORM])
+@pytest.mark.parametrize("platform", ["mock", PLATFORM])
 def test_named_executor(params, platform):
     """Create method of Executor."""
     executor = Executor.create("myexec", platform=platform)
@@ -146,11 +146,11 @@ def test_init(tmp_path: Path, executor: Executor):
     assert executor.meta is not None
     assert executor.meta.start is not None
 
-    init(path, force=True, platform="fake")
-    assert executor.platform.name == "fake"
+    init(path, force=True, platform="mock")
+    assert executor.platform.name == "mock"
 
-    init(path, force=True, platform=create_platform("fake"))
-    assert executor.platform.name == "fake"
+    init(path, force=True, platform=create_platform("mock"))
+    assert executor.platform.name == "mock"
 
 
 def test_close(tmp_path: Path, executor: Executor):
