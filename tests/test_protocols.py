@@ -7,7 +7,6 @@ import yaml
 from click.testing import CliRunner
 
 from qibocal.auto.output import UPDATED_PLATFORM
-from qibocal.calibration import create_calibration_platform
 from qibocal.cli._base import command
 from qibocal.protocols.rabi.amplitude import RabiAmplitudeData
 from qibocal.protocols.rabi.ef import RabiAmplitudeEFData
@@ -19,7 +18,6 @@ from qibocal.protocols.rabi.utils import (
 )
 
 SINGLE_ACTION_RUNCARD = "action.yml"
-PLATFORM = create_calibration_platform("mock")
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/"
 RUNCARDS_NAMES = ["protocols.yml"]
 
@@ -42,7 +40,6 @@ def generate_runcard_single_protocol():
             for action in actions["actions"]:
                 card = {
                     "actions": [action],
-                    "targets": list(PLATFORM.qubits),
                     "backend": backend,
                 }
                 if "platform" in actions:
@@ -63,7 +60,7 @@ def locate_tomography_file(runcard):
 
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_run_command(runcard, update, tmp_path):
+def test_run_command(runcard, update, tmp_path, platform):
     """Test auto command pipeline."""
     runcard = runcard[0]
 
@@ -89,7 +86,7 @@ def test_run_command(runcard, update, tmp_path):
 
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_acquire_command(runcard, tmp_path):
+def test_acquire_command(runcard, tmp_path, platform):
     """Test acquire command pipeline and report generated."""
     runcard = runcard[0]
     protocol = runcard["actions"][0]["id"]
@@ -122,7 +119,7 @@ def test_acquire_command(runcard, tmp_path):
 
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_fit_command(runcard, update, tmp_path):
+def test_fit_command(runcard, update, tmp_path, platform):
     """Test fit builder and report generated."""
     runcard = runcard[0]
 
