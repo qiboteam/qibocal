@@ -52,10 +52,6 @@ class RbOnDeviceParameters(Parameters):
         if self.seed is None:
             self.seed = np.random.randint(0, int(1e6))
 
-    def __post_init__(self):
-        if self.seed is None:
-            self.seed = np.random.randint(0, int(1e6))
-
 
 def generate_sequence(max_circuit_depth, seed):
     sequence = declare(int, size=max_circuit_depth + 1)
