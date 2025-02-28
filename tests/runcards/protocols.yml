@@ -866,15 +866,6 @@ actions:
       duration: 50
       relaxation_time: 50_000
 
-  - id: cryoscope
-    operation: cryoscope
-    parameters:
-      duration_min: 1
-      duration_max: 10
-      duration_step: 1
-      flux_pulse_amplitude: 0.1
-      relaxation_time: 50_000
-
   - id: flux_gate
     operation: flux_gate
     parameters:
