@@ -13,10 +13,7 @@ from qibocal.protocols.two_qubit_interaction.cryoscope import (
 )
 
 TEST_FILE_DIR = Path(__file__).resolve().parent
-SAMPLING_RATE = 1
 PLATFORM = create_calibration_platform("dummy")
-
-# Instrument sampling rate in GSamples
 
 
 def test_acquisition():
