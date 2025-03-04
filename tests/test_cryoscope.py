@@ -81,12 +81,3 @@ def test_cryoscope_postprocessing():
         )
         all_corrections = all_corrections[: len(fit_results.feedforward_taps[target])]
         assert np.ptp(all_corrections) <= 1e-2
-
-
-def main():
-    test_acquisition()
-    test_cryoscope_postprocessing()
-
-
-if __name__ == "__main__":
-    main()
