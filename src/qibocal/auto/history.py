@@ -35,7 +35,13 @@ class History:
     """Record of the execution order."""
 
     @property
-    def _serialized_order(self):
+    def _serialized_order(self) -> list[str]:
+        """JSON friendly _order attribute.
+
+        _order, which is a list of TaskId objects, is not JSON serializable,
+        it is converted into a list of strings which match the data folder for each
+        protocol.
+        """
         return [str(i) for i in self._order]
 
     @singledispatchmethod
@@ -76,8 +82,12 @@ class History:
         return ((task_id, self[task_id]) for task_id in self)
 
     @classmethod
-    def load(cls, path: Path):
-        """To be defined."""
+    def load(cls, path: Path) -> "History":
+        """Load history from path.
+
+        Fill history with protocols contained in `data` path. If `history.json` is present,
+        they are sorted based on that, otherwise they are sorted by modification time.
+        """
         instance = cls()
         if not (path / HISTORY).exists():
             protocols = sorted((path / "data").glob("*"), key=os.path.getmtime)
