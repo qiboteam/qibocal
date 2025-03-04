@@ -3,38 +3,38 @@ import math
 from pathlib import Path
 
 import numpy as np
-from qibolab import create_dummy
 from scipy.signal import lfilter
 
+from qibocal.calibration.platform import create_calibration_platform
 from qibocal.protocols.two_qubit_interaction import cryoscope
 from qibocal.protocols.two_qubit_interaction.cryoscope import (
     CryoscopeData,
-    CryoscopeParameters,
     CryoscopeResults,
 )
 
 TEST_FILE_DIR = Path(__file__).resolve().parent
 SAMPLING_RATE = 1
+PLATFORM = create_calibration_platform("dummy")
 
 # Instrument sampling rate in GSamples
 
 
 def test_acquisition():
 
-    platform = create_dummy()
+    platform = PLATFORM
     target = [0]
-    duration_min = 1
-    duration_max = 10
-    duration_step = 1
-    flux_pulse_amplitude = 0.1
 
-    params = CryoscopeParameters(
-        duration_min, duration_max, duration_step, flux_pulse_amplitude
+    params = cryoscope.parameters_type.load(
+        dict(
+            duration_min=1,
+            duration_max=10,
+            duration_step=1,
+            flux_pulse_amplitude=0.1,
+        )
     )
-    # pdb.set_trace()
 
-    cryoscope_data = cryoscope.acquisition(params, platform, target)
-    assert type(cryoscope_data) == CryoscopeData
+    cryoscope_data, _ = cryoscope.acquisition(params, platform, target)
+    assert isinstance(cryoscope_data, CryoscopeData)
 
 
 def test_cryoscope_postprocessing():
@@ -44,7 +44,7 @@ def test_cryoscope_postprocessing():
 
     data = cryoscope.data_type.load(datafolder)
     fit_results, _ = cryoscope.fit(data)
-    assert type(fit_results) == CryoscopeResults
+    assert isinstance(fit_results, CryoscopeResults)
 
     results = cryoscope.results_type.load(datafolder)
 
