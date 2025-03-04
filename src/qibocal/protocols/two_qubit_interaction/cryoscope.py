@@ -46,9 +46,9 @@ class CryoscopeParameters(Parameters):
     """Flux pulse duration step."""
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
-    unrolling: bool = True
     fir: int = 20
     """Number of feedforward taps to be optimized after IIR."""
+    unrolling: bool = True
 
 
 @dataclass
