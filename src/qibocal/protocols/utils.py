@@ -476,7 +476,7 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
         errors_phase = qubit_data.error_phase
         fig_raw.add_trace(
             go.Scatter(
-                x=np.concatenate((frequencies, frequencies[::-1])),
+                x=np.concatenate((frequencies, frequencies[::-1])) * HZ_TO_GHZ,
                 y=np.concatenate(
                     (signal + errors_signal, (signal - errors_signal)[::-1])
                 ),
@@ -487,11 +487,11 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
                 name="Signal Errors",
             ),
             row=1,
-            col=1,
+            col=2,
         )
         fig_raw.add_trace(
             go.Scatter(
-                x=np.concatenate((frequencies, frequencies[::-1])),
+                x=np.concatenate((frequencies, frequencies[::-1])) * HZ_TO_GHZ,
                 y=np.concatenate((phase + errors_phase, (phase - errors_phase)[::-1])),
                 fill="toself",
                 fillcolor=COLORBAND,
@@ -499,7 +499,7 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
                 showlegend=True,
                 name="Phase Errors",
             ),
-            row=1,
+            row=2,
             col=2,
         )
 
@@ -556,46 +556,38 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
             freq = fit.frequency
 
         if data.amplitudes[qubit] is not None:
-            if show_error_bars:
-                labels = [label, "Amplitude", "Chi2 Reduced"]
-                values = [
-                    (
-                        freq[qubit],
-                        fit.error_fit_pars[qubit][1],
-                    ),
-                    (data.amplitudes[qubit], 0),
-                    fit.chi2_reduced[qubit],
-                ]
-            else:
-                labels = [
-                    label,
-                    "Loaded Quality Factor",
-                    "Internal Quality Factor",
-                    "Coupling Quality Factor",
-                    "Fano Interference [rad]",
-                    "Amplitude [a.u.]",
-                    "Phase Shift [rad]",
-                    "Electronic Delay [s]",
-                ]
-                values = [
-                    freq[qubit],
-                    params[1],
-                    1.0 / (1.0 / params[1] - 1.0 / params[2]),
-                    params[2],
-                    params[3],
-                    params[4],
-                    params[5],
-                    params[6],
-                ]
 
-            fitting_report = table_html(
-                table_dict(
-                    qubit,
-                    labels,
-                    values,
-                    display_error=show_error_bars,
-                )
+            labels = [
+                label,
+                "Loaded Quality Factor",
+                "Decay rate [Hz]",
+                "Internal Quality Factor",
+                "Coupling Quality Factor",
+                "Fano Interference [rad]",
+                "Amplitude [a.u.]",
+                "Phase Shift [rad]",
+                "Electronic Delay [s]",
+            ]
+            values = [
+                freq[qubit],
+                params[1],
+                2 * np.pi * freq[qubit] / params[1],
+                1.0 / (1.0 / params[1] - 1.0 / params[2]),
+                params[2],
+                params[3],
+                params[4],
+                params[5],
+                params[6],
+            ]
+
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                labels,
+                values,
+                display_error=False,
             )
+        )
         s21_calibrated = (
             s21_raw
             / params[4]
@@ -662,42 +654,6 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
             row=2,
             col=2,
         )
-
-        show_error_bars = not np.isnan(qubit_data.error_signal).any()
-
-        if show_error_bars:
-            errors_signal = qubit_data.error_signal
-            errors_phase = qubit_data.error_phase
-            fig_calibrated.add_trace(
-                go.Scatter(
-                    x=np.concatenate((frequencies, frequencies[::-1])),
-                    y=np.concatenate(
-                        (signal + errors_signal, (signal - errors_signal)[::-1])
-                    ),
-                    fill="toself",
-                    fillcolor=COLORBAND,
-                    line=dict(color=COLORBAND_LINE),
-                    showlegend=True,
-                    name="Signal Errors",
-                ),
-                row=1,
-                col=1,
-            )
-            fig_calibrated.add_trace(
-                go.Scatter(
-                    x=np.concatenate((frequencies, frequencies[::-1])),
-                    y=np.concatenate(
-                        (phase + errors_phase, (phase - errors_phase)[::-1])
-                    ),
-                    fill="toself",
-                    fillcolor=COLORBAND,
-                    line=dict(color=COLORBAND_LINE),
-                    showlegend=True,
-                    name="Phase Errors",
-                ),
-                row=1,
-                col=2,
-            )
 
         freqrange = np.linspace(
             min(frequencies),
