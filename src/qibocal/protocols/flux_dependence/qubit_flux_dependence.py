@@ -20,7 +20,14 @@ from qibocal.result import magnitude, phase
 from qibocal.update import replace
 
 from ... import update
-from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, extract_feature, table_dict, table_html
+from ..utils import (
+    GHZ_TO_HZ,
+    HZ_TO_GHZ,
+    extract_feature,
+    readout_frequency,
+    table_dict,
+    table_html,
+)
 from . import utils
 from .resonator_flux_dependence import ResonatorFluxParameters
 
@@ -148,6 +155,10 @@ def _acquisition(
     results = platform.execute(
         [sequence],
         [offset_sweepers, freq_sweepers],
+        updates=[
+            {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
+            for q in targets
+        ],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
