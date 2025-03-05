@@ -23,45 +23,9 @@
             ],
             "_control_qubits": [],
             "_class": "X"
-        },
-        {
-            "name": "x",
-            "init_args": [
-                2
-            ],
-            "init_kwargs": {},
-            "_target_qubits": [
-                2
-            ],
-            "_control_qubits": [],
-            "_class": "X"
-        },
-        {
-            "name": "x",
-            "init_args": [
-                3
-            ],
-            "init_kwargs": {},
-            "_target_qubits": [
-                3
-            ],
-            "_control_qubits": [],
-            "_class": "X"
-        },
-        {
-            "name": "x",
-            "init_args": [
-                4
-            ],
-            "init_kwargs": {},
-            "_target_qubits": [
-                4
-            ],
-            "_control_qubits": [],
-            "_class": "X"
         }
     ],
-    "nqubits": 5,
+    "nqubits": 2,
     "density_matrix": false,
     "qibo_version": "0.2.8"
 }

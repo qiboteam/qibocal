@@ -1,5 +1,5 @@
 backend: qibolab
-platform: dummy
+platform: mock
 
 targets: [0,1]
 

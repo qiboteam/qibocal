@@ -1,11 +1,13 @@
 from qibocal.auto.execute import Executor
 from qibocal.cli.report import report
 
-target = 0
+platform = "my_platform"
+target = [0, 1]
+
 with Executor.open(
     "myexec",
     path="test_rx_calibration",
-    platform="dummy",
+    platform=platform,
     targets=[target],
     update=True,
     force=True,

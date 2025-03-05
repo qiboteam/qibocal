@@ -14,17 +14,21 @@ If more fine grained control is needed, refer to the `rx_calibration.py` example
     programmatically
 """
 
-from pathlib import Path
-
+from qibocal import Executor
 from qibocal.cli.report import report
-from qibocal.routines import close, init, single_shot_classification
 
-path = Path("test_x")
-init(platform="dummy", path=path, force=True)
+# ADD HERE PLATFORM AND PATH
+platform = "my_platform"
+path = "my_path"
 
-# Here
-ssc = single_shot_classification(nshots=1000)
-print("\nfidelities:\n", ssc.results.fidelity, "\n")
+with Executor.open(
+    "myexec",
+    path=path,
+    platform=platform,
+    update=True,
+    force=True,
+) as e:
+    ssc = e.single_shot_classification(nshots=1000)
+    print("\nfidelities:\n", ssc.results.fidelity, "\n")
 
-close()
 report(path)
