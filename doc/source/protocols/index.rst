@@ -33,6 +33,8 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     readout_mitigation_matrix
     readout_optimization
     standard_rb
+    flux_gate/index
+    cryoscope/cryoscope
     chevron
     virtual_z
     state_tomographies

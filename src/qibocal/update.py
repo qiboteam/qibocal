@@ -194,6 +194,15 @@ def sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):
     platform.calibration.single_qubits[qubit].qubit.sweetspot = float(sweetspot)
 
 
+def flux_coefficients(
+    flux_coefficients: list[float], platform: Platform, qubit: QubitId
+):
+    """Update flux-amplitude relation parameters for specific qubit."""
+    platform.calibration.single_qubits[qubit].qubit.flux_coefficients = [
+        float(value) for value in flux_coefficients
+    ]
+
+
 def flux_offset(offset: float, platform: Platform, qubit: QubitId):
     """Update flux offset parameter in platform for specific qubit."""
     platform.update({f"configs.{platform.qubits[qubit].flux}.offset": offset})
@@ -227,3 +236,19 @@ def coupling(g: float, platform: Platform, qubit: QubitId):
 def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):
     ro_channel = platform.qubits[qubit].acquisition
     platform.update({f"configs.{ro_channel}.kernel": kernel})
+
+
+def feedback(feedback: list[float], platform: Platform, qubit: QubitId):
+    """Update flux pulse feedback filter parameter in platform for specific qubit."""
+    feedbackQM = feedback.copy()
+    feedbackQM = [-feedbackQM[1]]
+    platform.update(
+        {f"configs.{platform.qubits[qubit].flux}.filter.feedback": feedbackQM}
+    )
+
+
+def feedforward(feedforward: list[float], platform: Platform, qubit: QubitId):
+    """Update flux pulse feedforward parameter in platform for specific qubit."""
+    platform.update(
+        {f"configs.{platform.qubits[qubit].flux}.filter.feedforward": feedforward}
+    )

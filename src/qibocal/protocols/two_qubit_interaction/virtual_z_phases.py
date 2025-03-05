@@ -52,7 +52,7 @@ class VirtualZPhasesParameters(Parameters):
     iSWAP and CZ are the possible options.
 
     """
-    dt: Optional[float] = 20
+    dt: Optional[float] = 0
     """Time delay between flux pulses and readout."""
 
 
@@ -182,7 +182,7 @@ def create_sequence(
 
     ro_target_delay = Delay(duration=flux_duration)
     ro_control_delay = Delay(duration=flux_duration)
-    # M
+
     ro_sequence = PulseSequence(
         [
             (
