@@ -296,9 +296,6 @@ def plot_measurements(data: StateTomographyData, target: QubitPairId):
 
 def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitPairId):
     """Plotting for two qubit state tomography."""
-    if isinstance(target, list):
-        target = tuple(target)
-
     fig_measurements = plot_measurements(data, target)
     if fit is None:
         fitting_report = table_html(

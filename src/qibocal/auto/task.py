@@ -11,6 +11,7 @@ from qibo import Circuit
 from qibolab import Platform
 
 from qibocal.auto.operation import QubitId, QubitPairId
+from qibocal.auto.serialize import _nested_list_to_tuples
 
 from .. import protocols
 from ..config import log
@@ -248,7 +249,7 @@ class Completed:
     def update_platform(self, platform: Platform):
         """Perform update on platform' parameters by looping over qubits or
         pairs."""
-        for qubit in self.task.targets:
+        for qubit in _nested_list_to_tuples(self.task.targets):
             try:
                 self.task.operation.update(self.results, platform, qubit)
             except KeyError:

@@ -193,6 +193,9 @@ class Output:
         self._export_stats()
         (path / META).write_text(json.dumps(self.meta.dump(), indent=4))
 
+        # dump protocols order
+        self.history.dump(path)
+
         # update platform
         if self.platform is not None:
             self.update_platform(self.platform, path)
@@ -254,3 +257,6 @@ class Output:
             )
             if update and completed.task.update:
                 completed.update_platform(platform=self.platform)
+
+        # dump protocols order
+        self.history.dump(output)
