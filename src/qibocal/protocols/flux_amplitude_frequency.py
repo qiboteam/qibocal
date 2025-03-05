@@ -97,7 +97,7 @@ def ramsey_flux(
         sequence.extend(
             [
                 (drive_channel, ry90),
-                (flux_channel, Delay(duration=rx90.duration)),
+                (flux_channel, Delay(duration=ry90.duration)),
                 (flux_channel, flux_pulse),
                 (drive_channel, Delay(duration=flux_pulse.duration)),
                 (drive_channel, rx90),
