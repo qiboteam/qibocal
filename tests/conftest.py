@@ -17,7 +17,7 @@ def cd(tmp_path_factory: pytest.TempdirFactory):
     os.chdir(path)
 
 
-@pytest.fixture(scope="module", params=TESTING_PLATFORM_NAMES)
+@pytest.fixture(scope="function", params=TESTING_PLATFORM_NAMES)
 def platform(request, monkeypatch):
     """Dummy platform to be used when there is no access to QPU."""
     monkeypatch.setenv(PLATFORMS, str(Path(__file__).parent / "platforms"))
