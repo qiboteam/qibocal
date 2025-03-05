@@ -3,6 +3,7 @@ import math
 from pathlib import Path
 
 import numpy as np
+import plotly.graph_objects as go
 from scipy.signal import lfilter
 
 from qibocal.calibration.platform import create_calibration_platform
@@ -16,7 +17,7 @@ TEST_FILE_DIR = Path(__file__).resolve().parent
 PLATFORM = create_calibration_platform("dummy")
 
 
-def test_acquisition():
+def test_cryoscope_acquisition():
 
     platform = PLATFORM
     target = [0]
@@ -81,3 +82,30 @@ def test_cryoscope_postprocessing():
         )
         all_corrections = all_corrections[: len(fit_results.feedforward_taps[target])]
         assert np.ptp(all_corrections) <= 1e-2
+
+
+def test_cryoscope_plot():
+
+    datafolder = TEST_FILE_DIR / "cryoscope_data" / "data" / "cryoscope-0"
+    metadatafolder = TEST_FILE_DIR / "cryoscope_data" / "meta.json"
+
+    results = cryoscope.results_type.load(datafolder)
+    data = cryoscope.data_type.load(datafolder)
+
+    with open(metadatafolder) as file:
+        metadata = json.load(file)
+
+    targets = metadata["targets"]
+
+    for target in targets:
+        figs, fitting_report = cryoscope.report(data, results, target)
+
+        assert isinstance(figs, list)
+        assert all(isinstance(fig, go.Figure) for fig in figs)
+        assert isinstance(fitting_report, str)
+
+        for fig in figs:
+            assert len(fig.data) == 3
+            assert fig.data[0].name == "Uncorrected waveform"
+            assert fig.data[1].name == "IIR corrections"
+            assert fig.data[2].name == "FIR + IIR corrections"
