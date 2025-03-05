@@ -77,7 +77,12 @@ def _acquisition(
             ro_pulses = {}
             for qubit in targets:
                 qubit_sequence, ro_pulses[qubit] = allxy.allxy_sequence(
-                    platform, gates, qubit, beta_param=params.beta_param
+                    platform,
+                    gates,
+                    qubit,
+                    beta_param=params.beta_param,
+                    sequence_delay=delay,
+                    readout_delay=1000,
                 )
                 sequence += qubit_sequence
             sequences.append(sequence)

@@ -156,5 +156,12 @@
             "rb_fidelity": null
         }
     },
-    "two_qubits": {}
+    "two_qubits": {
+        "1-2": {
+            "rb_fidelity": [
+                0.99,
+                0.01
+            ]
+        }
+    }
 }

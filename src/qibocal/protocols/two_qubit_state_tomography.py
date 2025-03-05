@@ -9,7 +9,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibo import Circuit, gates
-from qibo.backends import NumpyBackend, get_backend
+from qibo.backends import NumpyBackend, construct_backend
 from qibo.quantum_info import fidelity, partial_trace
 from qibo.result import QuantumState
 
@@ -105,9 +105,8 @@ def _acquisition(
     if params.circuit is None:
         params.circuit = Circuit(len(qubits))
 
-    backend = get_backend()
-    backend.platform = platform
     simulator = NumpyBackend()
+    backend = construct_backend("qibolab", platform=platform)
     transpiler = dummy_transpiler(backend)
 
     simulated_state = simulator.execute_circuit(deepcopy(params.circuit))
@@ -296,9 +295,6 @@ def plot_measurements(data: StateTomographyData, target: QubitPairId):
 
 def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitPairId):
     """Plotting for two qubit state tomography."""
-    if isinstance(target, list):
-        target = tuple(target)
-
     fig_measurements = plot_measurements(data, target)
     if fit is None:
         fitting_report = table_html(

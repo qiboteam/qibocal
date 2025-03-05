@@ -20,7 +20,7 @@ class CalibrationPlatform(Platform):
             calibration = Calibration.model_validate_json(
                 (Path(__file__).parent / "dummy.json").read_text()
             )
-        else:
+        else:  # pragma: no cover
             path = locate_platform(name)
             calibration = Calibration.model_validate_json(
                 (path / CALIBRATION).read_text()

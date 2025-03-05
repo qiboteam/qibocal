@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qibocal"
-version = "0.1.2"
+version = "0.1.3"
 description = "Qibo's quantum calibration, characterization and validation module."
 authors = ["The Qibo team"]
 license = "Apache License 2.0"
@@ -17,7 +17,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
-qibolab = { git = "https://github.com/qiboteam/qibolab.git" }
+qibolab = "^0.2.3"
 qibo = "^0.2.13"
 numpy = "^1.26.4"
 scipy = "^1.10.1"

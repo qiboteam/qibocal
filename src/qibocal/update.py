@@ -126,7 +126,7 @@ def virtual_phases(
     new_native = PulseSequence()
     if len(native_sequence) > 1:
         new_native.append(native_sequence[0])
-    else:
+    else:  # pragma: no cover
         new_native = native_sequence
     for qubit, phase in phases.items():
         new_native.append((platform.qubits[qubit].drive, VirtualZ(phase=phase)))
@@ -227,10 +227,6 @@ def drive_12_duration(
     platform.update(
         {f"native_gates.single_qubit.{qubit}.RX12.0.1.duration": int(duration)}
     )
-
-
-def asymmetry(asymmetry: float, platform: Platform, qubit: QubitId):
-    platform.calibration.single_qubits[qubit].asymmetry = float(asymmetry)
 
 
 def coupling(g: float, platform: Platform, qubit: QubitId):
