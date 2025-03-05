@@ -157,7 +157,12 @@ def _acquisition(
 
 
 def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscriminationResults:
-    """Post-Processing for Calibrate State Discrimination"""
+    """Post-Processing for Calibrate State Discrimination.
+
+    The raw traces for 0 and 1 are demodulated with the IF stored during acquisition.
+    Moreover, fast oscillating terms (:math:`\\exp(-2\\pi \\omega_{\text{IF} t)`) are removed by applying a lowpass filter.
+    Finally, the optimal kernel is calculated as the difference between the two traces.
+    """
     qubits = data.qubits
 
     kernel_state_zero = {}
