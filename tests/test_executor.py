@@ -112,7 +112,7 @@ def fake_protocols(request):
 
 
 @pytest.fixture
-def executor():
+def executor(platform):
     executor = Executor.create("my-exec")
     yield executor
     try:
@@ -123,7 +123,7 @@ def executor():
 
 
 @pytest.mark.protocols("ciao", "come")
-def test_simple(fake_protocols):
+def test_simple(fake_protocols, platform):
     globals_ = {}
     exec((SCRIPTS / "simple.py").read_text(), globals_)
     assert globals_["res"]._results.par[0] == 42
@@ -174,7 +174,7 @@ def test_context_manager(tmp_path: Path, executor: Executor):
         assert executor.meta.start is not None
 
 
-def test_open(tmp_path: Path):
+def test_open(tmp_path: Path, platform):
     path = tmp_path / "my-open-folder"
 
     with Executor.open("myexec", path) as e:

@@ -28,7 +28,7 @@ ACTION = Action(**action)
 # TODO: this is essentially a proto `qq run` invocation, it should be simplified as
 # much as possible in the library, and made available in conftest
 @pytest.fixture
-def mock_output(tmp_path: Path) -> tuple[Output, Path]:
+def mock_output(tmp_path: Path, platform) -> tuple[Output, Path]:
     backend = construct_backend(backend="qibolab", platform="mock")
     platform: Platform = backend.platform
     meta = Metadata.generate(tmp_path.name, backend)
@@ -47,7 +47,7 @@ def mock_output(tmp_path: Path) -> tuple[Output, Path]:
     return output, tmp_path
 
 
-def test_output_process(mock_output: tuple[Output, Path], platform):
+def test_output_process(mock_output: tuple[Output, Path]):
     """Create method of Executor."""
     output, path = mock_output
     # perform fit
