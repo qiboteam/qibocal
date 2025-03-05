@@ -17,18 +17,8 @@ def cd(tmp_path_factory: pytest.TempdirFactory):
     os.chdir(path)
 
 
-def set_platform_profile():
-    os.environ[PLATFORMS] = str(Path(__file__).parent / "platforms")
-
-
-def unset_platform_profile():
-    if PLATFORMS in os.environ:
-        del os.environ[PLATFORMS]
-
-
 @pytest.fixture(scope="module", params=TESTING_PLATFORM_NAMES)
-def platform(request):
+def platform(request, monkeypatch):
     """Dummy platform to be used when there is no access to QPU."""
-    set_platform_profile()
-    yield create_calibration_platform(request.param)
-    unset_platform_profile()
+    monkeypatch.setenv(PLATFORMS, str(Path(__file__).parent / "platforms"))
+    return create_calibration_platform(request.param)
