@@ -1,6 +1,6 @@
 # Example platforms
 
-In this folder there are a few example platforms that can be used with Qibocal. To use these platforms `platforms` folder needs to be added to `QIBOLAB_PLATFORMS` environment variable. If the qibocal directory is cloned in the `HOME` directory this can be done with
+In this folder there are a few example platforms that can be used with Qibocal. To use these platforms, `platforms` folder needs to be added to `QIBOLAB_PLATFORMS` environment variable. If the qibocal directory is cloned in the `HOME` directory this can be done with
 
 ```bash
 export QIBOLAB_PLATFORMS=~/qibocal/platforms
