@@ -4,25 +4,16 @@ from copy import deepcopy
 
 import pytest
 from pytest import approx
-from qibo.backends import get_backend, set_backend
 
 from qibocal import protocols
 from qibocal.auto.mode import AUTOCALIBRATION, ExecutionMode
 from qibocal.auto.operation import DEFAULT_PARENT_PARAMETERS
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import Task
-from qibocal.calibration.platform import CalibrationPlatform
 from qibocal.protocols.classification import SingleShotClassificationParameters
 from qibocal.protocols.readout_mitigation_matrix import (
     ReadoutMitigationMatrixParameters,
 )
-
-
-@pytest.fixture(scope="module")
-def platform():
-    set_backend(backend="qibolab", platform="mock")
-    return CalibrationPlatform.from_platform(get_backend().platform)
-
 
 TARGETS = [0, 1]
 DUMMY_CARD = {
@@ -95,7 +86,7 @@ UPDATE_CARD = {
 # FIXME: handle local update
 @pytest.mark.parametrize("global_update", [True, False])
 @pytest.mark.parametrize("local_update", [True, False])
-def test_update_argument(platform, global_update, local_update, tmp_path):
+def test_update_argument(global_update, local_update, tmp_path, platform):
     """Test possible update combinations between global and local."""
     NEW_CARD = modify_card(
         UPDATE_CARD, local_update=local_update, global_update=global_update

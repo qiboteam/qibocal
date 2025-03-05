@@ -14,7 +14,6 @@ DUMMY_COMPARE = test_runcards_dir / "dummy_compare.yml"
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
 def test_qq_update(update, tmp_path, monkeypatch, platform):
     """Testing qq update using mock."""
-
     output_folder = tmp_path / "out"
     runner = CliRunner()
     runner.invoke(

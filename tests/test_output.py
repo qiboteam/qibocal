@@ -47,7 +47,7 @@ def mock_output(tmp_path: Path) -> tuple[Output, Path]:
     return output, tmp_path
 
 
-def test_output_process(mock_output: tuple[Output, Path]):
+def test_output_process(mock_output: tuple[Output, Path], platform):
     """Create method of Executor."""
     output, path = mock_output
     # perform fit
