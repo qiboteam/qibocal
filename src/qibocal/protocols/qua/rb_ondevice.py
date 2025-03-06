@@ -175,17 +175,17 @@ class RbOnDeviceData(Data):
     depths: list[int]
     data: dict[QubitId, dict[str, npt.NDArray[np.int32]]]
 
-    def _get_data(self, key: str):
-        qubit = self.qubits[0]
+    def _get_data(self, key: str, target: Optional[int] = None):
+        if target is None:
+            target = self.qubits[0]
         try:
-            arrays = self.data[qubit].item(0)
+            arrays = self.data[target].item(0)
             return arrays[key]
         except AttributeError:
-            return self.data[qubit][key]
+            return self.data[target][key]
 
-    @property
-    def state(self):
-        return self._get_data("state")
+    def state(self, target: int = 0):
+        return self._get_data("state", target)
 
     @property
     def sequences(self):
@@ -195,10 +195,12 @@ class RbOnDeviceData(Data):
 def _acquisition(
     params: RbOnDeviceParameters, platform: Platform, targets: list[QubitId]
 ) -> RbOnDeviceData:
-    assert len(targets) == 1
-    target = targets[0]
-    qubit = f"drive{target}"
-    resonator = f"readout{target}"
+    if params.save_sequences:
+        assert len(targets) == 1
+
+    qubits = {target: f"drive{target}" for target in targets}
+    resonators = {target: f"readout{target}" for target in targets}
+
     save_sequences = params.save_sequences
     apply_inverse = params.apply_inverse
     relaxation_time = params.relaxation_time
@@ -219,24 +221,27 @@ def _acquisition(
     # The QUA program #
     ###################
     with program() as rb:
-        depth = declare(int)  # QUA variable for the varying depth
-        depth_target = declare(
-            int
-        )  # QUA variable for the current depth (changes in steps of delta_clifford)
+        # QUA variable for the varying depth
+        depth = declare(int)
+        # QUA variable for the current depth (changes in steps of delta_clifford)
+        depth_target = declare(int)
         # QUA variable to store the last Clifford gate of the current sequence which is replaced by the recovery gate
-        saved_gate = declare(int)
+        saved_gates = {target: declare(int) for target in targets}
         m = declare(int)  # QUA variable for the loop over random sequences
         n = declare(int)  # QUA variable for the averaging loop
-        I = declare(fixed)  # QUA variable for the 'I' quadrature
-        Q = declare(fixed)  # QUA variable for the 'Q' quadrature
-        state = declare(bool)  # QUA variable for state discrimination
+        # QUA variable for the 'I' quadrature
+        I = {target: declare(fixed) for target in targets}
+        # QUA variable for the 'Q' quadrature
+        Q = {target: declare(fixed) for target in targets}
+        # QUA variable for state discrimination
+        state = {target: declare(bool) for target in targets}
         # The relevant streams
         m_st = declare_stream()
         if state_discrimination:
-            state_st = declare_stream()
+            state_st = {target: declare_stream() for target in targets}
         else:
-            I_st = declare_stream()
-            Q_st = declare_stream()
+            I_st = {target: declare_stream() for target in targets}
+            Q_st = {target: declare_stream() for target in targets}
         # save random sequences to return to host
         if save_sequences:
             sequence_st = declare_stream()
@@ -246,15 +251,20 @@ def _acquisition(
             if qb.flux is not None:
                 set_dc_offset(qb.flux.name, "single", qb.sweetspot)
 
-        with for_(
-            m, 0, m < num_of_sequences, m + 1
-        ):  # QUA for_ loop over the random sequences
-            if apply_inverse:
-                sequence_list, inv_gate_list = generate_sequence_with_inverse(
-                    max_circuit_depth, seed, c1_table, inv_gates
-                )  # Generate the random sequence of length max_circuit_depth
-            else:
-                sequence_list = generate_sequence(max_circuit_depth, seed)
+        # QUA for_ loop over the random sequences
+        sequence_lists = {}
+        inv_gate_lists = {}
+        with for_(m, 0, m < num_of_sequences, m + 1):
+            for target in targets:
+                if apply_inverse:
+                    # Generate the random sequence of length max_circuit_depth
+                    sequence_lists[target], inv_gate_lists[target] = (
+                        generate_sequence_with_inverse(
+                            max_circuit_depth, seed, c1_table, inv_gates
+                        )
+                    )
+                else:
+                    sequence_lists[target] = generate_sequence(max_circuit_depth, seed)
 
             if delta_clifford == 1:
                 assign(depth_target, 1)
@@ -262,57 +272,77 @@ def _acquisition(
                 assign(depth_target, 0)  # Initialize the current depth to 0
 
             if save_sequences:
-                save(sequence_list[0], sequence_st)  # save sequence indices in stream
-            with for_(
-                depth, 1, depth <= max_circuit_depth, depth + 1
-            ):  # Loop over the depths
+                # save sequence indices in stream
+                save(sequence_lists[targets[0]][0], sequence_st)
+
+            # Loop over the depths
+            with for_(depth, 1, depth <= max_circuit_depth, depth + 1):
                 if save_sequences:
-                    save(sequence_list[depth], sequence_st)
+                    save(sequence_lists[targets[0]][depth], sequence_st)
+
                 # Replacing the last gate in the sequence with the sequence's inverse gate
                 # The original gate is saved in 'saved_gate' and is being restored at the end
-                assign(saved_gate, sequence_list[depth])
-                if apply_inverse:
-                    assign(sequence_list[depth], inv_gate_list[depth - 1])
+                for target in targets:
+                    assign(saved_gates[target], sequence_lists[target][depth])
+                    if apply_inverse:
+                        assign(
+                            sequence_lists[target][depth],
+                            inv_gate_lists[target][depth - 1],
+                        )
+
                 # Only played the depth corresponding to target_depth
                 with if_((depth == 1) | (depth == depth_target)):
                     with for_(n, 0, n < n_avg, n + 1):  # Averaging loop
                         # Can be replaced by active reset
                         if relaxation_time > 0:
-                            wait(relaxation_time // 4, resonator)
+                            wait(relaxation_time // 4, *resonators.values())
                         # Align the two elements to play the sequence after qubit initialization
-                        align(resonator, qubit)
+                        align(*resonators.values(), *qubits.values())
                         # The strict_timing ensures that the sequence will be played without gaps
-                        with strict_timing_():
-                            # Play the random sequence of desired depth
-                            rx_duration = platform.qubits[
-                                target
-                            ].native_gates.RX.duration
-                            play_sequence(
-                                qubit, sequence_list, apply_inverse, depth, rx_duration
-                            )
+                        for target, qubit in qubits.items():
+                            with strict_timing_():
+                                # Play the random sequence of desired depth
+                                rx_duration = platform.qubits[
+                                    target
+                                ].native_gates.RX.duration
+                                play_sequence(
+                                    qubit,
+                                    sequence_lists[target],
+                                    apply_inverse,
+                                    depth,
+                                    rx_duration,
+                                )
                         # Align the two elements to measure after playing the circuit.
-                        align(qubit, resonator)
+                        align(*resonators.values(), *qubits.values())
                         # wait(3 * (depth + 1) * (DRIVE_DURATION // 4), resonator)
                         # Make sure you updated the ge_threshold and angle if you want to use state discrimination
                         # state, I, Q = readout_macro(threshold=ge_threshold, state=state, I=I, Q=Q)
-                        measure(
-                            "measure",
-                            resonator,
-                            None,
-                            dual_demod.full("cos", "out1", "sin", "out2", I),
-                            dual_demod.full("minus_sin", "out1", "cos", "out2", Q),
-                        )
-                        # Save the results to their respective streams
-                        if state_discrimination:
-                            threshold = platform.qubits[target].threshold
-                            iq_angle = platform.qubits[target].iq_angle
-                            cos = np.cos(iq_angle)
-                            sin = np.sin(iq_angle)
-                            assign(state, I * cos - Q * sin > threshold)
-                            save(state, state_st)
-                        else:
-                            save(I, I_st)
-                            save(Q, Q_st)
+                        for target, resonator in resonators.items():
+                            measure(
+                                "measure",
+                                resonator,
+                                None,
+                                dual_demod.full(
+                                    "cos", "out1", "sin", "out2", I[target]
+                                ),
+                                dual_demod.full(
+                                    "minus_sin", "out1", "cos", "out2", Q[target]
+                                ),
+                            )
+                            # Save the results to their respective streams
+                            if state_discrimination:
+                                threshold = platform.qubits[target].threshold
+                                iq_angle = platform.qubits[target].iq_angle
+                                cos = np.cos(iq_angle)
+                                sin = np.sin(iq_angle)
+                                assign(
+                                    state[target],
+                                    I[target] * cos - Q[target] * sin > threshold,
+                                )
+                                save(state[target], state_st[target])
+                            else:
+                                save(I[target], I_st[target])
+                                save(Q[target], Q_st[target])
                     # Go to the next depth
                     if params.logarithmic:
                         nmul = declare(int)
@@ -322,7 +352,8 @@ def _acquisition(
                         assign(depth_target, depth_target + delta_clifford)
                 # Reset the last gate of the sequence back to the original Clifford gate
                 # (that was replaced by the recovery gate at the beginning)
-                assign(sequence_list[depth], saved_gate)
+                for target in targets:
+                    assign(sequence_lists[target][depth], saved_gates[target])
             # Save the counter for the progress bar
             save(m, m_st)
 
@@ -335,36 +366,41 @@ def _acquisition(
                     "sequences"
                 )
 
-            if state_discrimination:
-                if n_avg > 1:
-                    # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
-                    state_st.boolean_to_int().buffer(n_avg).map(
-                        FUNCTIONS.average()
-                    ).buffer(ndepth).buffer(num_of_sequences).save("state")
-                    # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
-                    state_st.boolean_to_int().buffer(n_avg).map(
-                        FUNCTIONS.average()
-                    ).buffer(ndepth).average().save("state_avg")
+            for target in targets:
+                if state_discrimination:
+                    if n_avg > 1:
+                        # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
+                        state_st[target].boolean_to_int().buffer(n_avg).map(
+                            FUNCTIONS.average()
+                        ).buffer(ndepth).buffer(num_of_sequences).save(
+                            f"state_{target}"
+                        )
+                        # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
+                        state_st[target].boolean_to_int().buffer(n_avg).map(
+                            FUNCTIONS.average()
+                        ).buffer(ndepth).average().save(f"state_avg_{target}")
+                    else:
+                        # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
+                        state_st[target].boolean_to_int().buffer(ndepth).buffer(
+                            num_of_sequences
+                        ).save(f"state_{target}")
+                        # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
+                        state_st[target].boolean_to_int().buffer(ndepth).average().save(
+                            f"state_avg_{target}"
+                        )
                 else:
-                    # saves a 2D array of depth and random pulse sequences in order to get error bars along the random sequences
-                    state_st.boolean_to_int().buffer(ndepth).buffer(
-                        num_of_sequences
-                    ).save("state")
-                    # returns a 1D array of averaged random pulse sequences vs depth of circuit for live plotting
-                    state_st.boolean_to_int().buffer(ndepth).average().save("state_avg")
-            else:
-                I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(ndepth).buffer(
-                    num_of_sequences
-                ).save("I")
-                Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(ndepth).buffer(
-                    num_of_sequences
-                ).save("Q")
-                I_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                    ndepth
-                ).average().save("I_avg")
-                Q_st.buffer(n_avg).map(FUNCTIONS.average()).buffer(
-                    ndepth
-                ).average().save("Q_avg")
+                    I_st[target].buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                        ndepth
+                    ).buffer(num_of_sequences).save(f"I_{target}")
+                    Q_st[target].buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                        ndepth
+                    ).buffer(num_of_sequences).save(f"Q_{target}")
+                    I_st[target].buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                        ndepth
+                    ).average().save(f"I_avg_{target}")
+                    Q_st[target].buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                        ndepth
+                    ).average().save(f"Q_avg_{target}")
 
     # Print total relaxation time (estimate of execution time)
     total_relaxation = relaxation_time * num_of_sequences * n_avg * ndepth * 1e-9
@@ -394,34 +430,38 @@ def _acquisition(
 
     # Get results from QUA program
     if state_discrimination:
-        results = fetching_tool(job, data_list=["state_avg", "iteration"], mode="live")
+        data_list = ["iteration"] + [f"state_avg_{target}" for target in targets]
+        results = fetching_tool(job, data_list=data_list, mode="live")
     else:
-        results = fetching_tool(
-            job, data_list=["I_avg", "Q_avg", "iteration"], mode="live"
+        data_list = (
+            ["iteration"]
+            + [f"I_avg_{target}" for target in targets]
+            + [f"Q_avg_{target}" for target in targets]
         )
+        results = fetching_tool(job, data_list=data_list, mode="live")
 
     start_time = time.time()
     while results.is_processing():
         # data analysis
         if state_discrimination:
-            state_avg, iteration = results.fetch_all()
-            value_avg = state_avg
+            _ = results.fetch_all()
         else:
-            I, Q, iteration = results.fetch_all()
-            value_avg = I
+            _ = results.fetch_all()
     final_time = time.time()
 
     # At the end of the program, fetch the non-averaged results to get the error-bars
     rb_type = RBType.infer(apply_inverse, relaxation_time).value
     if state_discrimination:
         if save_sequences:
-            results = fetching_tool(job, data_list=["state", "sequences"])
+            results = fetching_tool(job, data_list=[f"state_{targets[0]}", "sequences"])
             state, sequences = results.fetch_all()
-            data = {target: {"state": state, "sequences": sequences}}
+            data = {targets[0]: {"state": state, "sequences": sequences}}
         else:
-            results = fetching_tool(job, data_list=["state"])
-            state = results.fetch_all()[0]
-            data = {target: {"state": state}}
+            results = fetching_tool(
+                job, data_list=[f"state_{target}" for target in targets]
+            )
+            states = results.fetch_all()
+            data = {target: {"state": state} for target, state in zip(targets, states)}
     else:
         raise NotImplementedError
         # if save_sequences:
@@ -451,10 +491,10 @@ class RbOnDeviceResults(Results):
     cov: dict[QubitId, list[float]] = field(default_factory=dict)
 
 
-def process_data(data: RbOnDeviceData):
+def process_data(data: RbOnDeviceData, target: int):
     rb_type = RBType(data.rb_type)
     depths = data.depths
-    state = data.state
+    state = data.state(target)
 
     if rb_type is RBType.STANDARD:
         return 1 - np.mean(state, axis=0), np.std(state, axis=0) / np.sqrt(
@@ -468,32 +508,31 @@ def process_data(data: RbOnDeviceData):
 
 
 def _fit(data: RbOnDeviceData) -> RbOnDeviceResults:
-    qubit = data.qubits[0]
-
-    ydata, ysigma = process_data(data)
-    results = RbOnDeviceResults(
-        ydata={qubit: list(ydata)}, ysigma={qubit: list(ysigma)}
-    )
-    try:
-        pars, cov = curve_fit(
-            f=power_law,
-            xdata=data.depths,
-            ydata=ydata,
-            sigma=ysigma,
-            p0=[0.5, 0.0, 0.9],
-            bounds=(-np.inf, np.inf),
-            maxfev=2000,
-        )
-        results.pars[qubit] = list(pars)
-        results.cov[qubit] = list(cov.flatten())
-    except RuntimeError:
-        pass
+    results = RbOnDeviceResults()
+    for target in data.qubits:
+        ydata, ysigma = process_data(data, target)
+        results.ydata[target] = list(ydata)
+        results.ysigma[target] = list(ysigma)
+        try:
+            pars, cov = curve_fit(
+                f=power_law,
+                xdata=data.depths,
+                ydata=ydata,
+                sigma=ysigma,
+                p0=[0.5, 0.0, 0.9],
+                bounds=(-np.inf, np.inf),
+                maxfev=2000,
+            )
+            results.pars[target] = list(pars)
+            results.cov[target] = list(cov.flatten())
+        except RuntimeError:
+            pass
     return results
 
 
 def _plot(data: RbOnDeviceData, target: QubitId, fit: RbOnDeviceResults):
     depths = data.depths
-    state = data.state
+    state = data.state(target)
 
     if fit is not None:
         ydata = fit.ydata[target]
