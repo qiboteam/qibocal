@@ -14,7 +14,6 @@
       "single_qubit": {
         "0": {
           "frequency": 5000000000,
-          "anharmonicity": -200000000,
           "t1": 1000,
           "t2": 1500
         }
