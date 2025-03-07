@@ -1,3 +1,4 @@
+from . import rabi
 from .allxy.allxy import allxy
 from .allxy.allxy_resonator_depletion_tuning import allxy_resonator_depletion_tuning
 from .classification import single_shot_classification
