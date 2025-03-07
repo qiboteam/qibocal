@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -196,7 +198,10 @@ def extract_rabi(data):
     """
     Extract Rabi fit info.
     """
-    if "RabiAmplitude" in data.__class__.__name__:
+    if (
+        "RabiAmplitude" in data.__class__.__name__
+        or "DriveCrosstalk" in data.__class__.__name__
+    ):
         return "amp", "Amplitude [dimensionless]", rabi_amplitude_function
     if "RabiLength" in data.__class__.__name__:
         return "length", "Time [ns]", rabi_length_function
@@ -233,6 +238,7 @@ def sequence_amplitude(
     params: Parameters,
     platform: Platform,
     rx90: bool,
+    crosstalk: Optional[QubitId] = None,
 ) -> tuple[PulseSequence, dict, dict, dict]:
     """Return sequence for rabi amplitude."""
 
@@ -242,9 +248,13 @@ def sequence_amplitude(
     durations = {}
     for q in targets:
         natives = platform.natives.single_qubit[q]
-
         qd_channel, qd_pulse = natives.RX90()[0] if rx90 else natives.RX()[0]
-        ro_channel, ro_pulse = natives.MZ()[0]
+
+        if crosstalk is not None:
+            crosstalk_natives = platform.natives.single_qubit[crosstalk]
+            ro_channel, ro_pulse = crosstalk_natives.MZ()[0]
+        else:
+            ro_channel, ro_pulse = natives.MZ()[0]
 
         if params.pulse_length is not None:
             qd_pulse = replace(qd_pulse, duration=params.pulse_length)

@@ -19,15 +19,7 @@ from .qubit_power_spectroscopy import qubit_power_spectroscopy
 from .qubit_spectroscopy import qubit_spectroscopy
 from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
 from .qutrit_classification import qutrit_classification
-from .rabi.amplitude import rabi_amplitude
-from .rabi.amplitude_frequency import rabi_amplitude_frequency
-from .rabi.amplitude_frequency_signal import rabi_amplitude_frequency_signal
-from .rabi.amplitude_signal import rabi_amplitude_signal
-from .rabi.ef import rabi_amplitude_ef
-from .rabi.length import rabi_length
-from .rabi.length_frequency import rabi_length_frequency
-from .rabi.length_frequency_signal import rabi_length_frequency_signal
-from .rabi.length_signal import rabi_length_signal
+from .rabi import *
 from .ramsey.ramsey import ramsey
 from .ramsey.ramsey_signal import ramsey_signal
 from .ramsey.ramsey_zz import ramsey_zz
@@ -53,7 +45,9 @@ from .two_qubit_interaction import (
 )
 from .two_qubit_state_tomography import two_qubit_state_tomography
 
-__all__ = [
+__all__ = []
+__all__ += rabi.__all__
+__all__ += [
     "allxy",
     "single_shot_classification",
     "spin_echo",
@@ -73,11 +67,6 @@ __all__ = [
     "qubit_spectroscopy",
     "qubit_spectroscopy_ef",
     "qutrit_classification",
-    "rabi_amplitude",
-    "rabi_amplitude_signal",
-    "rabi_length",
-    "rabi_amplitude_ef",
-    "rabi_length_signal",
     "ramsey",
     "ramsey_signal",
     "filtered_rb",
@@ -96,10 +85,6 @@ __all__ = [
     "allxy_resonator_depletion_tuning",
     "two_qubit_state_tomography",
     "qubit_power_spectroscopy",
-    "rabi_amplitude_frequency",
-    "rabi_amplitude_frequency_signal",
-    "rabi_length_frequency",
-    "rabi_length_frequency_signal",
     "standard_rb_2q",
     "standard_rb_2q_inter",
     "optimize_two_qubit_gate",
