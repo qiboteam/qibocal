@@ -10,7 +10,14 @@ from qibocal.auto.operation import QubitId, QubitPairId
 from qibocal.auto.output import Output
 from qibocal.auto.task import Completed
 from qibocal.config import log
-from qibocal.web.report import STYLES, TEMPLATES, Report, report_css_styles
+from qibocal.web.report import (
+    SCRIPT,
+    STYLES,
+    TEMPLATES,
+    Report,
+    report_css_styles,
+    report_script,
+)
 
 ReportOutcome = tuple[str, list[go.Figure]]
 """Report produced by protocol."""
@@ -75,6 +82,7 @@ def report(path: pathlib.Path, history: Optional[History] = None):
     html = template.render(
         is_static=True,
         css_styles=report_css_styles(STYLES),
+        js_script=report_script(SCRIPT),
         path=path,
         title=path.name,
         report=Report(

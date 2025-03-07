@@ -7,7 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routine
@@ -79,8 +79,6 @@ class ChevronData(Data):
     iSWAP and CZ are the possible options.
 
     """
-    sweetspot: dict[QubitPairId, float] = field(default_factory=dict)
-    """Sweetspot value for high frequency qubit."""
     data: dict[QubitPairId, npt.NDArray[ChevronType]] = field(default_factory=dict)
 
     label: Optional[str] = None
@@ -133,39 +131,34 @@ def _aquisition(
     data = ChevronData(native=params.native)
     for pair in targets:
         # order the qubits so that the low frequency one is the first
-        sequence = chevron_sequence(
+        ordered_pair = order_pair(pair, platform)
+        sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
             platform=platform,
-            pair=pair,
+            ordered_pair=ordered_pair,
             duration_max=params.duration_max,
             parking=params.parking,
             dt=params.dt,
             native=params.native,
         )
-        ordered_pair = order_pair(pair, platform)
-        # TODO: move in function to avoid code duplications
-        flux_channel = platform.qubits[ordered_pair[1]].flux
-        flux_pulses = [
-            pulse
-            for pulse in sequence.channel(flux_channel)
-            if isinstance(pulse, Pulse)
-        ]
-        ro_pulses_low = sequence.channel(platform.qubits[ordered_pair[0]].acquisition)
-        ro_pulses_high = sequence.channel(platform.qubits[ordered_pair[1]].acquisition)
-        delay_low, ro_low = list(ro_pulses_low)
-        delay_high, ro_high = list(ro_pulses_high)
         sweeper_amplitude = Sweeper(
             parameter=Parameter.amplitude,
             range=(params.amplitude_min, params.amplitude_max, params.amplitude_step),
-            pulses=flux_pulses,
+            pulses=[flux_pulse],
         )
         sweeper_duration = Sweeper(
             parameter=Parameter.duration,
             range=(params.duration_min, params.duration_max, params.duration_step),
-            pulses=flux_pulses + [delay_low, delay_high],
+            pulses=[flux_pulse] + delays + parking_pulses,
         )
 
-        data.native_amplitude[ordered_pair] = flux_pulses[0].amplitude
-        data.sweetspot[ordered_pair] = platform.config(flux_channel).offset
+        ro_high = list(sequence.channel(platform.qubits[ordered_pair[1]].acquisition))[
+            -1
+        ]
+        ro_low = list(sequence.channel(platform.qubits[ordered_pair[0]].acquisition))[
+            -1
+        ]
+
+        data.native_amplitude[ordered_pair] = flux_pulse.amplitude
 
         results = platform.execute(
             [sequence],
@@ -224,8 +217,6 @@ def _fit(data: ChevronData) -> ChevronResults:
 
 def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     """Plot the experiment result for a single pair."""
-    if isinstance(target, list):
-        target = tuple(target)
     # reverse qubit order if not found in data
     if target not in data.data:
         target = (target[1], target[0])
@@ -302,11 +293,10 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
         fitting_report = table_html(
             table_dict(
                 target[1],
-                [f"{fit.native} amplitude", f"{fit.native} duration", "Bias point"],
+                [f"{fit.native} amplitude", f"{fit.native} duration"],
                 [
                     fit.amplitude[target],
                     fit.duration[target],
-                    fit.amplitude[target] + data.sweetspot[target],
                 ],
             )
         )
@@ -317,10 +307,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
 def _update(
     results: ChevronResults, platform: CalibrationPlatform, target: QubitPairId
 ):
-    if isinstance(target, list):
-        target = tuple(target)
-    if target not in results.duration:
-        target = (target[1], target[0])
+    target = target[::-1] if target not in results.duration else target
 
     getattr(update, f"{results.native}_duration")(
         results.duration[target], platform, target

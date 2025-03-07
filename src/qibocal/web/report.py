@@ -3,16 +3,23 @@ from dataclasses import dataclass
 from typing import Callable
 
 from qibocal.auto.history import History
+from qibocal.auto.serialize import _nested_list_to_tuples
 from qibocal.auto.task import TaskId
 
 WEB_DIR = pathlib.Path(__file__).parent
 STYLES = WEB_DIR / "static" / "styles.css"
+SCRIPT = WEB_DIR / "script.js"
 TEMPLATES = WEB_DIR / "templates"
 
 
-def report_css_styles(styles_path: pathlib.Path):
+def report_css_styles(path: pathlib.Path):
     """HTML string containing path of css file."""
-    return f"<style>\n{pathlib.Path(styles_path).read_text()}\n</style>"
+    return f"<style>\n{pathlib.Path(path).read_text()}\n</style>"
+
+
+def report_script(path: pathlib.Path):
+    """HTML string containing path of js file."""
+    return f"<script>\n{pathlib.Path(path).read_text()}\n</script>"
 
 
 @dataclass
@@ -39,4 +46,5 @@ class Report:
         If not available use the global ones.
         """
         local_targets = self.history[task_id].task.targets
-        return local_targets if len(local_targets) > 0 else self.meta["targets"]
+        targets = local_targets if len(local_targets) > 0 else self.meta["targets"]
+        return _nested_list_to_tuples(targets)

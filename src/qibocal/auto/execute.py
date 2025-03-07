@@ -104,9 +104,7 @@ class Executor:
             platform
             if isinstance(platform, CalibrationPlatform)
             else create_calibration_platform(
-                platform
-                if platform is not None
-                else os.environ.get("QIBO_PLATFORM", "dummy")
+                platform if platform is not None else "dummy"
             )
         )
         return cls(

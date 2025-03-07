@@ -1,6 +1,7 @@
 from .allxy.allxy import allxy
 from .allxy.allxy_resonator_depletion_tuning import allxy_resonator_depletion_tuning
 from .classification import single_shot_classification
+from .coherence.cpmg import cpmg
 from .coherence.spin_echo import spin_echo
 from .coherence.spin_echo_signal import spin_echo_signal
 from .coherence.t1 import t1
@@ -11,6 +12,7 @@ from .coherence.zeno import zeno
 from .dispersive_shift import dispersive_shift
 from .dispersive_shift_qutrit import dispersive_shift_qutrit
 from .drag import drag_tuning
+from .drag_simple import drag_simple
 from .flipping import flipping
 from .flux_dependence.qubit_crosstalk import qubit_crosstalk
 from .flux_dependence.qubit_flux_dependence import qubit_flux
@@ -89,4 +91,6 @@ __all__ += [
     "standard_rb_2q_inter",
     "optimize_two_qubit_gate",
     "ramsey_zz",
+    "cpmg",
+    "drag_simple",
 ]

@@ -1,12 +1,22 @@
 from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Delay, PulseSequence
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Delay,
+    Drag,
+    Gaussian,
+    Pulse,
+    PulseSequence,
+)
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
+from qibocal.update import replace
 
 
 @dataclass
@@ -124,6 +134,24 @@ def _acquisition(
     return data
 
 
+def apply_drag(pulse: Pulse, beta_param: Optional[float] = None) -> Pulse:
+    """Apply Drag with parameter beta."""
+    if beta_param is None:
+        return replace(
+            pulse,
+            envelope=Gaussian(
+                rel_sigma=pulse.envelope.rel_sigma,
+            ),
+        )
+    return replace(  # pragma: no cover
+        pulse,
+        envelope=Drag(
+            rel_sigma=pulse.envelope.rel_sigma,
+            beta=beta_param,
+        ),
+    )
+
+
 def allxy_sequence(
     platform: CalibrationPlatform,
     gates,
@@ -142,32 +170,19 @@ def allxy_sequence(
             pass
 
         if gate == "Xp":
-            if beta_param is None:
-                rx_sequence = natives.RX()
-            else:
-                raise NotImplementedError
-            sequence += rx_sequence
+            qd_channel, rx_pulse = natives.RX()[0]
+            sequence.append((qd_channel, apply_drag(rx_pulse, beta_param)))
 
         if gate == "X9":
-            if beta_param is None:
-                rx90_sequence = natives.R(theta=np.pi / 2)
-            else:
-                raise NotImplementedError
-            sequence += rx90_sequence
+            qd_channel, rx90_pulse = natives.R(theta=np.pi / 2)[0]
+            sequence.append((qd_channel, apply_drag(rx90_pulse, beta_param)))
 
         if gate == "Yp":
-            if beta_param == None:
-                ry_sequence = natives.R(phi=np.pi / 2)
-            else:
-                raise NotImplementedError
-            sequence += ry_sequence
-
+            qd_channel, ry_pulse = natives.R(phi=np.pi / 2)[0]
+            sequence.append((qd_channel, apply_drag(ry_pulse, beta_param)))
         if gate == "Y9":
-            if beta_param == None:
-                ry90_sequence = natives.R(theta=np.pi / 2, phi=np.pi / 2)
-            else:
-                raise NotImplementedError
-            sequence += ry90_sequence
+            qd_channel, ry90_pulse = natives.R(theta=np.pi / 2, phi=np.pi / 2)[0]
+            sequence.append((qd_channel, apply_drag(ry90_pulse, beta_param)))
 
     # RO pulse starting just after pair of gates
     qd_channel = platform.qubits[qubit].drive
