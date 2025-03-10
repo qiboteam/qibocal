@@ -1,2 +1,4 @@
-from .platform import CalibrationPlatform as CalibrationPlatform
-from .platform import create_calibration_platform as create_calibration_platform
+from . import platform
+
+__all__ = []
+__all__ += platform.__all__

@@ -21,6 +21,8 @@ from .chevron import (
 )
 from .utils import chevron_sequence
 
+__all__ = ["chevron_signal"]
+
 
 @dataclass
 class ChevronSignalParameters(ChevronParameters):
