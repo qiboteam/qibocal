@@ -1,1 +1,2 @@
-from .platform import CalibrationPlatform, create_calibration_platform
+from .platform import CalibrationPlatform as CalibrationPlatform
+from .platform import create_calibration_platform as create_calibration_platform

@@ -32,11 +32,19 @@ skops = "^0.11.0"
 optional = true
 
 [tool.poetry.group.tests.dependencies]
-pylint = "^3.3.0"
 pytest = "^7.1.2"
 pytest-cov = "^3.0.0"
 pytest-env = "^0.8.1"
 pytest-mock = "^3.14.0"
+
+[tool.poetry.group.analysis]
+optional = true
+
+[tool.poetry.group.analysis.dependencies]
+ruff = "^0.9.1"
+
+[tool.ruff.lint.per-file-ignores]
+"simple.py" = ["E402"]
 
 [tool.poetry.group.docs]
 optional = true
@@ -68,8 +76,12 @@ qq = "qibocal:command"
 
 [tool.poe.tasks]
 test = "pytest"
-lint = "pylint src/**/*.py -E"
-lint-warnings = "pylint src/**/*.py --exit-zero"
+lint = "ruff check"
+lint-warnings = """
+  ruff check --exit-zero \
+  --select F,E,W,C90,N,UP,BLE,FBT,B,A,C4,T10,EM,EXE,ISC,ICN,LOG,G,INP,PIE,T20,PT,Q,RSE,\
+           RET,SLF,SLOT,SIM,TC,INT,ARG,PTH,ERA,NPY,PERF,RUF
+"""
 docs = "make -C doc html"
 docs-clean = "make -C doc clean"
 test-docs = "make -C doc doctest"

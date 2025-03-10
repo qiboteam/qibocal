@@ -1,3 +1,3 @@
 """CLI entry point."""
 
-from ._base import command
+from ._base import command as command

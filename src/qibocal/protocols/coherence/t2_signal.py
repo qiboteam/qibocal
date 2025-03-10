@@ -12,7 +12,7 @@ from qibocal.calibration import CalibrationPlatform
 from ...result import magnitude, phase
 from ..ramsey.utils import ramsey_sequence
 from ..utils import table_dict, table_html
-from . import t1_signal, t2, utils
+from . import t1_signal, utils
 
 
 @dataclass
