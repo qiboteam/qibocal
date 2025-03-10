@@ -15,6 +15,8 @@ from .run import protocols_execution
 from .update import update as updating
 from .upload import upload_report
 
+__all__ = ["command"]
+
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 

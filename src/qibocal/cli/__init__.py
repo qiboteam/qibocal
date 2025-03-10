@@ -1,3 +1,6 @@
 """CLI entry point."""
 
-from ._base import command as command
+from . import _base
+
+__all__ = []
+__all__ += _base.__all__
