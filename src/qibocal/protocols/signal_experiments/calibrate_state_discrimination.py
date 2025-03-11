@@ -5,7 +5,6 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, PulseSequence
-from qibolab._core.instruments.abstract import Controller
 from scipy.signal import butter, filtfilt
 
 from qibocal import update
