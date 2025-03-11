@@ -19,10 +19,9 @@ from qibocal.calibration.platform import (
 )
 from qibocal.protocols import flipping
 
-PLATFORM = create_calibration_platform("dummy")
 PARAMETERS = {
     "id": "flipping",
-    "targets": [0, 1, 2],
+    "targets": [0, 1],
     "parameters": {
         "nflips_max": 20,
         "nflips_step": 2,
@@ -35,7 +34,6 @@ ACTION = Action(**action)
 
 
 @pytest.mark.parametrize("params", [ACTION, PARAMETERS])
-@pytest.mark.parametrize("platform", ["dummy", PLATFORM])
 def test_anonymous_executor(params, platform):
     """Executor without any name."""
     platform = (
@@ -57,7 +55,6 @@ def test_anonymous_executor(params, platform):
 
 
 @pytest.mark.parametrize("params", [ACTION, PARAMETERS])
-@pytest.mark.parametrize("platform", ["dummy", PLATFORM])
 def test_named_executor(params, platform):
     """Create method of Executor."""
     executor = Executor.create("myexec", platform=platform)
@@ -115,7 +112,7 @@ def fake_protocols(request):
 
 
 @pytest.fixture
-def executor():
+def executor(platform):
     executor = Executor.create("my-exec")
     yield executor
     try:
@@ -126,7 +123,7 @@ def executor():
 
 
 @pytest.mark.protocols("ciao", "come")
-def test_simple(fake_protocols):
+def test_simple(fake_protocols, platform):
     globals_ = {}
     exec((SCRIPTS / "simple.py").read_text(), globals_)
     assert globals_["res"]._results.par[0] == 42
@@ -146,11 +143,11 @@ def test_init(tmp_path: Path, executor: Executor):
     assert executor.meta is not None
     assert executor.meta.start is not None
 
-    init(path, force=True, platform="dummy")
-    assert executor.platform.name == "dummy"
+    init(path, force=True, platform="mock")
+    assert executor.platform.name == "mock"
 
-    init(path, force=True, platform=create_platform("dummy"))
-    assert executor.platform.name == "dummy"
+    init(path, force=True, platform=create_platform("mock"))
+    assert executor.platform.name == "mock"
 
 
 def test_close(tmp_path: Path, executor: Executor):
@@ -177,7 +174,7 @@ def test_context_manager(tmp_path: Path, executor: Executor):
         assert executor.meta.start is not None
 
 
-def test_open(tmp_path: Path):
+def test_open(tmp_path: Path, platform):
     path = tmp_path / "my-open-folder"
 
     with Executor.open("myexec", path) as e:

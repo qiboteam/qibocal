@@ -52,7 +52,7 @@
             "_class": "H"
         }
     ],
-    "nqubits": 4,
+    "nqubits": 2,
     "density_matrix": false,
     "qibo_version": "0.2.7"
 }

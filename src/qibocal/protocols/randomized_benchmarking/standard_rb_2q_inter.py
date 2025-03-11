@@ -28,8 +28,6 @@ class StandardRB2QInterResult(StandardRBResult):
     """The overall fidelity for the CZ gate and its uncertainty."""
 
     def __contains__(self, value: QubitPairId):
-        if isinstance(value, list):
-            value = tuple(value)
         return all(
             value in getattr(self, field.name)
             for field in fields(self)

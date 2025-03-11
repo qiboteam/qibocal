@@ -1,5 +1,7 @@
 """Track execution history."""
 
+import json
+import os
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import singledispatchmethod
@@ -7,6 +9,9 @@ from pathlib import Path
 from typing import Iterator, Optional
 
 from .task import Completed, Id, TaskId
+
+HISTORY = "history.json"
+"""File where protocols order is dumped."""
 
 
 @dataclass
@@ -28,6 +33,16 @@ class History:
     """
     _order: list[TaskId] = field(default_factory=list)
     """Record of the execution order."""
+
+    @property
+    def _serialized_order(self) -> list[str]:
+        """JSON friendly _order attribute.
+
+        _order, which is a list of TaskId objects, is not JSON serializable,
+        it is converted into a list of strings which match the data folder for each
+        protocol.
+        """
+        return [str(i) for i in self._order]
 
     @singledispatchmethod
     def __contains__(self, elem: Id):
@@ -67,10 +82,20 @@ class History:
         return ((task_id, self[task_id]) for task_id in self)
 
     @classmethod
-    def load(cls, path: Path):
-        """To be defined."""
+    def load(cls, path: Path) -> "History":
+        """Load history from path.
+
+        Fill history with protocols contained in `data` path. If `history.json` is present,
+        they are sorted based on that, otherwise they are sorted by modification time.
+        """
         instance = cls()
-        for protocol in (path / "data").glob("*"):
+        if not (path / HISTORY).exists():
+            protocols = sorted((path / "data").glob("*"), key=os.path.getmtime)
+        else:
+            raw_protocols = json.loads((path / HISTORY).read_text())
+            protocols = [path / "data" / protocol for protocol in raw_protocols]
+
+        for protocol in protocols:
             instance.push(Completed.load(protocol))
         return instance
 
@@ -101,6 +126,7 @@ class History:
             if output is not None:
                 completed.path = self.route(task_id, output)
             completed.flush()
+        (output / HISTORY).write_text(json.dumps(self._serialized_order, indent=4))
 
     # TODO: implement time_travel()
 

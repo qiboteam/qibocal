@@ -13,14 +13,3 @@ __all__ = [
     "__version__",
     "create_calibration_platform",
 ]
-
-DEFAULT_EXECUTOR = Executor.create(".routines", platform="dummy")
-"""Default executor, registered as a qibocal submodule.
-
-It is defined for streamlined usage of qibocal protocols in simple
-contexts, where no additional options has to be defined for the
-executor.
-
-This is not meant to be used directly, thus is not meant to be publicly
-exposed.
-"""
