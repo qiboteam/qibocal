@@ -25,7 +25,6 @@ def chevron_sequence(
 ):
     """Chevron pulse sequence."""
     sequence = PulseSequence()
-    # initialize in system in 11 state
     low_natives = platform.natives.single_qubit[ordered_pair[0]]
     high_natives = platform.natives.single_qubit[ordered_pair[1]]
     if native == "CZ":
@@ -33,7 +32,6 @@ def chevron_sequence(
     sequence += high_natives.RX()
 
     drive_duration = sequence.duration
-
     raw_flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
     flux_channel, flux_pulse = [
         (ch, pulse)
