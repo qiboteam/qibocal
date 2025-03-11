@@ -19,7 +19,7 @@ def create_mock_hardware() -> Hardware:
         drive12 = f"{q}/drive12"
         qubits[q] = qubit = Qubit.default(q, drive_qudits={(1, 2): drive12})
         channels |= {
-            qubit.probe: IqChannel(device=pump_name, mixer=None, lo="01/probe_lo"),
+            qubit.probe: IqChannel(mixer=None, lo="01/probe_lo"),
             qubit.acquisition: AcquisitionChannel(
                 twpa_pump=pump_name, probe=qubit.probe
             ),
