@@ -157,16 +157,16 @@ class Matrix(Model):
     def __getitem__(self, pair: tuple[QubitId, QubitId]) -> float:
         """Getting matrix element from QubitIds."""
         q0, q1 = pair
-        return self.matrix[self.qubits.index(q0)][
+        return self.matrix[self.qubits.index(q0)][  # pylint: disable=E1136
             self.qubits.index(q1)
-        ]  # pylint: disable=E1136
+        ]
 
     def __setitem__(self, index, value) -> None:
         """Setting matrix element from QubitIds."""
         row, col = index
-        self.matrix[self.qubits.index(row)][
+        self.matrix[self.qubits.index(row)][  # pylint: disable=E1136
             self.qubits.index(col)
-        ] = value  # pylint: disable=E1136
+        ] = value
 
 
 class MitigationMatrix(Model):
