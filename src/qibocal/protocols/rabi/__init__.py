@@ -7,6 +7,7 @@ from .ef import rabi_amplitude_ef
 from .length import rabi_length
 from .length_frequency import rabi_length_frequency
 from .length_frequency_signal import rabi_length_frequency_signal
+from .length_signal import rabi_length_signal
 
 __all__ = [
     "rabi_amplitude",
@@ -14,6 +15,7 @@ __all__ = [
     "rabi_amplitude_frequency",
     "rabi_amplitude_frequency_signal",
     "rabi_length",
+    "rabi_length_signal",
     "rabi_length_frequency",
     "rabi_length_frequency_signal",
     "rabi_amplitude_ef",

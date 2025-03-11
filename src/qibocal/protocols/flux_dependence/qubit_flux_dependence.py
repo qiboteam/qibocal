@@ -287,7 +287,9 @@ def _update(results: QubitFluxResults, platform: CalibrationPlatform, qubit: Qub
     platform.calibration.single_qubits[qubit].qubit.maximum_frequency = int(
         results.frequency[qubit]
     )
-    update.crosstalk_matrix(results.matrix_element[qubit], platform, qubit, qubit)
+    platform.calibration.flux_crosstalk_matrix[qubit, qubit] = results.matrix_element[
+        qubit
+    ]
 
 
 qubit_flux = Routine(_acquisition, _fit, _plot, _update)

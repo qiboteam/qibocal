@@ -132,7 +132,7 @@ def _acquisition(
         bare_resonator_frequency[q] = platform.calibration.single_qubits[
             q
         ].resonator.bare_frequency
-        matrix_element[q] = platform.calibration.get_crosstalk_element(q, q)
+        matrix_element[q] = platform.calibration.flux_crosstalk_matrix[q, q]
         offset[q] = -offset0 * matrix_element[q]
         charging_energy[q] = platform.calibration.single_qubits[q].qubit.charging_energy
 

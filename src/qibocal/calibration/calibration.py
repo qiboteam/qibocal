@@ -3,8 +3,9 @@ from typing import Annotated, Optional, Union
 
 import numpy as np
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, PlainSerializer
+from scipy.sparse import lil_matrix
 
-from .serialize import NdArray, SparseArray
+from .serialize import NdArray, SparseArray, ndarray_serialize, sparse_serialize
 
 QubitId = Annotated[Union[int, str], Field(union_mode="left_to_right")]
 """Qubit name."""
@@ -141,6 +142,61 @@ class TwoQubitCalibration(Model):
     """Qubit-qubit coupling."""
 
 
+class Matrix(Model):
+    """Generic matrix indexed by qubits."""
+
+    qubits: list[QubitId] = Field(default_factory=list, exclude=True)
+    """List of QubitIds."""
+    matrix: Optional[NdArray] = None
+    """Matrix array."""
+
+    def __eq__(self, tmp):
+        array_equal = np.testing.assert_array_equal(self.matrix, tmp.matrix) is None
+        return self.qubits == tmp.qubits and array_equal
+
+    def __getitem__(self, pair: tuple[QubitId, QubitId]) -> float:
+        """Getting matrix element from QubitIds."""
+        q0, q1 = pair
+        return self.matrix[self.qubits.index(q0)][
+            self.qubits.index(q1)
+        ]  # pylint: disable=E1136
+
+    def __setitem__(self, index, value) -> None:
+        """Setting matrix element from QubitIds."""
+        row, col = index
+        self.matrix[self.qubits.index(row)][
+            self.qubits.index(col)
+        ] = value  # pylint: disable=E1136
+
+
+class MitigationMatrix(Model):
+    """Generic matrix indexed by qubits."""
+
+    qubits: list[QubitId] = Field(default_factory=list, exclude=True)
+    """List of QubitIds."""
+    matrix: Optional[SparseArray] = None
+    """Sparse matrix."""
+
+    def __eq__(self, tmp):
+        return self.qubits == tmp.qubits and (self.matrix != tmp.matrix).nnz == 0
+
+    def __setitem__(self, targets: list[QubitId], matrix: Union[list, NdArray]) -> None:
+        """Setting submatrix corresponding to targets."""
+        if isinstance(matrix, list):
+            matrix = np.array(matrix)
+        mask = sum(1 << self.qubits.index(i) for i in targets)
+        nqubits = len(self.qubits)
+        indices = [i for i in range(2**nqubits) if (i & mask) == i]
+        self.matrix[np.ix_(indices, indices)] = matrix  # pylint: disable=E1137
+
+    def __getitem__(self, targets: list[QubitId]) -> SparseArray:
+        """Getting submatrix corresponding to targets."""
+        mask = sum(1 << self.qubits.index(i) for i in targets)
+        nqubits = len(self.qubits)
+        indices = [i for i in range(2**nqubits) if (i & mask) == i]
+        return self.matrix[np.ix_(indices, indices)]  # pylint: disable=E1136
+
+
 class Calibration(Model):
     """Calibration container."""
 
@@ -148,10 +204,40 @@ class Calibration(Model):
     """Dict with single qubit calibration."""
     two_qubits: dict[QubitPairId, TwoQubitCalibration] = Field(default_factory=dict)
     """Dict with qubit pairs calibration."""
-    readout_mitigation_matrix: Optional[SparseArray] = None
+    readout_mitigation_matrix: Optional[MitigationMatrix] = None
     """Readout mitigation matrix."""
-    flux_crosstalk_matrix: Optional[NdArray] = None
+    flux_crosstalk_matrix: Optional[Matrix] = None
     """Crosstalk flux matrix."""
+    drive_crosstalk_matrix: Optional[Matrix] = None
+    """Drive crosstalk matrix."""
+
+    def model_post_init(self, __context):
+        serialized_zeros = ndarray_serialize(
+            np.zeros((len(self.qubits), len(self.qubits)))
+        )
+        if self.flux_crosstalk_matrix is None:
+            self.flux_crosstalk_matrix = Matrix(
+                qubits=self.qubits, matrix=serialized_zeros
+            )
+        else:
+            self.flux_crosstalk_matrix.qubits = self.qubits
+
+        if self.drive_crosstalk_matrix is None:
+            self.drive_crosstalk_matrix = Matrix(
+                qubits=self.qubits, matrix=serialized_zeros
+            )
+        else:
+            self.drive_crosstalk_matrix.qubits = self.qubits
+
+        if self.readout_mitigation_matrix is None:
+            serialized_sparse_zeros = sparse_serialize(
+                lil_matrix((2**self.nqubits, 2**self.nqubits))
+            )
+            self.readout_mitigation_matrix = MitigationMatrix(
+                qubits=self.qubits, matrix=serialized_sparse_zeros
+            )
+        else:
+            self.readout_mitigation_matrix.qubits = self.qubits
 
     def dump(self, path: Path):
         """Dump calibration model."""
@@ -166,20 +252,3 @@ class Calibration(Model):
     def nqubits(self) -> int:
         """Number of qubits available."""
         return len(self.qubits)
-
-    def qubit_index(self, qubit: QubitId):
-        """Return qubit index from platform qubits."""
-        return self.qubits.index(qubit)
-
-    # TODO: add crosstalk object where I can do this
-    def get_crosstalk_element(self, qubit1: QubitId, qubit2: QubitId):
-        if self.flux_crosstalk_matrix is None:
-            self.flux_crosstalk_matrix = np.zeros((self.nqubits, self.nqubits))
-        a, b = self.qubit_index(qubit1), self.qubit_index(qubit2)
-        return self.flux_crosstalk_matrix[a, b]  # pylint: disable=E1136
-
-    def set_crosstalk_element(self, qubit1: QubitId, qubit2: QubitId, value: float):
-        if self.flux_crosstalk_matrix is None:
-            self.flux_crosstalk_matrix = np.zeros((self.nqubits, self.nqubits))
-        a, b = self.qubit_index(qubit1), self.qubit_index(qubit2)
-        self.flux_crosstalk_matrix[a, b] = value  # pylint: disable=E1137
