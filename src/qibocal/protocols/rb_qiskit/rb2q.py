@@ -239,7 +239,7 @@ def _acquisition(
             for sequence in sequences:
                 results = platform.execute_pulse_sequence(sequence, options)
                 state0.append(results[qubit0].samples)
-                state1.append(results[qubit0].samples)
+                state1.append(results[qubit1].samples)
 
             state0 = np.stack(state0)
             state1 = np.stack(state1)
