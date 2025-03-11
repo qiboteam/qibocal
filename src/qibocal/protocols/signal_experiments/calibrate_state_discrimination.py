@@ -38,14 +38,7 @@ def _get_lo_frequency(platform: CalibrationPlatform, qubit: QubitId) -> float:
 
     Currently it assumes that instruments with LOs is first one.
     """
-    controller = next(
-        iter(
-            inst
-            for inst in platform.instruments.values()
-            if isinstance(inst, Controller)
-        )
-    )
-    probe = controller.channels[platform.qubits[qubit].probe]
+    probe = platform.channels[platform.qubits[qubit].probe]
     lo_config = platform.config(probe.lo)
     return lo_config.frequency
 
