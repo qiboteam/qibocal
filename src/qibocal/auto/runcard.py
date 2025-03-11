@@ -32,7 +32,7 @@ class Runcard:
     """
     backend: str = "qibolab"
     """Qibo backend."""
-    platform: str = "dummy"
+    platform: str = "mock"
     """Qibolab platform."""
     update: bool = True
 

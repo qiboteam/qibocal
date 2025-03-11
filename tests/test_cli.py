@@ -12,9 +12,8 @@ DUMMY_COMPARE = test_runcards_dir / "dummy_compare.yml"
 
 
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
-def test_qq_update(update, tmp_path, monkeypatch):
+def test_qq_update(update, tmp_path, monkeypatch, platform):
     """Testing qq update using mock."""
-
     output_folder = tmp_path / "out"
     runner = CliRunner()
     runner.invoke(
@@ -24,7 +23,7 @@ def test_qq_update(update, tmp_path, monkeypatch):
     )
 
     platforms = tmp_path / "platforms"
-    (platforms / "dummy").mkdir(parents=True, exist_ok=True)
+    (platforms / "mock").mkdir(parents=True, exist_ok=True)
     monkeypatch.setenv("QIBOLAB_PLATFORMS", str(platforms))
 
     runner = CliRunner()
@@ -36,12 +35,12 @@ def test_qq_update(update, tmp_path, monkeypatch):
 
     runner.invoke(command, ["update", str(output_folder)], catch_exceptions=False)
     new_parameters = (
-        pathlib.Path(os.getenv("QIBOLAB_PLATFORMS")) / "dummy" / "parameters.json"
+        pathlib.Path(os.getenv("QIBOLAB_PLATFORMS")) / "mock" / "parameters.json"
     )
     assert new_parameters.exists()
 
 
-def test_fit_command(tmp_path):
+def test_fit_command(tmp_path, platform):
     """Test qq fit behavior."""
 
     tmp_dir_1 = tmp_path / "temp_dir_1"
@@ -79,7 +78,7 @@ def test_fit_command(tmp_path):
     # fit after acquisition different folder
 
 
-def test_compare_report_dates(tmp_path):
+def test_compare_report_dates(tmp_path, platform):
     report_dir_1 = tmp_path / "report_dir_1"
     report_dir_2 = tmp_path / "report_dir_2"
     compare_dir = tmp_path / "compare_dir"
