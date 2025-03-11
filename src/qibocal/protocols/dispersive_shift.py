@@ -13,6 +13,7 @@ from qibocal.protocols.utils import (
     HZ_TO_GHZ,
     lorentzian,
     lorentzian_fit,
+    readout_frequency,
     table_dict,
     table_html,
 )
@@ -104,8 +105,7 @@ def _acquisition(
     sweepers = [
         Sweeper(
             parameter=Parameter.frequency,
-            values=platform.config(platform.qubits[q].probe).frequency
-            + delta_frequency_range,
+            values=readout_frequency(q, platform) + delta_frequency_range,
             channels=[platform.qubits[q].probe],
         )
         for q in targets
@@ -121,7 +121,6 @@ def _acquisition(
     )
 
     for qubit in targets:
-        ro_frequency = platform.config(platform.qubits[qubit].probe).frequency
         for state, sequence in enumerate([sequence_0, sequence_1]):
             ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
             result = results[ro_pulse.id]
@@ -130,7 +129,7 @@ def _acquisition(
                 DispersiveShiftType,
                 (qubit, state),
                 dict(
-                    freq=ro_frequency + delta_frequency_range,
+                    freq=readout_frequency(qubit, platform) + delta_frequency_range,
                     signal=magnitude(result),
                     phase=phase(result),
                     i=i,

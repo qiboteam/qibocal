@@ -12,6 +12,7 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal.auto.operation import Data, QubitId, Results
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.fitting.classifier import run
 from qibocal.protocols.resonator_utils import (
@@ -106,6 +107,35 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
     return (amplitude / np.pi) * (
         sigma / ((frequency - center) ** 2 + sigma**2)
     ) + offset
+
+
+def readout_frequency(
+    target: QubitId,
+    platform: CalibrationPlatform,
+    power_level: PowerLevel = PowerLevel.low,
+    state=0,
+) -> float:
+    """Returns readout frequency depending on power level."""
+    platform_frequency = platform.config(platform.qubits[target].probe).frequency
+    bare_frequency = platform.calibration.single_qubits[target].resonator.bare_frequency
+    dressed_frequency = platform.calibration.single_qubits[
+        target
+    ].resonator.dressed_frequency
+    if state == 1:
+        try:
+            state_frequency = platform.calibration.single_qubits[
+                target
+            ].readout.qudits_frequency[state]
+            if state_frequency is not None:
+                return state_frequency
+        except KeyError:
+            pass
+    if power_level is PowerLevel.high:
+        if bare_frequency is not None:
+            return bare_frequency
+    if dressed_frequency is not None:
+        return dressed_frequency
+    return platform_frequency
 
 
 def lorentzian_fit(data, resonator_type=None, fit=None):

@@ -10,7 +10,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
 from ... import update
-from ..utils import table_dict, table_html
+from ..utils import readout_frequency, table_dict, table_html
 from .t1_signal import T1SignalData
 from .utils import (
     CoherenceType,
@@ -89,6 +89,10 @@ def _acquisition(
     results = platform.execute(
         [sequence],
         [[sweeper]],
+        updates=[
+            {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
+            for q in targets
+        ],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
