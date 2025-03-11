@@ -217,8 +217,6 @@ def _fit(data: ChevronData) -> ChevronResults:
 
 def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     """Plot the experiment result for a single pair."""
-    if isinstance(target, list):
-        target = tuple(target)
     # reverse qubit order if not found in data
     if target not in data.data:
         target = (target[1], target[0])
@@ -309,9 +307,6 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
 def _update(
     results: ChevronResults, platform: CalibrationPlatform, target: QubitPairId
 ):
-    if isinstance(target, list):
-        target = tuple(target)
-
     target = target[::-1] if target not in results.duration else target
 
     getattr(update, f"{results.native}_duration")(
