@@ -399,9 +399,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             yc = lfilter(x, 1, iir_correction)
             return np.mean(np.abs(yc - baseline)) / np.abs(baseline)
 
-        fir = cma.fmin2(
-            fir_cost_function, x0, 0.5, options={"verb_filenameprefix": ""}
-        )[0]
+        fir = cma.fmin2(fir_cost_function, x0, 0.5)[0]
 
         feedforward_taps[qubit] = np.convolve(feedforward_taps_iir[qubit], fir).tolist()
 
