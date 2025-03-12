@@ -42,7 +42,7 @@ def show_logs(func):
         if end - start < 1:
             message = " in less than 1 second."
         else:
-            message = f" in {end-start:.2f} seconds"
+            message = f" in {end - start:.2f} seconds"
         log.info(f"Finished {func.__name__[1:]}" + message)
         return out, end - start
 

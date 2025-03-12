@@ -10,6 +10,7 @@ from qibocal.auto.operation import QubitPairId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude
 
+from ...utils import readout_frequency
 from ..utils import order_pair
 from .chevron import (
     ChevronData,
@@ -127,6 +128,14 @@ def _aquisition(
         results = platform.execute(
             [sequence],
             [[sweeper_duration], [sweeper_amplitude]],
+            updates=[
+                {
+                    platform.qubits[q].probe: {
+                        "frequency": readout_frequency(q, platform)
+                    }
+                }
+                for q in pair
+            ],
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,

@@ -1,10 +1,10 @@
+from _collections_abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass, field, fields
 from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
-from _collections_abc import Callable
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal import update
@@ -19,6 +19,7 @@ from .utils import (
     chi2_reduced_complex,
     lorentzian,
     lorentzian_fit,
+    readout_frequency,
     s21,
     s21_fit,
     s21_spectroscopy_plot,
@@ -193,10 +194,11 @@ def _acquisition(
     delta_frequency_range = np.arange(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
+
     sweepers = [
         Sweeper(
             parameter=Parameter.frequency,
-            values=platform.config(platform.qubits[q].probe).frequency
+            values=readout_frequency(q, platform, params.power_level)
             + delta_frequency_range,
             channels=[platform.qubits[q].probe],
         )
@@ -224,7 +226,7 @@ def _acquisition(
     for q in targets:
         result = results[ro_pulses[q].id]
         # store the results
-        ro_frequency = platform.config(platform.qubits[q].probe).frequency
+        ro_frequency = readout_frequency(q, platform, params.power_level)
         signal = magnitude(result)
         phase_ = phase(result)
         data.register_qubit(
@@ -322,10 +324,14 @@ def _update(
     update.readout_frequency(results.frequency[target], platform, target)
     if len(results.bare_frequency) == 0:
         update.readout_amplitude(results.amplitude[target], platform, target)
+
     else:
         update.bare_resonator_frequency(
             results.bare_frequency[target], platform, target
         )
+        platform.calibration.single_qubits[
+            target
+        ].resonator.bare_frequency_amplitude = results.amplitude[target]
 
 
 resonator_spectroscopy = Routine(_acquisition, _fit, _plot, _update)

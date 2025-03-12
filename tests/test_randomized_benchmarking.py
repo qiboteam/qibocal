@@ -114,7 +114,6 @@ def test_exp2_fitting():
 @pytest.mark.parametrize("seed", [10])
 @pytest.mark.parametrize("qubits", [1, 2, [0, 1], np.array([0, 1])])
 def test_random_clifford(qubits, seed):
-
     rb_gen = RB_Generator(seed)
 
     result_single = np.array([[1j, -1j], [-1j, -1j]]) / np.sqrt(2)

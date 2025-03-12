@@ -18,15 +18,8 @@ class CalibrationPlatform(Platform):
     @classmethod
     def from_platform(cls, platform: Platform):
         name = platform.name
-        if name == "dummy":
-            calibration = Calibration.model_validate_json(
-                (Path(__file__).parent / "dummy.json").read_text()
-            )
-        else:  # pragma: no cover
-            path = locate_platform(name)
-            calibration = Calibration.model_validate_json(
-                (path / CALIBRATION).read_text()
-            )
+        path = locate_platform(name)
+        calibration = Calibration.model_validate_json((path / CALIBRATION).read_text())
         # TODO: this is loading twice a platform
         return cls(**vars(platform), calibration=calibration)
 
