@@ -141,7 +141,7 @@ def _acquisition(
     platform: Platform,
     targets: list[QubitId],
 ) -> FluxReconstructionData:
-    """Acquisition for cryoscope experiment.
+    """Acquisition for flux reconstruction experiment, is the same of cryoscope experiment.
 
     The following sequence is played for each qubit.
 
@@ -162,7 +162,7 @@ def _acquisition(
         assert (
             platform.calibration.single_qubits[qubit].qubit.flux_coefficients
             is not None
-        ), f"Cannot run cryoscope without flux coefficients, run cryoscope amplitude on qubit {qubit} before the cryoscope"
+        ), f"Cannot run cryoscope without flux coefficients, run cryoscope amplitude on qubit {qubit} before the flux reconstruction"
 
         data.flux_coefficients[qubit] = platform.calibration.single_qubits[
             qubit
@@ -232,7 +232,7 @@ def _acquisition(
 
 
 def _fit(data: FluxReconstructionData) -> FluxReconstructionResults:
-    """Postprocessing for cryoscope experiment.
+    """Postprocessing for flux reconstruction experiment.
 
     From <X> and <Y> we compute the expecting step response.
     The complex data <X> + i <Y> are demodulated using the frequency found
@@ -326,7 +326,7 @@ def _fit(data: FluxReconstructionData) -> FluxReconstructionResults:
 def _plot(
     data: FluxReconstructionData, fit: FluxReconstructionResults, target: QubitId
 ):
-    """Cryoscope plots."""
+    """Flux reconstruction plots."""
 
     fig = go.Figure()
     duration = data[(target, "MX")].duration

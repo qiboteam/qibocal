@@ -114,4 +114,5 @@ __all__ = [
     "flux_amplitude_frequency",
     "cpmg",
     "drag_simple",
+    "flux_reconstruction",
 ]
