@@ -83,7 +83,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
                     color="black",
                     symbol="cross",
                 ),
-                name=f"Sweetspot",
+                name="Sweetspot",
                 showlegend=True,
             ),
             row=1,
@@ -91,7 +91,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
         )
 
     fig.update_xaxes(
-        title_text=f"Frequency [GHz]",
+        title_text="Frequency [GHz]",
         row=1,
         col=1,
     )
@@ -109,7 +109,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
         col=2,
     )
     fig.update_xaxes(
-        title_text=f"Frequency [GHz]",
+        title_text="Frequency [GHz]",
         row=1,
         col=2,
     )
@@ -154,7 +154,6 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
             col=col + 1,
         )
         if fit is not None:
-
             if flux_qubit[1] != qubit and flux_qubit in fit.fitted_parameters:
                 fig.add_trace(
                     go.Scatter(

@@ -37,9 +37,10 @@ def import_classifiers(cls_names: List[str]):
     Args:
         cls_name (list[str]): List of models' names.
     """
-    importing_func = lambda mod: importlib.import_module(
-        ".." + mod, "qibocal.fitting.classifier.*"
-    )
+
+    def importing_func(mod):
+        return importlib.import_module(".." + mod, "qibocal.fitting.classifier.*")
+
     classifiers = list(map(importing_func, cls_names))
     return classifiers
 

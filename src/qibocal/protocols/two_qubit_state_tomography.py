@@ -224,7 +224,6 @@ def _fit(data: StateTomographyData) -> StateTomographyResults:
         )
 
     # reconstruction
-    backend = NumpyBackend()
     results = StateTomographyResults()
     for pair, probs in probabilities.items():
         measured_rho = inverse_measurement.dot(probs).reshape((4, 4))

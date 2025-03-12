@@ -45,9 +45,9 @@ def _acquisition(
     data = twoq_rb_acquisition(params, platform, targets, interleave=params.interleave)
     fidelity = {}
     for target in targets:
-        assert (
-            target in platform.calibration.two_qubits
-        ), "Pair not calibrated, run standard 2q rb before interleaved version"
+        assert target in platform.calibration.two_qubits, (
+            "Pair not calibrated, run standard 2q rb before interleaved version"
+        )
         fidelity[target] = platform.calibration.two_qubits[target].rb_fidelity
     data.fidelity = fidelity
     return data

@@ -39,7 +39,6 @@ def test_padd_circuit():
 
 
 def test_execute_transpiled_circuit():
-
     circuit = Circuit(2)
     circuit.add(gates.X(0))
     circuit.add(gates.X(1))
@@ -60,7 +59,6 @@ def test_execute_transpiled_circuit():
 
 
 def test_execute_transpiled_circuits():
-
     circuit = Circuit(2)
     circuit.add(gates.X(0))
     circuit.add(gates.X(1))

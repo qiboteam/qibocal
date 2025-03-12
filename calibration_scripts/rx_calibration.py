@@ -39,7 +39,7 @@ with Executor.open(
         )
     if ramsey_output.results.delta_phys[target][0] < 1e4:
         print(
-            f"Ramsey frequency not updated, correction too small { ramsey_output.results.delta_phys[target][0]}"
+            f"Ramsey frequency not updated, correction too small {ramsey_output.results.delta_phys[target][0]}"
         )
     else:
         ramsey_output.update_platform(e.platform)

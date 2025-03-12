@@ -5,6 +5,8 @@ from qibolab import Platform, create_platform, locate_platform
 
 from .calibration import CALIBRATION, Calibration
 
+__all__ = ["CalibrationPlatform", "create_calibration_platform"]
+
 
 @dataclass
 class CalibrationPlatform(Platform):

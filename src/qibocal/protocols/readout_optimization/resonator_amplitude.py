@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from os import error
 
 import numpy as np
 import numpy.typing as npt
@@ -89,7 +88,6 @@ def _acquisition(
         ro_channel, ro_pulse = natives.MZ()[0]
         new_amp = params.amplitude_start
         while error > params.error_threshold and new_amp <= params.amplitude_stop:
-
             new_ro = replace(ro_pulse, amplitude=new_amp)
             sequence_0 = PulseSequence()
             sequence_1 = PulseSequence()

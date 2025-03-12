@@ -1,3 +1,7 @@
 """CLI entry point."""
 
-from ._base import command
+from . import _base
+from ._base import *  # noqa
+
+__all__ = []
+__all__ += _base.__all__

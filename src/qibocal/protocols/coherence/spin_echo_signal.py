@@ -72,13 +72,12 @@ def _acquisition(
         duration = platform.natives.single_qubit[q].RX()[0][1].duration
         durations.append(duration)
         assert (params.delay_between_pulses_start - duration) / 2 >= 0, (
-            f"Initial delay too short for qubit {q}, "
-            f"minimum delay should be {duration}"
+            f"Initial delay too short for qubit {q}, minimum delay should be {duration}"
         )
 
-    assert (
-        len(set(durations)) == 1
-    ), "Cannot run on mulitple qubit with different RX duration."
+    assert len(set(durations)) == 1, (
+        "Cannot run on mulitple qubit with different RX duration."
+    )
 
     sweeper = Sweeper(
         parameter=Parameter.duration,

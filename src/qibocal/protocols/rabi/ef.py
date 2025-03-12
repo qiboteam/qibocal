@@ -52,7 +52,6 @@ def _acquisition(
     sequence = PulseSequence()
     qd_pulses = {}
     ro_pulses = {}
-    rx_pulses = {}
     durations = {}
     for q in targets:
         natives = platform.natives.single_qubit[q]

@@ -31,7 +31,8 @@ def hyperopt(_x_train, _y_train, _path):
     return {}
 
 
-normalize = lambda x: x
+def normalize(x):
+    return x
 
 
 def dump(model, save_path: Path):
