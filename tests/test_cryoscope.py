@@ -102,7 +102,7 @@ def test_cryoscope_plot():
         assert isinstance(fitting_report, str)
 
         for fig in figs:
-            assert len(fig.data) == 3
-            assert fig.data[0].name == "Uncorrected waveform"
-            assert fig.data[1].name == "IIR corrections"
-            assert fig.data[2].name == "FIR + IIR corrections"
+            assert len(fig.data) == 5
+            assert fig.data[2].name == "Uncorrected waveform"
+            assert fig.data[3].name == "IIR corrections"
+            assert fig.data[4].name == "FIR + IIR corrections"

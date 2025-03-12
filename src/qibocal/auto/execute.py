@@ -103,7 +103,9 @@ class Executor:
         platform = (
             platform
             if isinstance(platform, CalibrationPlatform)
-            else create_calibration_platform("mock")
+            else create_calibration_platform(
+                platform if isinstance(platform, str) else "mock"
+            )
         )
         return cls(
             name=name,

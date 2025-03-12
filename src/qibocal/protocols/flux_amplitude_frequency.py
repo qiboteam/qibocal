@@ -46,9 +46,8 @@ class FluxAmplitudeFrequencyResults(Results):
     )
     """Fitted parameters for every qubit."""
 
-    # TODO: to be fixed
-    def __contains__(self, key):
-        return True
+    def __contains__(self, target: QubitId):
+        return target in self.detuning
 
 
 FluxAmplitudeFrequencyType = np.dtype([("amplitude", float), ("prob_1", np.float64)])
@@ -190,7 +189,7 @@ def _fit(data: FluxAmplitudeFrequencyData) -> FluxAmplitudeFrequencyResults:
         Y_exp = 1 - 2 * data[qubit, "Y"].prob_1
 
         phase = np.unwrap(np.angle(X_exp + 1j * Y_exp))
-        # normalize phase ?
+        # normalize phase
         phase -= phase[0]
         det = phase / data.flux_pulse_duration / 2 / np.pi
 

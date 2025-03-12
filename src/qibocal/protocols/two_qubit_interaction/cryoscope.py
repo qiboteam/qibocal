@@ -8,6 +8,7 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 import scipy
 import scipy.signal
+from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
@@ -22,6 +23,7 @@ from scipy.signal import lfilter
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.config import log
 from qibocal.protocols.ramsey.utils import fitting
 from qibocal.protocols.utils import table_dict, table_html
 
@@ -77,7 +79,7 @@ class CryoscopeResults(Results):
     """feedback taps"""
 
     def __contains__(self, key):
-        return key in self.feedforward_taps
+        return key in self.detuning
 
 
 CryoscopeType = np.dtype([("duration", int), ("prob_1", np.float64)])
@@ -153,9 +155,18 @@ class CryoscopeData(Data):
     """Number of feedforward taps to be optimized after IIR."""
     flux_coefficients: dict[QubitId, list[float]] = field(default_factory=dict)
     """Flux - amplitude relation coefficients obtained from flux_amplitude_frequency routine"""
+    filters: dict[QubitId, float] = field(default_factory=dict)
+    """Check if there are filters already."""
     data: dict[tuple[QubitId, str], npt.NDArray[CryoscopeType]] = field(
         default_factory=dict
     )
+
+    def has_filters(self, qubit: QubitId) -> bool:
+        """Checking if for qubit there are already filters."""
+        try:
+            return len(self.filters[qubit]) > 0
+        except AttributeError:
+            return False
 
 
 def _acquisition(
@@ -190,6 +201,7 @@ def _acquisition(
         data.flux_coefficients[qubit] = platform.calibration.single_qubits[
             qubit
         ].qubit.flux_coefficients
+        data.filters[qubit] = platform.config(platform.qubits[qubit].flux).filter
 
     sequences_x = []
     sequences_y = []
@@ -380,35 +392,37 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         step_response[qubit] = (
             np.array(amplitude[qubit]) / data.flux_pulse_amplitude
         ).tolist()
+        if not data.has_filters(qubit):
+            # Derive IIR
+            acquisition_time = len(x)
+            exp_params = exponential_params(step_response[qubit], acquisition_time)
+            feedback_taps[qubit], feedforward_taps_iir[qubit] = filter_calc(exp_params)
+            time_decay[qubit], alpha[qubit], g[qubit] = exp_params
+            iir_correction = lfilter(
+                feedforward_taps_iir[qubit], feedback_taps[qubit], step_response[qubit]
+            )
+            # FIR corrections
 
-        # Derive IIR
-        acquisition_time = len(x)
-        exp_params = exponential_params(step_response[qubit], acquisition_time)
-        feedback_taps[qubit], feedforward_taps_iir[qubit] = filter_calc(exp_params)
-        time_decay[qubit], alpha[qubit], g[qubit] = exp_params
-        iir_correction = lfilter(
-            feedforward_taps_iir[qubit], feedback_taps[qubit], step_response[qubit]
-        )
-        # FIR corrections
+            taps = data.fir
+            baseline = g[qubit]
+            x0 = [1] + (taps - 1) * [0]
 
-        taps = data.fir
-        baseline = g[qubit]
-        x0 = [1] + (taps - 1) * [0]
+            def fir_cost_function(x):
+                yc = lfilter(x, 1, iir_correction)
+                return np.mean(np.abs(yc - baseline)) / np.abs(baseline)
 
-        def fir_cost_function(x):
-            yc = lfilter(x, 1, iir_correction)
-            return np.mean(np.abs(yc - baseline)) / np.abs(baseline)
+            fir = cma.fmin2(fir_cost_function, x0, 0.5)[0]
 
-        fir = cma.fmin2(fir_cost_function, x0, 0.5)[0]
-
-        feedforward_taps[qubit] = np.convolve(feedforward_taps_iir[qubit], fir).tolist()
-
-        if np.max(np.abs(feedforward_taps[qubit])) > FEEDFORWARD_MAX:
-            feedforward_taps[qubit] = (
-                2
-                * np.array(feedforward_taps[qubit])
-                / abs(max(feedforward_taps[qubit]))
+            feedforward_taps[qubit] = np.convolve(
+                feedforward_taps_iir[qubit], fir
             ).tolist()
+
+            if np.max(np.abs(feedforward_taps[qubit])) > FEEDFORWARD_MAX:
+                feedforward_taps[qubit] = (
+                    2
+                    * np.array(feedforward_taps[qubit])
+                    / abs(max(feedforward_taps[qubit]))
+                ).tolist()
 
     return CryoscopeResults(
         amplitude=amplitude,
@@ -426,67 +440,115 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     """Cryoscope plots."""
 
-    fig = go.Figure()
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.2,
+    )
     duration = data[(target, "MX")].duration
 
-    fitting_report = None
-    if fit is not None:
+    fig.add_trace(
+        go.Scatter(
+            x=duration,
+            y=1 - 2 * data[(target, "MX")].prob_1,
+            name="X",
+            legendgroup="1",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=duration,
+            y=1 - 2 * data[(target, "MY")].prob_1,
+            name="Y",
+            legendgroup="1",
+        ),
+        row=1,
+        col=1,
+    )
 
-        iir_corrections = lfilter(
-            fit.feedforward_taps_iir[target],
-            fit.feedback_taps[target],
-            fit.step_response[target],
-        )
-        all_corrections = lfilter(
-            fit.feedforward_taps[target],
-            fit.feedback_taps[target],
-            fit.step_response[target],
-        )
+    fitting_report = ""
+    if fit is not None:
 
         fig.add_trace(
             go.Scatter(
                 x=duration,
                 y=fit.step_response[target],
                 name="Uncorrected waveform",
+                legendgroup="2",
             ),
+            row=2,
+            col=1,
         )
 
-        fig.add_trace(
-            go.Scatter(
-                x=duration,
-                y=iir_corrections,
-                name="IIR corrections",
-            ),
-        )
+        if not data.has_filters(target):
 
-        fig.add_trace(
-            go.Scatter(
-                x=duration,
-                y=all_corrections,
-                name="FIR + IIR corrections",
-            ),
-        )
-
-        exp_amplitude = fit.exp_amplitude[target]
-        tau = fit.tau[target]
-
-        fitting_report = table_html(
-            table_dict(
-                target,
-                ["A", "tau"],
-                [
-                    (exp_amplitude,),
-                    (tau,),
-                ],
+            iir_corrections = lfilter(
+                fit.feedforward_taps_iir[target],
+                fit.feedback_taps[target],
+                fit.step_response[target],
             )
+            all_corrections = lfilter(
+                fit.feedforward_taps[target],
+                fit.feedback_taps[target],
+                fit.step_response[target],
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=duration,
+                    y=iir_corrections,
+                    name="IIR corrections",
+                    legendgroup="2",
+                ),
+                row=2,
+                col=1,
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=duration,
+                    y=all_corrections,
+                    name="FIR + IIR corrections",
+                    legendgroup="2",
+                ),
+                row=2,
+                col=1,
+            )
+
+            exp_amplitude = fit.exp_amplitude[target]
+            tau = fit.tau[target]
+
+            fitting_report = table_html(
+                table_dict(
+                    target,
+                    ["A", "tau"],
+                    [
+                        exp_amplitude,
+                        tau,
+                    ],
+                )
+            )
+
+        fig.update_layout(
+            showlegend=True,
+            legend_tracegroupgap=120,
+            xaxis2_title="Duration [ns]",
+            yaxis1_title="Expectation value",
+            yaxis2_title="Waveform",
         )
 
     return [fig], fitting_report
 
 
 def _update(results: CryoscopeResults, platform: Platform, target: QubitId):
-    update.feedforward(results.feedforward_taps[target], platform, target)
-    update.feedback(results.feedback_taps[target], platform, target)
+    try:
+        update.feedforward(results.feedforward_taps[target], platform, target)
+        update.feedback(results.feedback_taps[target], platform, target)
+    except KeyError:
+        log.info(f"Skipping filters update on qubit {target}.")
 
 
 cryoscope = Routine(_acquisition, _fit, _plot, _update)

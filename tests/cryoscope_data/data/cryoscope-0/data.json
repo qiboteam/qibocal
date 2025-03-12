@@ -1,6 +1,7 @@
 {
     "\"flux_pulse_amplitude\"": 0.5,
     "\"fir\"": 20,
+    "\"filters\"": { "\"B4\"": [] },
     "\"flux_coefficients\"": {
         "\"B4\"": [
             2.757388305566905,

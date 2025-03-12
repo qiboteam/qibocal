@@ -27,13 +27,16 @@
       "frequency": 4855663000.0
     },
     "0/flux": {
-      "kind": "dc",
-      "offset": -0.1
+      "kind": "opx-output",
+      "offset": -0.1,
+      "filter": {}
     },
     "1/flux": {
-      "kind": "dc",
-      "offset": 0.0
+      "kind": "opx-output",
+      "offset": 0.0,
+      "filter": {}
     },
+
     "0/probe": {
       "kind": "iq",
       "frequency": 7200000000.0

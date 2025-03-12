@@ -97,6 +97,12 @@ The expected output is the following:
 .. image:: cryoscope.png
 
 
+.. note::
+  In the case where there are no filters the protocol will compute the FIR and the IIR
+  filters. If the filters are already present the computation of the filters will be skipped
+  and only the reconstructed waveform will be shown.
+
+
 Requirements
 ^^^^^^^^^^^^
 
