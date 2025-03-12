@@ -16,7 +16,6 @@ classifiers = [
 
 
 [tool.poetry.dependencies]
-ruff = "^0.9.1"
 python = ">=3.9,<3.13"
 qibolab = "^0.2.3"
 qibo = "^0.2.13"
@@ -58,7 +57,7 @@ sphinxcontrib-bibtex = "^2.5.0"
 recommonmark = "^0.7.1"
 sphinx_markdown_tables = "^0.0.17"
 sphinx-copybutton = "^0.5.2"
-setuptools="^75.8.0"
+setuptools = "^75.8.0"
 
 [tool.poetry.group.dev]
 optional = true
@@ -87,7 +86,7 @@ lint-warnings = """
 docs = "make -C doc html"
 docs-clean = "make -C doc clean"
 test-docs = "make -C doc doctest"
-types="true"
+types = "true"
 
 [tool.pytest.ini_options]
 testpaths = ['tests/']
