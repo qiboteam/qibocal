@@ -63,7 +63,8 @@ def to_sequence(circuit) -> Sequence:
 
 def _sync_channel(seq: PulseSequence, channel: str, start: float) -> PulseSequence:
     delay = start - seq.channel_duration(channel)
-    seq.append((channel, Delay(duration=delay)))
+    if delay > 0:
+        seq.append((channel, Delay(duration=delay)))
     return seq
 
 
