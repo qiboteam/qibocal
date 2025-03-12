@@ -154,7 +154,7 @@ def _acquisition(
     The delay between the two pi/2 pulses is fixed at t_max (maximum duration of flux pulse)
     + 100 ns (following the paper).
     """
-    data = FluxReconstructionType(
+    data = FluxReconstructionData(
         flux_pulse_amplitude=params.flux_pulse_amplitude,
     )
 
