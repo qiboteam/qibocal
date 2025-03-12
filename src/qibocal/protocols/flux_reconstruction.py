@@ -59,6 +59,9 @@ class FluxReconstructionResults(Results):
     step_response: dict[QubitId, list[float]] = field(default_factory=dict)
     """Waveform normalized to 1."""
 
+    def __contains__(self, key):
+        return True
+
 
 FluxReconstructionType = np.dtype([("duration", int), ("prob_1", np.float64)])
 """Custom dtype for Flux Reconstruction."""
@@ -320,6 +323,7 @@ def _fit(data: FluxReconstructionData) -> FluxReconstructionResults:
         amplitude=amplitude,
         detuning=detuning,
         step_response=step_response,
+        fitted_parameters=fitted_parameters,
     )
 
 
@@ -331,7 +335,6 @@ def _plot(
     fig = go.Figure()
     duration = data[(target, "MX")].duration
 
-    fitting_report = None
     if fit is not None:
 
         fig.add_trace(
@@ -342,9 +345,7 @@ def _plot(
             ),
         )
 
-        fitting_report = None
-
-    return [fig], fitting_report
+    return [fig], ""
 
 
 flux_reconstruction = Routine(_acquisition, _fit, _plot)
