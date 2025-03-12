@@ -59,9 +59,9 @@ def _acquisition(
             f"minimum delay should be {params.n * duration}"
         )
 
-    assert (
-        len(set(durations)) == 1
-    ), "Cannot run on mulitple qubit with different RX duration."
+    assert len(set(durations)) == 1, (
+        "Cannot run on mulitple qubit with different RX duration."
+    )
 
     sweeper = Sweeper(
         parameter=Parameter.duration,

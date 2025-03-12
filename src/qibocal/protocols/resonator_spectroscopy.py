@@ -1,10 +1,10 @@
+from _collections_abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass, field, fields
 from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
-from _collections_abc import Callable
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal import update

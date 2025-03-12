@@ -292,9 +292,7 @@ def _fit(
                             target_q
                         ] = fitted_parameters[
                             target_q, control_q, "I", amplitude, duration
-                        ][
-                            2
-                        ]
+                        ][2]
 
                         # leakage estimate: L = m /2
                         # See NZ paper from Di Carlo
