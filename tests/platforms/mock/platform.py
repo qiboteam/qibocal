@@ -6,15 +6,17 @@ from qibolab._core.instruments.dummy import DummyInstrument, DummyLocalOscillato
 from qibolab._core.parameters import Hardware
 from qibolab._core.platform import Platform
 from qibolab._core.qubits import Qubit
-from qibolab.instruments.qm import QmConfigs
 
-ConfigKinds.extend([QmConfigs])
+from qibocal.protocols.utils import DcFilteredConfig
+
+ConfigKinds.extend([DcFilteredConfig])
 
 FOLDER = pathlib.Path(__file__).parent
 
 
 def create_mock_hardware() -> Hardware:
     """Create dummy hardware configuration based on the dummy instrument."""
+
     qubits = {}
     channels = {}
     # attach the channels
