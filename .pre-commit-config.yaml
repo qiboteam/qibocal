@@ -10,11 +10,6 @@ repos:
       - id: check-toml
       - id: check-merge-conflict
       - id: debug-statements
-  - repo: https://github.com/pycqa/isort
-    rev: 6.0.1
-    hooks:
-      - id: isort
-        args: ["--profile", "black"]
   - repo: https://github.com/asottile/pyupgrade
     rev: v3.19.1
     hooks:
