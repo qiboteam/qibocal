@@ -53,6 +53,21 @@ files = [
 ]
 
 [[package]]
+name = "astroid"
+version = "3.3.9"
+description = "An abstract syntax tree for Python with inference support."
+optional = false
+python-versions = ">=3.9.0"
+groups = ["tests"]
+files = [
+    {file = "astroid-3.3.9-py3-none-any.whl", hash = "sha256:d05bfd0acba96a7bd43e222828b7d9bc1e138aaeb0649707908d3702a9831248"},
+    {file = "astroid-3.3.9.tar.gz", hash = "sha256:622cc8e3048684aa42c820d9d218978021c3c3d174fb03a9f0d615921744f550"},
+]
+
+[package.dependencies]
+typing-extensions = {version = ">=4.0.0", markers = "python_version < \"3.11\""}
+
+[[package]]
 name = "asttokens"
 version = "2.4.1"
 description = "Annotate AST trees with source code positions"
@@ -280,6 +295,8 @@ files = [
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
 ]
 
+markers = {main = "sys_platform == \"win32\" or platform_system == \"Windows\"", dev = "sys_platform == \"win32\"", docs = "sys_platform == \"win32\"", tests = "sys_platform == \"win32\""}
+
 [[package]]
 name = "colorlog"
 version = "6.9.0"
@@ -395,6 +412,7 @@ version = "5.2.1"
 description = "Decorators for Humans"
 optional = false
 python-versions = ">=3.8"
+groups = ["dev"]
 files = [
     {file = "decorator-5.2.1-py3-none-any.whl", hash = "sha256:d316bb415a2d9e2d2b3abcc4084c6502fc09240e292cd76a76afc106a1c8e04a"},
     {file = "decorator-5.2.1.tar.gz", hash = "sha256:65f266143752f734b0a7cc83c46f4618af75b8c5911b00ccb61d0ac9b6da0360"},
@@ -780,6 +798,22 @@ parallel = ["ipyparallel"]
 qtconsole = ["qtconsole"]
 test = ["pickleshare", "pytest (<7.1)", "pytest-asyncio (<0.22)", "testpath"]
 test-extra = ["curio", "matplotlib (!=3.2.0)", "nbformat", "numpy (>=1.22)", "pandas", "pickleshare", "pytest (<7.1)", "pytest-asyncio (<0.22)", "testpath", "trio"]
+
+[[package]]
+name = "isort"
+version = "6.0.1"
+description = "A Python utility / library to sort Python imports."
+optional = false
+python-versions = ">=3.9.0"
+groups = ["tests"]
+files = [
+    {file = "isort-6.0.1-py3-none-any.whl", hash = "sha256:2dc5d7f65c9678d94c88dfc29161a320eec67328bc97aad576874cb4be1e9615"},
+    {file = "isort-6.0.1.tar.gz", hash = "sha256:1cb5df28dfbc742e490c5e41bad6da41b805b0a8be7bc93cd0fb2a8a890ac450"},
+]
+
+[package.extras]
+colors = ["colorama"]
+plugins = ["setuptools"]
 
 [[package]]
 name = "jedi"
@@ -1210,8 +1244,8 @@ antlr4_python3_runtime = {version = ">=4.7,<4.14", optional = true, markers = "e
 importlib_metadata = {version = "*", optional = true, markers = "python_version < \"3.10\" and extra == \"parser\""}
 
 [package.extras]
-all = ["antlr4_python3_runtime (>=4.7,<4.14)", "importlib_metadata", "pytest (>=6.0)", "pyyaml"]
-parser = ["antlr4_python3_runtime (>=4.7,<4.14)", "importlib_metadata"]
+all = ["antlr4_python3_runtime (>=4.7,<4.14)", "importlib_metadata ; python_version < \"3.10\"", "pytest (>=6.0)", "pyyaml"]
+parser = ["antlr4_python3_runtime (>=4.7,<4.14)", "importlib_metadata ; python_version < \"3.10\""]
 tests = ["pytest (>=6.0)", "pyyaml"]
 
 [[package]]

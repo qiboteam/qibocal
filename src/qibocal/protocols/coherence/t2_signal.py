@@ -11,8 +11,8 @@ from qibocal.calibration import CalibrationPlatform
 
 from ...result import magnitude, phase
 from ..ramsey.utils import ramsey_sequence
-from ..utils import table_dict, table_html
-from . import t1_signal, utils
+from ..utils import readout_frequency, table_dict, table_html
+from . import t1_signal, t2, utils
 
 
 @dataclass
@@ -80,6 +80,10 @@ def _acquisition(
     results = platform.execute(
         [sequence],
         [[sweeper]],
+        updates=[
+            {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
+            for q in targets
+        ],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,

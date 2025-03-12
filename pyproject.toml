@@ -89,7 +89,6 @@ test-docs = "make -C doc doctest"
 types="true"
 
 [tool.pytest.ini_options]
-env = ["QIBO_PLATFORM = dummy"]
 testpaths = ['tests/']
 addopts = ['--cov=qibocal', '--cov-report=xml', '--cov-report=html']
 

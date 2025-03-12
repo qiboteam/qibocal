@@ -1,0 +1,65 @@
+{
+    "single_qubits": {
+        "0": {
+            "resonator": {
+                "bare_frequency": 0.0,
+                "dressed_frequency": null,
+                "depletion_time": 0
+            },
+            "qubit": {
+                "frequency_01": 4000000000.0,
+                "frequency_12": 4700000000.0,
+                "maximum_frequency": 4000000000.0,
+                "asymmetry": 0.0,
+                "sweetspot": 0.0
+            },
+            "readout": {
+                "fidelity": 0.0,
+                "ground_state": [
+                    0.0,
+                    1.0
+                ],
+                "excited_state": [
+                    1.0,
+                    0.0
+                ]
+
+            },
+            "rb_fidelity": null
+        },
+        "1": {
+            "resonator": {
+                "bare_frequency": 0.0,
+                "dressed_frequency": 4900000000.0,
+                "depletion_time": 0
+            },
+            "qubit": {
+                "frequency_01": 4200000000.0,
+                "frequency_12": 4855663000.0,
+                "maximum_frequency": 4000000000.0,
+                "asymmetry": 0.0,
+                "sweetspot": 0.0
+            },
+            "readout": {
+                "fidelity": 0.0,
+                "ground_state": [
+                    0.25,
+                    0.0
+                ],
+                "excited_state": [
+                    0.0,
+                    0.25
+                ],
+                "qudits_frequency": {
+                    "1": 6100000000.0
+                }
+            },
+            "rb_fidelity": null
+        }
+    },
+    "two_qubits": {
+        "0-1": {
+            "rb_fidelity": [0.99, 0.01]
+        }
+    }
+}
