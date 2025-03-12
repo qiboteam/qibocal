@@ -15,6 +15,7 @@ from qibocal.update import replace
 
 from ... import update
 from ...result import magnitude, phase
+from ..utils import readout_frequency
 from . import amplitude_signal, utils
 
 
@@ -72,9 +73,8 @@ def _acquisition(
         sequence.append(
             (qd_channel, Delay(duration=qd_pulse.duration + qd12_pulse.duration))
         )
-        sequence.append((qd_channel, qd_pulse))
         sequence.append(
-            (ro_channel, Delay(duration=2 * qd_pulse.duration + qd12_pulse.duration))
+            (ro_channel, Delay(duration=qd_pulse.duration + qd12_pulse.duration))
         )
         sequence.append((ro_channel, ro_pulse))
 
@@ -92,6 +92,14 @@ def _acquisition(
     results = platform.execute(
         [sequence],
         [[sweeper]],
+        updates=[
+            {
+                platform.qubits[q].probe: {
+                    "frequency": readout_frequency(q, platform, state=1)
+                }
+            }
+            for q in targets
+        ],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,

@@ -6,7 +6,6 @@ import numpy as np
 import plotly.graph_objects as go
 from scipy.signal import lfilter
 
-from qibocal.calibration.platform import create_calibration_platform
 from qibocal.protocols.two_qubit_interaction import cryoscope
 from qibocal.protocols.two_qubit_interaction.cryoscope import (
     CryoscopeData,
@@ -14,12 +13,10 @@ from qibocal.protocols.two_qubit_interaction.cryoscope import (
 )
 
 TEST_FILE_DIR = Path(__file__).resolve().parent
-PLATFORM = create_calibration_platform("dummy")
 
 
-def test_cryoscope_acquisition():
+def test_cryoscope_acquisition(platform):
 
-    platform = PLATFORM
     target = [0]
 
     params = cryoscope.parameters_type.load(

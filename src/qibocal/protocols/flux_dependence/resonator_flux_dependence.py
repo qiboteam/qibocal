@@ -12,7 +12,14 @@ from ... import update
 from ...auto.operation import Data, Parameters, QubitId, Results, Routine
 from ...config import log
 from ...result import magnitude, phase
-from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, extract_feature, table_dict, table_html
+from ..utils import (
+    GHZ_TO_HZ,
+    HZ_TO_GHZ,
+    extract_feature,
+    readout_frequency,
+    table_dict,
+    table_html,
+)
 from . import utils
 
 
@@ -111,12 +118,11 @@ def _acquisition(
 
         qubit = platform.qubits[q]
         offset0 = platform.config(qubit.flux).offset
-        freq0 = platform.config(qubit.probe).frequency
 
         freq_sweepers.append(
             Sweeper(
                 parameter=Parameter.frequency,
-                values=freq0 + delta_frequency_range,
+                values=readout_frequency(q, platform) + delta_frequency_range,
                 channels=[qubit.probe],
             )
         )
