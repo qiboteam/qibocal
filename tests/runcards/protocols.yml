@@ -933,6 +933,15 @@ actions:
       duration: 50
       relaxation_time: 50_000
 
+  - id: flux reconstruction
+    operation: flux_reconstruction
+    parameters:
+      duration_max: 80
+      duration_min: 1
+      duration_step: 1
+      flux_pulse_amplitude: 0.5
+      relaxation_time: 50000
+
   - id: flux_gate
     operation: flux_gate
     parameters:
