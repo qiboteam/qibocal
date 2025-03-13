@@ -832,6 +832,13 @@ actions:
     parameters:
       nshots: 10
 
+  - id : resonator_frequency
+    operation: resonator_frequency
+    parameters:
+      freq_width: 200.e+6
+      freq_step: 25.e+6
+      nshots: 10
+
   - id: resonator_amplitude
     operation: resonator_amplitude
     parameters:
