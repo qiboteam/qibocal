@@ -1,0 +1,11 @@
+id: cryoscope
+operation: cryoscope
+parameters:
+  duration_max: 80
+  duration_min: 1
+  duration_step: 1
+  flux_pulse_amplitude: 0.5
+  relaxation_time: 50000
+targets:
+- B4
+update: true

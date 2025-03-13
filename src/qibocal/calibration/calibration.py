@@ -63,6 +63,8 @@ class Qubit(Model):
     """Junctions asymmetry."""
     sweetspot: Optional[float] = None
     """Qubit sweetspot [V]."""
+    flux_coefficients: Optional[list[float]] = None
+    """Amplitude - frequency dispersion relation coefficients """
 
     @property
     def anharmonicity(self):
