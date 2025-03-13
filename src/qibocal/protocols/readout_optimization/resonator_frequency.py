@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-import plotly.subplots as make_suplots
+from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
@@ -18,6 +18,7 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.utils import readout_frequency, table_dict, table_html
+from qibocal.result import unpack
 
 
 @dataclass
@@ -132,14 +133,15 @@ def _acquisition(
             i_values = []
             q_values = []
             states = []
-            for i, (_, sequence) in enumerate(enumerate([sequence_0, sequence_1])):
+            for j, (_, sequence) in enumerate(enumerate([sequence_0, sequence_1])):
                 ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[
                     -1
                 ]
                 result = results[ro_pulse.id]
-                i_values.extend(result.voltage_i[:, k])
-                q_values.extend(result.voltage_q[:, k])
-                states.extend([i] * len(result.voltage_i[:, k]))
+                i, q = unpack(result)
+                i_values.extend(i[:, k])
+                q_values.extend(q[:, k])
+                states.extend([j] * len(i[:, k]))  # check
 
             model = QubitFit()
             model.fit(np.stack((i_values, q_values), axis=-1), np.array(states))
@@ -147,7 +149,7 @@ def _acquisition(
                 ResonatorFrequencyType,
                 (qubit),
                 dict(
-                    freq=np.array(),
+                    freq=np.array([ro_pulse[qubit].frequency + freq]),  # check
                     assignment_fidelity=np.array([model.assignment_fidelity]),
                     angle=np.array([model.angle]),
                     threshold=np.array([model.threshold]),
@@ -192,7 +194,10 @@ def _plot(
     freqs = data[target]["freq"]
     opacity = 1
     fitting_report = ""
-    fig = make_suplots(rows=1, cols=1)
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+    )
 
     if fit is not None:
         fig.add_trace(

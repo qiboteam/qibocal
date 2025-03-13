@@ -40,6 +40,7 @@ from .randomized_benchmarking.standard_rb_2q_inter import standard_rb_2q_inter
 from .readout_characterization import readout_characterization
 from .readout_mitigation_matrix import readout_mitigation_matrix
 from .readout_optimization.resonator_amplitude import resonator_amplitude
+from .readout_optimization.resonator_frequency import resonator_frequency
 from .resonator_punchout import resonator_punchout
 from .resonator_spectroscopy import resonator_spectroscopy
 from .signal_experiments.calibrate_state_discrimination import (
@@ -87,6 +88,7 @@ __all__ = [
     "readout_characterization",
     "readout_mitigation_matrix",
     "resonator_amplitude",
+    "resonator_frequency",
     "resonator_punchout",
     "resonator_spectroscopy",
     "calibrate_state_discrimination",
