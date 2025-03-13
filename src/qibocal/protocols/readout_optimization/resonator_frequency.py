@@ -112,7 +112,7 @@ def _acquisition(
 
     sweepers = [
         Sweeper(
-            Parameter=Parameter.frequency,
+            parameter=Parameter.frequency,
             values=readout_frequency(q, platform) + delta_frequency_range,
             channels=[platform.qubits[q].probe],
         )
@@ -125,7 +125,7 @@ def _acquisition(
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
-        averaging_mode=AveragingMode.SINGLESHOT,
+        averaging_mode=AveragingMode.CYCLIC,
     )
 
     for qubit in targets:
