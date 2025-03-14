@@ -18,7 +18,6 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.utils import readout_frequency, table_dict, table_html
-from qibocal.result import unpack
 
 
 @dataclass
@@ -47,7 +46,7 @@ class ResonatorFrequencyResults(Results):
 
 ResonatorFrequencyType = np.dtype(
     [
-        ("freq", np.float64),
+        ("frequency", np.float64),
         ("assignment_fidelity", np.float64),
         ("angle", np.float64),
         ("threshold", np.float64),
@@ -67,7 +66,7 @@ class ResonatorFrequencyData(Data):
     )
 
     def unique_freqs(self, qubit: QubitId) -> np.ndarray:
-        return np.unique(self.data[qubit]["freq"])
+        return np.unique(self.data[qubit]["frequency"])
 
 
 def _acquisition(
@@ -96,13 +95,14 @@ def _acquisition(
 
         natives = platform.natives.single_qubit[qubit]
         qd_channel, qd_pulse = natives.RX()[0]
-        ro_channel, ro_pulse = natives.MZ()[0]
+        ro_channel, ro_pulse_0 = natives.MZ()[0]
+        _, ro_pulse_1 = natives.MZ()[0]
 
-        sequence_0.append((ro_channel, ro_pulse))
+        sequence_0.append((ro_channel, ro_pulse_0))
 
         sequence_1.append((qd_channel, qd_pulse))
         sequence_1.append((ro_channel, Delay(duration=qd_pulse.duration)))
-        sequence_1.append((ro_channel, ro_pulse))
+        sequence_1.append((ro_channel, ro_pulse_1))
 
     delta_frequency_range = np.arange(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
@@ -125,31 +125,29 @@ def _acquisition(
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
-        averaging_mode=AveragingMode.CYCLIC,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
 
     for qubit in targets:
-        for k, freq in enumerate(delta_frequency_range):
-            i_values = []
-            q_values = []
+        for freq in delta_frequency_range:
+            iq_values = []
             states = []
-            for j, (_, sequence) in enumerate(enumerate([sequence_0, sequence_1])):
+            for j, sequence in enumerate([sequence_0, sequence_1]):
                 ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[
                     -1
                 ]
                 result = results[ro_pulse.id]
-                i, q = unpack(result)
-                i_values.extend(i[:, k])
-                q_values.extend(q[:, k])
-                states.extend([j] * len(i[:, k]))  # check
+                values = np.concatenate(result)
+                iq_values.append(values)
+                states.extend([j] * len(values))
 
             model = QubitFit()
-            model.fit(np.stack((i_values, q_values), axis=-1), np.array(states))
+            model.fit(np.concatenate(iq_values), np.array(states))
             data.register_qubit(
                 ResonatorFrequencyType,
                 (qubit),
                 dict(
-                    freq=np.array([ro_pulse[qubit].frequency + freq]),  # check
+                    # frequency=np.array(readout_frequency(qubit, platform) + freq),
                     assignment_fidelity=np.array([model.assignment_fidelity]),
                     angle=np.array([model.angle]),
                     threshold=np.array([model.threshold]),
@@ -173,7 +171,7 @@ def _fit(data: ResonatorFrequencyData) -> ResonatorFrequencyResults:
         data_qubit = data[qubit]
         index_best_fid = np.argmax(data_qubit["assignment_fidelity"])
         highest_fidelity[qubit] = data_qubit["assignment_fidelity"][index_best_fid]
-        best_freq[qubit] = data_qubit["freq"][index_best_fid]
+        best_freq[qubit] = data_qubit["frequency"][index_best_fid]
         best_angle[qubit] = data_qubit["angle"][index_best_fid]
         best_threshold[qubit] = data_qubit["threshold"][index_best_fid]
 
@@ -191,7 +189,7 @@ def _plot(
     """Plotting function for Optimization RO frequency"""
 
     figures = []
-    freqs = data[target]["freq"]
+    freqs = data[target]["frequency"]
     opacity = 1
     fitting_report = ""
     fig = make_subplots(
