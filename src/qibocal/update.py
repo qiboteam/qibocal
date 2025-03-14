@@ -82,17 +82,6 @@ def drive_duration(
         )
 
 
-def crosstalk_matrix(
-    matrix_element: float, platform: Platform, qubit: QubitId, flux_qubit: QubitId
-):
-    """Update crosstalk_matrix element."""
-    if platform.calibration.flux_crosstalk_matrix is None:
-        platform.calibration.flux_crosstalk_matrix = np.zeros(
-            (platform.calibration.nqubits, platform.calibration.nqubits)
-        )
-    platform.calibration.set_crosstalk_element(qubit, flux_qubit, matrix_element)
-
-
 def iq_angle(angle: float, platform: Platform, qubit: QubitId):
     """Update iq angle value in platform for specific qubit."""
     ro_channel = platform.qubits[qubit].acquisition

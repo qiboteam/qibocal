@@ -29,4 +29,3 @@ repos:
       - id: pycln
         args:
           - --config=pyproject.toml
-          - --all
