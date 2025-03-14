@@ -41,6 +41,7 @@ from .readout_characterization import readout_characterization
 from .readout_mitigation_matrix import readout_mitigation_matrix
 from .readout_optimization.resonator_amplitude import resonator_amplitude
 from .readout_optimization.resonator_frequency import resonator_frequency
+from .readout_optimization.resonator_optimization import resonator_optimization
 from .resonator_punchout import resonator_punchout
 from .resonator_spectroscopy import resonator_spectroscopy
 from .signal_experiments.calibrate_state_discrimination import (
@@ -90,6 +91,7 @@ __all__ = [
     "resonator_amplitude",
     "resonator_frequency",
     "resonator_punchout",
+    "resonator_optimization",
     "resonator_spectroscopy",
     "calibrate_state_discrimination",
     "time_of_flight_readout",

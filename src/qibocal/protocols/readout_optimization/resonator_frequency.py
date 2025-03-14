@@ -127,6 +127,7 @@ def _acquisition(
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.SINGLESHOT,
     )
+    # pdb.set_trace()
 
     for qubit in targets:
         for freq in delta_frequency_range:
@@ -139,8 +140,8 @@ def _acquisition(
                 result = results[ro_pulse.id]
                 values = np.concatenate(result)
                 iq_values.append(values)
-                states.extend([j] * len(values))
-
+                states.extend([j] * values)
+            pdb.set_trace()
             model = QubitFit()
             model.fit(np.concatenate(iq_values), np.array(states))
             data.register_qubit(
