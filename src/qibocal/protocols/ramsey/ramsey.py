@@ -239,9 +239,9 @@ def _plot(data: RamseyData, target: QubitId, fit: RamseyResults = None):
                 x=waits,
                 y=probs,
                 opacity=1,
-                name="Probability of State 0",
+                name="Probability of State 1",
                 showlegend=True,
-                legendgroup="Probability of State 0",
+                legendgroup="Probability of State 1",
                 mode="lines",
             ),
             go.Scatter(
@@ -296,7 +296,7 @@ def _plot(data: RamseyData, target: QubitId, fit: RamseyResults = None):
     fig.update_layout(
         showlegend=True,
         xaxis_title="Time [ns]",
-        yaxis_title="Ground state probability",
+        yaxis_title="Excited state probability",
     )
 
     figures.append(fig)
