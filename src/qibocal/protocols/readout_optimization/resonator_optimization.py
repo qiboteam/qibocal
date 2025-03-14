@@ -113,14 +113,16 @@ def _acquisition(
         error = 1
         natives = platform.natives.single_qubit[qubit]
 
-        ro_channel, ro_pulse = natives.MZ()[0]
+        ro_channel, ro_pulse_0 = natives.MZ()[0]
+        _, ro_pulse_1 = natives.MZ()[0]
         new_amp = params.amplitude_start
 
         while error > params.error_threshold and new_amp <= params.amplitude_stop:
 
             # da definire dopo aver definito gli sweeper per l'ampiezza
-            new_ro = replace(ro_pulse, amplitude=new_amp)
-            amplitudes[qubit] = new_ro.probe.amplitude
+            new_ro_0 = replace(ro_pulse_0, amplitude=new_amp)
+            new_ro_1 = replace(ro_pulse_1, amplitude=new_amp)
+            amplitudes[qubit] = new_ro_0.probe.amplitude
 
             sequence_0 = PulseSequence()
             sequence_1 = PulseSequence()
@@ -129,34 +131,45 @@ def _acquisition(
 
             sequence_1.append((qd_channel, qd_pulse))
             sequence_1.append((ro_channel, Delay(duration=qd_pulse.duration)))
-            sequence_1.append((ro_channel, new_ro))
+            sequence_1.append((ro_channel, new_ro_1))
 
-            sequence_0.append((ro_channel, new_ro))
+            sequence_0.append((ro_channel, new_ro_0))
 
-            state0_results = platform.execute(
-                [sequence_0],
+            state_results = platform.execute(
+                [sequence_0, sequence_1],
                 [sweepers],
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
                 acquisition_type=AcquisitionType.INTEGRATION,
             )
 
-            state1_results = platform.execute(
-                [sequence_1],
-                [sweepers],
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-            )
-            result0 = np.concatenate(state0_results[new_ro.id])
-            result1 = np.concatenate(state1_results[new_ro.id])
-
-            iq_values = np.concatenate(result0, result1)
-            states = [0] * len(result0) + [1] * len(result1)
+            for freq in delta_frequency_range:
+                iq_values = []
+                states = []
+                for j, sequence in enumerate([sequence_0, sequence_1]):
+                    ro_pulse = list(
+                        sequence.channel(platform.qubits[qubit].acquisition)
+                    )[-1]
+                    result = state_results[ro_pulse.id]
+                    values = np.concatenate(result)
+                    iq_values.append(values)
+                    states.extend([j] * len(values))
             model = QubitFit()
-            model.fit(iq_values, np.array(states))
+
+            # pdb.set_trace()
+            model.fit(np.concatenate(iq_values), np.array(states))
             error = model.probability_error
-            data.register_qubit(ResonatorOptimizationType, (qubit), dict())
+            data.register_qubit(
+                ResonatorOptimizationType,
+                (qubit),
+                dict(
+                    error=np.array([error]),
+                    frequency=np.array(readout_frequency(qubit, platform) + freq),
+                    amp=np.array([new_amp]),
+                    angle=np.array([model.angle]),
+                    threshold=np.array([model.threshold]),
+                ),
+            )
 
             new_amp += params.amplitude_step
 

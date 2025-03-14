@@ -140,8 +140,7 @@ def _acquisition(
                 result = results[ro_pulse.id]
                 values = np.concatenate(result)
                 iq_values.append(values)
-                states.extend([j] * values)
-            pdb.set_trace()
+                states.extend([j] * len(values))
             model = QubitFit()
             model.fit(np.concatenate(iq_values), np.array(states))
             data.register_qubit(
