@@ -156,7 +156,6 @@ def _acquisition(
                     states.extend([j] * len(values))
             model = QubitFit()
 
-            # pdb.set_trace()
             model.fit(np.concatenate(iq_values), np.array(states))
             error = model.probability_error
             data.register_qubit(

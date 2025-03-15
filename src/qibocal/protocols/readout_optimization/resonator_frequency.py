@@ -127,7 +127,6 @@ def _acquisition(
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.SINGLESHOT,
     )
-    # pdb.set_trace()
 
     for qubit in targets:
         for freq in delta_frequency_range:
