@@ -92,25 +92,3 @@ types = "true"
 [tool.pytest.ini_options]
 testpaths = ['tests/']
 addopts = ['--cov=qibocal', '--cov-report=xml', '--cov-report=html']
-
-[tool.pylint.master]
-# extensions not to check
-extension-pkg-whitelist = ["numpy"]
-jobs = 1
-
-[tool.pylint.messages_control]
-disable = ["invalid-name", "fixme"]
-extension-pkg-whitelist = "pydantic"
-
-[tool.pylint.reports]
-# Available formats are:
-# text, parseable, colorized, json and msvs (visual studio).
-output-format = "colorized"
-
-[tool.pylint.format]
-# Maximum number of characters on a single line.
-max-line-length = 100
-
-[tool.pylint.design]
-# Maximum number of arguments for function / method
-max-args = 10
