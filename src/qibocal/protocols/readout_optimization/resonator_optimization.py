@@ -14,7 +14,7 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.fitting.classifier.qubit_fit import QubitFit
-from qibocal.protocols.utils import readout_frequency
+from qibocal.protocols.utils import GHZ_TO_HZ, readout_frequency, table_dict, table_html
 
 
 @dataclass
@@ -213,7 +213,23 @@ def _plot(
 
     figures = []
     fitting_report = None
-    # if fit is not None:
+    if fit is not None:
+        fitting_report = table_html(
+            table_dict(
+                target,
+                [
+                    "Best Readout Amplitude [a.u.]",
+                    "Best Readout Frequency [Hz]",
+                    "Best Fidelity",
+                ],
+                [
+                    np.round(fit.best_amp[target], 4),
+                    np.round(fit.best_freq[target] * GHZ_TO_HZ),
+                    fit.fidelities,
+                ],
+            )
+        )
+
     return figures, fitting_report
 
 
