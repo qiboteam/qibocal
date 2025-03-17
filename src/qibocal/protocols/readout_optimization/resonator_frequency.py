@@ -6,7 +6,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
-    AveragingMode,
     Delay,
     Parameter,
     PulseSequence,
@@ -125,7 +124,6 @@ def _acquisition(
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
-        averaging_mode=AveragingMode.SINGLESHOT,
     )
 
     # TODO: move QubitFit() and anlysis in _fit()
