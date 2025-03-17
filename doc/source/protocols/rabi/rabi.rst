@@ -135,7 +135,7 @@ In the following we show an example runcard for the amplitude calibration of the
         relaxation_time: 50000
         rx90: True
 
-.. image:: rabi_amplitude_rx90
+.. image:: rabi_amplitude_rx90.png
 
 Requirements
 ^^^^^^^^^^^^

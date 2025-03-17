@@ -27,13 +27,16 @@
       "frequency": 4855663000.0
     },
     "0/flux": {
-      "kind": "dc",
-      "offset": -0.1
+      "kind": "dc-filter",
+      "offset": -0.1,
+      "filter": []
     },
     "1/flux": {
-      "kind": "dc",
-      "offset": 0.0
+      "kind": "dc-filter",
+      "offset": 0.0,
+      "filter": []
     },
+
     "0/probe": {
       "kind": "iq",
       "frequency": 7200000000.0
@@ -59,8 +62,9 @@
       "kernel": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDEwLCksIH0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAr4dT6V5tHrP1w+JhHImN8/sPePZeSUuj/4yTKrD5fRP/ysonZip98/6GJMAPV9xD/LTiJo4k7oP96aWXpxduU/6fUxETe/7z9GXEBNGebWPw=="
     },
     "coupler_01/flux": {
-      "kind": "dc",
-      "offset": 0.0
+      "kind": "dc-filter",
+      "offset": 0.0,
+      "filter": []
     },
     "twpa_pump": {
       "kind": "oscillator",
