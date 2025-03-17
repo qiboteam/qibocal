@@ -79,10 +79,5 @@ def phase(iq: npt.NDArray):
 
 
 def probability(values: npt.NDArray, state: int = 0):
-    """Return the statistical frequency of the specified state.
-
-    The only accepted values `state` are `0` and `1`.
-    """
-    # The absolute value is only needed to make sure the result is always positive, even
-    # when extremely close to zero
-    return abs(1 - state - np.mean(values, axis=0))
+    """Return the statistical frequency of the specified state."""
+    return np.sum(values == state, axis=0) / len(values)
