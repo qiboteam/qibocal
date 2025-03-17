@@ -142,11 +142,12 @@ def _acquisition(
                 states.extend([j] * len(values))
             model = QubitFit()
             model.fit(np.concatenate(iq_values), np.array(states))
+
             data.register_qubit(
                 ResonatorFrequencyType,
                 (qubit),
                 dict(
-                    # frequency=np.array(readout_frequency(qubit, platform) + freq),
+                    frequency=np.array([readout_frequency(qubit, platform) + freq]),
                     assignment_fidelity=np.array([model.assignment_fidelity]),
                     angle=np.array([model.angle]),
                     threshold=np.array([model.threshold]),
