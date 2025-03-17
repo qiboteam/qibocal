@@ -118,8 +118,16 @@ def _acquisition(
         for q in targets
     ]
 
-    results = platform.execute(
-        [sequence_0, sequence_1],
+    state0_results = platform.execute(
+        [sequence_0],
+        [sweepers],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+    )
+
+    state1_results = platform.execute(
+        [sequence_1],
         [sweepers],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
@@ -127,26 +135,24 @@ def _acquisition(
     )
 
     # TODO: move QubitFit() and anlysis in _fit()
+    nshots = params.nshots
     for qubit in targets:
-        for freq in delta_frequency_range:
-            iq_values = []
-            states = []
-            for j, sequence in enumerate([sequence_0, sequence_1]):
-                ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[
-                    -1
-                ]
-                result = results[ro_pulse.id]
-                values = np.concatenate(result)
-                iq_values.append(values)
-                states.extend([j] * len(values))
+        result0 = np.transpose(state0_results[ro_pulse_0.id], (1, 0, 2))
+        result1 = np.transpose(state1_results[ro_pulse_1.id], (1, 0, 2))
+
+        for j, freq in enumerate(sweepers[qubit].values):
+
+            iq_values = np.concatenate([result0[j], result1[j]], axis=0)
+            states = [0] * nshots + [1] * nshots
+
             model = QubitFit()
-            model.fit(np.concatenate(iq_values), np.array(states))
+            model.fit(iq_values, np.array(states))
 
             data.register_qubit(
                 ResonatorFrequencyType,
                 (qubit),
                 dict(
-                    frequency=np.array([readout_frequency(qubit, platform) + freq]),
+                    frequency=np.array([freq]),
                     assignment_fidelity=np.array([model.assignment_fidelity]),
                     angle=np.array([model.angle]),
                     threshold=np.array([model.threshold]),
