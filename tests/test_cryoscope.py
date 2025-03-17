@@ -16,7 +16,6 @@ TEST_FILE_DIR = Path(__file__).resolve().parent
 
 
 def test_cryoscope_acquisition(platform):
-
     target = [0]
 
     params = cryoscope.parameters_type.load(
@@ -33,7 +32,6 @@ def test_cryoscope_acquisition(platform):
 
 
 def test_cryoscope_postprocessing():
-
     datafolder = TEST_FILE_DIR / "cryoscope_data" / "data" / "cryoscope-0"
     metadatafolder = TEST_FILE_DIR / "cryoscope_data" / "meta.json"
 
@@ -82,7 +80,6 @@ def test_cryoscope_postprocessing():
 
 
 def test_cryoscope_plot():
-
     datafolder = TEST_FILE_DIR / "cryoscope_data" / "data" / "cryoscope-0"
     metadatafolder = TEST_FILE_DIR / "cryoscope_data" / "meta.json"
 

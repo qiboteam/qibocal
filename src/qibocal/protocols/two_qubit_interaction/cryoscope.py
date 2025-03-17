@@ -196,7 +196,9 @@ def _acquisition(
         assert (
             platform.calibration.single_qubits[qubit].qubit.flux_coefficients
             is not None
-        ), f"Cannot run cryoscope without flux coefficients, run cryoscope amplitude on qubit {qubit} before the cryoscope"
+        ), (
+            f"Cannot run cryoscope without flux coefficients, run cryoscope amplitude on qubit {qubit} before the cryoscope"
+        )
 
         data.flux_coefficients[qubit] = platform.calibration.single_qubits[
             qubit
@@ -344,7 +346,6 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
     qubits = np.unique([i[0] for i in data.data]).tolist()
 
     for qubit in qubits:
-
         sampling_rate = 1 / (x[1] - x[0])
         X_exp = 1 - 2 * data[(qubit, "MX")].prob_1
         Y_exp = 1 - 2 * data[(qubit, "MY")].prob_1
@@ -471,7 +472,6 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
 
     fitting_report = ""
     if fit is not None:
-
         fig.add_trace(
             go.Scatter(
                 x=duration,
@@ -484,7 +484,6 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
         )
 
         if not data.has_filters(target):
-
             iir_corrections = lfilter(
                 fit.feedforward_taps_iir[target],
                 fit.feedback_taps[target],

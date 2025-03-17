@@ -126,7 +126,6 @@ def _acquisition(
     platform: Platform,
     targets: list[QubitId],
 ) -> FluxAmplitudeFrequencyData:
-
     data = FluxAmplitudeFrequencyData(
         flux_pulse_duration=params.duration,
     )
@@ -178,7 +177,6 @@ def _acquisition(
 
 
 def _fit(data: FluxAmplitudeFrequencyData) -> FluxAmplitudeFrequencyResults:
-
     fitted_parameters = {}
     detuning = {}
     qubits = np.unique([i[0] for i in data.data]).tolist()
