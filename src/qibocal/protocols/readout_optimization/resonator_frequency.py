@@ -128,6 +128,7 @@ def _acquisition(
         averaging_mode=AveragingMode.SINGLESHOT,
     )
 
+    # TODO: move QubitFit() and anlysis in _fit()
     for qubit in targets:
         for freq in delta_frequency_range:
             iq_values = []

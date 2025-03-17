@@ -184,6 +184,15 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
     best_threshold = {}
     highest_fidelity = {}
 
+    for qubit in qubits:
+        data_qubit = data[qubit]
+        index_best_fid = np.argmin(data_qubit["error"])
+        highest_fidelity[qubit] = data_qubit["assignment_fidelity"][index_best_fid]
+        best_freq[qubit] = data_qubit["frequency"][index_best_fid]
+        best_amps[qubit] = data_qubit["amp"][index_best_fid]
+        best_angle[qubit] = data_qubit["angle"][index_best_fid]
+        best_threshold[qubit] = data_qubit["threshold"][index_best_fid]
+
     return ResonatorOptimizationResults(
         best_amp=best_amps,
         fidelities=highest_fidelity,
