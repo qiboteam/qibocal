@@ -55,8 +55,8 @@
             [
               "0/drive",
               {
-                "duration": 100,
-                "amplitude": 0.44,
+                "duration": 30,
+                "amplitude": 0.212,
                 "envelope": {
                   "kind": "gaussian",
                   "rel_sigma": 0.2
@@ -70,8 +70,8 @@
             [
               "0/drive",
               {
-                "duration": 50,
-                "amplitude": 0.44,
+                "duration": 30,
+                "amplitude": 0.106,
                 "envelope": {
                   "kind": "gaussian",
                   "rel_sigma": 0.2
@@ -85,8 +85,8 @@
             [
               "0/drive12",
               {
-                "duration": 100.0,
-                "amplitude": 0.21,
+                "duration": 30.0,
+                "amplitude": 0.15,
                 "envelope": {
                   "kind": "gaussian",
                   "rel_sigma": 0.2
