@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     Delay,
@@ -212,8 +214,28 @@ def _plot(
     """Plotting function for resonator optimization"""
 
     figures = []
-    fitting_report = None
+    fitting_report = ""
+
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+    )
+
+    qubit_data = data[target]
+    frequencies = qubit_data.frequency
+    amplitudes = qubit_data.amplitude
+    fidelities = qubit_data.assignment_fidelity
+
     if fit is not None:
+
+        fig.add_trace(
+            go.Heatmap(
+                x=frequencies,
+                y=amplitudes,
+                z=fidelities,
+            )
+        )
+
         fitting_report = table_html(
             table_dict(
                 target,
@@ -230,6 +252,15 @@ def _plot(
             )
         )
 
+        fig.update_layout(
+            showlegend=True,
+            legend=dict(orientation="h"),
+        )
+
+        fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=1)
+        fig.update_yaxes(title_text="Amplitude [a.u.]", row=1, col=1)
+
+        figures.append(fig)
     return figures, fitting_report
 
 
