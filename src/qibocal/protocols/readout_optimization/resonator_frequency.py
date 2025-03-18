@@ -136,11 +136,11 @@ def _acquisition(
 
     # TODO: move QubitFit() and anlysis in _fit()
     nshots = params.nshots
-    for qubit in targets:
+    for q, qubit in enumerate(targets):
         result0 = np.transpose(state0_results[ro_pulse_0.id], (1, 0, 2))
         result1 = np.transpose(state1_results[ro_pulse_1.id], (1, 0, 2))
 
-        for j, freq in enumerate(sweepers[qubit].values):
+        for j, freq in enumerate(sweepers[q].values):
 
             iq_values = np.concatenate([result0[j], result1[j]], axis=0)
             states = [0] * nshots + [1] * nshots
