@@ -28,11 +28,11 @@ class ResonatorOptimizationParameters(Parameters):
     freq_step: int
     """Frequency step for sweep [Hz]."""
     amplitude_start: float
-    """Minimum amplitude multiplicative factor."""
+    """Minimum amplitude."""
     amplitude_stop: float
-    """Maximum amplitude multiplicative factor."""
+    """Maximum amplitude."""
     amplitude_step: float
-    """Step amplitude multiplicative factor."""
+    """Step amplitude."""
 
 
 @dataclass
@@ -94,7 +94,8 @@ def _acquisition(
     )
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
-    ro_pulses = {}
+    ro_pulses_0 = {}
+    ro_pulses_1 = {}
     amplitudes = {}
     freq_sweepers = {}
 
@@ -109,7 +110,8 @@ def _acquisition(
         ro_channel, ro_pulse_0 = natives.MZ()[0]
         _, ro_pulse_1 = natives.MZ()[0]
 
-        ro_pulses[qubit] = ro_pulse_0
+        ro_pulses_0[qubit] = ro_pulse_0
+        ro_pulses_1[qubit] = ro_pulse_1
         amplitudes[qubit] = ro_pulse_0.probe.amplitude
 
         sequence_0.append((ro_channel, ro_pulse_0))
@@ -124,10 +126,16 @@ def _acquisition(
             channels=[platform.qubits[qubit].probe],
         )
 
-    amp_sweeper = Sweeper(
+    amp_sweeper_0 = Sweeper(
         parameter=Parameter.amplitude,
         range=(params.amplitude_start, params.amplitude_stop, params.amplitude_step),
-        pulses=[ro_pulses[qubit] for qubit in targets],
+        pulses=[ro_pulses_0[qubit] for qubit in targets],
+    )
+
+    amp_sweeper_1 = Sweeper(
+        parameter=Parameter.amplitude,
+        range=(params.amplitude_start, params.amplitude_stop, params.amplitude_step),
+        pulses=[ro_pulses_1[qubit] for qubit in targets],
     )
 
     data = ResonatorOptimizationData(
@@ -137,7 +145,7 @@ def _acquisition(
 
     state0_results = platform.execute(
         [sequence_0],
-        [[amp_sweeper], [freq_sweepers[q] for q in targets]],
+        [[amp_sweeper_0], [freq_sweepers[q] for q in targets]],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
@@ -145,7 +153,7 @@ def _acquisition(
 
     state1_results = platform.execute(
         [sequence_1],
-        [[amp_sweeper], [freq_sweepers[q] for q in targets]],
+        [[amp_sweeper_1], [freq_sweepers[q] for q in targets]],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
@@ -162,7 +170,7 @@ def _acquisition(
         nshots = params.nshots
 
         for j, freq in enumerate(freq_sweepers[qubit].values):
-            for k, amp in enumerate(amp_sweeper.values):
+            for k, amp in enumerate(amp_sweeper_0.values):
                 iq_values = np.concatenate((result0[j][k], result1[j][k]))
                 states = [0] * nshots + [1] * nshots
 
