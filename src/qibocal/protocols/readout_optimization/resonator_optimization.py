@@ -103,7 +103,6 @@ def _acquisition(
     sequence_1 = PulseSequence()
 
     for qubit in targets:
-
         natives = platform.natives.single_qubit[qubit]
 
         qd_channel, qd_pulse = natives.RX()[0]
@@ -235,7 +234,6 @@ def _plot(
     fidelities = qubit_data.assignment_fidelity
 
     if fit is not None:
-
         fig.add_trace(
             go.Heatmap(
                 x=amplitudes,
@@ -269,7 +267,7 @@ def _plot(
                 ],
                 [
                     np.round(fit.best_amp[target], 4),
-                    np.round(fit.best_freq[target]),
+                    np.round(fit.best_freq[target] * HZ_TO_GHZ),
                     fit.fidelities,
                 ],
             )
