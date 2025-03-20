@@ -16,7 +16,7 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.fitting.classifier.qubit_fit import QubitFit
-from qibocal.protocols.utils import GHZ_TO_HZ, readout_frequency, table_dict, table_html
+from qibocal.protocols.utils import HZ_TO_GHZ, readout_frequency, table_dict, table_html
 
 
 @dataclass
@@ -238,9 +238,24 @@ def _plot(
 
         fig.add_trace(
             go.Heatmap(
-                x=frequencies,
-                y=amplitudes,
+                x=amplitudes,
+                y=frequencies * HZ_TO_GHZ,
                 z=fidelities,
+            )
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=[fit.best_amp],
+                y=[fit.best_freq],
+                mode="markers",
+                marker=dict(
+                    size=8,
+                    color="black",
+                    symbol="cross",
+                ),
+                name="highest assignment fidelity",
+                showlegend=True,
             )
         )
 
@@ -249,12 +264,12 @@ def _plot(
                 target,
                 [
                     "Best Readout Amplitude [a.u.]",
-                    "Best Readout Frequency [Hz]",
+                    "Best Readout Frequency [GHz]",
                     "Best Fidelity",
                 ],
                 [
                     np.round(fit.best_amp[target], 4),
-                    np.round(fit.best_freq[target] * GHZ_TO_HZ),
+                    np.round(fit.best_freq[target]),
                     fit.fidelities,
                 ],
             )
@@ -265,8 +280,8 @@ def _plot(
             legend=dict(orientation="h"),
         )
 
-        fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=1)
-        fig.update_yaxes(title_text="Amplitude [a.u.]", row=1, col=1)
+        fig.update_xaxes(title_text="Amplitude [a.u.]", row=1, col=1)
+        fig.update_yaxes(title_text="Frequency [GHz]", row=1, col=1)
 
         figures.append(fig)
     return figures, fitting_report
