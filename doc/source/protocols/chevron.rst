@@ -32,12 +32,12 @@ Below is an example runcard for this experiment.
     - id: chevron
       operation: chevron
       parameters:
-        amplitude_max: 1.1
-        amplitude_min: 0.9
-        amplitude_step: 0.01
-        duration_max: 51
-        duration_min: 4
-        duration_step: 2
+        amplitude_max: -0.45
+        amplitude_min: -0.5
+        amplitude_step: 0.001
+        duration_max: 60
+        duration_min: 0
+        duration_step: 1
 
 The expected output is the following:
 
