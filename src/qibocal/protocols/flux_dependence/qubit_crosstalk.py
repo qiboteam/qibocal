@@ -104,9 +104,9 @@ def _acquisition(
 ) -> QubitCrosstalkData:
     """Data acquisition for Crosstalk Experiment."""
 
-    assert set(targets).isdisjoint(
-        set(params.flux_qubits)
-    ), "Flux qubits must be different from targets."
+    assert set(targets).isdisjoint(set(params.flux_qubits)), (
+        "Flux qubits must be different from targets."
+    )
 
     sequence = PulseSequence()
     ro_pulses = {}
@@ -223,14 +223,9 @@ def _acquisition(
 
 
 def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
-
     crosstalk_matrix = {qubit: {} for qubit in data.qubit_frequency}
     fitted_parameters = {}
-
-    matrix_element = {}
-    qubit_frequency = {}
     qubit_frequency_bias_point = {}
-    offset = {}
 
     for target_flux_qubit, qubit_data in data.data.items():
         frequencies, biases = extract_feature(
@@ -315,7 +310,7 @@ def _plot(data: QubitCrosstalkData, fit: QubitCrosstalkResults, target: QubitId)
             if flux_qubit != target:
                 labels.append(f"Crosstalk with qubit {flux_qubit} [V^-1]")
             else:
-                labels.append(f"Flux dependence [V^-1]")
+                labels.append("Flux dependence [V^-1]")
             values.append(np.round(fit.crosstalk_matrix[target][flux_qubit], 4))
         fitting_report = table_html(
             table_dict(

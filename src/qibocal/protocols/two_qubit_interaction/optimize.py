@@ -184,7 +184,6 @@ def _acquisition(
                     range=(params.theta_start, params.theta_end, params.theta_step),
                     pulses=[theta_pulse],
                 )
-
                 sweeper_amplitude = Sweeper(
                     parameter=Parameter.amplitude,
                     range=(
@@ -292,9 +291,7 @@ def _fit(
                             target_q
                         ] = fitted_parameters[
                             target_q, control_q, "I", amplitude, duration
-                        ][
-                            2
-                        ]
+                        ][2]
 
                         # leakage estimate: L = m /2
                         # See NZ paper from Di Carlo
@@ -364,10 +361,10 @@ def _plot(
         rows=2,
         cols=2,
         subplot_titles=(
-            f"Qubit {qubits[0]} {data.native} angle",
-            f"Qubit {qubits[0]} Leakage",
-            f"Qubit {qubits[1]} {data.native} angle",
-            f"Qubit {qubits[1]} Leakage",
+            f"Qubit {target[0]} {data.native} angle",
+            f"Qubit {target[0]} Leakage",
+            f"Qubit {target[1]} {data.native} angle",
+            f"Qubit {target[1]} Leakage",
         ),
     )
     if fit is not None:

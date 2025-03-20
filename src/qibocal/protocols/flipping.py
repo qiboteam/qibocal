@@ -37,7 +37,6 @@ def flipping_sequence(
     sequence |= natives.R(theta=np.pi / 2)
 
     for _ in range(flips):
-
         if rx90:
             qd_channel, qd_pulse = natives.RX90()[0]
         else:
