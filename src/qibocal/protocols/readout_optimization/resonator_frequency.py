@@ -91,7 +91,6 @@ def _acquisition(
     sequence_1 = PulseSequence()
 
     for qubit in targets:
-
         natives = platform.natives.single_qubit[qubit]
         qd_channel, qd_pulse = natives.RX()[0]
         ro_channel, ro_pulse_0 = natives.MZ()[0]
@@ -141,7 +140,6 @@ def _acquisition(
         result1 = np.transpose(state1_results[ro_pulse_1.id], (1, 0, 2))
 
         for j, freq in enumerate(sweepers[q].values):
-
             iq_values = np.concatenate([result0[j], result1[j]], axis=0)
             states = [0] * nshots + [1] * nshots
 
