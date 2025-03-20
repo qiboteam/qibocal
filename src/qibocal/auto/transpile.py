@@ -117,12 +117,16 @@ def natives(platform) -> dict[str, NativeContainer]:
     defined in the `platform`. This function assumes the native gates to be the same for each
     qubit and pair.
     """
-    pair = next(iter(platform.pairs))
     qubit = next(iter(platform.qubits))
-    two_qubit_natives_container = platform.natives.two_qubit[pair]
     single_qubit_natives_container = platform.natives.single_qubit[qubit]
     single_qubit_natives = list(single_qubit_natives_container.model_fields)
-    two_qubit_natives = list(two_qubit_natives_container.model_fields)
+    if len(platform.pairs) > 0:
+        # add two qubit natives only if there are pairs
+        pair = next(iter(platform.pairs))
+        two_qubit_natives_container = platform.natives.two_qubit[pair]
+        two_qubit_natives = list(two_qubit_natives_container.model_fields)
+    else:
+        two_qubit_natives = []
     # Solve Qibo-Qibolab mismatch
     single_qubit_natives.append("RZ")
     single_qubit_natives.append("Z")
