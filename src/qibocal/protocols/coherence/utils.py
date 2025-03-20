@@ -148,7 +148,6 @@ def exponential_fit_probability(data, zeno=False):
     pcovs = {}
 
     for qubit in qubits:
-
         times = data[qubit].wait
         x_max = np.max(times)
         x_min = np.min(times)

@@ -1,10 +1,10 @@
+from _collections_abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass, field, fields
 from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
-from _collections_abc import Callable
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal import update
@@ -158,8 +158,8 @@ class ResonatorSpectroscopyData(Data):
     def load(cls, path):
         obj = super().load(path)
         # Instantiate PowerLevel object
-        if obj.power_level is not None:  # pylint: disable=E1101
-            obj.power_level = PowerLevel(obj.power_level)  # pylint: disable=E1101
+        if obj.power_level is not None:
+            obj.power_level = PowerLevel(obj.power_level)
         return obj
 
 

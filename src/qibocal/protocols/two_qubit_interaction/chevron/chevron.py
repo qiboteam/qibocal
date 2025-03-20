@@ -19,6 +19,8 @@ from .... import update
 from ..utils import fit_flux_amplitude, order_pair
 from .utils import COLORAXIS, chevron_fit, chevron_sequence
 
+__all__ = ["chevron"]
+
 
 @dataclass
 class ChevronParameters(Parameters):

@@ -53,9 +53,9 @@ def ramsey_sequence(
 
         delays.extend([qd_delay, ro_delay])
         if target_qubit is not None:
-            assert (
-                target_qubit not in targets
-            ), f"Cannot run Ramsey experiment on qubit {target_qubit} if it is already in Ramsey sequence."
+            assert target_qubit not in targets, (
+                f"Cannot run Ramsey experiment on qubit {target_qubit} if it is already in Ramsey sequence."
+            )
             natives = platform.natives.single_qubit[target_qubit]
             sequence += natives.RX()
 

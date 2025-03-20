@@ -906,12 +906,12 @@ def round_report(
                 f"{round(value * 10 ** (-1 * magnitude), ndigits)}e{magnitude}"
             )
             rounded_errors.append(
-                f"{np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')}e{magnitude}"
+                f"{np.format_float_positional(round(error * 10 ** (-1 * magnitude), ndigits), trim='-')}e{magnitude}"
             )
         else:
             rounded_values.append(f"{round(value * 10 ** (-1 * magnitude), ndigits)}")
             rounded_errors.append(
-                f"{np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')}"
+                f"{np.format_float_positional(round(error * 10 ** (-1 * magnitude), ndigits), trim='-')}"
             )
 
     return rounded_values, rounded_errors
@@ -951,7 +951,6 @@ def chi2_reduced_complex(
     errors: tuple[NDArray, NDArray],
     dof: Optional[float] = None,
 ):
-
     observed_complex = np.abs(observed[0] * np.exp(1j * observed[1]))
 
     observed_real = np.real(observed_complex)
@@ -1134,7 +1133,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             )
 
         fig.update_xaxes(
-            title_text=f"i [a.u.]",
+            title_text="i [a.u.]",
             range=[min_x, max_x],
             row=1,
             col=i + 1,
@@ -1178,7 +1177,6 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
                 "testing time [s]",
                 "training time [s]",
             ),
-            # pylint: disable=E1101
         )
         for i, model in enumerate(models_name):
             for plot in range(3):
