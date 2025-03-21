@@ -53,6 +53,7 @@ from .two_qubit_interaction import (
     chevron,
     chevron_signal,
     correct_virtual_z_phases,
+    cross_resonance,
     cryoscope,
     optimize_two_qubit_gate,
 )
@@ -114,4 +115,5 @@ __all__ = [
     "flux_amplitude_frequency",
     "cpmg",
     "drag_simple",
+    "cross_resonance",
 ]
