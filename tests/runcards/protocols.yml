@@ -40,6 +40,15 @@ actions:
       step_amp: 0.005
       nshots: 10
 
+  - id: resonator optimization
+    operation: resonator_optimization
+    parameters:
+      freq_width: 200.e+6
+      freq_step: 25.e+6
+      amplitude_start: 0.1
+      amplitude_step: 0.1
+      amplitude_stop: 0.5
+      nshots: 10
 
   - id: resonator spectroscopy low power
     operation: resonator_spectroscopy
@@ -832,9 +841,17 @@ actions:
     parameters:
       nshots: 10
 
+  - id : resonator_frequency
+    operation: resonator_frequency
+    parameters:
+      freq_width: 200.e+6
+      freq_step: 25.e+6
+      nshots: 10
+
   - id: resonator_amplitude
     operation: resonator_amplitude
     parameters:
+      amplitude_start: 0.1
       amplitude_step: 0.1
       amplitude_stop: 0.5
 
