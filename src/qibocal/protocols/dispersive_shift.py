@@ -29,6 +29,8 @@ class DispersiveShiftParameters(Parameters):
     """Width [Hz] for frequency sweep relative to the readout frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
+    electrical_delay: int = 0
+    """Electrical delay for the qubit pulse [ns]."""
 
 
 @dataclass
@@ -143,13 +145,18 @@ def _acquisition(
         for i, results in enumerate([results_0, results_1]):
             result = results[ro_pulses[qubit].serial].average
             # store the results
+            freqs = ro_pulses[qubit].frequency + delta_frequency_range
+            
+            # Correct electriclad elay
+            phase = np.unwrap(result.phase + delta_frequency_range * params.electrical_delay * 1e-6)
+
             data.register_qubit(
                 DispersiveShiftType,
                 (qubit, i),
                 dict(
-                    freq=ro_pulses[qubit].frequency + delta_frequency_range,
+                    freq=freqs,
                     signal=result.magnitude,
-                    phase=result.phase,
+                    phase=phase,
                     i=result.voltage_i,
                     q=result.voltage_q,
                 ),
