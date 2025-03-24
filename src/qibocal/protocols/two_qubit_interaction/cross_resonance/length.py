@@ -25,7 +25,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.result import probability
 from qibocal.update import replace
 
-CrossResonanceType = np.dtype(
+CrossResonanceLengthType = np.dtype(
     [
         ("prob_target", np.float64),
         ("prob_control", np.float64),
@@ -36,7 +36,7 @@ CrossResonanceType = np.dtype(
 
 
 @dataclass
-class CrossResonanceParameters(Parameters):
+class CrossResonanceLengthParameters(Parameters):
     """ResonatorSpectroscopy runcard inputs."""
 
     pulse_duration_start: float
@@ -58,31 +58,31 @@ class CrossResonanceParameters(Parameters):
 
 
 @dataclass
-class CrossResonanceResults(Results):
+class CrossResonanceLengthResults(Results):
     """ResonatorSpectroscopy outputs."""
 
 
 @dataclass
-class CrossResonanceData(Data):
+class CrossResonanceLengthData(Data):
     """Data structure for resonator spectroscopy with attenuation."""
 
-    data: dict[QubitId, npt.NDArray[CrossResonanceType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[CrossResonanceLengthType]] = field(
+        default_factory=dict
+    )
     """Raw data acquired."""
 
 
 def _acquisition(
-    params: CrossResonanceParameters,
+    params: CrossResonanceLengthParameters,
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
-) -> CrossResonanceData:
+) -> CrossResonanceLengthData:
     """Data acquisition for resonator spectroscopy."""
 
-    data = CrossResonanceData()
+    data = CrossResonanceLengthData()
 
     for pair in targets:
         control, target = pair
-        print("CONTROL", control)
-        print("TARGET", target)
         pair = (control, target)
         for setup in ["I", "X"]:
             sequence = PulseSequence()
@@ -90,12 +90,10 @@ def _acquisition(
             natives_target = platform.natives.single_qubit[target]
             cr_channel, cr_drive_pulse = platform.natives.two_qubit[pair].CNOT()[0]
             control_drive_channel, control_drive_pulse = natives_control.RX()[0]
-            target_drive_channel, target_drive_pulse = natives_target.RX()[0]
             ro_channel, ro_pulse = natives_target.MZ()[0]
             ro_channel_control, ro_pulse_control = natives_control.MZ()[0]
             if setup == "X":
                 sequence.append((control_drive_channel, control_drive_pulse))
-                # sequence.append((target_drive_channel, target_drive_pulse))
                 sequence.append(
                     (ro_channel, Delay(duration=control_drive_pulse.duration))
                 )
@@ -122,13 +120,6 @@ def _acquisition(
                 sequence.append((ro_channel_control, delay2))
             sequence.append((ro_channel, ro_pulse))
             sequence.append((ro_channel_control, ro_pulse_control))
-
-            # sequence, qd_pulses, delays, ro_pulses, amplitudes = sequence_length(
-            # [target],
-            # params,
-            # platform,
-            # use_align=params.interpolated_sweeper, cross_resonance=control if setup == "X" else None
-            # )
 
             sweep_range = (
                 params.pulse_duration_start,
@@ -174,13 +165,12 @@ def _acquisition(
                 prob_target = probability(results[ro_pulse.id], state=1)
                 prob_control = probability(results[ro_pulse_control.id], state=1)
                 data.register_qubit(
-                    CrossResonanceType,
+                    CrossResonanceLengthType,
                     (q, setup),
                     dict(
                         length=sweeper.values,
                         prob_target=prob_target,
                         prob_control=prob_control,
-                        # error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
                     ),
                 )
     # finally, save the remaining data
@@ -188,13 +178,17 @@ def _acquisition(
 
 
 def _fit(
-    data: CrossResonanceData,
-) -> CrossResonanceResults:
+    data: CrossResonanceLengthData,
+) -> CrossResonanceLengthResults:
     """Post-processing function for ResonatorSpectroscopy."""
-    return CrossResonanceResults()
+    return CrossResonanceLengthResults()
 
 
-def _plot(data: CrossResonanceData, target: QubitPairId, fit: CrossResonanceResults):
+def _plot(
+    data: CrossResonanceLengthData,
+    target: QubitPairId,
+    fit: CrossResonanceLengthResults,
+):
     """Plotting function for ResonatorSpectroscopy."""
     # TODO: share colorbar
 
@@ -236,5 +230,5 @@ def _plot(data: CrossResonanceData, target: QubitPairId, fit: CrossResonanceResu
     return [fig], ""
 
 
-cross_resonance = Routine(_acquisition, _fit, _plot)
+cross_resonance_length = Routine(_acquisition, _fit, _plot)
 """CrossResonance Routine object."""
