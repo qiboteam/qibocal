@@ -32,7 +32,6 @@ from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
 from ... import update
-from ...update import replace
 from .utils import order_pair
 
 
@@ -108,7 +107,7 @@ def create_sequence(
     ordered_pair: list[QubitId, QubitId],
     native: Literal["CZ", "iSWAP"],
     dt: float,
-    flux_pulse_max_duration: float = None,
+    # flux_pulse_max_duration: float = None,
 ) -> tuple[
     PulseSequence,
     Pulse,
@@ -121,62 +120,60 @@ def create_sequence(
 
     sequence = PulseSequence()
     # Y90
-    sequence += target_natives.R(theta=np.pi / 2, phi=np.pi / 2)
+    sequence += target_natives.R(theta=np.pi / 2)
     # X
     if setup == "X":
         sequence += control_natives.RX()
-    else:
-        sequence.append(
-            (platform.qubits[control_qubit].drive, Delay(duration=sequence.duration))
-        )
+    # else:
+    #     sequence.append(
+    #         (platform.qubits[control_qubit].drive, Delay(duration=sequence.duration))
+    #     )
 
-    drive_duration = sequence.duration
-
+    # drive_duration = sequence.duration
+    # print("SEQUENCE ", sequence)
     # CZ
     flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
     flux_pulses = [
         (ch, pulse) for ch, pulse in flux_sequence if not isinstance(pulse, VirtualZ)
     ]
 
-    if flux_pulse_max_duration is not None:
-        flux_pulses[0] = (
-            flux_pulses[0][0],
-            replace(flux_pulses[0][1], duration=flux_pulse_max_duration),
-        )
+    # if flux_pulse_max_duration is not None:
+    #     flux_pulses[0] = (
+    #         flux_pulses[0][0],
+    #         replace(flux_pulses[0][1], duration=flux_pulse_max_duration),
+    #     )
 
-    _, flux_pulse = flux_pulses[0]
+    sequence += [
+        (
+            platform.qubits[control_qubit].drive,
+            Delay(duration=40),
+        )
+    ]
+    _, flux_pulse = flux_pulses[0]  # TODO: it could be wrong
     flux_sequence = PulseSequence(flux_pulses)
     sequence |= flux_sequence
-
     flux_duration = flux_sequence.duration
-    dt_delay = Delay(duration=dt)
+    # dt_delay = Delay(duration=dt)
 
     theta_sequence = PulseSequence(
         [
             (
                 platform.qubits[target_qubit].drive,
-                dt_delay,
+                Delay(duration=dt + flux_duration),
             ),
             (
                 platform.qubits[control_qubit].drive,
-                dt_delay,
-            ),
-            (
-                platform.qubits[target_qubit].drive,
-                Delay(duration=flux_duration),
-            ),
-            (
-                platform.qubits[control_qubit].drive,
-                Delay(duration=flux_duration),
+                Delay(duration=dt + flux_duration),
             ),
         ]
     )
     # R90 (angle to be swept)
-    theta_sequence += target_natives.R(theta=np.pi / 2, phi=0)
+    theta_sequence += target_natives.R(theta=np.pi / 2)
     theta_pulse = theta_sequence[-1][1]
+    print("THETA PULSE", theta_pulse)
     # X
-    if setup == "X":
-        theta_sequence += control_natives.RX()
+    # if setup == "X":
+    #     theta_sequence += control_natives.RX()
 
     sequence += theta_sequence
 
@@ -187,28 +184,32 @@ def create_sequence(
         [
             (
                 platform.qubits[target_qubit].acquisition,
-                Delay(duration=drive_duration),
+                Delay(
+                    duration=163
+                ),  # drive_duration + flux_duration + theta_sequence.duration),
             ),
             (
                 platform.qubits[control_qubit].acquisition,
-                Delay(duration=drive_duration),
+                Delay(
+                    duration=163
+                ),  # drive_duration + flux_duration + theta_sequence.duration),
             ),
-            (
-                platform.qubits[target_qubit].acquisition,
-                ro_target_delay,
-            ),
-            (
-                platform.qubits[control_qubit].acquisition,
-                ro_control_delay,
-            ),
-            (
-                platform.qubits[target_qubit].acquisition,
-                Delay(duration=theta_sequence.duration),
-            ),
-            (
-                platform.qubits[control_qubit].acquisition,
-                Delay(duration=theta_sequence.duration),
-            ),
+            # (
+            #     platform.qubits[target_qubit].acquisition,
+            #     ro_target_delay,
+            # ),
+            # (
+            #     platform.qubits[control_qubit].acquisition,
+            #     ro_control_delay,
+            # ),
+            # (
+            #     platform.qubits[target_qubit].acquisition,
+            #     Delay(duration=theta_sequence.duration),
+            # ),
+            # (
+            #     platform.qubits[control_qubit].acquisition,
+            #     Delay(duration=theta_sequence.duration),
+            # ),
             target_natives.MZ()[0],
             control_natives.MZ()[0],
         ]
@@ -216,6 +217,9 @@ def create_sequence(
 
     sequence += ro_sequence
 
+    print(f"SEQUENCE {setup} {target_qubit}")
+    for i in sequence:
+        print(i)
     return sequence, flux_pulse, theta_pulse, [ro_target_delay, ro_control_delay]
 
 
@@ -268,7 +272,7 @@ def _acquisition(
                 )
                 sweeper = Sweeper(
                     parameter=Parameter.relative_phase,
-                    range=(params.theta_start, params.theta_end, params.theta_step),
+                    range=(-params.theta_start, -params.theta_end, -params.theta_step),
                     pulses=[theta_pulse],
                 )
                 results = platform.execute(
@@ -297,12 +301,20 @@ def _acquisition(
                         control=result_control,
                     ),
                 )
+                import matplotlib.pyplot as plt
+
+                fig, _ = plt.subplots()
+                plt.plot(
+                    np.arange(params.theta_start, params.theta_end, params.theta_step),
+                    result_target,
+                )
+                plt.savefig(f"vz_{target_q}_{setup}")
     return data
 
 
 def sinusoid(x, amplitude, offset, phase):
     """Sinusoidal fit function."""
-    return np.sin(x + phase) * amplitude + offset
+    return np.cos(x + phase) * amplitude + offset
 
 
 def phase_diff(phase_1, phase_2):
@@ -369,7 +381,7 @@ def _fit(
                     fitted_parameters[target_q, control_q, "X"][2],
                     fitted_parameters[target_q, control_q, "I"][2],
                 )
-                virtual_phase[pair][target_q] = -fitted_parameters[
+                virtual_phase[pair][target_q] = fitted_parameters[
                     target_q, control_q, "I"
                 ][2]
 
