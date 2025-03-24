@@ -445,7 +445,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     fig.add_trace(
         go.Scatter(
             x=duration,
-            y=1 - 2 * data[(target, "MX")].prob_1,
+            y=2 * data[(target, "MX")].prob_1 - 1,
             name="X",
             legendgroup="1",
         ),

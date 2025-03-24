@@ -1,27 +1,25 @@
 {
-    "title": "cryoscope_2025-02-28_10-24-14",
+    "title": "test_B2_cryo",
     "backend": "qibolab",
     "platform": "qw11q",
-    "start_time": "2025-02-28 10:24:27.500722+00:00",
-    "end_time": "2025-02-28 10:26:15.700463+00:00",
+    "start_time": "2025-03-24 14:56:12.944104+00:00",
+    "end_time": "2025-03-24 14:57:39.907459+00:00",
     "stats": {
         "cryoscope-0": {
-            "acquisition": 99.64514652197249,
-            "fit": 8.533042560040485
+            "acquisition": 0,
+            "fit": 11.245705418288708
         }
     },
     "author": null,
     "tag": null,
-    "targets": [
-        "B4"
-    ],
+    "targets": ["B2"],
     "versions": {
-        "qibo": "0.2.15",
+        "qibo": "0.2.16",
         "numpy": "1.26.4",
-        "qibolab": "0.2.3",
-        "qibocal": "0.1.2"
+        "qibolab": "0.2.5",
+        "qibocal": "0.2.1"
     },
-    "date": "2025-02-28",
-    "start-time": "10:24:27",
-    "end-time": "10:26:15"
+    "date": "2025-03-24",
+    "start-time": "14:56:12",
+    "end-time": "14:57:39"
 }

@@ -273,6 +273,7 @@ def _fit(data: FluxAmplitudeFrequencyData) -> FluxAmplitudeFrequencyResults:
         f = data.qubit_frequency[qubit]
         det = phase / data.flux_pulse_duration / 2 / np.pi + other_det
         det[np.abs(det) < 1e-3] = 0
+        # from inversion of flux dependence formula assuming negligible Ec and asymmetry
         derived_flux = 1 / np.pi * np.arccos(((f + det) / f) ** 2)
         flux[qubit] = derived_flux.tolist()
         fitted_parameters_detuning[qubit] = np.polyfit(amplitudes, det, 2).tolist()
@@ -325,7 +326,7 @@ def _plot(
             go.Scatter(
                 x=amplitude,
                 y=np.polyval(fit.fitted_parameters_detuning[target], amplitude),
-                name="fit",
+                name="Fit Detuning",
             ),
             row=1,
             col=1,
@@ -334,7 +335,7 @@ def _plot(
             go.Scatter(
                 x=amplitude,
                 y=np.polyval(fit.fitted_parameters_flux[target], amplitude),
-                name="fit",
+                name="Fit Flux",
             ),
             row=1,
             col=2,
