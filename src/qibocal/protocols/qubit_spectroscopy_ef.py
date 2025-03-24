@@ -16,7 +16,7 @@ from .qubit_spectroscopy import (
     _fit,
 )
 from .resonator_spectroscopy import ResSpecType
-from .utils import spectroscopy_plot, table_dict, table_html
+from .utils import readout_frequency, spectroscopy_plot, table_dict, table_html
 
 
 @dataclass
@@ -84,9 +84,9 @@ def _acquisition(
         qd12_channel, qd12_pulse = natives.RX12()[0]
         ro_channel, ro_pulse = natives.MZ()[0]
 
-        qd_pulse = replace(qd_pulse, duration=params.drive_duration)
+        qd12_pulse = replace(qd12_pulse, duration=params.drive_duration)
         if params.drive_amplitude is not None:
-            qd_pulse = replace(qd_pulse, amplitude=params.drive_amplitude)
+            qd12_pulse = replace(qd12_pulse, amplitude=params.drive_amplitude)
 
         amplitudes[qubit] = qd12_pulse.amplitude
         ro_pulses[qubit] = ro_pulse
@@ -99,12 +99,14 @@ def _acquisition(
         )
         sequence.append((ro_channel, ro_pulse))
 
-        drive_frequencies[qubit] = platform.config(qd_channel).frequency
+        drive_frequencies[qubit] = platform.calibration.single_qubits[
+            qubit
+        ].qubit.frequency_01
         sweepers.append(
             Sweeper(
                 parameter=Parameter.frequency,
                 values=platform.config(qd12_channel).frequency + delta_frequency_range,
-                channels=[qd_channel],
+                channels=[qd12_channel],
             )
         )
 
@@ -117,6 +119,14 @@ def _acquisition(
     results = platform.execute(
         [sequence],
         [sweepers],
+        updates=[
+            {
+                platform.qubits[q].probe: {
+                    "frequency": readout_frequency(q, platform, state=1)
+                }
+            }
+            for q in targets
+        ],
         **params.execution_parameters,
     )
 

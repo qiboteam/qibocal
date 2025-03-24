@@ -38,6 +38,8 @@ class Resonator(Model):
     """Dressed resonator frequency [Hz]."""
     depletion_time: Optional[int] = None
     """Depletion time [ns]."""
+    bare_frequency_amplitude: Optional[float] = None
+    """Readout amplitude at high frequency."""
 
     @property
     def dispersive_shift(self):
@@ -61,8 +63,8 @@ class Qubit(Model):
     """Junctions asymmetry."""
     sweetspot: Optional[float] = None
     """Qubit sweetspot [V]."""
-    detuning_flux_params: Optional[list] = None
-    """Mapping from flux amplitude to detuning."""
+    flux_coefficients: Optional[list[float]] = None
+    """Amplitude - frequency dispersion relation coefficients """
 
     @property
     def anharmonicity(self):
@@ -91,9 +93,9 @@ class Qubit(Model):
         )
 
     def detuning(self, amplitude):
-        if self.detuning_flux_params is None:
+        if self.flux_coefficients is None:
             return 0
-        return np.polyval(self.detuning_flux_params, amplitude)
+        return np.polyval(self.flux_coefficients, amplitude)
 
 
 class Readout(Model):
@@ -183,10 +185,10 @@ class Calibration(Model):
         if self.flux_crosstalk_matrix is None:
             self.flux_crosstalk_matrix = np.zeros((self.nqubits, self.nqubits))
         a, b = self.qubit_index(qubit1), self.qubit_index(qubit2)
-        return self.flux_crosstalk_matrix[a, b]  # pylint: disable=E1136
+        return self.flux_crosstalk_matrix[a, b]
 
     def set_crosstalk_element(self, qubit1: QubitId, qubit2: QubitId, value: float):
         if self.flux_crosstalk_matrix is None:
             self.flux_crosstalk_matrix = np.zeros((self.nqubits, self.nqubits))
         a, b = self.qubit_index(qubit1), self.qubit_index(qubit2)
-        self.flux_crosstalk_matrix[a, b] = value  # pylint: disable=E1137
+        self.flux_crosstalk_matrix[a, b] = value

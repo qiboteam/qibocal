@@ -69,9 +69,8 @@ class FluxAmplitudeFrequencyResults(Results):
         default_factory=dict
     )
 
-    # TODO: to be fixed
-    def __contains__(self, key):
-        return True
+    def __contains__(self, target: QubitId):
+        return target in self.detuning
 
 
 FluxAmplitudeFrequencyType = np.dtype([("amplitude", float), ("prob_1", np.float64)])
@@ -124,7 +123,7 @@ def ramsey_flux(
         sequence.extend(
             [
                 (drive_channel, ry90),
-                (flux_channel, Delay(duration=rx90.duration)),
+                (flux_channel, Delay(duration=ry90.duration)),
                 (flux_channel, flux_pulse),
                 (drive_channel, Delay(duration=flux_pulse.duration)),
                 (drive_channel, rx90),
@@ -172,7 +171,6 @@ def _acquisition(
     platform: Platform,
     targets: list[QubitId],
 ) -> FluxAmplitudeFrequencyData:
-
     detuning = {}
     for qubit in targets:
         if params.crosstalk_qubit is None and params.amplitude_min == 0:
@@ -257,7 +255,6 @@ def _acquisition(
 
 
 def _fit(data: FluxAmplitudeFrequencyData) -> FluxAmplitudeFrequencyResults:
-
     fitted_parameters_detuning = {}
     fitted_parameters_flux = {}
     crosstalk = data.crosstalk_qubit
@@ -389,9 +386,9 @@ def _update(
     target: QubitId,
 ):
     if results.crosstalk is None:
-        platform.calibration.single_qubits[target].qubit.detuning_flux_params = (
-            results.fitted_parameters_detuning[target]
-        )
+        platform.calibration.single_qubits[
+            target
+        ].qubit.flux_coefficients = results.fitted_parameters_detuning[target]
 
     # TODO: needs to be inverted
     flux_qubit = results.crosstalk if results.crosstalk is not None else target

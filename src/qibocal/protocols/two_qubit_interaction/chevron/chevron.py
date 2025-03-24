@@ -19,6 +19,8 @@ from .... import update
 from ..utils import fit_flux_amplitude, order_pair
 from .utils import COLORAXIS, chevron_fit, chevron_sequence
 
+__all__ = ["chevron"]
+
 
 @dataclass
 class ChevronParameters(Parameters):
@@ -132,7 +134,7 @@ def _aquisition(
     for pair in targets:
         # order the qubits so that the low frequency one is the first
         ordered_pair = order_pair(pair, platform)
-        sequence, flux_pulse, ro_delays = chevron_sequence(
+        sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
             platform=platform,
             ordered_pair=ordered_pair,
             duration_max=params.duration_max,
@@ -148,7 +150,7 @@ def _aquisition(
         sweeper_duration = Sweeper(
             parameter=Parameter.duration,
             range=(params.duration_min, params.duration_max, params.duration_step),
-            pulses=[flux_pulse] + ro_delays,
+            pulses=[flux_pulse] + delays + parking_pulses,
         )
 
         ro_high = list(sequence.channel(platform.qubits[ordered_pair[1]].acquisition))[
@@ -217,8 +219,6 @@ def _fit(data: ChevronData) -> ChevronResults:
 
 def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     """Plot the experiment result for a single pair."""
-    if isinstance(target, list):
-        target = tuple(target)
     # reverse qubit order if not found in data
     if target not in data.data:
         target = (target[1], target[0])
@@ -309,10 +309,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
 def _update(
     results: ChevronResults, platform: CalibrationPlatform, target: QubitPairId
 ):
-    if isinstance(target, list):
-        target = tuple(target)
-    if target not in results.duration:
-        target = (target[1], target[0])
+    target = target[::-1] if target not in results.duration else target
 
     getattr(update, f"{results.native}_duration")(
         results.duration[target], platform, target

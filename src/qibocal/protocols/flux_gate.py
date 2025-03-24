@@ -67,7 +67,6 @@ def _acquisition(
     platform: Platform,
     targets: list[QubitId],
 ) -> FluxGateData:
-
     data = FluxGateData(
         flux_pulse_amplitude=params.flux_pulse_amplitude,
     )
@@ -139,7 +138,6 @@ def _acquisition(
 
 
 def _fit(data: FluxGateData) -> FluxGateResults:
-
     fitted_parameters = {}
     detuning = {}
     for qubit in data.qubits:

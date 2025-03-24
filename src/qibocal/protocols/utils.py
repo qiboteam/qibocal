@@ -1,17 +1,19 @@
 from colorsys import hls_to_rgb
 from enum import Enum
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
+from qibolab._core.components import Config
 from scipy import constants
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal.auto.operation import Data, QubitId, Results
+from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.fitting.classifier import run
 from qibocal.protocols.resonator_utils import (
@@ -47,14 +49,16 @@ DELAY_FIT_PERCENTAGE = 10
 STRING_TYPE = "<U100"
 
 
-def int_to_binary(number: int, length: int) -> str:
-    """Conversion from int to binary for fixed number of bits."""
-    return format(number, f"0{length}b")
+class DcFilteredConfig(Config):
+    """Dummy config for dc with filters.
 
+    Required by cryoscope protocol.
 
-def computational_basis(length: int) -> list[str]:
-    """Return computational basis at fixed length."""
-    return [int_to_binary(i, length) for i in range(2**length)]
+    """
+
+    kind: Literal["dc-filter"] = "dc-filter"
+    offset: float
+    filter: list
 
 
 def effective_qubit_temperature(
@@ -101,7 +105,6 @@ def calculate_frequencies(results, ro_pulses):
     """
     shots = np.stack([results[ro_pulses[qubit].id] for qubit in ro_pulses]).T
     values, counts = np.unique(shots, axis=0, return_counts=True)
-
     return {"".join(str(int(i)) for i in v): cnt for v, cnt in zip(values, counts)}
 
 
@@ -117,6 +120,35 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
     return (amplitude / np.pi) * (
         sigma / ((frequency - center) ** 2 + sigma**2)
     ) + offset
+
+
+def readout_frequency(
+    target: QubitId,
+    platform: CalibrationPlatform,
+    power_level: PowerLevel = PowerLevel.low,
+    state=0,
+) -> float:
+    """Returns readout frequency depending on power level."""
+    platform_frequency = platform.config(platform.qubits[target].probe).frequency
+    bare_frequency = platform.calibration.single_qubits[target].resonator.bare_frequency
+    dressed_frequency = platform.calibration.single_qubits[
+        target
+    ].resonator.dressed_frequency
+    if state == 1:
+        try:
+            state_frequency = platform.calibration.single_qubits[
+                target
+            ].readout.qudits_frequency[state]
+            if state_frequency is not None:
+                return state_frequency
+        except KeyError:
+            pass
+    if power_level is PowerLevel.high:
+        if bare_frequency is not None:
+            return bare_frequency
+    if dressed_frequency is not None:
+        return dressed_frequency
+    return platform_frequency
 
 
 def lorentzian_fit(data, resonator_type=None, fit=None):
@@ -874,12 +906,12 @@ def round_report(
                 f"{round(value * 10 ** (-1 * magnitude), ndigits)}e{magnitude}"
             )
             rounded_errors.append(
-                f"{np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')}e{magnitude}"
+                f"{np.format_float_positional(round(error * 10 ** (-1 * magnitude), ndigits), trim='-')}e{magnitude}"
             )
         else:
             rounded_values.append(f"{round(value * 10 ** (-1 * magnitude), ndigits)}")
             rounded_errors.append(
-                f"{np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')}"
+                f"{np.format_float_positional(round(error * 10 ** (-1 * magnitude), ndigits), trim='-')}"
             )
 
     return rounded_values, rounded_errors
@@ -919,7 +951,6 @@ def chi2_reduced_complex(
     errors: tuple[NDArray, NDArray],
     dof: Optional[float] = None,
 ):
-
     observed_complex = np.abs(observed[0] * np.exp(1j * observed[1]))
 
     observed_real = np.real(observed_complex)
@@ -1102,7 +1133,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             )
 
         fig.update_xaxes(
-            title_text=f"i [a.u.]",
+            title_text="i [a.u.]",
             range=[min_x, max_x],
             row=1,
             col=i + 1,
@@ -1146,7 +1177,6 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
                 "testing time [s]",
                 "training time [s]",
             ),
-            # pylint: disable=E1101
         )
         for i, model in enumerate(models_name):
             for plot in range(3):

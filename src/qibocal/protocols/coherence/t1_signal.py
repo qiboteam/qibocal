@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -18,7 +18,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
 from ... import update
-from ..utils import table_dict, table_html
+from ..utils import readout_frequency, table_dict, table_html
 from . import utils
 
 
@@ -62,9 +62,7 @@ class T1SignalData(Data):
         return self
 
 
-def t1_sequence(
-    platform: CalibrationPlatform, targets: list[QubitId], delay: Optional[int] = None
-):
+def t1_sequence(platform: CalibrationPlatform, targets: list[QubitId]):
     """Create sequence for T1 experiment with a given optional delay."""
     sequence = PulseSequence()
     ro_pulses, delays = {}, {}
@@ -77,10 +75,7 @@ def t1_sequence(
         delays[q] = Delay(duration=0)
 
         sequence.append((qd_channel, qd_pulse))
-        if delay is not None:
-            sequence.append((ro_channel, Delay(duration=qd_pulse.duration + delay)))
-        else:
-            sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
+        sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
         sequence.append((ro_channel, delays[q]))
         sequence.append((ro_channel, ro_pulse))
 
@@ -111,6 +106,10 @@ def _acquisition(
     results = platform.execute(
         [sequence],
         [[sweeper]],
+        updates=[
+            {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
+            for q in targets
+        ],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,

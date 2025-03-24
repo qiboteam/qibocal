@@ -4,14 +4,12 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, PulseSequence
+from scipy.signal import butter, filtfilt
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
-
-SAMPLES_FACTOR = 16
 
 
 @dataclass
@@ -32,6 +30,16 @@ CalibrateStateDiscriminationResType = np.dtype(
     ]
 )
 """Custom dtype for CalibrateStateDiscrimination."""
+
+
+def _get_lo_frequency(platform: CalibrationPlatform, qubit: QubitId) -> float:
+    """Get LO frequency given QubitId.
+
+    Currently it assumes that instruments with LOs is first one.
+    """
+    probe = platform.channels[platform.qubits[qubit].probe]
+    lo_config = platform.config(probe.lo)
+    return lo_config.frequency
 
 
 @dataclass
@@ -59,6 +67,8 @@ class CalibrateStateDiscriminationData(Data):
 
     resonator_type: str
     """Resonator type."""
+    intermediate_frequency: dict[QubitId, float] = field(default_factory=dict)
+    """Intermediate RO frequency for each qubit."""
     data: dict[tuple[QubitId, int], npt.NDArray[CalibrateStateDiscriminationType]] = (
         field(default_factory=dict)
     )
@@ -114,8 +124,15 @@ def _acquisition(
         for sequence in sequences:
             results.update(platform.execute([sequence], **options))
 
-    data = CalibrateStateDiscriminationData(resonator_type=platform.resonator_type)
-
+    intermediate_frequency = {
+        qubit: platform.config(platform.qubits[qubit].probe).frequency
+        - _get_lo_frequency(platform, qubit)
+        for qubit in targets
+    }
+    data = CalibrateStateDiscriminationData(
+        resonator_type=platform.resonator_type,
+        intermediate_frequency=intermediate_frequency,
+    )
     for state, ro_pulses in zip([0, 1], all_ro_pulses):
         for qubit in targets:
             serial = ro_pulses[qubit]
@@ -132,36 +149,48 @@ def _acquisition(
 
 
 def _fit(data: CalibrateStateDiscriminationData) -> CalibrateStateDiscriminationResults:
-    """Post-Processing for Calibrate State Discrimination"""
+    """Post-Processing for Calibrate State Discrimination.
+
+    The raw traces for 0 and 1 are demodulated with the IF stored during acquisition.
+    Moreover, fast oscillating terms (:math:`\\exp(-2\\pi \\omega_{\text{IF} t)`) are removed by applying a lowpass filter.
+    Finally, the optimal kernel is calculated as the difference between the two traces.
+    """
     qubits = data.qubits
 
     kernel_state_zero = {}
+
+    def lowpass_filter(signal, cutoff, fs=1e9, order=5):
+        """Basic lowpass filter."""
+        norm_cutoff = cutoff / fs
+        b, a = butter(order, norm_cutoff)
+        return filtfilt(b, a, signal)
+
     for qubit in qubits:
         traces = []
+        freq = data.intermediate_frequency[qubit]
+
         for i in range(2):
-            # This is due to a device limitation on the number of samples
-            # We want the number of samples to be a factor of 16
-            trace = (
-                data[qubit, i]["i"][
-                    : (len(data[qubit, i]["i"]) // SAMPLES_FACTOR) * SAMPLES_FACTOR
-                ]
-                + 1j
-                * data[qubit, i]["q"][
-                    : (len(data[qubit, i]["i"]) // SAMPLES_FACTOR) * SAMPLES_FACTOR
+            trace = data[qubit, i].i + 1.0j * data[qubit, i].q
+            t = np.arange(0, len(trace), 1)
+
+            # demodulation (we assume that RAW doesn't demodulate)
+            trace = np.array(
+                [
+                    np.exp(-2 * np.pi * t[i] * 1.0j * freq * 1e-9) * trace[i]
+                    for i in range(len(t))
                 ]
             )
+            # apply lowpass filter to remove fast rotating terms
+            trace = lowpass_filter(trace, 2 * np.abs(freq))
             traces.append(trace)
-        """
-        This is a simplified version from laboneq.analysis.calculate_integration_kernels
-        for our use case where we only want to discirminate between state 0 and 1
-        """
+
         # Calculate the optimal kernel
         kernel = np.conj(traces[0] - traces[1])
 
         # Normalize the kernel
-        max_abs_weight = max(np.abs(kernel))
-        kernel *= 1 / max_abs_weight
-
+        norm = np.sqrt(np.sum(np.abs(kernel) ** 2))
+        max_abs_weight = np.max(np.abs(kernel / norm))
+        kernel /= norm * max_abs_weight
         kernel_state_zero[qubit] = kernel
 
     return CalibrateStateDiscriminationResults(data=kernel_state_zero)
@@ -176,60 +205,36 @@ def _plot(
     # Plot kernels
     figures = []
     fitting_report = ""
+    trace0 = data[target, 0].i + 1.0j * data[target, 0].q
+    t = np.arange(0, len(trace0), 1)
 
     if fit is not None:
-        fig = make_subplots(
-            rows=1,
-            cols=1,
-            horizontal_spacing=0.1,
-            vertical_spacing=0.1,
-            subplot_titles=("Kernel state 0",),
+        fig = go.Figure()
+        fig.add_trace(
+            go.Scatter(
+                x=t,
+                y=fit.data[target].real,
+                opacity=1,
+                name="Real",
+                showlegend=True,
+            )
         )
 
         fig.add_trace(
             go.Scatter(
-                x=data[target, 0].i,
-                y=data[target, 0].q,
+                x=t,
+                y=fit.data[target].imag,
                 opacity=1,
-                name="State 0",
+                name="Imag",
                 showlegend=True,
-                legendgroup="State 0",
-            ),
-            row=1,
-            col=1,
+            )
         )
-
-        fig.add_trace(
-            go.Scatter(
-                x=data[target, 1].i,
-                y=data[target, 1].q,
-                opacity=1,
-                name="State 1",
-                showlegend=True,
-                legendgroup="State 1",
-            ),
-            row=1,
-            col=1,
-        )
-
-        # TODO: check which plot we prefer
-        # fig.add_trace(
-        #     go.Scatter(
-        #         x=np.arange(len(fit.data[target])),
-        #         y=np.abs(fit.data[target]),
-        #         opacity=1,
-        #         name="kernel state 0",
-        #         showlegend=True,
-        #         legendgroup="kernel state 0",
-        #     ),
-        #     row=1,
-        #     col=1,
-        # )
 
         fig.update_layout(
             showlegend=True,
-            xaxis_title="I",
-            yaxis_title="Q",
+            title="Optimal integration kernel",
+            xaxis_title="Readout sample",
+            yaxis_title="Normalized weight",
         )
 
         figures.append(fig)

@@ -40,6 +40,15 @@ ROC_WIDTH = 800
 DEFAULT_CLASSIFIER = "qubit_fit"
 
 
+def evaluate_snr(zeros: npt.NDArray, ones: npt.NDArray) -> float:
+    """Compute snr for zeros and ones"""
+    line = np.mean(ones, axis=0) - np.mean(zeros, axis=0)
+    projection_zeros, projection_ones = np.dot(zeros, line), np.dot(ones, line)
+    mu0, std0 = np.mean(projection_zeros), np.std(projection_zeros)
+    mu1, std1 = np.mean(projection_ones), np.std(projection_ones)
+    return np.abs(mu1 - mu0) ** 2 / 2 / std0 / std1
+
+
 @dataclass
 class SingleShotClassificationParameters(Parameters):
     """SingleShotClassification runcard inputs."""
@@ -79,6 +88,16 @@ class SingleShotClassificationData(Data):
     )
     """List of models to classify the qubit states."""
 
+    def state_zero(self, qubit: QubitId) -> npt.NDArray:
+        """Get state zero data."""
+        state_zero = self.data[qubit][self.data[qubit].state == 0]
+        return np.column_stack([state_zero.i, state_zero.q])
+
+    def state_one(self, qubit: QubitId) -> npt.NDArray:
+        """Get state one data."""
+        state_one = self.data[qubit][self.data[qubit].state == 1]
+        return np.column_stack([state_one.i, state_one.q])
+
 
 @dataclass
 class SingleShotClassificationResults(Results):
@@ -116,6 +135,8 @@ class SingleShotClassificationResults(Results):
     """Test set."""
     y_tests: dict[QubitId, list] = field(default_factory=dict)
     """Test set."""
+    snr: dict[QubitId, float] = field(default_factory=dict)
+    """SNR for two clouds"""
 
     def __contains__(self, key: QubitId):
         """Checking if key is in Results.
@@ -250,6 +271,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     y_tests = {}
     x_tests = {}
     hpars = {}
+    snr = {}
     threshold = {}
     rotation_angle = {}
     mean_gnd_states = {}
@@ -291,6 +313,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
                 mean_gnd_states[qubit] = models[i].iq_mean0.tolist()
                 mean_exc_states[qubit] = models[i].iq_mean1.tolist()
                 fidelity[qubit] = models[i].fidelity
+                snr[qubit] = evaluate_snr(data.state_zero(qubit), data.state_one(qubit))
                 assignment_fidelity[qubit] = models[i].assignment_fidelity
                 predictions_state0 = models[i].predict(iq_state0.tolist())
                 effective_temperature[qubit] = models[i].effective_temperature(
@@ -315,6 +338,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         savedir=data.savedir,
         y_preds=y_test_predict,
         grid_preds=grid_preds_dict,
+        snr=snr,
     )
 
 
@@ -357,7 +381,7 @@ def _plot(
                 legend=dict(font=dict(size=LEGEND_FONT_SIZE)),
             )
             fig_roc.update_xaxes(
-                title_text=f"False Positive Rate",
+                title_text="False Positive Rate",
                 range=[0, 1],
             )
             fig_roc.update_yaxes(
@@ -377,6 +401,7 @@ def _plot(
                         "Threshold",
                         "Readout Fidelity",
                         "Assignment Fidelity",
+                        "SNR",
                         "Effective Qubit Temperature [K]",
                     ],
                     [
@@ -386,6 +411,7 @@ def _plot(
                         np.round(fit.threshold[target], 6),
                         np.round(fit.fidelity[target], 3),
                         np.round(fit.assignment_fidelity[target], 3),
+                        np.round(fit.snr[target], 1),
                         format_error_single_cell(
                             round_report([fit.effective_temperature[target]])
                         ),
@@ -406,9 +432,9 @@ def _update(
     update.mean_gnd_states(results.mean_gnd_states[target], platform, target)
     update.mean_exc_states(results.mean_exc_states[target], platform, target)
     update.readout_fidelity(results.fidelity[target], platform, target)
-    platform.calibration.single_qubits[target].readout.effective_temperature = (
-        results.effective_temperature[target][0]
-    )
+    platform.calibration.single_qubits[
+        target
+    ].readout.effective_temperature = results.effective_temperature[target][0]
 
 
 single_shot_classification = Routine(_acquisition, _fit, _plot, _update)

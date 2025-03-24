@@ -20,7 +20,14 @@ from qibocal.config import log
 
 from ...result import magnitude, phase
 from ...update import replace
-from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, extract_feature, table_dict, table_html
+from ..utils import (
+    GHZ_TO_HZ,
+    HZ_TO_GHZ,
+    extract_feature,
+    readout_frequency,
+    table_dict,
+    table_html,
+)
 from . import utils
 from .qubit_flux_dependence import (
     QubitFluxData,
@@ -97,9 +104,9 @@ def _acquisition(
 ) -> QubitCrosstalkData:
     """Data acquisition for Crosstalk Experiment."""
 
-    assert set(targets).isdisjoint(
-        set(params.flux_qubits)
-    ), "Flux qubits must be different from targets."
+    assert set(targets).isdisjoint(set(params.flux_qubits)), (
+        "Flux qubits must be different from targets."
+    )
 
     sequence = PulseSequence()
     ro_pulses = {}
@@ -191,6 +198,11 @@ def _acquisition(
             channel = platform.qubits[qubit].flux
             updates.append({channel: {"offset": params.bias_point[qubit]}})
 
+    updates += [
+        {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
+        for q in targets
+    ]
+
     for flux_qubit, offset_sweeper in zip(params.flux_qubits, offset_sweepers):
         results = platform.execute(
             [sequence], [[offset_sweeper], freq_sweepers], **options, updates=updates
@@ -211,14 +223,9 @@ def _acquisition(
 
 
 def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
-
     crosstalk_matrix = {qubit: {} for qubit in data.qubit_frequency}
     fitted_parameters = {}
-
-    matrix_element = {}
-    qubit_frequency = {}
     qubit_frequency_bias_point = {}
-    offset = {}
 
     for target_flux_qubit, qubit_data in data.data.items():
         frequencies, biases = extract_feature(
@@ -275,7 +282,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
             crosstalk_matrix[target_qubit][flux_qubit] = (
                 popt[0] * data.matrix_element[target_qubit]
             )
-        except RuntimeError as e:
+        except RuntimeError as e:  # pragma: no cover
             log.error(
                 f"Off-diagonal flux fit failed for qubit {flux_qubit} due to {e}."
             )
@@ -303,7 +310,7 @@ def _plot(data: QubitCrosstalkData, fit: QubitCrosstalkResults, target: QubitId)
             if flux_qubit != target:
                 labels.append(f"Crosstalk with qubit {flux_qubit} [V^-1]")
             else:
-                labels.append(f"Flux dependence [V^-1]")
+                labels.append("Flux dependence [V^-1]")
             values.append(np.round(fit.crosstalk_matrix[target][flux_qubit], 4))
         fitting_report = table_html(
             table_dict(

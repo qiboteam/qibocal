@@ -1,6 +1,5 @@
 """Specify runcard layout, handles (de)serialization."""
 
-import os
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Optional, Union
@@ -33,7 +32,7 @@ class Runcard:
     """
     backend: str = "qibolab"
     """Qibo backend."""
-    platform: str = os.environ.get("QIBO_PLATFORM", "dummy")
+    platform: str = "mock"
     """Qibolab platform."""
     update: bool = True
 

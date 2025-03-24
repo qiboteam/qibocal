@@ -42,7 +42,7 @@ def show_logs(func):
         if end - start < 1:
             message = " in less than 1 second."
         else:
-            message = f" in {end-start:.2f} seconds"
+            message = f" in {end - start:.2f} seconds"
         log.info(f"Finished {func.__name__[1:]}" + message)
         return out, end - start
 
@@ -128,8 +128,6 @@ class AbstractData:
 
     def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
         """Access data attribute member."""
-        if isinstance(qubit, list):
-            qubit = tuple(qubit)
         return self.data[qubit]
 
     @property
@@ -253,8 +251,6 @@ class Results(AbstractData):
         If key is not present means that fitting failed or was not
         performed.
         """
-        if isinstance(key, list):
-            key = tuple(key)
         return all(
             key in getattr(self, field.name)
             for field in fields(self)

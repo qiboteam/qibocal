@@ -10,6 +10,7 @@ from qibocal.auto.operation import QubitPairId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude
 
+from ...utils import readout_frequency
 from ..utils import order_pair
 from .chevron import (
     ChevronData,
@@ -20,6 +21,8 @@ from .chevron import (
     _update,
 )
 from .utils import chevron_sequence
+
+__all__ = ["chevron_signal"]
 
 
 @dataclass
@@ -93,7 +96,7 @@ def _aquisition(
     for pair in targets:
         # order the qubits so that the low frequency one is the first
         ordered_pair = order_pair(pair, platform)
-        sequence, flux_pulse, ro_delays = chevron_sequence(
+        sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
             platform=platform,
             ordered_pair=ordered_pair,
             duration_max=params.duration_max,
@@ -110,7 +113,7 @@ def _aquisition(
         sweeper_duration = Sweeper(
             parameter=Parameter.duration,
             range=(params.duration_min, params.duration_max, params.duration_step),
-            pulses=[flux_pulse] + ro_delays,
+            pulses=[flux_pulse] + delays + parking_pulses,
         )
 
         ro_high = list(sequence.channel(platform.qubits[ordered_pair[1]].acquisition))[
@@ -125,6 +128,14 @@ def _aquisition(
         results = platform.execute(
             [sequence],
             [[sweeper_duration], [sweeper_amplitude]],
+            updates=[
+                {
+                    platform.qubits[q].probe: {
+                        "frequency": readout_frequency(q, platform)
+                    }
+                }
+                for q in pair
+            ],
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,

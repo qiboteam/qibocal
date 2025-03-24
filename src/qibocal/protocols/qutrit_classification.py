@@ -10,10 +10,9 @@ from qibocal.protocols.classification import (
     SingleShotClassificationData,
     SingleShotClassificationParameters,
 )
-from qibocal.protocols.utils import plot_results
+from qibocal.protocols.utils import plot_results, readout_frequency
 
 from ..auto.operation import Results
-from ..config import log
 
 COLUMNWIDTH = 600
 LEGEND_FONT_SIZE = 20
@@ -67,22 +66,6 @@ def _acquisition(
     sequences, all_ro_pulses = [], []
     native = platform.natives.single_qubit
 
-    updates = []
-    for qubit in targets:
-        channel = platform.qubits[qubit].probe
-        try:
-            updates.append(
-                {
-                    channel: {
-                        "frequency": platform.calibration.single_qubits[
-                            qubit
-                        ].readout.qudits_frequency[1]
-                    }
-                }
-            )
-        except KeyError:
-            log.warning(f"No readout frequency for state 1 for qubit {qubit}.")
-
     for state in states:
         ro_pulses = {}
         sequence = PulseSequence()
@@ -117,24 +100,14 @@ def _acquisition(
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
     )
-
-    updates = []
-    for qubit in targets:
-        channel = platform.qubits[qubit].probe
-        try:
-            # we readout at the readout frequency of |1> for better discrimination
-            updates.append(
-                {
-                    channel: {
-                        "frequency": platform.calibration.single_qubits[
-                            qubit
-                        ].readout.qudits_frequency[1]
-                    }
-                }
-            )
-        except KeyError:
-            log.warning(f"No readout frequency for state 1 for qubit {qubit}.")
-
+    updates = [
+        {
+            platform.qubits[q].probe: {
+                "frequency": readout_frequency(q, platform, state=1)
+            }
+        }
+        for q in targets
+    ]
     if params.unrolling:
         results = platform.execute(sequences, **options, updates=updates)
     else:
@@ -168,7 +141,7 @@ def _plot(
     target: QubitId,
     fit: QutritClassificationResults,
 ):
-    figures = plot_results(data, target, 3, fit)
+    figures = plot_results(data, target, 3, None)
     fitting_report = ""
     return figures, fitting_report
 

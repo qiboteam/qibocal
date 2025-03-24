@@ -7,8 +7,7 @@ from typing import Callable, Iterable, Optional, Tuple, Union
 import numpy as np
 import numpy.typing as npt
 from qibo import gates
-from qibo.backends import get_backend
-from qibo.config import raise_error
+from qibo.backends import construct_backend
 from qibo.models import Circuit
 
 from qibocal.auto.operation import Data, Parameters, QubitId, QubitPairId, Results
@@ -18,8 +17,6 @@ from qibocal.auto.transpile import (
     execute_transpiled_circuits,
 )
 from qibocal.calibration import CalibrationPlatform
-from qibocal.config import raise_error
-from qibocal.protocols.randomized_benchmarking import noisemodels
 from qibocal.protocols.randomized_benchmarking.dict_utils import (
     SINGLE_QUBIT_CLIFFORDS_NAMES,
     calculate_pulses_clifford,
@@ -117,7 +114,6 @@ def random_circuits(
     targets: list[Union[QubitId, QubitPairId]],
     niter,
     rb_gen,
-    noise_model=None,
     inverse_layer=True,
     single_qubit=True,
     file_inv=pathlib.Path(),
@@ -133,8 +129,6 @@ def random_circuits(
             if inverse_layer:
                 add_inverse_layer(circuit, rb_gen, single_qubit, file_inv)
             add_measurement_layer(circuit)
-            if noise_model is not None:
-                circuit = noise_model.apply(circuit)
             circuits.append(circuit)
             indexes[target].append(random_index)
 
@@ -168,7 +162,7 @@ def number_to_str(
     if isinstance(uncertainty, Number):
         if precision is None:
             precision = (significant_digit(uncertainty) + 1) or 3
-        return f"{value:.{precision}f} \u00B1 {uncertainty:.{precision}f}"
+        return f"{value:.{precision}f} \u00b1 {uncertainty:.{precision}f}"
 
     # If any uncertainty is None, return the value with precision
     if any(u is None for u in uncertainty):
@@ -180,7 +174,7 @@ def number_to_str(
 
     # Check if both uncertainties are equal up to precision
     if np.round(uncertainty[0], precision) == np.round(uncertainty[1], precision):
-        return f"{value:.{precision}f} \u00B1 {uncertainty[0]:.{precision}f}"
+        return f"{value:.{precision}f} \u00b1 {uncertainty[0]:.{precision}f}"
 
     return f"{value:.{precision}f} +{uncertainty[1]:.{precision}f} / -{uncertainty[0]:.{precision}f}"
 
@@ -340,7 +334,7 @@ def setup(
     interleave: Optional[str] = None,
 ):
     """
-    Set up the randomized benchmarking experiment backend, noise model and data class.
+    Set up the randomized benchmarking experiment backend and data class.
 
     Args:
         params (Parameters): The parameters for the experiment.
@@ -348,22 +342,9 @@ def setup(
         interleave: (str, optional): The type of interleaving to apply. Defaults to None.
 
     Returns:
-        tuple: A tuple containing the experiment data, noise model, and backend.
+        tuple: A tuple containing the experiment data and backend.
     """
-
-    backend = get_backend()
-    backend.platform = platform
-    # For simulations, a noise model can be added.
-    noise_model = None
-    if params.noise_model is not None:
-        if backend.name == "qibolab":
-            raise_error(
-                ValueError,
-                "Backend qibolab (%s) does not perform noise models simulation. ",
-            )
-
-        noise_model = getattr(noisemodels, params.noise_model)(params.noise_params)
-        params.noise_params = noise_model.params.tolist()
+    backend = construct_backend(backend="qibolab", platform=platform)
     # Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     if single_qubit:
         cls = RBData
@@ -379,12 +360,10 @@ def setup(
         niter=params.niter,
     )
 
-    return data, noise_model, backend
+    return data, backend
 
 
-def get_circuits(
-    params, targets, add_inverse_layer, interleave, noise_model, single_qubit=True
-):
+def get_circuits(params, targets, add_inverse_layer, interleave, single_qubit=True):
     """
     Generate randomized benchmarking circuits.
 
@@ -393,7 +372,6 @@ def get_circuits(
         targets (list): List of target qubit IDs.
         add_inverse_layer (bool): Flag indicating whether to add an inverse layer to the circuits.
         interleave (str): String indicating whether to interleave the circuits with the given gate.
-        noise_model (str): Noise model string.
         single_qubit (bool, optional): Flag indicating whether to generate single qubit circuits.
 
     Returns:
@@ -420,7 +398,6 @@ def get_circuits(
             qubits_ids,
             params.niter,
             rb_gen,
-            noise_model,
             add_inverse_layer,
             single_qubit,
             inv_file,
@@ -502,9 +479,9 @@ def rb_acquisition(
     Returns:
         RBData: The depths, samples, and ground state probability of each experiment in the scan.
     """
-    data, noise_model, backend = setup(params, platform, single_qubit=True)
+    data, backend = setup(params, platform, single_qubit=True)
     circuits, indexes, npulses_per_clifford = get_circuits(
-        params, targets, add_inverse_layer, interleave, noise_model, single_qubit=True
+        params, targets, add_inverse_layer, interleave, single_qubit=True
     )
     executed_circuits = execute_circuits(circuits, targets, params, backend)
 
@@ -548,10 +525,10 @@ def twoq_rb_acquisition(
     Returns:
         RB2QData: The acquired data for two qubit randomized benchmarking.
     """
-
-    data, noise_model, backend = setup(params, platform, single_qubit=False)
+    targets = [tuple(pair) if isinstance(pair, list) else pair for pair in targets]
+    data, backend = setup(params, platform, single_qubit=False, interleave=interleave)
     circuits, indexes, npulses_per_clifford = get_circuits(
-        params, targets, add_inverse_layer, interleave, noise_model, single_qubit=False
+        params, targets, add_inverse_layer, interleave, single_qubit=False
     )
     executed_circuits = execute_circuits(
         circuits, targets, params, backend, single_qubit=False
@@ -604,6 +581,8 @@ def layer_circuit(
     elif isinstance(target, Tuple):  # Tuple for qubit pair
         nqubits = 2
         rb_gen_layer = rb_gen.layer_gen_two_qubit
+    else:
+        raise NotImplementedError("RB with more than 2 qubits is not implemented")
     # Build each layer, there will be depth many in the final circuit.
     for _ in range(depth):
         # Generate a layer.
@@ -656,7 +635,7 @@ def add_inverse_layer(
 
             cliffords = [clifford * global_phase for global_phase in GLOBAL_PHASES]
             cliffords_inv = [np.linalg.inv(clifford).round(3) for clifford in cliffords]
-
+            index_inv = None
             for clifford_inv in cliffords_inv:
                 clifford_inv += 0.0 + 0.0j
                 clifford_inv_str = np.array2string(clifford_inv, separator=",")

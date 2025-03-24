@@ -1,0 +1,27 @@
+{
+    "title": "cryoscope_2025-02-28_10-24-14",
+    "backend": "qibolab",
+    "platform": "qw11q",
+    "start_time": "2025-02-28 10:24:27.500722+00:00",
+    "end_time": "2025-02-28 10:26:15.700463+00:00",
+    "stats": {
+        "cryoscope-0": {
+            "acquisition": 99.64514652197249,
+            "fit": 8.533042560040485
+        }
+    },
+    "author": null,
+    "tag": null,
+    "targets": [
+        "B4"
+    ],
+    "versions": {
+        "qibo": "0.2.15",
+        "numpy": "1.26.4",
+        "qibolab": "0.2.3",
+        "qibocal": "0.1.2"
+    },
+    "date": "2025-02-28",
+    "start-time": "10:24:27",
+    "end-time": "10:26:15"
+}
