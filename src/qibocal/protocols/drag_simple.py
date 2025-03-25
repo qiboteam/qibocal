@@ -156,7 +156,14 @@ def _fit(data: DragTuningSimpleData) -> DragTuningSimpleResults:
         for setup in SEQUENCES:
             qubit_data = data[qubit, setup]
             popt, _ = curve_fit(
-                lambda x, a, b: a * x + b, qubit_data.beta, qubit_data.prob
+                f=lambda x, a, b: a * x + b,
+                xdata=qubit_data.beta,
+                ydata=qubit_data.prob,
+                p0=[
+                    (qubit_data.prob[-1] - qubit_data.prob[0])
+                    / (qubit_data.beta[-1] - qubit_data.beta[0]),
+                    np.mean(qubit_data.prob),
+                ],
             )
             fitted_parameters[qubit, setup] = popt.tolist()
         betas_optimal[qubit] = -(
@@ -219,7 +226,7 @@ def _plot(data: DragTuningSimpleData, target: QubitId, fit: DragTuningSimpleResu
             fig.add_trace(
                 go.Scatter(
                     x=beta_range,
-                    y=fit.fitted_parameters[target, setup][0] * betas
+                    y=fit.fitted_parameters[target, setup][0] * beta_range
                     + fit.fitted_parameters[target, setup][1],
                     name=f"Fit {setup}",
                     line=go.scatter.Line(dash="dot"),
