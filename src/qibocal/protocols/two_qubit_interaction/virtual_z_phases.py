@@ -131,34 +131,22 @@ def create_sequence(
         )
 
     drive_duration = sequence.duration
-    # print("SEQUENCE ", sequence)
     # CZ
     flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
     flux_pulses = [
         (ch, pulse) for ch, pulse in flux_sequence if not isinstance(pulse, VirtualZ)
     ]
 
-    if flux_pulse_max_duration is not None:
-        # This is not working if the first pulse is not a flux one
-        flux_channels = [
-            platform.qubits[target_qubit].flux,
-            platform.qubits[control_qubit].flux,
-        ]
-        for i in range(len(flux_pulses)):
-            if flux_pulses[i][0] in flux_channels:
+    flux_channels = [
+        platform.qubits[target_qubit].flux,
+        platform.qubits[control_qubit].flux,
+    ]
+    for i in range(len(flux_pulses)):
+        if flux_pulses[i][0] in flux_channels:
+            if flux_pulse_max_duration is not None:
                 replace(flux_pulses[i][1], duration=flux_pulse_max_duration)
-                # flux_pulses[0] = (
-                #     flux_pulses[0][0],
-                #     replace(flux_pulses[0][1], duration=flux_pulse_max_duration),
-                # )
+            flux_pulse = flux_pulses[i][1]
 
-    # sequence += [
-    #     (
-    #         platform.qubits[control_qubit].drive,
-    #         Delay(duration=),
-    #     )
-    # ]
-    _, flux_pulse = flux_pulses[0]  # TODO: it could be wrong
     flux_sequence = PulseSequence(flux_pulses)
     sequence |= flux_sequence
     flux_duration = flux_sequence.duration
@@ -201,9 +189,6 @@ def create_sequence(
 
     sequence += ro_sequence
 
-    print(f"SEQUENCE {setup} {target_qubit}")
-    for i in sequence:
-        print(i)
     return sequence, flux_pulse, theta_pulse, [ro_target_delay, ro_control_delay]
 
 
@@ -285,14 +270,6 @@ def _acquisition(
                         control=result_control,
                     ),
                 )
-                import matplotlib.pyplot as plt
-
-                fig, _ = plt.subplots()
-                plt.plot(
-                    np.arange(params.theta_start, params.theta_end, params.theta_step),
-                    result_target,
-                )
-                plt.savefig(f"vz_{target_q}_{setup}")
     return data
 
 
