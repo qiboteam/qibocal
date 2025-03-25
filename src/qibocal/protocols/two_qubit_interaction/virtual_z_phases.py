@@ -130,7 +130,7 @@ def create_sequence(
             (platform.qubits[control_qubit].drive, Delay(duration=sequence.duration))
         )
 
-    # drive_duration = sequence.duration
+    drive_duration = sequence.duration
     # print("SEQUENCE ", sequence)
     # CZ
     flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
@@ -171,10 +171,6 @@ def create_sequence(
     # RX90 (angle to be swept)
     theta_sequence += target_natives.R(theta=np.pi / 2)
     theta_pulse = theta_sequence[-1][1]
-    print("THETA PULSE", theta_pulse)
-    # X
-    # if setup == "X":
-    #     theta_sequence += control_natives.RX()
 
     sequence += theta_sequence
 
@@ -185,32 +181,12 @@ def create_sequence(
         [
             (
                 platform.qubits[target_qubit].acquisition,
-                Delay(
-                    duration=163
-                ),  # drive_duration + flux_duration + theta_sequence.duration),
+                Delay(duration=drive_duration + theta_sequence.duration),
             ),
             (
                 platform.qubits[control_qubit].acquisition,
-                Delay(
-                    duration=163
-                ),  # drive_duration + flux_duration + theta_sequence.duration),
+                Delay(duration=drive_duration + theta_sequence.duration),
             ),
-            # (
-            #     platform.qubits[target_qubit].acquisition,
-            #     ro_target_delay,
-            # ),
-            # (
-            #     platform.qubits[control_qubit].acquisition,
-            #     ro_control_delay,
-            # ),
-            # (
-            #     platform.qubits[target_qubit].acquisition,
-            #     Delay(duration=theta_sequence.duration),
-            # ),
-            # (
-            #     platform.qubits[control_qubit].acquisition,
-            #     Delay(duration=theta_sequence.duration),
-            # ),
             target_natives.MZ()[0],
             control_natives.MZ()[0],
         ]
