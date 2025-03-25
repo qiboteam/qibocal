@@ -216,12 +216,11 @@ def _acquisition(
 
     Check the two-qubit landscape created by a flux pulse of a given duration
     and amplitude.
-    The system is initialized with a Y90 pulse on the low frequency qubit and either
+    The system is initialized with a X90 pulse on the low frequency qubit and either
     an Id or an X gate on the high frequency qubit. Then the flux pulse is applied to
-    the high frequency qubit in order to perform a two-qubit interaction. The Id/X gate
-    is undone in the high frequency qubit and a theta90 pulse is applied to the low
-    frequency qubit before measurement. That is, a pi-half pulse around the relative phase
-    parametereized by the angle theta.
+    the high frequency qubit in order to perform a two-qubit interaction.
+    A $X_{\beta}90$ pulse is applied to the low frequency qubit before measurement.
+    That is, a pi-half pulse around the relative phase parametereized by the angle theta.
     Measurements on the low frequency qubit yield the 2Q-phase of the gate and the
     remnant single qubit Z phase aquired during the execution to be corrected.
     Population of the high frequency qubit yield the leakage to the non-computational states
