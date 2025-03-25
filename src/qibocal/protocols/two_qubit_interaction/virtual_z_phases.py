@@ -109,12 +109,26 @@ def create_sequence(
     native: Literal["CZ", "iSWAP"],
     dt: float,
     flux_pulse_max_duration: float = None,
-) -> tuple[
-    PulseSequence,
-    Pulse,
-    Pulse,
-]:
-    """Create the experiment PulseSequence."""
+) -> tuple[PulseSequence, Pulse, Pulse, list[Pulse]]:
+    """
+    Create the pulse sequence for the calibration of two-qubit gate virtual phases.
+
+    This function constructs a pulse sequence for a given two-qubit native gate `native` (CZ or iSWAP)
+    on the specified qubits. The sequence includes:
+    - A preliminary RX90 pulse on the `target_qubit`.
+    - An optional X pulse on the `control_qubit` based on the `setup` type.
+    - A flux pulse implementing the two-qubit native gate.
+    - A delay of duration `dt` before the final X90 pulse on the target qubit.
+    - Measurement pulses.
+    It is possible to specify the maximum duration for the flux pulses with the
+    `flux_pulse_max_duration` parameter.
+
+    The function returns:
+            - The full experiment pulse sequence.
+            - The applied flux pulse.
+            - The final X90 pulse to be used for phase sweeping.
+            - A list of readout delays for the target and control qubits.
+    """
 
     target_natives = platform.natives.single_qubit[target_qubit]
     control_natives = platform.natives.single_qubit[control_qubit]
