@@ -61,7 +61,7 @@ class FluxAmplitudeFrequencyResults(Results):
     detuning: dict[QubitId, float] = field(default_factory=dict)
     """Frequency detuning."""
     flux: dict[QubitId, float] = field(default_factory=dict)
-    """Frequency detuning."""
+    """Derived flux  """
     fitted_parameters_detuning: dict[tuple[QubitId, str], list[float]] = field(
         default_factory=dict
     )
