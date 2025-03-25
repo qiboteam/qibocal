@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+import scipy.ndimage as ndimage
 from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
@@ -54,6 +55,7 @@ class ResonatorOptimizationResults(Results):
 ResonatorOptimizationType = np.dtype(
     [
         ("assignment_fidelity", np.float64),
+        ("avaraged_fidelity", np.float64),
         ("frequency", np.float64),
         ("amplitude", np.float64),
         ("angle", np.float64),
@@ -199,8 +201,29 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
 
     for qubit in qubits:
         data_qubit = data[qubit]
-        index_best_fid = np.argmax(data_qubit["assignment_fidelity"])
-        highest_fidelity[qubit] = data_qubit["assignment_fidelity"][index_best_fid]
+        freq_vals = np.unique(data_qubit["frequency"])
+        amp_vals = np.unique(data_qubit["amplitude"])
+        fidelity_grid = np.zeros(shape=(len(freq_vals), len(amp_vals)))
+
+        for i, freq in enumerate(freq_vals):
+            for j, amp in enumerate(amp_vals):
+                fidelity_grid[i, j] = data_qubit[
+                    (data_qubit.frequency == freq) & (data_qubit.amplitude == amp)
+                ].assignment_fidelity[0]
+
+        filtered_fidelity = ndimage.uniform_filter(
+            fidelity_grid, size=(5, 2), mode="nearest"
+        )
+
+        for i, freq in enumerate(freq_vals):
+            for j, amp in enumerate(amp_vals):
+                update_index = (data_qubit.frequency == freq) & (
+                    data_qubit.amplitude == amp
+                )
+                data_qubit.avaraged_fidelity[update_index] = filtered_fidelity[i, j]
+
+        index_best_fid = np.argmax(data_qubit["avaraged_fidelity"])
+        highest_fidelity[qubit] = data_qubit["avaraged_fidelity"][index_best_fid]
         best_freq[qubit] = data_qubit["frequency"][index_best_fid]
         best_amps[qubit] = data_qubit["amplitude"][index_best_fid]
         best_angle[qubit] = data_qubit["angle"][index_best_fid]
@@ -267,7 +290,7 @@ def _plot(
                 ],
                 [
                     np.round(fit.best_amp[target], 4),
-                    np.round(fit.best_freq[target] * HZ_TO_GHZ),
+                    np.round(fit.best_freq[target]) * HZ_TO_GHZ,
                     fit.fidelities[target],
                 ],
             )
