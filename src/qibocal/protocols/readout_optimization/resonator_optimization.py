@@ -268,7 +268,7 @@ def _plot(
                 [
                     np.round(fit.best_amp[target], 4),
                     np.round(fit.best_freq[target] * HZ_TO_GHZ),
-                    fit.fidelities,
+                    fit.fidelities[target],
                 ],
             )
         )
