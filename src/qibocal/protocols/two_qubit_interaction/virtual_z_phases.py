@@ -140,10 +140,17 @@ def create_sequence(
 
     if flux_pulse_max_duration is not None:
         # This is not working if the first pulse is not a flux one
-        flux_pulses[0] = (
-            flux_pulses[0][0],
-            replace(flux_pulses[0][1], duration=flux_pulse_max_duration),
-        )
+        flux_channels = [
+            platform.qubits[target_qubit].flux,
+            platform.qubits[control_qubit].flux,
+        ]
+        for i in range(len(flux_pulses)):
+            if flux_pulses[i][0] in flux_channels:
+                replace(flux_pulses[i][1], duration=flux_pulse_max_duration)
+                # flux_pulses[0] = (
+                #     flux_pulses[0][0],
+                #     replace(flux_pulses[0][1], duration=flux_pulse_max_duration),
+                # )
 
     # sequence += [
     #     (
