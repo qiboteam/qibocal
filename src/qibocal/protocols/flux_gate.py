@@ -19,6 +19,7 @@ from qibolab import (
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 
+from ..result import probability
 from .ramsey.utils import fitting, ramsey_fit
 from .utils import GHZ_TO_HZ, table_dict, table_html
 
@@ -92,7 +93,7 @@ def _acquisition(
             envelope=Rectangular(),
         )
         drive_delay = Delay(duration=flux_pulses[qubit].duration)
-        ro_delay = Delay(duration=flux_pulses[qubit].duration + 2 * rx90.duration)
+        ro_delay = Delay(duration=flux_pulses[qubit].duration)
         qubit_sequence.extend(
             [
                 (drive_channel, rx90),
@@ -100,10 +101,8 @@ def _acquisition(
                 (flux_channel, flux_pulses[qubit]),
                 (drive_channel, drive_delay),
                 (drive_channel, rx90),
-                (
-                    ro_channel,
-                    ro_delay,
-                ),
+                (ro_channel, ro_delay),
+                (ro_channel, Delay(duration=2 * rx90.duration)),
                 (ro_channel, ro_pulse),
             ]
         )
@@ -118,7 +117,7 @@ def _acquisition(
     options = dict(
         nshots=params.nshots,
         acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.CYCLIC,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
 
     results = platform.execute([sequence], [[sweeper]], **options)
@@ -130,7 +129,7 @@ def _acquisition(
             (qubit),
             dict(
                 duration=duration_range,
-                prob_1=results[ro_pulse.id],
+                prob_1=probability(results[ro_pulse.id], state=1),
             ),
         )
 
