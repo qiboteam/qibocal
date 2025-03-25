@@ -254,7 +254,7 @@ def _plot(
     qubit_data = data[target]
     frequencies = qubit_data.frequency
     amplitudes = qubit_data.amplitude
-    fidelities = qubit_data.assignment_fidelity
+    fidelities = qubit_data.avaraged_fidelity
 
     if fit is not None:
         fig.add_trace(
