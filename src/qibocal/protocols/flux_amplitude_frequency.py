@@ -1,5 +1,6 @@
 """Experiment to compute detuning from flux pulses."""
 
+import math
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -173,16 +174,23 @@ def _acquisition(
 ) -> FluxAmplitudeFrequencyData:
     detuning = {}
     for qubit in targets:
-        if params.crosstalk_qubit is None and params.amplitude_min == 0:
+        if params.crosstalk_qubit is None and math.isclose(params.amplitude_min, 0):
             detuning[qubit] = 0
-        elif params.crosstalk_qubit is not None:
-            detuning[qubit] = platform.calibration.single_qubits[qubit].qubit.detuning(
-                params.flux_pulse_amplitude
-            )
         else:
-            detuning[qubit] = platform.calibration.single_qubits[qubit].qubit.detuning(
-                params.amplitude_min
+            assert (
+                platform.calibration.single_qubits[qubit].qubit.flux_coefficients
+                is not None
+            ), (
+                f"Flux coefficients for {qubit} missing. Re-run experiment starting with zero amplitude_min and without crosstalk qubit."
             )
+            if params.crosstalk_qubit is not None:
+                detuning[qubit] = platform.calibration.single_qubits[
+                    qubit
+                ].qubit.detuning(params.flux_pulse_amplitude)
+            else:
+                detuning[qubit] = platform.calibration.single_qubits[
+                    qubit
+                ].qubit.detuning(params.amplitude_min)
 
     qubit_frequency = {
         qubit: platform.calibration.single_qubits[qubit].qubit.frequency_01 * HZ_TO_GHZ
@@ -272,6 +280,7 @@ def _fit(data: FluxAmplitudeFrequencyData) -> FluxAmplitudeFrequencyResults:
         other_det = data.detuning[qubit]
         f = data.qubit_frequency[qubit]
         det = phase / data.flux_pulse_duration / 2 / np.pi + other_det
+        # to make sure that flux is invertible
         det[np.abs(det) < 1e-3] = 0
         # from inversion of flux dependence formula assuming negligible Ec and asymmetry
         derived_flux = 1 / np.pi * np.arccos(((f + det) / f) ** 2)
