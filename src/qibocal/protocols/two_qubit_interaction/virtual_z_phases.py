@@ -32,6 +32,7 @@ from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
 from ... import update
+from ...update import replace
 from .utils import order_pair
 
 
@@ -107,7 +108,7 @@ def create_sequence(
     ordered_pair: list[QubitId, QubitId],
     native: Literal["CZ", "iSWAP"],
     dt: float,
-    # flux_pulse_max_duration: float = None,
+    flux_pulse_max_duration: float = None,
 ) -> tuple[
     PulseSequence,
     Pulse,
@@ -119,15 +120,15 @@ def create_sequence(
     control_natives = platform.natives.single_qubit[control_qubit]
 
     sequence = PulseSequence()
-    # Y90
+    # X90
     sequence += target_natives.R(theta=np.pi / 2)
     # X
     if setup == "X":
         sequence += control_natives.RX()
-    # else:
-    #     sequence.append(
-    #         (platform.qubits[control_qubit].drive, Delay(duration=sequence.duration))
-    #     )
+    else:
+        sequence.append(
+            (platform.qubits[control_qubit].drive, Delay(duration=sequence.duration))
+        )
 
     # drive_duration = sequence.duration
     # print("SEQUENCE ", sequence)
@@ -137,23 +138,23 @@ def create_sequence(
         (ch, pulse) for ch, pulse in flux_sequence if not isinstance(pulse, VirtualZ)
     ]
 
-    # if flux_pulse_max_duration is not None:
-    #     flux_pulses[0] = (
-    #         flux_pulses[0][0],
-    #         replace(flux_pulses[0][1], duration=flux_pulse_max_duration),
-    #     )
-
-    sequence += [
-        (
-            platform.qubits[control_qubit].drive,
-            Delay(duration=40),
+    if flux_pulse_max_duration is not None:
+        # This is not working if the first pulse is not a flux one
+        flux_pulses[0] = (
+            flux_pulses[0][0],
+            replace(flux_pulses[0][1], duration=flux_pulse_max_duration),
         )
-    ]
+
+    # sequence += [
+    #     (
+    #         platform.qubits[control_qubit].drive,
+    #         Delay(duration=),
+    #     )
+    # ]
     _, flux_pulse = flux_pulses[0]  # TODO: it could be wrong
     flux_sequence = PulseSequence(flux_pulses)
     sequence |= flux_sequence
     flux_duration = flux_sequence.duration
-    # dt_delay = Delay(duration=dt)
 
     theta_sequence = PulseSequence(
         [
@@ -167,7 +168,7 @@ def create_sequence(
             ),
         ]
     )
-    # R90 (angle to be swept)
+    # RX90 (angle to be swept)
     theta_sequence += target_natives.R(theta=np.pi / 2)
     theta_pulse = theta_sequence[-1][1]
     print("THETA PULSE", theta_pulse)
