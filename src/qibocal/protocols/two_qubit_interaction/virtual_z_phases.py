@@ -151,12 +151,10 @@ def create_sequence(
         (ch, pulse) for ch, pulse in flux_sequence if not isinstance(pulse, VirtualZ)
     ]
 
-    flux_channels = [
-        platform.qubits[target_qubit].flux,
-        platform.qubits[control_qubit].flux,
-    ]
+    flux_channel = platform.qubits[ordered_pair[1]].flux
+
     for i in range(len(flux_pulses)):
-        if flux_pulses[i][0] in flux_channels:
+        if flux_pulses[i][0] == flux_channel:
             if flux_pulse_max_duration is not None:
                 replace(flux_pulses[i][1], duration=flux_pulse_max_duration)
             flux_pulse = flux_pulses[i][1]
