@@ -3,20 +3,19 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-import scipy.ndimage as ndimage
 from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     Delay,
     Parameter,
     PulseSequence,
+    Readout,
     Sweeper,
 )
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
-from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.utils import HZ_TO_GHZ, readout_frequency, table_dict, table_html
 
 
@@ -34,6 +33,8 @@ class ResonatorOptimizationParameters(Parameters):
     """Maximum amplitude."""
     amplitude_step: float
     """Step amplitude."""
+    delay: float = 0
+    """Delay between readouts, could account for resonator deplation or not [ns]."""
 
 
 @dataclass
@@ -54,12 +55,11 @@ class ResonatorOptimizationResults(Results):
 
 ResonatorOptimizationType = np.dtype(
     [
-        ("assignment_fidelity", np.float64),
-        ("avaraged_fidelity", np.float64),
         ("frequency", np.float64),
         ("amplitude", np.float64),
-        ("angle", np.float64),
-        ("threshold", np.float64),
+        ("iq_values", np.float64, (2,)),
+        ("assignment_fidelity", np.float64),
+        ("avaraged_fidelity", np.float64),
     ]
 )
 """Custom dtype readout optimization."""
@@ -71,11 +71,18 @@ class ResonatorOptimizationData(Data):
 
     resonator_type: str
     """Resonator type."""
+    delay: float = 0
+    """Delay between readouts [ns]."""
     amplitudes: dict[QubitId, float] = field(default_factory=dict)
     """Amplitudes provided by the user."""
+    qubit_frequencies: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit frequencies."""
     data: dict[QubitId, npt.NDArray[ResonatorOptimizationType]] = field(
         default_factory=dict
     )
+    """Raw data acquired"""
+    samples: dict[tuple, npt.NDArray] = field(default_factory=dict)
+    """Raw data acquired."""
 
 
 def _acquisition(
@@ -96,139 +103,119 @@ def _acquisition(
     )
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
-    ro_pulses_0 = {}
-    ro_pulses_1 = {}
     amplitudes = {}
     freq_sweepers = {}
-
-    sequence_0 = PulseSequence()
-    sequence_1 = PulseSequence()
-
-    for qubit in targets:
-        natives = platform.natives.single_qubit[qubit]
-
-        qd_channel, qd_pulse = natives.RX()[0]
-        ro_channel, ro_pulse_0 = natives.MZ()[0]
-        _, ro_pulse_1 = natives.MZ()[0]
-
-        ro_pulses_0[qubit] = ro_pulse_0
-        ro_pulses_1[qubit] = ro_pulse_1
-        amplitudes[qubit] = ro_pulse_0.probe.amplitude
-
-        sequence_0.append((ro_channel, ro_pulse_0))
-
-        sequence_1.append((qd_channel, qd_pulse))
-        sequence_1.append((ro_channel, Delay(duration=qd_pulse.duration)))
-        sequence_1.append((ro_channel, ro_pulse_1))
-
-        freq_sweepers[qubit] = Sweeper(
-            parameter=Parameter.frequency,
-            values=readout_frequency(qubit, platform) + delta_frequency_range,
-            channels=[platform.qubits[qubit].probe],
-        )
-
-    amp_sweeper_0 = Sweeper(
-        parameter=Parameter.amplitude,
-        range=(params.amplitude_start, params.amplitude_stop, params.amplitude_step),
-        pulses=[ro_pulses_0[qubit] for qubit in targets],
-    )
-
-    amp_sweeper_1 = Sweeper(
-        parameter=Parameter.amplitude,
-        range=(params.amplitude_start, params.amplitude_stop, params.amplitude_step),
-        pulses=[ro_pulses_1[qubit] for qubit in targets],
-    )
+    ro_pulses = {}
 
     data = ResonatorOptimizationData(
-        amplitudes=amplitudes,
         resonator_type=platform.resonator_type,
+        delay=params.delay,
+        qubit_frequencies={
+            # TODO: should this be the drive frequency instead?
+            qubit: float(platform.calibration.single_qubits[qubit].qubit.frequency_01)
+            for qubit in targets
+        },
     )
 
-    state0_results = platform.execute(
-        [sequence_0],
-        [[amp_sweeper_0], [freq_sweepers[q] for q in targets]],
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
-    )
+    for state in [0, 1]:
+        sequence = PulseSequence()
+        for qubit in targets:
+            natives = platform.natives.single_qubit[qubit]
+            ro_channel, ro_pulse = natives.MZ()[0]
+            if state == 1:
+                sequence += natives.RX()
+            sequence.append((ro_channel, Delay(duration=natives.RX()[0][1].duration)))
+            sequence += natives.MZ()
+            sequence.append((ro_channel, Delay(duration=params.delay)))
+            sequence += natives.MZ()
 
-    state1_results = platform.execute(
-        [sequence_1],
-        [[amp_sweeper_1], [freq_sweepers[q] for q in targets]],
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
-    )
+            amplitudes[qubit] = ro_pulse.probe.amplitude
+            data.amplitudes = amplitudes
 
-    # TODO: move analysis in _fit() function
-    for qubit in targets:
-        ro_pulse_0 = list(sequence_0.channel(platform.qubits[qubit].acquisition))[-1]
-        ro_pulse_1 = list(sequence_1.channel(platform.qubits[qubit].acquisition))[-1]
+            freq_sweepers[qubit] = Sweeper(
+                parameter=Parameter.frequency,
+                values=readout_frequency(qubit, platform) + delta_frequency_range,
+                channels=[platform.qubits[qubit].probe],
+            )
 
-        result0 = np.transpose(state0_results[ro_pulse_0.id], (2, 1, 0, 3))
-        result1 = np.transpose(state1_results[ro_pulse_1.id], (2, 1, 0, 3))
+            ro_pulses[qubit] = ro_pulse
 
-        nshots = params.nshots
+        amp_sweeper = Sweeper(
+            parameter=Parameter.amplitude,
+            range=(
+                params.amplitude_start,
+                params.amplitude_stop,
+                params.amplitude_step,
+            ),
+            pulses=[ro_pulses[qubit] for qubit in targets],
+        )
 
-        for j, freq in enumerate(freq_sweepers[qubit].values):
-            for k, amp in enumerate(amp_sweeper_0.values):
-                iq_values = np.concatenate((result0[j][k], result1[j][k]))
-                states = [0] * nshots + [1] * nshots
+        results = platform.execute(
+            [sequence],
+            [[amp_sweeper], [freq_sweepers[q] for q in targets]],
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        )
+        results_samples = platform.execute(
+            [sequence],
+            acquisition_type=AcquisitionType.DISCRIMINATION,
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+        )
 
-                model = QubitFit()
-                model.fit(iq_values, np.array(states))
-                data.register_qubit(
-                    ResonatorOptimizationType,
-                    (qubit),
-                    dict(
-                        assignment_fidelity=np.array([model.assignment_fidelity]),
-                        frequency=freq,
-                        amplitude=amp,
-                        angle=np.array([model.angle]),
-                        threshold=np.array([model.threshold]),
-                    ),
-                )
+        for target in targets:
+            readouts = [
+                pulse
+                for pulse in sequence.channel(platform.qubits[qubit].acquisition)
+                if isinstance(pulse, Readout)
+            ]
+
+            for n in np.arange(0, params.nshots, 1):
+                for j, amp in enumerate(amp_sweeper.values):
+                    for k, freq in enumerate(freq_sweepers[qubit].values):
+                        for f, ro_pulse in enumerate(readouts):
+                            # l signal if it's the first or second measurment for QND
+                            data.register_qubit(
+                                ResonatorOptimizationType,
+                                (qubit, state, f),
+                                dict(
+                                    frequency=np.array([freq]),
+                                    amplitude=np.array([amp]),
+                                    iq_values=np.array([results[ro_pulse.id][n][j][k]]),
+                                ),
+                            )
+                            data.samples[qubit, state, f] = results_samples[
+                                ro_pulse.id
+                            ].tolist()
+
     return data
 
 
 def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
-    qubits = data.qubits
+    # qubits = data.qubits
     best_freq = {}
     best_amps = {}
     best_angle = {}
     best_threshold = {}
     highest_fidelity = {}
 
-    for qubit in qubits:
-        data_qubit = data[qubit]
-        freq_vals = np.unique(data_qubit["frequency"])
-        amp_vals = np.unique(data_qubit["amplitude"])
-        fidelity_grid = np.zeros(shape=(len(freq_vals), len(amp_vals)))
+    # for qubit in qubits:
+    ######################### ASSIGNMENT FIDELITY ##########################
 
-        for i, freq in enumerate(freq_vals):
-            for j, amp in enumerate(amp_vals):
-                fidelity_grid[i, j] = data_qubit[
-                    (data_qubit.frequency == freq) & (data_qubit.amplitude == amp)
-                ].assignment_fidelity[0]
+    # for state, l in itertools.product([0, 1], [0, 1]):
+    # freq_vals = np.unique(data[qubit, state, l]["frequency"])
+    # amp_vals = np.unique(data[qubit, state, l]["amplitude"])
+    # fidelity_grid = np.zeros(shape=(len(freq_vals), len(amp_vals)))
+    # angle_grid = np.zeros(shape=(len(freq_vals), len(amp_vals)))
+    # threshold_grid = np.zeros(shape=(len(freq_vals), len(amp_vals)))
 
-        filtered_fidelity = ndimage.uniform_filter(
-            fidelity_grid, size=(5, 2), mode="nearest"
-        )
+    # for j, freq in enumerate(freq_vals):
+    #    for k, amp in enumerate(amp_vals):
 
-        for i, freq in enumerate(freq_vals):
-            for j, amp in enumerate(amp_vals):
-                update_index = (data_qubit.frequency == freq) & (
-                    data_qubit.amplitude == amp
-                )
-                data_qubit.avaraged_fidelity[update_index] = filtered_fidelity[i, j]
+    ######################### QND ##########################################
 
-        index_best_fid = np.argmax(data_qubit["avaraged_fidelity"])
-        highest_fidelity[qubit] = data_qubit["avaraged_fidelity"][index_best_fid]
-        best_freq[qubit] = data_qubit["frequency"][index_best_fid]
-        best_amps[qubit] = data_qubit["amplitude"][index_best_fid]
-        best_angle[qubit] = data_qubit["angle"][index_best_fid]
-        best_threshold[qubit] = data_qubit["threshold"][index_best_fid]
-
+    # TODO I have to computer the QND for each combined value of frequency and amplitude
     return ResonatorOptimizationResults(
         best_amp=best_amps,
         fidelities=highest_fidelity,
