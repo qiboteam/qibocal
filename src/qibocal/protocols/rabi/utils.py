@@ -125,7 +125,7 @@ def plot_probabilities(data, qubit, fit, rx90):
     qubit_data = data[qubit]
     probs = qubit_data.prob
     error_bars = qubit_data.error
-
+    print(error_bars)
     rabi_parameters = getattr(qubit_data, quantity)
     fig = go.Figure(
         [

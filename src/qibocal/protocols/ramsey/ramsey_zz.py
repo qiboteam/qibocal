@@ -11,10 +11,8 @@ from qibocal.calibration import CalibrationPlatform
 from ...auto.operation import QubitId, Routine
 from ...config import log
 from ...result import probability
-from ..utils import table_dict, table_html
+from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
 from .ramsey import (
-    COLORBAND,
-    COLORBAND_LINE,
     RamseySignalData,
     RamseySignalParameters,
     RamseySignalResults,
