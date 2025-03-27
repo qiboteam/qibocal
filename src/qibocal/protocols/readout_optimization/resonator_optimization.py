@@ -122,7 +122,8 @@ def _acquisition(
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     amplitudes = {}
     freq_sweepers = {}
-    ro_pulses = {}
+    ro_pulses_m1 = {}
+    ro_pulses_m2 = {}
 
     data = ResonatorOptimizationData(
         resonator_type=platform.resonator_type,
@@ -138,15 +139,16 @@ def _acquisition(
         sequence = PulseSequence()
         for qubit in targets:
             natives = platform.natives.single_qubit[qubit]
-            ro_channel, ro_pulse = natives.MZ()[0]
+            ro_channel, ro_pulse_m1 = natives.MZ()[0]
+            _, ro_pulse_m2 = natives.MZ()[0]
             if state == 1:
                 sequence += natives.RX()
             sequence.append((ro_channel, Delay(duration=natives.RX()[0][1].duration)))
-            sequence += natives.MZ()
+            sequence.append((ro_channel, ro_pulse_m1))
             sequence.append((ro_channel, Delay(duration=params.delay)))
-            sequence += natives.MZ()
+            sequence.append((ro_channel, ro_pulse_m2))
 
-            amplitudes[qubit] = ro_pulse.probe.amplitude
+            amplitudes[qubit] = ro_pulse_m1.probe.amplitude
             data.amplitudes = amplitudes
 
             freq_sweepers[qubit] = Sweeper(
@@ -155,8 +157,10 @@ def _acquisition(
                 channels=[platform.qubits[qubit].probe],
             )
 
-            ro_pulses[qubit] = ro_pulse
+            ro_pulses_m1[qubit] = ro_pulse_m1
+            ro_pulses_m2[qubit] = ro_pulse_m2
 
+        # pdb.set_trace()
         amp_sweeper = Sweeper(
             parameter=Parameter.amplitude,
             range=(
@@ -164,7 +168,8 @@ def _acquisition(
                 params.amplitude_stop,
                 params.amplitude_step,
             ),
-            pulses=[ro_pulses[qubit] for qubit in targets],
+            pulses=[ro_pulses_m1[qubit] for qubit in targets]
+            + [ro_pulses_m2[qubit] for qubit in targets],
         )
 
         results = platform.execute(
@@ -176,6 +181,7 @@ def _acquisition(
         )
         results_samples = platform.execute(
             [sequence],
+            [[amp_sweeper], [freq_sweepers[q] for q in targets]],
             acquisition_type=AcquisitionType.DISCRIMINATION,
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
@@ -274,7 +280,7 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
             mode="nearest",
         )
 
-        #########################################QND#######################################
+        ######################################## QND ######################################
         for j, freq in enumerate(freq_vals):
             for k, amp in enumerate(amp_vals):
                 # 1st measurement (m=1)
