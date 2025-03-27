@@ -8,7 +8,7 @@ from .cross_resonance import (
     cross_resonance_chevron_frequency,
     cross_resonance_chevron_amplitude_frequency,
     cross_resonance_chevron_coupler,
-    cross_resonance_cnot,
+    cross_resonance_cnot_length,
 )
 
 from .mermin import mermin

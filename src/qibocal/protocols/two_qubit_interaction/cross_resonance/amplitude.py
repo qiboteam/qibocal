@@ -3,7 +3,8 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-import plotly.graph_objects as go
+import itertools
+
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
@@ -15,7 +16,7 @@ from qibolab.native import NativePulse
 from qibolab.qubits import QubitId, QubitPairId
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
-from .utils import STATES, BASIS, ro_projection_pulse
+from .utils import STATES, BASIS, ro_projection_pulse, cr_plot, Setup, Basis
 
 CrossResonanceType = np.dtype(
     [
@@ -27,7 +28,7 @@ CrossResonanceType = np.dtype(
 """Custom dtype for Cross Resonance Amplitude Gate Calibration."""
 
 @dataclass
-class CrossResonanceAmplitudeParameters(Parameters):
+class CrossResonanceParameters(Parameters):
     """Cross Resonance Amplitude Gate Calibration runcard inputs."""
 
     min_amp_factor: float
@@ -36,14 +37,16 @@ class CrossResonanceAmplitudeParameters(Parameters):
     """Maximum amplitude multiplicative factor."""
     step_amp_factor: float
     """Step amplitude multiplicative factor."""
-    pulse_length: Optional[int] = None
+    pulse_duration: Optional[int] = None
     """CR pulse duration [ns]."""
     pulse_amplitude: Optional[float] = None
     """CR pulse amplitude [ns]."""
     shape: Optional[str] = "Rectangular()"
     """CR pulse shape parameters."""
-    projections: Optional[list[str]] = field(default_factory=lambda: [BASIS[0]])
+    projections: Optional[list[str]] = field(default_factory=lambda: [BASIS[-1]])
     """Measurement porjection"""
+    tgt_setup: Optional[list[str]] = field(default_factory=lambda: [STATES[0]])
+    """Setup for the experiment."""
 
     @property
     def amplitude_factor_range(self):
@@ -64,95 +67,95 @@ class CrossResonanceResults(Results):
 
 @dataclass
 class CrossResonanceData(Data):
-    """Data structure for rCross Resonance Gate Calibration."""
+    """Data structure for Cross Resonance Gate Calibration in Pulse Amplitude."""
 
-    data: dict[QubitId, npt.NDArray[CrossResonanceType]] = field(default_factory=dict)
+    targets: list[QubitPairId] = field(default_factory=list)
+    """Targets for the Cross Resonance Gate Calibration stored as pair of [target, control]."""
+
+    data: dict[(QubitPairId, QubitId, Setup, Setup, Basis), 
+               npt.NDArray[CrossResonanceType]] = field(default_factory=dict)
     """Raw data acquired."""
 
 
 def _acquisition(
-    params: CrossResonanceAmplitudeParameters, platform: Platform, targets: list[QubitPairId]
+    params: CrossResonanceParameters, platform: Platform, targets: list[QubitPairId]
 ) -> CrossResonanceData:
     """Data acquisition for Cross Resonance Gate Calibration."""
     
-    ro_pulses = {}
-    
-    data = CrossResonanceData()
+    data = CrossResonanceData(targets=targets)
     for pair in targets:
         target, control = pair
-        for ctr_setup in STATES:   
-            for tgt_setup in STATES: 
-                for projection in params.projections:
-                    ctr_native_rx = platform.create_RX_pulse(control, start = 0)
-                    tgt_native_rx = platform.create_RX_pulse(target, start = 0)
-                    
-                    sequence = PulseSequence()
+        for ctr_setup, tgt_setup, basis in itertools.product(STATES, params.tgt_setup, params.projections):
+            ctr_native_rx = platform.qubits[control].native_gates.RX.pulse(start=0)
+            tgt_native_rx = platform.qubits[target].native_gates.RX.pulse(start=0)
+            
+            sequence = PulseSequence()
 
-                    if ctr_setup == STATES[1]:
-                        sequence.add(ctr_native_rx)
+            if ctr_setup == STATES[1]:
+                sequence.add(ctr_native_rx)
 
-                    if tgt_setup == STATES[1]:
-                        sequence.add(tgt_native_rx)
+            if tgt_setup == STATES[1]:
+                sequence.add(tgt_native_rx)
 
-                    next_start = max(tgt_native_rx.finish, ctr_native_rx.finish)
-                    
-                    cr_pulse: Pulse = Pulse(start = next_start,
-                                    duration = ctr_native_rx.duration,
-                                    amplitude = ctr_native_rx.amplitude,
-                                    frequency = tgt_native_rx.frequency,
-                                    relative_phase=0,
-                                    channel=ctr_native_rx.channel,
-                                    shape = params.pulse_shape,
-                                    type = PulseType.DRIVE,
-                                    qubit = control,
-                                    )
+            next_start = max(tgt_native_rx.finish, ctr_native_rx.finish)
+            
+            cr_pulse: Pulse = Pulse(start = next_start,
+                            duration = ctr_native_rx.duration,
+                            amplitude = ctr_native_rx.amplitude,
+                            frequency = tgt_native_rx.frequency,
+                            relative_phase=0,
+                            channel=ctr_native_rx.channel,
+                            shape = params.pulse_shape,
+                            type = PulseType.DRIVE,
+                            qubit = control,
+                            )
 
-                    if params.pulse_length is not None:
-                        cr_pulse.duration = params.pulse_length
-                    if params.pulse_amplitude is not None:
-                        cr_pulse.amplitude = params.pulse_amplitude
-                    
-                    sequence.add(cr_pulse)
+            if params.pulse_duration is not None:
+                cr_pulse.duration = params.pulse_duration
+            if params.pulse_amplitude is not None:
+                cr_pulse.amplitude = params.pulse_amplitude
+            
+            sequence.add(cr_pulse)
 
-                    projection_pulse = {}
-                    for qubit in pair:
-                        #sequence.add(platform.create_qubit_readout_pulse(qubit=qubit, start=cr_pulse.finish))
-                        projection_pulse[qubit], ro_pulses[qubit] = ro_projection_pulse(
-                            platform, qubit, start=cr_pulse.finish, projection=projection  
-                        )
-                        sequence.add(projection_pulse[qubit])
-                        sequence.add(ro_pulses[qubit]) 
+            projection_pulse, ro_pulses = {}, {}
+            for ro_qubit in pair:
+                # sequence.add(platform.create_qubit_readout_pulse(qubit=qubit, start=cr_pulse.finish))
+                projection_pulse[ro_qubit], ro_pulses[ro_qubit] = ro_projection_pulse(
+                    platform, ro_qubit, start=cr_pulse.finish, projection=basis  
+                )
+                sequence.add(projection_pulse[ro_qubit]) 
+                sequence.add(ro_pulses[ro_qubit]) 
 
-                    sweeper_amplitude = Sweeper(
-                        parameter = Parameter.amplitude,
-                        values = cr_pulse.amplitude*params.amplitude_factor_range,
-                        pulses=[cr_pulse],
-                        type=SweeperType.ABSOLUTE,
-                    )
+            sweeper_amplitude = Sweeper(
+                parameter = Parameter.amplitude,
+                values = cr_pulse.amplitude*params.amplitude_factor_range,
+                pulses=[cr_pulse],
+                type=SweeperType.ABSOLUTE,
+            )
 
-                    results = platform.sweep(
-                        sequence,
-                        ExecutionParameters(
-                            nshots=params.nshots,
-                            relaxation_time=params.relaxation_time,
-                            acquisition_type=AcquisitionType.DISCRIMINATION,
-                            averaging_mode=AveragingMode.SINGLESHOT,
-                        ),
-                        sweeper_amplitude,
-                    )
-                    
-                    # store the results
-                    for qubit in pair:
-                        prob = results[qubit].probability(state=1)
-                        data.register_qubit(
-                            CrossResonanceType,
-                            (qubit, target, control, tgt_setup, ctr_setup, projection),
-                            dict(
-                                prob=prob.tolist(),
-                                amp=cr_pulse.amplitude * params.amplitude_factor_range,
-                                error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
-                            ),
-                        )
+            results = platform.sweep(
+                sequence,
+                ExecutionParameters(
+                    nshots=params.nshots,
+                    relaxation_time=params.relaxation_time,
+                    acquisition_type=AcquisitionType.DISCRIMINATION,
+                    averaging_mode=AveragingMode.SINGLESHOT,
+                ),
+                sweeper_amplitude,
+            )
+            
+            # store the results
+            for ro_qubit in pair:
+                probability = results[ro_qubit].probability(state=1)
+                data.register_qubit(
+                    CrossResonanceType,
+                    data_keys= (pair, ro_qubit, tgt_setup, ctr_setup, basis),
+                    data_dict= dict(
+                        prob=probability,
+                        amp=cr_pulse.amplitude * params.amplitude_factor_range,
+                        error=np.sqrt(probability * (1 - probability) / params.nshots).tolist(),
+                    ),
+                )
 
     return data
 
@@ -166,44 +169,7 @@ def _fit(
 
 def _plot(data: CrossResonanceData, target: QubitPairId, fit: CrossResonanceResults):
     """Plotting function for Cross Resonance Gate Calibration."""
-    tgt, ctr = target
-    figs = []
-    
-    for ro_qubit in [tgt, ctr]:
-        for projection in BASIS:
-            fig = go.Figure()
-            if ((ro_qubit, tgt, ctr, STATES[0], STATES[0], projection)) not in data.data:
-                continue
-            for ctr_setup in STATES:
-                #(qubit, target, control, tgt_setup, ctr_setup)
-                i_data = data.data[ro_qubit, tgt, ctr, STATES[0], ctr_setup, projection]
-                x_data = data.data[ro_qubit, tgt, ctr, STATES[1], ctr_setup, projection]
-
-                cr_parameters = getattr(i_data, 'amp')
-                fig.add_trace(
-                    go.Scatter(
-                        x=cr_parameters, y=i_data.prob, 
-                        name= f"Target: |{STATES[0]}>, Control: |{ctr_setup}>",
-                    ),
-                )
-
-                cr_parameters = getattr(x_data, 'amp')
-                fig.add_trace(
-                    go.Scatter(
-                        x=cr_parameters, y=x_data.prob, 
-                        name= f"Target: |{STATES[1]}>, Control: |{ctr_setup}>",
-                        mode='lines', line={'dash': 'dash'}, 
-                    ),
-                )
-                fig.update_layout(
-                    title=f"Qubit {ro_qubit}",
-                    xaxis_title="CR Pulse Amplitude (a.u.)",
-                    yaxis_title=f"|{projection}> Probability",
-                )
-
-            figs.append(fig)
-
-    return figs, ""
+    return cr_plot(data,target, 'amp'), ""
 
 cross_resonance_amplitude = Routine(_acquisition, _fit, _plot)
 """CrossResonance Amplitude Routine object."""

@@ -29,6 +29,7 @@ from .flux_dependence.resonator_crosstalk import resonator_crosstalk
 from .flux_dependence.resonator_flux_dependence import resonator_flux
 from .qubit_spectroscopy import qubit_spectroscopy
 from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
+from .qubit_power_spectroscopy import qubit_power_spectroscopy
 from .qutrit_classification import qutrit_classification
 from .rabi.amplitude import rabi_amplitude
 from .rabi.amplitude_signal import rabi_amplitude_signal
@@ -77,7 +78,7 @@ from .two_qubit_interaction import (
     cross_resonance_chevron_frequency,
     cross_resonance_chevron_amplitude_frequency,
     cross_resonance_chevron_coupler,
-    cross_resonance_cnot,
+    cross_resonance_cnot_length,
 )
 from .state_tomography import state_tomography
 from .two_qubit_state_tomography import two_qubit_state_tomography
@@ -164,5 +165,5 @@ __all__ = [
     "cross_resonance_chevron_frequency",
     "cross_resonance_chevron_amplitude_frequency",
     "cross_resonance_chevron_coupler",
-    "cross_resonance_cnot",
+    "cross_resonance_cnot_length",
 ]

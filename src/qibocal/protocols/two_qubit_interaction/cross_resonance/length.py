@@ -4,6 +4,8 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+import itertools
+
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
@@ -13,18 +15,19 @@ from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibolab.pulses import Pulse, PulseSequence, PulseType
 from qibolab.pulses import Gaussian, Drag, Rectangular, GaussianSquare
 
-from .utils import STATES
+from .utils import STATES, BASIS, ro_projection_pulse, cr_plot, Setup, Basis
 
-CrossResonanceType = np.dtype(
+CrossResonanceLengthType = np.dtype(
     [
         ("prob", np.float64),
-        ("length", np.int64),
+        ("duration", np.int64),
+        ("error", np.int64),
     ]
 )
-"""Custom dtype for Cross Resonance Gate Calibration."""
+"""Custom dtype for Cross Resonance Gate Calibration with Swept pulse duration."""
 
 @dataclass
-class CrossResonanceParameters(Parameters):
+class CrossResonanceLengthParameters(Parameters):
     """Cross Resonance Gate Calibration runcard inputs."""
 
     pulse_duration_start: float
@@ -37,6 +40,10 @@ class CrossResonanceParameters(Parameters):
     """CR pulse amplitude [ns]."""
     shape: Optional[str] = "Rectangular()"
     """CR pulse shape."""
+    projections: Optional[list[str]] = field(default_factory=lambda: [BASIS[2]])
+    """Measurement porjection"""
+    tgt_setups: Optional[list[str]] = field(default_factory=lambda: [STATES[0]])
+    """Setup for the experiment."""
     
     @property
     def duration_range(self):
@@ -51,32 +58,32 @@ class CrossResonanceParameters(Parameters):
 
 
 @dataclass
-class CrossResonanceResults(Results):
+class CrossResonanceLengthResults(Results):
     """Cross Resonance Gate Calibration outputs."""
 
 
 @dataclass
-class CrossResonanceData(Data):
+class CrossResonanceLengthData(Data):
     """Data structure for Cross Resonance Gate Calibration."""
 
     targets: list[QubitPairId] = field(default_factory=list)
     """Targets for the Cross Resonance Gate Calibration stored as pair of [target, control]."""
 
-    data: dict[QubitId, npt.NDArray[CrossResonanceType]] = field(default_factory=dict)
+    data: dict[(QubitPairId, QubitId, Setup, Setup, Basis), 
+               npt.NDArray[CrossResonanceLengthType]] = field(default_factory=dict)
     """Raw data acquired."""
 
 
 def _acquisition(
-    params: CrossResonanceParameters, platform: Platform, targets: list[QubitPairId]
-) -> CrossResonanceData:
+    params: CrossResonanceLengthParameters, platform: Platform, targets: list[QubitPairId]
+) -> CrossResonanceLengthData:
     """Data acquisition for Cross Resonance Gate Calibration."""
 
-    data = CrossResonanceData(targets=targets)
+    data = CrossResonanceLengthData(targets=targets)
 
     for pair in targets:
-        for tgt_setup in STATES:
-            for ctr_setup in STATES:
-                target, control = pair
+        target, control = pair
+        for tgt_setup, ctr_setup, basis  in itertools.product(params.tgt_setups, STATES, params.projections):
                 tgt_native_rx:NativePulse = platform.qubits[target].native_gates.RX.pulse(start=0)
                 ctr_native_rx:NativePulse = platform.qubits[control].native_gates.RX.pulse(start=0)
 
@@ -106,8 +113,14 @@ def _acquisition(
                 
                 sequence.add(cr_pulse)
 
-                for qubit in pair:
-                    sequence.add(platform.create_qubit_readout_pulse(qubit, start=cr_pulse.finish))
+                # Add readout pulses
+                projection_pulse , ro_pulses = {}, {}
+                for ro_qubit in pair:
+                    projection_pulse[ro_qubit], ro_pulses[ro_qubit] = ro_projection_pulse(
+                        platform, ro_qubit, start=cr_pulse.finish, projection=basis  
+                    )
+                    sequence.add(projection_pulse[ro_qubit])
+                    sequence.add(ro_pulses[ro_qubit]) 
 
                 sweeper_duration = Sweeper(
                     parameter = Parameter.duration,
@@ -122,64 +135,35 @@ def _acquisition(
                         nshots=params.nshots,
                         relaxation_time=params.relaxation_time,
                         acquisition_type=AcquisitionType.DISCRIMINATION,
-                        averaging_mode=AveragingMode.SINGLESHOT,
+                        averaging_mode=AveragingMode.CYCLIC,
                     ),
                     sweeper_duration,
                 )
 
                 # store the results
-                for qubit in pair:
-                    probability = results[qubit].probability(state=1)
+                for ro_qubit in pair:
+                    probability = results[ro_qubit].probability(state=1)
                     data.register_qubit(
-                        CrossResonanceType,
-                        (qubit, target, control, tgt_setup, ctr_setup),
+                        CrossResonanceLengthType,
+                        (pair, ro_qubit, tgt_setup, ctr_setup, basis),
                         dict(
                             prob=probability,
-                            length=params.duration_range,
+                            duration=params.duration_range,
+                            error=np.sqrt(probability * (1 - probability) / params.nshots).tolist(),
                         ),
                     )
-
     return data
 
-
 def _fit(
-    data: CrossResonanceData,
-) -> CrossResonanceResults:
+    data: CrossResonanceLengthData,
+) -> CrossResonanceLengthResults:
     """Post-processing function for Cross Resonance Gate Calibration."""
-    return CrossResonanceResults()
+    return CrossResonanceLengthResults()
 
-
-def _plot(data: CrossResonanceData, target: QubitPairId, fit: CrossResonanceResults):
+def _plot(data: CrossResonanceLengthData, target: QubitPairId, fit: CrossResonanceLengthResults
+          ) -> tuple[list[go.Figure], str]:
     """Plotting function for Cross Resonance Gate Calibration."""
-
-    figs = []
-    for ro_qubit in target:
-        fig = go.Figure()
-        for ctr_setup in STATES:
-            i_data = data.data[ro_qubit, target[0], target[1], STATES[0], ctr_setup]
-            x_data = data.data[ro_qubit, target[0], target[1], STATES[1], ctr_setup]
-            fig.add_trace(
-                go.Scatter(
-                    x=i_data.length, y=i_data.prob, 
-                    name= f"Target: |{STATES[0]}>, Control: |{ctr_setup}>",
-                ),
-            )
-            fig.add_trace(
-                go.Scatter(
-                    x=x_data.length, y=x_data.prob, 
-                    name= f"Target: |{STATES[1]}>, Control: |{ctr_setup}>",
-                    mode='lines', line={'dash': 'dash'}, 
-                ),
-            )
-            fig.update_layout(
-                title=f"Qubit {ro_qubit}",
-                xaxis_title="CR Pulse Length (ns)",
-                yaxis_title="Excited State Probability",
-            )
-
-        figs.append(fig)
-
-    return figs, ""
+    return cr_plot(data,target, 'duration'), ""
 
 cross_resonance_length = Routine(_acquisition, _fit, _plot)
-"""CrossResonance Length Routine object."""
+"""CrossResonance Duration Routine object."""
