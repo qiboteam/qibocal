@@ -109,19 +109,33 @@ def create_sequence(
     native: Literal["CZ", "iSWAP"],
     dt: float,
     flux_pulse_max_duration: float = None,
-) -> tuple[
-    PulseSequence,
-    Pulse,
-    Pulse,
-]:
-    """Create the experiment PulseSequence."""
+) -> tuple[PulseSequence, Pulse, Pulse, list[Pulse]]:
+    """
+    Create the pulse sequence for the calibration of two-qubit gate virtual phases.
+
+    This function constructs a pulse sequence for a given two-qubit native gate `native` (CZ or iSWAP)
+    on the specified qubits. The sequence includes:
+    - A preliminary RX90 pulse on the `target_qubit`.
+    - An optional X pulse on the `control_qubit` based on the `setup` type.
+    - A flux pulse implementing the two-qubit native gate.
+    - A delay of duration `dt` before the final X90 pulse on the target qubit.
+    - Measurement pulses.
+    It is possible to specify the maximum duration for the flux pulses with the
+    `flux_pulse_max_duration` parameter.
+
+    The function returns:
+            - The full experiment pulse sequence.
+            - The applied flux pulse.
+            - The final X90 pulse to be used for phase sweeping.
+            - A list of readout delays for the target and control qubits.
+    """
 
     target_natives = platform.natives.single_qubit[target_qubit]
     control_natives = platform.natives.single_qubit[control_qubit]
 
     sequence = PulseSequence()
-    # Y90
-    sequence += target_natives.R(theta=np.pi / 2, phi=np.pi / 2)
+    # X90
+    sequence += target_natives.R(theta=np.pi / 2)
     # X
     if setup == "X":
         sequence += control_natives.RX()
@@ -131,52 +145,39 @@ def create_sequence(
         )
 
     drive_duration = sequence.duration
-
     # CZ
     flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
     flux_pulses = [
         (ch, pulse) for ch, pulse in flux_sequence if not isinstance(pulse, VirtualZ)
     ]
 
-    if flux_pulse_max_duration is not None:
-        flux_pulses[0] = (
-            flux_pulses[0][0],
-            replace(flux_pulses[0][1], duration=flux_pulse_max_duration),
-        )
+    flux_channel = platform.qubits[ordered_pair[1]].flux
 
-    _, flux_pulse = flux_pulses[0]
+    for i in range(len(flux_pulses)):
+        if flux_pulses[i][0] == flux_channel:
+            if flux_pulse_max_duration is not None:
+                replace(flux_pulses[i][1], duration=flux_pulse_max_duration)
+            flux_pulse = flux_pulses[i][1]
+
     flux_sequence = PulseSequence(flux_pulses)
     sequence |= flux_sequence
-
     flux_duration = flux_sequence.duration
-    dt_delay = Delay(duration=dt)
 
     theta_sequence = PulseSequence(
         [
             (
                 platform.qubits[target_qubit].drive,
-                dt_delay,
+                Delay(duration=dt + flux_duration),
             ),
             (
                 platform.qubits[control_qubit].drive,
-                dt_delay,
-            ),
-            (
-                platform.qubits[target_qubit].drive,
-                Delay(duration=flux_duration),
-            ),
-            (
-                platform.qubits[control_qubit].drive,
-                Delay(duration=flux_duration),
+                Delay(duration=dt + flux_duration),
             ),
         ]
     )
-    # R90 (angle to be swept)
-    theta_sequence += target_natives.R(theta=np.pi / 2, phi=0)
+    # RX90 (angle to be swept)
+    theta_sequence += target_natives.R(theta=np.pi / 2)
     theta_pulse = theta_sequence[-1][1]
-    # X
-    if setup == "X":
-        theta_sequence += control_natives.RX()
 
     sequence += theta_sequence
 
@@ -187,27 +188,11 @@ def create_sequence(
         [
             (
                 platform.qubits[target_qubit].acquisition,
-                Delay(duration=drive_duration),
+                Delay(duration=drive_duration + theta_sequence.duration),
             ),
             (
                 platform.qubits[control_qubit].acquisition,
-                Delay(duration=drive_duration),
-            ),
-            (
-                platform.qubits[target_qubit].acquisition,
-                ro_target_delay,
-            ),
-            (
-                platform.qubits[control_qubit].acquisition,
-                ro_control_delay,
-            ),
-            (
-                platform.qubits[target_qubit].acquisition,
-                Delay(duration=theta_sequence.duration),
-            ),
-            (
-                platform.qubits[control_qubit].acquisition,
-                Delay(duration=theta_sequence.duration),
+                Delay(duration=drive_duration + theta_sequence.duration),
             ),
             target_natives.MZ()[0],
             control_natives.MZ()[0],
@@ -229,12 +214,11 @@ def _acquisition(
 
     Check the two-qubit landscape created by a flux pulse of a given duration
     and amplitude.
-    The system is initialized with a Y90 pulse on the low frequency qubit and either
+    The system is initialized with a X90 pulse on the low frequency qubit and either
     an Id or an X gate on the high frequency qubit. Then the flux pulse is applied to
-    the high frequency qubit in order to perform a two-qubit interaction. The Id/X gate
-    is undone in the high frequency qubit and a theta90 pulse is applied to the low
-    frequency qubit before measurement. That is, a pi-half pulse around the relative phase
-    parametereized by the angle theta.
+    the high frequency qubit in order to perform a two-qubit interaction.
+    A $X_{\beta}90$ pulse is applied to the low frequency qubit before measurement.
+    That is, a pi-half pulse around the relative phase parametereized by the angle theta.
     Measurements on the low frequency qubit yield the 2Q-phase of the gate and the
     remnant single qubit Z phase aquired during the execution to be corrected.
     Population of the high frequency qubit yield the leakage to the non-computational states
@@ -268,7 +252,7 @@ def _acquisition(
                 )
                 sweeper = Sweeper(
                     parameter=Parameter.relative_phase,
-                    range=(params.theta_start, params.theta_end, params.theta_step),
+                    range=(-params.theta_start, -params.theta_end, -params.theta_step),
                     pulses=[theta_pulse],
                 )
                 results = platform.execute(
@@ -302,7 +286,7 @@ def _acquisition(
 
 def sinusoid(x, amplitude, offset, phase):
     """Sinusoidal fit function."""
-    return np.sin(x + phase) * amplitude + offset
+    return np.cos(x + phase) * amplitude + offset
 
 
 def phase_diff(phase_1, phase_2):
@@ -369,7 +353,7 @@ def _fit(
                     fitted_parameters[target_q, control_q, "X"][2],
                     fitted_parameters[target_q, control_q, "I"][2],
                 )
-                virtual_phase[pair][target_q] = -fitted_parameters[
+                virtual_phase[pair][target_q] = fitted_parameters[
                     target_q, control_q, "I"
                 ][2]
 
