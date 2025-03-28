@@ -100,6 +100,8 @@ def test_cryoscope_plot():
 
         for fig in figs:
             assert len(fig.data) == 5
+            assert fig.data[0].name == "X"
+            assert fig.data[1].name == "Y"
             assert fig.data[2].name == "Uncorrected waveform"
             assert fig.data[3].name == "IIR corrections"
             assert fig.data[4].name == "FIR + IIR corrections"

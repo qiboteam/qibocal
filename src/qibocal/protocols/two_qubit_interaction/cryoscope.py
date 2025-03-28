@@ -347,25 +347,24 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
 
     for qubit in qubits:
         sampling_rate = 1 / (x[1] - x[0])
-        X_exp = 1 - 2 * data[(qubit, "MX")].prob_1
+        X_exp = 2 * data[(qubit, "MX")].prob_1 - 1
         Y_exp = 1 - 2 * data[(qubit, "MY")].prob_1
 
         norm_data = X_exp + 1j * Y_exp
 
         # demodulation frequency found by fitting sinusoidal
-        demod_freq = -fitted_parameters[qubit, "MY"][2] / 2 / np.pi * sampling_rate
-
+        demod_freq = -fitted_parameters[qubit, "MX"][2] / 2 / np.pi * sampling_rate
         # to be used in savgol_filter
         derivative_window_length = 7 / sampling_rate
         derivative_window_size = max(3, int(derivative_window_length * sampling_rate))
         derivative_window_size += (derivative_window_size + 1) % 2
 
         # find demodulatation frequency
-        demod_data = np.exp(2 * np.pi * 1j * x * demod_freq) * (norm_data)
+        demod_data = np.exp(2 * np.pi * 1j * x * np.abs(demod_freq)) * (norm_data)
 
         # compute phase
         phase = np.unwrap(np.angle(demod_data))
-
+        phase -= phase[0]
         # compute detuning
         raw_detuning = (
             scipy.signal.savgol_filter(
@@ -376,20 +375,14 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             )
             * sampling_rate
         )
-
-        # real detuning (reintroducing demod_freq)
         detuning[qubit] = (
-            raw_detuning - demod_freq + sampling_rate * nyquist_order
+            raw_detuning + demod_freq + sampling_rate * nyquist_order
         ).tolist()
 
-        # params from flux_amplitude_frequency_protocol
-        params = data.flux_coefficients[qubit]
-
         # invert frequency amplitude formula
-        p = np.poly1d(params)
+        p = np.poly1d(data.flux_coefficients[qubit])
         amplitude[qubit] = [max((p - freq).roots).real for freq in detuning[qubit]]
 
-        # compute step response
         step_response[qubit] = (
             np.array(amplitude[qubit]) / data.flux_pulse_amplitude
         ).tolist()
@@ -452,7 +445,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
     fig.add_trace(
         go.Scatter(
             x=duration,
-            y=1 - 2 * data[(target, "MX")].prob_1,
+            y=2 * data[(target, "MX")].prob_1 - 1,
             name="X",
             legendgroup="1",
         ),
