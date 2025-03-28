@@ -922,3 +922,12 @@ actions:
       duration_step: 1
       flux_pulse_amplitude: 0.1
       relaxation_time: 50_000
+
+  - id: Qubit VZ
+    operation: qubit_vz
+    parameters:
+      use_flux_pulse: true
+      duration: 50
+      amplitude: 0.15
+      nshots: 45
+      relaxation_time: 100_000
