@@ -19,8 +19,9 @@ from qibolab import (
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 
+from ..result import probability
 from .ramsey.utils import fitting, ramsey_fit
-from .utils import GHZ_TO_HZ, table_dict, table_html
+from .utils import COLORBAND, COLORBAND_LINE, GHZ_TO_HZ, table_dict, table_html
 
 
 @dataclass
@@ -47,7 +48,9 @@ class FluxGateResults(Results):
     """Fitted parameters for every qubit."""
 
 
-FluxGateType = np.dtype([("duration", int), ("prob_1", np.float64)])
+FluxGateType = np.dtype(
+    [("duration", int), ("prob_1", np.float64), ("error", np.float64)]
+)
 """Custom dtype for FluxGate."""
 
 
@@ -92,7 +95,7 @@ def _acquisition(
             envelope=Rectangular(),
         )
         drive_delay = Delay(duration=flux_pulses[qubit].duration)
-        ro_delay = Delay(duration=flux_pulses[qubit].duration + 2 * rx90.duration)
+        ro_delay = Delay(duration=flux_pulses[qubit].duration)
         qubit_sequence.extend(
             [
                 (drive_channel, rx90),
@@ -100,10 +103,8 @@ def _acquisition(
                 (flux_channel, flux_pulses[qubit]),
                 (drive_channel, drive_delay),
                 (drive_channel, rx90),
-                (
-                    ro_channel,
-                    ro_delay,
-                ),
+                (ro_channel, ro_delay),
+                (ro_channel, Delay(duration=2 * rx90.duration)),
                 (ro_channel, ro_pulse),
             ]
         )
@@ -118,19 +119,21 @@ def _acquisition(
     options = dict(
         nshots=params.nshots,
         acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.CYCLIC,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
 
     results = platform.execute([sequence], [[sweeper]], **options)
 
     for qubit in targets:
         ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+        prob = probability(results[ro_pulse.id], state=1)
         data.register_qubit(
             FluxGateType,
             (qubit),
             dict(
                 duration=duration_range,
-                prob_1=results[ro_pulse.id],
+                prob_1=prob,
+                error=np.sqrt(prob * (1 - prob) / params.nshots),
             ),
         )
 
@@ -158,12 +161,25 @@ def _plot(data: FluxGateData, fit: FluxGateResults, target: QubitId):
     fig = go.Figure()
     fitting_report = ""
     qubit_data = data[target]
-
+    duration = qubit_data.duration
+    prob = qubit_data.prob_1
+    error = qubit_data.error
     fig.add_trace(
         go.Scatter(
             x=qubit_data.duration,
             y=qubit_data.prob_1,
             name="Data",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=np.concatenate((duration, duration[::-1])),
+            y=np.concatenate((prob + error, (prob - error)[::-1])),
+            fill="toself",
+            fillcolor=COLORBAND,
+            line=dict(color=COLORBAND_LINE),
+            showlegend=True,
+            name="Errors",
         )
     )
 
