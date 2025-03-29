@@ -112,5 +112,5 @@ def _plot(data: CrossResonanceLengthData, target: QubitPairId, fit: CrossResonan
 
 
 
-cross_resonance_length_sequences = Routine(_acquisition, _fit, _plot)
+cross_resonance_length_sequences = Routine(_acquisition, _fit, _plot, two_qubit_gates=True)
 """CrossResonance Routine object."""

@@ -230,5 +230,5 @@ def _plot(
             
     return figs, ""
 
-cross_resonance_chevron_amplitude_frequency = Routine(_acquisition, _fit, _plot)
+cross_resonance_chevron_amplitude_frequency = Routine(_acquisition, _fit, _plot, two_qubit_gates=True)
 """CrossResonanceChevronFrequency Routine object."""

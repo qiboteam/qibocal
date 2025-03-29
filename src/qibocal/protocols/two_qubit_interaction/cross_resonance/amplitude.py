@@ -171,5 +171,5 @@ def _plot(data: CrossResonanceData, target: QubitPairId, fit: CrossResonanceResu
     """Plotting function for Cross Resonance Gate Calibration."""
     return cr_plot(data,target, 'amp'), ""
 
-cross_resonance_amplitude = Routine(_acquisition, _fit, _plot)
+cross_resonance_amplitude = Routine(_acquisition, _fit, _plot, two_qubit_gates=True)
 """CrossResonance Amplitude Routine object."""

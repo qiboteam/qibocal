@@ -53,7 +53,8 @@ class RabiLengthSignalData(Data):
     """RabiLength acquisition outputs."""
 
     amplitudes: dict[QubitId, float] = field(default_factory=dict)
-    """Pulse durations provided by the user."""
+    """Pulse amplitudes provided by the user."""
+
     data: dict[QubitId, npt.NDArray[RabiLenSignalType]] = field(default_factory=dict)
     """Raw data acquired."""
 

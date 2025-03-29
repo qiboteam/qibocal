@@ -246,7 +246,7 @@ def sequence_amplitude(
 
 
 def sequence_length(
-    targets: list[QubitId], params: Parameters, platform: Platform
+    targets: list[QubitId], params: Parameters, platform: Platform, start: int = 0,
 ) -> tuple[PulseSequence, dict, dict, dict]:
     """Return sequence for rabi length."""
     sequence = PulseSequence()
@@ -255,7 +255,7 @@ def sequence_length(
     amplitudes = {}
     for qubit in targets:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=params.pulse_duration_start
+            qubit, start=start, duration=params.pulse_duration_start
         )
         if params.pulse_amplitude is not None:
             qd_pulses[qubit].amplitude = params.pulse_amplitude

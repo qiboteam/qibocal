@@ -233,5 +233,5 @@ def _plot(
     return figs, ""
 
 
-cross_resonance_chevron_coupler = Routine(_acquisition, _fit, _plot)
+cross_resonance_chevron_coupler = Routine(_acquisition, _fit, _plot, two_qubit_gates=True)
 """CrossResonanceChevron Coupler Routine object."""

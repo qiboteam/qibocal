@@ -31,13 +31,15 @@ from .qubit_spectroscopy import qubit_spectroscopy
 from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
 from .qubit_power_spectroscopy import qubit_power_spectroscopy
 from .qutrit_classification import qutrit_classification
-from .rabi.amplitude import rabi_amplitude
-from .rabi.amplitude_signal import rabi_amplitude_signal
-from .rabi.amplitude_frequency_signal import rabi_amplitude_frequency_signal
-from .rabi.ef import rabi_amplitude_ef
-from .rabi.length import rabi_length
-from .rabi.length_sequences import rabi_length_sequences
-from .rabi.length_signal import rabi_length_signal
+from .rabi import (
+    rabi_amplitude,
+    rabi_amplitude_signal,
+    rabi_amplitude_frequency_signal,
+    rabi_amplitude_ef,
+    rabi_length,
+    rabi_length_sequences,
+    rabi_length_signal,
+)
 from .ramsey.ramsey import ramsey
 from .ramsey.ramsey_signal import ramsey_signal
 from .ramsey.ramsey_zz import ramsey_zz
@@ -121,6 +123,7 @@ __all__ = [
     "rabi_amplitude_ef",
     "rabi_length_sequences",
     "rabi_length_signal",
+    "rabi_jeff",
     "ramsey",
     "ramsey_signal",
     "filtered_rb",

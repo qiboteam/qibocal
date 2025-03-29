@@ -210,5 +210,5 @@ def _plot(data: CrossResonanceCnotLengthData, target: QubitPairId, fit: CrossRes
     figs = cr_plot(data,target, 'duration')
     return figs, ""
 
-cross_resonance_cnot_length = Routine(_acquisition, _fit, _plot)
+cross_resonance_cnot_length = Routine(_acquisition, _fit, _plot, two_qubit_gates=True)
 """CrossResonance Length CNOT calibration object."""

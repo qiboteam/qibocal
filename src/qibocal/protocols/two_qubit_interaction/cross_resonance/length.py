@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -11,9 +11,14 @@ from qibolab.platform import Platform
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibolab.native import NativePulse
 from qibolab.qubits import QubitId, QubitPairId
-from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibolab.pulses import Pulse, PulseSequence, PulseType
 from qibolab.pulses import Gaussian, Drag, Rectangular, GaussianSquare
+
+
+from qibocal.config import log
+from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.protocols.utils import guess_period, fallback_period, chi2_reduced, table_html
+from qibocal.protocols.rabi.utils import fit_length_function, rabi_length_function
 
 from .utils import STATES, BASIS, ro_projection_pulse, cr_plot, Setup, Basis
 
@@ -21,7 +26,7 @@ CrossResonanceLengthType = np.dtype(
     [
         ("prob", np.float64),
         ("duration", np.int64),
-        ("error", np.int64),
+        ("error", np.float64),
     ]
 )
 """Custom dtype for Cross Resonance Gate Calibration with Swept pulse duration."""
@@ -42,7 +47,7 @@ class CrossResonanceLengthParameters(Parameters):
     """CR pulse shape."""
     projections: Optional[list[str]] = field(default_factory=lambda: [BASIS[2]])
     """Measurement porjection"""
-    tgt_setups: Optional[list[str]] = field(default_factory=lambda: [STATES[0]])
+    tgt_setup: Optional[list[str]] = field(default_factory=lambda: [STATES[0]])
     """Setup for the experiment."""
     
     @property
@@ -56,11 +61,28 @@ class CrossResonanceLengthParameters(Parameters):
         return eval(self.shape)
     """Cross Resonance Pulse shape."""
 
+    def __dict__(self):
+        """Convert the object to a dictionary."""
+        return {
+            prop: getattr(self, prop) for prop in self.__dataclass_fields__
+            if prop not in ["pulse_shape", "duration_range"]
+        }
+
 
 @dataclass
 class CrossResonanceLengthResults(Results):
     """Cross Resonance Gate Calibration outputs."""
-
+    amplitude: dict[QubitPairId, Union[float, list[float]]]
+    """Pi pulse amplitude. Same for all bases in each qubit pair test. If specified in the runcard, same for all pairs."""
+    duration: dict[(QubitPairId, Setup, Setup, Basis), 
+                 Union[int, list[float]]] = field(default_factory=dict)
+    """Fitted pi pulse duration for each qubit."""
+    fitted_parameters: dict[(QubitPairId, Setup, Setup, Basis), 
+                            dict[str, float]] = field(default_factory=dict)
+    """Raw fitting output."""
+    chi2: dict[(QubitPairId, Setup, Setup, Basis), 
+               list[float]] = field(default_factory=dict)
+    """Reduced chi2 for each fitting."""
 
 @dataclass
 class CrossResonanceLengthData(Data):
@@ -68,6 +90,12 @@ class CrossResonanceLengthData(Data):
 
     targets: list[QubitPairId] = field(default_factory=list)
     """Targets for the Cross Resonance Gate Calibration stored as pair of [target, control]."""
+
+    parameters: dict = field(default_factory=dict)
+    """Parameters for the Cross Resonance Gate Calibration."""
+
+    amplitude: dict[QubitPairId, float] = field(default_factory=dict)
+    """Amplitude of the qubit drive pulse."""
 
     data: dict[(QubitPairId, QubitId, Setup, Setup, Basis), 
                npt.NDArray[CrossResonanceLengthType]] = field(default_factory=dict)
@@ -79,11 +107,17 @@ def _acquisition(
 ) -> CrossResonanceLengthData:
     """Data acquisition for Cross Resonance Gate Calibration."""
 
-    data = CrossResonanceLengthData(targets=targets)
-
+    parameters = params.__dict__()
+    parameters["ctr_setup"] = STATES
+    log.info(f"Cross Resonance Gate Calibration parameters: {parameters}")
+    data = CrossResonanceLengthData(
+        targets=targets,
+        parameters=parameters,
+    )
+    amplitude = {}
     for pair in targets:
         target, control = pair
-        for tgt_setup, ctr_setup, basis  in itertools.product(params.tgt_setups, STATES, params.projections):
+        for tgt_setup, ctr_setup, basis  in itertools.product(params.tgt_setup, STATES, params.projections):
                 tgt_native_rx:NativePulse = platform.qubits[target].native_gates.RX.pulse(start=0)
                 ctr_native_rx:NativePulse = platform.qubits[control].native_gates.RX.pulse(start=0)
 
@@ -110,6 +144,9 @@ def _acquisition(
 
                 if params.pulse_amplitude is not None:
                     cr_pulse.amplitude = params.pulse_amplitude
+                    amplitude[pair] = params.pulse_amplitude
+                else:
+                    amplitude[pair] = cr_pulse.amplitude
                 
                 sequence.add(cr_pulse)
 
@@ -142,28 +179,69 @@ def _acquisition(
 
                 # store the results
                 for ro_qubit in pair:
-                    probability = results[ro_qubit].probability(state=1)
+                    probability = np.array(results[ro_qubit].probability(state=1))
                     data.register_qubit(
                         CrossResonanceLengthType,
                         (pair, ro_qubit, tgt_setup, ctr_setup, basis),
                         dict(
-                            prob=probability,
+                            prob=probability.tolist(),
                             duration=params.duration_range,
                             error=np.sqrt(probability * (1 - probability) / params.nshots).tolist(),
                         ),
                     )
+                    
+    data.amplitude = amplitude
+    
     return data
 
 def _fit(
     data: CrossResonanceLengthData,
 ) -> CrossResonanceLengthResults:
     """Post-processing function for Cross Resonance Gate Calibration."""
-    return CrossResonanceLengthResults()
+    tgt_setups = data.parameters['tgt_setup']
+    ctr_setups = data.parameters['ctr_setup'] if 'ctr_setup' in data.parameters else STATES
+    projections = data.parameters['projections']
+    amplitude = data.amplitude
+
+    # Loop over the qubit pairs and their setups
+    for i, pair in enumerate(data.targets):
+        target, control = pair
+    
+        fit_popt = {}
+        fit_chi2 = {}
+        fit_duration = {}
+
+        for tgt_setup, basis, ctr_setup in itertools.product(tgt_setups, projections, ctr_setups):
+            # Get the data for the current qubit pair and setup
+           
+            _data: CrossResonanceLengthData = data[(tuple(pair), target, tgt_setup, ctr_setup, basis)]
+            print(_data.error)
+            raw_x = _data.duration
+            min_x = np.min(raw_x)
+            max_x = np.max(raw_x)
+            y = _data.prob
+            x = (raw_x - min_x) / (max_x - min_x)
+
+            # Fit the data
+            period = fallback_period(guess_period(x, y))
+            pguess = [0.5, 0.5, period, 0, 0]
+            try:
+                popt, perr, pi_pulse_parameter = fit_length_function(x, y, pguess, sigma=_data.error, signal = False, x_limits=(min_x, max_x))
+                fit_popt[pair, tgt_setup, ctr_setup, basis] = popt
+                fit_chi2[pair, tgt_setup, ctr_setup, basis] = [chi2_reduced(y, rabi_length_function(raw_x, *popt),_data.error),
+                                                               np.sqrt(2 / len(y))]
+                fit_duration[pair, tgt_setup, ctr_setup, basis] = [pi_pulse_parameter, perr[2] * (max_x - min_x) / 2]
+
+            except Exception as e:
+                log.error(f"Error fitting data for {pair} |{tgt_setup},{ctr_setup}>, <{basis}>: {e}")
+                continue
+
+    return CrossResonanceLengthResults(amplitude = amplitude, duration = fit_duration, chi2 = fit_chi2, fitted_parameters = fit_popt)
 
 def _plot(data: CrossResonanceLengthData, target: QubitPairId, fit: CrossResonanceLengthResults
           ) -> tuple[list[go.Figure], str]:
     """Plotting function for Cross Resonance Gate Calibration."""
     return cr_plot(data,target, 'duration'), ""
 
-cross_resonance_length = Routine(_acquisition, _fit, _plot)
+cross_resonance_length = Routine(_acquisition, _fit, _plot, two_qubit_gates=True)
 """CrossResonance Duration Routine object."""
