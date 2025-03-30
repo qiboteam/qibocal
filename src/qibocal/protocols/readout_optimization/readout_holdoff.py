@@ -9,6 +9,8 @@ from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
+from qibolab.channels import Channel
+from qibolab.qubits import Qubit
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
@@ -83,33 +85,51 @@ def _acquisition(
     Returns:
         data (:class:`ReadoutHoldoffData`)
     """
-    from qibolab.channels import Channel
-    from qibolab.qubits import Qubit
-    from qibolab.instruments.qblox.port import QbloxInputPort
-    
-    data = ReadoutHoldoffData()
-    for qubit_name in targets:
-        error = 1
-        qubit: Qubit = platform.qubits[qubit_name]
 
-        feddback_channel: Channel = qubit.feedback
-        feddback_channel_port: QbloxInputPort = feddback_channel.port
+    from qibolab.instruments.qblox.port import QbloxInputPort
+   
+    data = ReadoutHoldoffData()
+   
+    error = 1
+    ports, old_holdoff, = {}, {}
+    new_holdoff = params.holdoff_start
+    
+    # make a dictionnary with the qubits assicated to each port
+    for qubit_name in targets:
+        qubit = platform.qubits[qubit_name]
+        feedback_channel: Channel = qubit.feedback
+        port_name = feedback_channel.name + '_' + feedback_channel.port.name
+
+        if not isinstance(feedback_channel.port, QbloxInputPort):
+            raise TypeError(
+                f"Port {feedback_channel.port.name} is not a QbloxInputPort."
+            )
         
-        old_holdoff = feddback_channel_port.acquisition_hold_off
-        new_holdoff = params.holdoff_start
-        while error > params.error_threshold and new_holdoff <= params.holdoff_stop:
-            feddback_channel_port.acquisition_holdoff = new_holdoff
+        if port_name not in ports:
+            ports[port_name] = {'port': feedback_channel.port, 'qubits' : []}
+            old_holdoff[port_name] = ports[port_name]['port'].acquisition_hold_off
+        ports[port_name]['qubits'].append(qubit_name)
+
+    while error > params.error_threshold and new_holdoff <= params.holdoff_stop:
+        for port_name, port_info in ports.items():
+            port: QbloxInputPort = port_info['port']
+            target_qubits = port_info['qubits']
+            port.acquisition_hold_off = new_holdoff
 
             sequence_0 = PulseSequence()
             sequence_1 = PulseSequence()
 
-            qd_pulses = platform.create_RX_pulse(qubit_name, start=0)
-            ro_pulses = platform.create_qubit_readout_pulse(
-                qubit_name, start=qd_pulses.finish
-            )
-            sequence_0.add(ro_pulses)
-            sequence_1.add(qd_pulses)
-            sequence_1.add(ro_pulses)
+            ro_pulses, qd_pulses = {}, {}
+            for qubit in target_qubits:
+                qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+                ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+                    qubit, start=qd_pulses[qubit].finish
+                )
+            
+            for qubit in target_qubits:
+                sequence_0.add(ro_pulses[qubit]) 
+                sequence_1.add(qd_pulses[qubit])
+                sequence_1.add(ro_pulses[qubit])
 
             state0_results = platform.execute_pulse_sequence(
                 sequence_0,
@@ -128,30 +148,33 @@ def _acquisition(
                     acquisition_type=AcquisitionType.INTEGRATION,
                 ),
             )
-            result0 = state0_results[ro_pulses.serial]
-            result1 = state1_results[ro_pulses.serial]
+        
+            # Gather results
+            for qubit in target_qubits:
+                result0 = state0_results[ro_pulses[qubit].serial]
+                result1 = state1_results[ro_pulses[qubit].serial]
 
-            i_values = np.concatenate((result0.voltage_i, result1.voltage_i))
-            q_values = np.concatenate((result0.voltage_q, result1.voltage_q))
-            iq_values = np.stack((i_values, q_values), axis=-1)
-            nshots = int(len(i_values) / 2)
-            states = [0] * nshots + [1] * nshots
-            model = QubitFit()
-            model.fit(iq_values, np.array(states))
-            error = model.probability_error
+                i_values = np.concatenate((result0.voltage_i, result1.voltage_i))
+                q_values = np.concatenate((result0.voltage_q, result1.voltage_q))
+                iq_values = np.stack((i_values, q_values), axis=-1)
+                nshots = int(len(i_values) / 2)
+                states = [0] * nshots + [1] * nshots
+                model = QubitFit()
+                model.fit(iq_values, np.array(states))
+                error = model.probability_error
 
-            data.register_qubit(
-                ReadoutHoldoffType,
-                (qubit_name),
-                dict(
-                    holdoff = np.array([new_holdoff]),
-                    error=np.array([error]),
-                    angle=np.array([model.angle]),
-                    threshold=np.array([model.threshold]),
-                ),
-            )
-            feddback_channel_port.acquisition_hold_off = old_holdoff
-            new_holdoff += params.holdoff_step
+                data.register_qubit(
+                    ReadoutHoldoffType,
+                    (qubit),
+                    dict(
+                        holdoff = np.array([new_holdoff]),
+                        error=np.array([error]),
+                        angle=np.array([model.angle]),
+                        threshold=np.array([model.threshold]),
+                    ),
+                )
+            port.acquisition_hold_off = old_holdoff[port_name]
+        new_holdoff += params.holdoff_step
     return data
 
 
