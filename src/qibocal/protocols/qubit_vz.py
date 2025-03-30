@@ -90,7 +90,6 @@ def _acquisition(
         qf_channel = platform.qubits[qubit].flux
 
         qubit_sequence.append(natives.R(theta=np.pi / 2)[0])
-        qubit_sequence.append((qf_channel, Delay(duration=qubit_sequence.duration)))
 
         if params.use_flux_pulse:
             flux_pulse = Pulse(
@@ -98,6 +97,7 @@ def _acquisition(
                 amplitude=params.amplitude,
                 envelope=Rectangular(),
             )
+            qubit_sequence.append((qf_channel, Delay(duration=qubit_sequence.duration)))
             qubit_sequence.append((qf_channel, flux_pulse))
             qubit_sequence.append((qd_channel, Delay(duration=flux_pulse.duration)))
 
