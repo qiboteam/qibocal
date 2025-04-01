@@ -1,5 +1,7 @@
-Measuring qubit detuning as a function of the flux pulse amplitude
-==================================================================
+.. _flux_amplitude:
+
+Measuring detuning of qubit frequency using fast flux-pulses
+============================================================
 
 The following experiments are similar to the :ref:`flux` but instead of modifying the
 static bias and measuring the qubit frequency with a spectroscopic measurement the qubit
@@ -79,3 +81,9 @@ Here is a possible runcard.
 with the corresponding outcome.
 
 .. image:: flux_amplitude_freq_crosstalk.png
+
+
+Requirements
+^^^^^^^^^^^^
+
+- :ref:`single-shot`
