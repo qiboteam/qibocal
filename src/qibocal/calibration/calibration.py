@@ -92,6 +92,11 @@ class Qubit(Model):
             / self.charging_energy
         )
 
+    def detuning(self, amplitude):
+        if self.flux_coefficients is None:
+            return 0
+        return np.polyval(self.flux_coefficients, amplitude)
+
 
 class Readout(Model):
     """Readout parameters."""
