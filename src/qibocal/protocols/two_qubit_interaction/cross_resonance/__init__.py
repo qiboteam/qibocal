@@ -1,1 +1,2 @@
+from .amplitude import cross_resonance_amplitude as cross_resonance_amplitude
 from .length import cross_resonance_length as cross_resonance_length
