@@ -17,7 +17,7 @@ from qibolab.pulses import Gaussian, Drag, Rectangular, GaussianSquare
 
 from qibocal.config import log
 from qibocal.auto.operation import Data, Parameters, Results, Routine
-from qibocal.protocols.utils import guess_period, fallback_period, chi2_reduced, table_html
+from qibocal.protocols.utils import guess_period, fallback_period, chi2_reduced, table_html, table_dict
 from qibocal.protocols.rabi.utils import fit_length_function, rabi_length_function
 
 from .utils import STATES, BASIS, ro_projection_pulse, cr_plot, Setup, Basis
@@ -72,17 +72,16 @@ class CrossResonanceLengthParameters(Parameters):
 @dataclass
 class CrossResonanceLengthResults(Results):
     """Cross Resonance Gate Calibration outputs."""
-    amplitude: dict[QubitPairId, Union[float, list[float]]]
+    amplitude: dict[QubitPairId, dict[Setup, float]]
     """Pi pulse amplitude. Same for all bases in each qubit pair test. If specified in the runcard, same for all pairs."""
-    duration: dict[(QubitPairId, Setup, Setup, Basis), 
-                 Union[int, list[float]]] = field(default_factory=dict)
+    duration: dict[QubitPairId, dict[Setup, float]] = field(default_factory=dict)
     """Fitted pi pulse duration for each qubit."""
-    fitted_parameters: dict[(QubitPairId, Setup, Setup, Basis), 
-                            dict[str, float]] = field(default_factory=dict)
+    fitted_parameters: dict[QubitPairId, dict[Setup, Setup, Basis, Union[float, list[float]]]] = field(default_factory=dict)
     """Raw fitting output."""
-    chi2: dict[(QubitPairId, Setup, Setup, Basis), 
-               list[float]] = field(default_factory=dict)
+    chi2: dict[QubitPairId, dict[Setup, Setup, Union[float, list[float]]]] = field(default_factory=dict)
     """Reduced chi2 for each fitting."""
+    Jeff: dict[QubitPairId, Union[float, list[float]]] = field(default_factory=dict)
+    """Effective coupling strength for each qubit pair."""
 
 @dataclass
 class CrossResonanceLengthData(Data):
@@ -203,19 +202,26 @@ def _fit(
     projections = data.parameters['projections']
     amplitude = data.amplitude
 
+    # Initialize dictionaries to store the results
+    fit_popt = {}
+    fit_chi2 = {}
+    fit_duration = {}
+    fit_amplitude = {}
+    fit_Jeff = {}
     # Loop over the qubit pairs and their setups
     for i, pair in enumerate(data.targets):
         target, control = pair
-    
-        fit_popt = {}
-        fit_chi2 = {}
-        fit_duration = {}
 
+        _popt = {}
+        _chi2 = {}
+        _duration = {}
+        _amplitude = {}
+        
         for tgt_setup, basis, ctr_setup in itertools.product(tgt_setups, projections, ctr_setups):
             # Get the data for the current qubit pair and setup
-           
+
+
             _data: CrossResonanceLengthData = data[(tuple(pair), target, tgt_setup, ctr_setup, basis)]
-            print(_data.error)
             raw_x = _data.duration
             min_x = np.min(raw_x)
             max_x = np.max(raw_x)
@@ -227,21 +233,57 @@ def _fit(
             pguess = [0.5, 0.5, period, 0, 0]
             try:
                 popt, perr, pi_pulse_parameter = fit_length_function(x, y, pguess, sigma=_data.error, signal = False, x_limits=(min_x, max_x))
-                fit_popt[pair, tgt_setup, ctr_setup, basis] = popt
-                fit_chi2[pair, tgt_setup, ctr_setup, basis] = [chi2_reduced(y, rabi_length_function(raw_x, *popt),_data.error),
+
+                _popt[tgt_setup, ctr_setup, basis] = popt
+                _chi2[tgt_setup, ctr_setup, basis] = [chi2_reduced(y, rabi_length_function(raw_x, *popt),_data.error),
                                                                np.sqrt(2 / len(y))]
-                fit_duration[pair, tgt_setup, ctr_setup, basis] = [pi_pulse_parameter, perr[2] * (max_x - min_x) / 2]
+                
+                if basis == BASIS[-1]:
+                    _amplitude[ctr_setup] = amplitude[tuple(pair)]
+                    _duration[ctr_setup]= [pi_pulse_parameter, perr[2] * (max_x - min_x) / 2]
+                    print(pi_pulse_parameter)# popt[2] / 2
+
 
             except Exception as e:
-                log.error(f"Error fitting data for {pair} |{tgt_setup},{ctr_setup}>, <{basis}>: {e}")
+                log.error(f"Error fitting data for {tuple(pair)} |{tgt_setup},{ctr_setup}>, <{basis}>: {e}")
                 continue
 
-    return CrossResonanceLengthResults(amplitude = amplitude, duration = fit_duration, chi2 = fit_chi2, fitted_parameters = fit_popt)
+        if STATES[0] in _duration and STATES[1] in _duration:
+            fit_Jeff[tuple(pair)] = (1/_duration['X'][0]- 1/_duration['I'][0])*1e9
+            print(f"Jeff for {tuple(pair)}: {fit_Jeff[tuple(pair)]*1e-6} MHz")
 
-def _plot(data: CrossResonanceLengthData, target: QubitPairId, fit: CrossResonanceLengthResults
+        fit_popt[tuple(pair)] = _popt
+        fit_chi2[tuple(pair)] = _chi2
+        fit_duration[tuple(pair)] = _duration
+        fit_amplitude[tuple(pair)] = _amplitude
+
+    ret =  CrossResonanceLengthResults(amplitude = fit_amplitude, 
+                                       duration = fit_duration, 
+                                       Jeff = fit_Jeff,
+                                       chi2 = fit_chi2, 
+                                       fitted_parameters = fit_popt)
+    return ret
+
+def _plot(data: CrossResonanceLengthData, fit: CrossResonanceLengthResults, target: QubitPairId
           ) -> tuple[list[go.Figure], str]:
     """Plotting function for Cross Resonance Gate Calibration."""
-    return cr_plot(data,target, 'duration'), ""
+    target = tuple(target)
+    fit_table = ""
+    # Create a table with the results
+    if fit is not None:
+        fit_values = [1/np.array(fit.duration[target][ctr_setup][0])*1e9 for ctr_setup in STATES]+[fit.amplitude[target][STATES[1]], fit.Jeff[target]]
+        fit_names = [f"Rabi freq. Ctrl: |{ctr_setup}> [Hz]" for ctr_setup in STATES] + ["Ctr Amp.", "J_{eff}"]
+
+        fit_table = table_html(
+            table_dict(
+                qubit = target[0],
+                names = fit_names,
+                values = fit_values,
+                display_error=False
+            ),
+        )
+        
+    return cr_plot(data,target,'duration',fit = fit), fit_table
 
 cross_resonance_length = Routine(_acquisition, _fit, _plot, two_qubit_gates=True)
 """CrossResonance Duration Routine object."""

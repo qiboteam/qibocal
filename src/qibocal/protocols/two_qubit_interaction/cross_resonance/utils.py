@@ -10,8 +10,13 @@ import plotly.graph_objects as go
 import itertools
 import numpy as np
 import numpy.typing as npt
+from typing import Optional, Union
 
-
+from qibocal.protocols.utils import table_dict, table_html, COLORBAND, COLORBAND_LINE
+from qibocal.protocols.rabi.utils import extract_rabi
+from qibocal.protocols.rabi.amplitude import RabiAmplitudeData
+from qibocal.protocols.rabi.length import RabiLengthData
+from qibocal.config import log
 
 Setup = str 
 """Type for setup for the experiment."""
@@ -25,7 +30,6 @@ STATES = ['I', 'X']
 Basis = Literal[BASIS]
 """Type for basis for the experiment."""
 
-
 DataType = np.dtype(
     [
         ("prob", np.float64),
@@ -34,7 +38,6 @@ DataType = np.dtype(
     ]
 )
 """Custom dtype for Gate Calibration with generic pulse parameter."""
-
 
 
 def ro_projection_pulse(platform: Platform, qubit, start=0, projection = BASIS[2]):
@@ -63,12 +66,19 @@ def cr_plot(
     data: dict[(QubitPairId, QubitId, Setup, Setup, Basis), 
                npt.NDArray[DataType]],
     target: QubitPairId,
-    parameter: Literal["amp", "duration"]) -> list[go.Figure]:
+    parameter: Literal["amp", "duration"],
+    fit: Union[dict] =  None) -> list[go.Figure]:
     """Plot the cross resonance data."""
     target = tuple(target)
     tgt, ctr = target
     figs = []
     basis_set, ctr_set, tgt_set, qubit_set = set(), set(), set(), set()
+
+    if parameter == "amp":
+        _, title, fitting = extract_rabi(RabiAmplitudeData())
+    else:
+        _, title, fitting = extract_rabi(RabiLengthData())
+
 
     for key in data.data.keys():
         basis_set.add(key[4])
@@ -77,28 +87,65 @@ def cr_plot(
         qubit_set.add(key[1])
     basis_set = sorted(basis_set)
     qubit_set  = sorted(qubit_set)
-    print(basis_set, qubit_set)
+
     for ro_qubit, basis in itertools.product(qubit_set, basis_set):
         fig = go.Figure()
         for ctr_setup, tgt_setup in itertools.product(ctr_set,tgt_set):
             # Check if the data is available
             if (target, ro_qubit, tgt_setup, ctr_setup, basis) not in data.data:
-                print(f"Data not available for {ro_qubit}, {tgt}, {ctr}, {tgt_setup}, {ctr_setup}, {basis}")
+                log(f"Data not available for {ro_qubit}, {tgt}, {ctr}, {tgt_setup}, {ctr_setup}, {basis}")
                 continue
             _data = data.data[target, ro_qubit, tgt_setup, ctr_setup, basis]
-            cr_parameters = getattr(_data, parameter)
+            cr_indvar = getattr(_data, parameter)
             fig.add_trace(
                 go.Scatter(
-                    x=cr_parameters, y=np.real(1-2*np.array(_data.prob)), 
+                    x=cr_indvar, y=np.real(1-2*np.array(_data.prob)), 
                     name= f"Target: |{tgt_setup}>, Control: |{ctr_setup}>",
+                    mode='markers',
                 ),
             )
+
+            fig.add_trace(
+                go.Scatter(
+                    x= np.concatenate((cr_indvar, cr_indvar[::-1])),
+                    y = np.concatenate((np.real(1-2*(np.array(_data.prob) - np.array(_data.error))),
+                                        np.real(1-2*(np.array(_data.prob) + np.array(_data.error)))[::-1] )),
+                    fill="toself",
+                    fillcolor=COLORBAND,
+                    line=dict(color=COLORBAND_LINE),
+                    showlegend=True,
+                    name="Errors",
+                ),
+            )
+        
+            if fit is not None and ro_qubit == tgt:
+                cr_indvar = getattr(_data, parameter)
+                x = np.linspace(
+                    min(cr_indvar),
+                    max(cr_indvar),
+                    2 * len(cr_indvar),
+                )
+                params = fit.fitted_parameters[target][tgt_setup, ctr_setup, basis]
+                y=fitting(x, *params)
+                fig.add_trace(
+                    go.Scatter(
+                        x=x, y=1-2*y,
+                        mode='lines',
+                        name=f'Fit Contrl:|{ctr_setup}>',
+                        line=go.scatter.Line(dash="dot"),
+                        marker_color="rgb(255, 130, 67)",
+                    )
+                )
+        
+        
         fig.update_layout(
             title=f"Qubit {ro_qubit}",
-            xaxis_title=f"CR Pulse {parameter}",
+            xaxis_title=f"CR Pulse {parameter} [{'ns' if parameter == 'duration' else 'a.u.'}]",
             yaxis_title=f"<{basis}({'t' if parameter == 'duration' else parameter})>",
             #Adjust range
             yaxis=dict(range=[-1., 1.]),
         )
         figs.append(fig)
+
+    
     return figs
