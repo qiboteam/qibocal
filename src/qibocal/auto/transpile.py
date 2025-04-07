@@ -124,7 +124,11 @@ def natives(platform) -> dict[str, NativeContainer]:
         # add two qubit natives only if there are pairs
         pair = next(iter(platform.pairs))
         two_qubit_natives_container = platform.natives.two_qubit[pair]
-        two_qubit_natives = list(two_qubit_natives_container.model_fields)
+        two_qubit_natives = [
+            i
+            for i in list(two_qubit_natives_container.model_fields)
+            if getattr(two_qubit_natives_container, i) is not None
+        ]
     else:
         two_qubit_natives = []
     # Solve Qibo-Qibolab mismatch
