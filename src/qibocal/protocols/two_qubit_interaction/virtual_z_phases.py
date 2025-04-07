@@ -109,6 +109,7 @@ def create_sequence(
     native: Literal["CZ", "iSWAP"],
     dt: float,
     flux_pulse_max_duration: float = None,
+    n_cz: int = 1,
 ) -> tuple[PulseSequence, Pulse, Pulse, list[Pulse]]:
     """
     Create the pulse sequence for the calibration of two-qubit gate virtual phases.
@@ -144,7 +145,6 @@ def create_sequence(
             (platform.qubits[control_qubit].drive, Delay(duration=sequence.duration))
         )
 
-    drive_duration = sequence.duration
     # CZ
     flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
     flux_pulses = [
@@ -160,40 +160,71 @@ def create_sequence(
             flux_pulse = flux_pulses[i][1]
 
     flux_sequence = PulseSequence(flux_pulses)
-    sequence |= flux_sequence
+    virtual_phases = []
+    sequence.align(
+        [
+            platform.qubits[control_qubit].drive,
+            platform.qubits[target_qubit].drive,
+            flux_channel,
+            platform.qubits[target_qubit].acquisition,
+            platform.qubits[control_qubit].acquisition,
+        ]
+    )
+    for _ in range(n_cz):
+        sequence |= flux_sequence
+        virtual_phases.append(VirtualZ(phase=0))
+        sequence |= [(flux_channel, virtual_phases[-1])]
+
     flux_duration = flux_sequence.duration
 
     theta_sequence = PulseSequence(
-        [
-            (
-                platform.qubits[target_qubit].drive,
-                Delay(duration=dt + flux_duration),
-            ),
-            (
-                platform.qubits[control_qubit].drive,
-                Delay(duration=dt + flux_duration),
-            ),
-        ]
+        # [
+        #     (
+        #         platform.qubits[target_qubit].drive,
+        #         Delay(duration=dt + flux_duration),
+        #     ),
+        #     (
+        #         platform.qubits[control_qubit].drive,
+        #         Delay(duration=dt + flux_duration),
+        #     ),
+        # ]
     )
     # RX90 (angle to be swept)
+    sequence.align(
+        [
+            platform.qubits[control_qubit].drive,
+            platform.qubits[target_qubit].drive,
+            flux_channel,
+            platform.qubits[target_qubit].acquisition,
+            platform.qubits[control_qubit].acquisition,
+        ]
+    )
     theta_sequence += target_natives.R(theta=np.pi / 2)
-    theta_pulse = theta_sequence[-1][1]
+    # theta_pulse = theta_sequence[-1][1]
 
     sequence += theta_sequence
 
     ro_target_delay = Delay(duration=flux_duration)
     ro_control_delay = Delay(duration=flux_duration)
-
+    sequence.align(
+        [
+            platform.qubits[control_qubit].drive,
+            platform.qubits[target_qubit].drive,
+            flux_channel,
+            platform.qubits[target_qubit].acquisition,
+            platform.qubits[control_qubit].acquisition,
+        ]
+    )
     ro_sequence = PulseSequence(
         [
-            (
-                platform.qubits[target_qubit].acquisition,
-                Delay(duration=drive_duration + theta_sequence.duration),
-            ),
-            (
-                platform.qubits[control_qubit].acquisition,
-                Delay(duration=drive_duration + theta_sequence.duration),
-            ),
+            # (
+            #     platform.qubits[target_qubit].acquisition,
+            #     Delay(duration=drive_duration + theta_sequence.duration),
+            # ),
+            # (
+            #     platform.qubits[control_qubit].acquisition,
+            #     Delay(duration=drive_duration + theta_sequence.duration),
+            # ),
             target_natives.MZ()[0],
             control_natives.MZ()[0],
         ]
@@ -201,7 +232,7 @@ def create_sequence(
 
     sequence += ro_sequence
 
-    return sequence, flux_pulse, theta_pulse, [ro_target_delay, ro_control_delay]
+    return sequence, flux_pulse, virtual_phases, [ro_target_delay, ro_control_delay]
 
 
 def _acquisition(
@@ -239,7 +270,7 @@ def _acquisition(
                 (
                     sequence,
                     _,
-                    theta_pulse,
+                    vz_pulses,
                     _,
                 ) = create_sequence(
                     platform,
@@ -251,9 +282,9 @@ def _acquisition(
                     params.dt,
                 )
                 sweeper = Sweeper(
-                    parameter=Parameter.relative_phase,
+                    parameter=Parameter.phase,
                     range=(-params.theta_start, -params.theta_end, -params.theta_step),
-                    pulses=[theta_pulse],
+                    pulses=vz_pulses,
                 )
                 results = platform.execute(
                     [sequence],
