@@ -53,6 +53,8 @@ class VirtualZPhasesParameters(Parameters):
     """
     dt: Optional[float] = 0
     """Time delay between flux pulses and readout."""
+    cz_repetitions: int = 1
+    """Number of CZ repetition"""
 
 
 @dataclass
@@ -278,6 +280,7 @@ def _acquisition(
                     ordered_pair,
                     params.native,
                     params.dt,
+                    n_cz=params.cz_repetitions,
                 )
                 sweeper = Sweeper(
                     parameter=Parameter.phase,
