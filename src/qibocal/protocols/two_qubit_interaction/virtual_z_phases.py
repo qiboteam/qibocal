@@ -171,11 +171,8 @@ def create_sequence(
     )
     for _ in range(n_cz):
         sequence |= flux_sequence
-        print("SEQUENCE", sequence)
         virtual_phases.append(VirtualZ(phase=0))
-        print("VZ:", virtual_phases)
-        sequence.append((flux_channel, virtual_phases[-1]))
-        print("SEQUENCE2", sequence)
+        sequence.append((platform.qubits[target_qubit].drive, virtual_phases[-1]))
 
     # flux_duration = flux_sequence.duration
 
