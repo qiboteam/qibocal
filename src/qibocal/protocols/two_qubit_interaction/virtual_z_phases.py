@@ -172,7 +172,7 @@ def create_sequence(
         ]
     )
     for _ in range(n_cz):
-        sequence |= flux_sequence
+        sequence.append(flux_sequence[0])
         virtual_phases.append(VirtualZ(phase=0))
         sequence.append((platform.qubits[target_qubit].drive, virtual_phases[-1]))
 
@@ -232,7 +232,6 @@ def create_sequence(
     )
 
     sequence += ro_sequence
-
     return sequence, flux_pulse, virtual_phases  # , [ro_target_delay, ro_control_delay]
 
 
