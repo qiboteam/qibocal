@@ -13,7 +13,7 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal.auto.operation import (
+from ....auto.operation import (
     Data,
     Parameters,
     QubitId,
@@ -21,9 +21,12 @@ from qibocal.auto.operation import (
     Results,
     Routine,
 )
-from qibocal.calibration import CalibrationPlatform
-from qibocal.result import probability
-from qibocal.update import replace
+from ....calibration import CalibrationPlatform
+from ....config import log
+from ....result import probability
+from ....update import replace
+from ...rabi.utils import fit_length_function, rabi_length_function
+from ...utils import fallback_period, guess_period
 
 CrossResonanceLengthType = np.dtype(
     [
@@ -61,13 +64,18 @@ class CrossResonanceLengthParameters(Parameters):
 class CrossResonanceLengthResults(Results):
     """ResonatorSpectroscopy outputs."""
 
+    fitted_parameters: dict[tuple[QubitPairId, str], list] = field(default_factory=dict)
+
+    def __contains__(self, pair: QubitPairId):
+        return all(key[:2] == pair for key in list(self.fitted_parameters))
+
 
 @dataclass
 class CrossResonanceLengthData(Data):
     """Data structure for resonator spectroscopy with attenuation."""
 
-    data: dict[QubitId, npt.NDArray[CrossResonanceLengthType]] = field(
-        default_factory=dict
+    data: dict[tuple[QubitId, QubitId, str], npt.NDArray[CrossResonanceLengthType]] = (
+        field(default_factory=dict)
     )
     """Raw data acquired."""
 
@@ -77,7 +85,7 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
 ) -> CrossResonanceLengthData:
-    """Data acquisition for resonator spectroscopy."""
+    """Data acquisition for cross resonance protocol."""
 
     data = CrossResonanceLengthData()
 
@@ -160,19 +168,17 @@ def _acquisition(
                 updates=updates,
             )
 
-            # store the results
-            for q in [target]:
-                prob_target = probability(results[ro_pulse.id], state=1)
-                prob_control = probability(results[ro_pulse_control.id], state=1)
-                data.register_qubit(
-                    CrossResonanceLengthType,
-                    (q, setup),
-                    dict(
-                        length=sweeper.values,
-                        prob_target=prob_target,
-                        prob_control=prob_control,
-                    ),
-                )
+            prob_target = probability(results[ro_pulse.id], state=1)
+            prob_control = probability(results[ro_pulse_control.id], state=1)
+            data.register_qubit(
+                CrossResonanceLengthType,
+                (control, target, setup),
+                dict(
+                    length=sweeper.values,
+                    prob_target=prob_target,
+                    prob_control=prob_control,
+                ),
+            )
     # finally, save the remaining data
     return data
 
@@ -181,7 +187,35 @@ def _fit(
     data: CrossResonanceLengthData,
 ) -> CrossResonanceLengthResults:
     """Post-processing function for ResonatorSpectroscopy."""
-    return CrossResonanceLengthResults()
+
+    fitted_parameters = {}
+
+    for pair in data.pairs:
+        for setup in ["I", "X"]:
+            pair_data = data[pair[0], pair[1], setup]
+            raw_x = pair_data.length
+            min_x = np.min(raw_x)
+            max_x = np.max(raw_x)
+            y = pair_data.prob_target
+            x = (raw_x - min_x) / (max_x - min_x)
+
+            period = fallback_period(guess_period(x, y))
+            pguess = [0.5, 0.5, period, 0, 0]
+
+            try:
+                popt, _, _ = fit_length_function(
+                    x,
+                    y,
+                    pguess,
+                    # sigma=qubit_data.error,
+                    signal=False,
+                    x_limits=(min_x, max_x),
+                )
+                fitted_parameters[pair[0], pair[1], setup] = popt
+
+            except Exception as e:
+                log.warning(f"CR length fit failed for pair {pair} due to {e}.")
+    return CrossResonanceLengthResults(fitted_parameters=fitted_parameters)
 
 
 def _plot(
@@ -189,44 +223,60 @@ def _plot(
     target: QubitPairId,
     fit: CrossResonanceLengthResults,
 ):
-    """Plotting function for ResonatorSpectroscopy."""
-    # TODO: share colorbar
-
-    target_idle_data = data.data[target[1], "I"]
-    target_excited_data = data.data[target[1], "X"]
+    """Plotting function for CrossResonanceLength."""
+    idle_data = data.data[target[0], target[1], "I"]
+    excited_data = data.data[target[0], target[1], "X"]
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
-            x=target_idle_data.length,
-            y=target_idle_data.prob_control,
+            x=idle_data.length,
+            y=idle_data.prob_control,
             name="Control at 0",
         ),
     )
 
     fig.add_trace(
         go.Scatter(
-            x=target_idle_data.length,
-            y=target_excited_data.prob_control,
+            x=excited_data.length,
+            y=excited_data.prob_control,
             name="Control at 1",
         ),
     )
 
     fig.add_trace(
         go.Scatter(
-            x=target_idle_data.length,
-            y=target_idle_data.prob_target,
+            x=idle_data.length,
+            y=idle_data.prob_target,
             name="Target when Control at 0",
         ),
     )
 
     fig.add_trace(
         go.Scatter(
-            x=target_excited_data.length,
-            y=target_excited_data.prob_target,
+            x=excited_data.length,
+            y=excited_data.prob_target,
             name="Target when Control at 1",
         ),
     )
 
+    if fit is not None:
+        for setup in ["I", "X"]:
+            fit_data = idle_data if setup == "I" else excited_data
+            x = np.linspace(fit_data.length.min(), fit_data.length.max(), 100)
+            fig.add_trace(
+                go.Scatter(
+                    x=x,
+                    y=rabi_length_function(
+                        x, *fit.fitted_parameters[target[0], target[1], setup]
+                    ),
+                    name=f"Fit target when control at {0 if setup == 'I' else 1}",
+                )
+            )
+
+    fig.update_layout(
+        xaxis_title="Cross resonance pulse duration [ns]",
+        yaxis_title="Excited state population",
+    )
     return [fig], ""
 
 
