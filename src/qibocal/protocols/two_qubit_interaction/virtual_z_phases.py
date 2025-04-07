@@ -10,7 +10,6 @@ from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
-    Delay,
     Parameter,
     Pulse,
     PulseSequence,
@@ -140,10 +139,10 @@ def create_sequence(
     # X
     if setup == "X":
         sequence += control_natives.RX()
-    else:
-        sequence.append(
-            (platform.qubits[control_qubit].drive, Delay(duration=sequence.duration))
-        )
+    # else:
+    #     sequence.append(
+    #         (platform.qubits[control_qubit].drive, Delay(duration=sequence.duration))
+    #     )
 
     # CZ
     flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
@@ -172,10 +171,13 @@ def create_sequence(
     )
     for _ in range(n_cz):
         sequence |= flux_sequence
+        print("SEQUENCE", sequence)
         virtual_phases.append(VirtualZ(phase=0))
-        sequence |= [(flux_channel, virtual_phases[-1])]
+        print("VZ:", virtual_phases)
+        sequence.append((flux_channel, virtual_phases[-1]))
+        print("SEQUENCE2", sequence)
 
-    flux_duration = flux_sequence.duration
+    # flux_duration = flux_sequence.duration
 
     theta_sequence = PulseSequence(
         # [
@@ -204,8 +206,8 @@ def create_sequence(
 
     sequence += theta_sequence
 
-    ro_target_delay = Delay(duration=flux_duration)
-    ro_control_delay = Delay(duration=flux_duration)
+    # ro_target_delay = Delay(duration=flux_duration)
+    # ro_control_delay = Delay(duration=flux_duration)
     sequence.align(
         [
             platform.qubits[control_qubit].drive,
@@ -232,7 +234,7 @@ def create_sequence(
 
     sequence += ro_sequence
 
-    return sequence, flux_pulse, virtual_phases, [ro_target_delay, ro_control_delay]
+    return sequence, flux_pulse, virtual_phases  # , [ro_target_delay, ro_control_delay]
 
 
 def _acquisition(
@@ -271,7 +273,6 @@ def _acquisition(
                     sequence,
                     _,
                     vz_pulses,
-                    _,
                 ) = create_sequence(
                     platform,
                     setup,
