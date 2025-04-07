@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -9,7 +8,9 @@ from qibolab import (
     AveragingMode,
     Delay,
     Parameter,
+    Pulse,
     PulseSequence,
+    Rectangular,
     Sweeper,
 )
 
@@ -24,7 +25,6 @@ from ....auto.operation import (
 from ....calibration import CalibrationPlatform
 from ....config import log
 from ....result import probability
-from ....update import replace
 from ...rabi.utils import fit_amplitude_function, rabi_amplitude_function
 from ...utils import fallback_period, guess_period
 
@@ -48,8 +48,8 @@ class CrossResonanceAmplitudeParameters(Parameters):
     """Maximum amplitude."""
     step_amp: float
     """Step amplitude."""
-
-    pulse_duration: Optional[int] = None
+    pulse_duration: int
+    """CR pulse duration in ns."""
 
     @property
     def amplitude_range(self):
@@ -92,7 +92,12 @@ def _acquisition(
             sequence = PulseSequence()
             natives_control = platform.natives.single_qubit[control]
             natives_target = platform.natives.single_qubit[target]
-            cr_channel, cr_drive_pulse = platform.natives.two_qubit[pair].CNOT()[0]
+            cr_channel = platform.qubit_pairs[pair].drive
+            cr_drive_pulse = Pulse(
+                duration=params.pulse_duration,
+                amplitude=params.max_amp,
+                envelope=Rectangular(),
+            )
             control_drive_channel, control_drive_pulse = natives_control.RX()[0]
             ro_channel, ro_pulse = natives_target.MZ()[0]
             ro_channel_control, ro_pulse_control = natives_control.MZ()[0]
@@ -106,11 +111,6 @@ def _acquisition(
                 )
                 sequence.append(
                     (cr_channel, Delay(duration=control_drive_pulse.duration))
-                )
-
-            if params.pulse_duration is not None:
-                cr_drive_pulse = replace(
-                    cr_drive_pulse, amplitude=params.pulse_duration
                 )
 
             sequence.append((cr_channel, cr_drive_pulse))
