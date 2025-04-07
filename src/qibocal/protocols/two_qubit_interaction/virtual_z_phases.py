@@ -10,6 +10,7 @@ from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
+    Delay,
     Parameter,
     Pulse,
     PulseSequence,
@@ -173,6 +174,7 @@ def create_sequence(
     )
     for _ in range(n_cz):
         sequence.append(flux_sequence[0])
+        sequence.append((flux_channel, Delay(duration=dt)))
         virtual_phases.append(VirtualZ(phase=0))
         sequence.append((platform.qubits[target_qubit].drive, virtual_phases[-1]))
 
