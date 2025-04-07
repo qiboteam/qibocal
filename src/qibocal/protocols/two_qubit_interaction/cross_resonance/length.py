@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -9,7 +8,9 @@ from qibolab import (
     AveragingMode,
     Delay,
     Parameter,
+    Pulse,
     PulseSequence,
+    Rectangular,
     Sweeper,
 )
 
@@ -48,8 +49,8 @@ class CrossResonanceLengthParameters(Parameters):
     """Final pi pulse duration [ns]."""
     pulse_duration_step: float
     """Step pi pulse duration [ns]."""
-
-    pulse_amplitude: Optional[float] = None
+    pulse_amplitude: float
+    """CR pulse amplitude"""
     interpolated_sweeper: bool = False
     """Use real-time interpolation if supported by instruments."""
 
@@ -96,7 +97,12 @@ def _acquisition(
             sequence = PulseSequence()
             natives_control = platform.natives.single_qubit[control]
             natives_target = platform.natives.single_qubit[target]
-            cr_channel, cr_drive_pulse = platform.natives.two_qubit[pair].CNOT()[0]
+            cr_channel = platform.qubit_pairs[pair].drive
+            cr_drive_pulse = Pulse(
+                duration=params.pulse_duration_end,
+                amplitude=params.pulse_amplitude,
+                envelope=Rectangular(),
+            )
             control_drive_channel, control_drive_pulse = natives_control.RX()[0]
             ro_channel, ro_pulse = natives_target.MZ()[0]
             ro_channel_control, ro_pulse_control = natives_control.MZ()[0]
