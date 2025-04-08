@@ -10,7 +10,6 @@ from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
-    Delay,
     Parameter,
     Pulse,
     PulseSequence,
@@ -170,10 +169,11 @@ def create_sequence(
     sequence.align(align_channels)
 
     for _ in range(n_cz):
-        sequence.append(flux_sequence[0])
-        sequence.append((flux_channel, Delay(duration=dt)))
-        virtual_phases.append(VirtualZ(phase=0))
-        sequence.append((platform.qubits[target_qubit].drive, virtual_phases[-1]))
+        # sequence.append(flux_sequence[0])
+        sequence += flux_sequence
+        # sequence.append((flux_channel, Delay(duration=dt)))
+    virtual_phases.append(VirtualZ(phase=0))
+    sequence.append((platform.qubits[target_qubit].drive, virtual_phases[-1]))
 
     theta_sequence = PulseSequence()
     # RX90 (angle to be swept)
@@ -255,7 +255,11 @@ def _acquisition(
 
                 sweeper = Sweeper(
                     parameter=Parameter.phase,
-                    range=(-params.theta_start, -params.theta_end, -params.theta_step),
+                    range=(
+                        -params.cz_repetitions * params.theta_start,
+                        -params.cz_repetitions * params.theta_end,
+                        -params.cz_repetitions * params.theta_step,
+                    ),
                     pulses=vz_pulses,
                 )
 
