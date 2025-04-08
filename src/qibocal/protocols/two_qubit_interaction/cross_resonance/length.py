@@ -116,7 +116,7 @@ def _acquisition(
             updates = []
             updates.append(
                 {
-                    platform.qubit_pairs[pair].drive: {
+                    platform.qubits[control].drive_extra[target]: {
                         "frequency": platform.config(
                             platform.qubits[target].drive
                         ).frequency
@@ -195,8 +195,8 @@ def _plot(
     fit: CrossResonanceLengthResults,
 ):
     """Plotting function for CrossResonanceLength."""
-    idle_data = data.data[target[0], target[1], "I"]
-    excited_data = data.data[target[0], target[1], "X"]
+    idle_data = data.data[target[0], target[1], SetControl.Id]
+    excited_data = data.data[target[0], target[1], SetControl.X]
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -232,7 +232,7 @@ def _plot(
 
     if fit is not None:
         for setup in SetControl:
-            fit_data = idle_data if setup == "Id" else excited_data
+            fit_data = idle_data if setup is SetControl.Id else excited_data
             x = np.linspace(fit_data.length.min(), fit_data.length.max(), 100)
             fig.add_trace(
                 go.Scatter(
@@ -240,7 +240,7 @@ def _plot(
                     y=rabi_length_function(
                         x, *fit.fitted_parameters[target[0], target[1], setup]
                     ),
-                    name=f"Fit target when control at {0 if setup == 'Id' else 1}",
+                    name=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
                 )
             )
 

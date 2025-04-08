@@ -26,7 +26,7 @@ def cr_sequence(
     sequence = PulseSequence()
     natives_control = platform.natives.single_qubit[control]
     natives_target = platform.natives.single_qubit[target]
-    cr_channel = platform.qubit_pairs[control, target].drive
+    cr_channel = platform.qubits[control].drive_extra[target]
     cr_drive_pulse = Pulse(
         duration=duration,
         amplitude=amplitude,
