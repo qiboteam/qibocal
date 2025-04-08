@@ -10,7 +10,7 @@ from qibocal.auto.operation import Data, QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import probability
 
-from ..utils import table_dict, table_html
+from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
 from . import t1_signal, utils
 
 
@@ -122,8 +122,8 @@ def _plot(data: T1Data, target: QubitId, fit: T1Results = None):
                 x=np.concatenate((waits, waits[::-1])),
                 y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
                 fill="toself",
-                fillcolor=utils.COLORBAND,
-                line=dict(color=utils.COLORBAND_LINE),
+                fillcolor=COLORBAND,
+                line=dict(color=COLORBAND_LINE),
                 showlegend=True,
                 name="Errors",
             ),

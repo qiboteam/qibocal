@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
@@ -11,10 +11,8 @@ from qibocal.calibration import CalibrationPlatform
 from ...auto.operation import QubitId, Routine
 from ...config import log
 from ...result import probability
-from ..utils import table_dict, table_html
+from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
 from .ramsey import (
-    COLORBAND,
-    COLORBAND_LINE,
     RamseySignalData,
     RamseySignalParameters,
     RamseySignalResults,
@@ -36,13 +34,11 @@ class RamseyZZParameters(RamseySignalParameters):
 class RamseyZZResults(RamseySignalResults):
     """RamseyZZ outputs."""
 
+    zz: dict[QubitId, float] = field(default_factory=dict)
+    coupling: dict[QubitId, float] = field(default_factory=dict)
+
     def __contains__(self, qubit: QubitId):
-        # TODO: to be improved
-        return all(
-            list(getattr(self, field.name))[0][0] == qubit
-            for field in fields(self)
-            if isinstance(getattr(self, field.name), dict)
-        )
+        return qubit in self.zz
 
 
 @dataclass
@@ -51,6 +47,12 @@ class RamseyZZData(RamseySignalData):
 
     target_qubit: Optional[QubitId] = None
     """Qubit that will be excited."""
+    anharmonicity: dict[QubitId, float] = field(default_factory=dict)
+    """Targets qubit anharmonicity."""
+    anharmonicity_target_qubit: float = None
+    """Anharmonicity of target qubit."""
+    frequency_target_qubit: float = 0
+    "Frequency of target qubit."
     data: dict[tuple[QubitId, str], npt.NDArray[RamseyType]] = field(
         default_factory=dict
     )
@@ -80,6 +82,16 @@ def _acquisition(
             qubit: platform.config(platform.qubits[qubit].drive).frequency
             for qubit in targets
         },
+        anharmonicity={
+            qubit: platform.calibration.single_qubits[qubit].qubit.anharmonicity
+            for qubit in targets
+        },
+        anharmonicity_target_qubit=platform.calibration.single_qubits[
+            params.target_qubit
+        ].qubit.anharmonicity,
+        frequency_target_qubit=platform.config(
+            platform.qubits[params.target_qubit].drive
+        ).frequency,
         target_qubit=params.target_qubit,
     )
 
@@ -189,6 +201,8 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
     t2_measure = {}
     delta_phys_measure = {}
     delta_fitting_measure = {}
+    zz = {}
+    coupling = {}
     for qubit in data.qubits:
         for setup in ["I", "X"]:
             qubit_data = data[qubit, setup]
@@ -205,6 +219,21 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
                 ) = process_fit(popt, perr, qubit_freq, data.detuning)
             except Exception as e:
                 log.warning(f"Ramsey fitting failed for qubit {qubit} due to {e}.")
+        # compute zz and qq coupling
+        # zz the difference in frequency between the two measurement
+        zz[qubit] = float(
+            np.abs(freq_measure[qubit, "X"][0] - freq_measure[qubit, "I"][0])
+        )
+
+        # coupling computing by inverting the following formula
+        # xi = 2 g**2 (1 / (delta_q - alpha_1) - 1 / (delta_q + alpha_2))
+        # where delta_q is the difference in frequency and alpha_i is the anharmonicity
+        delta_qubit_freq = np.abs(data.qubit_freqs[qubit] - data.frequency_target_qubit)
+        denominator = -(
+            1 / (delta_qubit_freq - data.anharmonicity[qubit])
+            - 1 / (delta_qubit_freq + data.anharmonicity_target_qubit)
+        )
+        coupling[qubit] = float(np.sqrt(zz[qubit] / 2 / np.abs(denominator)))
     return RamseyZZResults(
         detuning=data.detuning,
         frequency=freq_measure,
@@ -212,12 +241,13 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
         delta_phys=delta_phys_measure,
         delta_fitting=delta_fitting_measure,
         fitted_parameters=popts,
+        zz=zz,
+        coupling=coupling,
     )
 
 
 def _plot(data: RamseyZZData, target: QubitId, fit: RamseyZZResults = None):
     """Plotting function for Ramsey Experiment."""
-
     figures = []
     fitting_report = ""
 
@@ -292,15 +322,19 @@ def _plot(data: RamseyZZData, target: QubitId, fit: RamseyZZResults = None):
         )
         fitting_report = table_html(
             table_dict(
-                data.target_qubit,
+                target,
                 [
-                    "ZZ  [kHz]",
+                    f"ZZ  with {data.target_qubit} [kHz]",
+                    f"Coupling with {data.target_qubit} [MHz]",
                 ],
                 [
                     np.round(
-                        (fit.frequency[target, "X"][0] - fit.frequency[target, "I"][0])
-                        * 1e-3,
+                        fit.zz[target] * 1e-3,
                         0,
+                    ),
+                    np.round(
+                        fit.coupling[target] * 1e-6,
+                        2,
                     ),
                 ],
             )

@@ -209,7 +209,7 @@ def flux_offset(offset: float, platform: Platform, qubit: QubitId):
 
 
 def frequency_12_transition(frequency: int, platform: Platform, qubit: QubitId):
-    channel = platform.qubits[qubit].drive_qudits[1, 2]
+    channel = platform.qubits[qubit].drive_extra[1, 2]
     platform.update({f"configs.{channel}.frequency": frequency})
     platform.calibration.single_qubits[qubit].qubit.frequency_12 = int(frequency)
 

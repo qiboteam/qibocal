@@ -134,7 +134,7 @@ def _acquisition(
     for qubit, ro_pulse in ro_pulses.items():
         result = results[ro_pulse.id]
 
-        f0 = platform.config(platform.qubits[qubit].drive_qudits[1, 2]).frequency
+        f0 = platform.config(platform.qubits[qubit].drive_extra[1, 2]).frequency
 
         signal = magnitude(result)
         _phase = phase(result)
