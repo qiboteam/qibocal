@@ -6,11 +6,7 @@ import plotly.graph_objects as go
 from qibolab import (
     AcquisitionType,
     AveragingMode,
-    Delay,
     Parameter,
-    Pulse,
-    PulseSequence,
-    Rectangular,
     Sweeper,
 )
 
@@ -27,6 +23,7 @@ from ....config import log
 from ....result import probability
 from ...rabi.utils import fit_amplitude_function, rabi_amplitude_function
 from ...utils import fallback_period, guess_period
+from .utils import SetControl, cr_sequence
 
 CrossResonanceAmplitudeType = np.dtype(
     [
@@ -88,45 +85,20 @@ def _acquisition(
     for pair in targets:
         control, target = pair
         pair = (control, target)
-        for setup in ["I", "X"]:
-            sequence = PulseSequence()
-            natives_control = platform.natives.single_qubit[control]
-            natives_target = platform.natives.single_qubit[target]
-            cr_channel = platform.qubit_pairs[pair].drive
-            cr_drive_pulse = Pulse(
+        for setup in SetControl:
+            sequence, cr_pulse, _ = cr_sequence(
+                platform=platform,
+                control=control,
+                target=target,
+                setup=setup,
+                amplitude=params.min_amp,
                 duration=params.pulse_duration,
-                amplitude=params.max_amp,
-                envelope=Rectangular(),
             )
-            control_drive_channel, control_drive_pulse = natives_control.RX()[0]
-            ro_channel, ro_pulse = natives_target.MZ()[0]
-            ro_channel_control, ro_pulse_control = natives_control.MZ()[0]
-            if setup == "X":
-                sequence.append((control_drive_channel, control_drive_pulse))
-                sequence.append(
-                    (ro_channel, Delay(duration=control_drive_pulse.duration))
-                )
-                sequence.append(
-                    (ro_channel_control, Delay(duration=control_drive_pulse.duration))
-                )
-                sequence.append(
-                    (cr_channel, Delay(duration=control_drive_pulse.duration))
-                )
-
-            sequence.append((cr_channel, cr_drive_pulse))
-
-            delay1 = Delay(duration=cr_drive_pulse.duration)
-            delay2 = Delay(duration=cr_drive_pulse.duration)
-
-            sequence.append((ro_channel, delay1))
-            sequence.append((ro_channel_control, delay2))
-            sequence.append((ro_channel, ro_pulse))
-            sequence.append((ro_channel_control, ro_pulse_control))
 
             sweeper = Sweeper(
                 parameter=Parameter.amplitude,
                 values=params.amplitude_range,
-                pulses=[cr_drive_pulse],
+                pulses=[cr_pulse],
             )
 
             updates = []
@@ -151,8 +123,14 @@ def _acquisition(
             )
 
             # store the results
-            prob_target = probability(results[ro_pulse.id], state=1)
-            prob_control = probability(results[ro_pulse_control.id], state=1)
+            target_acq_handle = list(
+                sequence.channel(platform.qubits[target].acquisition)
+            )[-1].id
+            control_acq_handle = list(
+                sequence.channel(platform.qubits[control].acquisition)
+            )[-1].id
+            prob_target = probability(results[target_acq_handle], state=1)
+            prob_control = probability(results[control_acq_handle], state=1)
             data.register_qubit(
                 CrossResonanceAmplitudeType,
                 (control, target, setup),
@@ -174,7 +152,7 @@ def _fit(
     fitted_parameters = {}
 
     for pair in data.pairs:
-        for setup in ["I", "X"]:
+        for setup in SetControl:
             pair_data = data[pair[0], pair[1], setup]
             y = pair_data.prob_target
             x = pair_data.amp
@@ -239,8 +217,8 @@ def _plot(
     )
 
     if fit is not None:
-        for setup in ["I", "X"]:
-            fit_data = idle_data if setup == "I" else excited_data
+        for setup in SetControl:
+            fit_data = idle_data if setup == "Id" else excited_data
             x = np.linspace(fit_data.amp.min(), fit_data.amp.max(), 100)
             fig.add_trace(
                 go.Scatter(
@@ -248,7 +226,7 @@ def _plot(
                     y=rabi_amplitude_function(
                         x, *fit.fitted_parameters[target[0], target[1], setup]
                     ),
-                    name=f"Fit target when control at {0 if setup == 'I' else 1}",
+                    name=f"Fit target when control at {0 if setup == 'Id' else 1}",
                 )
             )
     fig.update_layout(
