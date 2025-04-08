@@ -253,8 +253,8 @@
                         "01/drive",
                         {
                             "kind": "pulse",
-                            "duration": 110,
-                            "amplitude": 1,
+                            "duration": 100,
+                            "amplitude": 0.05,
                             "envelope": {
                                 "kind": "rectangular"
                             },
