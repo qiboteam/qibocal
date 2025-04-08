@@ -6,11 +6,7 @@ import plotly.graph_objects as go
 from qibolab import (
     AcquisitionType,
     AveragingMode,
-    Delay,
     Parameter,
-    Pulse,
-    PulseSequence,
-    Rectangular,
     Sweeper,
 )
 
@@ -25,9 +21,9 @@ from ....auto.operation import (
 from ....calibration import CalibrationPlatform
 from ....config import log
 from ....result import probability
-from ....update import replace
 from ...rabi.utils import fit_length_function, rabi_length_function
 from ...utils import fallback_period, guess_period
+from .utils import SetControl, cr_sequence
 
 CrossResonanceLengthType = np.dtype(
     [
@@ -93,64 +89,28 @@ def _acquisition(
     for pair in targets:
         control, target = pair
         pair = (control, target)
-        for setup in ["I", "X"]:
-            sequence = PulseSequence()
-            natives_control = platform.natives.single_qubit[control]
-            natives_target = platform.natives.single_qubit[target]
-            cr_channel = platform.qubit_pairs[pair].drive
-            cr_drive_pulse = Pulse(
-                duration=params.pulse_duration_end,
+        for setup in SetControl:
+            sequence, cr_pulse, delays = cr_sequence(
+                platform=platform,
+                control=control,
+                target=target,
+                setup=setup,
                 amplitude=params.pulse_amplitude,
-                envelope=Rectangular(),
+                duration=params.pulse_duration_end,
+                interpolated_sweeper=params.interpolated_sweeper,
             )
-            control_drive_channel, control_drive_pulse = natives_control.RX()[0]
-            ro_channel, ro_pulse = natives_target.MZ()[0]
-            ro_channel_control, ro_pulse_control = natives_control.MZ()[0]
-            if setup == "X":
-                sequence.append((control_drive_channel, control_drive_pulse))
-                sequence.append(
-                    (ro_channel, Delay(duration=control_drive_pulse.duration))
-                )
-                sequence.append(
-                    (ro_channel_control, Delay(duration=control_drive_pulse.duration))
-                )
-                sequence.append(
-                    (cr_channel, Delay(duration=control_drive_pulse.duration))
-                )
 
-            if params.pulse_amplitude is not None:
-                cr_drive_pulse = replace(
-                    cr_drive_pulse, amplitude=params.pulse_amplitude
-                )
-
-            sequence.append((cr_channel, cr_drive_pulse))
-
-            delay1 = Delay(duration=0)
-            delay2 = Delay(duration=0)
-            if params.interpolated_sweeper:
-                sequence.align([cr_channel, ro_channel, ro_pulse_control])
-            else:
-                sequence.append((ro_channel, delay1))
-                sequence.append((ro_channel_control, delay2))
-            sequence.append((ro_channel, ro_pulse))
-            sequence.append((ro_channel_control, ro_pulse_control))
-
-            sweep_range = (
-                params.pulse_duration_start,
-                params.pulse_duration_end,
-                params.pulse_duration_step,
-            )
             if params.interpolated_sweeper:
                 sweeper = Sweeper(
                     parameter=Parameter.duration_interpolated,
-                    range=sweep_range,
-                    pulses=[cr_drive_pulse],
+                    values=params.duration_range,
+                    pulses=[cr_pulse],
                 )
             else:
                 sweeper = Sweeper(
                     parameter=Parameter.duration,
-                    range=sweep_range,
-                    pulses=[cr_drive_pulse, delay1, delay2],
+                    values=params.duration_range,
+                    pulses=[cr_pulse] + delays,
                 )
 
             updates = []
@@ -173,9 +133,14 @@ def _acquisition(
                 averaging_mode=AveragingMode.SINGLESHOT,
                 updates=updates,
             )
-
-            prob_target = probability(results[ro_pulse.id], state=1)
-            prob_control = probability(results[ro_pulse_control.id], state=1)
+            target_acq_handle = list(
+                sequence.channel(platform.qubits[target].acquisition)
+            )[-1].id
+            control_acq_handle = list(
+                sequence.channel(platform.qubits[control].acquisition)
+            )[-1].id
+            prob_target = probability(results[target_acq_handle], state=1)
+            prob_control = probability(results[control_acq_handle], state=1)
             data.register_qubit(
                 CrossResonanceLengthType,
                 (control, target, setup),
@@ -197,7 +162,7 @@ def _fit(
     fitted_parameters = {}
 
     for pair in data.pairs:
-        for setup in ["I", "X"]:
+        for setup in SetControl:
             pair_data = data[pair[0], pair[1], setup]
             raw_x = pair_data.length
             min_x = np.min(raw_x)
@@ -266,8 +231,8 @@ def _plot(
     )
 
     if fit is not None:
-        for setup in ["I", "X"]:
-            fit_data = idle_data if setup == "I" else excited_data
+        for setup in SetControl:
+            fit_data = idle_data if setup == "Id" else excited_data
             x = np.linspace(fit_data.length.min(), fit_data.length.max(), 100)
             fig.add_trace(
                 go.Scatter(
@@ -275,7 +240,7 @@ def _plot(
                     y=rabi_length_function(
                         x, *fit.fitted_parameters[target[0], target[1], setup]
                     ),
-                    name=f"Fit target when control at {0 if setup == 'I' else 1}",
+                    name=f"Fit target when control at {0 if setup == 'Id' else 1}",
                 )
             )
 
