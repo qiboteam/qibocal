@@ -142,10 +142,6 @@ def create_sequence(
     # X
     if setup == "X":
         sequence += control_natives.RX()
-    # else:
-    #     sequence.append(
-    #         (platform.qubits[control_qubit].drive, Delay(duration=sequence.duration))
-    #     )
 
     # CZ
     flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
@@ -163,78 +159,45 @@ def create_sequence(
 
     flux_sequence = PulseSequence(flux_pulses)
     virtual_phases = []
-    sequence.align(
-        [
-            platform.qubits[control_qubit].drive,
-            platform.qubits[target_qubit].drive,
-            flux_channel,
-            platform.qubits[target_qubit].acquisition,
-            platform.qubits[control_qubit].acquisition,
-        ]
-    )
+    align_channels = [
+        platform.qubits[control_qubit].drive,
+        platform.qubits[target_qubit].drive,
+        flux_channel,
+        platform.qubits[target_qubit].acquisition,
+        platform.qubits[control_qubit].acquisition,
+    ]
+
+    sequence.align(align_channels)
+
     for _ in range(n_cz):
         sequence.append(flux_sequence[0])
         sequence.append((flux_channel, Delay(duration=dt)))
         virtual_phases.append(VirtualZ(phase=0))
         sequence.append((platform.qubits[target_qubit].drive, virtual_phases[-1]))
 
-    # flux_duration = flux_sequence.duration
-
-    theta_sequence = PulseSequence(
-        # [
-        #     (
-        #         platform.qubits[target_qubit].drive,
-        #         Delay(duration=dt + flux_duration),
-        #     ),
-        #     (
-        #         platform.qubits[control_qubit].drive,
-        #         Delay(duration=dt + flux_duration),
-        #     ),
-        # ]
-    )
+    theta_sequence = PulseSequence()
     # RX90 (angle to be swept)
-    sequence.align(
-        [
-            platform.qubits[control_qubit].drive,
-            platform.qubits[target_qubit].drive,
-            flux_channel,
-            platform.qubits[target_qubit].acquisition,
-            platform.qubits[control_qubit].acquisition,
-        ]
-    )
+    sequence.align(align_channels)
     theta_sequence += target_natives.R(theta=np.pi / 2)
-    # theta_pulse = theta_sequence[-1][1]
 
     sequence += theta_sequence
 
-    # ro_target_delay = Delay(duration=flux_duration)
-    # ro_control_delay = Delay(duration=flux_duration)
-    sequence.align(
-        [
-            platform.qubits[control_qubit].drive,
-            platform.qubits[target_qubit].drive,
-            flux_channel,
-            platform.qubits[target_qubit].acquisition,
-            platform.qubits[control_qubit].acquisition,
-        ]
-    )
+    sequence.align(align_channels)
+
+    # X gate for the leakage
+    if setup == "X":
+        sequence += control_natives.RX()
+
+    sequence.align(align_channels)
     ro_sequence = PulseSequence(
         [
-            # (
-            #     platform.qubits[target_qubit].acquisition,
-            #     Delay(duration=drive_duration + theta_sequence.duration),
-            # ),
-            # (
-            #     platform.qubits[control_qubit].acquisition,
-            #     Delay(duration=drive_duration + theta_sequence.duration),
-            # ),
             target_natives.MZ()[0],
             control_natives.MZ()[0],
         ]
     )
 
     sequence += ro_sequence
-    return sequence, flux_pulse, virtual_phases  # , [ro_target_delay, ro_control_delay]
+    return sequence, flux_pulse, virtual_phases
 
 
 def _acquisition(
@@ -283,11 +246,19 @@ def _acquisition(
                     params.dt,
                     n_cz=params.cz_repetitions,
                 )
+
+                # The virtual phase values are the opposite of beta, this is
+                # because, according to the circuit we would like to reproduce
+                # after the CZ, an RZ is applied. The RZ gate with `theta` angle
+                # is compiled into  a VirtualPhase pulse with phase `-theta`.
+                # (See https://github.com/qiboteam/qibolab/pull/1044#issuecomment-2354622956)
+
                 sweeper = Sweeper(
                     parameter=Parameter.phase,
                     range=(-params.theta_start, -params.theta_end, -params.theta_step),
                     pulses=vz_pulses,
                 )
+
                 results = platform.execute(
                     [sequence],
                     [[sweeper]],

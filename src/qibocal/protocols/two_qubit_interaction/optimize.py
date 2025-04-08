@@ -177,6 +177,7 @@ def _acquisition(
                     params.native,
                     params.dt,
                     flux_pulse_max_duration=params.duration_max,
+                    n_cz=1,
                 )
 
                 sweeper_theta = Sweeper(
