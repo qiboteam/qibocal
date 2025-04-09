@@ -172,6 +172,9 @@ def create_sequence(
         # sequence.append(flux_sequence[0])
         sequence += flux_sequence
         # sequence.append((flux_channel, Delay(duration=dt)))
+
+    # A single RZ is added because qm ignores the first one.
+    # This work for CZ since it commutes with the RZ, but break the iSWAP compatibility.
     virtual_phases.append(VirtualZ(phase=0))
     sequence.append((platform.qubits[target_qubit].drive, virtual_phases[-1]))
 
