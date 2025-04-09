@@ -160,7 +160,6 @@ def _acquisition(
             ro_pulses_m1[qubit] = ro_pulse_m1
             ro_pulses_m2[qubit] = ro_pulse_m2
 
-        # pdb.set_trace()
         amp_sweeper = Sweeper(
             parameter=Parameter.amplitude,
             range=(
