@@ -99,8 +99,6 @@ def _acquisition(
                 sequence += natives.RX()
             sequence.append((ro_channel, Delay(duration=natives.RX()[0][1].duration)))
             sequence += natives.MZ()
-            #            sequence += natives.RX()
-            #            sequence.append((ro_channel, Delay(duration=natives.RX()[0][1].duration)))
             sequence.append((ro_channel, Delay(duration=params.delay)))
             sequence += natives.MZ()
 
