@@ -394,6 +394,8 @@ def _plot(
                 x=amplitudes,
                 y=frequencies * HZ_TO_GHZ,
                 z=fidelities,
+                colorscale="Plasma",
+                colorbar=dict(title="Fidelity", xanchor="right"),
             ),
             row=1,
             col=1,
@@ -401,8 +403,8 @@ def _plot(
 
         fig.add_trace(
             go.Scatter(
-                x=[fit.fid_best_amp],
-                y=[fit.fid_best_freq],
+                x=[fit.fid_best_amp[target]],
+                y=[fit.fid_best_freq[target]],
                 mode="markers",
                 marker=dict(
                     size=8,
@@ -421,6 +423,8 @@ def _plot(
                 x=amplitudes,
                 y=frequencies * HZ_TO_GHZ,
                 z=qnds,
+                colorscale="Viridis",
+                colorbar=dict(title="QND-ness", xanchor="left"),
             ),
             row=1,
             col=2,
@@ -428,8 +432,8 @@ def _plot(
 
         fig.add_trace(
             go.Scatter(
-                x=[fit.qnd_best_amp],
-                y=[fit.qnd_best_freq],
+                x=[fit.qnd_best_amp[target]],
+                y=[fit.qnd_best_freq[target]],
                 mode="markers",
                 marker=dict(
                     size=8,
@@ -440,7 +444,7 @@ def _plot(
                 showlegend=True,
             ),
             row=1,
-            col=1,
+            col=2,
         )
 
         fitting_report = table_html(
