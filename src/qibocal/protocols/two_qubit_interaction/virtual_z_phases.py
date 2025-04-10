@@ -327,7 +327,6 @@ def fit_sinusoid(thetas, data, n_cz):
             (np.max(data), np.max(data), 2 * np.pi),
         ),
     )
-
     return popt.tolist()
 
 
@@ -353,7 +352,7 @@ def _fit(
         for target, control, setup in data[pair]:
             target_data = data[pair][target, control, setup].target
             try:
-                params = fit_sinusoid(np.array(data.thetas), data.n_cz, target_data)
+                params = fit_sinusoid(np.array(data.thetas), target_data, data.n_cz)
                 fitted_parameters[target, control, setup] = params
 
             except Exception as e:
