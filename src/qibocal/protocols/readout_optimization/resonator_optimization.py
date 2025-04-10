@@ -284,8 +284,9 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
                 # 1st measurement (m=1)
                 data_10 = data[qubit, 1, 0]
                 m1_state_1 = data_10[
-                    (data_state_0.frequency == freq) & (data_state_0.amplitude == amp)
-                ]
+                    (data_10.frequency == freq) & (data_10.amplitude == amp)
+                ].samples
+                print()
                 nshots = len(m1_state_1)
                 # state 1
                 state1_count_1_m1 = np.count_nonzero(m1_state_1)
@@ -293,8 +294,9 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
 
                 data_00 = data[qubit, 0, 0]
                 m1_state_0 = data_00[
-                    (data_state_0.frequency == freq) & (data_state_0.amplitude == amp)
-                ]
+                    (data_00.frequency == freq) & (data_00.amplitude == amp)
+                ].samples
+                print(m1_state_0)
                 # state 0
                 state1_count_0_m1 = np.count_nonzero(m1_state_0)
                 state0_count_0_m1 = nshots - state1_count_0_m1
@@ -302,15 +304,15 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
                 # 2nd measurement (m=2)
                 data_11 = data[qubit, 1, 1]
                 m2_state_1 = data_11[
-                    (data_state_0.frequency == freq) & (data_state_0.amplitude == amp)
-                ]
+                    (data_11.frequency == freq) & (data_11.amplitude == amp)
+                ].samples
                 state1_count_1_m2 = np.count_nonzero(m2_state_1)
                 state0_count_1_m2 = nshots - state1_count_1_m2
 
                 data_01 = data[qubit, 0, 1]
                 m2_state_0 = data_01[
-                    (data_state_0.frequency == freq) & (data_state_0.amplitude == amp)
-                ]
+                    (data_01.frequency == freq) & (data_01.amplitude == amp)
+                ].samples
                 # state 0
                 state1_count_0_m2 = np.count_nonzero(m2_state_0)
                 state0_count_0_m2 = nshots - state1_count_0_m2
@@ -389,7 +391,12 @@ def _plot(
     fitting_report = ""
 
     fig = make_subplots(
-        rows=1, cols=2, subplpot_titles=("Fidelity", "Quantum-Non-Demolition-ness")
+        rows=1,
+        cols=2,
+        subplot_titles=(
+            "Fidelity",
+            "Quantum Non Demolition-ness",
+        ),
     )
 
     frequencies = qubit_data.frequency
