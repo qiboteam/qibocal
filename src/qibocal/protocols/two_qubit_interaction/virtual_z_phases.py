@@ -10,6 +10,7 @@ from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
+    Delay,
     Parameter,
     Pulse,
     PulseSequence,
@@ -89,6 +90,7 @@ VirtualZPhasesType = np.dtype([("target", np.float64), ("control", np.float64)])
 class VirtualZPhasesData(Data):
     """VirtualZPhases data."""
 
+    n_cz: int
     data: dict[tuple, npt.NDArray[VirtualZPhasesType]] = field(default_factory=dict)
     native: str = "CZ"
     thetas: list = field(default_factory=list)
@@ -171,7 +173,7 @@ def create_sequence(
     for _ in range(n_cz):
         # sequence.append(flux_sequence[0])
         sequence += flux_sequence
-        # sequence.append((flux_channel, Delay(duration=dt)))
+        sequence.append((flux_channel, Delay(duration=dt)))
 
     # A single RZ is added because qm ignores the first one.
     # This work for CZ since it commutes with the RZ, but break the iSWAP compatibility.
@@ -225,7 +227,9 @@ def _acquisition(
     """
 
     theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
-    data = VirtualZPhasesData(thetas=theta_absolute.tolist(), native=params.native)
+    data = VirtualZPhasesData(
+        n_cz=params.cz_repetitions, thetas=theta_absolute.tolist(), native=params.native
+    )
     for pair in targets:
         # order the qubits so that the low frequency one is the first
         ordered_pair = order_pair(pair, platform)
@@ -295,9 +299,9 @@ def _acquisition(
     return data
 
 
-def sinusoid(x, amplitude, offset, phase):
+def sinusoid(x, n_cz, amplitude, offset, phase):
     """Sinusoidal fit function."""
-    return np.cos(x + phase) * amplitude + offset
+    return np.cos(n_cz * (x + phase)) * amplitude + offset
 
 
 def phase_diff(phase_1, phase_2):
@@ -305,7 +309,7 @@ def phase_diff(phase_1, phase_2):
     return np.arccos(np.cos(phase_1 - phase_2))
 
 
-def fit_sinusoid(thetas, data):
+def fit_sinusoid(thetas, data, n_cz):
     """Fit sinusoid to the given data."""
     pguess = [
         np.max(data) - np.min(data),
@@ -314,7 +318,7 @@ def fit_sinusoid(thetas, data):
     ]
 
     popt, _ = curve_fit(
-        sinusoid,
+        lambda x, amplitude, offset, phase: sinusoid(x, n_cz, amplitude, offset, phase),
         thetas,
         data,
         p0=pguess,
@@ -349,7 +353,7 @@ def _fit(
         for target, control, setup in data[pair]:
             target_data = data[pair][target, control, setup].target
             try:
-                params = fit_sinusoid(np.array(data.thetas), target_data)
+                params = fit_sinusoid(np.array(data.thetas), data.n_cz, target_data)
                 fitted_parameters[target, control, setup] = params
 
             except Exception as e:
@@ -445,6 +449,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
                     x=angle_range,
                     y=sinusoid(
                         angle_range,
+                        data.n_cz,
                         *fitted_parameters,
                     ),
                     name="Fit",
