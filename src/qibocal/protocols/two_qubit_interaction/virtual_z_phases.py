@@ -54,7 +54,7 @@ class VirtualZPhasesParameters(Parameters):
     """
     dt: Optional[float] = 0
     """Time delay between flux pulses and readout."""
-    cz_repetitions: int = 1
+    gate_repetition: int = 1
     """Number of CZ repetition"""
 
 
@@ -66,7 +66,7 @@ class VirtualZPhasesResults(Results):
     """Fitted parameters"""
     native: str
     """Native two qubit gate."""
-    n_cz: int
+    gate_repetition: int
     leakage: dict[QubitPairId, dict[QubitId, float]]
     """Leakage on control qubit for pair."""
     angle: Optional[dict[QubitPairId, float]] = None
@@ -91,7 +91,7 @@ VirtualZPhasesType = np.dtype([("target", np.float64), ("control", np.float64)])
 class VirtualZPhasesData(Data):
     """VirtualZPhases data."""
 
-    n_cz: int
+    gate_repetition: int
     data: dict[tuple, npt.NDArray[VirtualZPhasesType]] = field(default_factory=dict)
     native: str = "CZ"
     thetas: list = field(default_factory=list)
@@ -113,7 +113,7 @@ def create_sequence(
     native: Literal["CZ", "iSWAP"],
     dt: float,
     flux_pulse_max_duration: float = None,
-    n_cz: int = 1,
+    gate_repetition: int = 1,
 ) -> tuple[PulseSequence, Pulse, Pulse, list[Pulse]]:
     """
     Create the pulse sequence for the calibration of two-qubit gate virtual phases.
@@ -171,7 +171,7 @@ def create_sequence(
 
     sequence.align(align_channels)
 
-    for _ in range(n_cz):
+    for _ in range(gate_repetition):
         # sequence.append(flux_sequence[0])
         sequence += flux_sequence
         sequence.append((flux_channel, Delay(duration=dt)))
@@ -229,7 +229,9 @@ def _acquisition(
 
     theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
     data = VirtualZPhasesData(
-        n_cz=params.cz_repetitions, thetas=theta_absolute.tolist(), native=params.native
+        gate_repetition=params.gate_repetition,
+        thetas=theta_absolute.tolist(),
+        native=params.native,
     )
     for pair in targets:
         # order the qubits so that the low frequency one is the first
@@ -252,7 +254,7 @@ def _acquisition(
                     ordered_pair,
                     params.native,
                     params.dt,
-                    n_cz=params.cz_repetitions,
+                    gate_repetition=params.gate_repetition,
                 )
 
                 # The virtual phase values are the opposite of beta, this is
@@ -264,9 +266,9 @@ def _acquisition(
                 sweeper = Sweeper(
                     parameter=Parameter.phase,
                     range=(
-                        -params.cz_repetitions * params.theta_start,
-                        -params.cz_repetitions * params.theta_end,
-                        -params.cz_repetitions * params.theta_step,
+                        -params.gate_repetition * params.theta_start,
+                        -params.gate_repetition * params.theta_end,
+                        -params.gate_repetition * params.theta_step,
                     ),
                     pulses=vz_pulses,
                 )
@@ -300,9 +302,9 @@ def _acquisition(
     return data
 
 
-def sinusoid(x, n_cz, amplitude, offset, phase):
+def sinusoid(x, gate_repetition, amplitude, offset, phase):
     """Sinusoidal fit function."""
-    return np.cos(n_cz * (x + phase)) * amplitude + offset
+    return np.cos(gate_repetition * (x + phase)) * amplitude + offset
 
 
 def phase_diff(phase_1, phase_2):
@@ -310,7 +312,7 @@ def phase_diff(phase_1, phase_2):
     return np.arccos(np.cos(phase_1 - phase_2))
 
 
-def fit_sinusoid(thetas, data, n_cz):
+def fit_sinusoid(thetas, data, gate_repetition):
     """Fit sinusoid to the given data."""
     pguess = [
         np.max(data) - np.min(data),
@@ -319,7 +321,9 @@ def fit_sinusoid(thetas, data, n_cz):
     ]
 
     popt, _ = curve_fit(
-        lambda x, amplitude, offset, phase: sinusoid(x, n_cz, amplitude, offset, phase),
+        lambda x, amplitude, offset, phase: sinusoid(
+            x, gate_repetition, amplitude, offset, phase
+        ),
         thetas,
         data,
         p0=pguess,
@@ -353,7 +357,9 @@ def _fit(
         for target, control, setup in data[pair]:
             target_data = data[pair][target, control, setup].target
             try:
-                params = fit_sinusoid(np.array(data.thetas), target_data, data.n_cz)
+                params = fit_sinusoid(
+                    np.array(data.thetas), target_data, data.gate_repetition
+                )
                 fitted_parameters[target, control, setup] = params
 
             except Exception as e:
@@ -374,10 +380,10 @@ def _fit(
                 )
             )
 
-        if data.n_cz > 1:
+        if data.gate_repetition > 1:
             return VirtualZPhasesResults(
                 native=data.native,
-                n_cz=data.n_cz,
+                gate_repetition=data.gate_repetition,
                 fitted_parameters=fitted_parameters,
                 leakage=leakage,
             )
@@ -408,7 +414,7 @@ def _fit(
             pass  # exception covered above
     return VirtualZPhasesResults(
         native=data.native,
-        n_cz=data.n_cz,
+        gate_repetition=data.gate_repetition,
         angle=angle,
         virtual_phase=virtual_phase,
         fitted_parameters=fitted_parameters,
@@ -472,7 +478,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
                     x=angle_range,
                     y=sinusoid(
                         angle_range,
-                        data.n_cz,
+                        data.gate_repetition,
                         *fitted_parameters,
                     ),
                     name="Fit",
@@ -482,7 +488,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
                 col=1 if fig == fig1 else 2,
             )
 
-            if data.n_cz == 1:
+            if data.gate_repetition == 1:
                 fitting_report.add(
                     table_html(
                         table_dict(
@@ -543,7 +549,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
 def _update(
     results: VirtualZPhasesResults, platform: CalibrationPlatform, target: QubitPairId
 ):
-    if results.n_cz == 1:
+    if results.gate_repetition == 1:
         # FIXME: quick fix for qubit order
         target = tuple(sorted(target))
         update.virtual_phases(
