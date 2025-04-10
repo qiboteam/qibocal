@@ -20,6 +20,7 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.fitting.classifier.qubit_fit import QubitFit
+from qibocal.protocols.two_qubit_interaction.chevron.utils import COLORAXIS
 from qibocal.protocols.utils import HZ_TO_GHZ, readout_frequency, table_dict, table_html
 
 
@@ -388,8 +389,7 @@ def _plot(
     fitting_report = ""
 
     fig = make_subplots(
-        rows=1,
-        cols=2,
+        rows=1, cols=2, subplpot_titles=("Fidelity", "Quantum-Non-Demolition-ness")
     )
 
     frequencies = qubit_data.frequency
@@ -403,8 +403,7 @@ def _plot(
                 x=amplitudes,
                 y=frequencies * HZ_TO_GHZ,
                 z=fidelities,
-                colorscale="Plasma",
-                colorbar=dict(title="Fidelity", xanchor="right"),
+                coloraxis=COLORAXIS[0],
             ),
             row=1,
             col=1,
@@ -429,11 +428,7 @@ def _plot(
 
         fig.add_trace(
             go.Heatmap(
-                x=amplitudes,
-                y=frequencies * HZ_TO_GHZ,
-                z=qnds,
-                colorscale="Viridis",
-                colorbar=dict(title="QND-ness", xanchor="left"),
+                x=amplitudes, y=frequencies * HZ_TO_GHZ, z=qnds, coloraxis=COLORAXIS[1]
             ),
             row=1,
             col=2,
@@ -454,6 +449,17 @@ def _plot(
             ),
             row=1,
             col=2,
+        )
+
+        fig.update_layout(
+            xaxis_title="Amplitude [a.u.]",
+            xaxis2_title="Amplitude [a.u.]",
+            yaxis_title="Frequency [GHz]",
+            legend=dict(orientation="h"),
+        )
+        fig.update_layout(
+            coloraxis={"colorscale": "Oryel", "colorbar": {"x": 1.15}},
+            coloraxis2={"colorscale": "Darkmint", "colorbar": {"x": -0.15}},
         )
 
         fitting_report = table_html(
