@@ -72,6 +72,7 @@ ResonatorOptimizationType = np.dtype(
         ("frequency", np.float64),
         ("amplitude", np.float64),
         ("iq_values", np.float64, (2,)),
+        ("samples", np.int64),
         ("assignment_fidelity", np.float64),
         ("avaraged_fidelity", np.float64),
         ("qnd", np.float64),
@@ -94,12 +95,10 @@ class ResonatorOptimizationData(Data):
     """Amplitudes provided by the user."""
     qubit_frequencies: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
-    data: dict[QubitId, npt.NDArray[ResonatorOptimizationType]] = field(
+    data: dict[tuple, npt.NDArray[ResonatorOptimizationType]] = field(
         default_factory=dict
     )
     """Raw data acquired"""
-    samples: dict[tuple, npt.NDArray] = field(default_factory=dict)
-    """Raw data acquired."""
 
 
 def _acquisition(
@@ -205,12 +204,11 @@ def _acquisition(
                                     frequency=np.array([freq]),
                                     amplitude=np.array([amp]),
                                     iq_values=np.array([results[ro_pulse.id][n][j][k]]),
+                                    samples=np.array(
+                                        [results_samples[ro_pulse.id][n][j][k]]
+                                    ),
                                 ),
                             )
-                            data.samples[qubit, state, m] = results_samples[
-                                ro_pulse.id
-                            ].tolist()
-
     return data
 
 
@@ -283,24 +281,35 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
         for j, freq in enumerate(freq_vals):
             for k, amp in enumerate(amp_vals):
                 # 1st measurement (m=1)
-                m1_state_1 = data.samples[qubit, 1, 0]
+                data_10 = data[qubit, 1, 0]
+                m1_state_1 = data_10[
+                    (data_state_0.frequency == freq) & (data_state_0.amplitude == amp)
+                ]
                 nshots = len(m1_state_1)
                 # state 1
                 state1_count_1_m1 = np.count_nonzero(m1_state_1)
                 state0_count_1_m1 = nshots - state1_count_1_m1
 
-                m1_state_0 = data.samples[qubit, 0, 0]
+                data_00 = data[qubit, 0, 0]
+                m1_state_0 = data_00[
+                    (data_state_0.frequency == freq) & (data_state_0.amplitude == amp)
+                ]
                 # state 0
                 state1_count_0_m1 = np.count_nonzero(m1_state_0)
                 state0_count_0_m1 = nshots - state1_count_0_m1
 
                 # 2nd measurement (m=2)
-                m2_state_1 = data.samples[qubit, 1, 1]
-                # state 1
+                data_11 = data[qubit, 1, 1]
+                m2_state_1 = data_11[
+                    (data_state_0.frequency == freq) & (data_state_0.amplitude == amp)
+                ]
                 state1_count_1_m2 = np.count_nonzero(m2_state_1)
                 state0_count_1_m2 = nshots - state1_count_1_m2
 
-                m2_state_0 = data.samples[qubit, 0, 1]
+                data_01 = data[qubit, 0, 1]
+                m2_state_0 = data_01[
+                    (data_state_0.frequency == freq) & (data_state_0.amplitude == amp)
+                ]
                 # state 0
                 state1_count_0_m2 = np.count_nonzero(m2_state_0)
                 state0_count_0_m2 = nshots - state1_count_0_m2
@@ -404,7 +413,7 @@ def _plot(
         fig.add_trace(
             go.Scatter(
                 x=[fit.fid_best_amp[target]],
-                y=[fit.fid_best_freq[target]],
+                y=[fit.fid_best_freq[target] * HZ_TO_GHZ],
                 mode="markers",
                 marker=dict(
                     size=8,
@@ -433,7 +442,7 @@ def _plot(
         fig.add_trace(
             go.Scatter(
                 x=[fit.qnd_best_amp[target]],
-                y=[fit.qnd_best_freq[target]],
+                y=[fit.qnd_best_freq[target] * HZ_TO_GHZ],
                 mode="markers",
                 marker=dict(
                     size=8,
