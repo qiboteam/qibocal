@@ -66,12 +66,13 @@ class VirtualZPhasesResults(Results):
     """Fitted parameters"""
     native: str
     """Native two qubit gate."""
-    angle: dict[QubitPairId, float]
-    """Native angle."""
-    virtual_phase: dict[QubitPairId, dict[QubitId, float]]
-    """Virtual Z phase correction."""
+    n_cz: int
     leakage: dict[QubitPairId, dict[QubitId, float]]
     """Leakage on control qubit for pair."""
+    angle: Optional[dict[QubitPairId, float]] = None
+    """Native angle."""
+    virtual_phase: Optional[dict[QubitPairId, dict[QubitId, float]]] = None
+    """Virtual Z phase correction."""
 
     def __contains__(self, key: QubitPairId):
         """Check if key is in class.
@@ -358,6 +359,28 @@ def _fit(
             except Exception as e:
                 log.warning(f"CZ fit failed for pair ({target, control}) due to {e}.")
 
+        for target_q, control_q in (
+            pair,
+            list(pair)[::-1],
+        ):
+            # leakage estimate: L = m /2
+            # See NZ paper from Di Carlo
+            # approximation which does not need qutrits
+            # https://arxiv.org/pdf/1903.02492.pdf
+            leakage[pair][control_q] = 0.5 * float(
+                np.mean(
+                    data[pair][target_q, control_q, "X"].control
+                    - data[pair][target_q, control_q, "I"].control
+                )
+            )
+
+        if data.n_cz > 1:
+            return VirtualZPhasesResults(
+                native=data.native,
+                n_cz=data.n_cz,
+                fitted_parameters=fitted_parameters,
+                leakage=leakage,
+            )
         try:
             for target_q, control_q in (
                 pair,
@@ -385,6 +408,7 @@ def _fit(
             pass  # exception covered above
     return VirtualZPhasesResults(
         native=data.native,
+        n_cz=data.n_cz,
         angle=angle,
         virtual_phase=virtual_phase,
         fitted_parameters=fitted_parameters,
@@ -458,26 +482,45 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
                 col=1 if fig == fig1 else 2,
             )
 
-            fitting_report.add(
-                table_html(
-                    table_dict(
-                        [target_q, target_q, control_q],
-                        [
-                            f"{fit.native} angle [rad]",
-                            "Virtual Z phase [rad]",
-                            "Leakage [a.u.]",
-                        ],
-                        [
-                            np.round(fit.angle[target_q, control_q], 4),
-                            np.round(
-                                fit.virtual_phase[tuple(sorted(target))][target_q], 4
-                            ),
-                            np.round(fit.leakage[tuple(sorted(target))][control_q], 4),
-                        ],
+            if data.n_cz == 1:
+                fitting_report.add(
+                    table_html(
+                        table_dict(
+                            [target_q, target_q, control_q],
+                            [
+                                f"{fit.native} angle [rad]",
+                                "Virtual Z phase [rad]",
+                                "Leakage [a.u.]",
+                            ],
+                            [
+                                np.round(fit.angle[target_q, control_q], 4),
+                                np.round(
+                                    fit.virtual_phase[tuple(sorted(target))][target_q],
+                                    4,
+                                ),
+                                np.round(
+                                    fit.leakage[tuple(sorted(target))][control_q], 4
+                                ),
+                            ],
+                        )
                     )
                 )
-            )
-
+            else:
+                fitting_report.add(
+                    table_html(
+                        table_dict(
+                            [target_q],
+                            [
+                                "Leakage [a.u.]",
+                            ],
+                            [
+                                np.round(
+                                    fit.leakage[tuple(sorted(target))][control_q], 4
+                                ),
+                            ],
+                        )
+                    )
+                )
     fig1.update_layout(
         title_text=f"Phase correction Qubit {qubits[0]}",
         showlegend=True,
@@ -500,11 +543,12 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
 def _update(
     results: VirtualZPhasesResults, platform: CalibrationPlatform, target: QubitPairId
 ):
-    # FIXME: quick fix for qubit order
-    target = tuple(sorted(target))
-    update.virtual_phases(
-        results.virtual_phase[target], results.native, platform, target
-    )
+    if results.n_cz == 1:
+        # FIXME: quick fix for qubit order
+        target = tuple(sorted(target))
+        update.virtual_phases(
+            results.virtual_phase[target], results.native, platform, target
+        )
 
 
 correct_virtual_z_phases = Routine(
