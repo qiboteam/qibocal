@@ -202,6 +202,9 @@ def allxy_sequence(
             )
         )
     sequence.append((ro_channel, ro_pulse))
+    print(gates)
+    for i in sequence:
+        print(i)
     return sequence, ro_pulse
 
 
