@@ -249,7 +249,7 @@ def _fit(
                 continue
 
         if STATES[0] in _duration and STATES[1] in _duration:
-            fit_Jeff[tuple(pair)] = (1/_duration['X'][0]- 1/_duration['I'][0])*1e9
+            fit_Jeff[tuple(pair)] = (1/_duration['X'][0]- 1/_duration['I'][0])*1e9/2
             print(f"Jeff for {tuple(pair)}: {fit_Jeff[tuple(pair)]*1e-6} MHz")
 
         fit_popt[tuple(pair)] = _popt

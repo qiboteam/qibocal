@@ -112,6 +112,7 @@ def _acquisition(
 
             if params.pulse_duration is not None:
                 cr_pulse.duration = params.pulse_duration
+
             if params.pulse_amplitude is not None:
                 cr_pulse.amplitude = params.pulse_amplitude
             
@@ -126,9 +127,12 @@ def _acquisition(
                 sequence.add(projection_pulse[ro_qubit]) 
                 sequence.add(ro_pulses[ro_qubit]) 
 
+            amplitude_range = cr_pulse.amplitude*params.amplitude_factor_range
+            print(f"Amplitude range: {amplitude_range}")
+            # Create the amplitude sweeper
             sweeper_amplitude = Sweeper(
                 parameter = Parameter.amplitude,
-                values = cr_pulse.amplitude*params.amplitude_factor_range,
+                values = amplitude_range,
                 pulses=[cr_pulse],
                 type=SweeperType.ABSOLUTE,
             )
@@ -152,7 +156,7 @@ def _acquisition(
                     data_keys= (pair, ro_qubit, tgt_setup, ctr_setup, basis),
                     data_dict= dict(
                         prob=probability,
-                        amp=cr_pulse.amplitude * params.amplitude_factor_range,
+                        amp= amplitude_range,
                         error=np.sqrt(probability * (1 - probability) / params.nshots).tolist(),
                     ),
                 )

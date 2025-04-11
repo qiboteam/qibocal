@@ -81,6 +81,7 @@ from .two_qubit_interaction import (
     cross_resonance_chevron_amplitude_frequency,
     cross_resonance_chevron_coupler,
     cross_resonance_cnot_length,
+    cross_resonance_cnot,
 )
 from .state_tomography import state_tomography
 from .two_qubit_state_tomography import two_qubit_state_tomography
@@ -169,4 +170,5 @@ __all__ = [
     "cross_resonance_chevron_amplitude_frequency",
     "cross_resonance_chevron_coupler",
     "cross_resonance_cnot_length",
+    "cross_resonance_cnot",
 ]
