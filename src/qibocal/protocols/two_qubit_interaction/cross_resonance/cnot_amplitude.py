@@ -91,12 +91,9 @@ def _acquisition(
                 tgt_native_rx:NativePulse = platform.qubits[target].native_gates.RX90.pulse(start=0)
                 ctr_native_rx:NativePulse = platform.qubits[control].native_gates.RX.pulse(start=0)
 
-                pulse_duration = int(params.pulse_duration/2 if params.pulse_duration is not None else ctr_native_rx.duration/2)
+                pulse_duration = int(params.pulse_duration if params.pulse_duration is not None else ctr_native_rx.duration)
                 pulse_amplitude = params.pulse_amplitude if params.pulse_amplitude is not None else ctr_native_rx.amplitude
                 
-                print('Pulse Amplitude:', pulse_amplitude)
-                print('Pulse Duration:', pulse_duration)
-
                 sequence = PulseSequence()
                 next_start = 0
                 
@@ -111,7 +108,7 @@ def _acquisition(
 
                 if params.target_amplitude is not None:
                     cr_pulse_tgt = Pulse(start=next_start,
-                                    duration=   pulse_duration*2+ctr_native_rx,
+                                    duration=   pulse_duration,
                                     amplitude=  params.target_amplitude,
                                     frequency=  tgt_native_rx.frequency,   # control frequency
                                     relative_phase=0,
