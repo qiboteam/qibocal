@@ -286,7 +286,6 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
                 m1_state_1 = data_10[
                     (data_10.frequency == freq) & (data_10.amplitude == amp)
                 ].samples
-                print()
                 nshots = len(m1_state_1)
                 # state 1
                 state1_count_1_m1 = np.count_nonzero(m1_state_1)
@@ -296,7 +295,6 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
                 m1_state_0 = data_00[
                     (data_00.frequency == freq) & (data_00.amplitude == amp)
                 ].samples
-                print(m1_state_0)
                 # state 0
                 state1_count_0_m1 = np.count_nonzero(m1_state_0)
                 state0_count_0_m1 = nshots - state1_count_0_m1
@@ -465,8 +463,8 @@ def _plot(
             legend=dict(orientation="h"),
         )
         fig.update_layout(
-            coloraxis={"colorscale": "Oryel", "colorbar": {"x": 1.15}},
-            coloraxis2={"colorscale": "Darkmint", "colorbar": {"x": -0.15}},
+            coloraxis={"colorscale": "Plasma", "colorbar": {"x": 1.15}},
+            coloraxis2={"colorscale": "Viridis", "colorbar": {"x": -0.15}},
         )
 
         fitting_report = table_html(
