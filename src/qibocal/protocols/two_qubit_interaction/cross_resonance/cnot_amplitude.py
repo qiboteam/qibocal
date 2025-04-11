@@ -83,12 +83,19 @@ def _acquisition(
     else:
         shape = Rectangular()
 
+
     for pair in targets:
         for ctr_setup in STATES:
             for basis in params.projections:
                 target, control = pair
                 tgt_native_rx:NativePulse = platform.qubits[target].native_gates.RX90.pulse(start=0)
                 ctr_native_rx:NativePulse = platform.qubits[control].native_gates.RX.pulse(start=0)
+
+                pulse_duration = int(params.pulse_duration/2 if params.pulse_duration is not None else ctr_native_rx.duration/2)
+                pulse_amplitude = params.pulse_amplitude if params.pulse_amplitude is not None else ctr_native_rx.amplitude
+                
+                print('Pulse Amplitude:', pulse_amplitude)
+                print('Pulse Duration:', pulse_duration)
 
                 sequence = PulseSequence()
                 next_start = 0
@@ -104,7 +111,7 @@ def _acquisition(
 
                 if params.target_amplitude is not None:
                     cr_pulse_tgt = Pulse(start=next_start,
-                                    duration=   params.pulse_duration if params.pulse_duration is not None else ctr_native_rx.duration,
+                                    duration=   pulse_duration*2+ctr_native_rx,
                                     amplitude=  params.target_amplitude,
                                     frequency=  tgt_native_rx.frequency,   # control frequency
                                     relative_phase=0,
@@ -116,70 +123,50 @@ def _acquisition(
                     cr_pulses.append(cr_pulse_tgt)
 
                 cr_pulse_ctr: Pulse = Pulse(start=  next_start,
-                                duration=       params.pulse_duration if params.pulse_duration is not None else ctr_native_rx.duration,
-                                amplitude=      params.pulse_amplitude if params.pulse_amplitude is not None else ctr_native_rx.amplitude,
+                                duration=       pulse_duration,
+                                amplitude=      pulse_amplitude,
                                 frequency=      tgt_native_rx.frequency,   # control frequency
                                 relative_phase= 0,
                                 shape=          params.pulse_shape,
                                 qubit=          control,
                                 channel=        ctr_native_rx.channel ,
                                 type=           PulseType.DRIVE
-                                )
+                                )               
                 cr_pulses.append(cr_pulse_ctr)
-                
+                cr_pulses.append(platform.create_RX_pulse(control, start=cr_pulses[-1].finish))
+
+                cr_pulse_ctr2: Pulse = Pulse(start=  cr_pulses[-1].finish,
+                                duration=       pulse_duration,
+                                amplitude=      pulse_amplitude,
+                                frequency=      tgt_native_rx.frequency,   # control frequency
+                                relative_phase= 180,
+                                shape=          params.pulse_shape,
+                                qubit=          control,
+                                channel=        ctr_native_rx.channel ,
+                                type=           PulseType.DRIVE
+                                )
+                cr_pulses.append(cr_pulse_ctr2)
+                cr_pulses.append(platform.create_RX_pulse(control, start=cr_pulses[-1].finish))
+                next_start = cr_pulses[-1].finish
+
                 for cr_pulse in cr_pulses:
                     sequence.add(cr_pulse)
                     next_start = max(cr_pulse.finish, next_start)
-                
-                
-                ## Echo Pulse
-                # if ctr_setup == STATES[1]:
-                #     ctr_rx2:NativePulse = platform.qubits[control].native_gates.RX.pulse(start=next_start)
-                #     sequence.add(platform.qubits[control].native_gates.RX.pulse(start=next_start))
-                #     next_start = max(ctr_rx2.finish, next_start)
-
-                # cr_pulse_tgt_echo = tgt_native_rx.copy()
-                # cr_pulse_tgt_echo.amplitude = params.target_amplitude
-                # cr_pulse_tgt_echo.start = cr_pulse.finish
-                # cr_pulse_tgt_echo.duration = params.pulse_duration_start/2
-                # cr_pulse_tgt_echo.shape = shape
-                # cr_pulse_tgt_echo.relative_phase = 180
-
-                # cr_pulse_echo: Pulse = Pulse(start=next_start,
-                #                 duration=params.pulse_duration_start,
-                #                 amplitude=ctr_native_rx.amplitude,
-                #                 frequency=tgt_native_rx.frequency,   # target frequency at control qubit
-                #                 relative_phase=180,
-                #                 shape=shape,
-                #                 channel= ctr_native_rx.channel, 
-                #                 qubit=control,
-                #                 type= PulseType.DRIVE,
-                #                 )
-                
-                # if params.pulse_amplitude is not None:
-                #     cr_pulse_echo.amplitude = params.pulse_amplitude
-                # next_start = cr_pulse_echo.finish
-                # sequence.add(cr_pulse_echo)
-                
-                # sequence.add(cr_pulse_tgt)
-                # sequence.add(cr_pulse_tgt_echo)
-
-                
                 
                 # Add Readout pulses  
                 ro_qubit = target  
                 projection_pulses, ro_pulses= {}, {}
                 projection_pulses[ro_qubit], ro_pulses[ro_qubit] = ro_projection_pulse(
-                    platform, ro_qubit, start=next_start, projection=basis  
+                    platform, ro_qubit, start=next_start+4, projection=basis  
                 )
                 sequence.add(projection_pulses[ro_qubit])
                 sequence.add(ro_pulses[ro_qubit]) 
 
-                amplitude_range = cr_pulse.amplitude*params.amplitude_factor_range
+                amplitude_range = pulse_amplitude*params.amplitude_factor_range
                 sweeper = Sweeper(
                     parameter = Parameter.amplitude,
                     values = amplitude_range,
-                    pulses = [cr_pulse_ctr],# cr_pulse_echo, cr_pulse_tgt,cr_pulse_tgt_echo],
+                    pulses = [cr_pulse_ctr, cr_pulse_ctr2],# cr_pulse_echo, cr_pulse_tgt,cr_pulse_tgt_echo],
                     type = SweeperType.ABSOLUTE,
                 )
 
