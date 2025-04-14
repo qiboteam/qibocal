@@ -3,13 +3,13 @@
         "0": {
             "resonator": {
                 "bare_frequency": 0.0,
-                "dressed_frequency": 5200000000.0,
+                "dressed_frequency": 0.0,
                 "depletion_time": 0
             },
             "qubit": {
-                "frequency_01": 5000000000.0,
-                "frequency_12": 4800000000.0,
-                "maximum_frequency": 5000000000.0,
+                "frequency_01": 6.509e9,
+                "frequency_12": 6.209e9,
+                "maximum_frequency": 6.509e9,
                 "asymmetry": 0.0,
                 "sweetspot": 0.0
             },
@@ -29,13 +29,13 @@
         "1": {
             "resonator": {
                 "bare_frequency": 0.0,
-                "dressed_frequency": 5200000000.0,
+                "dressed_frequency": 0.0,
                 "depletion_time": 0
             },
             "qubit": {
-                "frequency_01": 4500000000.0,
-                "frequency_12": 4300000000.0,
-                "maximum_frequency": 4500000000.0,
+                "frequency_01": 5.963e9,
+                "frequency_12": 5.649e9,
+                "maximum_frequency": 5.963e9,
                 "asymmetry": 0.0,
                 "sweetspot": 0.0
             },
