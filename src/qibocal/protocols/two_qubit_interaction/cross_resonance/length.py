@@ -22,7 +22,7 @@ from ....calibration import CalibrationPlatform
 from ....config import log
 from ....result import probability
 from ...rabi.utils import fit_length_function, rabi_length_function
-from ...utils import fallback_period, guess_period
+from ...utils import fallback_period, guess_period, table_dict, table_html
 from .utils import SetControl, cr_sequence
 
 CrossResonanceLengthType = np.dtype(
@@ -37,7 +37,7 @@ CrossResonanceLengthType = np.dtype(
 
 @dataclass
 class CrossResonanceLengthParameters(Parameters):
-    """ResonatorSpectroscopy runcard inputs."""
+    """CrossResonanceLength runcard inputs."""
 
     pulse_duration_start: float
     """Initial pi pulse duration [ns]."""
@@ -59,8 +59,11 @@ class CrossResonanceLengthParameters(Parameters):
 
 @dataclass
 class CrossResonanceLengthResults(Results):
-    """ResonatorSpectroscopy outputs."""
+    """CrossResonanceLength outputs."""
 
+    effective_coupling: dict[tuple[QubitId, QubitId], float] = field(
+        default_factory=dict
+    )
     fitted_parameters: dict[tuple[QubitPairId, str], list] = field(default_factory=dict)
 
     def __contains__(self, pair: QubitPairId):
@@ -71,6 +74,8 @@ class CrossResonanceLengthResults(Results):
 class CrossResonanceLengthData(Data):
     """Data structure for resonator spectroscopy with attenuation."""
 
+    anharmonicity: dict[QubitPairId, float] = field(default_factory=dict)
+    detuning: dict[QubitPairId, float] = field(default_factory=dict)
     data: dict[tuple[QubitId, QubitId, str], npt.NDArray[CrossResonanceLengthType]] = (
         field(default_factory=dict)
     )
@@ -89,6 +94,13 @@ def _acquisition(
     for pair in targets:
         control, target = pair
         pair = (control, target)
+        data.detuning[pair] = (
+            platform.config(platform.qubits[control].drive).frequency
+            - platform.config(platform.qubits[target].drive).frequency
+        )
+        data.anharmonicity[pair] = platform.calibration.single_qubits[
+            control
+        ].qubit.anharmonicity
         for setup in SetControl:
             sequence, cr_pulse, delays = cr_sequence(
                 platform=platform,
@@ -157,10 +169,10 @@ def _acquisition(
 def _fit(
     data: CrossResonanceLengthData,
 ) -> CrossResonanceLengthResults:
-    """Post-processing function for ResonatorSpectroscopy."""
+    """Post-processing function for CrossResonanceLength."""
 
     fitted_parameters = {}
-
+    effective_coupling = {}
     for pair in data.pairs:
         for setup in SetControl:
             pair_data = data[pair[0], pair[1], setup]
@@ -186,7 +198,15 @@ def _fit(
 
             except Exception as e:
                 log.warning(f"CR length fit failed for pair {pair} due to {e}.")
-    return CrossResonanceLengthResults(fitted_parameters=fitted_parameters)
+
+    effective_coupling[pair] = (
+        1 / fitted_parameters[pair[0], pair[1], SetControl.X][2]
+        - 1 / fitted_parameters[pair[0], pair[1], SetControl.Id][2]
+    ) / 2
+    return CrossResonanceLengthResults(
+        effective_coupling=effective_coupling,
+        fitted_parameters=fitted_parameters,
+    )
 
 
 def _plot(
@@ -197,6 +217,7 @@ def _plot(
     """Plotting function for CrossResonanceLength."""
     idle_data = data.data[target[0], target[1], SetControl.Id]
     excited_data = data.data[target[0], target[1], SetControl.X]
+    fitting_report = ""
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -243,12 +264,21 @@ def _plot(
                     name=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
                 )
             )
+        fitting_report = table_html(
+            table_dict(
+                [target],
+                [
+                    "Effective coupling [MHz]",
+                ],
+                [fit.effective_coupling[target] * 1e3],
+            )
+        )
 
     fig.update_layout(
         xaxis_title="Cross resonance pulse duration [ns]",
         yaxis_title="Excited state population",
     )
-    return [fig], ""
+    return [fig], fitting_report
 
 
 cross_resonance_length = Routine(_acquisition, _fit, _plot)
