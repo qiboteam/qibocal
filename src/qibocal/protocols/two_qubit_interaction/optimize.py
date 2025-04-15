@@ -269,7 +269,9 @@ def _fit(
                     ]
 
                     try:
-                        params = fit_sinusoid(np.array(data.thetas), target_data)
+                        params = fit_sinusoid(
+                            np.array(data.thetas), target_data, gate_repetition=1
+                        )
                         fitted_parameters[
                             target, control, setup, amplitude, duration
                         ] = params
