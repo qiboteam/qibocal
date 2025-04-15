@@ -4,7 +4,8 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
+from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
+from qibolab._core.pulses.envelope import Snz
 
 from qibocal.auto.operation import (
     Data,
@@ -38,6 +39,7 @@ class SNZFinetuningParamteters(Parameters):
     theta_start: float
     theta_end: float
     theta_step: float
+    t_idling: float
 
 
 @dataclass
@@ -121,10 +123,32 @@ def _aquisition(
     print(ratio_range)
     for pair in targets:
         ordered_pair = order_pair(pair, platform)
+        flux_channel = platform.qubits[ordered_pair[1]].flux
         target = pair[0]
         control = pair[1]
+        # Find CZ flux pulse
+        cz_sequence = getattr(platform.natives.two_qubit[ordered_pair], "CZ")()
+        flux_channel = platform.qubits[ordered_pair[1]].flux
+
+        for cz_pulse in cz_sequence:
+            if cz_pulse[0] == flux_channel:
+                flux_pulse = cz_pulse[1]
+
         for ratio in ratio_range:
             for setup in ("I", "X"):
+                flux_pulse = [
+                    (
+                        flux_channel,
+                        Pulse(
+                            amplitude=flux_pulse.amplitude,
+                            duration=flux_pulse.duration,
+                            envelope=Snz(
+                                t_idling=params.t_idling,
+                                b_amplitude=ratio,
+                            ),
+                        ),
+                    )
+                ]
                 (
                     sequence,
                     flux_pulse,
@@ -137,6 +161,7 @@ def _aquisition(
                     ordered_pair,
                     "CZ",
                     dt=0,
+                    flux_pulses=flux_pulse,
                 )
                 sweeper_theta = Sweeper(
                     parameter=Parameter.relative_phase,
