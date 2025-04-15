@@ -226,7 +226,7 @@ def _acquisition(
     Population of the high frequency qubit yield the leakage to the non-computational states
     during the execution of the flux pulse.
     """
-
+    assert params.native == "CZ", "This protocol supports only CZ gate."
     theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
     data = VirtualZPhasesData(
         gate_repetition=params.gate_repetition,
