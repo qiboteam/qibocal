@@ -530,7 +530,6 @@ def twoq_rb_acquisition(
     circuits, indexes, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, single_qubit=False
     )
-    print(circuits)
     executed_circuits = execute_circuits(
         circuits, targets, params, backend, single_qubit=False
     )
