@@ -56,6 +56,7 @@ from .two_qubit_interaction import (
     correct_virtual_z_phases,
     cryoscope,
     optimize_two_qubit_gate,
+    snz_optimize,
 )
 from .two_qubit_state_tomography import two_qubit_state_tomography
 
@@ -116,4 +117,5 @@ __all__ = [
     "flux_amplitude_frequency",
     "cpmg",
     "drag_simple",
+    "snz_optimize",
 ]

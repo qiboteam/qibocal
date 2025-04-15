@@ -1,0 +1,338 @@
+from dataclasses import dataclass, field
+
+import numpy as np
+import numpy.typing as npt
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
+
+from qibocal.auto.operation import (
+    Data,
+    Parameters,
+    QubitId,
+    QubitPairId,
+    Results,
+    Routine,
+)
+from qibocal.calibration import CalibrationPlatform
+from qibocal.config import log
+
+from .utils import order_pair
+from .virtual_z_phases import create_sequence, fit_sinusoid, phase_diff
+
+
+@dataclass
+class SNZFinetuningParamteters(Parameters):
+    amplitude_min: float
+    """Amplitude minimum."""
+    amplitude_max: float
+    """Amplitude maximum."""
+    amplitude_step: float
+    """Amplitude step."""
+    amp_ratio_min: float
+    """Amplitude minimum."""
+    amp_ratio_max: float
+    """Amplitude maximum."""
+    amp_ratio_step: float
+    """Amplitude step."""
+    theta_start: float
+    theta_end: float
+    theta_step: float
+
+
+@dataclass
+class SNZFinetuningResults(Results):
+    leakages: dict
+    virtual_phases: dict
+    fitted_parameters: dict
+    angles: dict
+
+
+OptimizeTwoQubitGateType = np.dtype(
+    [
+        ("amp", np.float64),
+        ("theta", np.float64),
+        ("rel_amplitude", np.float64),
+        ("prob_target", np.float64),
+        ("prob_control", np.float64),
+    ]
+)
+
+
+@dataclass
+class SNZFinetuningData(Data):
+    data: dict[tuple, npt.NDArray[OptimizeTwoQubitGateType]] = field(
+        default_factory=dict
+    )
+    """Raw data."""
+    thetas: list = field(default_factory=list)
+    """Angles swept."""
+    amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
+    """"Amplitudes swept."""
+    rel_amplitudes: list[float] = field(default_factory=list)
+    """Durations swept."""
+    angles: dict = field(default_factory=dict)
+
+    def __getitem__(self, pair):
+        """Extract data for pair."""
+        return {
+            index: value
+            for index, value in self.data.items()
+            if set(pair).issubset(index)
+        }
+
+    def register_qubit(
+        self, target, control, setup, ratio, theta, amp, prob_control, prob_target
+    ):
+        """Store output for single pair."""
+        size = len(theta) * len(amp)
+        amplitude, angle = np.meshgrid(amp, theta, indexing="ij")
+        ar = np.empty(size, dtype=OptimizeTwoQubitGateType)
+        ar["theta"] = angle.ravel()
+        ar["amp"] = amplitude.ravel()
+        ar["prob_control"] = prob_control.ravel()
+        ar["prob_target"] = prob_target.ravel()
+        self.data[target, control, setup, ratio] = np.rec.array(ar)
+
+
+def _aquisition(
+    params: SNZFinetuningParamteters,
+    platform: CalibrationPlatform,
+    targets: list[QubitPairId],
+) -> SNZFinetuningData:
+    ratio_range = np.arange(
+        params.amp_ratio_min, params.amp_ratio_max, params.amp_ratio_step
+    )
+    data = SNZFinetuningData()
+    data.rel_amplitudes = ratio_range.tolist()
+    print(ratio_range)
+    for pair in targets:
+        ordered_pair = order_pair(pair, platform)
+        target = pair[0]
+        control = pair[1]
+        for ratio in ratio_range:
+            for setup in ("I", "X"):
+                (
+                    sequence,
+                    flux_pulse,
+                    theta_pulse,
+                ) = create_sequence(
+                    platform,
+                    setup,
+                    target,
+                    control,
+                    ordered_pair,
+                    "CZ",
+                    dt=0,
+                )
+                sweeper_theta = Sweeper(
+                    parameter=Parameter.relative_phase,
+                    range=(params.theta_start, params.theta_end, params.theta_step),
+                    pulses=theta_pulse,
+                )
+
+                sweeper_amplitude = Sweeper(
+                    parameter=Parameter.amplitude,
+                    range=(
+                        params.amplitude_min,
+                        params.amplitude_max,
+                        params.amplitude_step,
+                    ),
+                    pulses=[flux_pulse],
+                )
+                ro_target = list(sequence.channel(platform.qubits[target].acquisition))[
+                    -1
+                ]
+                ro_control = list(
+                    sequence.channel(platform.qubits[control].acquisition)
+                )[-1]
+                results = platform.execute(
+                    [sequence],
+                    [[sweeper_theta], [sweeper_amplitude]],
+                    nshots=params.nshots,
+                    relaxation_time=params.relaxation_time,
+                    acquisition_type=AcquisitionType.DISCRIMINATION,
+                    averaging_mode=AveragingMode.CYCLIC,
+                )
+
+                data.amplitudes[pair] = sweeper_amplitude.values.tolist()
+                # TODO: move this outside loops
+                data.thetas = sweeper_theta.values.tolist()
+                # data.durations[ordered_pair] = sweeper_duration.values.tolist()
+                data.register_qubit(
+                    target,
+                    control,
+                    setup,
+                    ratio,
+                    sweeper_theta.values,
+                    sweeper_amplitude.values,
+                    results[ro_control.id],
+                    results[ro_target.id],
+                )
+                # print(data)
+    print(data)
+    return data
+
+
+def _fit(
+    data: SNZFinetuningData,
+) -> SNZFinetuningResults:
+    """Repetition of correct virtual phase fit for all configurations."""
+    fitted_parameters = {}
+    pairs = data.pairs
+    virtual_phases = {}
+    angles = {}
+    leakages = {}
+    # FIXME: experiment should be for single pair
+    for pair in pairs:
+        # TODO: improve this
+        # ord_pair = next(iter(data.amplitudes))[:2]
+        # for rel_amplitude in data.rel_amplitudes:
+        for amplitude in data.amplitudes[pairs]:
+            # virtual_phases[ord_pair[0], ord_pair[1], amplitude, rel_amplitude] = {}
+            # leakages[ord_pair[0], ord_pair[1], amplitude, rel_amplitude] = {}
+            # breakpoint()
+            for target, control, setup, rel_amplitude in data[pair]:
+                selected_data = data[pair][target, control, setup, rel_amplitude]
+                target_data = selected_data.prob_target[selected_data.amp == amplitude,]
+                # breakpoint()
+                try:
+                    params = fit_sinusoid(
+                        np.array(data.thetas), target_data, gate_repetition=1
+                    )
+                    fitted_parameters[
+                        target, control, setup, amplitude, rel_amplitude
+                    ] = params
+                except Exception as e:
+                    log.warning(f"Fit failed for pair ({target, control}) due to {e}.")
+
+            for target, control, setup, rel_amplitude in data[pair]:
+                if setup == "I":  # The loop is the same for setup I or X
+                    try:
+                        angles[target, control, amplitude, rel_amplitude] = phase_diff(
+                            fitted_parameters[
+                                target, control, "X", amplitude, rel_amplitude
+                            ][2],
+                            fitted_parameters[
+                                target, control, "I", amplitude, rel_amplitude
+                            ][2],
+                        )
+                        virtual_phases[target, control, amplitude, rel_amplitude][
+                            target
+                        ] = fitted_parameters[
+                            target, control, "I", amplitude, rel_amplitude
+                        ][2]
+
+                        # leakage estimate: L = m /2
+                        # See NZ paper from Di Carlo
+                        # approximation which does not need qutrits
+                        # https://arxiv.org/pdf/1903.02492.pdf
+                        data_x = data[pair][target, control, "X", rel_amplitude]
+                        data_i = data[pair][target, control, "I", rel_amplitude]
+                        leakages[target, control, amplitude, rel_amplitude][control] = (
+                            0.5
+                            * np.mean(
+                                data_x[data_x.amp == amplitude].prob_control
+                                - data_i[data_i.amp == amplitude].prob_control
+                            )
+                        )
+
+                    except KeyError:
+                        pass
+
+    return SNZFinetuningResults(
+        virtual_phases=virtual_phases,
+        fitted_parameters=fitted_parameters,
+        leakages=leakages,
+        angles=angles,
+    )
+
+
+def _plot(
+    data: SNZFinetuningData,
+    fit: SNZFinetuningResults,
+    target: QubitPairId,
+):
+    """Plot routine for OptimizeTwoQubitGate."""
+    fitting_report = ""
+    qubits = next(iter(data.amplitudes))[:2]
+    fig = make_subplots(
+        rows=2,
+        cols=2,
+        # subplot_titles=(
+        #     f"Qubit {target[0]} {data.native} angle",
+        #     f"Qubit {target[0]} Leakage",
+        #     f"Qubit {target[1]} {data.native} angle",
+        #     f"Qubit {target[1]} Leakage",
+        # ),
+    )
+    if fit is not None:
+        cz = []
+        durs = []
+        amps = []
+        leakage = []
+        target_q = target[0]
+        control_q = target[1]
+        for i in data.amplitudes[target]:
+            for j in data.rel_amplitudes[target]:
+                durs.append(j)
+                amps.append(i)
+                cz.append(fit.angles[target_q, control_q, i, j])
+                leakage.append(fit.leakages[qubits[0], qubits[1], i, j][control_q])
+
+        # condition = [target_q, control_q] == list(target)
+        fig.add_trace(
+            go.Heatmap(
+                x=durs,
+                y=amps,
+                z=cz,
+                zmin=np.pi / 2,
+                zmax=np.pi,
+                name="{fit.native} angle",
+                colorbar_x=-0.1,
+                colorscale="RdBu",
+                # showscale=condition,
+            ),
+            row=1,
+            col=1,
+        )
+
+        fig.add_trace(
+            go.Heatmap(
+                x=durs,
+                y=amps,
+                z=leakage,
+                name="Leakage",
+                # showscale=condition,
+                colorscale="Reds",
+                zmin=0,
+                zmax=0.05,
+            ),
+            row=1,
+            col=2,
+        )
+        # fitting_report = table_html(
+        #     table_dict(
+        #         [qubits[1], qubits[1]],
+        #         [
+        #             "Flux pulse amplitude [a.u.]",
+        #             "Flux pulse duration [ns]",
+        #         ],
+        #         [
+        #             np.round(fit.best_amp[qubits], 4),
+        #             np.round(fit.best_dur[qubits], 4),
+        #         ],
+        #     )
+        # )
+
+        fig.update_layout(
+            xaxis3_title="Pulse duration [ns]",
+            xaxis4_title="Pulse duration [ns]",
+            yaxis1_title="Flux Amplitude [a.u.]",
+            yaxis3_title="Flux Amplitude [a.u.]",
+        )
+
+    return [fig], fitting_report
+
+
+snz_optimize = Routine(_aquisition, _fit, _plot, two_qubit_gates=True)
