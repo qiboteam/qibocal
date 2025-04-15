@@ -112,11 +112,10 @@ def _acquisition(
                 )
             )
             sequence.append((ro_channel, ro_pulse))
-
         sequences.append(sequence)
         all_ro_pulses.append(
             {
-                qubit: list(sequence.channel(platform.qubits[q].acquisition))[-1]
+                qubit: list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
                 for qubit in targets
             }
         )

@@ -895,7 +895,16 @@ actions:
       nshots: 1024
       circuit: tests/circuit2q.json
 
-  - id: cryoscope amplitude
+  - id: flux_amplitude_dep 0 amp
+    operation: flux_amplitude_frequency
+    parameters:
+      amplitude_min: 0
+      amplitude_max: 1
+      amplitude_step: 0.1
+      duration: 50
+      relaxation_time: 50_000
+
+  - id: flux_amplitude_dep .1 amp
     operation: flux_amplitude_frequency
     parameters:
       amplitude_min: 0.1
@@ -903,6 +912,19 @@ actions:
       amplitude_step: 0.1
       duration: 50
       relaxation_time: 50_000
+
+  - id: flux_amplitude_dep_crosstalk
+    operation: flux_amplitude_frequency
+    targets: [0]
+    parameters:
+      amplitude_min: 0.1
+      amplitude_max: 1
+      amplitude_step: 0.1
+      duration: 50
+      relaxation_time: 50_000
+      crosstalk_qubit: 1
+      flux_pulse_amplitude: 0.2
+
 
   - id: flux_gate
     operation: flux_gate
@@ -912,3 +934,12 @@ actions:
       duration_step: 1
       flux_pulse_amplitude: 0.1
       relaxation_time: 50_000
+
+  - id: Qubit VZ
+    operation: qubit_vz
+    parameters:
+      use_flux_pulse: true
+      duration: 50
+      amplitude: 0.15
+      nshots: 45
+      relaxation_time: 100_000
