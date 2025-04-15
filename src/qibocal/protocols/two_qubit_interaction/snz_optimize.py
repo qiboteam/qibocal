@@ -47,6 +47,16 @@ class SNZFinetuningResults(Results):
     fitted_parameters: dict
     angles: dict
 
+    def __contains__(self, key: QubitPairId):
+        """Check if key is in class.
+
+        Additional  manipulations required because of the Results class.
+        """
+        pairs = {
+            (target, control) for target, control, _, _, _ in self.fitted_parameters
+        }
+        return key in pairs
+
 
 OptimizeTwoQubitGateType = np.dtype(
     [
