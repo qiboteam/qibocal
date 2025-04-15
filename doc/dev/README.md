@@ -29,7 +29,6 @@
 - Explore cosine pulse as X pulse (https://web.physics.ucsb.edu/~martinisgroup/theses/Chen2018.pdf par. 5.4)
 - Active reset
 - Measurement tomography https://arxiv.org/pdf/1310.6448.pdf
-(https://escholarship.org/content/qt0g29b4p0/qt0g29b4p0.pdf?t=prk0gj par. 5.10)
 - Quantum volume
 - Gate Set Tomography
 - Process Tomography
