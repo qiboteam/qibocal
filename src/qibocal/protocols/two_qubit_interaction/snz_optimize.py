@@ -115,6 +115,9 @@ def _aquisition(
     )
     data = SNZFinetuningData()
     data.rel_amplitudes = ratio_range.tolist()
+    data.angles = np.arange(
+        params.theta_start, params.theta_end, params.theta_step
+    ).tolist()
     print(ratio_range)
     for pair in targets:
         ordered_pair = order_pair(pair, platform)
@@ -165,8 +168,8 @@ def _aquisition(
                     averaging_mode=AveragingMode.CYCLIC,
                 )
 
-                data.amplitudes[pair] = sweeper_amplitude.values.tolist()
                 # TODO: move this outside loops
+                data.amplitudes[pair] = sweeper_amplitude.values.tolist()
                 data.thetas = sweeper_theta.values.tolist()
                 # data.durations[ordered_pair] = sweeper_duration.values.tolist()
                 data.register_qubit(
@@ -198,7 +201,7 @@ def _fit(
         # TODO: improve this
         # ord_pair = next(iter(data.amplitudes))[:2]
         # for rel_amplitude in data.rel_amplitudes:
-        for amplitude in data.amplitudes[pairs]:
+        for amplitude in data.amplitudes[pair]:
             # virtual_phases[ord_pair[0], ord_pair[1], amplitude, rel_amplitude] = {}
             # leakages[ord_pair[0], ord_pair[1], amplitude, rel_amplitude] = {}
             # breakpoint()
@@ -218,44 +221,42 @@ def _fit(
 
             for target, control, setup, rel_amplitude in data[pair]:
                 if setup == "I":  # The loop is the same for setup I or X
-                    try:
-                        angles[target, control, amplitude, rel_amplitude] = phase_diff(
-                            fitted_parameters[
-                                target, control, "X", amplitude, rel_amplitude
-                            ][2],
-                            fitted_parameters[
-                                target, control, "I", amplitude, rel_amplitude
-                            ][2],
-                        )
-                        virtual_phases[target, control, amplitude, rel_amplitude][
-                            target
-                        ] = fitted_parameters[
+                    # try:
+                    angles[target, control, amplitude, rel_amplitude] = phase_diff(
+                        fitted_parameters[
+                            target, control, "X", amplitude, rel_amplitude
+                        ][2],
+                        fitted_parameters[
+                            target, control, "I", amplitude, rel_amplitude
+                        ][2],
+                    )
+                    virtual_phases[target, control, amplitude, rel_amplitude] = (
+                        fitted_parameters[
                             target, control, "I", amplitude, rel_amplitude
                         ][2]
+                    )
 
-                        # leakage estimate: L = m /2
-                        # See NZ paper from Di Carlo
-                        # approximation which does not need qutrits
-                        # https://arxiv.org/pdf/1903.02492.pdf
-                        data_x = data[pair][target, control, "X", rel_amplitude]
-                        data_i = data[pair][target, control, "I", rel_amplitude]
-                        leakages[target, control, amplitude, rel_amplitude][control] = (
-                            0.5
-                            * np.mean(
-                                data_x[data_x.amp == amplitude].prob_control
-                                - data_i[data_i.amp == amplitude].prob_control
-                            )
-                        )
+                    # leakage estimate: L = m /2
+                    # See NZ paper from Di Carlo
+                    # approximation which does not need qutrits
+                    # https://arxiv.org/pdf/1903.02492.pdf
+                    data_x = data[pair][target, control, "X", rel_amplitude]
+                    data_i = data[pair][target, control, "I", rel_amplitude]
+                    leakages[target, control, amplitude, rel_amplitude] = 0.5 * np.mean(
+                        data_x[data_x.amp == amplitude].prob_control
+                        - data_i[data_i.amp == amplitude].prob_control
+                    )
 
-                    except KeyError:
-                        pass
-
-    return SNZFinetuningResults(
+                    # except KeyError:
+                    #     pass
+    results = SNZFinetuningResults(
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
         leakages=leakages,
         angles=angles,
     )
+    print(results)
+    return results
 
 
 def _plot(
@@ -267,33 +268,38 @@ def _plot(
     fitting_report = ""
     qubits = next(iter(data.amplitudes))[:2]
     fig = make_subplots(
-        rows=2,
+        rows=1,
         cols=2,
-        # subplot_titles=(
-        #     f"Qubit {target[0]} {data.native} angle",
-        #     f"Qubit {target[0]} Leakage",
-        #     f"Qubit {target[1]} {data.native} angle",
-        #     f"Qubit {target[1]} Leakage",
-        # ),
+        subplot_titles=(
+            "Angle",
+            "Leakage",
+        ),
     )
+    # print("FFFFFFF", fit)
+    # print(data)
     if fit is not None:
+        print(data.amplitudes)
+        print(target)
         cz = []
-        durs = []
+        rel_amp = []
         amps = []
         leakage = []
         target_q = target[0]
         control_q = target[1]
-        for i in data.amplitudes[target]:
-            for j in data.rel_amplitudes[target]:
-                durs.append(j)
+
+        for i in data.amplitudes[
+            target
+        ]:  # TODO: solve asymettry amplitude/ rel_amplitude
+            for j in data.rel_amplitudes:
+                rel_amp.append(j)
                 amps.append(i)
                 cz.append(fit.angles[target_q, control_q, i, j])
-                leakage.append(fit.leakages[qubits[0], qubits[1], i, j][control_q])
+                leakage.append(fit.leakages[qubits[0], qubits[1], i, j])
 
         # condition = [target_q, control_q] == list(target)
         fig.add_trace(
             go.Heatmap(
-                x=durs,
+                x=rel_amp,
                 y=amps,
                 z=cz,
                 zmin=np.pi / 2,
@@ -309,7 +315,7 @@ def _plot(
 
         fig.add_trace(
             go.Heatmap(
-                x=durs,
+                x=rel_amp,
                 y=amps,
                 z=leakage,
                 name="Leakage",
@@ -336,10 +342,10 @@ def _plot(
         # )
 
         fig.update_layout(
-            xaxis3_title="Pulse duration [ns]",
-            xaxis4_title="Pulse duration [ns]",
-            yaxis1_title="Flux Amplitude [a.u.]",
-            yaxis3_title="Flux Amplitude [a.u.]",
+            xaxis1_title="Rel. Amp. B/A [a.u.]",
+            xaxis2_title="Rel. Amp. B/A [a. u.]",
+            yaxis1_title="Amplitude A [a.u.]",
+            yaxis2_title="Amplitude A [a.u.]",
         )
 
     return [fig], fitting_report
