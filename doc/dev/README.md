@@ -11,7 +11,7 @@
 - Improve readout amplitude optimization with the outliers probability
 (https://escholarship.org/content/qt0g29b4p0/qt0g29b4p0.pdf?t=prk0gj)
 - Optimal control with randomize benchmarking (https://arxiv.org/pdf/1403.0035)
-- XY-Z timing
+- XY-Z timing (https://escholarship.org/content/qt0g29b4p0/qt0g29b4p0.pdf?t=prk0gj par. 5.10)
 
 #### Two qubits
 
