@@ -1,5 +1,6 @@
 from dataclasses import asdict
 
+from qibolab import Pulse
 from qibolab.instruments.qm import QmController
 
 NATIVE_OPS = {
@@ -53,7 +54,7 @@ def flux_waveforms(platform, qubit):
     for (q1, q2), natives in platform.natives.two_qubit.items():
         cz = natives.CZ
         if cz is not None:
-            channel, pulse = cz[0]
+            channel, pulse = [t for t in cz if isinstance(t[1], Pulse)][0]
             if channel == platform.qubits[qubit].flux:
                 other = q2 if q1 == qubit else q1
                 _waveforms[f"cz_{qubit}_{other}"] = {
@@ -107,7 +108,7 @@ def flux_pulses(platform, qubit):
     for (q1, q2), natives in platform.natives.two_qubit.items():
         cz = natives.CZ
         if cz is not None:
-            channel, pulse = cz[0]
+            channel, pulse = [t for t in cz if isinstance(t[1], Pulse)][0]
             if channel == platform.qubits[qubit].flux:
                 other = q2 if q1 == qubit else q1
                 _pulses[f"cz_{qubit}_{other}"] = {
