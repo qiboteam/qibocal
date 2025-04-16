@@ -219,8 +219,8 @@ def _acquisition(
     if params.save_sequences:
         assert len(targets) == 1
 
-    qubits = {target: f"drive{target}" for target in targets}
-    resonators = {target: f"readout{target}" for target in targets}
+    qubits = {target: platform.qubits[target].drive for target in targets}
+    resonators = {target: platform.qubits[target].acquisition for target in targets}
 
     save_sequences = params.save_sequences
     apply_inverse = params.apply_inverse
