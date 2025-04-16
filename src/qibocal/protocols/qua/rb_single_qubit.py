@@ -1,4 +1,3 @@
-import time
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -6,15 +5,35 @@ import matplotlib.pyplot as plt
 import mpld3
 import numpy as np
 import numpy.typing as npt
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId
+from qibolab import Platform
 from qm import CompilerOptionArguments, generate_qua_script
-from qm.qua import *  # nopycln: import
+from qm.qua import (
+    FUNCTIONS,
+    Random,
+    align,
+    assign,
+    case_,
+    declare,
+    declare_stream,
+    dual_demod,
+    fixed,
+    for_,
+    if_,
+    measure,
+    play,
+    program,
+    save,
+    set_dc_offset,
+    stream_processing,
+    strict_timing_,
+    switch_,
+    wait,
+)
 from qualang_tools.bakery.randomized_benchmark_c1 import c1_table
 from qualang_tools.results import fetching_tool
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.protocols.utils import table_dict, table_html
 
 from .configuration import generate_config
@@ -25,7 +44,7 @@ from .utils import RBType, filter_function, filter_term, generate_depths, power_
 
 
 @dataclass
-class RbOnDeviceParameters(Parameters):
+class QuaSingleQubitRbParameters(Parameters):
     num_of_sequences: int
     max_circuit_depth: int
     "Maximum circuit depth"
@@ -169,7 +188,7 @@ RbOnDeviceType = np.dtype(
 
 
 @dataclass
-class RbOnDeviceData(Data):
+class QuaSingleQubitRbData(Data):
     rb_type: str
     relaxation_time: int
     depths: list[int]
@@ -193,8 +212,8 @@ class RbOnDeviceData(Data):
 
 
 def _acquisition(
-    params: RbOnDeviceParameters, platform: Platform, targets: list[QubitId]
-) -> RbOnDeviceData:
+    params: QuaSingleQubitRbParameters, platform: Platform, targets: list[QubitId]
+) -> QuaSingleQubitRbData:
     if params.save_sequences:
         assert len(targets) == 1
 
@@ -209,9 +228,9 @@ def _acquisition(
     n_avg = params.n_avg
     max_circuit_depth = params.max_circuit_depth
     delta_clifford = params.delta_clifford
-    assert (
-        max_circuit_depth / delta_clifford
-    ).is_integer(), "max_circuit_depth / delta_clifford must be an integer."
+    assert (max_circuit_depth / delta_clifford).is_integer(), (
+        "max_circuit_depth / delta_clifford must be an integer."
+    )
     seed = params.seed
     state_discrimination = params.state_discrimination
     # List of recovery gates from the lookup table
@@ -230,9 +249,9 @@ def _acquisition(
         m = declare(int)  # QUA variable for the loop over random sequences
         n = declare(int)  # QUA variable for the averaging loop
         # QUA variable for the 'I' quadrature
-        I = {target: declare(fixed) for target in targets}
+        signal_i = {target: declare(fixed) for target in targets}
         # QUA variable for the 'Q' quadrature
-        Q = {target: declare(fixed) for target in targets}
+        signal_q = {target: declare(fixed) for target in targets}
         # QUA variable for state discrimination
         state = {target: declare(bool) for target in targets}
         # The relevant streams
@@ -240,8 +259,8 @@ def _acquisition(
         if state_discrimination:
             state_st = {target: declare_stream() for target in targets}
         else:
-            I_st = {target: declare_stream() for target in targets}
-            Q_st = {target: declare_stream() for target in targets}
+            i_st = {target: declare_stream() for target in targets}
+            q_st = {target: declare_stream() for target in targets}
         # save random sequences to return to host
         if save_sequences:
             sequence_st = declare_stream()
@@ -323,10 +342,10 @@ def _acquisition(
                                 resonator,
                                 None,
                                 dual_demod.full(
-                                    "cos", "out1", "sin", "out2", I[target]
+                                    "cos", "out1", "sin", "out2", signal_i[target]
                                 ),
                                 dual_demod.full(
-                                    "minus_sin", "out1", "cos", "out2", Q[target]
+                                    "minus_sin", "out1", "cos", "out2", signal_q[target]
                                 ),
                             )
                             # Save the results to their respective streams
@@ -337,12 +356,13 @@ def _acquisition(
                                 sin = np.sin(iq_angle)
                                 assign(
                                     state[target],
-                                    I[target] * cos - Q[target] * sin > threshold,
+                                    signal_i[target] * cos - signal_q[target] * sin
+                                    > threshold,
                                 )
                                 save(state[target], state_st[target])
                             else:
-                                save(I[target], I_st[target])
-                                save(Q[target], Q_st[target])
+                                save(signal_i[target], i_st[target])
+                                save(signal_q[target], q_st[target])
                     # Go to the next depth
                     if params.logarithmic:
                         nmul = declare(int)
@@ -389,16 +409,16 @@ def _acquisition(
                             f"state_avg_{target}"
                         )
                 else:
-                    I_st[target].buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                    i_st[target].buffer(n_avg).map(FUNCTIONS.average()).buffer(
                         ndepth
                     ).buffer(num_of_sequences).save(f"I_{target}")
-                    Q_st[target].buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                    q_st[target].buffer(n_avg).map(FUNCTIONS.average()).buffer(
                         ndepth
                     ).buffer(num_of_sequences).save(f"Q_{target}")
-                    I_st[target].buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                    i_st[target].buffer(n_avg).map(FUNCTIONS.average()).buffer(
                         ndepth
                     ).average().save(f"I_avg_{target}")
-                    Q_st[target].buffer(n_avg).map(FUNCTIONS.average()).buffer(
+                    q_st[target].buffer(n_avg).map(FUNCTIONS.average()).buffer(
                         ndepth
                     ).average().save(f"Q_avg_{target}")
 
@@ -440,14 +460,12 @@ def _acquisition(
         )
         results = fetching_tool(job, data_list=data_list, mode="live")
 
-    start_time = time.time()
     while results.is_processing():
         # data analysis
         if state_discrimination:
             _ = results.fetch_all()
         else:
             _ = results.fetch_all()
-    final_time = time.time()
 
     # At the end of the program, fetch the non-averaged results to get the error-bars
     rb_type = RBType.infer(apply_inverse, relaxation_time).value
@@ -475,7 +493,7 @@ def _acquisition(
         #    I, Q = results.fetch_all()
         #    data.voltage_i[target] = I
         #    data.voltage_q[target] = Q
-    return RbOnDeviceData(
+    return QuaSingleQubitRbData(
         rb_type=rb_type,
         relaxation_time=relaxation_time,
         depths=[int(x) for x in depths],
@@ -484,14 +502,14 @@ def _acquisition(
 
 
 @dataclass
-class RbOnDeviceResults(Results):
+class QuaSingleQubitRbResults(Results):
     ydata: dict[QubitId, list[float]] = field(default_factory=dict)
     ysigma: dict[QubitId, list[float]] = field(default_factory=dict)
     pars: dict[QubitId, list[float]] = field(default_factory=dict)
     cov: dict[QubitId, list[float]] = field(default_factory=dict)
 
 
-def process_data(data: RbOnDeviceData, target: int):
+def process_data(data: QuaSingleQubitRbData, target: int):
     rb_type = RBType(data.rb_type)
     depths = data.depths
     state = data.state(target)
@@ -507,8 +525,8 @@ def process_data(data: RbOnDeviceData, target: int):
     return np.mean(ff, axis=1), np.std(ff, axis=1) / np.sqrt(ff.shape[1])
 
 
-def _fit(data: RbOnDeviceData) -> RbOnDeviceResults:
-    results = RbOnDeviceResults()
+def _fit(data: QuaSingleQubitRbData) -> QuaSingleQubitRbResults:
+    results = QuaSingleQubitRbResults()
     for target in data.qubits:
         ydata, ysigma = process_data(data, target)
         results.ydata[target] = list(ydata)
@@ -530,7 +548,7 @@ def _fit(data: RbOnDeviceData) -> RbOnDeviceResults:
     return results
 
 
-def _plot(data: RbOnDeviceData, target: QubitId, fit: RbOnDeviceResults):
+def _plot(data: QuaSingleQubitRbData, target: QubitId, fit: QuaSingleQubitRbResults):
     depths = data.depths
     state = data.state(target)
 
@@ -595,7 +613,6 @@ def _plot(data: RbOnDeviceData, target: QubitId, fit: RbOnDeviceResults):
         )
 
     fig = plt.figure(figsize=(16, 6))
-    title = f"{data.rb_type.capitalize()} RB"
     plt.errorbar(
         depths, ydata, ysigma, marker="o", linestyle="-", markersize=4, label="data"
     )
@@ -611,8 +628,8 @@ def _plot(data: RbOnDeviceData, target: QubitId, fit: RbOnDeviceResults):
     return figures, fitting_report
 
 
-def _update(results: RbOnDeviceResults, platform: Platform, target: QubitId):
+def _update(results: QuaSingleQubitRbResults, platform: Platform, target: QubitId):
     pass
 
 
-rb_ondevice = Routine(_acquisition, _fit, _plot, _update)
+qua_standard_rb_1q = Routine(_acquisition, _fit, _plot, _update)
