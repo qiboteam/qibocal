@@ -1,2 +1,4 @@
-from .rb_ondevice import rb_ondevice
-from .rb_two_qubit import rb_qua_two_qubit
+from .rb_single_qubit import qua_standard_rb_1q
+from .rb_two_qubit import qua_standard_rb_2q
+
+__all__ = ["qua_standard_rb_1q", "qua_standard_rb_2q"]

@@ -3,12 +3,11 @@ from typing import Optional
 
 import mpld3
 import numpy as np
-from qibolab.platform import Platform
-from qibolab.qubits import QubitId, QubitPairId
+from qibolab import Platform
 from qm.qua import align, assign, declare, dual_demod, fixed, measure, save, wait
 from qualang_tools.bakery.bakery import Baking
 
-from qibocal.auto.operation import Parameters, Results, Routine
+from qibocal.auto.operation import Parameters, QubitId, QubitPairId, Results, Routine
 
 from .configuration import generate_config
 from .two_qubit_rb import QuaTwoQubitRbData, TwoQubitRb
@@ -55,27 +54,27 @@ def _acquisition(
         wait(params.relaxation_time // 4)
         align()
 
-    def multiplexed_readout(I, I_st, Q, Q_st, qubits):
+    def multiplexed_readout(i, i_st, q, q_st, qubits):
         """Perform multiplexed readout on two resonators"""
         for ind, qb in enumerate(qubits):
             measure(
                 "measure",
                 f"readout{qb}",
                 None,
-                dual_demod.full("cos", "out1", "sin", "out2", I[ind]),
-                dual_demod.full("minus_sin", "out1", "cos", "out2", Q[ind]),
+                dual_demod.full("cos", "out1", "sin", "out2", i[ind]),
+                dual_demod.full("minus_sin", "out1", "cos", "out2", q[ind]),
             )
-            if I_st is not None:
-                save(I[ind], I_st[ind])
-            if Q_st is not None:
-                save(Q[ind], Q_st[ind])
+            if i_st is not None:
+                save(i[ind], i_st[ind])
+            if q_st is not None:
+                save(q[ind], q_st[ind])
 
-    def discriminate(target, I, Q, state):
+    def discriminate(target, i, q, state):
         threshold = platform.qubits[target].threshold
         iq_angle = platform.qubits[target].iq_angle
         cos = np.cos(iq_angle)
         sin = np.sin(iq_angle)
-        assign(state, I * cos - Q * sin > threshold)
+        assign(state, i * cos - q * sin > threshold)
 
     def meas():
         I1 = declare(fixed)
@@ -212,4 +211,4 @@ def _update(results: QuaTwoQubitRbResults, platform: Platform, target: QubitId):
     pass
 
 
-rb_qua_two_qubit = Routine(_acquisition, _fit, _plot, _update)
+qua_standard_rb_2q = Routine(_acquisition, _fit, _plot, _update)
