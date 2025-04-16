@@ -42,7 +42,7 @@ class SequenceTracker:
         for i, sequence in enumerate(self._sequences_as_gates):
             result += f"Sequence {i}:\n"
             result += f"\tCommand IDs: {self._sequences_as_command_ids[i]}\n"
-            result += f"\tGates:\n"
+            result += "\tGates:\n"
             for j, operation in enumerate(sequence):
                 result += f"\t\t{j}: {operation}\n"
             result += "\n"
@@ -60,9 +60,9 @@ class SequenceTracker:
             for gate in sequence:
                 rho = gate.matrix() @ rho @ gate.matrix().conj().T
 
-            assert np.allclose(
-                rho, ground_state_rho
-            ), f"expected to recover to at {ground_state_rho}, got {rho}"
+            assert np.allclose(rho, ground_state_rho), (
+                f"expected to recover to at {ground_state_rho}, got {rho}"
+            )
 
         print(
             f"Verification passed for all {len(self._sequences_as_gates)} sequence(s)."
