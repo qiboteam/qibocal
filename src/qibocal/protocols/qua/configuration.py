@@ -1,7 +1,6 @@
 from dataclasses import asdict
 
-from qibolab.instruments.qm import QMController
-from qibolab.instruments.qm.config import QMConfig
+from qibolab.instruments.qm import QmController
 
 NATIVE_OPS = {
     "x180": lambda q: (f"plus_i_{q}", f"plus_q_{q}"),
@@ -39,21 +38,22 @@ def drive_waveform_components(qubit, mode, samples):
 
 
 def drive_waveforms(platform, qubit):
-    pulse = platform.qubits[qubit].native_gates.RX.pulse(start=0)
-    envelope_i, envelope_q = pulse.envelope_waveforms(sampling_rate=1)
-    return drive_waveform_components(
-        qubit, "i", envelope_i.data
-    ) | drive_waveform_components(qubit, "q", envelope_q.data)
+    pulse = platform.natives.single_qubit[qubit].RX[0][1]
+    envelope_i = pulse.i(sampling_rate=1)
+    components_i = drive_waveform_components(qubit, "i", envelope_i)
+    envelope_q = pulse.i(sampling_rate=1)
+    components_q = drive_waveform_components(qubit, "q", envelope_q)
+    return components_i | components_q
 
 
 def flux_waveforms(platform, qubit):
+    # TODO: Fix this to get arbitrary waveforms
     _waveforms = {}
-    for (q1, q2), pair in platform.pairs.items():
-        cz = pair.native_gates.CZ
+    for (q1, q2), natives in platform.natives.two_qubit.items():
+        cz = natives.CZ
         if cz is not None:
-            seq, _ = cz.sequence()
-            pulse = seq[0]
-            if pulse.qubit == qubit:
+            channel, pulse = cz[0]
+            if channel == platform.qubits[qubit].flux:
                 other = q2 if q1 == qubit else q1
                 _waveforms[f"cz_{qubit}_{other}"] = {
                     "type": "constant",
@@ -73,7 +73,7 @@ def waveforms(platform, qubits):
         {
             f"mz_{q}": {
                 "type": "constant",
-                "sample": platform.qubits[q].native_gates.MZ.amplitude,
+                "sample": platform.natives.single_qubit[q].MZ.amplitude,
             }
             for q in qubits
         }
@@ -90,7 +90,7 @@ def drive_pulses(platform, qubit):
         i, q = wf(qubit)
         _pulses[f"{op}_{qubit}"] = {
             "operation": "control",
-            "length": platform.qubits[qubit].native_gates.RX.duration,
+            "length": platform.natives.single_qubit[qubit].RX.duration,
             "waveforms": {
                 "I": i,
                 "Q": q,
@@ -102,12 +102,11 @@ def drive_pulses(platform, qubit):
 
 def flux_pulses(platform, qubit):
     _pulses = {}
-    for (q1, q2), pair in platform.pairs.items():
-        cz = pair.native_gates.CZ
+    for (q1, q2), natives in platform.natives.two_qubit.items():
+        cz = natives.CZ
         if cz is not None:
-            seq, _ = cz.sequence()
-            pulse = seq[0]
-            if pulse.qubit == qubit:
+            channel, pulse = cz[0]
+            if channel == platform.qubits[qubit].flux:
                 other = q2 if q1 == qubit else q1
                 _pulses[f"cz_{qubit}_{other}"] = {
                     "operation": "control",
@@ -123,7 +122,7 @@ def pulses(platform, qubits):
     _pulses = {
         f"mz_{q}": {
             "operation": "measurement",
-            "length": platform.qubits[q].native_gates.MZ.duration,
+            "length": platform.natives.single_qubit[q].MZ.duration,
             "waveforms": {
                 "I": f"mz_{q}",
                 "Q": "zero",
@@ -146,7 +145,7 @@ def pulses(platform, qubits):
 def integration_weights(platform, qubits):
     _integration_weights = {}
     for q in qubits:
-        _duration = platform.qubits[q].native_gates.MZ.duration
+        _duration = platform.natives.single_qubit[q].MZ.duration
         _integration_weights.update(
             {
                 f"cosine_weights{q}": {
@@ -180,15 +179,16 @@ def register_element(config, qubit, time_of_flight, smearing):
 
 
 def generate_config(platform, qubits, targets=None):
-    con = [
-        instr
-        for instr in platform.instruments.values()
-        if isinstance(instr, QMController)
-    ][0]
-    config = QMConfig()
+    controller = platform._controller
+    assert isinstance(controller, QmController)
+
+    channel_configs = platform.parameters.configs
     for q in qubits:
-        qubit = platform.qubits[q]
-        register_element(config, qubit, con.time_of_flight, con.smearing)
+        for channel in platform.qubits[q].channels:
+            controller.configure_channel(channel, channel_configs)
+
+    config = controller.config
+    for q in qubits:
         config.elements[f"readout{q}"]["operations"]["measure"] = f"mz_{q}"
         config.elements[f"drive{q}"]["operations"] = native_operations(q)
         if targets is not None and q == targets[0]:

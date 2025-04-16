@@ -64,6 +64,8 @@ class QuaSingleQubitRbParameters(Parameters):
     apply_inverse: bool = False
     state_discrimination: bool = True
     "Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)"
+    force_offsets: bool = False
+    "Force sweetspot offsets using ``set_dc_offset`` command in the QUA program."
     script_file: Optional[str] = None
     "Dump QUA program and config to file for debugging."
 
@@ -266,9 +268,11 @@ def _acquisition(
             sequence_st = declare_stream()
 
         # force offset setting due to bug in QOP320
-        for qb in platform.qubits.values():
-            if qb.flux is not None:
-                set_dc_offset(qb.flux.name, "single", qb.sweetspot)
+        if params.force_offsets:
+            for qb in platform.qubits.values():
+                if qb.flux is not None:
+                    offset = platform.config(qb.flux).offset
+                    set_dc_offset(qb.flux, "single", offset)
 
         # QUA for_ loop over the random sequences
         sequence_lists = {}
@@ -321,9 +325,8 @@ def _acquisition(
                         for target, qubit in qubits.items():
                             with strict_timing_():
                                 # Play the random sequence of desired depth
-                                rx_duration = platform.qubits[
-                                    target
-                                ].native_gates.RX.duration
+                                natives = platform.natives.single_qubit[target]
+                                rx_duration = int(natives.RX.duration)
                                 play_sequence(
                                     qubit,
                                     sequence_lists[target],
@@ -350,14 +353,15 @@ def _acquisition(
                             )
                             # Save the results to their respective streams
                             if state_discrimination:
-                                threshold = platform.qubits[target].threshold
-                                iq_angle = platform.qubits[target].iq_angle
-                                cos = np.cos(iq_angle)
-                                sin = np.sin(iq_angle)
+                                acquisition_config = platform.config(
+                                    platform.qubits[target].acquisition
+                                )
+                                cos = np.cos(acquisition_config.iq_angle)
+                                sin = np.sin(acquisition_config.iq_angle)
                                 assign(
                                     state[target],
                                     signal_i[target] * cos - signal_q[target] * sin
-                                    > threshold,
+                                    > acquisition_config.threshold,
                                 )
                                 save(state[target], state_st[target])
                             else:
@@ -429,8 +433,7 @@ def _acquisition(
     #####################################
     #  Open Communication with the QOP  #
     #####################################
-    controller = platform._controller
-    qmm = controller.manager
+    qmm = platform._controller.manager
 
     ###########################
     # Run or Simulate Program #

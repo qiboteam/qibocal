@@ -3,7 +3,7 @@ from typing import Optional
 
 import mpld3
 import numpy as np
-from qibolab import Platform
+from qibolab import Platform, VirtualZ
 from qm.qua import align, assign, declare, dual_demod, fixed, measure, save, wait
 from qualang_tools.bakery.bakery import Baking
 
@@ -24,6 +24,8 @@ class QuaTwoQubitRbParameters(Parameters):
     """How many random circuits within one depth."""
     num_shots_per_circuit: int
     """Repetitions of the same circuit (averaging)."""
+    force_offsets: bool = False
+    """Force sweetspot offsets using ``set_dc_offset`` command in the QUA program."""
     debug: Optional[str] = None
     """Dump QUA script and config in a file with this name."""
 
@@ -39,9 +41,10 @@ def _acquisition(
     except ValueError:
         pass
 
-    cz_sequence, phases = platform.pairs[(qubit1, qubit2)].native_gates.CZ.sequence()
-    if cz_sequence[0].qubit != qubit1:
-        if cz_sequence[0].qubit == qubit2:
+    native_cz = platform.natives.two_qubit[(qubit1, qubit2)].CZ
+    flux_channel = native_cz[0][0]
+    if flux_channel != platform.qubits[qubit1].flux:
+        if flux_channel == platform.qubits[qubit2].flux:
             qubit1, qubit2 = qubit2, qubit1
         else:
             raise ValueError("Flux pulse on different qubit not supported.")
@@ -70,11 +73,10 @@ def _acquisition(
                 save(q[ind], q_st[ind])
 
     def discriminate(target, i, q, state):
-        threshold = platform.qubits[target].threshold
-        iq_angle = platform.qubits[target].iq_angle
-        cos = np.cos(iq_angle)
-        sin = np.sin(iq_angle)
-        assign(state, i * cos - q * sin > threshold)
+        acquisition_config = platform.config(platform.qubits[target].acquisition)
+        cos = np.cos(acquisition_config.iq_angle)
+        sin = np.sin(acquisition_config.iq_angle)
+        assign(state, i * cos - q * sin > acquisition_config.threshold)
 
     def meas():
         I1 = declare(fixed)
@@ -105,8 +107,12 @@ def _acquisition(
         baker.frame_rotation_2pi(-(a + z) / 2, element)
 
     # single qubit phase corrections in units of 2pi applied after the CZ gate
-    qubit1_frame_update = phases[qubit1] / (2 * np.pi)
-    qubit2_frame_update = phases[qubit2] / (2 * np.pi)
+    vz1 = next(native_cz.channel(platform.qubits[qubit1].drive))
+    vz2 = next(native_cz.channel(platform.qubits[qubit2].drive))
+    assert isinstance(vz1, VirtualZ)
+    assert isinstance(vz2, VirtualZ)
+    qubit1_frame_update = vz1.phase / (2 * np.pi)
+    qubit2_frame_update = vz2.phase / (2 * np.pi)
 
     # defines the CZ gate that realizes the mapping |00> -> |00>, |01> -> |01>, |10> -> |10>, |11> -> -|11>
     def bake_cz(baker: Baking, q1, q2):
@@ -123,12 +129,10 @@ def _acquisition(
     ##############################
     ##  Two-qubit RB execution  ##
     ##############################
-    controller = platform._controller
-    qmm = controller.manager
-
     # create RB experiment from configuration and defined functions
     config = generate_config(platform, platform.qubits.keys(), targets=[qubit1, qubit2])
 
+    qmm = platform._controller.manager
     # for debugging when there is an error
     # from qm import generate_qua_script
     # from qm.qua import program
@@ -150,16 +154,21 @@ def _acquisition(
         verify_generation=False,
     )
 
+    offsets = (
+        [
+            (qb.flux, platform.config(qb.flux).offset)
+            for qb in platform.qubits.values()
+            if qb.flux is not None
+        ]
+        if params.force_offsets
+        else []
+    )
     data = rb.run(
         qmm,
         circuit_depths=params.circuit_depths,
         num_circuits_per_depth=params.num_circuits_per_depth,
         num_shots_per_circuit=params.num_shots_per_circuit,
-        offsets=[
-            (qb.flux.name, qb.sweetspot)
-            for qb in platform.qubits.values()
-            if qb.flux is not None
-        ],
+        offsets=offsets,
         debug=params.debug,
     )
 
