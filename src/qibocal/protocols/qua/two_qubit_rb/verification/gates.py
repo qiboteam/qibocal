@@ -39,7 +39,7 @@ class PhasedXZ(Gate):
 @dataclass
 class CZ(Gate):
     def __str__(self):
-        return f"CZ"
+        return "CZ"
 
     def matrix(self):
         return cirq.unitary(cirq.CZ)
