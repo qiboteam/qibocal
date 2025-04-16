@@ -10,6 +10,7 @@ NATIVE_OPS = {
     "-x90": lambda q: (f"minus_i_half_{q}", f"minus_q_half_{q}"),
     "-y90": lambda q: (f"plus_q_half_{q}", f"minus_i_half_{q}"),
 }
+MAX_OUTPUT = 0.5
 
 
 def native_operations(qubit):
@@ -39,9 +40,9 @@ def drive_waveform_components(qubit, mode, samples):
 
 def drive_waveforms(platform, qubit):
     pulse = platform.natives.single_qubit[qubit].RX[0][1]
-    envelope_i = pulse.i(sampling_rate=1)
+    envelope_i = MAX_OUTPUT * pulse.i(sampling_rate=1)
     components_i = drive_waveform_components(qubit, "i", envelope_i)
-    envelope_q = pulse.i(sampling_rate=1)
+    envelope_q = MAX_OUTPUT * pulse.q(sampling_rate=1)
     components_q = drive_waveform_components(qubit, "q", envelope_q)
     return components_i | components_q
 
@@ -57,7 +58,7 @@ def flux_waveforms(platform, qubit):
                 other = q2 if q1 == qubit else q1
                 _waveforms[f"cz_{qubit}_{other}"] = {
                     "type": "constant",
-                    "sample": pulse.amplitude,
+                    "sample": MAX_OUTPUT * pulse.amplitude,
                 }
     return _waveforms
 
@@ -73,7 +74,8 @@ def waveforms(platform, qubits):
         {
             f"mz_{q}": {
                 "type": "constant",
-                "sample": platform.natives.single_qubit[q].MZ.amplitude,
+                "sample": MAX_OUTPUT
+                * platform.natives.single_qubit[q].MZ[0][1].probe.amplitude,
             }
             for q in qubits
         }
@@ -90,7 +92,7 @@ def drive_pulses(platform, qubit):
         i, q = wf(qubit)
         _pulses[f"{op}_{qubit}"] = {
             "operation": "control",
-            "length": platform.natives.single_qubit[qubit].RX.duration,
+            "length": platform.natives.single_qubit[qubit].RX[0][1].duration,
             "waveforms": {
                 "I": i,
                 "Q": q,
@@ -122,7 +124,7 @@ def pulses(platform, qubits):
     _pulses = {
         f"mz_{q}": {
             "operation": "measurement",
-            "length": platform.natives.single_qubit[q].MZ.duration,
+            "length": platform.natives.single_qubit[q].MZ[0][1].probe.duration,
             "waveforms": {
                 "I": f"mz_{q}",
                 "Q": "zero",
@@ -145,7 +147,7 @@ def pulses(platform, qubits):
 def integration_weights(platform, qubits):
     _integration_weights = {}
     for q in qubits:
-        _duration = platform.natives.single_qubit[q].MZ.duration
+        _duration = platform.natives.single_qubit[q].MZ[0][1].probe.duration
         _integration_weights.update(
             {
                 f"cosine_weights{q}": {
@@ -188,12 +190,14 @@ def generate_config(platform, qubits, targets=None):
             controller.configure_channel(channel, channel_configs)
 
     config = controller.config
+    config.elements = {k: asdict(v) for k, v in config.elements.items()}
     for q in qubits:
-        config.elements[f"readout{q}"]["operations"]["measure"] = f"mz_{q}"
-        config.elements[f"drive{q}"]["operations"] = native_operations(q)
+        qubit = platform.qubits[q]
+        config.elements[qubit.acquisition]["operations"]["measure"] = f"mz_{q}"
+        config.elements[qubit.drive]["operations"] = native_operations(q)
         if targets is not None and q == targets[0]:
             q1, q2 = targets
-            config.elements[f"flux{q}"]["operations"]["cz"] = f"cz_{q1}_{q2}"
+            config.elements[qubit.flux]["operations"]["cz"] = f"cz_{q1}_{q2}"
     config.pulses = pulses(platform, qubits)
     config.waveforms = waveforms(platform, qubits)
     config.integration_weights = integration_weights(platform, qubits)

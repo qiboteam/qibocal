@@ -10,7 +10,7 @@ from qualang_tools.bakery.bakery import Baking
 from qibocal.auto.operation import Parameters, QubitId, QubitPairId, Results, Routine
 
 from .configuration import generate_config
-from .two_qubit_rb import QuaTwoQubitRbData, TwoQubitRb
+from .rb_two_qubit_data import QuaTwoQubitRbData
 
 
 @dataclass
@@ -33,6 +33,8 @@ class QuaTwoQubitRbParameters(Parameters):
 def _acquisition(
     params: QuaTwoQubitRbParameters, platform: Platform, targets: list[QubitPairId]
 ) -> QuaTwoQubitRbData:
+    from .two_qubit_rb import TwoQubitRb
+
     assert len(targets) == 1
     qubit1, qubit2 = targets[0]
     try:
