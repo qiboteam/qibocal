@@ -1,6 +1,6 @@
 from dataclasses import asdict
 
-from qibolab import Pulse
+from qibolab import Pulse, Rectangular
 from qibolab.instruments.qm import QmController
 
 NATIVE_OPS = {
@@ -57,10 +57,16 @@ def flux_waveforms(platform, qubit):
             channel, pulse = [t for t in cz if isinstance(t[1], Pulse)][0]
             if channel == platform.qubits[qubit].flux:
                 other = q2 if q1 == qubit else q1
-                _waveforms[f"cz_{qubit}_{other}"] = {
-                    "type": "constant",
-                    "sample": MAX_OUTPUT * pulse.amplitude,
-                }
+                if isinstance(pulse.envelope, Rectangular):
+                    _waveforms[f"cz_{qubit}_{other}"] = {
+                        "type": "arbitrary",
+                        "samples": MAX_OUTPUT * pulse.i(sampling_rate=1),
+                    }
+                else:
+                    _waveforms[f"cz_{qubit}_{other}"] = {
+                        "type": "constant",
+                        "sample": MAX_OUTPUT * pulse.amplitude,
+                    }
     return _waveforms
 
 
@@ -71,16 +77,22 @@ def waveforms(platform, qubits):
             "sample": 0.0,
         },
     }
-    _waveforms.update(
-        {
-            f"mz_{q}": {
+    for q in qubits:
+        pulse = platform.natives.single_qubit[q].MZ[0][1].probe
+        if isinstance(pulse.envelope, Rectangular):
+            _waveforms[f"mz_{q}"] = {
                 "type": "constant",
-                "sample": MAX_OUTPUT
-                * platform.natives.single_qubit[q].MZ[0][1].probe.amplitude,
+                "sample": MAX_OUTPUT * pulse.amplitude,
             }
-            for q in qubits
-        }
-    )
+        else:
+            _waveforms[f"mz_{q}_i"] = {
+                "type": "arbitrary",
+                "samples": MAX_OUTPUT * pulse.i(sampling_rate=1),
+            }
+            _waveforms[f"mz_{q}_q"] = {
+                "type": "arbitrary",
+                "samples": MAX_OUTPUT * pulse.q(sampling_rate=1),
+            }
     for q in qubits:
         _waveforms.update(drive_waveforms(platform, q))
         _waveforms.update(flux_waveforms(platform, q))
@@ -122,14 +134,17 @@ def flux_pulses(platform, qubit):
 
 
 def pulses(platform, qubits):
-    _pulses = {
-        f"mz_{q}": {
+    _pulses = {}
+    for q in qubits:
+        pulse = platform.natives.single_qubit[q].MZ[0][1].probe
+        if isinstance(pulse.envelope, Rectangular):
+            mz_waveforms = {"I": f"mz_{q}", "Q": "zero"}
+        else:
+            mz_waveforms = {"I": f"mz_{q}_i", "Q": f"mz_{q}_q"}
+        _pulses[f"mz_{q}"] = {
             "operation": "measurement",
-            "length": platform.natives.single_qubit[q].MZ[0][1].probe.duration,
-            "waveforms": {
-                "I": f"mz_{q}",
-                "Q": "zero",
-            },
+            "length": pulse.duration,
+            "waveforms": mz_waveforms,
             "integration_weights": {
                 "cos": f"cosine_weights{q}",
                 "sin": f"sine_weights{q}",
@@ -137,9 +152,6 @@ def pulses(platform, qubits):
             },
             "digital_marker": "ON",
         }
-        for q in qubits
-    }
-    for q in qubits:
         _pulses.update(drive_pulses(platform, q))
         _pulses.update(flux_pulses(platform, q))
     return _pulses
