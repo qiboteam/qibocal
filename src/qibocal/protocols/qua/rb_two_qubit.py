@@ -3,7 +3,7 @@ from typing import Optional
 
 import mpld3
 import numpy as np
-from qibolab import Platform, VirtualZ
+from qibolab import Delay, Platform, Pulse, VirtualZ
 from qm.qua import align, assign, declare, dual_demod, fixed, measure, save, wait
 from qualang_tools.bakery.bakery import Baking
 
@@ -43,10 +43,12 @@ def _acquisition(
     except ValueError:
         pass
 
+    # flux pulse should be applied to ``qubit1``
     native_cz = platform.natives.two_qubit[(qubit1, qubit2)].CZ
-    flux_channel = native_cz[0][0]
+    flux_channel = [t for t in native_cz if isinstance(t[1], Pulse)][0][0]
     if flux_channel != platform.qubits[qubit1].flux:
         if flux_channel == platform.qubits[qubit2].flux:
+            # flip qubits otherwise
             qubit1, qubit2 = qubit2, qubit1
         else:
             raise ValueError("Flux pulse on different qubit not supported.")
@@ -64,7 +66,7 @@ def _acquisition(
         for ind, qb in enumerate(qubits):
             measure(
                 "measure",
-                f"readout{qb}",
+                platform.qubits[qb].acquisition,
                 None,
                 dual_demod.full("cos", "out1", "sin", "out2", i[ind]),
                 dual_demod.full("minus_sin", "out1", "cos", "out2", q[ind]),
@@ -99,11 +101,8 @@ def _acquisition(
     # single qubit generic gate constructor Z^{z}Z^{a}X^{x}Z^{-a}
     # that can reach any point on the Bloch sphere (starting from arbitrary points)
     def bake_phased_xz(baker: Baking, q, x, z, a):
-        if q == 1:
-            element = f"drive{qubit1}"
-        else:
-            element = f"drive{qubit2}"
-
+        qubit = qubit1 if q == 1 else qubit2
+        element = platform.qubits[qubit].drive
         baker.frame_rotation_2pi(a / 2, element)
         baker.play("x180", element, amp=x)
         baker.frame_rotation_2pi(-(a + z) / 2, element)
@@ -118,11 +117,20 @@ def _acquisition(
 
     # defines the CZ gate that realizes the mapping |00> -> |00>, |01> -> |01>, |10> -> |10>, |11> -> -|11>
     def bake_cz(baker: Baking, q1, q2):
-        q1_xy_element = f"drive{qubit1}"
-        q2_xy_element = f"drive{qubit2}"
-        q1_z_element = f"flux{qubit1}"
+        q1_xy_element = platform.qubits[qubit1].drive
+        q2_xy_element = platform.qubits[qubit2].drive
+        q1_z_element = platform.qubits[qubit1].flux
 
-        baker.play("cz", q1_z_element)
+        sequence = platform.natives.two_qubit[(qubit1, qubit2)].CZ
+        for channel, pulse in sequence:
+            if isinstance(pulse, Pulse):
+                if channel != q1_z_element:
+                    raise ValueError(
+                        f"Flux channel disagreement: {channel} != {q1_z_element}"
+                    )
+                baker.play("cz", q1_z_element)
+            elif isinstance(pulse, Delay):
+                baker.wait(int(pulse.duration), channel)
         baker.align()
         baker.frame_rotation_2pi(qubit1_frame_update, q1_xy_element)
         baker.frame_rotation_2pi(qubit2_frame_update, q2_xy_element)
@@ -135,13 +143,16 @@ def _acquisition(
     config = generate_config(platform, platform.qubits.keys(), targets=[qubit1, qubit2])
 
     qmm = platform._controller.manager
-    # for debugging when there is an error
-    # from qm import generate_qua_script
-    # from qm.qua import program
-    # with open("rb2q_qua_config.py", "w") as file:
-    #    with program() as prog:
-    #        align()
-    #    file.write(generate_qua_script(prog, config))
+
+    if params.debug is not None:
+        # for debugging when there is an error
+        from qm import generate_qua_script
+        from qm.qua import program
+
+        with program() as prog:
+            align()
+        with open(params.debug, "w") as file:
+            file.write(generate_qua_script(prog, config))
 
     rb = TwoQubitRb(
         config=config,
