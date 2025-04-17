@@ -66,7 +66,7 @@ class QuaSingleQubitRbParameters(Parameters):
     "Flag to enable state discrimination if the readout has been calibrated (rotated blobs and threshold)"
     force_offsets: bool = False
     "Force sweetspot offsets using ``set_dc_offset`` command in the QUA program."
-    script_file: Optional[str] = None
+    debug: Optional[str] = None
     "Dump QUA program and config to file for debugging."
 
     def __post_init__(self):
@@ -441,8 +441,8 @@ def _acquisition(
     # Open the quantum machine
     config = generate_config(platform, list(platform.qubits.keys()))
 
-    if params.script_file:
-        with open(params.script_file, "w") as file:
+    if params.debug:
+        with open(params.debug, "w") as file:
             file.write(generate_qua_script(rb, config))
 
     qm = qmm.open_qm(config)

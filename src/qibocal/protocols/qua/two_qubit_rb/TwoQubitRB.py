@@ -1,3 +1,4 @@
+# ruff: noqa
 from pathlib import Path
 from typing import Callable, Dict, List, Literal, Optional, Tuple, Union
 
@@ -8,9 +9,9 @@ from qm.jobs.running_qm_job import RunningQmJob
 from qm.qua import *  # nopycln: import
 from qualang_tools.bakery.bakery import Baking
 
+from ..rb_two_qubit_data import QuaTwoQubitRbData
 from .gates import GateGenerator, gate_db, tableau_from_cirq
 from .RBBaker import RBBaker
-from .RBResult import QuaTwoQubitRbData
 from .simple_tableau import SimpleTableau
 from .util import pbar, run_in_thread
 from .verification.command_registry import (
@@ -189,7 +190,11 @@ class TwoQubitRb:
             state_os = declare_stream()
             gates_len_is = declare_input_stream(int, name="__gates_len_is__", size=1)
             gates_is = {
-                qe: declare_input_stream(int, name=f"{qe}_is", size=self._buffer_length)
+                qe: declare_input_stream(
+                    int,
+                    name=f"input_stream_{qe}".replace("/", "_"),
+                    size=self._buffer_length,
+                )
                 for qe in self._rb_baker.all_elements
             }
 
@@ -242,7 +247,8 @@ class TwoQubitRb:
                 job.insert_input_stream("__gates_len_is__", len(sequence))
                 for qe in self._rb_baker.all_elements:
                     job.insert_input_stream(
-                        f"{qe}_is", self._decode_sequence_for_element(qe, sequence)
+                        f"input_stream_{qe}".replace("/", "_"),
+                        self._decode_sequence_for_element(qe, sequence),
                     )
 
                 if callback is not None:
@@ -277,7 +283,7 @@ class TwoQubitRb:
         )
 
         if debug is not None:
-            with open(f"{debug}.py", "w") as file:
+            with open(debug, "w") as file:
                 file.write(generate_qua_script(prog, self._config))
 
         qm = qmm.open_qm(self._config)

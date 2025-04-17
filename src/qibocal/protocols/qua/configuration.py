@@ -49,7 +49,6 @@ def drive_waveforms(platform, qubit):
 
 
 def flux_waveforms(platform, qubit):
-    # TODO: Fix this to get arbitrary waveforms
     _waveforms = {}
     for (q1, q2), natives in platform.natives.two_qubit.items():
         cz = natives.CZ
@@ -57,16 +56,14 @@ def flux_waveforms(platform, qubit):
             channel, pulse = [t for t in cz if isinstance(t[1], Pulse)][0]
             if channel == platform.qubits[qubit].flux:
                 other = q2 if q1 == qubit else q1
-                if isinstance(pulse.envelope, Rectangular):
-                    _waveforms[f"cz_{qubit}_{other}"] = {
-                        "type": "arbitrary",
-                        "samples": MAX_OUTPUT * pulse.i(sampling_rate=1),
-                    }
-                else:
-                    _waveforms[f"cz_{qubit}_{other}"] = {
-                        "type": "constant",
-                        "sample": MAX_OUTPUT * pulse.amplitude,
-                    }
+                samples = (MAX_OUTPUT * pulse.i(sampling_rate=1)).tolist()
+                residual = len(samples) % 4
+                if residual > 0:
+                    samples.extend((4 - residual) * [0])
+                _waveforms[f"cz_{qubit}_{other}"] = {
+                    "type": "arbitrary",
+                    "samples": samples,
+                }
     return _waveforms
 
 
@@ -103,9 +100,10 @@ def drive_pulses(platform, qubit):
     _pulses = {}
     for op, wf in NATIVE_OPS.items():
         i, q = wf(qubit)
+        duration = int(platform.natives.single_qubit[qubit].RX[0][1].duration)
         _pulses[f"{op}_{qubit}"] = {
             "operation": "control",
-            "length": platform.natives.single_qubit[qubit].RX[0][1].duration,
+            "length": duration,
             "waveforms": {
                 "I": i,
                 "Q": q,
@@ -123,9 +121,10 @@ def flux_pulses(platform, qubit):
             channel, pulse = [t for t in cz if isinstance(t[1], Pulse)][0]
             if channel == platform.qubits[qubit].flux:
                 other = q2 if q1 == qubit else q1
+                duration = (int(pulse.duration) // 4 + 1) * 4
                 _pulses[f"cz_{qubit}_{other}"] = {
                     "operation": "control",
-                    "length": pulse.duration,
+                    "length": duration,
                     "waveforms": {
                         "single": f"cz_{qubit}_{other}",
                     },
@@ -143,7 +142,7 @@ def pulses(platform, qubits):
             mz_waveforms = {"I": f"mz_{q}_i", "Q": f"mz_{q}_q"}
         _pulses[f"mz_{q}"] = {
             "operation": "measurement",
-            "length": pulse.duration,
+            "length": int(pulse.duration),
             "waveforms": mz_waveforms,
             "integration_weights": {
                 "cos": f"cosine_weights{q}",
