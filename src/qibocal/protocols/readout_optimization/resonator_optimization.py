@@ -101,7 +101,7 @@ class ResonatorOptimizationData(Data):
     def register_qubit(self, qubit, state, measure, nshots, amp, freq, iq, samples):
         """Store output for single qubit."""
         size = len(amp) * len(freq) * nshots
-        shots = np.arange(0, 10, 1)
+        shots = np.arange(0, nshots, 1)
         _, amplitude, frequency = np.meshgrid(shots, amp, freq, indexing="ij")
         ar = np.empty(size, dtype=ResonatorOptimizationType)
         ar["frequency"] = frequency.ravel()
