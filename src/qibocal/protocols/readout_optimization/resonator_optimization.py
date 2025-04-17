@@ -1,5 +1,7 @@
 import itertools
 import math
+
+# import pdb
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -12,7 +14,6 @@ from qibolab import (
     Delay,
     Parameter,
     PulseSequence,
-    Readout,
     Sweeper,
 )
 
@@ -73,7 +74,7 @@ ResonatorOptimizationType = np.dtype(
         ("frequency", np.float64),
         ("amplitude", np.float64),
         ("iq_values", np.float64, (2,)),
-        ("samples", np.int64),
+        ("samples", np.int8),
         ("assignment_fidelity", np.float64),
         ("avaraged_fidelity", np.float64),
         ("qnd", np.float64),
@@ -92,14 +93,30 @@ class ResonatorOptimizationData(Data):
     """Resonator type."""
     delay: float = 0
     """Delay between readouts [ns]."""
-    amplitudes: dict[QubitId, float] = field(default_factory=dict)
-    """Amplitudes provided by the user."""
-    qubit_frequencies: dict[QubitId, float] = field(default_factory=dict)
-    """Qubit frequencies."""
     data: dict[tuple, npt.NDArray[ResonatorOptimizationType]] = field(
         default_factory=dict
     )
     """Raw data acquired"""
+
+    def register_qubit(self, qubit, state, measure, nshots, amp, freq, iq, samples):
+        """Store output for single qubit."""
+        size = len(amp) * len(freq) * nshots
+        shots = np.arange(0, 10, 1)
+        _, amplitude, frequency = np.meshgrid(shots, amp, freq, indexing="ij")
+        ar = np.empty(size, dtype=ResonatorOptimizationType)
+        ar["frequency"] = frequency.ravel()
+        ar["amplitude"] = amplitude.ravel()
+        ar["iq_values"] = iq.reshape(-1, 2)
+        ar["samples"] = samples.ravel()
+        self.data[qubit, state, measure] = np.rec.array(ar)
+
+    def amplitudes(self, qubit):
+        """Unique qubit amplitude"""
+        return np.unique(self[qubit, 0, 0].amplitude)
+
+    def frequencies(self, qubit):
+        """Unique qubit frequency"""
+        return np.unique(self[qubit, 0, 0].frequency)
 
 
 def _acquisition(
@@ -120,7 +137,6 @@ def _acquisition(
     )
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
-    amplitudes = {}
     freq_sweepers = {}
     ro_pulses_m1 = {}
     ro_pulses_m2 = {}
@@ -128,11 +144,6 @@ def _acquisition(
     data = ResonatorOptimizationData(
         resonator_type=platform.resonator_type,
         delay=params.delay,
-        qubit_frequencies={
-            # TODO: should this be the drive frequency instead?
-            qubit: float(platform.calibration.single_qubits[qubit].qubit.frequency_01)
-            for qubit in targets
-        },
     )
 
     for state in [0, 1]:
@@ -147,9 +158,6 @@ def _acquisition(
             sequence.append((ro_channel, ro_pulse_m1))
             sequence.append((ro_channel, Delay(duration=params.delay)))
             sequence.append((ro_channel, ro_pulse_m2))
-
-            amplitudes[qubit] = ro_pulse_m1.probe.amplitude
-            data.amplitudes = amplitudes
 
             freq_sweepers[qubit] = Sweeper(
                 parameter=Parameter.frequency,
@@ -187,29 +195,20 @@ def _acquisition(
         )
 
         for target in targets:
-            readouts = [
-                pulse
-                for pulse in sequence.channel(platform.qubits[qubit].acquisition)
-                if isinstance(pulse, Readout)
-            ]
+            for m, pulse_id in enumerate(
+                [ro_pulses_m1[target].id, ro_pulses_m2[target].id]
+            ):
+                data.register_qubit(
+                    nshots=params.nshots,
+                    qubit=target,
+                    state=state,
+                    measure=m,
+                    amp=amp_sweeper.values,
+                    freq=freq_sweepers[target].values,
+                    samples=results_samples[pulse_id],
+                    iq=results[pulse_id],
+                )
 
-            for n in np.arange(0, params.nshots, 1):
-                for j, amp in enumerate(amp_sweeper.values):
-                    for k, freq in enumerate(freq_sweepers[qubit].values):
-                        for m, ro_pulse in enumerate(readouts):
-                            # m signal if it's the first or second measurment for QND
-                            data.register_qubit(
-                                ResonatorOptimizationType,
-                                (qubit, state, m),
-                                dict(
-                                    frequency=np.array([freq]),
-                                    amplitude=np.array([amp]),
-                                    iq_values=np.array([results[ro_pulse.id][n][j][k]]),
-                                    samples=np.array(
-                                        [results_samples[ro_pulse.id][n][j][k]]
-                                    ),
-                                ),
-                            )
     return data
 
 
@@ -230,9 +229,8 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
     Lambda_M2 = {}
 
     for qubit in qubits:
-        for state, m in itertools.product([0, 1], [0, 1]):
-            freq_vals = np.unique(data[qubit, state, m]["frequency"])
-            amp_vals = np.unique(data[qubit, state, m]["amplitude"])
+        freq_vals = data.frequencies(qubit)
+        amp_vals = data.amplitudes(qubit)
 
         fidelity_grid = np.zeros(shape=(len(freq_vals), len(amp_vals)))
         qnd_grid = np.zeros(shape=(len(freq_vals), len(amp_vals)))
@@ -287,7 +285,6 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
                     (data_10.frequency == freq) & (data_10.amplitude == amp)
                 ].samples
                 nshots = len(m1_state_1)
-                # state 1
                 state1_count_1_m1 = np.count_nonzero(m1_state_1)
                 state0_count_1_m1 = nshots - state1_count_1_m1
 
@@ -295,7 +292,6 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
                 m1_state_0 = data_00[
                     (data_00.frequency == freq) & (data_00.amplitude == amp)
                 ].samples
-                # state 0
                 state1_count_0_m1 = np.count_nonzero(m1_state_0)
                 state0_count_0_m1 = nshots - state1_count_0_m1
 
@@ -311,7 +307,6 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
                 m2_state_0 = data_01[
                     (data_01.frequency == freq) & (data_01.amplitude == amp)
                 ].samples
-                # state 0
                 state1_count_0_m2 = np.count_nonzero(m2_state_0)
                 state0_count_0_m2 = nshots - state1_count_0_m2
 
