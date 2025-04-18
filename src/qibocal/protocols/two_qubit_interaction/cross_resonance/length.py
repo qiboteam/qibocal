@@ -160,7 +160,7 @@ def _acquisition(
                 CrossResonanceLengthType,
                 (control, target, setup),
                 dict(
-                    length=sweeper.values * 2 if params.echo else sweeper.values,
+                    length=sweeper.values,
                     prob_target=prob_target,
                     prob_control=prob_control,
                 ),

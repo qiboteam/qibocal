@@ -39,7 +39,7 @@ def cr_sequence(
     control_drive_channel, control_drive_pulse = natives_control.RX()[0]
     ro_channel, ro_pulse = natives_target.MZ()[0]
     ro_channel_control, ro_pulse_control = natives_control.MZ()[0]
-    if setup == "X":
+    if setup == SetControl.X:
         sequence.append((control_drive_channel, control_drive_pulse))
         sequence.append((ro_channel, Delay(duration=control_drive_pulse.duration)))
         sequence.append(
