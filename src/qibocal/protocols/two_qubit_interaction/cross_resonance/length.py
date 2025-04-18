@@ -32,7 +32,7 @@ CrossResonanceLengthType = np.dtype(
         ("length", np.int64),
     ]
 )
-"""Custom dtype for resonator spectroscopy."""
+"""Custom dtype for CR length."""
 
 
 @dataclass
@@ -49,6 +49,8 @@ class CrossResonanceLengthParameters(Parameters):
     """CR pulse amplitude"""
     interpolated_sweeper: bool = False
     """Use real-time interpolation if supported by instruments."""
+    echo: bool = False
+    """Apply echo sequence or not."""
 
     @property
     def duration_range(self):
@@ -72,7 +74,7 @@ class CrossResonanceLengthResults(Results):
 
 @dataclass
 class CrossResonanceLengthData(Data):
-    """Data structure for resonator spectroscopy with attenuation."""
+    """Data structure for CR length."""
 
     anharmonicity: dict[QubitPairId, float] = field(default_factory=dict)
     detuning: dict[QubitPairId, float] = field(default_factory=dict)
@@ -102,7 +104,7 @@ def _acquisition(
             control
         ].qubit.anharmonicity
         for setup in SetControl:
-            sequence, cr_pulse, delays = cr_sequence(
+            sequence, cr_pulses, delays = cr_sequence(
                 platform=platform,
                 control=control,
                 target=target,
@@ -110,19 +112,20 @@ def _acquisition(
                 amplitude=params.pulse_amplitude,
                 duration=params.pulse_duration_end,
                 interpolated_sweeper=params.interpolated_sweeper,
+                echo=params.echo,
             )
 
             if params.interpolated_sweeper:
                 sweeper = Sweeper(
                     parameter=Parameter.duration_interpolated,
                     values=params.duration_range,
-                    pulses=[cr_pulse],
+                    pulses=cr_pulses,
                 )
             else:
                 sweeper = Sweeper(
                     parameter=Parameter.duration,
                     values=params.duration_range,
-                    pulses=[cr_pulse] + delays,
+                    pulses=cr_pulses + delays,
                 )
 
             updates = []
@@ -157,7 +160,7 @@ def _acquisition(
                 CrossResonanceLengthType,
                 (control, target, setup),
                 dict(
-                    length=sweeper.values,
+                    length=sweeper.values * 2 if params.echo else sweeper.values,
                     prob_target=prob_target,
                     prob_control=prob_control,
                 ),
