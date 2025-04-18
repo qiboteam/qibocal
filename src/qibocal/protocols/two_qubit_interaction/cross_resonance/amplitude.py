@@ -47,6 +47,8 @@ class CrossResonanceAmplitudeParameters(Parameters):
     """Step amplitude."""
     pulse_duration: int
     """CR pulse duration in ns."""
+    echo: bool = False
+    """Apply echo sequence or not."""
 
     @property
     def amplitude_range(self):
@@ -65,7 +67,7 @@ class CrossResonanceAmplitudeResults(Results):
 
 @dataclass
 class CrossResonanceAmplitudeData(Data):
-    """Data structure for resonator spectroscopy with attenuation."""
+    """Data structure for CR amplitude."""
 
     data: dict[
         tuple[QubitId, QubitId, str], npt.NDArray[CrossResonanceAmplitudeType]
@@ -78,7 +80,7 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
 ) -> CrossResonanceAmplitudeData:
-    """Data acquisition for resonator spectroscopy."""
+    """Data acquisition for CR amplitude."""
 
     data = CrossResonanceAmplitudeData()
 
@@ -86,19 +88,20 @@ def _acquisition(
         control, target = pair
         pair = (control, target)
         for setup in SetControl:
-            sequence, cr_pulse, _ = cr_sequence(
+            sequence, cr_pulses, _ = cr_sequence(
                 platform=platform,
                 control=control,
                 target=target,
                 setup=setup,
                 amplitude=params.min_amp,
                 duration=params.pulse_duration,
+                echo=params.echo,
             )
 
             sweeper = Sweeper(
                 parameter=Parameter.amplitude,
                 values=params.amplitude_range,
-                pulses=[cr_pulse],
+                pulses=cr_pulses,
             )
 
             updates = []
