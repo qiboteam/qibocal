@@ -163,9 +163,6 @@ def _plot(
     fit: HamiltonianTomographyCRAmplitudeResults,
 ):
     """Plotting function for HamiltonianTomographyCRAmplitude."""
-    # idle_data = data.data[target[0], target[1], SetControl.Id]
-    # excited_data = data.data[target[0], target[1], SetControl.X]
-    # fitting_report = ""
     fig = make_subplots(
         rows=3,
         cols=1,
