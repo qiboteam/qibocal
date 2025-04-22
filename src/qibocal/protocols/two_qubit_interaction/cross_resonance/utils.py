@@ -33,6 +33,7 @@ def cr_sequence(
     cr_drive_pulse = Pulse(
         duration=duration,
         amplitude=amplitude,
+        relative_phase=0,
         envelope=Rectangular(),
     )
     cr_pulses.append(cr_drive_pulse)
@@ -69,9 +70,9 @@ def cr_sequence(
         )
     else:
         sequence.append((ro_channel, delays[0]))
-        sequence.append((ro_channel, delays[1]))
+        sequence.append((ro_channel_control, delays[1]))
         if echo:
-            sequence.append((ro_channel_control, delays[2]))
+            sequence.append((ro_channel, delays[2]))
             sequence.append((ro_channel_control, delays[3]))
             sequence.append(
                 (ro_channel, Delay(duration=2 * control_drive_pulse.duration))
@@ -82,5 +83,4 @@ def cr_sequence(
 
     sequence.append((ro_channel, ro_pulse))
     sequence.append((ro_channel_control, ro_pulse_control))
-
     return sequence, cr_pulses, delays
