@@ -121,7 +121,7 @@ def flux_pulses(platform, qubit):
             channel, pulse = [t for t in cz if isinstance(t[1], Pulse)][0]
             if channel == platform.qubits[qubit].flux:
                 other = q2 if q1 == qubit else q1
-                duration = (int(pulse.duration) // 4 + 1) * 4
+                duration = int(max((pulse.duration + 3.5) // 4 * 4, 16))
                 _pulses[f"cz_{qubit}_{other}"] = {
                     "operation": "control",
                     "length": duration,
