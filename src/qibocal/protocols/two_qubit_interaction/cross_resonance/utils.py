@@ -64,7 +64,7 @@ def cr_sequence(
 
     if echo:
         delays = 6 * [Delay(duration=cr_drive_pulse.duration)]
-        cr_pulse_minus = replace(cr_drive_pulse, amplitude=-cr_drive_pulse.amplitude)
+        cr_pulse_minus = replace(cr_drive_pulse, relative_phase=np.pi)
         cr_pulses.append(cr_pulse_minus)
         sequence.append((cr_channel, cr_drive_pulse))
         sequence.append((control_drive_channel, delays[-1]))
