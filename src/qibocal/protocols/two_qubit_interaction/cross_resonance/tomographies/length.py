@@ -20,7 +20,10 @@ from .....auto.operation import (
     Routine,
 )
 from .....calibration import CalibrationPlatform
+from .....config import log
 from .....result import probability
+from ....rabi.utils import fit_length_function, rabi_length_function
+from ....utils import fallback_period, guess_period
 from ..utils import Basis, SetControl, cr_sequence
 
 HamiltonianTomographyCRLengthType = np.dtype(
@@ -61,6 +64,13 @@ class HamiltonianTomographyCRLengthParameters(Parameters):
 class HamiltonianTomographyCRLengthResults(Results):
     """HamiltonianTomographyCRLength outputs."""
 
+    fitted_parameters: dict[tuple[QubitId, QubitId, Basis, SetControl], list] = field(
+        default_factory=dict
+    )
+
+    def __contains__(self, pair: QubitPairId):
+        return all(key[:2] == pair for key in list(self.fitted_parameters))
+
 
 @dataclass
 class HamiltonianTomographyCRLengthData(Data):
@@ -69,7 +79,8 @@ class HamiltonianTomographyCRLengthData(Data):
     anharmonicity: dict[QubitPairId, float] = field(default_factory=dict)
     detuning: dict[QubitPairId, float] = field(default_factory=dict)
     data: dict[
-        tuple[QubitId, QubitId, str], npt.NDArray[HamiltonianTomographyCRLengthType]
+        tuple[QubitId, QubitId, Basis, SetControl],
+        npt.NDArray[HamiltonianTomographyCRLengthType],
     ] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -165,8 +176,37 @@ def _fit(
     data: HamiltonianTomographyCRLengthData,
 ) -> HamiltonianTomographyCRLengthResults:
     """Post-processing function for HamiltonianTomographyCRLength."""
+    fitted_parameters = {}
+    for pair in data.pairs:
+        for setup in SetControl:
+            for basis in Basis:
+                pair_data = data[pair[0], pair[1], basis, setup]
+                raw_x = pair_data.length
+                min_x = np.min(raw_x)
+                max_x = np.max(raw_x)
+                y = pair_data.prob_target
+                x = (raw_x - min_x) / (max_x - min_x)
 
-    return HamiltonianTomographyCRLengthResults()
+                period = fallback_period(guess_period(x, y))
+                pguess = [0.5, 0.5, period, 0, 0]
+
+                try:
+                    popt, _, _ = fit_length_function(
+                        x,
+                        y,
+                        pguess,
+                        # sigma=qubit_data.error,
+                        signal=False,
+                        x_limits=(min_x, max_x),
+                    )
+                    fitted_parameters[pair[0], pair[1], basis, setup] = popt
+
+                except Exception as e:
+                    log.warning(f"CR length fit failed for pair {pair} due to {e}.")
+
+    return HamiltonianTomographyCRLengthResults(
+        fitted_parameters=fitted_parameters,
+    )
 
 
 def _plot(
@@ -175,9 +215,6 @@ def _plot(
     fit: HamiltonianTomographyCRLengthResults,
 ):
     """Plotting function for HamiltonianTomographyCRLength."""
-    # idle_data = data.data[target[0], target[1], SetControl.Id]
-    # excited_data = data.data[target[0], target[1], SetControl.X]
-    # fitting_report = ""
     fig = make_subplots(
         rows=3,
         cols=1,
@@ -186,6 +223,7 @@ def _plot(
         shared_xaxes=True,
         shared_yaxes=True,
     )
+
     for i, basis in enumerate(Basis):
         for setup in SetControl:
             pair_data = data.data[target[0], target[1], basis, setup]
@@ -193,20 +231,35 @@ def _plot(
                 go.Scatter(
                     x=pair_data.length,
                     y=pair_data.prob_target,
-                    name=f"Target <{basis.name}> when Control at {setup.name}",
-                    legendgrouptitle_text=setup.name,
+                    name=f"Target <{basis.name}> when Control at {0 if setup is SetControl.Id else 1}",
                     legendgroup=str(i),
+                    mode="markers",
                 ),
                 row=i + 1,
                 col=1,
             )
+            if fit is not None:
+                x = np.linspace(pair_data.length.min(), pair_data.length.max(), 100)
+                fig.add_trace(
+                    go.Scatter(
+                        x=x,
+                        y=rabi_length_function(
+                            x,
+                            *fit.fitted_parameters[target[0], target[1], basis, setup],
+                        ),
+                        name=f"Fit <{basis.name}> target when control at {0 if setup is SetControl.Id else 1}",
+                        legendgroup=str(i),
+                    ),
+                    row=i + 1,
+                    col=1,
+                )
 
     fig.update_layout(
         yaxis1=dict(range=[-1.2, 1.2]),
         yaxis2=dict(range=[-1.2, 1.2]),
         yaxis3=dict(range=[-1.2, 1.2]),
         height=600,
-        legend_tracegroupgap=130,
+        legend_tracegroupgap=80,
         xaxis3_title="CR pulse length [ns]",
     )
     fig.update_yaxes(title_text="<X(t)>", row=1, col=1)
