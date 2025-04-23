@@ -405,4 +405,6 @@ def fit_amplitude_function(
             ),
         ]
     pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
+    if not isinstance(popt, list):
+        popt = popt.tolist()
     return popt, perr, pi_pulse_parameter
