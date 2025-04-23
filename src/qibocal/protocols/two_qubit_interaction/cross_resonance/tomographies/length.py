@@ -2,8 +2,6 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
@@ -20,17 +18,18 @@ from .....auto.operation import (
     Routine,
 )
 from .....calibration import CalibrationPlatform
-from .....config import log
 from .....result import probability
 from ....rabi.utils import fit_length_function, rabi_length_function
-from ....utils import fallback_period, guess_period
 from ..utils import Basis, SetControl, cr_sequence
+from .utils import tomography_cr_fit, tomography_cr_plot
 
 HamiltonianTomographyCRLengthType = np.dtype(
     [
         ("prob_target", np.float64),
+        ("error_target", np.float64),
         ("prob_control", np.float64),
-        ("length", np.int64),
+        ("error_control", np.float64),
+        ("x", np.int64),
     ]
 )
 """Custom dtype for CR length."""
@@ -157,15 +156,21 @@ def _acquisition(
                 control_acq_handle = list(
                     sequence.channel(platform.qubits[control].acquisition)
                 )[-1].id
-                exp_target = 1 - 2 * probability(results[target_acq_handle], state=1)
+                prob_target = probability(results[target_acq_handle], state=1)
                 prob_control = probability(results[control_acq_handle], state=1)
                 data.register_qubit(
                     HamiltonianTomographyCRLengthType,
                     (control, target, basis, setup),
                     dict(
-                        length=sweeper.values,
-                        prob_target=exp_target,
+                        x=sweeper.values,
+                        prob_target=1 - 2 * prob_target,
+                        error_target=(
+                            2 * np.sqrt(prob_target * (1 - prob_target) / params.nshots)
+                        ).tolist(),
                         prob_control=prob_control,
+                        error_control=np.sqrt(
+                            prob_control * (1 - prob_control) / params.nshots
+                        ).tolist(),
                     ),
                 )
     # finally, save the remaining data
@@ -176,33 +181,9 @@ def _fit(
     data: HamiltonianTomographyCRLengthData,
 ) -> HamiltonianTomographyCRLengthResults:
     """Post-processing function for HamiltonianTomographyCRLength."""
-    fitted_parameters = {}
-    for pair in data.pairs:
-        for setup in SetControl:
-            for basis in Basis:
-                pair_data = data[pair[0], pair[1], basis, setup]
-                raw_x = pair_data.length
-                min_x = np.min(raw_x)
-                max_x = np.max(raw_x)
-                y = pair_data.prob_target
-                x = (raw_x - min_x) / (max_x - min_x)
-
-                period = fallback_period(guess_period(x, y))
-                pguess = [0.5, 0.5, period, 0, 0]
-
-                try:
-                    popt, _, _ = fit_length_function(
-                        x,
-                        y,
-                        pguess,
-                        # sigma=qubit_data.error,
-                        signal=False,
-                        x_limits=(min_x, max_x),
-                    )
-                    fitted_parameters[pair[0], pair[1], basis, setup] = popt
-
-                except Exception as e:
-                    log.warning(f"CR length fit failed for pair {pair} due to {e}.")
+    fitted_parameters = tomography_cr_fit(
+        data=data, fitting_function=fit_length_function
+    )
 
     return HamiltonianTomographyCRLengthResults(
         fitted_parameters=fitted_parameters,
@@ -215,57 +196,11 @@ def _plot(
     fit: HamiltonianTomographyCRLengthResults,
 ):
     """Plotting function for HamiltonianTomographyCRLength."""
-    fig = make_subplots(
-        rows=3,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.05,
-        shared_xaxes=True,
-        shared_yaxes=True,
-    )
-
-    for i, basis in enumerate(Basis):
-        for setup in SetControl:
-            pair_data = data.data[target[0], target[1], basis, setup]
-            fig.add_trace(
-                go.Scatter(
-                    x=pair_data.length,
-                    y=pair_data.prob_target,
-                    name=f"Target <{basis.name}> when Control at {0 if setup is SetControl.Id else 1}",
-                    legendgroup=str(i),
-                    mode="markers",
-                ),
-                row=i + 1,
-                col=1,
-            )
-            if fit is not None:
-                x = np.linspace(pair_data.length.min(), pair_data.length.max(), 100)
-                fig.add_trace(
-                    go.Scatter(
-                        x=x,
-                        y=rabi_length_function(
-                            x,
-                            *fit.fitted_parameters[target[0], target[1], basis, setup],
-                        ),
-                        name=f"Fit <{basis.name}> target when control at {0 if setup is SetControl.Id else 1}",
-                        legendgroup=str(i),
-                    ),
-                    row=i + 1,
-                    col=1,
-                )
-
-    fig.update_layout(
-        yaxis1=dict(range=[-1.2, 1.2]),
-        yaxis2=dict(range=[-1.2, 1.2]),
-        yaxis3=dict(range=[-1.2, 1.2]),
-        height=600,
-        legend_tracegroupgap=80,
+    figs, fitting_report = tomography_cr_plot(data, target, fit, rabi_length_function)
+    figs[0].update_layout(
         xaxis3_title="CR pulse length [ns]",
     )
-    fig.update_yaxes(title_text="<X(t)>", row=1, col=1)
-    fig.update_yaxes(title_text="<Y(t)>", row=2, col=1)
-    fig.update_yaxes(title_text="<Z(t)>", row=3, col=1)
-    return [fig], ""
+    return figs, fitting_report
 
 
 hamiltonian_tomography_cr_length = Routine(_acquisition, _fit, _plot)

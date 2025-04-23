@@ -2,8 +2,6 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
@@ -21,13 +19,17 @@ from .....auto.operation import (
 )
 from .....calibration import CalibrationPlatform
 from .....result import probability
+from ....rabi.utils import fit_amplitude_function, rabi_amplitude_function
 from ..utils import Basis, SetControl, cr_sequence
+from .utils import tomography_cr_fit, tomography_cr_plot
 
 HamiltonianTomographyCRAmplitudeType = np.dtype(
     [
         ("prob_target", np.float64),
+        ("error_target", np.float64),
         ("prob_control", np.float64),
-        ("amp", np.float64),
+        ("error_control", np.float64),
+        ("x", np.float64),
     ]
 )
 """Custom dtype for CR length."""
@@ -56,6 +58,13 @@ class HamiltonianTomographyCRAmplitudeParameters(Parameters):
 @dataclass
 class HamiltonianTomographyCRAmplitudeResults(Results):
     """HamiltonianTomographyCRAmplitude outputs."""
+
+    fitted_parameters: dict[tuple[QubitId, QubitId, Basis, SetControl], list] = field(
+        default_factory=dict
+    )
+
+    def __contains__(self, pair: QubitPairId):
+        return all(key[:2] == pair for key in list(self.fitted_parameters))
 
 
 @dataclass
@@ -134,15 +143,21 @@ def _acquisition(
                 control_acq_handle = list(
                     sequence.channel(platform.qubits[control].acquisition)
                 )[-1].id
-                exp_target = 1 - 2 * probability(results[target_acq_handle], state=1)
+                prob_target = probability(results[target_acq_handle], state=1)
                 prob_control = probability(results[control_acq_handle], state=1)
                 data.register_qubit(
                     HamiltonianTomographyCRAmplitudeType,
                     (control, target, basis, setup),
                     dict(
-                        amp=sweeper.values,
-                        prob_target=exp_target,
+                        x=sweeper.values,
+                        prob_target=1 - 2 * prob_target,
+                        error_target=(
+                            2 * np.sqrt(prob_target * (1 - prob_target) / params.nshots)
+                        ).tolist(),
                         prob_control=prob_control,
+                        error_control=np.sqrt(
+                            prob_control * (1 - prob_control) / params.nshots
+                        ).tolist(),
                     ),
                 )
     # finally, save the remaining data
@@ -153,8 +168,10 @@ def _fit(
     data: HamiltonianTomographyCRAmplitudeData,
 ) -> HamiltonianTomographyCRAmplitudeResults:
     """Post-processing function for HamiltonianTomographyCRAmplitude."""
-
-    return HamiltonianTomographyCRAmplitudeResults()
+    fitted_parameters = tomography_cr_fit(
+        data=data, fitting_function=fit_amplitude_function
+    )
+    return HamiltonianTomographyCRAmplitudeResults(fitted_parameters)
 
 
 def _plot(
@@ -163,40 +180,16 @@ def _plot(
     fit: HamiltonianTomographyCRAmplitudeResults,
 ):
     """Plotting function for HamiltonianTomographyCRAmplitude."""
-    fig = make_subplots(
-        rows=3,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.05,
-        shared_xaxes=True,
+    figs, fitting_report = tomography_cr_plot(
+        data=data,
+        target=target,
+        fit=fit,
+        fitting_function=rabi_amplitude_function,
     )
-    for i, basis in enumerate(Basis):
-        for setup in SetControl:
-            pair_data = data.data[target[0], target[1], basis, setup]
-            fig.add_trace(
-                go.Scatter(
-                    x=pair_data.amp,
-                    y=pair_data.prob_target,
-                    name=f"Target <{basis.name}> when Control at {setup.name}",
-                    legendgrouptitle_text=setup.name,
-                    legendgroup=str(i),
-                ),
-                row=i + 1,
-                col=1,
-            )
-
-    fig.update_layout(
-        yaxis1=dict(range=[-1.2, 1.2]),
-        yaxis2=dict(range=[-1.2, 1.2]),
-        yaxis3=dict(range=[-1.2, 1.2]),
-        height=600,
-        legend_tracegroupgap=130,
+    figs[0].update_layout(
         xaxis3_title="CR pulse amplitude [a.u.]",
     )
-    fig.update_yaxes(title_text="<X(t)>", row=1, col=1)
-    fig.update_yaxes(title_text="<Y(t)>", row=2, col=1)
-    fig.update_yaxes(title_text="<Z(t)>", row=3, col=1)
-    return [fig], ""
+    return figs, fitting_report
 
 
 hamiltonian_tomography_cr_amplitude = Routine(_acquisition, _fit, _plot)
