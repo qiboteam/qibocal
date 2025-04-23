@@ -71,8 +71,6 @@ class HamiltonianTomographyCRAmplitudeResults(Results):
 class HamiltonianTomographyCRAmplitudeData(Data):
     """Data structure for CR length."""
 
-    anharmonicity: dict[QubitPairId, float] = field(default_factory=dict)
-    detuning: dict[QubitPairId, float] = field(default_factory=dict)
     data: dict[
         tuple[QubitId, QubitId, str], npt.NDArray[HamiltonianTomographyCRAmplitudeType]
     ] = field(default_factory=dict)
@@ -91,13 +89,6 @@ def _acquisition(
     for pair in targets:
         control, target = pair
         pair = (control, target)
-        data.detuning[pair] = (
-            platform.config(platform.qubits[control].drive).frequency
-            - platform.config(platform.qubits[target].drive).frequency
-        )
-        data.anharmonicity[pair] = platform.calibration.single_qubits[
-            control
-        ].qubit.anharmonicity
         for basis in Basis:
             for setup in SetControl:
                 sequence, cr_pulses, delays = cr_sequence(

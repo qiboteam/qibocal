@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
-import plotly.graph_objects as go
 from qibolab import (
     AcquisitionType,
     AveragingMode,
@@ -19,17 +18,18 @@ from ....auto.operation import (
     Routine,
 )
 from ....calibration import CalibrationPlatform
-from ....config import log
 from ....result import probability
 from ...rabi.utils import fit_length_function, rabi_length_function
-from ...utils import fallback_period, guess_period, table_dict, table_html
-from .utils import SetControl, cr_sequence
+from ...utils import table_dict, table_html
+from .utils import SetControl, cr_fit, cr_plot, cr_sequence
 
 CrossResonanceLengthType = np.dtype(
     [
         ("prob_target", np.float64),
+        ("error_target", np.float64),
         ("prob_control", np.float64),
-        ("length", np.int64),
+        ("error_control", np.float64),
+        ("x", np.int64),
     ]
 )
 """Custom dtype for CR length."""
@@ -160,9 +160,15 @@ def _acquisition(
                 CrossResonanceLengthType,
                 (control, target, setup),
                 dict(
-                    length=sweeper.values,
+                    x=sweeper.values,
                     prob_target=prob_target,
+                    error_target=np.sqrt(
+                        prob_target * (1 - prob_target) / params.nshots
+                    ).tolist(),
                     prob_control=prob_control,
+                    error_control=np.sqrt(
+                        prob_control * (1 - prob_control) / params.nshots
+                    ).tolist(),
                 ),
             )
     # finally, save the remaining data
@@ -173,39 +179,13 @@ def _fit(
     data: CrossResonanceLengthData,
 ) -> CrossResonanceLengthResults:
     """Post-processing function for CrossResonanceLength."""
-
-    fitted_parameters = {}
+    fitted_parameters = cr_fit(data=data, fitting_function=fit_length_function)
     effective_coupling = {}
     for pair in data.pairs:
-        for setup in SetControl:
-            pair_data = data[pair[0], pair[1], setup]
-            raw_x = pair_data.length
-            min_x = np.min(raw_x)
-            max_x = np.max(raw_x)
-            y = pair_data.prob_target
-            x = (raw_x - min_x) / (max_x - min_x)
-
-            period = fallback_period(guess_period(x, y))
-            pguess = [0.5, 0.5, period, 0, 0]
-
-            try:
-                popt, _, _ = fit_length_function(
-                    x,
-                    y,
-                    pguess,
-                    # sigma=qubit_data.error,
-                    signal=False,
-                    x_limits=(min_x, max_x),
-                )
-                fitted_parameters[pair[0], pair[1], setup] = popt
-
-            except Exception as e:
-                log.warning(f"CR length fit failed for pair {pair} due to {e}.")
-
-    effective_coupling[pair] = (
-        1 / fitted_parameters[pair[0], pair[1], SetControl.X][2]
-        - 1 / fitted_parameters[pair[0], pair[1], SetControl.Id][2]
-    ) / 2
+        effective_coupling[pair] = (
+            1 / fitted_parameters[pair[0], pair[1], SetControl.X][2]
+            - 1 / fitted_parameters[pair[0], pair[1], SetControl.Id][2]
+        ) / 2
     return CrossResonanceLengthResults(
         effective_coupling=effective_coupling,
         fitted_parameters=fitted_parameters,
@@ -218,70 +198,24 @@ def _plot(
     fit: CrossResonanceLengthResults,
 ):
     """Plotting function for CrossResonanceLength."""
-    idle_data = data.data[target[0], target[1], SetControl.Id]
-    excited_data = data.data[target[0], target[1], SetControl.X]
-    fitting_report = ""
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=idle_data.length,
-            y=idle_data.prob_control,
-            name="Control at 0",
-        ),
+    figs, fitting_report = cr_plot(
+        data=data, target=target, fit=fit, fitting_function=rabi_length_function
     )
-
-    fig.add_trace(
-        go.Scatter(
-            x=excited_data.length,
-            y=excited_data.prob_control,
-            name="Control at 1",
-        ),
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=idle_data.length,
-            y=idle_data.prob_target,
-            name="Target when Control at 0",
-        ),
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=excited_data.length,
-            y=excited_data.prob_target,
-            name="Target when Control at 1",
-        ),
-    )
-
-    if fit is not None:
-        for setup in SetControl:
-            fit_data = idle_data if setup is SetControl.Id else excited_data
-            x = np.linspace(fit_data.length.min(), fit_data.length.max(), 100)
-            fig.add_trace(
-                go.Scatter(
-                    x=x,
-                    y=rabi_length_function(
-                        x, *fit.fitted_parameters[target[0], target[1], setup]
-                    ),
-                    name=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
-                )
-            )
-        fitting_report = table_html(
-            table_dict(
-                [target],
-                [
-                    "Effective coupling [MHz]",
-                ],
-                [fit.effective_coupling[target] * 1e3],
-            )
+    fitting_report = table_html(
+        table_dict(
+            [target],
+            [
+                "Effective coupling [MHz]",
+            ],
+            [fit.effective_coupling[target] * 1e3],
         )
+    )
 
-    fig.update_layout(
+    figs[0].update_layout(
         xaxis_title="Cross resonance pulse duration [ns]",
         yaxis_title="Excited state population",
     )
-    return [fig], fitting_report
+    return figs, fitting_report
 
 
 cross_resonance_length = Routine(_acquisition, _fit, _plot)
