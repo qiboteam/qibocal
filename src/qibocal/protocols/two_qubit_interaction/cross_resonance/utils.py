@@ -1,7 +1,7 @@
 from enum import Enum
 
 import numpy as np
-from qibolab import Delay, Platform, Pulse, PulseSequence, Rectangular, VirtualZ
+from qibolab import Delay, GaussianSquare, Platform, Pulse, PulseSequence, VirtualZ
 
 from ....auto.operation import QubitId
 from ....update import replace
@@ -49,7 +49,8 @@ def cr_sequence(
         duration=duration,
         amplitude=amplitude,
         relative_phase=0,
-        envelope=Rectangular(),
+        # envelope=Rectangular(),
+        envelope=GaussianSquare(rel_sigma=0.2, risefall=15),
     )
     cr_pulses.append(cr_drive_pulse)
     control_drive_channel, control_drive_pulse = natives_control.RX()[0]
