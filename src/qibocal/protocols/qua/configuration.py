@@ -39,11 +39,19 @@ def drive_waveform_components(qubit, mode, samples):
     }
 
 
+def get_sampling_rate(platform, channel):
+    config = platform.config(channel)
+    if hasattr(config, "sampling_rate"):
+        return int(config.sampling_rate / 1e9)
+    return 1
+
+
 def drive_waveforms(platform, qubit):
-    pulse = platform.natives.single_qubit[qubit].RX[0][1]
-    envelope_i = MAX_OUTPUT * pulse.i(sampling_rate=1)
+    channel, pulse = platform.natives.single_qubit[qubit].RX[0]
+    sampling_rate = get_sampling_rate(platform, channel)
+    envelope_i = MAX_OUTPUT * pulse.i(sampling_rate=sampling_rate)
     components_i = drive_waveform_components(qubit, "i", envelope_i)
-    envelope_q = MAX_OUTPUT * pulse.q(sampling_rate=1)
+    envelope_q = MAX_OUTPUT * pulse.q(sampling_rate=sampling_rate)
     components_q = drive_waveform_components(qubit, "q", envelope_q)
     return components_i | components_q
 
@@ -54,9 +62,10 @@ def flux_waveforms(platform, qubit):
         cz = natives.CZ
         if cz is not None:
             channel, pulse = [t for t in cz if isinstance(t[1], Pulse)][0]
+            sampling_rate = get_sampling_rate(platform, channel)
             if channel == platform.qubits[qubit].flux:
                 other = q2 if q1 == qubit else q1
-                samples = (MAX_OUTPUT * pulse.i(sampling_rate=1)).tolist()
+                samples = (MAX_OUTPUT * pulse.i(sampling_rate=sampling_rate)).tolist()
                 residual = len(samples) % 4
                 if residual > 0:
                     samples.extend((4 - residual) * [0])
@@ -75,20 +84,23 @@ def waveforms(platform, qubits):
         },
     }
     for q in qubits:
-        pulse = platform.natives.single_qubit[q].MZ[0][1].probe
+        acq_channel, readout = platform.natives.single_qubit[q].MZ[0]
+        pulse = readout.probe
+        channel = platform.channels[acq_channel].probe
         if isinstance(pulse.envelope, Rectangular):
             _waveforms[f"mz_{q}"] = {
                 "type": "constant",
                 "sample": MAX_OUTPUT * pulse.amplitude,
             }
         else:
+            sampling_rate = get_sampling_rate(platform, channel)
             _waveforms[f"mz_{q}_i"] = {
                 "type": "arbitrary",
-                "samples": MAX_OUTPUT * pulse.i(sampling_rate=1),
+                "samples": MAX_OUTPUT * pulse.i(sampling_rate=sampling_rate),
             }
             _waveforms[f"mz_{q}_q"] = {
                 "type": "arbitrary",
-                "samples": MAX_OUTPUT * pulse.q(sampling_rate=1),
+                "samples": MAX_OUTPUT * pulse.q(sampling_rate=sampling_rate),
             }
     for q in qubits:
         _waveforms.update(drive_waveforms(platform, q))
