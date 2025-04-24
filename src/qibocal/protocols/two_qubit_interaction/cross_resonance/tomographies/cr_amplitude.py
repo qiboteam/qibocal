@@ -19,7 +19,7 @@ from .....auto.operation import (
 )
 from .....calibration import CalibrationPlatform
 from .....result import probability
-from ....rabi.utils import fit_amplitude_function, rabi_amplitude_function
+from ....rabi.utils import rabi_amplitude_function
 from ..utils import Basis, SetControl, cr_sequence
 from .utils import tomography_cr_fit, tomography_cr_plot
 
@@ -160,7 +160,7 @@ def _fit(
 ) -> HamiltonianTomographyCRAmplitudeResults:
     """Post-processing function for HamiltonianTomographyCRAmplitude."""
     fitted_parameters = tomography_cr_fit(
-        data=data, fitting_function=fit_amplitude_function
+        data=data,
     )
     return HamiltonianTomographyCRAmplitudeResults(fitted_parameters)
 

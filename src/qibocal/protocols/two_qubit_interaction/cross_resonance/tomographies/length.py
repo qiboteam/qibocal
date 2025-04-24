@@ -8,6 +8,7 @@ from qibolab import (
     Parameter,
     Sweeper,
 )
+from scipy.constants import kilo
 
 from .....auto.operation import (
     Data,
@@ -19,9 +20,15 @@ from .....auto.operation import (
 )
 from .....calibration import CalibrationPlatform
 from .....result import probability
-from ....rabi.utils import fit_length_function, rabi_length_function
+from ....rabi.utils import rabi_length_function
+from ....utils import table_dict, table_html
 from ..utils import Basis, SetControl, cr_sequence
-from .utils import tomography_cr_fit, tomography_cr_plot
+from .utils import (
+    HamiltonianTerm,
+    extract_hamiltonian_terms,
+    tomography_cr_fit,
+    tomography_cr_plot,
+)
 
 HamiltonianTomographyCRLengthType = np.dtype(
     [
@@ -63,6 +70,9 @@ class HamiltonianTomographyCRLengthParameters(Parameters):
 class HamiltonianTomographyCRLengthResults(Results):
     """HamiltonianTomographyCRLength outputs."""
 
+    hamiltonian_terms: dict[QubitId, QubitId, HamiltonianTerm] = field(
+        default_factory=dict
+    )
     fitted_parameters: dict[tuple[QubitId, QubitId, Basis, SetControl], list] = field(
         default_factory=dict
     )
@@ -182,10 +192,16 @@ def _fit(
 ) -> HamiltonianTomographyCRLengthResults:
     """Post-processing function for HamiltonianTomographyCRLength."""
     fitted_parameters = tomography_cr_fit(
-        data=data, fitting_function=fit_length_function
+        data=data,
     )
+    hamiltonian_terms = {}
+    for pair in data.pairs:
+        hamiltonian_terms |= extract_hamiltonian_terms(
+            pair=pair, fitted_parameters=fitted_parameters
+        )
 
     return HamiltonianTomographyCRLengthResults(
+        hamiltonian_terms=hamiltonian_terms,
         fitted_parameters=fitted_parameters,
     )
 
@@ -199,6 +215,16 @@ def _plot(
     figs, fitting_report = tomography_cr_plot(data, target, fit, rabi_length_function)
     figs[0].update_layout(
         xaxis3_title="CR pulse length [ns]",
+    )
+    fitting_report = table_html(
+        table_dict(
+            6 * [target],
+            [f"{term.name} [MHz]" for term in HamiltonianTerm],
+            [
+                fit.hamiltonian_terms[target[0], target[1], term] * kilo
+                for term in HamiltonianTerm
+            ],
+        )
     )
     return figs, fitting_report
 
