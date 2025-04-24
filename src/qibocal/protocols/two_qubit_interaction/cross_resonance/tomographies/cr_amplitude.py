@@ -19,9 +19,8 @@ from .....auto.operation import (
 )
 from .....calibration import CalibrationPlatform
 from .....result import probability
-from ....rabi.utils import rabi_amplitude_function
 from ..utils import Basis, SetControl, cr_sequence
-from .utils import tomography_cr_fit, tomography_cr_plot
+from .utils import tomography_cr_plot
 
 HamiltonianTomographyCRAmplitudeType = np.dtype(
     [
@@ -58,13 +57,6 @@ class HamiltonianTomographyCRAmplitudeParameters(Parameters):
 @dataclass
 class HamiltonianTomographyCRAmplitudeResults(Results):
     """HamiltonianTomographyCRAmplitude outputs."""
-
-    fitted_parameters: dict[tuple[QubitId, QubitId, Basis, SetControl], list] = field(
-        default_factory=dict
-    )
-
-    def __contains__(self, pair: QubitPairId):
-        return all(key[:2] == pair for key in list(self.fitted_parameters))
 
 
 @dataclass
@@ -159,10 +151,7 @@ def _fit(
     data: HamiltonianTomographyCRAmplitudeData,
 ) -> HamiltonianTomographyCRAmplitudeResults:
     """Post-processing function for HamiltonianTomographyCRAmplitude."""
-    fitted_parameters = tomography_cr_fit(
-        data=data,
-    )
-    return HamiltonianTomographyCRAmplitudeResults(fitted_parameters)
+    return HamiltonianTomographyCRAmplitudeResults()
 
 
 def _plot(
@@ -174,8 +163,7 @@ def _plot(
     figs, fitting_report = tomography_cr_plot(
         data=data,
         target=target,
-        fit=fit,
-        fitting_function=rabi_amplitude_function,
+        fit=None,
     )
     figs[0].update_layout(
         xaxis3_title="CR pulse amplitude [a.u.]",

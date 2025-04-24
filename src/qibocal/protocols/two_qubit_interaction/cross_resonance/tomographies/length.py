@@ -20,7 +20,6 @@ from .....auto.operation import (
 )
 from .....calibration import CalibrationPlatform
 from .....result import probability
-from ....rabi.utils import rabi_length_function
 from ....utils import table_dict, table_html
 from ..utils import Basis, SetControl, cr_sequence
 from .utils import (
@@ -54,6 +53,12 @@ class HamiltonianTomographyCRLengthParameters(Parameters):
     """Step pi pulse duration [ns]."""
     pulse_amplitude: float
     """CR pulse amplitude"""
+    phase: float = 0
+    """Phase of CR pulse."""
+    target_amplitude: float = 0
+    """Amplitude of cancellation pulse."""
+    target_phase: float = 0
+    """Phase of target pulse."""
     interpolated_sweeper: bool = False
     """Use real-time interpolation if supported by instruments."""
     echo: bool = False
@@ -85,8 +90,6 @@ class HamiltonianTomographyCRLengthResults(Results):
 class HamiltonianTomographyCRLengthData(Data):
     """Data structure for CR length."""
 
-    anharmonicity: dict[QubitPairId, float] = field(default_factory=dict)
-    detuning: dict[QubitPairId, float] = field(default_factory=dict)
     data: dict[
         tuple[QubitId, QubitId, Basis, SetControl],
         npt.NDArray[HamiltonianTomographyCRLengthType],
@@ -106,13 +109,6 @@ def _acquisition(
     for pair in targets:
         control, target = pair
         pair = (control, target)
-        data.detuning[pair] = (
-            platform.config(platform.qubits[control].drive).frequency
-            - platform.config(platform.qubits[target].drive).frequency
-        )
-        data.anharmonicity[pair] = platform.calibration.single_qubits[
-            control
-        ].qubit.anharmonicity
         for basis in Basis:
             for setup in SetControl:
                 sequence, cr_pulses, delays = cr_sequence(
@@ -121,6 +117,9 @@ def _acquisition(
                     target=target,
                     setup=setup,
                     amplitude=params.pulse_amplitude,
+                    phase=params.phase,
+                    target_amplitude=params.target_amplitude,
+                    target_phase=params.target_phase,
                     duration=params.pulse_duration_end,
                     interpolated_sweeper=params.interpolated_sweeper,
                     echo=params.echo,
@@ -212,20 +211,23 @@ def _plot(
     fit: HamiltonianTomographyCRLengthResults,
 ):
     """Plotting function for HamiltonianTomographyCRLength."""
-    figs, fitting_report = tomography_cr_plot(data, target, fit, rabi_length_function)
+    figs, fitting_report = tomography_cr_plot(data, target, fit)
     figs[0].update_layout(
         xaxis3_title="CR pulse length [ns]",
     )
-    fitting_report = table_html(
-        table_dict(
-            6 * [target],
-            [f"{term.name} [MHz]" for term in HamiltonianTerm],
-            [
-                fit.hamiltonian_terms[target[0], target[1], term] * kilo
-                for term in HamiltonianTerm
-            ],
+    if fit is not None:
+        fitting_report = table_html(
+            table_dict(
+                6 * [target],
+                [f"{term.name} [MHz]" for term in HamiltonianTerm],
+                [
+                    fit.hamiltonian_terms[target[0], target[1], term] * kilo
+                    for term in HamiltonianTerm
+                ],
+            )
         )
-    )
+    else:
+        fitting_report = ""
     return figs, fitting_report
 
 
