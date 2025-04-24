@@ -9,14 +9,7 @@ from .....auto.operation import QubitId, QubitPairId
 from .....config import log
 from ....utils import fallback_period, guess_period
 from ..utils import Basis, SetControl
-
-
-def fit_Z_exp(t, wx, wy, wz, w):
-    """Fitting Z expectation value for CR tomography.
-
-    See https://arxiv.org/pdf/2303.01427 Eq. S10.
-    """
-    return ((wx**2 + wy**2) * np.cos(w * t) + wz**2) / w**2
+from . import fitting
 
 
 def tomography_cr_fit(
@@ -29,69 +22,122 @@ def tomography_cr_fit(
     fitted_parameters = {}
     for pair in data.pairs:
         for setup in SetControl:
-            for basis in Basis:
-                pair_data = data[pair[0], pair[1], basis, setup]
-                if basis == Basis.Z:
-                    period = fallback_period(
-                        guess_period(pair_data.x, pair_data.prob_target)
-                    )
-                    omega = 2 * np.pi / period
-                    pguess = [
-                        omega / np.sqrt(2),
-                        omega / np.sqrt(2),
-                        0,
-                        omega,
+            pair_data = data[pair[0], pair[1], Basis.Z, setup]
+            period = fallback_period(guess_period(pair_data.x, pair_data.prob_target))
+            omega = 2 * np.pi / period
+            pguess = [
+                omega / np.sqrt(2),
+                omega / np.sqrt(2),
+                0,
+                omega,
+            ]
+            try:
+                popt, _ = curve_fit(
+                    fitting.fit_Z_exp,
+                    pair_data.x,
+                    pair_data.prob_target,
+                    maxfev=10000,
+                    p0=pguess,
+                    sigma=pair_data.error_target,
+                    bounds=(
+                        [0, 0, 0, 0],
+                        [
+                            5 * omega,
+                            5 * omega,
+                            1,
+                            5 * omega,
+                        ],
+                    ),
+                )
+                fitted_parameters[pair[0], pair[1], Basis.Z, setup] = popt.tolist()
+            except Exception as e:
+                log.warning(f"CR Z fit failed for pair {pair} due to {e}.")
+
+    for pair in data.pairs:
+        for setup in SetControl:
+            pair_data = data[pair[0], pair[1], Basis.X, setup]
+            pguess = fitted_parameters[pair[0], pair[1], Basis.Z, setup]
+            omega = fitted_parameters[pair[0], pair[1], Basis.Z, setup][3]
+            try:
+                popt, _ = curve_fit(
+                    fitting.fit_X_exp,
+                    pair_data.x,
+                    pair_data.prob_target,
+                    maxfev=10000,
+                    p0=pguess,
+                    sigma=pair_data.error_target,
+                    bounds=(
+                        [-omega, -omega, -omega, 0.99 * omega],
+                        [
+                            omega,
+                            omega,
+                            omega,
+                            1.01 * omega,
+                        ],
+                    ),
+                )
+                fitted_parameters[pair[0], pair[1], Basis.X, setup] = popt.tolist()
+            except Exception as e:
+                log.warning(f"CR fit failed X for pair {pair} due to {e}.")
+
+    for pair in data.pairs:
+        for setup in SetControl:
+            pair_data = data[pair[0], pair[1], Basis.Y, setup]
+            pguess = fitted_parameters[pair[0], pair[1], Basis.X, setup]
+            omega = fitted_parameters[pair[0], pair[1], Basis.Z, setup][3]
+            try:
+                popt, _ = curve_fit(
+                    fitting.fit_Y_exp,
+                    pair_data.x,
+                    pair_data.prob_target,
+                    maxfev=10000,
+                    sigma=pair_data.error_target,
+                    bounds=(
+                        [
+                            -omega if setup is SetControl.Id else -0.1 * omega,
+                            1.1 * pguess[1] if pguess[1] < 0 else 0.9 * pguess[1],
+                            -omega if setup is SetControl.X else -0.1 * omega,
+                            0.99 * omega,
+                        ],
+                        [
+                            0.1 * omega if setup is SetControl.Id else omega,
+                            1.1 * pguess[1] if pguess[1] > 0 else 0.9 * pguess[1],
+                            0.1 * omega if setup is SetControl.X else omega,
+                            1.01 * omega,
+                        ],
+                    ),
+                )
+                fitted_parameters[pair[0], pair[1], Basis.Y, setup] = popt.tolist()
+            except Exception as e:
+                log.warning(f"CR Y fit failed for pair {pair} due to {e}.")
+
+    for pair in data.pairs:
+        for setup in SetControl:
+            fitted_parameters[pair[0], pair[1], setup] = fitted_parameters[
+                pair[0], pair[1], Basis.Y, setup
+            ][:3]
+            pguess = fitted_parameters[pair[0], pair[1], setup]
+            popt, _ = curve_fit(
+                fitting.combined_fit,
+                np.concatenate([pair_data.x, pair_data.x, pair_data.x]),
+                np.concatenate(
+                    [
+                        data[pair[0], pair[1], Basis.X, setup].prob_target,
+                        data[pair[0], pair[1], Basis.Y, setup].prob_target,
+                        data[pair[0], pair[1], Basis.Z, setup].prob_target,
                     ]
-                    try:
-                        popt, _ = curve_fit(
-                            fit_Z_exp,
-                            pair_data.x,
-                            pair_data.prob_target,
-                            maxfev=10000,
-                            p0=pguess,
-                            sigma=pair_data.error_target,
-                            bounds=(
-                                [0, 0, 0, 0],
-                                [
-                                    5 * omega,
-                                    5 * omega,
-                                    1,
-                                    5 * omega,
-                                ],
-                            ),
-                        )
-                        fitted_parameters[pair[0], pair[1], basis, setup] = (
-                            popt.tolist()
-                        )
-                    except Exception as e:
-                        log.warning(f"CR fit failed for pair {pair} due to {e}.")
-
-                else:
-                    raw_x = pair_data.x
-                    min_x = np.min(raw_x)
-                    max_x = np.max(raw_x)
-                    y = pair_data.prob_target
-                    x = (raw_x - min_x) / (max_x - min_x)
-
-                    period = fallback_period(guess_period(x, y))
-                    pguess = (
-                        [0, 0.5, period, 0, 0]
-                        if fitting_function.__name__ == "fit_length_function"
-                        else [0, 0.5, period, 0]
-                    )
-
-                    try:
-                        popt, _, _ = fitting_function(
-                            x,
-                            y,
-                            pguess,
-                            sigma=pair_data.error_target,
-                            signal=False,
-                            x_limits=(min_x, max_x),
-                        )
-                        fitted_parameters[pair[0], pair[1], basis, setup] = popt
-                    except Exception as e:
-                        log.warning(f"CR fit failed for pair {pair} due to {e}.")
+                ),
+                maxfev=10000,
+                p0=pguess,
+                sigma=np.concatenate(
+                    [
+                        data[pair[0], pair[1], Basis.X, setup].error_target,
+                        data[pair[0], pair[1], Basis.Y, setup].error_target,
+                        data[pair[0], pair[1], Basis.Z, setup].error_target,
+                    ]
+                ),
+            )
+            fitted_parameters[pair[0], pair[1], setup] = popt.tolist()
     return fitted_parameters
 
 
@@ -140,24 +186,83 @@ def tomography_cr_plot(
             )
             if fit is not None:
                 x = np.linspace(pair_data.x.min(), pair_data.x.max(), 100)
+                if basis == Basis.Z:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=x,
+                            y=fitting.fit_Z_exp(
+                                x,
+                                *fit.fitted_parameters[
+                                    target[0], target[1], basis, setup
+                                ],
+                            ),
+                            name=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
+                            showlegend=True if basis is Basis.Z else False,
+                            legendgroup=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
+                            mode="lines",
+                            line=dict(
+                                color="blue" if setup is SetControl.Id else "red",
+                            ),
+                        ),
+                        row=i + 1,
+                        col=1,
+                    )
+                elif basis == Basis.X:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=x,
+                            y=fitting.fit_X_exp(
+                                x,
+                                *fit.fitted_parameters[
+                                    target[0], target[1], basis, setup
+                                ],
+                            ),
+                            name=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
+                            showlegend=True if basis is Basis.Z else False,
+                            legendgroup=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
+                            mode="lines",
+                            line=dict(
+                                color="blue" if setup is SetControl.Id else "red",
+                            ),
+                        ),
+                        row=i + 1,
+                        col=1,
+                    )
+                elif basis == Basis.Y:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=x,
+                            y=fitting.fit_Y_exp(
+                                x,
+                                *fit.fitted_parameters[
+                                    target[0], target[1], basis, setup
+                                ],
+                            ),
+                            name=f"Single fit of target when control at {0 if setup is SetControl.Id else 1}",
+                            showlegend=True if basis is Basis.Z else False,
+                            legendgroup=f"Single Fit target when control at {0 if setup is SetControl.Id else 1}",
+                            mode="lines",
+                            line=dict(
+                                color="blue" if setup is SetControl.Id else "red",
+                            ),
+                        ),
+                        row=i + 1,
+                        col=1,
+                    )
+
                 fig.add_trace(
                     go.Scatter(
                         x=x,
-                        y=fitting_function(
+                        y=getattr(fitting, f"fit_{basis.name}_exp_fine")(
                             x,
-                            *fit.fitted_parameters[target[0], target[1], basis, setup],
-                        )
-                        if basis != Basis.Z
-                        else fit_Z_exp(
-                            x,
-                            *fit.fitted_parameters[target[0], target[1], basis, setup],
+                            *fit.fitted_parameters[target[0], target[1], setup],
                         ),
-                        name=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
+                        name=f"Simultaneous Fit of target when control at {0 if setup is SetControl.Id else 1}",
                         showlegend=True if basis is Basis.Z else False,
-                        legendgroup=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
+                        legendgroup=f"Simultaneous Fit target when control at {0 if setup is SetControl.Id else 1}",
                         mode="lines",
                         line=dict(
-                            color="blue" if setup is SetControl.Id else "red",
+                            color="green" if setup is SetControl.Id else "orange",
                         ),
                     ),
                     row=i + 1,
