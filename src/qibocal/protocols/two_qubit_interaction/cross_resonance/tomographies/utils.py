@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -104,16 +104,11 @@ def tomography_cr_fit(
                     maxfev=10000,
                     sigma=pair_data.error_target,
                     bounds=(
+                        [-omega, -omega, -omega, 0.99 * omega],
                         [
-                            -omega if setup is SetControl.Id else -0.1 * omega,
-                            1.1 * pguess[1] if pguess[1] < 0 else 0.9 * pguess[1],
-                            -omega if setup is SetControl.X else -0.1 * omega,
-                            0.99 * omega,
-                        ],
-                        [
-                            0.1 * omega if setup is SetControl.Id else omega,
-                            1.1 * pguess[1] if pguess[1] > 0 else 0.9 * pguess[1],
-                            0.1 * omega if setup is SetControl.X else omega,
+                            omega,
+                            omega,
+                            omega,
                             1.01 * omega,
                         ],
                     ),
@@ -194,7 +189,6 @@ def tomography_cr_plot(
             "HamiltonianTomographyCRAmplitudeResults",  # noqa: F821
         ]
     ] = None,
-    fitting_function: Optional[Callable] = None,
 ) -> tuple[list[go.Figure], str]:
     fig = make_subplots(
         rows=3,
