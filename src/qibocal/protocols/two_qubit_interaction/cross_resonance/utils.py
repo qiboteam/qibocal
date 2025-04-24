@@ -33,9 +33,12 @@ def cr_sequence(
     setup: SetControl,
     amplitude: float,
     duration: int,
+    target_amplitude: float = 0,
+    target_phase: float = 0,
     interpolated_sweeper: bool = False,
     echo: bool = False,
     basis: Basis = Basis.Z,
+    phase: float = 0,
 ) -> tuple[PulseSequence, list[Pulse], list[Delay]]:
     """Creates sequence for CR experiment on ``control`` and ``target`` qubits.
 
@@ -52,11 +55,19 @@ def cr_sequence(
     cr_drive_pulse = Pulse(
         duration=duration,
         amplitude=amplitude,
-        relative_phase=0,
-        envelope=Rectangular(),
+        relative_phase=phase,
         # envelope=GaussianSquare(rel_sigma=0.2, risefall=15),
+        envelope=Rectangular(),
+    )
+    target_drive_pulse = Pulse(
+        duration=duration,
+        amplitude=target_amplitude,
+        relative_phase=target_phase,
+        # envelope=GaussianSquare(rel_sigma=0.2, risefall=15),
+        envelope=Rectangular(),
     )
     cr_pulses.append(cr_drive_pulse)
+    cr_pulses.append(target_drive_pulse)
     control_drive_channel, control_drive_pulse = natives_control.RX()[0]
     target_drive_channel, _ = natives_target.RX()[0]
     ro_channel, ro_pulse = natives_target.MZ()[0]
@@ -70,25 +81,28 @@ def cr_sequence(
         sequence.append((cr_channel, control_delay))
 
     if echo:
-        delays = 8 * [Delay(duration=cr_drive_pulse.duration)]
+        delays = 6 * [Delay(duration=cr_drive_pulse.duration)]
         control_delay = Delay(duration=control_drive_pulse.duration)
         cr_pulse_minus = replace(cr_drive_pulse, relative_phase=np.pi)
+        target_pulse_minus = replace(target_drive_pulse, relative_phase=np.pi)
         cr_pulses.append(cr_pulse_minus)
+        cr_pulses.append(target_pulse_minus)
         sequence.append((cr_channel, cr_drive_pulse))
         sequence.append((control_drive_channel, delays[-1]))
-        sequence.append((target_drive_channel, delays[-2]))
+        sequence.append((target_drive_channel, target_drive_pulse))
         sequence.append((control_drive_channel, control_drive_pulse))
         sequence.append((cr_channel, control_delay))
         sequence.append((target_drive_channel, control_delay))
         sequence.append((cr_channel, cr_pulse_minus))
-        sequence.append((control_drive_channel, delays[-3]))
-        sequence.append((target_drive_channel, delays[-4]))
+        sequence.append((control_drive_channel, delays[-2]))
+        sequence.append((target_drive_channel, target_pulse_minus))
         sequence.append((control_drive_channel, control_drive_pulse))
         sequence.append((target_drive_channel, control_delay))
 
     else:
-        delays = 3 * [Delay(duration=cr_drive_pulse.duration)]
+        delays = 2 * [Delay(duration=cr_drive_pulse.duration)]
         sequence.append((cr_channel, cr_drive_pulse))
+        sequence.append((target_drive_channel, target_drive_pulse))
 
     if interpolated_sweeper:
         sequence.align(
