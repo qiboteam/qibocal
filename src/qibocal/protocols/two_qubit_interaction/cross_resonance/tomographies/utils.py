@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Callable, Optional, Union
 
 import numpy as np
@@ -12,12 +13,22 @@ from ..utils import Basis, SetControl
 from . import fitting
 
 
+class HamiltonianTerm(str, Enum):
+    """Hamiltonian terms for CR effective Hamiltonian."""
+
+    IX = "IX"
+    IY = "IY"
+    IZ = "IZ"
+    ZX = "ZX"
+    ZY = "ZY"
+    ZZ = "ZZ"
+
+
 def tomography_cr_fit(
     data: Union[
         "HamiltonianTomographyCRLengthData",  # noqa: F821
         "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
     ],
-    fitting_function: Callable,
 ) -> dict[tuple[QubitId, QubitId, Basis, SetControl], list]:
     fitted_parameters = {}
     for pair in data.pairs:
@@ -141,6 +152,36 @@ def tomography_cr_fit(
     return fitted_parameters
 
 
+def extract_hamiltonian_terms(pair: QubitPairId, fitted_parameters: dict):
+    """Extract Hamiltonian terms from fitted parameters."""
+    hamiltonian_terms = {}
+    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.ZX] = 0.5 * (
+        fitted_parameters[pair[0], pair[1], SetControl.Id][0]
+        - fitted_parameters[pair[0], pair[1], SetControl.X][0]
+    )
+    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.IX] = 0.5 * (
+        fitted_parameters[pair[0], pair[1], SetControl.Id][0]
+        + fitted_parameters[pair[0], pair[1], SetControl.X][0]
+    )
+    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.ZY] = 0.5 * (
+        fitted_parameters[pair[0], pair[1], SetControl.Id][1]
+        - fitted_parameters[pair[0], pair[1], SetControl.X][1]
+    )
+    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.IY] = 0.5 * (
+        fitted_parameters[pair[0], pair[1], SetControl.Id][1]
+        + fitted_parameters[pair[0], pair[1], SetControl.X][1]
+    )
+    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.ZZ] = 0.5 * (
+        fitted_parameters[pair[0], pair[1], SetControl.Id][2]
+        - fitted_parameters[pair[0], pair[1], SetControl.X][2]
+    )
+    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.IZ] = 0.5 * (
+        fitted_parameters[pair[0], pair[1], SetControl.Id][2]
+        + fitted_parameters[pair[0], pair[1], SetControl.X][2]
+    )
+    return hamiltonian_terms
+
+
 def tomography_cr_plot(
     data: Union[
         "HamiltonianTomographyCRLengthData",  # noqa: F821
@@ -196,9 +237,9 @@ def tomography_cr_plot(
                                     target[0], target[1], basis, setup
                                 ],
                             ),
-                            name=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
+                            name=f"Single target when control at {0 if setup is SetControl.Id else 1}",
                             showlegend=True if basis is Basis.Z else False,
-                            legendgroup=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
+                            legendgroup=f"Single target when control at {0 if setup is SetControl.Id else 1}",
                             mode="lines",
                             line=dict(
                                 color="blue" if setup is SetControl.Id else "red",
@@ -217,9 +258,9 @@ def tomography_cr_plot(
                                     target[0], target[1], basis, setup
                                 ],
                             ),
-                            name=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
+                            name=f"Single target when control at {0 if setup is SetControl.Id else 1}",
                             showlegend=True if basis is Basis.Z else False,
-                            legendgroup=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
+                            legendgroup=f"Single target when control at {0 if setup is SetControl.Id else 1}",
                             mode="lines",
                             line=dict(
                                 color="blue" if setup is SetControl.Id else "red",
@@ -238,9 +279,9 @@ def tomography_cr_plot(
                                     target[0], target[1], basis, setup
                                 ],
                             ),
-                            name=f"Single fit of target when control at {0 if setup is SetControl.Id else 1}",
+                            name=f"Single target when control at {0 if setup is SetControl.Id else 1}",
                             showlegend=True if basis is Basis.Z else False,
-                            legendgroup=f"Single Fit target when control at {0 if setup is SetControl.Id else 1}",
+                            legendgroup=f"Single target when control at {0 if setup is SetControl.Id else 1}",
                             mode="lines",
                             line=dict(
                                 color="blue" if setup is SetControl.Id else "red",
