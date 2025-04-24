@@ -4,6 +4,8 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+# import plotly.colors.cyclical
 from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 from qibolab._core.pulses.envelope import Snz
 
@@ -124,8 +126,8 @@ def _aquisition(
     for pair in targets:
         ordered_pair = order_pair(pair, platform)
         flux_channel = platform.qubits[ordered_pair[1]].flux
-        target = pair[0]
-        control = pair[1]
+        target_vz = pair[0]
+        other_qubit_vz = pair[1]
         # Find CZ flux pulse
         cz_sequence = getattr(platform.natives.two_qubit[ordered_pair], "CZ")()
         flux_channel = platform.qubits[ordered_pair[1]].flux
@@ -156,16 +158,16 @@ def _aquisition(
                 ) = create_sequence(
                     platform,
                     setup,
-                    target,
-                    control,
+                    target_vz,
+                    other_qubit_vz,
                     ordered_pair,
                     "CZ",
                     dt=0,
                     flux_pulses=flux_pulse,
                 )
                 sweeper_theta = Sweeper(
-                    parameter=Parameter.relative_phase,
-                    range=(params.theta_start, params.theta_end, params.theta_step),
+                    parameter=Parameter.phase,
+                    range=(-params.theta_start, -params.theta_end, -params.theta_step),
                     pulses=theta_pulse,
                 )
 
@@ -178,15 +180,18 @@ def _aquisition(
                     ),
                     pulses=[flux_pulse],
                 )
-                ro_target = list(sequence.channel(platform.qubits[target].acquisition))[
-                    -1
-                ]
-                ro_control = list(
-                    sequence.channel(platform.qubits[control].acquisition)
+                ro_target = list(
+                    sequence.channel(platform.qubits[target_vz].acquisition)
                 )[-1]
+                ro_control = list(
+                    sequence.channel(platform.qubits[other_qubit_vz].acquisition)
+                )[-1]
+                # print("SEQUENCE")
+                # for s in sequence:
+                #     print(s)
                 results = platform.execute(
                     [sequence],
-                    [[sweeper_theta], [sweeper_amplitude]],
+                    [[sweeper_amplitude], [sweeper_theta]],
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
                     acquisition_type=AcquisitionType.DISCRIMINATION,
@@ -195,20 +200,37 @@ def _aquisition(
 
                 # TODO: move this outside loops
                 data.amplitudes[pair] = sweeper_amplitude.values.tolist()
-                data.thetas = sweeper_theta.values.tolist()
+                # print(data.thetas)
+                data.thetas = -1 * sweeper_theta.values
+                data.thetas = data.thetas.tolist()
+                # print(data.thetas)
                 # data.durations[ordered_pair] = sweeper_duration.values.tolist()
                 data.register_qubit(
-                    target,
-                    control,
+                    target_vz,
+                    other_qubit_vz,
                     setup,
                     ratio,
-                    sweeper_theta.values,
+                    data.thetas,
                     sweeper_amplitude.values,
                     results[ro_control.id],
                     results[ro_target.id],
                 )
-                # print(data)
-    print(data)
+
+                # print(results[ro_target.id])
+                # plt.plot(
+                #     data.thetas,
+                #     results[ro_target.id].ravel(),
+                #     label=f"{target_vz} {other_qubit_vz} {setup}",
+                # )
+                # plt.xlabel("Theta")
+                # plt.ylabel("Probability")
+                # plt.title(f"Pair {target_vz} {other_qubit_vz} {setup}")
+                # plt.legend()
+                # plt.savefig(
+                #     f"pair_{target_vz}_{other_qubit_vz}_{setup}.png", dpi=300, bbox_inches="tight"
+                # )
+                # # print(data)
+    # print(data)
     return data
 
 
@@ -280,7 +302,7 @@ def _fit(
         leakages=leakages,
         angles=angles,
     )
-    print(results)
+    # print(results)
     return results
 
 
@@ -303,8 +325,8 @@ def _plot(
     # print("FFFFFFF", fit)
     # print(data)
     if fit is not None:
-        print(data.amplitudes)
-        print(target)
+        # print(data.amplitudes)
+        # print(target)
         cz = []
         rel_amp = []
         amps = []
@@ -324,14 +346,14 @@ def _plot(
         # condition = [target_q, control_q] == list(target)
         fig.add_trace(
             go.Heatmap(
-                x=rel_amp,
-                y=amps,
+                x=amps,
+                y=rel_amp,
                 z=cz,
-                zmin=np.pi / 2,
-                zmax=np.pi,
+                zmin=0,
+                zmax=2 * np.pi,
                 name="{fit.native} angle",
                 colorbar_x=-0.1,
-                colorscale="RdBu",
+                colorscale="Twilight",
                 # showscale=condition,
             ),
             row=1,
@@ -340,14 +362,14 @@ def _plot(
 
         fig.add_trace(
             go.Heatmap(
-                x=rel_amp,
-                y=amps,
+                x=amps,
+                y=rel_amp,
                 z=leakage,
                 name="Leakage",
                 # showscale=condition,
-                colorscale="Reds",
+                colorscale="Inferno",
                 zmin=0,
-                zmax=0.05,
+                zmax=0.2,
             ),
             row=1,
             col=2,
@@ -367,10 +389,10 @@ def _plot(
         # )
 
         fig.update_layout(
-            xaxis1_title="Rel. Amp. B/A [a.u.]",
-            xaxis2_title="Rel. Amp. B/A [a. u.]",
-            yaxis1_title="Amplitude A [a.u.]",
-            yaxis2_title="Amplitude A [a.u.]",
+            xaxis1_title="Amplitude A [a.u.]",
+            xaxis2_title="Amplitude A [a.u.]",
+            yaxis1_title="Rel. Amp. B/A [a.u.]",
+            yaxis2_title="Rel. Amp. B/A [a.u.]",
         )
 
     return [fig], fitting_report
