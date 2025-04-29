@@ -57,7 +57,6 @@ from .two_qubit_interaction import (
     cross_resonance_amplitude,
     cross_resonance_length,
     cryoscope,
-    hamiltonian_tomography_cr_amplitude,
     hamiltonian_tomography_cr_length,
     optimize_two_qubit_gate,
 )
@@ -123,5 +122,4 @@ __all__ = [
     "cross_resonance_length",
     "cross_resonance_amplitude",
     "hamiltonian_tomography_cr_length",
-    "hamiltonian_tomography_cr_amplitude",
 ]
