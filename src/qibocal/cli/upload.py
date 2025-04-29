@@ -15,8 +15,8 @@ from qibocal.auto.output import META, Metadata
 
 # options for report upload
 UPLOAD_HOST = (
-    "qibocal@localhost"
-    if socket.gethostname() == "saadiyat"
+    "qibocal@saadiyat"
+    if socket.gethostname() in ("saadiyat", "dalma")
     else "qibocal@login.qrccluster.com"
 )
 TARGET_DIR = "qibocal-reports/"
