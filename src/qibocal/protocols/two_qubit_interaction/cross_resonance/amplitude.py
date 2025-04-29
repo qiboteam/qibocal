@@ -148,7 +148,6 @@ def _acquisition(
                     ).tolist(),
                 ),
             )
-    # finally, save the remaining data
     return data
 
 
