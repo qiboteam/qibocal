@@ -1729,11 +1729,7 @@ qulacs = ["qulacs (>=0.6.4,<0.7.0) ; python_version < \"3.13\""]
 
 [[package]]
 name = "qibolab"
-<<<<<<< HEAD
 version = "0.2.8"
-=======
-version = "0.2.5"
->>>>>>> 92fc0ac3 (feat: Adding echoCR and use parameters from IBM chip)
 description = "Quantum hardware module and drivers for Qibo"
 optional = false
 python-versions = "<3.14,>=3.10"
@@ -1762,8 +1758,12 @@ zh = ["laboneq (==2.25.0)"]
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
 reference = "emulator-multi-transmon"
+<<<<<<< HEAD
 resolved_reference = "3961167a4e00dcaa488ec9ee92eecb0d8bf9d897"
 >>>>>>> 92fc0ac3 (feat: Adding echoCR and use parameters from IBM chip)
+=======
+resolved_reference = "92e6f980e162c4e79b1403bb0e19d0fd2f4b16a1"
+>>>>>>> 3caefecd (refactor: Document code and add tests)
 
 [[package]]
 name = "recommonmark"
