@@ -1,3 +1,5 @@
+"""Protocol to measure CR interaction varying drive amplitude."""
+
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -8,6 +10,7 @@ from qibolab import (
     Parameter,
     Sweeper,
 )
+from scipy.constants import kilo
 
 from ....auto.operation import (
     Data,
@@ -178,7 +181,12 @@ def _acquisition(
 def _fit(
     data: CrossResonanceLengthData,
 ) -> CrossResonanceLengthResults:
-    """Post-processing function for CrossResonanceLength."""
+    """Post-processing function for CrossResonanceLength.
+
+    After fitting the data with dumped cosine function, the effective coupling
+    is computed as specified in https://arxiv.org/pdf/1905.11480.
+
+    """
     fitted_parameters = cr_fit(data=data, fitting_function=fit_length_function)
     effective_coupling = {}
     for pair in data.pairs:
@@ -201,15 +209,16 @@ def _plot(
     figs, fitting_report = cr_plot(
         data=data, target=target, fit=fit, fitting_function=rabi_length_function
     )
-    fitting_report = table_html(
-        table_dict(
-            [target],
-            [
-                "Effective coupling [MHz]",
-            ],
-            [fit.effective_coupling[target] * 1e3],
+    if fit is not None:
+        fitting_report = table_html(
+            table_dict(
+                [target],
+                [
+                    "Effective coupling [MHz]",
+                ],
+                [fit.effective_coupling[target] * kilo],
+            )
         )
-    )
 
     figs[0].update_layout(
         xaxis_title="Cross resonance pulse duration [ns]",
