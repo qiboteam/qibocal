@@ -1,3 +1,5 @@
+"""Protocol for cross resonance with sweep on amplitude of the pulse."""
+
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -79,7 +81,13 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
 ) -> CrossResonanceAmplitudeData:
-    """Data acquisition for CR amplitude."""
+    """Data acquisition for CR amplitude.
+
+    We measure the probabilities of both the target and the control qubit after
+    applying the CR sequence specified by the input parameters. We repeat the
+    measurement twice for each target qubit, once with the control qubit in state 0
+    and once with the control qubit in state 1.
+    """
 
     data = CrossResonanceAmplitudeData()
 
@@ -113,7 +121,6 @@ def _acquisition(
                     }
                 }
             )
-            # execute the sweep
             results = platform.execute(
                 [sequence],
                 [[sweeper]],
@@ -124,7 +131,6 @@ def _acquisition(
                 updates=updates,
             )
 
-            # store the results
             target_acq_handle = list(
                 sequence.channel(platform.qubits[target].acquisition)
             )[-1].id
@@ -154,7 +160,11 @@ def _acquisition(
 def _fit(
     data: CrossResonanceAmplitudeData,
 ) -> CrossResonanceAmplitudeResults:
-    """Post-processing function for CrossResonanceAmplitude."""
+    """Post-processing function for CrossResonanceAmplitude.
+
+    The target qubit probabilities are fitted with cosine oscillations.
+
+    """
 
     fitted_parameters = cr_fit(data=data, fitting_function=fit_amplitude_function)
     return CrossResonanceAmplitudeResults(
