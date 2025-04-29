@@ -1,8 +1,6 @@
-import itertools
 import math
-
-# import pdb
 from dataclasses import dataclass, field
+from itertools import product
 
 import numpy as np
 import numpy.typing as npt
@@ -78,6 +76,7 @@ ResonatorOptimizationType = np.dtype(
         ("assignment_fidelity", np.float64),
         ("avaraged_fidelity", np.float64),
         ("qnd", np.float64),
+        ("qnd_pi", np.float64),
         ("angle", np.float64),
         ("threshold", np.float64),
     ]
@@ -98,7 +97,9 @@ class ResonatorOptimizationData(Data):
     )
     """Raw data acquired"""
 
-    def register_qubit(self, qubit, state, measure, nshots, amp, freq, iq, samples):
+    # pi=0 QND
+    # pi=1 QND_pi
+    def register_qubit(self, qubit, state, measure, nshots, amp, freq, iq, samples, pi):
         """Store output for single qubit."""
         size = len(amp) * len(freq) * nshots
         shots = np.arange(0, nshots, 1)
@@ -108,15 +109,15 @@ class ResonatorOptimizationData(Data):
         ar["amplitude"] = amplitude.ravel()
         ar["iq_values"] = iq.reshape(-1, 2)
         ar["samples"] = samples.ravel()
-        self.data[qubit, state, measure] = np.rec.array(ar)
+        self.data[qubit, state, measure, pi] = np.rec.array(ar)
 
     def amplitudes(self, qubit):
         """Unique qubit amplitude"""
-        return np.unique(self[qubit, 0, 0].amplitude)
+        return np.unique(self[qubit, 0, 0, 0].amplitude)
 
     def frequencies(self, qubit):
         """Unique qubit frequency"""
-        return np.unique(self[qubit, 0, 0].frequency)
+        return np.unique(self[qubit, 0, 0, 0].frequency)
 
 
 def _acquisition(
@@ -146,7 +147,7 @@ def _acquisition(
         delay=params.delay,
     )
 
-    for state in [0, 1]:
+    for state, pi in product([0, 1], repeat=2):
         sequence = PulseSequence()
         for qubit in targets:
             natives = platform.natives.single_qubit[qubit]
@@ -157,6 +158,8 @@ def _acquisition(
             sequence.append((ro_channel, Delay(duration=natives.RX()[0][1].duration)))
             sequence.append((ro_channel, ro_pulse_m1))
             sequence.append((ro_channel, Delay(duration=params.delay)))
+            if pi == 1:
+                sequence += natives.RX()
             sequence.append((ro_channel, ro_pulse_m2))
 
             freq_sweepers[qubit] = Sweeper(
@@ -207,6 +210,7 @@ def _acquisition(
                     freq=freq_sweepers[target].values,
                     samples=results_samples[pulse_id],
                     iq=results[pulse_id],
+                    pi=pi,
                 )
 
     return data
@@ -231,134 +235,155 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
     for qubit in qubits:
         freq_vals = data.frequencies(qubit)
         amp_vals = data.amplitudes(qubit)
+        shape = (len(freq_vals), len(amp_vals))
+        grid_keys = ["fidelity", "angle", "threshold", "qnd"]
+        versions = ["standard", "pi"]
 
-        fidelity_grid = np.zeros(shape=(len(freq_vals), len(amp_vals)))
-        qnd_grid = np.zeros(shape=(len(freq_vals), len(amp_vals)))
-        angle_grid = np.zeros(shape=(len(freq_vals), len(amp_vals)))
-        threshold_grid = np.zeros(shape=(len(freq_vals), len(amp_vals)))
+        grids = {
+            key: {version: np.zeros(shape) for version in versions} for key in grid_keys
+        }
 
         ################################ASSIGNMENT FIDELITY################################
 
-        for j, freq in enumerate(freq_vals):
-            for k, amp in enumerate(amp_vals):
-                data_state_0 = data[qubit, 0, 0]
-                data_state_1 = data[qubit, 1, 0]
-                iq_values = np.concatenate(
-                    (
-                        data_state_0[
-                            (data_state_0.frequency == freq)
-                            & (data_state_0.amplitude == amp)
-                        ].iq_values,
-                        data_state_1[
-                            (data_state_1.frequency == freq)
-                            & (data_state_1.amplitude == amp)
-                        ].iq_values,
-                    )
-                )
-
-                nshots = len(
+        for (
+            (j, freq),
+            (k, amp),
+            pi,
+        ) in product(enumerate(freq_vals), enumerate(amp_vals), [0, 1]):
+            version = "pi" if pi else "standard"
+            data_state_0 = data[qubit, 0, 0, pi]
+            data_state_1 = data[qubit, 1, 0, pi]
+            iq_values = np.concatenate(
+                (
                     data_state_0[
                         (data_state_0.frequency == freq)
                         & (data_state_0.amplitude == amp)
-                    ].iq_values
+                    ].iq_values,
+                    data_state_1[
+                        (data_state_1.frequency == freq)
+                        & (data_state_1.amplitude == amp)
+                    ].iq_values,
                 )
-                states = [0] * nshots + [1] * nshots
+            )
 
-                model = QubitFit()
-                model.fit(iq_values, np.array(states))
-                fidelity_grid[j, k] = model.assignment_fidelity
-                angle_grid[j, k] = model.angle
-                threshold_grid[j, k] = model.threshold
+            nshots = len(
+                data_state_0[
+                    (data_state_0.frequency == freq) & (data_state_0.amplitude == amp)
+                ].iq_values
+            )
+            states = [0] * nshots + [1] * nshots
+            if pi:
+                states.reverse()
+                print(states)
 
-        filtered_fidelity = ndimage.uniform_filter(
-            fidelity_grid,
-            size=(math.ceil(len(freq_vals) / 5), math.ceil(len(amp_vals) / 5)),
-            mode="nearest",
-        )
+            model = QubitFit()
+            model.fit(iq_values, np.array(states))
+            grids["fidelity"][version][j, k] = model.assignment_fidelity
+            grids["angle"][version][j, k] = model.angle
+            grids["threshold"][version][j, k] = model.threshold
+
+        size = (math.ceil(len(freq_vals) / 5), math.ceil(len(amp_vals) / 5))
+        filtered_fidelity = {
+            version: ndimage.uniform_filter(
+                grids["fidelity"][version],
+                size=size,
+                mode="nearest",
+            )
+            for version in versions
+        }
 
         ######################################## QND ######################################
-        for j, freq in enumerate(freq_vals):
-            for k, amp in enumerate(amp_vals):
-                # 1st measurement (m=1)
-                data_10 = data[qubit, 1, 0]
-                m1_state_1 = data_10[
-                    (data_10.frequency == freq) & (data_10.amplitude == amp)
-                ].samples
-                nshots = len(m1_state_1)
-                state1_count_1_m1 = np.count_nonzero(m1_state_1)
-                state0_count_1_m1 = nshots - state1_count_1_m1
+        for (
+            (j, freq),
+            (k, amp),
+            pi,
+        ) in product(enumerate(freq_vals), enumerate(amp_vals), [0, 1]):
+            version = "pi" if pi else "standard"
 
-                data_00 = data[qubit, 0, 0]
-                m1_state_0 = data_00[
-                    (data_00.frequency == freq) & (data_00.amplitude == amp)
-                ].samples
-                state1_count_0_m1 = np.count_nonzero(m1_state_0)
-                state0_count_0_m1 = nshots - state1_count_0_m1
+            # 1st measurement (m=1)
+            data_10 = data[qubit, 1, 0, pi]
+            m1_state_1 = data_10[
+                (data_10.frequency == freq) & (data_10.amplitude == amp)
+            ].samples
+            nshots = len(m1_state_1)
+            state1_count_1_m1 = np.count_nonzero(m1_state_1)
+            state0_count_1_m1 = nshots - state1_count_1_m1
 
-                # 2nd measurement (m=2)
-                data_11 = data[qubit, 1, 1]
-                m2_state_1 = data_11[
-                    (data_11.frequency == freq) & (data_11.amplitude == amp)
-                ].samples
-                state1_count_1_m2 = np.count_nonzero(m2_state_1)
-                state0_count_1_m2 = nshots - state1_count_1_m2
+            data_00 = data[qubit, 0, 0, pi]
+            m1_state_0 = data_00[
+                (data_00.frequency == freq) & (data_00.amplitude == amp)
+            ].samples
+            state1_count_0_m1 = np.count_nonzero(m1_state_0)
+            state0_count_0_m1 = nshots - state1_count_0_m1
 
-                data_01 = data[qubit, 0, 1]
-                m2_state_0 = data_01[
-                    (data_01.frequency == freq) & (data_01.amplitude == amp)
-                ].samples
-                state1_count_0_m2 = np.count_nonzero(m2_state_0)
-                state0_count_0_m2 = nshots - state1_count_0_m2
+            # 2nd measurement (m=2)
+            data_11 = data[qubit, 1, 1, pi]
+            m2_state_1 = data_11[
+                (data_11.frequency == freq) & (data_11.amplitude == amp)
+            ].samples
+            state1_count_1_m2 = np.count_nonzero(m2_state_1)
+            state0_count_1_m2 = nshots - state1_count_1_m2
 
-                # Repeat Lambda and fidelity for each measurement ?
-                Lambda_M[qubit] = [
-                    [state0_count_0_m1 / nshots, state0_count_1_m1 / nshots],
-                    [state1_count_0_m1 / nshots, state1_count_1_m1 / nshots],
-                ]
+            data_01 = data[qubit, 0, 1, pi]
+            m2_state_0 = data_01[
+                (data_01.frequency == freq) & (data_01.amplitude == amp)
+            ].samples
+            state1_count_0_m2 = np.count_nonzero(m2_state_0)
+            state0_count_0_m2 = nshots - state1_count_0_m2
 
-                # Repeat Lambda and fidelity for each measurement ?
-                Lambda_M2[qubit] = [
-                    [state0_count_0_m2 / nshots, state0_count_1_m2 / nshots],
-                    [state1_count_0_m2 / nshots, state1_count_1_m2 / nshots],
-                ]
+            # Repeat Lambda and fidelity for each measurement ?
+            Lambda_M[qubit] = [
+                [state0_count_0_m1 / nshots, state0_count_1_m1 / nshots],
+                [state1_count_0_m1 / nshots, state1_count_1_m1 / nshots],
+            ]
+            # Repeat Lambda and fidelity for each measurement ?
+            Lambda_M2[qubit] = [
+                [state0_count_0_m2 / nshots, state0_count_1_m2 / nshots],
+                [state1_count_0_m2 / nshots, state1_count_1_m2 / nshots],
+            ]
+            # QND FIXME: Careful revision
+            P_0o_m0_1i = state0_count_1_m1 * state0_count_0_m2 / nshots**2
+            P_0o_m1_1i = state1_count_1_m1 * state0_count_1_m2 / nshots**2
+            P_0o_1i = P_0o_m0_1i + P_0o_m1_1i
+            P_1o_m0_0i = state0_count_0_m1 * state1_count_0_m2 / nshots**2
+            P_1o_m1_0i = state1_count_0_m1 * state1_count_1_m2 / nshots**2
+            P_1o_0i = P_1o_m0_0i + P_1o_m1_0i
 
-                # QND FIXME: Careful revision
-                P_0o_m0_1i = state0_count_1_m1 * state0_count_0_m2 / nshots**2
-                P_0o_m1_1i = state1_count_1_m1 * state0_count_1_m2 / nshots**2
-                P_0o_1i = P_0o_m0_1i + P_0o_m1_1i
+            result = (
+                1 - ((P_0o_1i + P_1o_0i) / 2) if not pi else (P_0o_1i + P_1o_0i) / 2
+            )
+            grids["qnd"][version][j, k] = result
 
-                P_1o_m0_0i = state0_count_0_m1 * state1_count_0_m2 / nshots**2
-                P_1o_m1_0i = state1_count_0_m1 * state1_count_1_m2 / nshots**2
-                P_1o_0i = P_1o_m0_0i + P_1o_m1_0i
+        for state, m, pi in product([0, 1], [0, 1], [0, 1]):
+            data_qubit = data[qubit, state, m, pi]
+            version = "pi" if pi else "standard"
 
-                qnd_grid[j, k] = 1 - (P_0o_1i + P_1o_0i) / 2
+            for (j, freq), (k, amp) in product(
+                enumerate(freq_vals), enumerate(amp_vals)
+            ):
+                update_index = (data_qubit.frequency == freq) & (
+                    data_qubit.amplitude == amp
+                )
+                data_qubit.avaraged_fidelity[update_index] = filtered_fidelity[j, k]
+                data_qubit.angle[update_index] = grids["angle"][version][j, k]
+                data_qubit.threshold[update_index] = grids["threshold"][version][j, k]
+                data_qubit.qnd[update_index] = grids["qnd"][version][j, k]
 
-        for state, m in itertools.product([0, 1], [0, 1]):
-            data_qubit = data[qubit, state, m]
+        index_best_fid = np.argmax(data[qubit, 0, 0, 0]["avaraged_fidelity"])
+        highest_fidelity[qubit] = data[qubit, 0, 0, 0]["avaraged_fidelity"][
+            index_best_fid
+        ]
+        fid_best_freq[qubit] = data[qubit, 0, 0, 0]["frequency"][index_best_fid]
+        fid_best_amps[qubit] = data[qubit, 0, 0, 0]["amplitude"][index_best_fid]
+        fid_best_qnd[qubit] = data[qubit, 0, 0, 0]["qnd"][index_best_fid]
+        best_angle[qubit] = data[qubit, 0, 0, 0]["angle"][index_best_fid]
+        best_threshold[qubit] = data[qubit, 0, 0, 0]["threshold"][index_best_fid]
 
-            for j, freq in enumerate(freq_vals):
-                for k, amp in enumerate(amp_vals):
-                    update_index = (data_qubit.frequency == freq) & (
-                        data_qubit.amplitude == amp
-                    )
-                    data_qubit.avaraged_fidelity[update_index] = filtered_fidelity[j, k]
-                    data_qubit.angle[update_index] = angle_grid[j, k]
-                    data_qubit.threshold[update_index] = threshold_grid[j, k]
-                    data_qubit.qnd[update_index] = qnd_grid[j, k]
-
-        index_best_fid = np.argmax(data[qubit, 0, 0]["avaraged_fidelity"])
-        highest_fidelity[qubit] = data[qubit, 0, 0]["avaraged_fidelity"][index_best_fid]
-        fid_best_freq[qubit] = data[qubit, 0, 0]["frequency"][index_best_fid]
-        fid_best_amps[qubit] = data[qubit, 0, 0]["amplitude"][index_best_fid]
-        fid_best_qnd[qubit] = data[qubit, 0, 0]["qnd"][index_best_fid]
-        best_angle[qubit] = data[qubit, 0, 0]["angle"][index_best_fid]
-        best_threshold[qubit] = data[qubit, 0, 0]["threshold"][index_best_fid]
-
-        index_best_qnd = np.argmax(data[qubit, 0, 0]["qnd"])
-        highest_qnd[qubit] = data[qubit, 0, 0]["qnd"][index_best_qnd]
-        qnd_best_freq[qubit] = data[qubit, 0, 0]["frequency"][index_best_qnd]
-        qnd_best_amps[qubit] = data[qubit, 0, 0]["amplitude"][index_best_qnd]
-        qnd_best_fid[qubit] = data[qubit, 0, 0]["avaraged_fidelity"][index_best_qnd]
+        index_best_qnd = np.argmax(data[qubit, 0, 0, 0]["qnd"])
+        highest_qnd[qubit] = data[qubit, 0, 0, 0]["qnd"][index_best_qnd]
+        qnd_best_freq[qubit] = data[qubit, 0, 0, 0]["frequency"][index_best_qnd]
+        qnd_best_amps[qubit] = data[qubit, 0, 0, 0]["amplitude"][index_best_qnd]
+        qnd_best_fid[qubit] = data[qubit, 0, 0, 0]["avaraged_fidelity"][index_best_qnd]
 
     return ResonatorOptimizationResults(
         best_fidelity=highest_fidelity,
@@ -379,16 +404,17 @@ def _plot(
 ):
     """Plotting function for resonator optimization"""
 
-    qubit_data = data[target, 0, 0]
+    qubit_data = data[target, 0, 0, 0]
     figures = []
     fitting_report = ""
 
     fig = make_subplots(
         rows=1,
-        cols=2,
+        cols=3,
         subplot_titles=(
             "Fidelity",
             "Quantum Non Demolition-ness",
+            r"Quantum Non Demolition-ness ($\pi$)",
         ),
     )
 
@@ -396,6 +422,7 @@ def _plot(
     amplitudes = qubit_data.amplitude
     fidelities = qubit_data.avaraged_fidelity
     qnds = qubit_data.qnd
+    qnds_pi = qubit_data.qnd_pi
 
     if fit is not None:
         fig.add_trace(
@@ -451,9 +478,21 @@ def _plot(
             col=2,
         )
 
+        fig.add_trace(
+            go.Heatmap(
+                x=amplitudes,
+                y=frequencies * HZ_TO_GHZ,
+                z=qnds_pi,
+                coloraxis=COLORAXIS[1],
+            ),
+            row=1,
+            col=3,
+        )
+
         fig.update_layout(
             xaxis_title="Amplitude [a.u.]",
             xaxis2_title="Amplitude [a.u.]",
+            xaxis3_title="Amplitude [a.u.]",
             yaxis_title="Frequency [GHz]",
             legend=dict(orientation="h"),
         )
