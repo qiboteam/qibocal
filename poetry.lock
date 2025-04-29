@@ -626,34 +626,6 @@ files = [
 ]
 
 [[package]]
-<<<<<<< HEAD
-=======
-name = "importlib-metadata"
-version = "8.6.1"
-description = "Read metadata from Python packages"
-optional = false
-python-versions = ">=3.9"
-groups = ["main", "docs"]
-markers = "python_version == \"3.9\""
-files = [
-    {file = "importlib_metadata-8.6.1-py3-none-any.whl", hash = "sha256:02a89390c1e15fdfdc0d7c6b25cb3e62650d0494005c97d6f148bf5b9787525e"},
-    {file = "importlib_metadata-8.6.1.tar.gz", hash = "sha256:310b41d755445d74569f993ccfc22838295d9fe005425094fad953d7f15c8580"},
-]
-
-[package.dependencies]
-zipp = ">=3.20"
-
-[package.extras]
-check = ["pytest-checkdocs (>=2.4)", "pytest-ruff (>=0.2.1) ; sys_platform != \"cygwin\""]
-cover = ["pytest-cov"]
-doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-lint"]
-enabler = ["pytest-enabler (>=2.2)"]
-perf = ["ipython"]
-test = ["flufl.flake8", "importlib_resources (>=1.3) ; python_version < \"3.9\"", "jaraco.test (>=5.4)", "packaging", "pyfakefs", "pytest (>=6,!=8.1.*)", "pytest-perf (>=0.9.2)"]
-type = ["pytest-mypy"]
-
-[[package]]
->>>>>>> 92fc0ac3 (feat: Adding echoCR and use parameters from IBM chip)
 name = "iniconfig"
 version = "2.1.0"
 description = "brain-dead simple config-ini parsing"
@@ -1757,11 +1729,7 @@ qulacs = ["qulacs (>=0.6.4,<0.7.0) ; python_version < \"3.13\""]
 
 [[package]]
 name = "qibolab"
-<<<<<<< HEAD
 version = "0.2.8"
-=======
-version = "0.2.5"
->>>>>>> 92fc0ac3 (feat: Adding echoCR and use parameters from IBM chip)
 description = "Quantum hardware module and drivers for Qibo"
 optional = false
 python-versions = "<3.14,>=3.10"
@@ -1790,8 +1758,12 @@ zh = ["laboneq (==2.25.0)"]
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
 reference = "emulator-multi-transmon"
+<<<<<<< HEAD
 resolved_reference = "3961167a4e00dcaa488ec9ee92eecb0d8bf9d897"
 >>>>>>> 92fc0ac3 (feat: Adding echoCR and use parameters from IBM chip)
+=======
+resolved_reference = "92e6f980e162c4e79b1403bb0e19d0fd2f4b16a1"
+>>>>>>> 3caefecd (refactor: Document code and add tests)
 
 [[package]]
 name = "recommonmark"

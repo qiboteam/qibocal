@@ -165,6 +165,12 @@ def cr_fit(
     ],
     fitting_function: Callable,
 ) -> dict[tuple[QubitId, QubitId, SetControl], list]:
+    """Perform fitting on CR data for probabilities.
+
+    We fit oscillations observed in the target qubit. Using a cosine function.
+    When on the x axis we change the duration of the CR pulse we include an exponential
+    term to address the relaxation time of the qubit.
+    """
     fitted_parameters = {}
     for pair in data.pairs:
         for setup in SetControl:
@@ -211,6 +217,7 @@ def cr_plot(
     ] = None,
     fitting_function: Optional[Callable] = None,
 ) -> tuple[list[go.Figure], str]:
+    """Plotting function for CR protocols."""
     fig = go.Figure()
     for setup in SetControl:
         pair_data = data.data[target[0], target[1], setup]
