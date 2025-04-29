@@ -76,7 +76,6 @@ ResonatorOptimizationType = np.dtype(
         ("assignment_fidelity", np.float64),
         ("avaraged_fidelity", np.float64),
         ("qnd", np.float64),
-        ("qnd_pi", np.float64),
         ("angle", np.float64),
         ("threshold", np.float64),
     ]
@@ -274,7 +273,6 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
             states = [0] * nshots + [1] * nshots
             if pi:
                 states.reverse()
-                print(states)
 
             model = QubitFit()
             model.fit(iq_values, np.array(states))
@@ -364,7 +362,9 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
                 update_index = (data_qubit.frequency == freq) & (
                     data_qubit.amplitude == amp
                 )
-                data_qubit.avaraged_fidelity[update_index] = filtered_fidelity[j, k]
+                data_qubit.avaraged_fidelity[update_index] = filtered_fidelity[version][
+                    j, k
+                ]
                 data_qubit.angle[update_index] = grids["angle"][version][j, k]
                 data_qubit.threshold[update_index] = grids["threshold"][version][j, k]
                 data_qubit.qnd[update_index] = grids["qnd"][version][j, k]
@@ -405,15 +405,17 @@ def _plot(
     """Plotting function for resonator optimization"""
 
     qubit_data = data[target, 0, 0, 0]
+    qubit_data_pi = data[target, 0, 0, 1]
     figures = []
     fitting_report = ""
 
     fig = make_subplots(
-        rows=1,
-        cols=3,
+        rows=2,
+        cols=2,
         subplot_titles=(
             "Fidelity",
             "Quantum Non Demolition-ness",
+            r"Fidelity ($\pi$)",
             r"Quantum Non Demolition-ness ($\pi$)",
         ),
     )
@@ -422,7 +424,9 @@ def _plot(
     amplitudes = qubit_data.amplitude
     fidelities = qubit_data.avaraged_fidelity
     qnds = qubit_data.qnd
-    qnds_pi = qubit_data.qnd_pi
+
+    fidelities_pi = qubit_data_pi.avaraged_fidelity
+    qnds_pi = qubit_data_pi.qnd
 
     if fit is not None:
         fig.add_trace(
@@ -433,6 +437,17 @@ def _plot(
                 coloraxis=COLORAXIS[0],
             ),
             row=1,
+            col=1,
+        )
+
+        fig.add_trace(
+            go.Heatmap(
+                x=amplitudes,
+                y=frequencies * HZ_TO_GHZ,
+                z=fidelities_pi,
+                coloraxis=COLORAXIS[0],
+            ),
+            row=2,
             col=1,
         )
 
@@ -485,20 +500,24 @@ def _plot(
                 z=qnds_pi,
                 coloraxis=COLORAXIS[1],
             ),
-            row=1,
-            col=3,
+            row=2,
+            col=2,
         )
 
         fig.update_layout(
             xaxis_title="Amplitude [a.u.]",
             xaxis2_title="Amplitude [a.u.]",
             xaxis3_title="Amplitude [a.u.]",
+            xaxis4_title="Amplitude [a.u.]",
             yaxis_title="Frequency [GHz]",
+            yaxis3_title="Frequency [GHz]",
             legend=dict(orientation="h"),
         )
         fig.update_layout(
             coloraxis={"colorscale": "Plasma", "colorbar": {"x": 1.15}},
             coloraxis2={"colorscale": "Viridis", "colorbar": {"x": -0.15}},
+            coloraxis3={"colorscale": "Plasma", "colorbar": {"x": 1.15}},
+            coloraxis4={"colorscale": "Viridis", "colorbar": {"x": -0.15}},
         )
 
         fitting_report = table_html(
