@@ -190,10 +190,13 @@ def _fit(
     fitted_parameters = cr_fit(data=data, fitting_function=fit_length_function)
     effective_coupling = {}
     for pair in data.pairs:
-        effective_coupling[pair] = (
-            1 / fitted_parameters[pair[0], pair[1], SetControl.X][2]
-            - 1 / fitted_parameters[pair[0], pair[1], SetControl.Id][2]
-        ) / 2
+        try:
+            effective_coupling[pair] = (
+                1 / fitted_parameters[pair[0], pair[1], SetControl.X][2]
+                - 1 / fitted_parameters[pair[0], pair[1], SetControl.Id][2]
+            ) / 2
+        except KeyError:  # pragma: no cover
+            pass
     return CrossResonanceLengthResults(
         effective_coupling=effective_coupling,
         fitted_parameters=fitted_parameters,
