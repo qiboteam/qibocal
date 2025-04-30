@@ -68,7 +68,7 @@ def tomography_cr_fit(
                     ),
                 )
                 fitted_parameters[pair[0], pair[1], Basis.Z, setup] = popt.tolist()
-            except Exception as e:
+            except Exception as e:  # pragma: no cover
                 log.warning(f"CR Z fit failed for pair {pair} due to {e}.")
 
     for pair in data.pairs:
@@ -97,7 +97,7 @@ def tomography_cr_fit(
                     ),
                 )
                 fitted_parameters[pair[0], pair[1], Basis.X, setup] = popt.tolist()
-            except Exception as e:
+            except Exception as e:  # pragma: no cover
                 log.warning(f"CR fit failed X for pair {pair} due to {e}.")
 
     for pair in data.pairs:
@@ -124,7 +124,7 @@ def tomography_cr_fit(
                     ),
                 )
                 fitted_parameters[pair[0], pair[1], Basis.Y, setup] = popt.tolist()
-            except Exception as e:
+            except Exception as e:  # pragma: no cover
                 log.warning(f"CR Y fit failed for pair {pair} due to {e}.")
 
     for pair in data.pairs:

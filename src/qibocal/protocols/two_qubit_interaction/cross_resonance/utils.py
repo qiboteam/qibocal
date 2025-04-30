@@ -198,7 +198,7 @@ def cr_fit(
                     x_limits=(min_x, max_x),
                 )
                 fitted_parameters[pair[0], pair[1], setup] = popt
-            except Exception as e:
+            except Exception as e:  # pragma: no cover
                 log.warning(f"CR fit failed for pair {pair} due to {e}.")
     return fitted_parameters
 
