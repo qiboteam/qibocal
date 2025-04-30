@@ -20,7 +20,6 @@ from qibolab import (
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 
 from ..result import probability
-from .utils import COLORBAND, COLORBAND_LINE
 
 
 @dataclass
@@ -159,27 +158,39 @@ def _plot(data: FluxGateData, fit: FluxGateResults, target: QubitId):
     fig = go.Figure()
     fitting_report = ""
     qubit_data = data[target]
-    duration = qubit_data.duration
+    # duration = qubit_data.duration
     prob = qubit_data.prob_1
-    error = qubit_data.error
+    phase = []
+    for i in range(len(prob)):
+        index = i % len(prob)
+        index_1 = (i + 1) % len(prob)
+        phase.append(prob[index] - prob[index_1])
+    # error = qubit_data.error
     fig.add_trace(
         go.Scatter(
             x=qubit_data.duration,
-            y=qubit_data.prob_1,
-            name="Data",
+            y=prob,
+            name="prob",
         )
     )
     fig.add_trace(
         go.Scatter(
-            x=np.concatenate((duration, duration[::-1])),
-            y=np.concatenate((prob + error, (prob - error)[::-1])),
-            fill="toself",
-            fillcolor=COLORBAND,
-            line=dict(color=COLORBAND_LINE),
-            showlegend=True,
-            name="Errors",
+            x=qubit_data.duration,
+            y=phase,
+            name="phase",
         )
     )
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=np.concatenate((duration, duration[::-1])),
+    #         y=np.concatenate((prob + error, (prob - error)[::-1])),
+    #         fill="toself",
+    #         fillcolor=COLORBAND,
+    #         line=dict(color=COLORBAND_LINE),
+    #         showlegend=True,
+    #         name="Errors",
+    #     )
+    # )
 
     fig.update_layout(
         showlegend=True,
