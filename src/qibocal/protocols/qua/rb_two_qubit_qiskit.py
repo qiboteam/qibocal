@@ -31,6 +31,7 @@ from .stream_rb import (
 
 @dataclass
 class QuaQiskitRbParameters(StandardRBParameters):
+    interleave_cz: bool = False
     debug: Optional[str] = None
     """Dump QUA script and config in a file with this name."""
 
@@ -74,7 +75,7 @@ def _acquisition(
     gate_indices = []
     for depth in params.depths:
         clifford_indices = np.random.randint(0, NCLIFFORDS, size=(params.niter, depth))
-        _, circuits = generate_circuits(clifford_indices)
+        _, circuits = generate_circuits(clifford_indices, params.interleave_cz)
         gate_indices.extend(to_indices(to_sequence(circuit)) for circuit in circuits)
         data.circuits[targets].extend(ids.tolist() for ids in clifford_indices)
 
