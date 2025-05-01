@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from itertools import product
 from typing import Optional
 
 import numpy as np
@@ -22,7 +21,12 @@ from qibocal.protocols.rb_qiskit.rb2q import (
 )
 
 from .configuration import generate_config
-from .stream_rb import find_drive_duration, find_measurement_duration, generate_program
+from .stream_rb import (
+    NATIVE_GATES_PAIRS,
+    find_drive_duration,
+    find_measurement_duration,
+    generate_program,
+)
 
 
 @dataclass
@@ -31,13 +35,15 @@ class QuaQiskitRbParameters(StandardRBParameters):
     """Dump QUA script and config in a file with this name."""
 
 
-NATIVE_GATES = ["i", "x180", "y180", "x90", "y90", "-x90", "-y90"]
-NATIVE_GATES_PAIRS = list(product(NATIVE_GATES, NATIVE_GATES))
-NATIVE_GATES_PAIRS.append(("cz", "cz"))
+def _convert_identity(g: Optional[str]) -> str:
+    return "i" if g is None else g
 
 
 def to_indices(sequence: Sequence) -> list[int]:
-    return [NATIVE_GATES_PAIRS.index(pair) for pair in sequence]
+    return [
+        NATIVE_GATES_PAIRS.index((_convert_identity(g0), _convert_identity(g1)))
+        for g0, g1 in sequence
+    ]
 
 
 def estimate_duration(
@@ -52,6 +58,9 @@ def _acquisition(
     params: QuaQiskitRbParameters, platform: Platform, targets: list[QubitId]
 ) -> RB2QData:
     """Data acquisition for two qubit Standard Randomized Benchmarking."""
+    assert len(targets) == 1
+    targets = targets[0]
+    assert len(targets) == 2
 
     data = RB2QData(
         depths=params.depths,
@@ -60,32 +69,32 @@ def _acquisition(
         nshots=params.nshots,
         niter=params.niter,
     )
-    data.circuits[targets[0]] = []
+    data.circuits[targets] = []
 
     gate_indices = []
     for depth in params.depths:
         clifford_indices = np.random.randint(0, NCLIFFORDS, size=(params.niter, depth))
         _, circuits = generate_circuits(clifford_indices)
         gate_indices.extend(to_indices(to_sequence(circuit)) for circuit in circuits)
-        data.circuits[targets[0]].extend(ids.tolist() for ids in clifford_indices)
+        data.circuits[targets].extend(ids.tolist() for ids in clifford_indices)
 
     if params.relaxation_time is None:
         relaxation_time = platform.settings.relaxation_time
     else:
         relaxation_time = params.relaxation_time
 
-    max_depth = max(len(circuit) for circuit in circuits)
+    max_depth = max(len(circuit) for circuit in gate_indices)
     program = generate_program(
         platform,
-        targets,
-        ncircuits=len(circuits),
+        sorted(targets)[::-1],  # FIXME: This will only work for qw5q_platinum
+        ncircuits=len(gate_indices),
         nshots=params.nshots,
         relaxation_time=relaxation_time,
         max_depth=max_depth,
     )
 
     estimated_duration = estimate_duration(
-        circuits,
+        gate_indices,
         find_drive_duration(platform, targets[0]),
         find_measurement_duration(platform, targets[0]),
         params.nshots,
@@ -93,7 +102,10 @@ def _acquisition(
     )
     log.info("Estimated duration: %.5f sec" % estimated_duration)
 
-    config = generate_config(platform, list(platform.qubits.keys()), targets)
+    # FIXME: This will only work for qw5q_platinum
+    config = generate_config(
+        platform, list(platform.qubits.keys()), sorted(targets)[::-1]
+    )
 
     qmm = platform._controller.manager
 
@@ -107,7 +119,7 @@ def _acquisition(
     )
 
     # TODO: Progress bar
-    for circuit in circuits:
+    for circuit in gate_indices:
         depth = len(circuit)
         job.push_to_input_stream("depth_input_stream", depth)
         job.push_to_input_stream("gates_input_stream", circuit)
@@ -118,10 +130,12 @@ def _acquisition(
     state0 = handles.get("state0").fetch_all()
     state1 = handles.get("state1").fetch_all()
 
+    state0 = state0.reshape((len(params.depths), params.niter, -1))
+    state1 = state1.reshape((len(params.depths), params.niter, -1))
     for i, depth in enumerate(params.depths):
         samples = ((state0[i] + state1[i]) != 0).astype(np.int32)
         data.register_qubit(
-            RBType, (targets[0][0], targets[0][1], depth), {"samples": samples}
+            RBType, (targets[0], targets[1], depth), {"samples": samples}
         )
 
     return data
