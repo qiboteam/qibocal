@@ -21,9 +21,11 @@ from .flux_dependence.resonator_flux_dependence import resonator_flux
 from .flux_gate import flux_gate
 from .qua import (
     qua_cryoscope,
+    qua_process_tomography,
     qua_standard_rb_1q,
     qua_standard_rb_2q,
     qua_standard_rb_2q_qiskit,
+    qua_state_tomography,
 )
 from .qubit_power_spectroscopy import qubit_power_spectroscopy
 from .qubit_spectroscopy import qubit_spectroscopy
@@ -128,4 +130,6 @@ __all__ = [
     "qua_standard_rb_2q",
     "qua_standard_rb_2q_qiskit",
     "qua_cryoscope",
+    "qua_state_tomography",
+    "qua_process_tomography",
 ]
