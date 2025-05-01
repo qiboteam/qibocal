@@ -1,9 +1,10 @@
 import math
 from itertools import product
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 from qibolab import Platform, Pulse, Qubit, VirtualZ
+from qm import CompilerOptionArguments, generate_qua_script
 from qm.qua import (
     advance_input_stream,
     align,
@@ -27,12 +28,26 @@ from qm.qua import (
     wait,
 )
 
-from .configuration import baked_duration
+from qibocal.config import log
 
+from .configuration import baked_duration, generate_config
+
+Sequence = list[tuple[str, str]]
 QubitId = Union[int, str]
 NATIVE_GATES = ["i", "x180", "y180", "x90", "y90", "-x90", "-y90"]
 NATIVE_GATES_PAIRS = list(product(NATIVE_GATES, NATIVE_GATES))
 NATIVE_GATES_PAIRS.append(("cz", "cz"))
+
+
+def _convert_identity(g: Optional[str]) -> str:
+    return "i" if g is None else g
+
+
+def to_indices(sequence: Sequence) -> list[int]:
+    return [
+        NATIVE_GATES_PAIRS.index((_convert_identity(g0), _convert_identity(g1)))
+        for g0, g1 in sequence
+    ]
 
 
 def classify(platform: Platform, qubit: Qubit, signal_i, signal_q, state):
@@ -182,3 +197,70 @@ def generate_program(
                 gates_st.buffer(max_depth).buffer(ncircuits).save("gates")
 
     return prog
+
+
+def estimate_duration(
+    circuits, rx_duration, mz_duration, nshots, relaxation_time
+) -> int:
+    duration = sum(len(circuit) * rx_duration for circuit in circuits)
+    duration += len(circuits) * (mz_duration + relaxation_time)
+    return duration * nshots / 1e9
+
+
+def execute(
+    sequences: list[Sequence],
+    platform: Platform,
+    targets: list[QubitId],
+    nshots: int,
+    relaxation_time: Optional[float] = None,
+    debug: Optional[str] = None,
+):
+    circuits = [to_indices(circuit) for circuit in sequences]
+
+    max_depth = max(len(circuit) for circuit in circuits)
+    program = generate_program(
+        platform,
+        sorted(targets)[::-1],  # FIXME: This will only work for qw5q_platinum
+        ncircuits=len(circuits),
+        nshots=nshots,
+        relaxation_time=relaxation_time,
+        max_depth=max_depth,
+    )
+
+    estimated_duration = estimate_duration(
+        circuits,
+        find_drive_duration(platform, targets[0]),
+        find_measurement_duration(platform, targets[0]),
+        nshots,
+        relaxation_time,
+    )
+    log.info("Estimated duration: %.5f sec" % estimated_duration)
+
+    # FIXME: This will only work for qw5q_platinum
+    config = generate_config(
+        platform, list(platform.qubits.keys()), sorted(targets)[::-1]
+    )
+
+    qmm = platform._controller.manager
+
+    if debug is not None:
+        with open(debug, "w") as file:
+            file.write(generate_qua_script(program, config))
+
+    qm = qmm.open_qm(config)
+    job = qm.execute(
+        program, compiler_options=CompilerOptionArguments(flags=["not-strict-timing"])
+    )
+
+    # TODO: Progress bar
+    for circuit in circuits:
+        job.push_to_input_stream("depth_input_stream", len(circuit))
+        job.push_to_input_stream("gates_input_stream", circuit)
+
+    handles = job.result_handles
+    handles.wait_for_all_values()
+
+    state0 = handles.get("state0").fetch_all()
+    state1 = handles.get("state1").fetch_all()
+
+    return state0, state1
