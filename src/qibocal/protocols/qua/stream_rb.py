@@ -1,4 +1,5 @@
 import math
+from itertools import product
 from typing import Union
 
 import numpy as np
@@ -27,9 +28,11 @@ from qm.qua import (
 )
 
 from .configuration import baked_duration
-from .natives import NATIVE_GATES_PAIRS
 
 QubitId = Union[int, str]
+NATIVE_GATES = ["i", "x180", "y180", "x90", "y90", "-x90", "-y90"]
+NATIVE_GATES_PAIRS = list(product(NATIVE_GATES, NATIVE_GATES))
+NATIVE_GATES_PAIRS.append(("cz", "cz"))
 
 
 def classify(platform: Platform, qubit: Qubit, signal_i, signal_q, state):
