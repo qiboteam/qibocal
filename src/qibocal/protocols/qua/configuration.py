@@ -3,6 +3,8 @@ from dataclasses import asdict
 from qibolab import Pulse, Rectangular
 from qibolab.instruments.qm import QmController
 
+__all__ = ["generate_config"]
+
 NATIVE_OPS = {
     "x180": lambda q: (f"plus_i_{q}", f"plus_q_{q}"),
     "y180": lambda q: (f"minus_q_{q}", f"plus_i_{q}"),
@@ -46,6 +48,13 @@ def get_sampling_rate(platform, channel):
     return 1
 
 
+def get_max_output(platform, channel):
+    config = platform.config(channel)
+    if hasattr(config, "output_mode") and config.output_mode == "amplified":
+        return 2.5
+    return MAX_OUTPUT
+
+
 def drive_waveforms(platform, qubit):
     channel, pulse = platform.natives.single_qubit[qubit].RX[0]
     sampling_rate = get_sampling_rate(platform, channel)
@@ -56,6 +65,10 @@ def drive_waveforms(platform, qubit):
     return components_i | components_q
 
 
+def baked_duration(duration: int) -> int:
+    return int(max((duration + 3.5) // 4 * 4, 16))
+
+
 def flux_waveforms(platform, qubit):
     _waveforms = {}
     for (q1, q2), natives in platform.natives.two_qubit.items():
@@ -63,12 +76,13 @@ def flux_waveforms(platform, qubit):
         if cz is not None:
             channel, pulse = [t for t in cz if isinstance(t[1], Pulse)][0]
             sampling_rate = get_sampling_rate(platform, channel)
+            max_output = get_max_output(platform, channel)
             if channel == platform.qubits[qubit].flux:
                 other = q2 if q1 == qubit else q1
-                samples = (MAX_OUTPUT * pulse.i(sampling_rate=sampling_rate)).tolist()
-                residual = len(samples) % 4
-                if residual > 0:
-                    samples.extend((4 - residual) * [0])
+                samples = (max_output * pulse.i(sampling_rate=sampling_rate)).tolist()
+                new_duration = baked_duration(pulse.duration)
+                pad_len = sampling_rate * new_duration - len(samples)
+                samples.extend(pad_len * [0.0])
                 _waveforms[f"cz_{qubit}_{other}"] = {
                     "type": "arbitrary",
                     "samples": samples,
@@ -133,10 +147,9 @@ def flux_pulses(platform, qubit):
             channel, pulse = [t for t in cz if isinstance(t[1], Pulse)][0]
             if channel == platform.qubits[qubit].flux:
                 other = q2 if q1 == qubit else q1
-                duration = int(max((pulse.duration + 3.5) // 4 * 4, 16))
                 _pulses[f"cz_{qubit}_{other}"] = {
                     "operation": "control",
-                    "length": duration,
+                    "length": baked_duration(pulse.duration),
                     "waveforms": {
                         "single": f"cz_{qubit}_{other}",
                     },
