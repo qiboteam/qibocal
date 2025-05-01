@@ -316,6 +316,8 @@ class StandardRBResult(Results):
 
     fidelity: dict[QubitId, float]
     """The overall fidelity of this qubit."""
+    infidelity: dict[QubitId, float]
+    """The overall infidelity of this qubit."""
     pulse_fidelity: dict[QubitId, float]
     """The pulse fidelity of the gates acting on this qubit."""
     fit_parameters: dict[QubitId, list[float]]
@@ -674,7 +676,7 @@ def fit(qubits, data):
     """Takes data, extracts the depths and the signal and fits it with an
     exponential function y = Ap^x+B."""
 
-    fidelity, pulse_fidelity = {}, {}
+    fidelity, infidelity, pulse_fidelity = {}, {}, {}
     popts, perrs = {}, {}
     error_barss = {}
     for qubit in qubits:
@@ -697,9 +699,10 @@ def fit(qubits, data):
 
         popt, perr = fit_exp1B_func(x, samples_mean, sigma=sigma, bounds=[0, 1])
         # Compute the fidelities
-        infidelity = (1 - popt[1]) / 2
-        fidelity[qubit] = 1 - infidelity
-        pulse_fidelity[qubit] = 1 - infidelity / data.npulses_per_clifford
+        inf = 3 * (1 - popt[1]) / 4
+        infidelity[qubit] = inf
+        fidelity[qubit] = 1 - inf
+        pulse_fidelity[qubit] = 1 - inf / NPULSES_PER_CLIFFORD
 
         # conversion from np.array to list/tuple
         error_bars = error_bars.tolist()
@@ -707,4 +710,6 @@ def fit(qubits, data):
         perrs[qubit] = perr
         popts[qubit] = popt
 
-    return StandardRBResult(fidelity, pulse_fidelity, popts, perrs, error_barss)
+    return StandardRBResult(
+        fidelity, infidelity, pulse_fidelity, popts, perrs, error_barss
+    )
