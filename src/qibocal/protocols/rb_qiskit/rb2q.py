@@ -106,6 +106,7 @@ def to_qibolab_sequence(
 
 def generate_circuits(
     indices: npt.NDArray,
+    interleave_cz: bool = False,
 ) -> tuple[list[QuantumCircuit], list[QuantumCircuit]]:
     """Generate circuits from Clifford indices.
 
@@ -122,6 +123,9 @@ def generate_circuits(
             native_circuit = native_circuit.compose(
                 clifford(i, basis_gates=BASIS_GATES)
             )
+            if interleave_cz:
+                circuit.cz(0, 1)
+                native_circuit.cz(0, 1)
 
         # add inverse to circuits
         inverse_index = INVERSE[num_from_2q_circuit(circuit)]
@@ -140,6 +144,7 @@ def generate_circuits(
 class QiskitRbParameters(StandardRBParameters):
     # batch_size: int = 10
     simulation: bool = False
+    interleave_cz: bool = False
 
 
 def _acquisition(
@@ -174,7 +179,7 @@ def _acquisition(
 
     for depth in params.depths:
         indices = np.random.randint(0, NCLIFFORDS, size=(params.niter, depth))
-        _, circuits = generate_circuits(indices)
+        _, circuits = generate_circuits(indices, params.interleave_cz)
 
         if params.simulation:
             from qiskit_aer import AerSimulator
