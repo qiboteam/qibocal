@@ -234,7 +234,7 @@ def execute(
         nshots,
         relaxation_time,
     )
-    log.info("Estimated duration: %.5f sec" % estimated_duration)
+    log.info("Estimated ideal duration: %.5f sec" % estimated_duration)
 
     # FIXME: This will only work for qw5q_platinum
     config = generate_config(
