@@ -39,7 +39,12 @@ from .flux_dependence.qubit_crosstalk import qubit_crosstalk
 from .flux_dependence.qubit_flux_dependence import qubit_flux
 from .flux_dependence.resonator_flux_dependence import resonator_flux
 from .flux_gate import flux_gate
-from .qua import qua_cryoscope, qua_standard_rb_1q, qua_standard_rb_2q
+from .qua import (
+    qua_cryoscope,
+    qua_standard_rb_1q,
+    qua_standard_rb_2q,
+    qua_standard_rb_2q_qiskit,
+)
 from .qubit_power_spectroscopy import qubit_power_spectroscopy
 from .qubit_spectroscopy import qubit_spectroscopy
 from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
@@ -170,6 +175,7 @@ __all__ = [
     "rb_qiskit",
     "qua_standard_rb_1q",
     "qua_standard_rb_2q",
+    "qua_standard_rb_2q_qiskit",
     "qua_cryoscope",
 ]
 >>>>>>> 18904cd3 (feat: implement 2q RB using Qiskit circuits)
