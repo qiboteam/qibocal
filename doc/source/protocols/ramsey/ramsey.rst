@@ -14,7 +14,7 @@ The first :math:`\pi /2` pulse will project the qubit from :math:`\ket{0}` onto 
 plane of the Bloch sphere. During the waiting time :math:`\tau` the qubit will decohere around
 the z axis, after the second :math:`\pi /2` we peform a measurement.
 By changing the waiting time :math:`\tau` we should observe an exponential decay
-in the probability of measuring :math:`\ket{1}` which will give us an estimate of :math:`T_2*`.
+in the probability of measuring :math:`\ket{1}` which will give us an estimate of :math:`T_2^*`.
 In the case where there is a difference between the qubit frequency and the frequency of
 the drive pulse the final state will show a sinusoidal dependence from which we can extract
 a correction on the qubit frequency :cite:p:`Baur2012RealizingQG`:
