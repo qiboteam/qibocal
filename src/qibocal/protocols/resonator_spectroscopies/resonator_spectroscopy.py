@@ -13,20 +13,17 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 from qibocal.update import replace
 
-from .utils import (
+from ..utils import (
     PowerLevel,
     chi2_reduced,
     chi2_reduced_complex,
     lorentzian,
     lorentzian_fit,
     readout_frequency,
-    s21,
-    s21_fit,
-    s21_spectroscopy_plot,
-    spectroscopy_plot,
 )
+from .resonator_utils import s21, s21_fit, s21_spectroscopy_plot, spectroscopy_plot
 
-__all__ = ["resonator_spectroscopy"]
+__all__ = ["resonator_spectroscopy", "ResonatorSpectroscopyData", "ResSpecType"]
 
 ResSpecType = np.dtype(
     [

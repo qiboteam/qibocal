@@ -10,6 +10,8 @@ from qibocal.protocols.utils import table_dict, table_html
 
 from .standard_rb import RBData, StandardRBParameters
 
+__all__ = ["filtered_rb"]
+
 
 @dataclass
 class FilteredRBParameters(StandardRBParameters):

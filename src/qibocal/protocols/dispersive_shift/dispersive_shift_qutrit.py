@@ -17,9 +17,11 @@ from qibocal.protocols.utils import (
     table_html,
 )
 
-from ..result import magnitude, phase
+from ...result import magnitude, phase
+from ..resonator_spectroscopies.resonator_spectroscopy import ResSpecType
 from .dispersive_shift import DispersiveShiftData, DispersiveShiftParameters
-from .resonator_spectroscopy import ResSpecType
+
+__all__ = ["dispersive_shift_qutrit"]
 
 
 @dataclass

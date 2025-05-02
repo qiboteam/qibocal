@@ -35,6 +35,8 @@ FEEDBACK_MAX = 1 - 2**-20
 SAMPLING_RATE = 1
 """Instrument sampling rate in GSamples"""
 
+__all__ = ["cryoscope"]
+
 
 @dataclass
 class CryoscopeParameters(Parameters):

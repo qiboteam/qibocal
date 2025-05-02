@@ -9,14 +9,13 @@ from qibocal import update
 from qibocal.auto.operation import Parameters, QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.protocols.rabi.length_signal import (
-    RabiLengthSignalData,
-    RabiLengthSignalResults,
-)
 from qibocal.result import probability
 
 from ..utils import chi2_reduced, fallback_period, guess_period
 from . import utils
+from .length_signal import RabiLengthSignalData, RabiLengthSignalResults
+
+__all__ = ["rabi_length"]
 
 
 @dataclass

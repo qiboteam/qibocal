@@ -10,8 +10,10 @@ from qibocal.auto.mode import AUTOCALIBRATION, ExecutionMode
 from qibocal.auto.operation import DEFAULT_PARENT_PARAMETERS
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import Task
-from qibocal.protocols.classification import SingleShotClassificationParameters
-from qibocal.protocols.readout_mitigation_matrix import (
+from qibocal.protocols.classification.classification import (
+    SingleShotClassificationParameters,
+)
+from qibocal.protocols.readout.readout_mitigation_matrix import (
     ReadoutMitigationMatrixParameters,
 )
 
