@@ -1,14 +1,7 @@
-from .allxy.allxy import allxy
-from .allxy.allxy_resonator_depletion_tuning import allxy_resonator_depletion_tuning
+from . import allxy, coherence, resonator_spectroscopy
+from .allxy import *
 from .classification import single_shot_classification
-from .coherence.cpmg import cpmg
-from .coherence.spin_echo import spin_echo
-from .coherence.spin_echo_signal import spin_echo_signal
-from .coherence.t1 import t1
-from .coherence.t1_signal import t1_signal
-from .coherence.t2 import t2
-from .coherence.t2_signal import t2_signal
-from .coherence.zeno import zeno
+from .coherence import *
 from .dispersive_shift import dispersive_shift
 from .dispersive_shift_qutrit import dispersive_shift_qutrit
 from .drag import drag_tuning
@@ -44,7 +37,7 @@ from .readout_characterization import readout_characterization
 from .readout_mitigation_matrix import readout_mitigation_matrix
 from .readout_optimization.resonator_amplitude import resonator_amplitude
 from .resonator_punchout import resonator_punchout
-from .resonator_spectroscopy import resonator_spectroscopy
+from .resonator_spectroscopy import *
 from .signal_experiments.calibrate_state_discrimination import (
     calibrate_state_discrimination,
 )
@@ -59,16 +52,19 @@ from .two_qubit_interaction import (
 )
 from .two_qubit_state_tomography import two_qubit_state_tomography
 
-__all__ = [
-    "allxy",
+__all__ = []
+__all__ += ["resonator_spectroscopy"]
+__all__ += ["allxy"]
+__all__ += ["coherence"]
+__all__ += [
     "single_shot_classification",
-    "spin_echo",
-    "spin_echo_signal",
-    "t1",
-    "t1_signal",
-    "t2",
-    "t2_signal",
-    "zeno",
+    # "spin_echo",
+    # "spin_echo_signal",
+    # "t1",
+    # "t1_signal",
+    # "t2",
+    # "t2_signal",
+    # "zeno",
     "dispersive_shift",
     "dispersive_shift_qutrit",
     "drag_tuning",
@@ -100,7 +96,6 @@ __all__ = [
     "chevron_signal",
     "correct_virtual_z_phases",
     "state_tomography",
-    "allxy_resonator_depletion_tuning",
     "two_qubit_state_tomography",
     "qubit_power_spectroscopy",
     "rabi_amplitude_frequency",
@@ -114,6 +109,6 @@ __all__ = [
     "ramsey_zz",
     "flux_gate",
     "flux_amplitude_frequency",
-    "cpmg",
+    # "cpmg",
     "drag_simple",
 ]

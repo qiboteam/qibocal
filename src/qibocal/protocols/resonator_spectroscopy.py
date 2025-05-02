@@ -26,6 +26,8 @@ from .utils import (
     spectroscopy_plot,
 )
 
+__all__ = ["resonator_spectroscopy"]
+
 ResSpecType = np.dtype(
     [
         ("freq", np.float64),
