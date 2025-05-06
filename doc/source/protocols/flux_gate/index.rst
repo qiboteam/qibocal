@@ -16,7 +16,7 @@ state population.
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.flux_gate.FluxGateParameters
+.. autoclass:: qibocal.protocols.flux_dependence.flux_gate.FluxGateParameters
   :noindex:
 
 

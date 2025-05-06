@@ -22,7 +22,7 @@ pulses is present. In the case where the qubit is biased at the sweetspot :math:
 
 Parameters
 ^^^^^^^^^^
-.. autoclass:: qibocal.protocols.flux_amplitude_frequency.FluxAmplitudeFrequencyParameters
+.. autoclass:: qibocal.protocols.flux_dependence.flux_amplitude_frequency.FluxAmplitudeFrequencyParameters
   :noindex:
 
 

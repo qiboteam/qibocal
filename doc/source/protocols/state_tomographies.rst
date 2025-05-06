@@ -5,7 +5,7 @@ Parameters
 ^^^^^^^^^^
 
 .. autoclass::
-	qibocal.protocols.state_tomography.StateTomographyParameters
+	qibocal.protocols.tomographies.state_tomography.StateTomographyParameters
 	:noindex:
 
 Example
