@@ -9,15 +9,26 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 from qibocal.update import replace
 
-from .. import update
-from .resonator_spectroscopy import ResonatorSpectroscopyData, ResSpecType
-from .utils import (
+from ... import update
+from ..resonator_spectroscopies.resonator_spectroscopy import (
+    ResonatorSpectroscopyData,
+    ResSpecType,
+)
+from ..resonator_spectroscopies.resonator_utils import spectroscopy_plot
+from ..utils import (
     chi2_reduced,
     lorentzian,
     lorentzian_fit,
     readout_frequency,
-    spectroscopy_plot,
 )
+
+__all__ = [
+    "qubit_spectroscopy",
+    "QubitSpectroscopyParameters",
+    "QubitSpectroscopyResults",
+    "QubitSpectroscopyData",
+    "_fit",
+]
 
 
 @dataclass

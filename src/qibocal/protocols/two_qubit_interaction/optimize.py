@@ -25,6 +25,8 @@ from qibocal.protocols.utils import table_dict, table_html
 from .utils import order_pair
 from .virtual_z_phases import create_sequence, fit_sinusoid, phase_diff
 
+__all__ = ["optimize_two_qubit_gate"]
+
 
 @dataclass
 class OptimizeTwoQubitGateParameters(Parameters):

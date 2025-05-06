@@ -8,23 +8,30 @@ from scipy.optimize import curve_fit
 from qibocal import update
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
-from qibocal.protocols import drag
 from qibocal.result import probability
 from qibocal.update import replace
 
-from .utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
+from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
+from .drag import (
+    DragTuningData,
+    DragTuningParameters,
+    DragTuningResults,
+    DragTuningType,
+)
 
 SEQUENCES = ["YpX9", "XpY9"]
 """Sequences used to fit drag parameter."""
 
+__all__ = ["drag_simple"]
+
 
 @dataclass
-class DragTuningSimpleParameters(drag.DragTuningParameters):
+class DragTuningSimpleParameters(DragTuningParameters):
     """DragTuningSimple runcard inputs."""
 
 
 @dataclass
-class DragTuningSimpleResults(drag.DragTuningResults):
+class DragTuningSimpleResults(DragTuningResults):
     """DragTuningSimple outputs."""
 
     def __contains__(self, key):
@@ -32,7 +39,7 @@ class DragTuningSimpleResults(drag.DragTuningResults):
 
 
 @dataclass
-class DragTuningSimpleData(drag.DragTuningData):
+class DragTuningSimpleData(DragTuningData):
     """DragTuningSimple acquisition outputs."""
 
     def __getitem__(self, key: tuple[QubitId, str]):
@@ -112,7 +119,7 @@ def _acquisition(
                 prob = probability(result, state=1)
                 # store the results
                 data.register_qubit(
-                    drag.DragTuningType,
+                    DragTuningType,
                     (qubit),
                     dict(
                         prob=np.array([prob]),
@@ -131,7 +138,7 @@ def _acquisition(
                 prob = probability(result[ro_pulse.id], state=1)
                 # store the results
                 data.register_qubit(
-                    drag.DragTuningType,
+                    DragTuningType,
                     (qubit),
                     dict(
                         prob=np.array([prob]),

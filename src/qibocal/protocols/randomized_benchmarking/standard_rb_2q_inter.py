@@ -11,6 +11,8 @@ from qibocal.protocols.randomized_benchmarking.standard_rb_2q import (
 
 from .utils import RB2QInterData, StandardRBResult, fit, twoq_rb_acquisition
 
+__all__ = ["standard_rb_2q_inter"]
+
 
 @dataclass
 class StandardRB2QInterParameters(StandardRB2QParameters):

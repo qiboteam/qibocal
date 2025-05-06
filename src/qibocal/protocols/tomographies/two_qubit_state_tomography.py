@@ -24,8 +24,8 @@ from qibocal.auto.operation import (
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
 from qibocal.calibration import CalibrationPlatform
 
+from ..utils import table_dict, table_html
 from .state_tomography import StateTomographyParameters, plot_reconstruction
-from .utils import table_dict, table_html
 
 SINGLE_QUBIT_BASIS = ["X", "Y", "Z"]
 TWO_QUBIT_BASIS = list(product(SINGLE_QUBIT_BASIS, SINGLE_QUBIT_BASIS))
@@ -38,6 +38,8 @@ TomographyType = np.dtype(
     [("frequencies", np.int64), ("simulation_probabilities", np.float64)]
 )
 """Custom dtype for tomography."""
+
+__all__ = ["two_qubit_state_tomography"]
 
 
 @dataclass

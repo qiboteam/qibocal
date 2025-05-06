@@ -24,7 +24,9 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
-from .utils import HZ_TO_GHZ, table_dict, table_html
+from ..utils import HZ_TO_GHZ, table_dict, table_html
+
+__all__ = ["flux_amplitude_frequency"]
 
 
 @dataclass

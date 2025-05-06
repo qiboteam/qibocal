@@ -39,7 +39,7 @@ After collecting the data from the two spectroscopies, for each readout frequenc
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.dispersive_shift.DispersiveShiftParameters
+.. autoclass:: qibocal.protocols.dispersive_shift.dispersive_shift.DispersiveShiftParameters
 	:noindex:
 
 Example

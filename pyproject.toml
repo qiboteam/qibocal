@@ -92,3 +92,7 @@ types = "true"
 [tool.pytest.ini_options]
 testpaths = ['tests/']
 addopts = ['--cov=qibocal', '--cov-report=xml', '--cov-report=html']
+
+[tool.pycln]
+all = true
+exclude = "__init__.py"

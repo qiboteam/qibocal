@@ -39,6 +39,13 @@ ROC_LENGHT = 800
 ROC_WIDTH = 800
 DEFAULT_CLASSIFIER = "qubit_fit"
 
+__all__ = [
+    "single_shot_classification",
+    "SingleShotClassificationData",
+    "SingleShotClassificationParameters",
+    "ClassificationType",
+]
+
 
 def evaluate_snr(zeros: npt.NDArray, ones: npt.NDArray) -> float:
     """Compute snr for zeros and ones"""

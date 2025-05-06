@@ -7,16 +7,19 @@ from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.update import replace
 
-from .. import update
-from ..result import magnitude, phase
+from ... import update
+from ...result import magnitude, phase
+from ..resonator_spectroscopies.resonator_spectroscopy import ResSpecType
+from ..resonator_spectroscopies.resonator_utils import spectroscopy_plot
+from ..utils import readout_frequency, table_dict, table_html
 from .qubit_spectroscopy import (
     QubitSpectroscopyData,
     QubitSpectroscopyParameters,
     QubitSpectroscopyResults,
     _fit,
 )
-from .resonator_spectroscopy import ResSpecType
-from .utils import readout_frequency, spectroscopy_plot, table_dict, table_html
+
+__all__ = ["qubit_spectroscopy_ef"]
 
 
 @dataclass
