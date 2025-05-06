@@ -1,3 +1,4 @@
+from .cryoscope import cryoscope
 from .flux_amplitude_frequency import flux_amplitude_frequency
 from .flux_gate import flux_gate
 from .qubit_crosstalk import qubit_crosstalk
@@ -12,4 +13,5 @@ __all__ = [
     "flux_gate",
     "flux_amplitude_frequency",
     "qubit_vz",
+    "cryoscope",
 ]
