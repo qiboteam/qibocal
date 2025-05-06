@@ -54,7 +54,10 @@ from .two_qubit_interaction import (
     chevron,
     chevron_signal,
     correct_virtual_z_phases,
+    cross_resonance_amplitude,
+    cross_resonance_length,
     cryoscope,
+    hamiltonian_tomography_cr_length,
     optimize_two_qubit_gate,
 )
 from .two_qubit_state_tomography import two_qubit_state_tomography
@@ -116,4 +119,7 @@ __all__ = [
     "flux_amplitude_frequency",
     "cpmg",
     "drag_simple",
+    "cross_resonance_length",
+    "cross_resonance_amplitude",
+    "hamiltonian_tomography_cr_length",
 ]
