@@ -57,6 +57,8 @@ from .two_qubit_interaction import (
     cryoscope,
     optimize_two_qubit_gate,
     snz_optimize,
+    snz_optimize_t_idle,
+    snz_optimize_t_idle_vs_t_tot,
 )
 from .two_qubit_state_tomography import two_qubit_state_tomography
 
@@ -118,4 +120,6 @@ __all__ = [
     "cpmg",
     "drag_simple",
     "snz_optimize",
+    "snz_optimize_t_idle",
+    "snz_optimize_t_idle_vs_t_tot",
 ]

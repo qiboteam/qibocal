@@ -41,7 +41,7 @@ class SNZFinetuningParamteters(Parameters):
     theta_start: float
     theta_end: float
     theta_step: float
-    b_amplitude: float
+    b_amplitude: float  #
 
 
 @dataclass

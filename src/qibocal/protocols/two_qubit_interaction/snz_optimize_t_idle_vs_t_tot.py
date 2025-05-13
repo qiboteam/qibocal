@@ -5,7 +5,7 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# import plotly.colors.cyclical #
+# import plotly.colors.cyclical
 from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 from qibolab._core.pulses.envelope import Snz
 
@@ -26,22 +26,22 @@ from .virtual_z_phases import create_sequence, fit_sinusoid, phase_diff
 
 @dataclass
 class SNZFinetuningParamteters(Parameters):
-    amplitude_min: float
-    """Amplitude minimum."""
-    amplitude_max: float
-    """Amplitude maximum."""
-    amplitude_step: float
-    """Amplitude step."""
-    amp_ratio_min: float
-    """Amplitude minimum."""
-    amp_ratio_max: float
-    """Amplitude maximum."""
-    amp_ratio_step: float
-    """Amplitude step."""
+    duration_min: float
+    """Duration minimum."""
+    duration_max: float
+    """Duration maximum."""
+    duration_step: float
+    """Duration step."""
+    t_idle_min: float
+    """t_idle minimum."""
+    t_idle_max: float
+    """t_idle maximum."""
+    t_idle_step: float
+    """t_idle step."""
     theta_start: float
     theta_end: float
     theta_step: float
-    t_idling: float
+    b_amplitude: float  #
 
 
 @dataclass
@@ -64,9 +64,9 @@ class SNZFinetuningResults(Results):
 
 OptimizeTwoQubitGateType = np.dtype(
     [
-        ("amp", np.float64),
+        ("duration", np.float64),
         ("theta", np.float64),
-        ("rel_amplitude", np.float64),
+        ("t_idle", np.float64),
         ("prob_target", np.float64),
         ("prob_control", np.float64),
     ]
@@ -81,10 +81,10 @@ class SNZFinetuningData(Data):
     """Raw data."""
     thetas: list = field(default_factory=list)
     """Angles swept."""
-    amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
-    """"Amplitudes swept."""
-    rel_amplitudes: list[float] = field(default_factory=list)
-    """Durations swept."""
+    durations: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
+    """"Duratoins swept."""
+    t_idles: list[float] = field(default_factory=list)
+    """t_idles swept."""
     angles: dict = field(default_factory=dict)
 
     def __getitem__(self, pair):
@@ -96,17 +96,18 @@ class SNZFinetuningData(Data):
         }
 
     def register_qubit(
-        self, target, control, setup, ratio, theta, amp, prob_control, prob_target
+        self, target, control, setup, t_idle, theta, duration, prob_control, prob_target
     ):
         """Store output for single pair."""
-        size = len(theta) * len(amp)
-        amplitude, angle = np.meshgrid(amp, theta, indexing="ij")
+        print(len(theta), len(duration))
+        size = len(theta) * len(duration)
+        duration, angle = np.meshgrid(duration, theta, indexing="ij")
         ar = np.empty(size, dtype=OptimizeTwoQubitGateType)
         ar["theta"] = angle.ravel()
-        ar["amp"] = amplitude.ravel()
+        ar["duration"] = duration.ravel()
         ar["prob_control"] = prob_control.ravel()
         ar["prob_target"] = prob_target.ravel()
-        self.data[target, control, setup, ratio] = np.rec.array(ar)
+        self.data[target, control, setup, t_idle] = np.rec.array(ar)
 
 
 def _aquisition(
@@ -114,15 +115,13 @@ def _aquisition(
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
 ) -> SNZFinetuningData:
-    ratio_range = np.arange(
-        params.amp_ratio_min, params.amp_ratio_max, params.amp_ratio_step
-    )
+    t_idle_range = np.arange(params.t_idle_min, params.t_idle_max, params.t_idle_step)
     data = SNZFinetuningData()
-    data.rel_amplitudes = ratio_range.tolist()
+    data.t_idles = t_idle_range.tolist()
     data.angles = np.arange(
         params.theta_start, params.theta_end, params.theta_step
     ).tolist()
-    print(ratio_range)
+    print(t_idle_range)
     for pair in targets:
         ordered_pair = order_pair(pair, platform)
         flux_channel = platform.qubits[ordered_pair[1]].flux
@@ -136,7 +135,7 @@ def _aquisition(
             if cz_pulse[0] == flux_channel:
                 flux_pulse = cz_pulse[1]
 
-        for ratio in ratio_range:
+        for t_idle in t_idle_range:
             for setup in ("I", "X"):
                 flux_pulse = [
                     (
@@ -145,8 +144,8 @@ def _aquisition(
                             amplitude=flux_pulse.amplitude,
                             duration=flux_pulse.duration,
                             envelope=Snz(
-                                t_idling=params.t_idling,
-                                b_amplitude=ratio,
+                                t_idling=t_idle,
+                                b_amplitude=params.b_amplitude,
                             ),
                         ),
                     )
@@ -171,12 +170,12 @@ def _aquisition(
                     pulses=theta_pulse,
                 )
 
-                sweeper_amplitude = Sweeper(
-                    parameter=Parameter.amplitude,
+                sweeper_duration = Sweeper(
+                    parameter=Parameter.duration,
                     range=(
-                        params.amplitude_min,
-                        params.amplitude_max,
-                        params.amplitude_step,
+                        params.duration_min,
+                        params.duration_max,
+                        params.duration_step,
                     ),
                     pulses=[flux_pulse],
                 )
@@ -191,7 +190,7 @@ def _aquisition(
                 #     print(s)
                 results = platform.execute(
                     [sequence],
-                    [[sweeper_amplitude], [sweeper_theta]],
+                    [[sweeper_duration], [sweeper_theta]],
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
                     acquisition_type=AcquisitionType.DISCRIMINATION,
@@ -199,7 +198,7 @@ def _aquisition(
                 )
 
                 # TODO: move this outside loops
-                data.amplitudes[pair] = sweeper_amplitude.values.tolist()
+                data.durations[pair] = sweeper_duration.values.tolist()
                 # print(data.thetas)
                 data.thetas = -1 * sweeper_theta.values
                 data.thetas = data.thetas.tolist()
@@ -209,28 +208,13 @@ def _aquisition(
                     target_vz,
                     other_qubit_vz,
                     setup,
-                    ratio,
+                    t_idle,
                     data.thetas,
-                    sweeper_amplitude.values,
+                    sweeper_duration.values,
                     results[ro_control.id],
                     results[ro_target.id],
                 )
 
-                # print(results[ro_target.id])
-                # plt.plot(
-                #     data.thetas,
-                #     results[ro_target.id].ravel(),
-                #     label=f"{target_vz} {other_qubit_vz} {setup}",
-                # )
-                # plt.xlabel("Theta")
-                # plt.ylabel("Probability")
-                # plt.title(f"Pair {target_vz} {other_qubit_vz} {setup}")
-                # plt.legend()
-                # plt.savefig(
-                #     f"pair_{target_vz}_{other_qubit_vz}_{setup}.png", dpi=300, bbox_inches="tight"
-                # )
-                # # print(data)
-    # print(data)
     return data
 
 
@@ -245,53 +229,42 @@ def _fit(
     leakages = {}
     # FIXME: experiment should be for single pair
     for pair in pairs:
-        # TODO: improve this
-        # ord_pair = next(iter(data.amplitudes))[:2]
-        # for rel_amplitude in data.rel_amplitudes:
-        for amplitude in data.amplitudes[pair]:
-            # virtual_phases[ord_pair[0], ord_pair[1], amplitude, rel_amplitude] = {}
-            # leakages[ord_pair[0], ord_pair[1], amplitude, rel_amplitude] = {}
-            # breakpoint()
-            for target, control, setup, rel_amplitude in data[pair]:
-                selected_data = data[pair][target, control, setup, rel_amplitude]
-                target_data = selected_data.prob_target[selected_data.amp == amplitude,]
-                # breakpoint()
+        for duration in data.durations[pair]:
+            for target, control, setup, t_idle in data[pair]:
+                selected_data = data[pair][target, control, setup, t_idle]
+                print(selected_data)
+                print(selected_data.dtype)
+                target_data = selected_data.prob_target[
+                    selected_data.duration == duration,
+                ]
                 try:
                     params = fit_sinusoid(
                         np.array(data.thetas), target_data, gate_repetition=1
                     )
-                    fitted_parameters[
-                        target, control, setup, amplitude, rel_amplitude
-                    ] = params
+                    fitted_parameters[target, control, setup, duration, t_idle] = params
                 except Exception as e:
                     log.warning(f"Fit failed for pair ({target, control}) due to {e}.")
 
-            for target, control, setup, rel_amplitude in data[pair]:
+            for target, control, setup, t_idle in data[pair]:
                 if setup == "I":  # The loop is the same for setup I or X
                     # try:
-                    angles[target, control, amplitude, rel_amplitude] = phase_diff(
-                        fitted_parameters[
-                            target, control, "X", amplitude, rel_amplitude
-                        ][2],
-                        fitted_parameters[
-                            target, control, "I", amplitude, rel_amplitude
-                        ][2],
+                    angles[target, control, duration, t_idle] = phase_diff(
+                        fitted_parameters[target, control, "X", duration, t_idle][2],
+                        fitted_parameters[target, control, "I", duration, t_idle][2],
                     )
-                    virtual_phases[target, control, amplitude, rel_amplitude] = (
-                        fitted_parameters[
-                            target, control, "I", amplitude, rel_amplitude
-                        ][2]
+                    virtual_phases[target, control, duration, t_idle] = (
+                        fitted_parameters[target, control, "I", duration, t_idle][2]
                     )
 
                     # leakage estimate: L = m /2
                     # See NZ paper from Di Carlo
                     # approximation which does not need qutrits
                     # https://arxiv.org/pdf/1903.02492.pdf
-                    data_x = data[pair][target, control, "X", rel_amplitude]
-                    data_i = data[pair][target, control, "I", rel_amplitude]
-                    leakages[target, control, amplitude, rel_amplitude] = 0.5 * np.mean(
-                        data_x[data_x.amp == amplitude].prob_control
-                        - data_i[data_i.amp == amplitude].prob_control
+                    data_x = data[pair][target, control, "X", t_idle]
+                    data_i = data[pair][target, control, "I", t_idle]
+                    leakages[target, control, duration, t_idle] = 0.5 * np.mean(
+                        data_x[data_x.duration == duration].prob_control
+                        - data_i[data_i.duration == duration].prob_control
                     )
 
                     # except KeyError:
@@ -313,7 +286,7 @@ def _plot(
 ):
     """Plot routine for OptimizeTwoQubitGate."""
     fitting_report = ""
-    qubits = next(iter(data.amplitudes))[:2]
+    qubits = next(iter(data.durations))[:2]
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -328,26 +301,24 @@ def _plot(
         # print(data.amplitudes)
         # print(target)
         cz = []
-        rel_amp = []
-        amps = []
+        t_idle = []
+        durations = []
         leakage = []
         target_q = target[0]
         control_q = target[1]
 
-        for i in data.amplitudes[
-            target
-        ]:  # TODO: solve asymettry amplitude/ rel_amplitude
-            for j in data.rel_amplitudes:
-                rel_amp.append(j)
-                amps.append(i)
+        for i in data.durations[target]:
+            for j in data.t_idles:
+                t_idle.append(j)
+                durations.append(i)
                 cz.append(fit.angles[target_q, control_q, i, j])
                 leakage.append(fit.leakages[qubits[0], qubits[1], i, j])
 
         # condition = [target_q, control_q] == list(target)
         fig.add_trace(
             go.Heatmap(
-                x=amps,
-                y=rel_amp,
+                x=durations,
+                y=t_idle,
                 z=cz,
                 zmin=0,
                 zmax=2 * np.pi,
@@ -362,8 +333,8 @@ def _plot(
 
         fig.add_trace(
             go.Heatmap(
-                x=amps,
-                y=rel_amp,
+                x=durations,
+                y=t_idle,
                 z=leakage,
                 name="Leakage",
                 # showscale=condition,
@@ -374,28 +345,15 @@ def _plot(
             row=1,
             col=2,
         )
-        # fitting_report = table_html(
-        #     table_dict(
-        #         [qubits[1], qubits[1]],
-        #         [
-        #             "Flux pulse amplitude [a.u.]",
-        #             "Flux pulse duration [ns]",
-        #         ],
-        #         [
-        #             np.round(fit.best_amp[qubits], 4),
-        #             np.round(fit.best_dur[qubits], 4),
-        #         ],
-        #     )
-        # )
 
         fig.update_layout(
-            xaxis1_title="Amplitude A [a.u.]",
-            xaxis2_title="Amplitude A [a.u.]",
-            yaxis1_title="Rel. Amp. B/A [a.u.]",
-            yaxis2_title="Rel. Amp. B/A [a.u.]",
+            xaxis1_title="Pulse duration [ns]",
+            xaxis2_title="Pulse duration [ns]",
+            yaxis1_title="t_idle [# samplings]",
+            yaxis2_title="t_idle [# samplings]",
         )
 
     return [fig], fitting_report
 
 
-snz_optimize = Routine(_aquisition, _fit, _plot, two_qubit_gates=True)
+snz_optimize_t_idle_vs_t_tot = Routine(_aquisition, _fit, _plot, two_qubit_gates=True)
