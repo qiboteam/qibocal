@@ -4,8 +4,6 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-
-# import plotly.colors.cyclical #
 from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 from qibolab._core.pulses.envelope import Snz
 
@@ -26,6 +24,7 @@ from .virtual_z_phases import create_sequence, fit_sinusoid, phase_diff
 
 @dataclass
 class SNZFinetuningParamteters(Parameters):
+    # TODO: amplitude_min should be a list to be able to execute on multiple pairs.
     amplitude_min: float
     """Amplitude minimum."""
     amplitude_max: float
@@ -122,7 +121,6 @@ def _aquisition(
     data.angles = np.arange(
         params.theta_start, params.theta_end, params.theta_step
     ).tolist()
-    print(ratio_range)
     for pair in targets:
         ordered_pair = order_pair(pair, platform)
         flux_channel = platform.qubits[ordered_pair[1]].flux
@@ -162,7 +160,7 @@ def _aquisition(
                     other_qubit_vz,
                     ordered_pair,
                     "CZ",
-                    dt=0,
+                    dt=0,  # TODO: when dt is zero a 16 ns is added
                     flux_pulses=flux_pulse,
                 )
                 sweeper_theta = Sweeper(
@@ -186,9 +184,6 @@ def _aquisition(
                 ro_control = list(
                     sequence.channel(platform.qubits[other_qubit_vz].acquisition)
                 )[-1]
-                # print("SEQUENCE")
-                # for s in sequence:
-                #     print(s)
                 results = platform.execute(
                     [sequence],
                     [[sweeper_amplitude], [sweeper_theta]],
@@ -200,11 +195,8 @@ def _aquisition(
 
                 # TODO: move this outside loops
                 data.amplitudes[pair] = sweeper_amplitude.values.tolist()
-                # print(data.thetas)
                 data.thetas = -1 * sweeper_theta.values
                 data.thetas = data.thetas.tolist()
-                # print(data.thetas)
-                # data.durations[ordered_pair] = sweeper_duration.values.tolist()
                 data.register_qubit(
                     target_vz,
                     other_qubit_vz,
@@ -216,21 +208,6 @@ def _aquisition(
                     results[ro_target.id],
                 )
 
-                # print(results[ro_target.id])
-                # plt.plot(
-                #     data.thetas,
-                #     results[ro_target.id].ravel(),
-                #     label=f"{target_vz} {other_qubit_vz} {setup}",
-                # )
-                # plt.xlabel("Theta")
-                # plt.ylabel("Probability")
-                # plt.title(f"Pair {target_vz} {other_qubit_vz} {setup}")
-                # plt.legend()
-                # plt.savefig(
-                #     f"pair_{target_vz}_{other_qubit_vz}_{setup}.png", dpi=300, bbox_inches="tight"
-                # )
-                # # print(data)
-    # print(data)
     return data
 
 
@@ -245,17 +222,10 @@ def _fit(
     leakages = {}
     # FIXME: experiment should be for single pair
     for pair in pairs:
-        # TODO: improve this
-        # ord_pair = next(iter(data.amplitudes))[:2]
-        # for rel_amplitude in data.rel_amplitudes:
         for amplitude in data.amplitudes[pair]:
-            # virtual_phases[ord_pair[0], ord_pair[1], amplitude, rel_amplitude] = {}
-            # leakages[ord_pair[0], ord_pair[1], amplitude, rel_amplitude] = {}
-            # breakpoint()
             for target, control, setup, rel_amplitude in data[pair]:
                 selected_data = data[pair][target, control, setup, rel_amplitude]
                 target_data = selected_data.prob_target[selected_data.amp == amplitude,]
-                # breakpoint()
                 try:
                     params = fit_sinusoid(
                         np.array(data.thetas), target_data, gate_repetition=1
@@ -268,7 +238,6 @@ def _fit(
 
             for target, control, setup, rel_amplitude in data[pair]:
                 if setup == "I":  # The loop is the same for setup I or X
-                    # try:
                     angles[target, control, amplitude, rel_amplitude] = phase_diff(
                         fitted_parameters[
                             target, control, "X", amplitude, rel_amplitude
@@ -322,11 +291,8 @@ def _plot(
             "Leakage",
         ),
     )
-    # print("FFFFFFF", fit)
-    # print(data)
+
     if fit is not None:
-        # print(data.amplitudes)
-        # print(target)
         cz = []
         rel_amp = []
         amps = []
@@ -343,7 +309,6 @@ def _plot(
                 cz.append(fit.angles[target_q, control_q, i, j])
                 leakage.append(fit.leakages[qubits[0], qubits[1], i, j])
 
-        # condition = [target_q, control_q] == list(target)
         fig.add_trace(
             go.Heatmap(
                 x=amps,
@@ -354,7 +319,6 @@ def _plot(
                 name="{fit.native} angle",
                 colorbar_x=-0.1,
                 colorscale="Twilight",
-                # showscale=condition,
             ),
             row=1,
             col=1,
@@ -366,7 +330,6 @@ def _plot(
                 y=rel_amp,
                 z=leakage,
                 name="Leakage",
-                # showscale=condition,
                 colorscale="Inferno",
                 zmin=0,
                 zmax=0.2,
@@ -374,20 +337,6 @@ def _plot(
             row=1,
             col=2,
         )
-        # fitting_report = table_html(
-        #     table_dict(
-        #         [qubits[1], qubits[1]],
-        #         [
-        #             "Flux pulse amplitude [a.u.]",
-        #             "Flux pulse duration [ns]",
-        #         ],
-        #         [
-        #             np.round(fit.best_amp[qubits], 4),
-        #             np.round(fit.best_dur[qubits], 4),
-        #         ],
-        #     )
-        # )
-
         fig.update_layout(
             xaxis1_title="Amplitude A [a.u.]",
             xaxis2_title="Amplitude A [a.u.]",

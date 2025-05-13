@@ -4,8 +4,6 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-
-# import plotly.colors.cyclical
 from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 from qibolab._core.pulses.envelope import Snz
 
@@ -121,7 +119,6 @@ def _aquisition(
     data.angles = np.arange(
         params.theta_start, params.theta_end, params.theta_step
     ).tolist()
-    print(t_idle_range)
     for pair in targets:
         ordered_pair = order_pair(pair, platform)
         flux_channel = platform.qubits[ordered_pair[1]].flux
