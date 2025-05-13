@@ -52,7 +52,7 @@ class VirtualZPhasesParameters(Parameters):
     iSWAP and CZ are the possible options.
 
     """
-    dt: Optional[float] = 0
+    dt: Optional[float] = 16
     """Time delay between flux pulses and readout."""
     gate_repetition: int = 1
     """Number of CZ repetition"""
@@ -172,7 +172,7 @@ def create_sequence(
     sequence.align(align_channels)
 
     for _ in range(gate_repetition):
-        # sequence.append(flux_sequence[0])
+        sequence.append((flux_channel, Delay(duration=dt)))
         sequence += flux_sequence
         sequence.append((flux_channel, Delay(duration=dt)))
 
@@ -188,13 +188,12 @@ def create_sequence(
 
     sequence += theta_sequence
 
-    sequence.align(align_channels)
-
     # X gate for the leakage
     if setup == "X":
         sequence += control_natives.RX()
 
     sequence.align(align_channels)
+
     ro_sequence = PulseSequence(
         [
             target_natives.MZ()[0],
@@ -253,7 +252,7 @@ def _acquisition(
                     control_q,
                     ordered_pair,
                     params.native,
-                    params.dt,
+                    dt=params.dt,
                     gate_repetition=params.gate_repetition,
                 )
 
@@ -308,8 +307,8 @@ def sinusoid(x, gate_repetition, amplitude, offset, phase):
 
 
 def phase_diff(phase_1, phase_2):
-    """Return the phase difference of two sinusoids, normalized in the range [0, pi]."""
-    return np.arccos(np.cos(phase_1 - phase_2))
+    """Return the phase difference of two sinusoids, normalized in the range [0, 2*pi]."""
+    return np.mod(phase_2 - phase_1, 2 * np.pi)
 
 
 def fit_sinusoid(thetas, data, gate_repetition):
@@ -380,13 +379,6 @@ def _fit(
                 )
             )
 
-        if data.gate_repetition > 1:
-            return VirtualZPhasesResults(
-                native=data.native,
-                gate_repetition=data.gate_repetition,
-                fitted_parameters=fitted_parameters,
-                leakage=leakage,
-            )
         try:
             for target_q, control_q in (
                 pair,
@@ -488,45 +480,27 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
                 col=1 if fig == fig1 else 2,
             )
 
-            if data.gate_repetition == 1:
-                fitting_report.add(
-                    table_html(
-                        table_dict(
-                            [target_q, target_q, control_q],
-                            [
-                                f"{fit.native} angle [rad]",
-                                "Virtual Z phase [rad]",
-                                "Leakage [a.u.]",
-                            ],
-                            [
-                                np.round(fit.angle[target_q, control_q], 4),
-                                np.round(
-                                    fit.virtual_phase[tuple(sorted(target))][target_q],
-                                    4,
-                                ),
-                                np.round(
-                                    fit.leakage[tuple(sorted(target))][control_q], 4
-                                ),
-                            ],
-                        )
+            fitting_report.add(
+                table_html(
+                    table_dict(
+                        [target_q, target_q, control_q],
+                        [
+                            f"{fit.native} angle [rad]",
+                            "Virtual Z phase [rad]",
+                            "Leakage [a.u.]",
+                        ],
+                        [
+                            np.round(fit.angle[target_q, control_q], 4),
+                            np.round(
+                                fit.virtual_phase[tuple(sorted(target))][target_q],
+                                4,
+                            ),
+                            np.round(fit.leakage[tuple(sorted(target))][control_q], 4),
+                        ],
                     )
                 )
-            else:
-                fitting_report.add(
-                    table_html(
-                        table_dict(
-                            [target_q],
-                            [
-                                "Leakage [a.u.]",
-                            ],
-                            [
-                                np.round(
-                                    fit.leakage[tuple(sorted(target))][control_q], 4
-                                ),
-                            ],
-                        )
-                    )
-                )
+            )
+
     fig1.update_layout(
         title_text=f"Phase correction Qubit {qubits[0]}",
         showlegend=True,
