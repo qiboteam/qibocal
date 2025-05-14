@@ -114,7 +114,7 @@ def create_sequence(
     dt: float,
     flux_pulse_max_duration: float = None,
     gate_repetition: int = 1,
-) -> tuple[PulseSequence, Pulse, Pulse, list[Pulse]]:
+) -> tuple[PulseSequence, Pulse, list[Pulse]]:
     """
     Create the pulse sequence for the calibration of two-qubit gate virtual phases.
 
@@ -132,7 +132,6 @@ def create_sequence(
             - The full experiment pulse sequence.
             - The applied flux pulse.
             - The final X90 pulse to be used for phase sweeping.
-            - A list of readout delays for the target and control qubits.
     """
 
     target_natives = platform.natives.single_qubit[target_qubit]
@@ -156,7 +155,7 @@ def create_sequence(
     for i in range(len(flux_pulses)):
         if flux_pulses[i][0] == flux_channel:
             if flux_pulse_max_duration is not None:
-                replace(flux_pulses[i][1], duration=flux_pulse_max_duration)
+                flux_pulses[i][1] = replace(flux_pulses[i][1], duration=flux_pulse_max_duration)
             flux_pulse = flux_pulses[i][1]
 
     flux_sequence = PulseSequence(flux_pulses)
@@ -172,7 +171,6 @@ def create_sequence(
     sequence.align(align_channels)
 
     for _ in range(gate_repetition):
-        # sequence.append(flux_sequence[0])
         sequence += flux_sequence
         sequence.append((flux_channel, Delay(duration=dt)))
 
