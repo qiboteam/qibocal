@@ -23,7 +23,6 @@ def chevron_sequence(
     parking: bool = False,
     native: str = "CZ",
     dt: int = 0,
-    couplers: bool = False,
 ) -> tuple[PulseSequence, Pulse, Optional[Pulse], list[Pulse], list[Delay]]:
     """Chevron pulse sequence."""
 
@@ -46,19 +45,19 @@ def chevron_sequence(
         flux_pulse = replace(flux_pulse, duration=duration_max)
 
     sequence.append((flux_channel, Delay(duration=drive_duration)))
-    if couplers:
+    if len(platform.couplers) > 0:
         pair = (
             ordered_pair
             if ordered_pair in platform.natives.two_qubit
             else ordered_pair[::-1]
         )
-        coupler_name = platform.couplers[platform.pairs.index(pair)]
+        coupler_name = list(platform.couplers)[platform.pairs.index(pair)]
         coupler_channel = platform.couplers[coupler_name].flux
         sequence.append((coupler_channel, Delay(duration=drive_duration)))
         assert platform.natives.single_qubit[coupler_name].CP()[0], (
             f"Missing coupler native for {coupler_name}"
         )
-        _, coupler_pulse = platform.natives.single_qubit[coupler_name].CP()[0][1]
+        coupler_pulse = platform.natives.single_qubit[coupler_name].CP()[0][1]
         sequence.append((coupler_channel, coupler_pulse))
     else:
         coupler_pulse = None

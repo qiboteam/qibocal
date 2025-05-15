@@ -764,6 +764,20 @@ actions:
       native: CZ
       parking: True
 
+  - id: chevron couplers cz
+    operation: chevron_couplers
+    targets: [[0, 1]]
+    parameters:
+      amplitude_min: 0.1
+      amplitude_max: 0.6
+      amplitude_step: 0.01
+      duration_min: 10
+      duration_max: 50
+      duration_step: 10
+      nshots: 10
+      native: CZ
+      parking: True
+
   - id: chevron cz signal
     operation: chevron_signal
     targets: [[0, 1]]
@@ -780,6 +794,20 @@ actions:
 
   - id: chevron iSWAP
     operation: chevron
+    targets: [[0, 1]]
+    parameters:
+      amplitude_min: 0.1
+      amplitude_max: 0.6
+      amplitude_step: 0.01
+      duration_min: 10
+      duration_max: 50
+      duration_step: 10
+      nshots: 10
+      native: iSWAP
+      parking: True
+
+  - id: chevron coupler iSWAP
+    operation: chevron_couplers
     targets: [[0, 1]]
     parameters:
       amplitude_min: 0.1

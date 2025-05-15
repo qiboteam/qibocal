@@ -1,4 +1,5 @@
 from .chevron import chevron as chevron
+from .chevron import chevron_couplers as chevron_couplers
 from .chevron import chevron_signal as chevron_signal
 from .cryoscope import cryoscope as cryoscope
 from .optimize import optimize_two_qubit_gate as optimize_two_qubit_gate

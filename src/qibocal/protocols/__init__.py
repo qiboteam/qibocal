@@ -52,6 +52,7 @@ from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 from .state_tomography import state_tomography
 from .two_qubit_interaction import (
     chevron,
+    chevron_couplers,
     chevron_signal,
     correct_virtual_z_phases,
     cryoscope,
@@ -116,4 +117,5 @@ __all__ = [
     "flux_amplitude_frequency",
     "cpmg",
     "drag_simple",
+    "chevron_couplers",
 ]
