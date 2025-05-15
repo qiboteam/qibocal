@@ -23,7 +23,7 @@ class AllXYParameters(Parameters):
     """AllXY runcard inputs."""
 
     beta_param: float = None
-    """Beta parameter for drag pulse. If None is give, the native rx pulse in the parameters will be used"""
+    """Beta parameter for drag pulse. If None is given, the native rx pulse in the parameters will be used"""
     unrolling: bool = False
     """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
     Defaults to ``False``."""
