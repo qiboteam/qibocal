@@ -49,8 +49,6 @@ class CryoscopeParameters(Parameters):
     fir: int = 20
     """Number of feedforward taps to be optimized after IIR."""
     unrolling: bool = True
-    sampling_rate: float = 1
-    """Instrument sampling rate in GSamples"""
 
 
 @dataclass
