@@ -28,11 +28,11 @@ from .utils import COLORBAND, COLORBAND_LINE, GHZ_TO_HZ, table_dict, table_html
 class FluxGateParameters(Parameters):
     """FluxGate runcard inputs."""
 
-    duration_min: int
+    duration_min: float
     """Minimum flux pulse duration."""
-    duration_max: int
+    duration_max: float
     """Maximum flux duration start."""
-    duration_step: int
+    duration_step: float
     """Flux pulse duration step."""
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
@@ -49,7 +49,7 @@ class FluxGateResults(Results):
 
 
 FluxGateType = np.dtype(
-    [("duration", int), ("prob_1", np.float64), ("error", np.float64)]
+    [("duration", float), ("prob_1", np.float64), ("error", np.float64)]
 )
 """Custom dtype for FluxGate."""
 
