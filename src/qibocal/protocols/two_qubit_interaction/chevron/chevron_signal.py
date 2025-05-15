@@ -57,31 +57,12 @@ def _aquisition(
         ChevronData: Acquisition data.
     """
 
-    data = ChevronSignalData(
-        native=params.native,
-        amplitude=np.arange(
-            params.amplitude_min, params.amplitude_max, params.amplitude_step
-        ).tolist(),
-        duration=np.arange(
-            params.duration_min, params.duration_max, params.duration_step
-        ).tolist(),
-    )
-    data.sorted_pairs = [order_pair(pair, platform) for pair in targets]
-    data.flux_coefficient = {
-        pair: platform.calibration.single_qubits[pair[1]].qubit.flux_coefficients[0]
-        for pair in data.sorted_pairs
-    }
-    data.detuning = {
-        pair: (
-            platform.calibration.single_qubits[pair[1]].qubit.frequency_01
-            - platform.calibration.single_qubits[pair[0]].qubit.frequency_01
-        )
-        * HZ_TO_GHZ
-        for pair in data.sorted_pairs
-    }
-
-    for pair in data.sorted_pairs:
-        sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
+    # create a DataUnits object to store the results,
+    data = ChevronSignalData(native=params.native)
+    for pair in targets:
+        # order the qubits so that the low frequency one is the first
+        ordered_pair = order_pair(pair, platform)
+        sequence, flux_pulse, coupler_pulse, parking_pulses, delays = chevron_sequence(
             platform=platform,
             ordered_pair=pair,
             duration_max=params.duration_max,
@@ -94,10 +75,15 @@ def _aquisition(
             range=(params.amplitude_min, params.amplitude_max, params.amplitude_step),
             pulses=[flux_pulse],
         )
+
+        pulses_duration_sweeper = [flux_pulse] + delays + parking_pulses
+        if coupler_pulse is not None:
+            pulses_duration_sweeper += [coupler_pulse]
+
         sweeper_duration = Sweeper(
             parameter=Parameter.duration,
             range=(params.duration_min, params.duration_max, params.duration_step),
-            pulses=[flux_pulse] + delays + parking_pulses,
+            pulses=pulses_duration_sweeper,
         )
 
         ro_high = list(sequence.channel(platform.qubits[pair[1]].acquisition))[-1]

@@ -234,6 +234,28 @@
           ]
         ],
         "CP": null
+      },
+      "coupler_0": {
+        "RX": null,
+        "RX90": null,
+        "RX12": null,
+        "MZ": null,
+        "CP": [
+          [
+            "coupler_01/flux",
+            {
+              "duration": 30.0,
+              "amplitude": 0.05,
+              "envelope": {
+                "kind": "gaussian_square",
+                "rel_sigma": 0.2,
+                "width": 0.75
+              },
+              "relative_phase": 0.0,
+              "kind": "pulse"
+            }
+          ]
+        ]
       }
     },
     "two_qubit": {
