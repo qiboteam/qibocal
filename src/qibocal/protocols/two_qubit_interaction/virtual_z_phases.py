@@ -147,17 +147,12 @@ def create_sequence(
     # CZ
     flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
     flux_channel = platform.qubits[ordered_pair[1]].flux
-    flux_pulses = list(flux_sequence.channel(flux_channel))
-
-    for i in range(len(flux_pulses)):
-        if flux_pulses[i][0] == flux_channel:
-            if flux_pulse_max_duration is not None:
-                flux_pulses[i][1] = replace(
-                    flux_pulses[i][1], duration=flux_pulse_max_duration
-                )
-            flux_pulse = flux_pulses[i][1]
-
-    flux_sequence = PulseSequence(flux_pulses)
+    flux_pulse = list(flux_sequence.channel(flux_channel))[
+        0
+    ]  # Expecting only one flux pulse
+    if flux_pulse_max_duration is not None:
+        flux_pulse = replace(flux_pulse, duration=flux_pulse_max_duration)
+    flux_sequence = PulseSequence([(flux_channel, flux_pulse)])
     virtual_phases = []
     align_channels = [
         platform.qubits[control_qubit].drive,
