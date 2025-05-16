@@ -146,11 +146,8 @@ def create_sequence(
 
     # CZ
     flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
-    flux_pulses = [
-        (ch, pulse) for ch, pulse in flux_sequence if not isinstance(pulse, VirtualZ)
-    ]
-
     flux_channel = platform.qubits[ordered_pair[1]].flux
+    flux_pulses = list(flux_sequence.channel(flux_channel))
 
     for i in range(len(flux_pulses)):
         if flux_pulses[i][0] == flux_channel:
