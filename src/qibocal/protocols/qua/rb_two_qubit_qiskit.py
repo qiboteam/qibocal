@@ -23,6 +23,7 @@ from .stream_circuits import execute
 @dataclass
 class QuaQiskitRbParameters(StandardRBParameters):
     interleave_cz: bool = False
+    batch_size: Optional[int] = None
     debug: Optional[str] = None
     """Dump QUA script and config in a file with this name."""
 
@@ -57,6 +58,7 @@ def _acquisition(
         targets,
         params.nshots,
         params.relaxation_time,
+        params.batch_size,
         params.debug,
     )
 
