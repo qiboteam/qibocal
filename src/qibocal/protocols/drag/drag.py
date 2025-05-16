@@ -14,7 +14,7 @@ from qibocal.config import log
 from qibocal.result import probability
 from qibocal.update import replace
 
-from .utils import (
+from ..utils import (
     COLORBAND,
     COLORBAND_LINE,
     chi2_reduced,
@@ -23,6 +23,14 @@ from .utils import (
     table_dict,
     table_html,
 )
+
+__all__ = [
+    "drag_tuning",
+    "DragTuningType",
+    "DragTuningParameters",
+    "DragTuningResults",
+    "DragTuningData",
+]
 
 
 # TODO: add errors in fitting

@@ -9,11 +9,13 @@ from qibocal.calibration import CalibrationPlatform
 
 from ...result import probability
 from ..ramsey.utils import ramsey_sequence
-from . import t1, t2_signal, utils
+from . import utils
+from .t1 import CoherenceProbType, T1Data
+from .t2_signal import T2SignalParameters, T2SignalResults, update_t2
 
 
 @dataclass
-class T2Parameters(t2_signal.T2SignalParameters):
+class T2Parameters(T2SignalParameters):
     """T2 runcard inputs."""
 
     delay_between_pulses_start: int
@@ -25,7 +27,7 @@ class T2Parameters(t2_signal.T2SignalParameters):
 
 
 @dataclass
-class T2Results(t2_signal.T2SignalResults):
+class T2Results(T2SignalResults):
     """T2 outputs."""
 
     chi2: Optional[dict[QubitId, tuple[float, Optional[float]]]] = field(
@@ -34,7 +36,7 @@ class T2Results(t2_signal.T2SignalResults):
     """Chi squared estimate mean value and error."""
 
 
-class T2Data(t1.T1Data):
+class T2Data(T1Data):
     """T2 acquisition outputs."""
 
 
@@ -75,7 +77,7 @@ def _acquisition(
         probs = probability(results[ro_pulse.id], state=1)
         errors = np.sqrt(probs * (1 - probs) / params.nshots)
         data.register_qubit(
-            t1.CoherenceProbType, (qubit), dict(wait=waits, prob=probs, error=errors)
+            CoherenceProbType, (qubit), dict(wait=waits, prob=probs, error=errors)
         )
     return data
 
@@ -91,5 +93,5 @@ def _fit(data: T2Data) -> T2Results:
     return T2Results(t2s, fitted_parameters, pcovs, chi2)
 
 
-t2 = Routine(_acquisition, _fit, utils.plot, t2_signal._update)
+t2 = Routine(_acquisition, _fit, utils.plot, update_t2)
 """T2 Routine object."""

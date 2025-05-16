@@ -19,6 +19,13 @@ from .utils import (
     exponential_fit,
 )
 
+__all__ = [
+    "SpinEchoSignalParameters",
+    "SpinEchoSignalResults",
+    "spin_echo_signal",
+    "update_spin_echo",
+]
+
 
 @dataclass
 class SpinEchoSignalParameters(Parameters):
@@ -193,11 +200,11 @@ def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults 
     return figures, fitting_report
 
 
-def _update(
+def update_spin_echo(
     results: SpinEchoSignalResults, platform: CalibrationPlatform, target: QubitId
 ):
     update.t2_spin_echo(results.t2[target], platform, target)
 
 
-spin_echo_signal = Routine(_acquisition, _fit, _plot, _update)
+spin_echo_signal = Routine(_acquisition, _fit, _plot, update_spin_echo)
 """SpinEcho Routine object."""

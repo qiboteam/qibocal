@@ -8,9 +8,15 @@ from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import probability
 
-from . import t1
-from .spin_echo_signal import SpinEchoSignalParameters, SpinEchoSignalResults, _update
+from .spin_echo_signal import (
+    SpinEchoSignalParameters,
+    SpinEchoSignalResults,
+    update_spin_echo,
+)
+from .t1 import CoherenceProbType, T1Data
 from .utils import dynamical_decoupling_sequence, exponential_fit_probability, plot
+
+__all__ = ["SpinEchoParameters", "SpinEchoResults", "spin_echo"]
 
 
 @dataclass
@@ -28,7 +34,7 @@ class SpinEchoResults(SpinEchoSignalResults):
     """Chi squared estimate mean value and error."""
 
 
-class SpinEchoData(t1.T1Data):
+class SpinEchoData(T1Data):
     """SpinEcho acquisition outputs."""
 
 
@@ -83,7 +89,7 @@ def _acquisition(
         prob = probability(result, state=1)
         error = np.sqrt(prob * (1 - prob) / params.nshots)
         data.register_qubit(
-            t1.CoherenceProbType,
+            CoherenceProbType,
             (qubit),
             dict(
                 wait=wait_range,
@@ -101,5 +107,5 @@ def _fit(data: SpinEchoData) -> SpinEchoResults:
     return SpinEchoResults(t2Echos, fitted_parameters, pcovs, chi2)
 
 
-spin_echo = Routine(_acquisition, _fit, plot, _update)
+spin_echo = Routine(_acquisition, _fit, plot, update_spin_echo)
 """SpinEcho Routine object."""

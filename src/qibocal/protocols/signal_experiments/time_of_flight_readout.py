@@ -12,6 +12,8 @@ from qibocal.protocols.utils import table_dict, table_html
 from qibocal.result import magnitude
 from qibocal.update import replace
 
+__all__ = ["time_of_flight_readout"]
+
 
 @dataclass
 class TimeOfFlightReadoutParameters(Parameters):

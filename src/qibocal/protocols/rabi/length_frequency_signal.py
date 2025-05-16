@@ -20,6 +20,14 @@ from ..utils import HZ_TO_GHZ, fallback_period, guess_period, readout_frequency
 from .length_signal import RabiLengthSignalResults
 from .utils import fit_length_function, sequence_length
 
+__all__ = [
+    "rabi_length_frequency_signal",
+    "RabiLengthFrequencySignalParameters",
+    "RabiLengthFreqSignalData",
+    "_update",
+    "RabiLengthFrequencySignalResults",
+]
+
 
 @dataclass
 class RabiLengthFrequencySignalParameters(Parameters):

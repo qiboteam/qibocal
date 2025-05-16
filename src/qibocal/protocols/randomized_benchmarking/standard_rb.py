@@ -11,6 +11,8 @@ from ..utils import table_dict, table_html
 from .fitting import exp1B_func
 from .utils import RBData, StandardRBResult, fit, number_to_str, rb_acquisition
 
+__all__ = ["standard_rb", "StandardRBParameters", "RBData", "_plot"]
+
 
 class Depthsdict(TypedDict):
     """Dictionary used to build a list of depths as ``range(start, stop,

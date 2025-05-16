@@ -6,10 +6,11 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, Delay, PulseSequence, Readout
 
-from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
-from qibocal.calibration import CalibrationPlatform
-from qibocal.protocols.utils import (
+from ... import update
+from ...auto.operation import Data, Parameters, QubitId, Results, Routine
+from ...calibration import CalibrationPlatform
+from ...result import unpack
+from ..utils import (
     effective_qubit_temperature,
     format_error_single_cell,
     round_report,
@@ -17,7 +18,7 @@ from qibocal.protocols.utils import (
     table_html,
 )
 
-from ..result import unpack
+__all__ = ["readout_characterization"]
 
 
 @dataclass

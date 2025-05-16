@@ -20,6 +20,8 @@ from .ramsey_signal import (
 )
 from .utils import fitting, process_fit, ramsey_fit, ramsey_sequence
 
+__all__ = ["ramsey", "RamseyType"]
+
 
 @dataclass
 class RamseyParameters(RamseySignalParameters):

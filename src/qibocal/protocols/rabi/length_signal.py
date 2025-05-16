@@ -14,6 +14,8 @@ from qibocal.result import magnitude, phase
 
 from . import utils
 
+__all__ = ["rabi_length_signal", "RabiLengthSignalResults"]
+
 
 @dataclass
 class RabiLengthSignalParameters(Parameters):

@@ -36,6 +36,8 @@ from .qubit_flux_dependence import (
     QubitFluxType,
 )
 
+__all__ = ["qubit_crosstalk"]
+
 
 @dataclass
 class QubitCrosstalkParameters(QubitFluxParameters):

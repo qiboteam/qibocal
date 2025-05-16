@@ -29,6 +29,8 @@ from .amplitude_frequency_signal import (
 )
 from .utils import fit_amplitude_function, rabi_amplitude_function, sequence_amplitude
 
+__all__ = ["rabi_amplitude_frequency"]
+
 
 @dataclass
 class RabiAmplitudeFrequencyParameters(RabiAmplitudeFrequencySignalParameters):

@@ -9,7 +9,7 @@ from qibolab import AveragingMode, PulseSequence
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
-from . import allxy
+from .allxy import AllXYType, allxy_sequence, gatelist
 
 
 @dataclass
@@ -42,7 +42,7 @@ class AllXYResonatorData(Data):
 
     delay_param: Optional[float] = None
     """Delay parameter for resonator depletion."""
-    data: dict[tuple[QubitId, float], npt.NDArray[allxy.AllXYType]] = field(
+    data: dict[tuple[QubitId, float], npt.NDArray[AllXYType]] = field(
         default_factory=dict
     )
     """Raw data acquired."""
@@ -72,11 +72,11 @@ def _acquisition(
     # sweep the parameters
     for delay in delays:
         sequences, all_ro_pulses = [], []
-        for gates in allxy.gatelist:
+        for gates in gatelist:
             sequence = PulseSequence()
             ro_pulses = {}
             for qubit in targets:
-                qubit_sequence, ro_pulses[qubit] = allxy.allxy_sequence(
+                qubit_sequence, ro_pulses[qubit] = allxy_sequence(
                     platform,
                     gates,
                     qubit,
@@ -95,14 +95,14 @@ def _acquisition(
             for sequence in sequences:
                 results.update(platform.execute([sequence], **options))
 
-        for gates, ro_pulses in zip(allxy.gatelist, all_ro_pulses):
+        for gates, ro_pulses in zip(gatelist, all_ro_pulses):
             gate = "-".join(gates)
             for qubit in targets:
                 prob = 1 - results[ro_pulses[qubit].id]
                 z_proj = 2 * prob - 1
                 errors = 2 * np.sqrt(prob * (1 - prob) / params.nshots)
                 data.register_qubit(
-                    allxy.AllXYType,
+                    AllXYType,
                     (qubit, float(delay)),
                     dict(
                         prob=np.array([z_proj]),
@@ -139,7 +139,7 @@ def _plot(data: AllXYResonatorData, target: QubitId, fit: AllXYResonatorResults 
                 name=f"Delay {delay_param}",
                 showlegend=True,
                 legendgroup=f"group{j}",
-                text=allxy.gatelist,
+                text=gatelist,
                 textposition="bottom center",
             ),
         )

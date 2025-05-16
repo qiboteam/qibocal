@@ -12,7 +12,9 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
-from .utils import HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
+from ..utils import HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
+
+__all__ = ["resonator_punchout", "ResonatorPunchoutData"]
 
 
 @dataclass

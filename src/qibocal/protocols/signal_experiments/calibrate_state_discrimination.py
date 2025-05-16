@@ -11,6 +11,8 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
+__all__ = ["calibrate_state_discrimination"]
+
 
 @dataclass
 class CalibrateStateDiscriminationParameters(Parameters):

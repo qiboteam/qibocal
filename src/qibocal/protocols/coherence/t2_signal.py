@@ -12,7 +12,10 @@ from qibocal.calibration import CalibrationPlatform
 from ...result import magnitude, phase
 from ..ramsey.utils import ramsey_sequence
 from ..utils import readout_frequency, table_dict, table_html
-from . import t1_signal, utils
+from . import utils
+from .t1_signal import T1SignalData
+
+__all__ = ["t2_signal", "update_t2", "T2SignalData", "T2SignalParameters"]
 
 
 @dataclass
@@ -41,7 +44,7 @@ class T2SignalResults(Results):
     """Approximate covariance of fitted parameters."""
 
 
-class T2SignalData(t1_signal.T1SignalData):
+class T2SignalData(T1SignalData):
     """T2Signal acquisition outputs."""
 
     t2: dict[QubitId, float]
@@ -179,9 +182,9 @@ def _plot(data: T2SignalData, target: QubitId, fit: T2SignalResults = None):
     return figures, fitting_report
 
 
-def _update(results: T2SignalResults, platform: CalibrationPlatform, target: QubitId):
+def update_t2(results: T2SignalResults, platform: CalibrationPlatform, target: QubitId):
     update.t2(results.t2[target], platform, target)
 
 
-t2_signal = Routine(_acquisition, _fit, _plot, _update)
+t2_signal = Routine(_acquisition, _fit, _plot, update_t2)
 """T2Signal Routine object."""
