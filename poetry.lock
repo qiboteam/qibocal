@@ -1941,13 +1941,13 @@ los = ["pyvisa-py (==0.5.3)", "qcodes (>=0.37.0,<0.38.0)", "qcodes_contrib_drive
 qblox = ["lark (>=1.1.9,<2.0.0)", "pyvisa-py (==0.5.3)", "qblox-instruments (==0.12.0)", "qcodes (>=0.37.0,<0.38.0)", "qcodes_contrib_drivers (==0.18.0)"]
 qm = ["qm-qua (==1.2.1)"]
 qrng = ["pyserial (>=3.5,<4.0)"]
-rfsoc = ["qibosoq (>=0.1.2,<0.2)"]
+rfsoc = ["qibosoq (>=0.1.2,<0.2) ; python_version < \"3.12\""]
 twpa = ["pyvisa-py (==0.5.3)", "qcodes (>=0.37.0,<0.38.0)", "qcodes_contrib_drivers (==0.18.0)"]
 zh = ["laboneq (==2.25.0)"]
 
 [package.source]
 type = "git"
-url = "https://github.com/qiboteam/qibolab"
+url = "https://github.com/qiboteam/qibolab.git"
 reference = "HEAD"
 resolved_reference = "8ba49cbf7042776871a0e0c7bc8bd72155ef7da9"
 
@@ -2783,4 +2783,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<3.13"
-content-hash = "f5dd81f850d3c4700bfc58d666b84b1da7de14ddedde854e04074136a448cce1"
+content-hash = "199935a15dc1e2518432b7aa7fcbd4e0af9d2530916f57a2d2e3dc667dcbcb98"
