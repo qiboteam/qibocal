@@ -28,12 +28,16 @@
       "kind": "hamiltonian"
     },
       "0/drive": {
-        "kind": "iq",
-        "frequency": 5e9
+        "kind": "drive-emulator",
+        "frequency": 5e9,
+        "rabi_frequency": 20e6,
+        "scale_factor": 10
       },
       "0/drive12": {
-        "kind": "iq",
-        "frequency": 4.8e9
+        "kind": "drive-emulator",
+        "frequency": 4.8e9,
+        "rabi_frequency": 20e6,
+        "scale_factor": 10
       },
     "0/probe": {
       "kind": "iq",
@@ -56,7 +60,7 @@
               "0/drive",
               {
                 "duration": 30,
-                "amplitude": 0.212,
+                "amplitude": 0.169,
                 "envelope": {
                   "kind": "gaussian",
                   "rel_sigma": 0.2
@@ -66,27 +70,13 @@
               }
             ]
           ],
-          "RX90": [
-            [
-              "0/drive",
-              {
-                "duration": 30,
-                "amplitude": 0.106,
-                "envelope": {
-                  "kind": "gaussian",
-                  "rel_sigma": 0.2
-                },
-                "relative_phase": 0.0,
-                "kind": "pulse"
-              }
-            ]
-          ],
+          "RX90": null,
           "RX12": [
             [
               "0/drive12",
               {
                 "duration": 30.0,
-                "amplitude": 0.15,
+                "amplitude": 0.1201,
                 "envelope": {
                   "kind": "gaussian",
                   "rel_sigma": 0.2
