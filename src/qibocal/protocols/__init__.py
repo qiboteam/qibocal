@@ -19,6 +19,14 @@ from .flux_dependence.qubit_crosstalk import qubit_crosstalk
 from .flux_dependence.qubit_flux_dependence import qubit_flux
 from .flux_dependence.resonator_flux_dependence import resonator_flux
 from .flux_gate import flux_gate
+from .qua import (
+    qua_cryoscope,
+    qua_process_tomography,
+    qua_standard_rb_1q,
+    qua_standard_rb_2q,
+    qua_standard_rb_2q_qiskit,
+    qua_state_tomography,
+)
 from .qubit_power_spectroscopy import qubit_power_spectroscopy
 from .qubit_spectroscopy import qubit_spectroscopy
 from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
@@ -40,6 +48,7 @@ from .randomized_benchmarking.filtered_rb import filtered_rb
 from .randomized_benchmarking.standard_rb import standard_rb
 from .randomized_benchmarking.standard_rb_2q import standard_rb_2q
 from .randomized_benchmarking.standard_rb_2q_inter import standard_rb_2q_inter
+from .rb_qiskit import rb_qiskit
 from .readout_characterization import readout_characterization
 from .readout_mitigation_matrix import readout_mitigation_matrix
 from .readout_optimization.resonator_amplitude import resonator_amplitude
@@ -116,4 +125,11 @@ __all__ = [
     "flux_amplitude_frequency",
     "cpmg",
     "drag_simple",
+    "rb_qiskit",
+    "qua_standard_rb_1q",
+    "qua_standard_rb_2q",
+    "qua_standard_rb_2q_qiskit",
+    "qua_cryoscope",
+    "qua_state_tomography",
+    "qua_process_tomography",
 ]
