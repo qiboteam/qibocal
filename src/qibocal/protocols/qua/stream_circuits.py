@@ -213,54 +213,67 @@ def execute(
     targets: list[QubitId],
     nshots: int,
     relaxation_time: Optional[float] = None,
+    batch_size: Optional[int] = None,
     debug: Optional[str] = None,
 ):
-    circuits = [to_indices(circuit) for circuit in sequences]
-
-    max_depth = max(len(circuit) for circuit in circuits)
-    program = generate_program(
-        platform,
-        sorted(targets)[::-1],  # FIXME: This will only work for qw5q_platinum
-        ncircuits=len(circuits),
-        nshots=nshots,
-        relaxation_time=relaxation_time,
-        max_depth=max_depth,
-    )
-
-    estimated_duration = estimate_duration(
-        circuits,
-        find_drive_duration(platform, targets[0]),
-        find_measurement_duration(platform, targets[0]),
-        nshots,
-        relaxation_time,
-    )
-    log.info("Estimated ideal duration: %.5f sec" % estimated_duration)
-
     # FIXME: This will only work for qw5q_platinum
     config = generate_config(
         platform, list(platform.qubits.keys()), sorted(targets)[::-1]
     )
 
+    if batch_size is None:
+        batch_size = len(sequences)
+
     qmm = platform._controller.manager
 
-    if debug is not None:
-        with open(debug, "w") as file:
-            file.write(generate_qua_script(program, config))
+    nbatches = len(sequences) // batch_size
+    state0, state1 = [], []
+    for i in range(nbatches + int(len(sequences) > nbatches * batch_size)):
+        circuits = [
+            to_indices(circuit)
+            for circuit in sequences[batch_size * i : batch_size * (i + 1)]
+        ]
 
-    qm = qmm.open_qm(config)
-    job = qm.execute(
-        program, compiler_options=CompilerOptionArguments(flags=["not-strict-timing"])
-    )
+        estimated_duration = estimate_duration(
+            circuits,
+            find_drive_duration(platform, targets[0]),
+            find_measurement_duration(platform, targets[0]),
+            nshots,
+            relaxation_time,
+        )
+        log.info("Estimated ideal duration: %.5f sec" % estimated_duration)
 
-    # TODO: Progress bar
-    for circuit in circuits:
-        job.push_to_input_stream("depth_input_stream", len(circuit))
-        job.push_to_input_stream("gates_input_stream", circuit)
+        max_depth = max(len(circuit) for circuit in circuits)
+        program = generate_program(
+            platform,
+            sorted(targets)[::-1],  # FIXME: This will only work for qw5q_platinum
+            ncircuits=len(circuits),
+            nshots=nshots,
+            relaxation_time=relaxation_time,
+            max_depth=max_depth,
+        )
 
-    handles = job.result_handles
-    handles.wait_for_all_values()
+        if debug is not None and i == 0:
+            with open(debug, "w") as file:
+                file.write(generate_qua_script(program, config))
 
-    state0 = handles.get("state0").fetch_all()
-    state1 = handles.get("state1").fetch_all()
+        qm = qmm.open_qm(config)
+        job = qm.execute(
+            program,
+            compiler_options=CompilerOptionArguments(flags=["not-strict-timing"]),
+        )
 
+        # TODO: Progress bar
+        for circuit in circuits:
+            job.push_to_input_stream("depth_input_stream", len(circuit))
+            job.push_to_input_stream("gates_input_stream", circuit)
+
+        handles = job.result_handles
+        handles.wait_for_all_values()
+
+        state0.append(handles.get("state0").fetch_all())
+        state1.append(handles.get("state1").fetch_all())
+
+    state0 = np.concatenate(state0, axis=0)
+    state1 = np.concatenate(state1, axis=0)
     return state0, state1
