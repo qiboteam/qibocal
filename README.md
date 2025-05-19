@@ -89,7 +89,7 @@ from IPython import display
 display.HTML(table)
 ```
 <p align="center">
-  <img alt="Table" src="doc/source/img/table.png" width=66%>
+  <img alt="Table" src="doc/source/img/table.png" width=50%>
 </p>
 
 
