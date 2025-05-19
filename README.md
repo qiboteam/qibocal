@@ -89,45 +89,18 @@ from IPython import display
 display.HTML(table)
 ```
 <p align="center">
-<table style="width: 70%; border-collapse: collapse; text-align: center; margin: 40px auto 0 auto; font-family: system-ui, sans-serif; font-size: 0.8em; border-radius: 15px;">
-  <thead>
-    <tr style="background-color: #f0e6ff;">
-      <th style="padding: 8px;">Qubit</th>
-      <th style="padding: 8px;">Parameters</th>
-      <th style="padding: 8px;">Values</th>
-      <th style="padding: 8px;">Errors</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd;">0</td>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd;">Pi pulse amplitude [a.u.]</td>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd;">1.271e-1</td>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd;">0.002e-1</td>
-    </tr>
-    <tr>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd;">0</td>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd;">Pi pulse length [ns]</td>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd;">4.0e1</td>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd;">0e1</td>
-    </tr>
-    <tr>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd;">0</td>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd;">chi² reduced</td>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd;">9.0e-1</td>
-      <td style="padding: 8px; border-bottom: 1px solid #ddd;">3e-1</td>
-    </tr>
-  </tbody>
-</table>
+  <img alt="Table" src="doc/source/img/table.png" width=66%>
 </p>
+
+
+### Running a protocol through a runcard
 
 The same experiment can also be run using the following yaml file
 
 ```yaml
 platform: qubit
-
 targets: [0]
-
+actions:
 - id: rabi
   operation: rabi_amplitude
   parameters:
@@ -136,9 +109,7 @@ targets: [0]
     step_amp: 0.02
     nshots: 2000
     pulse_length: 40
-
 ```
-### How to run protocols
 To run the protocol Qibocal uses the `qq run` command
 ```sh
 qq run <runcard> -o <output_folder>
