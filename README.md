@@ -3,7 +3,7 @@
 ![PyPI - Version](https://img.shields.io/pypi/v/qibocal)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/qibocal)
 
-Qibocal provides Quantum Characterization Validation and Verification protocols using [Qibo](https://github.com/qiboteam/qibo) and [Qibolab](https://github.com/qiboteam/qibolab).
+Qibocal provides calibration protocols using [Qibo](https://github.com/qiboteam/qibo) and [Qibolab](https://github.com/qiboteam/qibolab).
 
 Qibocal key features:
 
@@ -42,28 +42,100 @@ pre-commit install
 
 ## Minimal working example
 
-This section shows the steps to perform a resonator spectroscopy with Qibocal.
-### Write a runcard
-A runcard contains all the essential information to run a specific task.
-For our purposes, we can use the following:
-```yml
-platform: tii1q
+Here is an example on how to run a Rabi experiment in Qibocal.
+
+```py
+from qibocal import create_calibration_platform
+from qibocal.protocols import rabi_amplitude
+
+# create platform
+platform = create_calibration_platform("qubit")
+
+# define qubits where the protocols will be executed
+targets = [0]
+
+# define protocol parameters
+params = rabi_amplitude.parameters_type.load(dict(
+        min_amp=0.01,
+        max_amp=0.2,
+        step_amp=0.02,
+        nshots=2000,
+        pulse_length=40,
+        ))
+
+# acquire
+data, acquisition_time = rabi_amplitude.acquisition(params=params, platform=platform, targets=targets)
+
+# post-processing
+results, fit_time = rabi_amplitude.fit(data=data)
+
+# visualize the results
+plots, table = rabi_amplitude.report(data=data, results=results, target=target[0])
+plots[0].show()
+```
+
+<p align="center">
+  <img alt="Rabi" src="doc/source/img/rabi.png" >
+</p>
+
+The table is written in HTML and can be visualized in Python with
+
+```py
+from IPython import display
+display.HTML(table)
+```
+
+<table style="width: 70%; border-collapse: collapse; text-align: center; margin: 40px auto 0 auto; font-family: system-ui, sans-serif; font-size: 0.8em; border-radius: 15px;">
+  <thead>
+    <tr style="background-color: #f0e6ff;">
+      <th style="padding: 8px;">Qubit</th>
+      <th style="padding: 8px;">Parameters</th>
+      <th style="padding: 8px;">Values</th>
+      <th style="padding: 8px;">Errors</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">0</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">Pi pulse amplitude [a.u.]</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">1.271e-1</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">0.002e-1</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">0</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">Pi pulse length [ns]</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">4.0e1</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">0e1</td>
+    </tr>
+    <tr>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">0</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">chi² reduced</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">9.0e-1</td>
+      <td style="padding: 8px; border-bottom: 1px solid #ddd;">3e-1</td>
+    </tr>
+  </tbody>
+</table>
+
+
+The same experiment can also be run using the following yaml file
+
+```yaml
+platform: qubit
 
 targets: [0]
 
-- id: resonator spectroscopy high power
-  operation: resonator_spectroscopy
+- id: rabi
+  operation: rabi_amplitude
   parameters:
-    freq_width: 10_000_000
-    freq_step: 500_000
-    amplitude: 0.4
-    power_level: high
-    nshots: 1024
-    relaxation_time: 5_000
+    min_amp: 0.01
+    max_amp: 0.2
+    step_amp: 0.02
+    nshots: 2000
+    pulse_length: 40
 
 ```
 ### How to run protocols
-To run the protocols specified in the ```runcard```, Qibocal uses the `qq run` command
+To run the protocol Qibocal uses the `qq run` command
 ```sh
 qq run <runcard> -o <output_folder>
 ```
