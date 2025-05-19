@@ -26,6 +26,14 @@ from ...result import magnitude, phase
 from .amplitude_signal import RabiAmplitudeSignalResults
 from .utils import fit_amplitude_function, sequence_amplitude
 
+__all__ = [
+    "RabiAmplitudeSignalResults",
+    "RabiAmplitudeFrequencySignalParameters",
+    "RabiAmplitudeFreqSignalData",
+    "_update",
+    "rabi_amplitude_frequency_signal",
+]
+
 
 @dataclass
 class RabiAmplitudeFrequencySignalParameters(Parameters):

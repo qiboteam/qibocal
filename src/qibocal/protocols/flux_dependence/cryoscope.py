@@ -33,6 +33,8 @@ FEEDFORWARD_MAX = 2 - 2**-16
 FEEDBACK_MAX = 1 - 2**-20
 """Maximum feedback tap value"""
 
+__all__ = ["cryoscope", "CryoscopeData", "CryoscopeResults"]
+
 
 @dataclass
 class CryoscopeParameters(Parameters):

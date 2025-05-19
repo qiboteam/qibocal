@@ -24,7 +24,7 @@ By sweeping :math:`\theta` and measuring the excited state probability we can fi
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.qubit_vz.QubitVzParameters
+.. autoclass:: qibocal.protocols.flux_dependence.qubit_vz.QubitVzParameters
 	:noindex:
 
 Example

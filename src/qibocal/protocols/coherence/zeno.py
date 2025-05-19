@@ -11,7 +11,8 @@ from qibocal.calibration import CalibrationPlatform
 
 from ...result import probability
 from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
-from . import t1, utils
+from . import utils
+from .t1 import CoherenceProbType, T1Data
 
 
 @dataclass
@@ -56,7 +57,7 @@ def zeno_sequence(
 
 
 @dataclass
-class ZenoData(t1.T1Data):
+class ZenoData(T1Data):
     readout_duration: dict[QubitId, float] = field(default_factory=dict)
     """Readout durations for each qubit"""
 
@@ -100,7 +101,7 @@ def _acquisition(
             probs.append(probability(results[ro_pulse.id], state=1))
 
         data.register_qubit(
-            t1.CoherenceProbType,
+            CoherenceProbType,
             (qubit),
             dict(
                 wait=np.arange(params.readouts) + 1,

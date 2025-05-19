@@ -26,7 +26,7 @@ generated a maximally mixed state with :math:`\rho \propto I` :cite:p:`Baur2012R
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.qubit_spectroscopy.QubitSpectroscopyParameters
+.. autoclass:: qibocal.protocols.qubit_spectroscopies.qubit_spectroscopy.QubitSpectroscopyParameters
   :noindex:
 
 How to execute a qubit spectroscopy experiment
@@ -91,7 +91,7 @@ For this reason the experiments has been labelled ``qubit_spectroscopy_ef``.
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.qubit_spectroscopy_ef.QubitSpectroscopyEFParameters
+.. autoclass:: qibocal.protocols.qubit_spectroscopies.qubit_spectroscopy_ef.QubitSpectroscopyEFParameters
   :noindex:
 
 How to execute a qubit spectroscopy experiment
