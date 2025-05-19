@@ -32,8 +32,6 @@ FEEDFORWARD_MAX = 2 - 2**-16
 """Maximum feedforward tap value"""
 FEEDBACK_MAX = 1 - 2**-20
 """Maximum feedback tap value"""
-SAMPLING_RATE = 1
-"""Instrument sampling rate in GSamples"""
 
 __all__ = ["cryoscope", "CryoscopeData", "CryoscopeResults"]
 
@@ -42,11 +40,11 @@ __all__ = ["cryoscope", "CryoscopeData", "CryoscopeResults"]
 class CryoscopeParameters(Parameters):
     """Cryoscope runcard inputs."""
 
-    duration_min: int
+    duration_min: float
     """Minimum flux pulse duration."""
-    duration_max: int
+    duration_max: float
     """Maximum flux duration start."""
-    duration_step: int
+    duration_step: float
     """Flux pulse duration step."""
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
@@ -84,14 +82,14 @@ class CryoscopeResults(Results):
         return key in self.detuning
 
 
-CryoscopeType = np.dtype([("duration", int), ("prob_1", np.float64)])
+CryoscopeType = np.dtype([("duration", float), ("prob_1", np.float64)])
 """Custom dtype for Cryoscope."""
 
 
 def generate_sequences(
     platform: Platform,
     qubit: QubitId,
-    duration: int,
+    duration: float,
     params: CryoscopeParameters,
 ) -> tuple[PulseSequence, PulseSequence]:
     """Compute sequences at fixed duration of flux pulse for <X> and <Y>"""
@@ -283,9 +281,9 @@ def exponential_params(step_response, acquisition_time):
     return popt
 
 
-def filter_calc(params):
+def filter_calc(params, sampling_rate):
     tau, exp_amplitude, _ = params
-    alpha = 1 - np.exp(-1 / (SAMPLING_RATE * tau * (1 + exp_amplitude)))
+    alpha = 1 - np.exp(-1 / (sampling_rate * tau * (1 + exp_amplitude)))
     k = (
         exp_amplitude / ((1 + exp_amplitude) * (1 - alpha))
         if exp_amplitude < 0
@@ -392,7 +390,9 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             # Derive IIR
             acquisition_time = len(x)
             exp_params = exponential_params(step_response[qubit], acquisition_time)
-            feedback_taps[qubit], feedforward_taps_iir[qubit] = filter_calc(exp_params)
+            feedback_taps[qubit], feedforward_taps_iir[qubit] = filter_calc(
+                exp_params, sampling_rate
+            )
             time_decay[qubit], alpha[qubit], g[qubit] = exp_params
             iir_correction = lfilter(
                 feedforward_taps_iir[qubit], feedback_taps[qubit], step_response[qubit]
