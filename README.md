@@ -64,7 +64,11 @@ params = rabi_amplitude.parameters_type.load(dict(
         ))
 
 # acquire
-data, acquisition_time = rabi_amplitude.acquisition(params=params, platform=platform, targets=targets)
+data, acquisition_time = rabi_amplitude.acquisition(
+                                                    params=params,
+                                                    platform=platform,
+                                                    targets=targets
+                                                    )
 
 # post-processing
 results, fit_time = rabi_amplitude.fit(data=data)
@@ -84,7 +88,7 @@ The table is written in HTML and can be visualized in Python with
 from IPython import display
 display.HTML(table)
 ```
-
+<p align="center">
 <table style="width: 70%; border-collapse: collapse; text-align: center; margin: 40px auto 0 auto; font-family: system-ui, sans-serif; font-size: 0.8em; border-radius: 15px;">
   <thead>
     <tr style="background-color: #f0e6ff;">
@@ -115,7 +119,7 @@ display.HTML(table)
     </tr>
   </tbody>
 </table>
-
+</p>
 
 The same experiment can also be run using the following yaml file
 
