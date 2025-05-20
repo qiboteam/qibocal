@@ -238,13 +238,15 @@ def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):
     platform.update({f"configs.{ro_channel}.kernel": kernel})
 
 
-def feedback(feedback: list[float], platform: Platform, qubit: QubitId):
+def feedback(
+    exponentials: list[float],
+    amplitudes: list[float],
+    platform: Platform,
+    qubit: QubitId,
+):
     """Update flux pulse feedback filter parameter in platform for specific qubit."""
-    feedbackQM = feedback.copy()
-    feedbackQM = [-feedbackQM[1]]
-    platform.update(
-        {f"configs.{platform.qubits[qubit].flux}.filter.feedback": feedbackQM}
-    )
+    exp = [(amplitudes[i], exponentials[i]) for i in range(len(exponentials))]
+    platform.update({f"configs.{platform.qubits[qubit].flux}.filter.exponential": exp})
 
 
 def feedforward(feedforward: list[float], platform: Platform, qubit: QubitId):

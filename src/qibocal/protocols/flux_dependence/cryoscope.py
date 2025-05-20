@@ -393,7 +393,10 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             feedback_taps[qubit], feedforward_taps_iir[qubit] = filter_calc(
                 exp_params, sampling_rate
             )
-            time_decay[qubit], alpha[qubit], g[qubit] = exp_params
+            t, a, g_ = exp_params
+            time_decay[qubit] = [t]
+            alpha[qubit] = [a]
+            g[qubit] = [g_]
             iir_correction = lfilter(
                 feedforward_taps_iir[qubit], feedback_taps[qubit], step_response[qubit]
             )
@@ -540,7 +543,9 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
 def _update(results: CryoscopeResults, platform: Platform, target: QubitId):
     try:
         update.feedforward(results.feedforward_taps[target], platform, target)
-        update.feedback(results.feedback_taps[target], platform, target)
+        update.feedback(
+            results.tau[target], results.exp_amplitude[target], platform, target
+        )
     except KeyError:
         log.info(f"Skipping filters update on qubit {target}.")
 
