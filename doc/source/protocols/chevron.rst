@@ -11,7 +11,7 @@ The expected population oscillation pattern follows:
 
 .. math::
 
-	p_e(t, \delta) = \frac{\Delta^2}{\Delta^2 + 4g^2} + {4g^2}{\Delta^2 + 4g^2}\cos^2\left(\frac{\sqrt{\Delta^2 + 4g^2}}{2}t\right)
+	p_e(t, \Delta) = \frac{\Delta^2}{\Delta^2 + 4g^2} + {4g^2}{\Delta^2 + 4g^2}\cos^2\left(\frac{\sqrt{\Delta^2 + 4g^2}}{2}t\right)
 
 where :math:`\Delta=\omega_1 - \omega_2`,  and :math:`g` is the coupling constant for the two qubits.
 
