@@ -34,11 +34,11 @@ Since many routines and protocols in quantum computing are based on `R_x(\pi/2)`
 also another version of the Rabi experiment which can be used to tune the amplitude (duration) of the drive pulse in order
 to excite the qubit from the ground state up to state :math:`\frac{\ket{0}-i\ket{1}}{\sqrt{2}}`.
 
-The possibility to calibrate an `R_x(\pi/2)` rotation as native gate allows us to remove the errors that could arise from assuming that the `R_x(\pi/2)` amplitude (duration)
-is exactly half that of the `R_x(\pi)` amplitude (duration). This assumption presumes a perfectly linear response of the qubit to the drive pulse, which is
+The possibility to calibrate an :math:`R_x(\pi/2)` rotation as native gate allows us to remove the errors that could arise from assuming that the :math:`R_x(\pi/2)` amplitude (duration)
+is exactly half that of the :math:`R_x(\pi)` amplitude (duration). This assumption presumes a perfectly linear response of the qubit to the drive pulse, which is
 often not the case due to nonlinearities in the qubit's response or imperfections in the pulse shaping :cite:p:`Chen2018MetrologyOQ`.
 
-In this case the pulse sequence is the same as before with the only difference that instead of a single `R_x(\pi)` pulse we use two concatenated `R_x(\pi/2)` pulses.
+In this case the pulse sequence is the same as before with the only difference that instead of a single :math:`R_x(\pi)` pulse we use two concatenated :math:`R_x(\pi/2)` pulses.
 
 Parameters
 ^^^^^^^^^^
