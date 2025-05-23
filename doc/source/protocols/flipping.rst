@@ -14,7 +14,7 @@ By fitting the resulting data with a sinusoidal function, we can determine the d
 
 We implemented also a version of the flipping protocol to calibrate the drive pulse amplitude of the :math:`R_x(\pi/2)` rotations,
 in this case each :math:`R_x(\pi)` rotation is replaced by two :math:`R_x(\pi/2)` rotations.
-The main reasons for implementing protocols to fine tune the `R_x(\pi/2)` rotations are explained in :ref:`rabi`.
+The main reasons for implementing protocols to fine tune the :math:`R_x(\pi/2)` rotations are explained in :ref:`rabi`.
 
 Parameters
 ^^^^^^^^^^

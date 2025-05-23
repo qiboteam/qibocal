@@ -37,7 +37,7 @@ and then we can extract an estimate of the effective flux pulse :math:`\Phi_Q(t)
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.two_qubit_interaction.cryoscope.CryoscopeParameters
+.. autoclass:: qibocal.protocols.flux_dependence.cryoscope.CryoscopeParameters
   :noindex:
 
 

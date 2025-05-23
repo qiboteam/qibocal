@@ -14,6 +14,8 @@ from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
+__all__ = ["readout_mitigation_matrix"]
+
 
 @dataclass
 class ReadoutMitigationMatrixParameters(Parameters):

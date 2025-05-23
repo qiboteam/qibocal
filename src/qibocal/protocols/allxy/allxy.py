@@ -9,7 +9,6 @@ from qibolab import (
     AveragingMode,
     Delay,
     Drag,
-    Gaussian,
     Pulse,
     PulseSequence,
 )
@@ -18,13 +17,15 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.update import replace
 
+__all__ = ["allxy", "gatelist", "AllXYType", "allxy_sequence"]
+
 
 @dataclass
 class AllXYParameters(Parameters):
     """AllXY runcard inputs."""
 
     beta_param: float = None
-    """Beta parameter for drag pulse."""
+    """Beta parameter for drag pulse. If None is given, the native rx pulse in the parameters will be used"""
     unrolling: bool = False
     """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
     Defaults to ``False``."""
@@ -137,12 +138,7 @@ def _acquisition(
 def apply_drag(pulse: Pulse, beta_param: Optional[float] = None) -> Pulse:
     """Apply Drag with parameter beta."""
     if beta_param is None:
-        return replace(
-            pulse,
-            envelope=Gaussian(
-                rel_sigma=pulse.envelope.rel_sigma,
-            ),
-        )
+        return pulse
     return replace(  # pragma: no cover
         pulse,
         envelope=Drag(
