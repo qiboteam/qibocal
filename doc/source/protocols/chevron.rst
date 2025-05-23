@@ -8,8 +8,10 @@ The pulse sequence used to calibrate the iSWAP gate consists of a :math:`\pi` pu
 The initial :math:`pi` pulse brings the qubit into the state :math:`\ket{1}` while the flux pulse detunes its frequency near resonance with the second qubit. The implementation of the iSWAP gate leverages the avoided crossing between the states :math:`\ket{10}` and :math:`\ket{01}`.
 
 The expected population oscillation pattern follows:
+
 .. math::
-	p_e(t, \delta) = \frac{\Delta^2}{\Delta^2 + 4g^2} + {4g^2}{\Delta^2 + 4g^2}\cos^2\left(\frac{\sqrt{\Delta^2 + 4g^2}}{2}t\right)
+
+	p_e(t, \Delta) = \frac{\Delta^2}{\Delta^2 + 4g^2} + {4g^2}{\Delta^2 + 4g^2}\cos^2\left(\frac{\sqrt{\Delta^2 + 4g^2}}{2}t\right)
 
 where :math:`\Delta=\omega_1 - \omega_2`,  and :math:`g` is the coupling constant for the two qubits.
 
@@ -32,12 +34,12 @@ Below is an example runcard for this experiment.
     - id: chevron
       operation: chevron
       parameters:
-        amplitude_max: 1.1
-        amplitude_min: 0.9
-        amplitude_step: 0.01
-        duration_max: 51
-        duration_min: 4
-        duration_step: 2
+        amplitude_max: -0.45
+        amplitude_min: -0.5
+        amplitude_step: 0.001
+        duration_max: 60
+        duration_min: 0
+        duration_step: 1
 
 The expected output is the following:
 

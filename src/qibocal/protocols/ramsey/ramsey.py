@@ -11,7 +11,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.result import probability
 
-from ..utils import chi2_reduced, table_dict, table_html
+from ..utils import COLORBAND, COLORBAND_LINE, chi2_reduced, table_dict, table_html
 from .ramsey_signal import (
     RamseySignalData,
     RamseySignalParameters,
@@ -20,8 +20,7 @@ from .ramsey_signal import (
 )
 from .utils import fitting, process_fit, ramsey_fit, ramsey_sequence
 
-COLORBAND = "rgba(0,100,80,0.2)"
-COLORBAND_LINE = "rgba(255,255,255,0)"
+__all__ = ["ramsey", "RamseyType"]
 
 
 @dataclass
@@ -239,9 +238,9 @@ def _plot(data: RamseyData, target: QubitId, fit: RamseyResults = None):
                 x=waits,
                 y=probs,
                 opacity=1,
-                name="Probability of State 0",
+                name="Probability of State 1",
                 showlegend=True,
-                legendgroup="Probability of State 0",
+                legendgroup="Probability of State 1",
                 mode="lines",
             ),
             go.Scatter(
@@ -296,7 +295,7 @@ def _plot(data: RamseyData, target: QubitId, fit: RamseyResults = None):
     fig.update_layout(
         showlegend=True,
         xaxis_title="Time [ns]",
-        yaxis_title="Ground state probability",
+        yaxis_title="Excited state probability",
     )
 
     figures.append(fig)

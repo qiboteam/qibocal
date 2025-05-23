@@ -7,9 +7,11 @@ from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import probability
 
-from . import t1
 from .spin_echo import SpinEchoParameters, SpinEchoResults
+from .t1 import CoherenceProbType, T1Data
 from .utils import dynamical_decoupling_sequence, exponential_fit_probability, plot
+
+__all__ = ["cpmg"]
 
 
 @dataclass
@@ -25,7 +27,7 @@ class CpmgResults(SpinEchoResults):
     """SpinEcho outputs."""
 
 
-class CpmgData(t1.T1Data):
+class CpmgData(T1Data):
     """SpinEcho acquisition outputs."""
 
 
@@ -59,9 +61,9 @@ def _acquisition(
             f"minimum delay should be {params.n * duration}"
         )
 
-    assert (
-        len(set(durations)) == 1
-    ), "Cannot run on mulitple qubit with different RX duration."
+    assert len(set(durations)) == 1, (
+        "Cannot run on mulitple qubit with different RX duration."
+    )
 
     sweeper = Sweeper(
         parameter=Parameter.duration,
@@ -85,7 +87,7 @@ def _acquisition(
         prob = probability(result, state=1)
         error = np.sqrt(prob * (1 - prob) / params.nshots)
         data.register_qubit(
-            t1.CoherenceProbType,
+            CoherenceProbType,
             (qubit),
             dict(
                 wait=wait_range,

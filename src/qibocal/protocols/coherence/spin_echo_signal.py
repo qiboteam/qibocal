@@ -10,7 +10,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
 from ... import update
-from ..utils import table_dict, table_html
+from ..utils import readout_frequency, table_dict, table_html
 from .t1_signal import T1SignalData
 from .utils import (
     CoherenceType,
@@ -18,6 +18,13 @@ from .utils import (
     exp_decay,
     exponential_fit,
 )
+
+__all__ = [
+    "SpinEchoSignalParameters",
+    "SpinEchoSignalResults",
+    "spin_echo_signal",
+    "update_spin_echo",
+]
 
 
 @dataclass
@@ -72,13 +79,12 @@ def _acquisition(
         duration = platform.natives.single_qubit[q].RX()[0][1].duration
         durations.append(duration)
         assert (params.delay_between_pulses_start - duration) / 2 >= 0, (
-            f"Initial delay too short for qubit {q}, "
-            f"minimum delay should be {duration}"
+            f"Initial delay too short for qubit {q}, minimum delay should be {duration}"
         )
 
-    assert (
-        len(set(durations)) == 1
-    ), "Cannot run on mulitple qubit with different RX duration."
+    assert len(set(durations)) == 1, (
+        "Cannot run on mulitple qubit with different RX duration."
+    )
 
     sweeper = Sweeper(
         parameter=Parameter.duration,
@@ -89,6 +95,10 @@ def _acquisition(
     results = platform.execute(
         [sequence],
         [[sweeper]],
+        updates=[
+            {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
+            for q in targets
+        ],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
@@ -190,11 +200,11 @@ def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults 
     return figures, fitting_report
 
 
-def _update(
+def update_spin_echo(
     results: SpinEchoSignalResults, platform: CalibrationPlatform, target: QubitId
 ):
     update.t2_spin_echo(results.t2[target], platform, target)
 
 
-spin_echo_signal = Routine(_acquisition, _fit, _plot, _update)
+spin_echo_signal = Routine(_acquisition, _fit, _plot, update_spin_echo)
 """SpinEcho Routine object."""

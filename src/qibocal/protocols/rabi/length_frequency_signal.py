@@ -16,9 +16,17 @@ from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
 from ...result import magnitude, phase
-from ..utils import HZ_TO_GHZ, fallback_period, guess_period
+from ..utils import HZ_TO_GHZ, fallback_period, guess_period, readout_frequency
 from .length_signal import RabiLengthSignalResults
 from .utils import fit_length_function, sequence_length
+
+__all__ = [
+    "rabi_length_frequency_signal",
+    "RabiLengthFrequencySignalParameters",
+    "RabiLengthFreqSignalData",
+    "_update",
+    "RabiLengthFrequencySignalResults",
+]
 
 
 @dataclass
@@ -147,6 +155,10 @@ def _acquisition(
     results = platform.execute(
         [sequence],
         [[len_sweeper], [freq_sweepers[q] for q in targets]],
+        updates=[
+            {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
+            for q in targets
+        ],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,

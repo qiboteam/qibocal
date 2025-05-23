@@ -25,6 +25,8 @@ from qibocal.protocols.utils import table_dict, table_html
 from .utils import order_pair
 from .virtual_z_phases import create_sequence, fit_sinusoid, phase_diff
 
+__all__ = ["optimize_two_qubit_gate"]
+
 
 @dataclass
 class OptimizeTwoQubitGateParameters(Parameters):
@@ -166,8 +168,7 @@ def _acquisition(
                 (
                     sequence,
                     flux_pulse,
-                    theta_pulse,
-                    ro_delays,
+                    vz_pulses,
                 ) = create_sequence(
                     platform,
                     setup,
@@ -180,9 +181,13 @@ def _acquisition(
                 )
 
                 sweeper_theta = Sweeper(
-                    parameter=Parameter.relative_phase,
-                    range=(params.theta_start, params.theta_end, params.theta_step),
-                    pulses=[theta_pulse],
+                    parameter=Parameter.phase,
+                    range=(
+                        -params.theta_start,
+                        -params.theta_end,
+                        -params.theta_step,
+                    ),
+                    pulses=vz_pulses,
                 )
 
                 sweeper_amplitude = Sweeper(
@@ -202,7 +207,7 @@ def _acquisition(
                         params.duration_max,
                         params.duration_step,
                     ),
-                    pulses=[flux_pulse] + ro_delays,
+                    pulses=[flux_pulse],
                 )
 
                 ro_target = list(
@@ -266,7 +271,9 @@ def _fit(
                     ]
 
                     try:
-                        params = fit_sinusoid(np.array(data.thetas), target_data)
+                        params = fit_sinusoid(
+                            np.array(data.thetas), target_data, gate_repetition=1
+                        )
                         fitted_parameters[
                             target, control, setup, amplitude, duration
                         ] = params
@@ -292,9 +299,7 @@ def _fit(
                             target_q
                         ] = fitted_parameters[
                             target_q, control_q, "I", amplitude, duration
-                        ][
-                            2
-                        ]
+                        ][2]
 
                         # leakage estimate: L = m /2
                         # See NZ paper from Di Carlo
@@ -364,10 +369,10 @@ def _plot(
         rows=2,
         cols=2,
         subplot_titles=(
-            f"Qubit {qubits[0]} {data.native} angle",
-            f"Qubit {qubits[0]} Leakage",
-            f"Qubit {qubits[1]} {data.native} angle",
-            f"Qubit {qubits[1]} Leakage",
+            f"Qubit {target[0]} {data.native} angle",
+            f"Qubit {target[0]} Leakage",
+            f"Qubit {target[1]} {data.native} angle",
+            f"Qubit {target[1]} Leakage",
         ),
     )
     if fit is not None:

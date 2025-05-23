@@ -36,7 +36,6 @@ def fit_flux_amplitude(matrix, amps, times):
     """
 
     size_amp = len(amps)
-    time_step = times[1] - times[0]
     fs = []
     std = []
     for i in range(size_amp):

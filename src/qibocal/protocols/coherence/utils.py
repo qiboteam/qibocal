@@ -6,15 +6,12 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import QubitId
 from qibocal.config import log
 
-from ..utils import chi2_reduced, table_dict, table_html
+from ..utils import COLORBAND, COLORBAND_LINE, chi2_reduced, table_dict, table_html
 
 CoherenceType = np.dtype(
     [("wait", np.float64), ("signal", np.float64), ("phase", np.float64)]
 )
 """Custom dtype for coherence routines."""
-
-COLORBAND = "rgba(0,100,80,0.2)"
-COLORBAND_LINE = "rgba(255,255,255,0)"
 
 
 def average_single_shots(data_type, single_shots):
@@ -148,7 +145,6 @@ def exponential_fit_probability(data, zeno=False):
     pcovs = {}
 
     for qubit in qubits:
-
         times = data[qubit].wait
         x_max = np.max(times)
         x_min = np.min(times)

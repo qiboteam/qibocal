@@ -18,8 +18,17 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
 from ... import update
-from ..utils import table_dict, table_html
+from ..utils import readout_frequency, table_dict, table_html
 from . import utils
+
+__all__ = [
+    "t1_signal",
+    "T1SignalData",
+    "T1SignalParameters",
+    "T1SignalResults",
+    "t1_sequence",
+    "update_t1",
+]
 
 
 @dataclass
@@ -106,6 +115,10 @@ def _acquisition(
     results = platform.execute(
         [sequence],
         [[sweeper]],
+        updates=[
+            {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
+            for q in targets
+        ],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
@@ -202,9 +215,9 @@ def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
     return figures, fitting_report
 
 
-def _update(results: T1SignalResults, platform: CalibrationPlatform, target: QubitId):
+def update_t1(results: T1SignalResults, platform: CalibrationPlatform, target: QubitId):
     update.t1(results.t1[target], platform, target)
 
 
-t1_signal = Routine(_acquisition, _fit, _plot, _update)
+t1_signal = Routine(_acquisition, _fit, _plot, update_t1)
 """T1 Signal Routine object."""

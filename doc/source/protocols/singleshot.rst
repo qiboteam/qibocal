@@ -38,7 +38,7 @@ With this routine is possible to train different classifiers, plot their ROC cur
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.classification.SingleShotClassificationParameters
+.. autoclass:: qibocal.protocols.classification.classification.SingleShotClassificationParameters
 	:noindex:
 
 Example

@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from os import error
 
 import numpy as np
 import numpy.typing as npt
@@ -13,6 +12,8 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.utils import table_dict, table_html
 from qibocal.update import replace
+
+__all__ = ["resonator_amplitude"]
 
 
 @dataclass
@@ -89,7 +90,6 @@ def _acquisition(
         ro_channel, ro_pulse = natives.MZ()[0]
         new_amp = params.amplitude_start
         while error > params.error_threshold and new_amp <= params.amplitude_stop:
-
             new_ro = replace(ro_pulse, amplitude=new_amp)
             sequence_0 = PulseSequence()
             sequence_1 = PulseSequence()

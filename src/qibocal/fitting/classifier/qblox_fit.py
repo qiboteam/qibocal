@@ -29,7 +29,10 @@ def hyperopt(_x_train, _y_train, _path):
     return {}
 
 
-normalize = lambda x: x
+def normalize(x):
+    return x
+
+
 dump = qfit.dump
 predict_from_file = qfit.predict_from_file
 

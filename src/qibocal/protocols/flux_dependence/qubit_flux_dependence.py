@@ -20,9 +20,24 @@ from qibocal.result import magnitude, phase
 from qibocal.update import replace
 
 from ... import update
-from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, extract_feature, table_dict, table_html
+from ..utils import (
+    GHZ_TO_HZ,
+    HZ_TO_GHZ,
+    extract_feature,
+    readout_frequency,
+    table_dict,
+    table_html,
+)
 from . import utils
 from .resonator_flux_dependence import ResonatorFluxParameters
+
+__all__ = [
+    "QubitFluxData",
+    "QubitFluxParameters",
+    "QubitFluxResults",
+    "QubitFluxType",
+    "qubit_flux",
+]
 
 
 @dataclass
@@ -148,6 +163,10 @@ def _acquisition(
     results = platform.execute(
         [sequence],
         [offset_sweepers, freq_sweepers],
+        updates=[
+            {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
+            for q in targets
+        ],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
@@ -260,12 +279,11 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
         fit_function=utils.transmon_frequency,
     )
     if fit is not None:
-
         fitting_report = table_html(
             table_dict(
                 target,
                 [
-                    f"Sweetspot [V]",
+                    "Sweetspot [V]",
                     "Qubit Frequency at Sweetspot [Hz]",
                     "Flux dependence [V]^-1",
                 ],

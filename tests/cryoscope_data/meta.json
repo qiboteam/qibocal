@@ -1,0 +1,25 @@
+{
+    "title": "test_B2_cryo",
+    "backend": "qibolab",
+    "platform": "qw11q",
+    "start_time": "2025-03-24 14:56:12.944104+00:00",
+    "end_time": "2025-03-24 14:57:39.907459+00:00",
+    "stats": {
+        "cryoscope-0": {
+            "acquisition": 0,
+            "fit": 11.245705418288708
+        }
+    },
+    "author": null,
+    "tag": null,
+    "targets": ["B2"],
+    "versions": {
+        "qibo": "0.2.16",
+        "numpy": "1.26.4",
+        "qibolab": "0.2.5",
+        "qibocal": "0.2.1"
+    },
+    "date": "2025-03-24",
+    "start-time": "14:56:12",
+    "end-time": "14:57:39"
+}
