@@ -3,7 +3,7 @@ from itertools import product
 from typing import Optional, Union
 
 import numpy as np
-from qibolab import Platform, Pulse, Qubit, VirtualZ
+from qibolab import Delay, Platform, Pulse, Qubit, VirtualZ
 from qm import CompilerOptionArguments, generate_qua_script
 from qm.qua import (
     advance_input_stream,
@@ -63,20 +63,6 @@ def find_flux_duration(platform: Platform, qubit0: QubitId, qubit1: QubitId) -> 
     return baked_duration(pulse.duration)
 
 
-def find_cz_phase_correction(platform: Platform, qubit0: QubitId, qubit1: QubitId):
-    cz = platform.natives.two_qubit[(qubit0, qubit1)].CZ
-    virtalzs = [p for p in cz if isinstance(p[1], VirtualZ)]
-    assert len(virtalzs) == 2
-    ch0, vz0 = virtalzs[0]
-    ch1, vz1 = virtalzs[1]
-    if ch0 == platform.qubits[qubit1].drive:
-        assert ch1 == platform.qubits[qubit0].drive
-        return vz1.phase, vz0.phase
-    else:
-        assert ch1 == platform.qubits[qubit1].drive
-    return vz0.phase, vz1.phase
-
-
 def find_drive_duration(platform: Platform, qubit: QubitId) -> int:
     native = platform.natives.single_qubit[qubit].RX
     return math.ceil(native[0][1].duration)
@@ -111,7 +97,7 @@ def generate_program(
 
     drive_duration = find_drive_duration(platform, targets[0])
     assert find_drive_duration(platform, targets[1]) == drive_duration
-    phase0, phase1 = find_cz_phase_correction(platform, *targets)
+    cz_sequence = platform.natives.two_qubit[(targets[0], targets[1])].CZ
 
     with program() as prog:
         gates = declare_input_stream(int, name="gates_input_stream", size=max_depth)
@@ -156,15 +142,25 @@ def generate_program(
                                 with case_(ig):
                                     if op0 == "cz":
                                         assert op1 == "cz"
-                                        wait(4, qubit0.flux)
-                                        play("cz", qubit0.flux)
-                                        frame_rotation_2pi(
-                                            phase0 / (2 * np.pi), qubit0.drive
-                                        )
-                                        frame_rotation_2pi(
-                                            phase1 / (2 * np.pi), qubit1.drive
-                                        )
-                                        wait(4, qubit0.flux)
+                                        for channel, pulse in cz_sequence:
+                                            if isinstance(pulse, Delay):
+                                                if pulse.duration < 16:
+                                                    log.warning(
+                                                        f"CZ delay of {pulse.duration}ns is converted to 16ns."
+                                                    )
+                                                duration = max(4, pulse.duration // 4)
+                                                wait(duration, qubit0.flux)
+                                            elif isinstance(pulse, Pulse):
+                                                assert channel == qubit0.flux
+                                                play("cz", qubit0.flux)
+                                            elif isinstance(pulse, VirtualZ):
+                                                assert channel in {
+                                                    qubit0.drive,
+                                                    qubit1.drive,
+                                                }
+                                                frame_rotation_2pi(
+                                                    pulse.phase / (2 * np.pi), channel
+                                                )
                                     else:
                                         if op0 != "i":
                                             play(op0, qubit0.drive)
