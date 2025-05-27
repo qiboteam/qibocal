@@ -14,7 +14,7 @@ from qibo.backends import NumpyBackend
 from qibolab import Platform
 
 from qibocal.auto.operation import Parameters, QubitId, QubitPairId, Routine
-from qibocal.protocols.two_qubit_state_tomography import (
+from qibocal.protocols.tomographies.two_qubit_state_tomography import (
     OUTCOMES,
     StateTomographyData,
     TomographyType,

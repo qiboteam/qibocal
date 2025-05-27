@@ -6,6 +6,7 @@ from . import (
     drag,
     flipping,
     flux_dependence,
+    qua,
     qubit_spectroscopies,
     rabi,
     ramsey,
@@ -91,6 +92,7 @@ from .dispersive_shift import *
 from .drag import *
 from .flipping import *
 from .flux_dependence import *
+from .qua import *
 from .qubit_spectroscopies import *
 from .rabi import *
 from .ramsey import *
@@ -133,6 +135,7 @@ __all__ += ["tomographies"]
 __all__ += ["resonator_spectroscopies"]
 __all__ += ["qubit_spectroscopies"]
 __all__ += ["two_qubit_interaction"]
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 __all__ += ["twpa"]
@@ -209,3 +212,6 @@ __all__ = [
 >>>>>>> cabfa394 (feat: add qua-libs cryoscope routine)
 =======
 >>>>>>> be49d5dd (fix: rebase)
+=======
+__all__ += ["qua"]
+>>>>>>> 9788ead1 (fix: imports)
