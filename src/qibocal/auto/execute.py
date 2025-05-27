@@ -120,11 +120,19 @@ class Executor:
         protocol: Routine,
         parameters: Action,
         mode: ExecutionMode = AUTOCALIBRATION,
+        output: Optional[Path] = None,
     ) -> Completed:
         """Run single protocol in ExecutionMode mode."""
         task = Task(action=parameters, operation=protocol)
         log.info(f"Executing mode {mode} on {task.action.id}.")
-        completed = task.run(platform=self.platform, targets=self.targets, mode=mode)
+        completed = task.run(
+            platform=self.platform,
+            targets=self.targets,
+            mode=mode,
+            folder=self.history.task_path(
+                self.history._pending_task_id(task.id), output
+            ),
+        )
         self.history.push(completed)
 
         # TODO: drop, as the conditions won't be necessary any longer, and then it could
