@@ -35,7 +35,7 @@ def create_mock_hardware() -> Hardware:
         }
 
     couplers = {}
-    couplers["01"] = coupler = Qubit(flux="coupler_01/flux")
+    couplers["coupler_0"] = coupler = Qubit(flux="coupler_0/flux")
     channels |= {coupler.flux: DcChannel()}
     # register the instruments
     instruments = {
