@@ -126,7 +126,9 @@ class History:
             if output is not None:
                 completed.path = self.route(task_id, output)
             completed.flush()
-        (output / HISTORY).write_text(json.dumps(self._serialized_order, indent=4))
+        (output / HISTORY).write_text(
+            json.dumps(self._serialized_order, indent=4), encoding="utf-8"
+        )
 
     # TODO: implement time_travel()
 

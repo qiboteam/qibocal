@@ -28,7 +28,7 @@ def upload_report(path: pathlib.Path, tag: str, author: str):
     meta = Metadata.load(path)
     meta.author = author
     meta.tag = tag
-    (path / META).write_text(json.dumps(meta.dump(), indent=4))
+    (path / META).write_text(json.dumps(meta.dump(), indent=4), encoding="utf-8")
 
     # check the rsync command exists.
     if not shutil.which("rsync"):
