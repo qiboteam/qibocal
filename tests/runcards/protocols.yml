@@ -943,3 +943,14 @@ actions:
       amplitude: 0.15
       nshots: 45
       relaxation_time: 100_000
+
+  - id: twpa_calibration
+    operation: twpa_calibration
+    targets: [0]
+    parameters:
+      twpa_freq_width: 10_000_000
+      twpa_freq_step: 2_000_000
+      twpa_pow_width: 10
+      twpa_pow_step: 3
+      probe_frequency: 7_600_000_000
+      nshots: 20000
