@@ -173,8 +173,8 @@ def _fit(data: TwpaCalibrationData) -> TwpaCalibrationResults:
     that maximizes the gain.
     """
     qubit = data.qubits[0]
-    averaged_gain = magnitude(np.mean(data[qubit], axis=2)) / magnitude(
-        np.mean(data.reference_value_array, axis=0)
+    averaged_gain = np.mean(magnitude(data[qubit]), axis=2) / np.mean(
+        magnitude(data.reference_value_array), axis=0
     )
     flat_index = np.argmax(np.abs(averaged_gain))
     i, j = np.unravel_index(flat_index, averaged_gain.shape)
@@ -192,7 +192,6 @@ def _plot(data: TwpaCalibrationData, fit: TwpaCalibrationResults, target):
 
     figures = []
     fig = go.Figure()
-    qubit_data = data[target]
     if fit is not None:
         fitting_report = table_html(
             table_dict(
@@ -209,8 +208,8 @@ def _plot(data: TwpaCalibrationData, fit: TwpaCalibrationResults, target):
         )
         averaged_gain = fit.data[target]
     else:
-        averaged_gain = magnitude(np.mean(qubit_data, axis=2)) / magnitude(
-            np.mean(data.reference_value_array, axis=0)
+        averaged_gain = np.mean(magnitude(data[target]), axis=2) / np.mean(
+            magnitude(data.reference_value_array), axis=0
         )
         fitting_report = ""
 
