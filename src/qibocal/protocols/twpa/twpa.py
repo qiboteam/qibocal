@@ -83,7 +83,7 @@ def _acquisition(
     sequence = platform.natives.single_qubit[qubit].MZ()
     acq_handle = list(sequence.channel(platform.qubits[qubit].acquisition))[-1].id
     ro_probe = platform.qubits[qubit].probe
-    twpa_channel = platform.channels[ro_probe].lo
+    twpa_channel = platform.channels[platform.qubits[qubit].acquisition].twpa_pump
     frequency_range = np.arange(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
@@ -97,13 +97,17 @@ def _acquisition(
             params.twpa_freq_width / 2,
             params.twpa_freq_step,
         )
-        + platform.config(twpa_channel).frequency
+        + platform.config(
+            platform.channels[platform.qubits[qubit].acquisition].twpa_pump
+        ).frequency
     )
     twpa_power_range = (
         np.arange(
             -params.twpa_pow_width / 2, params.twpa_pow_width / 2, params.twpa_pow_step
         )
-        + platform.config(twpa_channel).power
+        + platform.config(
+            platform.channels[platform.qubits[qubit].acquisition].twpa_pump
+        ).power
     )
 
     updates = []
