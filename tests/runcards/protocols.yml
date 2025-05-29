@@ -948,9 +948,10 @@ actions:
     operation: twpa_calibration
     targets: [0]
     parameters:
+      freq_width: 10_000_000
+      freq_step: 1_000_000
       twpa_freq_width: 10_000_000
       twpa_freq_step: 2_000_000
       twpa_pow_width: 10
       twpa_pow_step: 3
-      probe_frequency: 7_600_000_000
       nshots: 20000
