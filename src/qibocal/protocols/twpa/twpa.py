@@ -189,32 +189,33 @@ def _plot(data: TwpaCalibrationData, fit: TwpaCalibrationResults, target):
     figures = []
     fig = go.Figure()
     qubit_data = data[target]
-    if fit is None:
+    if fit is not None:
+        fitting_report = table_html(
+            table_dict(
+                [target, target],
+                [
+                    "TWPA Frequency [Hz]",
+                    "TWPA Power [dBm]",
+                ],
+                [
+                    np.round(fit.twpa_frequency, 4),
+                    np.round(fit.twpa_power, 4),
+                ],
+            )
+        )
+        averaged_gain = fit.data[target]
+    else:
         averaged_gain = magnitude(np.mean(qubit_data, axis=2)) - magnitude(
             np.mean(data.reference_value_array, axis=0)
         )
-    else:
-        averaged_gain = fit.data[target]
+        fitting_report = ""
+
     fig.add_trace(
         go.Heatmap(
             x=np.array(data.twpa_frequency) * HZ_TO_GHZ,
             y=data.twpa_power,
             z=averaged_gain,
         ),
-    )
-
-    fitting_report = table_html(
-        table_dict(
-            [target, target],
-            [
-                "TWPA Frequency [Hz]",
-                "TWPA Power [dBm]",
-            ],
-            [
-                np.round(fit.twpa_frequency, 4),
-                np.round(fit.twpa_power, 4),
-            ],
-        )
     )
     fig.update_xaxes(title_text="TWPA Frequency [GHz]")
     fig.update_yaxes(title_text="TWPA Power [dBm]")
