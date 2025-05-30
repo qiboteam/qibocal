@@ -48,9 +48,9 @@ class TwpaCalibrationResults(Results):
 
     data: dict[QubitId, npt.NDArray]
     """Array with average gain for each qubit."""
-    twpa_frequency: float
+    twpa_frequency: dict[QubitId, float]
     """TWPA frequency [GHz]."""
-    twpa_power: float
+    twpa_power: dict[QubitId, float]
     """TWPA power [dBm]."""
 
 
@@ -79,9 +79,8 @@ def _acquisition(
 ) -> TwpaCalibrationData:
     """Acquisition function for TwpaCalibration.
 
-    This protocol assumes that only target is provided and it will fail otherwise.
-    First we acquire the reference value without TWPA, then we sweep the TWPA power and frequency.
-    The gain is computed as the norm of the complex readout signal minus the norm of the complex readout signal without TWPA.
+    First perform a scan over the readout probe with the TWPA off, then we sweep the TWPA power and frequency.
+    The gain is computed as the norm of the complex readout signal divided the norm of the complex readout signal without TWPA.
     """
 
     sequence = PulseSequence()
@@ -203,7 +202,7 @@ def _fit(data: TwpaCalibrationData) -> TwpaCalibrationResults:
     """Post-processing function for TwpaCalibration.
 
     After computing the averaged gain we select the corresponding twpa frequency and power
-    that maximizes the gain.
+    that maximizes the gain for each qubit.
     """
     gains = {}
     twpa_frequency = {}
