@@ -210,7 +210,6 @@ def execute(
     nshots: int,
     relaxation_time: Optional[float] = None,
     batch_size: Optional[int] = None,
-    debug: Optional[str] = None,
 ):
     # FIXME: This will only work for qw5q_platinum
     config = generate_config(
@@ -249,8 +248,9 @@ def execute(
             max_depth=max_depth,
         )
 
-        if debug is not None and i == 0:
-            with open(debug, "w") as file:
+        script_file = platform._controller.script_file_name
+        if script_file is not None and i == 0:
+            with open(script_file, "w") as file:
                 file.write(generate_qua_script(program, config))
 
         qm = qmm.open_qm(config)
