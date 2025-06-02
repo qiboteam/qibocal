@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import matplotlib.pyplot as plt
 import mpld3
@@ -46,8 +45,6 @@ class CryoscopeQuaParameters(Parameters):
     """End of the flux pulse (after we put zeros to see the falling time)"""
     other_qubits: list[QubitId] = field(default_factory=list)
     """Qubits to set the bias offset to zero (parking)."""
-    debug: Optional[str] = None
-    "If enabled it dumps the qua script in a file with the given name."
 
 
 CryoscopeQuaType = np.dtype(
@@ -199,8 +196,9 @@ def _acquisition(
     # Open the quantum machine
     qm = qmm.open_qm(config)
 
-    if params.debug is not None:
-        with open(params.debug, "w") as file:
+    script_file = controller.script_file_name
+    if script_file is not None:
+        with open(script_file, "w") as file:
             file.write(generate_qua_script(cryoscope, config))
 
     # Execute QUA program

@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 import mpld3
 import numpy as np
@@ -26,8 +25,6 @@ class QuaTwoQubitRbParameters(Parameters):
     """Repetitions of the same circuit (averaging)."""
     force_offsets: bool = False
     """Force sweetspot offsets using ``set_dc_offset`` command in the QUA program."""
-    debug: Optional[str] = None
-    """Dump QUA script and config in a file with this name."""
 
 
 def _acquisition(
@@ -144,14 +141,15 @@ def _acquisition(
 
     qmm = platform._controller.manager
 
-    if params.debug is not None:
+    script_file = platform._controller.script_file_name
+    if script_file is not None:
         # for debugging when there is an error
         from qm import generate_qua_script
         from qm.qua import program
 
         with program() as prog:
             align()
-        with open(params.debug, "w") as file:
+        with open(script_file, "w") as file:
             file.write(generate_qua_script(prog, config))
 
     rb = TwoQubitRb(
@@ -182,7 +180,7 @@ def _acquisition(
         num_circuits_per_depth=params.num_circuits_per_depth,
         num_shots_per_circuit=params.num_shots_per_circuit,
         offsets=offsets,
-        debug=params.debug,
+        debug=script_file,
     )
 
     # verify/save the random sequences created during the experiment

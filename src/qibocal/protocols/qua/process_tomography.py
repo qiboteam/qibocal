@@ -6,7 +6,7 @@ of a gate or sequence of gates on quantum hardware.
 
 from dataclasses import dataclass, field
 from itertools import product
-from typing import Optional, Union
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -49,7 +49,6 @@ Moments = list[Union[tuple[str], tuple[str, str]]]
 class ProcessTomographyParameters(Parameters):
     circuit: Moments = field(default_factory=list)
     """Circuit for which we reconstruct the channel."""
-    debug: Optional[str] = None
 
     def __post_init__(self):
         self.circuit = [tuple(moment) for moment in self.circuit]
@@ -105,7 +104,7 @@ def _acquisition(
             sequences.append([prerot] + params.circuit + [postrot])
 
     state0, state1 = execute(
-        sequences, platform, qubits, params.nshots, params.relaxation_time, params.debug
+        sequences, platform, qubits, params.nshots, params.relaxation_time
     )
     shots = np.stack([state0, state1]).astype(int)
 
