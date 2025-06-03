@@ -191,7 +191,9 @@ class Output:
         """Dump output content to an output folder."""
         # dump metadata
         self._export_stats()
-        (path / META).write_text(json.dumps(self.meta.dump(), indent=4))
+        (path / META).write_text(
+            json.dumps(self.meta.dump(), indent=4), encoding="utf-8"
+        )
 
         # dump protocols order
         self.history.dump(path)

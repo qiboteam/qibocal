@@ -70,7 +70,7 @@ class StateTomographyData(Data):
 
     def save(self, path):
         super().save(path)
-        (path / CIRCUIT_PATH).write_text(json.dumps(self.circuit.raw))
+        (path / CIRCUIT_PATH).write_text(json.dumps(self.circuit.raw), encoding="utf-8")
 
     @classmethod
     def load(cls, path):

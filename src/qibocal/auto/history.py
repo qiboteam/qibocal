@@ -127,7 +127,9 @@ class History:
 
     def dump(self, output: Optional[Path] = None):
         """Dump protocols order to file."""
-        (output / HISTORY).write_text(json.dumps(self._serialized_order, indent=4))
+        (output / HISTORY).write_text(
+            json.dumps(self._serialized_order, indent=4), encoding="utf-8"
+        )
 
     # TODO: implement time_travel()
 

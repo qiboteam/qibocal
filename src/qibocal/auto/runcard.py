@@ -45,7 +45,7 @@ class Runcard:
 
     def dump(self, path):
         """Dump runcard object to yaml."""
-        (path / RUNCARD).write_text(yaml.safe_dump(asdict(self)))
+        (path / RUNCARD).write_text(yaml.safe_dump(asdict(self)), encoding="utf-8")
 
     def run(
         self, output: Path, platform: Platform, mode: ExecutionMode, update: bool = True
