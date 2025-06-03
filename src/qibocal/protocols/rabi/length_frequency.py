@@ -23,6 +23,8 @@ from .length_frequency_signal import (
 )
 from .utils import fit_length_function, rabi_length_function, sequence_length
 
+__all__ = ["rabi_length_frequency"]
+
 
 @dataclass
 class RabiLengthFrequencyParameters(RabiLengthFrequencySignalParameters):

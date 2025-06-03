@@ -13,6 +13,8 @@ from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.utils import table_dict, table_html
 from qibocal.update import replace
 
+__all__ = ["resonator_amplitude"]
+
 
 @dataclass
 class ResonatorAmplitudeParameters(Parameters):

@@ -6,8 +6,8 @@ import numpy as np
 import plotly.graph_objects as go
 from scipy.signal import lfilter
 
-from qibocal.protocols.two_qubit_interaction import cryoscope
-from qibocal.protocols.two_qubit_interaction.cryoscope import (
+from qibocal.protocols import cryoscope
+from qibocal.protocols.flux_dependence.cryoscope import (
     CryoscopeData,
     CryoscopeResults,
 )

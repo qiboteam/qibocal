@@ -39,6 +39,13 @@ ROC_LENGHT = 800
 ROC_WIDTH = 800
 DEFAULT_CLASSIFIER = "qubit_fit"
 
+__all__ = [
+    "single_shot_classification",
+    "SingleShotClassificationData",
+    "SingleShotClassificationParameters",
+    "ClassificationType",
+]
+
 
 def evaluate_snr(zeros: npt.NDArray, ones: npt.NDArray) -> float:
     """Compute snr for zeros and ones"""
@@ -168,7 +175,9 @@ class SingleShotClassificationResults(Results):
         asdict_class = asdict(self)
         asdict_class.pop("models")
         asdict_class.pop("classifiers_hpars")
-        (path / f"{RESULTSFILE}.json").write_text(json.dumps(serialize(asdict_class)))
+        (path / f"{RESULTSFILE}.json").write_text(
+            json.dumps(serialize(asdict_class)), encoding="utf-8"
+        )
 
 
 def _acquisition(

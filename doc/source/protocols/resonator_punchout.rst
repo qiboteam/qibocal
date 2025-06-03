@@ -20,7 +20,7 @@ with the qubit.
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.resonator_punchout.ResonatorPunchoutParameters
+.. autoclass:: qibocal.protocols.resonator_spectroscopies.resonator_punchout.ResonatorPunchoutParameters
   :noindex:
 
 

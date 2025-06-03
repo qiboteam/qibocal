@@ -3,13 +3,16 @@ import pathlib
 from qibolab import ConfigKinds
 from qibolab._core.components import IqChannel
 from qibolab._core.instruments.emulator.emulator import EmulatorController
-from qibolab._core.instruments.emulator.hamiltonians import HamiltonianConfig
+from qibolab._core.instruments.emulator.hamiltonians import (
+    DriveEmulatorConfig,
+    HamiltonianConfig,
+)
 from qibolab._core.platform import Platform
 from qibolab._core.qubits import Qubit
 
 FOLDER = pathlib.Path(__file__).parent
 
-ConfigKinds.extend([HamiltonianConfig])
+ConfigKinds.extend([HamiltonianConfig, DriveEmulatorConfig])
 
 
 def create() -> Platform:
@@ -18,10 +21,10 @@ def create() -> Platform:
     channels = {}
 
     for q in range(1):
-        qubits[q] = qubit = Qubit.default(q, drive_qudits={(1, 2): f"{q}/drive12"})
+        qubits[q] = qubit = Qubit.default(q, drive_extra={(1, 2): f"{q}/drive12"})
         channels |= {
             qubit.drive: IqChannel(mixer=None, lo=None),
-            qubits[q].drive_qudits[1, 2]: IqChannel(mixer=None, lo=None),
+            qubits[q].drive_extra[1, 2]: IqChannel(mixer=None, lo=None),
         }
 
     # register the instruments

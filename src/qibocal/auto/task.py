@@ -49,9 +49,11 @@ class Action:
             for param, value in self.parameters.items():
                 if type(value) is Circuit:
                     circuit_path = path / CIRCUIT
-                    circuit_path.write_text(json.dumps(value.raw))
+                    circuit_path.write_text(json.dumps(value.raw), encoding="utf-8")
                     self.parameters[param] = str(circuit_path)
-        (path / SINGLE_ACTION).write_text(yaml.safe_dump(asdict(self)))
+        (path / SINGLE_ACTION).write_text(
+            yaml.safe_dump(asdict(self)), encoding="utf-8"
+        )
 
     @classmethod
     def load(cls, path):
