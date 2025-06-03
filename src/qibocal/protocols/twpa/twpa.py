@@ -139,19 +139,19 @@ def _acquisition(
     # reference value without twpas
     for twpa in twpas.values():
         twpa.disconnect()
-        results = platform.execute(
-            [sequence],
-            [sweepers],
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        )
-        for qubit in targets:
-            acq_handle = list(sequence.channel(platform.qubits[qubit].acquisition))[
-                -1
-            ].id
-            reference_value[qubit] = results[acq_handle].tolist()
+
+    results = platform.execute(
+        [sequence],
+        [sweepers],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
+    )
+    for qubit in targets:
+        acq_handle = list(sequence.channel(platform.qubits[qubit].acquisition))[-1].id
+        reference_value[qubit] = results[acq_handle].tolist()
+
     for twpa in twpas.values():
         twpa.connect()
 
