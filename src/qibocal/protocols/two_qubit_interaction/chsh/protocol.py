@@ -20,12 +20,11 @@ from qibocal.auto.operation import (
 )
 from qibocal.config import log
 
-from ...readout_mitigation_matrix import (
+from ...readout.readout_mitigation_matrix import (
     ReadoutMitigationMatrixParameters as mitigation_params,
 )
-from ...readout_mitigation_matrix import _acquisition as mitigation_acquisition
-from ...readout_mitigation_matrix import _fit as mitigation_fit
-from ...utils import calculate_frequencies
+from ...readout.readout_mitigation_matrix import _acquisition as mitigation_acquisition
+from ...readout.readout_mitigation_matrix import _fit as mitigation_fit
 from .pulses import create_chsh_sequences
 from .utils import READOUT_BASIS, compute_chsh
 
@@ -165,6 +164,21 @@ class CHSHResults(Results):
         return key in [(target, control) for target, control, _ in self.chsh]
 
 
+def calculate_frequencies(results, ro_ids):
+    """Calculates outcome frequencies from individual shots.
+
+    Args:
+        results (dict): return of ``platform.execute``
+        ro_ids (list): list of acquisition pulse ids for each qubit.
+
+    Returns:
+        dictionary containing frequencies.
+    """
+    shots = np.stack([results[_id] for _id in ro_ids]).T
+    values, counts = np.unique(shots, axis=0, return_counts=True)
+    return {"".join(str(int(i)) for i in v): cnt for v, cnt in zip(values, counts)}
+
+
 def _acquisition_pulses(
     params: CHSHParameters,
     platform: Platform,
@@ -176,7 +190,7 @@ def _acquisition_pulses(
 
     if params.apply_error_mitigation:
         mitigation_data = mitigation_acquisition(
-            mitigation_params(pulses=True, nshots=params.nshots), platform, targets
+            mitigation_params(nshots=params.nshots), platform, targets
         )
         mitigation_results = mitigation_fit(mitigation_data)
 
@@ -186,6 +200,7 @@ def _acquisition_pulses(
                 data.mitigation_matrix[pair] = (
                     mitigation_results.readout_mitigation_matrix[pair]
                 )
+                platform.connect()
             except KeyError:
                 log.warning(
                     f"Skipping error mitigation for qubits {pair} due to error."
@@ -193,7 +208,7 @@ def _acquisition_pulses(
 
         for bell_state in params.bell_states:
             for theta in thetas:
-                chsh_sequences, ro_pulses = create_chsh_sequences(
+                chsh_sequences = create_chsh_sequences(
                     platform=platform,
                     qubits=pair,
                     theta=theta,
@@ -205,7 +220,12 @@ def _acquisition_pulses(
                         nshots=params.nshots,
                         relaxation_time=params.relaxation_time,
                     )
-                    frequencies = calculate_frequencies(results, ro_pulses[basis])
+
+                    ro_ids = [
+                        list(sequence.channel(platform.qubits[q].acquisition))[-1].id
+                        for q in pair
+                    ]
+                    frequencies = calculate_frequencies(results, ro_ids)
                     data.register_basis(pair, bell_state, basis, frequencies)
     return data
 
@@ -313,13 +333,13 @@ def _fit(data: CHSHData) -> CHSHResults:
                             mitigated_freq[format(j, f"0{2}b")].append(float(val))
                     mitigated_freq_list.append(mitigated_freq)
             results[pair[0], pair[1], bell_state] = [
-                compute_chsh(freq, bell_state, l) for l in range(len(data.thetas))
+                compute_chsh(freq, bell_state, ith) for ith in range(len(data.thetas))
             ]
 
             if data.mitigation_matrix:
                 mitigated_results[pair[0], pair[1], bell_state] = [
-                    compute_chsh(mitigated_freq_list, bell_state, l)
-                    for l in range(len(data.thetas))
+                    compute_chsh(mitigated_freq_list, bell_state, ith)
+                    for ith in range(len(data.thetas))
                 ]
     return CHSHResults(chsh=results, chsh_mitigated=mitigated_results)
 

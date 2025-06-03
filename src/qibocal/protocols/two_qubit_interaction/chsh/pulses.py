@@ -50,21 +50,17 @@ def create_chsh_sequences(
     """Creates the pulse sequences needed for the 4 measurement settings for chsh."""
 
     chsh_sequences = {}
-    ro_pulses = {}
-
     for basis in readout_basis:
         sequence, phase = create_bell_sequence(platform, qubits, theta, bell_state)
         measurements = PulseSequence()
-        ro_pulses[basis] = {}
         for i, base in enumerate(basis):
             natives = platform.natives.single_qubit[qubits[i]]
             if base == "X":
                 sequence += natives.R(theta=np.pi / 2, phi=phase * (1 - i) + np.pi / 2)
 
             measurement_seq = natives.MZ()
-            ro_pulses[basis][qubits[i]] = measurement_seq[0][1]
             measurements += measurement_seq
 
         chsh_sequences[basis] = sequence | measurements
 
-    return chsh_sequences, ro_pulses
+    return chsh_sequences
