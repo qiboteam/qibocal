@@ -818,7 +818,7 @@ actions:
 
   - id: chsh_pulses
     operation: chsh_pulses
-    targets: [[0, 2], [2, 3]]
+    targets: [[0, 1]]
     parameters:
       bell_states: [0]
       ntheta: 20
