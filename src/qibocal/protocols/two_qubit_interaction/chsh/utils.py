@@ -17,7 +17,4 @@ def compute_chsh(frequencies, basis, i):
                 chsh += (-1) ** (int(outcome[0]) + int(outcome[1])) * freq[outcome][i]
         aux += 1
     nshots = sum(freq[x][i] for x in freq)
-    try:
-        return chsh / nshots
-    except ZeroDivisionError:
-        return 0
+    return chsh / nshots
