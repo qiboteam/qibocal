@@ -36,26 +36,26 @@ class UploadConfig:
 
     @staticmethod
     def from_lab(lab_name: str) -> "UploadConfig":
-        if lab_name in UploadLab:
+        try:
             lab = getattr(UploadLab, lab_name.upper())
-            if isinstance(lab, UploadLab.TII):
-                return UploadConfig(
-                    host=(
-                        "qibocal@saadiyat"
-                        if socket.gethostname() in ("saadiyat", "dalma")
-                        else "qibocal@login.qrccluster.com"
-                    ),
-                    target_dir="qibocal-reports/",
-                    root_url="http://login.qrccluster.com:9000/",
-                )
-            elif isinstance(lab, UploadLab.singapore):
-                return UploadConfig(
-                    host="...",
-                    target_dir="...",
-                    root_url="...",
-                )
-        else:
-            raise ValueError(f"Unknown lab: {lab}")
+        except KeyError:
+            raise ValueError(f"Unknown lab: {lab_name}")
+        if isinstance(lab, UploadLab.TII):
+            return UploadConfig(
+                host=(
+                    "qibocal@saadiyat"
+                    if socket.gethostname() in ("saadiyat", "dalma")
+                    else "qibocal@login.qrccluster.com"
+                ),
+                target_dir="qibocal-reports/",
+                root_url="http://login.qrccluster.com:9000/",
+            )
+        elif isinstance(lab, UploadLab.singapore):
+            return UploadConfig(
+                host="...",
+                target_dir="...",
+                root_url="...",
+            )
 
 
 def upload_report(path: pathlib.Path, tag: str, author: str, lab: str) -> str:
