@@ -20,7 +20,6 @@ class UploadLab(Enum):
     """Lab where the report is uploaded."""
 
     TII = "tii"
-    SINGAPORE = "singapore"
 
 
 @dataclass
@@ -40,7 +39,7 @@ class UploadConfig:
             lab = getattr(UploadLab, lab_name.upper())
         except KeyError:
             raise ValueError(f"Unknown lab: {lab_name}")
-        if isinstance(lab, UploadLab.TII):
+        if lab == UploadLab.TII:
             return UploadConfig(
                 host=(
                     "qibocal@saadiyat"
@@ -49,12 +48,6 @@ class UploadConfig:
                 ),
                 target_dir="qibocal-reports/",
                 root_url="http://login.qrccluster.com:9000/",
-            )
-        elif isinstance(lab, UploadLab.singapore):
-            return UploadConfig(
-                host="...",
-                target_dir="...",
-                root_url="...",
             )
 
 
@@ -123,6 +116,6 @@ def upload_report(path: pathlib.Path, tag: str, author: str, lab: str) -> str:
         msg = f"Failed to upload output: {e}"
         raise RuntimeError(msg) from e
 
-    url = urljoin(config.root, randname)
+    url = urljoin(config.root_url, randname)
     log.info(f"Upload completed. The result is available at:\n{url}")
     return url
