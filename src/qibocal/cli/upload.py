@@ -52,9 +52,7 @@ class UploadConfig:
             )
         elif lab == UploadLab.S14:
             return UploadConfig(
-                host=(
-                    "qibocal_user@10.246.80.226"
-                ),
+                host=("qibocal_user@10.246.80.226"),
                 target_dir="qibocal-reports/",
                 root_url="http://10.246.80.226:9000/",
             )
