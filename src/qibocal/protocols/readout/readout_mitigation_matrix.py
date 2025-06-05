@@ -165,7 +165,7 @@ def _update(
     platform: CalibrationPlatform,
     target: list[QubitId],
 ):
-    platform.calibration.set_readout_mitigation_matrix(
+    platform.calibration.set_readout_mitigation_matrix_element(
         tuple(target), results.readout_mitigation_matrix
     )
 

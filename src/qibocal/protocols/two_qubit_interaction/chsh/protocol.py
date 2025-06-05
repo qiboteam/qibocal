@@ -1,12 +1,9 @@
 """Protocol for CHSH experiment using both circuits and pulses."""
 
-import json
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Optional
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import Platform
 
@@ -18,13 +15,7 @@ from qibocal.auto.operation import (
     Results,
     Routine,
 )
-from qibocal.config import log
 
-from ...readout.readout_mitigation_matrix import (
-    ReadoutMitigationMatrixParameters as mitigation_params,
-)
-from ...readout.readout_mitigation_matrix import _acquisition as mitigation_acquisition
-from ...readout.readout_mitigation_matrix import _fit as mitigation_fit
 from .pulses import create_chsh_sequences
 from .utils import READOUT_BASIS, compute_chsh
 
@@ -35,16 +26,15 @@ CLASSICAL_BOUND = 2
 QUANTUM_BOUND = 2 * np.sqrt(2)
 """Quantum limit of CHSH."""
 
-
-MITIGATION_MATRIX_FILE = "mitigation_matrix"
-"""File where readout mitigation matrix is stored."""
+DataType = dict[QubitId, QubitId, int, tuple, str]
+FreqType = dict[int, list[dict[str, list[int]]]]
 
 
 @dataclass
 class CHSHParameters(Parameters):
     """CHSH runcard inputs."""
 
-    bell_states: list
+    bell_states: list[int]
     """List with Bell states to compute CHSH.
     The following notation it is used:
     0 -> |00>+|11>
@@ -56,47 +46,56 @@ class CHSHParameters(Parameters):
     """Number of angles probed linearly between 0 and 2 pi."""
     native: Optional[bool] = False
     """If True a circuit will be created using only GPI2 and CZ gates."""
-    apply_error_mitigation: Optional[bool] = False
-    """Error mitigation model"""
+
+
+def merge_frequencies(data: DataType, pair: tuple[QubitId, QubitId], bell_state: int):
+    """Merge frequencies with different measurement basis."""
+    freqs = []
+    bell_data = {
+        (index[3], index[4]): value
+        for index, value in data.items()
+        if index[:3] == (pair[0], pair[1], bell_state)
+    }
+
+    freqs = []
+    for i in READOUT_BASIS:
+        freqs.append(
+            {
+                state[1]: value.tolist()
+                for state, value in bell_data.items()
+                if state[0] == i
+            }
+        )
+    return freqs
+
+
+def mitigated_frequencies(frequencies, mitigation_matrix, thetas):
+    mitigated_freq_list = []
+    for freq_basis in frequencies:
+        mitigated_freq = {format(i, f"0{2}b"): [] for i in range(4)}
+        for i in range(len(thetas)):
+            freq_array = np.zeros(4)
+            for k, v in freq_basis.items():
+                freq_array[int(k, 2)] = v[i]
+            freq_array = freq_array.reshape(-1, 1)
+            for j, val in enumerate(mitigation_matrix @ freq_array):
+                mitigated_freq[format(j, f"0{2}b")].append(float(val))
+        mitigated_freq_list.append(mitigated_freq)
+    return mitigated_freq_list
 
 
 @dataclass
 class CHSHData(Data):
     """CHSH Data structure."""
 
-    bell_states: list
+    bell_states: list[int]
     """Bell states list."""
     thetas: list
     """Angles probed."""
-    data: dict[QubitId, QubitId, int, tuple, str] = field(default_factory=dict)
+    data: DataType = field(default_factory=dict)
     """Raw data acquired."""
-    mitigation_matrix: dict[tuple[QubitId, ...], npt.NDArray] = field(
-        default_factory=dict
-    )
-    """Mitigation matrix computed using the readout_mitigation_matrix protocol."""
-
-    def save(self, path: Path):
-        """Saving data including mitigation matrix."""
-
-        np.savez(
-            path / f"{MITIGATION_MATRIX_FILE}.npz",
-            **{
-                json.dumps((control, target)): self.mitigation_matrix[control, target]
-                for control, target, _, _, _ in self.data
-            },
-        )
-        super().save(path=path)
-
-    @classmethod
-    def load(cls, path: Path):
-        """Custom loading to acco   modate mitigation matrix"""
-        instance = super().load(path=path)
-        # load readout mitigation matrix
-        mitigation_matrix = super().load_data(
-            path=path, filename=MITIGATION_MATRIX_FILE
-        )
-        instance.mitigation_matrix = mitigation_matrix
-        return instance
+    frequencies: FreqType = field(default_factory=dict)
+    mitigated_frequencies: FreqType = field(default_factory=dict)
 
     def register_basis(self, pair, bell_state, basis, frequencies):
         """Store output for single qubit."""
@@ -117,31 +116,6 @@ class CHSHData(Data):
                 )
             else:
                 self.data[pair[0], pair[1], bell_state, basis, state] = np.array([freq])
-
-    def merge_frequencies(self, pair, bell_state):
-        """Merge frequencies with different measurement basis."""
-        freqs = []
-        bell_data = {
-            (index[3], index[4]): value
-            for index, value in self.data.items()
-            if index[:3] == (pair[0], pair[1], bell_state)
-        }
-
-        freqs = []
-        for i in READOUT_BASIS:
-            freqs.append(
-                {state[1]: value for state, value in bell_data.items() if state[0] == i}
-            )
-
-        return freqs
-
-    @property
-    def params(self):
-        """Convert non-arrays attributes into dict."""
-        data_dict = super().params
-        data_dict.pop("mitigation_matrix")
-
-        return data_dict
 
 
 @dataclass
@@ -188,23 +162,13 @@ def _acquisition_pulses(
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
     data = CHSHData(bell_states=params.bell_states, thetas=thetas.tolist())
 
-    if params.apply_error_mitigation:
-        mitigation_data = mitigation_acquisition(
-            mitigation_params(nshots=params.nshots), platform, targets
-        )
-        mitigation_results = mitigation_fit(mitigation_data)
-
     for pair in targets:
-        if params.apply_error_mitigation:
-            try:
-                data.mitigation_matrix[pair] = (
-                    mitigation_results.readout_mitigation_matrix[pair]
-                )
-                platform.connect()
-            except KeyError:
-                log.warning(
-                    f"Skipping error mitigation for qubits {pair} due to error."
-                )
+        try:
+            mitigation_matrix = (
+                platform.calibration.get_readout_mitigation_matrix_element(pair)
+            )
+        except AssertionError:
+            mitigation_matrix = None
 
         for bell_state in params.bell_states:
             for theta in thetas:
@@ -227,6 +191,15 @@ def _acquisition_pulses(
                     ]
                     frequencies = calculate_frequencies(results, ro_ids)
                     data.register_basis(pair, bell_state, basis, frequencies)
+
+            data.frequencies[bell_state] = freqs = merge_frequencies(
+                data.data, pair, bell_state
+            )
+            if mitigation_matrix is not None:
+                data.mitigated_frequencies[bell_state] = mitigated_frequencies(
+                    freqs, mitigation_matrix, thetas
+                )
+
     return data
 
 
@@ -317,28 +290,15 @@ def _fit(data: CHSHData) -> CHSHResults:
     mitigated_results = {}
     for pair in data.pairs:
         for bell_state in data.bell_states:
-            freq = data.merge_frequencies(pair, bell_state)
-            if data.mitigation_matrix:
-                matrix = data.mitigation_matrix[pair]
-
-                mitigated_freq_list = []
-                for freq_basis in freq:
-                    mitigated_freq = {format(i, f"0{2}b"): [] for i in range(4)}
-                    for i in range(len(data.thetas)):
-                        freq_array = np.zeros(4)
-                        for k, v in freq_basis.items():
-                            freq_array[int(k, 2)] = v[i]
-                        freq_array = freq_array.reshape(-1, 1)
-                        for j, val in enumerate(matrix @ freq_array):
-                            mitigated_freq[format(j, f"0{2}b")].append(float(val))
-                    mitigated_freq_list.append(mitigated_freq)
+            freq = data.frequencies[bell_state]
             results[pair[0], pair[1], bell_state] = [
                 compute_chsh(freq, bell_state, ith) for ith in range(len(data.thetas))
             ]
 
-            if data.mitigation_matrix:
+            if bell_state in data.mitigated_frequencies:
+                mitigated_freq = data.mitigated_frequencies[bell_state]
                 mitigated_results[pair[0], pair[1], bell_state] = [
-                    compute_chsh(mitigated_freq_list, bell_state, ith)
+                    compute_chsh(mitigated_freq, bell_state, ith)
                     for ith in range(len(data.thetas))
                 ]
     return CHSHResults(chsh=results, chsh_mitigated=mitigated_results)

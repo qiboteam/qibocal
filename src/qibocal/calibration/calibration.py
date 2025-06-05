@@ -204,7 +204,7 @@ class Calibration(Model):
 
     def set_readout_mitigation_matrix_element(
         self,
-        target: tuple[QubitId, ...],
+        target: list[QubitId],
         readout_mitigation_dict: dict[tuple[QubitId, ...], npt.NDArray[np.float64]],
     ):
         # create empty matrix if it doesn't exist
@@ -218,7 +218,7 @@ class Calibration(Model):
         self.readout_mitigation_matrix[ids] = readout_mitigation_dict[tuple(target)]
 
     def get_readout_mitigation_matrix_element(
-        self, target: tuple[QubitId, ...]
+        self, target: list[QubitId]
     ) -> SparseArray:
         assert self.readout_mitigation_matrix is not None
         ids = self._readout_mitigation_matrix_indices(target)

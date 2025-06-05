@@ -823,7 +823,6 @@ actions:
       bell_states: [0, 1, 2, 3]
       ntheta: 20
       native: True
-      apply_error_mitigation: True
 
   - id: readout_mitigation_matrix
     operation: readout_mitigation_matrix
