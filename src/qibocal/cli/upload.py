@@ -20,6 +20,7 @@ class UploadLab(Enum):
     """Lab where the report is uploaded."""
 
     TII = "tii"
+    S14 = "s14"
 
 
 @dataclass
@@ -48,6 +49,14 @@ class UploadConfig:
                 ),
                 target_dir="qibocal-reports/",
                 root_url="http://login.qrccluster.com:9000/",
+            )
+        elif lab == UploadLab.S14:
+            return UploadConfig(
+                host=(
+                    "qibocal_user@10.246.80.226"
+                ),
+                target_dir="qibocal-reports/",
+                root_url="http://10.246.80.226:9000/",
             )
 
 
