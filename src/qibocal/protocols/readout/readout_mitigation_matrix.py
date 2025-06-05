@@ -7,7 +7,6 @@ import plotly.express as px
 from qibo import gates
 from qibo.backends import construct_backend
 from qibo.models import Circuit
-from scipy.sparse import lil_matrix
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
@@ -166,19 +165,8 @@ def _update(
     platform: CalibrationPlatform,
     target: list[QubitId],
 ):
-    # create empty matrix if it doesn't exist
-    if platform.calibration.readout_mitigation_matrix is None:
-        platform.calibration.readout_mitigation_matrix = lil_matrix(
-            (2**platform.calibration.nqubits, 2**platform.calibration.nqubits)
-        )
-
-    # compute indices
-    mask = sum(1 << platform.calibration.qubit_index(i) for i in target)
-    indices = [i for i in range(2**platform.calibration.nqubits) if (i & mask) == i]
-
-    # update matrix
-    platform.calibration.readout_mitigation_matrix[np.ix_(indices, indices)] = (
-        results.readout_mitigation_matrix[tuple(target)]
+    platform.calibration.set_readout_mitigation_matrix(
+        tuple(target), results.readout_mitigation_matrix
     )
 
 
