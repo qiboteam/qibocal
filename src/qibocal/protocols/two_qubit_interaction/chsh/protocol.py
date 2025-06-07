@@ -19,7 +19,6 @@ from qibocal.auto.operation import (
 from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
 
 from .circuits import create_chsh_circuits
-from .pulses import create_chsh_sequences
 from .utils import READOUT_BASIS, compute_chsh
 
 COMPUTATIONAL_BASIS = ["00", "01", "10", "11"]
@@ -47,7 +46,6 @@ class CHSHParameters(Parameters):
     """
     ntheta: int
     """Number of angles probed linearly between 0 and 2 pi."""
-    circuits: bool = False
     native: Optional[bool] = True
     """If True a circuit will be created using only GPI2 and CZ gates."""
 
@@ -142,21 +140,6 @@ class CHSHResults(Results):
         return key in [(target, control) for target, control, _ in self.chsh]
 
 
-def calculate_frequencies(results, ro_ids):
-    """Calculates outcome frequencies from individual shots.
-
-    Args:
-        results (dict): return of ``platform.execute``
-        ro_ids (list): list of acquisition pulse ids for each qubit.
-
-    Returns:
-        dictionary containing frequencies.
-    """
-    shots = np.stack([results[_id] for _id in ro_ids]).T
-    values, counts = np.unique(shots, axis=0, return_counts=True)
-    return {"".join(str(int(i)) for i in v): cnt for v, cnt in zip(values, counts)}
-
-
 def _acquisition(
     params: CHSHParameters,
     platform: Platform,
@@ -166,10 +149,8 @@ def _acquisition(
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
     data = CHSHData(bell_states=params.bell_states, thetas=thetas.tolist())
 
-    if params.circuits:
-        backend = construct_backend("qibolab", platform=platform)
-        transpiler = dummy_transpiler(backend)
-
+    backend = construct_backend("qibolab", platform=platform)
+    transpiler = dummy_transpiler(backend)
     for pair in targets:
         try:
             mitigation_matrix = (
@@ -180,41 +161,20 @@ def _acquisition(
 
         for bell_state in params.bell_states:
             for theta in thetas:
-                if params.circuits:
-                    chsh_circuits = create_chsh_circuits(
-                        bell_state=bell_state,
-                        theta=theta,
-                        native=params.native,
-                    )
-                else:
-                    chsh_circuits = create_chsh_sequences(
-                        platform=platform,
-                        qubits=pair,
-                        theta=theta,
-                        bell_state=bell_state,
-                    )
+                chsh_circuits = create_chsh_circuits(
+                    bell_state=bell_state,
+                    theta=theta,
+                    native=params.native,
+                )
                 for basis, circuit in chsh_circuits.items():
-                    if params.circuits:
-                        _, result = execute_transpiled_circuit(
-                            circuit,
-                            pair,
-                            backend,
-                            transpiler=transpiler,
-                            nshots=params.nshots,
-                        )
-                        frequencies = result.frequencies()
-                    else:
-                        results = platform.execute(
-                            [circuit],
-                            nshots=params.nshots,
-                            relaxation_time=params.relaxation_time,
-                        )
-                        ro_ids = [
-                            list(circuit.channel(platform.qubits[q].acquisition))[-1].id
-                            for q in pair
-                        ]
-                        frequencies = calculate_frequencies(results, ro_ids)
-
+                    _, result = execute_transpiled_circuit(
+                        circuit,
+                        pair,
+                        backend,
+                        transpiler=transpiler,
+                        nshots=params.nshots,
+                    )
+                    frequencies = result.frequencies()
                     data.register_basis(pair, bell_state, basis, frequencies)
 
             data.frequencies[bell_state] = freqs = merge_frequencies(
