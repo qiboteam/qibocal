@@ -5,6 +5,7 @@ from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
+from qibo.backends import construct_backend
 from qibolab import Platform
 
 from qibocal.auto.operation import (
@@ -15,7 +16,9 @@ from qibocal.auto.operation import (
     Results,
     Routine,
 )
+from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
 
+from .circuits import create_chsh_circuits
 from .pulses import create_chsh_sequences
 from .utils import READOUT_BASIS, compute_chsh
 
@@ -44,7 +47,8 @@ class CHSHParameters(Parameters):
     """
     ntheta: int
     """Number of angles probed linearly between 0 and 2 pi."""
-    native: Optional[bool] = False
+    circuits: bool = False
+    native: Optional[bool] = True
     """If True a circuit will be created using only GPI2 and CZ gates."""
 
 
@@ -153,7 +157,7 @@ def calculate_frequencies(results, ro_ids):
     return {"".join(str(int(i)) for i in v): cnt for v, cnt in zip(values, counts)}
 
 
-def _acquisition_pulses(
+def _acquisition(
     params: CHSHParameters,
     platform: Platform,
     targets: list[list[QubitId]],
@@ -161,6 +165,10 @@ def _acquisition_pulses(
     r"""Data acquisition for CHSH protocol using pulse sequences."""
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
     data = CHSHData(bell_states=params.bell_states, thetas=thetas.tolist())
+
+    if params.circuits:
+        backend = construct_backend("qibolab", platform=platform)
+        transpiler = dummy_transpiler(backend)
 
     for pair in targets:
         try:
@@ -172,24 +180,41 @@ def _acquisition_pulses(
 
         for bell_state in params.bell_states:
             for theta in thetas:
-                chsh_sequences = create_chsh_sequences(
-                    platform=platform,
-                    qubits=pair,
-                    theta=theta,
-                    bell_state=bell_state,
-                )
-                for basis, sequence in chsh_sequences.items():
-                    results = platform.execute(
-                        [sequence],
-                        nshots=params.nshots,
-                        relaxation_time=params.relaxation_time,
+                if params.circuits:
+                    chsh_circuits = create_chsh_circuits(
+                        bell_state=bell_state,
+                        theta=theta,
+                        native=params.native,
                     )
+                else:
+                    chsh_circuits = create_chsh_sequences(
+                        platform=platform,
+                        qubits=pair,
+                        theta=theta,
+                        bell_state=bell_state,
+                    )
+                for basis, circuit in chsh_circuits.items():
+                    if params.circuits:
+                        _, result = execute_transpiled_circuit(
+                            circuit,
+                            pair,
+                            backend,
+                            transpiler=transpiler,
+                            nshots=params.nshots,
+                        )
+                        frequencies = result.frequencies()
+                    else:
+                        results = platform.execute(
+                            [circuit],
+                            nshots=params.nshots,
+                            relaxation_time=params.relaxation_time,
+                        )
+                        ro_ids = [
+                            list(circuit.channel(platform.qubits[q].acquisition))[-1].id
+                            for q in pair
+                        ]
+                        frequencies = calculate_frequencies(results, ro_ids)
 
-                    ro_ids = [
-                        list(sequence.channel(platform.qubits[q].acquisition))[-1].id
-                        for q in pair
-                    ]
-                    frequencies = calculate_frequencies(results, ro_ids)
                     data.register_basis(pair, bell_state, basis, frequencies)
 
             data.frequencies[bell_state] = freqs = merge_frequencies(
@@ -304,5 +329,5 @@ def _fit(data: CHSHData) -> CHSHResults:
     return CHSHResults(chsh=results, chsh_mitigated=mitigated_results)
 
 
-chsh_pulses = Routine(_acquisition_pulses, _fit, _plot, two_qubit_gates=True)
+chsh_pulses = Routine(_acquisition, _fit, _plot, two_qubit_gates=True)
 """CHSH experiment using pulses."""
