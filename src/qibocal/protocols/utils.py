@@ -188,20 +188,6 @@ def effective_qubit_temperature(
     return temp, error
 
 
-def calculate_frequencies(results, ro_pulses):
-    """Calculates outcome frequencies from individual shots.
-    Args:
-        results (dict): return of execute_pulse_sequence
-        qubit_list (list): list of qubit ids executed in pulse sequence.
-
-    Returns:
-        dictionary containing frequencies.
-    """
-    shots = np.stack([results[ro_pulses[qubit].id] for qubit in ro_pulses]).T
-    values, counts = np.unique(shots, axis=0, return_counts=True)
-    return {"".join(str(int(i)) for i in v): cnt for v, cnt in zip(values, counts)}
-
-
 def norm(x_mags):
     return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
 
