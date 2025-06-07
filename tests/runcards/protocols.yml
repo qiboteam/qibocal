@@ -816,19 +816,27 @@ actions:
       dt: 0
       native: CZ
 
-  - id: chsh_pulses
-    operation: chsh_pulses
+  - id: readout_mitigation_matrix
+    operation: readout_mitigation_matrix
+    targets: [[0,1]]
+    parameters:
+      nshots: 10
+
+  - id: chsh_native_gates
+    operation: chsh
     targets: [[0, 1]]
     parameters:
       bell_states: [0, 1, 2, 3]
       ntheta: 20
       native: True
 
-  - id: readout_mitigation_matrix
-    operation: readout_mitigation_matrix
-    targets: [[0,1]]
+  - id: chsh_non_native_gates
+    operation: chsh
+    targets: [[0, 1]]
     parameters:
-      nshots: 10
+      bell_states: [0]
+      ntheta: 20
+      native: False
 
   - id: resonator_amplitude
     operation: resonator_amplitude

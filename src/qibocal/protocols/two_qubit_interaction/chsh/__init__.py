@@ -1,3 +1,3 @@
-from .protocol import chsh_pulses
+from .protocol import chsh
 
-__all__ = ["chsh_pulses"]
+__all__ = ["chsh"]

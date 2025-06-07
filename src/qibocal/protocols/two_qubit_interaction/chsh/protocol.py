@@ -289,5 +289,5 @@ def _fit(data: CHSHData) -> CHSHResults:
     return CHSHResults(chsh=results, chsh_mitigated=mitigated_results)
 
 
-chsh_pulses = Routine(_acquisition, _fit, _plot, two_qubit_gates=True)
+chsh = Routine(_acquisition, _fit, _plot, two_qubit_gates=True)
 """CHSH experiment using pulses."""
