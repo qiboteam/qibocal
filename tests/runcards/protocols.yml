@@ -834,7 +834,7 @@ actions:
     operation: chsh
     targets: [[0, 1]]
     parameters:
-      bell_states: [0]
+      bell_states: [0, 1, 2, 3]
       ntheta: 20
       native: False
 
