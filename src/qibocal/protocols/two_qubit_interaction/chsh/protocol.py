@@ -191,7 +191,6 @@ def _acquisition(
 def _plot(data: CHSHData, fit: CHSHResults, target: QubitPairId):
     """Plotting function for CHSH protocol."""
     figures = []
-
     for bell_state in data.bell_states:
         fig = go.Figure(layout_yaxis_range=[-3, 3])
         if fit is not None:
@@ -273,7 +272,9 @@ def _fit(data: CHSHData) -> CHSHResults:
     """Fitting for CHSH protocol."""
     results = {}
     mitigated_results = {}
-    for pair in data.pairs:
+    # patch for fixing the plot to appear when qubits are given in non-sorted order
+    pairs = list({tuple(q[:2]) for q in data.data})
+    for pair in pairs:
         for bell_state in data.bell_states:
             freq = data.frequencies[bell_state]
             results[pair[0], pair[1], bell_state] = [
