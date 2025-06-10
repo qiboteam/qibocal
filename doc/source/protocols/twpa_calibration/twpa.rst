@@ -15,7 +15,7 @@ We then evaluate the gain for each frequency and power of the pump as :cite:p:`s
 
 .. math::
 
-    G(f, p) = \frac{S_{on}(f, p)}{S_{off}}
+    G(f, p) = 10 \log_{10} \Bigg( \frac{S_{on}(f, p)}{S_{off}} \Bigg)
 
 where :math:`S_{on}(f,p)` is the signal acquired with the amplifier on and :math:`S_{off}`
 the signal acquired with the amplifier off. The signal is defined as  :math:`S` as the average

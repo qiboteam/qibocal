@@ -208,11 +208,12 @@ def _fit(data: TwpaCalibrationData) -> TwpaCalibrationResults:
     twpa_frequency = {}
     twpa_power = {}
     for qubit in data.qubits:
-        averaged_gain = np.mean(magnitude(data[qubit]), axis=2) / np.mean(
-            magnitude(data.reference_value_array(qubit)), axis=0
+        averaged_gain = 10 * np.log10(
+            np.mean(magnitude(data[qubit]), axis=2)
+            / np.mean(magnitude(data.reference_value_array(qubit)), axis=0)
         )
         gains[qubit] = averaged_gain
-        flat_index = np.argmax(np.abs(averaged_gain))
+        flat_index = np.argmax(averaged_gain)
         i, j = np.unravel_index(flat_index, averaged_gain.shape)
         twpa_frequency[qubit] = float(data.twpa_frequency[qubit][j])
         twpa_power[qubit] = float(data.twpa_power[qubit][i])
@@ -244,8 +245,9 @@ def _plot(data: TwpaCalibrationData, fit: TwpaCalibrationResults, target):
         )
         averaged_gain = fit.data[target]
     else:
-        averaged_gain = np.mean(magnitude(data[target]), axis=2) / np.mean(
-            magnitude(data.reference_value_array(target)), axis=0
+        averaged_gain = 10 * np.log10(
+            np.mean(magnitude(data[target]), axis=2)
+            / np.mean(magnitude(data.reference_value_array(target)), axis=0)
         )
         fitting_report = ""
     fig.add_trace(
