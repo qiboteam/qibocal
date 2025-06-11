@@ -245,7 +245,7 @@ def _plot(data: TwpaCalibrationData, fit: TwpaCalibrationResults, target):
         )
         averaged_gain = fit.data[target]
     else:
-        averaged_gain = 10 * np.log10(
+        averaged_gain = 20 * np.log10(
             np.mean(magnitude(data[target]), axis=2)
             / np.mean(magnitude(data.reference_value_array(target)), axis=0)
         )
