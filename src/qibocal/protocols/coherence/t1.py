@@ -21,8 +21,6 @@ __all__ = ["CoherenceProbType", "T1Data", "t1"]
 class T1Parameters(T1SignalParameters):
     """T1 runcard inputs."""
 
-    flux_pulse_amplitude: Optional[float] = None
-
 
 @dataclass
 class T1Results(T1SignalResults):
@@ -54,7 +52,6 @@ def _acquisition(
     sequence, ro_pulses, pulses = t1_sequence(
         platform=platform,
         targets=targets,
-        flux_pulse_amplitude=params.flux_pulse_amplitude,
     )
 
     ro_wait_range = np.arange(

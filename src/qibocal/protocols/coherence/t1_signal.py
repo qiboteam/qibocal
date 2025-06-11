@@ -92,12 +92,12 @@ def t1_sequence(
         natives = platform.natives.single_qubit[q]
         qd_channel, qd_pulse = natives.RX()[0]
         ro_channel, ro_pulse = natives.MZ()[0]
-        flux_channel = platform.qubits[q].flux
 
         ro_pulses[q] = ro_pulse
         sequence.append((qd_channel, qd_pulse))
         sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
         if flux_pulse_amplitude is not None:
+            flux_channel = platform.qubits[q].flux
             sequence.append((flux_channel, Delay(duration=qd_pulse.duration)))
             sequence.append((flux_channel, flux_pulses[i]))
         sequence.append((ro_channel, delays[i]))
