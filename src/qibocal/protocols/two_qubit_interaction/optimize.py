@@ -398,7 +398,7 @@ def _plot(
                     y=amps,
                     z=cz,
                     zmin=0,
-                    zmax=2*np.pi,
+                    zmax=2 * np.pi,
                     name="{fit.native} angle",
                     colorbar_x=-0.1,
                     colorscale="RdBu",
