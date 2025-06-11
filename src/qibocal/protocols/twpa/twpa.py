@@ -208,7 +208,7 @@ def _fit(data: TwpaCalibrationData) -> TwpaCalibrationResults:
     twpa_frequency = {}
     twpa_power = {}
     for qubit in data.qubits:
-        averaged_gain = 10 * np.log10(
+        averaged_gain = 20 * np.log10(
             np.mean(magnitude(data[qubit]), axis=2)
             / np.mean(magnitude(data.reference_value_array(qubit)), axis=0)
         )
