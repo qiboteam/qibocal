@@ -17,7 +17,7 @@ After waiting for the time of flight, we acquire and average a waveform, resulti
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.resonator_spectroscopy.ResonatorSpectroscopyParameters
+.. autoclass:: qibocal.protocols.resonator_spectroscopies.resonator_spectroscopy.ResonatorSpectroscopyParameters
   :noindex:
 
 This experiment is highly dependent on the pulse amplitude. The primary goal is to determine the resonator frequency
@@ -177,41 +177,6 @@ an idea of the region to scan (for standard cavities around 7 GHz). Also, a very
 step between two subsequent frequency points is not needed and could really slow down
 the experiment (from seconds to tens of minutes) if chosen incorrectly. Usually, a step
 of 200 MHz is fine enough.
-
-The resonator frequencies can be then inserted into the platform runcards (in ``qibolab_platforms_qrc``).
-For example, if we are reading qubit 0:
-
-.. code-block:: yaml
-
-    native_gates:
-        single_qubit:
-            0: # qubit number
-                RX:
-                    duration: 40
-                    amplitude: <high_power_amplitude>
-                    frequency: <high_power_resonator_frequency>
-                    shape: Gaussian(5)
-                    type: qd # qubit drive
-                    relative_start: 0
-                    phase: 0
-                MZ:
-                    duration: 2000
-                    amplitude: <low_power_amplitude>
-                    frequency: <low_power_resonator_frequency>
-                    shape: Rectangular()
-                    type: ro # readout
-                    relative_start: 0
-                    phase: 0
-
-and also here:
-
-.. code-block:: yaml
-
-    characterization:
-        single_qubit:
-            0:
-                bare_resonator_frequency: <high_power_resonator_frequency>
-                readout_frequency: <low_power_resonator_frequency>
 
 Requirements
 ^^^^^^^^^^^^

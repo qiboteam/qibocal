@@ -27,7 +27,9 @@ from qibocal.auto.operation import (
 )
 from qibocal.config import log
 
-from .utils import table_dict, table_html
+from ..utils import table_dict, table_html
+
+__all__ = ["qubit_vz"]
 
 
 @dataclass

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qibocal"
-version = "0.2.1"
+version = "0.2.2"
 description = "Qibo's quantum calibration, characterization and validation module."
 authors = ["The Qibo team"]
 license = "Apache License 2.0"
@@ -18,7 +18,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.9,<3.13"
 qibolab = "^0.2.6"
-qibo = "^0.2.13"
+qibo = "^0.2.16"
 numpy = "^1.26.4"
 scipy = "^1.10.1"
 pandas = { version = "^2.2.2", extras = ["html"] }
@@ -58,7 +58,7 @@ sphinxcontrib-bibtex = "^2.5.0"
 recommonmark = "^0.7.1"
 sphinx_markdown_tables = "^0.0.17"
 sphinx-copybutton = "^0.5.2"
-setuptools = "^75.8.0"
+setuptools = ">=75.8,<79.0"
 
 [tool.poetry.group.dev]
 optional = true
@@ -92,3 +92,7 @@ types = "true"
 [tool.pytest.ini_options]
 testpaths = ['tests/']
 addopts = ['--cov=qibocal', '--cov-report=xml', '--cov-report=html']
+
+[tool.pycln]
+all = true
+exclude = "__init__.py"

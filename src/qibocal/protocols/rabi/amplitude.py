@@ -14,6 +14,8 @@ from ..utils import chi2_reduced, fallback_period, guess_period
 from . import utils
 from .amplitude_signal import RabiAmplitudeSignalParameters, RabiAmplitudeSignalResults
 
+__all__ = ["rabi_amplitude"]
+
 
 @dataclass
 class RabiAmplitudeParameters(RabiAmplitudeSignalParameters):

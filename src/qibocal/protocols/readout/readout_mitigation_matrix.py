@@ -14,6 +14,8 @@ from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
+__all__ = ["readout_mitigation_matrix"]
+
 
 @dataclass
 class ReadoutMitigationMatrixParameters(Parameters):
@@ -148,8 +150,8 @@ def _plot(
                 y=computational_basis,
                 text_auto=True,
                 labels={
-                    "x": "Prepeared States",
-                    "y": "Measured States",
+                    "x": "Measured States",
+                    "y": "Prepared States",
                     "color": "Probabilities",
                 },
                 width=700,
