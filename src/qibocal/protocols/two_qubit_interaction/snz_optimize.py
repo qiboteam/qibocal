@@ -41,6 +41,8 @@ class SNZFinetuningParamteters(Parameters):
     theta_end: float
     theta_step: float
     t_idling: float
+    flux_time_delay: float = 0
+    """Wait time after flux pulse."""
 
 
 @dataclass
@@ -160,7 +162,7 @@ def _aquisition(
                     other_qubit_vz,
                     ordered_pair,
                     "CZ",
-                    dt=0,  # TODO: when dt is zero a 16 ns is added
+                    dt=params.flux_time_delay,  # TODO: when dt is zero a 16 ns is added
                     flux_pulses=flux_pulse,
                 )
                 sweeper_theta = Sweeper(
