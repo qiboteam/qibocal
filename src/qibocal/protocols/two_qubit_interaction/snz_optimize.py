@@ -126,6 +126,7 @@ def _aquisition(
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
 ) -> SNZFinetuningData:
+    """Acquisition for the optimization of SNZ amplitudes."""
     ratio_range = np.arange(
         params.amp_ratio_min, params.amp_ratio_max, params.amp_ratio_step
     )
@@ -293,7 +294,7 @@ def _plot(
     fit: SNZFinetuningResults,
     target: QubitPairId,
 ):
-    """Plot routine for OptimizeTwoQubitGate."""
+    """Plot routine for SNZ optimization."""
     fitting_report = ""
     qubits = next(iter(data.amplitudes))[:2]
     fig = make_subplots(
