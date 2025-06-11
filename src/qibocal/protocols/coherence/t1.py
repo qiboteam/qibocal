@@ -21,6 +21,8 @@ __all__ = ["CoherenceProbType", "T1Data", "t1"]
 class T1Parameters(T1SignalParameters):
     """T1 runcard inputs."""
 
+    flux_pulse_amplitude: Optional[float] = None
+
 
 @dataclass
 class T1Results(T1SignalResults):
@@ -49,7 +51,11 @@ def _acquisition(
 ) -> T1Data:
     """Data acquisition for T1 experiment."""
 
-    sequence, ro_pulses, delays = t1_sequence(platform=platform, targets=targets)
+    sequence, ro_pulses, pulses = t1_sequence(
+        platform=platform,
+        targets=targets,
+        flux_pulse_amplitude=params.flux_pulse_amplitude,
+    )
 
     ro_wait_range = np.arange(
         params.delay_before_readout_start,
@@ -60,7 +66,7 @@ def _acquisition(
     sweeper = Sweeper(
         parameter=Parameter.duration,
         values=ro_wait_range,
-        pulses=[delays[q] for q in targets],
+        pulses=pulses,
     )
 
     data = T1Data()
