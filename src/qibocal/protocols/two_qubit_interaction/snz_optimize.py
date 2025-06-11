@@ -38,9 +38,13 @@ class SNZFinetuningParamteters(Parameters):
     amp_ratio_step: float
     """Amplitude step."""
     theta_start: float
+    """Virtual phase start angle."""
     theta_end: float
+    """Virtual phase end angle."""
     theta_step: float
+    """Virtual phase stop angle."""
     t_idling: float
+    """SNZ idling time, in number of steps."""
     flux_time_delay: float = 0
     """Wait time after flux pulse."""
 
@@ -48,9 +52,13 @@ class SNZFinetuningParamteters(Parameters):
 @dataclass
 class SNZFinetuningResults(Results):
     leakages: dict
+    """Qubit leakage."""
     virtual_phases: dict
+    """Virtual Z phase correction."""
     fitted_parameters: dict
+    """Fit parameters."""
     angles: dict
+    """Native SNZ angle."""
 
     def __contains__(self, key: QubitPairId):
         """Check if key is in class.
@@ -80,13 +88,11 @@ class SNZFinetuningData(Data):
         default_factory=dict
     )
     """Raw data."""
-    thetas: list = field(default_factory=list)
-    """Angles swept."""
     amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
     """"Amplitudes swept."""
     rel_amplitudes: list[float] = field(default_factory=list)
     """Durations swept."""
-    angles: dict = field(default_factory=dict)
+    angles: list = field(default_factory=list)
 
     def __getitem__(self, pair):
         """Extract data for pair."""
@@ -95,6 +101,11 @@ class SNZFinetuningData(Data):
             for index, value in self.data.items()
             if set(pair).issubset(index)
         }
+
+    @property
+    def swept_virtual_phases(self):
+        """List of swept phases."""
+        return [-1 * i for i in self.angles]
 
     def register_qubit(
         self, target, control, setup, ratio, theta, amp, prob_control, prob_target
@@ -197,14 +208,12 @@ def _aquisition(
 
                 # TODO: move this outside loops
                 data.amplitudes[pair] = sweeper_amplitude.values.tolist()
-                data.thetas = -1 * sweeper_theta.values
-                data.thetas = data.thetas.tolist()
                 data.register_qubit(
                     target_vz,
                     other_qubit_vz,
                     setup,
                     ratio,
-                    data.thetas,
+                    data.swept_virtual_phases,
                     sweeper_amplitude.values,
                     results[ro_control.id],
                     results[ro_target.id],
@@ -230,7 +239,9 @@ def _fit(
                 target_data = selected_data.prob_target[selected_data.amp == amplitude,]
                 try:
                     params = fit_sinusoid(
-                        np.array(data.thetas), target_data, gate_repetition=1
+                        np.array(data.swept_virtual_phases),
+                        target_data,
+                        gate_repetition=1,
                     )
                     fitted_parameters[
                         target, control, setup, amplitude, rel_amplitude
