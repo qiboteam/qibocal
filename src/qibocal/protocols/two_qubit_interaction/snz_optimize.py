@@ -16,10 +16,9 @@ from qibocal.auto.operation import (
     Routine,
 )
 from qibocal.calibration import CalibrationPlatform
-from qibocal.config import log
 
-from .utils import order_pair
-from .virtual_z_phases import create_sequence, fit_sinusoid, phase_diff
+from .utils import fit_snz_optimize, order_pair
+from .virtual_z_phases import create_sequence
 
 
 @dataclass
@@ -32,11 +31,11 @@ class SNZFinetuningParamteters(Parameters):
     amplitude_step: float
     """Amplitude step."""
     amp_ratio_min: float
-    """Amplitude minimum."""
+    """Minimum amplitude ratio of the two SNZ amplitudes"""
     amp_ratio_max: float
-    """Amplitude maximum."""
+    """Maximum amplitude ratio of the two SNZ amplitudes"""
     amp_ratio_step: float
-    """Amplitude step."""
+    """Amplitude ratio step of the two SNZ amplitudes"""
     theta_start: float
     """Virtual phase start angle."""
     theta_end: float
@@ -93,6 +92,7 @@ class SNZFinetuningData(Data):
     rel_amplitudes: list[float] = field(default_factory=list)
     """Durations swept."""
     angles: list = field(default_factory=list)
+    """Virtual phases."""
 
     def __getitem__(self, pair):
         """Extract data for pair."""
@@ -126,7 +126,10 @@ def _aquisition(
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
 ) -> SNZFinetuningData:
-    """Acquisition for the optimization of SNZ amplitudes."""
+    """Acquisition for the optimization of SNZ amplitudes. The amplitude of the
+    SNZ pulse and its amplitude ratio (B/A) are swept while the virtual phase correction
+    experiment is performed.
+    """
     ratio_range = np.arange(
         params.amp_ratio_min, params.amp_ratio_max, params.amp_ratio_step
     )
@@ -226,65 +229,14 @@ def _fit(
     data: SNZFinetuningData,
 ) -> SNZFinetuningResults:
     """Repetition of correct virtual phase fit for all configurations."""
-    fitted_parameters = {}
-    pairs = data.pairs
-    virtual_phases = {}
-    angles = {}
-    leakages = {}
-    # FIXME: experiment should be for single pair
-    for pair in pairs:
-        for amplitude in data.amplitudes[pair]:
-            for target, control, setup, rel_amplitude in data[pair]:
-                selected_data = data[pair][target, control, setup, rel_amplitude]
-                target_data = selected_data.prob_target[selected_data.amp == amplitude,]
-                try:
-                    params = fit_sinusoid(
-                        np.array(data.swept_virtual_phases),
-                        target_data,
-                        gate_repetition=1,
-                    )
-                    fitted_parameters[
-                        target, control, setup, amplitude, rel_amplitude
-                    ] = params
-                except Exception as e:
-                    log.warning(f"Fit failed for pair ({target, control}) due to {e}.")
 
-            for target, control, setup, rel_amplitude in data[pair]:
-                if setup == "I":  # The loop is the same for setup I or X
-                    angles[target, control, amplitude, rel_amplitude] = phase_diff(
-                        fitted_parameters[
-                            target, control, "X", amplitude, rel_amplitude
-                        ][2],
-                        fitted_parameters[
-                            target, control, "I", amplitude, rel_amplitude
-                        ][2],
-                    )
-                    virtual_phases[target, control, amplitude, rel_amplitude] = (
-                        fitted_parameters[
-                            target, control, "I", amplitude, rel_amplitude
-                        ][2]
-                    )
-
-                    # leakage estimate: L = m /2
-                    # See NZ paper from Di Carlo
-                    # approximation which does not need qutrits
-                    # https://arxiv.org/pdf/1903.02492.pdf
-                    data_x = data[pair][target, control, "X", rel_amplitude]
-                    data_i = data[pair][target, control, "I", rel_amplitude]
-                    leakages[target, control, amplitude, rel_amplitude] = 0.5 * np.mean(
-                        data_x[data_x.amp == amplitude].prob_control
-                        - data_i[data_i.amp == amplitude].prob_control
-                    )
-
-                    # except KeyError:
-                    #     pass
-    results = SNZFinetuningResults(
+    virtual_phases, fitted_parameters, leakages, angles = fit_snz_optimize(data)
+    return SNZFinetuningResults(
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
         leakages=leakages,
         angles=angles,
     )
-    return results
 
 
 def _plot(

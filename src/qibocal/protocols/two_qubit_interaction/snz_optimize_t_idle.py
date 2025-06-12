@@ -1,29 +1,29 @@
 from dataclasses import dataclass, field
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 from qibolab._core.pulses.envelope import Snz
 
 from qibocal.auto.operation import (
-    Data,
     Parameters,
-    QubitId,
     QubitPairId,
-    Results,
     Routine,
 )
 from qibocal.calibration import CalibrationPlatform
-from qibocal.config import log
 
-from .utils import order_pair
-from .virtual_z_phases import create_sequence, fit_sinusoid, phase_diff
+from .snz_optimize import (
+    OptimizeTwoQubitGateType,
+    SNZFinetuningData,
+    SNZFinetuningResults,
+)
+from .utils import fit_snz_optimize, order_pair
+from .virtual_z_phases import create_sequence
 
 
 @dataclass
-class SNZFinetuningParamteters(Parameters):
+class SNZIdlingParameters(Parameters):
     amplitude_min: float
     """Amplitude minimum."""
     amplitude_max: float
@@ -37,61 +37,22 @@ class SNZFinetuningParamteters(Parameters):
     t_idle_step: float
     """Amplitude step."""
     theta_start: float
+    """Virtual phase start angle."""
     theta_end: float
+    """Virtual phase end angle."""
     theta_step: float
-    b_amplitude: float  #
+    """Virtual phase stop angle."""
+    b_amplitude: float
+    """SNZ B amplitude."""
 
 
 @dataclass
-class SNZFinetuningResults(Results):
-    leakages: dict
-    virtual_phases: dict
-    fitted_parameters: dict
-    angles: dict
-
-    def __contains__(self, key: QubitPairId):
-        """Check if key is in class.
-
-        Additional  manipulations required because of the Results class.
-        """
-        pairs = {
-            (target, control) for target, control, _, _, _ in self.fitted_parameters
-        }
-        return key in pairs
-
-
-OptimizeTwoQubitGateType = np.dtype(
-    [
-        ("amp", np.float64),
-        ("theta", np.float64),
-        ("t_idle", np.float64),
-        ("prob_target", np.float64),
-        ("prob_control", np.float64),
-    ]
-)
+class SNZIdlingResults(SNZFinetuningResults): ...
 
 
 @dataclass
-class SNZFinetuningData(Data):
-    data: dict[tuple, npt.NDArray[OptimizeTwoQubitGateType]] = field(
-        default_factory=dict
-    )
-    """Raw data."""
-    thetas: list = field(default_factory=list)
-    """Angles swept."""
-    amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
-    """"Amplitudes swept."""
+class SNZIdlingData(SNZFinetuningData):
     t_idles: list[float] = field(default_factory=list)
-    """t_idles swept."""
-    angles: dict = field(default_factory=dict)
-
-    def __getitem__(self, pair):
-        """Extract data for pair."""
-        return {
-            index: value
-            for index, value in self.data.items()
-            if set(pair).issubset(index)
-        }
 
     def register_qubit(
         self, target, control, setup, t_idle, theta, amp, prob_control, prob_target
@@ -108,12 +69,16 @@ class SNZFinetuningData(Data):
 
 
 def _aquisition(
-    params: SNZFinetuningParamteters,
+    params: SNZIdlingParameters,
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
-) -> SNZFinetuningData:
+) -> SNZIdlingData:
+    """Acquisition for the optimization of SNZ amplitudes. The amplitude of the
+    SNZ pulse and its idling time are swept while the virtual phase correction
+    experiment is performed.
+    """
     t_idle_range = np.arange(params.t_idle_min, params.t_idle_max, params.t_idle_step)
-    data = SNZFinetuningData()
+    data = SNZIdlingData()
     data.t_idles = t_idle_range.tolist()
     data.angles = np.arange(
         params.theta_start, params.theta_end, params.theta_step
@@ -126,10 +91,9 @@ def _aquisition(
         # Find CZ flux pulse
         cz_sequence = getattr(platform.natives.two_qubit[ordered_pair], "CZ")()
         flux_channel = platform.qubits[ordered_pair[1]].flux
-
-        for cz_pulse in cz_sequence:
-            if cz_pulse[0] == flux_channel:
-                flux_pulse = cz_pulse[1]
+        flux_pulses = cz_sequence.channel(flux_channel)
+        assert len(flux_pulses) == 1, "Only 1 flux pulse is supported"
+        flux_pulse = flux_pulses[0]
 
         for t_idle in t_idle_range:
             for setup in ("I", "X"):
@@ -192,16 +156,12 @@ def _aquisition(
 
                 # TODO: move this outside loops
                 data.amplitudes[pair] = sweeper_amplitude.values.tolist()
-                data.thetas = -1 * sweeper_theta.values
-                data.thetas = data.thetas.tolist()
-                # print(data.thetas)
-                # data.durations[ordered_pair] = sweeper_duration.values.tolist()
                 data.register_qubit(
                     target_vz,
                     other_qubit_vz,
                     setup,
                     t_idle,
-                    data.thetas,
+                    data.swept_virtual_phases,
                     sweeper_amplitude.values,
                     results[ro_control.id],
                     results[ro_target.id],
@@ -211,64 +171,21 @@ def _aquisition(
 
 
 def _fit(
-    data: SNZFinetuningData,
-) -> SNZFinetuningResults:
+    data: SNZIdlingData,
+) -> SNZIdlingResults:
     """Repetition of correct virtual phase fit for all configurations."""
-    fitted_parameters = {}
-    pairs = data.pairs
-    virtual_phases = {}
-    angles = {}
-    leakages = {}
-    # FIXME: experiment should be for single pair
-    for pair in pairs:
-        for amplitude in data.amplitudes[pair]:
-            for target, control, setup, t_idle in data[pair]:
-                selected_data = data[pair][target, control, setup, t_idle]
-                target_data = selected_data.prob_target[selected_data.amp == amplitude,]
-                try:
-                    params = fit_sinusoid(
-                        np.array(data.thetas), target_data, gate_repetition=1
-                    )
-                    fitted_parameters[target, control, setup, amplitude, t_idle] = (
-                        params
-                    )
-                except Exception as e:
-                    log.warning(f"Fit failed for pair ({target, control}) due to {e}.")
-
-            for target, control, setup, t_idle in data[pair]:
-                if setup == "I":  # The loop is the same for setup I or X
-                    # try:
-                    angles[target, control, amplitude, t_idle] = phase_diff(
-                        fitted_parameters[target, control, "X", amplitude, t_idle][2],
-                        fitted_parameters[target, control, "I", amplitude, t_idle][2],
-                    )
-                    virtual_phases[target, control, amplitude, t_idle] = (
-                        fitted_parameters[target, control, "I", amplitude, t_idle][2]
-                    )
-
-                    # leakage estimate: L = m /2
-                    # See NZ paper from Di Carlo
-                    # approximation which does not need qutrits
-                    # https://arxiv.org/pdf/1903.02492.pdf
-                    data_x = data[pair][target, control, "X", t_idle]
-                    data_i = data[pair][target, control, "I", t_idle]
-                    leakages[target, control, amplitude, t_idle] = 0.5 * np.mean(
-                        data_x[data_x.amp == amplitude].prob_control
-                        - data_i[data_i.amp == amplitude].prob_control
-                    )
-
-    results = SNZFinetuningResults(
+    virtual_phases, fitted_parameters, leakages, angles = fit_snz_optimize(data)
+    return SNZIdlingResults(
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
         leakages=leakages,
         angles=angles,
     )
-    return results
 
 
 def _plot(
-    data: SNZFinetuningData,
-    fit: SNZFinetuningResults,
+    data: SNZIdlingData,
+    fit: SNZIdlingResults,
     target: QubitPairId,
 ):
     """Plot routine for OptimizeTwoQubitGate."""
