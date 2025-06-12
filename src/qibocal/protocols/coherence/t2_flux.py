@@ -178,10 +178,12 @@ def _plot(data: T2FluxData, target: QubitId, fit: T2FluxResults = None):
                 ),
             ]
         )
-    fig.update_layout(
-        xaxis_title="Frequency [GHz]",
-        yaxis_title="T2 [ns]",
-    )
+        fig.update_layout(
+            xaxis_title="Frequency [GHz]",
+            yaxis_title="T1 [ns]",
+            yaxis=dict(range=[0, max(t2s) * 1.2]),
+            xaxis=dict(range=[min(data.detuning[target]), max(data.detuning[target])]),
+        )
     return [fig], ""
 
 
