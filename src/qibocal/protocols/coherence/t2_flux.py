@@ -10,7 +10,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.result import probability
 
 from ..ramsey.utils import fitting, ramsey_sequence
-from ..utils import HZ_TO_GHZ
+from ..utils import COLORBAND, COLORBAND_LINE, HZ_TO_GHZ
 
 
 @dataclass
@@ -33,20 +33,24 @@ class T2FluxParameters(Parameters):
 
 @dataclass
 class T2FluxResults(Results):
-    """T1 outputs."""
+    """T2 flux outputs."""
 
     t2: dict[QubitId, list[float]] = field(default_factory=dict)
+    """List of T2 value for each detuning value."""
 
 
 @dataclass
 class T2FluxData(Data):
-    """T1 acquisition outputs."""
+    """T2 flux acquisition outputs."""
 
     flux_range: list[float] = field(default_factory=list)
+    """Flux pulse amplitude range [a.u.]."""
     wait_range: list[float] = field(default_factory=list)
+    """Delay between pulses range [ns]."""
+    detuning: dict[QubitId, float] = field(default_factory=dict)
+    """DETUNING of the qubit as a function of flux pulse amplitude."""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
-    detuning: dict[QubitId, float] = field(default_factory=dict)
 
     def probability(self, qubit: QubitId) -> npt.NDArray:
         """Return the probability data for a specific qubit."""
@@ -138,22 +142,38 @@ def _fit(data: T2FluxData) -> T2FluxResults:
 
 
 def _plot(data: T2FluxData, target: QubitId, fit: T2FluxResults = None):
-    """Plotting function for T1 experiment."""
+    """Plotting function for T2 experiment."""
     fig = go.Figure()
     if fit is not None:
-        t1s = [fit.t2[target][i][0] for i in range(len(fit.t2[target]))]
-        error = [fit.t2[target][i][1] for i in range(len(fit.t2[target]))]
-        fig.add_trace(
-            go.Scatter(
-                x=data.detuning[target],
-                y=t1s,
-                error_y=dict(type="data", array=error, visible=True),
-            )
+        t2s = np.array([fit.t2[target][i][0] for i in range(len(fit.t2[target]))])
+        error = np.array([fit.t2[target][i][1] for i in range(len(fit.t2[target]))])
+        fig.add_traces(
+            [
+                go.Scatter(
+                    x=data.detuning[target],
+                    y=t2s,
+                    opacity=1,
+                    name="T2",
+                    showlegend=True,
+                    legendgroup="T2",
+                    mode="lines",
+                ),
+                go.Scatter(
+                    x=np.concatenate(
+                        (data.detuning[target], data.detuning[target][::-1])
+                    ),
+                    y=np.concatenate((t2s + error, (t2s - error)[::-1])),
+                    fill="toself",
+                    fillcolor=COLORBAND,
+                    line=dict(color=COLORBAND_LINE),
+                    showlegend=True,
+                    name="Errors",
+                ),
+            ]
         )
     fig.update_layout(
         xaxis_title="Frequency [GHz]",
         yaxis_title="T2 [ns]",
-        showlegend=False,
     )
     return [fig], ""
 
