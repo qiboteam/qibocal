@@ -152,10 +152,14 @@ def _aquisition(
             range=(params.duration_min, params.duration_max, params.duration_step),
             pulses=[flux_pulse] + delays + parking_pulses,
         )
-
-        ro_high = list(sequence.channel(platform.qubits[ordered_pair[1]].acquisition))[
-            -1
-        ]
+        # Since an X gate was added on the high frequency qubit at the end of the
+        # pulse sequence, its Chevron pattern is between state 0 and 2, so the state
+        # one is mapped into 0. For this reason and compatibility with the other
+        # qubit, we have to evaluate the ground state probability.
+        excited_prob_high = 1 - sequence.channel(
+            platform.qubits[ordered_pair[1]].acquisition
+        )
+        ro_high = list(excited_prob_high)[-1]
         ro_low = list(sequence.channel(platform.qubits[ordered_pair[0]].acquisition))[
             -1
         ]
