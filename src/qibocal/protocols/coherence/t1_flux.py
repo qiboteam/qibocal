@@ -145,8 +145,8 @@ def _plot(data: T1FluxData, target: QubitId, fit: T1FluxResults = None):
     """Plotting function for T1 flux experiment."""
     fig = go.Figure()
     if fit is not None:
-        t1s = np.array([fit.t1[target][i][0] for i in range(len(fit.t2[target]))])
-        error = np.array([fit.t1[target][i][1] for i in range(len(fit.t2[target]))])
+        t1s = np.array([fit.t1[target][i][0] for i in range(len(fit.t1[target]))])
+        error = np.array([fit.t1[target][i][1] for i in range(len(fit.t1[target]))])
         fig.add_traces(
             [
                 go.Scatter(
