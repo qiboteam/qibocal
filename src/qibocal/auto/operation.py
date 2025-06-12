@@ -156,7 +156,7 @@ class AbstractData:
         """Helper function to dump to json."""
         if self.params:
             (path / f"{filename}.json").write_text(
-                json.dumps(serialize(self.params), indent=4)
+                json.dumps(serialize(self.params), indent=4), encoding="utf-8"
             )
 
     @classmethod

@@ -93,4 +93,4 @@ def report(path: pathlib.Path, history: Optional[History] = None):
         ),
     )
 
-    (path / "index.html").write_text(html)
+    (path / "index.html").write_text(html, encoding="utf-8")

@@ -62,4 +62,4 @@ def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
         ),
     )
     combined_report.dump(combined_report_path)
-    (combined_report_path / "index.html").write_text(html)
+    (combined_report_path / "index.html").write_text(html, encoding="utf-8")

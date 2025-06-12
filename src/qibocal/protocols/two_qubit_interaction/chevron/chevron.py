@@ -94,7 +94,11 @@ class ChevronData(Data):
         ar["length"] = duration.ravel()
         ar["amp"] = amplitude.ravel()
         ar["prob_low"] = prob_low.ravel()
-        ar["prob_high"] = prob_high.ravel()
+        # Since an X gate was added on the high frequency qubit at the end of the
+        # pulse sequence, its Chevron pattern is between state 0 and 2, so the state
+        # one is mapped into 0. For this reason and compatibility with the other
+        # qubit, we have to evaluate the ground state probability.
+        ar["prob_high"] = 1 - prob_high.ravel()
         self.data[low_qubit, high_qubit] = np.rec.array(ar)
 
     def amplitudes(self, pair):
