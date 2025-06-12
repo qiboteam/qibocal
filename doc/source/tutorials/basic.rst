@@ -216,7 +216,7 @@ The expected results are two separated clouds in the IQ plane.
 
 .. image:: ../protocols/classification.png
 
-.. _flux:
+.. _flux_qubit:
 
 Flux tunable qubits
 ~~~~~~~~~~~~~~~~~~~
