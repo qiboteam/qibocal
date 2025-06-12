@@ -69,7 +69,7 @@ For each of these values we individually measure the relaxation time :math:`T_2`
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.coherence.t2_flux.T1FluxParameters
+.. autoclass:: qibocal.protocols.coherence.t2_flux.T2FluxParameters
   :noindex:
 
 

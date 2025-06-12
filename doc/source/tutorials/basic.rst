@@ -165,7 +165,7 @@ which will be our drive frequency.
     might appear as a deep or a peak.
 
 .. note::
-    If the qubit is flux-tunable make sure to have a look at this :ref:`section <flux>`.
+    If the qubit is flux-tunable make sure to have a look at this :ref:`section <flux_qubit>`.
 
 
 The missing step required to perform a transition between state :math:`\ket{0}` and state
