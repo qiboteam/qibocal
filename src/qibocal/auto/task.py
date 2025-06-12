@@ -96,7 +96,6 @@ class Task:
 
     def __post_init__(self):
         # validate parameters
-        print(self.operation)
         self.operation.parameters_type.load(self.action.parameters)
 
     @classmethod

@@ -141,12 +141,11 @@ def _aquisition(
         target_vz = pair[0]
         other_qubit_vz = pair[1]
         # Find CZ flux pulse
-        cz_sequence = getattr(platform.natives.two_qubit[ordered_pair], "CZ")()
+        cz_sequence = platform.natives.two_qubit[ordered_pair].CZ
         flux_channel = platform.qubits[ordered_pair[1]].flux
-
-        for cz_pulse in cz_sequence:
-            if cz_pulse[0] == flux_channel:
-                flux_pulse = cz_pulse[1]
+        flux_pulses = cz_sequence.channel(flux_channel)
+        assert len(flux_pulses) == 1, "Only 1 flux pulse is supported"
+        flux_pulse = flux_pulses[0]
 
         for ratio in ratio_range:
             for setup in ("I", "X"):
@@ -285,7 +284,6 @@ def _fit(
         leakages=leakages,
         angles=angles,
     )
-    # print(results)
     return results
 
 

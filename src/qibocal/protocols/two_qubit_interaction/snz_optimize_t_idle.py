@@ -97,7 +97,6 @@ class SNZFinetuningData(Data):
         self, target, control, setup, t_idle, theta, amp, prob_control, prob_target
     ):
         """Store output for single pair."""
-        print(len(theta), len(amp))
         size = len(theta) * len(amp)
         amplitude, angle = np.meshgrid(amp, theta, indexing="ij")
         ar = np.empty(size, dtype=OptimizeTwoQubitGateType)
@@ -182,9 +181,6 @@ def _aquisition(
                 ro_control = list(
                     sequence.channel(platform.qubits[other_qubit_vz].acquisition)
                 )[-1]
-                # print("SEQUENCE")
-                # for s in sequence:
-                #     print(s)
                 results = platform.execute(
                     [sequence],
                     [[sweeper_amplitude], [sweeper_theta]],
@@ -196,7 +192,6 @@ def _aquisition(
 
                 # TODO: move this outside loops
                 data.amplitudes[pair] = sweeper_amplitude.values.tolist()
-                # print(data.thetas)
                 data.thetas = -1 * sweeper_theta.values
                 data.thetas = data.thetas.tolist()
                 # print(data.thetas)
@@ -212,21 +207,6 @@ def _aquisition(
                     results[ro_target.id],
                 )
 
-                # print(results[ro_target.id])
-                # plt.plot(
-                #     data.thetas,
-                #     results[ro_target.id].ravel(),
-                #     label=f"{target_vz} {other_qubit_vz} {setup}",
-                # )
-                # plt.xlabel("Theta")
-                # plt.ylabel("Probability")
-                # plt.title(f"Pair {target_vz} {other_qubit_vz} {setup}")
-                # plt.legend()
-                # plt.savefig(
-                #     f"pair_{target_vz}_{other_qubit_vz}_{setup}.png", dpi=300, bbox_inches="tight"
-                # )
-                # # print(data)
-    # print(data)
     return data
 
 
@@ -244,8 +224,6 @@ def _fit(
         for amplitude in data.amplitudes[pair]:
             for target, control, setup, t_idle in data[pair]:
                 selected_data = data[pair][target, control, setup, t_idle]
-                print(selected_data)
-                print(selected_data.dtype)
                 target_data = selected_data.prob_target[selected_data.amp == amplitude,]
                 try:
                     params = fit_sinusoid(
@@ -279,15 +257,12 @@ def _fit(
                         - data_i[data_i.amp == amplitude].prob_control
                     )
 
-                    # except KeyError:
-                    #     pass
     results = SNZFinetuningResults(
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
         leakages=leakages,
         angles=angles,
     )
-    # print(results)
     return results
 
 
@@ -307,11 +282,7 @@ def _plot(
             "Leakage",
         ),
     )
-    # print("FFFFFFF", fit)
-    # print(data)
     if fit is not None:
-        # print(data.amplitudes)
-        # print(target)
         cz = []
         t_idle = []
         amps = []
@@ -326,7 +297,6 @@ def _plot(
                 cz.append(fit.angles[target_q, control_q, i, j])
                 leakage.append(fit.leakages[qubits[0], qubits[1], i, j])
 
-        # condition = [target_q, control_q] == list(target)
         fig.add_trace(
             go.Heatmap(
                 x=amps,
@@ -337,7 +307,6 @@ def _plot(
                 name="{fit.native} angle",
                 colorbar_x=-0.1,
                 colorscale="Twilight",
-                # showscale=condition,
             ),
             row=1,
             col=1,
@@ -349,7 +318,6 @@ def _plot(
                 y=t_idle,
                 z=leakage,
                 name="Leakage",
-                # showscale=condition,
                 colorscale="Inferno",
                 zmin=0,
                 zmax=0.2,
@@ -357,19 +325,6 @@ def _plot(
             row=1,
             col=2,
         )
-        # fitting_report = table_html(
-        #     table_dict(
-        #         [qubits[1], qubits[1]],
-        #         [
-        #             "Flux pulse amplitude [a.u.]",
-        #             "Flux pulse duration [ns]",
-        #         ],
-        #         [
-        #             np.round(fit.best_amp[qubits], 4),
-        #             np.round(fit.best_dur[qubits], 4),
-        #         ],
-        #     )
-        # )
 
         fig.update_layout(
             xaxis1_title="Amplitude A [a.u.]",

@@ -121,7 +121,6 @@ def _aquisition(
     data.angles = np.arange(
         params.theta_start, params.theta_end, params.theta_step
     ).tolist()
-    print(t_idle_range)
     for pair in targets:
         ordered_pair = order_pair(pair, platform)
         flux_channel = platform.qubits[ordered_pair[1]].flux
@@ -185,9 +184,6 @@ def _aquisition(
                 ro_control = list(
                     sequence.channel(platform.qubits[other_qubit_vz].acquisition)
                 )[-1]
-                # print("SEQUENCE")
-                # for s in sequence:
-                #     print(s)
                 results = platform.execute(
                     [sequence],
                     [[sweeper_duration], [sweeper_theta]],
@@ -199,11 +195,8 @@ def _aquisition(
 
                 # TODO: move this outside loops
                 data.durations[pair] = sweeper_duration.values.tolist()
-                # print(data.thetas)
                 data.thetas = -1 * sweeper_theta.values
                 data.thetas = data.thetas.tolist()
-                # print(data.thetas)
-                # data.durations[ordered_pair] = sweeper_duration.values.tolist()
                 data.register_qubit(
                     target_vz,
                     other_qubit_vz,
@@ -232,8 +225,6 @@ def _fit(
         for duration in data.durations[pair]:
             for target, control, setup, t_idle in data[pair]:
                 selected_data = data[pair][target, control, setup, t_idle]
-                print(selected_data)
-                print(selected_data.dtype)
                 target_data = selected_data.prob_target[
                     selected_data.duration == duration,
                 ]
@@ -247,7 +238,6 @@ def _fit(
 
             for target, control, setup, t_idle in data[pair]:
                 if setup == "I":  # The loop is the same for setup I or X
-                    # try:
                     angles[target, control, duration, t_idle] = phase_diff(
                         fitted_parameters[target, control, "X", duration, t_idle][2],
                         fitted_parameters[target, control, "I", duration, t_idle][2],
@@ -267,15 +257,12 @@ def _fit(
                         - data_i[data_i.duration == duration].prob_control
                     )
 
-                    # except KeyError:
-                    #     pass
     results = SNZFinetuningResults(
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
         leakages=leakages,
         angles=angles,
     )
-    # print(results)
     return results
 
 
@@ -295,11 +282,7 @@ def _plot(
             "Leakage",
         ),
     )
-    # print("FFFFFFF", fit)
-    # print(data)
     if fit is not None:
-        # print(data.amplitudes)
-        # print(target)
         cz = []
         t_idle = []
         durations = []
@@ -314,7 +297,6 @@ def _plot(
                 cz.append(fit.angles[target_q, control_q, i, j])
                 leakage.append(fit.leakages[qubits[0], qubits[1], i, j])
 
-        # condition = [target_q, control_q] == list(target)
         fig.add_trace(
             go.Heatmap(
                 x=durations,
@@ -325,7 +307,6 @@ def _plot(
                 name="{fit.native} angle",
                 colorbar_x=-0.1,
                 colorscale="Twilight",
-                # showscale=condition,
             ),
             row=1,
             col=1,
@@ -337,7 +318,6 @@ def _plot(
                 y=t_idle,
                 z=leakage,
                 name="Leakage",
-                # showscale=condition,
                 colorscale="Inferno",
                 zmin=0,
                 zmax=0.2,
