@@ -9,6 +9,7 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import probability
 
+from ...config import log
 from ..ramsey.utils import fitting, ramsey_sequence
 from ..utils import COLORBAND, COLORBAND_LINE, HZ_TO_GHZ
 
@@ -135,9 +136,15 @@ def _fit(data: T2FluxData) -> T2FluxResults:
         prob = data.probability(qubit)
         error = data.error(qubit)
         for i in range(len(data.detuning[qubit])):
-            popt, perr = fitting(np.array(data.wait_range), prob[i], error[i])
-            t2 = 1 / popt[4]
-            t2s[qubit].append([t2, perr[4] * (t2**2)])
+            try:
+                popt, perr = fitting(np.array(data.wait_range), prob[i], error[i])
+                t2 = 1 / popt[4]
+                t2s[qubit].append([t2, perr[4] * (t2**2)])
+            except Exception as e:
+                log.warning(
+                    f"T2 fitting failed for qubit {qubit} and amplitude {data.flux_range[i]} due to {e}."
+                )
+                t2s[qubit].append(np.nan)
     return T2FluxResults(t2=t2s)
 
 
@@ -145,12 +152,14 @@ def _plot(data: T2FluxData, target: QubitId, fit: T2FluxResults = None):
     """Plotting function for T2 experiment."""
     fig = go.Figure()
     if fit is not None:
-        t2s = np.array([fit.t2[target][i][0] for i in range(len(fit.t2[target]))])
-        error = np.array([fit.t2[target][i][1] for i in range(len(fit.t2[target]))])
+        indices = list(set(np.where(np.array(fit.t2[target]) != np.nan)[0]))
+        t2s = np.array([fit.t2[target][i][0] for i in indices])
+        error = np.array([fit.t2[target][i][1] for i in indices])
+        detuning = np.array(data.detuning[target])[indices]
         fig.add_traces(
             [
                 go.Scatter(
-                    x=data.detuning[target],
+                    x=detuning,
                     y=t2s,
                     opacity=1,
                     name="T2",
@@ -159,9 +168,7 @@ def _plot(data: T2FluxData, target: QubitId, fit: T2FluxResults = None):
                     mode="lines",
                 ),
                 go.Scatter(
-                    x=np.concatenate(
-                        (data.detuning[target], data.detuning[target][::-1])
-                    ),
+                    x=np.concatenate((detuning, detuning[::-1])),
                     y=np.concatenate((t2s + error, (t2s - error)[::-1])),
                     fill="toself",
                     fillcolor=COLORBAND,
