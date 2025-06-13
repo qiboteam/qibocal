@@ -146,57 +146,37 @@ def fit_sinusoid(thetas, data, gate_repetition):
     return popt.tolist()
 
 
-def fit_virtualz(data: Data, pair: list):
+def fit_virtualz(data: dict, pair: list, thetas: list, gate_repetition: int, key=None):
     fitted_parameters = {}
-    virtual_phase = {pair: {}}
-    leakage = {pair: {}}
     angle = {}
-    for target, control, setup in data[pair]:
-        target_data = data[pair][target, control, setup].target
+    if key is None:
+        key = pair
+    virtual_phase = {key: {}}
+    leakage = {key: {}}
+    for target, control, setup in data.keys():
+        target_data = data[target, control, setup].target
         try:
-            params = fit_sinusoid(
-                np.array(data.thetas), target_data, data.gate_repetition
-            )
+            params = fit_sinusoid(np.array(thetas), target_data, gate_repetition)
             fitted_parameters[target, control, setup] = params
-
         except Exception as e:
             log.warning(f"CZ fit failed for pair ({target, control}) due to {e}.")
+            return fitted_parameters, virtual_phase, angle, leakage
 
-        for target_q, control_q in (pair, list(pair)[::-1]):
-            # leakage estimate: L = m /2
-            # See NZ paper from Di Carlo
-            # approximation which does not need qutrits
-            # https://arxiv.org/pdf/1903.02492.pdf
-            leakage[pair][control_q] = 0.5 * float(
-                np.mean(
-                    data[pair][target_q, control_q, "X"].control
-                    - data[pair][target_q, control_q, "I"].control
-                )
+    for target, control, _setup in data.keys():
+        # leakage estimate: L = m /2
+        # See NZ paper from Di Carlo
+        # approximation which does not need qutrits
+        # https://arxiv.org/pdf/1903.02492.pdf
+        leakage[key][control] = 0.5 * float(
+            np.mean(
+                data[target, control, "X"].control - data[target, control, "I"].control
             )
+        )
 
-        try:
-            for target_q, control_q in (
-                pair,
-                list(pair)[::-1],
-            ):
-                angle[target_q, control_q] = phase_diff(
-                    fitted_parameters[target_q, control_q, "X"][2],
-                    fitted_parameters[target_q, control_q, "I"][2],
-                )
-                virtual_phase[pair][target_q] = fitted_parameters[
-                    target_q, control_q, "I"
-                ][2]
+        angle[target, control] = phase_diff(
+            fitted_parameters[target, control, "X"][2],
+            fitted_parameters[target, control, "I"][2],
+        )
+        virtual_phase[key][target] = fitted_parameters[target, control, "I"][2]
 
-                # leakage estimate: L = m /2
-                # See NZ paper from Di Carlo
-                # approximation which does not need qutrits
-                # https://arxiv.org/pdf/1903.02492.pdf
-                leakage[pair][control_q] = 0.5 * float(
-                    np.mean(
-                        data[pair][target_q, control_q, "X"].control
-                        - data[pair][target_q, control_q, "I"].control
-                    )
-                )
-        except KeyError:
-            pass  # exception covered above
-        return fitted_parameters, virtual_phase, angle, leakage
+    return fitted_parameters, virtual_phase, angle, leakage

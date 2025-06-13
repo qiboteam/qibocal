@@ -31,7 +31,7 @@ from qibocal.protocols.utils import table_dict, table_html
 
 from ... import update
 from ...update import replace
-from .utils import fit_sinusoid, fit_virtualz, order_pair, phase_diff
+from .utils import fit_sinusoid, fit_virtualz, order_pair, phase_diff, sinusoid
 
 __all__ = ["correct_virtual_z_phases", "create_sequence", "fit_sinusoid", "phase_diff"]
 
@@ -102,6 +102,13 @@ class VirtualZPhasesData(Data):
             for index, value in self.data.items()
             if set(pair).issubset(index)
         }
+
+    @property
+    def order_pairs(self):
+        pairs = []
+        for key in self.data.keys():
+            pairs.append((key[0], key[1]))
+        return np.unique(pairs, axis=0).tolist()
 
 
 def create_sequence(
@@ -298,11 +305,6 @@ def _acquisition(
     return data
 
 
-def sinusoid(x, gate_repetition, amplitude, offset, phase):
-    """Sinusoidal fit function."""
-    return np.cos(gate_repetition * (x + phase)) * amplitude + offset
-
-
 def _fit(
     data: VirtualZPhasesData,
 ) -> VirtualZPhasesResults:
@@ -315,18 +317,19 @@ def _fit(
         y = p_0 sin\Big(x + p_2\Big) + p_1.
     """
     fitted_parameters = {}
-    pairs = data.pairs
+    pairs = data.order_pairs
+    print(pairs)
     virtual_phase = {}
     angle = {}
     leakage = {}
-
     for pair in pairs:
-        new_fitted_parameter, new_phases, new_angle, new_leak = fit_virtualz(data, pair)
+        new_fitted_parameter, new_phases, new_angle, new_leak = fit_virtualz(
+            data[pair], tuple(pair), data.thetas, data.gate_repetition
+        )
         fitted_parameters |= new_fitted_parameter
         virtual_phase |= new_phases
         angle |= new_angle
         leakage |= new_leak
-
     return VirtualZPhasesResults(
         native=data.native,
         gate_repetition=data.gate_repetition,
