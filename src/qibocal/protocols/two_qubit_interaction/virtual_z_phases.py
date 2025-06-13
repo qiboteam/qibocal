@@ -450,9 +450,7 @@ def _update(
     if results.gate_repetition == 1:
         # FIXME: quick fix for qubit order
         target = tuple(sorted(target))
-        update.virtual_phases(
-            results.virtual_phase[target], results.native, platform, target
-        )
+        update.virtual_phases(results.virtual_phase, results.native, platform, target)
 
 
 correct_virtual_z_phases = Routine(
