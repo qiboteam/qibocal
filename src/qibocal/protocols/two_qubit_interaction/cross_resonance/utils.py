@@ -254,23 +254,24 @@ def cr_plot(
             )
         )
         if fit is not None:
-            x = np.linspace(pair_data.x.min(), pair_data.x.max(), 100)
-            fig.add_trace(
-                go.Scatter(
-                    x=x,
-                    y=fitting_function(
-                        x,
-                        *fit.fitted_parameters[target[0], target[1], setup],
-                    ),
-                    name=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
-                    showlegend=True,
-                    legendgroup=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
-                    mode="lines",
-                    line=dict(
-                        color="blue" if setup is SetControl.Id else "red",
-                    ),
+            if (target[0], target[1], setup) in fit.fitted_parameters:
+                x = np.linspace(pair_data.x.min(), pair_data.x.max(), 100)
+                fig.add_trace(
+                    go.Scatter(
+                        x=x,
+                        y=fitting_function(
+                            x,
+                            *fit.fitted_parameters[target[0], target[1], setup],
+                        ),
+                        name=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
+                        showlegend=True,
+                        legendgroup=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
+                        mode="lines",
+                        line=dict(
+                            color="blue" if setup is SetControl.Id else "red",
+                        ),
+                    )
                 )
-            )
 
     fig.update_layout(
         yaxis1=dict(range=[-0.1, 1.1]),
