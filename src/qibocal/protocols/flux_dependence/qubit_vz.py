@@ -85,13 +85,11 @@ def _acquisition(
     sequence = PulseSequence()
     phi_pulses = []
     for qubit in targets:
-        qubit_sequence = PulseSequence()
-
         natives = platform.natives.single_qubit[qubit]
         qd_channel = platform.qubits[qubit].drive
         qf_channel = platform.qubits[qubit].flux
 
-        qubit_sequence.append(natives.R(theta=np.pi / 2)[0])
+        qubit_sequence = natives.R(theta=np.pi / 2)
 
         if params.use_flux_pulse:
             flux_pulse = Pulse(
@@ -103,10 +101,11 @@ def _acquisition(
             qubit_sequence.append((qf_channel, flux_pulse))
             qubit_sequence.append((qd_channel, Delay(duration=flux_pulse.duration)))
 
-        _, phi_pulse = natives.R(theta=np.pi / 2)[0]
+        rx90_sequence = natives.R(theta=np.pi / 2)
 
-        qubit_sequence.append((qd_channel, phi_pulse))
-        phi_pulses.append(phi_pulse)
+        qubit_sequence += rx90_sequence
+        for _, pulse in rx90_sequence:
+            phi_pulses.append(pulse)
 
         mz_channel, mz_pulse = natives.MZ()[0]
         qubit_sequence.append((mz_channel, Delay(duration=qubit_sequence.duration)))

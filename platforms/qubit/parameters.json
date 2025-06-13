@@ -74,7 +74,7 @@
             "0/drive",
             {
               "duration": 40,
-              "amplitude": 0.07975,
+              "amplitude": 0.06349,
               "envelope": {
                 "kind": "gaussian",
                 "rel_sigma": 0.2
