@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -9,23 +8,16 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 from qibolab._core.pulses.envelope import Snz
 
-from qibocal.auto.operation import (
-    Data,
-    Parameters,
-    QubitId,
-    QubitPairId,
-    Routine,
-)
+from qibocal.auto.operation import Parameters, QubitPairId, Routine
 from qibocal.calibration import CalibrationPlatform
-from qibocal.config import log
 
-from .snz_optimize import SNZFinetuningResults
-from .utils import fit_sinusoid, order_pair, phase_diff
+from .snz_optimize import SNZFinetuningData, SNZFinetuningResults
+from .utils import fit_virtualz, order_pair
 from .virtual_z_phases import create_sequence
 
 
 @dataclass
-class SNZFinetuningParamteters(Parameters):
+class SNZDurationParamteters(Parameters):
     duration_min: float
     """Duration minimum."""
     duration_max: float
@@ -49,66 +41,51 @@ class SNZFinetuningParamteters(Parameters):
 
 
 @dataclass
-class SNZFinetuningResults(SNZFinetuningResults): ...
+class SNZDurationResults(SNZFinetuningResults): ...
 
 
 OptimizeTwoQubitGateType = np.dtype(
     [
-        ("duration", np.float64),
         ("theta", np.float64),
-        ("t_idle", np.float64),
-        ("prob_target", np.float64),
-        ("prob_control", np.float64),
+        ("target", np.float64),
+        ("control", np.float64),
     ]
 )
 
 
 @dataclass
-class SNZFinetuningData(Data):
-    data: dict[tuple, npt.NDArray[OptimizeTwoQubitGateType]] = field(
-        default_factory=dict
-    )
-    """Raw data."""
-    thetas: list = field(default_factory=list)
-    """Angles swept."""
-    durations: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
+class SNZDurationData(SNZFinetuningData):
+    durations: list = field(default_factory=list)
     """"Duratoins swept."""
     t_idles: list[float] = field(default_factory=list)
     """t_idles swept."""
-    angles: dict = field(default_factory=dict)
-
-    def __getitem__(self, pair):
-        """Extract data for pair."""
-        return {
-            index: value
-            for index, value in self.data.items()
-            if set(pair).issubset(index)
-        }
 
     def register_qubit(
         self, target, control, setup, t_idle, theta, duration, prob_control, prob_target
     ):
         """Store output for single pair."""
-        size = len(theta) * len(duration)
-        duration, angle = np.meshgrid(duration, theta, indexing="ij")
-        ar = np.empty(size, dtype=OptimizeTwoQubitGateType)
-        ar["theta"] = angle.ravel()
-        ar["duration"] = duration.ravel()
-        ar["prob_control"] = prob_control.ravel()
-        ar["prob_target"] = prob_target.ravel()
-        self.data[target, control, setup, t_idle] = np.rec.array(ar)
+        size = len(theta)
+        for i, duration in enumerate(duration):
+            ar = np.empty(size, dtype=OptimizeTwoQubitGateType)
+            ar["theta"] = theta
+            ar["control"] = prob_control[i]
+            ar["target"] = prob_target[i]
+            self.data[target, control, setup, t_idle, duration] = np.rec.array(ar)
 
 
 def _aquisition(
-    params: SNZFinetuningParamteters,
+    params: SNZDurationParamteters,
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
-) -> SNZFinetuningData:
+) -> SNZDurationData:
     t_idle_range = np.arange(
         params.t_idle_min, params.t_idle_max, params.t_idle_step, dtype=float
     )
-    data = SNZFinetuningData()
+    data = SNZDurationData()
     data.t_idles = t_idle_range.tolist()
+    data.durations = np.arange(
+        params.duration_min, params.duration_max, params.duration_step
+    ).tolist()
     data.angles = np.arange(
         params.theta_start, params.theta_end, params.theta_step
     ).tolist()
@@ -179,16 +156,12 @@ def _aquisition(
                     averaging_mode=AveragingMode.CYCLIC,
                 )
 
-                # TODO: move this outside loops
-                data.durations[pair] = sweeper_duration.values.tolist()
-                data.thetas = -1 * sweeper_theta.values
-                data.thetas = data.thetas.tolist()
                 data.register_qubit(
                     target_vz,
                     other_qubit_vz,
                     setup,
                     t_idle,
-                    data.thetas,
+                    data.angles,
                     sweeper_duration.values,
                     results[ro_control.id],
                     results[ro_target.id],
@@ -198,8 +171,8 @@ def _aquisition(
 
 
 def _fit(
-    data: SNZFinetuningData,
-) -> SNZFinetuningResults:
+    data: SNZDurationData,
+) -> SNZDurationResults:
     """Repetition of correct virtual phase fit for all configurations."""
     fitted_parameters = {}
     pairs = data.pairs
@@ -208,48 +181,22 @@ def _fit(
     leakages = {}
     # FIXME: experiment should be for single pair
     for pair in pairs:
-        for duration in data.durations[pair]:
-            for target, control, setup, t_idle in data[pair]:
-                selected_data = data[pair][target, control, setup, t_idle]
-                target_data = selected_data.prob_target[
-                    selected_data.duration == duration,
-                ]
-                try:
-                    params = fit_sinusoid(
-                        np.array(data.thetas), target_data, gate_repetition=1
-                    )
-                    fitted_parameters[target, control, setup, duration, t_idle] = params
-                except Exception as e:
-                    log.warning(f"Fit failed for pair ({target, control}) due to {e}.")
-            try:
-                for target, control, setup, t_idle in data[pair]:
-                    if setup == "I":  # The loop is the same for setup I or X
-                        angles[target, control, duration, t_idle] = phase_diff(
-                            fitted_parameters[target, control, "X", duration, t_idle][
-                                2
-                            ],
-                            fitted_parameters[target, control, "I", duration, t_idle][
-                                2
-                            ],
-                        )
-                        virtual_phases[target, control, duration, t_idle] = (
-                            fitted_parameters[target, control, "I", duration, t_idle][2]
-                        )
+        for duration in data.durations:
+            for t_idle in data.t_idles:
+                data_duration = data.filter_data_key(pair[0], pair[1], t_idle, duration)
+                new_fitted_parameter, new_phases, new_angle, new_leak = fit_virtualz(
+                    data_duration,
+                    pair,
+                    thetas=data.angles,
+                    gate_repetition=1,
+                    key=(pair[0], pair[1], t_idle, duration),
+                )
+                fitted_parameters |= new_fitted_parameter
+                virtual_phases |= new_phases
+                angles |= new_angle
+                leakages |= new_leak
 
-                        # leakage estimate: L = m /2
-                        # See NZ paper from Di Carlo
-                        # approximation which does not need qutrits
-                        # https://arxiv.org/pdf/1903.02492.pdf
-                        data_x = data[pair][target, control, "X", t_idle]
-                        data_i = data[pair][target, control, "I", t_idle]
-                        leakages[target, control, duration, t_idle] = 0.5 * np.mean(
-                            data_x[data_x.duration == duration].prob_control
-                            - data_i[data_i.duration == duration].prob_control
-                        )
-            except KeyError:
-                pass
-
-    results = SNZFinetuningResults(
+    results = SNZDurationResults(
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
         leakages=leakages,
@@ -259,13 +206,12 @@ def _fit(
 
 
 def _plot(
-    data: SNZFinetuningData,
-    fit: SNZFinetuningResults,
+    data: SNZDurationData,
+    fit: SNZDurationResults,
     target: QubitPairId,
 ):
     """Plot routine for OptimizeTwoQubitGate."""
     fitting_report = ""
-    qubits = next(iter(data.durations))[:2]
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -282,12 +228,12 @@ def _plot(
         target_q = target[0]
         control_q = target[1]
 
-        for i in data.durations[target]:
+        for i in data.durations:
             for j in data.t_idles:
                 t_idle.append(j)
                 durations.append(i)
-                cz.append(fit.angles[target_q, control_q, i, j])
-                leakage.append(fit.leakages[qubits[0], qubits[1], i, j])
+                cz.append(fit.angles[target_q, control_q, j, i])
+                leakage.append(fit.leakages[target_q, control_q, j, i])
 
         fig.add_trace(
             go.Heatmap(

@@ -79,9 +79,7 @@ class VirtualZPhasesResults(Results):
         While key is a QubitPairId both chsh and chsh_mitigated contain
         an additional key which represents the basis chosen.
         """
-        return key in [
-            (target, control) for target, control, _ in self.fitted_parameters
-        ]
+        return key in [(target, control) for target, control in self.angle]
 
 
 VirtualZPhasesType = np.dtype([("target", np.float64), ("control", np.float64)])
@@ -390,7 +388,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
         )
         if fit is not None:
             angle_range = np.linspace(thetas[0], thetas[-1], 100)
-            fitted_parameters = fit.fitted_parameters[target_q, control_q, setup]
+            fitted_parameters = fit.fitted_parameters[(target_q, control_q), setup]
             fig.add_trace(
                 go.Scatter(
                     x=angle_range,
@@ -418,10 +416,10 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
                         [
                             np.round(fit.angle[target_q, control_q], 4),
                             np.round(
-                                fit.virtual_phase[tuple(sorted(target))][target_q],
+                                fit.virtual_phase[target_q, control_q],
                                 4,
                             ),
-                            np.round(fit.leakage[tuple(sorted(target))][control_q], 4),
+                            np.round(fit.leakage[target_q, control_q], 4),
                         ],
                     )
                 )
