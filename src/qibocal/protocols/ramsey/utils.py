@@ -33,19 +33,19 @@ def ramsey_sequence(
     sequence = PulseSequence()
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
-
-        qd_channel, qd_pulse = natives.R(theta=np.pi / 2)[0]
+        qd_channel = platform.qubits[qubit].drive
+        rx90_sequence = natives.R(theta=np.pi / 2)
         ro_channel, ro_pulse = natives.MZ()[0]
 
         qd_delay = Delay(duration=wait)
         ro_delay = Delay(duration=wait)
 
+        sequence += rx90_sequence
+        sequence.append((qd_channel, qd_delay))
+        sequence += rx90_sequence
         sequence.extend(
             [
-                (qd_channel, qd_pulse),
-                (qd_channel, qd_delay),
-                (qd_channel, qd_pulse),
-                (ro_channel, Delay(duration=2 * qd_pulse.duration)),
+                (ro_channel, Delay(duration=2 * rx90_sequence.duration)),
                 (ro_channel, ro_delay),
                 (ro_channel, ro_pulse),
             ]

@@ -58,7 +58,7 @@ def _acquisition(
     durations = []
     for q in targets:
         # this is assuming that RX and RX90 have the same duration
-        duration = platform.natives.single_qubit[q].RX()[0][1].duration
+        duration = platform.natives.single_qubit[q].RX().duration
         durations.append(duration)
         assert (params.delay_between_pulses_start - duration) / 2 >= 0, (
             f"Initial delay too short for qubit {q}, minimum delay should be {duration}"
