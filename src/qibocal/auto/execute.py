@@ -1,5 +1,6 @@
 """Tasks execution."""
 
+import dataclasses
 import importlib
 import importlib.util
 import os
@@ -10,6 +11,7 @@ from dataclasses import dataclass, fields
 from pathlib import Path
 from typing import Optional, Union
 
+from pydantic import BaseModel
 from qibo.backends import construct_backend
 
 from qibocal import protocols
@@ -20,7 +22,7 @@ from .history import History
 from .mode import AUTOCALIBRATION, ExecutionMode
 from .operation import Routine
 from .output import Metadata, Output
-from .task import Action, Completed, Targets, Task
+from .task import Action, Completed, Id, Targets, Task
 
 PLATFORM_DIR = "platform"
 """Folder where platform will be dumped."""
@@ -61,6 +63,104 @@ def _register(name: str, obj):
     sys.modules[qualified] = obj
     obj.name = obj.__name__ = qualified
     obj.__spec__ = None
+
+
+class BoundRoutine(BaseModel):
+    """Create a bound protocol.
+
+    Returns a closure, already wrapping the current `Executor` instance, but
+    specific to the `protocol` chosen.
+    The parameters of this wrapper function maps to protocol's ones, in particular:
+
+        - the keyword argument `mode` is used as the execution mode (defaults to
+          `AUTOCALIBRATION`)
+        - the keyword argument `id` is used as the `id` for the given operation
+          (defaults to `protocol` identifier, the same used to import and invoke
+          it)
+
+    then the protocol specific are resolved, with the following priority:
+
+        - explicit keyword arguments have the highest priorities
+        - items in the dictionary passed with the keyword `parameters`
+        - positional arguments, which are associated to protocols parameters in the
+          same order in which they are defined (and documented) in their respective
+          parameters classes
+
+    .. attention::
+
+        Despite the priority being clear, it is advised to use only one of the
+        former schemes to pass parameters, to avoid confusion due to unexpected
+        overwritten arguments.
+
+        E.g. for::
+
+            resonator_spectroscopy(1e7, 1e5, freq_width=1e8)
+
+        the `freq_width` will be `1e8`, and `1e7` will be silently overwritten and
+        ignored (as opposed to a regular Python function, where a `TypeError` would
+        be raised).
+
+        The priority defined above is strictly and silently respected, so just pay
+        attention during invocations.
+    """
+
+    protocol: Routine
+    operation: str
+    executor: "Executor"
+    action: Optional[Action] = None
+
+    def __call__(
+        self,
+        *args,
+        parameters: Optional[dict] = None,
+        id: Optional[str] = None,
+        mode: ExecutionMode = AUTOCALIBRATION,
+        update: bool = True,
+        targets: Optional[Targets] = None,
+        **kwargs,
+    ):
+        if id is None:
+            id = self.operation
+
+        # pack protocol's arguments
+        fields_ = fields(self.protocol.parameters_type)
+        positional = dict(zip((f.name for f in fields_), args))
+        params = deepcopy(parameters) if parameters is not None else {}
+        merged_params = params | positional | kwargs
+
+        # compile action
+        required_args_present = len(
+            set(merged_params)
+            - {f.name for f in fields_ if f.default is dataclasses.MISSING}
+        )
+        if required_args_present:
+            # if arguments are passed,
+            self.action = action = Action.cast(
+                source={
+                    "id": id,
+                    "operation": self.operation,
+                    "targets": targets,
+                    "update": update,
+                    "parameters": merged_params,
+                }
+            )
+        else:
+            assert self.action is not None
+            action = deepcopy(self.action)
+            if id is not None:
+                action.id = Id(id)
+            action.targets = targets
+            action.update = update
+
+        return self.executor.run_protocol(self.protocol, parameters=action, mode=mode)
+
+    def acquisition(self, *args, **kwargs):
+        kwargs["mode"] = ExecutionMode.ACQUIRE
+        return self(*args, **kwargs)
+
+    def fit(self, *args, **kwargs):
+        kwargs["mode"] = ExecutionMode.FIT
+        return self(*args, **kwargs)
 
 
 @dataclass
@@ -153,75 +253,10 @@ class Executor:
                 raise AttributeError
 
             protocol = getattr(protocols, name)
-            return self._wrapped_protocol(protocol, name)
+            return BoundRoutine(protocol=protocol, operation=name, executor=self)
         except AttributeError:
             # fall back on regular attributes
             return super().__getattribute__(name)
-
-    def _wrapped_protocol(self, protocol: Routine, operation: str):
-        """Create a bound protocol.
-
-        Returns a closure, already wrapping the current `Executor` instance, but
-        specific to the `protocol` chosen.
-        The parameters of this wrapper function maps to protocol's ones, in particular:
-
-            - the keyword argument `mode` is used as the execution mode (defaults to
-              `AUTOCALIBRATION`)
-            - the keyword argument `id` is used as the `id` for the given operation
-              (defaults to `protocol` identifier, the same used to import and invoke
-              it)
-
-        then the protocol specific are resolved, with the following priority:
-
-            - explicit keyword arguments have the highest priorities
-            - items in the dictionary passed with the keyword `parameters`
-            - positional arguments, which are associated to protocols parameters in the
-              same order in which they are defined (and documented) in their respective
-              parameters classes
-
-        .. attention::
-
-            Despite the priority being clear, it is advised to use only one of the
-            former schemes to pass parameters, to avoid confusion due to unexpected
-            overwritten arguments.
-
-            E.g. for::
-
-                resonator_spectroscopy(1e7, 1e5, freq_width=1e8)
-
-            the `freq_width` will be `1e8`, and `1e7` will be silently overwritten and
-            ignored (as opposed to a regular Python function, where a `TypeError` would
-            be raised).
-
-            The priority defined above is strictly and silently respected, so just pay
-            attention during invocations.
-        """
-
-        def wrapper(
-            *args,
-            parameters: Optional[dict] = None,
-            id: str = operation,
-            mode: ExecutionMode = AUTOCALIBRATION,
-            update: bool = True,
-            targets: Optional[Targets] = None,
-            **kwargs,
-        ):
-            positional = dict(
-                zip((f.name for f in fields(protocol.parameters_type)), args)
-            )
-            params = deepcopy(parameters) if parameters is not None else {}
-            action = Action.cast(
-                source={
-                    "id": id,
-                    "operation": operation,
-                    "targets": targets,
-                    "update": update,
-                    "parameters": params | positional | kwargs,
-                }
-            )
-            return self.run_protocol(protocol, parameters=action, mode=mode)
-
-        return wrapper
 
     def unload(self):
         """Unlist the executor from available modules."""

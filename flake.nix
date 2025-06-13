@@ -41,7 +41,7 @@
                 install = {
                   enable = true;
                   allExtras = true;
-                  groups = ["dev" "test"];
+                  groups = ["dev" "tests"];
                 };
               };
             };
