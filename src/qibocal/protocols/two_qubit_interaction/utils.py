@@ -3,12 +3,12 @@ from typing import Tuple
 import numpy as np
 from numpy.typing import NDArray
 from qibolab import Platform
+from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, QubitId, QubitPairId
 from qibocal.config import log
 
 from ..utils import fallback_period, guess_period
-from .virtual_z_phases import fit_sinusoid, phase_diff
 
 
 def order_pair(pair: QubitPairId, platform: Platform) -> tuple[QubitId, QubitId]:
@@ -18,6 +18,11 @@ def order_pair(pair: QubitPairId, platform: Platform) -> tuple[QubitId, QubitId]
     drive0 = platform.config(platform.qubits[q0].drive)
     drive1 = platform.config(platform.qubits[q1].drive)
     return (q1, q0) if drive0.frequency > drive1.frequency else (q0, q1)
+
+
+def sinusoid(x, gate_repetition, amplitude, offset, phase):
+    """Sinusoidal fit function."""
+    return np.cos(gate_repetition * (x + phase)) * amplitude + offset
 
 
 def fit_flux_amplitude(matrix, amps, times):
@@ -66,6 +71,7 @@ def fit_snz_optimize(
     leakages = {}
     # FIXME: experiment should be for single pair
     for pair in pairs:
+        # for amplitude in data.amplitudes[pair]:
         for amplitude in data.amplitudes[pair]:
             for target, control, setup, foo_parameter in data[pair]:
                 selected_data = data[pair][target, control, setup, foo_parameter]
@@ -81,6 +87,7 @@ def fit_snz_optimize(
                     ] = params
                 except Exception as e:
                     log.warning(f"Fit failed for pair ({target, control}) due to {e}.")
+                    return virtual_phases, fitted_parameters, leakages, angles
 
             for target, control, setup, foo_parameter in data[pair]:
                 if setup == "I":  # The loop is the same for setup I or X
@@ -109,3 +116,87 @@ def fit_snz_optimize(
                         - data_i[data_i.amp == amplitude].prob_control
                     )
     return virtual_phases, fitted_parameters, leakages, angles
+
+
+def phase_diff(phase_1, phase_2):
+    """Return the phase difference of two sinusoids, normalized in the range [0, 2*pi]."""
+    return np.mod(phase_2 - phase_1, 2 * np.pi)
+
+
+def fit_sinusoid(thetas, data, gate_repetition):
+    """Fit sinusoid to the given data."""
+    pguess = [
+        np.max(data) - np.min(data),
+        np.mean(data),
+        np.pi,
+    ]
+
+    popt, _ = curve_fit(
+        lambda x, amplitude, offset, phase: sinusoid(
+            x, gate_repetition, amplitude, offset, phase
+        ),
+        thetas,
+        data,
+        p0=pguess,
+        bounds=(
+            (0, -np.max(data), 0),
+            (np.max(data), np.max(data), 2 * np.pi),
+        ),
+    )
+    return popt.tolist()
+
+
+def fit_virtualz(data: Data, pair: list):
+    fitted_parameters = {}
+    virtual_phase = {pair: {}}
+    leakage = {pair: {}}
+    angle = {}
+    for target, control, setup in data[pair]:
+        target_data = data[pair][target, control, setup].target
+        try:
+            params = fit_sinusoid(
+                np.array(data.thetas), target_data, data.gate_repetition
+            )
+            fitted_parameters[target, control, setup] = params
+
+        except Exception as e:
+            log.warning(f"CZ fit failed for pair ({target, control}) due to {e}.")
+
+        for target_q, control_q in (pair, list(pair)[::-1]):
+            # leakage estimate: L = m /2
+            # See NZ paper from Di Carlo
+            # approximation which does not need qutrits
+            # https://arxiv.org/pdf/1903.02492.pdf
+            leakage[pair][control_q] = 0.5 * float(
+                np.mean(
+                    data[pair][target_q, control_q, "X"].control
+                    - data[pair][target_q, control_q, "I"].control
+                )
+            )
+
+        try:
+            for target_q, control_q in (
+                pair,
+                list(pair)[::-1],
+            ):
+                angle[target_q, control_q] = phase_diff(
+                    fitted_parameters[target_q, control_q, "X"][2],
+                    fitted_parameters[target_q, control_q, "I"][2],
+                )
+                virtual_phase[pair][target_q] = fitted_parameters[
+                    target_q, control_q, "I"
+                ][2]
+
+                # leakage estimate: L = m /2
+                # See NZ paper from Di Carlo
+                # approximation which does not need qutrits
+                # https://arxiv.org/pdf/1903.02492.pdf
+                leakage[pair][control_q] = 0.5 * float(
+                    np.mean(
+                        data[pair][target_q, control_q, "X"].control
+                        - data[pair][target_q, control_q, "I"].control
+                    )
+                )
+        except KeyError:
+            pass  # exception covered above
+        return fitted_parameters, virtual_phase, angle, leakage

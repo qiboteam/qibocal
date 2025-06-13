@@ -77,7 +77,9 @@ def _aquisition(
     SNZ pulse and its idling time are swept while the virtual phase correction
     experiment is performed.
     """
-    t_idle_range = np.arange(params.t_idle_min, params.t_idle_max, params.t_idle_step)
+    t_idle_range = np.arange(
+        params.t_idle_min, params.t_idle_max, params.t_idle_step, dtype=float
+    )
     data = SNZIdlingData()
     data.t_idles = t_idle_range.tolist()
     data.angles = np.arange(
@@ -91,25 +93,20 @@ def _aquisition(
         # Find CZ flux pulse
         cz_sequence = getattr(platform.natives.two_qubit[ordered_pair], "CZ")()
         flux_channel = platform.qubits[ordered_pair[1]].flux
-        flux_pulses = cz_sequence.channel(flux_channel)
+        flux_pulses = list(cz_sequence.channel(flux_channel))
         assert len(flux_pulses) == 1, "Only 1 flux pulse is supported"
         flux_pulse = flux_pulses[0]
 
         for t_idle in t_idle_range:
             for setup in ("I", "X"):
-                flux_pulse = [
-                    (
-                        flux_channel,
-                        Pulse(
-                            amplitude=flux_pulse.amplitude,
-                            duration=flux_pulse.duration,
-                            envelope=Snz(
-                                t_idling=t_idle,
-                                b_amplitude=params.b_amplitude,
-                            ),
-                        ),
-                    )
-                ]
+                flux_pulse = Pulse(
+                    amplitude=flux_pulse.amplitude,
+                    duration=flux_pulse.duration,
+                    envelope=Snz(
+                        t_idling=t_idle,
+                        b_amplitude=params.b_amplitude,
+                    ),
+                )
                 (
                     sequence,
                     flux_pulse,
@@ -122,7 +119,7 @@ def _aquisition(
                     ordered_pair,
                     "CZ",
                     dt=0,
-                    flux_pulses=flux_pulse,
+                    flux_pulse=flux_pulse,
                 )
                 sweeper_theta = Sweeper(
                     parameter=Parameter.phase,

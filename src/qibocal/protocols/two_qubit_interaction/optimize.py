@@ -22,8 +22,8 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
-from .utils import order_pair
-from .virtual_z_phases import create_sequence, fit_sinusoid, phase_diff
+from .utils import fit_sinusoid, order_pair, phase_diff
+from .virtual_z_phases import create_sequence
 
 __all__ = ["optimize_two_qubit_gate"]
 
@@ -335,15 +335,15 @@ def _fit(
                                 ]
                             )
                         )
+                    index = np.argmin(np.abs(np.array(list(angles.values())) - np.pi))
+                    _, _, amp, dur = np.array(list(angles))[index]
+                    best_amp[pair] = float(amp)
+                    best_dur[pair] = float(dur)
+                    best_virtual_phase[pair] = virtual_phases[
+                        ord_pair[0], ord_pair[1], float(amp), float(dur)
+                    ]
                 except KeyError:
                     pass
-        index = np.argmin(np.abs(np.array(list(angles.values())) - np.pi))
-        _, _, amp, dur = np.array(list(angles))[index]
-        best_amp[pair] = float(amp)
-        best_dur[pair] = float(dur)
-        best_virtual_phase[pair] = virtual_phases[
-            ord_pair[0], ord_pair[1], float(amp), float(dur)
-        ]
 
     return OptimizeTwoQubitGateResults(
         angles=angles,

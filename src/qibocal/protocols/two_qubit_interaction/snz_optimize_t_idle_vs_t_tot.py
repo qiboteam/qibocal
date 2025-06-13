@@ -14,14 +14,14 @@ from qibocal.auto.operation import (
     Parameters,
     QubitId,
     QubitPairId,
-    Results,
     Routine,
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
-from .utils import order_pair
-from .virtual_z_phases import create_sequence, fit_sinusoid, phase_diff
+from .snz_optimize import SNZFinetuningResults
+from .utils import fit_sinusoid, order_pair, phase_diff
+from .virtual_z_phases import create_sequence
 
 
 @dataclass
@@ -39,27 +39,17 @@ class SNZFinetuningParamteters(Parameters):
     t_idle_step: float
     """t_idle step."""
     theta_start: float
+    """Virtual phase start angle."""
     theta_end: float
+    """Virtual phase end angle."""
     theta_step: float
-    b_amplitude: float  #
+    """Virtual phase stop angle."""
+    b_amplitude: float
+    """SNZ B amplitude."""
 
 
 @dataclass
-class SNZFinetuningResults(Results):
-    leakages: dict
-    virtual_phases: dict
-    fitted_parameters: dict
-    angles: dict
-
-    def __contains__(self, key: QubitPairId):
-        """Check if key is in class.
-
-        Additional  manipulations required because of the Results class.
-        """
-        pairs = {
-            (target, control) for target, control, _, _, _ in self.fitted_parameters
-        }
-        return key in pairs
+class SNZFinetuningResults(SNZFinetuningResults): ...
 
 
 OptimizeTwoQubitGateType = np.dtype(
@@ -99,7 +89,6 @@ class SNZFinetuningData(Data):
         self, target, control, setup, t_idle, theta, duration, prob_control, prob_target
     ):
         """Store output for single pair."""
-        print(len(theta), len(duration))
         size = len(theta) * len(duration)
         duration, angle = np.meshgrid(duration, theta, indexing="ij")
         ar = np.empty(size, dtype=OptimizeTwoQubitGateType)
@@ -115,7 +104,9 @@ def _aquisition(
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
 ) -> SNZFinetuningData:
-    t_idle_range = np.arange(params.t_idle_min, params.t_idle_max, params.t_idle_step)
+    t_idle_range = np.arange(
+        params.t_idle_min, params.t_idle_max, params.t_idle_step, dtype=float
+    )
     data = SNZFinetuningData()
     data.t_idles = t_idle_range.tolist()
     data.angles = np.arange(
@@ -127,28 +118,23 @@ def _aquisition(
         target_vz = pair[0]
         other_qubit_vz = pair[1]
         # Find CZ flux pulse
+
         cz_sequence = getattr(platform.natives.two_qubit[ordered_pair], "CZ")()
         flux_channel = platform.qubits[ordered_pair[1]].flux
-
-        for cz_pulse in cz_sequence:
-            if cz_pulse[0] == flux_channel:
-                flux_pulse = cz_pulse[1]
+        flux_pulses = list(cz_sequence.channel(flux_channel))
+        assert len(flux_pulses) == 1, "Only 1 flux pulse is supported"
+        flux_pulse = flux_pulses[0]
 
         for t_idle in t_idle_range:
             for setup in ("I", "X"):
-                flux_pulse = [
-                    (
-                        flux_channel,
-                        Pulse(
-                            amplitude=flux_pulse.amplitude,
-                            duration=flux_pulse.duration,
-                            envelope=Snz(
-                                t_idling=t_idle,
-                                b_amplitude=params.b_amplitude,
-                            ),
-                        ),
-                    )
-                ]
+                flux_pulse = Pulse(
+                    amplitude=flux_pulse.amplitude,
+                    duration=flux_pulse.duration,
+                    envelope=Snz(
+                        t_idling=t_idle,
+                        b_amplitude=params.b_amplitude,
+                    ),
+                )
                 (
                     sequence,
                     flux_pulse,
@@ -161,7 +147,7 @@ def _aquisition(
                     ordered_pair,
                     "CZ",
                     dt=0,
-                    flux_pulses=flux_pulse,
+                    flux_pulse=flux_pulse,
                 )
                 sweeper_theta = Sweeper(
                     parameter=Parameter.phase,
@@ -235,27 +221,33 @@ def _fit(
                     fitted_parameters[target, control, setup, duration, t_idle] = params
                 except Exception as e:
                     log.warning(f"Fit failed for pair ({target, control}) due to {e}.")
+            try:
+                for target, control, setup, t_idle in data[pair]:
+                    if setup == "I":  # The loop is the same for setup I or X
+                        angles[target, control, duration, t_idle] = phase_diff(
+                            fitted_parameters[target, control, "X", duration, t_idle][
+                                2
+                            ],
+                            fitted_parameters[target, control, "I", duration, t_idle][
+                                2
+                            ],
+                        )
+                        virtual_phases[target, control, duration, t_idle] = (
+                            fitted_parameters[target, control, "I", duration, t_idle][2]
+                        )
 
-            for target, control, setup, t_idle in data[pair]:
-                if setup == "I":  # The loop is the same for setup I or X
-                    angles[target, control, duration, t_idle] = phase_diff(
-                        fitted_parameters[target, control, "X", duration, t_idle][2],
-                        fitted_parameters[target, control, "I", duration, t_idle][2],
-                    )
-                    virtual_phases[target, control, duration, t_idle] = (
-                        fitted_parameters[target, control, "I", duration, t_idle][2]
-                    )
-
-                    # leakage estimate: L = m /2
-                    # See NZ paper from Di Carlo
-                    # approximation which does not need qutrits
-                    # https://arxiv.org/pdf/1903.02492.pdf
-                    data_x = data[pair][target, control, "X", t_idle]
-                    data_i = data[pair][target, control, "I", t_idle]
-                    leakages[target, control, duration, t_idle] = 0.5 * np.mean(
-                        data_x[data_x.duration == duration].prob_control
-                        - data_i[data_i.duration == duration].prob_control
-                    )
+                        # leakage estimate: L = m /2
+                        # See NZ paper from Di Carlo
+                        # approximation which does not need qutrits
+                        # https://arxiv.org/pdf/1903.02492.pdf
+                        data_x = data[pair][target, control, "X", t_idle]
+                        data_i = data[pair][target, control, "I", t_idle]
+                        leakages[target, control, duration, t_idle] = 0.5 * np.mean(
+                            data_x[data_x.duration == duration].prob_control
+                            - data_i[data_i.duration == duration].prob_control
+                        )
+            except KeyError:
+                pass
 
     results = SNZFinetuningResults(
         virtual_phases=virtual_phases,
