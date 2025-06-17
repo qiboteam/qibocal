@@ -16,6 +16,7 @@ from . import (
     signal_experiments,
     tomographies,
     two_qubit_interaction,
+    twpa,
 )
 from .allxy import *
 from .classification import *
@@ -34,6 +35,7 @@ from .resonator_spectroscopies import *
 from .signal_experiments import *
 from .tomographies import *
 from .two_qubit_interaction import *
+from .twpa import *
 
 __all__ = []
 __all__ += ["allxy"]
@@ -54,3 +56,4 @@ __all__ += ["tomographies"]
 __all__ += ["resonator_spectroscopies"]
 __all__ += ["qubit_spectroscopies"]
 __all__ += ["two_qubit_interaction"]
+__all__ += ["twpa"]

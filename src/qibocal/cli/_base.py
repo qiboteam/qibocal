@@ -203,14 +203,20 @@ def fit(
     type=str,
     help="Default is UID username.",
 )
-def upload(path, tag, author):
+@click.option(
+    "--lab",
+    default="tii",
+    type=str,
+    help="Default lab where report is uploaded.",
+)
+def upload(path, tag, author, lab):
     """Uploads output folder to server.
 
     Arguments:
 
     - FOLDER: input folder.
     """
-    upload_report(path, tag, author)
+    upload_report(path, tag, author, lab)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)

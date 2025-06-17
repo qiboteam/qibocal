@@ -164,7 +164,9 @@ class Calibration(Model):
 
     def dump(self, path: Path):
         """Dump calibration model."""
-        (path / CALIBRATION).write_text(self.model_dump_json(indent=4))
+        (path / CALIBRATION).write_text(
+            self.model_dump_json(indent=4), encoding="utf-8"
+        )
 
     @property
     def qubits(self) -> list:
