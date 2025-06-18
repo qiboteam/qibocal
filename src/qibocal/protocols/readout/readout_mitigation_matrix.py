@@ -149,8 +149,8 @@ def _plot(
                 y=computational_basis,
                 text_auto=True,
                 labels={
-                    "x": "Prepeared States",
-                    "y": "Measured States",
+                    "x": "Measured States",
+                    "y": "Prepared States",
                     "color": "Probabilities",
                 },
                 width=700,

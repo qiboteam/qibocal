@@ -7,29 +7,64 @@ import shutil
 import socket
 import subprocess
 import uuid
+from dataclasses import dataclass
+from enum import Enum
 from urllib.parse import urljoin
 
 from qibo.config import log, raise_error
 
 from qibocal.auto.output import META, Metadata
 
-# options for report upload
-UPLOAD_HOST = (
-    "qibocal@saadiyat"
-    if socket.gethostname() in ("saadiyat", "dalma")
-    else "qibocal@login.qrccluster.com"
-)
-TARGET_DIR = "qibocal-reports/"
-ROOT_URL = "http://login.qrccluster.com:9000/"
+
+class UploadLab(Enum):
+    """Lab where the report is uploaded."""
+
+    TII = "tii"
+    S14 = "s14"
 
 
-def upload_report(path: pathlib.Path, tag: str, author: str):
+@dataclass
+class UploadConfig:
+    """Configuration for the upload process."""
+
+    host: str
+    """Host to upload the report to."""
+    target_dir: str
+    """Target directory on the host where the report will be uploaded."""
+    root_url: str
+    """Root URL for accessing the uploaded report."""
+
+    @staticmethod
+    def from_lab(lab_name: str) -> "UploadConfig":
+        try:
+            lab = getattr(UploadLab, lab_name.upper())
+        except KeyError:
+            raise ValueError(f"Unknown lab: {lab_name}")
+        if lab == UploadLab.TII:
+            return UploadConfig(
+                host=(
+                    "qibocal@saadiyat"
+                    if socket.gethostname() in ("saadiyat", "dalma")
+                    else "qibocal@login.qrccluster.com"
+                ),
+                target_dir="qibocal-reports/",
+                root_url="http://login.qrccluster.com:9000/",
+            )
+        elif lab == UploadLab.S14:
+            return UploadConfig(
+                host=("qibocal_user@10.246.80.226"),
+                target_dir="qibocal-reports/",
+                root_url="http://10.246.80.226:9000/",
+            )
+
+
+def upload_report(path: pathlib.Path, tag: str, author: str, lab: str) -> str:
     # load meta and update tag
     meta = Metadata.load(path)
     meta.author = author
     meta.tag = tag
     (path / META).write_text(json.dumps(meta.dump(), indent=4), encoding="utf-8")
-
+    config = UploadConfig.from_lab(lab)
     # check the rsync command exists.
     if not shutil.which("rsync"):
         raise_error(
@@ -43,13 +78,13 @@ def upload_report(path: pathlib.Path, tag: str, author: str):
         "-o",
         "PreferredAuthentications=publickey",
         "-q",
-        UPLOAD_HOST,
+        config.host,
         "exit",
     )
 
     str_line = " ".join(repr(ele) for ele in ssh_command_line)
 
-    log.info(f"Checking SSH connection to {UPLOAD_HOST}.")
+    log.info(f"Checking SSH connection to {config.host}.")
 
     try:
         subprocess.run(ssh_command_line, check=True)
@@ -71,23 +106,23 @@ def upload_report(path: pathlib.Path, tag: str, author: str):
 
     # upload output
     randname = base64.urlsafe_b64encode(uuid.uuid4().bytes).decode()
-    newdir = TARGET_DIR + randname
+    newdir = config.target_dir + randname
 
     rsync_command = (
         "rsync",
         "-aLz",
         "--chmod=ug=rwx,o=rx",
         f"{path}/",
-        f"{UPLOAD_HOST}:{newdir}",
+        f"{config.host}:{newdir}",
     )
 
-    log.info(f"Uploading output ({path}) to {UPLOAD_HOST}")
+    log.info(f"Uploading output ({path}) to {config.host}")
     try:
         subprocess.run(rsync_command, check=True)
     except subprocess.CalledProcessError as e:
         msg = f"Failed to upload output: {e}"
         raise RuntimeError(msg) from e
 
-    url = urljoin(ROOT_URL, randname)
+    url = urljoin(config.root_url, randname)
     log.info(f"Upload completed. The result is available at:\n{url}")
     return url

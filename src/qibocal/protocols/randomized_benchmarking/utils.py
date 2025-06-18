@@ -670,17 +670,17 @@ def add_measurement_layer(circuit: Circuit):
     circuit.add(gates.M(*range(circuit.nqubits)))
 
 
-def fit(qubits, data):
+def fit(targets, data):
     """Takes data, extracts the depths and the signal and fits it with an
     exponential function y = Ap^x+B."""
 
     fidelity, pulse_fidelity = {}, {}
     popts, perrs = {}, {}
     error_barss = {}
-    for qubit in qubits:
+    for target in targets:
         # Extract depths and probabilities
         x = data.depths
-        probs = data.extract_probabilities(qubit)
+        probs = data.extract_probabilities(target)
         samples_mean = np.mean(probs, axis=1)
         # TODO: Should we use the median or the mean?
         median = np.median(probs, axis=1)
@@ -696,15 +696,19 @@ def fit(qubits, data):
         )
 
         popt, perr = fit_exp1B_func(x, samples_mean, sigma=sigma, bounds=[0, 1])
+        if isinstance(targets, tuple):
+            dimension = 2 ** len(targets)
+        else:
+            dimension = 2
         # Compute the fidelities
-        infidelity = (1 - popt[1]) / 2
-        fidelity[qubit] = 1 - infidelity
-        pulse_fidelity[qubit] = 1 - infidelity / data.npulses_per_clifford
+        infidelity = (1 - popt[1]) * (dimension - 1) / dimension
+        fidelity[target] = 1 - infidelity
+        pulse_fidelity[target] = 1 - infidelity / data.npulses_per_clifford
 
         # conversion from np.array to list/tuple
         error_bars = error_bars.tolist()
-        error_barss[qubit] = error_bars
-        perrs[qubit] = perr
-        popts[qubit] = popt
+        error_barss[target] = error_bars
+        perrs[target] = perr
+        popts[target] = popt
 
     return StandardRBResult(fidelity, pulse_fidelity, popts, perrs, error_barss)
