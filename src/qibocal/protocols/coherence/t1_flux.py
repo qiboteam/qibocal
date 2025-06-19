@@ -23,7 +23,7 @@ class T1FluxParameters(Parameters):
     """Initial delay before readout [ns]."""
     delay_max: int
     """Final delay before readout [ns]."""
-    delay_end: int
+    delay_step: int
     """Step delay before readout [ns]."""
     amplitude_min: float
     """Flux pulse minimum amplitude."""
@@ -35,9 +35,7 @@ class T1FluxParameters(Parameters):
     @property
     def delay_range(self) -> npt.NDArray:
         """Return the delay range as a numpy array."""
-        return np.arange(
-            self.delay_min, self.delay_max + self.delay_end, self.delay_end
-        )
+        return np.arange(self.delay_min, self.delay_max, self.delay_step)
 
     @property
     def flux_range(self) -> npt.NDArray:
