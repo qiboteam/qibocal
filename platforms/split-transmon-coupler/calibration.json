@@ -53,6 +53,19 @@
             "rb_fidelity": null
         }
     },
+    "couplers": {
+        "coupler_0": {
+            "qubit": {
+                "frequency_01":  5.824e9,
+                "maximum_frequency":  5.977e9,
+                "asymmetry": 0.1,
+                "sweetspot": 0
+            }
+        }
+    },
     "two_qubits": {
-    }
+        "0-1": {
+            "coupler": "coupler_0"
+        }
+}
 }

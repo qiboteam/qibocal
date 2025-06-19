@@ -11,7 +11,7 @@
       "instructions": 200
     },
     "hamiltonian":{
-      "transmon_levels": 2,
+      "transmon_levels": 3,
       "single_qubit": {
                 "0": {
                     "frequency": 4.961e9,
