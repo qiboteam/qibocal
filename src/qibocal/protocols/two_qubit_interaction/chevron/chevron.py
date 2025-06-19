@@ -211,8 +211,8 @@ def _fit(data: ChevronData) -> ChevronResults:
                     [np.inf, 2 * np.pi, np.max(y), np.max(y)],
                 ),
             )
-            # duration can be estimated as the period of the oscillation
-            duration = 1 / (popt[0] / 2 / np.pi)
+            period = 1 / (popt[0] / 2 / np.pi)
+            duration = period if data.native == "CZ" else period / 2
             amplitudes[pair] = amplitude
             durations[pair] = int(duration)
         except Exception as e:
