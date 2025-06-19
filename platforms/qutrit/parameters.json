@@ -70,7 +70,21 @@
               }
             ]
           ],
-          "RX90": null,
+          "RX90": [
+            [
+              "0/drive",
+              {
+                "duration": 30,
+                "amplitude": 0.0845,
+                "envelope": {
+                  "kind": "gaussian",
+                  "rel_sigma": 0.2
+                },
+                "relative_phase": 0.0,
+                "kind": "pulse"
+              }
+            ]
+          ],
           "RX12": [
             [
               "0/drive12",

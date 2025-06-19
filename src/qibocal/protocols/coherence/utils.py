@@ -50,35 +50,41 @@ def dynamical_decoupling_sequence(
     all_delays = []
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
-        qd_channel, rx90_pulse = natives.R(theta=np.pi / 2)[0]
-        _, pulse = natives.R(phi=np.pi / 2)[0] if kind == "CPMG" else natives.RX()[0]
+        qd_channel = platform.qubits[qubit].drive
+        rx90_sequence = natives.R(theta=np.pi / 2)
+        decoupling_sequence = (
+            natives.R(phi=np.pi / 2) if kind == "CPMG" else natives.RX()
+        )
         ro_channel, ro_pulse = natives.MZ()[0]
 
         drive_delays = 2 * n * [Delay(duration=wait)]
         ro_delays = 2 * n * [Delay(duration=wait)]
 
-        sequence.append((qd_channel, rx90_pulse))
+        sequence += rx90_sequence
 
         for i in range(n):
             sequence.append((qd_channel, drive_delays[2 * i]))
             sequence.append((ro_channel, ro_delays[2 * i]))
-            sequence.append((qd_channel, pulse))
+            sequence += decoupling_sequence
             sequence.append((qd_channel, drive_delays[2 * i + 1]))
             sequence.append((ro_channel, ro_delays[2 * i + 1]))
 
-        sequence.append((qd_channel, rx90_pulse))
+        sequence += rx90_sequence
 
         sequence.append(
             (
                 ro_channel,
-                Delay(duration=2 * rx90_pulse.duration + n * pulse.duration),
+                Delay(
+                    duration=2 * rx90_sequence.duration
+                    + n * decoupling_sequence.duration
+                ),
             )
         )
 
         sequence.append((ro_channel, ro_pulse))
         all_delays.extend(drive_delays)
         all_delays.extend(ro_delays)
-
+    print(sequence)
     return sequence, all_delays
 
 
