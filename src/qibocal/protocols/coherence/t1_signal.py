@@ -82,12 +82,6 @@ def t1_sequence(
     sequence = PulseSequence()
     ro_pulses = {}
     delays = len(targets) * [Delay(duration=0)]
-    if flux_pulse_amplitude is not None:
-        flux_pulses = len(targets) * [
-            Pulse(duration=0, amplitude=flux_pulse_amplitude, envelope=Rectangular())
-        ]
-    else:
-        flux_pulses = []
     for i, q in enumerate(targets):
         natives = platform.natives.single_qubit[q]
         qd_channel, qd_pulse = natives.RX()[0]
@@ -97,9 +91,16 @@ def t1_sequence(
         sequence.append((qd_channel, qd_pulse))
         sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
         if flux_pulse_amplitude is not None:
+            flux_pulses = len(targets) * [
+                Pulse(
+                    duration=0, amplitude=flux_pulse_amplitude, envelope=Rectangular()
+                )
+            ]
             flux_channel = platform.qubits[q].flux
             sequence.append((flux_channel, Delay(duration=qd_pulse.duration)))
             sequence.append((flux_channel, flux_pulses[i]))
+        else:
+            flux_pulses = []
         sequence.append((ro_channel, delays[i]))
         sequence.append((ro_channel, ro_pulse))
 

@@ -1,35 +1,21 @@
 from dataclasses import dataclass, field
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
-from qibocal.result import probability
 
 from ...config import log
 from ..ramsey.utils import fitting, ramsey_sequence
 from ..utils import COLORBAND, COLORBAND_LINE, HZ_TO_GHZ
+from .t1_flux import T1FluxData, T1FluxParameters
 
 
 @dataclass
-class T2FluxParameters(Parameters):
+class T2FluxParameters(T1FluxParameters):
     """T2 flux runcard inputs."""
-
-    delay_between_pulses_start: int
-    """Initial delay before readout [ns]."""
-    delay_between_pulses_end: int
-    """Final delay before readout [ns]."""
-    delay_between_pulses_step: int
-    """Step delay before readout [ns]."""
-    amplitude_min: float
-    """Flux pulse minimum amplitude."""
-    amplitude_max: float
-    """Flux pulse maximum amplitude."""
-    amplitude_step: float
-    """Flux pulse amplitude step."""
 
 
 @dataclass
@@ -41,27 +27,8 @@ class T2FluxResults(Results):
 
 
 @dataclass
-class T2FluxData(Data):
+class T2FluxData(T1FluxData):
     """T2 flux acquisition outputs."""
-
-    flux_range: list[float] = field(default_factory=list)
-    """Flux pulse amplitude range [a.u.]."""
-    wait_range: list[float] = field(default_factory=list)
-    """Delay between pulses range [ns]."""
-    detuning: dict[QubitId, float] = field(default_factory=dict)
-    """DETUNING of the qubit as a function of flux pulse amplitude."""
-    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
-    """Raw data acquired."""
-
-    def probability(self, qubit: QubitId) -> npt.NDArray:
-        """Return the probability data for a specific qubit."""
-        return probability(self.data[qubit], state=1)
-
-    def error(self, qubit: QubitId) -> npt.NDArray:
-        """Return the error data for a specific qubit."""
-        probs = self.probability(qubit)
-        nshots = self.data[qubit].shape[0]
-        return np.sqrt(probs * (1 - probs) / nshots)
 
 
 def _acquisition(
@@ -77,27 +44,16 @@ def _acquisition(
             platform.calibration.single_qubits[qubit].qubit.flux_coefficients
             is not None
         ), f"Qubit {qubit} flux coefficients not set in calibration."
-    wait_range = np.arange(
-        params.delay_between_pulses_start,
-        params.delay_between_pulses_end,
-        params.delay_between_pulses_step,
-    )
-
-    flux_range = np.arange(
-        params.amplitude_min,
-        params.amplitude_max,
-        params.amplitude_step,
-    )
 
     sweeper_delay = Sweeper(
         parameter=Parameter.duration,
-        values=wait_range,
+        values=params.delay_range,
         pulses=pulses,
     )
 
     sweeper_amplitude = Sweeper(
         parameter=Parameter.amplitude,
-        values=flux_range,
+        values=params.flux_range,
         pulses=[pulse for pulse in pulses if isinstance(pulse, Pulse)],
     )
 
@@ -117,12 +73,14 @@ def _acquisition(
         _data[qubit] = results[ro_pulse.id]
     data = T2FluxData(
         data=_data,
-        wait_range=wait_range.tolist(),
-        flux_range=flux_range.tolist(),
+        wait_range=params.delay_range.tolist(),
+        flux_range=params.flux_range.tolist(),
         detuning={
             qubit: (
                 platform.config(platform.qubits[qubit].drive).frequency * HZ_TO_GHZ
-                + platform.calibration.single_qubits[qubit].qubit.detuning(flux_range)
+                + platform.calibration.single_qubits[qubit].qubit.detuning(
+                    params.flux_range
+                )
             ).tolist()
             for qubit in targets
         },
@@ -131,6 +89,9 @@ def _acquisition(
 
 
 def _fit(data: T2FluxData) -> T2FluxResults:
+    """T2 flux fitting function.
+
+    For each detuning value we compute the T2."""
     t2s = {qubit: [] for qubit in data.qubits}
     for qubit in data.qubits:
         prob = data.probability(qubit)

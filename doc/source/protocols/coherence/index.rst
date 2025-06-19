@@ -39,9 +39,9 @@ Example
     - id: t1 study
       operation: t1_flux
       parameters:
-        delay_before_readout_end: 10000
-        delay_before_readout_start: 4
-        delay_before_readout_step: 100
+        delay_max: 10000
+        delay_min: 4
+        delay_step: 100
         amplitude_min: 0
         amplitude_max: 0.1
         amplitude_step: 0.02
@@ -81,9 +81,9 @@ Example
     - id: t2 study
       operation: t2_flux
       parameters:
-        delay_between_pulses_end: 10000
-        delay_between_pulses_step: 4
-        delay_between_pulses_start: 100
+        delay_max: 10000
+        delay_min: 4
+        delay_step: 100
         amplitude_min: 0
         amplitude_max: 0.1
         amplitude_step: 0.02

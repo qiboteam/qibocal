@@ -137,6 +137,7 @@ def exponential_fit(data, zeno=False):
 
 
 def single_exponential_fit(x, y, error, zeno=False):
+    """Fitting for single exponential decay."""
     x_max = np.max(x)
     x_min = np.min(x)
     x_norm = (x - x_min) / (x_max - x_min)

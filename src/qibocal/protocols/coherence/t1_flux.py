@@ -19,11 +19,11 @@ from .utils import single_exponential_fit
 class T1FluxParameters(Parameters):
     """T1 runcard inputs."""
 
-    delay_before_readout_start: int
+    delay_min: int
     """Initial delay before readout [ns]."""
-    delay_before_readout_end: int
+    delay_max: int
     """Final delay before readout [ns]."""
-    delay_before_readout_step: int
+    delay_end: int
     """Step delay before readout [ns]."""
     amplitude_min: float
     """Flux pulse minimum amplitude."""
@@ -31,6 +31,22 @@ class T1FluxParameters(Parameters):
     """Flux pulse maximum amplitude."""
     amplitude_step: float
     """Flux pulse amplitude step."""
+
+    @property
+    def delay_range(self) -> npt.NDArray:
+        """Return the delay range as a numpy array."""
+        return np.arange(
+            self.delay_min, self.delay_max + self.delay_end, self.delay_end
+        )
+
+    @property
+    def flux_range(self) -> npt.NDArray:
+        """Return the flux pulse amplitude range as a numpy array."""
+        return np.arange(
+            self.amplitude_min,
+            self.amplitude_max + self.amplitude_step,
+            self.amplitude_step,
+        )
 
 
 @dataclass
@@ -77,27 +93,16 @@ def _acquisition(
             platform.calibration.single_qubits[qubit].qubit.flux_coefficients
             is not None
         ), f"Qubit {qubit} flux coefficients not set in calibration."
-    wait_range = np.arange(
-        params.delay_before_readout_start,
-        params.delay_before_readout_end,
-        params.delay_before_readout_step,
-    )
-
-    flux_range = np.arange(
-        params.amplitude_min,
-        params.amplitude_max,
-        params.amplitude_step,
-    )
 
     sweeper_delay = Sweeper(
         parameter=Parameter.duration,
-        values=wait_range,
+        values=params.delay_range,
         pulses=pulses,
     )
 
     sweeper_amplitude = Sweeper(
         parameter=Parameter.amplitude,
-        values=flux_range,
+        values=params.flux_range,
         pulses=[pulse for pulse in pulses if isinstance(pulse, Pulse)],
     )
 
@@ -116,12 +121,14 @@ def _acquisition(
         _data[qubit] = results[ro_pulses[qubit].id]
     data = T1FluxData(
         data=_data,
-        wait_range=wait_range.tolist(),
-        flux_range=flux_range.tolist(),
+        wait_range=params.delay_range.tolist(),
+        flux_range=params.flux_range.tolist(),
         detuning={
             qubit: (
                 platform.config(platform.qubits[qubit].drive).frequency * HZ_TO_GHZ
-                + platform.calibration.single_qubits[qubit].qubit.detuning(flux_range)
+                + platform.calibration.single_qubits[qubit].qubit.detuning(
+                    params.flux_range
+                )
             ).tolist()
             for qubit in targets
         },
@@ -130,6 +137,9 @@ def _acquisition(
 
 
 def _fit(data: T1FluxData) -> T1FluxResults:
+    """Fitting procedure fot T1 flux experiment.
+
+    For each detuning value we compute the T1 time using a single exponential fit."""
     t1s = {qubit: [] for qubit in data.qubits}
     for qubit in data.qubits:
         prob = data.probability(qubit)

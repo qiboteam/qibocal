@@ -405,9 +405,9 @@ actions:
   - id: t1 flux
     operation: t1_flux
     parameters:
-      delay_before_readout_start: 0
-      delay_before_readout_end: 20_000
-      delay_before_readout_step: 2000
+      delay_min: 0
+      delay_max: 20_000
+      delay_step: 2000
       amplitude_min: 0
       amplitude_max: 0.5
       amplitude_step: 0.01
@@ -447,9 +447,9 @@ actions:
   - id: t2_flux
     operation: t2_flux
     parameters:
-      delay_between_pulses_start: 16
-      delay_between_pulses_end: 20000
-      delay_between_pulses_step: 100
+      delay_min: 16
+      delay_max: 20000
+      delay_step: 100
       amplitude_min: 0
       amplitude_max: 0.5
       amplitude_step: 0.01
