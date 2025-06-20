@@ -402,6 +402,17 @@ actions:
       single_shot: True
       nshots: 1024
 
+  - id: t1 flux
+    operation: t1_flux
+    parameters:
+      delay_min: 0
+      delay_max: 20_000
+      delay_step: 2000
+      amplitude_min: 0
+      amplitude_max: 0.5
+      amplitude_step: 0.01
+      nshots: 1024
+
   - id: zeno
     operation: zeno
     parameters:
@@ -432,6 +443,17 @@ actions:
       delay_between_pulses_step: 100
       single_shot: True
       nshots: 10
+
+  - id: t2_flux
+    operation: t2_flux
+    parameters:
+      delay_min: 16
+      delay_max: 20000
+      delay_step: 100
+      amplitude_min: 0
+      amplitude_max: 0.5
+      amplitude_step: 0.01
+      nshots: 1024
 
   - id: ramsey_signal
     operation: ramsey_signal
