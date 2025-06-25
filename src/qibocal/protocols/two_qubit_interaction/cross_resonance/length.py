@@ -86,6 +86,10 @@ class CrossResonanceLengthData(Data):
     )
     """Raw data acquired."""
 
+    @property
+    def pairs(self):
+        return {(i[0], i[1]) for i in self.data}
+
 
 def _acquisition(
     params: CrossResonanceLengthParameters,
