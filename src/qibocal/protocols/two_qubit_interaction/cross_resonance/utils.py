@@ -175,6 +175,7 @@ def cr_fit(
     for pair in data.pairs:
         for setup in SetControl:
             pair_data = data[pair[0], pair[1], setup]
+            pair = (pair[0], pair[1])
             raw_x = pair_data.x
             min_x = np.min(raw_x)
             max_x = np.max(raw_x)
@@ -220,6 +221,7 @@ def cr_plot(
     """Plotting function for CR protocols."""
     fig = go.Figure()
     for setup in SetControl:
+        target = target if target in data.pairs else (target[1], target[0])
         pair_data = data.data[target[0], target[1], setup]
         fig.add_trace(
             go.Scatter(

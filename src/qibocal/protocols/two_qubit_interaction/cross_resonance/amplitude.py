@@ -75,6 +75,10 @@ class CrossResonanceAmplitudeData(Data):
     ] = field(default_factory=dict)
     """Raw data acquired."""
 
+    @property
+    def pairs(self):
+        return {(i[0], i[1]) for i in self.data}
+
 
 def _acquisition(
     params: CrossResonanceAmplitudeParameters,
