@@ -214,6 +214,7 @@ def tomography_cr_plot(
     )
     for i, basis in enumerate(Basis):
         for setup in SetControl:
+            target = target if target in data.pairs else (target[1], target[0])
             pair_data = data.data[target[0], target[1], basis, setup]
             fig.add_trace(
                 go.Scatter(
