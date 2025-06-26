@@ -99,7 +99,7 @@ def _acquisition(
         control, target = pair
         pair = (control, target)
         for setup in SetControl:
-            sequence, cr_pulses, _ = cr_sequence(
+            sequence, cr_pulses, _, _ = cr_sequence(
                 platform=platform,
                 control=control,
                 target=target,
@@ -108,7 +108,6 @@ def _acquisition(
                 duration=params.pulse_duration,
                 echo=params.echo,
             )
-
             sweeper = Sweeper(
                 parameter=Parameter.amplitude,
                 values=params.amplitude_range,

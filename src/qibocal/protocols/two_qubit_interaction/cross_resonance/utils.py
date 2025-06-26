@@ -39,7 +39,7 @@ def cr_sequence(
     echo: bool = False,
     basis: Basis = Basis.Z,
     phase: float = 0,
-) -> tuple[PulseSequence, list[Pulse], list[Delay]]:
+) -> tuple[PulseSequence, list[Pulse], list[Pulse], list[Delay]]:
     """Creates sequence for CR experiment on ``control`` and ``target`` qubits.
 
     With ``setup`` it is possible to set the control qubit to 1 or keep it at 0.
@@ -48,6 +48,7 @@ def cr_sequence(
     the default is Z."""
 
     cr_pulses = []
+    cr_target_pulses = []
     sequence = PulseSequence()
     natives_control = platform.natives.single_qubit[control]
     natives_target = platform.natives.single_qubit[target]
@@ -67,7 +68,7 @@ def cr_sequence(
         envelope=Rectangular(),
     )
     cr_pulses.append(cr_drive_pulse)
-    cr_pulses.append(target_drive_pulse)
+    cr_target_pulses.append(target_drive_pulse)
     control_drive_channel, control_drive_pulse = natives_control.RX()[0]
     target_drive_channel, _ = natives_target.RX()[0]
     ro_channel, ro_pulse = natives_target.MZ()[0]
@@ -86,7 +87,7 @@ def cr_sequence(
         cr_pulse_minus = replace(cr_drive_pulse, relative_phase=np.pi)
         target_pulse_minus = replace(target_drive_pulse, relative_phase=np.pi)
         cr_pulses.append(cr_pulse_minus)
-        cr_pulses.append(target_pulse_minus)
+        cr_target_pulses.append(target_pulse_minus)
         sequence.append((cr_channel, cr_drive_pulse))
         sequence.append((control_drive_channel, delays[-1]))
         sequence.append((target_drive_channel, target_drive_pulse))
@@ -155,7 +156,7 @@ def cr_sequence(
     sequence.append((ro_channel_control, target_delay))
     sequence.append((ro_channel, ro_pulse))
     sequence.append((ro_channel_control, ro_pulse_control))
-    return sequence, cr_pulses, delays
+    return sequence, cr_pulses, cr_target_pulses, delays
 
 
 def cr_fit(
