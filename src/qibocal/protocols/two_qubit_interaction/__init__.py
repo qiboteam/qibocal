@@ -1,4 +1,5 @@
 from .chevron import chevron, chevron_signal
+from .chsh import chsh
 from .cross_resonance import (
     cross_resonance_amplitude,
     cross_resonance_length,
@@ -15,3 +16,4 @@ __all__ += [
     "hamiltonian_tomography_cr_length",
     "cross_resonance_length",
 ]
+__all__ += ["chsh"]

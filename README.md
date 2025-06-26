@@ -64,11 +64,13 @@ params = rabi_amplitude.parameters_type.load(dict(
         ))
 
 # acquire
+platform.connect()
 data, acquisition_time = rabi_amplitude.acquisition(
                                                     params=params,
                                                     platform=platform,
                                                     targets=targets
                                                     )
+platform.disconnect()
 
 # post-processing
 results, fit_time = rabi_amplitude.fit(data=data)
