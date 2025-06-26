@@ -111,7 +111,7 @@ def _acquisition(
             control
         ].qubit.anharmonicity
         for setup in SetControl:
-            sequence, cr_pulses, delays = cr_sequence(
+            sequence, cr_pulses, cr_target_pulses, delays = cr_sequence(
                 platform=platform,
                 control=control,
                 target=target,
@@ -126,13 +126,13 @@ def _acquisition(
                 sweeper = Sweeper(
                     parameter=Parameter.duration_interpolated,
                     values=params.duration_range,
-                    pulses=cr_pulses,
+                    pulses=cr_pulses + cr_target_pulses,
                 )
             else:
                 sweeper = Sweeper(
                     parameter=Parameter.duration,
                     values=params.duration_range,
-                    pulses=cr_pulses + delays,
+                    pulses=cr_pulses + cr_target_pulses + delays,
                 )
 
             updates = []
