@@ -316,7 +316,6 @@ def _fit(
     """
     fitted_parameters = {}
     pairs = data.order_pairs
-    print("PAIRS", pairs)
     virtual_phase = {}
     angle = {}
     leakage = {}
@@ -386,7 +385,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
             row=1,
             col=2 if fig == fig1 else 1,
         )
-        if fit is not None:
+        if fit is not None and setup == "I":
             angle_range = np.linspace(thetas[0], thetas[-1], 100)
             fitted_parameters = fit.fitted_parameters[(target_q, control_q), setup]
             fig.add_trace(
@@ -403,7 +402,6 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
                 row=1,
                 col=1 if fig == fig1 else 2,
             )
-
             fitting_report.add(
                 table_html(
                     table_dict(
