@@ -316,7 +316,7 @@ def _fit(
     """
     fitted_parameters = {}
     pairs = data.order_pairs
-    print(pairs)
+    print("PAIRS", pairs)
     virtual_phase = {}
     angle = {}
     leakage = {}

@@ -154,8 +154,13 @@ def fit_virtualz(data: dict, pair: list, thetas: list, gate_repetition: int, key
     fitted_param = {}
     if key is None:
         key = pair
-    for target, control, setup in data.keys():
+
+    target, control = pair
+
+    for setup in ["I", "X"]:
         target_data = data[target, control, setup].target
+        print(target, control, setup)
+        print("TARGET DATA", target_data)
         # try:
         params = fit_sinusoid(np.array(thetas), target_data, gate_repetition)
         fitted_param[target, control, setup] = params
@@ -163,7 +168,8 @@ def fit_virtualz(data: dict, pair: list, thetas: list, gate_repetition: int, key
         #     log.warning(f"CZ fit failed for pair ({target, control}) due to {e}.")
         # return fitted_parameters, virtual_phase, angle, leakage
 
-    for target, control, setup in data.keys():
+    # for target, control, setup in data.keys():
+    for setup in ["I", "X"]:
         # leakage estimate: L = m /2
         # See NZ paper from Di Carlo
         # approximation which does not need qutrits
