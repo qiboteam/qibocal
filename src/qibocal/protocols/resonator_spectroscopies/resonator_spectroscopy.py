@@ -97,6 +97,7 @@ class ResonatorSpectroscopyParameters(Parameters):
     Otherwise the default amplitude defined on the platform runcard will be used"""
     hardware_average: bool = True
     """By default hardware average will be performed."""
+    phase_delay: Optional[float]  = 0.0
 
     def __post_init__(self):
         if isinstance(self.power_level, str):
@@ -152,6 +153,7 @@ class ResonatorSpectroscopyData(Data):
     """Raw data acquired."""
     power_level: Optional[PowerLevel] = None
     """Power regime of the resonator."""
+    
 
     @classmethod
     def load(cls, path):
@@ -226,8 +228,10 @@ def _acquisition(
         result = results[ro_pulses[q].id]
         # store the results
         ro_frequency = readout_frequency(q, platform, params.power_level)
+        _frequency = delta_frequency_range + ro_frequency
         signal = magnitude(result)
-        phase_ = phase(result)
+        phase_ = phase(result) + _frequency*params.phase_delay*1e-6
+        phase_ -= np.mean(phase_)
         data.register_qubit(
             ResSpecType,
             (q),

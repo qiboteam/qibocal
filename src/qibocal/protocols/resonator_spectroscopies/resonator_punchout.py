@@ -31,6 +31,8 @@ class ResonatorPunchoutParameters(Parameters):
     """Maximum amplitude multiplicative factor."""
     step_amp: float
     """Step amplitude multiplicative factor."""
+    phase_delay: Optional[float] = 0.0
+    """Phase delay for the readout pulse [rad]."""
 
 
 @dataclass
@@ -75,7 +77,7 @@ class ResonatorPunchoutData(Data):
         ar["freq"] = frequency.ravel()
         ar["amp"] = amplitude.ravel()
         ar["signal"] = signal.ravel()
-        ar["phase"] = phase.ravel()
+        ar["phase"] = phase.ravel() 
         self.data[qubit] = np.rec.array(ar)
 
 
@@ -139,10 +141,13 @@ def _acquisition(
     for qubit, ro_pulse in ro_pulses.items():
         # average signal, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulse.id]
+        _frequency = freq_sweepers[qubit].values
+        _phase = phase(result) + params.phase_delay*_frequency*1e-6
+        _phase -= np.mean(_phase)
         data.register_qubit(
             qubit,
             signal=magnitude(result),
-            phase=phase(result),
+            phase=_phase,
             freq=freq_sweepers[qubit].values,
             amp=amp_sweeper.values,
         )
