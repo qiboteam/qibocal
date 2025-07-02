@@ -56,20 +56,21 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     native = platform.natives.single_qubit
+    ro_channels = []
     for qubit in targets:
         ro_channel, ro_pulse = native[qubit].MZ()[0]
-        platform.update({f"configs.{ro_channel}.delay": 0})
+        ro_channels.append(ro_channel)
         if params.readout_amplitude is not None:
             ro_pulse = replace(ro_pulse, amplitude=params.readout_amplitude)
         ro_pulses[qubit] = ro_pulse
         sequence.append((ro_channel, ro_pulse))
-
     results = platform.execute(
         [sequence],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.RAW,
         averaging_mode=AveragingMode.CYCLIC,
+        updates=[{ro_channel: {"delay": 0} for ro_channel in ro_channels}],
     )
 
     data = TimeOfFlightReadoutData(
