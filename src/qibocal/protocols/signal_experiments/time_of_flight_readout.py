@@ -53,12 +53,12 @@ def _acquisition(
     targets: list[QubitId],
 ) -> TimeOfFlightReadoutData:
     """Data acquisition for time of flight experiment."""
-
     sequence = PulseSequence()
     ro_pulses = {}
     native = platform.natives.single_qubit
     for qubit in targets:
         ro_channel, ro_pulse = native[qubit].MZ()[0]
+        platform.update({f"configs.{ro_channel}.delay": 0})
         if params.readout_amplitude is not None:
             ro_pulse = replace(ro_pulse, amplitude=params.readout_amplitude)
         ro_pulses[qubit] = ro_pulse
