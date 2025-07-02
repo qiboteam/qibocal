@@ -14,6 +14,9 @@ from qibocal.update import replace
 
 __all__ = ["time_of_flight_readout"]
 
+MINIMUM_TOF = 24
+"""Minimum value for time of flight"""
+
 
 @dataclass
 class TimeOfFlightReadoutParameters(Parameters):
@@ -70,7 +73,7 @@ def _acquisition(
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.RAW,
         averaging_mode=AveragingMode.CYCLIC,
-        updates=[{ro_channel: {"delay": 0} for ro_channel in ro_channels}],
+        updates=[{ro_channel: {"delay": MINIMUM_TOF} for ro_channel in ro_channels}],
     )
 
     data = TimeOfFlightReadoutData(
@@ -104,7 +107,7 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
         )
 
         max_average_change = np.argmax(moving_average_deltas)
-        time_of_flight_readout = max_average_change / sampling_rate
+        time_of_flight_readout = max_average_change / sampling_rate + MINIMUM_TOF
         fitted_parameters[qubit] = time_of_flight_readout
 
     return TimeOfFlightReadoutResults(fitted_parameters)
@@ -124,6 +127,7 @@ def _plot(
 
     fig.add_trace(
         go.Scatter(
+            x=np.arange(0, len(y)) * sampling_rate + MINIMUM_TOF,
             y=y,
             textposition="bottom center",
             name="Expectation value",
@@ -139,7 +143,7 @@ def _plot(
     )
     if fit is not None:
         fig.add_vline(
-            x=fit.fitted_parameters[target] * sampling_rate,
+            x=fit.fitted_parameters[target] * sampling_rate + MINIMUM_TOF,
             line_width=2,
             line_dash="dash",
             line_color="grey",
