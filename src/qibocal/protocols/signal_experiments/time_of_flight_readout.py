@@ -32,7 +32,7 @@ class TimeOfFlightReadoutParameters(Parameters):
 class TimeOfFlightReadoutResults(Results):
     """TimeOfFlightReadout outputs."""
 
-    fitted_parameters: dict[QubitId, dict[str, float]]
+    time_of_flights: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
@@ -92,7 +92,7 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
     """Post-processing function for TimeOfFlightReadout."""
 
     qubits = data.qubits
-    fitted_parameters = {}
+    time_of_flights = {}
 
     window_size = data.windows_size
     sampling_rate = data.sampling_rate
@@ -104,9 +104,9 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
         th = (np.mean(samples[:window_size]) + np.mean(samples[:-window_size])) / 2
         delay = np.where(samples > th)[0][0]
         time_of_flight_readout = float(delay / sampling_rate + MINIMUM_TOF)
-        fitted_parameters[qubit] = time_of_flight_readout
+        time_of_flights[qubit] = time_of_flight_readout
 
-    return TimeOfFlightReadoutResults(fitted_parameters)
+    return TimeOfFlightReadoutResults(time_of_flights)
 
 
 def _plot(
@@ -139,13 +139,13 @@ def _plot(
     )
     if fit is not None:
         fig.add_vline(
-            x=fit.fitted_parameters[target],
+            x=fit.time_of_flights[target],
             line_width=2,
             line_dash="dash",
             line_color="grey",
         )
         fitting_report = table_html(
-            table_dict(target, "Time of flights [ns]", fit.fitted_parameters[target])
+            table_dict(target, "Time of flights [ns]", fit.time_of_flights[target])
         )
     fig.update_layout(
         showlegend=True,
@@ -158,5 +158,14 @@ def _plot(
     return figures, fitting_report
 
 
-time_of_flight_readout = Routine(_acquisition, _fit, _plot)
+def _update(
+    results: TimeOfFlightReadoutResults,
+    platform: CalibrationPlatform,
+    qubit: QubitId,
+):
+    ro_channel = platform.qubits[qubit].acquisition
+    platform.update({f"configs.{ro_channel}.delay": results.time_of_flights[qubit]})
+
+
+time_of_flight_readout = Routine(_acquisition, _fit, _plot, _update)
 """TimeOfFlightReadout Routine object."""
