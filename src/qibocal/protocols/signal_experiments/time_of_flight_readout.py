@@ -99,15 +99,11 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        # Calculate moving average change per element
-        moving_average_deltas = np.ediff1d(
-            np.convolve(
-                qubit_data.samples, np.ones(window_size) / window_size, mode="valid"
-            )
-        )
-
-        max_average_change = np.argmax(moving_average_deltas)
-        time_of_flight_readout = max_average_change / sampling_rate + MINIMUM_TOF
+        samples = qubit_data.samples
+        window_size = int(len(qubit_data) / 10)
+        th = (np.mean(samples[:window_size]) + np.mean(samples[:-window_size])) / 2
+        delay = np.where(samples > th)[0][0]
+        time_of_flight_readout = float(delay / sampling_rate + MINIMUM_TOF)
         fitted_parameters[qubit] = time_of_flight_readout
 
     return TimeOfFlightReadoutResults(fitted_parameters)
@@ -138,12 +134,12 @@ def _plot(
 
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Sample",
+        xaxis_title="Time [ns]",
         yaxis_title="Signal [a.u.]",
     )
     if fit is not None:
         fig.add_vline(
-            x=fit.fitted_parameters[target] * sampling_rate + MINIMUM_TOF,
+            x=fit.fitted_parameters[target],
             line_width=2,
             line_dash="dash",
             line_color="grey",
@@ -153,7 +149,7 @@ def _plot(
         )
     fig.update_layout(
         showlegend=True,
-        xaxis_title="Sample",
+        xaxis_title="Time [ns]",
         yaxis_title="Signal [a.u.]",
     )
 
