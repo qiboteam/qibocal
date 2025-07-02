@@ -55,7 +55,6 @@ def _acquisition(
     """Data acquisition for time of flight experiment."""
 
     sequence = PulseSequence()
-
     ro_pulses = {}
     native = platform.natives.single_qubit
     for qubit in targets:
