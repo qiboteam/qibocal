@@ -3,7 +3,7 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import Delay, Platform, Pulse, PulseSequence, Rectangular, VirtualZ
+from qibolab import Delay, Platform, Pulse, PulseSequence, Rectangular
 
 from ....auto.operation import QubitId, QubitPairId
 from ....config import log
@@ -129,8 +129,6 @@ def cr_sequence(
             )
 
     if basis == Basis.X:
-        # H
-        sequence.append((target_drive_channel, VirtualZ(phase=np.pi)))
         sequence.append(
             (
                 target_drive_channel,
@@ -138,14 +136,10 @@ def cr_sequence(
             )
         )
     elif basis == Basis.Y:
-        # SDG
-        sequence.append((target_drive_channel, VirtualZ(phase=np.pi / 2)))
-        # H
-        sequence.append((target_drive_channel, VirtualZ(phase=np.pi)))
         sequence.append(
             (
                 target_drive_channel,
-                natives_target.R(theta=np.pi / 2, phi=np.pi / 2)[0][1],
+                natives_target.R(theta=np.pi / 2, phi=0)[0][1],
             )
         )
 
