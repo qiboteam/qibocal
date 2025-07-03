@@ -40,6 +40,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     chevron
     virtual_z
     state_tomographies
+    cross_resonance/cross_resonance
     coherence/index
     chsh
     twpa_calibration/twpa
