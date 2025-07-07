@@ -33,3 +33,15 @@ the following script should help automating the process.
 
 Once the required server is dispatched as queue job with the script, the instructions to
 connect will appear in the output (usually redirected by the queue system on a file).
+
+.. note::
+
+   If the system you are targeting, the *remote computing node*, is actually part of
+   multiple networks, and you need to discriminate the correct one to use, just add the
+   subnetwork as a string in the former
+
+   E.g. you could use::
+
+       SUBNET="192.168.XXX"
+
+   to specify a local network whose 3rd byte is ``XXX`` (e.g. ``0``, ``1``, ..., ``255``)
