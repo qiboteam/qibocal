@@ -27,6 +27,6 @@ echo
 echo "Connect to:"
 echo "  https://localhost:9180"
 
-jupyter lab --ip "$IP" --port "$PORT"
+jupyter lab --ip "$IP" --port "$PORT" --no-browser
 # you can also test this with:
 # python -m http.server -b "$IP" "$PORT"
