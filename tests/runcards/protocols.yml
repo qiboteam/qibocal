@@ -29,7 +29,6 @@ actions:
       nshots: 10
       hardware_average: false
 
-
   - id: resonator punchout
     operation: resonator_punchout
     parameters:
@@ -411,6 +410,17 @@ actions:
       single_shot: True
       nshots: 1024
 
+  - id: t1 flux
+    operation: t1_flux
+    parameters:
+      delay_min: 0
+      delay_max: 20_000
+      delay_step: 2000
+      amplitude_min: 0
+      amplitude_max: 0.5
+      amplitude_step: 0.01
+      nshots: 1024
+
   - id: zeno
     operation: zeno
     parameters:
@@ -441,6 +451,17 @@ actions:
       delay_between_pulses_step: 100
       single_shot: True
       nshots: 10
+
+  - id: t2_flux
+    operation: t2_flux
+    parameters:
+      delay_min: 16
+      delay_max: 20000
+      delay_step: 100
+      amplitude_min: 0
+      amplitude_max: 0.5
+      amplitude_step: 0.01
+      nshots: 1024
 
   - id: ramsey_signal
     operation: ramsey_signal
@@ -815,16 +836,6 @@ actions:
       nshots: 1000
       parking: True
 
-  - id: iswap_virtual_phase
-    operation: correct_virtual_z_phases
-    targets: [[0, 1]]
-    parameters:
-      theta_start: 0
-      theta_end: 180
-      theta_step: 10
-      dt: 0
-      native: iSWAP
-
   - id: cz_virtual_phase
     operation: correct_virtual_z_phases
     targets: [[0, 1]]
@@ -847,6 +858,21 @@ actions:
       freq_width: 200.e+6
       freq_step: 25.e+6
       nshots: 10
+  - id: chsh_native_gates
+    operation: chsh
+    targets: [[0, 1]]
+    parameters:
+      bell_states: [0, 1, 2, 3]
+      ntheta: 20
+      native: True
+
+  - id: chsh_non_native_gates
+    operation: chsh
+    targets: [[0, 1]]
+    parameters:
+      bell_states: [0, 1, 2, 3]
+      ntheta: 20
+      native: False
 
   - id: resonator_amplitude
     operation: resonator_amplitude
@@ -922,7 +948,16 @@ actions:
       nshots: 1024
       circuit: tests/circuit2q.json
 
-  - id: cryoscope amplitude
+  - id: flux_amplitude_dep 0 amp
+    operation: flux_amplitude_frequency
+    parameters:
+      amplitude_min: 0
+      amplitude_max: 1
+      amplitude_step: 0.1
+      duration: 50
+      relaxation_time: 50_000
+
+  - id: flux_amplitude_dep .1 amp
     operation: flux_amplitude_frequency
     parameters:
       amplitude_min: 0.1
@@ -930,6 +965,19 @@ actions:
       amplitude_step: 0.1
       duration: 50
       relaxation_time: 50_000
+
+  - id: flux_amplitude_dep_crosstalk
+    operation: flux_amplitude_frequency
+    targets: [0]
+    parameters:
+      amplitude_min: 0.1
+      amplitude_max: 1
+      amplitude_step: 0.1
+      duration: 50
+      relaxation_time: 50_000
+      crosstalk_qubit: 1
+      flux_pulse_amplitude: 0.2
+
 
   - id: flux_gate
     operation: flux_gate
@@ -939,3 +987,23 @@ actions:
       duration_step: 1
       flux_pulse_amplitude: 0.1
       relaxation_time: 50_000
+
+  - id: Qubit VZ
+    operation: qubit_vz
+    parameters:
+      use_flux_pulse: true
+      duration: 50
+      amplitude: 0.15
+      nshots: 45
+      relaxation_time: 100_000
+
+  - id: twpa_calibration
+    operation: twpa_calibration
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 1_000_000
+      twpa_freq_width: 10_000_000
+      twpa_freq_step: 2_000_000
+      twpa_pow_width: 10
+      twpa_pow_step: 3
+      nshots: 20000

@@ -20,11 +20,6 @@
       systems = ["x86_64-linux" "aarch64-darwin"];
 
       perSystem = {pkgs, ...}: {
-        packages.default = pkgs.poetry2nix.mkPoetryApplication {
-          projectDir = self;
-          preferWheels = true;
-        };
-
         devenv.shells.default = {config, ...}: {
           packages = with pkgs; [poethepoet pre-commit stdenv.cc.cc.lib];
 
@@ -41,7 +36,7 @@
                 install = {
                   enable = true;
                   allExtras = true;
-                  groups = ["dev" "test"];
+                  groups = ["dev" "tests"];
                 };
               };
             };
@@ -49,9 +44,4 @@
         };
       };
     };
-
-  nixConfig = {
-    extra-trusted-public-keys = "devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=";
-    extra-substituters = "https://devenv.cachix.org";
-  };
 }

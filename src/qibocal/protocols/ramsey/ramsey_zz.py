@@ -11,17 +11,17 @@ from qibocal.calibration import CalibrationPlatform
 from ...auto.operation import QubitId, Routine
 from ...config import log
 from ...result import probability
-from ..utils import table_dict, table_html
-from .ramsey import (
-    COLORBAND,
-    COLORBAND_LINE,
+from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
+from .ramsey import RamseyType
+from .ramsey_signal import (
     RamseySignalData,
     RamseySignalParameters,
     RamseySignalResults,
-    RamseyType,
     _update,
 )
 from .utils import fitting, process_fit, ramsey_fit, ramsey_sequence
+
+__all__ = ["ramsey_zz"]
 
 
 @dataclass

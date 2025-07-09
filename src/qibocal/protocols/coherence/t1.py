@@ -10,17 +10,20 @@ from qibocal.auto.operation import Data, QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import probability
 
-from ..utils import table_dict, table_html
-from . import t1_signal, utils
+from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
+from . import utils
+from .t1_signal import T1SignalParameters, T1SignalResults, t1_sequence, update_t1
+
+__all__ = ["CoherenceProbType", "T1Data", "t1"]
 
 
 @dataclass
-class T1Parameters(t1_signal.T1SignalParameters):
+class T1Parameters(T1SignalParameters):
     """T1 runcard inputs."""
 
 
 @dataclass
-class T1Results(t1_signal.T1SignalResults):
+class T1Results(T1SignalResults):
     """T1 outputs."""
 
     chi2: Optional[dict[QubitId, list[float]]] = field(default_factory=dict)
@@ -46,8 +49,9 @@ def _acquisition(
 ) -> T1Data:
     """Data acquisition for T1 experiment."""
 
-    sequence, ro_pulses, delays = t1_signal.t1_sequence(
-        platform=platform, targets=targets
+    sequence, ro_pulses, pulses = t1_sequence(
+        platform=platform,
+        targets=targets,
     )
 
     ro_wait_range = np.arange(
@@ -59,7 +63,7 @@ def _acquisition(
     sweeper = Sweeper(
         parameter=Parameter.duration,
         values=ro_wait_range,
-        pulses=[delays[q] for q in targets],
+        pulses=pulses,
     )
 
     data = T1Data()
@@ -122,8 +126,8 @@ def _plot(data: T1Data, target: QubitId, fit: T1Results = None):
                 x=np.concatenate((waits, waits[::-1])),
                 y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
                 fill="toself",
-                fillcolor=utils.COLORBAND,
-                line=dict(color=utils.COLORBAND_LINE),
+                fillcolor=COLORBAND,
+                line=dict(color=COLORBAND_LINE),
                 showlegend=True,
                 name="Errors",
             ),
@@ -169,5 +173,5 @@ def _plot(data: T1Data, target: QubitId, fit: T1Results = None):
     return figures, fitting_report
 
 
-t1 = Routine(_acquisition, _fit, _plot, t1_signal._update)
+t1 = Routine(_acquisition, _fit, _plot, update_t1)
 """T1 Routine object."""

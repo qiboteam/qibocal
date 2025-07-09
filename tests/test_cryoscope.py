@@ -6,8 +6,8 @@ import numpy as np
 import plotly.graph_objects as go
 from scipy.signal import lfilter
 
-from qibocal.protocols.two_qubit_interaction import cryoscope
-from qibocal.protocols.two_qubit_interaction.cryoscope import (
+from qibocal.protocols import cryoscope
+from qibocal.protocols.flux_dependence.cryoscope import (
     CryoscopeData,
     CryoscopeResults,
 )
@@ -100,6 +100,8 @@ def test_cryoscope_plot():
 
         for fig in figs:
             assert len(fig.data) == 5
+            assert fig.data[0].name == "X"
+            assert fig.data[1].name == "Y"
             assert fig.data[2].name == "Uncorrected waveform"
             assert fig.data[3].name == "IIR corrections"
             assert fig.data[4].name == "FIR + IIR corrections"

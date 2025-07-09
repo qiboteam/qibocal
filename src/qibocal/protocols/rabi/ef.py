@@ -16,21 +16,30 @@ from qibocal.update import replace
 from ... import update
 from ...result import magnitude, phase
 from ..utils import readout_frequency
-from . import amplitude_signal, utils
+from . import utils
+from .amplitude_signal import (
+    RabiAmplitudeSignalData,
+    RabiAmplitudeSignalParameters,
+    RabiAmplitudeSignalResults,
+    RabiAmpSignalType,
+    _fit,
+)
+
+__all__ = ["rabi_amplitude_ef"]
 
 
 @dataclass
-class RabiAmplitudeEFParameters(amplitude_signal.RabiAmplitudeSignalParameters):
+class RabiAmplitudeEFParameters(RabiAmplitudeSignalParameters):
     """RabiAmplitudeEF runcard inputs."""
 
 
 @dataclass
-class RabiAmplitudeEFResults(amplitude_signal.RabiAmplitudeSignalResults):
+class RabiAmplitudeEFResults(RabiAmplitudeSignalResults):
     """RabiAmplitudeEF outputs."""
 
 
 @dataclass
-class RabiAmplitudeEFData(amplitude_signal.RabiAmplitudeSignalData):
+class RabiAmplitudeEFData(RabiAmplitudeSignalData):
     """RabiAmplitude data acquisition."""
 
 
@@ -107,7 +116,7 @@ def _acquisition(
     for qubit in targets:
         result = results[ro_pulses[qubit].id]
         data.register_qubit(
-            amplitude_signal.RabiAmpSignalType,
+            RabiAmpSignalType,
             (qubit),
             dict(
                 amp=sweeper.values,
@@ -136,5 +145,5 @@ def _update(
     update.drive_12_duration(results.length[target], platform, target)
 
 
-rabi_amplitude_ef = Routine(_acquisition, amplitude_signal._fit, _plot, _update)
+rabi_amplitude_ef = Routine(_acquisition, _fit, _plot, _update)
 """RabiAmplitudeEF Routine object."""

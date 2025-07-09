@@ -71,10 +71,14 @@ def chevron_sequence(
         (ro_high_channel, dt_delay),
         (drive_channel, drive_delay),
         (drive_channel, dt_delay),
-        (ro_low_channel, Delay(duration=second_rx.duration)),
-        (ro_high_channel, Delay(duration=second_rx.duration)),
-        (drive_channel, second_rx),
     ]
+
+    if native == "CZ":
+        sequence += [
+            (ro_low_channel, Delay(duration=second_rx.duration)),
+            (ro_high_channel, Delay(duration=second_rx.duration)),
+            (drive_channel, second_rx),
+        ]
 
     # add readout
     sequence += low_natives.MZ() + high_natives.MZ()
