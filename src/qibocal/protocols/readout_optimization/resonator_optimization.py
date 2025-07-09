@@ -19,6 +19,8 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.utils import HZ_TO_GHZ, readout_frequency, table_dict, table_html
 
+__all__ = ["resonator_optimization"]
+
 
 @dataclass
 class ResonatorOptimizationParameters(Parameters):
