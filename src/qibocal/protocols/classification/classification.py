@@ -77,7 +77,7 @@ class SingleShotClassificationParameters(Parameters):
 
 
 ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", int)])
-"""Custom dtype for rabi amplitude."""
+"""Custom dtype for classification."""
 
 
 @dataclass
