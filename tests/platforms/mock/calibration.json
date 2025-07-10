@@ -4,8 +4,7 @@
             "resonator": {
                 "bare_frequency": 0.0,
                 "dressed_frequency": null,
-                "depletion_time": 0,
-                "bare_frequency_amplitude": null
+                "depletion_time": 0
             },
             "qubit": {
                 "frequency_01": 4000000000.0,
@@ -21,8 +20,6 @@
             },
             "readout": {
                 "fidelity": 0.0,
-                "coupling": null,
-                "effective_temperature": null,
                 "ground_state": [
                     0.0,
                     1.0
@@ -30,20 +27,16 @@
                 "excited_state": [
                     1.0,
                     0.0
-                ],
-                "qudits_frequency": {}
+                ]
+
             },
-            "t1": null,
-            "t2": null,
-            "t2_spin_echo": null,
             "rb_fidelity": null
         },
         "1": {
             "resonator": {
                 "bare_frequency": 0.0,
                 "dressed_frequency": 4900000000.0,
-                "depletion_time": 0,
-                "bare_frequency_amplitude": null
+                "depletion_time": 0
             },
             "qubit": {
                 "frequency_01": 4200000000.0,
@@ -59,8 +52,6 @@
             },
             "readout": {
                 "fidelity": 0.0,
-                "coupling": null,
-                "effective_temperature": null,
                 "ground_state": [
                     0.25,
                     0.0
@@ -73,22 +64,13 @@
                     "1": 6100000000.0
                 }
             },
-            "t1": null,
-            "t2": null,
-            "t2_spin_echo": null,
             "rb_fidelity": null
         }
     },
     "two_qubits": {
         "0-1": {
-            "rb_fidelity": [
-                0.99,
-                0.01
-            ],
-            "cz_fidelity": null,
-            "coupling": null
+            "rb_fidelity": [0.99, 0.01]
         }
     },
-    "readout_mitigation_matrix": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGk4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDIsKSwgfSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoEAAAAAAAAAAQAAAAAAAAAk05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDE2LCksIH0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoEAAAAAAAcwNHMzMzMzARAmpmZmZmZ6T9nZmZmZmYSQAQAAAAAAAhAZWZmZmZmEkCamZmZmZkJwDUzMzMzMwvAAgAAAAAACEA2MzMzMzMLwGZmZmZmZgZAZWZmZmZm9r8CAAAAAAAIQGlmZmZmZva/NDMzMzMz878yMzMzMzPjP5NOVU1QWQEAdgB7J2Rlc2NyJzogJzxpNCcsICdmb3J0cmFuX29yZGVyJzogRmFsc2UsICdzaGFwZSc6ICgxNiwpLCB9ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKAAAAAAEAAAACAAAAAwAAAAAAAAABAAAAAgAAAAMAAAAAAAAAAQAAAAIAAAADAAAAAAAAAAEAAAACAAAAAwAAAJNOVU1QWQEAdgB7J2Rlc2NyJzogJzxpNCcsICdmb3J0cmFuX29yZGVyJzogRmFsc2UsICdzaGFwZSc6ICg1LCksIH0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKAAAAAAQAAAAIAAAADAAAABAAAAA=",
-    "flux_crosstalk_matrix": null
+    "readout_mitigation_matrix": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGk4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDIsKSwgfSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoEAAAAAAAAAAQAAAAAAAAAk05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDE2LCksIH0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoEAAAAAAAcwNHMzMzMzARAmpmZmZmZ6T9nZmZmZmYSQAQAAAAAAAhAZWZmZmZmEkCamZmZmZkJwDUzMzMzMwvAAgAAAAAACEA2MzMzMzMLwGZmZmZmZgZAZWZmZmZm9r8CAAAAAAAIQGlmZmZmZva/NDMzMzMz878yMzMzMzPjP5NOVU1QWQEAdgB7J2Rlc2NyJzogJzxpNCcsICdmb3J0cmFuX29yZGVyJzogRmFsc2UsICdzaGFwZSc6ICgxNiwpLCB9ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKAAAAAAEAAAACAAAAAwAAAAAAAAABAAAAAgAAAAMAAAAAAAAAAQAAAAIAAAADAAAAAAAAAAEAAAACAAAAAwAAAJNOVU1QWQEAdgB7J2Rlc2NyJzogJzxpNCcsICdmb3J0cmFuX29yZGVyJzogRmFsc2UsICdzaGFwZSc6ICg1LCksIH0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKAAAAAAQAAAAIAAAADAAAABAAAAA="
 }

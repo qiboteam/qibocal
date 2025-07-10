@@ -1,81 +1,87 @@
 {
-    "settings": {
-        "nshots": 1024,
-        "relaxation_time": 0
+  "settings": {
+    "nshots": 1024,
+    "relaxation_time": 0
+  },
+  "configs": {
+    "dummy/bounds": {
+      "kind": "bounds",
+      "waveforms": 0,
+      "readout": 0,
+      "instructions": 0
     },
-    "configs": {
-        "dummy/bounds": {
-            "kind": "bounds",
-            "waveforms": 0.0,
-            "readout": 0,
-            "instructions": 0
-        },
-        "0/drive": {
-            "kind": "iq",
-            "frequency": 4000000000.0
-        },
-        "1/drive": {
-            "kind": "iq",
-            "frequency": 4200000000.0
-        },
-        "0/drive12": {
-            "kind": "iq",
-            "frequency": 4700000000.0
-        },
-        "1/drive12": {
-            "kind": "iq",
-            "frequency": 4855663000.0
-        },
-        "0/flux": {
-            "kind": "dc-filter",
-            "offset": -0.1,
-            "filter": []
-        },
-        "1/flux": {
-            "kind": "dc-filter",
-            "offset": 0.0,
-            "filter": []
-        },
-        "0/probe": {
-            "kind": "iq",
-            "frequency": 7175000000.0
-        },
-        "1/probe": {
-            "kind": "iq",
-            "frequency": 7400000000.0
-        },
-        "0/acquisition": {
-            "kind": "acquisition",
-            "delay": 0.0,
-            "smearing": 0.0,
-            "threshold": 0.0,
-            "iq_angle": 0.0,
-            "kernel": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDEwLCksIH0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAp5sDfS7uHlP2DIMKNvnKc/gCqN8KV/pT94FQCYYJC3PzSbwfi/894/APwg6C61rj8MSN3blizAP2ha9unQYsM/+BFjHTxcwT+gXaJazvbpPw=="
-        },
-        "1/acquisition": {
-            "kind": "acquisition",
-            "delay": 0.0,
-            "smearing": 0.0,
-            "threshold": 0.0,
-            "iq_angle": 0.0,
-            "kernel": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDEwLCksIH0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAr4dT6V5tHrP1w+JhHImN8/sPePZeSUuj/4yTKrD5fRP/ysonZip98/6GJMAPV9xD/LTiJo4k7oP96aWXpxduU/6fUxETe/7z9GXEBNGebWPw=="
-        },
-        "coupler_01/flux": {
-            "kind": "dc-filter",
-            "offset": 0.0,
-            "filter": []
-        },
-        "twpa_pump": {
+    "0/drive": {
+      "kind": "iq",
+      "frequency": 4000000000.0
+    },
+    "1/drive": {
+      "kind": "iq",
+      "frequency": 4200000000.0
+    },
+    "0/drive12": {
+      "kind": "iq",
+      "frequency": 4700000000.0
+    },
+    "1/drive12": {
+      "kind": "iq",
+      "frequency": 4855663000.0
+    },
+    "0/flux": {
+      "kind": "dc-filter",
+      "offset": -0.1,
+      "filter": []
+    },
+    "1/flux": {
+      "kind": "dc-filter",
+      "offset": 0.0,
+      "filter": []
+    },
+
+    "0/probe": {
+      "kind": "iq",
+      "frequency": 7200000000.0
+    },
+    "1/probe": {
+      "kind": "iq",
+      "frequency": 7400000000.0
+    },
+    "0/acquisition": {
+      "kind": "acquisition",
+      "delay": 0.0,
+      "smearing": 0.0,
+      "threshold": 0.0,
+      "iq_angle": 0.0,
+      "kernel": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDEwLCksIH0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAp5sDfS7uHlP2DIMKNvnKc/gCqN8KV/pT94FQCYYJC3PzSbwfi/894/APwg6C61rj8MSN3blizAP2ha9unQYsM/+BFjHTxcwT+gXaJazvbpPw=="
+    },
+    "1/acquisition": {
+      "kind": "acquisition",
+      "delay": 0.0,
+      "smearing": 0.0,
+      "threshold": 0.0,
+      "iq_angle": 0.0,
+      "kernel": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDEwLCksIH0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAr4dT6V5tHrP1w+JhHImN8/sPePZeSUuj/4yTKrD5fRP/ysonZip98/6GJMAPV9xD/LTiJo4k7oP96aWXpxduU/6fUxETe/7z9GXEBNGebWPw=="
+    },
+    "coupler_01/flux": {
+      "kind": "dc-filter",
+      "offset": 0.0,
+      "filter": []
+    },
+    "twpa_pump": {
+      "kind": "oscillator",
+      "frequency": 1000000000.0,
+      "power": 10.0
+    },
+    "0/drive_lo": {
             "kind": "oscillator",
-            "frequency": 1000000000.0,
-            "power": 10.0
-        },
-        "0/drive_lo": {
+            "frequency": 4900000000,
+            "power": 0
+    },
+    "1/drive_lo": {
             "kind": "oscillator",
-            "frequency": 4900000000.0,
-            "power": 0.0
-        },
-        "1/drive_lo": {
+            "frequency": 4900000000,
+            "power": 0
+    },
+    "01/probe_lo": {
             "kind": "oscillator",
             "frequency": 7000000000,
             "power": 0
@@ -230,115 +236,113 @@
         "CP": null
       }
     },
-
-    "coupler": {},
     "two_qubit": {
-        "0-1": {
-            "CZ": [
-                [
-                    "1/flux",
-                    {
-                        "kind": "pulse",
-                        "duration": 30.0,
-                        "amplitude": 0.05,
-                        "envelope": {
-                            "kind": "gaussian_square",
-                            "rel_sigma": 0.2,
-                            "width": 0.75
-                        },
-                        "relative_phase": 0.0
-                    }
-                ],
-                [
-                    "0/drive",
-                    {
-                        "kind": "virtualz",
-                        "phase": 0.0
-                    }
-                ],
-                [
-                  "1/drive",
-                  {
-                    "phase": 0.0,
-                    "kind": "virtualz"
-                  }
-                ],
-                [
-                  "coupler_01/flux",
-                  {
-                    "duration": 30.0,
-                    "amplitude": 0.05,
-                    "envelope": {
-                      "kind": "gaussian_square",
-                      "sigma": 0.2,
-                      "risefall": 2
-                    },
-                    "relative_phase": 0.0,
-                    "kind": "pulse"
-                  }
-                ]
-              ],
-            "CNOT": [
-                [
-                  "1/drive",
-                  {
-                    "duration": 40.0,
-                    "amplitude": 0.3,
-                    "envelope": {
-                      "kind": "drag",
-                      "rel_sigma": 0.2,
-                      "beta": 0.02
-                    },
-                    "relative_phase": 0.0,
-                    "kind": "pulse"
-                  }
-                ]
-              ],
-            "iSWAP": [
-                [
-                  "1/flux",
-                  {
-                    "duration": 30.0,
-                    "amplitude": 0.05,
-                    "envelope": {
-                      "kind": "gaussian_square",
-                      "sigma": 0.2,
-                      "risefall": 2
-                    },
-                    "relative_phase": 0.0,
-                    "kind": "pulse"
-                  }
-                ],
-                [
-                  "0/drive",
-                  {
-                    "phase": 0.0,
-                    "kind": "virtualz"
-                  }
-                ],
-                [
-                  "1/drive",
-                  {
-                    "phase": 0.0,
-                    "kind": "virtualz"
-                  }
-                ],
-                [
-                  "coupler_01/flux",
-                  {
-                    "duration": 30.0,
-                    "amplitude": 0.05,
-                    "envelope": {
-                      "kind": "gaussian_square",
-                      "sigma": 0.2,
-                      "risefall": 2
-                    },
-                    "relative_phase": 0.0,
-                    "kind": "pulse"
-                  }
-                ]
-              ]
+      "0-1": {
+        "CZ": [
+          [
+            "1/flux",
+            {
+              "duration": 30.0,
+              "amplitude": 0.05,
+              "envelope": {
+                "kind": "gaussian_square",
+                "sigma": 0.2,
+                "risefall": 2
+              },
+              "relative_phase": 0.0,
+              "kind": "pulse"
             }
-    }
+          ],
+          [
+            "0/drive",
+            {
+              "phase": 0.0,
+              "kind": "virtualz"
+            }
+          ],
+          [
+            "1/drive",
+            {
+              "phase": 0.0,
+              "kind": "virtualz"
+            }
+          ],
+          [
+            "coupler_01/flux",
+            {
+              "duration": 30.0,
+              "amplitude": 0.05,
+              "envelope": {
+                "kind": "gaussian_square",
+                "sigma": 0.2,
+                "risefall": 2
+              },
+              "relative_phase": 0.0,
+              "kind": "pulse"
+            }
+          ]
+        ],
+        "CNOT": [
+          [
+            "1/drive",
+            {
+              "duration": 40.0,
+              "amplitude": 0.3,
+              "envelope": {
+                "kind": "drag",
+                "rel_sigma": 0.2,
+                "beta": 0.02
+              },
+              "relative_phase": 0.0,
+              "kind": "pulse"
+            }
+          ]
+        ],
+        "iSWAP": [
+          [
+            "1/flux",
+            {
+              "duration": 30.0,
+              "amplitude": 0.05,
+              "envelope": {
+                "kind": "gaussian_square",
+                "sigma": 0.2,
+                "risefall": 2
+              },
+              "relative_phase": 0.0,
+              "kind": "pulse"
+            }
+          ],
+          [
+            "0/drive",
+            {
+              "phase": 0.0,
+              "kind": "virtualz"
+            }
+          ],
+          [
+            "1/drive",
+            {
+              "phase": 0.0,
+              "kind": "virtualz"
+            }
+          ],
+          [
+            "coupler_01/flux",
+            {
+              "duration": 30.0,
+              "amplitude": 0.05,
+              "envelope": {
+                "kind": "gaussian_square",
+                "sigma": 0.2,
+                "risefall": 2
+              },
+              "relative_phase": 0.0,
+              "kind": "pulse"
+            }
+          ]
+        ]
+      }
+      }
     }
 }
