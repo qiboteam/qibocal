@@ -3,7 +3,7 @@
 ![PyPI - Version](https://img.shields.io/pypi/v/qibocal)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/qibocal)
 
-Qibocal provides Quantum Characterization Validation and Verification protocols using [Qibo](https://github.com/qiboteam/qibo) and [Qibolab](https://github.com/qiboteam/qibolab).
+Qibocal provides calibration protocols using [Qibo](https://github.com/qiboteam/qibo) and [Qibolab](https://github.com/qiboteam/qibolab).
 
 Qibocal key features:
 
@@ -42,28 +42,77 @@ pre-commit install
 
 ## Minimal working example
 
-This section shows the steps to perform a resonator spectroscopy with Qibocal.
-### Write a runcard
-A runcard contains all the essential information to run a specific task.
-For our purposes, we can use the following:
-```yml
-platform: tii1q
+Here is an example on how to run a Rabi experiment in Qibocal.
 
-targets: [0]
+```py
+from qibocal import create_calibration_platform
+from qibocal.protocols import rabi_amplitude
 
-- id: resonator spectroscopy high power
-  operation: resonator_spectroscopy
-  parameters:
-    freq_width: 10_000_000
-    freq_step: 500_000
-    amplitude: 0.4
-    power_level: high
-    nshots: 1024
-    relaxation_time: 5_000
+# create platform
+platform = create_calibration_platform("qubit")
 
+# define qubits where the protocols will be executed
+targets = [0]
+
+# define protocol parameters
+params = rabi_amplitude.parameters_type.load(dict(
+        min_amp=0.01,
+        max_amp=0.2,
+        step_amp=0.02,
+        nshots=2000,
+        pulse_length=40,
+        ))
+
+# acquire
+platform.connect()
+data, acquisition_time = rabi_amplitude.acquisition(
+                                                    params=params,
+                                                    platform=platform,
+                                                    targets=targets
+                                                    )
+platform.disconnect()
+
+# post-processing
+results, fit_time = rabi_amplitude.fit(data=data)
+
+# visualize the results
+plots, table = rabi_amplitude.report(data=data, results=results, target=target[0])
+plots[0].show()
 ```
-### How to run protocols
-To run the protocols specified in the ```runcard```, Qibocal uses the `qq run` command
+
+<p align="center">
+  <img alt="Rabi" src="doc/source/img/rabi.png" >
+</p>
+
+The table is written in HTML and can be visualized in Python with
+
+```py
+from IPython import display
+display.HTML(table)
+```
+<p align="center">
+  <img alt="Table" src="doc/source/img/table.png" width=50%>
+</p>
+
+
+### Running a protocol through a runcard
+
+The same experiment can also be run using the following yaml file
+
+```yaml
+platform: qubit
+targets: [0]
+actions:
+- id: rabi
+  operation: rabi_amplitude
+  parameters:
+    min_amp: 0.01
+    max_amp: 0.2
+    step_amp: 0.02
+    nshots: 2000
+    pulse_length: 40
+```
+To run the protocol Qibocal uses the `qq run` command
 ```sh
 qq run <runcard> -o <output_folder>
 ```

@@ -25,6 +25,8 @@ from qibocal.protocols.utils import table_dict, table_html
 from .utils import order_pair
 from .virtual_z_phases import create_sequence, fit_sinusoid, phase_diff
 
+__all__ = ["optimize_two_qubit_gate"]
+
 
 @dataclass
 class OptimizeTwoQubitGateParameters(Parameters):
@@ -166,8 +168,7 @@ def _acquisition(
                 (
                     sequence,
                     flux_pulse,
-                    theta_pulse,
-                    ro_delays,
+                    vz_pulses,
                 ) = create_sequence(
                     platform,
                     setup,
@@ -180,10 +181,15 @@ def _acquisition(
                 )
 
                 sweeper_theta = Sweeper(
-                    parameter=Parameter.relative_phase,
-                    range=(params.theta_start, params.theta_end, params.theta_step),
-                    pulses=[theta_pulse],
+                    parameter=Parameter.phase,
+                    range=(
+                        -params.theta_start,
+                        -params.theta_end,
+                        -params.theta_step,
+                    ),
+                    pulses=vz_pulses,
                 )
+
                 sweeper_amplitude = Sweeper(
                     parameter=Parameter.amplitude,
                     range=(
@@ -201,7 +207,7 @@ def _acquisition(
                         params.duration_max,
                         params.duration_step,
                     ),
-                    pulses=[flux_pulse] + ro_delays,
+                    pulses=[flux_pulse],
                 )
 
                 ro_target = list(
@@ -265,7 +271,9 @@ def _fit(
                     ]
 
                     try:
-                        params = fit_sinusoid(np.array(data.thetas), target_data)
+                        params = fit_sinusoid(
+                            np.array(data.thetas), target_data, gate_repetition=1
+                        )
                         fitted_parameters[
                             target, control, setup, amplitude, duration
                         ] = params
@@ -389,8 +397,8 @@ def _plot(
                     x=durs,
                     y=amps,
                     z=cz,
-                    zmin=np.pi / 2,
-                    zmax=np.pi,
+                    zmin=0,
+                    zmax=2 * np.pi,
                     name="{fit.native} angle",
                     colorbar_x=-0.1,
                     colorscale="RdBu",

@@ -21,6 +21,8 @@ from qibocal.protocols.utils import (
 from ..result import probability
 from .utils import COLORBAND, COLORBAND_LINE, chi2_reduced
 
+__all__ = ["flipping"]
+
 
 def flipping_sequence(
     platform: CalibrationPlatform,

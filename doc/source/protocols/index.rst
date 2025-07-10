@@ -25,6 +25,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     cpmg/cpmg
     flux/single
     flux/crosstalk
+    flux/flux_amplitude
     singleshot
     dispersive_shift
     allxy
@@ -33,9 +34,13 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     readout_mitigation_matrix
     readout_optimization
     standard_rb
+    qubit_vz
     flux_gate/index
     cryoscope/cryoscope
     chevron
     virtual_z
     state_tomographies
+    coherence/index
+    chsh
+    twpa_calibration/twpa
     references

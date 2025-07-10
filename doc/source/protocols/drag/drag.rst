@@ -32,7 +32,7 @@ the curve.
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.drag.DragTuningParameters
+.. autoclass:: qibocal.protocols.drag.drag.DragTuningParameters
   :noindex:
 
 Example
@@ -69,7 +69,7 @@ cross.
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.drag_simple.DragTuningSimpleParameters
+.. autoclass:: qibocal.protocols.drag.drag_simple.DragTuningSimpleParameters
   :noindex:
 
 Example

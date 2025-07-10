@@ -34,43 +34,10 @@ From the :math:`\langle X \rangle` and :math:`\langle Y \rangle` components of t
 and then we can extract an estimate of the effective flux pulse :math:`\Phi_Q(t)` on the qubit by inverting :math:numref:`transmon`.
 
 
-Flux amplitude frequency
-------------------------
-
-In Qibocal implementation of Cryoscope is necessary to run a flux amplitude-frequency experiment before performing a cryoscope experiment.
-This auxiliary routine is used determine the coefficients of the quadratic relationship between the qubit frequency and the flux pulse amplitude in the vicinity of the sweetspot.
-
-Parameters
-^^^^^^^^^^
-.. autoclass:: qibocal.protocols.flux_amplitude_frequency.FluxAmplitudeFrequencyParameters
-  :noindex:
-
-
-Example
-^^^^^^^
-The following is an example of runcard that can be used to acquire the coefficients for the amplitude-frequency relation for the flux pulse
-
-.. code-block:: yaml
-
-  - id: flux amplitude frequency
-
-    operation: flux_amplitude_frequency
-    parameters:
-      amplitude_max: 0.7
-      amplitude_min: 0.0
-      amplitude_step: 0.001
-      duration: 60
-      relaxation_time: 50000
-
-
-The expected output is the following:
-
-.. image:: flux_amplitude_frequency.png
-
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.two_qubit_interaction.cryoscope.CryoscopeParameters
+.. autoclass:: qibocal.protocols.flux_dependence.cryoscope.CryoscopeParameters
   :noindex:
 
 
@@ -107,3 +74,4 @@ Requirements
 ^^^^^^^^^^^^
 
 - :ref:`single-shot`
+- :ref:`flux_amplitude`

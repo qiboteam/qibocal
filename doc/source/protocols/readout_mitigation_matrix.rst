@@ -1,3 +1,5 @@
+.. _readout-mitigation-matrix:
+
 Readout mitigation matrix
 =========================
 
@@ -17,7 +19,7 @@ computational base and measuring their states.
 Pramateters
 ^^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.readout_mitigation_matrix.ReadoutMitigationMatrixParameters
+.. autoclass:: qibocal.protocols.readout.readout_mitigation_matrix.ReadoutMitigationMatrixParameters
 	:noindex:
 
 Example

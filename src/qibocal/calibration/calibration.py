@@ -2,7 +2,9 @@ from pathlib import Path
 from typing import Annotated, Optional, Union
 
 import numpy as np
+import numpy.typing as npt
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, PlainSerializer
+from scipy.sparse import lil_matrix
 
 from .serialize import NdArray, SparseArray
 
@@ -92,6 +94,11 @@ class Qubit(Model):
             / self.charging_energy
         )
 
+    def detuning(self, amplitude):
+        if self.flux_coefficients is None:
+            return 0
+        return np.polyval(self.flux_coefficients, amplitude)
+
 
 class Readout(Model):
     """Readout parameters."""
@@ -159,7 +166,9 @@ class Calibration(Model):
 
     def dump(self, path: Path):
         """Dump calibration model."""
-        (path / CALIBRATION).write_text(self.model_dump_json(indent=4))
+        (path / CALIBRATION).write_text(
+            self.model_dump_json(indent=4), encoding="utf-8"
+        )
 
     @property
     def qubits(self) -> list:
@@ -187,3 +196,30 @@ class Calibration(Model):
             self.flux_crosstalk_matrix = np.zeros((self.nqubits, self.nqubits))
         a, b = self.qubit_index(qubit1), self.qubit_index(qubit2)
         self.flux_crosstalk_matrix[a, b] = value
+
+    def _readout_mitigation_matrix_indices(self, target: tuple[QubitId, ...]):
+        mask = sum(1 << self.qubit_index(i) for i in target)
+        indices = [i for i in range(2**self.nqubits) if (i & mask) == i]
+        return np.ix_(indices, indices)
+
+    def set_readout_mitigation_matrix_element(
+        self,
+        target: list[QubitId],
+        readout_mitigation_dict: dict[tuple[QubitId, ...], npt.NDArray[np.float64]],
+    ):
+        # create empty matrix if it doesn't exist
+        if self.readout_mitigation_matrix is None:
+            self.readout_mitigation_matrix = lil_matrix(
+                (2**self.nqubits, 2**self.nqubits)
+            )
+        # compute indices
+        ids = self._readout_mitigation_matrix_indices(target)
+        # update matrix
+        self.readout_mitigation_matrix[ids] = readout_mitigation_dict[tuple(target)]
+
+    def get_readout_mitigation_matrix_element(
+        self, target: list[QubitId]
+    ) -> SparseArray:
+        assert self.readout_mitigation_matrix is not None
+        ids = self._readout_mitigation_matrix_indices(target)
+        return self.readout_mitigation_matrix[ids]
