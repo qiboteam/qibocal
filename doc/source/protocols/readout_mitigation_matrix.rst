@@ -1,3 +1,5 @@
+.. _readout-mitigation-matrix:
+
 Readout mitigation matrix
 =========================
 
