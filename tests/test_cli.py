@@ -1,5 +1,6 @@
 import os
 import pathlib
+import shutil
 
 import pytest
 from click.testing import CliRunner
@@ -21,11 +22,11 @@ def test_qq_update(update, tmp_path, monkeypatch, platform):
         ["run", str(DUMMY_ACTION), "-o", str(output_folder), "-f", update],
         catch_exceptions=False,
     )
-
+    old_platform = pathlib.Path(os.getenv("QIBOLAB_PLATFORMS")) / "mock"
     platforms = tmp_path / "platforms"
-    (platforms / "mock").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "platforms").mkdir(parents=True, exist_ok=True)
+    shutil.copytree(old_platform, platforms / "mock")
     monkeypatch.setenv("QIBOLAB_PLATFORMS", str(platforms))
-
     runner = CliRunner()
     if not update:
         while pytest.raises(FileNotFoundError):

@@ -33,13 +33,14 @@ def update(path: pathlib.Path, skip_qubits: Optional[list[QubitId]]):
             platform_path / filename,
         )
 
-    log.info(f"Platform {platform_name} configuration has been updated.")
-    new_platform = create_calibration_platform(platform_name)
     if skip_qubits is not None:
+        new_platform = create_calibration_platform(platform_name)
         updated_platform = merge_with_skipped_qubits(
             old_platform, new_platform, skip_qubits
         )
         updated_platform.dump(platform_path)
+
+    log.info(f"Platform {platform_name} configuration has been updated.")
 
 
 def merge_with_skipped_qubits(
