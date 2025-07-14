@@ -150,8 +150,8 @@
                 "amplitude": 0.1,
                 "envelope": {
                   "kind": "gaussian_square",
-                  "rel_sigma": 0.2,
-                  "width": 0.75
+                  "sigma": 0.2,
+                  "risefall": 10
                 },
                 "relative_phase": 0.0,
                 "kind": "pulse"
@@ -224,8 +224,8 @@
                 "amplitude": 0.1,
                 "envelope": {
                   "kind": "gaussian_square",
-                  "rel_sigma": 0.2,
-                  "width": 0.75
+                  "sigma": 0.2,
+                  "risefall": 10
                 },
                 "relative_phase": 0.0,
                 "kind": "pulse"
@@ -246,8 +246,8 @@
               "amplitude": 0.05,
               "envelope": {
                 "kind": "gaussian_square",
-                "rel_sigma": 0.2,
-                "width": 0.75
+                "sigma": 0.2,
+                "risefall": 2
               },
               "relative_phase": 0.0,
               "kind": "pulse"
@@ -274,8 +274,8 @@
               "amplitude": 0.05,
               "envelope": {
                 "kind": "gaussian_square",
-                "rel_sigma": 0.2,
-                "width": 0.75
+                "sigma": 0.2,
+                "risefall": 2
               },
               "relative_phase": 0.0,
               "kind": "pulse"
@@ -306,8 +306,8 @@
               "amplitude": 0.05,
               "envelope": {
                 "kind": "gaussian_square",
-                "rel_sigma": 0.2,
-                "width": 0.75
+                "sigma": 0.2,
+                "risefall": 2
               },
               "relative_phase": 0.0,
               "kind": "pulse"
@@ -334,8 +334,8 @@
               "amplitude": 0.05,
               "envelope": {
                 "kind": "gaussian_square",
-                "rel_sigma": 0.2,
-                "width": 0.75
+                "sigma": 0.2,
+                "risefall": 2
               },
               "relative_phase": 0.0,
               "kind": "pulse"
