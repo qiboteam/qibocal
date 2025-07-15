@@ -115,7 +115,7 @@ class History:
         self._order.append(task_id)
         return task_id
 
-    def task_path(self, task_id: TaskId, folder: Optional[Path]) -> Path:
+    def task_path(self, task_id: TaskId, folder: Optional[Path]) -> Optional[Path]:
         """Determine the path related to a completed task given TaskId.
 
         `folder` should be usually the general output folder, used by Qibocal to store
