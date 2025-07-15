@@ -153,14 +153,6 @@ class ResonatorSpectroscopyData(Data):
     power_level: PowerLevel = PowerLevel.low
     """Power regime of the resonator."""
 
-    @classmethod
-    def load(cls, path):
-        obj = super().load(path)
-        # Instantiate PowerLevel object
-        if hasattr(obj, "power_level"):  # pylint: disable=E1101
-            obj.power_level = PowerLevel(obj.power_level)  # pylint: disable=E1101
-        return obj
-
 
 def _acquisition(
     params: ResonatorSpectroscopyParameters,
