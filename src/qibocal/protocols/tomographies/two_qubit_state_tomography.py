@@ -62,12 +62,13 @@ class StateTomographyData(Data):
 
     @classmethod
     def load(cls, path):
-        if (path / "simulated.json").exists():
-            return cls(
-                data=super().load_data(path, DATAFILE),
-                ideal=super().load_data(path, SIMULATED_DENSITY_MATRIX),
-                simulated=QuantumState.load(path / "simulated.json"),
-            )
+        data = super().load_data(path, DATAFILE)
+        ideal = super().load_data(path, SIMULATED_DENSITY_MATRIX)
+        return cls(
+            data=data,
+            ideal=ideal,
+            simulated=QuantumState.load(path / "simulated.json"),
+        )
 
 
 @dataclass

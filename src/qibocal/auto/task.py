@@ -51,6 +51,8 @@ class Action:
                     circuit_path = path / CIRCUIT
                     circuit_path.write_text(json.dumps(value.raw), encoding="utf-8")
                     self.parameters[param] = str(circuit_path)
+
+        (path / SINGLE_ACTION).parent.mkdir(parents=True, exist_ok=True)
         (path / SINGLE_ACTION).write_text(
             yaml.safe_dump(asdict(self)), encoding="utf-8"
         )
@@ -155,6 +157,9 @@ class Task:
         except (RuntimeError, AttributeError):
             operation = dummy_operation
             parameters = DummyPars()
+
+        completed.dump_parameters()
+
         if ExecutionMode.ACQUIRE in mode:
             if operation.platform_dependent and operation.targets_dependent:
                 completed.data, completed.data_time = operation.acquisition(
@@ -166,10 +171,10 @@ class Task:
                 completed.data, completed.data_time = operation.acquisition(
                     parameters, platform=platform
                 )
-            completed.dump()
+            completed.dump_data()
         if ExecutionMode.FIT in mode:
             completed.results, completed.results_time = operation.fit(completed.data)
-            completed.dump()
+            completed.dump_results()
         return completed
 
 
@@ -223,23 +228,17 @@ class Completed:
     def results(self, value):
         self._results = value
 
-    def dump(self):
-        """Dump object to disk."""
-        if self.path is None:
-            return None
+    def dump_parameters(self):
+        """Dump parameters."""
+        self.task.dump(self.path)
 
-        self.path.mkdir(parents=True, exist_ok=True)
-        # make sure to dump only once
-        if not (self.path / SINGLE_ACTION).exists():
-            self.task.dump(self.path)
-        if self._data is not None:
-            if self.task.operation.data_type.load(self.path) is None:
-                self._data.save(self.path)
-        if (
-            self.task.operation.results_type.load(self.path) is None
-            and self._results is not None
-        ):
-            self._results.save(self.path)
+    def dump_data(self):
+        """Dumping data."""
+        self._data.save(self.path)
+
+    def dump_results(self):
+        """Dumping results."""
+        self._results.save(self.path)
 
     @classmethod
     def load(cls, path: Path):
