@@ -52,10 +52,10 @@ class Action:
                     circuit_path.write_text(json.dumps(value.raw), encoding="utf-8")
                     self.parameters[param] = str(circuit_path)
 
-        (path / SINGLE_ACTION).parent.mkdir(parents=True, exist_ok=True)
-        (path / SINGLE_ACTION).write_text(
-            yaml.safe_dump(asdict(self)), encoding="utf-8"
-        )
+            (path / SINGLE_ACTION).parent.mkdir(parents=True, exist_ok=True)
+            (path / SINGLE_ACTION).write_text(
+                yaml.safe_dump(asdict(self)), encoding="utf-8"
+            )
 
     @classmethod
     def load(cls, path):
@@ -230,15 +230,18 @@ class Completed:
 
     def dump_parameters(self):
         """Dump parameters."""
-        self.task.dump(self.path)
+        if self.path is not None:
+            self.task.dump(self.path)
 
     def dump_data(self):
         """Dumping data."""
-        self._data.save(self.path)
+        if self.path is not None:
+            self._data.save(self.path)
 
     def dump_results(self):
         """Dumping results."""
-        self._results.save(self.path)
+        if self.path is not None:
+            self._results.save(self.path)
 
     @classmethod
     def load(cls, path: Path):
