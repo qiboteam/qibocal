@@ -1923,8 +1923,8 @@ qrng = ["pyserial (>=3.5,<4.0)"]
 [package.source]
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
-reference = "emulator-coupler"
-resolved_reference = "38c20b9d7c2af29e897dde6aadca1932dcc51a5b"
+reference = "HEAD"
+resolved_reference = "e18921460415264f7076206a1b44c7f8fd82efc6"
 
 [[package]]
 name = "recommonmark"
@@ -2755,4 +2755,4 @@ test = ["pytest"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "4bfa956e9073b1612cd05348d4634853362fe0d1dc4ea638937de6edb9220b78"
+content-hash = "c2c59bd5282a10d5064603ad5d54c174073037611e8c6ce232e03aabaca2daff"
