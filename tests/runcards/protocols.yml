@@ -967,3 +967,13 @@ actions:
       nshots: 2000
       pulse_amplitude: 0.1
       interpolated_sweeper: true
+
+  - id: coupler_readout
+    operation: coupler_readout
+    targets: [[0,1]]
+    parameters:
+      delay_min: 1
+      delay_max: 10
+      delay_step: 1
+      drive_duration: 100
+      drive_amplitude: 0.1
