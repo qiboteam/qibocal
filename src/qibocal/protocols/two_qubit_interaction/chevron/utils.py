@@ -54,10 +54,11 @@ def chevron_sequence(
         coupler_name = list(platform.couplers)[platform.pairs.index(pair)]
         coupler_channel = platform.couplers[coupler_name].flux
         sequence.append((coupler_channel, Delay(duration=drive_duration)))
-        assert platform.natives.single_qubit[coupler_name].CP()[0], (
+        coupler_native_index = coupler_name + platform.nqubits
+        assert platform.natives.single_qubit[coupler_native_index].CP()[0], (
             f"Missing coupler native for {coupler_name}"
         )
-        coupler_pulse = platform.natives.single_qubit[coupler_name].CP()[0][1]
+        coupler_pulse = platform.natives.single_qubit[coupler_native_index].CP()[0][1]
         sequence.append((coupler_channel, coupler_pulse))
     else:
         coupler_pulse = None

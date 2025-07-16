@@ -20,10 +20,11 @@ def create() -> Hardware:
         channels |= {
             qubit.drive: IqChannel(mixer=None, lo=None),
             qubit.flux: DcChannel(),
+            qubits[q].drive_extra[1, 2]: IqChannel(mixer=None, lo=None),
         }
 
-    couplers["coupler_0"] = Qubit.default("coupler_0")
-    channels |= {couplers["coupler_0"].flux: DcChannel()}
+    couplers[0] = Qubit.default(2)
+    channels |= {couplers[0].flux: DcChannel()}
     # register the instruments
     instruments = {
         "emulator": EmulatorController(address="0.0.0.0", channels=channels),
