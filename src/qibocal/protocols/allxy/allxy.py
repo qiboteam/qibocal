@@ -170,15 +170,18 @@ def allxy_sequence(
             sequence.append((qd_channel, apply_drag(rx_pulse, beta_param)))
 
         if gate == "X9":
-            qd_channel, rx90_pulse = natives.R(theta=np.pi / 2)[0]
-            sequence.append((qd_channel, apply_drag(rx90_pulse, beta_param)))
+            rx90_sequence = natives.R(theta=np.pi / 2)
+            for channel, pulse in rx90_sequence:
+                sequence.append((channel, apply_drag(pulse, beta_param)))
 
         if gate == "Yp":
-            qd_channel, ry_pulse = natives.R(phi=np.pi / 2)[0]
-            sequence.append((qd_channel, apply_drag(ry_pulse, beta_param)))
+            ry_sequence = natives.R(phi=np.pi / 2)
+            for channel, pulse in ry_sequence:
+                sequence.append((channel, apply_drag(pulse, beta_param)))
         if gate == "Y9":
-            qd_channel, ry90_pulse = natives.R(theta=np.pi / 2, phi=np.pi / 2)[0]
-            sequence.append((qd_channel, apply_drag(ry90_pulse, beta_param)))
+            ry90_sequence = natives.R(theta=np.pi / 2, phi=np.pi / 2)
+            for channel, pulse in ry90_sequence:
+                sequence.append((channel, apply_drag(pulse, beta_param)))
 
     # RO pulse starting just after pair of gates
     qd_channel = platform.qubits[qubit].drive
