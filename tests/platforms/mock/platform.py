@@ -21,19 +21,28 @@ def create_mock_hardware() -> Hardware:
     channels = {}
     # attach the channels
     pump_name = "twpa_pump"
-    for q in range(2):
-        drive12 = f"{q}/drive12"
-        qubits[q] = qubit = Qubit.default(q, drive_extra={(1, 2): drive12})
-        channels |= {
-            qubit.probe: IqChannel(mixer=None, lo="01/probe_lo"),
-            qubit.acquisition: AcquisitionChannel(
-                twpa_pump=pump_name, probe=qubit.probe
-            ),
-            qubit.drive: IqChannel(mixer=None, lo=f"{q}/drive_lo"),
-            drive12: IqChannel(mixer=None, lo=f"{q}/drive_lo"),
-            qubit.flux: DcChannel(),
-        }
+    qubits[0] = Qubit.default(0, drive_extra={(1, 2): "0/drive12", 1: "01/drive"})
 
+    channels |= {
+        qubits[0].probe: IqChannel(mixer=None, lo="01/probe_lo"),
+        qubits[0].acquisition: AcquisitionChannel(
+            twpa_pump=pump_name, probe=qubits[0].probe
+        ),
+        qubits[0].drive: IqChannel(mixer=None, lo="0/drive_lo"),
+        qubits[0].drive_extra[1, 2]: IqChannel(mixer=None, lo="0/drive_lo"),
+        qubits[0].drive_extra[1]: IqChannel(mixer=None, lo="0/drive_lo"),
+        qubits[0].flux: DcChannel(),
+    }
+    qubits[1] = Qubit.default(1, drive_extra={(1, 2): "0/drive12"})
+    channels |= {
+        qubits[1].probe: IqChannel(mixer=None, lo="01/probe_lo"),
+        qubits[1].acquisition: AcquisitionChannel(
+            twpa_pump=pump_name, probe=qubits[1].probe
+        ),
+        qubits[1].drive: IqChannel(mixer=None, lo="1/drive_lo"),
+        qubits[1].drive_extra[1, 2]: IqChannel(mixer=None, lo="1/drive_lo"),
+        qubits[1].flux: DcChannel(),
+    }
     couplers = {}
     couplers["01"] = coupler = Qubit(flux="coupler_01/flux")
     channels |= {coupler.flux: DcChannel()}
