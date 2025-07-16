@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -9,7 +9,9 @@ from qibolab import (
     AveragingMode,
     Delay,
     Parameter,
+    Pulse,
     PulseSequence,
+    Rectangular,
     Sweeper,
 )
 
@@ -71,24 +73,38 @@ class T1SignalData(Data):
         return self
 
 
-def t1_sequence(platform: CalibrationPlatform, targets: list[QubitId]):
+def t1_sequence(
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
+    flux_pulse_amplitude: Optional[float] = None,
+):
     """Create sequence for T1 experiment with a given optional delay."""
     sequence = PulseSequence()
-    ro_pulses, delays = {}, {}
-    for q in targets:
+    ro_pulses = {}
+    delays = len(targets) * [Delay(duration=0)]
+    for i, q in enumerate(targets):
         natives = platform.natives.single_qubit[q]
         qd_channel, qd_pulse = natives.RX()[0]
         ro_channel, ro_pulse = natives.MZ()[0]
 
         ro_pulses[q] = ro_pulse
-        delays[q] = Delay(duration=0)
-
         sequence.append((qd_channel, qd_pulse))
         sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
-        sequence.append((ro_channel, delays[q]))
+        if flux_pulse_amplitude is not None:
+            flux_pulses = len(targets) * [
+                Pulse(
+                    duration=0, amplitude=flux_pulse_amplitude, envelope=Rectangular()
+                )
+            ]
+            flux_channel = platform.qubits[q].flux
+            sequence.append((flux_channel, Delay(duration=qd_pulse.duration)))
+            sequence.append((flux_channel, flux_pulses[i]))
+        else:
+            flux_pulses = []
+        sequence.append((ro_channel, delays[i]))
         sequence.append((ro_channel, ro_pulse))
 
-    return sequence, ro_pulses, delays
+    return sequence, ro_pulses, delays + flux_pulses
 
 
 def _acquisition(
@@ -98,7 +114,7 @@ def _acquisition(
 
     In this protocol the y axis is the magnitude of signal in the IQ plane."""
 
-    sequence, ro_pulses, delays = t1_sequence(platform, targets)
+    sequence, ro_pulses, pulses = t1_sequence(platform, targets)
 
     ro_wait_range = np.arange(
         params.delay_before_readout_start,
@@ -109,7 +125,7 @@ def _acquisition(
     sweeper = Sweeper(
         parameter=Parameter.duration,
         values=ro_wait_range,
-        pulses=[delays[q] for q in targets],
+        pulses=pulses,
     )
 
     results = platform.execute(
