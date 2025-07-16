@@ -54,7 +54,7 @@
         }
     },
     "couplers": {
-        "coupler_0": {
+        "0": {
             "qubit": {
                 "frequency_01":  5.824e9,
                 "maximum_frequency":  5.977e9,
@@ -65,7 +65,7 @@
     },
     "two_qubits": {
         "0-1": {
-            "coupler": "coupler_0"
+            "coupler": "0"
         }
 }
 }
