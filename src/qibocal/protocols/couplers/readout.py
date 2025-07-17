@@ -116,7 +116,7 @@ def _acquisition(
     )
     sequence.append((platform.qubits[pair[1]].drive, delays[0]))
     sequence.append((platform.qubits[pair[1]].acquisition, delays[1]))
-    sequence += platform.natives.single_qubit[pair[1]].R(theta=np.pi / 2, phi=np.pi / 2)
+    sequence += ry90_sequence
     sequence.append(
         (platform.qubits[pair[1]].acquisition, Delay(duration=ry90_sequence.duration))
     )
