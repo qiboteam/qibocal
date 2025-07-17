@@ -25,11 +25,6 @@ class ResonatorFrequencyParameters(Parameters):
     freq_step: int
     """Frequency step for sweep [Hz]."""
 
-
-
-
-
-
 ResonatorFrequencyType = np.dtype(
     [
         ("error", np.float64),

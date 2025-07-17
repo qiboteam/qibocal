@@ -14,6 +14,7 @@ from ..utils import (
     HZ_TO_GHZ,
     PowerLevel,
     lorentzian,
+    lorentzian_dispersive,
     table_dict,
     table_html,
 )
@@ -116,8 +117,37 @@ def s21_fit(
 
     return model_parameters[0], model_parameters, perr
 
+def lorentzian_plot(data, qubit, fit: Results = None):
+    """Plotting function for Lorentzian spectroscopy.
+    Args:
+        data (NDArray): Data containing the frequency and signal.
+        qubit (str): Qubit identifier.
+        fit (Results, optional): Fitting results. Defaults to None.
+    """
+    return spectroscopy_plot(data, qubit, fit, lorentzian)
 
-def spectroscopy_plot(data, qubit, fit: Results = None):
+def lorentzian_dispersive_plot(data, qubit, fit: Results = None):
+    """Plotting function for Lorentzian dispersive spectroscopy.
+    Args: 
+        data (NDArray): Data containing the frequency and signal.
+        qubit (str): Qubit identifier.
+        fit (Results, optional): Fitting results. Defaults to None.
+    """
+    return spectroscopy_plot(data, qubit, fit, lorentzian_dispersive)
+
+def spectroscopy_plot(data, qubit, fit: Results = None, model = lorentzian):
+    """Plotting function for spectroscopy data.
+    Args:
+        data (NDArray): Data containing the frequency and signal.
+        qubit (str): Qubit identifier.
+        fit (Results, optional): Fitting results. Defaults to None.
+        model (function, optional): Model function for fitting. Defaults to lorentzian.
+    Returns:
+        figures (list): List of plotly figures.
+        fitting_report (str): HTML table with fitting parameters.
+
+    The model function should take the frequency as the first argument, followed by the fitting parameters.
+    """
     figures = []
     fig = make_subplots(
         rows=1,
@@ -139,6 +169,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
             name="Frequency",
             showlegend=True,
             legendgroup="Frequency",
+            mode="markers",
         ),
         row=1,
         col=1,
@@ -152,6 +183,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
             name="Phase",
             showlegend=True,
             legendgroup="Phase",
+            mode="markers",
         ),
         row=1,
         col=2,
@@ -202,9 +234,9 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
-                y=lorentzian(freqrange, *params),
+                y= model(freqrange, *params),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                line=go.scatter.Line(dash="solid"),
             ),
             row=1,
             col=1,

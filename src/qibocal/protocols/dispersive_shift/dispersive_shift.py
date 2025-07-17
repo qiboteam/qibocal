@@ -13,6 +13,8 @@ from qibocal.protocols.utils import (
     HZ_TO_GHZ,
     lorentzian,
     lorentzian_fit,
+    lorentzian_dispersive as model,
+    lorentzian_dispersive_fit as fit_function,
     readout_frequency,
     table_dict,
     table_html,
@@ -155,7 +157,7 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
         fit_params = []
         for i in range(2):
             data_i = data[qubit, i]
-            fit_result = lorentzian_fit(
+            fit_result = fit_function(
                 data_i, resonator_type=data.resonator_type, fit="resonator"
             )
             if fit_result is None:
@@ -265,7 +267,7 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
                 fig.add_trace(
                     go.Scatter(
                         x=freqrange,
-                        y=lorentzian(freqrange, *params),
+                        y=model(freqrange, *params),
                         name=f"{label} Fit",
                         line=go.scatter.Line(dash="dot"),
                     ),

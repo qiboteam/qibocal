@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import AcquisitionType, Delay, PulseSequence
+from qibolab import AcquisitionType, Delay, PulseSequence, Sweeper, Parameter
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
@@ -82,42 +82,60 @@ def _acquisition(
         data (:class:`ResonatorAmplitudeData`)
     """
 
-    data = ResonatorAmplitudeData()
-    for qubit in targets:
-        error = 1
-        natives = platform.natives.single_qubit[qubit]
+    sequence_0 = PulseSequence()
+    sequence_1 = PulseSequence()
+    
+    ro_pulses = {}
+    for q in targets:
+        natives = platform.natives.single_qubit[q]
 
+        qd_channel, qd_pulse = natives.RX()[0]
         ro_channel, ro_pulse = natives.MZ()[0]
-        new_amp = params.amplitude_start
-        while error > params.error_threshold and new_amp <= params.amplitude_stop:
-            new_ro = replace(ro_pulse, amplitude=new_amp)
-            sequence_0 = PulseSequence()
-            sequence_1 = PulseSequence()
 
-            qd_channel, qd_pulse = natives.RX()[0]
+        sequence_1.append((qd_channel, qd_pulse))
+        sequence_1.append((ro_channel, Delay(duration=qd_pulse.duration)))
+        
+        sequence_0.append((ro_channel, ro_pulse))
+        sequence_1.append((ro_channel, ro_pulse))
+        ro_pulses[q] = ro_pulse
 
-            sequence_1.append((qd_channel, qd_pulse))
-            sequence_1.append((ro_channel, Delay(duration=qd_pulse.duration)))
-            sequence_1.append((ro_channel, new_ro))
+    ro_channel, ro_pulse = natives.MZ()[0]
 
-            sequence_0.append((ro_channel, new_ro))
+    amplitudes = np.arange(
+        params.amplitude_start, params.amplitude_stop, params.amplitude_step
+    )
 
-            state0_results = platform.execute(
-                [sequence_0],
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-            )
+    sweepers = [
+        Sweeper(
+            parameter=Parameter.amplitude,
+            values=amplitudes,
+            pulses=[ro_pulses[q]],
+        )
+        for q in targets
+    ]
 
-            state1_results = platform.execute(
-                [sequence_1],
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-            )
-            result0 = state0_results[new_ro.id]
-            result1 = state1_results[new_ro.id]
+    results = {}
+    results[0] = platform.execute(
+            [sequence_0],
+            [sweepers],
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        )
 
+    results[1] = platform.execute(
+            [sequence_1],
+            [sweepers],
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        )
+    data = ResonatorAmplitudeData()
+
+    for q in targets:
+         for k, amplitude in enumerate(amplitudes):
+            result0 = results[0][ro_pulses[q].id][:,k]
+            result1 = results[1][ro_pulses[q].id][:,k]
             iq_values = np.concatenate((result0, result1))
             nshots = params.nshots
             states = [0] * nshots + [1] * nshots
@@ -126,15 +144,15 @@ def _acquisition(
             error = model.probability_error
             data.register_qubit(
                 ResonatorAmplitudeType,
-                (qubit),
+                (q),
                 dict(
-                    amp=np.array([new_amp]),
+                    amp=np.array([amplitude]),
                     error=np.array([error]),
                     angle=np.array([model.angle]),
                     threshold=np.array([model.threshold]),
                 ),
             )
-            new_amp += params.amplitude_step
+            
     return data
 
 

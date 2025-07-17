@@ -18,11 +18,14 @@ from ..utils import (
     chi2_reduced,
     chi2_reduced_complex,
     lorentzian,
+    lorentzian_dispersive,
     lorentzian_fit,
+    lorentzian_dispersive_fit,
     readout_frequency,
 )
-from .resonator_utils import s21, s21_fit, s21_spectroscopy_plot, spectroscopy_plot
-
+from .resonator_utils import (s21, s21_fit, s21_spectroscopy_plot, 
+                              lorentzian_plot, lorentzian_dispersive_plot
+)
 __all__ = ["resonator_spectroscopy", "ResonatorSpectroscopyData", "ResSpecType"]
 
 ResSpecType = np.dtype(
@@ -62,7 +65,7 @@ FITS = {
         chi2_reduced,
         lambda z: z.signal,
         lambda z: z.error_signal,
-        spectroscopy_plot,
+        lorentzian_plot,
     ),
     "s21": ResonatorSpectroscopyFit(
         s21,
@@ -71,6 +74,14 @@ FITS = {
         lambda z: (z.signal, z.phase),
         lambda z: (z.error_signal, z.error_phase),
         s21_spectroscopy_plot,
+    ),
+    "lorentzian_dispersive": ResonatorSpectroscopyFit(
+        lorentzian_dispersive,
+        lorentzian_dispersive_fit,
+        chi2_reduced,
+        lambda z: z.signal,
+        lambda z: z.error_signal,
+        lorentzian_dispersive_plot,
     ),
 }
 """Dictionary of available fitting routines for ResonatorSpectroscopy."""

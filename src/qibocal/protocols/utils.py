@@ -84,11 +84,52 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
         sigma / ((frequency - center) ** 2 + sigma**2)
     ) + offset
 
+def lorentzian_dispersive(frequency, amplitude, center, sigma, offset, kappa=0):
+    # http://openafox.com/science/peak-function-derivations.html
+    return lorentzian(frequency, amplitude, center, sigma, offset) + kappa*(frequency - center)/center
 
 def lorentzian_fit(data, resonator_type=None, fit=None):
+    """Fit a Lorentzian to the data.
+
+    Args:
+        data (Data): Data to fit.
+        resonator_type (str, optional): Type of resonator, either "3D" or "2D".
+        fit (str, optional): Type of fit, either "resonator" or "qubit".
+
+    Returns:
+        tuple: Center frequency in Hz, model parameters, and errors.
+    """
+    if not hasattr(data, "freq") or not hasattr(data, "signal"):
+        log.warning("Data does not contain 'freq' or 'signal' attributes.")
+        return None
+    
+    return lorentzian_fit_impl(data, resonator_type, fit, model = lorentzian)
+
+
+def lorentzian_dispersive_fit(data, resonator_type=None, fit=None):
+    """Fit a Lorentzian dispersive to the data.
+
+    Args:
+        data (Data): Data to fit.
+        resonator_type (str, optional): Type of resonator, either "3D" or "2D".
+        fit (str, optional): Type of fit, either "resonator" or "qubit".
+
+    Returns:
+        tuple: Center frequency in Hz, model parameters, and errors.
+    """
+    if not hasattr(data, "freq") or not hasattr(data, "signal"):
+        log.warning("Data does not contain 'freq' or 'signal' attributes.")
+        return None
+    
+    return lorentzian_fit_impl(data, resonator_type, fit, model = lorentzian_dispersive)
+
+def lorentzian_fit_impl(data, resonator_type=None, fit=None, model = lorentzian):
     frequencies = data.freq * HZ_TO_GHZ
     voltages = data.signal
 
+    # Get the number of parameters needed for the fit as the number of inputs -1
+    num_params = len(model.__code__.co_varnames) - 1
+    
     # Guess parameters for Lorentzian max or min
     # TODO: probably this is not working on HW
     guess_offset = np.mean(
@@ -110,18 +151,24 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
         guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
 
+
     initial_parameters = [
         guess_amp,
         guess_center,
         guess_sigma,
         guess_offset,
     ]
+
+    # Pad with zeros to the number of parameters needed for the fit
+    if num_params > len(initial_parameters):
+        initial_parameters += [0] * (num_params - len(initial_parameters))
+
     # fit the model with the data and guessed parameters
     try:
         if hasattr(data, "error_signal"):
             if not np.isnan(data.error_signal).any():
                 fit_parameters, perr = curve_fit(
-                    lorentzian,
+                    lorentzian_dispersive,
                     frequencies,
                     voltages,
                     p0=initial_parameters,
@@ -131,7 +178,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
                 model_parameters = list(fit_parameters)
                 return model_parameters[1] * GHZ_TO_HZ, list(model_parameters), perr
         fit_parameters, perr = curve_fit(
-            lorentzian,
+            lorentzian_dispersive,
             frequencies,
             voltages,
             p0=initial_parameters,
