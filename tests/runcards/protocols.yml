@@ -1031,3 +1031,16 @@ actions:
       delay_step: 1
       drive_duration: 100
       drive_amplitude: 0.1
+
+  - id: coupler_amplitude
+    operation: coupler_amplitude
+    targets: [[0,1]]
+    parameters:
+      amplitude_min: 0
+      amplitude_max: 0.1
+      amplitude_step: 0.02
+      amplitude_coupler_min: -0.2
+      amplitude_coupler_max:  0
+      amplitude_coupler_step: 0.02
+      duration: 10
+      native: iSWAP

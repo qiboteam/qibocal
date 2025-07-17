@@ -59,6 +59,8 @@ def chevron_sequence(
             f"Missing coupler native for {coupler_name}"
         )
         coupler_pulse = platform.natives.single_qubit[coupler_native_index].CP()[0][1]
+        if duration_max is not None:
+            coupler_pulse = replace(coupler_pulse, duration=duration_max)
         sequence.append((coupler_channel, coupler_pulse))
     else:
         coupler_pulse = None
