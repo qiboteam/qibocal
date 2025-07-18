@@ -147,6 +147,7 @@ def _plot(data: AmplitudeTuningData, fit: AmplitudeTuningResults, target: QubitP
         go.Scatter(
             x=data.amplitude_coupler_range,
             y=data.data[target][0],
+            mode="markers",
         ),
         col=1,
         row=1,
@@ -156,6 +157,7 @@ def _plot(data: AmplitudeTuningData, fit: AmplitudeTuningResults, target: QubitP
         go.Scatter(
             x=data.amplitude_coupler_range,
             y=data.data[target][1],
+            mode="markers",
         ),
         col=2,
         row=1,

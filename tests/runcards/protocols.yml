@@ -1056,3 +1056,13 @@ actions:
       duration: 40
       flux_pulse_amplitude: 0.05
       native: iSWAP
+
+
+  - id: phase_calibration
+    operation: phase_calibration
+    targets: [[0,1]]
+    parameters:
+      amplitude_min: 0.04
+      amplitude_max:  0.06
+      amplitude_step: 0.001
+      native: iSWAP
