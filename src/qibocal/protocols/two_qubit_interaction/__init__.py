@@ -1,4 +1,5 @@
 from .amplitude_tuning import amplitude_tuning
+from .phase_calibration import phase_calibration
 from .chevron import chevron, chevron_couplers, chevron_signal, coupler_amplitude
 from .chsh import chsh
 from .cross_resonance import (
@@ -29,4 +30,5 @@ __all__ = [
     "chevron_couplers",
     "coupler_amplitude",
     "amplitude_tuning",
+    "phase_calibration",
 ]
