@@ -1044,3 +1044,15 @@ actions:
       amplitude_coupler_step: 0.02
       duration: 10
       native: iSWAP
+
+
+  - id: amplitude_tuning
+    operation: amplitude_tuning
+    targets: [[0,1]]
+    parameters:
+      amplitude_coupler_min: 0.3
+      amplitude_coupler_max:  0.4
+      amplitude_coupler_step: 0.01
+      duration: 40
+      flux_pulse_amplitude: 0.05
+      native: iSWAP
