@@ -97,8 +97,6 @@ def _acquisition(
     )
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
-    ro_pulses_0 = {}
-    ro_pulses_1 = {}
     amplitudes = {}
     freq_sweepers = {}
 
