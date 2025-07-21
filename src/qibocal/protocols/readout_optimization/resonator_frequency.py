@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
+    Delay,
     Parameter,
     PulseSequence,
     Sweeper,
@@ -93,8 +94,15 @@ def _acquisition(
 
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
-        sequence_0 = natives.MZ()
-        sequence_1 = natives.RX() | natives.MZ()
+        qd_channel, qd_pulse = natives.RX()[0]
+        ro_channel, ro_pulse_0 = natives.MZ()[0]
+        _, ro_pulse_1 = natives.MZ()[0]
+
+        sequence_0.append((ro_channel, ro_pulse_0))
+
+        sequence_1.append((qd_channel, qd_pulse))
+        sequence_1.append((ro_channel, Delay(duration=qd_pulse.duration)))
+        sequence_1.append((ro_channel, ro_pulse_1))
 
     delta_frequency_range = np.arange(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
@@ -130,8 +138,6 @@ def _acquisition(
     # TODO: move QubitFit() and anlysis in _fit()
     nshots = params.nshots
     for q, qubit in enumerate(targets):
-        ro_pulse_0 = list(sequence_0.channel(platform.qubits[qubit].acquisition))[-1]
-        ro_pulse_1 = list(sequence_1.channel(platform.qubits[qubit].acquisition))[-1]
         result0 = np.transpose(state0_results[ro_pulse_0.id], (1, 0, 2))
         result1 = np.transpose(state1_results[ro_pulse_1.id], (1, 0, 2))
 

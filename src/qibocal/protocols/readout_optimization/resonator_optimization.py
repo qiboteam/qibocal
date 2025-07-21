@@ -7,6 +7,7 @@ import scipy.ndimage as ndimage
 from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
+    Delay,
     Parameter,
     PulseSequence,
     Sweeper,
@@ -97,6 +98,8 @@ def _acquisition(
     )
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
+    ro_pulses_0 = {}
+    ro_pulses_1 = {}
     amplitudes = {}
     freq_sweepers = {}
 
@@ -106,9 +109,18 @@ def _acquisition(
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
 
-        sequence_0 = natives.MZ()
-        sequence_1 = natives.RX() | natives.MZ()
-        amplitudes[qubit] = natives.MZ()[0][1].probe.amplitude
+        qd_channel, qd_pulse = natives.RX()[0]
+        ro_channel, ro_pulse_0 = natives.MZ()[0]
+        _, ro_pulse_1 = natives.MZ()[0]
+        ro_pulses_0[qubit] = ro_pulse_0
+        ro_pulses_1[qubit] = ro_pulse_1
+        amplitudes[qubit] = ro_pulse_0.probe.amplitude
+
+        sequence_0.append((ro_channel, ro_pulse_0))
+
+        sequence_1.append((qd_channel, qd_pulse))
+        sequence_1.append((ro_channel, Delay(duration=qd_pulse.duration)))
+        sequence_1.append((ro_channel, ro_pulse_1))
 
         freq_sweepers[qubit] = Sweeper(
             parameter=Parameter.frequency,
@@ -119,21 +131,13 @@ def _acquisition(
     amp_sweeper_0 = Sweeper(
         parameter=Parameter.amplitude,
         range=(params.amplitude_min, params.amplitude_max, params.amplitude_step),
-        pulses=[
-            pulse
-            for qubit in targets
-            for pulse in sequence_0.channel(platform.qubits[qubit].acquisition)
-        ],
+        pulses=[ro_pulses_0[qubit] for qubit in targets],
     )
 
     amp_sweeper_1 = Sweeper(
         parameter=Parameter.amplitude,
         range=(params.amplitude_min, params.amplitude_max, params.amplitude_step),
-        pulses=[
-            readout
-            for qubit in [0, 1]
-            for readout in sequence_1.channel(platform.qubits[qubit].acquisition)
-        ],
+        pulses=[ro_pulses_1[qubit] for qubit in targets],
     )
 
     data = ResonatorOptimizationData(
