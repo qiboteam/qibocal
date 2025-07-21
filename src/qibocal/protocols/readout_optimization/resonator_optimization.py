@@ -364,15 +364,15 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
                 update_index = (data_qubit.frequency == freq) & (
                     data_qubit.amplitude == amp
                 )
-                data_qubit.avaraged_fidelity[update_index] = filtered_fidelity[version][
+                data_qubit.averaged_fidelity[update_index] = filtered_fidelity[version][
                     j, k
                 ]
                 data_qubit.angle[update_index] = grids["angle"][version][j, k]
                 data_qubit.threshold[update_index] = grids["threshold"][version][j, k]
                 data_qubit.qnd[update_index] = grids["qnd"][version][j, k]
 
-        index_best_fid = np.argmax(data[qubit, 0, 0, 0]["avaraged_fidelity"])
-        highest_fidelity[qubit] = data[qubit, 0, 0, 0]["avaraged_fidelity"][
+        index_best_fid = np.argmax(data[qubit, 0, 0, 0]["averaged_fidelity"])
+        highest_fidelity[qubit] = data[qubit, 0, 0, 0]["averaged_fidelity"][
             index_best_fid
         ]
         fid_best_freq[qubit] = data[qubit, 0, 0, 0]["frequency"][index_best_fid]
@@ -385,7 +385,7 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
         highest_qnd[qubit] = data[qubit, 0, 0, 0]["qnd"][index_best_qnd]
         qnd_best_freq[qubit] = data[qubit, 0, 0, 0]["frequency"][index_best_qnd]
         qnd_best_amps[qubit] = data[qubit, 0, 0, 0]["amplitude"][index_best_qnd]
-        qnd_best_fid[qubit] = data[qubit, 0, 0, 0]["avaraged_fidelity"][index_best_qnd]
+        qnd_best_fid[qubit] = data[qubit, 0, 0, 0]["averaged_fidelity"][index_best_qnd]
 
     return ResonatorOptimizationResults(
         best_fidelity=highest_fidelity,
@@ -424,10 +424,10 @@ def _plot(
 
     frequencies = qubit_data.frequency
     amplitudes = qubit_data.amplitude
-    fidelities = qubit_data.avaraged_fidelity
+    fidelities = qubit_data.averaged_fidelity
     qnds = qubit_data.qnd
 
-    fidelities_pi = qubit_data_pi.avaraged_fidelity
+    fidelities_pi = qubit_data_pi.averaged_fidelity
     qnds_pi = qubit_data_pi.qnd
 
     if fit is not None:
