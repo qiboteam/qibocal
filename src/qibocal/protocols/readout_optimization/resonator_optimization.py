@@ -109,19 +109,9 @@ def _acquisition(
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
 
-        qd_channel, qd_pulse = natives.RX()[0]
-        ro_channel, ro_pulse_0 = natives.MZ()[0]
-        _, ro_pulse_1 = natives.MZ()[0]
-
-        ro_pulses_0[qubit] = ro_pulse_0
-        ro_pulses_1[qubit] = ro_pulse_1
-        amplitudes[qubit] = ro_pulse_0.probe.amplitude
-
-        sequence_0.append((ro_channel, ro_pulse_0))
-
-        sequence_1.append((qd_channel, qd_pulse))
-        sequence_1.append((ro_channel, Delay(duration=qd_pulse.duration)))
-        sequence_1.append((ro_channel, ro_pulse_1))
+        sequence_0 = natives.MZ()
+        sequence_1 = natives.RX() | natives.MZ()
+        amplitudes[qubit] = natives.MZ()[0][1].probe.amplitude
 
         freq_sweepers[qubit] = Sweeper(
             parameter=Parameter.frequency,
