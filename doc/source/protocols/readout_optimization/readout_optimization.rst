@@ -6,7 +6,7 @@ Qibocal provides different protocols to improve the readout pulse parameters by 
 Resonator Amplitude
 -------------------
 
-The `resonator_amplitude` protocol improves the readout amplitude by optimizing the assignment fidelity.
+The resonator amplitude protocol improves the readout amplitude by optimizing the assignment fidelity.
 
 Parameters
 ^^^^^^^^^^
@@ -38,7 +38,7 @@ As shown in the picture below, the protocol sweeps the readout amplitude and eva
 Resonator Frequency
 -------------------
 
-The `resonator_frequency` protocol performs a sweep of the readout frequency to maximize assignment fidelity.
+The resonator frequency protocol performs a sweep of the readout frequency to maximize assignment fidelity.
 
 
 Parameters
