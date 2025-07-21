@@ -44,9 +44,9 @@ actions:
     parameters:
       freq_width: 200.e+6
       freq_step: 25.e+6
-      amplitude_start: 0.1
+      amplitude_min: 0.1
       amplitude_step: 0.1
-      amplitude_stop: 0.5
+      amplitude_max: 0.5
       nshots: 10
 
   - id: resonator spectroscopy low power

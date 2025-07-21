@@ -118,7 +118,7 @@ def _acquisition(
             result0 = state0_results[new_ro.id]
             result1 = state1_results[new_ro.id]
 
-            # TODO: move QubitFit() and anlysis in _fit()
+            # TODO: move QubitFit() and analysis in _fit()
             iq_values = np.concatenate((result0, result1))
             nshots = params.nshots
             states = [0] * nshots + [1] * nshots

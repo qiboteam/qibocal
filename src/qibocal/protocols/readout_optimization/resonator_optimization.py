@@ -33,9 +33,9 @@ class ResonatorOptimizationParameters(Parameters):
     """Width for frequency sweep relative  to the readout frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
-    amplitude_start: float
+    amplitude_min: float
     """Minimum amplitude."""
-    amplitude_stop: float
+    amplitude_max: float
     """Maximum amplitude."""
     amplitude_step: float
     """Step amplitude."""

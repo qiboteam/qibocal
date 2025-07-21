@@ -78,7 +78,7 @@ def _acquisition(
     r"""
     Data acquisition for readout frequency optimization.
     While sweeping the readout frequency, the routine performs a single shot
-    classification and evaluates the assignement fidelity.
+    classification and evaluates the assignment fidelity.
     At the end, the readout frequency is updated, choosing the one that has
     the highest assignment fidelity.
 
