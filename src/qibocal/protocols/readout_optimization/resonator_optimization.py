@@ -175,8 +175,8 @@ def _acquisition(
         amp_sweeper = Sweeper(
             parameter=Parameter.amplitude,
             range=(
-                params.amplitude_start,
-                params.amplitude_stop,
+                params.amplitude_min,
+                params.amplitude_max,
                 params.amplitude_step,
             ),
             pulses=[ro_pulses_m1[qubit] for qubit in targets]
