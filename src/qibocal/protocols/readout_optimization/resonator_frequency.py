@@ -130,6 +130,8 @@ def _acquisition(
     # TODO: move QubitFit() and anlysis in _fit()
     nshots = params.nshots
     for q, qubit in enumerate(targets):
+        ro_pulse_0 = list(sequence_0.channel(platform.qubits[qubit].acquisition))[-1]
+        ro_pulse_1 = list(sequence_1.channel(platform.qubits[qubit].acquisition))[-1]
         result0 = np.transpose(state0_results[ro_pulse_0.id], (1, 0, 2))
         result1 = np.transpose(state1_results[ro_pulse_1.id], (1, 0, 2))
 
