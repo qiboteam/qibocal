@@ -60,7 +60,7 @@ class ResonatorOptimizationResults(Results):
     qnd_best_freq: dict[QubitId, list]
     """Resonator Frequency with the highest quantum non demolition-ness."""
     qnd_best_amp: dict[QubitId, list]
-    """Resonator Amplittude with the highest quantum non demolition-ness."""
+    """Resonator Amplitude with the highest quantum non demolition-ness."""
     qnd_best_fid: dict[QubitId, list]
     """Fidelity with highest quantum non demolition-ness"""
     best_angle: dict[QubitId, float]
