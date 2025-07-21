@@ -40,7 +40,7 @@ class ResonatorOptimizationParameters(Parameters):
     amplitude_step: float
     """Step amplitude."""
     delay: float = 0
-    """Delay between readouts, could account for resonator deplation or not [ns]."""
+    """Delay between readouts, could account for resonator depletion or not [ns]."""
 
 
 @dataclass
