@@ -76,7 +76,7 @@ ResonatorOptimizationType = np.dtype(
         ("iq_values", np.float64, (2,)),
         ("samples", np.int8),
         ("assignment_fidelity", np.float64),
-        ("avaraged_fidelity", np.float64),
+        ("averaged_fidelity", np.float64),
         ("qnd", np.float64),
         ("angle", np.float64),
         ("threshold", np.float64),
