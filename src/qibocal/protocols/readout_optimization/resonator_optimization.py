@@ -7,7 +7,6 @@ import scipy.ndimage as ndimage
 from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
-    Delay,
     Parameter,
     PulseSequence,
     Sweeper,
