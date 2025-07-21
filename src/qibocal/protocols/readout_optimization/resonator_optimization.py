@@ -142,7 +142,7 @@ def _acquisition(
     amp_sweeper_1 = Sweeper(
         parameter=Parameter.amplitude,
         range=(params.amplitude_start, params.amplitude_stop, params.amplitude_step),
-        pulses=[ro_pulses_1[qubit] for qubit in targets],
+        pulses=[readout for qubit in [0, 1] for readout in sequence_1.channel(platform.qubits[qubit].acquisition)],
     )
 
     data = ResonatorOptimizationData(
