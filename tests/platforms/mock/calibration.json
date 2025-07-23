@@ -67,9 +67,41 @@
             "rb_fidelity": null
         }
     },
+    "couplers": {
+        "0": {
+            "resonator": {
+            },
+            "qubit": {
+                "frequency_01": 4000000000.0,
+                "frequency_12": 4700000000.0,
+                "maximum_frequency": 4000000000.0,
+                "asymmetry": 0.0,
+                "sweetspot": 0.0,
+                "flux_coefficients": [
+                    2.0,
+                    0.1,
+                    0.001
+                ]
+            },
+            "readout": {
+                "fidelity": 0.0,
+                "ground_state": [
+                    0.0,
+                    1.0
+                ],
+                "excited_state": [
+                    1.0,
+                    0.0
+                ]
+
+            },
+            "rb_fidelity": null
+        }
+    },
     "two_qubits": {
         "0-1": {
-            "rb_fidelity": [0.99, 0.01]
+            "rb_fidelity": [0.99, 0.01],
+            "coupler": "0"
         }
     },
     "readout_mitigation_matrix": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGk4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDIsKSwgfSAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoEAAAAAAAAAAQAAAAAAAAAk05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDE2LCksIH0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAoEAAAAAAAcwNHMzMzMzARAmpmZmZmZ6T9nZmZmZmYSQAQAAAAAAAhAZWZmZmZmEkCamZmZmZkJwDUzMzMzMwvAAgAAAAAACEA2MzMzMzMLwGZmZmZmZgZAZWZmZmZm9r8CAAAAAAAIQGlmZmZmZva/NDMzMzMz878yMzMzMzPjP5NOVU1QWQEAdgB7J2Rlc2NyJzogJzxpNCcsICdmb3J0cmFuX29yZGVyJzogRmFsc2UsICdzaGFwZSc6ICgxNiwpLCB9ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKAAAAAAEAAAACAAAAAwAAAAAAAAABAAAAAgAAAAMAAAAAAAAAAQAAAAIAAAADAAAAAAAAAAEAAAACAAAAAwAAAJNOVU1QWQEAdgB7J2Rlc2NyJzogJzxpNCcsICdmb3J0cmFuX29yZGVyJzogRmFsc2UsICdzaGFwZSc6ICg1LCksIH0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKAAAAAAQAAAAIAAAADAAAABAAAAA="
