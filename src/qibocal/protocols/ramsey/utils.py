@@ -1,7 +1,7 @@
 from typing import Optional
 
 import numpy as np
-from qibolab import Delay, Platform, PulseSequence
+from qibolab import Delay, Platform, Pulse, PulseSequence, Rectangular
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import QubitId
@@ -22,6 +22,7 @@ def ramsey_sequence(
     targets: list[QubitId],
     wait: int = 0,
     target_qubit: Optional[QubitId] = None,
+    flux_pulse_amplitude: Optional[float] = None,
 ):
     """Pulse sequence used in Ramsey (detuned) experiments.
 
@@ -29,29 +30,34 @@ def ramsey_sequence(
 
     RX90 -- wait -- RX90 -- MZ
     """
-    delays = []
+    delays = 2 * len(targets) * [Delay(duration=wait)]
+    if flux_pulse_amplitude is not None:
+        flux_pulses = len(targets) * [
+            Pulse(duration=0, amplitude=flux_pulse_amplitude, envelope=Rectangular())
+        ]
+    else:
+        flux_pulses = []
     sequence = PulseSequence()
-    for qubit in targets:
+    for i, qubit in enumerate(targets):
         natives = platform.natives.single_qubit[qubit]
-
-        qd_channel, qd_pulse = natives.R(theta=np.pi / 2)[0]
+        qd_channel = platform.qubits[qubit].drive
+        rx90_sequence = natives.R(theta=np.pi / 2)
         ro_channel, ro_pulse = natives.MZ()[0]
 
-        qd_delay = Delay(duration=wait)
-        ro_delay = Delay(duration=wait)
-
+        sequence += rx90_sequence
+        sequence.append((qd_channel, delays[2 * i]))
+        sequence += rx90_sequence
         sequence.extend(
             [
-                (qd_channel, qd_pulse),
-                (qd_channel, qd_delay),
-                (qd_channel, qd_pulse),
-                (ro_channel, Delay(duration=2 * qd_pulse.duration)),
-                (ro_channel, ro_delay),
+                (ro_channel, Delay(duration=2 * rx90_sequence.duration)),
+                (ro_channel, delays[2 * i + 1]),
                 (ro_channel, ro_pulse),
             ]
         )
-
-        delays.extend([qd_delay, ro_delay])
+        if flux_pulse_amplitude is not None:
+            flux_channel = platform.qubits[qubit].flux
+            sequence.append((flux_channel, Delay(duration=rx90_sequence.duration)))
+            sequence.append((flux_channel, flux_pulses[i]))
         if target_qubit is not None:
             assert target_qubit not in targets, (
                 f"Cannot run Ramsey experiment on qubit {target_qubit} if it is already in Ramsey sequence."
@@ -59,7 +65,7 @@ def ramsey_sequence(
             natives = platform.natives.single_qubit[target_qubit]
             sequence += natives.RX()
 
-    return sequence, delays
+    return sequence, delays + flux_pulses
 
 
 def ramsey_fit(x, offset, amplitude, delta, phase, decay):

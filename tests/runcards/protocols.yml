@@ -29,7 +29,6 @@ actions:
       nshots: 10
       hardware_average: false
 
-
   - id: resonator punchout
     operation: resonator_punchout
     parameters:
@@ -40,6 +39,15 @@ actions:
       step_amp: 0.005
       nshots: 10
 
+  - id: resonator optimization
+    operation: resonator_optimization
+    parameters:
+      freq_width: 200.e+6
+      freq_step: 25.e+6
+      amplitude_min: 0.1
+      amplitude_step: 0.1
+      amplitude_max: 0.5
+      nshots: 10
 
   - id: resonator spectroscopy low power
     operation: resonator_spectroscopy
@@ -402,6 +410,17 @@ actions:
       single_shot: True
       nshots: 1024
 
+  - id: t1 flux
+    operation: t1_flux
+    parameters:
+      delay_min: 0
+      delay_max: 20_000
+      delay_step: 2000
+      amplitude_min: 0
+      amplitude_max: 0.5
+      amplitude_step: 0.01
+      nshots: 1024
+
   - id: zeno
     operation: zeno
     parameters:
@@ -432,6 +451,17 @@ actions:
       delay_between_pulses_step: 100
       single_shot: True
       nshots: 10
+
+  - id: t2_flux
+    operation: t2_flux
+    parameters:
+      delay_min: 16
+      delay_max: 20000
+      delay_step: 100
+      amplitude_min: 0
+      amplitude_max: 0.5
+      amplitude_step: 0.01
+      nshots: 1024
 
   - id: ramsey_signal
     operation: ramsey_signal
@@ -822,9 +852,32 @@ actions:
     parameters:
       nshots: 10
 
+  - id : resonator_frequency
+    operation: resonator_frequency
+    parameters:
+      freq_width: 200.e+6
+      freq_step: 25.e+6
+      nshots: 10
+  - id: chsh_native_gates
+    operation: chsh
+    targets: [[0, 1]]
+    parameters:
+      bell_states: [0, 1, 2, 3]
+      ntheta: 20
+      native: True
+
+  - id: chsh_non_native_gates
+    operation: chsh
+    targets: [[0, 1]]
+    parameters:
+      bell_states: [0, 1, 2, 3]
+      ntheta: 20
+      native: False
+
   - id: resonator_amplitude
     operation: resonator_amplitude
     parameters:
+      amplitude_start: 0.1
       amplitude_step: 0.1
       amplitude_stop: 0.5
 
@@ -988,3 +1041,14 @@ actions:
       theta_end: 1
       theta_step: 0.1
       b_amplitude: 0.2
+
+  - id: twpa_calibration
+    operation: twpa_calibration
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 1_000_000
+      twpa_freq_width: 10_000_000
+      twpa_freq_step: 2_000_000
+      twpa_pow_width: 10
+      twpa_pow_step: 3
+      nshots: 20000
