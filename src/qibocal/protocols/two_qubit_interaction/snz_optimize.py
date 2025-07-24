@@ -16,7 +16,6 @@ from .virtual_z_phases import create_sequence
 
 @dataclass
 class SNZFinetuningParamteters(Parameters):
-    # TODO: amplitude_min should be a list to be able to execute on multiple pairs.
     amplitude_min: float
     """Amplitude minimum."""
     amplitude_max: float
@@ -215,7 +214,6 @@ def _aquisition(
                     averaging_mode=AveragingMode.CYCLIC,
                 )
 
-                # TODO: move this outside loops
                 data.register_qubit(
                     target_vz,
                     other_qubit_vz,
@@ -245,7 +243,7 @@ def _fit(
             for rel_amplitude in data.rel_amplitudes:
                 data_amplitude = data.filter_data_key(
                     pair[0], pair[1], rel_amplitude, amplitude
-                )  # TODO: check if it correct
+                )
                 new_fitted_parameter, new_phases, new_angle, new_leak = fit_virtualz(
                     data_amplitude,
                     pair,
@@ -258,7 +256,6 @@ def _fit(
                 angles |= new_angle
                 leakages |= new_leak
 
-    # virtual_phases, fitted_parameters, leakages, angles = fit_snz_optimize(data)
     return SNZFinetuningResults(
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,

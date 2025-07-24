@@ -3,8 +3,6 @@ from dataclasses import dataclass, field
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-
-# import plotly.colors.cyclical
 from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 from qibolab._core.pulses.envelope import Snz
 
@@ -179,7 +177,6 @@ def _fit(
     virtual_phases = {}
     angles = {}
     leakages = {}
-    # FIXME: experiment should be for single pair
     for pair in pairs:
         for duration in data.durations:
             for t_idle in data.t_idles:

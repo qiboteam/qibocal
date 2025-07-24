@@ -178,7 +178,7 @@ def _fit(
             for t_idle in data.t_idles:
                 data_amplitude = data.filter_data_key(
                     pair[0], pair[1], t_idle, amplitude
-                )  # TODO: check if it correct
+                )
                 new_fitted_parameter, new_phases, new_angle, new_leak = fit_virtualz(
                     data_amplitude,
                     pair,
@@ -191,7 +191,6 @@ def _fit(
                 angles |= new_angle
                 leakages |= new_leak
 
-    # virtual_phases, fitted_parameters, leakages, angles = fit_snz_optimize(data)
     return SNZIdlingResults(
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
