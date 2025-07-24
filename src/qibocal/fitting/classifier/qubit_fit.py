@@ -38,10 +38,9 @@ def normalize(x):
 def dump(model, save_path: Path):
     r"""Dumps the `model` in `save_path`"""
     # relative import to reduce overhead when importing qibocal
-    pass
-    # import skops.io as sio
+    import skops.io as sio
 
-    # sio.dump(model, save_path.with_suffix(".skops"))
+    sio.dump(model, save_path.with_suffix(".skops"))
 
 
 def predict_from_file(loading_path: Path, input: np.typing.NDArray):
