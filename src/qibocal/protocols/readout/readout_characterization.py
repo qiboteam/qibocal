@@ -155,57 +155,6 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
         qnd[qubit], Lambda_M[qubit], Lambda_M2[qubit] = compute_qnd(
             m1_state_1, m1_state_0, m2_state_1, m2_state_0
         )
-        ## 1st measurement (m=1)
-        # m1_state_1 = data.samples[qubit, 1, 0]
-        # nshots = len(m1_state_1)
-        ## state 1
-        # state1_count_1_m1 = np.count_nonzero(m1_state_1)
-        # state0_count_1_m1 = nshots - state1_count_1_m1
-        #
-        # m1_state_0 = data.samples[qubit, 0, 0]
-        ## state 0
-        # state1_count_0_m1 = np.count_nonzero(m1_state_0)
-        # state0_count_0_m1 = nshots - state1_count_0_m1
-        #
-        ## 2nd measurement (m=2)
-        # m2_state_1 = data.samples[qubit, 1, 1]
-        ## state 1
-        # state1_count_1_m2 = np.count_nonzero(m2_state_1)
-        # state0_count_1_m2 = nshots - state1_count_1_m2
-        #
-        # m2_state_0 = data.samples[qubit, 0, 1]
-        ## state 0
-        # state1_count_0_m2 = np.count_nonzero(m2_state_0)
-        # state0_count_0_m2 = nshots - state1_count_0_m2
-        #
-        ## Repeat Lambda and fidelity for each measurement ?
-        # Lambda_M[qubit] = [
-        #    [state0_count_0_m1 / nshots, state0_count_1_m1 / nshots],
-        #    [state1_count_0_m1 / nshots, state1_count_1_m1 / nshots],
-        # ]
-        #
-        ## Repeat Lambda and fidelity for each measurement ?
-        # Lambda_M2[qubit] = [
-        #    [state0_count_0_m2 / nshots, state0_count_1_m2 / nshots],
-        #    [state1_count_0_m2 / nshots, state1_count_1_m2 / nshots],
-        # ]
-        #
-        # assignment_fidelity[qubit] = (
-        #    1 - (state1_count_0_m1 / nshots + state0_count_1_m1 / nshots) / 2
-        # )
-        #
-        # fidelity[qubit] = 2 * assignment_fidelity[qubit] - 1
-        #
-        ## QND FIXME: Careful revision
-        # P_0o_m0_1i = state0_count_1_m1 * state0_count_0_m2 / nshots**2
-        # P_0o_m1_1i = state1_count_1_m1 * state0_count_1_m2 / nshots**2
-        # P_0o_1i = P_0o_m0_1i + P_0o_m1_1i
-        #
-        # P_1o_m0_0i = state0_count_0_m1 * state1_count_0_m2 / nshots**2
-        # P_1o_m1_0i = state1_count_0_m1 * state1_count_1_m2 / nshots**2
-        # P_1o_0i = P_1o_m0_0i + P_1o_m1_0i
-        #
-        # qnd[qubit] = 1 - (P_0o_1i + P_1o_0i) / 2
 
         nshots = len(m1_state_1)
 
@@ -223,6 +172,8 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
             qubit_frequency=data.qubit_frequencies[qubit],
             nshots=nshots,
         )
+        print(Lambda_M)
+        print(Lambda_M2)
 
     return ReadoutCharacterizationResults(
         fidelity, assignment_fidelity, qnd, effective_temperature, Lambda_M, Lambda_M2
@@ -268,6 +219,8 @@ def _plot(
         yaxis_title="Q",
     )
 
+    print("completed first plot")
+
     figures.append(fig)
     if fit is not None:
         fig = make_subplots(
@@ -300,6 +253,10 @@ def _plot(
             row=1,
             col=2,
         )
+
+        print("inside plot function")
+        print(fit.Lambda_M2)
+        print(fit.Lambda_M)
 
         fig.update_xaxes(title_text="Measured state", row=1, col=1)
         fig.update_xaxes(title_text="Measured state", row=1, col=2)
