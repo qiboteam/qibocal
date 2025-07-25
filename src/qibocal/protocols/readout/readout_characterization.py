@@ -11,6 +11,7 @@ from ...auto.operation import Data, Parameters, QubitId, Results, Routine
 from ...calibration import CalibrationPlatform
 from ...result import unpack
 from ..utils import (
+    compute_qnd,
     effective_qubit_temperature,
     format_error_single_cell,
     round_report,
@@ -146,57 +147,76 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
     Lambda_M = {}
     Lambda_M2 = {}
     for qubit in qubits:
-        # 1st measurement (m=1)
         m1_state_1 = data.samples[qubit, 1, 0]
+        m1_state_0 = data.samples[qubit, 0, 0]
+        m2_state_1 = data.samples[qubit, 1, 1]
+        m2_state_0 = data.samples[qubit, 0, 1]
+
+        qnd[qubit], Lambda_M[qubit], Lambda_M2[qubit] = compute_qnd(
+            m1_state_1, m1_state_0, m2_state_1, m2_state_0
+        )
+        ## 1st measurement (m=1)
+        # m1_state_1 = data.samples[qubit, 1, 0]
+        # nshots = len(m1_state_1)
+        ## state 1
+        # state1_count_1_m1 = np.count_nonzero(m1_state_1)
+        # state0_count_1_m1 = nshots - state1_count_1_m1
+        #
+        # m1_state_0 = data.samples[qubit, 0, 0]
+        ## state 0
+        # state1_count_0_m1 = np.count_nonzero(m1_state_0)
+        # state0_count_0_m1 = nshots - state1_count_0_m1
+        #
+        ## 2nd measurement (m=2)
+        # m2_state_1 = data.samples[qubit, 1, 1]
+        ## state 1
+        # state1_count_1_m2 = np.count_nonzero(m2_state_1)
+        # state0_count_1_m2 = nshots - state1_count_1_m2
+        #
+        # m2_state_0 = data.samples[qubit, 0, 1]
+        ## state 0
+        # state1_count_0_m2 = np.count_nonzero(m2_state_0)
+        # state0_count_0_m2 = nshots - state1_count_0_m2
+        #
+        ## Repeat Lambda and fidelity for each measurement ?
+        # Lambda_M[qubit] = [
+        #    [state0_count_0_m1 / nshots, state0_count_1_m1 / nshots],
+        #    [state1_count_0_m1 / nshots, state1_count_1_m1 / nshots],
+        # ]
+        #
+        ## Repeat Lambda and fidelity for each measurement ?
+        # Lambda_M2[qubit] = [
+        #    [state0_count_0_m2 / nshots, state0_count_1_m2 / nshots],
+        #    [state1_count_0_m2 / nshots, state1_count_1_m2 / nshots],
+        # ]
+        #
+        # assignment_fidelity[qubit] = (
+        #    1 - (state1_count_0_m1 / nshots + state0_count_1_m1 / nshots) / 2
+        # )
+        #
+        # fidelity[qubit] = 2 * assignment_fidelity[qubit] - 1
+        #
+        ## QND FIXME: Careful revision
+        # P_0o_m0_1i = state0_count_1_m1 * state0_count_0_m2 / nshots**2
+        # P_0o_m1_1i = state1_count_1_m1 * state0_count_1_m2 / nshots**2
+        # P_0o_1i = P_0o_m0_1i + P_0o_m1_1i
+        #
+        # P_1o_m0_0i = state0_count_0_m1 * state1_count_0_m2 / nshots**2
+        # P_1o_m1_0i = state1_count_0_m1 * state1_count_1_m2 / nshots**2
+        # P_1o_0i = P_1o_m0_0i + P_1o_m1_0i
+        #
+        # qnd[qubit] = 1 - (P_0o_1i + P_1o_0i) / 2
+
         nshots = len(m1_state_1)
+
         # state 1
         state1_count_1_m1 = np.count_nonzero(m1_state_1)
         state0_count_1_m1 = nshots - state1_count_1_m1
 
-        m1_state_0 = data.samples[qubit, 0, 0]
         # state 0
         state1_count_0_m1 = np.count_nonzero(m1_state_0)
         state0_count_0_m1 = nshots - state1_count_0_m1
 
-        # 2nd measurement (m=2)
-        m2_state_1 = data.samples[qubit, 1, 1]
-        # state 1
-        state1_count_1_m2 = np.count_nonzero(m2_state_1)
-        state0_count_1_m2 = nshots - state1_count_1_m2
-
-        m2_state_0 = data.samples[qubit, 0, 1]
-        # state 0
-        state1_count_0_m2 = np.count_nonzero(m2_state_0)
-        state0_count_0_m2 = nshots - state1_count_0_m2
-
-        # Repeat Lambda and fidelity for each measurement ?
-        Lambda_M[qubit] = [
-            [state0_count_0_m1 / nshots, state0_count_1_m1 / nshots],
-            [state1_count_0_m1 / nshots, state1_count_1_m1 / nshots],
-        ]
-
-        # Repeat Lambda and fidelity for each measurement ?
-        Lambda_M2[qubit] = [
-            [state0_count_0_m2 / nshots, state0_count_1_m2 / nshots],
-            [state1_count_0_m2 / nshots, state1_count_1_m2 / nshots],
-        ]
-
-        assignment_fidelity[qubit] = (
-            1 - (state1_count_0_m1 / nshots + state0_count_1_m1 / nshots) / 2
-        )
-
-        fidelity[qubit] = 2 * assignment_fidelity[qubit] - 1
-
-        # QND FIXME: Careful revision
-        P_0o_m0_1i = state0_count_1_m1 * state0_count_0_m2 / nshots**2
-        P_0o_m1_1i = state1_count_1_m1 * state0_count_1_m2 / nshots**2
-        P_0o_1i = P_0o_m0_1i + P_0o_m1_1i
-
-        P_1o_m0_0i = state0_count_0_m1 * state1_count_0_m2 / nshots**2
-        P_1o_m1_0i = state1_count_0_m1 * state1_count_1_m2 / nshots**2
-        P_1o_0i = P_1o_m0_0i + P_1o_m1_0i
-
-        qnd[qubit] = 1 - (P_0o_1i + P_1o_0i) / 2
         effective_temperature[qubit] = effective_qubit_temperature(
             prob_1=state0_count_1_m1 / nshots,
             prob_0=state0_count_0_m1 / nshots,
