@@ -17,7 +17,6 @@ from qibolab import (
     Sweeper,
     VirtualZ,
 )
-from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import (
     Data,
@@ -28,12 +27,11 @@ from qibocal.auto.operation import (
     Routine,
 )
 from qibocal.calibration import CalibrationPlatform
-from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
 from ... import update
 from ...update import replace
-from .utils import order_pair
+from .utils import fit_sinusoid, fit_virtualz, order_pair, phase_diff, sinusoid
 
 __all__ = ["correct_virtual_z_phases", "create_sequence", "fit_sinusoid", "phase_diff"]
 
@@ -81,9 +79,7 @@ class VirtualZPhasesResults(Results):
         While key is a QubitPairId both chsh and chsh_mitigated contain
         an additional key which represents the basis chosen.
         """
-        return key in [
-            (target, control) for target, control, _ in self.fitted_parameters
-        ]
+        return key in [(target, control) for target, control in self.angle]
 
 
 VirtualZPhasesType = np.dtype([("target", np.float64), ("control", np.float64)])
@@ -105,6 +101,13 @@ class VirtualZPhasesData(Data):
             if set(pair).issubset(index)
         }
 
+    @property
+    def order_pairs(self):
+        pairs = []
+        for key in self.data.keys():
+            pairs.append((key[0], key[1]))
+        return np.unique(pairs, axis=0).tolist()
+
 
 def create_sequence(
     platform: CalibrationPlatform,
@@ -116,7 +119,8 @@ def create_sequence(
     dt: float,
     flux_pulse_max_duration: float = None,
     gate_repetition: int = 1,
-) -> tuple[PulseSequence, Pulse, list[Pulse]]:
+    flux_pulse: Optional[list] = None,
+) -> tuple[PulseSequence, Pulse, Pulse, list[Pulse]]:
     """
     Create the pulse sequence for the calibration of two-qubit gate virtual phases.
 
@@ -146,12 +150,12 @@ def create_sequence(
     if setup == "X":
         sequence += control_natives.RX()
 
-    # CZ
-    flux_sequence = getattr(platform.natives.two_qubit[ordered_pair], native)()
     flux_channel = platform.qubits[ordered_pair[1]].flux
-    flux_pulse = list(flux_sequence.channel(flux_channel))[
-        0
-    ]  # Expecting only one flux pulse
+    # CZ
+    if flux_pulse is None:
+        cz_sequence = platform.natives.two_qubit[ordered_pair].CZ
+        flux_pulse = list(cz_sequence.channel(flux_channel))[0]
+
     if flux_pulse_max_duration is not None:
         flux_pulse = replace(flux_pulse, duration=flux_pulse_max_duration)
     flux_sequence = PulseSequence([(flux_channel, flux_pulse)])
@@ -299,39 +303,6 @@ def _acquisition(
     return data
 
 
-def sinusoid(x, gate_repetition, amplitude, offset, phase):
-    """Sinusoidal fit function."""
-    return np.cos(gate_repetition * (x + phase)) * amplitude + offset
-
-
-def phase_diff(phase_1, phase_2):
-    """Return the phase difference of two sinusoids, normalized in the range [0, 2*pi]."""
-    return np.mod(phase_2 - phase_1, 2 * np.pi)
-
-
-def fit_sinusoid(thetas, data, gate_repetition):
-    """Fit sinusoid to the given data."""
-    pguess = [
-        np.max(data) - np.min(data),
-        np.mean(data),
-        np.pi,
-    ]
-
-    popt, _ = curve_fit(
-        lambda x, amplitude, offset, phase: sinusoid(
-            x, gate_repetition, amplitude, offset, phase
-        ),
-        thetas,
-        data,
-        p0=pguess,
-        bounds=(
-            (0, -np.max(data), 0),
-            (np.max(data), np.max(data), 2 * np.pi),
-        ),
-    )
-    return popt.tolist()
-
-
 def _fit(
     data: VirtualZPhasesData,
 ) -> VirtualZPhasesResults:
@@ -344,64 +315,18 @@ def _fit(
         y = p_0 sin\Big(x + p_2\Big) + p_1.
     """
     fitted_parameters = {}
-    pairs = data.pairs
+    pairs = data.order_pairs
     virtual_phase = {}
     angle = {}
     leakage = {}
     for pair in pairs:
-        virtual_phase[pair] = {}
-        leakage[pair] = {}
-        for target, control, setup in data[pair]:
-            target_data = data[pair][target, control, setup].target
-            try:
-                params = fit_sinusoid(
-                    np.array(data.thetas), target_data, data.gate_repetition
-                )
-                fitted_parameters[target, control, setup] = params
-
-            except Exception as e:
-                log.warning(f"CZ fit failed for pair ({target, control}) due to {e}.")
-
-        for target_q, control_q in (
-            pair,
-            list(pair)[::-1],
-        ):
-            # leakage estimate: L = m /2
-            # See NZ paper from Di Carlo
-            # approximation which does not need qutrits
-            # https://arxiv.org/pdf/1903.02492.pdf
-            leakage[pair][control_q] = 0.5 * float(
-                np.mean(
-                    data[pair][target_q, control_q, "X"].control
-                    - data[pair][target_q, control_q, "I"].control
-                )
-            )
-
-        try:
-            for target_q, control_q in (
-                pair,
-                list(pair)[::-1],
-            ):
-                angle[target_q, control_q] = phase_diff(
-                    fitted_parameters[target_q, control_q, "X"][2],
-                    fitted_parameters[target_q, control_q, "I"][2],
-                )
-                virtual_phase[pair][target_q] = fitted_parameters[
-                    target_q, control_q, "I"
-                ][2]
-
-                # leakage estimate: L = m /2
-                # See NZ paper from Di Carlo
-                # approximation which does not need qutrits
-                # https://arxiv.org/pdf/1903.02492.pdf
-                leakage[pair][control_q] = 0.5 * float(
-                    np.mean(
-                        data[pair][target_q, control_q, "X"].control
-                        - data[pair][target_q, control_q, "I"].control
-                    )
-                )
-        except KeyError:
-            pass  # exception covered above
+        new_fitted_parameter, new_phases, new_angle, new_leak = fit_virtualz(
+            data[pair], tuple(pair), data.thetas, data.gate_repetition
+        )
+        fitted_parameters |= new_fitted_parameter
+        virtual_phase |= new_phases
+        angle |= new_angle
+        leakage |= new_leak
     return VirtualZPhasesResults(
         native=data.native,
         gate_repetition=data.gate_repetition,
@@ -460,9 +385,9 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
             row=1,
             col=2 if fig == fig1 else 1,
         )
-        if fit is not None:
+        if fit is not None and setup == "I":
             angle_range = np.linspace(thetas[0], thetas[-1], 100)
-            fitted_parameters = fit.fitted_parameters[target_q, control_q, setup]
+            fitted_parameters = fit.fitted_parameters[(target_q, control_q), setup]
             fig.add_trace(
                 go.Scatter(
                     x=angle_range,
@@ -477,7 +402,6 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
                 row=1,
                 col=1 if fig == fig1 else 2,
             )
-
             fitting_report.add(
                 table_html(
                     table_dict(
@@ -490,10 +414,10 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
                         [
                             np.round(fit.angle[target_q, control_q], 4),
                             np.round(
-                                fit.virtual_phase[tuple(sorted(target))][target_q],
+                                fit.virtual_phase[target_q, control_q],
                                 4,
                             ),
-                            np.round(fit.leakage[tuple(sorted(target))][control_q], 4),
+                            np.round(fit.leakage[target_q, control_q], 4),
                         ],
                     )
                 )
@@ -524,9 +448,7 @@ def _update(
     if results.gate_repetition == 1:
         # FIXME: quick fix for qubit order
         target = tuple(sorted(target))
-        update.virtual_phases(
-            results.virtual_phase[target], results.native, platform, target
-        )
+        update.virtual_phases(results.virtual_phase, results.native, platform, target)
 
 
 correct_virtual_z_phases = Routine(
