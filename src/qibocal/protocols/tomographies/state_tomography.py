@@ -74,10 +74,14 @@ class StateTomographyData(Data):
 
     @classmethod
     def load(cls, path):
-        circuit = Circuit.from_dict(json.loads((path / CIRCUIT_PATH).read_text()))
         data = super().load_data(path, DATAFILE)
         params = super().load_params(path, DATAFILE)
-        return cls(data=data, circuit=circuit, targets=params["targets"])
+
+        if (path / CIRCUIT_PATH).exists():
+            circuit = Circuit.from_dict(json.loads((path / CIRCUIT_PATH).read_text()))
+            return cls(data=data, circuit=circuit, **params)
+
+        return cls(data=data, **params)
 
 
 @dataclass
