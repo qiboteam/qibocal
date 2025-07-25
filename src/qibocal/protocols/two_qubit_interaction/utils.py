@@ -103,7 +103,6 @@ def fit_virtualz(data: dict, pair: list, thetas: list, gate_repetition: int, key
             fitted_param[target, control, setup] = params
         except Exception as e:
             log.warning(f"CZ fit failed for pair ({target, control}) due to {e}.")
-        return fitted_parameters, virtual_phase, angle, leakage
 
     for setup in ["I", "X"]:
         # leakage estimate: L = m /2
