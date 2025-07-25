@@ -98,8 +98,6 @@ def fit_virtualz(data: dict, pair: list, thetas: list, gate_repetition: int, key
 
     for setup in ["I", "X"]:
         target_data = data[target, control, setup].target
-        print(target, control, setup)
-        print("TARGET DATA", target_data)
         try:
             params = fit_sinusoid(np.array(thetas), target_data, gate_repetition)
             fitted_param[target, control, setup] = params
