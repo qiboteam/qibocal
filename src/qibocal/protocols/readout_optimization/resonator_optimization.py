@@ -323,63 +323,7 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
                 & (data[qubit, 0, 1, pi].amplitude == amp)
             ].samples
 
-            (
-                result,
-                _,
-                _,
-            ) = compute_qnd(m1_state_1, m1_state_0, m2_state_1, m2_state_0)
-            ## 1st measurement (m=1)
-            # data_10 = data[qubit, 1, 0, pi]
-            # m1_state_1 = data_10[
-            #    (data_10.frequency == freq) & (data_10.amplitude == amp)
-            # ].samples
-            # nshots = len(m1_state_1)
-            # state1_count_1_m1 = np.count_nonzero(m1_state_1)
-            # state0_count_1_m1 = nshots - state1_count_1_m1
-            #
-            # data_00 = data[qubit, 0, 0, pi]
-            # m1_state_0 = data_00[
-            #    (data_00.frequency == freq) & (data_00.amplitude == amp)
-            # ].samples
-            # state1_count_0_m1 = np.count_nonzero(m1_state_0)
-            # state0_count_0_m1 = nshots - state1_count_0_m1
-            #
-            ## 2nd measurement (m=2)
-            # data_11 = data[qubit, 1, 1, pi]
-            # m2_state_1 = data_11[
-            #    (data_11.frequency == freq) & (data_11.amplitude == amp)
-            # ].samples
-            # state1_count_1_m2 = np.count_nonzero(m2_state_1)
-            # state0_count_1_m2 = nshots - state1_count_1_m2
-            #
-            # data_01 = data[qubit, 0, 1, pi]
-            # m2_state_0 = data_01[
-            #    (data_01.frequency == freq) & (data_01.amplitude == amp)
-            # ].samples
-            # state1_count_0_m2 = np.count_nonzero(m2_state_0)
-            # state0_count_0_m2 = nshots - state1_count_0_m2
-            #
-            ## Repeat Lambda and fidelity for each measurement ?
-            # Lambda_M[qubit] = [
-            #    [state0_count_0_m1 / nshots, state0_count_1_m1 / nshots],
-            #    [state1_count_0_m1 / nshots, state1_count_1_m1 / nshots],
-            # ]
-            ## Repeat Lambda and fidelity for each measurement ?
-            # Lambda_M2[qubit] = [
-            #    [state0_count_0_m2 / nshots, state0_count_1_m2 / nshots],
-            #    [state1_count_0_m2 / nshots, state1_count_1_m2 / nshots],
-            # ]
-            ## QND FIXME: Careful revision
-            # P_0o_m0_1i = state0_count_1_m1 * state0_count_0_m2 / nshots**2
-            # P_0o_m1_1i = state1_count_1_m1 * state0_count_1_m2 / nshots**2
-            # P_0o_1i = P_0o_m0_1i + P_0o_m1_1i
-            # P_1o_m0_0i = state0_count_0_m1 * state1_count_0_m2 / nshots**2
-            # P_1o_m1_0i = state1_count_0_m1 * state1_count_1_m2 / nshots**2
-            # P_1o_0i = P_1o_m0_0i + P_1o_m1_0i
-            #
-            # result = (
-            #    1 - ((P_0o_1i + P_1o_0i) / 2) if not pi else (P_0o_1i + P_1o_0i) / 2
-            # )
+            result, _, _ = compute_qnd(m1_state_1, m1_state_0, m2_state_1, m2_state_0)
             grids["qnd"][version][j, k] = result
 
         for state, m, pi in product([0, 1], [0, 1], [0, 1]):

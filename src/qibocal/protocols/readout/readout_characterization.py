@@ -166,14 +166,18 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
         state1_count_0_m1 = np.count_nonzero(m1_state_0)
         state0_count_0_m1 = nshots - state1_count_0_m1
 
+        assignment_fidelity[qubit] = (
+            1 - (state1_count_0_m1 / nshots + state0_count_1_m1 / nshots) / 2
+        )
+
+        fidelity[qubit] = 2 * assignment_fidelity[qubit] - 1
+
         effective_temperature[qubit] = effective_qubit_temperature(
             prob_1=state0_count_1_m1 / nshots,
             prob_0=state0_count_0_m1 / nshots,
             qubit_frequency=data.qubit_frequencies[qubit],
             nshots=nshots,
         )
-        print(Lambda_M)
-        print(Lambda_M2)
 
     return ReadoutCharacterizationResults(
         fidelity, assignment_fidelity, qnd, effective_temperature, Lambda_M, Lambda_M2
@@ -219,8 +223,6 @@ def _plot(
         yaxis_title="Q",
     )
 
-    print("completed first plot")
-
     figures.append(fig)
     if fit is not None:
         fig = make_subplots(
@@ -253,10 +255,6 @@ def _plot(
             row=1,
             col=2,
         )
-
-        print("inside plot function")
-        print(fit.Lambda_M2)
-        print(fit.Lambda_M)
 
         fig.update_xaxes(title_text="Measured state", row=1, col=1)
         fig.update_xaxes(title_text="Measured state", row=1, col=2)
