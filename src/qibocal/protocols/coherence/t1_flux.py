@@ -10,7 +10,8 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.result import probability
 
 from ...config import log
-from ..utils import COLORBAND, COLORBAND_LINE, HZ_TO_GHZ
+from ...plotting import scatter_plot
+from ..utils import HZ_TO_GHZ
 from .t1_signal import t1_sequence
 from .utils import single_exponential_fit
 
@@ -167,23 +168,11 @@ def _plot(data: T1FluxData, target: QubitId, fit: T1FluxResults = None):
 
         fig.add_traces(
             [
-                go.Scatter(
+                scatter_plot(
                     x=detuning,
                     y=t1s,
-                    opacity=1,
-                    name="T1",
-                    showlegend=True,
-                    legendgroup="T1",
-                    mode="lines",
-                ),
-                go.Scatter(
-                    x=np.concatenate((detuning, detuning[::-1])),
-                    y=np.concatenate((t1s + error, (t1s - error)[::-1])),
-                    fill="toself",
-                    fillcolor=COLORBAND,
-                    line=dict(color=COLORBAND_LINE),
-                    showlegend=True,
-                    name="Errors",
+                    error_y=error,
+                    label="T1",
                 ),
             ]
         )

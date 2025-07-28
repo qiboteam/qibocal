@@ -7,7 +7,7 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Parameters, QubitId
 from qibocal.update import replace
 
-from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
+from ..utils import table_dict, table_html
 
 
 def rabi_amplitude_function(x, offset, amplitude, period, phase):
@@ -123,7 +123,6 @@ def plot_probabilities(data, qubit, fit, rx90):
     fitting_report = ""
 
     qubit_data = data[qubit]
-    probs = qubit_data.prob
     error_bars = qubit_data.error
     rabi_parameters = getattr(qubit_data, quantity)
     fig = go.Figure(
@@ -131,22 +130,13 @@ def plot_probabilities(data, qubit, fit, rx90):
             go.Scatter(
                 x=rabi_parameters,
                 y=qubit_data.prob,
-                opacity=1,
+                error_y={"array": error_bars},
                 name="Probability",
                 showlegend=True,
                 legendgroup="Probability",
-                mode="lines",
+                mode="markers",
             ),
-            go.Scatter(
-                x=np.concatenate((rabi_parameters, rabi_parameters[::-1])),
-                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
-                fill="toself",
-                fillcolor=COLORBAND,
-                line=dict(color=COLORBAND_LINE),
-                showlegend=True,
-                name="Errors",
-            ),
-        ]
+        ],
     )
 
     if fit is not None:
@@ -161,8 +151,6 @@ def plot_probabilities(data, qubit, fit, rx90):
                 x=rabi_parameter_range,
                 y=fitting(rabi_parameter_range, *params),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
-                marker_color="rgb(255, 130, 67)",
             ),
         )
         pulse_name = "Pi-half pulse" if rx90 else "Pi pulse"
@@ -179,11 +167,11 @@ def plot_probabilities(data, qubit, fit, rx90):
                 display_error=True,
             )
         )
-
         fig.update_layout(
             showlegend=True,
             xaxis_title=title,
             yaxis_title="Excited state probability",
+            template="simple_white",
         )
 
     figures.append(fig)

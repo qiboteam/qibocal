@@ -9,8 +9,9 @@ from qibocal import update
 from qibocal.auto.operation import Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
+from ...plotting import fit_plot, scatter_plot
 from ...result import probability
-from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
+from ..utils import table_dict, table_html
 from . import utils
 from .t1 import CoherenceProbType, T1Data
 
@@ -138,23 +139,11 @@ def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
 
     fig = go.Figure(
         [
-            go.Scatter(
+            scatter_plot(
                 x=readouts,
                 y=probs,
-                opacity=1,
-                name="Probability of 1",
-                showlegend=True,
-                legendgroup="Probability of 1",
-                mode="lines",
-            ),
-            go.Scatter(
-                x=np.concatenate((readouts, readouts[::-1])),
-                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
-                fill="toself",
-                fillcolor=COLORBAND,
-                line=dict(color=COLORBAND_LINE),
-                showlegend=True,
-                name="Errors",
+                error_y=error_bars,
+                label="Probability of 1",
             ),
         ]
     )
@@ -168,11 +157,10 @@ def _plot(data: ZenoData, fit: ZenoResults, target: QubitId):
         )
         params = fit.fitted_parameters[target]
         fig.add_trace(
-            go.Scatter(
+            fit_plot(
                 x=waitrange,
                 y=utils.exp_decay(waitrange, *params),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                label="Exponential Fit",
             )
         )
         fitting_report = table_html(

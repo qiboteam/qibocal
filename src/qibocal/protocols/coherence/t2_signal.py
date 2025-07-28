@@ -9,6 +9,7 @@ from qibocal import update
 from qibocal.auto.operation import Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
+from ...plotting import fit_plot, scatter_plot
 from ...result import magnitude, phase
 from ..ramsey.utils import ramsey_sequence
 from ..utils import readout_frequency, table_dict, table_html
@@ -135,13 +136,10 @@ def _plot(data: T2SignalData, target: QubitId, fit: T2SignalResults = None):
     qubit_data = data[target]
 
     fig.add_trace(
-        go.Scatter(
+        scatter_plot(
             x=qubit_data.wait,
             y=qubit_data.signal,
-            opacity=1,
-            name="Signal",
-            showlegend=True,
-            legendgroup="Signal",
+            label="Signal",
         )
     )
 
@@ -155,14 +153,10 @@ def _plot(data: T2SignalData, target: QubitId, fit: T2SignalResults = None):
 
         params = fit.fitted_parameters[target]
         fig.add_trace(
-            go.Scatter(
+            fit_plot(
                 x=waitrange,
-                y=utils.exp_decay(
-                    waitrange,
-                    *params,
-                ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                y=utils.exp_decay(waitrange, *params),
+                label="Exponential Fit",
             )
         )
         fitting_report = table_html(

@@ -10,6 +10,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
 from ... import update
+from ...plotting import fit_plot, scatter_plot
 from ..utils import readout_frequency, table_dict, table_html
 from .t1_signal import T1SignalData
 from .utils import (
@@ -152,13 +153,10 @@ def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults 
     waits = qubit_data.wait
 
     fig.add_trace(
-        go.Scatter(
+        scatter_plot(
             x=waits,
             y=qubit_data.signal,
-            opacity=1,
-            name="Signal",
-            showlegend=True,
-            legendgroup="Signal",
+            label="Signal",
         ),
     )
 
@@ -172,11 +170,10 @@ def _plot(data: SpinEchoSignalData, target: QubitId, fit: SpinEchoSignalResults 
         params = fit.fitted_parameters[target]
 
         fig.add_trace(
-            go.Scatter(
+            fit_plot(
                 x=waitrange,
                 y=exp_decay(waitrange, *params),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                label="Exponential Fit",
             ),
         )
 

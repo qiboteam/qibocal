@@ -20,6 +20,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
 from ... import update
+from ...plotting import fit_plot, scatter_plot
 from ..utils import readout_frequency, table_dict, table_html
 from . import utils
 
@@ -187,13 +188,10 @@ def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
     waits = qubit_data.wait
 
     fig.add_trace(
-        go.Scatter(
+        scatter_plot(
             x=waits,
             y=qubit_data.signal,
-            opacity=1,
-            name="Signal",
-            showlegend=True,
-            legendgroup="Signal",
+            label="Signal",
         )
     )
 
@@ -206,11 +204,10 @@ def _plot(data: T1SignalData, target: QubitId, fit: T1SignalResults = None):
 
         params = fit.fitted_parameters[target]
         fig.add_trace(
-            go.Scatter(
+            fit_plot(
                 x=waitrange,
                 y=utils.exp_decay(waitrange, *params),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                label="Exponential Fit",
             )
         )
         fitting_report = table_html(

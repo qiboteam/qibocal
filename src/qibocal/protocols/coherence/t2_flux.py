@@ -8,8 +8,9 @@ from qibocal.auto.operation import QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
 from ...config import log
+from ...plotting import scatter_plot
 from ..ramsey.utils import fitting, ramsey_sequence
-from ..utils import COLORBAND, COLORBAND_LINE, HZ_TO_GHZ
+from ..utils import HZ_TO_GHZ
 from .t1_flux import T1FluxData, T1FluxParameters
 
 
@@ -119,23 +120,11 @@ def _plot(data: T2FluxData, target: QubitId, fit: T2FluxResults = None):
         detuning = np.array(data.detuning[target])[indices]
         fig.add_traces(
             [
-                go.Scatter(
+                scatter_plot(
                     x=detuning,
                     y=t2s,
-                    opacity=1,
-                    name="T2",
-                    showlegend=True,
-                    legendgroup="T2",
-                    mode="lines",
-                ),
-                go.Scatter(
-                    x=np.concatenate((detuning, detuning[::-1])),
-                    y=np.concatenate((t2s + error, (t2s - error)[::-1])),
-                    fill="toself",
-                    fillcolor=COLORBAND,
-                    line=dict(color=COLORBAND_LINE),
-                    showlegend=True,
-                    name="Errors",
+                    label="T2",
+                    error_y=error,
                 ),
             ]
         )

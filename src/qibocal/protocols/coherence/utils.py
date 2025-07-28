@@ -6,7 +6,8 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import QubitId
 from qibocal.config import log
 
-from ..utils import COLORBAND, COLORBAND_LINE, chi2_reduced, table_dict, table_html
+from ...plotting import fit_plot, scatter_plot
+from ..utils import chi2_reduced, table_dict, table_html
 
 CoherenceType = np.dtype(
     [("wait", np.float64), ("signal", np.float64), ("phase", np.float64)]
@@ -84,7 +85,6 @@ def dynamical_decoupling_sequence(
         sequence.append((ro_channel, ro_pulse))
         all_delays.extend(drive_delays)
         all_delays.extend(ro_delays)
-    print(sequence)
     return sequence, all_delays
 
 
@@ -219,23 +219,11 @@ def plot(data, target: QubitId, fit=None) -> tuple[list[go.Figure], str]:
 
     fig = go.Figure(
         [
-            go.Scatter(
+            scatter_plot(
                 x=waits,
                 y=probs,
-                opacity=1,
-                name="Probability of 1",
-                showlegend=True,
-                legendgroup="Probability of 1",
-                mode="lines",
-            ),
-            go.Scatter(
-                x=np.concatenate((waits, waits[::-1])),
-                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
-                fill="toself",
-                fillcolor=COLORBAND,
-                line=dict(color=COLORBAND_LINE),
-                showlegend=True,
-                name="Errors",
+                error_y=error_bars,
+                label="Probability of 1",
             ),
         ]
     )
@@ -249,11 +237,10 @@ def plot(data, target: QubitId, fit=None) -> tuple[list[go.Figure], str]:
         params = fit.fitted_parameters[target]
 
         fig.add_trace(
-            go.Scatter(
+            fit_plot(
                 x=waitrange,
                 y=exp_decay(waitrange, *params),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                label="Exponential Fit",
             ),
         )
         fitting_report = table_html(
