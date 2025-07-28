@@ -240,6 +240,19 @@ def _plot(data: AllXYData, target: QubitId, fit: AllXYResults = None):
         ),
     )
 
+    fig.add_trace(
+        go.Scatter(
+            x=gates,
+            y=5 * [1] + 12 * [0] + 4 * [-1],
+            mode="lines",
+            text=gatelist,
+            textposition="bottom center",
+            name="Theory value",
+            showlegend=True,
+            legendgroup="group1",
+        ),
+    )
+
     fig.add_hline(
         y=0,
         line_width=2,
