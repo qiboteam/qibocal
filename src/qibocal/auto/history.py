@@ -125,7 +125,7 @@ class History:
             return None
         return folder / "data" / f"{task_id}"
 
-    def dump(self, output: Optional[Path] = None):
+    def dump(self, output: Path):
         """Dump protocols order to file."""
         (output / HISTORY).write_text(
             json.dumps(self._serialized_order, indent=4), encoding="utf-8"
