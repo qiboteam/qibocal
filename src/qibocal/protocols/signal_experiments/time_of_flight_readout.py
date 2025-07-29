@@ -25,7 +25,7 @@ class TimeOfFlightReadoutParameters(Parameters):
     """TimeOfFlightReadout runcard inputs."""
 
     detuning: float = 10e6
-    """Detuning with respect to readout frequency."""
+    """Detuning with respect to corresponding LO frequency [Hz]."""
     readout_amplitude: Optional[int] = None
     """Amplitude of the readout pulse."""
     window_size: Optional[int] = 10
