@@ -315,6 +315,7 @@ def _update(
     update.readout_frequency(results.frequency[target], platform, target)
     if len(results.bare_frequency) == 0:
         update.readout_amplitude(results.amplitude[target], platform, target)
+        update.dressed_resonator_frequency(results.frequency[target], platform, target)
 
     else:
         update.bare_resonator_frequency(
