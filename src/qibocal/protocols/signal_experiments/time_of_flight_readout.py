@@ -12,6 +12,8 @@ from qibocal.protocols.utils import table_dict, table_html
 from qibocal.result import magnitude
 from qibocal.update import replace
 
+from .utils import _get_lo_frequency
+
 __all__ = ["time_of_flight_readout"]
 
 MINIMUM_TOF = 24
@@ -22,6 +24,8 @@ MINIMUM_TOF = 24
 class TimeOfFlightReadoutParameters(Parameters):
     """TimeOfFlightReadout runcard inputs."""
 
+    detuning: float = 10e6
+    """Detuning with respect to readout frequency."""
     readout_amplitude: Optional[int] = None
     """Amplitude of the readout pulse."""
     window_size: Optional[int] = 10
@@ -67,13 +71,22 @@ def _acquisition(
             ro_pulse = replace(ro_pulse, amplitude=params.readout_amplitude)
         ro_pulses[qubit] = ro_pulse
         sequence.append((ro_channel, ro_pulse))
+
     results = platform.execute(
         [sequence],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.RAW,
         averaging_mode=AveragingMode.CYCLIC,
-        updates=[{ro_channel: {"delay": MINIMUM_TOF} for ro_channel in ro_channels}],
+        updates=[
+            {
+                platform.qubits[qubit].acquisition: {
+                    "delay": MINIMUM_TOF,
+                    "frequency": _get_lo_frequency(platform, qubit) + params.detuning,
+                }
+                for qubit in targets
+            }
+        ],
     )
 
     data = TimeOfFlightReadoutData(
