@@ -28,9 +28,9 @@ COLUMNWIDTH = 600
 LEGEND_FONT_SIZE = 20
 TITLE_SIZE = 25
 EXTREME_CHI = 1e4
-KB = constants.k
-HBAR = constants.hbar
 """Chi2 output when errors list contains zero elements"""
+KB = constants.k
+H = constants.h
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
 CONFIDENCE_INTERVAL_FIRST_MASK = 99
@@ -162,7 +162,7 @@ def effective_qubit_temperature(
 
     The formula used is the following one:
 
-    kB Teff = - hbar qubit_freq / ln(prob_1/prob_0)
+    kB Teff = - h qubit_freq / ln(prob_1/prob_0)
 
     Args:
         prob_0 (NDArray): population 0 samples
@@ -178,7 +178,7 @@ def effective_qubit_temperature(
     error_prob_1 = np.sqrt(prob_1 * (1 - prob_1) / nshots)
     # TODO: find way to handle this exception
     try:
-        temp = -HBAR * qubit_frequency / (np.log(prob_1 / prob_0) * KB)
+        temp = -H * qubit_frequency / (np.log(prob_1 / prob_0) * KB)
         dT_dp0 = temp / prob_0 / np.log(prob_1 / prob_0)
         dT_dp1 = -temp / prob_1 / np.log(prob_1 / prob_0)
         error = np.sqrt((dT_dp0 * error_prob_0) ** 2 + (dT_dp1 * error_prob_1) ** 2)
