@@ -114,7 +114,7 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
     for qubit in qubits:
         samples = magnitude(data.data[qubit])
         window_size = int(len(samples) / 10)
-        th = (np.mean(samples[:window_size]) + np.mean(samples[:-window_size])) / 2
+        th = (np.max(samples[:window_size]) + np.max(samples[:-window_size])) / 2
         delay = np.where(samples > th)[0][0]
         time_of_flight_readout = float(delay / sampling_rate + MINIMUM_TOF)
         time_of_flights[qubit] = time_of_flight_readout
