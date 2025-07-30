@@ -34,6 +34,7 @@ the following script should help automating the process.
 Once the required server is dispatched as queue job with the script, the instructions to
 connect will appear in the output (usually redirected by the queue system on a file).
 
+
 .. note::
 
    If the system you are targeting, the *remote computing node*, is actually part of
@@ -45,3 +46,30 @@ connect will appear in the output (usually redirected by the queue system on a f
        SUBNET="192.168.XXX"
 
    to specify a local network whose 3rd byte is ``XXX`` (e.g. ``0``, ``1``, ..., ``255``)
+
+
+Step-by-step guide
+~~~~~~~~~~~~~~~~~~
+
+In case of doubts, let's go step by step through the script usage.
+
+#. the **script** itself is supposed to be executed on the **remote computing node**
+   (cf. figure above), which is the one with direct access to the resources (thus, the
+   one which is usually already behind the queue)
+#. notice that the instructions printed in the output will direct you to establish a
+   **further SSH connection**, which will be the bridge between the local system and the
+   remote computing node, through the access node (cf. figure above), on it can be
+   established with a further `ssh` command execution on the **local system**
+#. eventually, the **client connection** should be established from the same **local
+   system**
+
+.. admonition:: Example: SLURM + laptop
+
+   In the case of SLURM queue system, which is accessible through an access node, where
+   the user `ssh` from its laptop:
+
+   - the script is the one you should `sbatch` - possibly adding to it all the rest of
+     the logic, as needed
+   - the further `ssh` command (printed in the instructions) should be run on the laptop
+   - the final URL to connect can be pasted in a browser on the same laptop (e.g.
+     Mozilla Firefox)
