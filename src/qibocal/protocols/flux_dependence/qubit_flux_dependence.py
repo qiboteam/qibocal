@@ -1,6 +1,5 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
-from functools import partial
 from typing import Optional
 
 import numpy as np
@@ -39,7 +38,6 @@ __all__ = [
     "QubitFluxResults",
     "QubitFluxType",
     "qubit_flux",
-    "qubit_flux_dc",
 ]
 
 
@@ -99,7 +97,7 @@ class QubitFluxData(Data):
         )
 
 
-def _acquisition(
+def _acquisition_base(
     params: QubitFluxParameters,
     platform: CalibrationPlatform,
     targets: list[QubitId],
@@ -209,6 +207,14 @@ def _acquisition(
             bias=offset_sweepers[i].values,
         )
     return data
+
+
+def _acquisition(
+    params: QubitFluxParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
+) -> QubitFluxData:
+    return _acquisition_base(params, platform, targets, False)
 
 
 def _fit(data: QubitFluxData) -> QubitFluxResults:
@@ -324,7 +330,7 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
     return figures, ""
 
 
-def _update(
+def _update_base(
     results: QubitFluxResults,
     platform: CalibrationPlatform,
     qubit: QubitId,
@@ -342,13 +348,13 @@ def _update(
     update.crosstalk_matrix(results.matrix_element[qubit], platform, qubit, qubit)
 
 
-qubit_flux = Routine(
-    partial(_acquisition, dc_source=False),
-    _fit,
-    _plot,
-    partial(_update, dc_source=False),
-)
+def _update(
+    results: QubitFluxResults,
+    platform: CalibrationPlatform,
+    qubit: QubitId,
+):
+    _update_base(results, platform, qubit, False)
+
+
+qubit_flux = Routine(_acquisition, _fit, _plot, _update)
 """QubitFlux Routine object."""
-qubit_flux_dc = Routine(
-    partial(_acquisition, dc_source=True), _fit, _plot, partial(_update, dc_source=True)
-)

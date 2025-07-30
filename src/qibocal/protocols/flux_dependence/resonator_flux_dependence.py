@@ -1,6 +1,5 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
-from functools import partial
 from typing import Optional
 
 import numpy as np
@@ -24,7 +23,7 @@ from ..utils import (
 )
 from . import utils
 
-__all__ = ["ResonatorFluxParameters", "resonator_flux", "resonator_flux_dc"]
+__all__ = ["ResonatorFluxParameters", "resonator_flux"]
 
 
 @dataclass
@@ -92,7 +91,7 @@ class ResonatorFluxData(Data):
         )
 
 
-def _acquisition(
+def _acquisition_base(
     params: ResonatorFluxParameters,
     platform: CalibrationPlatform,
     targets: list[QubitId],
@@ -189,6 +188,14 @@ def _acquisition(
             bias=offset_sweepers[i].values,
         )
     return data
+
+
+def _acquisition(
+    params: ResonatorFluxParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
+) -> ResonatorFluxData:
+    return _acquisition_base(params, platform, targets, False)
 
 
 def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
@@ -319,7 +326,7 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
     return figures, ""
 
 
-def _update(
+def _update_base(
     results: ResonatorFluxResults,
     platform: CalibrationPlatform,
     qubit: QubitId,
@@ -335,13 +342,13 @@ def _update(
     update.sweetspot(results.sweetspot[qubit], platform, qubit)
 
 
-resonator_flux = Routine(
-    partial(_acquisition, dc_source=False),
-    _fit,
-    _plot,
-    partial(_update, dc_source=False),
-)
+def _update(
+    results: ResonatorFluxResults,
+    platform: CalibrationPlatform,
+    qubit: QubitId,
+):
+    _update_base(results, platform, qubit, False)
+
+
+resonator_flux = Routine(_acquisition, _fit, _plot, _update)
 """ResonatorFlux Routine object."""
-resonator_flux_dc = Routine(
-    partial(_acquisition, dc_source=True), _fit, _plot, partial(_update, dc_source=True)
-)
