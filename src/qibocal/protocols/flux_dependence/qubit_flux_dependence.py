@@ -1,5 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
+from functools import partial
 from typing import Optional
 
 import numpy as np
@@ -38,6 +39,7 @@ __all__ = [
     "QubitFluxResults",
     "QubitFluxType",
     "qubit_flux",
+    "qubit_flux_dc",
 ]
 
 
@@ -101,6 +103,7 @@ def _acquisition(
     params: QubitFluxParameters,
     platform: CalibrationPlatform,
     targets: list[QubitId],
+    dc_source: bool,
 ) -> QubitFluxData:
     """Data acquisition for QubitFlux Experiment."""
 
@@ -144,7 +147,7 @@ def _acquisition(
         )
 
         flux_channel = (
-            platform.qubits[q].dc_flux if params.dc_source else platform.qubits[q].flux
+            platform.qubits[q].dc_flux if dc_source else platform.qubits[q].flux
         )
         offset0 = platform.config(flux_channel).offset
         offset_sweepers.append(
@@ -173,7 +176,7 @@ def _acquisition(
         {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
         for q in targets
     ]
-    if params.dc_source:
+    if dc_source:
         results = defaultdict(list)
         for ioffset in range(len(delta_offset_range)):
             updates.extend(
@@ -321,15 +324,31 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
     return figures, ""
 
 
-def _update(results: QubitFluxResults, platform: CalibrationPlatform, qubit: QubitId):
+def _update(
+    results: QubitFluxResults,
+    platform: CalibrationPlatform,
+    qubit: QubitId,
+    dc_source: bool,
+):
     update.drive_frequency(results.frequency[qubit], platform, qubit)
     update.sweetspot(results.sweetspot[qubit], platform, qubit)
-    update.flux_offset(results.sweetspot[qubit], platform, qubit)
+    if dc_source:
+        update.dc_flux_offset(results.sweetspot[qubit], platform, qubit)
+    else:
+        update.flux_offset(results.sweetspot[qubit], platform, qubit)
     platform.calibration.single_qubits[qubit].qubit.maximum_frequency = int(
         results.frequency[qubit]
     )
     update.crosstalk_matrix(results.matrix_element[qubit], platform, qubit, qubit)
 
 
-qubit_flux = Routine(_acquisition, _fit, _plot, _update)
+qubit_flux = Routine(
+    partial(_acquisition, dc_source=False),
+    _fit,
+    _plot,
+    partial(_update, dc_source=False),
+)
 """QubitFlux Routine object."""
+qubit_flux_dc = Routine(
+    partial(_acquisition, dc_source=True), _fit, _plot, partial(_update, dc_source=True)
+)

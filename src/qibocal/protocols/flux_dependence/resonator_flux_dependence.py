@@ -1,5 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
+from functools import partial
 from typing import Optional
 
 import numpy as np
@@ -23,7 +24,7 @@ from ..utils import (
 )
 from . import utils
 
-__all__ = ["ResonatorFluxParameters", "resonator_flux"]
+__all__ = ["ResonatorFluxParameters", "resonator_flux", "resonator_flux_dc"]
 
 
 @dataclass
@@ -38,8 +39,6 @@ class ResonatorFluxParameters(Parameters):
     """Width for bias sweep [V]."""
     bias_step: Optional[float] = None
     """Bias step for sweep [a.u.]."""
-    dc_source: bool = False
-    """Sweep bias offset on software when external DC source is used."""
 
 
 @dataclass
@@ -97,6 +96,7 @@ def _acquisition(
     params: ResonatorFluxParameters,
     platform: CalibrationPlatform,
     targets: list[QubitId],
+    dc_source: bool,
 ) -> ResonatorFluxData:
     """Data acquisition for ResonatorFlux experiment."""
 
@@ -122,7 +122,7 @@ def _acquisition(
         sequence += ro_sequence
 
         qubit = platform.qubits[q]
-        flux_channel = qubit.dc_flux if params.dc_source else qubit.flux
+        flux_channel = qubit.dc_flux if dc_source else qubit.flux
         offset0 = platform.config(flux_channel).offset
 
         freq_sweepers.append(
@@ -160,7 +160,7 @@ def _acquisition(
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    if params.dc_source:
+    if dc_source:
         results = defaultdict(list)
         for ioffset in range(len(delta_offset_range)):
             updates = [
@@ -320,14 +320,28 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
 
 
 def _update(
-    results: ResonatorFluxResults, platform: CalibrationPlatform, qubit: QubitId
+    results: ResonatorFluxResults,
+    platform: CalibrationPlatform,
+    qubit: QubitId,
+    dc_source: bool,
 ):
     update.dressed_resonator_frequency(results.frequency[qubit], platform, qubit)
     update.readout_frequency(results.frequency[qubit], platform, qubit)
     update.coupling(results.coupling[qubit], platform, qubit)
-    update.flux_offset(results.sweetspot[qubit], platform, qubit)
+    if dc_source:
+        update.dc_flux_offset(results.sweetspot[qubit], platform, qubit)
+    else:
+        update.flux_offset(results.sweetspot[qubit], platform, qubit)
     update.sweetspot(results.sweetspot[qubit], platform, qubit)
 
 
-resonator_flux = Routine(_acquisition, _fit, _plot, _update)
+resonator_flux = Routine(
+    partial(_acquisition, dc_source=False),
+    _fit,
+    _plot,
+    partial(_update, dc_source=False),
+)
 """ResonatorFlux Routine object."""
+resonator_flux_dc = Routine(
+    partial(_acquisition, dc_source=True), _fit, _plot, partial(_update, dc_source=True)
+)

@@ -8,7 +8,9 @@ from .resonator_flux_dependence import resonator_flux
 
 __all__ = [
     "qubit_flux",
+    "qubit_flux_dc",
     "resonator_flux",
+    "resonator_flux_dc",
     "qubit_crosstalk",
     "flux_gate",
     "flux_amplitude_frequency",
