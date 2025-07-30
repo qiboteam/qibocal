@@ -40,9 +40,6 @@ class TimeOfFlightReadoutResults(Results):
     """Raw fitting output."""
 
 
-TimeOfFlightReadoutType = np.dtype([("samples", np.float64)])
-
-
 @dataclass
 class TimeOfFlightReadoutData(Data):
     """TimeOfFlightReadout acquisition outputs."""
@@ -98,13 +95,11 @@ def _acquisition(
             for qubit in targets
         },
     )
-
     # retrieve and store the results for every qubit
     for qubit in targets:
         acq_handle = list(sequence.channel(platform.qubits[qubit].acquisition))[-1].id
-        samples = magnitude(results[acq_handle])
-        # store the results
-        data.register_qubit(TimeOfFlightReadoutType, (qubit), dict(samples=samples))
+        data.data[qubit] = results[acq_handle]
+
     return data
 
 
@@ -116,11 +111,9 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
 
     window_size = data.windows_size
     sampling_rate = data.sampling_rate
-
     for qubit in qubits:
-        qubit_data = data[qubit]
-        samples = qubit_data.samples
-        window_size = int(len(qubit_data) / 10)
+        samples = magnitude(data.data[qubit])
+        window_size = int(len(samples) / 10)
         th = (np.mean(samples[:window_size]) + np.mean(samples[:-window_size])) / 2
         delay = np.where(samples > th)[0][0]
         time_of_flight_readout = float(delay / sampling_rate + MINIMUM_TOF)
@@ -137,9 +130,8 @@ def _plot(
     figures = []
     fitting_report = ""
     fig = go.Figure()
-    qubit_data = data[target]
     sampling_rate = data.sampling_rate
-    y = qubit_data.samples
+    y = magnitude(data.data[target])
 
     fig.add_trace(
         go.Scatter(
