@@ -73,3 +73,20 @@ In case of doubts, let's go step by step through the script usage.
    - the further `ssh` command (printed in the instructions) should be run on the laptop
    - the final URL to connect can be pasted in a browser on the same laptop (e.g.
      Mozilla Firefox)
+
+Further notes
+~~~~~~~~~~~~~
+
+.. admonition:: Jupyter tokens
+
+   *This is not related to this guide, but just to Jupyter itself.*
+
+   When Jupyter opens the browser automatically, it uses a URL containing a *token*, for
+   ease of access.
+   If you just specify the address and port, the token will not be included. But you can
+   find it in the output of the command in the jupyter server (thus in the log of the
+   queue job, if you are using a queue, as in this guide), and manually insert it in the
+   page which is presented by Jupyter when the URL token is not used.
+
+   More details in Jupyter docs:
+   https://jupyter-server.readthedocs.io/en/stable/operators/security.html
