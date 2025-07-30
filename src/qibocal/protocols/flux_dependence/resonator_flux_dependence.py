@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -37,6 +38,8 @@ class ResonatorFluxParameters(Parameters):
     """Width for bias sweep [V]."""
     bias_step: Optional[float] = None
     """Bias step for sweep [a.u.]."""
+    dc_source: bool = False
+    """Sweep bias offset on software when external DC source is used."""
 
 
 @dataclass
@@ -119,7 +122,8 @@ def _acquisition(
         sequence += ro_sequence
 
         qubit = platform.qubits[q]
-        offset0 = platform.config(qubit.flux).offset
+        flux_channel = qubit.dc_flux if params.dc_source else qubit.flux
+        offset0 = platform.config(flux_channel).offset
 
         freq_sweepers.append(
             Sweeper(
@@ -132,7 +136,7 @@ def _acquisition(
             Sweeper(
                 parameter=Parameter.offset,
                 values=offset0 + delta_offset_range,
-                channels=[qubit.flux],
+                channels=[flux_channel],
             )
         )
 
@@ -150,14 +154,30 @@ def _acquisition(
         bare_resonator_frequency=bare_resonator_frequency,
         charging_energy=charging_energy,
     )
-    results = platform.execute(
-        [sequence],
-        [offset_sweepers, freq_sweepers],
+    execution_params = dict(
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
+    if params.dc_source:
+        results = defaultdict(list)
+        for ioffset in range(len(delta_offset_range)):
+            updates = [
+                {sweeper.channels[0]: {"offset": sweeper.values[ioffset]}}
+                for sweeper in offset_sweepers
+            ]
+            results_ = platform.execute(
+                [sequence], [freq_sweepers], updates=updates, **execution_params
+            )
+            for key, value in results_.items():
+                results[key].append(value)
+        results = {key: np.array(value) for key, value in results.items()}
+    else:
+        results = platform.execute(
+            [sequence], [offset_sweepers, freq_sweepers], **execution_params
+        )
+
     # retrieve the results for every qubit
     for i, qubit in enumerate(targets):
         result = results[ro_pulses[qubit].id]

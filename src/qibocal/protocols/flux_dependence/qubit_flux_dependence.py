@@ -50,8 +50,6 @@ class QubitFluxParameters(ResonatorFluxParameters):
     Otherwise the default amplitude defined on the platform runcard will be used"""
     drive_duration: int = 2000
     """Duration of the drive pulse."""
-    dc_source: bool = False
-    """Sweep bias offset on software when external DC source is used."""
 
 
 @dataclass
