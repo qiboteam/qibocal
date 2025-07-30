@@ -224,7 +224,8 @@ def generate_config(platform, qubits, targets=None):
     channel_configs = platform.parameters.configs
     for q in qubits:
         for channel in platform.qubits[q].channels:
-            controller.configure_channel(channel, channel_configs)
+            if channel in channel_configs:
+                controller.configure_channel(channel, channel_configs)
 
     config = controller.config
     config.elements = {k: asdict(v) for k, v in config.elements.items()}
