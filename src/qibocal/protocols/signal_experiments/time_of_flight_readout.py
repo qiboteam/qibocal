@@ -49,7 +49,8 @@ class TimeOfFlightReadoutData(Data):
 
     windows_size: int
     sampling_rate: int
-
+    intermediate_frequency: float
+    amplitude: dict[QubitId, float] = field(default_factory=dict)
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -61,16 +62,12 @@ def _acquisition(
 ) -> TimeOfFlightReadoutData:
     """Data acquisition for time of flight experiment."""
     sequence = PulseSequence()
-    ro_pulses = {}
     native = platform.natives.single_qubit
-    ro_channels = []
     for qubit in targets:
         ro_channel, ro_pulse = native[qubit].MZ()[0]
-        ro_channels.append(ro_channel)
         if params.readout_amplitude is not None:
             probe = replace(ro_pulse.probe, amplitude=params.readout_amplitude)
             ro_pulse = replace(ro_pulse, probe=probe)
-        ro_pulses[qubit] = ro_pulse
         sequence.append((ro_channel, ro_pulse))
 
     results = platform.execute(
@@ -91,12 +88,21 @@ def _acquisition(
     )
 
     data = TimeOfFlightReadoutData(
-        windows_size=params.window_size, sampling_rate=platform.sampling_rate
+        windows_size=params.window_size,
+        sampling_rate=platform.sampling_rate,
+        intermediate_frequency=params.detuning,
+        amplitude={
+            qubit: list(sequence.channel(platform.qubits[qubit].acquisition))[
+                -1
+            ].probe.amplitude
+            for qubit in targets
+        },
     )
 
     # retrieve and store the results for every qubit
     for qubit in targets:
-        samples = magnitude(results[ro_pulses[qubit].id])
+        acq_handle = list(sequence.channel(platform.qubits[qubit].acquisition))[-1].id
+        samples = magnitude(results[acq_handle])
         # store the results
         data.register_qubit(TimeOfFlightReadoutType, (qubit), dict(samples=samples))
     return data
@@ -159,7 +165,19 @@ def _plot(
             line_color="grey",
         )
         fitting_report = table_html(
-            table_dict(target, "Time of flights [ns]", fit.time_of_flights[target])
+            table_dict(
+                target,
+                [
+                    "Intermediate Frequency [Hz]",
+                    "Readout amplitude [a.u.]",
+                    "Time of flights [ns]",
+                ],
+                [
+                    data.intermediate_frequency,
+                    data.amplitude[target],
+                    fit.time_of_flights[target],
+                ],
+            )
         )
     fig.update_layout(
         showlegend=True,
