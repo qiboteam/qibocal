@@ -68,7 +68,8 @@ def _acquisition(
         ro_channel, ro_pulse = native[qubit].MZ()[0]
         ro_channels.append(ro_channel)
         if params.readout_amplitude is not None:
-            ro_pulse = replace(ro_pulse, amplitude=params.readout_amplitude)
+            probe = replace(ro_pulse.probe, amplitude=params.readout_amplitude)
+            ro_pulse = replace(ro_pulse, probe=probe)
         ro_pulses[qubit] = ro_pulse
         sequence.append((ro_channel, ro_pulse))
 
