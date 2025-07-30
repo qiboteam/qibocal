@@ -80,12 +80,12 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
         updates=[
             {
-                platform.qubits[qubit].acquisition: {
-                    "delay": MINIMUM_TOF,
+                platform.qubits[qubit].acquisition: {"delay": MINIMUM_TOF},
+                platform.qubits[qubit].probe: {
                     "frequency": _get_lo_frequency(platform, qubit) + params.detuning,
-                }
-                for qubit in targets
+                },
             }
+            for qubit in targets
         ],
     )
 
