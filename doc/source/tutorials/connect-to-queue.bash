@@ -9,7 +9,15 @@ print(s.getsockname()[1])
 s.close()
 EOF
 
-IP=$(hostname -I | cut -d ' ' -f 1)
+read -rd '' getip <<EOF
+import sys
+
+ips = sys.stdin.read().split(" ")
+print([ip for ip in ips if ip.startswith(sys.argv[1])][0])
+EOF
+
+SUBNET=""
+IP=$(hostname -I | python -c "$getip" "$SUBNET")
 PORT=$(python -c "$getport")
 
 echo "Forward your local port with:"
@@ -19,6 +27,6 @@ echo
 echo "Connect to:"
 echo "  https://localhost:9180"
 
-jupyter lab --ip "$IP" --port "$PORT"
+jupyter lab --ip "$IP" --port "$PORT" --no-browser
 # you can also test this with:
 # python -m http.server -b "$IP" "$PORT"
