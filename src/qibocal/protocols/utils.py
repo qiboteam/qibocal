@@ -188,6 +188,44 @@ def effective_qubit_temperature(
     return temp, error
 
 
+def compute_qnd(m1_state_1, m1_state_0, m2_state_1, m2_state_0, pi=False):
+    nshots = len(m1_state_1)
+
+    state1_count_1_m1 = np.count_nonzero(m1_state_1)
+    state0_count_1_m1 = nshots - state1_count_1_m1
+
+    state1_count_0_m1 = np.count_nonzero(m1_state_0)
+    state0_count_0_m1 = nshots - state1_count_0_m1
+
+    state1_count_1_m2 = np.count_nonzero(m2_state_1)
+    state0_count_1_m2 = nshots - state1_count_1_m2
+
+    state1_count_0_m2 = np.count_nonzero(m2_state_0)
+    state0_count_0_m2 = nshots - state1_count_0_m2
+
+    lambda_m = [
+        [state0_count_0_m1 / nshots, state0_count_1_m1 / nshots],
+        [state1_count_0_m1 / nshots, state1_count_1_m1 / nshots],
+    ]
+
+    lambda_m2 = [
+        [state0_count_0_m2 / nshots, state0_count_1_m2 / nshots],
+        [state1_count_0_m2 / nshots, state1_count_1_m2 / nshots],
+    ]
+
+    P_0o_1i = (
+        state0_count_1_m1 * state0_count_0_m2 + state1_count_1_m1 * state0_count_1_m2
+    ) / nshots**2
+
+    P_1o_0i = (
+        state0_count_0_m1 * state1_count_0_m2 + state1_count_0_m1 * state1_count_1_m2
+    ) / nshots**2
+
+    result = (1 - (P_0o_1i + P_1o_0i) / 2) if not pi else (P_0o_1i + P_1o_0i) / 2
+
+    return result, lambda_m, lambda_m2
+
+
 def norm(x_mags):
     return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
 
