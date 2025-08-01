@@ -14,6 +14,7 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.utils import table_dict, table_html
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 
 @dataclass
@@ -83,63 +84,77 @@ def _acquisition(
     """
 
     data = ResonatorAmplitudeData()
-    for qubit in targets:
+    if True:
         error = 1
-        old_amp = platform.qubits[qubit].native_gates.MZ.amplitude
-        new_amp = params.amplitude_start
-        while error > params.error_threshold and new_amp <= params.amplitude_stop:
-            platform.qubits[qubit].native_gates.MZ.amplitude = new_amp
-            sequence_0 = PulseSequence()
-            sequence_1 = PulseSequence()
+        
+        amplitude_range = np.arange(
+            params.amplitude_start, params.amplitude_stop, params.amplitude_step
+        )
+ 
+        sequence_0 = PulseSequence()
+        sequence_1 = PulseSequence()
 
-            qd_pulses = platform.create_RX_pulse(qubit, start=0)
-            ro_pulses = platform.create_qubit_readout_pulse(
-                qubit, start=qd_pulses.finish
-            )
-            sequence_0.add(ro_pulses)
-            sequence_1.add(qd_pulses)
-            sequence_1.add(ro_pulses)
+        qd_pulses, ro_pulses = {},{}
+        for qubit in targets:
+            qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+            ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=qd_pulses[qubit].finish)
 
-            state0_results = platform.execute_pulse_sequence(
-                sequence_0,
-                ExecutionParameters(
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.INTEGRATION,
-                ),
-            )
+            sequence_0.add(ro_pulses[qubit])
+            sequence_1.add(qd_pulses[qubit])
+            sequence_1.add(ro_pulses[qubit])
 
-            state1_results = platform.execute_pulse_sequence(
-                sequence_1,
-                ExecutionParameters(
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.INTEGRATION,
-                ),
-            )
-            result0 = state0_results[ro_pulses.serial]
-            result1 = state1_results[ro_pulses.serial]
+        sweeper = Sweeper(
+            Parameter.amplitude,
+            amplitude_range,
+            pulses=[ro_pulses[qubit] for qubit in targets],
+            type=SweeperType.ABSOLUTE,
+        )
 
-            i_values = np.concatenate((result0.voltage_i, result1.voltage_i))
-            q_values = np.concatenate((result0.voltage_q, result1.voltage_q))
-            iq_values = np.stack((i_values, q_values), axis=-1)
-            nshots = int(len(i_values) / 2)
-            states = [0] * nshots + [1] * nshots
-            model = QubitFit()
-            model.fit(iq_values, np.array(states))
-            error = model.probability_error
-            data.register_qubit(
-                ResonatorAmplitudeType,
-                (qubit),
-                dict(
-                    amp=np.array([new_amp]),
-                    error=np.array([error]),
-                    angle=np.array([model.angle]),
-                    threshold=np.array([model.threshold]),
-                ),
-            )
-            platform.qubits[qubit].native_gates.MZ.amplitude = old_amp
-            new_amp += params.amplitude_step
+        results_0 = platform.sweep(
+            sequence_0,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+            ),
+            sweeper,
+        )
+        
+        results_1 = platform.sweep(
+            sequence_1,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+            ),
+            sweeper,
+        )
+
+        for qubit in targets:
+            for k, amp in enumerate(delta_amplitude_range := amplitude_range):
+                i_values = []
+                q_values = []
+                states = []
+                for i, results in enumerate([results_0, results_1]):
+                    result = results[ro_pulses[qubit].serial]
+                    i_values.extend(result.voltage_i[:, k])
+                    q_values.extend(result.voltage_q[:, k])
+                    states.extend([i] * len(result.voltage_i[:, k]))
+
+                model = QubitFit()
+                model.fit(np.stack((i_values, q_values), axis=-1), np.array(states))
+                error = model.probability_error
+                data.register_qubit(
+                    ResonatorAmplitudeType,
+                    (qubit),
+                    dict(
+                        amp=np.array([amp]),
+                        error=np.array([error]),
+                        angle=np.array([model.angle]),
+                        threshold=np.array([model.threshold]),
+                    ),
+                )
+
     return data
 
 

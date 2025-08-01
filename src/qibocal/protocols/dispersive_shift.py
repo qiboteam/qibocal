@@ -20,6 +20,7 @@ from qibocal.protocols.utils import (
     table_html,
 )
 
+MHZ_TO_GHZ = 1e-3
 
 @dataclass
 class DispersiveShiftParameters(Parameters):
@@ -29,6 +30,8 @@ class DispersiveShiftParameters(Parameters):
     """Width [Hz] for frequency sweep relative to the readout frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
+    electrical_delay: float = 0.00
+    """Electrical delay in us (rad/MHz)."""
 
 
 @dataclass
@@ -68,6 +71,8 @@ class DispersiveShiftData(Data):
 
     resonator_type: str
     """Resonator type."""
+    electrical_delay: float = 0.00
+    """Electrical delay in us (rad/MHz)."""
     data: dict[tuple[QubitId, int], npt.NDArray[DispersiveShiftType]] = field(
         default_factory=dict
     )
@@ -112,7 +117,8 @@ def _acquisition(
     )
 
     # create a DataUnits objects to store the results
-    data = DispersiveShiftData(resonator_type=platform.resonator_type)
+    data = DispersiveShiftData(resonator_type=platform.resonator_type,
+                               electrical_delay=params.electrical_delay)
     sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
@@ -232,6 +238,7 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
     ):
         opacity = 1
         frequencies = q_data.freq * HZ_TO_GHZ
+        delta_frequency_range = frequencies - frequencies[len(frequencies) // 2]   
         fig.add_trace(
             go.Scatter(
                 x=frequencies,
@@ -244,10 +251,13 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
             row=1,
             col=1,
         )
+        phase = np.unwrap(q_data.phase) - (
+            delta_frequency_range * data.electrical_delay/ (2 * np.pi*MHZ_TO_GHZ)
+        )
         fig.add_trace(
             go.Scatter(
                 x=frequencies,
-                y=q_data.phase,
+                y=phase,
                 opacity=opacity,
                 showlegend=False,
                 legendgroup=f"{label}",

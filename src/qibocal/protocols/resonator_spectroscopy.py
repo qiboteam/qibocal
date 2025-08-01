@@ -25,6 +25,8 @@ from .utils import (
     spectroscopy_plot,
 )
 
+MHZ_TO_GHZ = 1e-3
+
 ResSpecType = np.dtype(
     [
         ("freq", np.float64),
@@ -234,12 +236,12 @@ def _acquisition(
     # retrieve the results for every qubit
     for qubit in targets:
         result = results[ro_pulses[qubit].serial]
-        # store the results
-        frequency =delta_frequency_range + ro_pulses[qubit].frequency
-        
+        # store the results        
         if params.phase_delay is not None:
             phase = result.average.phase
-            phase = np.unwrap(phase)-(frequency-frequency[0])*1e-6*params.phase_delay
+            phase = np.unwrap(phase) - (
+            delta_frequency_range * params.phase_delay/ (2 * np.pi*MHZ_TO_GHZ)
+        )
         else:
             phase = result.average.phase
 
