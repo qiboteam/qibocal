@@ -23,6 +23,7 @@ from .utils import (
     s21_fit,
     s21_spectroscopy_plot,
     spectroscopy_plot,
+    HZ_TO_GHZ
 )
 
 MHZ_TO_GHZ = 1e-3
@@ -239,8 +240,8 @@ def _acquisition(
         # store the results        
         if params.phase_delay is not None:
             phase = result.average.phase
-            phase = np.unwrap(phase) - (
-            delta_frequency_range * params.phase_delay/ (2 * np.pi*MHZ_TO_GHZ)
+            phase = np.unwrap(phase) + (
+            delta_frequency_range*HZ_TO_GHZ * params.phase_delay/ (2 * np.pi*MHZ_TO_GHZ)
         )
         else:
             phase = result.average.phase

@@ -137,7 +137,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         ]  # Argmin = Returns the indices of the minimum values along an axis.
         guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
         guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
-    guess_amp_slope = (voltages[frequencies.argmax()]-voltages[frequencies.argmin()])/(frequencies.max()-frequencies.min())
+    guess_amp_slope = (voltages[-1]-voltages[0])/(frequencies[-1]-frequencies[0])
 
     initial_parameters = [
         guess_amp,
@@ -287,6 +287,8 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
             name="Frequency",
             showlegend=True,
             legendgroup="Frequency",
+            mode="markers",
+            marker=dict(size=4,symbol="x"),
         ),
         row=1,
         col=1,
@@ -300,6 +302,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
             name="Phase",
             showlegend=True,
             legendgroup="Phase",
+             mode="markers", marker=dict(size=4,symbol="x"),
         ),
         row=1,
         col=2,
