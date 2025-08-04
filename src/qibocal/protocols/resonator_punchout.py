@@ -15,7 +15,7 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 
 from .utils import HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
-
+MHZ_TO_GHZ = 1e-3
 
 @dataclass
 class ResonatorPunchoutParameters(Parameters):
@@ -149,10 +149,13 @@ def _acquisition(
     for qubit, ro_pulse in ro_pulses.items():
         # average signal, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulse.serial]
-        frequency =delta_frequency_range + ro_pulses[qubit].frequency
-        phase = result.average.phase
+
+        phase = result.phase
+        # Phase is a 2D array, we need to unwrap in the frequency dimension
         if params.phase_delay is not None:
-            phase = np.unwrap(phase)-(frequency-frequency[0])*1e-6*params.phase_delay
+            phase = np.unwrap(phase, axis = 1) + (
+            delta_frequency_range*HZ_TO_GHZ * params.phase_delay/ (2 * np.pi*MHZ_TO_GHZ)
+            )
 
         data.register_qubit(
             qubit,
