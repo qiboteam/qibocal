@@ -15,7 +15,7 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Results, Routine
 
 from .utils import HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
-
+MHZ_TO_GHZ = 1e-3
 
 @dataclass
 class ResonatorPunchoutAttenuationParameters(Parameters):
@@ -134,14 +134,25 @@ def _acquisition(
     # retrieve the results for every qubit
     for qubit in targets:
         result = results[ro_pulses[qubit].serial]
-        frequency =delta_frequency_range + ro_pulses[qubit].frequency
-        phase = result.average.phase
-        if params.phase_delay is not None:
-            phase = np.unwrap(phase)
+        frequency = delta_frequency_range + ro_pulses[qubit].frequency
         
+        # RESHAPE phase to match the frequency and attenuation sweeps
+        phase = result.phase.reshape(
+            len(attenuation_range), len(delta_frequency_range)
+        )
+        magnitude = result.magnitude.reshape(
+            len(attenuation_range), len(delta_frequency_range)
+        )
+
+        # Phase is a 2D array, we need to unwrap in the frequency dimension
+        if params.phase_delay is not None:
+            phase = np.unwrap(phase, axis = 1) + (
+            delta_frequency_range*HZ_TO_GHZ * params.phase_delay/ (2 * np.pi*MHZ_TO_GHZ)
+            )
+
         data.register_qubit(
             qubit,
-            signal=result.magnitude,
+            signal=magnitude,
             phase=phase,
             freq=frequency,
             att=attenuation_range,
