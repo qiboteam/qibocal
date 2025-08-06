@@ -368,7 +368,7 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
         errors_phase = qubit_data.error_phase
         fig_raw.add_trace(
             go.Scatter(
-                x=np.concatenate((frequencies, frequencies[::-1])),
+                x=np.concatenate((frequencies, frequencies[::-1])) * HZ_TO_GHZ,
                 y=np.concatenate(
                     (signal + errors_signal, (signal - errors_signal)[::-1])
                 ),
@@ -379,11 +379,11 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
                 name="Signal Errors",
             ),
             row=1,
-            col=1,
+            col=2,
         )
         fig_raw.add_trace(
             go.Scatter(
-                x=np.concatenate((frequencies, frequencies[::-1])),
+                x=np.concatenate((frequencies, frequencies[::-1])) * HZ_TO_GHZ,
                 y=np.concatenate((phase + errors_phase, (phase - errors_phase)[::-1])),
                 fill="toself",
                 fillcolor=COLORBAND,
@@ -391,7 +391,7 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
                 showlegend=True,
                 name="Phase Errors",
             ),
-            row=1,
+            row=2,
             col=2,
         )
 
@@ -554,42 +554,6 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
             row=2,
             col=2,
         )
-
-        show_error_bars = not np.isnan(qubit_data.error_signal).any()
-
-        if show_error_bars:
-            errors_signal = qubit_data.error_signal
-            errors_phase = qubit_data.error_phase
-            fig_calibrated.add_trace(
-                go.Scatter(
-                    x=np.concatenate((frequencies, frequencies[::-1])),
-                    y=np.concatenate(
-                        (signal + errors_signal, (signal - errors_signal)[::-1])
-                    ),
-                    fill="toself",
-                    fillcolor=COLORBAND,
-                    line=dict(color=COLORBAND_LINE),
-                    showlegend=True,
-                    name="Signal Errors",
-                ),
-                row=1,
-                col=1,
-            )
-            fig_calibrated.add_trace(
-                go.Scatter(
-                    x=np.concatenate((frequencies, frequencies[::-1])),
-                    y=np.concatenate(
-                        (phase + errors_phase, (phase - errors_phase)[::-1])
-                    ),
-                    fill="toself",
-                    fillcolor=COLORBAND,
-                    line=dict(color=COLORBAND_LINE),
-                    showlegend=True,
-                    name="Phase Errors",
-                ),
-                row=1,
-                col=2,
-            )
 
         freqrange = np.linspace(
             min(frequencies),

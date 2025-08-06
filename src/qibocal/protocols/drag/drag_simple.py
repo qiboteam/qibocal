@@ -77,28 +77,42 @@ def _acquisition(
             for q in targets:
                 natives = platform.natives.single_qubit[q]
                 ro_channel, ro_pulse = natives.MZ()[0]
+                qd_channel = platform.qubits[q].drive
                 if setup == "YpX9":
-                    qd_channel, ry = natives.R(phi=np.pi / 2)[0]
-                    _, rx90 = natives.R(theta=np.pi / 2)[0]
-                    sequence.append((qd_channel, add_drag(ry, beta=beta)))
-                    sequence.append((qd_channel, add_drag(rx90, beta=beta)))
+                    ry_sequence = natives.R(phi=np.pi / 2)
+                    rx90_sequence = natives.R(theta=np.pi / 2)
+                    for channel, pulse in ry_sequence:
+                        sequence.append((qd_channel, add_drag(pulse, beta=beta)))
+                    for channel, pulse in rx90_sequence:
+                        sequence.append((qd_channel, add_drag(pulse, beta=beta)))
                     sequence.append(
-                        (ro_channel, Delay(duration=rx90.duration + ry.duration))
+                        (
+                            ro_channel,
+                            Delay(
+                                duration=rx90_sequence.duration + ry_sequence.duration
+                            ),
+                        )
                     )
                 else:
-                    qd_channel, rx = natives.RX()[0]
-                    _, ry90 = natives.R(theta=np.pi / 2, phi=np.pi / 2)[0]
+                    _, rx = natives.RX()[0]
+                    ry90_sequence = natives.R(theta=np.pi / 2, phi=np.pi / 2)
                     sequence.append((qd_channel, add_drag(rx, beta=beta)))
-                    sequence.append((qd_channel, add_drag(ry90, beta=beta)))
+                    for channel, pulse in ry90_sequence:
+                        sequence.append((qd_channel, add_drag(pulse, beta=beta)))
                     sequence.append(
-                        (ro_channel, Delay(duration=rx.duration + ry90.duration))
+                        (
+                            ro_channel,
+                            Delay(duration=rx.duration + ry90_sequence.duration),
+                        )
                     )
                 sequence.append((ro_channel, ro_pulse))
 
             sequences.append(sequence)
             all_ro_pulses.append(
                 {
-                    qubit: list(sequence.channel(platform.qubits[q].acquisition))[-1]
+                    qubit: list(sequence.channel(platform.qubits[qubit].acquisition))[
+                        -1
+                    ]
                     for qubit in targets
                 }
             )

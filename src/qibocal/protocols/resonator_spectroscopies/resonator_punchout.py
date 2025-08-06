@@ -26,9 +26,9 @@ class ResonatorPunchoutParameters(Parameters):
     freq_step: int
     """Frequency step for sweep [Hz]."""
     min_amp: float
-    """Minimum amplitude multiplicative factor."""
+    """Minimum amplitude."""
     max_amp: float
-    """Maximum amplitude multiplicative factor."""
+    """Maximum amplitude."""
     step_amp: float
     """Step amplitude multiplicative factor."""
     phase_delay: Optional[float] = 0.0

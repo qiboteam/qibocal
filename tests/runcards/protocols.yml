@@ -29,7 +29,6 @@ actions:
       nshots: 10
       hardware_average: false
 
-
   - id: resonator punchout
     operation: resonator_punchout
     parameters:
@@ -40,6 +39,15 @@ actions:
       step_amp: 0.005
       nshots: 10
 
+  - id: resonator optimization
+    operation: resonator_optimization
+    parameters:
+      freq_width: 200.e+6
+      freq_step: 25.e+6
+      amplitude_min: 0.1
+      amplitude_step: 0.1
+      amplitude_max: 0.5
+      nshots: 10
 
   - id: resonator spectroscopy low power
     operation: resonator_spectroscopy
@@ -844,6 +852,12 @@ actions:
     parameters:
       nshots: 10
 
+  - id : resonator_frequency
+    operation: resonator_frequency
+    parameters:
+      freq_width: 200.e+6
+      freq_step: 25.e+6
+      nshots: 10
   - id: chsh_native_gates
     operation: chsh
     targets: [[0, 1]]
@@ -863,6 +877,7 @@ actions:
   - id: resonator_amplitude
     operation: resonator_amplitude
     parameters:
+      amplitude_start: 0.1
       amplitude_step: 0.1
       amplitude_stop: 0.5
 
@@ -981,6 +996,51 @@ actions:
       amplitude: 0.15
       nshots: 45
       relaxation_time: 100_000
+
+  - id: snz_optimize
+    operation: snz_optimize
+    targets: [[0,1]]
+    parameters:
+      amplitude_min: 0
+      amplitude_max: 0.1
+      amplitude_step: 0.01
+      amp_ratio_min: 0
+      amp_ratio_max: 1
+      amp_ratio_step: 0.1
+      theta_start: 0
+      theta_end: 1
+      theta_step: 0.1
+      t_idling: 1
+
+  - id: snz_optimize_t_idle
+    operation: snz_optimize_t_idle
+    targets: [[0,1]]
+    parameters:
+      amplitude_min: 0
+      amplitude_max: 0.1
+      amplitude_step: 0.01
+      t_idle_min: 0
+      t_idle_max: 10
+      t_idle_step: 1
+      theta_start: 0
+      theta_end: 1
+      theta_step: 0.1
+      b_amplitude: 0.2
+
+  - id: snz_optimize_t_idle_vs_t_tot
+    operation: snz_optimize_t_idle_vs_t_tot
+    targets: [[0,1]]
+    parameters:
+      duration_min: 0
+      duration_max: 10
+      duration_step: 1
+      t_idle_min: 1
+      t_idle_max: 5
+      t_idle_step: 1
+      theta_start: 0
+      theta_end: 1
+      theta_step: 0.1
+      b_amplitude: 0.2
 
   - id: twpa_calibration
     operation: twpa_calibration

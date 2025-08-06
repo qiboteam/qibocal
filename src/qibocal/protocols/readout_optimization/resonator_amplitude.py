@@ -84,7 +84,7 @@ def _acquisition(
 
     sequence_0 = PulseSequence()
     sequence_1 = PulseSequence()
-    
+
     ro_pulses = {}
     for q in targets:
         natives = platform.natives.single_qubit[q]
@@ -94,7 +94,7 @@ def _acquisition(
 
         sequence_1.append((qd_channel, qd_pulse))
         sequence_1.append((ro_channel, Delay(duration=qd_pulse.duration)))
-        
+
         sequence_0.append((ro_channel, ro_pulse))
         sequence_1.append((ro_channel, ro_pulse))
         ro_pulses[q] = ro_pulse
@@ -116,26 +116,27 @@ def _acquisition(
 
     results = {}
     results[0] = platform.execute(
-            [sequence_0],
-            [sweepers],
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-        )
+        [sequence_0],
+        [sweepers],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+    )
 
     results[1] = platform.execute(
-            [sequence_1],
-            [sweepers],
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-        )
+        [sequence_1],
+        [sweepers],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+    )
     data = ResonatorAmplitudeData()
 
     for q in targets:
-         for k, amplitude in enumerate(amplitudes):
-            result0 = results[0][ro_pulses[q].id][:,k]
-            result1 = results[1][ro_pulses[q].id][:,k]
+        for k, amplitude in enumerate(amplitudes):
+            result0 = results[0][ro_pulses[q].id][:, k]
+            result1 = results[1][ro_pulses[q].id][:, k]
+
             iq_values = np.concatenate((result0, result1))
             nshots = params.nshots
             states = [0] * nshots + [1] * nshots
@@ -152,7 +153,7 @@ def _acquisition(
                     threshold=np.array([model.threshold]),
                 ),
             )
-            
+
     return data
 
 
