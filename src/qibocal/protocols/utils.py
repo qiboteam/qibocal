@@ -785,22 +785,27 @@ def extract_feature(
 
     """
 
-    masks = []
-    for i in np.unique(y):
-        signal_fixed_y = z[y == i]
-        min, max = np.percentile(
-            signal_fixed_y,
-            [100 - ci_first_mask, ci_first_mask],
-        )
-        masks.append(signal_fixed_y < min if feat == "min" else signal_fixed_y > max)
+    # background remove over y axis
+    z_ = z.reshape(len(np.unique(y)), len(np.unique(x)))
+    z_ = z_ / np.mean(z, axis=0)
+    normalized_z = z_.reshape(z.shape)
 
-    first_mask = np.vstack(masks).ravel()
-    min, max = np.percentile(
-        z[first_mask],
-        [100 - ci_second_mask, ci_second_mask],
-    )
-    second_mask = z[first_mask] < min if feat == "min" else z[first_mask] > max
-    return x[first_mask][second_mask], y[first_mask][second_mask]
+    # filter data using find_peaks
+    filtered_bias = []
+    filtered_freq = []
+    unique_bias = np.unique(y)
+    unique_freq = np.unique(x)
+    for i in unique_bias:
+        signal_fixed_y = normalized_z[y == i]
+        peak, _ = find_peaks(
+            -signal_fixed_y if feat == "min" else signal_fixed_y, prominence=0.3
+        )
+        if len(peak) > 0:
+            for j in peak:
+                filtered_bias.append(i)
+                filtered_freq.append(unique_freq[j])
+
+    return np.array(filtered_freq), np.array(filtered_bias)
 
 
 def guess_period(x, y):
