@@ -69,6 +69,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
             row=1,
             col=1,
         )
+
         fig.add_trace(
             go.Scatter(
                 x=[
@@ -288,24 +289,35 @@ def transmon_readout_frequency(
      Returns:
          (float): resonator frequency as a function of bias.
     """
-    return resonator_freq + g**2 * G_f_d(
-        xi,
-        xj,
-        offset=offset,
-        d=d,
-        normalization=normalization,
-        crosstalk_element=crosstalk_element,
-    ) / (
-        resonator_freq
-        - transmon_frequency(
-            xi=xi,
-            xj=xj,
-            w_max=w_max,
-            d=d,
-            normalization=normalization,
-            offset=offset,
-            crosstalk_element=crosstalk_element,
-            charging_energy=charging_energy,
+    return resonator_freq + g**2 * (
+        1
+        / (
+            resonator_freq
+            - transmon_frequency(
+                xi=xi,
+                xj=xj,
+                w_max=w_max,
+                d=d,
+                normalization=normalization,
+                offset=offset,
+                crosstalk_element=crosstalk_element,
+                charging_energy=charging_energy,
+            )
+        )
+        - 1
+        / (
+            resonator_freq
+            - transmon_frequency(
+                xi=xi,
+                xj=xj,
+                w_max=w_max,
+                d=d,
+                normalization=normalization,
+                offset=offset,
+                crosstalk_element=crosstalk_element,
+                charging_energy=charging_energy,
+            )
+            + charging_energy
         )
     )
 
