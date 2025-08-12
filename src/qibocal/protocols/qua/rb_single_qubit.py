@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import matplotlib.pyplot as plt
+import plotly.express as px
 import mpld3
 import numpy as np
 import numpy.typing as npt
@@ -614,20 +615,31 @@ def _plot(data: QuaSingleQubitRbData, target: QubitId, fit: QuaSingleQubitRbResu
             ]
         )
 
-    fig = plt.figure(figsize=(16, 6))
-    plt.errorbar(
-        depths, ydata, ysigma, marker="o", linestyle="-", markersize=4, label="data"
-    )
+    # Plot using plotly
+    fig = px.line(x=depths, y=ydata, error_y=ysigma, markers=True, labels={"x": "Depth", "y": "Survival probability"})
+    fig.add_scatter(x=depths, y=ydata, mode="markers", name="data")
+    
     if pars is not None:
         max_circuit_depth = depths[-1]
         x = np.linspace(0, max_circuit_depth + 0.1, 1000)
-        plt.plot(x, power_law(x, *pars), linestyle="--", label="fit")
-    plt.xlabel("Depth")
-    plt.ylabel("Survival probability")
-    plt.legend()
+        fig.add_scatter(x=x, y=power_law(x, *pars), mode="lines", name="fit")
 
-    figures = [mpld3.fig_to_html(fig)]
-    return figures, fitting_report
+    fig.show()
+
+    # fig = plt.figure(figsize=(16, 6))
+    # plt.errorbar(
+    #     depths, ydata, ysigma, marker="o", linestyle="-", markersize=4, label="data"
+    # )
+    # if pars is not None:
+    #     max_circuit_depth = depths[-1]
+    #     x = np.linspace(0, max_circuit_depth + 0.1, 1000)
+    #     plt.plot(x, power_law(x, *pars), linestyle="--", label="fit")
+    # plt.xlabel("Depth")
+    # plt.ylabel("Survival probability")
+    # plt.legend()
+
+    #figures = [mpld3.fig_to_html(fig)]
+    return [fig], fitting_report
 
 
 def _update(results: QuaSingleQubitRbResults, platform: Platform, target: QubitId):
