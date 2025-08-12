@@ -230,7 +230,12 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
         # define fit function
         def fit_function(
-            x: float, g: float, d: float, offset: float, normalization: float
+            x: float,
+            g: float,
+            d: float,
+            offset: float,
+            normalization: float,
+            freq: float,
         ):
             """Fit function for resonator flux dependence."""
             return utils.transmon_readout_frequency(
@@ -241,8 +246,8 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 normalization=normalization,
                 offset=offset,
                 crosstalk_element=1,
-                charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
-                resonator_freq=data.bare_resonator_frequency[qubit] * HZ_TO_GHZ,
+                charging_energy=0.2,
+                resonator_freq=freq,
                 g=g,
             )
 
@@ -252,8 +257,20 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 biases,
                 frequencies * HZ_TO_GHZ,
                 bounds=(
-                    [0, 0, -1, 0.5],
-                    [0.5, 1, 1, +1],
+                    [
+                        0,
+                        0,
+                        -2,
+                        0,
+                        data.bare_resonator_frequency[qubit] * HZ_TO_GHZ - 0.5,
+                    ],
+                    [
+                        0.5,
+                        1,
+                        2,
+                        np.inf,
+                        data.bare_resonator_frequency[qubit] * HZ_TO_GHZ + 0.5,
+                    ],
                 ),
                 maxfev=100000,
             )
@@ -264,8 +281,8 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 "normalization": popt[3],
                 "offset": popt[2],
                 "crosstalk_element": 1,
-                "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
-                "resonator_freq": data.bare_resonator_frequency[qubit] * HZ_TO_GHZ,
+                "charging_energy": 0.2,
+                "resonator_freq": popt[4],
                 "g": popt[0],
             }
             matrix_element[qubit] = popt[3]
