@@ -192,19 +192,14 @@ def _plot(
         fitting_report = table_html(
             table_dict(
                 str(qubit),
-                ["niter", "nshots", "uncertainties", "fidelity", "pulse_fidelity"],
+                ["niter", "nshots", "uncertainties", "Average gate fidelity"],
                 [
                     data.niter,
                     data.nshots,
                     data.uncertainties,
                     number_to_str(
                         fit.fidelity[qubit],
-                        np.array(fit.fit_uncertainties[qubit][1]) / 2,
-                    ),
-                    number_to_str(
-                        fit.pulse_fidelity[qubit],
-                        np.array(fit.fit_uncertainties[qubit][1])
-                        / (2 * data.npulses_per_clifford),
+                        fit.fit_uncertainties[qubit][1],
                     ),
                 ],
             )
