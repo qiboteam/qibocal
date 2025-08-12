@@ -209,6 +209,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             offset: float,
             normalization: float,
             freq: float,
+            charging_energy: float,
         ):
             """Fit function for resonator flux dependence."""
             return utils.transmon_readout_frequency(
@@ -219,7 +220,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 normalization=normalization,
                 offset=offset,
                 crosstalk_element=1,
-                charging_energy=0.2,
+                charging_energy=charging_energy,
                 resonator_freq=freq,
                 g=g,
             )
@@ -233,16 +234,18 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     [
                         0,
                         0,
-                        -2,
+                        -1,
                         0,
                         data.bare_resonator_frequency[qubit] * HZ_TO_GHZ - 0.5,
+                        0,
                     ],
                     [
                         0.5,
                         1,
-                        2,
+                        1,
                         np.inf,
                         data.bare_resonator_frequency[qubit] * HZ_TO_GHZ + 0.5,
+                        data.charging_energy[qubit] * HZ_TO_GHZ + 0.3,
                     ],
                 ),
                 maxfev=100000,
@@ -254,7 +257,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 "normalization": popt[3],
                 "offset": popt[2],
                 "crosstalk_element": 1,
-                "charging_energy": 0.2,
+                "charging_energy": popt[5],
                 "resonator_freq": popt[4],
                 "g": popt[0],
             }

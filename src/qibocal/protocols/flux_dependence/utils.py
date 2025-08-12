@@ -27,32 +27,20 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
     qubit_data = data[qubit]
     frequencies = qubit_data.freq * HZ_TO_GHZ
 
-    subplot_titles = (
-        "Signal [a.u.]",
-        "Phase [rad]",
-    )
-    fig = make_subplots(
-        rows=1,
-        cols=2,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=subplot_titles,
-    )
+    fig = go.Figure()
 
     fig.add_trace(
         go.Heatmap(
             x=qubit_data.freq * HZ_TO_GHZ,
             y=qubit_data.bias,
             z=qubit_data.signal,
-            colorbar_x=0.46,
         ),
-        row=1,
-        col=1,
     )
 
     # TODO: This fit is for frequency, can it be reused here, do we even want the fit ?
     if (
         fit is not None
+        and fit_function is not None
         and not data.__class__.__name__ == "CouplerSpectroscopyData"
         and qubit in fit.fitted_parameters
     ):
@@ -66,8 +54,6 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
                 name="Fit",
                 marker=dict(color="green"),
             ),
-            row=1,
-            col=1,
         )
 
         fig.add_trace(
@@ -87,33 +73,12 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
                 name="Sweetspot",
                 showlegend=True,
             ),
-            row=1,
-            col=1,
         )
 
     fig.update_xaxes(
         title_text="Frequency [GHz]",
-        row=1,
-        col=1,
     )
-
-    fig.update_yaxes(title_text="Bias [V]", row=1, col=1)
-
-    fig.add_trace(
-        go.Heatmap(
-            x=qubit_data.freq * HZ_TO_GHZ,
-            y=qubit_data.bias,
-            z=qubit_data.phase,
-            colorbar_x=1.01,
-        ),
-        row=1,
-        col=2,
-    )
-    fig.update_xaxes(
-        title_text="Frequency [GHz]",
-        row=1,
-        col=2,
-    )
+    fig.update_yaxes(title_text="Bias [V]")
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
 
