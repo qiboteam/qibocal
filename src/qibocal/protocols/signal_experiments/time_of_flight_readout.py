@@ -112,18 +112,26 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
     window_size = data.windows_size
     sampling_rate = data.sampling_rate
     for qubit in qubits:
-        samples = magnitude(data.data[qubit])
-        window_size = int(len(samples) / 10)
-        th = (np.max(samples[:window_size]) + np.max(samples[:-window_size])) / 2
-        # try-expect in order to handle sporadic failing with mock
-        try:
-            delay = np.where(samples > th)[0][0]
-        except IndexError:
-            delay = 0
+        delays = []
+        for i in range(2):
+            samples = data.data[qubit][:, i]
+            window_size = int(len(samples) / 10)
 
-        time_of_flight_readout = float(delay / sampling_rate + MINIMUM_TOF)
+            for feat in ["min", "max"]:
+                th = (
+                    getattr(np, feat)(samples[:window_size])
+                    + getattr(np, feat)(samples[:-window_size])
+                ) / 2
+                # try-expect in order to handle sporadic failing with mock
+                try:
+                    delay = np.where(samples < th if feat == "min" else samples > th)[
+                        0
+                    ][0]
+                except IndexError:
+                    delay = 0
+                delays.append(delay)
+        time_of_flight_readout = float(min(delays) / sampling_rate + MINIMUM_TOF)
         time_of_flights[qubit] = time_of_flight_readout
-
     return TimeOfFlightReadoutResults(time_of_flights)
 
 
@@ -141,9 +149,19 @@ def _plot(
     fig.add_trace(
         go.Scatter(
             x=np.arange(0, len(y)) * sampling_rate + MINIMUM_TOF,
-            y=y,
+            y=data.data[target][:, 0],
             textposition="bottom center",
-            name="Expectation value",
+            name="I",
+            showlegend=True,
+            legendgroup="group1",
+        ),
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=np.arange(0, len(y)) * sampling_rate + MINIMUM_TOF,
+            y=data.data[target][:, 1],
+            textposition="bottom center",
+            name="Q",
             showlegend=True,
             legendgroup="group1",
         ),
