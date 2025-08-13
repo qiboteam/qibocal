@@ -79,7 +79,6 @@ class ResonatorFluxData(Data):
     """Qubit bare resonator frequency power provided by the user."""
     charging_energy: dict[QubitId, float] = field(default_factory=dict)
     """Qubit charging energy in Hz."""
-
     data: dict[QubitId, npt.NDArray[ResFluxType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -87,6 +86,20 @@ class ResonatorFluxData(Data):
         """Store output for single qubit."""
         self.data[qubit] = utils.create_data_array(
             freq, bias, signal, phase, dtype=ResFluxType
+        )
+
+    @property
+    def feature(self) -> str:
+        """Get feature (either min or max) depending on resonator type."""
+        return "min" if self.resonator_type == "2D" else "max"
+
+    def filtered_data(self, qubit: QubitId) -> np.ndarray:
+        """Apply mask to specific qubit data."""
+        return extract_feature(
+            self.data[qubit].freq,
+            self.data[qubit].bias,
+            self.data[qubit].signal,
+            self.feature,
         )
 
 
@@ -191,15 +204,8 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     matrix_element = {}
 
     for qubit in data.qubits:
-        qubit_data = data[qubit]
-        biases = qubit_data.bias
-        frequencies = qubit_data.freq
-        signal = qubit_data.signal
-
         # extract signal from 2D plot based on SNR mask
-        frequencies, biases = extract_feature(
-            frequencies, biases, signal, "min" if data.resonator_type == "2D" else "max"
-        )
+        frequencies, biases = data.filtered_data(qubit)
 
         # define fit function
         def fit_function(
