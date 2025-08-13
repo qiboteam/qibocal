@@ -1102,7 +1102,6 @@ actions:
       nshots: 2000
       pulse_amplitude: 0.1
 
-
   - id: CR tomography interpolated
     operation: hamiltonian_tomography_cr_length
     targets: [[0, 1]]
@@ -1113,6 +1112,7 @@ actions:
       nshots: 2000
       pulse_amplitude: 0.1
       interpolated_sweeper: true
+
   - id: twpa_calibration
     operation: twpa_calibration
     parameters:
