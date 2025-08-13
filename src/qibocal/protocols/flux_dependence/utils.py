@@ -46,7 +46,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
             y=filtered_bias,
             name="Estimated points",
             mode="markers",
-            marker=dict(color="orange"),
+            marker=dict(color="rgb(248, 248, 248)"),
         )
     )
 
@@ -65,7 +65,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
                 y=bias,
                 showlegend=True,
                 name="Fit",
-                marker=dict(color="orange"),
+                marker=dict(color="rgb(248, 248, 248)"),
             ),
         )
 
