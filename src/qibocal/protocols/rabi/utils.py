@@ -361,12 +361,24 @@ def fit_amplitude_function(
     )
     if signal is False:
         perr = np.sqrt(np.diag(perr))
-    if None not in y_limits and None not in x_limits:
-        popt = [
-            y_limits[0] + (y_limits[1] - y_limits[0]) * popt[0],
-            (y_limits[1] - y_limits[0]) * popt[1],
-            popt[2] * (x_limits[1] - x_limits[0]),
-            popt[3] - 2 * np.pi * x_limits[0] / (x_limits[1] - x_limits[0]) / popt[2],
-        ]
+    if None not in x_limits:
+        if None not in y_limits:
+            popt = [
+                y_limits[0] + (y_limits[1] - y_limits[0]) * popt[0],
+                (y_limits[1] - y_limits[0]) * popt[1],
+                popt[2] * (x_limits[1] - x_limits[0]),
+                popt[3]
+                - 2 * np.pi * x_limits[0] / (x_limits[1] - x_limits[0]) / popt[2],
+            ]
+        else:
+            popt = [
+                popt[0],
+                popt[1],
+                popt[2] * (x_limits[1] - x_limits[0]),
+                popt[3]
+                - 2 * np.pi * x_limits[0] / (x_limits[1] - x_limits[0]) / popt[2],
+            ]
     pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
+    if not isinstance(popt, list):
+        popt = popt.tolist()
     return popt, perr, pi_pulse_parameter
