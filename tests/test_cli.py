@@ -75,7 +75,7 @@ def test_skip_qubits_option(skip_qubits, tmp_path, monkeypatch, platform):
             catch_exceptions=False,
         )
         new_platform = create_calibration_platform("mock")
-        for i in platform.qubits:
+        for i in new_platform.qubits:
             if i in list(skip_qubits):
                 assert old_platform.config(
                     old_platform.qubits[i].acquisition

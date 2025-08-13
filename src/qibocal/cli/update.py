@@ -58,6 +58,14 @@ def merge_with_skipped_qubits(
                 ]
             }
         )
+        for attr in new.qubits[q].model_fields_set:
+            ch = getattr(new.qubits[q], attr)
+            if isinstance(ch, dict):
+                for ch_ in ch.values():
+                    new.update({f"configs.{ch_}": old.config(ch_)})
+            else:
+                new.update({f"configs.{ch}": old.config(ch)})
+
     new.calibration.single_qubits = {
         q: new.calibration.single_qubits[q]
         if q not in skip_qubits
