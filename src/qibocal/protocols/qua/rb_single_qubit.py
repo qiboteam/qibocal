@@ -373,6 +373,7 @@ def _acquisition(
                             assign(depth_target, 2 * depth_target)
                     else:
                         assign(depth_target, depth_target + delta_clifford)
+                
                 # Reset the last gate of the sequence back to the original Clifford gate
                 # (that was replaced by the recovery gate at the beginning)
                 for target in targets:
@@ -510,6 +511,8 @@ class QuaSingleQubitRbResults(Results):
     ysigma: dict[QubitId, list[float]] = field(default_factory=dict)
     pars: dict[QubitId, list[float]] = field(default_factory=dict)
     cov: dict[QubitId, list[float]] = field(default_factory=dict)
+    r_cl: dict[QubitId, tuple[float, float]] = field(default_factory=dict)
+    r_g: dict[QubitId, tuple[float, float]] = field(default_factory=dict)
 
 
 def process_data(data: QuaSingleQubitRbData, target: int):
@@ -530,6 +533,7 @@ def process_data(data: QuaSingleQubitRbData, target: int):
 
 def _fit(data: QuaSingleQubitRbData) -> QuaSingleQubitRbResults:
     results = QuaSingleQubitRbResults()
+     
     for target in data.qubits:
         ydata, ysigma = process_data(data, target)
         results.ydata[target] = list(ydata)
@@ -548,6 +552,16 @@ def _fit(data: QuaSingleQubitRbData) -> QuaSingleQubitRbResults:
             results.cov[target] = list(cov.flatten())
         except RuntimeError:
             pass
+    
+        if pars is not None:
+            stdevs = np.sqrt(np.diag(np.reshape(cov, (3, 3))))
+            one_minus_p = (1 - pars[2], stdevs[2])
+            r_c = one_minus_p[0] * (1 - 1 / 2**1)
+            r_c_std = stdevs[2] * (1 - 1 / 2**1)
+
+            results.r_cl[target] = (r_c, r_c_std)
+            results.r_g[target] = (r_c / 1.875, r_c_std / 1.875) # 1.875 is the average number of gates in clifford operation
+            
     return results
 
 
@@ -582,11 +596,6 @@ def _plot(data: QuaSingleQubitRbData, target: QubitId, fit: QuaSingleQubitRbResu
         pars = fit.pars.get(target)
     if pars is not None:
         stdevs = np.sqrt(np.diag(np.reshape(fit.cov[target], (3, 3))))
-        one_minus_p = 1 - pars[2]
-        r_c = one_minus_p * (1 - 1 / 2**1)
-        r_g = r_c / 1.875  # 1.875 is the average number of gates in clifford operation
-        r_c_std = stdevs[2] * (1 - 1 / 2**1)
-        r_g_std = r_c_std / 1.875
         fitting_report = "\n".join(
             [
                 fitting_report,
@@ -605,9 +614,9 @@ def _plot(data: QuaSingleQubitRbData, target: QubitId, fit: QuaSingleQubitRbResu
                             (np.round(pars[0], 3), np.round(stdevs[0], 3)),
                             (np.round(pars[1], 3), np.round(stdevs[1], 3)),
                             (np.round(pars[2], 3), np.round(stdevs[2], 3)),
-                            (one_minus_p, stdevs[2]),
-                            (r_c, r_c_std),
-                            (r_g, r_g_std),
+                            (1-pars[2], stdevs[2]),
+                            fit.r_cl[target],
+                            fit.r_g[target],
                         ],
                         display_error=True,
                     )
@@ -624,26 +633,14 @@ def _plot(data: QuaSingleQubitRbData, target: QubitId, fit: QuaSingleQubitRbResu
         x = np.linspace(0, max_circuit_depth + 0.1, 1000)
         fig.add_scatter(x=x, y=power_law(x, *pars), mode="lines", name="fit")
 
-    fig.show()
-
-    # fig = plt.figure(figsize=(16, 6))
-    # plt.errorbar(
-    #     depths, ydata, ysigma, marker="o", linestyle="-", markersize=4, label="data"
-    # )
-    # if pars is not None:
-    #     max_circuit_depth = depths[-1]
-    #     x = np.linspace(0, max_circuit_depth + 0.1, 1000)
-    #     plt.plot(x, power_law(x, *pars), linestyle="--", label="fit")
-    # plt.xlabel("Depth")
-    # plt.ylabel("Survival probability")
-    # plt.legend()
-
-    #figures = [mpld3.fig_to_html(fig)]
     return [fig], fitting_report
 
 
 def _update(results: QuaSingleQubitRbResults, platform: Platform, target: QubitId):
-    pass
+    platform.calibration.single_qubits[target].rb_fidelity = (
+        1- results.r_g[target][0],
+        results.r_g[target][1],
+    )
 
 
 qua_standard_rb_1q = Routine(_acquisition, _fit, _plot, _update)
