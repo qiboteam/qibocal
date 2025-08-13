@@ -27,14 +27,27 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
     qubit_data = data[qubit]
     frequencies = qubit_data.freq * HZ_TO_GHZ
 
-    fig = go.Figure()
+    filtered_freq, filtered_bias = data.filtered_data(qubit)
 
+    fig = go.Figure()
     fig.add_trace(
         go.Heatmap(
             x=qubit_data.freq * HZ_TO_GHZ,
             y=qubit_data.bias,
             z=qubit_data.signal,
+            colorbar=dict(title="Signal [a.u.]"),
+            colorscale="Viridis",
         ),
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=filtered_freq * HZ_TO_GHZ,
+            y=filtered_bias,
+            name="Estimated points",
+            mode="markers",
+            marker=dict(color="orange"),
+        )
     )
 
     # TODO: This fit is for frequency, can it be reused here, do we even want the fit ?
@@ -52,7 +65,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
                 y=bias,
                 showlegend=True,
                 name="Fit",
-                marker=dict(color="green"),
+                marker=dict(color="orange"),
             ),
         )
 
@@ -67,8 +80,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
                 mode="markers",
                 marker=dict(
                     size=8,
-                    color="black",
-                    symbol="cross",
+                    color="red",
                 ),
                 name="Sweetspot",
                 showlegend=True,
