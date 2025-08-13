@@ -235,8 +235,6 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
             )
 
-        print(frequencies)
-        print(biases)
         try:
             popt = curve_fit(
                 fit_function,
