@@ -109,7 +109,8 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         y = qubit_data.prob
 
         period = fallback_period(guess_period(x, y))
-        pguess = [0.5, 0.5, period, np.pi]
+        pguess = [np.mean(y), (max(y) - min(y))/2, period, np.pi]
+        
         try:
             popt, perr, pi_pulse_parameter = utils.fit_amplitude_function(
                 x,
@@ -119,7 +120,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
                 signal=False,
             )
             pi_pulse_amplitudes[qubit] = [pi_pulse_parameter, perr[2] / 2]
-            fitted_parameters[qubit] = popt.tolist()
+            fitted_parameters[qubit] = popt
             durations = {key: [value, 0] for key, value in data.durations.items()}
             chi2[qubit] = [
                 chi2_reduced(

@@ -354,7 +354,7 @@ def fit_amplitude_function(
         p0=guess,
         maxfev=100000,
         bounds=(
-            [0, 0, 0, 0],
+            [0, 0, 0, -2 * np.pi],
             [1, 1, np.inf, 2 * np.pi],
         ),
         sigma=sigma,
