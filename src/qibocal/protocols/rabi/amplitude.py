@@ -119,7 +119,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
                 signal=False,
             )
             pi_pulse_amplitudes[qubit] = [pi_pulse_parameter, perr[2] / 2]
-            fitted_parameters[qubit] = popt.tolist()
+            fitted_parameters[qubit] = popt
             durations = {key: [value, 0] for key, value in data.durations.items()}
             chi2[qubit] = [
                 chi2_reduced(
