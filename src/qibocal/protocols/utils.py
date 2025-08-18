@@ -261,55 +261,6 @@ def cumulative(input_data, points):
     return np.searchsorted(np.sort(points), np.sort(input_data))
 
 
-def fit_punchout(data: Data, fit_type: str):
-    """
-    Punchout fitting function.
-
-    Args:
-
-    data (Data): Punchout acquisition data.
-    fit_type (str): Punchout type, it could be `amp` (amplitude)
-    or `att` (attenuation).
-
-    Return:
-
-    List of dictionaries containing the low, high amplitude
-    (attenuation) frequencies and the readout amplitude (attenuation)
-    for each qubit.
-    """
-    qubits = data.qubits
-
-    low_freqs = {}
-    high_freqs = {}
-    ro_values = {}
-
-    for qubit in qubits:
-        qubit_data = data[qubit]
-        freqs = qubit_data.freq
-        amps = getattr(qubit_data, fit_type)
-        signal = qubit_data.signal
-        mask_freq, mask_amps = extract_feature(freqs, amps, signal, data.find_min)
-
-        if mask_freq.size == 0:  # mask_freq and mask_amps have always the same shape
-            best_freq = 0
-            bare_freq = 0
-            ro_val = 0
-        else:
-            if fit_type == "amp":
-                best_freq = np.max(mask_freq)
-                bare_freq = np.min(mask_freq)
-            else:
-                best_freq = np.min(mask_freq)
-                bare_freq = np.max(mask_freq)
-            ro_val = np.max(mask_amps[mask_freq == best_freq])
-
-        low_freqs[qubit] = best_freq
-        high_freqs[qubit] = bare_freq
-        ro_values[qubit] = ro_val
-
-    return [low_freqs, high_freqs, ro_values]
-
-
 def eval_magnitude(value):
     """number of non decimal digits in `value`"""
     if value == 0 or not np.isfinite(value):
