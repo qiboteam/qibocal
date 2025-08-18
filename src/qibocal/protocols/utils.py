@@ -213,15 +213,15 @@ def compute_qnd(m1_state_1, m1_state_0, m2_state_1, m2_state_0, pi=False):
         [state1_count_0_m2 / nshots, state1_count_1_m2 / nshots],
     ]
 
-    P_0o_1i = (
+    p_0o_1i = (
         state0_count_1_m1 * state0_count_0_m2 + state1_count_1_m1 * state0_count_1_m2
     ) / nshots**2
 
-    P_1o_0i = (
+    p_1o_0i = (
         state0_count_0_m1 * state1_count_0_m2 + state1_count_0_m1 * state1_count_1_m2
     ) / nshots**2
 
-    result = (1 - (P_0o_1i + P_1o_0i) / 2) if not pi else (P_0o_1i + P_1o_0i) / 2
+    result = (1 - (p_0o_1i + p_1o_0i) / 2) if not pi else (p_0o_1i + p_1o_0i) / 2
 
     return result, lambda_m, lambda_m2
 
