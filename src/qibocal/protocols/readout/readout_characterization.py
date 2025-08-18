@@ -42,9 +42,9 @@ class ReadoutCharacterizationResults(Results):
     "QND-ness of the measurement"
     effective_temperature: dict[QubitId, list[float]]
     """Effective qubit temperature."""
-    Lambda_M: dict[QubitId, float]
+    lambda_m: dict[QubitId, float]
     "Mapping between a given initial state to an outcome after the measurement"
-    Lambda_M2: dict[QubitId, float]
+    lambda_m2: dict[QubitId, float]
     "Mapping between the outcome after the measurement and it still being that outcame after another measurement"
 
 
@@ -144,15 +144,15 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
     fidelity = {}
     effective_temperature = {}
     qnd = {}
-    Lambda_M = {}
-    Lambda_M2 = {}
+    lambda_m = {}
+    lambda_m2 = {}
     for qubit in qubits:
         m1_state_1 = data.samples[qubit, 1, 0]
         m1_state_0 = data.samples[qubit, 0, 0]
         m2_state_1 = data.samples[qubit, 1, 1]
         m2_state_0 = data.samples[qubit, 0, 1]
 
-        qnd[qubit], Lambda_M[qubit], Lambda_M2[qubit] = compute_qnd(
+        qnd[qubit], lambda_m[qubit], lambda_m2[qubit] = compute_qnd(
             m1_state_1, m1_state_0, m2_state_1, m2_state_0
         )
 
@@ -180,7 +180,7 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
         )
 
     return ReadoutCharacterizationResults(
-        fidelity, assignment_fidelity, qnd, effective_temperature, Lambda_M, Lambda_M2
+        fidelity, assignment_fidelity, qnd, effective_temperature, lambda_m, lambda_m2
     )
 
 
@@ -236,7 +236,7 @@ def _plot(
 
         fig.add_trace(
             go.Heatmap(
-                z=fit.Lambda_M[target],
+                z=fit.lambda_m[target],
                 x=["0", "1"],
                 y=["0", "1"],
                 coloraxis="coloraxis",
@@ -247,7 +247,7 @@ def _plot(
 
         fig.add_trace(
             go.Heatmap(
-                z=fit.Lambda_M2[target],
+                z=fit.lambda_m2[target],
                 x=["0", "1"],
                 y=["0", "1"],
                 coloraxis="coloraxis",

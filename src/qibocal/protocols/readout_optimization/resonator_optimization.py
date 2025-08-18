@@ -100,12 +100,12 @@ class ResonatorOptimizationData(Data):
     )
     """Raw data acquired"""
 
-    r"""pi: bool
+    def register_qubit(self, qubit, state, measure, nshots, amp, freq, iq, samples, pi):
+        r"""pi: bool
         for pi = 0 standard QND measurment is performed and stored
         for pi = 1 QND-\pi measurement is performed (add a pi-pulse between two measurement-pulses) and stored
-    """
+        """
 
-    def register_qubit(self, qubit, state, measure, nshots, amp, freq, iq, samples, pi):
         """Store output for single qubit."""
         size = len(amp) * len(freq) * nshots
         shots = np.arange(0, nshots, 1)
