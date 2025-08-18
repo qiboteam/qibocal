@@ -768,9 +768,7 @@ def extract_feature(
     x: np.ndarray,
     y: np.ndarray,
     z: np.ndarray,
-    feat: str,
-    ci_first_mask: float = CONFIDENCE_INTERVAL_FIRST_MASK,
-    ci_second_mask: float = CONFIDENCE_INTERVAL_SECOND_MASK,
+    find_min: bool,
 ):
     """Extract feature using confidence intervals.
 
@@ -785,7 +783,7 @@ def extract_feature(
 
     """
 
-    # background remove over y axis
+    # background removed over y axis
     z_ = z.reshape(len(np.unique(y)), len(np.unique(x)))
     z_ = z_ / np.mean(z, axis=0)
     normalized_z = z_.reshape(z.shape)
@@ -798,7 +796,7 @@ def extract_feature(
     for i in unique_bias:
         signal_fixed_y = normalized_z[y == i]
         peak, _ = find_peaks(
-            -signal_fixed_y if feat == "min" else signal_fixed_y, prominence=0.3
+            -signal_fixed_y if find_min else signal_fixed_y, prominence=0.3
         )
         if len(peak) > 0:
             for j in peak:

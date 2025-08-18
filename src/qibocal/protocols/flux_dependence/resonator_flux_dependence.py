@@ -89,9 +89,9 @@ class ResonatorFluxData(Data):
         )
 
     @property
-    def feature(self) -> str:
-        """Get feature (either min or max) depending on resonator type."""
-        return "min" if self.resonator_type == "2D" else "max"
+    def find_min(self) -> bool:
+        """Returns True if resonator_type is 2D else False otherwise."""
+        return self.resonator_type == "2D"
 
     def filtered_data(self, qubit: QubitId) -> np.ndarray:
         """Apply mask to specific qubit data."""
@@ -99,7 +99,7 @@ class ResonatorFluxData(Data):
             self.data[qubit].freq,
             self.data[qubit].bias,
             self.data[qubit].signal,
-            self.feature,
+            self.find_min,
         )
 
 
