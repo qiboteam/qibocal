@@ -280,14 +280,7 @@ def fit_punchout(data: Data, fit_type: str):
         freqs = qubit_data.freq
         amps = getattr(qubit_data, fit_type)
         signal = qubit_data.signal
-        if data.resonator_type == "3D":
-            mask_freq, mask_amps = extract_feature(
-                freqs, amps, signal, "max", ci_first_mask=90
-            )
-        else:
-            mask_freq, mask_amps = extract_feature(
-                freqs, amps, signal, "min", ci_first_mask=90
-            )
+        mask_freq, mask_amps = extract_feature(freqs, amps, signal, data.find_min)
         if fit_type == "amp":
             best_freq = np.max(mask_freq)
             bare_freq = np.min(mask_freq)
