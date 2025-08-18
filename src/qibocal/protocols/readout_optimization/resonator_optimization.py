@@ -125,6 +125,18 @@ class ResonatorOptimizationData(Data):
         """Unique qubit frequency"""
         return np.unique(self[qubit, 0, 0, 0].frequency)
 
+    def select_samples(self, qubit, state, measure, pi, freq=None, amp=None):
+        """
+        Return samples for a given qubit, state, and measure, filtering
+        by frequency and amplitude.
+        """
+        samples = self.data[qubit, state, measure, pi]
+        if freq is not None:
+            samples = samples[samples.frequency == freq]
+        if amp is not None:
+            samples = samples[samples.amplitude == amp]
+        return samples
+
 
 def _acquisition(
     params: ResonatorOptimizationParameters,
@@ -255,26 +267,16 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
             pi,
         ) in product(enumerate(freq_vals), enumerate(amp_vals), [0, 1]):
             version = "pi" if pi else "standard"
-            data_state_0 = data[qubit, 0, 0, pi]
-            data_state_1 = data[qubit, 1, 0, pi]
+            state_0 = data.select_samples(qubit, 0, 0, pi, freq=freq, amp=amp)
+            state_1 = data.select_samples(qubit, 1, 0, pi, freq=freq, amp=amp)
             iq_values = np.concatenate(
                 (
-                    data_state_0[
-                        (data_state_0.frequency == freq)
-                        & (data_state_0.amplitude == amp)
-                    ].iq_values,
-                    data_state_1[
-                        (data_state_1.frequency == freq)
-                        & (data_state_1.amplitude == amp)
-                    ].iq_values,
+                    state_0.iq_values,
+                    state_1.iq_values,
                 )
             )
 
-            nshots = len(
-                data_state_0[
-                    (data_state_0.frequency == freq) & (data_state_0.amplitude == amp)
-                ].iq_values
-            )
+            nshots = len(state_0.iq_values)
             states = [0] * nshots + [1] * nshots
             if pi:
                 states.reverse()
@@ -303,25 +305,10 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
         ) in product(enumerate(freq_vals), enumerate(amp_vals), [0, 1]):
             version = "pi" if pi else "standard"
 
-            m1_state_1 = data[qubit, 1, 0, pi][
-                (data[qubit, 1, 0, pi].frequency == freq)
-                & (data[qubit, 1, 0, pi].amplitude == amp)
-            ].samples
-
-            m1_state_0 = data[qubit, 0, 0, pi][
-                (data[qubit, 0, 0, pi].frequency == freq)
-                & (data[qubit, 0, 0, pi].amplitude == amp)
-            ].samples
-
-            m2_state_1 = data[qubit, 1, 1, pi][
-                (data[qubit, 1, 1, pi].frequency == freq)
-                & (data[qubit, 1, 1, pi].amplitude == amp)
-            ].samples
-
-            m2_state_0 = data[qubit, 0, 1, pi][
-                (data[qubit, 0, 1, pi].frequency == freq)
-                & (data[qubit, 0, 1, pi].amplitude == amp)
-            ].samples
+            m1_state_1 = data.select_samples(qubit, 1, 0, pi, freq=freq, amp=amp)
+            m1_state_0 = data.select_samples(qubit, 0, 0, pi, freq=freq, amp=amp)
+            m2_state_1 = data.select_samples(qubit, 1, 1, pi, freq=freq, amp=amp)
+            m2_state_0 = data.select_samples(qubit, 0, 1, pi, freq=freq, amp=amp)
 
             result, _, _ = compute_qnd(m1_state_1, m1_state_0, m2_state_1, m2_state_0)
             grids["qnd"][version][j, k] = result
