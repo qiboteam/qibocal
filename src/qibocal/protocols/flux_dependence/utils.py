@@ -266,36 +266,20 @@ def transmon_readout_frequency(
      Returns:
          (float): resonator frequency as a function of bias.
     """
+
+    qubit_frequency = transmon_frequency(
+        xi=xi,
+        xj=xj,
+        w_max=w_max,
+        d=d,
+        normalization=normalization,
+        offset=offset,
+        crosstalk_element=crosstalk_element,
+        charging_energy=charging_energy,
+    )
     return resonator_freq + g**2 * (
-        1
-        / (
-            resonator_freq
-            - transmon_frequency(
-                xi=xi,
-                xj=xj,
-                w_max=w_max,
-                d=d,
-                normalization=normalization,
-                offset=offset,
-                crosstalk_element=crosstalk_element,
-                charging_energy=charging_energy,
-            )
-        )
-        - 1
-        / (
-            resonator_freq
-            - transmon_frequency(
-                xi=xi,
-                xj=xj,
-                w_max=w_max,
-                d=d,
-                normalization=normalization,
-                offset=offset,
-                crosstalk_element=crosstalk_element,
-                charging_energy=charging_energy,
-            )
-            + charging_energy
-        )
+        1 / (resonator_freq - qubit_frequency)
+        - 1 / (resonator_freq - qubit_frequency + charging_energy)
     )
 
 
