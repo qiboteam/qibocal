@@ -1,8 +1,33 @@
+from dataclasses import dataclass
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from ...auto.operation import Parameters
 from ..utils import HZ_TO_GHZ
+
+
+@dataclass(kw_only=True)
+class FluxFrequencySweepParameters(Parameters):
+    """Parameters to define flux DC sweep."""
+
+    freq_width: int
+    """Width for frequency sweep relative to the readout frequency [Hz]."""
+    freq_step: int
+    """Frequency step for sweep [Hz]."""
+    bias_width: float
+    """Width for bias sweep [V]."""
+    bias_step: float
+    """Bias step for sweep [V]."""
+
+    @property
+    def frequency_range(self) -> np.ndarray:
+        return np.arange(-self.freq_width / 2, self.freq_width / 2, self.freq_step)
+
+    @property
+    def bias_range(self) -> np.ndarray:
+        return np.arange(-self.bias_width / 2, self.bias_width / 2, self.bias_step)
 
 
 def is_crosstalk(data):
@@ -10,7 +35,7 @@ def is_crosstalk(data):
     return all(isinstance(key, tuple) for key in data.data.keys())
 
 
-def create_data_array(freq, bias, signal, phase, dtype):
+def create_data_array(freq, bias, signal, dtype):
     """Create custom dtype array for acquired data."""
     size = len(freq) * len(bias)
     ar = np.empty(size, dtype=dtype)
@@ -18,7 +43,6 @@ def create_data_array(freq, bias, signal, phase, dtype):
     ar["freq"] = frequency.ravel()
     ar["bias"] = biases.ravel()
     ar["signal"] = signal.ravel()
-    ar["phase"] = phase.ravel()
     return np.rec.array(ar)
 
 

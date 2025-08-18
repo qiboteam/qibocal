@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -9,9 +8,9 @@ from scipy.optimize import curve_fit
 from qibocal.calibration import CalibrationPlatform
 
 from ... import update
-from ...auto.operation import Data, Parameters, QubitId, Results, Routine
+from ...auto.operation import Data, QubitId, Results, Routine
 from ...config import log
-from ...result import magnitude, phase
+from ...result import magnitude
 from ..utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
@@ -26,17 +25,8 @@ __all__ = ["ResonatorFluxParameters", "resonator_flux"]
 
 
 @dataclass
-class ResonatorFluxParameters(Parameters):
+class ResonatorFluxParameters(utils.FluxFrequencySweepParameters):
     """ResonatorFlux runcard inputs."""
-
-    freq_width: int
-    """Width for frequency sweep relative to the readout frequency [Hz]."""
-    freq_step: int
-    """Frequency step for sweep [Hz]."""
-    bias_width: Optional[float] = None
-    """Width for bias sweep [V]."""
-    bias_step: Optional[float] = None
-    """Bias step for sweep [a.u.]."""
 
 
 @dataclass
@@ -61,7 +51,6 @@ ResFluxType = np.dtype(
         ("freq", np.float64),
         ("bias", np.float64),
         ("signal", np.float64),
-        ("phase", np.float64),
     ]
 )
 """Custom dtype for resonator flux dependence."""
@@ -82,10 +71,10 @@ class ResonatorFluxData(Data):
     data: dict[QubitId, npt.NDArray[ResFluxType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, freq, bias, signal, phase):
+    def register_qubit(self, qubit, freq, bias, signal):
         """Store output for single qubit."""
         self.data[qubit] = utils.create_data_array(
-            freq, bias, signal, phase, dtype=ResFluxType
+            freq, bias, signal, dtype=ResFluxType
         )
 
     @property
@@ -110,12 +99,6 @@ def _acquisition(
 ) -> ResonatorFluxData:
     """Data acquisition for ResonatorFlux experiment."""
 
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
-    delta_offset_range = np.arange(
-        -params.bias_width / 2, params.bias_width / 2, params.bias_step
-    )
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
     ro_pulses = {}
@@ -137,14 +120,14 @@ def _acquisition(
         freq_sweepers.append(
             Sweeper(
                 parameter=Parameter.frequency,
-                values=readout_frequency(q, platform) + delta_frequency_range,
+                values=readout_frequency(q, platform) + params.frequency_range,
                 channels=[qubit.probe],
             )
         )
         offset_sweepers.append(
             Sweeper(
                 parameter=Parameter.offset,
-                values=offset0 + delta_offset_range,
+                values=offset0 + params.bias_range,
                 channels=[qubit.flux],
             )
         )
@@ -177,7 +160,6 @@ def _acquisition(
         data.register_qubit(
             qubit,
             signal=magnitude(result),
-            phase=phase(result),
             freq=freq_sweepers[i].values,
             bias=offset_sweepers[i].values,
         )
