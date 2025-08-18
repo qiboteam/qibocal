@@ -18,7 +18,7 @@ from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
-from ...result import magnitude, phase
+from ...result import magnitude
 from ...update import replace
 from ..utils import (
     GHZ_TO_HZ,
@@ -166,7 +166,7 @@ def _acquisition(
         offset_sweepers.append(
             Sweeper(
                 parameter=Parameter.offset,
-                values=offset0 + params.bais_range,
+                values=offset0 + params.bias_range,
                 channels=[flux_channel],
             )
         )
@@ -210,7 +210,6 @@ def _acquisition(
                 qubit,
                 flux_qubit,
                 signal=magnitude(result),
-                phase=phase(result),
                 freq=freq_sweepers[i].values,
                 bias=offset_sweeper.values,
             )
