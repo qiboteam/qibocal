@@ -22,6 +22,8 @@ from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.two_qubit_interaction.chevron.utils import COLORAXIS
 from qibocal.protocols.utils import HZ_TO_GHZ, readout_frequency, table_dict, table_html
 
+from ..utils import compute_qnd
+
 __all__ = ["resonator_optimization"]
 
 
@@ -98,9 +100,12 @@ class ResonatorOptimizationData(Data):
     )
     """Raw data acquired"""
 
-    # pi=0 QND
-    # pi=1 QND_pi
     def register_qubit(self, qubit, state, measure, nshots, amp, freq, iq, samples, pi):
+        r"""pi: bool
+        for pi = 0 standard QND measurment is performed and stored
+        for pi = 1 QND-\pi measurement is performed (add a pi-pulse between two measurement-pulses) and stored
+        """
+
         """Store output for single qubit."""
         size = len(amp) * len(freq) * nshots
         shots = np.arange(0, nshots, 1)
@@ -119,6 +124,18 @@ class ResonatorOptimizationData(Data):
     def frequencies(self, qubit):
         """Unique qubit frequency"""
         return np.unique(self[qubit, 0, 0, 0].frequency)
+
+    def select_samples(self, qubit, state, measure, pi, freq=None, amp=None):
+        """
+        Return samples for a given qubit, state, and measure, filtering
+        by frequency and amplitude.
+        """
+        samples = self.data[qubit, state, measure, pi]
+        if freq is not None:
+            samples = samples[samples.frequency == freq]
+        if amp is not None:
+            samples = samples[samples.amplitude == amp]
+        return samples
 
 
 def _acquisition(
@@ -230,8 +247,6 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
     qnd_best_freq = {}
     qnd_best_amps = {}
     qnd_best_fid = {}
-    Lambda_M = {}
-    Lambda_M2 = {}
 
     for qubit in qubits:
         freq_vals = data.frequencies(qubit)
@@ -252,26 +267,16 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
             pi,
         ) in product(enumerate(freq_vals), enumerate(amp_vals), [0, 1]):
             version = "pi" if pi else "standard"
-            data_state_0 = data[qubit, 0, 0, pi]
-            data_state_1 = data[qubit, 1, 0, pi]
+            state_0 = data.select_samples(qubit, 0, 0, pi, freq=freq, amp=amp)
+            state_1 = data.select_samples(qubit, 1, 0, pi, freq=freq, amp=amp)
             iq_values = np.concatenate(
                 (
-                    data_state_0[
-                        (data_state_0.frequency == freq)
-                        & (data_state_0.amplitude == amp)
-                    ].iq_values,
-                    data_state_1[
-                        (data_state_1.frequency == freq)
-                        & (data_state_1.amplitude == amp)
-                    ].iq_values,
+                    state_0.iq_values,
+                    state_1.iq_values,
                 )
             )
 
-            nshots = len(
-                data_state_0[
-                    (data_state_0.frequency == freq) & (data_state_0.amplitude == amp)
-                ].iq_values
-            )
+            nshots = len(state_0.iq_values)
             states = [0] * nshots + [1] * nshots
             if pi:
                 states.reverse()
@@ -300,58 +305,12 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
         ) in product(enumerate(freq_vals), enumerate(amp_vals), [0, 1]):
             version = "pi" if pi else "standard"
 
-            # 1st measurement (m=1)
-            data_10 = data[qubit, 1, 0, pi]
-            m1_state_1 = data_10[
-                (data_10.frequency == freq) & (data_10.amplitude == amp)
-            ].samples
-            nshots = len(m1_state_1)
-            state1_count_1_m1 = np.count_nonzero(m1_state_1)
-            state0_count_1_m1 = nshots - state1_count_1_m1
+            m1_state_1 = data.select_samples(qubit, 1, 0, pi, freq=freq, amp=amp)
+            m1_state_0 = data.select_samples(qubit, 0, 0, pi, freq=freq, amp=amp)
+            m2_state_1 = data.select_samples(qubit, 1, 1, pi, freq=freq, amp=amp)
+            m2_state_0 = data.select_samples(qubit, 0, 1, pi, freq=freq, amp=amp)
 
-            data_00 = data[qubit, 0, 0, pi]
-            m1_state_0 = data_00[
-                (data_00.frequency == freq) & (data_00.amplitude == amp)
-            ].samples
-            state1_count_0_m1 = np.count_nonzero(m1_state_0)
-            state0_count_0_m1 = nshots - state1_count_0_m1
-
-            # 2nd measurement (m=2)
-            data_11 = data[qubit, 1, 1, pi]
-            m2_state_1 = data_11[
-                (data_11.frequency == freq) & (data_11.amplitude == amp)
-            ].samples
-            state1_count_1_m2 = np.count_nonzero(m2_state_1)
-            state0_count_1_m2 = nshots - state1_count_1_m2
-
-            data_01 = data[qubit, 0, 1, pi]
-            m2_state_0 = data_01[
-                (data_01.frequency == freq) & (data_01.amplitude == amp)
-            ].samples
-            state1_count_0_m2 = np.count_nonzero(m2_state_0)
-            state0_count_0_m2 = nshots - state1_count_0_m2
-
-            # Repeat Lambda and fidelity for each measurement ?
-            Lambda_M[qubit] = [
-                [state0_count_0_m1 / nshots, state0_count_1_m1 / nshots],
-                [state1_count_0_m1 / nshots, state1_count_1_m1 / nshots],
-            ]
-            # Repeat Lambda and fidelity for each measurement ?
-            Lambda_M2[qubit] = [
-                [state0_count_0_m2 / nshots, state0_count_1_m2 / nshots],
-                [state1_count_0_m2 / nshots, state1_count_1_m2 / nshots],
-            ]
-            # QND FIXME: Careful revision
-            P_0o_m0_1i = state0_count_1_m1 * state0_count_0_m2 / nshots**2
-            P_0o_m1_1i = state1_count_1_m1 * state0_count_1_m2 / nshots**2
-            P_0o_1i = P_0o_m0_1i + P_0o_m1_1i
-            P_1o_m0_0i = state0_count_0_m1 * state1_count_0_m2 / nshots**2
-            P_1o_m1_0i = state1_count_0_m1 * state1_count_1_m2 / nshots**2
-            P_1o_0i = P_1o_m0_0i + P_1o_m1_0i
-
-            result = (
-                1 - ((P_0o_1i + P_1o_0i) / 2) if not pi else (P_0o_1i + P_1o_0i) / 2
-            )
+            result, _, _ = compute_qnd(m1_state_1, m1_state_0, m2_state_1, m2_state_0)
             grids["qnd"][version][j, k] = result
 
         for state, m, pi in product([0, 1], [0, 1], [0, 1]):
