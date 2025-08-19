@@ -2,15 +2,16 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, Delay, PulseSequence, Readout
 
 from ... import update
 from ...auto.operation import Data, Parameters, QubitId, Results, Routine
 from ...calibration import CalibrationPlatform
 from ..utils import (
-    compute_fidelity_qnd,
     effective_qubit_temperature,
     format_error_single_cell,
+    process_readout,
     round_report,
     table_dict,
     table_html,
@@ -39,6 +40,10 @@ class ReadoutCharacterizationResults(Results):
     "QND-ness of the measurement"
     effective_temperature: dict[QubitId, list[float]]
     """Effective qubit temperature."""
+    lambda_m: dict[QubitId, float]
+    "Mapping between a given initial state to an outcome after the measurement"
+    lambda_m2: dict[QubitId, float]
+    "Mapping between the outcome after the measurement and it still being that outcame after another measurement"
 
 
 @dataclass
@@ -127,13 +132,14 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
     fidelity = {}
     effective_temperature = {}
     qnd = {}
+    lambda_m, lambda_m2 = {}, {}
     for qubit in qubits:
         m1_state_1 = data.classify(qubit, 1, 0)
         m1_state_0 = data.classify(qubit, 0, 0)
         m2_state_1 = data.classify(qubit, 1, 1)
         m2_state_0 = data.classify(qubit, 0, 1)
-        qnd[qubit], assignment_fidelity[qubit] = compute_fidelity_qnd(
-            m1_state_1, m1_state_0, m2_state_1, m2_state_0
+        qnd[qubit], assignment_fidelity[qubit], lambda_m[qubit], lambda_m2[qubit] = (
+            process_readout(m1_state_1, m1_state_0, m2_state_1, m2_state_0)
         )
 
         fidelity[qubit] = 2 * assignment_fidelity[qubit] - 1
@@ -147,7 +153,7 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
         )
 
     return ReadoutCharacterizationResults(
-        fidelity, assignment_fidelity, qnd, effective_temperature
+        fidelity, assignment_fidelity, qnd, effective_temperature, lambda_m, lambda_m2
     )
 
 
@@ -192,43 +198,43 @@ def _plot(
 
     figures.append(fig)
     if fit is not None:
-        # fig = make_subplots(
-        #     rows=1,
-        #     cols=2,
-        #     subplot_titles=(
-        #         "1st measurement statistics",
-        #         "2nd measurement statistics",
-        #     ),
-        # )
-        #
-        # fig.add_trace(
-        #     go.Heatmap(
-        #         z=fit.lambda_m[target],
-        #         x=["0", "1"],
-        #         y=["0", "1"],
-        #         coloraxis="coloraxis",
-        #     ),
-        #     row=1,
-        #     col=1,
-        # )
-        #
-        # fig.add_trace(
-        #     go.Heatmap(
-        #         z=fit.lambda_m2[target],
-        #         x=["0", "1"],
-        #         y=["0", "1"],
-        #         coloraxis="coloraxis",
-        #     ),
-        #     row=1,
-        #     col=2,
-        # )
-        #
-        # fig.update_xaxes(title_text="Measured state", row=1, col=1)
-        # fig.update_xaxes(title_text="Measured state", row=1, col=2)
-        # fig.update_yaxes(title_text="Prepared state", row=1, col=1)
-        # fig.update_yaxes(title_text="Prepared state", row=1, col=2)
-        #
-        # figures.append(fig)
+        fig = make_subplots(
+            rows=1,
+            cols=2,
+            subplot_titles=(
+                "1st measurement statistics",
+                "2nd measurement statistics",
+            ),
+        )
+
+        fig.add_trace(
+            go.Heatmap(
+                z=fit.lambda_m[target],
+                x=["0", "1"],
+                y=["0", "1"],
+                coloraxis="coloraxis",
+            ),
+            row=1,
+            col=1,
+        )
+
+        fig.add_trace(
+            go.Heatmap(
+                z=fit.lambda_m2[target],
+                x=["0", "1"],
+                y=["0", "1"],
+                coloraxis="coloraxis",
+            ),
+            row=1,
+            col=2,
+        )
+
+        fig.update_xaxes(title_text="Measured state", row=1, col=1)
+        fig.update_xaxes(title_text="Measured state", row=1, col=2)
+        fig.update_yaxes(title_text="Prepared state", row=1, col=1)
+        fig.update_yaxes(title_text="Prepared state", row=1, col=2)
+
+        figures.append(fig)
 
         fitting_report = table_html(
             table_dict(

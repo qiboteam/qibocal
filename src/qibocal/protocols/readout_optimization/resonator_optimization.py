@@ -22,7 +22,7 @@ from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.two_qubit_interaction.chevron.utils import COLORAXIS
 from qibocal.protocols.utils import HZ_TO_GHZ, readout_frequency, table_dict, table_html
 
-from ..utils import compute_qnd
+from ..utils import process_readout
 
 __all__ = ["resonator_optimization"]
 
@@ -310,7 +310,9 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
             m2_state_1 = data.select_samples(qubit, 1, 1, pi, freq=freq, amp=amp)
             m2_state_0 = data.select_samples(qubit, 0, 1, pi, freq=freq, amp=amp)
 
-            result, _, _ = compute_qnd(m1_state_1, m1_state_0, m2_state_1, m2_state_0)
+            result, _, _, _ = process_readout(
+                m1_state_1, m1_state_0, m2_state_1, m2_state_0
+            )
             grids["qnd"][version][j, k] = result
 
         for state, m, pi in product([0, 1], [0, 1], [0, 1]):
