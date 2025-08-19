@@ -1,17 +1,14 @@
 from dataclasses import dataclass, field
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, Delay, PulseSequence, Readout
 
 from ... import update
 from ...auto.operation import Data, Parameters, QubitId, Results, Routine
 from ...calibration import CalibrationPlatform
-from ...result import unpack
 from ..utils import (
-    compute_qnd,
+    compute_fidelity_qnd,
     effective_qubit_temperature,
     format_error_single_cell,
     round_report,
@@ -42,19 +39,6 @@ class ReadoutCharacterizationResults(Results):
     "QND-ness of the measurement"
     effective_temperature: dict[QubitId, list[float]]
     """Effective qubit temperature."""
-    lambda_m: dict[QubitId, float]
-    "Mapping between a given initial state to an outcome after the measurement"
-    lambda_m2: dict[QubitId, float]
-    "Mapping between the outcome after the measurement and it still being that outcame after another measurement"
-
-
-ReadoutCharacterizationType = np.dtype(
-    [
-        ("i", np.float64),
-        ("q", np.float64),
-    ]
-)
-"""Custom dtype for ReadoutCharacterization."""
 
 
 @dataclass
@@ -63,15 +47,18 @@ class ReadoutCharacterizationData(Data):
 
     qubit_frequencies: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
-
     delay: float = 0
     """Delay between readouts [ns]."""
-    data: dict[tuple, npt.NDArray[ReadoutCharacterizationType]] = field(
-        default_factory=dict
-    )
-    """Raw data acquired."""
-    samples: dict[tuple, npt.NDArray] = field(default_factory=dict)
-    """Raw data acquired."""
+
+    angle: dict[QubitId, float] = field(default_factory=dict)
+    threshold: dict[QubitId, float] = field(default_factory=dict)
+    data: dict[tuple, np.ndarray] = field(default_factory=dict)
+
+    def classify(self, qubit: QubitId, state: int, measure: int) -> np.ndarray:
+        c, s = np.cos(self.angle[qubit]), np.sin(self.angle[qubit])
+        rot = np.array([[c, -s], [s, c]])
+        rotated = self.data[qubit, state, measure] @ rot.T
+        return (rotated[:, 0] > self.threshold[qubit]).astype(int)
 
 
 def _acquisition(
@@ -85,6 +72,14 @@ def _acquisition(
         qubit_frequencies={
             # TODO: should this be the drive frequency instead?
             qubit: float(platform.calibration.single_qubits[qubit].qubit.frequency_01)
+            for qubit in targets
+        },
+        angle={
+            qubit: platform.config(platform.qubits[qubit].acquisition).iq_angle
+            for qubit in targets
+        },
+        threshold={
+            qubit: platform.config(platform.qubits[qubit].acquisition).threshold
             for qubit in targets
         },
         delay=float(params.delay),
@@ -111,12 +106,6 @@ def _acquisition(
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
         )
-        results_samples = platform.execute(
-            [sequence],
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-        )
 
         # Save the data
         for qubit in targets:
@@ -126,13 +115,7 @@ def _acquisition(
                 if isinstance(pulse, Readout)
             ]
             for j, ro_pulse in enumerate(readouts):
-                i, q = unpack(results[ro_pulse.id])
-                data.register_qubit(
-                    ReadoutCharacterizationType,
-                    (qubit, state, j),
-                    dict(i=i, q=q),
-                )
-                data.samples[qubit, state, j] = results_samples[ro_pulse.id].tolist()
+                data.data[qubit, state, j] = results[ro_pulse.id]
     return data
 
 
@@ -144,43 +127,27 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
     fidelity = {}
     effective_temperature = {}
     qnd = {}
-    lambda_m = {}
-    lambda_m2 = {}
     for qubit in qubits:
-        m1_state_1 = data.samples[qubit, 1, 0]
-        m1_state_0 = data.samples[qubit, 0, 0]
-        m2_state_1 = data.samples[qubit, 1, 1]
-        m2_state_0 = data.samples[qubit, 0, 1]
-
-        qnd[qubit], lambda_m[qubit], lambda_m2[qubit] = compute_qnd(
+        m1_state_1 = data.classify(qubit, 1, 0)
+        m1_state_0 = data.classify(qubit, 0, 0)
+        m2_state_1 = data.classify(qubit, 1, 1)
+        m2_state_0 = data.classify(qubit, 0, 1)
+        qnd[qubit], assignment_fidelity[qubit] = compute_fidelity_qnd(
             m1_state_1, m1_state_0, m2_state_1, m2_state_0
-        )
-
-        nshots = len(m1_state_1)
-
-        # state 1
-        state1_count_1_m1 = np.count_nonzero(m1_state_1)
-        state0_count_1_m1 = nshots - state1_count_1_m1
-
-        # state 0
-        state1_count_0_m1 = np.count_nonzero(m1_state_0)
-        state0_count_0_m1 = nshots - state1_count_0_m1
-
-        assignment_fidelity[qubit] = (
-            1 - (state1_count_0_m1 / nshots + state0_count_1_m1 / nshots) / 2
         )
 
         fidelity[qubit] = 2 * assignment_fidelity[qubit] - 1
 
+        prob_1 = np.mean(m1_state_0)
         effective_temperature[qubit] = effective_qubit_temperature(
-            prob_1=state0_count_1_m1 / nshots,
-            prob_0=state0_count_0_m1 / nshots,
+            prob_1=prob_1,
+            prob_0=1 - prob_1,
             qubit_frequency=data.qubit_frequencies[qubit],
-            nshots=nshots,
+            nshots=len(m1_state_0),
         )
 
     return ReadoutCharacterizationResults(
-        fidelity, assignment_fidelity, qnd, effective_temperature, lambda_m, lambda_m2
+        fidelity, assignment_fidelity, qnd, effective_temperature
     )
 
 
@@ -202,8 +169,8 @@ def _plot(
 
             fig.add_trace(
                 go.Scatter(
-                    x=shots.i,
-                    y=shots.q,
+                    x=shots[:, 0],
+                    y=shots[:, 1],
                     name=f"Prepared state {state} measurement {measure}",
                     mode="markers",
                     showlegend=True,
@@ -225,43 +192,43 @@ def _plot(
 
     figures.append(fig)
     if fit is not None:
-        fig = make_subplots(
-            rows=1,
-            cols=2,
-            subplot_titles=(
-                "1st measurement statistics",
-                "2nd measurement statistics",
-            ),
-        )
-
-        fig.add_trace(
-            go.Heatmap(
-                z=fit.lambda_m[target],
-                x=["0", "1"],
-                y=["0", "1"],
-                coloraxis="coloraxis",
-            ),
-            row=1,
-            col=1,
-        )
-
-        fig.add_trace(
-            go.Heatmap(
-                z=fit.lambda_m2[target],
-                x=["0", "1"],
-                y=["0", "1"],
-                coloraxis="coloraxis",
-            ),
-            row=1,
-            col=2,
-        )
-
-        fig.update_xaxes(title_text="Measured state", row=1, col=1)
-        fig.update_xaxes(title_text="Measured state", row=1, col=2)
-        fig.update_yaxes(title_text="Prepared state", row=1, col=1)
-        fig.update_yaxes(title_text="Prepared state", row=1, col=2)
-
-        figures.append(fig)
+        # fig = make_subplots(
+        #     rows=1,
+        #     cols=2,
+        #     subplot_titles=(
+        #         "1st measurement statistics",
+        #         "2nd measurement statistics",
+        #     ),
+        # )
+        #
+        # fig.add_trace(
+        #     go.Heatmap(
+        #         z=fit.lambda_m[target],
+        #         x=["0", "1"],
+        #         y=["0", "1"],
+        #         coloraxis="coloraxis",
+        #     ),
+        #     row=1,
+        #     col=1,
+        # )
+        #
+        # fig.add_trace(
+        #     go.Heatmap(
+        #         z=fit.lambda_m2[target],
+        #         x=["0", "1"],
+        #         y=["0", "1"],
+        #         coloraxis="coloraxis",
+        #     ),
+        #     row=1,
+        #     col=2,
+        # )
+        #
+        # fig.update_xaxes(title_text="Measured state", row=1, col=1)
+        # fig.update_xaxes(title_text="Measured state", row=1, col=2)
+        # fig.update_yaxes(title_text="Prepared state", row=1, col=1)
+        # fig.update_yaxes(title_text="Prepared state", row=1, col=2)
+        #
+        # figures.append(fig)
 
         fitting_report = table_html(
             table_dict(
@@ -294,9 +261,9 @@ def _update(
     target: QubitId,
 ):
     update.readout_fidelity(results.fidelity[target], platform, target)
-    platform.calibration.single_qubits[
-        target
-    ].readout.effective_temperature = results.effective_temperature[target][0]
+    # platform.calibration.single_qubits[
+    #     target
+    # ].readout.effective_temperature = results.effective_temperature[target][0]
 
 
 readout_characterization = Routine(_acquisition, _fit, _plot, _update)

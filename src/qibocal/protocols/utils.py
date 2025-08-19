@@ -29,7 +29,7 @@ LEGEND_FONT_SIZE = 20
 TITLE_SIZE = 25
 EXTREME_CHI = 1e4
 KB = constants.k
-HBAR = constants.hbar
+H = constants.h
 """Chi2 output when errors list contains zero elements"""
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
@@ -178,7 +178,7 @@ def effective_qubit_temperature(
     error_prob_1 = np.sqrt(prob_1 * (1 - prob_1) / nshots)
     # TODO: find way to handle this exception
     try:
-        temp = -HBAR * qubit_frequency / (np.log(prob_1 / prob_0) * KB)
+        temp = -H * qubit_frequency / (np.log(prob_1 / prob_0) * KB)
         dT_dp0 = temp / prob_0 / np.log(prob_1 / prob_0)
         dT_dp1 = -temp / prob_1 / np.log(prob_1 / prob_0)
         error = np.sqrt((dT_dp0 * error_prob_0) ** 2 + (dT_dp1 * error_prob_1) ** 2)
@@ -188,50 +188,40 @@ def effective_qubit_temperature(
     return temp, error
 
 
-def compute_qnd(m1_state_1, m1_state_0, m2_state_1, m2_state_0, pi=False):
-    r"""Quantum Non-Demolition (QND) Measurement:
-    To evaluate the QND character of a measurement, the qubit is first prepared in a known initial state, either 0 or 1.
-    Two consecutive measurements are then performed, separated by a time interval delta t.
-    The QND is calculated as: 1 - (p_0o_1i + p_1o_0i) / 2, where
-    p_0o_1i is the probability of measuring the qubit in state 0 on the first measurement and 1 on the second measurement.
-    p_1o_0i is the probability of measuring the qubit in state 1 on the first measurement and 0 on the second measurement.
-    """
+def compute_fidelity_qnd(m1_state_1, m1_state_0, m2_state_1, m2_state_0, pi=False):
+    r"""TO BE UPDATED"""
 
-    nshots = len(m1_state_1)
+    p_m1_i0 = np.mean(m1_state_0)
+    p_m0_i0 = 1 - p_m1_i0
+    p_m1_i1 = np.mean(m1_state_1)
+    p_m0_i1 = 1 - p_m1_i1
 
-    state1_count_1_m1 = np.count_nonzero(m1_state_1)
-    state0_count_1_m1 = nshots - state1_count_1_m1
+    fidelity = 1 - (p_m1_i0 + p_m0_i1) / 2
+    lambda_m = [[p_m0_i0, p_m0_i1], [p_m1_i0, p_m1_i1]]
 
-    state1_count_0_m1 = np.count_nonzero(m1_state_0)
-    state0_count_0_m1 = nshots - state1_count_0_m1
+    inverse_lambda_m = np.linalg.pinv(np.array(lambda_m))
 
-    state1_count_1_m2 = np.count_nonzero(m2_state_1)
-    state0_count_1_m2 = nshots - state1_count_1_m2
+    p__m1_i0 = np.mean(m2_state_0)
+    p__m1_i1 = np.mean(m2_state_1)
+    p__m0_i0 = 1 - p__m1_i0
+    p__m0_i1 = 1 - p__m1_i1
 
-    state1_count_0_m2 = np.count_nonzero(m2_state_0)
-    state0_count_0_m2 = nshots - state1_count_0_m2
+    p_00 = np.array([p__m0_i0 * p_m0_i0, p__m1_i0 * p_m0_i0])
+    p_01 = np.array([p__m0_i1 * p_m0_i1, p__m1_i1 * p_m0_i1])
+    p_10 = np.array([p__m0_i0 * p_m1_i0, p__m1_i0 * p_m1_i0])
+    p_11 = np.array([p__m0_i1 * p_m1_i1, p__m1_i1 * p_m1_i1])
 
-    lambda_m = [
-        [state0_count_0_m1 / nshots, state0_count_1_m1 / nshots],
-        [state1_count_0_m1 / nshots, state1_count_1_m1 / nshots],
-    ]
+    p_o1_00 = (inverse_lambda_m @ p_00)[1]
+    p_o0_01 = (inverse_lambda_m @ p_01)[0]
+    p_o1_10 = (inverse_lambda_m @ p_10)[1]
+    p_o0_11 = (inverse_lambda_m @ p_11)[0]
 
-    lambda_m2 = [
-        [state0_count_0_m2 / nshots, state0_count_1_m2 / nshots],
-        [state1_count_0_m2 / nshots, state1_count_1_m2 / nshots],
-    ]
+    p_o0_i1 = p_o0_01 + p_o0_11
+    p_o1_i0 = p_o1_00 + p_o1_10
 
-    p_0o_1i = (
-        state0_count_1_m1 * state0_count_0_m2 + state1_count_1_m1 * state0_count_1_m2
-    ) / nshots**2
+    qnd = 1 - (p_o0_i1 + p_o1_i0) / 2
 
-    p_1o_0i = (
-        state0_count_0_m1 * state1_count_0_m2 + state1_count_0_m1 * state1_count_1_m2
-    ) / nshots**2
-
-    result = (1 - (p_0o_1i + p_1o_0i) / 2) if not pi else (p_0o_1i + p_1o_0i) / 2
-
-    return result, lambda_m, lambda_m2
+    return qnd, fidelity
 
 
 def norm(x_mags):
