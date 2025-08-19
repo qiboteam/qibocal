@@ -208,6 +208,11 @@ def flux_offset(offset: float, platform: Platform, qubit: QubitId):
     platform.update({f"configs.{platform.qubits[qubit].flux}.offset": offset})
 
 
+def dc_flux_offset(offset: float, platform: Platform, qubit: QubitId):
+    """Update flux offset parameter in platform for specific qubit."""
+    platform.update({f"configs.{platform.qubits[qubit].dc_flux}.offset": offset})
+
+
 def frequency_12_transition(frequency: int, platform: Platform, qubit: QubitId):
     channel = platform.qubits[qubit].drive_extra[1, 2]
     platform.update({f"configs.{channel}.frequency": frequency})
