@@ -226,12 +226,12 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
             model.fit(iq_values, np.array(states))
             grids["angle"][version][j, k] = model.angle
             grids["threshold"][version][j, k] = model.threshold
-
             m1_state_0 = classify(
                 data.data[qubit, 0, 0, pi][:, k, j, :],
                 model.angle,
                 model.threshold,
             )
+
             m1_state_1 = classify(
                 data.data[qubit, 1, 0, pi][:, k, j, :],
                 model.angle,
@@ -248,9 +248,14 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
                 model.threshold,
             )
 
-            grids["fidelity"][version][j, k] = compute_assignment_fidelity(
-                m1_state_1, m1_state_0
-            )
+            if pi == 1:
+                grids["fidelity"][version][j, k] = compute_assignment_fidelity(
+                    m1_state_0, m1_state_1
+                )
+            else:
+                grids["fidelity"][version][j, k] = compute_assignment_fidelity(
+                    m1_state_1, m1_state_0
+                )
             grids["qnd"][version][j, k], _, _ = compute_qnd(
                 m1_state_1, m1_state_0, m2_state_1, m2_state_0
             )
@@ -286,7 +291,6 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
             grids["qnd"]["standard"].shape,
         )
         best_qnd[qubit] = grids["qnd"]["standard"][i, j]
-        highest_fidelity[qubit] = filtered_fidelity["standard"][i, j]
         qnd_best_freq[qubit] = freq_vals[i]
         qnd_best_amps[qubit] = amp_vals[j]
         qnd_best_fid[qubit] = filtered_fidelity["standard"][i, j]
@@ -310,7 +314,6 @@ def _plot(
     data: ResonatorOptimizationData, fit: ResonatorOptimizationResults, target: QubitId
 ):
     """Plotting function for resonator optimization"""
-
     figures = []
     fitting_report = ""
     fig = make_subplots(
@@ -327,9 +330,9 @@ def _plot(
     if fit is not None:
         fig.add_trace(
             go.Heatmap(
-                x=x,
-                y=y * HZ_TO_GHZ,
-                z=fit.data[target, "fidelity", "standard"],
+                x=y,
+                y=x * HZ_TO_GHZ,
+                z=fit.data[target, "fidelity", "standard"].T.ravel(),
                 coloraxis=COLORAXIS[0],
             ),
             row=1,
@@ -338,9 +341,9 @@ def _plot(
 
         fig.add_trace(
             go.Heatmap(
-                x=x,
-                y=y * HZ_TO_GHZ,
-                z=fit.data[target, "fidelity", "pi"],
+                x=y,
+                y=x * HZ_TO_GHZ,
+                z=fit.data[target, "fidelity", "pi"].T.ravel(),
                 coloraxis=COLORAXIS[0],
             ),
             row=2,
@@ -366,9 +369,9 @@ def _plot(
 
         fig.add_trace(
             go.Heatmap(
-                x=x,
-                y=y * HZ_TO_GHZ,
-                z=fit.data[target, "qnd", "standard"],
+                x=y,
+                y=x * HZ_TO_GHZ,
+                z=fit.data[target, "qnd", "standard"].T.ravel(),
                 coloraxis=COLORAXIS[1],
             ),
             row=1,
@@ -394,9 +397,9 @@ def _plot(
 
         fig.add_trace(
             go.Heatmap(
-                x=x,
-                y=y * HZ_TO_GHZ,
-                z=fit.data[target, "qnd", "pi"],
+                x=y,
+                y=x * HZ_TO_GHZ,
+                z=fit.data[target, "qnd", "pi"].T.ravel(),
                 coloraxis=COLORAXIS[1],
             ),
             row=2,
@@ -406,8 +409,6 @@ def _plot(
         fig.update_layout(
             xaxis_title="Amplitude [a.u.]",
             xaxis2_title="Amplitude [a.u.]",
-            xaxis3_title="Amplitude [a.u.]",
-            xaxis4_title="Amplitude [a.u.]",
             yaxis_title="Frequency [GHz]",
             yaxis3_title="Frequency [GHz]",
             legend=dict(orientation="h"),
@@ -422,9 +423,9 @@ def _plot(
             table_dict(
                 target,
                 [
-                    "Best Assignment-Fidlity Amplitude [a.u.]",
-                    "Best Assignment-Fidlity Frequency [GHz]",
-                    "Best Assignment-Fidlity",
+                    "Best Assignment-Fidelity Amplitude [a.u.]",
+                    "Best Assignment-Fidelity Frequency [GHz]",
+                    "Best Assignment-Fidelity",
                     "Best QND Amplitude [a.u.]",
                     "Best QND Frequency [GHz]",
                     "Best Quantum Non Demolition-ness",
