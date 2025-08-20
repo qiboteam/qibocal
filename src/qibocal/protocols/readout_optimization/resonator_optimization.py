@@ -18,7 +18,6 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.fitting.classifier.qubit_fit import QubitFit
-from qibocal.protocols.two_qubit_interaction.chevron.utils import COLORAXIS
 from qibocal.protocols.utils import HZ_TO_GHZ, readout_frequency, table_dict, table_html
 
 from ..utils import classify, compute_assignment_fidelity, compute_qnd
@@ -115,6 +114,7 @@ def _acquisition(
     freq_sweepers = {}
     ro_pulses_m1 = {}
     ro_pulses_m2 = {}
+    ro_pulses_m3 = {}
 
     data = ResonatorOptimizationData(
         resonator_type=platform.resonator_type,
@@ -129,20 +129,34 @@ def _acquisition(
         delay=params.delay,
     )
 
-    for state, pi in product([0, 1], repeat=2):
+    for state in [0, 1]:
         sequence = PulseSequence()
         for qubit in targets:
             natives = platform.natives.single_qubit[qubit]
-            ro_channel, ro_pulse_m1 = natives.MZ()[0]
+            ro_channel = platform.qubits[qubit].acquisition
+            drive_channel = platform.qubits[qubit].drive
+            _, ro_pulse_m1 = natives.MZ()[0]
             _, ro_pulse_m2 = natives.MZ()[0]
+            _, ro_pulse_m3 = natives.MZ()[0]
             if state == 1:
                 sequence += natives.RX()
-            sequence.append((ro_channel, Delay(duration=natives.RX()[0][1].duration)))
+                sequence.append((ro_channel, Delay(duration=natives.RX().duration)))
             sequence.append((ro_channel, ro_pulse_m1))
             sequence.append((ro_channel, Delay(duration=params.delay)))
-            if pi == 1:
-                sequence += natives.RX()
             sequence.append((ro_channel, ro_pulse_m2))
+            sequence.append(
+                (
+                    drive_channel,
+                    Delay(
+                        duration=params.delay
+                        + ro_pulse_m1.duration
+                        + ro_pulse_m2.duration
+                    ),
+                )
+            )
+            sequence += natives.RX()
+            sequence.append((ro_channel, Delay(duration=natives.RX().duration)))
+            sequence.append((ro_channel, ro_pulse_m3))
 
             freq_sweepers[qubit] = Sweeper(
                 parameter=Parameter.frequency,
@@ -153,6 +167,7 @@ def _acquisition(
 
             ro_pulses_m1[qubit] = ro_pulse_m1
             ro_pulses_m2[qubit] = ro_pulse_m2
+            ro_pulses_m3[qubit] = ro_pulse_m3
 
         amp_sweeper = Sweeper(
             parameter=Parameter.amplitude,
@@ -162,7 +177,8 @@ def _acquisition(
                 params.amplitude_step,
             ),
             pulses=[ro_pulses_m1[qubit] for qubit in targets]
-            + [ro_pulses_m2[qubit] for qubit in targets],
+            + [ro_pulses_m2[qubit] for qubit in targets]
+            + [ro_pulses_m3[qubit] for qubit in targets],
         )
 
         data.amplitudes_swept = amp_sweeper.values.tolist()
@@ -177,9 +193,13 @@ def _acquisition(
 
         for target in targets:
             for m, pulse_id in enumerate(
-                [ro_pulses_m1[target].id, ro_pulses_m2[target].id]
+                [
+                    ro_pulses_m1[target].id,
+                    ro_pulses_m2[target].id,
+                    ro_pulses_m3[target].id,
+                ]
             ):
-                data.data[target, state, m, pi] = results[pulse_id]
+                data.data[target, state, m] = results[pulse_id]
 
     return data
 
@@ -202,98 +222,108 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
         freq_vals = data.frequencies_swept[qubit]
         amp_vals = data.amplitudes_swept
         shape = (len(freq_vals), len(amp_vals))
-        grid_keys = ["fidelity", "angle", "threshold", "qnd"]
-        versions = ["standard", "pi"]
+        grid_keys = ["fidelity", "angle", "threshold", "qnd", "qnd-pi"]
 
-        grids = {
-            key: {version: np.zeros(shape) for version in versions} for key in grid_keys
-        }
+        grids = {key: np.zeros(shape) for key in grid_keys}
 
-        for j, k, pi in product(range(len(freq_vals)), range(len(amp_vals)), [0, 1]):
-            version = "pi" if pi else "standard"
+        for j, k in product(range(len(freq_vals)), range(len(amp_vals))):
             iq_values = np.concatenate(
                 (
-                    data.data[qubit, 0, 0, pi][:, k, j, :],
-                    data.data[qubit, 1, 0, pi][:, k, j, :],
+                    data.data[qubit, 0, 0][:, k, j, :],
+                    data.data[qubit, 1, 0][:, k, j, :],
                 )
             )
             nshots = iq_values.shape[0] // 2
             states = [0] * nshots + [1] * nshots
-            if pi:
-                states.reverse()
 
             model = QubitFit()
             model.fit(iq_values, np.array(states))
-            grids["angle"][version][j, k] = model.angle
-            grids["threshold"][version][j, k] = model.threshold
+            grids["angle"][j, k] = model.angle
+            grids["threshold"][j, k] = model.threshold
             m1_state_0 = classify(
-                data.data[qubit, 0, 0, pi][:, k, j, :],
+                data.data[qubit, 0, 0][:, k, j, :],
                 model.angle,
                 model.threshold,
             )
+
+            # print("M1 STATE 0", m1_state_0.mean())
 
             m1_state_1 = classify(
-                data.data[qubit, 1, 0, pi][:, k, j, :],
+                data.data[qubit, 1, 0][:, k, j, :],
                 model.angle,
                 model.threshold,
             )
+            # print("M1 STATE 1", m1_state_1.mean())
+
             m2_state_0 = classify(
-                data.data[qubit, 0, 1, pi][:, k, j, :],
+                data.data[qubit, 0, 1][:, k, j, :],
                 model.angle,
                 model.threshold,
             )
+            # print("M2 STATE 0", m2_state_0.mean())
+
             m2_state_1 = classify(
-                data.data[qubit, 1, 1, pi][:, k, j, :],
+                data.data[qubit, 1, 1][:, k, j, :],
                 model.angle,
                 model.threshold,
             )
 
-            if pi == 1:
-                grids["fidelity"][version][j, k] = compute_assignment_fidelity(
-                    m1_state_0, m1_state_1
-                )
-            else:
-                grids["fidelity"][version][j, k] = compute_assignment_fidelity(
-                    m1_state_1, m1_state_0
-                )
-            grids["qnd"][version][j, k], _, _ = compute_qnd(
-                m1_state_1, m1_state_0, m2_state_1, m2_state_0
+            m3_state_0 = classify(
+                data.data[qubit, 0, 2][:, k, j, :],
+                model.angle,
+                model.threshold,
             )
-            grids["angle"][version][j, k] = model.angle
-            grids["threshold"][version][j, k] = model.threshold
-            arr[qubit, "fidelity", version] = grids["fidelity"][version]
-            arr[qubit, "qnd", version] = grids["qnd"][version]
+
+            m3_state_1 = classify(
+                data.data[qubit, 1, 2][:, k, j, :],
+                model.angle,
+                model.threshold,
+            )
+
+            grids["fidelity"][j, k] = compute_assignment_fidelity(
+                m1_state_1, m1_state_0
+            )
+            grids["qnd"][j, k], _, _ = compute_qnd(
+                m1_state_1,
+                m1_state_0,
+                m2_state_1,
+                m2_state_0,
+            )
+            grids["qnd-pi"][j, k], _, _ = compute_qnd(
+                m1_state_1, m1_state_0, m3_state_1, m3_state_0, pi=False
+            )
+
+            grids["angle"][j, k] = model.angle
+            grids["threshold"][j, k] = model.threshold
+            arr[qubit, "fidelity"] = grids["fidelity"]
+            arr[qubit, "qnd"] = grids["qnd"]
+            arr[qubit, "qnd-pi"] = grids["qnd-pi"]
         size = (math.ceil(len(freq_vals) / 5), math.ceil(len(amp_vals) / 5))
-        filtered_fidelity = {
-            version: ndimage.uniform_filter(
-                grids["fidelity"][version],
-                size=size,
-                mode="nearest",
-            )
-            for version in versions
-        }
+        filtered_fidelity = ndimage.uniform_filter(
+            grids["fidelity"], size=size, mode="nearest"
+        )
 
         # indices for best fidelity
         i, j = np.unravel_index(
-            np.argmax(filtered_fidelity["standard"]),
-            filtered_fidelity["standard"].shape,
+            np.nanargmax(filtered_fidelity),
+            filtered_fidelity.shape,
         )
-        highest_fidelity[qubit] = filtered_fidelity["standard"][i, j]
+        highest_fidelity[qubit] = filtered_fidelity[i, j]
         fid_best_freq[qubit] = freq_vals[i]
         fid_best_amps[qubit] = amp_vals[j]
-        fid_best_qnd[qubit] = grids["qnd"]["standard"][i, j]
-        best_angle[qubit] = grids["angle"]["standard"][i, j]
-        best_threshold[qubit] = grids["threshold"]["standard"][i, j]
+        fid_best_qnd[qubit] = grids["qnd"][i, j]
+        best_angle[qubit] = grids["angle"][i, j]
+        best_threshold[qubit] = grids["threshold"][i, j]
 
         # indices for best qnd
         i, j = np.unravel_index(
-            np.argmax(grids["qnd"]["standard"]),
-            grids["qnd"]["standard"].shape,
+            np.nanargmax(grids["qnd"]),
+            grids["qnd"].shape,
         )
-        best_qnd[qubit] = grids["qnd"]["standard"][i, j]
+        best_qnd[qubit] = grids["qnd"][i, j]
         qnd_best_freq[qubit] = freq_vals[i]
         qnd_best_amps[qubit] = amp_vals[j]
-        qnd_best_fid[qubit] = filtered_fidelity["standard"][i, j]
+        qnd_best_fid[qubit] = filtered_fidelity[i, j]
 
     return ResonatorOptimizationResults(
         data=arr,
@@ -317,49 +347,30 @@ def _plot(
     figures = []
     fitting_report = ""
     fig = make_subplots(
-        rows=2,
-        cols=2,
-        subplot_titles=(
-            "Fidelity",
-            "Quantum Non Demolition-ness",
-            r"Fidelity ($\pi$)",
-            r"Quantum Non Demolition-ness ($\pi$)",
-        ),
+        rows=1,
+        cols=3,
+        subplot_titles=("Fidelity", "QND", "QND-pi"),
     )
     x, y = data.grid(target)
     if fit is not None:
+        # Fidelity heatmap
         fig.add_trace(
             go.Heatmap(
-                x=y,
-                y=x * HZ_TO_GHZ,
-                z=fit.data[target, "fidelity", "standard"].T.ravel(),
-                coloraxis=COLORAXIS[0],
+                x=x * HZ_TO_GHZ,
+                y=y,
+                z=fit.data[target, "fidelity"].T.ravel(),
+                coloraxis="coloraxis",
             ),
             row=1,
             col=1,
         )
 
         fig.add_trace(
-            go.Heatmap(
-                x=y,
-                y=x * HZ_TO_GHZ,
-                z=fit.data[target, "fidelity", "pi"].T.ravel(),
-                coloraxis=COLORAXIS[0],
-            ),
-            row=2,
-            col=1,
-        )
-
-        fig.add_trace(
             go.Scatter(
-                x=[fit.fid_best_amp[target]],
-                y=[fit.fid_best_freq[target] * HZ_TO_GHZ],
+                x=[fit.fid_best_freq[target] * HZ_TO_GHZ],
+                y=[fit.fid_best_amp[target]],
                 mode="markers",
-                marker=dict(
-                    size=8,
-                    color="black",
-                    symbol="cross",
-                ),
+                marker=dict(size=8, color="black", symbol="cross"),
                 name="highest assignment fidelity",
                 showlegend=True,
             ),
@@ -367,12 +378,13 @@ def _plot(
             col=1,
         )
 
+        # QND heatmap
         fig.add_trace(
             go.Heatmap(
-                x=y,
-                y=x * HZ_TO_GHZ,
-                z=fit.data[target, "qnd", "standard"].T.ravel(),
-                coloraxis=COLORAXIS[1],
+                x=x * HZ_TO_GHZ,
+                y=y,
+                z=fit.data[target, "qnd"].T.ravel(),
+                coloraxis="coloraxis2",
             ),
             row=1,
             col=2,
@@ -380,14 +392,10 @@ def _plot(
 
         fig.add_trace(
             go.Scatter(
-                x=[fit.qnd_best_amp[target]],
-                y=[fit.qnd_best_freq[target] * HZ_TO_GHZ],
+                x=[fit.qnd_best_freq[target] * HZ_TO_GHZ],
+                y=[fit.qnd_best_amp[target]],
                 mode="markers",
-                marker=dict(
-                    size=8,
-                    color="black",
-                    symbol="cross",
-                ),
+                marker=dict(size=8, color="black", symbol="cross"),
                 name="highest quantum non demolition-ness",
                 showlegend=True,
             ),
@@ -395,30 +403,58 @@ def _plot(
             col=2,
         )
 
+        # QND-pi heatmap
         fig.add_trace(
             go.Heatmap(
-                x=y,
-                y=x * HZ_TO_GHZ,
-                z=fit.data[target, "qnd", "pi"].T.ravel(),
-                coloraxis=COLORAXIS[1],
+                x=x * HZ_TO_GHZ,
+                y=y,
+                z=fit.data[target, "qnd-pi"].T.ravel(),
+                coloraxis="coloraxis3",
             ),
-            row=2,
-            col=2,
+            row=1,
+            col=3,
         )
 
+        # Layout updates
         fig.update_layout(
-            xaxis_title="Amplitude [a.u.]",
-            xaxis2_title="Amplitude [a.u.]",
-            yaxis_title="Frequency [GHz]",
-            yaxis3_title="Frequency [GHz]",
+            yaxis_title="Amplitude [a.u.]",
+            xaxis_title="Frequency [GHz]",
+            xaxis2_title="Frequency [GHz]",
+            xaxis3_title="Frequency [GHz]",
             legend=dict(orientation="h"),
         )
+
+        # Place horizontal colorbars above each subplot
         fig.update_layout(
-            coloraxis={"colorscale": "Plasma", "colorbar": {"x": 1.15}},
-            coloraxis2={"colorscale": "Viridis", "colorbar": {"x": -0.15}},
-            coloraxis3={"colorscale": "Plasma", "colorbar": {"x": 1.15}},
-            coloraxis4={"colorscale": "Viridis", "colorbar": {"x": -0.15}},
+            coloraxis=dict(
+                colorscale="Plasma",
+                colorbar=dict(
+                    orientation="h",
+                    x=0.16,
+                    y=1.15,
+                    len=0.25,
+                ),
+            ),
+            coloraxis2=dict(
+                colorscale="Viridis",
+                colorbar=dict(
+                    orientation="h",
+                    x=0.5,
+                    y=1.15,
+                    len=0.25,
+                ),
+            ),
+            coloraxis3=dict(
+                colorscale="Cividis",
+                colorbar=dict(
+                    orientation="h",
+                    x=0.84,
+                    y=1.15,
+                    len=0.25,
+                ),
+            ),
         )
+
         fitting_report = table_html(
             table_dict(
                 target,
@@ -440,14 +476,6 @@ def _plot(
                 ],
             )
         )
-
-        fig.update_layout(
-            showlegend=True,
-            legend=dict(orientation="h"),
-        )
-
-        fig.update_xaxes(title_text="Amplitude [a.u.]", row=1, col=1)
-        fig.update_yaxes(title_text="Frequency [GHz]", row=1, col=1)
 
         figures.append(fig)
     return figures, fitting_report

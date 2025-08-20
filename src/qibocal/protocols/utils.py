@@ -193,28 +193,25 @@ def compute_qnd(
 ) -> tuple[float, list, list]:
     r"""TO BE UPDATED"""
 
-    p_m1_i0 = np.mean(m1_state_0)
-    p_m0_i0 = 1 - p_m1_i0
-    p_m1_i1 = np.mean(m1_state_1)
-    p_m0_i1 = 1 - p_m1_i1
+    p_m1 = np.mean([m1_state_0, m1_state_1], axis=1)
 
-    # computing QND according to https://arxiv.org/pdf/2106.06173
-    lambda_m = [[p_m0_i0, p_m0_i1], [p_m1_i0, p_m1_i1]]
-    inverse_lambda_m = np.linalg.pinv(np.array(lambda_m))
-    p__m1_i0 = np.mean(m2_state_0)
-    p__m1_i1 = np.mean(m2_state_1)
-    p__m0_i0 = 1 - p__m1_i0
-    p__m0_i1 = 1 - p__m1_i1
+    # print("P_M1", p_m1)
+    p_m2 = np.mean([m2_state_0, m2_state_1], axis=1)
 
-    lambda_m2 = [[p__m0_i0, p__m0_i1], [p__m1_i0, p__m1_i1]]
-    p_o_i1 = inverse_lambda_m @ np.array([p__m0_i1, p__m1_i1])
-    p_o_i0 = inverse_lambda_m @ np.array([p__m0_i0, p__m1_i0])
+    # print("P_M2", p_m2)
+    lambda_m = np.stack([1 - p_m1, p_m1])
+    # print("LAMBDA_M", lambda_m)
+    lambda_m2 = np.stack([1 - p_m2, p_m2])
+    # print("LAMBDA_M2", lambda_m2)
+    # print("LAMBDA_M2_T", lambda_m2.T)
 
-    if not pi:
-        qnd = 1 - (p_o_i1[0] + p_o_i0[1]) / 2
+    p_o = np.linalg.inv(lambda_m) @ lambda_m2
+
+    qnd = 1 - np.sum(np.diag(p_o[::-1] if not pi else p_o)) / 2
+    if qnd < 1:
+        return qnd, lambda_m.tolist(), lambda_m2.tolist()
     else:
-        qnd = 1 - (p_o_i1[1] + p_o_i0[0]) / 2
-    return qnd, lambda_m, lambda_m2
+        return np.nan, None, None
 
 
 def compute_assignment_fidelity(m1_state_1, m1_state_0) -> float:
