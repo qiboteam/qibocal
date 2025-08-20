@@ -188,18 +188,15 @@ def effective_qubit_temperature(
     return temp, error
 
 
-def process_readout(
+def compute_qnd(
     m1_state_1, m1_state_0, m2_state_1, m2_state_0, pi=False
-) -> tuple[float, float, list, list]:
+) -> tuple[float, list, list]:
     r"""TO BE UPDATED"""
 
     p_m1_i0 = np.mean(m1_state_0)
     p_m0_i0 = 1 - p_m1_i0
     p_m1_i1 = np.mean(m1_state_1)
     p_m0_i1 = 1 - p_m1_i1
-
-    # compute assignment fidelity
-    fidelity = 1 - (p_m1_i0 + p_m0_i1) / 2
 
     # computing QND according to https://arxiv.org/pdf/2106.06173
     lambda_m = [[p_m0_i0, p_m0_i1], [p_m1_i0, p_m1_i1]]
@@ -210,10 +207,32 @@ def process_readout(
     p__m0_i1 = 1 - p__m1_i1
 
     lambda_m2 = [[p__m0_i0, p__m0_i1], [p__m1_i0, p__m1_i1]]
-    p_o0_i1 = (inverse_lambda_m @ np.array([p__m0_i1, p__m1_i1]))[0]
-    p_o1_i0 = (inverse_lambda_m @ np.array([p__m0_i0, p__m1_i0]))[1]
-    qnd = 1 - (p_o0_i1 + p_o1_i0) / 2
-    return qnd, fidelity, lambda_m, lambda_m2
+    p_o_i1 = inverse_lambda_m @ np.array([p__m0_i1, p__m1_i1])
+    p_o_i0 = inverse_lambda_m @ np.array([p__m0_i0, p__m1_i0])
+
+    if not pi:
+        qnd = 1 - (p_o_i1[0] + p_o_i0[1]) / 2
+    else:
+        qnd = 1 - (p_o_i1[1] + p_o_i0[0]) / 2
+    return qnd, lambda_m, lambda_m2
+
+
+def compute_assignment_fidelity(m1_state_1, m1_state_0) -> float:
+    p_m1_i0 = np.mean(m1_state_0)
+    p_m1_i1 = np.mean(m1_state_1)
+    p_m0_i1 = 1 - p_m1_i1
+
+    # compute assignment fidelity
+    fidelity = 1 - (p_m1_i0 + p_m0_i1) / 2
+    return fidelity
+
+
+def classify(arr: np.ndarray, angle: float, threshold: float) -> np.ndarray:
+    """Mapping IQ array in 0s and 1s given angle and threshold."""
+    c, s = np.cos(angle), np.sin(angle)
+    rot = np.array([[c, -s], [s, c]])
+    rotated = arr @ rot.T
+    return (rotated[:, 0] > threshold).astype(int)
 
 
 def norm(x_mags):

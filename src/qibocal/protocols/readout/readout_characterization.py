@@ -9,9 +9,11 @@ from ... import update
 from ...auto.operation import Data, Parameters, QubitId, Results, Routine
 from ...calibration import CalibrationPlatform
 from ..utils import (
+    classify,
+    compute_assignment_fidelity,
+    compute_qnd,
     effective_qubit_temperature,
     format_error_single_cell,
-    process_readout,
     round_report,
     table_dict,
     table_html,
@@ -58,12 +60,6 @@ class ReadoutCharacterizationData(Data):
     angle: dict[QubitId, float] = field(default_factory=dict)
     threshold: dict[QubitId, float] = field(default_factory=dict)
     data: dict[tuple, np.ndarray] = field(default_factory=dict)
-
-    def classify(self, qubit: QubitId, state: int, measure: int) -> np.ndarray:
-        c, s = np.cos(self.angle[qubit]), np.sin(self.angle[qubit])
-        rot = np.array([[c, -s], [s, c]])
-        rotated = self.data[qubit, state, measure] @ rot.T
-        return (rotated[:, 0] > self.threshold[qubit]).astype(int)
 
 
 def _acquisition(
@@ -134,12 +130,22 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
     qnd = {}
     lambda_m, lambda_m2 = {}, {}
     for qubit in qubits:
-        m1_state_1 = data.classify(qubit, 1, 0)
-        m1_state_0 = data.classify(qubit, 0, 0)
-        m2_state_1 = data.classify(qubit, 1, 1)
-        m2_state_0 = data.classify(qubit, 0, 1)
-        qnd[qubit], assignment_fidelity[qubit], lambda_m[qubit], lambda_m2[qubit] = (
-            process_readout(m1_state_1, m1_state_0, m2_state_1, m2_state_0)
+        m1_state_1 = classify(
+            data.data[qubit, 1, 0], data.angle[qubit], data.threshold[qubit]
+        )
+        m1_state_0 = classify(
+            data.data[qubit, 0, 0], data.angle[qubit], data.threshold[qubit]
+        )
+        m2_state_1 = classify(
+            data.data[qubit, 1, 1], data.angle[qubit], data.threshold[qubit]
+        )
+        m2_state_0 = classify(
+            data.data[qubit, 0, 1], data.angle[qubit], data.threshold[qubit]
+        )
+
+        assignment_fidelity[qubit] = compute_assignment_fidelity(m1_state_1, m1_state_0)
+        qnd[qubit], lambda_m[qubit], lambda_m2[qubit] = compute_qnd(
+            m1_state_1, m1_state_0, m2_state_1, m2_state_0
         )
 
         fidelity[qubit] = 2 * assignment_fidelity[qubit] - 1
