@@ -273,11 +273,9 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
                 m2_state_1,
                 m2_state_0,
             )
-            leakage, _, _ = compute_qnd(
-                m1_state_1, m1_state_0, m3_state_1, m3_state_0, pi=True
+            grids["qnd-pi"][j, k], _, _ = compute_qnd(
+                m2_state_1, m2_state_0, m3_state_0, m3_state_1, pi=True
             )
-
-            grids["qnd-pi"][j, k] = (grids["qnd"][j, k] + leakage) / 2
             grids["angle"][j, k] = model.angle
             grids["threshold"][j, k] = model.threshold
         arr[qubit, "fidelity"] = grids["fidelity"].copy()
@@ -329,7 +327,7 @@ def _plot(
     fig = make_subplots(
         rows=1,
         cols=3,
-        subplot_titles=("Fidelity", "QND", "Averaged QND"),
+        subplot_titles=("Fidelity", "QND", "QND Pi"),
     )
     x, y = data.grid(target)
     if fit is not None:
@@ -401,7 +399,7 @@ def _plot(
                 y=[fit.amplitude[target, "qnd-pi"]],
                 mode="markers",
                 marker=dict(size=8, color="black", symbol="cross"),
-                name="highest averaged qnd",
+                name="qnd pi",
                 showlegend=True,
             ),
             row=1,
@@ -426,7 +424,7 @@ def _plot(
                 [
                     "Best Assignment-Fidelity",
                     "Best QND",
-                    "Best Averaged - QND",
+                    "Best QND Pi",
                 ],
                 [
                     np.round(fit.best_fidelity[target], 4),
