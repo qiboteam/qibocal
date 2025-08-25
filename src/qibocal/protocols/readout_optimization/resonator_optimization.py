@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from itertools import product
 
 import numpy as np
@@ -59,7 +59,9 @@ class ResonatorOptimizationResults(Results):
     """Threshold that maximes assignment fidelity."""
 
     def __contains__(self, key: QubitId) -> bool:
-        return any(key == k[0] for k in self.frequency)
+        return all(
+            key == k[0] if isinstance(k, tuple) else key == k for k in fields(self)
+        )
 
 
 @dataclass
