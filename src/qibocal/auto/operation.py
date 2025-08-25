@@ -245,7 +245,9 @@ class Data(AbstractData):
 class Results(AbstractData):
     """Generic runcard update."""
 
-    def __contains__(self, key: Union[QubitId, QubitPairId, tuple[QubitId, ...]]):
+    def __contains__(
+        self, key: Union[QubitId, QubitPairId, tuple[QubitId, ...]]
+    ) -> bool:
         """Checking if qubit is in Results.
 
         If key is not present means that fitting failed or was not
