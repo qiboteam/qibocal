@@ -14,6 +14,7 @@ from qibolab import (
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
+from qibocal.config import log
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.utils import HZ_TO_GHZ, readout_frequency, table_dict, table_html
 
@@ -58,7 +59,7 @@ class ResonatorOptimizationResults(Results):
     """Threshold that maximes assignment fidelity."""
 
     def __contains__(self, key):
-        return True
+        return key in self.best_fidelity
 
 
 @dataclass
@@ -292,17 +293,20 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
             value[mask] = np.nan
             # mask unphysical regions where QND > 1
             value[value > 1] = np.nan
-            i, j = np.unravel_index(np.nanargmax(value), value.shape)
-            if feat == "fidelity":
-                best_fidelity[qubit] = grids["fidelity"][i, j]
-            elif feat == "qnd":
-                best_qnd[qubit] = grids["qnd"][i, j]
-            else:
-                best_qnd_pi[qubit] = grids["qnd-pi"][i, j]
-            frequency[qubit, feat] = freq_vals[i]
-            amplitude[qubit, feat] = amp_vals[j]
-            angle[qubit, feat] = grids["angle"][i, j]
-            threshold[qubit, feat] = grids["threshold"][i, j]
+            try:
+                i, j = np.unravel_index(np.nanargmax(value), value.shape)
+                if feat == "fidelity":
+                    best_fidelity[qubit] = grids["fidelity"][i, j]
+                elif feat == "qnd":
+                    best_qnd[qubit] = grids["qnd"][i, j]
+                else:
+                    best_qnd_pi[qubit] = grids["qnd-pi"][i, j]
+                frequency[qubit, feat] = freq_vals[i]
+                amplitude[qubit, feat] = amp_vals[j]
+                angle[qubit, feat] = grids["angle"][i, j]
+                threshold[qubit, feat] = grids["threshold"][i, j]
+            except ValueError:
+                log.warning("Fitting error.")
 
     return ResonatorOptimizationResults(
         data=arr,
