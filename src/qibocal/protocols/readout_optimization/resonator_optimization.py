@@ -58,8 +58,8 @@ class ResonatorOptimizationResults(Results):
     threshold: dict[tuple[QubitId, str], float]
     """Threshold that maximes assignment fidelity."""
 
-    def __contains__(self, key):
-        return key in self.best_fidelity
+    def __contains__(self, key: QubitId) -> bool:
+        return any(key == k[0] for k in self.frequency)
 
 
 @dataclass
