@@ -194,24 +194,16 @@ def compute_qnd(
     r"""TO BE UPDATED"""
 
     p_m1 = np.mean([m1_state_0, m1_state_1], axis=1)
-
-    # print("P_M1", p_m1)
     p_m2 = np.mean([m2_state_0, m2_state_1], axis=1)
 
-    # print("P_M2", p_m2)
     lambda_m = np.stack([1 - p_m1, p_m1])
-    # print("LAMBDA_M", lambda_m)
     lambda_m2 = np.stack([1 - p_m2, p_m2])
-    # print("LAMBDA_M2", lambda_m2)
-    # print("LAMBDA_M2_T", lambda_m2.T)
 
-    p_o = np.linalg.inv(lambda_m) @ lambda_m2
+    # pinv to avoid tests failing due to singular matrix
+    p_o = np.linalg.pinv(lambda_m) @ lambda_m2
 
-    qnd = 1 - np.sum(np.diag(p_o[::-1] if not pi else p_o)) / 2
-    if qnd < 1:
-        return qnd, lambda_m.tolist(), lambda_m2.tolist()
-    else:
-        return np.nan, None, None
+    qnd = np.sum(np.diag(p_o)) / 2 if not pi else np.sum(np.diag(p_o[::-1])) / 2
+    return qnd, lambda_m.tolist(), lambda_m2.tolist()
 
 
 def compute_assignment_fidelity(m1_state_1, m1_state_0) -> float:
