@@ -202,7 +202,7 @@ def compute_qnd(
 
     Returns the QND and the two measurement matrices."""
 
-    p_m1 = np.mean([zeros_fist_measure, ones_fist_measure], axis=1)
+    p_m1 = np.mean([zeros_first_measure, ones_first_measure], axis=1)
     p_m2 = np.mean([zeros_second_measure, ones_second_measure], axis=1)
 
     lambda_m = np.stack([1 - p_m1, p_m1])
