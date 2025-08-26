@@ -189,8 +189,8 @@ def effective_qubit_temperature(
 
 
 def compute_qnd(
-    ones_fist_measure,
-    zeros_fist_measure,
+    ones_first_measure,
+    zeros_first_measure,
     ones_second_measure,
     zeros_second_measure,
     pi=False,
