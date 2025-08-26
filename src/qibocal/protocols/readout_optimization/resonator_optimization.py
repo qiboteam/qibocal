@@ -12,13 +12,20 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
-from qibocal.calibration import CalibrationPlatform
-from qibocal.config import log
-from qibocal.fitting.classifier.qubit_fit import QubitFit
-from qibocal.protocols.utils import HZ_TO_GHZ, readout_frequency, table_dict, table_html
-
-from ..utils import classify, compute_assignment_fidelity, compute_qnd
+from ... import update
+from ...auto.operation import Data, Parameters, QubitId, Results, Routine
+from ...calibration import CalibrationPlatform
+from ...config import log
+from ...fitting.classifier.qubit_fit import QubitFit
+from ..utils import (
+    HZ_TO_GHZ,
+    classify,
+    compute_assignment_fidelity,
+    compute_qnd,
+    readout_frequency,
+    table_dict,
+    table_html,
+)
 
 __all__ = ["resonator_optimization"]
 
@@ -40,27 +47,40 @@ class ResonatorOptimizationParameters(Parameters):
     delay: float = 0
     """Delay between readouts, could account for resonator depletion or not [ns]."""
 
+    @property
+    def frequency_span(self) -> np.ndarray:
+        return np.arange(-self.freq_width / 2, self.freq_width / 2, self.freq_step)
+
 
 @dataclass
 class ResonatorOptimizationResults(Results):
     """Resonator optimization outputs"""
 
-    data: dict[tuple[QubitId, str, str], np.ndarray]
-    best_fidelity: dict[QubitId, float]
-    best_qnd: dict[QubitId, float]
-    best_qnd_pi: dict[QubitId, float]
-    frequency: dict[tuple[QubitId, str], float]
-    """Resonator Frequency with the highest assignment fidelity."""
-    amplitude: dict[tuple[QubitId, str], float]
-    """Resonator Amplitude with the highest assignment fidelity"""
-    angle: dict[tuple[QubitId, str], float]
-    """IQ angle that maximes assignment fidelity."""
-    threshold: dict[tuple[QubitId, str], float]
-    """Threshold that maximes assignment fidelity."""
+    data: dict[tuple[QubitId, str], np.ndarray]
+    """Dict storing fidelity, qnd and qnd-pi."""
+    fidelity: dict[QubitId, float]
+    """Assignment fideilty at optimal readout point."""
+    qnd: dict[QubitId, float]
+    """QND at optimal readout point."""
+    qnd_pi: dict[QubitId, float]
+    """QND-pi at optimal readout point."""
+    frequency: dict[QubitId, float]
+    """Frequency at optimal readout point."""
+    amplitude: dict[QubitId, float]
+    """Amplitude at optimal readout point."""
+    angle: dict[QubitId, float]
+    """Angle at optimal readout point."""
+    threshold: dict[QubitId, float]
+    """Threshold at optimal readout point."""
 
     def __contains__(self, key: QubitId) -> bool:
+        """Check whether results are available for qubit."""
         return all(
-            key == k[0] if isinstance(k, tuple) else key == k for k in fields(self)
+            key in k
+            for k in map(
+                lambda f: getattr(self, f.name),
+                filter(lambda f: f.name != "data", fields(self)),
+            )
         )
 
 
@@ -68,14 +88,10 @@ class ResonatorOptimizationResults(Results):
 class ResonatorOptimizationData(Data):
     """Data class for resonator optimization protocol."""
 
-    resonator_type: str
-    """Resonator type."""
-    delay: float = 0
-    """Delay between readouts [ns]."""
     frequencies_swept: dict[QubitId, list[float]] = field(default_factory=dict)
+    """Frequency swept for each qubit."""
     amplitudes_swept: list[float] = field(default_factory=list)
-    angle: dict[QubitId, float] = field(default_factory=dict)
-    threshold: dict[QubitId, float] = field(default_factory=dict)
+    """Amplitude swept (same for all qubits)."""
     data: dict[tuple, np.ndarray] = field(default_factory=dict)
     """Raw data acquired"""
 
@@ -89,36 +105,18 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> ResonatorOptimizationData:
-    r"""
-    Data acquisition for readout optimization.
+    """Protocol to optimize readout frequency and readout amplitude.
 
-    Args:
-        params (ResonatorFrequencyParameters): experiment's parameters
-        platform (Platform): Qibolab platform object
-        qubits (list): list of target qubits to perform the action
-    """
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
+    After preparing either state 0 or state 1 we perform two consecutive measurements to evaluate QND.
+    Additionaly we apply a pi pulse and we perform a third measurement to evaluate the QND-pi
+    following https://arxiv.org/pdf/2110.04285"""
 
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     freq_sweepers = {}
     ro_pulses_m1 = {}
     ro_pulses_m2 = {}
     ro_pulses_m3 = {}
 
-    data = ResonatorOptimizationData(
-        resonator_type=platform.resonator_type,
-        angle={
-            qubit: platform.config(platform.qubits[qubit].acquisition).iq_angle
-            for qubit in targets
-        },
-        threshold={
-            qubit: platform.config(platform.qubits[qubit].acquisition).threshold
-            for qubit in targets
-        },
-        delay=params.delay,
-    )
+    data = ResonatorOptimizationData()
 
     for state in [0, 1]:
         sequence = PulseSequence()
@@ -152,7 +150,7 @@ def _acquisition(
 
             freq_sweepers[qubit] = Sweeper(
                 parameter=Parameter.frequency,
-                values=readout_frequency(qubit, platform) + delta_frequency_range,
+                values=readout_frequency(qubit, platform) + params.frequency_span,
                 channels=[platform.qubits[qubit].probe],
             )
             data.frequencies_swept[qubit] = freq_sweepers[qubit].values.tolist()
@@ -210,16 +208,14 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
     for qubit in qubits:
         freq_vals = data.frequencies_swept[qubit]
         amp_vals = data.amplitudes_swept
-        shape = (len(freq_vals), len(amp_vals))
+        shape = (len(amp_vals), len(freq_vals))
         grid_keys = ["fidelity", "angle", "threshold", "qnd", "qnd-pi"]
-
         grids = {key: np.zeros(shape) for key in grid_keys}
-
-        for j, k in product(range(len(freq_vals)), range(len(amp_vals))):
+        for j, k in product(range(len(amp_vals)), range(len(freq_vals))):
             iq_values = np.concatenate(
                 (
-                    data.data[qubit, 0, 0][:, k, j, :],
-                    data.data[qubit, 1, 0][:, k, j, :],
+                    data.data[qubit, 0, 0][:, j, k, :],
+                    data.data[qubit, 1, 0][:, j, k, :],
                 )
             )
             nshots = iq_values.shape[0] // 2
@@ -231,37 +227,37 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
             grids["threshold"][j, k] = model.threshold
 
             m1_state_0 = classify(
-                data.data[qubit, 0, 0][:, k, j, :],
+                data.data[qubit, 0, 0][:, j, k, :],
                 model.angle,
                 model.threshold,
             )
 
             m1_state_1 = classify(
-                data.data[qubit, 1, 0][:, k, j, :],
+                data.data[qubit, 1, 0][:, j, k, :],
                 model.angle,
                 model.threshold,
             )
 
             m2_state_0 = classify(
-                data.data[qubit, 0, 1][:, k, j, :],
+                data.data[qubit, 0, 1][:, j, k, :],
                 model.angle,
                 model.threshold,
             )
 
             m2_state_1 = classify(
-                data.data[qubit, 1, 1][:, k, j, :],
+                data.data[qubit, 1, 1][:, j, k, :],
                 model.angle,
                 model.threshold,
             )
 
             m3_state_0 = classify(
-                data.data[qubit, 0, 2][:, k, j, :],
+                data.data[qubit, 0, 2][:, j, k, :],
                 model.angle,
                 model.threshold,
             )
 
             m3_state_1 = classify(
-                data.data[qubit, 1, 2][:, k, j, :],
+                data.data[qubit, 1, 2][:, j, k, :],
                 model.angle,
                 model.threshold,
             )
@@ -275,44 +271,39 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
                 m2_state_1,
                 m2_state_0,
             )
+            # for m3 we swap them because we apply a pi pulse
             grids["qnd-pi"][j, k], _, _ = compute_qnd(
                 m2_state_1, m2_state_0, m3_state_0, m3_state_1, pi=True
             )
             grids["angle"][j, k] = model.angle
             grids["threshold"][j, k] = model.threshold
-        arr[qubit, "fidelity"] = grids["fidelity"].copy()
-        arr[qubit, "qnd"] = grids["qnd"].copy()
-        arr[qubit, "qnd-pi"] = grids["qnd-pi"].copy()
+        arr[qubit, "fidelity"] = grids["fidelity"]
+        arr[qubit, "qnd"] = grids["qnd"]
+        arr[qubit, "qnd-pi"] = grids["qnd-pi"]
+
+        averaged_qnd = (arr[qubit, "qnd"] + arr[qubit, "qnd-pi"]) / 2
 
         # mask values where fidelity is below 80%
-        mask = grids["fidelity"] < 0.8
-        for feat, value in zip(
-            ["fidelity", "qnd", "qnd-pi"],
-            [grids["fidelity"], grids["qnd"], grids["qnd-pi"]],
-        ):
-            value[mask] = np.nan
-            # mask unphysical regions where QND > 1
-            value[value > 1] = np.nan
-            try:
-                i, j = np.unravel_index(np.nanargmax(value), value.shape)
-                if feat == "fidelity":
-                    best_fidelity[qubit] = grids["fidelity"][i, j]
-                elif feat == "qnd":
-                    best_qnd[qubit] = grids["qnd"][i, j]
-                else:
-                    best_qnd_pi[qubit] = grids["qnd-pi"][i, j]
-                frequency[qubit, feat] = freq_vals[i]
-                amplitude[qubit, feat] = amp_vals[j]
-                angle[qubit, feat] = grids["angle"][i, j]
-                threshold[qubit, feat] = grids["threshold"][i, j]
-            except ValueError:
-                log.warning("Fitting error.")
+        averaged_qnd[grids["fidelity"] < 0.8] = np.nan
+        # exclude values where QND is larger than 1
+        averaged_qnd[averaged_qnd > 1] = np.nan
+        try:
+            i, j = np.unravel_index(np.nanargmax(averaged_qnd), averaged_qnd.shape)
+            best_fidelity[qubit] = grids["fidelity"][i, j]
+            best_qnd[qubit] = grids["qnd"][i, j]
+            best_qnd_pi[qubit] = grids["qnd-pi"][i, j]
+            frequency[qubit] = freq_vals[j]
+            amplitude[qubit] = amp_vals[i]
+            angle[qubit] = grids["angle"][i, j]
+            threshold[qubit] = grids["threshold"][i, j]
+        except ValueError:
+            log.warning("Fitting error.")
 
     return ResonatorOptimizationResults(
         data=arr,
-        best_fidelity=best_fidelity,
-        best_qnd=best_qnd,
-        best_qnd_pi=best_qnd_pi,
+        fidelity=best_fidelity,
+        qnd=best_qnd,
+        qnd_pi=best_qnd_pi,
         frequency=frequency,
         amplitude=amplitude,
         angle=angle,
@@ -326,19 +317,19 @@ def _plot(
     """Plotting function for resonator optimization"""
     figures = []
     fitting_report = ""
+    ncols = 3
     fig = make_subplots(
         rows=1,
-        cols=3,
+        cols=ncols,
         subplot_titles=("Fidelity", "QND", "QND Pi"),
     )
-    x, y = data.grid(target)
+
     if fit is not None:
-        # Fidelity heatmap
         fig.add_trace(
             go.Heatmap(
-                x=x * HZ_TO_GHZ,
-                y=y,
-                z=fit.data[target, "fidelity"].T.ravel(),
+                x=np.array(data.frequencies_swept[target]) * HZ_TO_GHZ,
+                y=data.amplitudes_swept,
+                z=fit.data[target, "fidelity"],
                 coloraxis="coloraxis",
             ),
             row=1,
@@ -346,24 +337,10 @@ def _plot(
         )
 
         fig.add_trace(
-            go.Scatter(
-                x=[fit.frequency[target, "fidelity"] * HZ_TO_GHZ],
-                y=[fit.amplitude[target, "fidelity"]],
-                mode="markers",
-                marker=dict(size=8, color="black", symbol="cross"),
-                name="highest assignment fidelity",
-                showlegend=True,
-            ),
-            row=1,
-            col=1,
-        )
-
-        # QND heatmap
-        fig.add_trace(
             go.Heatmap(
-                x=x * HZ_TO_GHZ,
-                y=y,
-                z=fit.data[target, "qnd"].T.ravel(),
+                x=np.array(data.frequencies_swept[target]) * HZ_TO_GHZ,
+                y=data.amplitudes_swept,
+                z=fit.data[target, "qnd"],
                 coloraxis="coloraxis",
             ),
             row=1,
@@ -371,42 +348,28 @@ def _plot(
         )
 
         fig.add_trace(
-            go.Scatter(
-                x=[fit.frequency[target, "qnd"] * HZ_TO_GHZ],
-                y=[fit.amplitude[target, "qnd"]],
-                mode="markers",
-                marker=dict(size=8, color="black", symbol="cross"),
-                name="highest qnd",
-                showlegend=True,
-            ),
-            row=1,
-            col=2,
-        )
-
-        # QND-pi heatmap
-        fig.add_trace(
             go.Heatmap(
-                x=x * HZ_TO_GHZ,
-                y=y,
-                z=fit.data[target, "qnd-pi"].T.ravel(),
+                x=np.array(data.frequencies_swept[target]) * HZ_TO_GHZ,
+                y=data.amplitudes_swept,
+                z=fit.data[target, "qnd-pi"],
                 coloraxis="coloraxis",
             ),
             row=1,
             col=3,
         )
-
-        fig.add_trace(
-            go.Scatter(
-                x=[fit.frequency[target, "qnd-pi"] * HZ_TO_GHZ],
-                y=[fit.amplitude[target, "qnd-pi"]],
-                mode="markers",
-                marker=dict(size=8, color="black", symbol="cross"),
-                name="qnd pi",
-                showlegend=True,
-            ),
-            row=1,
-            col=3,
-        )
+        for col in range(1, ncols + 1):
+            fig.add_trace(
+                go.Scatter(
+                    x=[fit.frequency[target] * HZ_TO_GHZ],
+                    y=[fit.amplitude[target]],
+                    mode="markers",
+                    marker=dict(size=8, color="black", symbol="cross"),
+                    name="Best Readout Point",
+                    showlegend=True if col == 1 else False,
+                ),
+                row=1,
+                col=col,
+            )
 
         # Layout updates
         fig.update_layout(
@@ -415,23 +378,25 @@ def _plot(
             xaxis2_title="Frequency [GHz]",
             xaxis3_title="Frequency [GHz]",
             coloraxis=dict(colorscale="Viridis", cmin=0, cmax=1),
-            legend=dict(
-                orientation="h", yanchor="top", y=-0.2, xanchor="center", x=0.5
-            ),
+            legend=dict(orientation="h"),
         )
 
         fitting_report = table_html(
             table_dict(
                 target,
                 [
-                    "Best Assignment-Fidelity",
-                    "Best QND",
-                    "Best QND Pi",
+                    "Assignment-Fidelity",
+                    "QND",
+                    "QND Pi",
+                    "Best Frequency [Hz]",
+                    "Best Amplitude",
                 ],
                 [
-                    np.round(fit.best_fidelity[target], 4),
-                    np.round(fit.best_qnd[target], 4),
-                    np.round(fit.best_qnd_pi[target], 4),
+                    np.round(fit.fidelity[target], 4),
+                    np.round(fit.qnd[target], 4),
+                    np.round(fit.qnd_pi[target], 4),
+                    np.round(fit.frequency[target], 4),
+                    np.round(fit.amplitude[target], 4),
                 ],
             )
         )
@@ -445,11 +410,10 @@ def _update(
     platform: CalibrationPlatform,
     target: QubitId,
 ):
-    pass
-    # update.readout_amplitude(results.fid_best_amp[target], platform, target)
-    # update.readout_frequency(results.fid_best_freq[target], platform, target)
-    # update.iq_angle(results.best_angle[target], platform, target)
-    # update.threshold(results.best_threshold[target], platform, target)
+    update.readout_amplitude(results.amplitude[target], platform, target)
+    update.readout_frequency(results.frequency[target], platform, target)
+    update.iq_angle(results.angle[target], platform, target)
+    update.threshold(results.threshold[target], platform, target)
 
 
 resonator_optimization = Routine(

@@ -189,12 +189,21 @@ def effective_qubit_temperature(
 
 
 def compute_qnd(
-    m1_state_1, m1_state_0, m2_state_1, m2_state_0, pi=False
+    ones_fist_measure,
+    zeros_fist_measure,
+    ones_second_measure,
+    zeros_second_measure,
+    pi=False,
 ) -> tuple[float, list, list]:
-    r"""TO BE UPDATED"""
+    """QND calculation.
 
-    p_m1 = np.mean([m1_state_0, m1_state_1], axis=1)
-    p_m2 = np.mean([m2_state_0, m2_state_1], axis=1)
+    For the standard QND we follow https://arxiv.org/pdf/2106.06173
+    for the pi variant we follow https://arxiv.org/pdf/2110.04285
+
+    Returns the QND and the two measurement matrices."""
+
+    p_m1 = np.mean([zeros_fist_measure, ones_fist_measure], axis=1)
+    p_m2 = np.mean([zeros_second_measure, ones_second_measure], axis=1)
 
     lambda_m = np.stack([1 - p_m1, p_m1])
     lambda_m2 = np.stack([1 - p_m2, p_m2])
@@ -206,9 +215,16 @@ def compute_qnd(
     return qnd, lambda_m.tolist(), lambda_m2.tolist()
 
 
-def compute_assignment_fidelity(m1_state_1, m1_state_0) -> float:
-    p_m1_i0 = np.mean(m1_state_0)
-    p_m1_i1 = np.mean(m1_state_1)
+def compute_assignment_fidelity(
+    one_samples: np.ndarray, zero_samples: np.ndarray
+) -> float:
+    """Computing assignment fidelity from shots.
+    The first argument are the samples when preparing state 1 and the second argument are
+    the samples when preparing state 0.
+    """
+
+    p_m1_i0 = np.mean(zero_samples)
+    p_m1_i1 = np.mean(one_samples)
     p_m0_i1 = 1 - p_m1_i1
 
     # compute assignment fidelity
