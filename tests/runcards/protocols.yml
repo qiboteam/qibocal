@@ -1066,3 +1066,16 @@ actions:
       amplitude_max:  0.06
       amplitude_step: 0.001
       native: iSWAP
+
+
+  - id: coupler spectroscopy
+    operation: coupler_spectroscopy
+    targets: [[0,1]]
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 2_000_000
+      bias_width: 1
+      bias_step: 0.2
+      drive_duration: 40
+      drive_amplitude: 0.1
+      nshots: 1000
