@@ -145,30 +145,6 @@ def _plot(data: ChevronCouplersData, fit: ChevronCouplersResults, target: QubitP
         col=2,
     )
 
-    for measured_qubit in target:
-        if fit is not None:
-            fig.add_trace(
-                go.Scatter(
-                    x=[
-                        fit.duration[target],
-                    ],
-                    y=[
-                        fit.amplitude[target],
-                    ],
-                    mode="markers",
-                    marker=dict(
-                        size=8,
-                        color="black",
-                        symbol="cross",
-                    ),
-                    name=f"{data.native} estimate",  #  Change name from the params
-                    showlegend=True if measured_qubit == target[0] else False,
-                    legendgroup="Voltage",
-                ),
-                row=1,
-                col=1,
-            )
-
     fig.update_layout(
         xaxis_title="Duration [ns]",
         xaxis2_title="Duration [ns]",
