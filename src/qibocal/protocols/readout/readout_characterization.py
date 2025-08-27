@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, Delay, PulseSequence, Readout
@@ -9,8 +8,9 @@ from qibolab import AcquisitionType, Delay, PulseSequence, Readout
 from ... import update
 from ...auto.operation import Data, Parameters, QubitId, Results, Routine
 from ...calibration import CalibrationPlatform
-from ...result import unpack
 from ..utils import (
+    classify,
+    compute_assignment_fidelity,
     compute_qnd,
     effective_qubit_temperature,
     format_error_single_cell,
@@ -48,30 +48,18 @@ class ReadoutCharacterizationResults(Results):
     "Mapping between the outcome after the measurement and it still being that outcame after another measurement"
 
 
-ReadoutCharacterizationType = np.dtype(
-    [
-        ("i", np.float64),
-        ("q", np.float64),
-    ]
-)
-"""Custom dtype for ReadoutCharacterization."""
-
-
 @dataclass
 class ReadoutCharacterizationData(Data):
     """ReadoutCharacterization acquisition outputs."""
 
     qubit_frequencies: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
-
     delay: float = 0
     """Delay between readouts [ns]."""
-    data: dict[tuple, npt.NDArray[ReadoutCharacterizationType]] = field(
-        default_factory=dict
-    )
-    """Raw data acquired."""
-    samples: dict[tuple, npt.NDArray] = field(default_factory=dict)
-    """Raw data acquired."""
+
+    angle: dict[QubitId, float] = field(default_factory=dict)
+    threshold: dict[QubitId, float] = field(default_factory=dict)
+    data: dict[tuple, np.ndarray] = field(default_factory=dict)
 
 
 def _acquisition(
@@ -85,6 +73,14 @@ def _acquisition(
         qubit_frequencies={
             # TODO: should this be the drive frequency instead?
             qubit: float(platform.calibration.single_qubits[qubit].qubit.frequency_01)
+            for qubit in targets
+        },
+        angle={
+            qubit: platform.config(platform.qubits[qubit].acquisition).iq_angle
+            for qubit in targets
+        },
+        threshold={
+            qubit: platform.config(platform.qubits[qubit].acquisition).threshold
             for qubit in targets
         },
         delay=float(params.delay),
@@ -111,12 +107,6 @@ def _acquisition(
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
         )
-        results_samples = platform.execute(
-            [sequence],
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-        )
 
         # Save the data
         for qubit in targets:
@@ -126,13 +116,7 @@ def _acquisition(
                 if isinstance(pulse, Readout)
             ]
             for j, ro_pulse in enumerate(readouts):
-                i, q = unpack(results[ro_pulse.id])
-                data.register_qubit(
-                    ReadoutCharacterizationType,
-                    (qubit, state, j),
-                    dict(i=i, q=q),
-                )
-                data.samples[qubit, state, j] = results_samples[ro_pulse.id].tolist()
+                data.data[qubit, state, j] = results[ro_pulse.id]
     return data
 
 
@@ -144,39 +128,34 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
     fidelity = {}
     effective_temperature = {}
     qnd = {}
-    lambda_m = {}
-    lambda_m2 = {}
+    lambda_m, lambda_m2 = {}, {}
     for qubit in qubits:
-        m1_state_1 = data.samples[qubit, 1, 0]
-        m1_state_0 = data.samples[qubit, 0, 0]
-        m2_state_1 = data.samples[qubit, 1, 1]
-        m2_state_0 = data.samples[qubit, 0, 1]
+        m1_state_1 = classify(
+            data.data[qubit, 1, 0], data.angle[qubit], data.threshold[qubit]
+        )
+        m1_state_0 = classify(
+            data.data[qubit, 0, 0], data.angle[qubit], data.threshold[qubit]
+        )
+        m2_state_1 = classify(
+            data.data[qubit, 1, 1], data.angle[qubit], data.threshold[qubit]
+        )
+        m2_state_0 = classify(
+            data.data[qubit, 0, 1], data.angle[qubit], data.threshold[qubit]
+        )
 
+        assignment_fidelity[qubit] = compute_assignment_fidelity(m1_state_1, m1_state_0)
         qnd[qubit], lambda_m[qubit], lambda_m2[qubit] = compute_qnd(
             m1_state_1, m1_state_0, m2_state_1, m2_state_0
         )
 
-        nshots = len(m1_state_1)
-
-        # state 1
-        state1_count_1_m1 = np.count_nonzero(m1_state_1)
-        state0_count_1_m1 = nshots - state1_count_1_m1
-
-        # state 0
-        state1_count_0_m1 = np.count_nonzero(m1_state_0)
-        state0_count_0_m1 = nshots - state1_count_0_m1
-
-        assignment_fidelity[qubit] = (
-            1 - (state1_count_0_m1 / nshots + state0_count_1_m1 / nshots) / 2
-        )
-
         fidelity[qubit] = 2 * assignment_fidelity[qubit] - 1
 
+        prob_1 = np.mean(m1_state_0)
         effective_temperature[qubit] = effective_qubit_temperature(
-            prob_1=state0_count_1_m1 / nshots,
-            prob_0=state0_count_0_m1 / nshots,
+            prob_1=prob_1,
+            prob_0=1 - prob_1,
             qubit_frequency=data.qubit_frequencies[qubit],
-            nshots=nshots,
+            nshots=len(m1_state_0),
         )
 
     return ReadoutCharacterizationResults(
@@ -202,8 +181,8 @@ def _plot(
 
             fig.add_trace(
                 go.Scatter(
-                    x=shots.i,
-                    y=shots.q,
+                    x=shots[:, 0],
+                    y=shots[:, 1],
                     name=f"Prepared state {state} measurement {measure}",
                     mode="markers",
                     showlegend=True,

@@ -29,7 +29,7 @@ LEGEND_FONT_SIZE = 20
 TITLE_SIZE = 25
 EXTREME_CHI = 1e4
 KB = constants.k
-HBAR = constants.hbar
+H = constants.h
 """Chi2 output when errors list contains zero elements"""
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
@@ -178,7 +178,7 @@ def effective_qubit_temperature(
     error_prob_1 = np.sqrt(prob_1 * (1 - prob_1) / nshots)
     # TODO: find way to handle this exception
     try:
-        temp = -HBAR * qubit_frequency / (np.log(prob_1 / prob_0) * KB)
+        temp = -H * qubit_frequency / (np.log(prob_1 / prob_0) * KB)
         dT_dp0 = temp / prob_0 / np.log(prob_1 / prob_0)
         dT_dp1 = -temp / prob_1 / np.log(prob_1 / prob_0)
         error = np.sqrt((dT_dp0 * error_prob_0) ** 2 + (dT_dp1 * error_prob_1) ** 2)
@@ -188,50 +188,56 @@ def effective_qubit_temperature(
     return temp, error
 
 
-def compute_qnd(m1_state_1, m1_state_0, m2_state_1, m2_state_0, pi=False):
-    r"""Quantum Non-Demolition (QND) Measurement:
-    To evaluate the QND character of a measurement, the qubit is first prepared in a known initial state, either 0 or 1.
-    Two consecutive measurements are then performed, separated by a time interval delta t.
-    The QND is calculated as: 1 - (p_0o_1i + p_1o_0i) / 2, where
-    p_0o_1i is the probability of measuring the qubit in state 0 on the first measurement and 1 on the second measurement.
-    p_1o_0i is the probability of measuring the qubit in state 1 on the first measurement and 0 on the second measurement.
+def compute_qnd(
+    ones_first_measure,
+    zeros_first_measure,
+    ones_second_measure,
+    zeros_second_measure,
+    pi=False,
+) -> tuple[float, list, list]:
+    """QND calculation.
+
+    For the standard QND we follow https://arxiv.org/pdf/2106.06173
+    for the pi variant we follow https://arxiv.org/pdf/2110.04285
+
+    Returns the QND and the two measurement matrices."""
+
+    p_m1 = np.mean([zeros_first_measure, ones_first_measure], axis=1)
+    p_m2 = np.mean([zeros_second_measure, ones_second_measure], axis=1)
+
+    lambda_m = np.stack([1 - p_m1, p_m1])
+    lambda_m2 = np.stack([1 - p_m2, p_m2])
+
+    # pinv to avoid tests failing due to singular matrix
+    p_o = np.linalg.pinv(lambda_m) @ lambda_m2
+
+    qnd = np.sum(np.diag(p_o)) / 2 if not pi else np.sum(np.diag(p_o[::-1])) / 2
+    return qnd, lambda_m.tolist(), lambda_m2.tolist()
+
+
+def compute_assignment_fidelity(
+    one_samples: np.ndarray, zero_samples: np.ndarray
+) -> float:
+    """Computing assignment fidelity from shots.
+    The first argument are the samples when preparing state 1 and the second argument are
+    the samples when preparing state 0.
     """
 
-    nshots = len(m1_state_1)
+    p_m1_i0 = np.mean(zero_samples)
+    p_m1_i1 = np.mean(one_samples)
+    p_m0_i1 = 1 - p_m1_i1
 
-    state1_count_1_m1 = np.count_nonzero(m1_state_1)
-    state0_count_1_m1 = nshots - state1_count_1_m1
+    # compute assignment fidelity
+    fidelity = 1 - (p_m1_i0 + p_m0_i1) / 2
+    return fidelity
 
-    state1_count_0_m1 = np.count_nonzero(m1_state_0)
-    state0_count_0_m1 = nshots - state1_count_0_m1
 
-    state1_count_1_m2 = np.count_nonzero(m2_state_1)
-    state0_count_1_m2 = nshots - state1_count_1_m2
-
-    state1_count_0_m2 = np.count_nonzero(m2_state_0)
-    state0_count_0_m2 = nshots - state1_count_0_m2
-
-    lambda_m = [
-        [state0_count_0_m1 / nshots, state0_count_1_m1 / nshots],
-        [state1_count_0_m1 / nshots, state1_count_1_m1 / nshots],
-    ]
-
-    lambda_m2 = [
-        [state0_count_0_m2 / nshots, state0_count_1_m2 / nshots],
-        [state1_count_0_m2 / nshots, state1_count_1_m2 / nshots],
-    ]
-
-    p_0o_1i = (
-        state0_count_1_m1 * state0_count_0_m2 + state1_count_1_m1 * state0_count_1_m2
-    ) / nshots**2
-
-    p_1o_0i = (
-        state0_count_0_m1 * state1_count_0_m2 + state1_count_0_m1 * state1_count_1_m2
-    ) / nshots**2
-
-    result = (1 - (p_0o_1i + p_1o_0i) / 2) if not pi else (p_0o_1i + p_1o_0i) / 2
-
-    return result, lambda_m, lambda_m2
+def classify(arr: np.ndarray, angle: float, threshold: float) -> np.ndarray:
+    """Mapping IQ array in 0s and 1s given angle and threshold."""
+    c, s = np.cos(angle), np.sin(angle)
+    rot = np.array([[c, -s], [s, c]])
+    rotated = arr @ rot.T
+    return (rotated[:, 0] > threshold).astype(int)
 
 
 def norm(x_mags):
