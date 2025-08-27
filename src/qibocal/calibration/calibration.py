@@ -150,6 +150,8 @@ class TwoQubitCalibration(Model):
     """CZ interleaved rb fidelity."""
     coupling: Optional[float] = None
     """Qubit-qubit coupling."""
+    coupler: Optional[QubitId] = None
+    """Coupler mediating the interaction if available."""
 
 
 class Calibration(Model):
@@ -157,6 +159,8 @@ class Calibration(Model):
 
     single_qubits: dict[QubitId, QubitCalibration] = Field(default_factory=dict)
     """Dict with single qubit calibration."""
+    couplers: dict[QubitId, QubitCalibration] = Field(default_factory=dict)
+    """Dict with coupler calibration."""
     two_qubits: dict[QubitPairId, TwoQubitCalibration] = Field(default_factory=dict)
     """Dict with qubit pairs calibration."""
     readout_mitigation_matrix: Optional[SparseArray] = None
