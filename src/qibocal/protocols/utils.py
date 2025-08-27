@@ -188,6 +188,58 @@ def effective_qubit_temperature(
     return temp, error
 
 
+def compute_qnd(
+    ones_first_measure,
+    zeros_first_measure,
+    ones_second_measure,
+    zeros_second_measure,
+    pi=False,
+) -> tuple[float, list, list]:
+    """QND calculation.
+
+    For the standard QND we follow https://arxiv.org/pdf/2106.06173
+    for the pi variant we follow https://arxiv.org/pdf/2110.04285
+
+    Returns the QND and the two measurement matrices."""
+
+    p_m1 = np.mean([zeros_first_measure, ones_first_measure], axis=1)
+    p_m2 = np.mean([zeros_second_measure, ones_second_measure], axis=1)
+
+    lambda_m = np.stack([1 - p_m1, p_m1])
+    lambda_m2 = np.stack([1 - p_m2, p_m2])
+
+    # pinv to avoid tests failing due to singular matrix
+    p_o = np.linalg.pinv(lambda_m) @ lambda_m2
+
+    qnd = np.sum(np.diag(p_o)) / 2 if not pi else np.sum(np.diag(p_o[::-1])) / 2
+    return qnd, lambda_m.tolist(), lambda_m2.tolist()
+
+
+def compute_assignment_fidelity(
+    one_samples: np.ndarray, zero_samples: np.ndarray
+) -> float:
+    """Computing assignment fidelity from shots.
+    The first argument are the samples when preparing state 1 and the second argument are
+    the samples when preparing state 0.
+    """
+
+    p_m1_i0 = np.mean(zero_samples)
+    p_m1_i1 = np.mean(one_samples)
+    p_m0_i1 = 1 - p_m1_i1
+
+    # compute assignment fidelity
+    fidelity = 1 - (p_m1_i0 + p_m0_i1) / 2
+    return fidelity
+
+
+def classify(arr: np.ndarray, angle: float, threshold: float) -> np.ndarray:
+    """Mapping IQ array in 0s and 1s given angle and threshold."""
+    c, s = np.cos(angle), np.sin(angle)
+    rot = np.array([[c, -s], [s, c]])
+    rotated = arr @ rot.T
+    return (rotated[:, 0] > threshold).astype(int)
+
+
 def norm(x_mags):
     return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
 
