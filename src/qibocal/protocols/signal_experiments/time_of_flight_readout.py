@@ -12,6 +12,8 @@ from qibocal.protocols.utils import table_dict, table_html
 from qibocal.result import magnitude
 from qibocal.update import replace
 
+from .utils import _get_lo_frequency
+
 __all__ = ["time_of_flight_readout"]
 
 MINIMUM_TOF = 24
@@ -22,6 +24,8 @@ MINIMUM_TOF = 24
 class TimeOfFlightReadoutParameters(Parameters):
     """TimeOfFlightReadout runcard inputs."""
 
+    detuning: float = 10e6
+    """Detuning with respect to corresponding LO frequency [Hz]."""
     readout_amplitude: Optional[int] = None
     """Amplitude of the readout pulse."""
     window_size: Optional[int] = 10
@@ -36,16 +40,14 @@ class TimeOfFlightReadoutResults(Results):
     """Raw fitting output."""
 
 
-TimeOfFlightReadoutType = np.dtype([("samples", np.float64)])
-
-
 @dataclass
 class TimeOfFlightReadoutData(Data):
     """TimeOfFlightReadout acquisition outputs."""
 
     windows_size: int
     sampling_rate: int
-
+    intermediate_frequency: float
+    amplitude: dict[QubitId, float] = field(default_factory=dict)
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -57,34 +59,47 @@ def _acquisition(
 ) -> TimeOfFlightReadoutData:
     """Data acquisition for time of flight experiment."""
     sequence = PulseSequence()
-    ro_pulses = {}
     native = platform.natives.single_qubit
-    ro_channels = []
     for qubit in targets:
         ro_channel, ro_pulse = native[qubit].MZ()[0]
-        ro_channels.append(ro_channel)
         if params.readout_amplitude is not None:
-            ro_pulse = replace(ro_pulse, amplitude=params.readout_amplitude)
-        ro_pulses[qubit] = ro_pulse
+            probe = replace(ro_pulse.probe, amplitude=params.readout_amplitude)
+            ro_pulse = replace(ro_pulse, probe=probe)
         sequence.append((ro_channel, ro_pulse))
+
     results = platform.execute(
         [sequence],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.RAW,
         averaging_mode=AveragingMode.CYCLIC,
-        updates=[{ro_channel: {"delay": MINIMUM_TOF} for ro_channel in ro_channels}],
+        updates=[
+            {
+                platform.qubits[qubit].acquisition: {"delay": MINIMUM_TOF},
+                platform.qubits[qubit].probe: {
+                    "frequency": _get_lo_frequency(platform, qubit) + params.detuning,
+                },
+            }
+            for qubit in targets
+        ],
     )
 
     data = TimeOfFlightReadoutData(
-        windows_size=params.window_size, sampling_rate=platform.sampling_rate
+        windows_size=params.window_size,
+        sampling_rate=platform.sampling_rate,
+        intermediate_frequency=params.detuning,
+        amplitude={
+            qubit: list(sequence.channel(platform.qubits[qubit].acquisition))[
+                -1
+            ].probe.amplitude
+            for qubit in targets
+        },
     )
-
     # retrieve and store the results for every qubit
     for qubit in targets:
-        samples = magnitude(results[ro_pulses[qubit].id])
-        # store the results
-        data.register_qubit(TimeOfFlightReadoutType, (qubit), dict(samples=samples))
+        acq_handle = list(sequence.channel(platform.qubits[qubit].acquisition))[-1].id
+        data.data[qubit] = results[acq_handle]
+
     return data
 
 
@@ -96,16 +111,27 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
 
     window_size = data.windows_size
     sampling_rate = data.sampling_rate
-
     for qubit in qubits:
-        qubit_data = data[qubit]
-        samples = qubit_data.samples
-        window_size = int(len(qubit_data) / 10)
-        th = (np.mean(samples[:window_size]) + np.mean(samples[:-window_size])) / 2
-        delay = np.where(samples > th)[0][0]
-        time_of_flight_readout = float(delay / sampling_rate + MINIMUM_TOF)
-        time_of_flights[qubit] = time_of_flight_readout
+        delays = []
+        for i in range(2):
+            samples = data.data[qubit][:, i]
+            window_size = int(len(samples) / 10)
 
+            for feat in ["min", "max"]:
+                th = (
+                    getattr(np, feat)(samples[:window_size])
+                    + getattr(np, feat)(samples[:-window_size])
+                ) / 2
+                # try-expect in order to handle sporadic failing with mock
+                try:
+                    delay = np.where(samples < th if feat == "min" else samples > th)[
+                        0
+                    ][0]
+                except IndexError:
+                    delay = 0
+                delays.append(delay)
+        time_of_flight_readout = float(min(delays) / sampling_rate + MINIMUM_TOF)
+        time_of_flights[qubit] = time_of_flight_readout
     return TimeOfFlightReadoutResults(time_of_flights)
 
 
@@ -117,16 +143,25 @@ def _plot(
     figures = []
     fitting_report = ""
     fig = go.Figure()
-    qubit_data = data[target]
     sampling_rate = data.sampling_rate
-    y = qubit_data.samples
+    y = magnitude(data.data[target])
 
     fig.add_trace(
         go.Scatter(
             x=np.arange(0, len(y)) * sampling_rate + MINIMUM_TOF,
-            y=y,
+            y=data.data[target][:, 0],
             textposition="bottom center",
-            name="Expectation value",
+            name="I",
+            showlegend=True,
+            legendgroup="group1",
+        ),
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=np.arange(0, len(y)) * sampling_rate + MINIMUM_TOF,
+            y=data.data[target][:, 1],
+            textposition="bottom center",
+            name="Q",
             showlegend=True,
             legendgroup="group1",
         ),
@@ -145,7 +180,19 @@ def _plot(
             line_color="grey",
         )
         fitting_report = table_html(
-            table_dict(target, "Time of flights [ns]", fit.time_of_flights[target])
+            table_dict(
+                target,
+                [
+                    "Intermediate Frequency [Hz]",
+                    "Readout amplitude [a.u.]",
+                    "Time of flights [ns]",
+                ],
+                [
+                    data.intermediate_frequency,
+                    data.amplitude[target],
+                    fit.time_of_flights[target],
+                ],
+            )
         )
     fig.update_layout(
         showlegend=True,
