@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
 from qibolab._core.components import Config
-from scipy import constants
+from scipy import constants, sparse
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
@@ -28,9 +28,9 @@ COLUMNWIDTH = 600
 LEGEND_FONT_SIZE = 20
 TITLE_SIZE = 25
 EXTREME_CHI = 1e4
+"""Chi2 output when errors list contains zero elements"""
 KB = constants.k
 H = constants.h
-"""Chi2 output when errors list contains zero elements"""
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
 CONFIDENCE_INTERVAL_FIRST_MASK = 99
@@ -162,7 +162,7 @@ def effective_qubit_temperature(
 
     The formula used is the following one:
 
-    kB Teff = - hbar qubit_freq / ln(prob_1/prob_0)
+    kB Teff = - h qubit_freq / ln(prob_1/prob_0)
 
     Args:
         prob_0 (NDArray): population 0 samples
@@ -742,3 +742,33 @@ def guess_period(x, y):
 def fallback_period(period):
     """Function to estimate period if guess_period fails."""
     return period if period is not None else 4
+
+
+def baseline_als(data: NDArray, lamda: float, p: float, niter: int = 10) -> NDArray:
+    """Estimate data baseline with "asymmetric least squares" method.
+
+    The :obj:`lambda` parameter controls the stiffness weight. A larger value will
+    suppress more and more the fluctuations in the estimated baseline.
+    The :obj:`p` parameters controls instead the asymmetry, deweighting fluctuations in
+    one direction only.
+
+    The convergence is iterative, but it is often sufficiently fast that a closed loop
+    with a predetermined number of iterations is enough. :obj:`niter` allows changing
+    the amount of iterations.
+
+    The approach is defined in
+
+    Eilers, Paul & Boelens, Hans. (2005). Baseline Correction with Asymmetric Least
+    Squares Smoothing. Unpubl. Manuscr.
+
+    """
+    n_obs = len(data)
+    diff = sparse.csr_array(np.diff(np.eye(n_obs), 2))
+    weights = np.ones(n_obs)
+    for _ in range(niter):
+        weights_mat = sparse.diags_array(weights)
+        a = weights_mat + lamda * diff.dot(diff.transpose())
+        b = weights * data
+        z = sparse.linalg.spsolve(a, b)
+        weights = p * (data > z) + (1 - p) * (data < z)
+    return z

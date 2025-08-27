@@ -150,16 +150,8 @@ class ResonatorSpectroscopyData(Data):
     will apply a minus to the phase data."""
     data: dict[QubitId, npt.NDArray[ResSpecType]] = field(default_factory=dict)
     """Raw data acquired."""
-    power_level: Optional[PowerLevel] = None
+    power_level: PowerLevel = PowerLevel.low
     """Power regime of the resonator."""
-
-    @classmethod
-    def load(cls, path):
-        obj = super().load(path)
-        # Instantiate PowerLevel object
-        if obj.power_level is not None:
-            obj.power_level = PowerLevel(obj.power_level)
-        return obj
 
 
 def _acquisition(
@@ -323,6 +315,7 @@ def _update(
     update.readout_frequency(results.frequency[target], platform, target)
     if len(results.bare_frequency) == 0:
         update.readout_amplitude(results.amplitude[target], platform, target)
+        update.dressed_resonator_frequency(results.frequency[target], platform, target)
 
     else:
         update.bare_resonator_frequency(

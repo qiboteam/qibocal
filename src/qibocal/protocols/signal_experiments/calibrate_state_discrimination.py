@@ -11,6 +11,8 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
+from .utils import _get_lo_frequency
+
 __all__ = ["calibrate_state_discrimination"]
 
 
@@ -32,16 +34,6 @@ CalibrateStateDiscriminationResType = np.dtype(
     ]
 )
 """Custom dtype for CalibrateStateDiscrimination."""
-
-
-def _get_lo_frequency(platform: CalibrationPlatform, qubit: QubitId) -> float:
-    """Get LO frequency given QubitId.
-
-    Currently it assumes that instruments with LOs is first one.
-    """
-    probe = platform.channels[platform.qubits[qubit].probe]
-    lo_config = platform.config(probe.lo)
-    return lo_config.frequency
 
 
 @dataclass

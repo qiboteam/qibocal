@@ -25,6 +25,11 @@
 
           env = {
             QIBOLAB_PLATFORMS = (dirOf config.env.DEVENV_ROOT) + "/qibolab_platforms_qrc";
+            LD_LIBRARY_PATH = builtins.concatStringsSep ":" (map (p: "${p}/lib") (with pkgs; [
+              stdenv.cc.cc.lib
+              zlib
+            ]));
+            PYTHONBREAKPOINT = "pudb.set_trace";
           };
 
           languages = {
