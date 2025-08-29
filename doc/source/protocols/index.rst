@@ -1,4 +1,5 @@
 .. _calibration_routines:
+
 Protocols
 =========
 
@@ -32,7 +33,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     flipping
     drag/drag
     readout_mitigation_matrix
-    readout_optimization
+    readout_optimization/index
     standard_rb
     qubit_vz
     flux_gate/index
