@@ -231,9 +231,8 @@ def _acquisition(
         result = results[ro_pulses[q].id]
         # store the results
         ro_frequency = readout_frequency(q, platform, params.power_level)
-        _frequency = delta_frequency_range + ro_frequency
         signal = magnitude(result)
-        phase_ = phase(result) + _frequency*params.phase_delay*1e-6
+        phase_ = phase(result) + delta_frequency_range*params.phase_delay*1e-6
         phase_ -= np.mean(phase_)
         data.register_qubit(
             ResSpecType,
