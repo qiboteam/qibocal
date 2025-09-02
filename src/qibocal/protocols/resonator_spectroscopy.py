@@ -26,7 +26,7 @@ from .utils import (
     HZ_TO_GHZ
 )
 
-MHZ_TO_GHZ = 1e-3
+MHZ_TO_HZ = 1e6
 
 ResSpecType = np.dtype(
     [
@@ -240,9 +240,9 @@ def _acquisition(
         # store the results        
         if params.phase_delay is not None:
             phase = result.average.phase
-            phase = np.unwrap(phase) + (
-            delta_frequency_range*HZ_TO_GHZ * params.phase_delay/ (2 * np.pi*MHZ_TO_GHZ)
-        )
+            phase = np.unwrap(phase) - (
+                delta_frequency_range * params.phase_delay / MHZ_TO_HZ
+            )
         else:
             phase = result.average.phase
 
