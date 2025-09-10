@@ -19,6 +19,7 @@ from qibocal.result import magnitude
 
 from ..utils import (
     HZ_TO_GHZ,
+    extract_feature,
     readout_frequency,
 )
 
@@ -33,6 +34,7 @@ class LongCryoscopeParameters(Parameters):
     duration_max: float
     duration_step: float
     flux_pulse_amplitude: float
+    flux_pulse_duration: float
     freq_width: float
     freq_step: float
 
@@ -49,6 +51,8 @@ class LongCryoscopeParameters(Parameters):
 class LongCryoscopeResults(Results):
     """LongCryoscope outputs."""
 
+    fitting_parameters: dict[QubitId, list]
+
 
 @dataclass
 class LongCryoscopeData(Data):
@@ -57,6 +61,10 @@ class LongCryoscopeData(Data):
     frequency_swept: dict[QubitId, list]
     duration_swept: list
     data: dict[QubitId, np.ndarray] = field(default_factory=dict)
+
+    def grid(self, qubit: QubitId) -> tuple[np.ndarray]:
+        x, y = np.meshgrid(self.frequency_swept[qubit], self.duration_swept)
+        return x.ravel(), y.ravel(), magnitude(self.data[qubit]).ravel()
 
 
 def _acquisition(
@@ -75,12 +83,13 @@ def _acquisition(
         ro_channel, ro_pulse = natives.MZ()[0]
         flux_channel = platform.qubits[q].flux
         flux_pulse = Pulse(
-            duration=params.duration_max + ro_pulse.duration + qd_pulse.duration,
+            duration=params.flux_pulse_duration,
             amplitude=params.flux_pulse_amplitude,
             envelope=Rectangular(),
         )
 
         sequence.append((flux_channel, flux_pulse))
+        sequence.align([flux_channel, qd_channel, ro_channel])
         sequence.append((qd_channel, delays[2 * i]))
         sequence.append((qd_channel, qd_pulse))
         sequence.append((ro_channel, delays[2 * i + 1]))
@@ -128,23 +137,42 @@ def _acquisition(
 
 
 def _fit(data: LongCryoscopeData) -> LongCryoscopeResults:
-    return LongCryoscopeResults()
+    fitting_parameters = {}
+
+    return LongCryoscopeResults(fitting_parameters=fitting_parameters)
 
 
 def _plot(data: LongCryoscopeData, fit: LongCryoscopeResults, target: QubitId):
     """Plotting function for LongCryoscope Experiment."""
     fig = go.Figure()
+    freq, delay = extract_feature(*data.grid(target), find_min=False)
+
     fig.add_trace(
         go.Heatmap(
             x=data.duration_swept,
             y=np.array(data.frequency_swept[target]) * HZ_TO_GHZ,
             z=magnitude(data.data[target]).T,
+            colorbar=dict(title="Signal [a.u.]"),
+            colorscale="Viridis",
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=delay,
+            y=freq * HZ_TO_GHZ,
+            mode="markers",
+            showlegend=True,
+            name="Extract feature",
+            marker=dict(color="rgb(248, 248, 248)"),
         )
     )
 
     fig.update_layout(
         xaxis_title="Delay [ns]",
         yaxis_title="Frequency [GHz]",
+        showlegend=True,
+        legend=dict(orientation="h"),
     )
     return [fig], ""
 
