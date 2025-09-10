@@ -75,7 +75,7 @@ def _acquisition(
         ro_channel, ro_pulse = natives.MZ()[0]
         flux_channel = platform.qubits[q].flux
         flux_pulse = Pulse(
-            duration=params.duration_max,
+            duration=params.duration_max + ro_pulse.duration + qd_pulse.duration,
             amplitude=params.flux_pulse_amplitude,
             envelope=Rectangular(),
         )
@@ -87,11 +87,10 @@ def _acquisition(
         sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
         sequence.append((ro_channel, ro_pulse))
 
-        print(delays)
-        # define the parameters to sweep and their range:
         freq_sweepers.append(
             Sweeper(
                 parameter=Parameter.frequency,
+                # we should correct this including the expected shift due to the flux pulse
                 values=platform.config(qd_channel).frequency + params.frequency_range,
                 channels=[qd_channel],
             )
