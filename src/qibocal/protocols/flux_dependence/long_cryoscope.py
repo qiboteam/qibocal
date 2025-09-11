@@ -12,16 +12,20 @@ from qibolab import (
     Rectangular,
     Sweeper,
 )
+from scipy.constants import kilo
+from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
-from qibocal.calibration import CalibrationPlatform
-from qibocal.result import magnitude
-
+from ...auto.operation import Data, Parameters, QubitId, Results, Routine
+from ...calibration import CalibrationPlatform
+from ...result import magnitude
+from ..coherence.utils import exp_decay
 from ..utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
     extract_feature,
     readout_frequency,
+    table_dict,
+    table_html,
 )
 
 __all__ = ["long_cryoscope"]
@@ -32,18 +36,26 @@ class LongCryoscopeParameters(Parameters):
     """LongCryoscope runcard inputs."""
 
     duration_min: float
+    """Minimum duration of delay between flux and drive pulse."""
     duration_max: float
+    """Maximum duration of delay between flux and drive pulse."""
     duration_step: float
+    """Step duration of delay between flux and drive pulse."""
     flux_pulse_amplitude: float
+    """Flux pulse amplitude used for the sequence."""
     freq_width: float
+    """Frequency width for drive frequency sweeper."""
     freq_step: float
+    """Frequency step for drive frequency sweeper."""
 
     @property
     def frequency_range(self) -> np.ndarray:
+        """Frequency range based on runcard parameters."""
         return np.arange(-self.freq_width / 2, self.freq_width / 2, self.freq_step)
 
     @property
     def duration_range(self) -> np.ndarray:
+        """Duration range based on runcard parameters."""
         return np.arange(self.duration_min, self.duration_max, self.duration_step)
 
 
@@ -51,21 +63,39 @@ class LongCryoscopeParameters(Parameters):
 class LongCryoscopeResults(Results):
     """LongCryoscope outputs."""
 
+    fitting_parameters: dict[QubitId, list]
+    """Exponential fit parameters for each qubit."""
+
 
 @dataclass
 class LongCryoscopeData(Data):
     """LongCryoscope acquisition outputs."""
 
     frequency_swept: dict[QubitId, list]
+    """Exact frequencies swept for each qubit."""
     duration_swept: list
+    """Duration swept list."""
     data: dict[QubitId, np.ndarray] = field(default_factory=dict)
+    """Raw data."""
 
     def grid(self, qubit: QubitId) -> tuple[np.ndarray]:
+        """Ravelling grid data."""
         x, y = np.meshgrid(self.frequency_swept[qubit], self.duration_swept)
         return x.ravel(), y.ravel(), magnitude(self.data[qubit]).ravel()
 
+    def filtered_data(self, qubit: QubitId) -> tuple[np.ndarray]:
+        """Extract relevant x and y."""
+        freq, delay = extract_feature(*self.grid(qubit), find_min=False)
+        return delay, freq
 
-def sequence(platform, target, flux_pulse_amplitude, delay):
+
+def sequence(
+    platform: CalibrationPlatform,
+    target: QubitId,
+    flux_pulse_amplitude: float,
+    delay: float,
+) -> PulseSequence:
+    """Sequence used in the experiment for single qubit."""
     seq = PulseSequence()
     natives = platform.natives.single_qubit[target]
     qd_channel, qd_pulse = natives.RX()[0]
@@ -76,7 +106,6 @@ def sequence(platform, target, flux_pulse_amplitude, delay):
         amplitude=flux_pulse_amplitude,
         envelope=Rectangular(),
     )
-
     seq.append((flux_channel, flux_pulse))
     seq.append((qd_channel, Delay(duration=delay)))
     seq.append((qd_channel, qd_pulse))
@@ -96,7 +125,7 @@ def _acquisition(
     data_ = {q: [] for q in targets}
     for delay in params.duration_range:
         seq = PulseSequence()
-        for i, q in enumerate(targets):
+        for q in targets:
             seq += sequence(platform, q, params.flux_pulse_amplitude, delay)
             qd_channel = platform.qubits[q].drive
             freq_sweepers.append(
@@ -132,6 +161,7 @@ def _acquisition(
         for qubit in targets:
             acq_handle = list(seq.channel(platform.qubits[qubit].acquisition))[-1].id
             data_[qubit].append(results[acq_handle])
+
     data = LongCryoscopeData(
         frequency_swept={
             qubit: freq_sweepers[i].values.tolist() for i, qubit in enumerate(targets)
@@ -143,13 +173,35 @@ def _acquisition(
 
 
 def _fit(data: LongCryoscopeData) -> LongCryoscopeResults:
-    return LongCryoscopeResults()
+    """Postprocessing for long cryoscope experiment.
+
+    An exponential fit is performed on the relevant points.
+
+    """
+    fitting_parameters = {}
+    for qubit in data.qubits:
+        delay, freq = data.filtered_data(qubit)
+        freq_ = (freq - freq.min()) / (freq.max() - freq.min())
+        delay_ = (delay - delay.min()) / (delay.max() - delay.min())
+        p0 = [0.5, 0.5, 5]
+        popt, _ = curve_fit(exp_decay, delay_, freq_, p0=p0)
+        popt = [
+            (freq.max() - freq.min()) * popt[0] + freq.min(),
+            (freq.max() - freq.min())
+            * popt[1]
+            * np.exp(delay.min() / popt[2] / (delay.max() - delay.min())),
+            popt[2] * (delay.max() - delay.min()),
+        ]
+        fitting_parameters[qubit] = popt
+    return LongCryoscopeResults(fitting_parameters=fitting_parameters)
 
 
 def _plot(data: LongCryoscopeData, fit: LongCryoscopeResults, target: QubitId):
     """Plotting function for LongCryoscope Experiment."""
+
     fig = go.Figure()
-    freq, delay = extract_feature(*data.grid(target), find_min=False)
+    fitting_report = ""
+    delay, freq = data.filtered_data(target)
     fig.add_trace(
         go.Heatmap(
             x=data.duration_swept,
@@ -171,18 +223,40 @@ def _plot(data: LongCryoscopeData, fit: LongCryoscopeResults, target: QubitId):
         )
     )
 
+    if fit is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=delay,
+                y=exp_decay(delay, *fit.fitting_parameters[target]) * HZ_TO_GHZ,
+                showlegend=True,
+                name="Exponential fit",
+                marker=dict(color="rgb(248, 248, 248)"),
+            )
+        )
+
+        fitting_report = table_html(
+            table_dict(
+                target,
+                [
+                    "Tau [us]",
+                ],
+                [fit.fitting_parameters[target][2] / kilo],
+            )
+        )
+
     fig.update_layout(
         xaxis_title="Delay [ns]",
         yaxis_title="Frequency [GHz]",
         showlegend=True,
         legend=dict(orientation="h"),
     )
-    return [fig], ""
+    return [fig], fitting_report
 
 
 def _update(
     results: LongCryoscopeResults, platform: CalibrationPlatform, qubit: QubitId
 ):
+    # TODO: write update function
     pass
 
 
