@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
@@ -14,11 +15,13 @@ from qibolab import (
 )
 from scipy.constants import kilo
 from scipy.optimize import curve_fit
+from scipy.signal import lfilter
 
+from ... import update
 from ...auto.operation import Data, Parameters, QubitId, Results, Routine
 from ...calibration import CalibrationPlatform
+from ...config import log
 from ...result import magnitude
-from ..coherence.utils import exp_decay
 from ..utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
@@ -27,6 +30,7 @@ from ..utils import (
     table_dict,
     table_html,
 )
+from .cryoscope import FEEDFORWARD_MAX, filter_calc
 
 __all__ = ["long_cryoscope"]
 
@@ -63,8 +67,15 @@ class LongCryoscopeParameters(Parameters):
 class LongCryoscopeResults(Results):
     """LongCryoscope outputs."""
 
-    fitting_parameters: dict[QubitId, list]
-    """Exponential fit parameters for each qubit."""
+    g: dict[QubitId, float] = field(default_factory=dict)
+    exp_amplitude: dict[QubitId, list[float]] = field(default_factory=dict)
+    """A parameters for the exp decay approximation"""
+    tau: dict[QubitId, list[float]] = field(default_factory=dict)
+    """time decay constant in exp decay approximation"""
+    feedforward_taps: dict[QubitId, list[float]] = field(default_factory=dict)
+    """feedforward taps"""
+    feedback_taps: dict[QubitId, list[float]] = field(default_factory=dict)
+    """feedback taps"""
 
 
 @dataclass
@@ -87,6 +98,11 @@ class LongCryoscopeData(Data):
         """Extract relevant x and y."""
         freq, delay = extract_feature(*self.grid(qubit), find_min=False)
         return delay, freq
+
+    @staticmethod
+    def step_reponse(freq: np.ndarray) -> np.ndarray:
+        """Compute expected frequency by averaging over last half."""
+        return freq / np.mean(freq[len(freq) // 2 :])
 
 
 def sequence(
@@ -172,36 +188,61 @@ def _acquisition(
     return data
 
 
+def exp_fit(x, tau, a, g):
+    return g * (1 + a * np.exp(-x / tau))
+
+
 def _fit(data: LongCryoscopeData) -> LongCryoscopeResults:
     """Postprocessing for long cryoscope experiment.
 
     An exponential fit is performed on the relevant points.
 
     """
-    fitting_parameters = {}
+    feedback_taps = {}
+    feedforward_taps = {}
+    time_decay = {}
+    alpha = {}
+    g = {}
+    sampling_rate = 1
     for qubit in data.qubits:
         delay, freq = data.filtered_data(qubit)
-        freq_ = (freq - freq.min()) / (freq.max() - freq.min())
+        step_response = LongCryoscopeData.step_reponse(freq)
         delay_ = (delay - delay.min()) / (delay.max() - delay.min())
-        p0 = [0.5, 0.5, 5]
-        popt, _ = curve_fit(exp_decay, delay_, freq_, p0=p0)
-        popt = [
-            (freq.max() - freq.min()) * popt[0] + freq.min(),
-            (freq.max() - freq.min())
-            * popt[1]
-            * np.exp(delay.min() / popt[2] / (delay.max() - delay.min())),
-            popt[2] * (delay.max() - delay.min()),
-        ]
-        fitting_parameters[qubit] = popt
-    return LongCryoscopeResults(fitting_parameters=fitting_parameters)
+        try:
+            popt, _ = curve_fit(exp_fit, delay_, step_response)
+            exp_params = [
+                popt[0] * (delay.max() - delay.min()),
+                popt[1] * np.exp(delay.min() / (delay.max() - delay.min()) / popt[0]),
+                popt[2],
+            ]
+            feedback_taps[qubit], feedforward_taps[qubit] = filter_calc(
+                exp_params, sampling_rate
+            )
+            time_decay[qubit], alpha[qubit], g[qubit] = exp_params
+        except RuntimeError:
+            log.info("Fit failed")
+    return LongCryoscopeResults(
+        exp_amplitude=alpha,
+        g=g,
+        tau=time_decay,
+        feedback_taps=feedback_taps,
+        feedforward_taps=feedforward_taps,
+    )
 
 
 def _plot(data: LongCryoscopeData, fit: LongCryoscopeResults, target: QubitId):
     """Plotting function for LongCryoscope Experiment."""
 
-    fig = go.Figure()
+    fig = make_subplots(
+        rows=2,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.2,
+        shared_xaxes=True,
+    )
     fitting_report = ""
     delay, freq = data.filtered_data(target)
+    step_response = LongCryoscopeData.step_reponse(freq)
     fig.add_trace(
         go.Heatmap(
             x=data.duration_swept,
@@ -209,7 +250,9 @@ def _plot(data: LongCryoscopeData, fit: LongCryoscopeResults, target: QubitId):
             z=magnitude(data.data[target]).T,
             colorbar=dict(title="Signal [a.u.]"),
             colorscale="Viridis",
-        )
+        ),
+        row=1,
+        col=1,
     )
 
     fig.add_trace(
@@ -218,20 +261,54 @@ def _plot(data: LongCryoscopeData, fit: LongCryoscopeResults, target: QubitId):
             y=freq * HZ_TO_GHZ,
             mode="markers",
             showlegend=True,
+            legendgroup="Data",
             name="Extract feature",
             marker=dict(color="rgb(248, 248, 248)"),
-        )
+        ),
+        row=1,
+        col=1,
     )
 
+    fig.add_trace(
+        go.Scatter(
+            x=delay,
+            y=step_response,
+            showlegend=False,
+            legendgroup="Data",
+            mode="markers",
+            name="Extract feature",
+        ),
+        row=2,
+        col=1,
+    )
     if fit is not None:
         fig.add_trace(
             go.Scatter(
                 x=delay,
-                y=exp_decay(delay, *fit.fitting_parameters[target]) * HZ_TO_GHZ,
+                y=exp_fit(
+                    delay, fit.tau[target], fit.exp_amplitude[target], fit.g[target]
+                ),
                 showlegend=True,
-                name="Exponential fit",
-                marker=dict(color="rgb(248, 248, 248)"),
-            )
+                name="Fit",
+                marker=dict(color="rgb(255, 0,0)"),
+            ),
+            row=2,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=delay,
+                y=lfilter(
+                    fit.feedforward_taps[target],
+                    fit.feedback_taps[target],
+                    step_response,
+                ),
+                showlegend=True,
+                name="IIR corrected",
+                marker=dict(color="rgb(255, 0, 0)"),
+            ),
+            row=2,
+            col=1,
         )
 
         fitting_report = table_html(
@@ -240,13 +317,14 @@ def _plot(data: LongCryoscopeData, fit: LongCryoscopeResults, target: QubitId):
                 [
                     "Tau [us]",
                 ],
-                [fit.fitting_parameters[target][2] / kilo],
+                [fit.tau[target] / kilo],
             )
         )
 
     fig.update_layout(
-        xaxis_title="Delay [ns]",
+        xaxis2_title="Delay [ns]",
         yaxis_title="Frequency [GHz]",
+        yaxis2_title="Step response",
         showlegend=True,
         legend=dict(orientation="h"),
     )
@@ -256,8 +334,21 @@ def _plot(data: LongCryoscopeData, fit: LongCryoscopeResults, target: QubitId):
 def _update(
     results: LongCryoscopeResults, platform: CalibrationPlatform, qubit: QubitId
 ):
-    # TODO: write update function
-    pass
+    filters = platform.config(platform.qubits[qubit].flux).filter
+    try:
+        filters["feedback"].append(-results.feedback_taps[qubit][1])
+        new_feedforward = np.convolve(
+            filters["feedforward"], results.feedforward_taps[qubit]
+        )
+        if np.max(np.abs(new_feedforward)) > FEEDFORWARD_MAX:
+            new_feedforward = (
+                FEEDFORWARD_MAX * np.array(new_feedforward) / max(abs(new_feedforward))
+            ).tolist()
+
+        update.feedforward(results.feedforward_taps[qubit], platform, qubit)
+        update.feedback(results.feedback_taps[qubit], platform, qubit)
+    except (KeyError, TypeError) as e:
+        log.info(f"Skip update on filters for qubit {qubit} as {e}.")
 
 
 long_cryoscope = Routine(_acquisition, _fit, _plot, _update)
