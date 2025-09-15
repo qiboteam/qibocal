@@ -14,7 +14,6 @@ from qibolab import (
     Sweeper,
 )
 from scipy.constants import kilo
-from scipy.optimize import curve_fit
 from scipy.signal import lfilter
 
 from ... import update
@@ -30,7 +29,7 @@ from ..utils import (
     table_dict,
     table_html,
 )
-from .cryoscope import FEEDFORWARD_MAX, filter_calc
+from .cryoscope import FEEDFORWARD_MAX, exponential_params, filter_calc
 
 __all__ = ["long_cryoscope"]
 
@@ -203,18 +202,12 @@ def _fit(data: LongCryoscopeData) -> LongCryoscopeResults:
     time_decay = {}
     alpha = {}
     g = {}
-    sampling_rate = 1
+    sampling_rate = 1 / (data.duration_swept[1] - data.duration_swept[0])
     for qubit in data.qubits:
         delay, freq = data.filtered_data(qubit)
         step_response = LongCryoscopeData.step_reponse(freq)
-        delay_ = (delay - delay.min()) / (delay.max() - delay.min())
         try:
-            popt, _ = curve_fit(exp_fit, delay_, step_response)
-            exp_params = [
-                popt[0] * (delay.max() - delay.min()),
-                popt[1] * np.exp(delay.min() / (delay.max() - delay.min()) / popt[0]),
-                popt[2],
-            ]
+            exp_params = exponential_params(delay, step_response)
             feedback_taps[qubit], feedforward_taps[qubit] = filter_calc(
                 exp_params, sampling_rate
             )
@@ -232,7 +225,7 @@ def _fit(data: LongCryoscopeData) -> LongCryoscopeResults:
 
 def _plot(data: LongCryoscopeData, fit: LongCryoscopeResults, target: QubitId):
     """Plotting function for LongCryoscope Experiment."""
-
+    print(fit)
     fig = make_subplots(
         rows=2,
         cols=1,
