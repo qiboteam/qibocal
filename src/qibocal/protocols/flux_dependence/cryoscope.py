@@ -268,15 +268,14 @@ def _acquisition(
     return data
 
 
-def exponential_params(step_response, acquisition_time):
-    t = np.arange(0, acquisition_time, 1)
-    init_guess = [1, 10, 1]
-    target = np.ones(len(t))
+def exponential_params(x, y):
+    target = np.ones(len(x))
+    p0 = [100, 1, 1]
 
     def expmodel(t, tau, exp_amplitude, g):
-        return step_response / (g * (1 + exp_amplitude * np.exp(-t / tau)))
+        return y / (g * (1 + exp_amplitude * np.exp(-t / tau)))
 
-    popt, _ = curve_fit(expmodel, t, target, p0=init_guess)
+    popt, _ = curve_fit(expmodel, x, target, p0=p0)
 
     return popt
 
@@ -388,8 +387,9 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         ).tolist()
         if not data.has_filters(qubit):
             # Derive IIR
-            acquisition_time = len(x)
-            exp_params = exponential_params(step_response[qubit], acquisition_time)
+            exp_params = exponential_params(
+                data[(qubit, "MX")].duration, step_response[qubit]
+            )
             feedback_taps[qubit], feedforward_taps_iir[qubit] = filter_calc(
                 exp_params, sampling_rate
             )
