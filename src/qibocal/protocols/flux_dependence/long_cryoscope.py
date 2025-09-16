@@ -81,6 +81,10 @@ class LongCryoscopeResults(Results):
 class LongCryoscopeData(Data):
     """LongCryoscope acquisition outputs."""
 
+    frequency: dict[QubitId, float]
+    """Initial frequency for each qubit."""
+    flux_coefficients: dict[QubitId, list]
+    """Flux coefficients for each Qubit."""
     frequency_swept: dict[QubitId, list]
     """Exact frequencies swept for each qubit."""
     duration_swept: list
@@ -98,10 +102,14 @@ class LongCryoscopeData(Data):
         freq, delay = extract_feature(*self.grid(qubit), find_min=False)
         return delay, freq
 
-    @staticmethod
-    def step_reponse(freq: np.ndarray) -> np.ndarray:
+    def step_reponse(self, qubit: QubitId) -> np.ndarray:
         """Compute expected frequency by averaging over last half."""
-        return freq / np.mean(freq[len(freq) // 2 :])
+
+        _, freq = self.filtered_data(qubit)
+        freq_ghz = (freq - self.frequency[qubit]) * HZ_TO_GHZ
+        p = np.poly1d(self.flux_coefficients[qubit])
+        amplitude = [max((p - f).roots) for f in freq_ghz]
+        return amplitude / np.mean(amplitude[len(freq_ghz) // 2 :])
 
 
 def sequence(
@@ -178,6 +186,14 @@ def _acquisition(
             data_[qubit].append(results[acq_handle])
 
     data = LongCryoscopeData(
+        frequency={
+            qubit: platform.config(platform.qubits[qubit].drive).frequency
+            for qubit in targets
+        },
+        flux_coefficients={
+            qubit: platform.calibration.single_qubits.qubits[qubit].flux_coefficients
+            for qubit in targets
+        },
         frequency_swept={
             qubit: freq_sweepers[i].values.tolist() for i, qubit in enumerate(targets)
         },
@@ -204,13 +220,16 @@ def _fit(data: LongCryoscopeData) -> LongCryoscopeResults:
     g = {}
     sampling_rate = 1 / (data.duration_swept[1] - data.duration_swept[0])
     for qubit in data.qubits:
-        delay, freq = data.filtered_data(qubit)
-        step_response = LongCryoscopeData.step_reponse(freq)
+        delay, _ = data.filtered_data(qubit)
+
+        step_response = data.step_reponse(qubit)
         try:
             exp_params = exponential_params(delay, step_response)
             feedback_taps[qubit], feedforward_taps[qubit] = filter_calc(
                 exp_params, sampling_rate
             )
+            print(feedback_taps)
+            print(feedforward_taps)
             time_decay[qubit], alpha[qubit], g[qubit] = exp_params
         except RuntimeError:
             log.info("Fit failed")
@@ -235,7 +254,7 @@ def _plot(data: LongCryoscopeData, fit: LongCryoscopeResults, target: QubitId):
     )
     fitting_report = ""
     delay, freq = data.filtered_data(target)
-    step_response = LongCryoscopeData.step_reponse(freq)
+    step_response = data.step_reponse(target)
     fig.add_trace(
         go.Heatmap(
             x=data.duration_swept,
@@ -336,6 +355,8 @@ def _update(
                 FEEDFORWARD_MAX * np.array(new_feedforward) / max(abs(new_feedforward))
             ).tolist()
 
+        print(filters["feedback"])
+        print(new_feedforward.tolist())
         update.feedforward(results.feedforward_taps[qubit], platform, qubit)
         update.feedback(results.feedback_taps[qubit], platform, qubit)
     except (KeyError, TypeError) as e:
