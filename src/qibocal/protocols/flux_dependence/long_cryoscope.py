@@ -16,7 +16,6 @@ from qibolab import (
 from scipy.constants import kilo
 from scipy.signal import lfilter
 
-from ... import update
 from ...auto.operation import Data, Parameters, QubitId, Results, Routine
 from ...calibration import CalibrationPlatform
 from ...config import log
@@ -29,7 +28,7 @@ from ..utils import (
     table_dict,
     table_html,
 )
-from .cryoscope import FEEDFORWARD_MAX, exponential_params, filter_calc
+from .cryoscope import exponential_params, filter_calc
 
 __all__ = ["long_cryoscope"]
 
@@ -191,7 +190,7 @@ def _acquisition(
             for qubit in targets
         },
         flux_coefficients={
-            qubit: platform.calibration.single_qubits.qubits[qubit].flux_coefficients
+            qubit: platform.calibration.single_qubits[qubit].qubit.flux_coefficients
             for qubit in targets
         },
         frequency_swept={
@@ -228,8 +227,6 @@ def _fit(data: LongCryoscopeData) -> LongCryoscopeResults:
             feedback_taps[qubit], feedforward_taps[qubit] = filter_calc(
                 exp_params, sampling_rate
             )
-            print(feedback_taps)
-            print(feedforward_taps)
             time_decay[qubit], alpha[qubit], g[qubit] = exp_params
         except RuntimeError:
             log.info("Fit failed")
@@ -344,23 +341,8 @@ def _plot(data: LongCryoscopeData, fit: LongCryoscopeResults, target: QubitId):
 def _update(
     results: LongCryoscopeResults, platform: CalibrationPlatform, qubit: QubitId
 ):
-    filters = platform.config(platform.qubits[qubit].flux).filter
-    try:
-        filters["feedback"].append(-results.feedback_taps[qubit][1])
-        new_feedforward = np.convolve(
-            filters["feedforward"], results.feedforward_taps[qubit]
-        )
-        if np.max(np.abs(new_feedforward)) > FEEDFORWARD_MAX:
-            new_feedforward = (
-                FEEDFORWARD_MAX * np.array(new_feedforward) / max(abs(new_feedforward))
-            ).tolist()
-
-        print(filters["feedback"])
-        print(new_feedforward.tolist())
-        update.feedforward(results.feedforward_taps[qubit], platform, qubit)
-        update.feedback(results.feedback_taps[qubit], platform, qubit)
-    except (KeyError, TypeError) as e:
-        log.info(f"Skip update on filters for qubit {qubit} as {e}.")
+    """Update filters."""
+    # to be implemented
 
 
 long_cryoscope = Routine(_acquisition, _fit, _plot, _update)
