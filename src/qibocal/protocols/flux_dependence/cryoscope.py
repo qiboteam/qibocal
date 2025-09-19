@@ -61,6 +61,8 @@ class CryoscopeResults(Results):
         default_factory=dict
     )
     """Fitted <X> and <Y> for each qubit."""
+    fir: dict[QubitId, list[float]] = field(default_factory=dict)
+    """FIR coefficients."""
     detuning: dict[QubitId, list[float]] = field(default_factory=dict)
     """Expected detuning."""
     amplitude: dict[QubitId, list[float]] = field(default_factory=dict)
@@ -328,6 +330,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
     amplitude = {}
     step_response = {}
     alpha = {}
+    firs = {}
     g = {}
     time_decay = {}
     feedforward_taps_iir = {}
@@ -412,6 +415,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             feedforward_taps[qubit] = np.convolve(
                 feedforward_taps_iir[qubit], fir
             ).tolist()
+            firs[qubit] = fir
 
             if np.max(np.abs(feedforward_taps[qubit])) > FEEDFORWARD_MAX:
                 feedforward_taps[qubit] = (
@@ -423,6 +427,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
     return CryoscopeResults(
         amplitude=amplitude,
         detuning=detuning,
+        fir=firs,
         step_response=step_response,
         fitted_parameters=fitted_parameters,
         exp_amplitude=alpha,
