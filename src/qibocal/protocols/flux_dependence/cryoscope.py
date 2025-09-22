@@ -21,17 +21,11 @@ from qibolab import (
 from scipy.optimize import curve_fit
 from scipy.signal import lfilter
 
-from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
-from qibocal.config import log
-from qibocal.protocols.ramsey.utils import fitting
-from qibocal.protocols.utils import table_dict, table_html
-
-# TODO: remove hard-coded QM parameters
-FEEDFORWARD_MAX = 2 - 2**-16
-"""Maximum feedforward tap value"""
-FEEDBACK_MAX = 1 - 2**-20
-"""Maximum feedback tap value"""
+from ... import update
+from ...auto.operation import Data, Parameters, QubitId, Results, Routine
+from ...config import log
+from ..ramsey.utils import fitting
+from ..utils import table_dict, table_html
 
 __all__ = ["cryoscope", "CryoscopeData", "CryoscopeResults"]
 
@@ -164,9 +158,9 @@ class CryoscopeData(Data):
     )
 
     def has_filters(self, qubit: QubitId) -> bool:
-        """Checking if for qubit there are already filters."""
+        """Checking if there are FIR (cryoscope had already run)."""
         try:
-            return len(self.filters[qubit]) > 0
+            return len(self.filters[qubit]) > 1
         except AttributeError:
             return False
 
@@ -205,7 +199,7 @@ def _acquisition(
         data.flux_coefficients[qubit] = platform.calibration.single_qubits[
             qubit
         ].qubit.flux_coefficients
-        data.filters[qubit] = platform.config(platform.qubits[qubit].flux).filter
+        data.filters[qubit] = platform.config(platform.qubits[qubit].flux).filters
 
     sequences_x = []
     sequences_y = []
@@ -298,10 +292,6 @@ def filter_calc(params, sampling_rate):
     feedback_taps = np.array([a0, a1])
     feedforward_taps = np.array([b0, b1])
 
-    if np.any(np.abs(feedback_taps) > FEEDBACK_MAX):
-        feedback_taps[feedback_taps > FEEDBACK_MAX] = FEEDBACK_MAX
-        feedback_taps[feedback_taps < -FEEDBACK_MAX] = -FEEDBACK_MAX
-
     return feedback_taps.tolist(), feedforward_taps.tolist()
 
 
@@ -388,6 +378,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         step_response[qubit] = (
             np.array(amplitude[qubit]) / data.flux_pulse_amplitude
         ).tolist()
+
         if not data.has_filters(qubit):
             # Derive IIR
             exp_params = exponential_params(
@@ -401,7 +392,6 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
                 feedforward_taps_iir[qubit], feedback_taps[qubit], step_response[qubit]
             )
             # FIR corrections
-
             taps = data.fir
             baseline = g[qubit]
             x0 = [1] + (taps - 1) * [0]
@@ -416,13 +406,6 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
                 feedforward_taps_iir[qubit], fir
             ).tolist()
             firs[qubit] = fir
-
-            if np.max(np.abs(feedforward_taps[qubit])) > FEEDFORWARD_MAX:
-                feedforward_taps[qubit] = (
-                    2
-                    * np.array(feedforward_taps[qubit])
-                    / abs(max(feedforward_taps[qubit]))
-                ).tolist()
 
     return CryoscopeResults(
         amplitude=amplitude,
@@ -544,8 +527,13 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
 
 def _update(results: CryoscopeResults, platform: Platform, target: QubitId):
     try:
-        update.feedforward(results.feedforward_taps[target], platform, target)
-        update.feedback(results.feedback_taps[target], platform, target)
+        update.filters(
+            results.amplitude[target],
+            results.tau[target],
+            results.fir[target],
+            platform,
+            target,
+        )
     except KeyError:
         log.info(f"Skipping filters update on qubit {target}.")
 

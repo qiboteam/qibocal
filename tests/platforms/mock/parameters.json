@@ -27,16 +27,20 @@
       "frequency": 4855663000.0
     },
     "0/flux": {
-      "kind": "dc-filter",
-      "offset": -0.1,
-      "filter": []
+      "kind": "dc",
+      "offset": -0.1
     },
     "1/flux": {
-      "kind": "dc-filter",
+      "kind": "dc",
       "offset": 0.0,
-      "filter": []
+      "filters": [
+        {
+          "kind": "exp",
+          "amplitude": 0.1,
+          "tau": 10
+        }
+      ]
     },
-
     "0/probe": {
       "kind": "iq",
       "frequency": 7200000000.0
@@ -62,9 +66,8 @@
       "kernel": "k05VTVBZAQB2AHsnZGVzY3InOiAnPGY4JywgJ2ZvcnRyYW5fb3JkZXInOiBGYWxzZSwgJ3NoYXBlJzogKDEwLCksIH0gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAr4dT6V5tHrP1w+JhHImN8/sPePZeSUuj/4yTKrD5fRP/ysonZip98/6GJMAPV9xD/LTiJo4k7oP96aWXpxduU/6fUxETe/7z9GXEBNGebWPw=="
     },
     "coupler_01/flux": {
-      "kind": "dc-filter",
-      "offset": 0.0,
-      "filter": []
+      "kind": "dc",
+      "offset": 0.0
     },
     "twpa_pump": {
       "kind": "oscillator",
@@ -72,21 +75,20 @@
       "power": 10.0
     },
     "0/drive_lo": {
-            "kind": "oscillator",
-            "frequency": 4900000000,
-            "power": 0
+      "kind": "oscillator",
+      "frequency": 4900000000,
+      "power": 0
     },
     "1/drive_lo": {
-            "kind": "oscillator",
-            "frequency": 4900000000,
-            "power": 0
+      "kind": "oscillator",
+      "frequency": 4900000000,
+      "power": 0
     },
     "01/probe_lo": {
-            "kind": "oscillator",
-            "frequency": 7000000000,
-            "power": 0
+      "kind": "oscillator",
+      "frequency": 7000000000,
+      "power": 0
     }
-
   },
   "native_gates": {
     "single_qubit": {
@@ -343,6 +345,6 @@
           ]
         ]
       }
-      }
     }
+  }
 }
