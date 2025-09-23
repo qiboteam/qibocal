@@ -149,20 +149,13 @@ class CryoscopeData(Data):
     """Flux pulse amplitude."""
     fir: int
     """Number of feedforward taps to be optimized after IIR."""
+    filters: dict[QubitId, bool] = field(default_factory=dict)
+    """True if platform already has filters for qubit."""
     flux_coefficients: dict[QubitId, list[float]] = field(default_factory=dict)
     """Flux - amplitude relation coefficients obtained from flux_amplitude_frequency routine"""
-    filters: dict[QubitId, float] = field(default_factory=dict)
-    """Check if there are filters already."""
     data: dict[tuple[QubitId, str], npt.NDArray[CryoscopeType]] = field(
         default_factory=dict
     )
-
-    def has_filters(self, qubit: QubitId) -> bool:
-        """Checking if there are FIR (cryoscope had already run)."""
-        try:
-            return len(self.filters[qubit]) > 1
-        except AttributeError:
-            return False
 
 
 def _acquisition(
@@ -199,7 +192,9 @@ def _acquisition(
         data.flux_coefficients[qubit] = platform.calibration.single_qubits[
             qubit
         ].qubit.flux_coefficients
-        data.filters[qubit] = platform.config(platform.qubits[qubit].flux).filters
+        data.filters[qubit] = (
+            len(platform.config(platform.qubits[qubit].flux).filters) > 1
+        )
 
     sequences_x = []
     sequences_y = []
@@ -379,7 +374,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             np.array(amplitude[qubit]) / data.flux_pulse_amplitude
         ).tolist()
 
-        if not data.has_filters(qubit):
+        if not data.filters[qubit]:
             # Derive IIR
             exp_params = exponential_params(
                 data[(qubit, "MX")].duration, step_response[qubit]
@@ -405,7 +400,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             feedforward_taps[qubit] = np.convolve(
                 feedforward_taps_iir[qubit], fir
             ).tolist()
-            firs[qubit] = fir
+            firs[qubit] = fir.tolist()
 
     return CryoscopeResults(
         amplitude=amplitude,
@@ -466,7 +461,7 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
             col=1,
         )
 
-        if not data.has_filters(target):
+        if not data.filters[target]:
             iir_corrections = lfilter(
                 fit.feedforward_taps_iir[target],
                 fit.feedback_taps[target],
@@ -528,11 +523,11 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
 def _update(results: CryoscopeResults, platform: Platform, target: QubitId):
     try:
         update.filters(
-            results.amplitude[target],
-            results.tau[target],
-            results.fir[target],
-            platform,
-            target,
+            amplitude=results.exp_amplitude[target],
+            tau=results.tau[target],
+            fir=results.fir[target],
+            platform=platform,
+            qubit=target,
         )
     except KeyError:
         log.info(f"Skipping filters update on qubit {target}.")

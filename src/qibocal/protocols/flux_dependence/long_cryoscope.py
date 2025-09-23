@@ -16,6 +16,7 @@ from qibolab import (
 from scipy.constants import kilo
 from scipy.signal import lfilter
 
+from ... import update
 from ...auto.operation import Data, Parameters, QubitId, Results, Routine
 from ...calibration import CalibrationPlatform
 from ...config import log
@@ -342,7 +343,15 @@ def _update(
     results: LongCryoscopeResults, platform: CalibrationPlatform, qubit: QubitId
 ):
     """Update filters."""
-    # to be implemented
+    try:
+        update.filters(
+            amplitude=results.exp_amplitude[qubit],
+            tau=results.tau[qubit],
+            platform=platform,
+            qubit=qubit,
+        )
+    except KeyError:
+        log.info(f"Skipping filters update on qubit {qubit}.")
 
 
 long_cryoscope = Routine(_acquisition, _fit, _plot, _update)
