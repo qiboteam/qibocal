@@ -1,7 +1,7 @@
 """Helper functions to update parameters in platform."""
 
 from collections.abc import Iterable
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 from pydantic import BaseModel
@@ -245,11 +245,16 @@ def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):
 
 
 def filters(
-    amplitude: float, tau: float, fir: list[float], platform: Platform, qubit: QubitId
+    platform: Platform,
+    qubit: QubitId,
+    amplitude: float,
+    tau: float,
+    fir: Optional[list[float]] = None,
 ):
-    """Update flux pulse feedback filter parameter in platform for specific qubit."""
+    """Update flux pulse filters parameter in platform for specific qubit."""
 
     old_filters = platform.config(platform.qubits[qubit].flux).filters
     old_filters.append(ExponentialFilter(amplitude=amplitude, tau=tau))
-    old_filters.append(FiniteImpulseResponseFilter(fir=fir))
-    platform.update({f"configs.{platform.qubits[qubit].flux}.filter": old_filters})
+    if fir is not None:
+        old_filters.append(FiniteImpulseResponseFilter(coefficients=fir))
+    platform.update({f"configs.{platform.qubits[qubit].flux}.filters": old_filters})
