@@ -370,9 +370,15 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         p = np.poly1d(data.flux_coefficients[qubit])
         amplitude[qubit] = [max((p - freq).roots).real for freq in detuning[qubit]]
 
-        step_response[qubit] = (
-            np.array(amplitude[qubit]) / data.flux_pulse_amplitude
-        ).tolist()
+        mean_amplitude = np.mean(amplitude[qubit][len(amplitude[qubit]) // 2 :])
+        if mean_amplitude / data.flux_pulse_amplitude > 0.05:
+            step_response[qubit] = (
+                np.array(amplitude[qubit]) / mean_amplitude
+            ).tolist()
+        else:
+            step_response[qubit] = (
+                np.array(amplitude[qubit]) / data.flux_pulse_amplitude
+            ).tolist()
 
         if not data.filters[qubit]:
             # Derive IIR
