@@ -83,6 +83,15 @@ which will copy the configuration of the platform in the corresponding
 directory specified using the environment variable  ``QIBOLAB_PLATFORMS``.
 See the Qibolab `documentation <https://qibo.science/qibolab/stable/tutorials/lab.html#how-to-connect-qibolab-to-your-lab>`_ for more details.
 
+.. note::
+
+   It is possible to skip the update for certain qubits, which might be helpful when the fitting is failing only for some qubits, using the ``--skip-qubits`` options.
+   For example to skip the update on qubit 0 it is sufficient to use the following command:
+
+   .. code-block::
+
+      qq update <output_folder> --skip-qubits 0
+
 
 ``qq upload``
 ^^^^^^^^^^^^^
