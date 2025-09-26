@@ -259,9 +259,9 @@ def _acquisition(
     return data
 
 
-def exponential_params(x, y):
+def exponential_params(x, y, tau_guess=10):
     target = np.ones(len(x))
-    p0 = [100, 1, 1]
+    p0 = [tau_guess, 1, 1]
 
     def expmodel(t, tau, exp_amplitude, g):
         return y / (g * (1 + exp_amplitude * np.exp(-t / tau)))

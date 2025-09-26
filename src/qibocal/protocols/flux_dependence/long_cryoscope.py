@@ -224,7 +224,7 @@ def _fit(data: LongCryoscopeData) -> LongCryoscopeResults:
 
         step_response = data.step_reponse(qubit)
         try:
-            exp_params = exponential_params(delay, step_response)
+            exp_params = exponential_params(delay, step_response, tau_guess=1000)
             feedback_taps[qubit], feedforward_taps[qubit] = filter_calc(
                 exp_params, sampling_rate
             )
