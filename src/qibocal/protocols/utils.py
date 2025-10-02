@@ -699,7 +699,7 @@ def extract_feature(
     for i in unique_bias:
         signal_fixed_y = normalized_z[y == i]
         peak, _ = find_peaks(
-            -signal_fixed_y if find_min else signal_fixed_y, prominence=0.3
+            -signal_fixed_y if find_min else signal_fixed_y, prominence=0.2
         )
         if len(peak) > 0:
             for j in peak:
