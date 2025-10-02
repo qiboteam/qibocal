@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field
 from itertools import product
 
 import numpy as np
@@ -75,13 +75,7 @@ class ResonatorOptimizationResults(Results):
 
     def __contains__(self, key: QubitId) -> bool:
         """Check whether results are available for qubit."""
-        return all(
-            key in k
-            for k in map(
-                lambda f: getattr(self, f.name),
-                filter(lambda f: f.name != "data", fields(self)),
-            )
-        )
+        return (key, "fidelity") in self.data
 
 
 @dataclass
@@ -323,7 +317,6 @@ def _plot(
         cols=ncols,
         subplot_titles=("Fidelity", "QND", "QND Pi"),
     )
-
     if fit is not None:
         fig.add_trace(
             go.Heatmap(
@@ -358,18 +351,20 @@ def _plot(
             col=3,
         )
         for col in range(1, ncols + 1):
-            fig.add_trace(
-                go.Scatter(
-                    x=[fit.frequency[target] * HZ_TO_GHZ],
-                    y=[fit.amplitude[target]],
-                    mode="markers",
-                    marker=dict(size=8, color="black", symbol="cross"),
-                    name="Best Readout Point",
-                    showlegend=True if col == 1 else False,
-                ),
-                row=1,
-                col=col,
-            )
+            if target in fit.frequency:
+                fig.add_trace(
+                    go.Scatter(
+                        x=[fit.frequency[target] * HZ_TO_GHZ],
+                        y=[fit.amplitude[target]],
+                        mode="markers",
+                        marker=dict(size=8, color="black", symbol="cross"),
+                        name="Best Readout Point",
+                        legendgroup="Best Readout Point",
+                        showlegend=True if col == 1 else False,
+                    ),
+                    row=1,
+                    col=col,
+                )
 
         # Layout updates
         fig.update_layout(
@@ -381,25 +376,26 @@ def _plot(
             legend=dict(orientation="h"),
         )
 
-        fitting_report = table_html(
-            table_dict(
-                target,
-                [
-                    "Assignment-Fidelity",
-                    "QND",
-                    "QND Pi",
-                    "Best Frequency [Hz]",
-                    "Best Amplitude",
-                ],
-                [
-                    np.round(fit.fidelity[target], 4),
-                    np.round(fit.qnd[target], 4),
-                    np.round(fit.qnd_pi[target], 4),
-                    np.round(fit.frequency[target], 4),
-                    np.round(fit.amplitude[target], 4),
-                ],
+        if target in fit.fidelity:
+            fitting_report = table_html(
+                table_dict(
+                    target,
+                    [
+                        "Assignment-Fidelity",
+                        "QND",
+                        "QND Pi",
+                        "Best Frequency [Hz]",
+                        "Best Amplitude",
+                    ],
+                    [
+                        np.round(fit.fidelity[target], 4),
+                        np.round(fit.qnd[target], 4),
+                        np.round(fit.qnd_pi[target], 4),
+                        np.round(fit.frequency[target], 4),
+                        np.round(fit.amplitude[target], 4),
+                    ],
+                )
             )
-        )
 
         figures.append(fig)
     return figures, fitting_report
