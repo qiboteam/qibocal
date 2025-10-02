@@ -247,14 +247,24 @@ def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):
 def filters(
     platform: Platform,
     qubit: QubitId,
-    amplitude: float,
-    tau: float,
+    amplitude: Optional[float] = None,
+    tau: Optional[float] = None,
     fir: Optional[list[float]] = None,
 ):
     """Update flux pulse filters parameter in platform for specific qubit."""
 
     old_filters = platform.config(platform.qubits[qubit].flux).filters
-    old_filters.append(ExponentialFilter(amplitude=amplitude, tau=tau))
-    if fir is not None:
-        old_filters.append(FiniteImpulseResponseFilter(coefficients=fir))
+    if amplitude is not None and tau is not None:
+        old_filters.append(ExponentialFilter(amplitude=amplitude, tau=tau))
+
+    old_iir = [
+        filter_ for filter_ in old_filters if isinstance(filter_, ExponentialFilter)
+    ]
+    old_fir = [
+        filter_
+        for filter_ in old_filters
+        if isinstance(filter_, FiniteImpulseResponseFilter)
+    ]
+    if len(old_fir) > 0:
+        old_filters = old_iir + [FiniteImpulseResponseFilter(coefficients=fir)]
     platform.update({f"configs.{platform.qubits[qubit].flux}.filters": old_filters})
