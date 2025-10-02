@@ -109,7 +109,14 @@ class LongCryoscopeData(Data):
         freq_ghz = (freq - self.frequency[qubit]) * HZ_TO_GHZ
         p = np.poly1d(self.flux_coefficients[qubit])
         amplitude = [max((p - f).roots) for f in freq_ghz]
-        return amplitude / np.mean(amplitude[len(freq_ghz) // 2 :])
+        flux_arc_estimate = amplitude / np.mean(amplitude[len(freq_ghz) // 2 :])
+        print(np.mean(flux_arc_estimate))
+        if np.mean(flux_arc_estimate) > 1.001:
+            print("HERE", np.mean(flux_arc_estimate))
+            return freq_ghz / np.mean(freq_ghz[len(freq_ghz) // 2 :])
+        else:
+            print("THEN")
+            return flux_arc_estimate
 
 
 def sequence(
@@ -125,7 +132,7 @@ def sequence(
     ro_channel, ro_pulse = natives.MZ()[0]
     flux_channel = platform.qubits[target].flux
     flux_pulse = Pulse(
-        duration=2 * delay + qd_pulse.duration,
+        duration=delay + qd_pulse.duration,
         amplitude=flux_pulse_amplitude,
         envelope=Rectangular(),
     )
@@ -224,7 +231,9 @@ def _fit(data: LongCryoscopeData) -> LongCryoscopeResults:
 
         step_response = data.step_reponse(qubit)
         try:
-            exp_params = exponential_params(delay, step_response, tau_guess=1000)
+            exp_params = exponential_params(
+                delay, step_response, tau_guess=np.median(data.duration_swept)
+            )
             feedback_taps[qubit], feedforward_taps[qubit] = filter_calc(
                 exp_params, sampling_rate
             )
