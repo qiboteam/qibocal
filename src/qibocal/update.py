@@ -260,11 +260,6 @@ def filters(
     old_iir = [
         filter_ for filter_ in old_filters if isinstance(filter_, ExponentialFilter)
     ]
-    old_fir = [
-        filter_
-        for filter_ in old_filters
-        if isinstance(filter_, FiniteImpulseResponseFilter)
-    ]
-    if len(old_fir) > 0:
+    if fir is not None:
         old_filters = old_iir + [FiniteImpulseResponseFilter(coefficients=fir)]
     platform.update({f"configs.{platform.qubits[qubit].flux}.filters": old_filters})
