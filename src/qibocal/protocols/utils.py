@@ -1,13 +1,12 @@
 from colorsys import hls_to_rgb
 from enum import Enum
-from typing import Literal, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
-from qibolab._core.components import Config
 from scipy import constants, sparse
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
@@ -143,18 +142,6 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         log.warning(f"Lorentzian fit not successful due to {e}")
 
 
-class DcFilteredConfig(Config):
-    """Dummy config for dc with filters.
-
-    Required by cryoscope protocol.
-
-    """
-
-    kind: Literal["dc-filter"] = "dc-filter"
-    offset: float
-    filter: list
-
-
 def effective_qubit_temperature(
     prob_0: NDArray, prob_1: NDArray, qubit_frequency: float, nshots: int
 ):
@@ -278,14 +265,7 @@ def fit_punchout(data: Data, fit_type: str):
         freqs = qubit_data.freq
         amps = getattr(qubit_data, fit_type)
         signal = qubit_data.signal
-        if data.resonator_type == "3D":
-            mask_freq, mask_amps = extract_feature(
-                freqs, amps, signal, "max", ci_first_mask=90
-            )
-        else:
-            mask_freq, mask_amps = extract_feature(
-                freqs, amps, signal, "min", ci_first_mask=90
-            )
+        mask_freq, mask_amps = extract_feature(freqs, amps, signal, data.find_min)
         if fit_type == "amp":
             best_freq = np.max(mask_freq)
             bare_freq = np.min(mask_freq)
@@ -691,9 +671,7 @@ def extract_feature(
     x: np.ndarray,
     y: np.ndarray,
     z: np.ndarray,
-    feat: str,
-    ci_first_mask: float = CONFIDENCE_INTERVAL_FIRST_MASK,
-    ci_second_mask: float = CONFIDENCE_INTERVAL_SECOND_MASK,
+    find_min: bool,
 ):
     """Extract feature using confidence intervals.
 
@@ -708,22 +686,27 @@ def extract_feature(
 
     """
 
-    masks = []
-    for i in np.unique(y):
-        signal_fixed_y = z[y == i]
-        min, max = np.percentile(
-            signal_fixed_y,
-            [100 - ci_first_mask, ci_first_mask],
-        )
-        masks.append(signal_fixed_y < min if feat == "min" else signal_fixed_y > max)
+    # background removed over y axis
+    z_ = z.reshape(len(np.unique(y)), len(np.unique(x)))
+    z_ = z_ / np.mean(z, axis=0)
+    normalized_z = z_.reshape(z.shape)
 
-    first_mask = np.vstack(masks).ravel()
-    min, max = np.percentile(
-        z[first_mask],
-        [100 - ci_second_mask, ci_second_mask],
-    )
-    second_mask = z[first_mask] < min if feat == "min" else z[first_mask] > max
-    return x[first_mask][second_mask], y[first_mask][second_mask]
+    # filter data using find_peaks
+    filtered_bias = []
+    filtered_freq = []
+    unique_bias = np.unique(y)
+    unique_freq = np.unique(x)
+    for i in unique_bias:
+        signal_fixed_y = normalized_z[y == i]
+        peak, _ = find_peaks(
+            -signal_fixed_y if find_min else signal_fixed_y, prominence=0.2
+        )
+        if len(peak) > 0:
+            for j in peak:
+                filtered_bias.append(i)
+                filtered_freq.append(unique_freq[j])
+
+    return np.array(filtered_freq), np.array(filtered_bias)
 
 
 def guess_period(x, y):

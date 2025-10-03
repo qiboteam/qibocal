@@ -1,11 +1,17 @@
 """Helper functions to update parameters in platform."""
 
 from collections.abc import Iterable
-from typing import Union
+from typing import Optional, Union
 
 import numpy as np
 from pydantic import BaseModel
-from qibolab import Platform, PulseSequence, VirtualZ
+from qibolab import (
+    ExponentialFilter,
+    FiniteImpulseResponseFilter,
+    Platform,
+    PulseSequence,
+    VirtualZ,
+)
 
 from qibocal.auto.operation import QubitId, QubitPairId
 
@@ -238,17 +244,22 @@ def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):
     platform.update({f"configs.{ro_channel}.kernel": kernel})
 
 
-def feedback(feedback: list[float], platform: Platform, qubit: QubitId):
-    """Update flux pulse feedback filter parameter in platform for specific qubit."""
-    feedbackQM = feedback.copy()
-    feedbackQM = [-feedbackQM[1]]
-    platform.update(
-        {f"configs.{platform.qubits[qubit].flux}.filter.feedback": feedbackQM}
-    )
+def filters(
+    platform: Platform,
+    qubit: QubitId,
+    amplitude: Optional[float] = None,
+    tau: Optional[float] = None,
+    fir: Optional[list[float]] = None,
+):
+    """Update flux pulse filters parameter in platform for specific qubit."""
 
+    old_filters = platform.config(platform.qubits[qubit].flux).filters
+    if amplitude is not None and tau is not None:
+        old_filters.append(ExponentialFilter(amplitude=amplitude, tau=tau))
 
-def feedforward(feedforward: list[float], platform: Platform, qubit: QubitId):
-    """Update flux pulse feedforward parameter in platform for specific qubit."""
-    platform.update(
-        {f"configs.{platform.qubits[qubit].flux}.filter.feedforward": feedforward}
-    )
+    old_iir = [
+        filter_ for filter_ in old_filters if isinstance(filter_, ExponentialFilter)
+    ]
+    if fir is not None:
+        old_filters = old_iir + [FiniteImpulseResponseFilter(coefficients=fir)]
+    platform.update({f"configs.{platform.qubits[qubit].flux}.filters": old_filters})
