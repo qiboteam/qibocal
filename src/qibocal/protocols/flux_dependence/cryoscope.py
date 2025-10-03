@@ -377,7 +377,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             ).tolist()
         else:
             step_response[qubit] = (
-                np.array(amplitude[qubit]) / data.flux_pulse_amplitude
+                np.array(amplitude[qubit]) / np.abs(data.flux_pulse_amplitude)
             ).tolist()
 
         signal = step_response[qubit]
