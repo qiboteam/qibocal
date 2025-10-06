@@ -24,6 +24,7 @@ from ..utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
     extract_feature,
+    normalize_over_y,
     readout_frequency,
     table_dict,
     table_html,
@@ -101,9 +102,11 @@ class QubitFluxData(Data):
     def filtered_data(self, qubit: QubitId) -> np.ndarray:
         """Apply mask to specific qubit data."""
         return extract_feature(
-            self.data[qubit].freq,
-            self.data[qubit].bias,
-            self.data[qubit].signal,
+            *normalize_over_y(
+                self.data[qubit].freq,
+                self.data[qubit].bias,
+                self.data[qubit].signal,
+            ),
             self.find_min,
         )
 
