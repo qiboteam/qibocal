@@ -35,6 +35,19 @@ def is_crosstalk(data):
     return all(isinstance(key, tuple) for key in data.data.keys())
 
 
+def normalize(
+    x: list[float], estimate: list[float], threshold: float = 0.001
+) -> list[float]:
+    """Normalize input array to 1.
+
+    Estimate is a guess for the mean. If the normalization
+    is off by a factor larger than 5% estimate is ignored."""
+    mean_ = np.mean(x[len(x) // 2 :])
+    if np.array(mean_ / estimate).max() > threshold:
+        return (np.array(x) / mean_).tolist()
+    return (np.array(x) / np.abs(estimate)).tolist()
+
+
 def create_data_array(freq, bias, signal, dtype):
     """Create custom dtype array for acquired data."""
     size = len(freq) * len(bias)
