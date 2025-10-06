@@ -30,6 +30,7 @@ from ..utils import (
     table_html,
 )
 from .cryoscope import exponential_params, filter_calc
+from .utils import normalize
 
 __all__ = ["long_cryoscope"]
 
@@ -102,21 +103,13 @@ class LongCryoscopeData(Data):
         freq, delay = extract_feature(*self.grid(qubit), find_min=False)
         return delay, freq
 
-    def step_reponse(self, qubit: QubitId) -> np.ndarray:
+    def step_reponse(self, qubit: QubitId) -> list[float]:
         """Compute expected frequency by averaging over last half."""
-
         _, freq = self.filtered_data(qubit)
         freq_ghz = (freq - self.frequency[qubit]) * HZ_TO_GHZ
         p = np.poly1d(self.flux_coefficients[qubit])
         amplitude = [max((p - f).roots) for f in freq_ghz]
-        flux_arc_estimate = amplitude / np.mean(amplitude[len(freq_ghz) // 2 :])
-        print(np.mean(flux_arc_estimate))
-        if np.mean(flux_arc_estimate) > 1.001:
-            print("HERE", np.mean(flux_arc_estimate))
-            return freq_ghz / np.mean(freq_ghz[len(freq_ghz) // 2 :])
-        else:
-            print("THEN")
-            return flux_arc_estimate
+        return normalize(freq_ghz, amplitude)
 
 
 def sequence(
@@ -251,7 +244,6 @@ def _fit(data: LongCryoscopeData) -> LongCryoscopeResults:
 
 def _plot(data: LongCryoscopeData, fit: LongCryoscopeResults, target: QubitId):
     """Plotting function for LongCryoscope Experiment."""
-    print(fit)
     fig = make_subplots(
         rows=2,
         cols=1,

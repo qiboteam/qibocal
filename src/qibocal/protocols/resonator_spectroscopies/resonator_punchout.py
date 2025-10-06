@@ -177,7 +177,6 @@ def _plot(
             x=frequencies,
             y=amplitudes,
             z=qubit_data.signal,
-            colorbar_x=0.46,
         )
     )
 
