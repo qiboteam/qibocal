@@ -26,6 +26,7 @@ from ...auto.operation import Data, Parameters, QubitId, Results, Routine
 from ...config import log
 from ..ramsey.utils import fitting
 from ..utils import table_dict, table_html
+from .utils import normalize
 
 __all__ = ["cryoscope", "CryoscopeData", "CryoscopeResults"]
 
@@ -47,6 +48,9 @@ class CryoscopeParameters(Parameters):
     fir: int = 20
     """Number of feedforward taps to be optimized after IIR."""
     unrolling: bool = True
+
+    def __post_init__(self):
+        assert self.iir <= 1, "More than 1 IIR filters is unsupported."
 
 
 @dataclass
@@ -370,15 +374,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         p = np.poly1d(data.flux_coefficients[qubit])
         amplitude[qubit] = [max((p - freq).roots).real for freq in detuning[qubit]]
 
-        mean_amplitude = np.mean(amplitude[qubit][len(amplitude[qubit]) // 2 :])
-        if mean_amplitude / data.flux_pulse_amplitude > 0.05:
-            step_response[qubit] = (
-                np.array(amplitude[qubit]) / mean_amplitude
-            ).tolist()
-        else:
-            step_response[qubit] = (
-                np.array(amplitude[qubit]) / np.abs(data.flux_pulse_amplitude)
-            ).tolist()
+        step_response[qubit] = normalize(amplitude[qubit], data.flux_pulse_amplitude)
 
         signal = step_response[qubit]
         if data.iir == 1:
