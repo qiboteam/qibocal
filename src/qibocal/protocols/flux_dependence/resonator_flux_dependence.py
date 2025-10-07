@@ -255,12 +255,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             coupling[qubit] = popt[0]
             asymmetry[qubit] = popt[1]
         except ValueError as e:
-            log.error(
-                f"Error in resonator_flux protocol fit: {e} "
-                "The threshold for the SNR mask is probably too high. "
-                "Lowering the value of `threshold` in `extract_*_feature`"
-                "should fix the problem."
-            )
+            log.error(f"Error in resonator_flux protocol fit: {e} ")
     return ResonatorFluxResults(
         frequency=resonator_freq,
         coupling=coupling,
