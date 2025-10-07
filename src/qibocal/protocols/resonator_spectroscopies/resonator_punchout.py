@@ -158,7 +158,7 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
         if fit_type == "amp":
             best_freq = np.max(filtered_x)
             bare_freq = np.min(filtered_x)
-        else:
+        else:  # pragma: no cover
             best_freq = np.min(filtered_x)
             bare_freq = np.max(filtered_x)
         ro_val = np.max(filtered_y[filtered_x == best_freq])
