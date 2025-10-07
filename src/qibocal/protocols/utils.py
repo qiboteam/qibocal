@@ -724,14 +724,6 @@ def normalize_over_y(x, y, z):
     return x, y, normalized_z
 
 
-def normalize_over_x(x, y, z):
-    # background removed over x axis
-    z_ = z.reshape(len(np.unique(y)), len(np.unique(x)))
-    z_ = z_ / np.mean(z_, axis=1, keepdims=True)  # normalize along x axis
-    normalized_z = z_.reshape(z.shape)
-    return x, y, normalized_z
-
-
 def extract_feature(
     x: np.ndarray,
     y: np.ndarray,
