@@ -82,15 +82,12 @@ class VirtualZPhasesResults(Results):
         return key in [(target, control) for target, control in self.angle]
 
 
-VirtualZPhasesType = np.dtype([("target", np.float64), ("control", np.float64)])
-
-
 @dataclass
 class VirtualZPhasesData(Data):
     """VirtualZPhases data."""
 
     gate_repetition: int
-    data: dict[tuple, npt.NDArray[VirtualZPhasesType]] = field(default_factory=dict)
+    data: dict[tuple, npt.NDArray] = field(default_factory=dict)
     native: str = "CZ"
     thetas: list = field(default_factory=list)
 
@@ -292,14 +289,10 @@ def _acquisition(
                 result_target = results[ro_target.id]
                 result_control = results[ro_control.id]
 
-                data.register_qubit(
-                    VirtualZPhasesType,
-                    (target_q, control_q, setup),
-                    dict(
-                        target=result_target,
-                        control=result_control,
-                    ),
+                data.data[target_q, control_q, setup] = np.stack(
+                    [result_target, result_control]
                 )
+
     return data
 
 
@@ -349,6 +342,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
             f"Qubit {qubits[1]}",
         ),
     )
+    print(fit)
     fitting_report = set()
     fig2 = make_subplots(
         rows=1,
@@ -361,8 +355,8 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
 
     thetas = data.thetas
     for target_q, control_q, setup in pair_data:
-        target_prob = pair_data[target_q, control_q, setup].target
-        control_prob = pair_data[target_q, control_q, setup].control
+        target_prob = pair_data[target_q, control_q, setup][0]
+        control_prob = pair_data[target_q, control_q, setup][1]
         fig = fig1 if (target_q, control_q) == qubits else fig2
         fig.add_trace(
             go.Scatter(
