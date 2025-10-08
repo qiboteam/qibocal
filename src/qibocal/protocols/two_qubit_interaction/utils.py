@@ -97,7 +97,7 @@ def fit_virtualz(data: dict, pair: list, thetas: list, gate_repetition: int, key
     target, control = pair
 
     for setup in ["I", "X"]:
-        target_data = data[target, control, setup].target
+        target_data = data[target, control, setup][0]
         try:
             params = fit_sinusoid(np.array(thetas), target_data, gate_repetition)
             fitted_param[target, control, setup] = params
@@ -110,9 +110,7 @@ def fit_virtualz(data: dict, pair: list, thetas: list, gate_repetition: int, key
         # approximation which does not need qutrits
         # https://arxiv.org/pdf/1903.02492.pdf
         leakage[key] = 0.5 * float(
-            np.mean(
-                data[target, control, "X"].control - data[target, control, "I"].control
-            )
+            np.mean(data[target, control, "X"][1] - data[target, control, "I"][1])
         )
 
         angle[key] = phase_diff(
