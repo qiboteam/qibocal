@@ -1,7 +1,6 @@
 """virtual correction experiment for two qubit gates, tune landscape."""
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -19,10 +18,9 @@ from qibocal.auto.operation import (
     Routine,
 )
 from qibocal.calibration import CalibrationPlatform
-from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
-from .utils import fit_sinusoid, order_pair, phase_diff
+from .utils import fit_virtualz, order_pair
 from .virtual_z_phases import create_sequence
 
 __all__ = ["optimize_two_qubit_gate"]
@@ -50,7 +48,7 @@ class OptimizeTwoQubitGateParameters(Parameters):
     """Maximum duration of flux pulse swept."""
     duration_step: int
     """Step duration of flux pulse swept."""
-    dt: Optional[float] = 0
+    dt: float = 0
     """Time delay between flux pulses and readout."""
     native: str = "CZ"
     """Two qubit interaction to be calibrated.
@@ -58,6 +56,22 @@ class OptimizeTwoQubitGateParameters(Parameters):
     iSWAP and CZ are the possible options.
 
     """
+
+    @property
+    def theta_range(self) -> np.ndarray:
+        return np.arange(self.theta_start, self.theta_end, self.theta_step)
+
+    @property
+    def amplitude_range(self) -> np.ndarray:
+        return np.arange(
+            self.flux_pulse_amplitude_min,
+            self.flux_pulse_amplitude_max,
+            self.flux_pulse_amplitude_step,
+        )
+
+    @property
+    def duration_range(self) -> np.ndarray:
+        return np.arange(self.duration_min, self.duration_max, self.duration_step)
 
 
 @dataclass
@@ -74,6 +88,10 @@ class OptimizeTwoQubitGateResults(Results):
     """Virtual Z phase correction."""
     leakages: dict[tuple[QubitPairId, float], dict[QubitId, float]]
     """Leakage on control qubit for pair."""
+    best_angles: dict[QubitPairId, list[float]]
+    best_leakages: dict[QubitPairId, list[float]]
+    best_angles_per_duration: dict[QubitPairId, list[float]]
+    best_leakages_per_duration: dict[QubitPairId, list[float]]
     best_amp: dict[QubitPairId]
     """Flux pulse amplitude of best configuration."""
     best_dur: dict[QubitPairId]
@@ -86,61 +104,38 @@ class OptimizeTwoQubitGateResults(Results):
 
         Additional  manipulations required because of the Results class.
         """
-        pairs = {
-            (target, control) for target, control, _, _, _ in self.fitted_parameters
-        }
-        return key in pairs
-
-
-OptimizeTwoQubitGateType = np.dtype(
-    [
-        ("amp", np.float64),
-        ("theta", np.float64),
-        ("duration", np.float64),
-        ("prob_target", np.float64),
-        ("prob_control", np.float64),
-    ]
-)
+        return True
+        # pairs = {
+        #     (target, control) for target, control, _, _, _ in self.fitted_parameters
+        # }
+        # return key in pairs
 
 
 @dataclass
 class OptimizeTwoQubitGateData(Data):
     """OptimizeTwoQubitGate data."""
 
-    data: dict[tuple, npt.NDArray[OptimizeTwoQubitGateType]] = field(
-        default_factory=dict
-    )
+    data: dict[tuple, npt.NDArray] = field(default_factory=dict)
     """Raw data."""
+    ordered_pairs: list[QubitPairId] = field(default_factory=dict)
     thetas: list = field(default_factory=list)
     """Angles swept."""
     native: str = "CZ"
     """Native two qubit gate."""
-    amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
+    amplitudes: list = field(default_factory=list)
     """"Amplitudes swept."""
-    durations: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
+    durations: list = field(default_factory=list)
     """Durations swept."""
 
-    def __getitem__(self, pair):
-        """Extract data for pair."""
+    def parse(self, i, j):
         return {
-            index: value
-            for index, value in self.data.items()
-            if set(pair).issubset(index)
+            key: value[
+                :,
+                i,
+                j,
+            ]
+            for key, value in self.data.items()
         }
-
-    def register_qubit(
-        self, target, control, setup, theta, amp, duration, prob_control, prob_target
-    ):
-        """Store output for single pair."""
-        size = len(theta) * len(amp) * len(duration)
-        duration, amplitude, angle = np.meshgrid(duration, amp, theta, indexing="ij")
-        ar = np.empty(size, dtype=OptimizeTwoQubitGateType)
-        ar["theta"] = angle.ravel()
-        ar["amp"] = amplitude.ravel()
-        ar["duration"] = duration.ravel()
-        ar["prob_control"] = prob_control.ravel()
-        ar["prob_target"] = prob_target.ravel()
-        self.data[target, control, setup] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -152,14 +147,14 @@ def _acquisition(
     Repetition of correct virtual phase experiment for several amplitude and duration values.
     """
 
-    theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
     data = OptimizeTwoQubitGateData(
-        thetas=theta_absolute.tolist(), native=params.native
+        ordered_pairs=[order_pair(pair, platform) for pair in targets],
+        thetas=params.theta_range.tolist(),
+        amplitudes=params.amplitude_range.tolist(),
+        durations=params.duration_range.tolist(),
+        native=params.native,
     )
-    for pair in targets:
-        # order the qubits so that the low frequency one is the first
-        ordered_pair = order_pair(pair, platform)
-
+    for ordered_pair in data.ordered_pairs:
         for target_q, control_q in (
             (ordered_pair[0], ordered_pair[1]),
             (ordered_pair[1], ordered_pair[0]),
@@ -182,31 +177,19 @@ def _acquisition(
 
                 sweeper_theta = Sweeper(
                     parameter=Parameter.phase,
-                    range=(
-                        -params.theta_start,
-                        -params.theta_end,
-                        -params.theta_step,
-                    ),
+                    values=-params.theta_range,
                     pulses=vz_pulses,
                 )
 
                 sweeper_amplitude = Sweeper(
                     parameter=Parameter.amplitude,
-                    range=(
-                        params.flux_pulse_amplitude_min,
-                        params.flux_pulse_amplitude_max,
-                        params.flux_pulse_amplitude_step,
-                    ),
+                    values=params.amplitude_range,
                     pulses=[flux_pulse],
                 )
 
                 sweeper_duration = Sweeper(
                     parameter=Parameter.duration,
-                    range=(
-                        params.duration_min,
-                        params.duration_max,
-                        params.duration_step,
-                    ),
+                    values=params.duration_range,
                     pulses=[flux_pulse],
                 )
 
@@ -224,18 +207,8 @@ def _acquisition(
                     acquisition_type=AcquisitionType.DISCRIMINATION,
                     averaging_mode=AveragingMode.CYCLIC,
                 )
-
-                data.amplitudes[ordered_pair] = sweeper_amplitude.values.tolist()
-                data.durations[ordered_pair] = sweeper_duration.values.tolist()
-                data.register_qubit(
-                    target_q,
-                    control_q,
-                    setup,
-                    sweeper_theta.values,
-                    sweeper_amplitude.values,
-                    sweeper_duration.values,
-                    results[ro_control.id],
-                    results[ro_target.id],
+                data.data[target_q, control_q, setup] = np.stack(
+                    [results[ro_target.id], results[ro_control.id]]
                 )
     return data
 
@@ -245,111 +218,72 @@ def _fit(
 ) -> OptimizeTwoQubitGateResults:
     """Repetition of correct virtual phase fit for all configurations."""
     fitted_parameters = {}
-    pairs = data.pairs
     virtual_phases = {}
     angles = {}
+    best_angles = {}
+    best_angles_per_duration = {}
+    best_leakages = {}
+    best_leakages_per_duration = {}
     leakages = {}
     best_amp = {}
     best_dur = {}
     best_virtual_phase = {}
-    # FIXME: experiment should be for single pair
-    for pair in pairs:
-        # TODO: improve this
-        ord_pair = next(iter(data.amplitudes))[:2]
-        for duration in data.durations[ord_pair]:
-            for amplitude in data.amplitudes[ord_pair]:
-                virtual_phases[ord_pair[0], ord_pair[1], amplitude, duration] = {}
-                leakages[ord_pair[0], ord_pair[1], amplitude, duration] = {}
-                for target, control, setup in data[pair]:
-                    target_data = data[pair][target, control, setup].prob_target[
-                        np.where(
-                            np.logical_and(
-                                data[pair][target, control, setup].amp == amplitude,
-                                data[pair][target, control, setup].duration == duration,
-                            )
+    for pair in data.ordered_pairs:
+        for target_q, control_q in (
+            (pair[0], pair[1]),
+            (pair[1], pair[0]),
+        ):
+            _pair = (target_q, control_q)
+            angles[_pair], leakages[_pair], virtual_phases[_pair] = [], [], []
+            best_angles[_pair], best_leakages[_pair] = [], []
+            best_angles_per_duration[_pair], best_leakages_per_duration[_pair] = [], []
+            (
+                fitted_parameters[_pair[0], _pair[1], "I"],
+                fitted_parameters[_pair[0], _pair[1], "X"],
+            ) = [], []
+            for i in range(len(data.durations)):
+                temp_angles = []
+                temp_leakages = []
+                for j in range(len(data.amplitudes)):
+                    new_fitted_parameter, new_phases, new_angle, new_leak = (
+                        fit_virtualz(data.parse(i, j), _pair, data.thetas, 1)
+                    )
+                    temp_angles.append(new_angle[_pair])
+                    temp_leakages.append(new_leak[_pair])
+                    angles[_pair].append(new_angle[_pair])
+                    leakages[_pair].append(new_leak[_pair])
+                    virtual_phases[_pair].append(new_phases[_pair])
+                    for setup in ["I", "X"]:
+                        fitted_parameters[_pair[0], _pair[1], setup].append(
+                            new_fitted_parameter[_pair, setup]
                         )
-                    ]
+                best_angles_per_duration[_pair].append(
+                    int(np.argmin(np.abs(np.pi - np.array(temp_angles))))
+                )
+                best_leakages_per_duration[_pair].append(
+                    np.where(np.array(temp_leakages) < 0.015)[0].tolist()
+                )
+            duration_index = max(
+                range(len(best_leakages_per_duration[_pair])),
+                key=lambda i: len(best_leakages_per_duration[_pair][i]),
+            )
+            amplitude_index = best_angles_per_duration[_pair][duration_index]
 
-                    try:
-                        params = fit_sinusoid(
-                            np.array(data.thetas), target_data, gate_repetition=1
-                        )
-                        fitted_parameters[
-                            target, control, setup, amplitude, duration
-                        ] = params
-                    except Exception as e:
-                        log.warning(
-                            f"Fit failed for pair ({target, control}) due to {e}."
-                        )
-
-                try:
-                    for target_q, control_q in (
-                        pair,
-                        list(pair)[::-1],
-                    ):
-                        angles[target_q, control_q, amplitude, duration] = phase_diff(
-                            fitted_parameters[
-                                target_q, control_q, "X", amplitude, duration
-                            ][2],
-                            fitted_parameters[
-                                target_q, control_q, "I", amplitude, duration
-                            ][2],
-                        )
-                        virtual_phases[ord_pair[0], ord_pair[1], amplitude, duration][
-                            target_q
-                        ] = fitted_parameters[
-                            target_q, control_q, "I", amplitude, duration
-                        ][2]
-
-                        # leakage estimate: L = m /2
-                        # See NZ paper from Di Carlo
-                        # approximation which does not need qutrits
-                        # https://arxiv.org/pdf/1903.02492.pdf
-                        leakages[ord_pair[0], ord_pair[1], amplitude, duration][
-                            control_q
-                        ] = 0.5 * float(
-                            np.mean(
-                                data[pair][target_q, control_q, "X"].prob_control[
-                                    np.where(
-                                        np.logical_and(
-                                            data[pair][target_q, control_q, "X"].amp
-                                            == amplitude,
-                                            data[pair][
-                                                target_q, control_q, "X"
-                                            ].duration
-                                            == duration,
-                                        )
-                                    )
-                                ]
-                                - data[pair][target_q, control_q, "I"].prob_control[
-                                    np.where(
-                                        np.logical_and(
-                                            data[pair][target_q, control_q, "I"].amp
-                                            == amplitude,
-                                            data[pair][
-                                                target_q, control_q, "I"
-                                            ].duration
-                                            == duration,
-                                        )
-                                    )
-                                ]
-                            )
-                        )
-                    index = np.argmin(np.abs(np.array(list(angles.values())) - np.pi))
-                    _, _, amp, dur = np.array(list(angles))[index]
-                    best_amp[pair] = float(amp)
-                    best_dur[pair] = float(dur)
-                    best_virtual_phase[pair] = virtual_phases[
-                        ord_pair[0], ord_pair[1], float(amp), float(dur)
-                    ]
-                except KeyError:
-                    pass
+            best_virtual_phase[_pair] = virtual_phases[_pair][
+                int(len(data.amplitudes) * duration_index + amplitude_index)
+            ]
+            best_dur[_pair] = data.durations[duration_index]
+            best_amp[_pair] = data.amplitudes[amplitude_index]
 
     return OptimizeTwoQubitGateResults(
         angles=angles,
         native=data.native,
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
+        best_angles=best_angles,
+        best_angles_per_duration=best_angles_per_duration,
+        best_leakages=best_leakages,
+        best_leakages_per_duration=best_leakages_per_duration,
         leakages=leakages,
         best_amp=best_amp,
         best_dur=best_dur,
@@ -363,40 +297,32 @@ def _plot(
     target: QubitPairId,
 ):
     """Plot routine for OptimizeTwoQubitGate."""
+    pair = target if list[target] in data.ordered_pairs else (target[1], target[0])
     fitting_report = ""
-    qubits = next(iter(data.amplitudes))[:2]
+
     fig = make_subplots(
         rows=2,
         cols=2,
         subplot_titles=(
-            f"Qubit {target[0]} {data.native} angle",
-            f"Qubit {target[0]} Leakage",
-            f"Qubit {target[1]} {data.native} angle",
-            f"Qubit {target[1]} Leakage",
+            f"Qubit {pair[0]} {data.native} angle",
+            f"Qubit {pair[1]} Leakage",
+            f"Qubit {pair[1]} {data.native} angle",
+            f"Qubit {pair[0]} Leakage",
         ),
     )
     if fit is not None:
         for target_q, control_q in (
-            target,
-            list(target)[::-1],
+            pair,
+            list(pair)[::-1],
         ):
-            cz = []
-            durs = []
-            amps = []
-            leakage = []
-            for i in data.amplitudes[qubits]:
-                for j in data.durations[qubits]:
-                    durs.append(j)
-                    amps.append(i)
-                    cz.append(fit.angles[target_q, control_q, i, j])
-                    leakage.append(fit.leakages[qubits[0], qubits[1], i, j][control_q])
-
             condition = [target_q, control_q] == list(target)
             fig.add_trace(
                 go.Heatmap(
-                    x=durs,
-                    y=amps,
-                    z=cz,
+                    x=data.durations,
+                    y=data.amplitudes,
+                    z=np.array(fit.angles[target])
+                    .reshape(len(data.durations), len(data.amplitudes))
+                    .T,
                     zmin=0,
                     zmax=2 * np.pi,
                     name="{fit.native} angle",
@@ -407,31 +333,99 @@ def _plot(
                 row=1 if condition else 2,
                 col=1,
             )
+            fig.add_trace(
+                go.Scatter(
+                    x=data.durations,
+                    y=[
+                        data.amplitudes[fit.best_angles_per_duration[target][i]]
+                        for i in range(len(data.durations))
+                    ],
+                    line=dict(color="black"),
+                    showlegend=condition,
+                    name="Best CZ angle",
+                    mode="markers",
+                    legendgroup="Best CZ angle",
+                ),
+                row=1 if condition else 2,
+                col=1,
+            )
 
             fig.add_trace(
                 go.Heatmap(
-                    x=durs,
-                    y=amps,
-                    z=leakage,
-                    name="Leakage",
-                    showscale=condition,
-                    colorscale="Reds",
+                    x=data.durations,
+                    y=data.amplitudes,
+                    z=np.array(fit.leakages[target])
+                    .reshape(len(data.durations), len(data.amplitudes))
+                    .T,
                     zmin=0,
                     zmax=0.05,
+                    name="{fit.native} angle",
+                    colorscale="Reds",
+                    showscale=condition,
                 ),
                 row=1 if condition else 2,
                 col=2,
             )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=np.array(
+                        [
+                            data.durations[i]
+                            for i in range(len(data.durations))
+                            for _ in range(
+                                len(fit.best_leakages_per_duration[target][i])
+                            )
+                            if len(fit.best_leakages_per_duration[target][i]) > 0
+                        ]
+                    ),
+                    y=np.array(
+                        [
+                            data.amplitudes[idx]
+                            for i in range(len(data.durations))
+                            for idx in fit.best_leakages_per_duration[target][i]
+                        ]
+                    ),
+                    line=dict(color="gray"),
+                    showlegend=condition,
+                    name="Minimum leakage",
+                    mode="markers",
+                    legendgroup="Minimum leakage",
+                ),
+                row=1 if condition else 2,
+                col=2,
+            )
+
+            for j in [1, 2]:
+                fig.add_trace(
+                    go.Scatter(
+                        x=[fit.best_dur[target_q, control_q]],
+                        y=[fit.best_amp[target_q, control_q]],
+                        line=dict(color="yellow"),
+                        name="Best CZ",
+                        mode="markers",
+                        showlegend=condition and j == 1,
+                        legendgroup="Best CZ",
+                    ),
+                    row=1 if condition else 2,
+                    col=j,
+                )
+
+            fig.update_layout(
+                showlegend=True,
+                legend=dict(orientation="h"),
+            )
+
             fitting_report = table_html(
                 table_dict(
-                    [qubits[1], qubits[1]],
+                    [target_q, target_q],
                     [
                         "Flux pulse amplitude [a.u.]",
                         "Flux pulse duration [ns]",
                     ],
                     [
-                        np.round(fit.best_amp[qubits], 4),
-                        np.round(fit.best_dur[qubits], 4),
+                        np.round(fit.best_amp[target_q, control_q], 4),
+                        np.round(fit.best_dur[target_q, control_q], 4),
                     ],
                 )
             )
@@ -453,9 +447,9 @@ def _update(
 ):
     # FIXME: quick fix for qubit order
     target = tuple(sorted(target))
-    update.virtual_phases(
-        results.best_virtual_phase[target], results.native, platform, target
-    )
+    assert results.best_dur[target] == results.best_dur[target[1], target[0]]
+    assert results.best_amp[target] == results.best_amp[target[1], target[0]]
+    update.virtual_phases(results.best_virtual_phase, results.native, platform, target)
     getattr(update, f"{results.native}_duration")(
         results.best_dur[target], platform, target
     )
