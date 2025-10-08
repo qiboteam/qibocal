@@ -447,14 +447,16 @@ def _update(
 ):
     # FIXME: quick fix for qubit order
     target = tuple(sorted(target))
-    assert results.best_dur[target] == results.best_dur[target[1], target[0]]
-    assert results.best_amp[target] == results.best_amp[target[1], target[0]]
     update.virtual_phases(results.best_virtual_phase, results.native, platform, target)
     getattr(update, f"{results.native}_duration")(
-        results.best_dur[target], platform, target
+        (results.best_dur[target] + results.best_dur[target[1], target[0]]) / 2,
+        platform,
+        target,
     )
     getattr(update, f"{results.native}_amplitude")(
-        results.best_amp[target], platform, target
+        (results.best_amp[target] + results.best_amp[target[1], target[0]]) / 2,
+        platform,
+        target,
     )
 
 
