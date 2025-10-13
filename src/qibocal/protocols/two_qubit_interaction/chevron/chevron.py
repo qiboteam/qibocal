@@ -12,7 +12,7 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.protocols.utils import table_dict, table_html
+from qibocal.protocols.utils import HZ_TO_GHZ, table_dict, table_html
 
 from .... import update
 from ..utils import order_pair
@@ -69,6 +69,8 @@ class ChevronData(Data):
     amplitude: list
     duration: list
     _sorted_pairs: list
+    detuning: dict[QubitPairId, float] = field(default_factory=dict)
+    flux_coefficient: dict[QubitPairId, float] = field(default_factory=dict)
     data: dict[QubitPairId, np.ndarray] = field(default_factory=dict)
 
     @property
@@ -115,6 +117,18 @@ def _aquisition(
             params.duration_min, params.duration_max, params.duration_step
         ).tolist(),
     )
+    data.flux_coefficient = {
+        pair: platform.calibration.single_qubits[pair[1]].qubit.flux_coefficients[0]
+        for pair in data.sorted_pairs
+    }
+    data.detuning = {
+        pair: (
+            platform.calibration.single_qubits[pair[1]].qubit.frequency_01
+            - platform.calibration.single_qubits[pair[0]].qubit.frequency_01
+        )
+        * HZ_TO_GHZ
+        for pair in data.sorted_pairs
+    }
     for pair in data.sorted_pairs:
         sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
             platform=platform,
@@ -166,14 +180,19 @@ def _fit(data: ChevronData) -> ChevronResults:
     for pair in data.sorted_pairs:
         fitted_parameters[pair] = []
         duration[pair], half_duration[pair], amplitude[pair] = [], [], []
-        #
         for _data in [data[pair][0], data[pair][1]]:
             try:
                 popt, _ = curve_fit(
                     chevron_fit,
                     data.grid,
-                    _data,
-                    p0=[0.49, 2.36, 0.07, 0],
+                    _data.T.flatten(),
+                    p0=[
+                        data.detuning[pair] - 0.2,
+                        data.flux_coefficient[pair],
+                        0.07,
+                        0,
+                    ],
+                    bounds=([0, 1, 0, 0], [1, 3, 0.1, 2 * np.pi]),
                     maxfev=100000,
                 )
                 fitted_parameters[pair].append(popt.tolist())
@@ -221,7 +240,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
             go.Heatmap(
                 x=data.duration,
                 y=data.amplitude,
-                z=_data,
+                z=_data.T,
                 coloraxis=COLORAXIS[i],
             ),
             row=1,

@@ -9,7 +9,7 @@ from qibocal.auto.operation import QubitPairId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude
 
-from ...utils import readout_frequency
+from ...utils import HZ_TO_GHZ, readout_frequency
 from ..utils import order_pair
 from .chevron import (
     ChevronData,
@@ -19,7 +19,7 @@ from .chevron import (
     _plot,
     _update,
 )
-from .utils import chevron_sequence
+from .utils import chevron_sequence, z_normalization
 
 __all__ = ["chevron_signal"]
 
@@ -66,6 +66,19 @@ def _aquisition(
             params.duration_min, params.duration_max, params.duration_step
         ).tolist(),
     )
+
+    data.flux_coefficient = {
+        pair: platform.calibration.single_qubits[pair[1]].qubit.flux_coefficients[0]
+        for pair in data.sorted_pairs
+    }
+    data.detuning = {
+        pair: (
+            platform.calibration.single_qubits[pair[1]].qubit.frequency_01
+            - platform.calibration.single_qubits[pair[0]].qubit.frequency_01
+        )
+        * HZ_TO_GHZ
+        for pair in data.sorted_pairs
+    }
     for pair in data.sorted_pairs:
         sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
             platform=platform,
@@ -109,8 +122,10 @@ def _aquisition(
         data.data[pair[0], pair[1]] = magnitude(
             np.stack(
                 [
-                    results[ro_low.id],
-                    results[ro_high.id],
+                    z_normalization(results[ro_low.id]),
+                    1 - z_normalization(results[ro_high.id])
+                    if params.native == "CZ"
+                    else z_normalization(results[ro_high.id]),
                 ]
             )
         )
