@@ -25,6 +25,10 @@ Measure = tuple[float, Optional[float]]
 """Measured is represented as two values: mean and error."""
 
 
+DEFAULT_ANHARMONICITY = -200e6
+"Default Anharmonicity."
+
+
 class Model(BaseModel):
     """Global model, holding common configurations."""
 
@@ -72,7 +76,7 @@ class Qubit(Model):
     def anharmonicity(self):
         """Anharmonicity of the qubit [Hz]."""
         if self.frequency_12 is None:
-            return 0
+            return DEFAULT_ANHARMONICITY
         return self.frequency_12 - self.frequency_01
 
     @property
