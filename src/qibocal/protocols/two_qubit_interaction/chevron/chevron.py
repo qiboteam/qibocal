@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from typing import Literal, Optional
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
@@ -50,76 +49,43 @@ class ChevronParameters(Parameters):
 class ChevronResults(Results):
     """CzFluxTime outputs when fitting will be done."""
 
-    native: str
+    native: str = "CZ"
     duration: dict[QubitPairId, list] = field(default_factory=dict)
     half_duration: dict[QubitPairId, list] = field(default_factory=dict)
     amplitude: dict[QubitPairId, list] = field(default_factory=dict)
     fitted_parameters: dict[QubitPairId, list] = field(default_factory=dict)
-
-    def __contains__(self, key) -> bool:
-        return True
-
-
-ChevronType = np.dtype(
-    [
-        ("amp", np.float64),
-        ("length", np.float64),
-        ("prob_high", np.float64),
-        ("prob_low", np.float64),
-    ]
-)
-"""Custom dtype for Chevron."""
 
 
 @dataclass
 class ChevronData(Data):
     """Chevron acquisition outputs."""
 
-    native_amplitude: dict[QubitPairId, float] = field(default_factory=dict)
-    """CZ platform amplitude for qubit pair."""
-    native: str = "CZ"
+    native: str
     """Two qubit interaction to be calibrated.
 
     iSWAP and CZ are the possible options.
 
     """
-    data: dict[QubitPairId, npt.NDArray[ChevronType]] = field(default_factory=dict)
+    amplitude: list
+    duration: list
+    _sorted_pairs: list
+    data: dict[QubitPairId, np.ndarray] = field(default_factory=dict)
 
-    label: Optional[str] = None
-    """Label for the data."""
-
-    def register_qubit(self, low_qubit, high_qubit, length, amp, prob_low, prob_high):
-        """Store output for single qubit."""
-        size = len(length) * len(amp)
-        amplitude, duration = np.meshgrid(amp, length)
-        ar = np.empty(size, dtype=ChevronType)
-        ar["length"] = duration.ravel()
-        ar["amp"] = amplitude.ravel()
-        ar["prob_low"] = prob_low.ravel()
-        # Since an X gate was added on the high frequency qubit at the end of the
-        # pulse sequence, its Chevron pattern is between state 0 and 2, so the state
-        # one is mapped into 0. For this reason and compatibility with the other
-        # qubit, we have to evaluate the ground state probability.
-        ar["prob_high"] = 1 - prob_high.ravel()
-        self.data[low_qubit, high_qubit] = np.rec.array(ar)
-
-    def amplitudes(self, pair):
-        """Unique pair amplitudes."""
-        return np.unique(self[pair].amp)
-
-    def durations(self, pair):
-        """Unique pair durations."""
-        return np.unique(self[pair].length)
-
-    def low_frequency(self, pair):
-        return self[pair].prob_low
-
-    def high_frequency(self, pair):
-        return self[pair].prob_high
-
-    def grid(self, pair):
-        x, y = np.meshgrid(self.durations(pair), self.amplitudes(pair))
+    @property
+    def grid(self):
+        x, y = np.meshgrid(self.duration, self.amplitude)
         return np.stack([x.ravel(), y.ravel()])
+
+    @property
+    def sorted_pairs(self):
+        return [
+            pair if isinstance(pair, tuple) else tuple(pair)
+            for pair in self._sorted_pairs
+        ]
+
+    @sorted_pairs.setter
+    def sorted_pairs(self, value):
+        self._sorted_pairs = value
 
 
 def _aquisition(
@@ -139,14 +105,20 @@ def _aquisition(
         ChevronData: Acquisition data.
     """
 
-    # create a DataUnits object to store the results
-    data = ChevronData(native=params.native)
-    for pair in targets:
-        # order the qubits so that the low frequency one is the first
-        ordered_pair = order_pair(pair, platform)
+    data = ChevronData(
+        native=params.native,
+        _sorted_pairs=[order_pair(pair, platform) for pair in targets],
+        amplitude=np.arange(
+            params.amplitude_min, params.amplitude_max, params.amplitude_step
+        ).tolist(),
+        duration=np.arange(
+            params.duration_min, params.duration_max, params.duration_step
+        ).tolist(),
+    )
+    for pair in data.sorted_pairs:
         sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
             platform=platform,
-            ordered_pair=ordered_pair,
+            ordered_pair=pair,
             duration_max=params.duration_max,
             parking=params.parking,
             dt=params.dt,
@@ -163,14 +135,8 @@ def _aquisition(
             pulses=[flux_pulse] + delays + parking_pulses,
         )
 
-        ro_high = list(sequence.channel(platform.qubits[ordered_pair[1]].acquisition))[
-            -1
-        ]
-        ro_low = list(sequence.channel(platform.qubits[ordered_pair[0]].acquisition))[
-            -1
-        ]
-
-        data.native_amplitude[ordered_pair] = flux_pulse.amplitude
+        ro_high = list(sequence.channel(platform.qubits[pair[1]].acquisition))[-1]
+        ro_low = list(sequence.channel(platform.qubits[pair[0]].acquisition))[-1]
 
         results = platform.execute(
             [sequence],
@@ -181,13 +147,13 @@ def _aquisition(
             averaging_mode=AveragingMode.CYCLIC,
         )
 
-        data.register_qubit(
-            ordered_pair[0],
-            ordered_pair[1],
-            sweeper_duration.values,
-            sweeper_amplitude.values,
-            results[ro_low.id],
-            results[ro_high.id],
+        data.data[pair[0], pair[1]] = np.stack(
+            [
+                results[ro_low.id],
+                1 - results[ro_high.id]
+                if params.native == "CZ"
+                else results[ro_high.id],
+            ]
         )
     return data
 
@@ -197,16 +163,15 @@ def _fit(data: ChevronData) -> ChevronResults:
     duration = {}
     amplitude = {}
     half_duration = {}
-    for pair in data.data:
-        grid = data.grid(pair)
+    for pair in data.sorted_pairs:
         fitted_parameters[pair] = []
         duration[pair], half_duration[pair], amplitude[pair] = [], [], []
         #
-        for _data in [data.low_frequency(pair), data.high_frequency(pair)]:
+        for _data in [data[pair][0], data[pair][1]]:
             try:
                 popt, _ = curve_fit(
                     chevron_fit,
-                    grid,
+                    data.grid,
                     _data,
                     p0=[0.49, 2.36, 0.07, 0],
                     maxfev=100000,
@@ -233,11 +198,10 @@ def _fit(data: ChevronData) -> ChevronResults:
 
 def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     """Plot the experiment result for a single pair."""
-    # reverse qubit order if not found in data
-    if target not in data.data:
+
+    if target not in data.sorted_pairs:
         target = (target[1], target[0])
 
-    pair_data = data[target]
     fig = make_subplots(
         rows=2,
         cols=2,
@@ -252,13 +216,11 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     )
     fitting_report = ""
 
-    for i, _data in enumerate(
-        [data.low_frequency(target), data.high_frequency(target)]
-    ):
+    for i, _data in enumerate([data.data[target][0], data.data[target][1]]):
         fig.add_trace(
             go.Heatmap(
-                x=pair_data.length,
-                y=pair_data.amp,
+                x=data.duration,
+                y=data.amplitude,
                 z=_data,
                 coloraxis=COLORAXIS[i],
             ),
@@ -268,53 +230,54 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
 
     if fit is not None:
         for i in range(2):
-            fig.add_trace(
-                go.Heatmap(
-                    x=np.unique(pair_data.length),
-                    y=np.unique(pair_data.amp),
-                    z=chevron_fit(
-                        data.grid(target), *fit.fitted_parameters[target][i]
-                    ).reshape(
-                        len(np.unique(pair_data.amp)),
-                        len(np.unique(pair_data.length)),
+            if len(fit.fitted_parameters[target][i]) > 0:
+                fig.add_trace(
+                    go.Heatmap(
+                        x=data.duration,
+                        y=data.amplitude,
+                        z=chevron_fit(
+                            data.grid, *fit.fitted_parameters[target][i]
+                        ).reshape(
+                            len(data.amplitude),
+                            len(data.duration),
+                        ),
+                        coloraxis=COLORAXIS[i],
                     ),
-                    coloraxis=COLORAXIS[i],
-                ),
-                row=2,
-                col=i + 1,
-            )
-
-            for j in range(2):
-                fig.add_hline(
-                    y=fit.amplitude[target][i],
-                    line_dash="dot",
-                    row=j + 1,
+                    row=2,
                     col=i + 1,
                 )
 
-                fig.add_vline(
-                    x=fit.duration[target][i],
-                    line_dash="dot",
-                    row=j + 1,
-                    col=i + 1,
-                )
+                for j in range(2):
+                    fig.add_hline(
+                        y=fit.amplitude[target][i],
+                        line_dash="dot",
+                        row=j + 1,
+                        col=i + 1,
+                    )
 
-                fig.add_vline(
-                    x=fit.half_duration[target][i],
-                    line_dash="dot",
-                    row=j + 1,
-                    col=i + 1,
-                )
+                    fig.add_vline(
+                        x=fit.duration[target][i],
+                        line_dash="dot",
+                        row=j + 1,
+                        col=i + 1,
+                    )
+
+                    fig.add_vline(
+                        x=fit.half_duration[target][i],
+                        line_dash="dot",
+                        row=j + 1,
+                        col=i + 1,
+                    )
 
     fig.update_layout(
         xaxis_title="Duration [ns]",
         xaxis2_title="Duration [ns]",
         xaxis3_title="Duration [ns]",
         xaxis4_title="Duration [ns]",
-        yaxis_title=data.label or "Amplitude [a.u.]",
-        yaxis2_title=data.label or "Amplitude [a.u.]",
-        yaxis3_title=data.label or "Amplitude [a.u.]",
-        yaxis4_title=data.label or "Amplitude [a.u.]",
+        yaxis_title="Amplitude [a.u.]",
+        yaxis2_title="Amplitude [a.u.]",
+        yaxis3_title="Amplitude [a.u.]",
+        yaxis4_title="Amplitude [a.u.]",
         legend=dict(orientation="h"),
         coloraxis={"colorscale": "Oryel", "colorbar": {"x": 1.15}},
         coloraxis2={"colorscale": "Darkmint", "colorbar": {"x": -0.15}},
