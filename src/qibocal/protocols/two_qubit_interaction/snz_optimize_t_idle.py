@@ -32,6 +32,8 @@ class SNZIdlingParameters(Parameters):
     """Amplitude maximum."""
     t_idle_step: float
     """Amplitude step."""
+    tp: float
+    """Gate time."""
     theta_start: float
     """Virtual phase start angle."""
     theta_end: float
@@ -100,7 +102,7 @@ def _aquisition(
             for setup in ("I", "X"):
                 flux_pulse = Pulse(
                     amplitude=flux_pulse.amplitude,
-                    duration=flux_pulse.duration,
+                    duration=params.tp + t_idle,
                     envelope=Snz(
                         t_idling=t_idle,
                         b_amplitude=params.b_amplitude,
