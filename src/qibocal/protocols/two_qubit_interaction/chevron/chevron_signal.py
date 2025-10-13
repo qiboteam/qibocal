@@ -119,15 +119,13 @@ def _aquisition(
             averaging_mode=AveragingMode.CYCLIC,
         )
 
-        data.data[pair[0], pair[1]] = magnitude(
-            np.stack(
-                [
-                    z_normalization(results[ro_low.id]),
-                    1 - z_normalization(results[ro_high.id])
-                    if params.native == "CZ"
-                    else z_normalization(results[ro_high.id]),
-                ]
-            )
+        data.data[pair[0], pair[1]] = np.stack(
+            [
+                z_normalization(magnitude(results[ro_low.id])),
+                1 - z_normalization(magnitude(results[ro_high.id]))
+                if params.native == "CZ"
+                else z_normalization(magnitude(results[ro_high.id])),
+            ]
         )
 
     return data
