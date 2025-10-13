@@ -50,10 +50,15 @@ class ChevronResults(Results):
     """CzFluxTime outputs when fitting will be done."""
 
     native: str = "CZ"
+    """Two qubit interaction to be calibrated."""
     duration: dict[QubitPairId, list] = field(default_factory=dict)
+    """Gate duration."""
     half_duration: dict[QubitPairId, list] = field(default_factory=dict)
+    """Half gate duration."""
     amplitude: dict[QubitPairId, list] = field(default_factory=dict)
+    """Gate flux amplitude."""
     fitted_parameters: dict[QubitPairId, list] = field(default_factory=dict)
+    """Fitted parameters for chevron pattern."""
 
 
 @dataclass
@@ -67,14 +72,20 @@ class ChevronData(Data):
 
     """
     amplitude: list
+    """Amplitude values."""
     duration: list
+    """Duration values."""
     _sorted_pairs: list
+    """Pairs to be calibrated sorted by frequency."""
     detuning: dict[QubitPairId, float] = field(default_factory=dict)
+    """Expected detuning between qubit in pair."""
     flux_coefficient: dict[QubitPairId, float] = field(default_factory=dict)
+    """Flux coefficient to map frequency to amplitude."""
     data: dict[QubitPairId, np.ndarray] = field(default_factory=dict)
+    """Raw data acquired."""
 
     @property
-    def grid(self):
+    def grid(self) -> np.ndarray:
         x, y = np.meshgrid(self.duration, self.amplitude)
         return np.stack([x.ravel(), y.ravel()])
 
@@ -192,13 +203,16 @@ def _fit(data: ChevronData) -> ChevronResults:
                         0.07,
                         0,
                     ],
-                    bounds=([0, 1, 0, 0], [1, 3, 0.1, 2 * np.pi]),
+                    bounds=(
+                        [data.detuning[pair] / 2 - 0.1, -3, 0, 0],
+                        [2 * data.detuning[pair] - 0.4, -1, 0.1, 2 * np.pi],
+                    ),
                     maxfev=100000,
                 )
                 fitted_parameters[pair].append(popt.tolist())
                 duration[pair].append(np.pi / popt[2])
                 half_duration[pair].append(np.pi / popt[2] / 2)
-                amplitude[pair].append(np.sqrt(popt[0] / popt[1]))
+                amplitude[pair].append(np.sqrt(-popt[0] / popt[1]))
             except Exception as e:
                 fitted_parameters[pair].append([])
                 duration[pair].append([])
