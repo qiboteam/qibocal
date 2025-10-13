@@ -279,6 +279,8 @@ def _plot(
             "Angle",
             "Leakage",
         ),
+        shared_xaxes=True,
+        shared_yaxes=True,
     )
 
     if fit is not None:
