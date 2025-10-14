@@ -198,7 +198,7 @@ def _fit(data: ChevronData) -> ChevronResults:
                     data.grid,
                     _data.T.flatten(),
                     p0=[
-                        data.detuning[pair] - 0.2,
+                        data.detuning[pair] - 0.2,  # 0.2 is the expected anharmonicity
                         data.flux_coefficient[pair],
                         0.07,
                         0,
