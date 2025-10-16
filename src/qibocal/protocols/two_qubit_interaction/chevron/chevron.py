@@ -146,6 +146,7 @@ def _aquisition(
             dt=params.dt,
             native=params.native,
         )
+
         sweeper_amplitude = Sweeper(
             parameter=Parameter.amplitude,
             range=(params.amplitude_min, params.amplitude_max, params.amplitude_step),
