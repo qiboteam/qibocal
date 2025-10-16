@@ -768,35 +768,28 @@ def extract_feature(
     Given a dataset of the form (x, y, z) where a spike or a valley is expected,
     this function discriminate the points (x, y) with a signal, from the pure noise
     and return the first ones.
-
-    A first mask is construct by looking at `ci_first_mask` confidence interval for each y bin.
-    A second mask is applied by looking at `ci_second_mask` confidence interval to remove outliers.
-    `feat` could be `min` or `max`, in the first case the function will look for valleys, otherwise
-    for peaks.
-
     """
-
+    x_ = np.unique(x)
+    y_ = np.unique(y)
     # background removed over y axis
-    z_ = z.reshape(len(np.unique(y)), len(np.unique(x)))
+    z_ = z.reshape(len(y_), len(x_))
     z_ = z_ / np.mean(z, axis=0)
     normalized_z = z_.reshape(z.shape)
 
     # filter data using find_peaks
-    filtered_bias = []
-    filtered_freq = []
-    unique_bias = np.unique(y)
-    unique_freq = np.unique(x)
-    for i in unique_bias:
+    filtered_y = []
+    filtered_x = []
+    for i in y:
         signal_fixed_y = normalized_z[y == i]
         peak, _ = find_peaks(
             -signal_fixed_y if find_min else signal_fixed_y, prominence=0.3
         )
         if len(peak) > 0:
             for j in peak:
-                filtered_bias.append(i)
-                filtered_freq.append(unique_freq[j])
+                filtered_y.append(i)
+                filtered_x.append(x_[j])
 
-    return np.array(filtered_freq), np.array(filtered_bias)
+    return np.array(filtered_x), np.array(filtered_y)
 
 
 def guess_period(x, y):
