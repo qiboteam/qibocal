@@ -51,6 +51,8 @@ class LongCryoscopeParameters(Parameters):
     """Frequency width for drive frequency sweeper."""
     freq_step: float
     """Frequency step for drive frequency sweeper."""
+    lo_offset: float = 0.1
+    """LO offset in GHz."""
 
     @property
     def frequency_range(self) -> np.ndarray:
@@ -82,14 +84,18 @@ class LongCryoscopeResults(Results):
 class LongCryoscopeData(Data):
     """LongCryoscope acquisition outputs."""
 
+    amplitude: float
+    """Initial amplitude for detuning."""
     frequency: dict[QubitId, float]
     """Initial frequency for each qubit."""
+    estimated_frequency: dict[QubitId, float]
+    """Final frequency for each qubit."""
     flux_coefficients: dict[QubitId, list]
     """Flux coefficients for each Qubit."""
-    frequency_swept: dict[QubitId, list]
-    """Exact frequencies swept for each qubit."""
     duration_swept: list
     """Duration swept list."""
+    frequency_swept: dict[QubitId, list] = field(default_factory=dict)
+    """Exact frequencies swept for each qubit."""
     data: dict[QubitId, np.ndarray] = field(default_factory=dict)
     """Raw data."""
 
@@ -108,7 +114,9 @@ class LongCryoscopeData(Data):
         _, freq = self.filtered_data(qubit)
         freq_ghz = (freq - self.frequency[qubit]) * HZ_TO_GHZ
         p = np.poly1d(self.flux_coefficients[qubit])
-        amplitude = [max((p - f).roots) for f in freq_ghz]
+        amplitude = [
+            max((p - f).roots) if True else min((p - f).roots) for f in freq_ghz
+        ]
         return normalize(freq_ghz, amplitude)
 
 
@@ -144,8 +152,29 @@ def _acquisition(
 ) -> LongCryoscopeData:
     """Data acquisition for LongCryoscope Experiment."""
 
+    data = LongCryoscopeData(
+        amplitude=params.flux_pulse_amplitude,
+        frequency={
+            qubit: platform.config(platform.qubits[qubit].drive).frequency
+            for qubit in targets
+        },
+        estimated_frequency={
+            qubit: platform.config(platform.qubits[qubit].drive).frequency
+            + platform.calibration.single_qubits[qubit].qubit.detuning(
+                params.flux_pulse_amplitude
+            )
+            * GHZ_TO_HZ
+            for qubit in targets
+        },
+        flux_coefficients={
+            qubit: platform.calibration.single_qubits[qubit].qubit.flux_coefficients
+            for qubit in targets
+        },
+        duration_swept=params.duration_range.tolist(),
+    )
     freq_sweepers = []
     data_ = {q: [] for q in targets}
+
     for delay in params.duration_range:
         seq = PulseSequence()
         for q in targets:
@@ -154,12 +183,7 @@ def _acquisition(
             freq_sweepers.append(
                 Sweeper(
                     parameter=Parameter.frequency,
-                    values=platform.config(qd_channel).frequency
-                    + platform.calibration.single_qubits[q].qubit.detuning(
-                        params.flux_pulse_amplitude
-                    )
-                    * GHZ_TO_HZ
-                    + params.frequency_range,
+                    values=data.estimated_frequency[q] + params.frequency_range,
                     channels=[qd_channel],
                 )
             )
@@ -171,7 +195,14 @@ def _acquisition(
                 {
                     platform.qubits[q].probe: {
                         "frequency": readout_frequency(q, platform)
-                    }
+                    },
+                    platform.qubits[q].drive: {
+                        "frequency": data.estimated_frequency[q]
+                    },
+                    platform.channels[platform.qubits[q].drive].lo: {
+                        "frequency": data.estimated_frequency[q]
+                        + params.lo_offset * GHZ_TO_HZ
+                    },
                 }
                 for q in targets
             ],
@@ -185,21 +216,10 @@ def _acquisition(
             acq_handle = list(seq.channel(platform.qubits[qubit].acquisition))[-1].id
             data_[qubit].append(results[acq_handle])
 
-    data = LongCryoscopeData(
-        frequency={
-            qubit: platform.config(platform.qubits[qubit].drive).frequency
-            for qubit in targets
-        },
-        flux_coefficients={
-            qubit: platform.calibration.single_qubits[qubit].qubit.flux_coefficients
-            for qubit in targets
-        },
-        frequency_swept={
-            qubit: freq_sweepers[i].values.tolist() for i, qubit in enumerate(targets)
-        },
-        duration_swept=params.duration_range.tolist(),
-        data={qubit: np.stack(result) for qubit, result in data_.items()},
-    )
+    data.frequency_swept = {
+        qubit: freq_sweepers[i].values.tolist() for i, qubit in enumerate(targets)
+    }
+    data.data = {qubit: np.stack(result) for qubit, result in data_.items()}
     return data
 
 

@@ -50,11 +50,12 @@ def chevron_sequence(
         for ch, pulse in raw_flux_sequence:
             if not isinstance(pulse, VirtualZ) and ch != flux_channel:
                 sequence.append((ch, Delay(duration=drive_duration)))
+                if duration_max is not None:
+                    pulse = replace(pulse, duration=duration_max)
                 sequence.append((ch, pulse))
                 parking_pulses.append(pulse)
 
     flux_duration = max(flux_pulse.duration, raw_flux_sequence.duration)
-
     ro_low_channel, ro_high_channel = (
         platform.qubits[ordered_pair[0]].acquisition,
         platform.qubits[ordered_pair[1]].acquisition,
