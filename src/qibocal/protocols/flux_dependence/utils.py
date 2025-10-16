@@ -43,9 +43,9 @@ def normalize(
     Estimate is a guess for the mean. If the normalization
     is off by a factor larger than 5% estimate is ignored."""
     mean_ = np.mean(x[len(x) // 2 :])
-    if np.array(mean_ / estimate).max() > threshold:
+    if np.array(np.abs(mean_ / estimate)).max() > threshold:
         return (np.array(x) / mean_).tolist()
-    return (np.array(x) / np.abs(estimate)).tolist()
+    return np.abs(np.array(x) / estimate).tolist()
 
 
 def create_data_array(freq, bias, signal, dtype):

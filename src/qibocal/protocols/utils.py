@@ -667,15 +667,17 @@ def extract_feature(
     unique_bias = np.unique(y)
     unique_freq = np.unique(x)
     for i in unique_bias:
-        signal_fixed_y = z[y == i]
+        _signal_fixed_y = z[y == i]
+        signal_fixed_y = (_signal_fixed_y - _signal_fixed_y.min()) / (
+            _signal_fixed_y.max() - _signal_fixed_y.min()
+        )
         peak, _ = find_peaks(
-            -signal_fixed_y if find_min else signal_fixed_y, prominence=0.2
+            -signal_fixed_y if find_min else signal_fixed_y, prominence=0.3
         )
         if len(peak) > 0 and len(peak) < 3:
             for j in peak:
                 filtered_bias.append(i)
                 filtered_freq.append(unique_freq[j])
-
     return np.array(filtered_freq), np.array(filtered_bias)
 
 
