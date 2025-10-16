@@ -342,7 +342,6 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
             f"Qubit {qubits[1]}",
         ),
     )
-    print(fit)
     fitting_report = set()
     fig2 = make_subplots(
         rows=1,
