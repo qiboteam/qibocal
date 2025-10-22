@@ -1,9 +1,12 @@
 import os
 import pathlib
+import shutil
 
 import pytest
 from click.testing import CliRunner
 
+from qibocal import create_calibration_platform
+from qibocal.auto.serialize import load
 from qibocal.cli._base import command
 
 test_runcards_dir = pathlib.Path(__file__).parent / "runcards"
@@ -22,22 +25,62 @@ def test_qq_update(update, tmp_path, monkeypatch, platform):
         catch_exceptions=False,
     )
 
+    old_platform_path = pathlib.Path(os.getenv("QIBOLAB_PLATFORMS")) / "mock"
     platforms = tmp_path / "platforms"
-    (platforms / "mock").mkdir(parents=True, exist_ok=True)
+    (tmp_path / "platforms").mkdir(parents=True, exist_ok=True)
+    shutil.copytree(old_platform_path, platforms / "mock")
     monkeypatch.setenv("QIBOLAB_PLATFORMS", str(platforms))
-
     runner = CliRunner()
     if not update:
         while pytest.raises(FileNotFoundError):
             runner.invoke(
                 command, ["update", str(output_folder)], catch_exceptions=False
             )
+    else:
+        runner.invoke(command, ["update", str(output_folder)], catch_exceptions=False)
+        new_parameters = (
+            pathlib.Path(os.getenv("QIBOLAB_PLATFORMS")) / "mock" / "parameters.json"
+        )
+        assert new_parameters.exists()
 
-    runner.invoke(command, ["update", str(output_folder)], catch_exceptions=False)
-    new_parameters = (
-        pathlib.Path(os.getenv("QIBOLAB_PLATFORMS")) / "mock" / "parameters.json"
+
+@pytest.mark.parametrize("skip_qubits", [None, "0"])
+def test_skip_qubits_option(skip_qubits, tmp_path, monkeypatch, platform):
+    """Testing skip_qubits options using mock."""
+    output_folder = tmp_path / "out"
+    runner = CliRunner()
+    runner.invoke(
+        command,
+        ["run", str(DUMMY_ACTION), "-o", str(output_folder), "-f"],
+        catch_exceptions=False,
     )
-    assert new_parameters.exists()
+    old_platform_path = pathlib.Path(os.getenv("QIBOLAB_PLATFORMS")) / "mock"
+    old_platform = create_calibration_platform("mock")
+    platforms = tmp_path / "platforms"
+    (tmp_path / "platforms").mkdir(parents=True, exist_ok=True)
+    shutil.copytree(old_platform_path, platforms / "mock")
+    monkeypatch.setenv("QIBOLAB_PLATFORMS", str(platforms))
+    runner = CliRunner()
+    if skip_qubits is None:
+        runner.invoke(command, ["update", str(output_folder)], catch_exceptions=False)
+        new_platform = create_calibration_platform("mock")
+        for i in platform.qubits:
+            assert old_platform.config(
+                old_platform.qubits[i].acquisition
+            ) != new_platform.config(new_platform.qubits[i].acquisition)
+
+    else:
+        runner.invoke(
+            command,
+            ["update", str(output_folder), "--skip-qubits", skip_qubits],
+            catch_exceptions=False,
+        )
+        new_platform = create_calibration_platform("mock")
+        for i in platform.qubits:
+            if i in [load(q) for q in skip_qubits]:
+                assert old_platform.config(
+                    old_platform.qubits[i].acquisition
+                ) == new_platform.config(new_platform.qubits[i].acquisition)
 
 
 def test_fit_command(tmp_path, platform):
