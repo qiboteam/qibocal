@@ -1,17 +1,16 @@
 from dataclasses import dataclass, field
 
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 from qibolab._core.pulses.envelope import Snz
 
-from qibocal.auto.operation import Parameters, QubitPairId, Routine
+from qibocal.auto.operation import Data, Parameters, QubitPairId, Routine
 from qibocal.calibration import CalibrationPlatform
 
 from .snz_optimize import (
-    OptimizeTwoQubitGateType,
-    SNZFinetuningData,
     SNZFinetuningResults,
 )
 from .utils import fit_virtualz, order_pair
@@ -43,26 +42,48 @@ class SNZIdlingParameters(Parameters):
     b_amplitude: float
     """SNZ B amplitude."""
 
+    @property
+    def theta_range(self) -> np.ndarray:
+        return np.arange(self.theta_start, self.theta_end, self.theta_step)
+
+    @property
+    def amplitude_range(self) -> np.ndarray:
+        return np.arange(
+            self.amplitude_min,
+            self.amplitude_max,
+            self.amplitude_step,
+        )
+
+    @property
+    def t_idle_range(self) -> np.ndarray:
+        return np.arange(self.t_idle_min, self.t_idle_max, self.t_idle_step)
+
 
 @dataclass
 class SNZIdlingResults(SNZFinetuningResults): ...
 
 
 @dataclass
-class SNZIdlingData(SNZFinetuningData):
+class SNZIdlingData(Data):
     t_idles: list[float] = field(default_factory=list)
+    ordered_pairs: list[QubitPairId] = field(default_factory=dict)
+    thetas: list = field(default_factory=list)
+    """Angles swept."""
+    amplitudes: list = field(default_factory=list)
+    """"Amplitudes swept."""
+    t_idles: list = field(default_factory=list)
+    """Durations swept."""
+    data: dict[tuple, npt.NDArray] = field(default_factory=dict)
 
-    def register_qubit(
-        self, target, control, setup, t_idle, theta, amp, prob_control, prob_target
-    ):
-        """Store output for single pair."""
-        size = len(theta)
-        for i, amplitude in enumerate(amp):
-            ar = np.empty(size, dtype=OptimizeTwoQubitGateType)
-            ar["theta"] = theta
-            ar["control"] = prob_control[i]
-            ar["target"] = prob_target[i]
-            self.data[target, control, setup, t_idle, amplitude] = np.rec.array(ar)
+    def parse(self, i, j):
+        return {
+            key: value[
+                :,
+                i,
+                j,
+            ]
+            for key, value in self.data.items()
+        }
 
 
 def _aquisition(
@@ -74,23 +95,17 @@ def _aquisition(
     SNZ pulse and its idling time are swept while the virtual phase correction
     experiment is performed.
     """
-    t_idle_range = np.arange(
-        params.t_idle_min, params.t_idle_max, params.t_idle_step, dtype=float
+    data = SNZIdlingData(
+        ordered_pairs=[order_pair(pair, platform) for pair in targets],
+        thetas=params.theta_range.tolist(),
+        amplitudes=params.amplitude_range.tolist(),
+        t_idles=params.t_idle_range.tolist(),
     )
-    data = SNZIdlingData()
-    data.t_idles = t_idle_range.tolist()
-    data.angles = np.arange(
-        params.theta_start, params.theta_end, params.theta_step
-    ).tolist()
-    for pair in targets:
-        ordered_pair = order_pair(pair, platform)
+    for ordered_pair in data.ordered_pairs:
         flux_channel = platform.qubits[ordered_pair[1]].flux
-        target_vz = pair[0]
-        other_qubit_vz = pair[1]
+        target_vz = ordered_pair[0]
+        other_qubit_vz = ordered_pair[1]
 
-        data.amplitudes = np.arange(
-            params.amplitude_min, params.amplitude_max, params.amplitude_step
-        ).tolist()
         # Find CZ flux pulse
         cz_sequence = getattr(platform.natives.two_qubit[ordered_pair], "CZ")()
         flux_channel = platform.qubits[ordered_pair[1]].flux
@@ -98,7 +113,9 @@ def _aquisition(
         assert len(flux_pulses) == 1, "Only 1 flux pulse is supported"
         flux_pulse = flux_pulses[0]
 
-        for t_idle in t_idle_range:
+        data.data[target_vz, other_qubit_vz, "I"] = []
+        data.data[target_vz, other_qubit_vz, "X"] = []
+        for t_idle in params.t_idle_range:
             for setup in ("I", "X"):
                 flux_pulse = Pulse(
                     amplitude=flux_pulse.amplitude,
@@ -152,16 +169,14 @@ def _aquisition(
                     averaging_mode=AveragingMode.CYCLIC,
                 )
 
-                data.register_qubit(
-                    target_vz,
-                    other_qubit_vz,
-                    setup,
-                    t_idle,
-                    data.swept_virtual_phases,
-                    sweeper_amplitude.values,
-                    results[ro_control.id],
-                    results[ro_target.id],
+                data.data[target_vz, other_qubit_vz, setup].append(
+                    np.stack([results[ro_target.id], results[ro_control.id]])
                 )
+
+        for setup in ("I", "X"):
+            data.data[target_vz, other_qubit_vz, setup] = np.moveaxis(
+                np.array(data.data[target_vz, other_qubit_vz, setup]), [0, 1], [2, 0]
+            )
 
     return data
 
@@ -171,29 +186,32 @@ def _fit(
 ) -> SNZIdlingResults:
     """Repetition of correct virtual phase fit for all configurations."""
     fitted_parameters = {}
-    pairs = data.order_pairs
     virtual_phases = {}
     angles = {}
     leakages = {}
-    for pair in pairs:
-        for amplitude in data.amplitudes:
-            for t_idle in data.t_idles:
-                data_amplitude = data.filter_data_key(
-                    pair[0], pair[1], t_idle, amplitude
-                )
-                new_fitted_parameter, new_phases, new_angle, new_leak = fit_virtualz(
-                    data_amplitude,
-                    pair,
-                    thetas=data.angles,
-                    gate_repetition=1,
-                    key=(pair[0], pair[1], amplitude, t_idle),
-                    rec_array=True,
-                )
-                fitted_parameters |= new_fitted_parameter
-                virtual_phases |= new_phases
-                angles |= new_angle
-                leakages |= new_leak
 
+    for pair in data.ordered_pairs:
+        _pair = tuple(pair)
+        angles[_pair], leakages[_pair], virtual_phases[_pair] = [], [], []
+        (
+            fitted_parameters[_pair[0], _pair[1], "I"],
+            fitted_parameters[_pair[0], _pair[1], "X"],
+        ) = [], []
+        for i in range(len(data.t_idles)):
+            for j in range(len(data.amplitudes)):
+                new_fitted_parameter, new_phases, new_angle, new_leak = fit_virtualz(
+                    data.parse(j, i),
+                    _pair,
+                    thetas=data.thetas,
+                    gate_repetition=1,
+                )
+                angles[_pair].append(new_angle[_pair])
+                leakages[_pair].append(new_leak[_pair])
+                virtual_phases[_pair].append(new_phases[_pair])
+                for setup in ["I", "X"]:
+                    fitted_parameters[_pair[0], _pair[1], setup].append(
+                        new_fitted_parameter[_pair, setup]
+                    )
     return SNZIdlingResults(
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
@@ -209,7 +227,7 @@ def _plot(
 ):
     """Plot routine for OptimizeTwoQubitGate."""
     fitting_report = ""
-
+    pair = target if list[target] in data.ordered_pairs else (target[1], target[0])
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -219,30 +237,18 @@ def _plot(
         ),
     )
     if fit is not None:
-        cz = []
-        t_idle = []
-        amps = []
-        leakage = []
-        target_q = target[0]
-        control_q = target[1]
-
-        for i in data.amplitudes:
-            for j in data.t_idles:
-                t_idle.append(j)
-                amps.append(i)
-                cz.append(fit.angles[target_q, control_q, i, j])
-                leakage.append(fit.leakages[target_q, control_q, i, j])
-
         fig.add_trace(
             go.Heatmap(
-                x=amps,
-                y=t_idle,
-                z=cz,
+                x=data.amplitudes,
+                y=data.t_idles,
+                z=np.array(fit.angles[pair]).reshape(
+                    len(data.t_idles), len(data.amplitudes)
+                ),
                 zmin=0,
                 zmax=2 * np.pi,
                 name="{fit.native} angle",
                 colorbar_x=-0.1,
-                colorscale="Twilight",
+                colorscale="RdBu",
             ),
             row=1,
             col=1,
@@ -250,9 +256,11 @@ def _plot(
 
         fig.add_trace(
             go.Heatmap(
-                x=amps,
-                y=t_idle,
-                z=leakage,
+                x=data.amplitudes,
+                y=data.t_idles,
+                z=np.array(fit.leakages[pair]).reshape(
+                    len(data.t_idles), len(data.amplitudes)
+                ),
                 name="Leakage",
                 colorscale="Inferno",
                 zmin=0,
@@ -272,4 +280,5 @@ def _plot(
     return [fig], fitting_report
 
 
+# TODO: Add update function
 snz_optimize_t_idle = Routine(_aquisition, _fit, _plot, two_qubit_gates=True)

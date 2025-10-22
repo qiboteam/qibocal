@@ -56,12 +56,7 @@ class SNZFinetuningResults(Results):
 
         Additional  manipulations required because of the Results class.
         """
-        return key in self.pairs
-
-    @property
-    def pairs(self):
-        pairs = {(target, control) for target, control, _, _ in self.angles}
-        return pairs
+        return key in self.leakages
 
 
 OptimizeTwoQubitGateType = np.dtype(
