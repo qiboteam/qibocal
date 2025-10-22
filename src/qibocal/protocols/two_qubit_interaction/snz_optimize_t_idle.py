@@ -66,7 +66,7 @@ class SNZIdlingResults(SNZFinetuningResults): ...
 @dataclass
 class SNZIdlingData(Data):
     t_idles: list[float] = field(default_factory=list)
-    ordered_pairs: list[QubitPairId] = field(default_factory=dict)
+    _sorted_pairs: list[QubitPairId] = field(default_factory=dict)
     thetas: list = field(default_factory=list)
     """Angles swept."""
     amplitudes: list = field(default_factory=list)
@@ -74,6 +74,17 @@ class SNZIdlingData(Data):
     t_idles: list = field(default_factory=list)
     """Durations swept."""
     data: dict[tuple, npt.NDArray] = field(default_factory=dict)
+
+    @property
+    def sorted_pairs(self):
+        return [
+            pair if isinstance(pair, tuple) else tuple(pair)
+            for pair in self._sorted_pairs
+        ]
+
+    @sorted_pairs.setter
+    def sorted_pairs(self, value):
+        self._sorted_pairs = value
 
     def parse(self, i, j):
         return {
@@ -96,12 +107,12 @@ def _aquisition(
     experiment is performed.
     """
     data = SNZIdlingData(
-        ordered_pairs=[order_pair(pair, platform) for pair in targets],
+        _sorted_pairs=[order_pair(pair, platform) for pair in targets],
         thetas=params.theta_range.tolist(),
         amplitudes=params.amplitude_range.tolist(),
         t_idles=params.t_idle_range.tolist(),
     )
-    for ordered_pair in data.ordered_pairs:
+    for ordered_pair in data.sorted_pairs:
         flux_channel = platform.qubits[ordered_pair[1]].flux
         target_vz = ordered_pair[0]
         other_qubit_vz = ordered_pair[1]
@@ -190,17 +201,27 @@ def _fit(
     angles = {}
     leakages = {}
 
-    for pair in data.ordered_pairs:
+    for pair in data.sorted_pairs:
         _pair = tuple(pair)
         angles[_pair], leakages[_pair], virtual_phases[_pair] = [], [], []
         (
             fitted_parameters[_pair[0], _pair[1], "I"],
             fitted_parameters[_pair[0], _pair[1], "X"],
         ) = [], []
-        for i in range(len(data.t_idles)):
-            for j in range(len(data.amplitudes)):
+
+        for i in range(len(data.amplitudes)):
+            for j in range(len(data.t_idles)):
+                # if i == 0 and j == 0:
+                #     import matplotlib.pyplot as plt
+                #     plt.figure()
+                #     plt.scatter(data.thetas, data.parse(j, i)[_pair[0], _pair[1], "X"][0], label="Target X")
+                #     plt.scatter(data.thetas, data.parse(j, i)[_pair[0], _pair[1], "I"][0], label="Target I")
+                #     plt.scatter(data.thetas, data.parse(j, i)[_pair[0], _pair[1], "X"][1], label="Control X")
+                #     plt.scatter(data.thetas, data.parse(j, i)[_pair[0], _pair[1], "I"][1], label="Control I")
+                #     plt.legend()
+                #     plt.savefig("test.png")
                 new_fitted_parameter, new_phases, new_angle, new_leak = fit_virtualz(
-                    data.parse(j, i),
+                    data.parse(i, j),
                     _pair,
                     thetas=data.thetas,
                     gate_repetition=1,
@@ -227,7 +248,8 @@ def _plot(
 ):
     """Plot routine for OptimizeTwoQubitGate."""
     fitting_report = ""
-    pair = target if list[target] in data.ordered_pairs else (target[1], target[0])
+    if target not in data.sorted_pairs:
+        target = (target[1], target[0])
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -241,14 +263,14 @@ def _plot(
             go.Heatmap(
                 x=data.amplitudes,
                 y=data.t_idles,
-                z=np.array(fit.angles[pair]).reshape(
-                    len(data.t_idles), len(data.amplitudes)
-                ),
+                z=np.array(fit.angles[target])
+                .reshape(len(data.amplitudes), len(data.t_idles))
+                .T,
                 zmin=0,
                 zmax=2 * np.pi,
                 name="{fit.native} angle",
                 colorbar_x=-0.1,
-                colorscale="RdBu",
+                colorscale="Twilight",
             ),
             row=1,
             col=1,
@@ -258,13 +280,13 @@ def _plot(
             go.Heatmap(
                 x=data.amplitudes,
                 y=data.t_idles,
-                z=np.array(fit.leakages[pair]).reshape(
-                    len(data.t_idles), len(data.amplitudes)
-                ),
+                z=np.array(fit.leakages[target])
+                .reshape(len(data.amplitudes), len(data.t_idles))
+                .T,
                 name="Leakage",
                 colorscale="Inferno",
                 zmin=0,
-                zmax=0.2,
+                zmax=0.25,
             ),
             row=1,
             col=2,
