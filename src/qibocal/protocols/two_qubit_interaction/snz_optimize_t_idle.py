@@ -65,7 +65,6 @@ class SNZIdlingResults(SNZFinetuningResults): ...
 
 @dataclass
 class SNZIdlingData(Data):
-    t_idles: list[float] = field(default_factory=list)
     _sorted_pairs: list[QubitPairId] = field(default_factory=dict)
     thetas: list = field(default_factory=list)
     """Angles swept."""
