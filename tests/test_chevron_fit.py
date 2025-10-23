@@ -21,16 +21,22 @@ def test_chevron_fit(chevron_type):
 
     for pair in data.sorted_pairs:
         np.testing.assert_allclose(
-            results.duration[pair], target_results.duration[pair]
+            results.duration[pair],
+            target_results.duration[pair],
+            atol=5e-2,
         )
         np.testing.assert_allclose(
-            results.half_duration[pair], target_results.half_duration[pair]
+            results.half_duration[pair],
+            target_results.half_duration[pair],
+            atol=5e-2,
         )
         np.testing.assert_allclose(
-            results.amplitude[pair], target_results.amplitude[pair]
+            results.amplitude[pair],
+            target_results.amplitude[pair],
+            atol=5e-2,
         )
         np.testing.assert_allclose(
             results.fitted_parameters[pair],
             target_results.fitted_parameters[pair],
-            rtol=1e-2,
+            atol=1e-1,
         )

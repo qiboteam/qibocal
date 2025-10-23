@@ -58,7 +58,6 @@ def _aquisition(
 
     data = ChevronSignalData(
         native=params.native,
-        _sorted_pairs=[order_pair(pair, platform) for pair in targets],
         amplitude=np.arange(
             params.amplitude_min, params.amplitude_max, params.amplitude_step
         ).tolist(),
@@ -66,7 +65,7 @@ def _aquisition(
             params.duration_min, params.duration_max, params.duration_step
         ).tolist(),
     )
-
+    data.sorted_pairs = [order_pair(pair, platform) for pair in targets]
     data.flux_coefficient = {
         pair: platform.calibration.single_qubits[pair[1]].qubit.flux_coefficients[0]
         for pair in data.sorted_pairs
@@ -79,6 +78,7 @@ def _aquisition(
         * HZ_TO_GHZ
         for pair in data.sorted_pairs
     }
+
     for pair in data.sorted_pairs:
         sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
             platform=platform,
