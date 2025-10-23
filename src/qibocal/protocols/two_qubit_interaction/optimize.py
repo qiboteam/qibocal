@@ -104,11 +104,7 @@ class OptimizeTwoQubitGateResults(Results):
 
         Additional  manipulations required because of the Results class.
         """
-        return True
-        # pairs = {
-        #     (target, control) for target, control, _, _, _ in self.fitted_parameters
-        # }
-        # return key in pairs
+        return key in self.leakages
 
 
 @dataclass
