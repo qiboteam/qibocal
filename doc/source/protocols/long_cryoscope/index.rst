@@ -2,7 +2,7 @@
 Correcting long-time flux distortions
 =====================================
 
-In :ref:`cryoscope` we presented how to compute filters to correct distortions on the flux line. With that method
+In :ref:`cryoscope` we present how to compute filters to correct distortions on the flux line. With that method
 however we are only able to correct distortions with time scales which are limited by the transmon's coherence time :cite:p:`hellings2025calibratingmagneticfluxcontrol, ding2023experimentaladvancesqickquantum`.
 However, there are distortions at longer time scales, which are caused by the bias-tee as well as other filters in the flux control line.
 
