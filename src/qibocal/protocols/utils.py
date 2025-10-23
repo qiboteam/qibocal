@@ -251,47 +251,6 @@ def cumulative(input_data, points):
     return np.searchsorted(np.sort(points), np.sort(input_data))
 
 
-def fit_punchout(data: Data, fit_type: str):
-    """
-    Punchout fitting function.
-
-    Args:
-
-    data (Data): Punchout acquisition data.
-    fit_type (str): Punchout type, it could be `amp` (amplitude)
-    or `att` (attenuation).
-
-    Return:
-
-    List of dictionaries containing the low, high amplitude
-    (attenuation) frequencies and the readout amplitude (attenuation)
-    for each qubit.
-    """
-    qubits = data.qubits
-
-    low_freqs = {}
-    high_freqs = {}
-    ro_values = {}
-
-    for qubit in qubits:
-        qubit_data = data[qubit]
-        freqs = qubit_data.freq
-        amps = getattr(qubit_data, fit_type)
-        signal = qubit_data.signal
-        mask_freq, mask_amps = extract_feature(freqs, amps, signal, data.find_min)
-        if fit_type == "amp":
-            best_freq = np.max(mask_freq)
-            bare_freq = np.min(mask_freq)
-        else:
-            best_freq = np.min(mask_freq)
-            bare_freq = np.max(mask_freq)
-        ro_val = np.max(mask_amps[mask_freq == best_freq])
-        low_freqs[qubit] = best_freq
-        high_freqs[qubit] = bare_freq
-        ro_values[qubit] = ro_val
-    return [low_freqs, high_freqs, ro_values]
-
-
 def eval_magnitude(value):
     """number of non decimal digits in `value`"""
     if value == 0 or not np.isfinite(value):
@@ -680,6 +639,12 @@ def table_html(data: dict) -> str:
     )
 
 
+def normalize_over_y(x, y, z):
+    z_ = z.reshape(len(y), len(x))
+    z_ = z_ / np.mean(z, axis=0)
+    return z_.reshape(z.shape)
+
+
 def extract_feature(
     x: np.ndarray,
     y: np.ndarray,
@@ -692,6 +657,8 @@ def extract_feature(
     this function discriminate the points (x, y) with a signal, from the pure noise
     and return the first ones.
     """
+
+    # filter data using find_peaks
     x_ = np.unique(x)
     y_ = np.unique(y)
     # background removed over y axis
@@ -705,9 +672,10 @@ def extract_feature(
     for i in y:
         signal_fixed_y = normalized_z[y == i]
         peak, _ = find_peaks(
-            -signal_fixed_y if find_min else signal_fixed_y, prominence=0.3
+            -signal_fixed_y if find_min else signal_fixed_y,
+            prominence=0.3,
         )
-        if len(peak) > 0:
+        if len(peak) > 0 and len(peak) < 3:
             for j in peak:
                 filtered_y.append(i)
                 filtered_x.append(x_[j])

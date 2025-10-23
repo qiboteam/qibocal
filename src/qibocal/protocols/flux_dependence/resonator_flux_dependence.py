@@ -15,6 +15,7 @@ from ..utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
     extract_feature,
+    normalize_over_y,
     readout_frequency,
     table_dict,
     table_html,
@@ -87,7 +88,11 @@ class ResonatorFluxData(Data):
         return extract_feature(
             self.data[qubit].freq,
             self.data[qubit].bias,
-            self.data[qubit].signal,
+            normalize_over_y(
+                np.unique(self.data[qubit].freq),
+                np.unique(self.data[qubit].bias),
+                self.data[qubit].signal,
+            ),
             self.find_min,
         )
 
