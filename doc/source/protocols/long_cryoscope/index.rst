@@ -14,8 +14,7 @@ Cryoscope Spectroscopy
 ----------------------
 
 In this experiment after fluxing the qubit away from its sweetspot we wait a variable time :math:`\tau` before driving the qubit.
-Through a spectroscopy on the drive line we are able to measure the qubit frequency. Due to the bias-tee, we expect to observe
-an exponential rise to the correct frequency value. In the protocol, after performing an exponential fit, we compute the corresponding filter
+Through a spectroscopy on the drive line we are able to measure the qubit frequency. We expect to observe an exponential rise over time, to the correct frequency value, [due to the bias-tee]. In the protocol, after performing an exponential fit, we compute the corresponding filter
 to correct it.
 
 Parameters
