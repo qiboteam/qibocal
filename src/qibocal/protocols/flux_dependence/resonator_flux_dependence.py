@@ -86,9 +86,11 @@ class ResonatorFluxData(Data):
     def filtered_data(self, qubit: QubitId) -> np.ndarray:
         """Apply mask to specific qubit data."""
         return extract_feature(
-            *normalize_over_y(
-                self.data[qubit].freq,
-                self.data[qubit].bias,
+            self.data[qubit].freq,
+            self.data[qubit].bias,
+            normalize_over_y(
+                np.unique(self.data[qubit].freq),
+                np.unique(self.data[qubit].bias),
                 self.data[qubit].signal,
             ),
             self.find_min,

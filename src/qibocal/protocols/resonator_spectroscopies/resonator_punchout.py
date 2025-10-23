@@ -74,7 +74,13 @@ class ResonatorPunchoutData(Data):
     def filtered_data(self, qubit: QubitId) -> tuple[np.ndarray]:
         x, y, _ = self.grid(qubit)
         return extract_feature(
-            *normalize_over_y(x, y, self.normalized_signal(qubit).ravel()),
+            x,
+            y,
+            normalize_over_y(
+                self.frequencies[qubit],
+                self.amplitudes,
+                self.normalized_signal(qubit).ravel(),
+            ),
             self.find_min,
         )
 
