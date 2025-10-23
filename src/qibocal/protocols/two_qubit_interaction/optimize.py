@@ -117,7 +117,7 @@ class OptimizeTwoQubitGateData(Data):
 
     data: dict[tuple, npt.NDArray] = field(default_factory=dict)
     """Raw data."""
-    ordered_pairs: list[QubitPairId] = field(default_factory=dict)
+    _sorted_pairs: list[QubitPairId] = field(default_factory=dict)
     thetas: list = field(default_factory=list)
     """Angles swept."""
     native: str = "CZ"
@@ -126,6 +126,17 @@ class OptimizeTwoQubitGateData(Data):
     """"Amplitudes swept."""
     durations: list = field(default_factory=list)
     """Durations swept."""
+
+    @property
+    def sorted_pairs(self):
+        return [
+            pair if isinstance(pair, tuple) else tuple(pair)
+            for pair in self._sorted_pairs
+        ]
+
+    @sorted_pairs.setter
+    def sorted_pairs(self, value):
+        self._sorted_pairs = value
 
     def parse(self, i, j):
         return {
@@ -148,13 +159,13 @@ def _acquisition(
     """
 
     data = OptimizeTwoQubitGateData(
-        ordered_pairs=[order_pair(pair, platform) for pair in targets],
+        _sorted_pairs=[order_pair(pair, platform) for pair in targets],
         thetas=params.theta_range.tolist(),
         amplitudes=params.amplitude_range.tolist(),
         durations=params.duration_range.tolist(),
         native=params.native,
     )
-    for ordered_pair in data.ordered_pairs:
+    for ordered_pair in data.sorted_pairs:
         for target_q, control_q in (
             (ordered_pair[0], ordered_pair[1]),
             (ordered_pair[1], ordered_pair[0]),
@@ -228,7 +239,7 @@ def _fit(
     best_amp = {}
     best_dur = {}
     best_virtual_phase = {}
-    for pair in data.ordered_pairs:
+    for pair in data.sorted_pairs:
         for target_q, control_q in (
             (pair[0], pair[1]),
             (pair[1], pair[0]),
@@ -297,23 +308,24 @@ def _plot(
     target: QubitPairId,
 ):
     """Plot routine for OptimizeTwoQubitGate."""
-    pair = target if list[target] in data.ordered_pairs else (target[1], target[0])
+    if target not in data.sorted_pairs:
+        target = (target[1], target[0])
     fitting_report = ""
 
     fig = make_subplots(
         rows=2,
         cols=2,
         subplot_titles=(
-            f"Qubit {pair[0]} {data.native} angle",
-            f"Qubit {pair[1]} Leakage",
-            f"Qubit {pair[1]} {data.native} angle",
-            f"Qubit {pair[0]} Leakage",
+            f"Qubit {target[0]} {data.native} angle",
+            f"Qubit {target[1]} Leakage",
+            f"Qubit {target[1]} {data.native} angle",
+            f"Qubit {target[0]} Leakage",
         ),
     )
     if fit is not None:
         for target_q, control_q in (
-            pair,
-            list(pair)[::-1],
+            target,
+            list(target)[::-1],
         ):
             condition = [target_q, control_q] == list(target)
             fig.add_trace(
@@ -327,7 +339,7 @@ def _plot(
                     zmax=2 * np.pi,
                     name="{fit.native} angle",
                     colorbar_x=-0.1,
-                    colorscale="RdBu",
+                    colorscale="Twilight",
                     showscale=condition,
                 ),
                 row=1 if condition else 2,
@@ -358,9 +370,9 @@ def _plot(
                     .reshape(len(data.durations), len(data.amplitudes))
                     .T,
                     zmin=0,
-                    zmax=0.05,
+                    zmax=0.25,
                     name="{fit.native} angle",
-                    colorscale="Reds",
+                    colorscale="Inferno",
                     showscale=condition,
                 ),
                 row=1 if condition else 2,
