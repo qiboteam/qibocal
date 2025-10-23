@@ -211,15 +211,6 @@ def _fit(
 
         for i in range(len(data.amplitudes)):
             for j in range(len(data.t_idles)):
-                # if i == 0 and j == 0:
-                #     import matplotlib.pyplot as plt
-                #     plt.figure()
-                #     plt.scatter(data.thetas, data.parse(j, i)[_pair[0], _pair[1], "X"][0], label="Target X")
-                #     plt.scatter(data.thetas, data.parse(j, i)[_pair[0], _pair[1], "I"][0], label="Target I")
-                #     plt.scatter(data.thetas, data.parse(j, i)[_pair[0], _pair[1], "X"][1], label="Control X")
-                #     plt.scatter(data.thetas, data.parse(j, i)[_pair[0], _pair[1], "I"][1], label="Control I")
-                #     plt.legend()
-                #     plt.savefig("test.png")
                 new_fitted_parameter, new_phases, new_angle, new_leak = fit_virtualz(
                     data.parse(i, j),
                     _pair,
@@ -257,6 +248,7 @@ def _plot(
             "Angle",
             "Leakage",
         ),
+        shared_xaxes=True,
     )
     if fit is not None:
         fig.add_trace(
@@ -297,6 +289,8 @@ def _plot(
             xaxis2_title="Amplitude A [a.u.]",
             yaxis1_title="t_idle [# samplings]",
             yaxis2_title="t_idle [# samplings]",
+            xaxis2=dict(matches="x"),
+            yaxis2=dict(matches="y"),
         )
 
     return [fig], fitting_report
