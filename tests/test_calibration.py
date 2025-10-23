@@ -31,7 +31,7 @@ def test_serialization_single_qubits(tmp_path):
         cal.single_qubits[i].resonator.dressed_frequency = 7.001e9
         assert cal.single_qubits[i].resonator.dispersive_shift == -0.001e9
         cal.single_qubits[i].qubit.frequency_01 = 5e9
-        assert cal.single_qubits[i].qubit.anharmonicity == 0
+        assert cal.single_qubits[i].qubit.anharmonicity == -200e6
         cal.single_qubits[i].qubit.frequency_12 = 4.8e9
         cal.single_qubits[i].qubit.maximum_frequency = cal.single_qubits[
             0

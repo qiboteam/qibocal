@@ -1,6 +1,7 @@
 """SWAP experiment for two qubit gates, chevron plot."""
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
@@ -9,14 +10,21 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routine
+from qibocal.auto.operation import (
+    DATAFILE,
+    Data,
+    Parameters,
+    QubitPairId,
+    Results,
+    Routine,
+)
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import HZ_TO_GHZ, table_dict, table_html
 
 from .... import update
 from ..utils import order_pair
-from .utils import COLORAXIS, chevron_fit, chevron_sequence
+from .utils import COLORAXIS, chevron_fit, chevron_sequence, z_normalization
 
 __all__ = ["chevron"]
 
@@ -75,10 +83,12 @@ class ChevronData(Data):
     """Amplitude values."""
     duration: list
     """Duration values."""
-    _sorted_pairs: list
+    _sorted_pairs: list = field(init=False, repr=False, metadata={"exclude": True})
     """Pairs to be calibrated sorted by frequency."""
     detuning: dict[QubitPairId, float] = field(default_factory=dict)
     """Expected detuning between qubit in pair."""
+    anharmonicity: dict[QubitPairId, float] = field(default_factory=dict)
+    """Anhamonicity of high frequency qubit in pair."""
     flux_coefficient: dict[QubitPairId, float] = field(default_factory=dict)
     """Flux coefficient to map frequency to amplitude."""
     data: dict[QubitPairId, np.ndarray] = field(default_factory=dict)
@@ -90,7 +100,7 @@ class ChevronData(Data):
         return np.stack([x.ravel(), y.ravel()])
 
     @property
-    def sorted_pairs(self):
+    def sorted_pairs(self) -> list:
         return [
             pair if isinstance(pair, tuple) else tuple(pair)
             for pair in self._sorted_pairs
@@ -99,6 +109,22 @@ class ChevronData(Data):
     @sorted_pairs.setter
     def sorted_pairs(self, value):
         self._sorted_pairs = value
+
+    @classmethod
+    def load(cls, path: Path):
+        """Generic load method."""
+        data_dict = cls.load_data(path, DATAFILE)
+        params = cls.load_params(path, DATAFILE)
+        pairs = params.pop("_sorted_pairs")
+        if data_dict is not None:
+            if params is not None:
+                instance = cls(data=data_dict, **params)
+            else:
+                instance = cls(data=data_dict)
+        elif params is not None:
+            instance = cls(**params)
+        instance.sorted_pairs = pairs
+        return instance
 
 
 def _aquisition(
@@ -120,7 +146,6 @@ def _aquisition(
 
     data = ChevronData(
         native=params.native,
-        _sorted_pairs=[order_pair(pair, platform) for pair in targets],
         amplitude=np.arange(
             params.amplitude_min, params.amplitude_max, params.amplitude_step
         ).tolist(),
@@ -128,6 +153,8 @@ def _aquisition(
             params.duration_min, params.duration_max, params.duration_step
         ).tolist(),
     )
+
+    data.sorted_pairs = [order_pair(pair, platform) for pair in targets]
     data.flux_coefficient = {
         pair: platform.calibration.single_qubits[pair[1]].qubit.flux_coefficients[0]
         for pair in data.sorted_pairs
@@ -140,6 +167,12 @@ def _aquisition(
         * HZ_TO_GHZ
         for pair in data.sorted_pairs
     }
+    data.anharmonicity = {
+        pair: platform.calibration.single_qubits[pair[1]].qubit.anharmonicity
+        * HZ_TO_GHZ
+        for pair in data.sorted_pairs
+    }
+
     for pair in data.sorted_pairs:
         sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
             platform=platform,
@@ -196,16 +229,26 @@ def _fit(data: ChevronData) -> ChevronResults:
                 popt, _ = curve_fit(
                     chevron_fit,
                     data.grid,
-                    _data.T.flatten(),
+                    z_normalization(_data.T.flatten()),
                     p0=[
-                        data.detuning[pair] - 0.2,  # 0.2 is the expected anharmonicity
+                        data.detuning[pair] + data.anharmonicity[pair],
                         data.flux_coefficient[pair],
                         0.07,
                         0,
                     ],
                     bounds=(
-                        [data.detuning[pair] / 2 - 0.1, -3, 0, 0],
-                        [2 * data.detuning[pair] - 0.4, -1, 0.1, 2 * np.pi],
+                        [
+                            (data.detuning[pair] + data.anharmonicity[pair]) / 2,
+                            -3,
+                            0,
+                            0,
+                        ],
+                        [
+                            (2 * data.detuning[pair] + data.anharmonicity[pair]),
+                            -1,
+                            0.1,
+                            2 * np.pi,
+                        ],
                     ),
                     maxfev=100000,
                 )
@@ -231,10 +274,6 @@ def _fit(data: ChevronData) -> ChevronResults:
 
 def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     """Plot the experiment result for a single pair."""
-
-    if target not in data.sorted_pairs:
-        target = (target[1], target[0])
-
     fig = make_subplots(
         rows=2,
         cols=2,
@@ -248,8 +287,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
         shared_yaxes="all",
     )
     fitting_report = ""
-
-    for i, _data in enumerate([data.data[target][0], data.data[target][1]]):
+    for i, _data in enumerate([data[target][0], data[target][1]]):
         fig.add_trace(
             go.Heatmap(
                 x=data.duration,
@@ -286,6 +324,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
                         line_dash="dot",
                         row=j + 1,
                         col=i + 1,
+                        name="Fit",
                     )
 
                     fig.add_vline(
@@ -293,6 +332,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
                         line_dash="dot",
                         row=j + 1,
                         col=i + 1,
+                        name="Fit",
                     )
 
                     fig.add_vline(
@@ -300,6 +340,7 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
                         line_dash="dot",
                         row=j + 1,
                         col=i + 1,
+                        name="Fit",
                     )
 
     fig.update_layout(
