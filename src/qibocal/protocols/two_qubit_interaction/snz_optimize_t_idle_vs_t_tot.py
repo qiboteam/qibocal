@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
@@ -37,38 +38,58 @@ class SNZDurationParamteters(Parameters):
     b_amplitude: float
     """SNZ B amplitude."""
 
+    @property
+    def theta_range(self) -> np.ndarray:
+        return np.arange(self.theta_start, self.theta_end, self.theta_step)
+
+    @property
+    def duration_range(self) -> np.ndarray:
+        return np.arange(
+            self.duration_min,
+            self.duration_max,
+            self.duration_step,
+        )
+
+    @property
+    def t_idle_range(self) -> np.ndarray:
+        return np.arange(self.t_idle_min, self.t_idle_max, self.t_idle_step)
+
 
 @dataclass
 class SNZDurationResults(SNZFinetuningResults): ...
 
 
-OptimizeTwoQubitGateType = np.dtype(
-    [
-        ("theta", np.float64),
-        ("target", np.float64),
-        ("control", np.float64),
-    ]
-)
-
-
 @dataclass
 class SNZDurationData(SNZFinetuningData):
+    _sorted_pairs: list[QubitPairId] = field(default_factory=dict)
+    thetas: list = field(default_factory=list)
+    """Angles swept."""
     durations: list = field(default_factory=list)
-    """"Duratoins swept."""
-    t_idles: list[float] = field(default_factory=list)
-    """t_idles swept."""
+    """"Amplitudes swept."""
+    t_idles: list = field(default_factory=list)
+    """Durations swept."""
+    data: dict[tuple, npt.NDArray] = field(default_factory=dict)
 
-    def register_qubit(
-        self, target, control, setup, t_idle, theta, duration, prob_control, prob_target
-    ):
-        """Store output for single pair."""
-        size = len(theta)
-        for i, duration in enumerate(duration):
-            ar = np.empty(size, dtype=OptimizeTwoQubitGateType)
-            ar["theta"] = theta
-            ar["control"] = prob_control[i]
-            ar["target"] = prob_target[i]
-            self.data[target, control, setup, t_idle, duration] = np.rec.array(ar)
+    @property
+    def sorted_pairs(self):
+        return [
+            pair if isinstance(pair, tuple) else tuple(pair)
+            for pair in self._sorted_pairs
+        ]
+
+    @sorted_pairs.setter
+    def sorted_pairs(self, value):
+        self._sorted_pairs = value
+
+    def parse(self, i, j):
+        return {
+            key: value[
+                :,
+                i,
+                j,
+            ]
+            for key, value in self.data.items()
+        }
 
 
 def _aquisition(
@@ -76,22 +97,16 @@ def _aquisition(
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
 ) -> SNZDurationData:
-    t_idle_range = np.arange(
-        params.t_idle_min, params.t_idle_max, params.t_idle_step, dtype=float
+    data = SNZDurationData(
+        _sorted_pairs=[order_pair(pair, platform) for pair in targets],
+        thetas=params.theta_range.tolist(),
+        durations=params.duration_range.tolist(),
+        t_idles=params.t_idle_range.tolist(),
     )
-    data = SNZDurationData()
-    data.t_idles = t_idle_range.tolist()
-    data.durations = np.arange(
-        params.duration_min, params.duration_max, params.duration_step
-    ).tolist()
-    data.angles = np.arange(
-        params.theta_start, params.theta_end, params.theta_step
-    ).tolist()
-    for pair in targets:
-        ordered_pair = order_pair(pair, platform)
+    for ordered_pair in data.sorted_pairs:
         flux_channel = platform.qubits[ordered_pair[1]].flux
-        target_vz = pair[0]
-        other_qubit_vz = pair[1]
+        target_vz = ordered_pair[0]
+        other_qubit_vz = ordered_pair[1]
         # Find CZ flux pulse
 
         cz_sequence = getattr(platform.natives.two_qubit[ordered_pair], "CZ")()
@@ -100,7 +115,9 @@ def _aquisition(
         assert len(flux_pulses) == 1, "Only 1 flux pulse is supported"
         flux_pulse = flux_pulses[0]
 
-        for t_idle in t_idle_range:
+        data.data[target_vz, other_qubit_vz, "I"] = []
+        data.data[target_vz, other_qubit_vz, "X"] = []
+        for t_idle in params.t_idle_range:
             for setup in ("I", "X"):
                 flux_pulse = Pulse(
                     amplitude=flux_pulse.amplitude,
@@ -154,16 +171,14 @@ def _aquisition(
                     averaging_mode=AveragingMode.CYCLIC,
                 )
 
-                data.register_qubit(
-                    target_vz,
-                    other_qubit_vz,
-                    setup,
-                    t_idle,
-                    data.angles,
-                    sweeper_duration.values,
-                    results[ro_control.id],
-                    results[ro_target.id],
+                data.data[target_vz, other_qubit_vz, setup].append(
+                    np.stack([results[ro_target.id], results[ro_control.id]])
                 )
+
+        for setup in ("I", "X"):
+            data.data[target_vz, other_qubit_vz, setup] = np.moveaxis(
+                np.array(data.data[target_vz, other_qubit_vz, setup]), [0, 1], [2, 0]
+            )
 
     return data
 
@@ -173,26 +188,32 @@ def _fit(
 ) -> SNZDurationResults:
     """Repetition of correct virtual phase fit for all configurations."""
     fitted_parameters = {}
-    pairs = data.pairs
     virtual_phases = {}
     angles = {}
     leakages = {}
-    for pair in pairs:
-        for duration in data.durations:
-            for t_idle in data.t_idles:
-                data_duration = data.filter_data_key(pair[0], pair[1], t_idle, duration)
+    for pair in data.sorted_pairs:
+        _pair = tuple(pair)
+        angles[_pair], leakages[_pair], virtual_phases[_pair] = [], [], []
+        (
+            fitted_parameters[_pair[0], _pair[1], "I"],
+            fitted_parameters[_pair[0], _pair[1], "X"],
+        ) = [], []
+
+        for i in range(len(data.durations)):
+            for j in range(len(data.t_idles)):
                 new_fitted_parameter, new_phases, new_angle, new_leak = fit_virtualz(
-                    data_duration,
-                    pair,
-                    thetas=data.angles,
+                    data.parse(i, j),
+                    _pair,
+                    thetas=data.thetas,
                     gate_repetition=1,
-                    key=(pair[0], pair[1], t_idle, duration),
-                    rec_array=True,
                 )
-                fitted_parameters |= new_fitted_parameter
-                virtual_phases |= new_phases
-                angles |= new_angle
-                leakages |= new_leak
+                angles[_pair].append(new_angle[_pair])
+                leakages[_pair].append(new_leak[_pair])
+                virtual_phases[_pair].append(new_phases[_pair])
+                for setup in ["I", "X"]:
+                    fitted_parameters[_pair[0], _pair[1], setup].append(
+                        new_fitted_parameter[_pair, setup]
+                    )
 
     results = SNZDurationResults(
         virtual_phases=virtual_phases,
@@ -210,6 +231,8 @@ def _plot(
 ):
     """Plot routine for OptimizeTwoQubitGate."""
     fitting_report = ""
+    if target not in data.sorted_pairs:
+        target = (target[1], target[0])
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -219,25 +242,13 @@ def _plot(
         ),
     )
     if fit is not None:
-        cz = []
-        t_idle = []
-        durations = []
-        leakage = []
-        target_q = target[0]
-        control_q = target[1]
-
-        for i in data.durations:
-            for j in data.t_idles:
-                t_idle.append(j)
-                durations.append(i)
-                cz.append(fit.angles[target_q, control_q, j, i])
-                leakage.append(fit.leakages[target_q, control_q, j, i])
-
         fig.add_trace(
             go.Heatmap(
-                x=durations,
-                y=t_idle,
-                z=cz,
+                x=data.durations,
+                y=data.t_idles,
+                z=np.array(fit.angles[target])
+                .reshape(len(data.durations), len(data.t_idles))
+                .T,
                 zmin=0,
                 zmax=2 * np.pi,
                 name="{fit.native} angle",
@@ -250,13 +261,15 @@ def _plot(
 
         fig.add_trace(
             go.Heatmap(
-                x=durations,
-                y=t_idle,
-                z=leakage,
+                x=data.durations,
+                y=data.t_idles,
+                z=np.array(fit.leakages[target])
+                .reshape(len(data.durations), len(data.t_idles))
+                .T,
                 name="Leakage",
                 colorscale="Inferno",
                 zmin=0,
-                zmax=0.2,
+                zmax=0.25,
             ),
             row=1,
             col=2,
@@ -267,6 +280,8 @@ def _plot(
             xaxis2_title="Pulse duration [ns]",
             yaxis1_title="t_idle [# samplings]",
             yaxis2_title="t_idle [# samplings]",
+            xaxis2=dict(matches="x"),
+            yaxis2=dict(matches="y"),
         )
 
     return [fig], fitting_report
