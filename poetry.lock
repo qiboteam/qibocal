@@ -1750,8 +1750,8 @@ qrng = ["pyserial (>=3.5,<4.0)"]
 [package.source]
 type = "git"
 url = "https://github.com/qiboteam/qibolab"
-reference = "filters"
-resolved_reference = "2751c521e6c74244c1604280cb151097429b27f2"
+reference = "HEAD"
+resolved_reference = "0f14b4fd50df8b4795b2e0f87d5639608ea6c722"
 
 [[package]]
 name = "recommonmark"
@@ -2566,4 +2566,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "acc378d50638622b27fa4d77f01b644773cf3103bf574c7b43406d27fdf817c3"
+content-hash = "8ba50996966104f920cd82e5b6917e7115769c4d42a686217d4d8a896eeb3a8a"
