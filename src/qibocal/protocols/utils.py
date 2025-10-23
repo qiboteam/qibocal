@@ -729,7 +729,6 @@ def euclidean_metric(point1: np.ndarray, point2: np.ndarray):
     return np.linalg.norm(point1 - point2)
 
 
-<<<<<<< HEAD
 def zca_whiten(X):
     """
     Applies ZCA whitening to the data (X)
@@ -934,8 +933,6 @@ def merging(
     return signal_labels
 
 
-=======
->>>>>>> 80af031b (test: Improve coverage)
 def extract_feature(
     x: np.ndarray, y: np.ndarray, z: np.ndarray, find_min: bool, min_points: int = 5
 ) -> tuple[np.ndarray, np.ndarray]:
