@@ -1,13 +1,12 @@
 from colorsys import hls_to_rgb
 from enum import Enum
-from typing import Literal, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
-from qibolab._core.components import Config
 from scipy import constants, sparse
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
@@ -141,18 +140,6 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         return model_parameters[1] * GHZ_TO_HZ, model_parameters, perr
     except RuntimeError as e:
         log.warning(f"Lorentzian fit not successful due to {e}")
-
-
-class DcFilteredConfig(Config):
-    """Dummy config for dc with filters.
-
-    Required by cryoscope protocol.
-
-    """
-
-    kind: Literal["dc-filter"] = "dc-filter"
-    offset: float
-    filter: list
 
 
 def effective_qubit_temperature(
@@ -672,8 +659,7 @@ def extract_feature(
     for i in y:
         signal_fixed_y = normalized_z[y == i]
         peak, _ = find_peaks(
-            -signal_fixed_y if find_min else signal_fixed_y,
-            prominence=0.3,
+            -signal_fixed_y if find_min else signal_fixed_y, prominence=0.2
         )
         if len(peak) > 0 and len(peak) < 3:
             for j in peak:
