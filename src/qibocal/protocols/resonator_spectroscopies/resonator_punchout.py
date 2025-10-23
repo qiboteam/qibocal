@@ -74,7 +74,13 @@ class ResonatorPunchoutData(Data):
     def filtered_data(self, qubit: QubitId) -> tuple[np.ndarray]:
         x, y, _ = self.grid(qubit)
         return extract_feature(
-            *normalize_over_y(x, y, self.normalized_signal(qubit).ravel()),
+            x,
+            y,
+            normalize_over_y(
+                self.frequencies[qubit],
+                self.amplitudes,
+                self.normalized_signal(qubit).ravel(),
+            ),
             self.find_min,
         )
 
@@ -158,7 +164,7 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
         if fit_type == "amp":
             best_freq = np.max(filtered_x)
             bare_freq = np.min(filtered_x)
-        else:
+        else:  # pragma: no cover
             best_freq = np.min(filtered_x)
             bare_freq = np.max(filtered_x)
         ro_val = np.max(filtered_y[filtered_x == best_freq])

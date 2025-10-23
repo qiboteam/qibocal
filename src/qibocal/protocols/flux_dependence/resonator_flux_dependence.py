@@ -86,9 +86,11 @@ class ResonatorFluxData(Data):
     def filtered_data(self, qubit: QubitId) -> np.ndarray:
         """Apply mask to specific qubit data."""
         return extract_feature(
-            *normalize_over_y(
-                self.data[qubit].freq,
-                self.data[qubit].bias,
+            self.data[qubit].freq,
+            self.data[qubit].bias,
+            normalize_over_y(
+                np.unique(self.data[qubit].freq),
+                np.unique(self.data[qubit].bias),
                 self.data[qubit].signal,
             ),
             self.find_min,
@@ -258,12 +260,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             coupling[qubit] = popt[0]
             asymmetry[qubit] = popt[1]
         except ValueError as e:
-            log.error(
-                f"Error in resonator_flux protocol fit: {e} "
-                "The threshold for the SNR mask is probably too high. "
-                "Lowering the value of `threshold` in `extract_*_feature`"
-                "should fix the problem."
-            )
+            log.error(f"Error in resonator_flux protocol fit: {e} ")
     return ResonatorFluxResults(
         frequency=resonator_freq,
         coupling=coupling,
