@@ -717,11 +717,9 @@ def table_html(data: dict) -> str:
 
 
 def normalize_over_y(x, y, z):
-    # background removed over y axis
-    z_ = z.reshape(len(np.unique(y)), len(np.unique(x)))
+    z_ = z.reshape(len(y), len(x))
     z_ = z_ / np.mean(z, axis=0)
-    normalized_z = z_.reshape(z.shape)
-    return x, y, normalized_z
+    return z_.reshape(z.shape)
 
 
 def extract_feature(
