@@ -528,8 +528,20 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
         min_x = min(grid[:, 0])
         min_y = min(grid[:, 1])
 
+        # Colorset for plots
+        COLORS = px.colors.qualitative.Plotly[0:qubit_states]
 
-        COLORS = px.colors.qualitative.Set2
+        if COLORS[0].startswith("#"):
+            COLORS = [
+                f"rgba({int(COLORS[j][1:3],16)},{int(COLORS[j][3:5],16)},{int(COLORS[j][5:7],16)},0.5)"
+                for j in range(len(COLORS))
+            ]
+        elif COLORS[0].startswith("rgb"):
+            COLORS = [COLORS[j].replace("rgb", "rgba").replace(")", ",0.5)") for j in range(len(COLORS))]
+        else:
+            raise(ValueError("Color format not recognized."))
+        
+
         for state in range(qubit_states):
             state_data = qubit_data[qubit_data["state"] == state]
 
@@ -564,7 +576,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             )
 
             # Add 1D histogram trace rotated by rot_angle from the fit results
-            if fit is not None:
+            if fit is not None and getattr(fit, "rotation_angle", None) is not None:
                 rot_angle = np.round(fit.rotation_angle[qubit], 3)
                 threshold = np.round(fit.threshold[qubit], 3)
 
@@ -586,18 +598,17 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
                 mu, std = scipy_norm.fit(rotated[:, 0])
                 pdf = scipy_norm.pdf(bin_centers, mu, std)
 
-                color = COLORS[state][:-1] + ",0.5)"
                 fig.add_trace(
-                    go.Scatter(
+                    go.Bar(
                         x=bin_centers-threshold,
-                        y=hist, 
+                        y=hist,
                         name=f"{model}: state {state} hist",
-                        mode="markers",
                         legendgroup=f"{model}: state {state}",
                         showlegend=False,
-                        fill="tozeroy",
-                        marker = dict(size = 1,
-                                      color=color),
+                        marker=dict(color=COLORS[state]),
+                        width=(bin_centers[1] - bin_centers[0])
+                        if len(bin_centers) > 1
+                        else 0.1,
                     ),
                     row=2,
                     col=i + 1,
@@ -610,7 +621,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
                         mode="lines",
                         legendgroup=f"{model}: state {state}",
                         showlegend=False,
-                        line=dict(width=2, color=color, dash="dash"),
+                        line=dict(width=2, color=COLORS[state]),
                     ),
                     row=2,
                     col=i + 1,
