@@ -4,8 +4,8 @@ from typing import Literal, Optional, Union
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 import plotly.express as px
+import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
 from qibolab._core.components import Config
@@ -502,7 +502,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
         subplot_titles=[run.pretty_name(model) for model in models_name],
         column_width=[COLUMNWIDTH] * len(models_name),
     )
-    
+
     for i, model in enumerate(models_name):
         if fit is not None:
             predictions = fit.grid_preds[qubit][i]
@@ -533,14 +533,16 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
 
         if COLORS[0].startswith("#"):
             COLORS = [
-                f"rgba({int(COLORS[j][1:3],16)},{int(COLORS[j][3:5],16)},{int(COLORS[j][5:7],16)},0.5)"
+                f"rgba({int(COLORS[j][1:3], 16)},{int(COLORS[j][3:5], 16)},{int(COLORS[j][5:7], 16)},0.5)"
                 for j in range(len(COLORS))
             ]
         elif COLORS[0].startswith("rgb"):
-            COLORS = [COLORS[j].replace("rgb", "rgba").replace(")", ",0.5)") for j in range(len(COLORS))]
+            COLORS = [
+                COLORS[j].replace("rgb", "rgba").replace(")", ",0.5)")
+                for j in range(len(COLORS))
+            ]
         else:
-            raise(ValueError("Color format not recognized."))
-        
+            raise (ValueError("Color format not recognized."))
 
         for state in range(qubit_states):
             state_data = qubit_data[qubit_data["state"] == state]
@@ -580,12 +582,12 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
                 rot_angle = np.round(fit.rotation_angle[qubit], 3)
                 threshold = np.round(fit.threshold[qubit], 3)
 
-                x,y = state_data["i"], state_data["q"]
+                x, y = state_data["i"], state_data["q"]
                 c, s = np.cos(rot_angle), np.sin(rot_angle)
                 rot = np.array([[c, -s], [s, c]])
                 rotated = np.vstack([x, y]).T @ rot.T
                 rotated[:, 0] = rotated[:, 0]
-                
+
                 # histogram using only the x values
                 hist, bin_edges = np.histogram(
                     rotated[:, 0],
@@ -600,7 +602,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
 
                 fig.add_trace(
                     go.Bar(
-                        x=bin_centers-threshold,
+                        x=bin_centers - threshold,
                         y=hist,
                         name=f"{model}: state {state} hist",
                         legendgroup=f"{model}: state {state}",
@@ -615,7 +617,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
                 )
                 fig.add_trace(
                     go.Scatter(
-                        x=bin_centers-threshold,
+                        x=bin_centers - threshold,
                         y=pdf,
                         name=f"{model}: state {state} norm fit",
                         mode="lines",
@@ -632,7 +634,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
                     go.Scatter(
                         x=[0, 0],
                         y=[0, max(hist) * 1.1],
-                        name='threshold', # No name for legend
+                        name="threshold",  # No name for legend
                         mode="lines",
                         line=dict(color="black", width=2, dash="dot"),
                         showlegend=False,
@@ -657,10 +659,6 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
             row=1,
             col=i + 1,
         )
-
-        
-
-
 
     fig.update_layout(
         autosize=False,
