@@ -530,19 +530,11 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
 
         # Colorset for plots
         COLORS = px.colors.qualitative.Plotly[0:qubit_states]
-
         if COLORS[0].startswith("#"):
             COLORS = [
                 f"rgba({int(COLORS[j][1:3], 16)},{int(COLORS[j][3:5], 16)},{int(COLORS[j][5:7], 16)},0.5)"
                 for j in range(len(COLORS))
             ]
-        elif COLORS[0].startswith("rgb"):
-            COLORS = [
-                COLORS[j].replace("rgb", "rgba").replace(")", ",0.5)")
-                for j in range(len(COLORS))
-            ]
-        else:
-            raise (ValueError("Color format not recognized."))
 
         for state in range(qubit_states):
             state_data = qubit_data[qubit_data["state"] == state]
