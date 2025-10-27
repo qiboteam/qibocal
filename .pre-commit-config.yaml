@@ -27,6 +27,7 @@ repos:
       # Run the linter.
       - id: ruff
         args: [--fix]
+        exclude: "calibration_scripts/"
       # Sort imports
       - id: ruff
         args: [--select, I, --fix]

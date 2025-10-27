@@ -63,6 +63,7 @@ def test_named_executor(params, platform):
 
 
 SCRIPTS = Path(__file__).parent / "scripts"
+CALIBRATION_SCRIPTS = Path(__file__).parent / "calibration_scripts"
 
 
 @dataclass
@@ -183,3 +184,13 @@ def test_open(tmp_path: Path, platform):
         assert e.meta.start is not None
 
     assert e.meta.end is not None
+
+
+def test_single_shot(tmp_path: Path, platform):
+    globals_ = {"platform": platform, "targets": [0], "path": tmp_path}
+    exec((CALIBRATION_SCRIPTS / "single_shot.py").read_text(), globals_)
+
+
+def test_rx_calibration(tmp_path: Path, platform):
+    globals_ = {"platform": platform, "target": 0, "path": tmp_path}
+    exec((CALIBRATION_SCRIPTS / "rx_calibration.py").read_text(), globals_)
