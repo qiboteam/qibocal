@@ -48,6 +48,7 @@ ruff = "^0.9.1"
 "simple.py" = ["E402"]
 "__init__.py" = ["F403"]
 "calibration_scripts/**/*.py" = ["F821"]
+"tests/calibration_scripts/**/*.py" = ["F821"]
 
 
 [tool.poetry.group.docs]
