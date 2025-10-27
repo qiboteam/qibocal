@@ -47,6 +47,7 @@ ruff = "^0.9.1"
 [tool.ruff.lint.per-file-ignores]
 "simple.py" = ["E402"]
 "__init__.py" = ["F403"]
+"calibration_scripts/**/*.py" = ["F821"]
 
 
 [tool.poetry.group.docs]
