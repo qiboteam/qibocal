@@ -227,7 +227,9 @@ class Executor:
                     "parameters": params | positional | kwargs,
                 }
             )
-            return self.run_protocol(protocol, parameters=action, mode=mode)
+            return self.run_protocol(
+                protocol, parameters=action, mode=mode, output=self.path
+            )
 
         return wrapper
 
