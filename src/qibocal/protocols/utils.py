@@ -4,6 +4,7 @@ from typing import Literal, Optional, Union
 
 import numpy as np
 import pandas as pd
+import plotly.express as px
 import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
@@ -11,6 +12,7 @@ from qibolab._core.components import Config
 from scipy import constants, sparse
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
+from scipy.stats import norm as scipy_norm
 
 from qibocal.auto.operation import Data, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
@@ -493,7 +495,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
     grid = evaluate_grid(qubit_data)
 
     fig = make_subplots(
-        rows=1,
+        rows=2,
         cols=len(models_name),
         horizontal_spacing=SPACING * 3 / len(models_name) * 3,
         vertical_spacing=SPACING,
@@ -526,6 +528,14 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
         min_x = min(grid[:, 0])
         min_y = min(grid[:, 1])
 
+        # Colorset for plots
+        COLORS = px.colors.qualitative.Plotly[0:qubit_states]
+        if COLORS[0].startswith("#"):
+            COLORS = [
+                f"rgba({int(COLORS[j][1:3], 16)},{int(COLORS[j][3:5], 16)},{int(COLORS[j][5:7], 16)},0.5)"
+                for j in range(len(COLORS))
+            ]
+
         for state in range(qubit_states):
             state_data = qubit_data[qubit_data["state"] == state]
 
@@ -539,6 +549,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
                     showlegend=True,
                     opacity=0.7,
                     marker=dict(size=3),
+                    marker_color=COLORS[state],
                 ),
                 row=1,
                 col=i + 1,
@@ -557,6 +568,72 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
                 row=1,
                 col=i + 1,
             )
+
+            # Add 1D histogram trace rotated by rot_angle from the fit results
+            if fit is not None and getattr(fit, "rotation_angle", None) is not None:
+                rot_angle = np.round(fit.rotation_angle[qubit], 3)
+                threshold = np.round(fit.threshold[qubit], 3)
+
+                x, y = state_data["i"], state_data["q"]
+                c, s = np.cos(rot_angle), np.sin(rot_angle)
+                rot = np.array([[c, -s], [s, c]])
+                rotated = np.vstack([x, y]).T @ rot.T
+                rotated[:, 0] = rotated[:, 0]
+
+                # histogram using only the x values
+                hist, bin_edges = np.histogram(
+                    rotated[:, 0],
+                    bins=30,
+                    density=True,
+                )
+                bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+                # Gaussian fit to histogram
+                mu, std = scipy_norm.fit(rotated[:, 0])
+                pdf = scipy_norm.pdf(bin_centers, mu, std)
+
+                fig.add_trace(
+                    go.Bar(
+                        x=bin_centers - threshold,
+                        y=hist,
+                        name=f"{model}: state {state} hist",
+                        legendgroup=f"{model}: state {state}",
+                        showlegend=False,
+                        marker=dict(color=COLORS[state]),
+                        width=(bin_centers[1] - bin_centers[0])
+                        if len(bin_centers) > 1
+                        else 0.1,
+                    ),
+                    row=2,
+                    col=i + 1,
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        x=bin_centers - threshold,
+                        y=pdf,
+                        name=f"{model}: state {state} norm fit",
+                        mode="lines",
+                        legendgroup=f"{model}: state {state}",
+                        showlegend=False,
+                        line=dict(width=2, color=COLORS[state]),
+                    ),
+                    row=2,
+                    col=i + 1,
+                )
+
+                # Add vertical line for threshold
+                fig.add_trace(
+                    go.Scatter(
+                        x=[0, 0],
+                        y=[0, max(hist) * 1.1],
+                        name="threshold",  # No name for legend
+                        mode="lines",
+                        line=dict(color="black", width=2, dash="dot"),
+                        showlegend=False,
+                    ),
+                    row=2,
+                    col=i + 1,
+                )
 
         fig.update_xaxes(
             title_text="i [a.u.]",
