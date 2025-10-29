@@ -5,11 +5,10 @@ from qibolab import AcquisitionType, PulseSequence
 
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
-from qibocal.protocols.utils import plot_results, readout_frequency
+from qibocal.protocols.utils import readout_frequency
 
 from ...auto.operation import Results
 from ..classification.classification import (
-    ClassificationType,
     SingleShotClassificationData,
     SingleShotClassificationParameters,
 )
@@ -119,17 +118,7 @@ def _acquisition(
 
     for state, ro_pulses in zip(states, all_ro_pulses):
         for qubit in targets:
-            serial = ro_pulses[qubit]
-            result = results[serial]
-            data.register_qubit(
-                ClassificationType,
-                (qubit),
-                dict(
-                    i=result[..., 0],
-                    q=result[..., 1],
-                    state=[state] * params.nshots,
-                ),
-            )
+            data.data[qubit, state] = results[ro_pulses[qubit]]
 
     return data
 
@@ -143,7 +132,8 @@ def _plot(
     target: QubitId,
     fit: QutritClassificationResults,
 ):
-    figures = plot_results(data, target, 3, None)
+    # figures = plot_results(data, target, 3, None)
+    figures = []
     fitting_report = ""
     return figures, fitting_report
 
