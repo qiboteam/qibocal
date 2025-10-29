@@ -3,8 +3,11 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.express as px
+import plotly.graph_objects as go
 from qibolab import AcquisitionType, PulseSequence
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
+from qibocal import update
 from qibocal.auto.operation import (
     Data,
     Parameters,
@@ -13,6 +16,7 @@ from qibocal.auto.operation import (
     Routine,
 )
 from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.utils import table_dict, table_html
 
 ROC_LENGHT = 800
 ROC_WIDTH = 800
@@ -61,6 +65,9 @@ class SingleShotClassificationData(Data):
 @dataclass
 class SingleShotClassificationResults(Results):
     """SingleShotClassification outputs."""
+
+    angles: dict[QubitId, float] = field(default_factory=dict)
+    thresholds: dict[QubitId, float] = field(default_factory=dict)
 
 
 def _acquisition(
@@ -144,7 +151,23 @@ def _acquisition(
 
 
 def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
-    return SingleShotClassificationResults()
+    angles = {}
+    thresholds = {}
+    for qubit in data.qubits:
+        nshots = len(data.data[qubit, 0])
+        X = np.vstack([data.data[qubit, 0], data.data[qubit, 1]])
+        y = np.array([0] * nshots + [1] * nshots)
+
+        clf = LinearDiscriminantAnalysis().fit(X, y)
+        w = clf.coef_[0]
+        b = clf.intercept_[0]
+
+        angles[qubit] = -np.arctan2(w[1], w[0])
+        thresholds[qubit] = -b / np.linalg.norm(w)
+    return SingleShotClassificationResults(
+        angles=angles,
+        thresholds=thresholds,
+    )
 
 
 def _plot(
@@ -171,7 +194,41 @@ def _plot(
         marginal_y="histogram",
         color_discrete_sequence=["red"],
     )
-    fig1.add_traces(fig2.data)
+
+    if fit is not None:
+        min_x = np.min(np.stack([data.data[target, 0].T[0], data.data[target, 1].T[0]]))
+        max_x = np.max(np.stack([data.data[target, 0].T[0], data.data[target, 1].T[0]]))
+        min_y = np.min(np.stack([data.data[target, 0].T[1], data.data[target, 1].T[1]]))
+        max_y = np.max(np.stack([data.data[target, 0].T[1], data.data[target, 1].T[1]]))
+        xrange = np.linspace(min_x, max_x, 10000)
+        y = (-fit.thresholds[target] + xrange * np.cos(fit.angles[target])) / np.sin(
+            fit.angles[target]
+        )
+        indices = np.where(np.logical_and(y > min_y, y < max_y))
+        fig1.add_traces(fig2.data)
+        fig1.add_trace(
+            go.Scatter(
+                x=xrange[indices],
+                y=y[indices],
+                name="Separation",
+                line=dict(color="black", dash="dash"),
+            )
+        )
+
+        fitting_report = table_html(
+            table_dict(
+                target,
+                [
+                    "Rotational Angle",
+                    "Threshold",
+                ],
+                [
+                    np.round(fit.angles[target], 3),
+                    np.round(fit.thresholds[target], 6),
+                ],
+            )
+        )
+
     return [fig1], fitting_report
 
 
@@ -180,9 +237,8 @@ def _update(
     platform: CalibrationPlatform,
     target: QubitId,
 ):
-    pass
-    # update.iq_angle(results.rotation_angle[target], platform, target)
-    # update.threshold(results.threshold[target], platform, target)
+    update.iq_angle(results.angles[target], platform, target)
+    update.threshold(results.thresholds[target], platform, target)
     # update.mean_gnd_states(results.mean_gnd_states[target], platform, target)
     # update.mean_exc_states(results.mean_exc_states[target], platform, target)
     # update.readout_fidelity(results.fidelity[target], platform, target)
