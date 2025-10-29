@@ -306,6 +306,9 @@ def _update(
 ):
     if results.detuning is not None:
         update.drive_frequency(results.frequency[target][0], platform, target)
+        platform.calibration.single_qubits[
+            target
+        ].qubit.frequency_01 = results.frequency[target][0]
     else:
         update.t2(results.t2[target], platform, target)
 
