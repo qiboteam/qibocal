@@ -152,9 +152,7 @@ class DcFilteredConfig(Config):
     filter: list
 
 
-def effective_qubit_temperature(
-    prob_0: NDArray, prob_1: NDArray, qubit_frequency: float, nshots: int
-):
+def effective_qubit_temperature(predictions, qubit_frequency: float, nshots: int):
     """Calculates the qubit effective temperature.
 
     The formula used is the following one:
@@ -171,6 +169,8 @@ def effective_qubit_temperature(
         error (float): error on effective temperature
 
     """
+    prob_1 = np.count_nonzero(predictions) / len(predictions)
+    prob_0 = 1 - prob_1
     error_prob_0 = np.sqrt(prob_0 * (1 - prob_0) / nshots)
     error_prob_1 = np.sqrt(prob_1 * (1 - prob_1) / nshots)
     # TODO: find way to handle this exception
