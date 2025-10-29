@@ -54,7 +54,7 @@ def plotter(
     buffer = io.StringIO()
     html_list = []
     for figure in figures:
-        figure.write_html(buffer, include_plotlyjs=False, full_html=False)
+        figure.write_html(buffer, include_plotlyjs=True, full_html=False)
         buffer.seek(0)
         html_list.append(buffer.read())
     buffer.close()

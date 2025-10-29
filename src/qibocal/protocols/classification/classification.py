@@ -6,6 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, PulseSequence
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.metrics import confusion_matrix
 
 from qibocal import update
 from qibocal.auto.operation import (
@@ -16,7 +17,13 @@ from qibocal.auto.operation import (
     Routine,
 )
 from qibocal.calibration import CalibrationPlatform
-from qibocal.protocols.utils import table_dict, table_html
+from qibocal.protocols.utils import (
+    effective_qubit_temperature,
+    format_error_single_cell,
+    round_report,
+    table_dict,
+    table_html,
+)
 
 ROC_LENGHT = 800
 ROC_WIDTH = 800
@@ -29,7 +36,7 @@ __all__ = [
 ]
 
 
-def evaluate_snr(zeros: npt.NDArray, ones: npt.NDArray) -> float:
+def compute_snr(zeros: npt.NDArray, ones: npt.NDArray) -> float:
     """Compute snr for zeros and ones"""
     line = np.mean(ones, axis=0) - np.mean(zeros, axis=0)
     projection_zeros, projection_ones = np.dot(zeros, line), np.dot(ones, line)
@@ -66,8 +73,20 @@ class SingleShotClassificationData(Data):
 class SingleShotClassificationResults(Results):
     """SingleShotClassification outputs."""
 
-    angles: dict[QubitId, float] = field(default_factory=dict)
-    thresholds: dict[QubitId, float] = field(default_factory=dict)
+    angle: dict[QubitId, float] = field(default_factory=dict)
+    threshold: dict[QubitId, float] = field(default_factory=dict)
+    snr: dict[QubitId, float] = field(default_factory=dict)
+    assignment_fidelity: dict[QubitId, float] = field(default_factory=dict)
+    effective_temperature: dict[QubitId, float] = field(default_factory=dict)
+    confusion_matrix: dict[QubitId, list[list[float]]] = field(default_factory=dict)
+    states: dict[tuple[QubitId, int], list[float]] = field(default_factory=dict)
+
+    def __contains__(self, key):
+        return key in self.angle
+
+    @property
+    def readout_fidelity(self):
+        return {qubit: 2 * fid - 1 for qubit, fid in self.assignment_fidelity.items()}
 
 
 def _acquisition(
@@ -98,11 +117,6 @@ def _acquisition(
 
     """
 
-    # create two sequences of pulses:
-    # state0_sequence: I  - MZ
-    # state1_sequence: RX - MZ
-
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     native = platform.natives.single_qubit
     sequences, all_ro_pulses = [], []
     for state in [0, 1]:
@@ -151,22 +165,49 @@ def _acquisition(
 
 
 def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
-    angles = {}
-    thresholds = {}
+    angle = {}
+    threshold = {}
+    assignment_fidelity = {}
+    snr = {}
+    effective_temperature = {}
+    confusion_matrix_ = {}
+    states = {}
     for qubit in data.qubits:
         nshots = len(data.data[qubit, 0])
         X = np.vstack([data.data[qubit, 0], data.data[qubit, 1]])
         y = np.array([0] * nshots + [1] * nshots)
 
-        clf = LinearDiscriminantAnalysis().fit(X, y)
-        w = clf.coef_[0]
-        b = clf.intercept_[0]
+        lda = LinearDiscriminantAnalysis().fit(X, y)
+        w = lda.coef_[0]
+        b = lda.intercept_[0]
 
-        angles[qubit] = -np.arctan2(w[1], w[0])
-        thresholds[qubit] = -b / np.linalg.norm(w)
+        angle[qubit] = -np.arctan2(w[1], w[0])
+        threshold[qubit] = -b / np.linalg.norm(w)
+
+        pred_y = lda.predict(X)
+        snr[qubit] = float(
+            compute_snr(zeros=data.data[qubit, 0], ones=data.data[qubit, 1])
+        )
+        assignment_fidelity[qubit] = np.array(y == pred_y).sum() / 2 / nshots
+        effective_temperature[qubit] = effective_qubit_temperature(
+            lda.predict(data.data[qubit, 0]),
+            qubit_frequency=data.qubit_frequencies[qubit],
+            nshots=nshots,
+        )
+        confusion_matrix_[qubit] = confusion_matrix(
+            y, pred_y, normalize="true"
+        ).tolist()
+
+        states[qubit, 0] = np.mean(data.data[qubit, 0], axis=0).tolist()
+        states[qubit, 1] = np.mean(data.data[qubit, 1], axis=0).tolist()
     return SingleShotClassificationResults(
-        angles=angles,
-        thresholds=thresholds,
+        angle=angle,
+        threshold=threshold,
+        assignment_fidelity=assignment_fidelity,
+        effective_temperature=effective_temperature,
+        snr=snr,
+        confusion_matrix=confusion_matrix_,
+        states=states,
     )
 
 
@@ -178,7 +219,8 @@ def _plot(
     fitting_report = ""
     df0 = {"I": data.data[target, 0].T[0], "Q": data.data[target, 0].T[1]}
     df1 = {"I": data.data[target, 1].T[0], "Q": data.data[target, 1].T[1]}
-    fig1 = px.scatter(
+
+    fig0 = px.scatter(
         df0,
         x="I",
         y="Q",
@@ -186,7 +228,13 @@ def _plot(
         marginal_y="histogram",
         color_discrete_sequence=["blue"],
     )
-    fig2 = px.scatter(
+
+    for i in range(3):
+        fig0.data[i].legendgroup = "State 0"
+        if i == 2:
+            fig0.data[i].name = "State 0"
+            fig0.data[i].showlegend = True
+    fig1 = px.scatter(
         df1,
         x="I",
         y="Q",
@@ -195,41 +243,64 @@ def _plot(
         color_discrete_sequence=["red"],
     )
 
+    for i in range(3):
+        fig1.data[i].legendgroup = "State 1"
+        if i == 2:
+            fig1.data[i].name = "State 1"
+            fig1.data[i].showlegend = True
     if fit is not None:
         min_x = np.min(np.stack([data.data[target, 0].T[0], data.data[target, 1].T[0]]))
         max_x = np.max(np.stack([data.data[target, 0].T[0], data.data[target, 1].T[0]]))
         min_y = np.min(np.stack([data.data[target, 0].T[1], data.data[target, 1].T[1]]))
         max_y = np.max(np.stack([data.data[target, 0].T[1], data.data[target, 1].T[1]]))
         xrange = np.linspace(min_x, max_x, 10000)
-        y = (-fit.thresholds[target] + xrange * np.cos(fit.angles[target])) / np.sin(
-            fit.angles[target]
+        y = (-fit.threshold[target] + xrange * np.cos(fit.angle[target])) / np.sin(
+            fit.angle[target]
         )
         indices = np.where(np.logical_and(y > min_y, y < max_y))
-        fig1.add_traces(fig2.data)
-        fig1.add_trace(
+        fig0.add_traces(fig1.data)
+        fig0.add_trace(
             go.Scatter(
                 x=xrange[indices],
                 y=y[indices],
                 name="Separation",
-                line=dict(color="black", dash="dash"),
+                line=dict(color="black", dash="dot"),
             )
         )
-
+        # TODO: Plot mean point
         fitting_report = table_html(
             table_dict(
                 target,
                 [
                     "Rotational Angle",
                     "Threshold",
+                    "Assignment Fidelity",
+                    "Readout Fidelity",
+                    "SNR",
+                    "Effective Temperature [K]",
                 ],
                 [
-                    np.round(fit.angles[target], 3),
-                    np.round(fit.thresholds[target], 6),
+                    np.round(fit.angle[target], 3),
+                    np.round(fit.threshold[target], 3),
+                    np.round(fit.assignment_fidelity[target], 3),
+                    np.round(fit.readout_fidelity[target], 3),
+                    np.round(fit.snr[target], 1),
+                    format_error_single_cell(
+                        round_report([fit.effective_temperature[target]])
+                    ),
                 ],
             )
         )
-
-    return [fig1], fitting_report
+    matrix = px.imshow(
+        fit.confusion_matrix[target],
+        x=["Positive", "Negative"],
+        y=["Positive", "Negative"],
+        aspect="auto",
+        text_auto=True,
+        color_continuous_scale="Mint",
+        title="Confusion matrix",
+    )
+    return [fig0, matrix], fitting_report
 
 
 def _update(
@@ -237,14 +308,14 @@ def _update(
     platform: CalibrationPlatform,
     target: QubitId,
 ):
-    update.iq_angle(results.angles[target], platform, target)
-    update.threshold(results.thresholds[target], platform, target)
-    # update.mean_gnd_states(results.mean_gnd_states[target], platform, target)
-    # update.mean_exc_states(results.mean_exc_states[target], platform, target)
-    # update.readout_fidelity(results.fidelity[target], platform, target)
-    # platform.calibration.single_qubits[
-    #     target
-    # ].readout.effective_temperature = results.effective_temperature[target][0]
+    update.iq_angle(results.angle[target], platform, target)
+    update.threshold(results.threshold[target], platform, target)
+    update.mean_gnd_states(results.states[target, 0], platform, target)
+    update.mean_exc_states(results.states[target, 1], platform, target)
+    update.readout_fidelity(results.readout_fidelity[target], platform, target)
+    platform.calibration.single_qubits[
+        target
+    ].readout.effective_temperature = results.effective_temperature[target][0]
 
 
 single_shot_classification = Routine(_acquisition, _fit, _plot, _update)
