@@ -122,13 +122,17 @@ class AbstractData:
     """Abstract data class."""
 
     def __init__(
-        self, data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray] = None
+        self,
+        data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray] = None,
     ):
         self.data = data if data is not None else {}
 
     def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
         """Access data attribute member."""
-        return self.data[qubit]
+        try:
+            return self.data[qubit]
+        except KeyError:
+            return self.data[qubit[::-1]]
 
     @property
     def params(self) -> dict:
