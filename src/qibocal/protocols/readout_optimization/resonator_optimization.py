@@ -16,7 +16,8 @@ from ... import update
 from ...auto.operation import Data, Parameters, QubitId, Results, Routine
 from ...calibration import CalibrationPlatform
 from ...config import log
-from ...fitting.classifier.qubit_fit import QubitFit
+
+# from ...fitting.classifier.qubit_fit import QubitFit
 from ..utils import (
     HZ_TO_GHZ,
     classify,
@@ -219,47 +220,48 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
                 )
             )
             nshots = iq_values.shape[0] // 2
-            states = [0] * nshots + [1] * nshots
+            print(nshots)
+            # states = [0] * nshots + [1] * nshots
 
-            model = QubitFit()
-            model.fit(iq_values, np.array(states))
-            grids["angle"][j, k] = model.angle
-            grids["threshold"][j, k] = model.threshold
+            # model = QubitFit()
+            # model.fit(iq_values, np.array(states))
+            grids["angle"][j, k] = 0
+            grids["threshold"][j, k] = 0
 
             m1_state_0 = classify(
                 data.data[qubit, 0, 0][:, j, k, :],
-                model.angle,
-                model.threshold,
+                0,
+                0,
             )
 
             m1_state_1 = classify(
                 data.data[qubit, 1, 0][:, j, k, :],
-                model.angle,
-                model.threshold,
+                0,
+                0,
             )
 
             m2_state_0 = classify(
                 data.data[qubit, 0, 1][:, j, k, :],
-                model.angle,
-                model.threshold,
+                0,
+                0,
             )
 
             m2_state_1 = classify(
                 data.data[qubit, 1, 1][:, j, k, :],
-                model.angle,
-                model.threshold,
+                0,
+                0,
             )
 
             m3_state_0 = classify(
                 data.data[qubit, 0, 2][:, j, k, :],
-                model.angle,
-                model.threshold,
+                0,
+                0,
             )
 
             m3_state_1 = classify(
                 data.data[qubit, 1, 2][:, j, k, :],
-                model.angle,
-                model.threshold,
+                0,
+                0,
             )
 
             grids["fidelity"][j, k] = compute_assignment_fidelity(
@@ -275,8 +277,8 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
             grids["qnd-pi"][j, k], _, _ = compute_qnd(
                 m2_state_1, m2_state_0, m3_state_0, m3_state_1, pi=True
             )
-            grids["angle"][j, k] = model.angle
-            grids["threshold"][j, k] = model.threshold
+            grids["angle"][j, k] = 0
+            grids["threshold"][j, k] = 0
         arr[qubit, "fidelity"] = grids["fidelity"]
         arr[qubit, "qnd"] = grids["qnd"]
         arr[qubit, "qnd-pi"] = grids["qnd-pi"]

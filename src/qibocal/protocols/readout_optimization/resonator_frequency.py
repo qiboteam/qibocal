@@ -15,7 +15,8 @@ from qibolab import (
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
-from qibocal.fitting.classifier.qubit_fit import QubitFit
+
+# from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.utils import readout_frequency, table_dict, table_html
 
 __all__ = ["resonator_frequency"]
@@ -137,25 +138,27 @@ def _acquisition(
 
     # TODO: move QubitFit() and anlysis in _fit()
     nshots = params.nshots
+    print(nshots)
     for q, qubit in enumerate(targets):
         result0 = np.transpose(state0_results[ro_pulse_0.id], (1, 0, 2))
         result1 = np.transpose(state1_results[ro_pulse_1.id], (1, 0, 2))
+        print(result0, result1)
 
         for j, freq in enumerate(sweepers[q].values):
-            iq_values = np.concatenate([result0[j], result1[j]], axis=0)
-            states = [0] * nshots + [1] * nshots
+            # iq_values = np.concatenate([result0[j], result1[j]], axis=0)
+            # states = [0] * nshots + [1] * nshots
 
-            model = QubitFit()
-            model.fit(iq_values, np.array(states))
+            # model = QubitFit()
+            # model.fit(iq_values, np.array(states))
 
             data.register_qubit(
                 ResonatorFrequencyType,
                 (qubit),
                 dict(
                     frequency=np.array([freq]),
-                    assignment_fidelity=np.array([model.assignment_fidelity]),
-                    angle=np.array([model.angle]),
-                    threshold=np.array([model.threshold]),
+                    assignment_fidelity=np.array([1]),
+                    angle=np.array([1]),
+                    threshold=np.array([1]),
                 ),
             )
 
