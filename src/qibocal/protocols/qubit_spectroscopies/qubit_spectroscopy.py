@@ -116,7 +116,7 @@ def _acquisition(
 
     # Create data structure for data acquisition.
     data = QubitSpectroscopyData(
-        resonator_type=platform.resonator_type, amplitudes=amplitudes
+        resonator_type=platform.resonator_type, amplitudes=amplitudes, power_level=None
     )
 
     results = platform.execute(
