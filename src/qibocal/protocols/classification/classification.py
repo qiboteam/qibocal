@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
-import plotly.express as px
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, PulseSequence
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
@@ -25,7 +24,7 @@ from qibocal.protocols.utils import (
     table_html,
 )
 
-from .utils import plot
+from .utils import plot_confusion_matrix, plot_distribution
 
 ROC_LENGHT = 800
 ROC_WIDTH = 800
@@ -219,21 +218,21 @@ def _plot(
     fit: SingleShotClassificationResults,
 ):
     fitting_report = ""
-
-    fig0 = plot(
+    figures = []
+    fig0 = plot_distribution(
         data={"I": data.data[target, 0].T[0], "Q": data.data[target, 0].T[1]},
         color="red",
         label="State 0",
     )
 
-    fig1 = plot(
+    fig1 = plot_distribution(
         data={"I": data.data[target, 1].T[0], "Q": data.data[target, 1].T[1]},
         color="blue",
         label="State 1",
     )
 
     fig0.add_traces(fig1.data)
-
+    figures.append(fig0)
     if fit is not None:
         min_x = np.min(np.stack([data.data[target, 0].T[0], data.data[target, 1].T[0]]))
         max_x = np.max(np.stack([data.data[target, 0].T[0], data.data[target, 1].T[0]]))
@@ -276,16 +275,12 @@ def _plot(
                 ],
             )
         )
-    matrix = px.imshow(
-        fit.confusion_matrix[target],
-        x=["Positive", "Negative"],
-        y=["Positive", "Negative"],
-        aspect="auto",
-        text_auto=True,
-        color_continuous_scale="Mint",
-        title="Confusion matrix",
-    )
-    return [fig0, matrix], fitting_report
+        figures.append(
+            plot_confusion_matrix(
+                confusion_matrix=fit.confusion_matrix[target], labels=["0", "1"]
+            )
+        )
+    return figures, fitting_report
 
 
 def _update(

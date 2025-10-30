@@ -1,6 +1,9 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
+import numpy as np
 from qibolab import AcquisitionType, PulseSequence
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.metrics import confusion_matrix
 
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
@@ -11,7 +14,7 @@ from ..classification.classification import (
     SingleShotClassificationData,
     SingleShotClassificationParameters,
 )
-from .utils import plot
+from .utils import plot_confusion_matrix, plot_distribution
 
 __all__ = ["qutrit_classification"]
 
@@ -29,6 +32,8 @@ class QutritClassificationData(SingleShotClassificationData):
 @dataclass
 class QutritClassificationResults(Results):
     """Qutrit classification results"""
+
+    confusion_matrix: dict[QubitId, list[list[float]]] = field(default_factory=dict)
 
 
 def _acquisition(
@@ -113,7 +118,17 @@ def _acquisition(
 
 
 def _fit(data: QutritClassificationData) -> QutritClassificationResults:
-    return QutritClassificationResults()
+    confusion_matrix_ = {}
+    for qubit in data.qubits:
+        nshots = len(data.data[qubit, 0])
+        X = np.vstack([data.data[qubit, i] for i in range(3)])
+        y = np.array([0] * nshots + [1] * nshots + [2] * nshots)
+
+        lda = LinearDiscriminantAnalysis().fit(X, y)
+        confusion_matrix_[qubit] = confusion_matrix(
+            y, lda.predict(X), normalize="true"
+        ).tolist()
+    return QutritClassificationResults(confusion_matrix=confusion_matrix_)
 
 
 def _plot(
@@ -121,19 +136,20 @@ def _plot(
     target: QubitId,
     fit: QutritClassificationResults,
 ):
-    fig0 = plot(
+    figures = []
+    fig0 = plot_distribution(
         data={"I": data.data[target, 0].T[0], "Q": data.data[target, 0].T[1]},
         color="red",
         label="State 0",
     )
 
-    fig1 = plot(
+    fig1 = plot_distribution(
         data={"I": data.data[target, 1].T[0], "Q": data.data[target, 1].T[1]},
         color="blue",
         label="State 1",
     )
 
-    fig2 = plot(
+    fig2 = plot_distribution(
         data={"I": data.data[target, 2].T[0], "Q": data.data[target, 2].T[1]},
         color="green",
         label="State 2",
@@ -141,7 +157,15 @@ def _plot(
 
     fig0.add_traces(fig1.data)
     fig0.add_traces(fig2.data)
-    return [fig0], ""
+    figures.append(fig0)
+
+    if fit is not None:
+        figures.append(
+            plot_confusion_matrix(
+                confusion_matrix=fit.confusion_matrix[target], labels=["0", "1", "2"]
+            )
+        )
+    return figures, ""
 
 
 qutrit_classification = Routine(_acquisition, _fit, _plot)
