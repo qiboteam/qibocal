@@ -12,7 +12,6 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.utils import table_dict, table_html
-from qibocal.update import replace
 
 __all__ = ["resonator_amplitude"]
 
