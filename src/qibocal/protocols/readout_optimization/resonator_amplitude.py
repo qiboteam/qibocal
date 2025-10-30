@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -20,15 +21,16 @@ __all__ = ["resonator_amplitude"]
 class ResonatorAmplitudeParameters(Parameters):
     """ResonatorAmplitude runcard inputs."""
 
-    amplitude_step: float
-    """Amplituude step to be probed."""
+    amplitude_step: float = 0.1
+    """Amplitude step to be probed."""
     amplitude_start: float = 0.0
     """Amplitude start."""
     amplitude_stop: float = 1.0
     """Amplitude stop value"""
     error_threshold: float = 0.003
     """Probability error threshold to stop the best amplitude search"""
-
+    parameter: Literal["probability_error", "fidelity", "assignment_fidelity"] = "probability_error"
+    """Parameter to optimize. Can be 'probability_error', 'fidelity' or 'assignment_fidelity'."""
 
 ResonatorAmplitudeType = np.dtype(
     [
@@ -132,6 +134,7 @@ def _acquisition(
     )
     data = ResonatorAmplitudeData()
 
+    
     for q in targets:
         for k, amplitude in enumerate(amplitudes):
             result0 = results[0][ro_pulses[q].id][:, k]
@@ -140,9 +143,12 @@ def _acquisition(
             iq_values = np.concatenate((result0, result1))
             nshots = params.nshots
             states = [0] * nshots + [1] * nshots
-            model = QubitFit()
+            model:QubitFit = QubitFit()
             model.fit(iq_values, np.array(states))
-            error = model.probability_error
+            if params.parameter == "probability_error":
+                error = model.probability_error
+            else:
+                error = 1 - getattr(model, params.parameter)
             data.register_qubit(
                 ResonatorAmplitudeType,
                 (q),
