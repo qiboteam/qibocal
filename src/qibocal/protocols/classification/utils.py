@@ -2,12 +2,13 @@ import plotly.express as px
 
 
 def plot_distribution(data: dict, color: str, label: str):
-    fig = px.density_heatmap(
+    fig = px.scatter(
         data,
         x="I",
         y="Q",
         marginal_x="histogram",
         marginal_y="histogram",
+        color_discrete_sequence=[color],
     )
 
     for i in range(3):
