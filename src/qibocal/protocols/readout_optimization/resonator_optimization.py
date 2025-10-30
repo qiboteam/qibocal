@@ -11,6 +11,7 @@ from qibolab import (
     PulseSequence,
     Sweeper,
 )
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 from ... import update
 from ...auto.operation import Data, Parameters, QubitId, Results, Routine
@@ -20,7 +21,6 @@ from ...config import log
 # from ...fitting.classifier.qubit_fit import QubitFit
 from ..utils import (
     HZ_TO_GHZ,
-    classify,
     compute_assignment_fidelity,
     compute_qnd,
     readout_frequency,
@@ -213,55 +213,45 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
         grid_keys = ["fidelity", "angle", "threshold", "qnd", "qnd-pi"]
         grids = {key: np.zeros(shape) for key in grid_keys}
         for j, k in product(range(len(amp_vals)), range(len(freq_vals))):
-            iq_values = np.concatenate(
-                (
+            X = np.vstack(
+                [
                     data.data[qubit, 0, 0][:, j, k, :],
                     data.data[qubit, 1, 0][:, j, k, :],
-                )
+                ]
             )
-            nshots = iq_values.shape[0] // 2
-            print(nshots)
-            # states = [0] * nshots + [1] * nshots
+            nshots = X.shape[0] // 2
+            y = np.array([0] * nshots + [1] * nshots)
+            lda = LinearDiscriminantAnalysis()
+            lda.fit(X, y)
 
-            # model = QubitFit()
-            # model.fit(iq_values, np.array(states))
-            grids["angle"][j, k] = 0
-            grids["threshold"][j, k] = 0
+            w = lda.coef_[0]
+            b = lda.intercept_[0]
 
-            m1_state_0 = classify(
+            grids["angle"][j, k] = -np.arctan2(w[1], w[0])
+            grids["threshold"][j, k] = -b / np.linalg.norm(w)
+
+            m1_state_0 = lda.predict(
                 data.data[qubit, 0, 0][:, j, k, :],
-                0,
-                0,
             )
 
-            m1_state_1 = classify(
+            m1_state_1 = lda.predict(
                 data.data[qubit, 1, 0][:, j, k, :],
-                0,
-                0,
             )
 
-            m2_state_0 = classify(
+            m2_state_0 = lda.predict(
                 data.data[qubit, 0, 1][:, j, k, :],
-                0,
-                0,
             )
 
-            m2_state_1 = classify(
+            m2_state_1 = lda.predict(
                 data.data[qubit, 1, 1][:, j, k, :],
-                0,
-                0,
             )
 
-            m3_state_0 = classify(
+            m3_state_0 = lda.predict(
                 data.data[qubit, 0, 2][:, j, k, :],
-                0,
-                0,
             )
 
-            m3_state_1 = classify(
+            m3_state_1 = lda.predict(
                 data.data[qubit, 1, 2][:, j, k, :],
-                0,
-                0,
             )
 
             grids["fidelity"][j, k] = compute_assignment_fidelity(
@@ -289,6 +279,7 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
         averaged_qnd[grids["fidelity"] < 0.8] = np.nan
         # exclude values where QND is larger than 1
         averaged_qnd[averaged_qnd > 1] = np.nan
+
         try:
             i, j = np.unravel_index(np.nanargmax(averaged_qnd), averaged_qnd.shape)
             best_fidelity[qubit] = grids["fidelity"][i, j]
