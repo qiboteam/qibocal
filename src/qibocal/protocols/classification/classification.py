@@ -25,6 +25,8 @@ from qibocal.protocols.utils import (
     table_html,
 )
 
+from .utils import plot
+
 ROC_LENGHT = 800
 ROC_WIDTH = 800
 DEFAULT_CLASSIFIER = "qubit_fit"
@@ -217,37 +219,21 @@ def _plot(
     fit: SingleShotClassificationResults,
 ):
     fitting_report = ""
-    df0 = {"I": data.data[target, 0].T[0], "Q": data.data[target, 0].T[1]}
-    df1 = {"I": data.data[target, 1].T[0], "Q": data.data[target, 1].T[1]}
 
-    fig0 = px.scatter(
-        df0,
-        x="I",
-        y="Q",
-        marginal_x="histogram",
-        marginal_y="histogram",
-        color_discrete_sequence=["blue"],
+    fig0 = plot(
+        data={"I": data.data[target, 0].T[0], "Q": data.data[target, 0].T[1]},
+        color="red",
+        label="State 0",
     )
 
-    for i in range(3):
-        fig0.data[i].legendgroup = "State 0"
-        if i == 2:
-            fig0.data[i].name = "State 0"
-            fig0.data[i].showlegend = True
-    fig1 = px.scatter(
-        df1,
-        x="I",
-        y="Q",
-        marginal_x="histogram",
-        marginal_y="histogram",
-        color_discrete_sequence=["red"],
+    fig1 = plot(
+        data={"I": data.data[target, 1].T[0], "Q": data.data[target, 1].T[1]},
+        color="blue",
+        label="State 1",
     )
 
-    for i in range(3):
-        fig1.data[i].legendgroup = "State 1"
-        if i == 2:
-            fig1.data[i].name = "State 1"
-            fig1.data[i].showlegend = True
+    fig0.add_traces(fig1.data)
+
     if fit is not None:
         min_x = np.min(np.stack([data.data[target, 0].T[0], data.data[target, 1].T[0]]))
         max_x = np.max(np.stack([data.data[target, 0].T[0], data.data[target, 1].T[0]]))
@@ -258,7 +244,6 @@ def _plot(
             fit.angle[target]
         )
         indices = np.where(np.logical_and(y > min_y, y < max_y))
-        fig0.add_traces(fig1.data)
         fig0.add_trace(
             go.Scatter(
                 x=xrange[indices],

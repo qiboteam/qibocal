@@ -1,5 +1,4 @@
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 from qibolab import AcquisitionType, PulseSequence
 
@@ -12,12 +11,7 @@ from ..classification.classification import (
     SingleShotClassificationData,
     SingleShotClassificationParameters,
 )
-
-COLUMNWIDTH = 600
-LEGEND_FONT_SIZE = 20
-TITLE_SIZE = 25
-SPACING = 0.1
-DEFAULT_CLASSIFIER = "naive_bayes"
+from .utils import plot
 
 __all__ = ["qutrit_classification"]
 
@@ -29,10 +23,7 @@ class QutritClassificationParameters(SingleShotClassificationParameters):
 
 @dataclass
 class QutritClassificationData(SingleShotClassificationData):
-    classifiers_list: Optional[list[str]] = field(
-        default_factory=lambda: [DEFAULT_CLASSIFIER]
-    )
-    """List of models to classify the qubit states"""
+    """Qutrit classification results."""
 
 
 @dataclass
@@ -92,8 +83,6 @@ def _acquisition(
 
     data = QutritClassificationData(
         nshots=params.nshots,
-        classifiers_list=params.classifiers_list,
-        savedir=params.savedir,
     )
 
     options = dict(
@@ -105,7 +94,7 @@ def _acquisition(
         {
             platform.qubits[q].probe: {
                 "frequency": readout_frequency(q, platform, state=1)
-            }
+            },
         }
         for q in targets
     ]
@@ -132,10 +121,27 @@ def _plot(
     target: QubitId,
     fit: QutritClassificationResults,
 ):
-    # figures = plot_results(data, target, 3, None)
-    figures = []
-    fitting_report = ""
-    return figures, fitting_report
+    fig0 = plot(
+        data={"I": data.data[target, 0].T[0], "Q": data.data[target, 0].T[1]},
+        color="red",
+        label="State 0",
+    )
+
+    fig1 = plot(
+        data={"I": data.data[target, 1].T[0], "Q": data.data[target, 1].T[1]},
+        color="blue",
+        label="State 1",
+    )
+
+    fig2 = plot(
+        data={"I": data.data[target, 2].T[0], "Q": data.data[target, 2].T[1]},
+        color="green",
+        label="State 2",
+    )
+
+    fig0.add_traces(fig1.data)
+    fig0.add_traces(fig2.data)
+    return [fig0], ""
 
 
 qutrit_classification = Routine(_acquisition, _fit, _plot)
