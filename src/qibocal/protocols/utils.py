@@ -216,6 +216,14 @@ def compute_assignment_fidelity(
     return fidelity
 
 
+def classify(arr: np.ndarray, angle: float, threshold: float) -> np.ndarray:
+    """Mapping IQ array in 0s and 1s given angle and threshold."""
+    c, s = np.cos(angle), np.sin(angle)
+    rot = np.array([[c, -s], [s, c]])
+    rotated = arr @ rot.T
+    return (rotated[:, 0] > threshold).astype(int)
+
+
 def norm(x_mags):
     return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
 

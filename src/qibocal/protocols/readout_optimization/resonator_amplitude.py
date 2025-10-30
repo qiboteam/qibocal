@@ -9,7 +9,8 @@ from qibolab import AcquisitionType, Delay, PulseSequence
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
-from qibocal.fitting.classifier.qubit_fit import QubitFit
+
+# from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.utils import table_dict, table_html
 from qibocal.update import replace
 
@@ -118,21 +119,22 @@ def _acquisition(
             result0 = state0_results[new_ro.id]
             result1 = state1_results[new_ro.id]
 
+            print(result0, result1)
             # TODO: move QubitFit() and analysis in _fit()
-            iq_values = np.concatenate((result0, result1))
+            # iq_values = np.concatenate((result0, result1))
             nshots = params.nshots
             states = [0] * nshots + [1] * nshots
-            model = QubitFit()
-            model.fit(iq_values, np.array(states))
-            error = model.probability_error
+            # model = QubitFit()
+            # model.fit(iq_values, np.array(states))
+            error = states
             data.register_qubit(
                 ResonatorAmplitudeType,
                 (qubit),
                 dict(
                     amp=np.array([new_amp]),
                     error=np.array([error]),
-                    angle=np.array([model.angle]),
-                    threshold=np.array([model.threshold]),
+                    angle=np.array([0]),
+                    threshold=np.array([1]),
                 ),
             )
             new_amp += params.amplitude_step
