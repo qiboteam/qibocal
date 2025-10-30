@@ -1,5 +1,4 @@
 import numpy as np
-
 from qibocal.fitting.classifier import run
 
 MODEL_FILE = "model.skops"
