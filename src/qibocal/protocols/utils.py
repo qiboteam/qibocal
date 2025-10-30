@@ -1,11 +1,10 @@
 from colorsys import hls_to_rgb
 from enum import Enum
-from typing import Literal, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
-from qibolab._core.components import Config
 from scipy import constants, sparse
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
@@ -140,18 +139,6 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         log.warning(f"Lorentzian fit not successful due to {e}")
 
 
-class DcFilteredConfig(Config):
-    """Dummy config for dc with filters.
-
-    Required by cryoscope protocol.
-
-    """
-
-    kind: Literal["dc-filter"] = "dc-filter"
-    offset: float
-    filter: list
-
-
 def effective_qubit_temperature(predictions, qubit_frequency: float, nshots: int):
     """Calculates the qubit effective temperature.
 
@@ -229,23 +216,8 @@ def compute_assignment_fidelity(
     return fidelity
 
 
-def classify(arr: np.ndarray, angle: float, threshold: float) -> np.ndarray:
-    """Mapping IQ array in 0s and 1s given angle and threshold."""
-    c, s = np.cos(angle), np.sin(angle)
-    rot = np.array([[c, -s], [s, c]])
-    rotated = arr @ rot.T
-    return (rotated[:, 0] > threshold).astype(int)
-
-
 def norm(x_mags):
     return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
-
-
-def cumulative(input_data, points):
-    r"""Evaluates in data the cumulative distribution
-    function of `points`.
-    """
-    return np.searchsorted(np.sort(points), np.sort(input_data))
 
 
 def fit_punchout(data: Data, fit_type: str):
@@ -430,48 +402,6 @@ def significant_digit(number: float):
         position = max(position, np.ceil(-np.log10(abs(np.imag(number)))))
 
     return int(position)
-
-
-def evaluate_grid(
-    data: NDArray,
-):
-    """
-    This function returns a matrix grid evaluated from
-    the datapoints `data`.
-    """
-    max_x = (
-        max(
-            0,
-            data["i"].max(),
-        )
-        + MARGIN
-    )
-    max_y = (
-        max(
-            0,
-            data["q"].max(),
-        )
-        + MARGIN
-    )
-    min_x = (
-        min(
-            0,
-            data["i"].min(),
-        )
-        - MARGIN
-    )
-    min_y = (
-        min(
-            0,
-            data["q"].min(),
-        )
-        - MARGIN
-    )
-    i_values, q_values = np.meshgrid(
-        np.linspace(min_x, max_x, num=MESH_SIZE),
-        np.linspace(min_y, max_y, num=MESH_SIZE),
-    )
-    return np.vstack([i_values.ravel(), q_values.ravel()]).T
 
 
 def table_dict(
