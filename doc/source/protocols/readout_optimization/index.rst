@@ -76,7 +76,7 @@ Readout parameters are then updated based on the configuration that yields the h
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.readout_optimization.resonator_optimization.ResonatorOptimizationParameters
+.. autoclass:: qibocal.protocols.readout_optimization.optimization.ReadoutOptimizationParameters
 	:noindex:
 
 
@@ -87,8 +87,8 @@ A possible runcard for the resonator optimization protocol could be:
 
 .. code-block:: yaml
 
-    - id: resonator optimization
-      operation: resonator_optimization
+    - id: readout_optimization
+      operation: readout_optimization
       parameters:
         freq_width: 3_000_000
         freq_step: 125_000

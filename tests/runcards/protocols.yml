@@ -40,7 +40,7 @@ actions:
       nshots: 10
 
   - id: resonator optimization
-    operation: resonator_optimization
+    operation: readout_optimization
     parameters:
       freq_width: 200.e+6
       freq_step: 25.e+6
