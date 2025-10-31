@@ -11,15 +11,16 @@ from qibolab import (
     PulseSequence,
     Sweeper,
 )
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 from ... import update
 from ...auto.operation import Data, Parameters, QubitId, Results, Routine
 from ...calibration import CalibrationPlatform
 from ...config import log
-from ...fitting.classifier.qubit_fit import QubitFit
+
+# from ...fitting.classifier.qubit_fit import QubitFit
 from ..utils import (
     HZ_TO_GHZ,
-    classify,
     compute_assignment_fidelity,
     compute_qnd,
     readout_frequency,
@@ -27,12 +28,12 @@ from ..utils import (
     table_html,
 )
 
-__all__ = ["resonator_optimization"]
+__all__ = ["readout_optimization"]
 
 
 @dataclass
-class ResonatorOptimizationParameters(Parameters):
-    """Resonator optimization runcard inputs"""
+class ReadoutOptimizationParameters(Parameters):
+    """Readout optimization runcard inputs"""
 
     freq_width: int
     """Width for frequency sweep relative  to the readout frequency [Hz]."""
@@ -53,8 +54,8 @@ class ResonatorOptimizationParameters(Parameters):
 
 
 @dataclass
-class ResonatorOptimizationResults(Results):
-    """Resonator optimization outputs"""
+class ReadoutOptimizationResults(Results):
+    """Readout optimization outputs"""
 
     data: dict[tuple[QubitId, str], np.ndarray]
     """Dict storing fidelity, qnd and qnd-pi."""
@@ -85,7 +86,7 @@ class ResonatorOptimizationResults(Results):
 
 
 @dataclass
-class ResonatorOptimizationData(Data):
+class ReadoutOptimizationData(Data):
     """Data class for resonator optimization protocol."""
 
     frequencies_swept: dict[QubitId, list[float]] = field(default_factory=dict)
@@ -101,10 +102,10 @@ class ResonatorOptimizationData(Data):
 
 
 def _acquisition(
-    params: ResonatorOptimizationParameters,
+    params: ReadoutOptimizationParameters,
     platform: CalibrationPlatform,
     targets: list[QubitId],
-) -> ResonatorOptimizationData:
+) -> ReadoutOptimizationData:
     """Protocol to optimize readout frequency and readout amplitude.
 
     After preparing either state 0 or state 1 we perform two consecutive measurements to evaluate QND.
@@ -116,7 +117,7 @@ def _acquisition(
     ro_pulses_m2 = {}
     ro_pulses_m3 = {}
 
-    data = ResonatorOptimizationData()
+    data = ReadoutOptimizationData()
 
     for state in [0, 1]:
         sequence = PulseSequence()
@@ -194,7 +195,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
+def _fit(data: ReadoutOptimizationData) -> ReadoutOptimizationResults:
     qubits = data.qubits
     arr = {}
     frequency = {}
@@ -212,54 +213,45 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
         grid_keys = ["fidelity", "angle", "threshold", "qnd", "qnd-pi"]
         grids = {key: np.zeros(shape) for key in grid_keys}
         for j, k in product(range(len(amp_vals)), range(len(freq_vals))):
-            iq_values = np.concatenate(
-                (
+            X = np.vstack(
+                [
                     data.data[qubit, 0, 0][:, j, k, :],
                     data.data[qubit, 1, 0][:, j, k, :],
-                )
+                ]
             )
-            nshots = iq_values.shape[0] // 2
-            states = [0] * nshots + [1] * nshots
+            nshots = X.shape[0] // 2
+            y = np.array([0] * nshots + [1] * nshots)
+            lda = LinearDiscriminantAnalysis()
+            lda.fit(X, y)
 
-            model = QubitFit()
-            model.fit(iq_values, np.array(states))
-            grids["angle"][j, k] = model.angle
-            grids["threshold"][j, k] = model.threshold
+            w = lda.coef_[0]
+            b = lda.intercept_[0]
 
-            m1_state_0 = classify(
+            grids["angle"][j, k] = -np.arctan2(w[1], w[0])
+            grids["threshold"][j, k] = -b / np.linalg.norm(w)
+
+            m1_state_0 = lda.predict(
                 data.data[qubit, 0, 0][:, j, k, :],
-                model.angle,
-                model.threshold,
             )
 
-            m1_state_1 = classify(
+            m1_state_1 = lda.predict(
                 data.data[qubit, 1, 0][:, j, k, :],
-                model.angle,
-                model.threshold,
             )
 
-            m2_state_0 = classify(
+            m2_state_0 = lda.predict(
                 data.data[qubit, 0, 1][:, j, k, :],
-                model.angle,
-                model.threshold,
             )
 
-            m2_state_1 = classify(
+            m2_state_1 = lda.predict(
                 data.data[qubit, 1, 1][:, j, k, :],
-                model.angle,
-                model.threshold,
             )
 
-            m3_state_0 = classify(
+            m3_state_0 = lda.predict(
                 data.data[qubit, 0, 2][:, j, k, :],
-                model.angle,
-                model.threshold,
             )
 
-            m3_state_1 = classify(
+            m3_state_1 = lda.predict(
                 data.data[qubit, 1, 2][:, j, k, :],
-                model.angle,
-                model.threshold,
             )
 
             grids["fidelity"][j, k] = compute_assignment_fidelity(
@@ -275,8 +267,8 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
             grids["qnd-pi"][j, k], _, _ = compute_qnd(
                 m2_state_1, m2_state_0, m3_state_0, m3_state_1, pi=True
             )
-            grids["angle"][j, k] = model.angle
-            grids["threshold"][j, k] = model.threshold
+            grids["angle"][j, k] = 0
+            grids["threshold"][j, k] = 0
         arr[qubit, "fidelity"] = grids["fidelity"]
         arr[qubit, "qnd"] = grids["qnd"]
         arr[qubit, "qnd-pi"] = grids["qnd-pi"]
@@ -287,6 +279,7 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
         averaged_qnd[grids["fidelity"] < 0.8] = np.nan
         # exclude values where QND is larger than 1
         averaged_qnd[averaged_qnd > 1] = np.nan
+
         try:
             i, j = np.unravel_index(np.nanargmax(averaged_qnd), averaged_qnd.shape)
             best_fidelity[qubit] = grids["fidelity"][i, j]
@@ -299,7 +292,7 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
         except ValueError:
             log.warning("Fitting error.")
 
-    return ResonatorOptimizationResults(
+    return ReadoutOptimizationResults(
         data=arr,
         fidelity=best_fidelity,
         qnd=best_qnd,
@@ -312,7 +305,7 @@ def _fit(data: ResonatorOptimizationData) -> ResonatorOptimizationResults:
 
 
 def _plot(
-    data: ResonatorOptimizationData, fit: ResonatorOptimizationResults, target: QubitId
+    data: ReadoutOptimizationData, fit: ReadoutOptimizationResults, target: QubitId
 ):
     """Plotting function for resonator optimization"""
     figures = []
@@ -406,7 +399,7 @@ def _plot(
 
 
 def _update(
-    results: ResonatorOptimizationResults,
+    results: ReadoutOptimizationResults,
     platform: CalibrationPlatform,
     target: QubitId,
 ):
@@ -416,10 +409,10 @@ def _update(
     update.threshold(results.threshold[target], platform, target)
 
 
-resonator_optimization = Routine(
+readout_optimization = Routine(
     _acquisition,
     _fit,
     _plot,
     _update,
 )
-"""Resonator optimization Routine object"""
+"""Readout optimization Routine object"""
