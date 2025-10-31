@@ -1,10 +1,11 @@
 from colorsys import hls_to_rgb
 from enum import Enum
-from typing import Optional, Union
+from typing import Literal, Optional, Union
 
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
+from qibolab import Config
 from scipy import constants, sparse
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
@@ -36,6 +37,18 @@ CONFIDENCE_INTERVAL_SECOND_MASK = 70
 DELAY_FIT_PERCENTAGE = 10
 """Percentage of the first and last points used to fit the cable delay."""
 STRING_TYPE = "<U100"
+
+
+class DcFilteredConfig(Config):
+    """Dummy config for dc with filters.
+
+    Required by cryoscope protocol.
+
+    """
+
+    kind: Literal["dc-filter"] = "dc-filter"
+    offset: float
+    filter: list
 
 
 class PowerLevel(str, Enum):

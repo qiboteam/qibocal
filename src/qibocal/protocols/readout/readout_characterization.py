@@ -150,10 +150,8 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
 
         fidelity[qubit] = 2 * assignment_fidelity[qubit] - 1
 
-        prob_1 = np.mean(m1_state_0)
         effective_temperature[qubit] = effective_qubit_temperature(
-            prob_1=prob_1,
-            prob_0=1 - prob_1,
+            m1_state_0,
             qubit_frequency=data.qubit_frequencies[qubit],
             nshots=len(m1_state_0),
         )
