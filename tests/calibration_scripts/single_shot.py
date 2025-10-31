@@ -31,6 +31,6 @@ with Executor.open(
     force=True,
 ) as e:
     ssc = e.single_shot_classification(nshots=1000)
-    print("\nfidelities:\n", ssc.results.fidelity, "\n")
+    print("\nfidelities:\n", ssc.results.readout_fidelity, "\n")
 
 report(path)
