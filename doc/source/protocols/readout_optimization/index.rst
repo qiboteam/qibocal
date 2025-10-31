@@ -11,7 +11,7 @@ The resonator amplitude protocol improves the readout amplitude by optimizing th
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.readout_optimization.resonator_amplitude.ResonatorAmplitudeParameters
+.. autoclass:: qibocal.protocols.readout_optimization.amplitude.ReadoutAmplitudeParameters
 	:noindex:
 
 
@@ -23,12 +23,12 @@ generated in the report.
 
 .. code-block:: yaml
 
-    - id: resonator_amplitude
-      operation: resonator_amplitude
+    - id: readout_amplitude_optimization
+      operation: readout_amplitude_optimization
       parameters:
-          amplitude_step: 0.0005
-          amplitude_start: 0.001
-          amplitude_stop: 0.005
+          amplitude_step: 0.001
+          amplitude_min: 0.001
+          amplitude_max: 0.1
 
 As shown in the picture below, the protocol sweeps the readout amplitude and evaluates the errors probability.
 
@@ -44,7 +44,7 @@ The resonator frequency protocol performs a sweep of the readout frequency to ma
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.readout_optimization.resonator_frequency.ResonatorFrequencyParameters
+.. autoclass:: qibocal.protocols.readout_optimization.frequency.ReadoutFrequencyParameters
 	:noindex:
 
 
@@ -55,11 +55,11 @@ In the following we show a possible runcard for the optimization of the resonato
 
 .. code-block:: yaml
 
-    - id: resonator_frequency
-      operation: resonator_frequency
+    - id: readout_frequency_optimization
+      operation: readout_frequency_optimization
       parameters:
-        freq_width: 1_000_000
-        freq_step: 100_000
+        freq_width: 3_000_000
+        freq_step: 200_000
 
 .. image:: frequency_optimization.png
 
