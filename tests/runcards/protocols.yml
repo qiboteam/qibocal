@@ -852,8 +852,8 @@ actions:
     parameters:
       nshots: 10
 
-  - id : resonator_frequency
-    operation: resonator_frequency
+  - id : readout_frequency_optimization
+    operation: readout_frequency_optimization
     parameters:
       freq_width: 200.e+6
       freq_step: 25.e+6
@@ -874,12 +874,12 @@ actions:
       ntheta: 20
       native: False
 
-  - id: resonator_amplitude
-    operation: resonator_amplitude
+  - id: readout_amplitude_optimization
+    operation: readout_amplitude_optimization
     parameters:
-      amplitude_start: 0.1
+      amplitude_min: 0.1
       amplitude_step: 0.1
-      amplitude_stop: 0.5
+      amplitude_max: 0.5
 
   - id: qutrit
     operation: qutrit_classification
