@@ -1,12 +1,13 @@
 from dataclasses import dataclass, field
 
 import numpy as np
-import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, Delay, PulseSequence, Readout
 
 from ... import update
 from ...auto.operation import Data, Parameters, QubitId, Results, Routine
 from ...calibration import CalibrationPlatform
+from ..classification.utils import colors, plot_distribution
 from ..utils import (
     classify,
     compute_assignment_fidelity,
@@ -180,32 +181,34 @@ def _plot(
 
     figures = []
     fitting_report = ""
-    fig = go.Figure()
+    fig = make_subplots(
+        rows=2,
+        cols=2,
+        column_widths=[0.8, 0.2],
+        row_heights=[0.2, 0.8],
+        specs=[[{"type": "xy"}, {"type": "xy"}], [{"type": "xy"}, {"type": "xy"}]],
+        shared_xaxes=True,
+        shared_yaxes=True,
+        horizontal_spacing=0.02,
+        vertical_spacing=0.02,
+    )
+    colors_ = colors()
     for state in range(2):
         for measure in range(3):
             shots = data.data[target, state, measure]
 
-            fig.add_trace(
-                go.Scatter(
-                    x=shots[:, 0],
-                    y=shots[:, 1],
-                    name=f"Prepared state {state} measurement {measure}",
-                    mode="markers",
-                    showlegend=True,
-                    opacity=0.7,
-                    marker=dict(size=3),
-                )
+            plot_distribution(
+                fig=fig,
+                data={"I": shots[:, 0], "Q": shots[:, 1]},
+                color=next(colors_),
+                label=f"Prepared state {state} measurement {measure}",
             )
+
     fig.update_layout(
-        title={
-            "text": "IQ Plane",
-            "y": 0.9,
-            "x": 0.5,
-            "xanchor": "center",
-            "yanchor": "top",
-        },
-        xaxis_title="I",
-        yaxis_title="Q",
+        xaxis3_title="I",
+        yaxis3_title="Q",
+        hovermode="closest",
+        barmode="overlay",
     )
 
     figures.append(fig)
