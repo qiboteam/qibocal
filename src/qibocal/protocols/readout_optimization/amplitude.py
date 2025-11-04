@@ -2,15 +2,22 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, Delay, Parameter, PulseSequence, Sweeper
+from qibolab import AcquisitionType, Parameter, PulseSequence, Readout, Sweeper
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.readout.readout_characterization import readout_sequence
 
 # from qibocal.fitting.classifier.qubit_fit import QubitFit
-from qibocal.protocols.utils import table_dict, table_html
+from qibocal.protocols.utils import (
+    classify,
+    compute_assignment_fidelity,
+    compute_qnd,
+    table_dict,
+    table_html,
+)
 
 __all__ = ["readout_amplitude_optimization"]
 
@@ -25,6 +32,8 @@ class ReadoutAmplitudeParameters(Parameters):
     """Amplitude start."""
     amplitude_max: float = 1.0
     """Amplitude stop value"""
+    delay: float = 1000
+    """Delay between readouts, could account for resonator depletion or not [ns]."""
 
     @property
     def amplitude_range(self) -> list[float]:
@@ -39,7 +48,7 @@ class ReadoutAmplitudeData(Data):
 
     nshots: int
     amplitude: list[float]
-    data: dict[tuple[QubitId, int], np.ndarray] = field(default_factory=dict)
+    data: dict[tuple[QubitId, int, int], np.ndarray] = field(default_factory=dict)
 
 
 @dataclass
@@ -48,6 +57,10 @@ class ReadoutAmplitudeResults(Results):
 
     assignment_fidelity: dict[QubitId, list]
     """Assignment fidelities."""
+    qnd: dict[QubitId, list]
+    """QND."""
+    qnd_pi: dict[QubitId, list]
+    """QND-Pi."""
     angle: dict[QubitId, float]
     """IQ angle that maximes assignment fidelity."""
     threshold: dict[QubitId, float]
@@ -77,69 +90,47 @@ def _acquisition(
     Returns:
         data (:class:`ReadoutAmplitudeData`)
     """
-
-    sequence_0 = PulseSequence()
-    sequence_1 = PulseSequence()
-
-    for qubit in targets:
-        natives = platform.natives.single_qubit[qubit]
-        qd_channel, qd_pulse = natives.RX()[0]
-        ro_channel, ro_pulse_0 = natives.MZ()[0]
-        _, ro_pulse_1 = natives.MZ()[0]
-        sequence_0.append((ro_channel, ro_pulse_0))
-
-        sequence_1.append((qd_channel, qd_pulse))
-        sequence_1.append((ro_channel, Delay(duration=qd_pulse.duration)))
-        sequence_1.append((ro_channel, ro_pulse_1))
-
     data = ReadoutAmplitudeData(
         nshots=params.nshots,
         amplitude=params.amplitude_range,
     )
 
-    sweeper_0 = Sweeper(
-        parameter=Parameter.amplitude,
-        range=(
-            params.amplitude_min,
-            params.amplitude_max,
-            params.amplitude_step,
-        ),
-        pulses=[ro[1] for ro in sequence_0.acquisitions],
-    )
+    for state in [0, 1]:
+        sequence = PulseSequence()
+        for qubit in targets:
+            sequence += readout_sequence(
+                platform=platform,
+                delay=params.delay,
+                qubit=qubit,
+                state=state,
+            )
 
-    sweeper_1 = Sweeper(
-        parameter=Parameter.amplitude,
-        range=(
-            params.amplitude_min,
-            params.amplitude_max,
-            params.amplitude_step,
-        ),
-        pulses=[ro[1] for ro in sequence_1.acquisitions],
-    )
+        sweeper = Sweeper(
+            parameter=Parameter.amplitude,
+            range=(
+                params.amplitude_min,
+                params.amplitude_max,
+                params.amplitude_step,
+            ),
+            pulses=[readout[1] for readout in sequence.acquisitions],
+        )
 
-    state0_results = platform.execute(
-        [sequence_0],
-        [[sweeper_0]],
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
-    )
+        results = platform.execute(
+            [sequence],
+            [[sweeper]],
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        )
 
-    state1_results = platform.execute(
-        [sequence_1],
-        [[sweeper_1]],
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
-    )
-
-    for state, sequence, results in zip(
-        [0, 1], [sequence_0, sequence_1], [state0_results, state1_results]
-    ):
-        for q in targets:
-            data.data[q, state] = results[
-                list(sequence.channel(platform.qubits[q].acquisition))[-1].id
+        for target in targets:
+            readouts = [
+                pulse
+                for pulse in sequence.channel(platform.qubits[target].acquisition)
+                if isinstance(pulse, Readout)
             ]
+            for j, ro_pulse in enumerate(readouts):
+                data.data[target, state, j] = results[ro_pulse.id]
 
     return data
 
@@ -148,13 +139,17 @@ def _fit(data: ReadoutAmplitudeData) -> ReadoutAmplitudeResults:
     angle = {qubit: [] for qubit in data.qubits}
     threshold = {qubit: [] for qubit in data.qubits}
     assignment_fidelity = {qubit: [] for qubit in data.qubits}
+    qnd = {qubit: [] for qubit in data.qubits}
+    qnd_pi = {qubit: [] for qubit in data.qubits}
     amplitude = {}
     nshots = data.nshots
     y = np.array([0] * nshots + [1] * nshots)
     index = {}
     for qubit in data.qubits:
         for i in range(len(data.amplitude)):
-            X = np.vstack([data.data[qubit, 0][:, i, :], data.data[qubit, 1][:, i, :]])
+            X = np.vstack(
+                [data.data[qubit, 0, 0][:, i, :], data.data[qubit, 1, 0][:, i, :]]
+            )
             lda = LinearDiscriminantAnalysis().fit(X, y)
             w = lda.coef_[0]
             b = lda.intercept_[0]
@@ -162,15 +157,38 @@ def _fit(data: ReadoutAmplitudeData) -> ReadoutAmplitudeResults:
             angle[qubit].append(-np.arctan2(w[1], w[0]))
             threshold[qubit].append(-b / np.linalg.norm(w))
 
-            assignment_fidelity[qubit].append(
-                np.array(y == lda.predict(X)).sum() / 2 / nshots
-            )
+            shots = {0: [], 1: []}
+            for state in range(2):
+                for m in range(3):
+                    shots[state].append(
+                        classify(
+                            data.data[qubit, state, m][:, i, :],
+                            angle[qubit][i],
+                            threshold[qubit][i],
+                        )
+                    )
 
-        index[qubit] = int(np.argmax(assignment_fidelity[qubit]))
+            assignment_fidelity[qubit].append(
+                compute_assignment_fidelity(shots[1][0], shots[0][0])
+            )
+            qnd_, qnd_pi_ = compute_qnd(shots[0], shots[1])
+            qnd[qubit].append(qnd_)
+            qnd_pi[qubit].append(qnd_pi_)
+
+        index[qubit] = int(
+            np.argmax(
+                [
+                    (qnd[qubit][i] + qnd_pi[qubit][i]) / 2
+                    for i in range(len(data.amplitude))
+                ]
+            )
+        )
         amplitude[qubit] = data.amplitude[index[qubit]]
 
     return ReadoutAmplitudeResults(
         assignment_fidelity=assignment_fidelity,
+        qnd=qnd,
+        qnd_pi=qnd_pi,
         amplitude=amplitude,
         angle=angle,
         threshold=threshold,
@@ -189,10 +207,25 @@ def _plot(data: ReadoutAmplitudeData, fit: ReadoutAmplitudeResults, target: Qubi
             go.Scatter(
                 x=np.array(data.amplitude),
                 y=fit.assignment_fidelity[target],
-                mode="markers",
                 showlegend=True,
                 name="Assignment fidelity",
-            )
+            ),
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=np.array(data.amplitude),
+                y=fit.qnd[target],
+                showlegend=True,
+                name="QND",
+            ),
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=np.array(data.amplitude),
+                y=fit.qnd_pi[target],
+                showlegend=True,
+                name="QND-Pi",
+            ),
         )
 
         fig.add_vline(
@@ -208,10 +241,14 @@ def _plot(data: ReadoutAmplitudeData, fit: ReadoutAmplitudeResults, target: Qubi
                 [
                     "Best Readout Amplitude",
                     "Best Assignment Fidelity",
+                    "Best QND",
+                    "Best QND Pi",
                 ],
                 [
                     np.round(fit.amplitude[target], 5),
                     np.round(fit.assignment_fidelity[target][fit.index[target]], 3),
+                    np.round(fit.qnd[target][fit.index[target]], 3),
+                    np.round(fit.qnd_pi[target][fit.index[target]], 3),
                 ],
             )
         )
@@ -219,7 +256,6 @@ def _plot(data: ReadoutAmplitudeData, fit: ReadoutAmplitudeResults, target: Qubi
     fig.update_layout(
         showlegend=True,
         xaxis_title="Readout Amplitude",
-        yaxis_title="Assignment Fidelity",
     )
 
     figures.append(fig)

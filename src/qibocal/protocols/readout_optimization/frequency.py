@@ -4,9 +4,9 @@ import numpy as np
 import plotly.graph_objects as go
 from qibolab import (
     AcquisitionType,
-    Delay,
     Parameter,
     PulseSequence,
+    Readout,
     Sweeper,
 )
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
@@ -14,7 +14,17 @@ from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
-from qibocal.protocols.utils import HZ_TO_GHZ, readout_frequency, table_dict, table_html
+from qibocal.protocols.utils import (
+    HZ_TO_GHZ,
+    classify,
+    compute_assignment_fidelity,
+    compute_qnd,
+    readout_frequency,
+    table_dict,
+    table_html,
+)
+
+from ..readout.readout_characterization import readout_sequence
 
 __all__ = ["readout_frequency_optimization"]
 
@@ -27,6 +37,12 @@ class ReadoutFrequencyParameters(Parameters):
     """Width [Hz] for frequency sweep relative to the readout frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
+    delay: int = 1000
+    """Delay after measurement [ns]."""
+
+    @property
+    def frequency_range(self) -> np.ndarray:
+        return np.arange(-self.freq_width / 2, self.freq_width / 2, self.freq_step)
 
 
 @dataclass
@@ -35,6 +51,10 @@ class ReadoutFrequencyResults(Results):
 
     assignment_fidelity: dict[QubitId, list]
     """Assignment fidelities."""
+    qnd: dict[QubitId, list]
+    """QND."""
+    qnd_pi: dict[QubitId, list]
+    """QND-Pi."""
     angle: dict[QubitId, float]
     """IQ angle that maximes assignment fidelity."""
     threshold: dict[QubitId, float]
@@ -51,7 +71,7 @@ class ReadoutFrequencyData(Data):
 
     nshots: int
     frequencies: dict[QubitId, list[float]] = field(default_factory=dict)
-    data: dict[tuple[QubitId, int], np.ndarray] = field(default_factory=dict)
+    data: dict[tuple[QubitId, int, int], np.ndarray] = field(default_factory=dict)
 
 
 def _acquisition(
@@ -72,65 +92,48 @@ def _acquisition(
         qubits (list): list of target qubits to perform the action
 
     """
-
-    sequence_0 = PulseSequence()
-    sequence_1 = PulseSequence()
-
-    for qubit in targets:
-        natives = platform.natives.single_qubit[qubit]
-        qd_channel, qd_pulse = natives.RX()[0]
-        ro_channel, ro_pulse_0 = natives.MZ()[0]
-        _, ro_pulse_1 = natives.MZ()[0]
-
-        sequence_0.append((ro_channel, ro_pulse_0))
-
-        sequence_1.append((qd_channel, qd_pulse))
-        sequence_1.append((ro_channel, Delay(duration=qd_pulse.duration)))
-        sequence_1.append((ro_channel, ro_pulse_1))
-
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
+    data = ReadoutFrequencyData(
+        nshots=params.nshots,
+        frequencies={
+            q: (readout_frequency(q, platform) + params.frequency_range).tolist()
+            for q in targets
+        },
     )
 
     sweepers = [
         Sweeper(
             parameter=Parameter.frequency,
-            values=readout_frequency(q, platform) + delta_frequency_range,
+            values=readout_frequency(q, platform) + params.frequency_range,
             channels=[platform.qubits[q].probe],
         )
         for q in targets
     ]
 
-    data = ReadoutFrequencyData(
-        nshots=params.nshots,
-        frequencies={
-            qubit: sweeper.values.tolist() for qubit, sweeper in zip(targets, sweepers)
-        },
-    )
+    for state in range(2):
+        sequence = PulseSequence()
+        for qubit in targets:
+            sequence += readout_sequence(
+                platform=platform,
+                delay=params.delay,
+                qubit=qubit,
+                state=state,
+            )
 
-    state0_results = platform.execute(
-        [sequence_0],
-        [sweepers],
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
-    )
-
-    state1_results = platform.execute(
-        [sequence_1],
-        [sweepers],
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
-    )
-
-    for state, sequence, results in zip(
-        [0, 1], [sequence_0, sequence_1], [state0_results, state1_results]
-    ):
-        for q in targets:
-            data.data[q, state] = results[
-                list(sequence.channel(platform.qubits[q].acquisition))[-1].id
+        results = platform.execute(
+            [sequence],
+            [sweepers],
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        )
+        for target in targets:
+            readouts = [
+                pulse
+                for pulse in sequence.channel(platform.qubits[target].acquisition)
+                if isinstance(pulse, Readout)
             ]
+            for j, ro_pulse in enumerate(readouts):
+                data.data[target, state, j] = results[ro_pulse.id]
 
     return data
 
@@ -141,13 +144,17 @@ def _fit(data: ReadoutFrequencyData) -> ReadoutFrequencyResults:
     angle = {qubit: [] for qubit in data.qubits}
     threshold = {qubit: [] for qubit in data.qubits}
     assignment_fidelity = {qubit: [] for qubit in data.qubits}
+    qnd = {qubit: [] for qubit in data.qubits}
+    qnd_pi = {qubit: [] for qubit in data.qubits}
     frequency = {}
     nshots = data.nshots
     y = np.array([0] * nshots + [1] * nshots)
     index = {}
     for qubit in data.qubits:
         for i in range(len(data.frequencies[qubit])):
-            X = np.vstack([data.data[qubit, 0][:, i, :], data.data[qubit, 1][:, i, :]])
+            X = np.vstack(
+                [data.data[qubit, 0, 0][:, i, :], data.data[qubit, 1, 0][:, i, :]]
+            )
             lda = LinearDiscriminantAnalysis().fit(X, y)
             w = lda.coef_[0]
             b = lda.intercept_[0]
@@ -155,15 +162,38 @@ def _fit(data: ReadoutFrequencyData) -> ReadoutFrequencyResults:
             angle[qubit].append(-np.arctan2(w[1], w[0]))
             threshold[qubit].append(-b / np.linalg.norm(w))
 
-            assignment_fidelity[qubit].append(
-                np.array(y == lda.predict(X)).sum() / 2 / nshots
-            )
+            shots = {0: [], 1: []}
+            for state in range(2):
+                for m in range(3):
+                    shots[state].append(
+                        classify(
+                            data.data[qubit, state, m][:, i, :],
+                            angle[qubit][i],
+                            threshold[qubit][i],
+                        )
+                    )
 
-        index[qubit] = int(np.argmax(assignment_fidelity[qubit]))
+            assignment_fidelity[qubit].append(
+                compute_assignment_fidelity(shots[1][0], shots[0][0])
+            )
+            qnd_, qnd_pi_ = compute_qnd(shots[0], shots[1])
+            qnd[qubit].append(qnd_)
+            qnd_pi[qubit].append(qnd_pi_)
+
+        index[qubit] = int(
+            np.argmax(
+                [
+                    (qnd[qubit][i] + qnd_pi[qubit][i]) / 2
+                    for i in range(len(data.frequencies[qubit]))
+                ]
+            )
+        )
         frequency[qubit] = data.frequencies[qubit][index[qubit]]
 
     return ReadoutFrequencyResults(
         assignment_fidelity=assignment_fidelity,
+        qnd=qnd,
+        qnd_pi=qnd_pi,
         frequency=frequency,
         angle=angle,
         threshold=threshold,
@@ -183,16 +213,31 @@ def _plot(data: ReadoutFrequencyData, fit: ReadoutFrequencyResults, target: Qubi
             go.Scatter(
                 x=np.array(data.frequencies[target]) * HZ_TO_GHZ,
                 y=fit.assignment_fidelity[target],
-                mode="markers",
                 showlegend=True,
                 name="Assignment fidelity",
-            )
+            ),
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=np.array(data.frequencies[target]) * HZ_TO_GHZ,
+                y=fit.qnd[target],
+                showlegend=True,
+                name="QND",
+            ),
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=np.array(data.frequencies[target]) * HZ_TO_GHZ,
+                y=fit.qnd_pi[target],
+                showlegend=True,
+                name="QND-Pi",
+            ),
         )
 
         fig.add_vline(
             x=data.frequencies[target][fit.index[target]] * HZ_TO_GHZ,
             line_dash="dash",
-            name="Best Frequency",
+            name="Best Readout Frequency",
             showlegend=True,
         )
 
@@ -202,10 +247,14 @@ def _plot(data: ReadoutFrequencyData, fit: ReadoutFrequencyResults, target: Qubi
                 [
                     "Best Readout Frequency [GHz]",
                     "Best Assignment Fidelity",
+                    "Best QND",
+                    "Best QND Pi",
                 ],
                 [
                     np.round(fit.frequency[target] * HZ_TO_GHZ, 5),
                     np.round(fit.assignment_fidelity[target][fit.index[target]], 3),
+                    np.round(fit.qnd[target][fit.index[target]], 3),
+                    np.round(fit.qnd_pi[target][fit.index[target]], 3),
                 ],
             )
         )

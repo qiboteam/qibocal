@@ -6,9 +6,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
-    Delay,
     Parameter,
     PulseSequence,
+    Readout,
     Sweeper,
 )
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
@@ -17,10 +17,10 @@ from ... import update
 from ...auto.operation import Data, Parameters, QubitId, Results, Routine
 from ...calibration import CalibrationPlatform
 from ...config import log
-
-# from ...fitting.classifier.qubit_fit import QubitFit
+from ..readout.readout_characterization import readout_sequence
 from ..utils import (
     HZ_TO_GHZ,
+    classify,
     compute_assignment_fidelity,
     compute_qnd,
     readout_frequency,
@@ -45,7 +45,7 @@ class ReadoutOptimizationParameters(Parameters):
     """Maximum amplitude."""
     amplitude_step: float
     """Step amplitude."""
-    delay: float = 0
+    delay: float = 2000
     """Delay between readouts, could account for resonator depletion or not [ns]."""
 
     @property
@@ -113,41 +113,18 @@ def _acquisition(
     following https://arxiv.org/pdf/2110.04285"""
 
     freq_sweepers = {}
-    ro_pulses_m1 = {}
-    ro_pulses_m2 = {}
-    ro_pulses_m3 = {}
 
     data = ReadoutOptimizationData()
 
     for state in [0, 1]:
         sequence = PulseSequence()
         for qubit in targets:
-            natives = platform.natives.single_qubit[qubit]
-            ro_channel = platform.qubits[qubit].acquisition
-            drive_channel = platform.qubits[qubit].drive
-            _, ro_pulse_m1 = natives.MZ()[0]
-            _, ro_pulse_m2 = natives.MZ()[0]
-            _, ro_pulse_m3 = natives.MZ()[0]
-            if state == 1:
-                sequence += natives.RX()
-                sequence.append((ro_channel, Delay(duration=natives.RX().duration)))
-            sequence.append((ro_channel, ro_pulse_m1))
-            sequence.append((ro_channel, Delay(duration=params.delay)))
-            sequence.append((ro_channel, ro_pulse_m2))
-            sequence.append(
-                (
-                    drive_channel,
-                    Delay(
-                        duration=params.delay
-                        + ro_pulse_m1.duration
-                        + ro_pulse_m2.duration
-                    ),
-                )
+            sequence += readout_sequence(
+                platform=platform,
+                delay=params.delay,
+                qubit=qubit,
+                state=state,
             )
-            sequence += natives.RX()
-            sequence.append((ro_channel, Delay(duration=natives.RX().duration)))
-            sequence.append((ro_channel, Delay(duration=params.delay)))
-            sequence.append((ro_channel, ro_pulse_m3))
 
             freq_sweepers[qubit] = Sweeper(
                 parameter=Parameter.frequency,
@@ -156,10 +133,6 @@ def _acquisition(
             )
             data.frequencies_swept[qubit] = freq_sweepers[qubit].values.tolist()
 
-            ro_pulses_m1[qubit] = ro_pulse_m1
-            ro_pulses_m2[qubit] = ro_pulse_m2
-            ro_pulses_m3[qubit] = ro_pulse_m3
-
         amp_sweeper = Sweeper(
             parameter=Parameter.amplitude,
             range=(
@@ -167,9 +140,7 @@ def _acquisition(
                 params.amplitude_max,
                 params.amplitude_step,
             ),
-            pulses=[ro_pulses_m1[qubit] for qubit in targets]
-            + [ro_pulses_m2[qubit] for qubit in targets]
-            + [ro_pulses_m3[qubit] for qubit in targets],
+            pulses=[readout[1] for readout in sequence.acquisitions],
         )
 
         data.amplitudes_swept = amp_sweeper.values.tolist()
@@ -183,14 +154,13 @@ def _acquisition(
         )
 
         for target in targets:
-            for m, pulse_id in enumerate(
-                [
-                    ro_pulses_m1[target].id,
-                    ro_pulses_m2[target].id,
-                    ro_pulses_m3[target].id,
-                ]
-            ):
-                data.data[target, state, m] = results[pulse_id]
+            readouts = [
+                pulse
+                for pulse in sequence.channel(platform.qubits[target].acquisition)
+                if isinstance(pulse, Readout)
+            ]
+            for j, ro_pulse in enumerate(readouts):
+                data.data[target, state, j] = results[ro_pulse.id]
 
     return data
 
@@ -230,55 +200,33 @@ def _fit(data: ReadoutOptimizationData) -> ReadoutOptimizationResults:
             grids["angle"][j, k] = -np.arctan2(w[1], w[0])
             grids["threshold"][j, k] = -b / np.linalg.norm(w)
 
-            m1_state_0 = lda.predict(
-                data.data[qubit, 0, 0][:, j, k, :],
-            )
-
-            m1_state_1 = lda.predict(
-                data.data[qubit, 1, 0][:, j, k, :],
-            )
-
-            m2_state_0 = lda.predict(
-                data.data[qubit, 0, 1][:, j, k, :],
-            )
-
-            m2_state_1 = lda.predict(
-                data.data[qubit, 1, 1][:, j, k, :],
-            )
-
-            m3_state_0 = lda.predict(
-                data.data[qubit, 0, 2][:, j, k, :],
-            )
-
-            m3_state_1 = lda.predict(
-                data.data[qubit, 1, 2][:, j, k, :],
-            )
+            shots = {0: [], 1: []}
+            for state in range(2):
+                for m in range(3):
+                    shots[state].append(
+                        classify(
+                            data.data[qubit, state, m][:, j, k, :],
+                            grids["angle"][j, k],
+                            grids["threshold"][j, k],
+                        )
+                    )
 
             grids["fidelity"][j, k] = compute_assignment_fidelity(
-                m1_state_1, m1_state_0
+                shots[1][0], shots[0][0]
             )
-            grids["qnd"][j, k], _, _ = compute_qnd(
-                m1_state_1,
-                m1_state_0,
-                m2_state_1,
-                m2_state_0,
-            )
-            # for m3 we swap them because we apply a pi pulse
-            grids["qnd-pi"][j, k], _, _ = compute_qnd(
-                m2_state_1, m2_state_0, m3_state_0, m3_state_1, pi=True
-            )
-            grids["angle"][j, k] = 0
-            grids["threshold"][j, k] = 0
+
+            grids["qnd"][j, k], grids["qnd-pi"][j, k] = compute_qnd(shots[0], shots[1])
+
         arr[qubit, "fidelity"] = grids["fidelity"]
         arr[qubit, "qnd"] = grids["qnd"]
         arr[qubit, "qnd-pi"] = grids["qnd-pi"]
 
         averaged_qnd = (arr[qubit, "qnd"] + arr[qubit, "qnd-pi"]) / 2
 
-        # mask values where fidelity is below 80%
-        averaged_qnd[grids["fidelity"] < 0.8] = np.nan
-        # exclude values where QND is larger than 1
-        averaged_qnd[averaged_qnd > 1] = np.nan
+        # # mask values where fidelity is below 80%
+        # averaged_qnd[grids["fidelity"] < 0.8] = np.nan
+        # # exclude values where QND is larger than 1
+        # averaged_qnd[averaged_qnd > 1] = np.nan
 
         try:
             i, j = np.unravel_index(np.nanargmax(averaged_qnd), averaged_qnd.shape)
@@ -358,6 +306,7 @@ def _plot(
                     mode="markers",
                     marker=dict(size=8, color="black", symbol="cross"),
                     name="Best Readout Point",
+                    legendgroup="Best Readout Point",
                     showlegend=True if col == 1 else False,
                 ),
                 row=1,
