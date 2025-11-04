@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, PulseSequence
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.metrics import confusion_matrix
@@ -219,20 +220,43 @@ def _plot(
 ):
     fitting_report = ""
     figures = []
-    fig0 = plot_distribution(
+    fig = make_subplots(
+        rows=2,
+        cols=2,
+        column_widths=[0.8, 0.2],
+        row_heights=[0.2, 0.8],
+        specs=[[{"type": "xy"}, {"type": "xy"}], [{"type": "xy"}, {"type": "xy"}]],
+        shared_xaxes=True,
+        shared_yaxes=True,
+        horizontal_spacing=0.02,
+        vertical_spacing=0.02,
+    )
+    plot_distribution(
+        fig=fig,
         data={"I": data.data[target, 0].T[0], "Q": data.data[target, 0].T[1]},
         color="red",
         label="State 0",
     )
 
-    fig1 = plot_distribution(
+    plot_distribution(
+        fig=fig,
         data={"I": data.data[target, 1].T[0], "Q": data.data[target, 1].T[1]},
         color="blue",
         label="State 1",
     )
 
-    fig0.add_traces(fig1.data)
-    figures.append(fig0)
+    fig.update_layout(
+        hovermode="closest",
+        barmode="overlay",
+        xaxis3_title="I",
+        yaxis3_title="Q",
+    )
+
+    fig.update_xaxes(showticklabels=False, row=1, col=1)
+    fig.update_yaxes(showticklabels=False, row=2, col=2)
+
+    # fig0.add_traces(fig1.data)
+    figures.append(fig)
     if fit is not None:
         min_x = np.min(np.stack([data.data[target, 0].T[0], data.data[target, 1].T[0]]))
         max_x = np.max(np.stack([data.data[target, 0].T[0], data.data[target, 1].T[0]]))
@@ -243,13 +267,15 @@ def _plot(
             fit.angle[target]
         )
         indices = np.where(np.logical_and(y > min_y, y < max_y))
-        fig0.add_trace(
+        fig.add_trace(
             go.Scatter(
                 x=xrange[indices],
                 y=y[indices],
                 name="Separation",
                 line=dict(color="black", dash="dot"),
-            )
+            ),
+            row=2,
+            col=1,
         )
         # TODO: Plot mean point
         fitting_report = table_html(
