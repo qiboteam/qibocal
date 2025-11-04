@@ -186,30 +186,32 @@ def effective_qubit_temperature(predictions, qubit_frequency: float, nshots: int
 
 
 def compute_qnd(
-    ones_first_measure,
-    zeros_first_measure,
-    ones_second_measure,
-    zeros_second_measure,
-    pi=False,
-) -> tuple[float, list, list]:
+    state_zero,
+    state_one,
+) -> tuple[float, float]:
     """QND calculation.
 
-    For the standard QND we follow https://arxiv.org/pdf/2106.06173
-    for the pi variant we follow https://arxiv.org/pdf/2110.04285
+    We follow https://arxiv.org/pdf/2110.04285
 
-    Returns the QND and the two measurement matrices."""
+    Returns the QNDs."""
 
-    p_m1 = np.mean([zeros_first_measure, ones_first_measure], axis=1)
-    p_m2 = np.mean([zeros_second_measure, ones_second_measure], axis=1)
+    m1_zero_indices = state_zero[0] == 0
+    m1_one_indices = state_one[0] == 1
 
-    lambda_m = np.stack([1 - p_m1, p_m1])
-    lambda_m2 = np.stack([1 - p_m2, p_m2])
+    m2_zero_indices = state_zero[1] == 0
+    m2_one_indices = state_one[1] == 1
 
-    # pinv to avoid tests failing due to singular matrix
-    p_o = np.linalg.pinv(lambda_m) @ lambda_m2
-
-    qnd = np.sum(np.diag(p_o)) / 2 if not pi else np.sum(np.diag(p_o[::-1])) / 2
-    return qnd, lambda_m.tolist(), lambda_m2.tolist()
+    qnd = (
+        1
+        - np.mean(state_zero[1][m1_zero_indices])
+        + np.mean(state_one[1][m1_one_indices])
+    ) / 2
+    qnd_pi = (
+        np.mean(state_zero[2][m2_zero_indices])
+        + 1
+        - np.mean(state_one[2][m2_one_indices])
+    ) / 2
+    return qnd, qnd_pi
 
 
 def compute_assignment_fidelity(
