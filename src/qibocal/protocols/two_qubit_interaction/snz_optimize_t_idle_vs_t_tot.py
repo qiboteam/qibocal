@@ -61,6 +61,7 @@ class SNZDurationResults(SNZFinetuningResults): ...
 
 @dataclass
 class SNZDurationData(SNZFinetuningData):
+    sampling_rate: float = 1
     _sorted_pairs: list[QubitPairId] = field(default_factory=dict)
     thetas: list = field(default_factory=list)
     """Angles swept."""
@@ -98,10 +99,11 @@ def _aquisition(
     targets: list[QubitPairId],
 ) -> SNZDurationData:
     data = SNZDurationData(
+        sampling_rate=platform.sampling_rate,
         _sorted_pairs=[order_pair(pair, platform) for pair in targets],
         thetas=params.theta_range.tolist(),
         durations=params.duration_range.tolist(),
-        t_idles=params.t_idle_range.tolist(),
+        t_idles=(params.t_idle_range / platform.sampling_rate).tolist(),
     )
     for ordered_pair in data.sorted_pairs:
         flux_channel = platform.qubits[ordered_pair[1]].flux
@@ -278,8 +280,8 @@ def _plot(
         fig.update_layout(
             xaxis1_title="Pulse duration [ns]",
             xaxis2_title="Pulse duration [ns]",
-            yaxis1_title="t_idle [# samplings]",
-            yaxis2_title="t_idle [# samplings]",
+            yaxis1_title="t_idle [ns]",
+            yaxis2_title="t_idle [ns]",
             xaxis2=dict(matches="x"),
             yaxis2=dict(matches="y"),
         )
