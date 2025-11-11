@@ -146,7 +146,7 @@ def _aquisition(
             for setup in ("I", "X"):
                 flux_pulse = Pulse(
                     amplitude=flux_pulse.amplitude,
-                    duration=params.tp + params.t_idling,
+                    duration=params.tp + params.t_idling / platform.sampling_rate,
                     envelope=Snz(
                         t_idling=params.t_idling,
                         b_amplitude=ratio,
