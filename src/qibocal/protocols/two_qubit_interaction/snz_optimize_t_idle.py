@@ -65,7 +65,10 @@ class SNZIdlingResults(SNZFinetuningResults): ...
 
 @dataclass
 class SNZIdlingData(Data):
+    sampling_rate: float = 1
+    """Sampling rate of devices."""
     _sorted_pairs: list[QubitPairId] = field(default_factory=dict)
+    """List of sorted pairs."""
     thetas: list = field(default_factory=list)
     """Angles swept."""
     amplitudes: list = field(default_factory=list)
@@ -75,7 +78,7 @@ class SNZIdlingData(Data):
     data: dict[tuple, npt.NDArray] = field(default_factory=dict)
 
     @property
-    def sorted_pairs(self):
+    def sorted_pairs(self) -> list:
         return [
             pair if isinstance(pair, tuple) else tuple(pair)
             for pair in self._sorted_pairs
@@ -85,7 +88,7 @@ class SNZIdlingData(Data):
     def sorted_pairs(self, value):
         self._sorted_pairs = value
 
-    def parse(self, i, j):
+    def parse(self, i, j) -> dict:
         return {
             key: value[
                 :,
@@ -106,10 +109,11 @@ def _aquisition(
     experiment is performed.
     """
     data = SNZIdlingData(
+        sampling_rate=platform.sampling_rate,
         _sorted_pairs=[order_pair(pair, platform) for pair in targets],
         thetas=params.theta_range.tolist(),
         amplitudes=params.amplitude_range.tolist(),
-        t_idles=params.t_idle_range.tolist(),
+        t_idles=list(params.t_idle_range / platform.sampling_rate),
     )
     for ordered_pair in data.sorted_pairs:
         flux_channel = platform.qubits[ordered_pair[1]].flux
@@ -129,7 +133,7 @@ def _aquisition(
             for setup in ("I", "X"):
                 flux_pulse = Pulse(
                     amplitude=flux_pulse.amplitude,
-                    duration=params.tp + t_idle,
+                    duration=params.tp + t_idle / data.sampling_rate,
                     envelope=Snz(
                         t_idling=t_idle,
                         b_amplitude=params.b_amplitude,
@@ -286,8 +290,8 @@ def _plot(
         fig.update_layout(
             xaxis1_title="Amplitude A [a.u.]",
             xaxis2_title="Amplitude A [a.u.]",
-            yaxis1_title="t_idle [# samplings]",
-            yaxis2_title="t_idle [# samplings]",
+            yaxis1_title="t_idle [ns]",
+            yaxis2_title="t_idle [ns]",
             xaxis2=dict(matches="x"),
             yaxis2=dict(matches="y"),
         )
