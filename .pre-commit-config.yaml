@@ -11,7 +11,7 @@ repos:
       - id: check-merge-conflict
       - id: debug-statements
   - repo: https://github.com/asottile/pyupgrade
-    rev: v3.21.0
+    rev: v3.21.1
     hooks:
       - id: pyupgrade
   - repo: https://github.com/hadialqattan/pycln
@@ -22,7 +22,7 @@ repos:
           - --config=pyproject.toml
           - --all
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.14.3
+    rev: v0.14.4
     hooks:
       # Run the linter.
       - id: ruff
