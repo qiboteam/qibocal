@@ -146,16 +146,15 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
 
 def lorentzian_dispersive(frequency, amplitude, center, sigma, offset, alpha):
     """Lorentzian function with an arbitary linear offset background term."""
-    return (frequency - center) * alpha + lorentzian(
-        frequency, amplitude, center, sigma, offset
-    )
+    return   (amplitude / np.pi) * (1 + (frequency - center) / center * alpha ) * (
+        sigma / ((frequency - center) ** 2 + sigma**2)
+    ) + offset
 
 def lorentzian_dispersive_fit(data, resonator_type=None, fit=None):
     frequencies = data.freq * HZ_TO_GHZ
     voltages = data.signal
 
-    guess_alpha = (voltages[-1] - voltages[0]) / (frequencies[-1] - frequencies[0])
-
+    guess_alpha = (voltages[-1] - voltages[0]) / ((frequencies[-1] - frequencies[0])/np.mean(frequencies))
     guess_offset = np.mean(
         voltages[np.abs(voltages - np.mean(voltages)) < np.std(voltages)]
     )
@@ -168,11 +167,16 @@ def lorentzian_dispersive_fit(data, resonator_type=None, fit=None):
     
     if len(peaks) == 0:
         guess_center = frequencies[np.argmin(voltages)]
+        guess_peak_voltage = voltages[np.argmin(voltages)]
     else:
         guess_center = frequencies[peaks[0]]
+        guess_peak_voltage = voltages[peaks[0]]
 
-    guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
-    guess_amplitude = (np.max(voltages) - guess_offset) * guess_sigma * np.pi
+    half_volt = (guess_peak_voltage + guess_offset)/2
+    half_max_freq = frequencies[np.argmin(np.abs(voltages - half_volt))]
+
+    guess_sigma = abs(guess_center - half_max_freq)
+    guess_amplitude = (np.max(voltages) - guess_peak_voltage) * guess_sigma * np.pi
 
     initial_parameters = [
         guess_amplitude,
