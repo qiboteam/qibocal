@@ -7,10 +7,10 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 from qibolab._core.pulses.envelope import Snz
 
-from qibocal.auto.operation import Parameters, QubitPairId, Routine
+from qibocal.auto.operation import Data, Parameters, QubitPairId, Routine
 from qibocal.calibration import CalibrationPlatform
 
-from .snz_optimize import SNZFinetuningData, SNZFinetuningResults
+from .snz_optimize_t_idle import SNZIdlingResults
 from .utils import fit_virtualz, order_pair
 from .virtual_z_phases import create_sequence
 
@@ -56,11 +56,12 @@ class SNZDurationParamteters(Parameters):
 
 
 @dataclass
-class SNZDurationResults(SNZFinetuningResults): ...
+class SNZDurationResults(SNZIdlingResults):
+    best_duration: dict = field(default_factory=dict)
 
 
 @dataclass
-class SNZDurationData(SNZFinetuningData):
+class SNZDurationData(Data):
     sampling_rate: float = 1
     _sorted_pairs: list[QubitPairId] = field(default_factory=dict)
     thetas: list = field(default_factory=list)
@@ -193,6 +194,8 @@ def _fit(
     virtual_phases = {}
     angles = {}
     leakages = {}
+    best_duration, best_t_idle = {}, {}
+    best_leakage, best_angle = {}, {}
     for pair in data.sorted_pairs:
         _pair = tuple(pair)
         angles[_pair], leakages[_pair], virtual_phases[_pair] = [], [], []
@@ -217,11 +220,29 @@ def _fit(
                         new_fitted_parameter[_pair, setup]
                     )
 
+        angles_ = (
+            np.array(angles[_pair]).reshape(len(data.durations), len(data.t_idles)).T
+        )
+        leakages_ = (
+            np.array(leakages[_pair]).reshape(len(data.durations), len(data.t_idles)).T
+        )
+
+        angle_mask = (angles_ > np.pi * 0.9) & (angles_ < np.pi * 1.1)
+        leakage_mask = leakages_[angle_mask] == leakages_[angle_mask].min()
+        x, y = np.meshgrid(data.durations, data.t_idles)
+        best_duration[_pair] = float(x[angle_mask][leakage_mask])
+        best_t_idle[_pair] = float(y[angle_mask][leakage_mask])
+        best_angle[_pair] = float(angles_[angle_mask][leakage_mask])
+        best_leakage[_pair] = float(leakages_[angle_mask][leakage_mask])
     results = SNZDurationResults(
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
         leakages=leakages,
         angles=angles,
+        best_duration=best_duration,
+        best_t_idle=best_t_idle,
+        best_angle=best_angle,
+        best_leakage=best_leakage,
     )
     return results
 
@@ -289,4 +310,22 @@ def _plot(
     return [fig], fitting_report
 
 
-snz_optimize_t_idle_vs_t_tot = Routine(_aquisition, _fit, _plot, two_qubit_gates=True)
+def _update(
+    results: SNZDurationResults, platform: CalibrationPlatform, target: QubitPairId
+):
+    platform.update(
+        {
+            f"native_gates.two_qubit.{target}.CZ.0.1.envelope.kind": "snz",
+            f"native_gates.two_qubit.{target}.CZ.0.1.amplitude": results.best_duration[
+                target
+            ],
+            f"native_gates.two_qubit.{target}.CZ.0.1.envelope.t_idling": results.best_t_idle[
+                target
+            ],
+        }
+    )
+
+
+snz_optimize_t_idle_vs_t_tot = Routine(
+    _aquisition, _fit, _plot, _update, two_qubit_gates=True
+)
