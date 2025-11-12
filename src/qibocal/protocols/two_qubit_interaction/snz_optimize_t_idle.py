@@ -254,13 +254,21 @@ def _plot(
         shared_xaxes=True,
     )
     if fit is not None:
+        angles = (
+            np.array(fit.angles[target])
+            .reshape(len(data.amplitudes), len(data.rel_amplitudes))
+            .T
+        )
+        leak = (
+            np.array(fit.leakages[target])
+            .reshape(len(data.amplitudes), len(data.rel_amplitudes))
+            .T
+        )
         fig.add_trace(
             go.Heatmap(
                 x=data.amplitudes,
                 y=data.t_idles,
-                z=np.array(fit.angles[target])
-                .reshape(len(data.amplitudes), len(data.t_idles))
-                .T,
+                z=angles,
                 zmin=0,
                 zmax=2 * np.pi,
                 name="{fit.native} angle",
@@ -275,9 +283,7 @@ def _plot(
             go.Heatmap(
                 x=data.amplitudes,
                 y=data.t_idles,
-                z=np.array(fit.leakages[target])
-                .reshape(len(data.amplitudes), len(data.t_idles))
-                .T,
+                z=leak,
                 name="Leakage",
                 colorscale="Inferno",
                 zmin=0,
@@ -286,6 +292,25 @@ def _plot(
             row=1,
             col=2,
         )
+
+        for i in range(2):
+            fig.add_trace(
+                go.Contour(
+                    z=angles,
+                    x=data.amplitudes,
+                    y=data.t_idles,
+                    contours=dict(
+                        start=np.pi,
+                        end=np.pi,
+                        coloring="none",
+                        showlines=True,
+                        showlabels=True,
+                    ),
+                    line=dict(color="white", width=1),
+                ),
+                row=1,
+                col=i + 1,
+            )
 
         fig.update_layout(
             xaxis1_title="Amplitude A [a.u.]",

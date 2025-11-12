@@ -267,13 +267,21 @@ def _plot(
     )
 
     if fit is not None:
+        angles = (
+            np.array(fit.angles[target])
+            .reshape(len(data.amplitudes), len(data.rel_amplitudes))
+            .T
+        )
+        leak = (
+            np.array(fit.leakages[target])
+            .reshape(len(data.amplitudes), len(data.rel_amplitudes))
+            .T
+        )
         fig.add_trace(
             go.Heatmap(
                 x=data.amplitudes,
                 y=data.rel_amplitudes,
-                z=np.array(fit.angles[target])
-                .reshape(len(data.amplitudes), len(data.rel_amplitudes))
-                .T,
+                z=angles,
                 zmin=0,
                 zmax=2 * np.pi,
                 name="{fit.native} angle",
@@ -288,9 +296,7 @@ def _plot(
             go.Heatmap(
                 x=data.amplitudes,
                 y=data.rel_amplitudes,
-                z=np.array(fit.leakages[target])
-                .reshape(len(data.amplitudes), len(data.rel_amplitudes))
-                .T,
+                z=leak,
                 name="Leakage",
                 colorscale="Inferno",
                 zmin=0,
@@ -300,6 +306,25 @@ def _plot(
             col=2,
         )
 
+        for i in range(2):
+            fig.add_trace(
+                go.Contour(
+                    z=angles,
+                    x=data.amplitudes,
+                    y=data.rel_amplitudes,
+                    contours=dict(
+                        start=np.pi,
+                        end=np.pi,
+                        coloring="none",
+                        showlines=True,
+                        showlabels=True,
+                    ),
+                    line=dict(color="white", width=1),
+                ),
+                row=1,
+                col=i + 1,
+            )
+
         fig.update_layout(
             xaxis1_title="Amplitude A [a.u.]",
             xaxis2_title="Amplitude A [a.u.]",
@@ -307,6 +332,7 @@ def _plot(
             yaxis2_title="Rel. Amp. B/A [a.u.]",
             xaxis2=dict(matches="x"),
             yaxis2=dict(matches="y"),
+            legend=dict(orientation="h"),
         )
 
     return [fig], fitting_report
