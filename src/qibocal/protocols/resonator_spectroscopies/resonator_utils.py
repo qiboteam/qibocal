@@ -14,9 +14,9 @@ from ..utils import (
     HZ_TO_GHZ,
     PowerLevel,
     lorentzian,
+    lorentzian_dispersive,
     table_dict,
     table_html,
-    lorentzian_dispersive,
 )
 
 PHASES_THRESHOLD_PERCENTAGE = 80
@@ -118,7 +118,7 @@ def s21_fit(
     return model_parameters[0], model_parameters, perr
 
 
-def _plot(data, qubit, fit: Results = None, model = lorentzian):
+def _plot(data, qubit, fit: Results = None, model=lorentzian):
     figures = []
     fig = make_subplots(
         rows=1,
@@ -598,6 +598,7 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
 
 def spectroscopy_plot(data, qubit, fit: Results = None):
     return _plot(data, qubit, fit, lorentzian)
+
 
 def lorentzian_dispersive_plot(data, qubit, fit: Results = None):
     return _plot(data, qubit, fit, lorentzian_dispersive)
