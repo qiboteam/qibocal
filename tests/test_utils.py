@@ -1,11 +1,6 @@
 import numpy as np
 
-from qibocal.protocols.utils import cumulative, eval_magnitude
-
-
-def test_cumulative():
-    data = np.arange(10, dtype=float)
-    assert np.array_equal(cumulative(data, data), data)
+from qibocal.protocols.utils import eval_magnitude
 
 
 def test_eval_magnitude():
