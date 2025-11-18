@@ -1,7 +1,7 @@
 from typing import Optional
 
 import numpy as np
-from qibolab import Delay, PulseSequence, VirtualZ
+from qibolab import Delay, Pulse, PulseSequence, VirtualZ
 
 from qibocal.auto.operation import QubitPairId
 from qibocal.calibration import CalibrationPlatform
@@ -9,6 +9,7 @@ from qibocal.update import replace
 
 COLORAXIS = ["coloraxis2", "coloraxis1"]
 
+# FIXME: can we remove these?
 COUPLER_PULSE_START = 0
 """Start of coupler pulse."""
 COUPLER_PULSE_DURATION = 100
@@ -22,8 +23,9 @@ def chevron_sequence(
     parking: bool = False,
     native: str = "CZ",
     dt: int = 0,
-):
+) -> tuple[PulseSequence, Pulse, Optional[Pulse], list[Pulse], list[Delay]]:
     """Chevron pulse sequence."""
+
     sequence = PulseSequence()
     low_natives = platform.natives.single_qubit[ordered_pair[0]]
     high_natives = platform.natives.single_qubit[ordered_pair[1]]
@@ -43,6 +45,26 @@ def chevron_sequence(
         flux_pulse = replace(flux_pulse, duration=duration_max)
 
     sequence.append((flux_channel, Delay(duration=drive_duration)))
+    if len(platform.couplers) > 0:
+        pair = (
+            ordered_pair
+            if ordered_pair in platform.natives.two_qubit
+            else ordered_pair[::-1]
+        )
+        coupler_name = list(platform.couplers)[platform.pairs.index(pair)]
+        coupler_channel = platform.couplers[coupler_name].flux
+        sequence.append((coupler_channel, Delay(duration=drive_duration)))
+        coupler_native_index = coupler_name + platform.nqubits
+        assert platform.natives.single_qubit[coupler_native_index].CP()[0], (
+            f"Missing coupler native for {coupler_name}"
+        )
+        coupler_pulse = platform.natives.single_qubit[coupler_native_index].CP()[0][1]
+        if duration_max is not None:
+            coupler_pulse = replace(coupler_pulse, duration=duration_max)
+        sequence.append((coupler_channel, coupler_pulse))
+    else:
+        coupler_pulse = None
+
     sequence.append((flux_channel, flux_pulse))
 
     parking_pulses = []
@@ -53,8 +75,13 @@ def chevron_sequence(
                 sequence.append((ch, pulse))
                 parking_pulses.append(pulse)
 
-    flux_duration = max(flux_pulse.duration, raw_flux_sequence.duration)
-
+    flux_duration = (
+        max(flux_pulse.duration, raw_flux_sequence.duration)
+        if coupler_pulse is None
+        else max(
+            flux_pulse.duration, raw_flux_sequence.duration, coupler_pulse.duration
+        )
+    )
     ro_low_channel, ro_high_channel = (
         platform.qubits[ordered_pair[0]].acquisition,
         platform.qubits[ordered_pair[1]].acquisition,
@@ -86,6 +113,7 @@ def chevron_sequence(
     return (
         sequence,
         flux_pulse,
+        coupler_pulse,
         parking_pulses,
         [ro_low_delay, ro_high_delay, drive_delay],
     )
