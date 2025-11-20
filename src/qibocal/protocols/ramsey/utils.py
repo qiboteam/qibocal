@@ -90,13 +90,17 @@ def fitting(x: list, y: list, errors: list = None) -> list:
 
     period = fallback_period(guess_period(x, y))
     omega = 2 * np.pi / period
+    idx = np.argmin(x)
+    mean_sig = (max(y) + min(y))/2
+    amplitude_guess = (max(y) - min(y))/2
     p0 = [
-        0.5,
-        0.5,
+        mean_sig,
+        amplitude_guess,
         omega,
-        0,
+        np.arcsin((y[idx] - mean_sig)/amplitude_guess),
         1,
     ]
+
     popt, perr = curve_fit(
         ramsey_fit,
         x,
