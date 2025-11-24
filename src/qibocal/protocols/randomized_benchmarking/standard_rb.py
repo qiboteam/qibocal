@@ -82,7 +82,6 @@ def _acquisition(
     Returns:
         RBData: The depths, samples and ground state probability of each experiment in the scan.
     """
-
     return rb_acquisition(params, platform, targets)
 
 

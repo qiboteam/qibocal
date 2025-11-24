@@ -175,7 +175,7 @@ def dummy_transpiler(backend: Backend) -> Passes:
     native_gates = natives(platform)
     set_compiler(backend, native_gates)
     native_gates = [getattr(gates, x) for x in native_gates]
-    unroller = Unroller(NativeGates.from_gatelist(native_gates))
+    unroller = Unroller(NativeGates.from_gatelist(native_gates), backend=backend)
     return Passes(connectivity=platform.pairs, passes=[unroller])
 
 
