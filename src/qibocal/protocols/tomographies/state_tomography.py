@@ -118,12 +118,7 @@ def _acquisition(
 
     for basis in BASIS:
         basis_circuit = deepcopy(params.circuit)
-        # FIXME: https://github.com/qiboteam/qibo/issues/1318
-        if basis != "Z":
-            for i in range(len(targets)):
-                basis_circuit.add(getattr(gates, basis)(i).basis_rotation())
-
-        basis_circuit.add(gates.M(*range(len(targets))))
+        basis_circuit.add(gates.M(*range(len(targets)), basis=basis))
         _, results = execute_transpiled_circuit(
             basis_circuit,
             targets,
