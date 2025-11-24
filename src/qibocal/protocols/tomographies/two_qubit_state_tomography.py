@@ -150,7 +150,7 @@ def _acquisition(
             )
             data.register_qubit(
                 TomographyType,
-                pair + (basis1, basis2),
+                tuple(pair) + (basis1, basis2),
                 {
                     "frequencies": np.array([frequencies[i] for i in OUTCOMES]),
                     "simulation_probabilities": simulation_probabilities,
@@ -210,7 +210,7 @@ def _fit(data: StateTomographyData) -> StateTomographyResults:
         for basis1, basis2 in TWO_QUBIT_BASIS
     ]
 
-    # construct the linear transformation from density matrlsix to Born-probabilities
+    # construct the linear transformation from density matrix to Born-probabilities
     measurement = np.zeros((0, 16))
     for rotation in rotations:
         channel = np.kron(rotation, np.conj(rotation))
