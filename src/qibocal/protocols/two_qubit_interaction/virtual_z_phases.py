@@ -152,13 +152,38 @@ def create_sequence(
 
     flux_channel = platform.qubits[ordered_pair[1]].flux
     # CZ
-    if flux_pulse is None:
-        cz_sequence = platform.natives.two_qubit[ordered_pair].CZ
-        flux_pulse = list(cz_sequence.channel(flux_channel))[0]
 
+    cz_sequence = platform.natives.two_qubit[ordered_pair].CZ()
+    if flux_pulse is None:
+        flux_pulse = [
+            pulse
+            for pulse in list(cz_sequence.channel(flux_channel))
+            if isinstance(pulse, Pulse)
+        ][0]
+
+    parking_sequence = [
+        pulse
+        for pulse in cz_sequence
+        if pulse[0] != flux_channel and not isinstance(pulse[1], VirtualZ)
+    ]
+    parking_channels = [pulse[0] for pulse in parking_sequence]
+    parking_pulses_ = [pulse[1] for pulse in parking_sequence]
+
+    delays = [
+        pulse
+        for pulse in list(cz_sequence.channel(flux_channel))
+        if isinstance(pulse, Delay)
+    ]
+    if len(delays) > 0:
+        dt = delays[0].duration
+
+    parking_pulses = []
     if flux_pulse_max_duration is not None:
         flux_pulse = replace(flux_pulse, duration=flux_pulse_max_duration)
-    flux_sequence = PulseSequence([(flux_channel, flux_pulse)])
+        for pulse in parking_pulses_:
+            pulse = replace(pulse, duration=flux_pulse_max_duration + 2 * dt)
+            parking_pulses.append(pulse)
+
     virtual_phases = []
     align_channels = [
         platform.qubits[control_qubit].drive,
@@ -166,13 +191,16 @@ def create_sequence(
         flux_channel,
         platform.qubits[target_qubit].acquisition,
         platform.qubits[control_qubit].acquisition,
+        *parking_channels,
     ]
 
     sequence.align(align_channels)
 
     for _ in range(gate_repetition):
+        for ch, pulse in zip(parking_channels, parking_pulses_):
+            sequence.append((ch, pulse))
         sequence.append((flux_channel, Delay(duration=dt)))
-        sequence += flux_sequence
+        sequence.append((flux_channel, flux_pulse))
         sequence.append((flux_channel, Delay(duration=dt)))
 
     # Instead of having many RZ as expressed in gate_repetition,
@@ -204,7 +232,8 @@ def create_sequence(
     )
 
     sequence += ro_sequence
-    return sequence, flux_pulse, virtual_phases
+
+    return sequence, flux_pulse, parking_pulses, dt, virtual_phases
 
 
 def _acquisition(
@@ -245,6 +274,8 @@ def _acquisition(
             for setup in ("I", "X"):
                 (
                     sequence,
+                    _,
+                    _,
                     _,
                     vz_pulses,
                 ) = create_sequence(

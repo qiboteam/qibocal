@@ -1,7 +1,7 @@
 from typing import Optional
 
 import numpy as np
-from qibolab import Delay, PulseSequence, VirtualZ
+from qibolab import Delay, Pulse, PulseSequence, VirtualZ
 
 from qibocal.auto.operation import QubitPairId
 from qibocal.calibration import CalibrationPlatform
@@ -36,20 +36,24 @@ def chevron_sequence(
     flux_channel, flux_pulse = [
         (ch, pulse)
         for ch, pulse in raw_flux_sequence
-        if ch == platform.qubits[ordered_pair[1]].flux
+        if ch == platform.qubits[ordered_pair[1]].flux and isinstance(pulse, Pulse)
     ][0]
 
     if duration_max is not None:
         flux_pulse = replace(flux_pulse, duration=duration_max)
 
     sequence.append((flux_channel, Delay(duration=drive_duration)))
+    sequence.append((flux_channel, Delay(duration=dt)))
     sequence.append((flux_channel, flux_pulse))
+    sequence.append((flux_channel, Delay(duration=dt)))
 
     parking_pulses = []
     if parking:
         for ch, pulse in raw_flux_sequence:
             if not isinstance(pulse, VirtualZ) and ch != flux_channel:
                 sequence.append((ch, Delay(duration=drive_duration)))
+                if duration_max is not None:
+                    pulse = replace(pulse, duration=duration_max + 2 * dt)
                 sequence.append((ch, pulse))
                 parking_pulses.append(pulse)
 
@@ -60,17 +64,13 @@ def chevron_sequence(
         platform.qubits[ordered_pair[1]].acquisition,
     )
     ro_low_delay = ro_high_delay = drive_delay = Delay(duration=flux_duration)
-    dt_delay = Delay(duration=dt)
     drive_channel, second_rx = high_natives.RX()[0]
     sequence += [
         (ro_low_channel, Delay(duration=drive_duration)),
         (ro_high_channel, Delay(duration=drive_duration)),
         (ro_low_channel, ro_low_delay),
         (ro_high_channel, ro_high_delay),
-        (ro_low_channel, dt_delay),
-        (ro_high_channel, dt_delay),
         (drive_channel, drive_delay),
-        (drive_channel, dt_delay),
     ]
 
     if native == "CZ":
