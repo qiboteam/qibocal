@@ -148,9 +148,10 @@ def _acquisition(
             simulation_probabilities = simulation_result.probabilities(
                 qubits=(2 * i, 2 * i + 1)
             )
+            _pair = tuple(pair)
             data.register_qubit(
                 TomographyType,
-                tuple(pair) + (basis1, basis2),
+                _pair + (basis1, basis2),
                 {
                     "frequencies": np.array([frequencies[i] for i in OUTCOMES]),
                     "simulation_probabilities": simulation_probabilities,
@@ -161,7 +162,7 @@ def _acquisition(
                 traced_qubits = tuple(
                     q for q in range(nqubits) if q not in (2 * i, 2 * i + 1)
                 )
-                data.ideal[pair] = partial_trace(
+                data.ideal[_pair] = partial_trace(
                     simulation_result.state(),
                     traced_qubits,
                     backend=simulator,
