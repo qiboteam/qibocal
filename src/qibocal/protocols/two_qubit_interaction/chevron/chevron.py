@@ -15,7 +15,6 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
-from .... import update
 from ..utils import fit_flux_amplitude, order_pair
 from .utils import COLORAXIS, chevron_fit, chevron_sequence
 
@@ -146,6 +145,8 @@ def _aquisition(
             dt=params.dt,
             native=params.native,
         )
+        for ch, pulse in sequence:
+            print(ch, pulse)
         sweeper_amplitude = Sweeper(
             parameter=Parameter.amplitude,
             range=(params.amplitude_min, params.amplitude_max, params.amplitude_step),
@@ -154,7 +155,16 @@ def _aquisition(
         sweeper_duration = Sweeper(
             parameter=Parameter.duration,
             range=(params.duration_min, params.duration_max, params.duration_step),
-            pulses=[flux_pulse] + delays + parking_pulses,
+            pulses=[flux_pulse],
+        )
+        sweeper_duration_parking = Sweeper(
+            parameter=Parameter.duration,
+            range=(
+                params.duration_min + 2 * params.dt,
+                params.duration_max + 2 * params.dt,
+                params.duration_step,
+            ),
+            pulses=parking_pulses + delays,
         )
 
         ro_high = list(sequence.channel(platform.qubits[ordered_pair[1]].acquisition))[
@@ -168,7 +178,7 @@ def _aquisition(
 
         results = platform.execute(
             [sequence],
-            [[sweeper_duration], [sweeper_amplitude]],
+            [[sweeper_duration, sweeper_duration_parking], [sweeper_amplitude]],
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.DISCRIMINATION,
@@ -315,12 +325,12 @@ def _update(
 ):
     target = target[::-1] if target not in results.duration else target
 
-    getattr(update, f"{results.native}_duration")(
-        results.duration[target], platform, target
-    )
-    getattr(update, f"{results.native}_amplitude")(
-        results.amplitude[target], platform, target
-    )
+    # getattr(update, f"{results.native}_duration")(
+    #     results.duration[target], platform, target
+    # )
+    # getattr(update, f"{results.native}_amplitude")(
+    #     results.amplitude[target], platform, target
+    # )
 
 
 chevron = Routine(_aquisition, _fit, _plot, _update, two_qubit_gates=True)

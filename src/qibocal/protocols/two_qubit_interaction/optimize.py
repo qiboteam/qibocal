@@ -9,7 +9,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
-from qibocal import update
 from qibocal.auto.operation import (
     Data,
     Parameters,
@@ -20,7 +19,6 @@ from qibocal.auto.operation import (
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.protocols.utils import table_dict, table_html
 
 from .utils import fit_sinusoid, order_pair, phase_diff
 from .virtual_z_phases import create_sequence
@@ -168,6 +166,8 @@ def _acquisition(
                 (
                     sequence,
                     flux_pulse,
+                    parking_pulses,
+                    dt,
                     vz_pulses,
                 ) = create_sequence(
                     platform,
@@ -210,6 +210,20 @@ def _acquisition(
                     pulses=[flux_pulse],
                 )
 
+                duration_sweepers = [sweeper_duration]
+
+                if len(parking_pulses) > 0 and dt > 0:
+                    sweeper_duration_parking = Sweeper(
+                        parameter=Parameter.duration,
+                        range=(
+                            params.duration_min + 2 * dt,
+                            params.duration_max + 2 * dt,
+                            params.duration_step,
+                        ),
+                        pulses=parking_pulses,
+                    )
+                    duration_sweepers.append(sweeper_duration_parking)
+
                 ro_target = list(
                     sequence.channel(platform.qubits[target_q].acquisition)
                 )[-1]
@@ -218,7 +232,7 @@ def _acquisition(
                 )[-1]
                 results = platform.execute(
                     [sequence],
-                    [[sweeper_duration], [sweeper_amplitude], [sweeper_theta]],
+                    [[*duration_sweepers], [sweeper_amplitude], [sweeper_theta]],
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
                     acquisition_type=AcquisitionType.DISCRIMINATION,
@@ -417,24 +431,24 @@ def _plot(
                     showscale=condition,
                     colorscale="Reds",
                     zmin=0,
-                    zmax=0.05,
+                    zmax=0.25,
                 ),
                 row=1 if condition else 2,
                 col=2,
             )
-            fitting_report = table_html(
-                table_dict(
-                    [qubits[1], qubits[1]],
-                    [
-                        "Flux pulse amplitude [a.u.]",
-                        "Flux pulse duration [ns]",
-                    ],
-                    [
-                        np.round(fit.best_amp[qubits], 4),
-                        np.round(fit.best_dur[qubits], 4),
-                    ],
-                )
-            )
+            # fitting_report = table_html(
+            #     table_dict(
+            #         [qubits[1], qubits[1]],
+            #         [
+            #             "Flux pulse amplitude [a.u.]",
+            #             "Flux pulse duration [ns]",
+            #         ],
+            #         [
+            #             np.round(fit.best_amp[qubits], 4),
+            #             np.round(fit.best_dur[qubits], 4),
+            #         ],
+            #     )
+            # )
 
         fig.update_layout(
             xaxis3_title="Pulse duration [ns]",
@@ -452,16 +466,17 @@ def _update(
     target: QubitPairId,
 ):
     # FIXME: quick fix for qubit order
-    target = tuple(sorted(target))
-    update.virtual_phases(
-        results.best_virtual_phase[target], results.native, platform, target
-    )
-    getattr(update, f"{results.native}_duration")(
-        results.best_dur[target], platform, target
-    )
-    getattr(update, f"{results.native}_amplitude")(
-        results.best_amp[target], platform, target
-    )
+    pass
+    # target = tuple(sorted(target))
+    # update.virtual_phases(
+    #     results.best_virtual_phase[target], results.native, platform, target
+    # )
+    # getattr(update, f"{results.native}_duration")(
+    #     results.best_dur[target], platform, target
+    # )
+    # getattr(update, f"{results.native}_amplitude")(
+    #     results.best_amp[target], platform, target
+    # )
 
 
 optimize_two_qubit_gate = Routine(
