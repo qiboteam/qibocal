@@ -1052,3 +1052,14 @@ actions:
       twpa_pow_width: 10
       twpa_pow_step: 3
       nshots: 20000
+
+  - id: long_cryoscope
+    operation: long_cryoscope
+    parameters:
+      duration_min: 10
+      flux_pulse_amplitude: 0.1
+      duration_step: 10
+      duration_max: 100
+      freq_width: 40_000_000
+      freq_step: 5_000_000
+      nshots: 1000
