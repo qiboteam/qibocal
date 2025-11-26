@@ -1,7 +1,7 @@
 """Helper functions to update parameters in platform."""
 
 from collections.abc import Iterable
-from typing import Union
+from typing import Union, Literal
 
 import numpy as np
 from pydantic import BaseModel
@@ -81,6 +81,23 @@ def drive_duration(
             {f"native_gates.single_qubit.{qubit}.RX.0.1.duration": int(duration)}
         )
 
+def lo_frequency(freq: float, platform: Platform, qubit: QubitId, channel_type: Literal["probe", "drive"] = "probe"):
+    """Update LO frequency value in platform for specific qubit."""
+    if channel_type not in ["probe", "drive"]:
+        raise ValueError("channel_type must be either 'probe' or 'drive'")
+    channel = getattr(platform.qubits[qubit], channel_type)
+    lo_channel = platform.channels[channel].lo
+    platform.update({f"configs.{lo_channel}.frequency": freq})
+
+
+def lo_attenuation(attenuation: float, platform: Platform, qubit: QubitId, channel_type: Literal["probe", "drive"] = "probe"):
+    """Update LO attenuation value in platform for specific qubit."""
+    if channel_type not in ["probe", "drive"]:
+        raise ValueError("channel_type must be either 'probe' or 'drive'")
+    channel = getattr(platform.qubits[qubit], channel_type)
+    lo_channel = getattr(platform.channels[channel], 'lo')
+    print(lo_channel)
+    platform.update({f"configs.{lo_channel}.power": attenuation})
 
 def crosstalk_matrix(
     matrix_element: float, platform: Platform, qubit: QubitId, flux_qubit: QubitId

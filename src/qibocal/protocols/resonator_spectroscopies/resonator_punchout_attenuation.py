@@ -6,15 +6,11 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
-from qibolab import Platform
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
-
-from qibolab._core.parameters import update_configs
-from typing import Literal 
 
 from ..utils import HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
 
@@ -322,7 +318,6 @@ def _plot(
     fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=1)
     fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=2)
     fig.update_yaxes(title_text="LO Attenuation [dB]", row=1, col=1)
-
     figures.append(fig)
 
     return figures, fitting_report
@@ -339,33 +334,15 @@ def _update(
     if results.bare_frequency[target] is not None:
         update.bare_resonator_frequency(results.bare_frequency[target], platform, target)
         update.dressed_resonator_frequency(results.readout_frequency[target], platform, target)
-    
-    # Update LO attenuation (stored as power in qibocal)
-    probe = platform.qubits[target].probe
 
-    lo_attenuation(
+    update.lo_attenuation(
         results.readout_attenuation[target],
         platform,
         target,
         channel_type="probe",
     )
 
-def lo_frequency(freq: float, platform: Platform, qubit: QubitId, channel_type: Literal["probe", "drive"] = "probe"):
-    """Update LO frequency value in platform for specific qubit."""
-    if channel_type not in ["probe", "drive"]:
-        raise ValueError("channel_type must be either 'probe' or 'drive'")
-    channel = getattr(platform.qubits[qubit], channel_type)
-    lo_channel = platform.channels[channel].lo
-    platform.update({f"configs.{lo_channel}.frequency": freq})
 
-def lo_attenuation(attenuation: float, platform: Platform, qubit: QubitId, channel_type: Literal["probe", "drive"] = "probe"):
-    """Update LO attenuation value in platform for specific qubit."""
-    if channel_type not in ["probe", "drive"]:
-        raise ValueError("channel_type must be either 'probe' or 'drive'")
-    channel = getattr(platform.qubits[qubit], channel_type)
-    lo_channel = getattr(platform.channels[channel], 'lo')
-    print(lo_channel)
-    platform.update({f"configs.{lo_channel}.power": attenuation})
 
 resonator_punchout_attenuation = Routine(_acquisition, _fit, _plot, _update)
 """**Resonator Punchout Attenuation Qibocal Routine Object.**
