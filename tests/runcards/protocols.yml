@@ -1011,6 +1011,7 @@ actions:
       theta_end: 1
       theta_step: 0.1
       t_idling: 1
+      tp: 10
 
   - id: snz_optimize_t_idle
     operation: snz_optimize_t_idle
@@ -1026,6 +1027,7 @@ actions:
       theta_end: 1
       theta_step: 0.1
       b_amplitude: 0.2
+      tp: 10
 
   - id: snz_optimize_t_idle_vs_t_tot
     operation: snz_optimize_t_idle_vs_t_tot
