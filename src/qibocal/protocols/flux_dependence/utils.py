@@ -42,6 +42,19 @@ class FluxFrequencySweepParameters(Parameters):
         return np.arange(-self.bias_width / 2, self.bias_width / 2, self.bias_step)
 
 
+def normalize(
+    x: list[float], estimate: list[float], threshold: float = 0.001
+) -> list[float]:
+    """Normalize input array to 1.
+
+    Estimate is a guess for the mean. If the normalization
+    is off by a factor larger than 5% estimate is ignored."""
+    mean_ = np.mean(x[len(x) // 2 :])
+    if np.array(np.abs(mean_ / estimate)).max() > threshold:
+        return (np.array(x) / mean_).tolist()
+    return np.abs(np.array(x) / estimate).tolist()
+
+
 def create_data_array(freq, bias, signal, dtype):
     """Create custom dtype array for acquired data."""
     size = len(freq) * len(bias)
