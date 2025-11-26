@@ -6,6 +6,7 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
+from qibolab import Platform
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
@@ -13,6 +14,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
 from qibolab._core.parameters import update_configs
+from typing import Literal 
 
 from ..utils import HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
 
@@ -34,14 +36,24 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
     step_attenuation: float
     """Step LO attenuation [dB]."""
 
-@property
-def attenuation_range(self) -> npt.NDArray[np.float64]:
-    """LO attenuation range [dB]."""
-    return np.arange(
-        self.min_attenuation,
-        self.max_attenuation + self.step_attenuation,
-        self.step_attenuation,
-    )
+    @property
+    def attenuation_range(self) -> npt.NDArray[np.float64]:
+        """LO attenuation range [dB]."""
+        span = self.max_attenuation - self.min_attenuation
+        return np.arange(
+            self.min_attenuation,
+            (self.max_attenuation-span%self.step_attenuation) + self.step_attenuation,
+            self.step_attenuation,
+        )
+    
+    @property
+    def delta_frequency_range(self) -> npt.NDArray[np.float64]:
+        span = self.freq_width
+        return np.arange(
+            -span / 2,
+            (span / 2 - (span/2) % self.freq_step) + self.freq_step,
+            self.freq_step,
+        )
 
 
 @dataclass
@@ -104,14 +116,6 @@ def _acquisition(
         ResonatorPunchoutAttenuationData
     """
 
-    # Define frequency range
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
-
-    # Define attenuation range (0 = no attenuation, higher = more attenuation)
-    
-
     # Get readout LO channels for each qubit
     ro_los = {}
     ro_pulses = {}
@@ -141,7 +145,7 @@ def _acquisition(
 
     try:
         # Loop over attenuation values
-        for attenuation in attenuation_range:
+        for attenuation in params.attenuation_range:
             
             # Update LO attenuation for all target qubits
             updates = []
@@ -163,7 +167,7 @@ def _acquisition(
                 f0 = platform.config(probe).frequency
                 freq_sweepers[qubit] = Sweeper(
                     parameter=Parameter.frequency,
-                    values=f0 + delta_frequency_range,
+                    values=f0 + params.delta_frequency_range,
                     channels=[probe],
                 )
             
@@ -192,7 +196,7 @@ def _acquisition(
     for qubit in targets:
         probe = platform.qubits[qubit].probe
         f0 = platform.config(probe).frequency
-        frequencies = f0 + delta_frequency_range
+        frequencies = f0 + params.delta_frequency_range
         
         # Stack all attenuation sweeps
         signal_array = np.array(all_signals[qubit])
@@ -203,7 +207,7 @@ def _acquisition(
             signal=signal_array,
             phase=phase_array,
             freq=frequencies,
-            attenuation=attenuation_range,
+            attenuation=params.attenuation_range,
         )
 
     return data
@@ -338,25 +342,36 @@ def _update(
     
     # Update LO attenuation (stored as power in qibocal)
     probe = platform.qubits[target].probe
-    lo_channel = platform.channels[probe].lo
 
-    platform.update(
-        {lo_channel: {"power": results.readout_attenuation[target]}}
+    lo_attenuation(
+        results.readout_attenuation[target],
+        platform,
+        target,
+        channel_type="probe",
     )
 
-def lo_frequency(freq: float, platform: Platform, qubit: QubitId, channel_type: literal["probe", "drive"] = "probe"):
+def lo_frequency(freq: float, platform: Platform, qubit: QubitId, channel_type: Literal["probe", "drive"] = "probe"):
     """Update LO frequency value in platform for specific qubit."""
     if channel_type not in ["probe", "drive"]:
         raise ValueError("channel_type must be either 'probe' or 'drive'")
     channel = getattr(platform.qubits[qubit], channel_type)
-    platform.update({f"configs.{channel}.frequency": freq})
+    lo_channel = platform.channels[channel].lo
+    platform.update({f"configs.{lo_channel}.frequency": freq})
 
+def lo_attenuation(attenuation: float, platform: Platform, qubit: QubitId, channel_type: Literal["probe", "drive"] = "probe"):
+    """Update LO attenuation value in platform for specific qubit."""
+    if channel_type not in ["probe", "drive"]:
+        raise ValueError("channel_type must be either 'probe' or 'drive'")
+    channel = getattr(platform.qubits[qubit], channel_type)
+    lo_channel = getattr(platform.channels[channel], 'lo')
+    print(lo_channel)
+    platform.update({f"configs.{lo_channel}.power": attenuation})
 
 resonator_punchout_attenuation = Routine(_acquisition, _fit, _plot, _update)
-"""ResonatorPunchoutAttenuation Routine object.
+"""**Resonator Punchout Attenuation Qibocal Routine Object.**
 
-This routine performs a resonator punchout measurement by sweeping the LO attenuation
-and frequency to determine the critical power for a qubit's resonator to be dispersively shifted.
+This routine performs a resonator punchout (power shift) measurement by sweeping the LO attenuation
+and the IF frequency to determine the critical power for a qubit's resonator to be dispersively shifted.
 
 At low power, the effective resonator frequency is shifted by χ due to the qubit state, while at high power, the resonator frequency
 approaches its bare frequency.
