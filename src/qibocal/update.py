@@ -1,7 +1,7 @@
 """Helper functions to update parameters in platform."""
 
 from collections.abc import Iterable
-from typing import Union, Literal
+from typing import Literal, Union
 
 import numpy as np
 from pydantic import BaseModel
@@ -82,17 +82,27 @@ def drive_duration(
         )
 
 
-def lo_frequency(freq: float, platform: Platform, qubit: QubitId, channel_type: Literal["probe", "drive"] = "probe"):
+def lo_frequency(
+    freq: float,
+    platform: Platform,
+    qubit: QubitId,
+    channel_type: Literal["probe", "drive"] = "probe",
+):
     """Update LO frequency value in platform for specific qubit."""
     channel = getattr(platform.qubits[qubit], channel_type)
     lo_channel = platform.channels[channel].lo
     platform.update({f"configs.{lo_channel}.frequency": freq})
 
 
-def lo_attenuation(attenuation: float, platform: Platform, qubit: QubitId, channel_type: Literal["probe", "drive"] = "probe"):
+def lo_attenuation(
+    attenuation: float,
+    platform: Platform,
+    qubit: QubitId,
+    channel_type: Literal["probe", "drive"] = "probe",
+):
     """Update LO attenuation value in platform for specific qubit."""
     channel = getattr(platform.qubits[qubit], channel_type)
-    lo_channel = getattr(platform.channels[channel], 'lo')
+    lo_channel = getattr(platform.channels[channel], "lo")
     platform.update({f"configs.{lo_channel}.power": attenuation})
 
 
