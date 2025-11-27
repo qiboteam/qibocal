@@ -139,54 +139,51 @@ def _acquisition(
     all_signals = {qubit: [] for qubit in targets}
     all_phases = {qubit: [] for qubit in targets}
 
-    try:
-        # Loop over attenuation values
-        for attenuation in params.attenuation_range:
-            
-            # Update LO attenuation for all target qubits
-            updates = []
-            for qubit in targets:
-                lo_channel = ro_los[qubit]
-                updates.append({lo_channel: {"power": attenuation}})
+    # Loop over attenuation values
+    for attenuation in params.attenuation_range:
+        
+        # Update LO attenuation for all target qubits
+        updates = []
+        for qubit in targets:
+            lo_channel = ro_los[qubit]
+            updates.append({lo_channel: {"power": attenuation}})
 
-            # Create pulse sequence
-            sequence = PulseSequence()
-            freq_sweepers = {}
+        # Create pulse sequence
+        sequence = PulseSequence()
+        freq_sweepers = {}
+        
+        for qubit in targets:
+            natives = platform.natives.single_qubit[qubit]
+            ro_channel, ro_pulse = natives.MZ()[0]
+            sequence.append((ro_channel, ro_pulse))
             
-            for qubit in targets:
-                natives = platform.natives.single_qubit[qubit]
-                ro_channel, ro_pulse = natives.MZ()[0]
-                sequence.append((ro_channel, ro_pulse))
-                
-                # Create frequency sweeper
-                probe = platform.qubits[qubit].probe
-                f0 = platform.config(probe).frequency
-                freq_sweepers[qubit] = Sweeper(
-                    parameter=Parameter.frequency,
-                    values=f0 + params.delta_frequency_range,
-                    channels=[probe],
-                )
-            
-            # Execute with frequency sweep only
-            results = platform.execute(
-                [sequence],
-                [[freq_sweepers[q] for q in targets]],
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
-                updates=updates,
+            # Create frequency sweeper
+            probe = platform.qubits[qubit].probe
+            f0 = platform.config(probe).frequency
+            freq_sweepers[qubit] = Sweeper(
+                parameter=Parameter.frequency,
+                values=f0 + params.delta_frequency_range,
+                channels=[probe],
             )
-            
-            # Collect results for this attenuation level
-            for qubit in targets:
-                ro_pulse = ro_pulses[qubit]
-                result = list(results.items())[0][1]
-                all_signals[qubit].append(magnitude(result))
-                all_phases[qubit].append(phase(result))
-    
-    finally:
-        pass
+        
+        # Execute with frequency sweep only
+        results = platform.execute(
+            [sequence],
+            [[freq_sweepers[q] for q in targets]],
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+            updates=updates,
+        )
+        
+        # Collect results for this attenuation level
+        for qubit in targets:
+            ro_pulse = ro_pulses[qubit]
+            result = list(results.items())[0][1]
+            all_signals[qubit].append(magnitude(result))
+            all_phases[qubit].append(phase(result))
+
     
     # Register data for all qubits
     for qubit in targets:
@@ -354,7 +351,7 @@ At low power, the effective resonator frequency is shifted by χ due to the qubi
 approaches its bare frequency.
 
 .. math::
-    \\omega_{dressed} = \\omega_r + \\chi
+    \\omega_{dressed} = \\omega_{bare} + \\chi
 
 In general the frequency of the peak in the resonator can be approximated by 
 
