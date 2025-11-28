@@ -364,12 +364,12 @@ At low power, the effective resonator frequency is shifted by χ due to the qubi
 approaches its bare frequency.
 
 .. math::
-    \\omega_{dressed} = \\omega_{bare} + \\chi
+    \omega_{dressed} = \omega_{bare} + \chi
 
 In general the frequency of the peak in the resonator can be approximated by
 
 .. math::
-    \\omega_{\\text{peak}}(\\bar{n}) = \\omega_r + \\chi \\frac{1}{1 + \\bar{n}/n_{\\text{crit}}}
+    \omega_{\text{peak}}(\bar{n}) = \omega_r + \chi \frac{1}{1 + \bar{n}/n_{\text{crit}}}
 
 Where :math:`n_{\\text{crit}} = \\Delta^2 / 4g^2` is the critical photon number at which the resonator frequency starts to shift towards the bare frequency.
 """
