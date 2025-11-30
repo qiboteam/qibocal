@@ -35,20 +35,18 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
     @property
     def attenuation_range(self) -> npt.NDArray[np.float64]:
         """LO attenuation range [dB]."""
-        span = self.max_attenuation - self.min_attenuation
         return np.arange(
             self.min_attenuation,
-            (self.max_attenuation - span % self.step_attenuation)
-            + self.step_attenuation,
+            self.max_attenuation,
             self.step_attenuation,
         )
 
     @property
     def delta_frequency_range(self) -> npt.NDArray[np.float64]:
-        span = self.freq_width
+        """Frequency detuning range [Hz]."""
         return np.arange(
-            -span / 2,
-            (span / 2 - (span / 2) % self.freq_step) + self.freq_step,
+            -self.freq_width / 2,
+            self.freq_width / 2  + self.freq_step,
             self.freq_step,
         )
 
