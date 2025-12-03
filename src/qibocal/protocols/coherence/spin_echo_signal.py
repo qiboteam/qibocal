@@ -51,6 +51,11 @@ class SpinEchoSignalResults(Results):
     pcov: dict[QubitId, list[float]]
     """Approximate covariance of fitted parameters."""
 
+    @property
+    def t2_echo(self) -> dict[QubitId, Union[float, list[float]]]:
+        """T2 echo for each qubit."""
+        return self.t2
+
 
 class SpinEchoSignalData(T1SignalData):
     """SpinEcho acquisition outputs."""
