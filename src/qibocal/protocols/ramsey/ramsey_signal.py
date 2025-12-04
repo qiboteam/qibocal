@@ -133,6 +133,7 @@ def _acquisition(
         results = platform.execute(
             [sequence],
             [[sweeper]],
+            nshots=params.nshots,
             updates=updates,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
