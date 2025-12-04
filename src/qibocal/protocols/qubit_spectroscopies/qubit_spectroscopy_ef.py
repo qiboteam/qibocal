@@ -16,6 +16,8 @@ from .qubit_spectroscopy import (
     QubitSpectroscopyData,
     QubitSpectroscopyParameters,
     QubitSpectroscopyResults,
+)
+from .qubit_spectroscopy import (
     _fit as qubit_fit,
 )
 
