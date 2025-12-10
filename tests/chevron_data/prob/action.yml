@@ -1,0 +1,14 @@
+id: chevron prob 0
+operation: chevron
+parameters:
+  amplitude_max: 0.48
+  amplitude_min: 0.45
+  amplitude_step: 0.0005
+  duration_max: 100
+  duration_min: 5
+  duration_step: 4
+  relaxation_time: 50000
+targets:
+- - B1
+  - B3
+update: true

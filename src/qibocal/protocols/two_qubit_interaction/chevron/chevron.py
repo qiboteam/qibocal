@@ -1,23 +1,30 @@
 """SWAP experiment for two qubit gates, chevron plot."""
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routine
+from qibocal.auto.operation import (
+    DATAFILE,
+    Data,
+    Parameters,
+    QubitPairId,
+    Results,
+    Routine,
+)
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.protocols.utils import table_dict, table_html
+from qibocal.protocols.utils import HZ_TO_GHZ, table_dict, table_html
 
 from .... import update
-from ..utils import fit_flux_amplitude, order_pair
-from .utils import COLORAXIS, chevron_fit, chevron_sequence
+from ..utils import order_pair
+from .utils import COLORAXIS, chevron_fit, chevron_sequence, z_normalization
 
 __all__ = ["chevron"]
 
@@ -50,70 +57,74 @@ class ChevronParameters(Parameters):
 class ChevronResults(Results):
     """CzFluxTime outputs when fitting will be done."""
 
-    amplitude: dict[QubitPairId, float]
-    """CZ angle."""
-    duration: dict[QubitPairId, int]
-    """Virtual Z phase correction."""
-    native: Literal["CZ", "iSWAP"] = "CZ"
+    native: str = "CZ"
     """Two qubit interaction to be calibrated."""
-
-
-ChevronType = np.dtype(
-    [
-        ("amp", np.float64),
-        ("length", np.float64),
-        ("prob_high", np.float64),
-        ("prob_low", np.float64),
-    ]
-)
-"""Custom dtype for Chevron."""
+    duration: dict[QubitPairId, list] = field(default_factory=dict)
+    """Gate duration."""
+    half_duration: dict[QubitPairId, list] = field(default_factory=dict)
+    """Half gate duration."""
+    amplitude: dict[QubitPairId, list] = field(default_factory=dict)
+    """Gate flux amplitude."""
+    fitted_parameters: dict[QubitPairId, list] = field(default_factory=dict)
+    """Fitted parameters for chevron pattern."""
 
 
 @dataclass
 class ChevronData(Data):
     """Chevron acquisition outputs."""
 
-    native_amplitude: dict[QubitPairId, float] = field(default_factory=dict)
-    """CZ platform amplitude for qubit pair."""
-    native: str = "CZ"
+    native: str
     """Two qubit interaction to be calibrated.
 
     iSWAP and CZ are the possible options.
 
     """
-    data: dict[QubitPairId, npt.NDArray[ChevronType]] = field(default_factory=dict)
+    amplitude: list
+    """Amplitude values."""
+    duration: list
+    """Duration values."""
+    _sorted_pairs: list = field(init=False, repr=False, metadata={"exclude": True})
+    """Pairs to be calibrated sorted by frequency."""
+    detuning: dict[QubitPairId, float] = field(default_factory=dict)
+    """Expected detuning between qubit in pair."""
+    anharmonicity: dict[QubitPairId, float] = field(default_factory=dict)
+    """Anhamonicity of high frequency qubit in pair."""
+    flux_coefficient: dict[QubitPairId, float] = field(default_factory=dict)
+    """Flux coefficient to map frequency to amplitude."""
+    data: dict[QubitPairId, np.ndarray] = field(default_factory=dict)
+    """Raw data acquired."""
 
-    label: Optional[str] = None
-    """Label for the data."""
+    @property
+    def grid(self) -> np.ndarray:
+        x, y = np.meshgrid(self.duration, self.amplitude)
+        return np.stack([x.ravel(), y.ravel()])
 
-    def register_qubit(self, low_qubit, high_qubit, length, amp, prob_low, prob_high):
-        """Store output for single qubit."""
-        size = len(length) * len(amp)
-        amplitude, duration = np.meshgrid(amp, length)
-        ar = np.empty(size, dtype=ChevronType)
-        ar["length"] = duration.ravel()
-        ar["amp"] = amplitude.ravel()
-        ar["prob_low"] = prob_low.ravel()
-        # Since an X gate was added on the high frequency qubit at the end of the
-        # pulse sequence, its Chevron pattern is between state 0 and 2, so the state
-        # one is mapped into 0. For this reason and compatibility with the other
-        # qubit, we have to evaluate the ground state probability.
-        ar["prob_high"] = 1 - prob_high.ravel()
-        self.data[low_qubit, high_qubit] = np.rec.array(ar)
+    @property
+    def sorted_pairs(self) -> list:
+        return [
+            pair if isinstance(pair, tuple) else tuple(pair)
+            for pair in self._sorted_pairs
+        ]
 
-    def amplitudes(self, pair):
-        """Unique pair amplitudes."""
-        return np.unique(self[pair].amp)
+    @sorted_pairs.setter
+    def sorted_pairs(self, value):
+        self._sorted_pairs = value
 
-    def durations(self, pair):
-        """Unique pair durations."""
-        return np.unique(self[pair].length)
-
-    def low_frequency(self, pair):
-        return self[pair].prob_low
-
-    def high_frequency(self, pair):
-        return self[pair].prob_high
+    @classmethod
+    def load(cls, path: Path):
+        """Generic load method."""
+        data_dict = cls.load_data(path, DATAFILE)
+        params = cls.load_params(path, DATAFILE)
+        pairs = params.pop("_sorted_pairs")
+        if data_dict is not None:
+            if params is not None:
+                instance = cls(data=data_dict, **params)
+            else:
+                instance = cls(data=data_dict)
+        elif params is not None:
+            instance = cls(**params)
+        instance.sorted_pairs = pairs
+        return instance
 
 
 def _aquisition(
@@ -133,14 +144,39 @@ def _aquisition(
         ChevronData: Acquisition data.
     """
 
-    # create a DataUnits object to store the results
-    data = ChevronData(native=params.native)
-    for pair in targets:
-        # order the qubits so that the low frequency one is the first
-        ordered_pair = order_pair(pair, platform)
+    data = ChevronData(
+        native=params.native,
+        amplitude=np.arange(
+            params.amplitude_min, params.amplitude_max, params.amplitude_step
+        ).tolist(),
+        duration=np.arange(
+            params.duration_min, params.duration_max, params.duration_step
+        ).tolist(),
+    )
+
+    data.sorted_pairs = [order_pair(pair, platform) for pair in targets]
+    data.flux_coefficient = {
+        pair: platform.calibration.single_qubits[pair[1]].qubit.flux_coefficients[0]
+        for pair in data.sorted_pairs
+    }
+    data.detuning = {
+        pair: (
+            platform.calibration.single_qubits[pair[1]].qubit.frequency_01
+            - platform.calibration.single_qubits[pair[0]].qubit.frequency_01
+        )
+        * HZ_TO_GHZ
+        for pair in data.sorted_pairs
+    }
+    data.anharmonicity = {
+        pair: platform.calibration.single_qubits[pair[1]].qubit.anharmonicity
+        * HZ_TO_GHZ
+        for pair in data.sorted_pairs
+    }
+
+    for pair in data.sorted_pairs:
         sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
             platform=platform,
-            ordered_pair=ordered_pair,
+            ordered_pair=pair,
             duration_max=params.duration_max,
             parking=params.parking,
             dt=params.dt,
@@ -157,14 +193,8 @@ def _aquisition(
             pulses=[flux_pulse] + delays + parking_pulses,
         )
 
-        ro_high = list(sequence.channel(platform.qubits[ordered_pair[1]].acquisition))[
-            -1
-        ]
-        ro_low = list(sequence.channel(platform.qubits[ordered_pair[0]].acquisition))[
-            -1
-        ]
-
-        data.native_amplitude[ordered_pair] = flux_pulse.amplitude
+        ro_high = list(sequence.channel(platform.qubits[pair[1]].acquisition))[-1]
+        ro_low = list(sequence.channel(platform.qubits[pair[0]].acquisition))[-1]
 
         results = platform.execute(
             [sequence],
@@ -175,125 +205,162 @@ def _aquisition(
             averaging_mode=AveragingMode.CYCLIC,
         )
 
-        data.register_qubit(
-            ordered_pair[0],
-            ordered_pair[1],
-            sweeper_duration.values,
-            sweeper_amplitude.values,
-            results[ro_low.id],
-            results[ro_high.id],
+        data.data[pair[0], pair[1]] = np.stack(
+            [
+                results[ro_low.id],
+                1 - results[ro_high.id]
+                if params.native == "CZ"
+                else results[ro_high.id],
+            ]
         )
     return data
 
 
 def _fit(data: ChevronData) -> ChevronResults:
-    durations = {}
-    amplitudes = {}
-    for pair in data.data:
-        amps = data.amplitudes(pair)
-        times = data.durations(pair)
+    fitted_parameters = {}
+    duration = {}
+    amplitude = {}
+    half_duration = {}
+    for pair in data.sorted_pairs:
+        fitted_parameters[pair] = []
+        duration[pair], half_duration[pair], amplitude[pair] = [], [], []
+        for _data in [data[pair][0], data[pair][1]]:
+            try:
+                popt, _ = curve_fit(
+                    chevron_fit,
+                    data.grid,
+                    z_normalization(_data.T.flatten()),
+                    p0=[
+                        data.detuning[pair] + data.anharmonicity[pair],
+                        data.flux_coefficient[pair],
+                        0.07,
+                        0,
+                    ],
+                    bounds=(
+                        [
+                            (data.detuning[pair] + data.anharmonicity[pair]) / 2,
+                            -3,
+                            0,
+                            0,
+                        ],
+                        [
+                            (2 * data.detuning[pair] + data.anharmonicity[pair]),
+                            -1,
+                            0.1,
+                            2 * np.pi,
+                        ],
+                    ),
+                    maxfev=100000,
+                )
+                fitted_parameters[pair].append(popt.tolist())
+                duration[pair].append(np.pi / popt[2])
+                half_duration[pair].append(np.pi / popt[2] / 2)
+                amplitude[pair].append(np.sqrt(-popt[0] / popt[1]))
+            except Exception as e:
+                fitted_parameters[pair].append([])
+                duration[pair].append([])
+                half_duration[pair].append([])
+                amplitude[pair].append([])
+                log.warning(f"Chevron fit failed for pair {pair} due to {e}")
 
-        signal = data.low_frequency(pair)
-        signal_matrix = signal.reshape(len(times), len(amps)).T
-
-        # guess amplitude computing FFT
-        amplitude, index, delta = fit_flux_amplitude(signal_matrix, amps, times)
-        # estimate duration by rabi curve at amplitude previously estimated
-        y = signal_matrix[index, :].ravel()
-        try:
-            popt, _ = curve_fit(
-                chevron_fit,
-                times,
-                y,
-                p0=[delta * 2 * np.pi, np.pi, np.mean(y), np.mean(y)],
-                bounds=(
-                    [0, -2 * np.pi, np.min(y), np.min(y)],
-                    [np.inf, 2 * np.pi, np.max(y), np.max(y)],
-                ),
-            )
-            period = 1 / (popt[0] / 2 / np.pi)
-            duration = period if data.native == "CZ" else period / 2
-            amplitudes[pair] = amplitude
-            durations[pair] = int(duration)
-        except Exception as e:
-            log.warning(f"Chevron fit failed for pair {pair} due to {e}")
-
-    return ChevronResults(amplitude=amplitudes, duration=durations, native=data.native)
+    return ChevronResults(
+        native=data.native,
+        fitted_parameters=fitted_parameters,
+        duration=duration,
+        half_duration=half_duration,
+        amplitude=amplitude,
+    )
 
 
 def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
     """Plot the experiment result for a single pair."""
-    # reverse qubit order if not found in data
-    if target not in data.data:
-        target = (target[1], target[0])
-
-    pair_data = data[target]
     fig = make_subplots(
-        rows=1,
+        rows=2,
         cols=2,
         subplot_titles=(
-            f"Qubit {target[0]} - Low Frequency",
-            f"Qubit {target[1]} - High Frequency",
+            f"Qubit {target[0]} - Low Frequency - Data",
+            f"Qubit {target[1]} - High Frequency - Data",
+            f"Qubit {target[0]} - Low Frequency - Fit",
+            f"Qubit {target[1]} - High Frequency - Fit",
         ),
+        shared_xaxes="all",
+        shared_yaxes="all",
     )
     fitting_report = ""
+    for i, _data in enumerate([data[target][0], data[target][1]]):
+        fig.add_trace(
+            go.Heatmap(
+                x=data.duration,
+                y=data.amplitude,
+                z=_data.T,
+                coloraxis=COLORAXIS[i],
+            ),
+            row=1,
+            col=1 + i,
+        )
 
-    fig.add_trace(
-        go.Heatmap(
-            x=pair_data.length,
-            y=pair_data.amp,
-            z=data.low_frequency(target),
-            coloraxis=COLORAXIS[0],
-        ),
-        row=1,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Heatmap(
-            x=pair_data.length,
-            y=pair_data.amp,
-            z=data.high_frequency(target),
-            coloraxis=COLORAXIS[1],
-        ),
-        row=1,
-        col=2,
-    )
-
-    for measured_qubit in target:
-        if fit is not None:
-            fig.add_trace(
-                go.Scatter(
-                    x=[
-                        fit.duration[target],
-                    ],
-                    y=[
-                        fit.amplitude[target],
-                    ],
-                    mode="markers",
-                    marker=dict(
-                        size=8,
-                        color="black",
-                        symbol="cross",
+    if fit is not None:
+        for i in range(2):
+            if len(fit.fitted_parameters[target][i]) > 0:
+                fig.add_trace(
+                    go.Heatmap(
+                        x=data.duration,
+                        y=data.amplitude,
+                        z=chevron_fit(
+                            data.grid, *fit.fitted_parameters[target][i]
+                        ).reshape(
+                            len(data.amplitude),
+                            len(data.duration),
+                        ),
+                        coloraxis=COLORAXIS[i],
                     ),
-                    name=f"{data.native} estimate",  #  Change name from the params
-                    showlegend=True if measured_qubit == target[0] else False,
-                    legendgroup="Voltage",
-                ),
-                row=1,
-                col=1,
-            )
+                    row=2,
+                    col=i + 1,
+                )
+
+                for j in range(2):
+                    fig.add_hline(
+                        y=fit.amplitude[target][i],
+                        line_dash="dot",
+                        row=j + 1,
+                        col=i + 1,
+                        name="Fit",
+                    )
+
+                    fig.add_vline(
+                        x=fit.duration[target][i],
+                        line_dash="dot",
+                        row=j + 1,
+                        col=i + 1,
+                        name="Fit",
+                    )
+
+                    fig.add_vline(
+                        x=fit.half_duration[target][i],
+                        line_dash="dot",
+                        row=j + 1,
+                        col=i + 1,
+                        name="Fit",
+                    )
 
     fig.update_layout(
         xaxis_title="Duration [ns]",
         xaxis2_title="Duration [ns]",
-        yaxis_title=data.label or "Amplitude [a.u.]",
+        xaxis3_title="Duration [ns]",
+        xaxis4_title="Duration [ns]",
+        yaxis_title="Amplitude [a.u.]",
+        yaxis2_title="Amplitude [a.u.]",
+        yaxis3_title="Amplitude [a.u.]",
+        yaxis4_title="Amplitude [a.u.]",
         legend=dict(orientation="h"),
-    )
-    fig.update_layout(
         coloraxis={"colorscale": "Oryel", "colorbar": {"x": 1.15}},
         coloraxis2={"colorscale": "Darkmint", "colorbar": {"x": -0.15}},
+        height=800,
     )
+    for i in range(1, 3):
+        for j in range(1, 3):
+            fig.update_xaxes(showticklabels=True, showline=True, row=i, col=j)
+            fig.update_yaxes(showticklabels=True, showline=True, row=i, col=j)
 
     if fit is not None:
         fitting_report = table_html(
@@ -301,8 +368,10 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
                 target[1],
                 [f"{fit.native} amplitude", f"{fit.native} duration"],
                 [
-                    fit.amplitude[target],
-                    fit.duration[target],
+                    np.mean(fit.amplitude[target]),
+                    np.round(np.mean(fit.duration[target]))
+                    if data.native == "CZ"
+                    else np.round(np.mean(fit.half_duration[target])),
                 ],
             )
         )
@@ -316,10 +385,10 @@ def _update(
     target = target[::-1] if target not in results.duration else target
 
     getattr(update, f"{results.native}_duration")(
-        results.duration[target], platform, target
+        np.mean(results.duration[target]), platform, target
     )
     getattr(update, f"{results.native}_amplitude")(
-        results.amplitude[target], platform, target
+        np.mean(results.amplitude[target]), platform, target
     )
 
 
