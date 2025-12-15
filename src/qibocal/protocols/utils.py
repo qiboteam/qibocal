@@ -843,8 +843,8 @@ def extract_feature(
     # adding zca filter for filtering out background noise gradient (usually in the edges?)
     zca_gauss_z = ndimage.gaussian_filter(zca_z, 1)
     # adding gaussia fliter with unitary variance for blurring the signal and reducing noise
-    z_min = np.min(zca_gauss_z, axis=0)
-    zca_gauss_norm = (zca_gauss_z - z_min)/(np.max(zca_gauss_z, axis=0) - z_min)
+    z_min = np.min(zca_gauss_z, axis=1)
+    zca_gauss_norm = ((zca_gauss_z.T - z_min)/(np.max(zca_gauss_z, axis=1) - z_min)).T
 
     # filter data using find_peaks
     peaks = {"x": {"idx": [], "val": []}, "y": {"idx": [], "val": []}}
@@ -867,8 +867,8 @@ def extract_feature(
     peaks_sf = zca_gauss_norm[peaks_y,peaks_x]
 
     # TODO: adding scikit-learn HDBSCAN clustering method for separating noise to signal
-    hdb = HDBSCAN()
-    
+    hdb = HDBSCAN(copy=True, min_cluster_size=2)
+
     X = np.stack((peaks_x, peaks_y, peaks_sf)).T
     hdb.fit(X)
     hdb.labels_.shape == (X.shape[0],)
