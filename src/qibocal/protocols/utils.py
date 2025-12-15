@@ -13,6 +13,8 @@ from scipy import constants, sparse
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 from scipy.stats import norm as scipy_norm
+from scipy import ndimage
+from sklearn.cluster import HDBSCAN
 
 from qibocal.auto.operation import Data, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
@@ -757,6 +759,70 @@ def table_html(data: dict) -> str:
     )
 
 
+# def extract_feature(
+#     x: np.ndarray,
+#     y: np.ndarray,
+#     z: np.ndarray,
+#     find_min: bool,
+# ):
+#     """Extract feature using confidence intervals.
+
+#     Given a dataset of the form (x, y, z) where a spike or a valley is expected,
+#     this function discriminate the points (x, y) with a signal, from the pure noise
+#     and return the first ones.
+#     """
+#     x_ = np.unique(x)
+#     y_ = np.unique(y)
+#     # background removed over y axis
+#     z_ = z.reshape(len(y_), len(x_))
+#     #z_min = np.min(z_, axis=0)
+#     #z_ = (z_ - z_min)/(np.max(z_, axis=0) - z_min)
+#     z_ = z_ / np.mean(z, axis=0)
+#     normalized_z = z_.reshape(z.shape)
+
+#     # filter data using find_peaks
+#     filtered_y = []
+#     filtered_x = []
+#     for i in y:
+#         signal_fixed_y = normalized_z[y == i]
+#         peak, _ = find_peaks(
+#             -signal_fixed_y if find_min else signal_fixed_y, prominence=0.3
+#         )
+#         if len(peak) > 0:
+#             for j in peak:
+#                 filtered_y.append(i)
+#                 filtered_x.append(x_[j])
+
+#     return np.array(filtered_x), np.array(filtered_y)
+
+
+def zca_whiten(X):
+    """
+    Applies ZCA whitening to the data (X)
+    http://xcorr.net/2011/05/27/whiten-a-mfilters.gaussianatrix-matlab-code/
+
+    X: numpy 2d array
+        input data, rows are data points, columns are features
+
+    Returns: ZCA whitened 2d array
+    """
+    assert(X.ndim == 2)
+    EPS = 10e-5
+
+    #   covariance matrix
+    cov = np.dot(X.T, X)
+    #   d = (lambda1, lambda2, ..., lambdaN)
+    d, E = np.linalg.eigh(cov)
+    #   D = diag(d) ^ (-1/2)
+    D = np.diag(1. / np.sqrt(d + EPS))
+    #   W_zca = E * D * E.T
+    W = np.dot(np.dot(E, D), E.T)
+
+    X_white = np.dot(X, W)
+
+    return X_white
+
+
 def extract_feature(
     x: np.ndarray,
     y: np.ndarray,
@@ -772,24 +838,47 @@ def extract_feature(
     x_ = np.unique(x)
     y_ = np.unique(y)
     # background removed over y axis
-    z_ = z.reshape(len(y_), len(x_))
-    z_ = z_ / np.mean(z, axis=0)
-    normalized_z = z_.reshape(z.shape)
+    z_ = z.reshape((len(y_), len(x_)))
+    zca_z = zca_whiten(z_)
+    # adding zca filter for filtering out background noise gradient (usually in the edges?)
+    zca_gauss_z = ndimage.gaussian_filter(zca_z, 1)
+    # adding gaussia fliter with unitary variance for blurring the signal and reducing noise
+    z_min = np.min(zca_gauss_z, axis=0)
+    zca_gauss_norm = (zca_gauss_z - z_min)/(np.max(zca_gauss_z, axis=0) - z_min)
 
     # filter data using find_peaks
-    filtered_y = []
-    filtered_x = []
-    for i in y:
-        signal_fixed_y = normalized_z[y == i]
-        peak, _ = find_peaks(
+    peaks = {"x": {"idx": [], "val": []}, "y": {"idx": [], "val": []}}
+    for y_idx, y_val in enumerate(y_):
+        signal_fixed_y = zca_gauss_norm[y_idx]
+        peak, info = find_peaks(
             -signal_fixed_y if find_min else signal_fixed_y, prominence=0.3
         )
         if len(peak) > 0:
-            for j in peak:
-                filtered_y.append(i)
-                filtered_x.append(x_[j])
+            idx = np.argmax(info["prominences"])
+            x_idx = peak[idx]
+            peaks["x"]["idx"].append(x_idx)
+            peaks["x"]["val"].append(x_[x_idx])
+            peaks["y"]["idx"].append(y_idx)
+            peaks["y"]["val"].append(y_val)
 
-    return np.array(filtered_x), np.array(filtered_y)
+    peaks_dict = {feat: {kind: np.array(vals) for kind, vals in smth.items()} for feat, smth in peaks.items()}
+    peaks_x = peaks_dict['x']['idx']
+    peaks_y = peaks_dict['y']['idx']
+    peaks_sf = zca_gauss_norm[peaks_y,peaks_x]
+
+    # TODO: adding scikit-learn HDBSCAN clustering method for separating noise to signal
+    hdb = HDBSCAN()
+    
+    X = np.stack((peaks_x, peaks_y, peaks_sf)).T
+    hdb.fit(X)
+    hdb.labels_.shape == (X.shape[0],)
+    labels = hdb.labels_
+
+    clusters = np.unique(labels)
+    medians = [np.median(peaks_sf[labels == c]) for c in clusters]
+    signal = clusters[np.argmax(medians)]
+
+    return peaks_dict['x']['val'][labels == signal], peaks_dict['y']['val'][labels == signal]
 
 
 def guess_period(x, y):
