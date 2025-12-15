@@ -828,6 +828,7 @@ def extract_feature(
     y: np.ndarray,
     z: np.ndarray,
     find_min: bool,
+    min_points:int=5
 ):
     """Extract feature using confidence intervals.
 
@@ -838,7 +839,7 @@ def extract_feature(
     x_ = np.unique(x)
     y_ = np.unique(y)
     # background removed over y axis
-    z_ = z.reshape((len(y_), len(x_)))
+    z_ = z.reshape(len(y_), len(x_))
     zca_z = zca_whiten(z_)
     # adding zca filter for filtering out background noise gradient (usually in the edges?)
     zca_gauss_z = ndimage.gaussian_filter(zca_z, 1)
@@ -851,7 +852,7 @@ def extract_feature(
     for y_idx, y_val in enumerate(y_):
         signal_fixed_y = zca_gauss_norm[y_idx]
         peak, info = find_peaks(
-            -signal_fixed_y if find_min else signal_fixed_y, prominence=0.3
+            -signal_fixed_y if find_min else signal_fixed_y, prominence=0.2
         )
         if len(peak) > 0:
             idx = np.argmax(info["prominences"])
@@ -864,7 +865,7 @@ def extract_feature(
     peaks_dict = {feat: {kind: np.array(vals) for kind, vals in smth.items()} for feat, smth in peaks.items()}
     peaks_x = peaks_dict['x']['idx']
     peaks_y = peaks_dict['y']['idx']
-    peaks_sf = zca_gauss_norm[peaks_y,peaks_x]
+    peaks_sf = zca_gauss_z[peaks_y,peaks_x]
 
     # TODO: adding scikit-learn HDBSCAN clustering method for separating noise to signal
     hdb = HDBSCAN(copy=True, min_cluster_size=2)
@@ -875,8 +876,9 @@ def extract_feature(
     labels = hdb.labels_
 
     clusters = np.unique(labels)
-    medians = [np.median(peaks_sf[labels == c]) for c in clusters]
-    signal = clusters[np.argmax(medians)]
+    valid_clusters = [c for c in clusters if np.sum(labels == c) >= min_points]
+    medians = [np.median(peaks_sf[labels == c]) for c in valid_clusters]
+    signal = valid_clusters[np.argmax(medians)]
 
     return peaks_dict['x']['val'][labels == signal], peaks_dict['y']['val'][labels == signal]
 
