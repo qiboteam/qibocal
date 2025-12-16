@@ -18,7 +18,7 @@ from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
-from ...result import magnitude, phase
+from ...result import magnitude
 from ...update import replace
 from ..utils import (
     GHZ_TO_HZ,
@@ -70,9 +70,9 @@ class QubitCrosstalkData(QubitFluxData):
     )
     """Raw data acquired for (qubit, qubit_flux) pairs saved in nested dictionaries."""
 
-    def register_qubit(self, qubit, flux_qubit, freq, bias, signal, phase):
+    def register_qubit(self, qubit, flux_qubit, freq, bias, signal):
         """Store output for single qubit."""
-        ar = utils.create_data_array(freq, bias, signal, phase, dtype=QubitFluxType)
+        ar = utils.create_data_array(freq, bias, signal, dtype=QubitFluxType)
         if (qubit, flux_qubit) in self.data:
             self.data[qubit, flux_qubit] = np.rec.array(
                 np.concatenate((self.data[qubit, flux_qubit], ar))
@@ -120,10 +120,6 @@ def _acquisition(
     freq_sweepers = []
     offset_sweepers = []
 
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
-
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
         charging_energy[qubit] = platform.calibration.single_qubits[
@@ -159,21 +155,18 @@ def _acquisition(
         freq_sweepers.append(
             Sweeper(
                 parameter=Parameter.frequency,
-                values=platform.config(qd_channel).frequency + delta_frequency_range,
+                values=platform.config(qd_channel).frequency + params.frequency_range,
                 channels=[qd_channel],
             )
         )
 
-    delta_offset_range = np.arange(
-        -params.bias_width / 2, params.bias_width / 2, params.bias_step
-    )
     for q in params.flux_qubits:
         flux_channel = platform.qubits[q].flux
         offset0 = platform.config(flux_channel).offset
         offset_sweepers.append(
             Sweeper(
                 parameter=Parameter.offset,
-                values=offset0 + delta_offset_range,
+                values=offset0 + params.bias_range,
                 channels=[flux_channel],
             )
         )
@@ -217,7 +210,6 @@ def _acquisition(
                 qubit,
                 flux_qubit,
                 signal=magnitude(result),
-                phase=phase(result),
                 freq=freq_sweepers[i].values,
                 bias=offset_sweeper.values,
             )

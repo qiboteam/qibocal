@@ -4,13 +4,12 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
-from qibocal.result import magnitude, phase
+from qibocal.result import magnitude
 
 from ..utils import HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
 
@@ -50,7 +49,6 @@ ResPunchoutType = np.dtype(
         ("freq", np.float64),
         ("amp", np.float64),
         ("signal", np.float64),
-        ("phase", np.float64),
     ]
 )
 """Custom dtype for resonator punchout."""
@@ -67,7 +65,11 @@ class ResonatorPunchoutData(Data):
     data: dict[QubitId, npt.NDArray[ResPunchoutType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, freq, amp, signal, phase):
+    @property
+    def find_min(self):
+        return self.resonator_type != "2D"
+
+    def register_qubit(self, qubit, freq, amp, signal):
         """Store output for single qubit."""
         size = len(freq) * len(amp)
         frequency, amplitude = np.meshgrid(freq, amp)
@@ -75,7 +77,6 @@ class ResonatorPunchoutData(Data):
         ar["freq"] = frequency.ravel()
         ar["amp"] = amplitude.ravel()
         ar["signal"] = signal.ravel()
-        ar["phase"] = phase.ravel()
         self.data[qubit] = np.rec.array(ar)
 
 
@@ -142,7 +143,6 @@ def _acquisition(
         data.register_qubit(
             qubit,
             signal=magnitude(result),
-            phase=phase(result),
             freq=freq_sweepers[qubit].values,
             amp=amp_sweeper.values,
         )
@@ -152,7 +152,6 @@ def _acquisition(
 
 def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResults:
     """Fit frequency and attenuation at high and low power for a given resonator."""
-
     return ResonatorPunchoutResults(*fit_punchout(data, fit_type))
 
 
@@ -162,16 +161,7 @@ def _plot(
     """Plotting function for ResonatorPunchout."""
     figures = []
     fitting_report = ""
-    fig = make_subplots(
-        rows=1,
-        cols=2,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.2,
-        subplot_titles=(
-            "Normalised Signal [a.u.]",
-            "phase [rad]",
-        ),
-    )
+    fig = go.Figure()
     qubit_data = data[target]
     frequencies = qubit_data.freq * HZ_TO_GHZ
     amplitudes = qubit_data.amp
@@ -188,21 +178,9 @@ def _plot(
             y=amplitudes,
             z=qubit_data.signal,
             colorbar_x=0.46,
-        ),
-        row=1,
-        col=1,
+        )
     )
 
-    fig.add_trace(
-        go.Heatmap(
-            x=frequencies,
-            y=amplitudes,
-            z=qubit_data.phase,
-            colorbar_x=1.01,
-        ),
-        row=1,
-        col=2,
-    )
     if fit is not None:
         fig.add_trace(
             go.Scatter(
@@ -243,9 +221,8 @@ def _plot(
         legend=dict(orientation="h"),
     )
 
-    fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=1)
-    fig.update_xaxes(title_text="Frequency [GHz]", row=1, col=2)
-    fig.update_yaxes(title_text="Amplitude [a.u.]", row=1, col=1)
+    fig.update_xaxes(title_text="Frequency [GHz]")
+    fig.update_yaxes(title_text="Amplitude [a.u.]")
 
     figures.append(fig)
 

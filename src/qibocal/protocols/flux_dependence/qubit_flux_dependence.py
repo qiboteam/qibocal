@@ -16,7 +16,7 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Data, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.result import magnitude, phase
+from qibocal.result import magnitude
 from qibocal.update import replace
 
 from ... import update
@@ -29,7 +29,6 @@ from ..utils import (
     table_html,
 )
 from . import utils
-from .resonator_flux_dependence import ResonatorFluxParameters
 
 __all__ = [
     "QubitFluxData",
@@ -41,7 +40,7 @@ __all__ = [
 
 
 @dataclass
-class QubitFluxParameters(ResonatorFluxParameters):
+class QubitFluxParameters(utils.FluxFrequencySweepParameters):
     """QubitFlux runcard inputs."""
 
     drive_amplitude: Optional[float] = None
@@ -70,7 +69,6 @@ QubitFluxType = np.dtype(
         ("freq", np.float64),
         ("bias", np.float64),
         ("signal", np.float64),
-        ("phase", np.float64),
     ]
 )
 """Custom dtype for resonator flux dependence."""
@@ -89,10 +87,24 @@ class QubitFluxData(Data):
     data: dict[QubitId, npt.NDArray[QubitFluxType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, freq, bias, signal, phase):
+    def register_qubit(self, qubit, freq, bias, signal):
         """Store output for single qubit."""
         self.data[qubit] = utils.create_data_array(
-            freq, bias, signal, phase, dtype=QubitFluxType
+            freq, bias, signal, dtype=QubitFluxType
+        )
+
+    @property
+    def find_min(self) -> bool:
+        """Returns True if resonator_type is 2D else False otherwise."""
+        return self.resonator_type != "2D"
+
+    def filtered_data(self, qubit: QubitId) -> np.ndarray:
+        """Apply mask to specific qubit data."""
+        return extract_feature(
+            self.data[qubit].freq,
+            self.data[qubit].bias,
+            self.data[qubit].signal,
+            self.find_min,
         )
 
 
@@ -102,13 +114,6 @@ def _acquisition(
     targets: list[QubitId],
 ) -> QubitFluxData:
     """Data acquisition for QubitFlux Experiment."""
-
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
-    delta_offset_range = np.arange(
-        -params.bias_width / 2, params.bias_width / 2, params.bias_step
-    )
 
     sequence = PulseSequence()
     ro_pulses = {}
@@ -137,7 +142,7 @@ def _acquisition(
         freq_sweepers.append(
             Sweeper(
                 parameter=Parameter.frequency,
-                values=frequency0 + delta_frequency_range,
+                values=frequency0 + params.frequency_range,
                 channels=[qd_channel],
             )
         )
@@ -147,7 +152,7 @@ def _acquisition(
         offset_sweepers.append(
             Sweeper(
                 parameter=Parameter.offset,
-                values=offset0 + delta_offset_range,
+                values=offset0 + params.bias_range,
                 channels=[flux_channel],
             )
         )
@@ -178,7 +183,6 @@ def _acquisition(
         data.register_qubit(
             qubit,
             signal=magnitude(result),
-            phase=phase(result),
             freq=freq_sweepers[i].values,
             bias=offset_sweepers[i].values,
         )
@@ -205,16 +209,9 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        interval_biases = qubit_data.bias
-        interval_frequencies = qubit_data.freq
-        signal = qubit_data.signal
 
-        frequencies, biases = extract_feature(
-            interval_frequencies,
-            interval_biases,
-            signal,
-            "max" if data.resonator_type == "2D" else "min",
-        )
+        # extract signal from 2D plot based on SNR mask
+        frequencies, biases = data.filtered_data(qubit)
 
         def fit_function(x, w_max, normalization, offset):
             return utils.transmon_frequency(
@@ -248,7 +245,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
             }
             frequency[qubit] = popt[0] * GHZ_TO_HZ
-            middle_bias = (np.max(interval_biases) + np.min(interval_biases)) / 2
+            middle_bias = (np.max(qubit_data.bias) + np.min(qubit_data.bias)) / 2
             sweetspot[qubit] = (
                 np.round(popt[1] * middle_bias + popt[2]) - popt[2]
             ) / popt[1]

@@ -3,7 +3,6 @@ from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
@@ -16,7 +15,7 @@ from qibolab import (
 from qibocal.auto.operation import Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
-from ...result import magnitude, phase
+from ...result import magnitude
 from ...update import replace
 from ..resonator_spectroscopies.resonator_punchout import ResonatorPunchoutData
 from ..utils import HZ_TO_GHZ, readout_frequency
@@ -120,7 +119,6 @@ def _acquisition(
         data.register_qubit(
             qubit,
             signal=magnitude(result),
-            phase=phase(result),
             freq=freq_sweepers[qubit].values,
             amp=amp_sweeper.values,
         )
@@ -141,16 +139,7 @@ def _plot(
     """Plot QubitPunchout."""
     figures = []
     fitting_report = ""
-    fig = make_subplots(
-        rows=1,
-        cols=2,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.2,
-        subplot_titles=(
-            "Signal [a.u.]",
-            "phase [rad]",
-        ),
-    )
+    fig = go.Figure()
     qubit_data = data[target]
     frequencies = qubit_data.freq * HZ_TO_GHZ
     amplitudes = qubit_data.amp
@@ -161,20 +150,7 @@ def _plot(
             y=amplitudes,
             z=qubit_data.signal,
             colorbar_x=0.46,
-        ),
-        row=1,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Heatmap(
-            x=frequencies,
-            y=amplitudes,
-            z=qubit_data.phase,
-            colorbar_x=1.01,
-        ),
-        row=1,
-        col=2,
+        )
     )
 
     fig.update_layout(
@@ -182,9 +158,8 @@ def _plot(
         legend=dict(orientation="h"),
     )
 
-    fig.update_xaxes(title_text="Drive frequency [GHz]", row=1, col=1)
-    fig.update_xaxes(title_text="Drive frequency [GHz]", row=1, col=2)
-    fig.update_yaxes(title_text="Drive amplitude [a.u.]", row=1, col=1)
+    fig.update_xaxes(title_text="Drive frequency [GHz]")
+    fig.update_yaxes(title_text="Drive amplitude [a.u.]")
 
     figures.append(fig)
 
