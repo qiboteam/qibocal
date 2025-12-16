@@ -801,10 +801,7 @@ def zca_whiten(X):
     Applies ZCA whitening to the data (X)
     http://xcorr.net/2011/05/27/whiten-a-mfilters.gaussianatrix-matlab-code/
 
-    X: numpy 2d array
-        input data, rows are data points, columns are features
-
-    Returns: ZCA whitened 2d array
+    X must be a 2D array and returns ZCA whitened 2D array.
     """
     assert(X.ndim == 2)
     EPS = 10e-5
@@ -824,26 +821,18 @@ def zca_whiten(X):
 
 
 def clustering(data:tuple, min_points_per_cluster:int):
-    """
-    Divides the processed signal into clusters for separating signal from noise.
+    """Divides the processed signal into clusters for separating signal from noise.
     
-    Params:
-        data_dict: tuple
-            3D tuple (x,y,z) containing positions (x,y) and values z for the data to cluster
+    In this function Hierarchical Density-Based Spatial Clustering of Applications with Noise (HDBSCAN) algorithm is used;
+    HDBSCAN good for successfully capture clusters with different densities.
 
-        min_points_per_cluster: int
-            minimum size of points for a cluster to be considered true signal
-    
-    Returns:
-        classification_list: list
-            boolean list representing the indices of the input data clustered as true signal
+    data_dict is a 3D tuple of the data to cluster, while min_points_per_cluster is the minimum size of points for a cluster to be considered relevant signal.
+    It allows a min_cluster_size=2 in order to decrease as much as possible misclassification of few points.
+    The function returns classification_list, a boolean list corresponding to the indices of the relevant signal.
     """
 
     hdb = HDBSCAN(copy=True, min_cluster_size=2)
-    # Hierarchical Density-Based Spatial Clustering of Applications with Noise;
-    # HDBSCAN good for successfully capture clusters with different densities.
-    # we allow a min_cluster_size=2 in order to decrease as much as possible misclassification of few points.
-
+    
     peaks_vals = data[2]
     X = np.stack(data).T
     hdb.fit(X)
@@ -866,16 +855,7 @@ def clustering(data:tuple, min_points_per_cluster:int):
 
 
 def custom_filter_mask(matrix_z:np.ndarray):
-    """
-    Applying a mask compsosed by first a ZCA transformation and then a gaussian filter with variance 1
-    
-    Params:
-        matrix_z: np.ndarray
-            input signal to mask
-    
-    Returns:
-        zca_gauss_z: np.ndarray
-            masked signal
+    """Applying a mask compsosed by first a ZCA transformation and then a gaussian filter with variance 1.
     """
 
     zca_z = zca_whiten(matrix_z)
@@ -892,37 +872,17 @@ def extract_feature(
     z: np.ndarray,
     find_min: bool,
     min_points:int=5
-):
-    """
-    This function first manipulates the input raw signal by filtering out background noise:
-    it first applies a custom filter mask (see custom_filter_mask function for more info)
+) -> tuple[np.ndarray, np.ndarray]:    
+    """Extract features of the signal by filtering out background noise.
+
+    It first applies a custom filter mask (see custom_filter_mask)
     and then finds the biggest peak for each DC bias value;
-    the masked signal is then clustered (see clustering function) in order to dclassify the relevant signal for the experiment
-    
-    Params:
-        x: np.ndarray
-            x-values of the input signal to process
-
-        y: np.ndarray
-            y-values of the input signal to process
-
-        z: np.array
-            z-values of the input signal to process
-
-        find_min: bool
-            if True it finds minimum peaks of the input signal
-        
-        min_points: int=5
-            minimum size of points for a cluster to be considered true signal
-
-    Returns:
-        peaks_dict['x']['val'][signal_classification]: np.ndarray
-            x-values of the classified signal 
-
-        peaks_dict['y']['val'][signal_classification]: np.ndarray
-            y-values of the classified signal
-
+    the masked signal is then clustered (see clustering) in order to classify the relevant signal for the experiment.
+    If find_min is set to True it finds minimum peaks of the input signal;
+    min_points is the minimum number of points for a cluster to be considered relevant signal.
+    Position of the relevant signal is returned.
     """
+    
     x_ = np.unique(x)
     y_ = np.unique(y)
     # background removed over y axis
