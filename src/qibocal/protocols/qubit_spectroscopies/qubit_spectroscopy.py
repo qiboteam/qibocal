@@ -71,10 +71,48 @@ class QubitSpectroscopyData(ResonatorSpectroscopyData):
 
 
 def _calculate_batches(freq_width: int, freq_step: int, max_if_bandwidth: int = 300_000_000):
-    # TO DO
     
-    return [{'delta_freq_range': np.arange(-freq_width/2, freq_width/2 + freq_step, freq_step),
-                      'lo_offset': 0}]
+    # If freq_width fits within the IF bandwidth, no batching needed
+    if freq_width <= 2 * max_if_bandwidth:
+        delta_frequency_range = np.arange(
+            -freq_width / 2, freq_width / 2, freq_step
+        )
+        return [{'delta_freq_range': delta_frequency_range, 'lo_offset': 0}]
+    
+    # Calculate number of batches needed
+    # Each batch covers 2 * max_if_bandwidth
+    batch_width = 2 * max_if_bandwidth
+    num_batches = int(np.ceil(freq_width / batch_width))
+    
+    # Calculate starting frequency (relative to center)
+    start_freq = -freq_width / 2
+    
+    batches = []
+    for batch_idx in range(num_batches):
+        # Calculate this batch's frequency range
+        batch_start = start_freq + batch_idx * batch_width
+        batch_end = min(batch_start + batch_width, freq_width / 2)
+        
+        # Center of this batch
+        batch_center = (batch_start + batch_end) / 2
+        
+        # LO should set to the batch center (maybe better to the batch edge and make smaller sweeps?)
+        lo_offset = batch_center
+        
+        # Frequency range relative to the batch center (LO position)
+        # These will be the actual frequencies we sweep in IF
+        delta_freq_range = np.arange(
+            batch_start - batch_center, 
+            batch_end - batch_center, 
+            freq_step
+        )
+        
+        batches.append({
+            'delta_freq_range': delta_freq_range,
+            'lo_offset': lo_offset
+        })
+    
+    return batches
 
 
 def _acquisition(
