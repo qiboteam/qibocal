@@ -280,18 +280,22 @@ def fit_punchout(data: Data, fit_type: str):
         mask_freq, mask_amps = extract_feature(freqs, amps, signal, data.find_min)
 
         if mask_freq.size == 0:  # mask_freq and mask_amps have always the same shape
-            return [0.0, 0.0, 0.0]
-
-        if fit_type == "amp":
-            best_freq = np.max(mask_freq)
-            bare_freq = np.min(mask_freq)
+            best_freq = 0
+            bare_freq = 0
+            ro_val = 0
         else:
-            best_freq = np.min(mask_freq)
-            bare_freq = np.max(mask_freq)
-        ro_val = np.max(mask_amps[mask_freq == best_freq])
+            if fit_type == "amp":
+                best_freq = np.max(mask_freq)
+                bare_freq = np.min(mask_freq)
+            else:
+                best_freq = np.min(mask_freq)
+                bare_freq = np.max(mask_freq)
+            ro_val = np.max(mask_amps[mask_freq == best_freq])
+
         low_freqs[qubit] = best_freq
         high_freqs[qubit] = bare_freq
         ro_values[qubit] = ro_val
+
     return [low_freqs, high_freqs, ro_values]
 
 
