@@ -71,7 +71,28 @@ class QubitSpectroscopyData(ResonatorSpectroscopyData):
 
 
 def _calculate_batches(freq_width: int, freq_step: int, max_if_bandwidth: int = 300_000_000):
+    """
+    Calculate frequency batches for wideband spectroscopy.
     
+    When the requested frequency sweep width exceeds the IF bandwidth range (+/- max_if_bandwidth)
+    we split it into multiple batches.
+    
+    Parameters:
+    -----------
+    freq_width : int
+        Total frequency width to sweep [Hz]
+    freq_step : int
+        Frequency step [Hz]
+    max_if_bandwidth : int
+        Maximum IF bandwidth [Hz] from LO, default 300 MHz
+        
+    Returns:
+    --------
+    list of dict
+        Each dict contains:
+        - 'delta_freq_range': frequency offsets from center for this batch
+        - 'lo_offset': LO frequency offset from original drive frequency
+    """
     # If freq_width fits within the IF bandwidth, no batching needed
     if freq_width <= 2 * max_if_bandwidth:
         delta_frequency_range = np.arange(
@@ -334,4 +355,8 @@ def _update(
 
 
 qubit_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
-"""QubitSpectroscopy Routine object."""
+"""QubitSpectroscopy Routine object.
+
+A qubit spectroscopy routine that sweeps the drive frequency around the qubit frequency at which the qubit's transition from |0> to |1> occurs.
+Typically a long pulse is used to ensure a narrow frequency spectrum of the drive, and helping the qubit to get excited to a superposition state.
+"""
