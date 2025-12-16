@@ -258,11 +258,6 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 "should fix the problem."
             )
 
-        # TODO: only for QM (firmware in qw21q-b)
-        if np.abs(sweetspot[qubit]) > 0.5:
-            sweetspot[qubit] = np.sign(sweetspot[qubit]) * 0.5
-            frequency[qubit] = fit_function(sweetspot[qubit], popt[0], popt[1], popt[2]) * GHZ_TO_HZ
-
     return QubitFluxResults(
         frequency=frequency,
         sweetspot=sweetspot,
