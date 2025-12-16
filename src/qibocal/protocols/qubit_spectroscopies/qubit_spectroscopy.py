@@ -74,24 +74,6 @@ def _calculate_batches(freq_width: int, freq_step: int, max_if_bandwidth: int = 
     """
     Calculate frequency batches for wideband spectroscopy.
     
-    When the requested frequency sweep width exceeds the IF bandwidth range (+/- max_if_bandwidth)
-    we split it into multiple batches.
-    
-    Parameters:
-    -----------
-    freq_width : int
-        Total frequency width to sweep [Hz]
-    freq_step : int
-        Frequency step [Hz]
-    max_if_bandwidth : int
-        Maximum IF bandwidth [Hz] from LO, default 300 MHz
-        
-    Returns:
-    --------
-    list of dict
-        Each dict contains:
-        - 'delta_freq_range': frequency offsets from center for this batch
-        - 'lo_offset': LO frequency offset from original drive frequency
     """
     # If freq_width fits within the IF bandwidth, no batching needed
     if freq_width <= 2 * max_if_bandwidth:
@@ -121,7 +103,6 @@ def _calculate_batches(freq_width: int, freq_step: int, max_if_bandwidth: int = 
         lo_offset = batch_center
         
         # Frequency range relative to the batch center (LO position)
-        # These will be the actual frequencies we sweep in IF
         delta_freq_range = np.arange(
             batch_start - batch_center, 
             batch_end - batch_center, 
@@ -212,7 +193,7 @@ def _acquisition(
             sweepers.append(
                 Sweeper(
                     parameter=Parameter.frequency,
-                    values=f0 + lo_offset + delta_frequency_range,
+                    values= f0 + lo_offset + delta_frequency_range,
                     channels=[qd_channel],
                 )
             )
@@ -220,18 +201,21 @@ def _acquisition(
         # Prepare updates for this batch
         batch_updates = []
         for qubit in targets:
-            update_dict = {
-                platform.qubits[qubit].probe: {"frequency": readout_frequency(qubit, platform)}
+            update_dict = {}
+
+            # I have to update the frequency of the drive channel to avoid raising an error
+            # when the frequency is out of the allowed range (this is anyways swept by the
+            # range of the nco sweeper, but the validation checks the static config frequency)
+            update_dict[drive_channels[qubit]] = {
+                "frequency": platform.config(drive_channels[qubit]).frequency + lo_offset
             }
-            
-            # If we have an LO and we're batching, update it
-            if lo_channels[qubit] is not None and lo_offset != 0:
+            # If we're batching, update the LO
+            if lo_offset != 0 and lo_channels[qubit] is not None:
                 f0 = platform.config(drive_channels[qubit]).frequency
-                new_lo_freq = f0 + lo_offset
-                update_dict[lo_channels[qubit]] = {"frequency": new_lo_freq}
+                update_dict[lo_channels[qubit]] = {"frequency": f0 + lo_offset}
             
             batch_updates.append(update_dict)
-        
+
         # Execute this batch
         results = platform.execute(
             [sequence],
