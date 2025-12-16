@@ -823,6 +823,69 @@ def zca_whiten(X):
     return X_white
 
 
+def clustering(data:tuple, min_points_per_cluster:int):
+    """
+    Divides the processed signal into clusters for separating signal from noise.
+    
+    Params:
+        data_dict: tuple
+            3D tuple (x,y,z) containing positions (x,y) and values z for the data to cluster
+
+        min_points_per_cluster: int
+            minimum size of points for a cluster to be considered true signal
+    
+    Returns:
+        classification_list: list
+            boolean list representing the indices of the input data clustered as true signal
+    """
+
+    hdb = HDBSCAN(copy=True, min_cluster_size=2)
+    # Hierarchical Density-Based Spatial Clustering of Applications with Noise;
+    # HDBSCAN good for successfully capture clusters with different densities.
+    # we allow a min_cluster_size=2 in order to decrease as much as possible misclassification of few points.
+
+    peaks_vals = data[2]
+    X = np.stack(data).T
+    hdb.fit(X)
+    hdb.labels_.shape == (X.shape[0],)
+    labels = hdb.labels_
+
+    clusters = np.unique(labels)
+    valid_clusters = [c for c in clusters if np.sum(labels == c) >= min_points_per_cluster]
+    # since we allowed for clustering even a group of 2 points, we filter the allowed eligible clusters 
+    # to be at least composed by a minimum number of points given by min_points_per_cluster parameter
+
+    medians = [np.median(peaks_vals[labels == c]) for c in valid_clusters]
+    signal = valid_clusters[np.argmax(medians)]
+    # in general the true signal has the highest magnitude across the whoole dataset, so we distinguish 
+    # if from background noise by selecting the cluster with the highest median of the signal
+    
+    classification_list = labels == signal
+
+    return classification_list
+
+
+def custom_filter_mask(matrix_z:np.ndarray):
+    """
+    Applying a mask compsosed by first a ZCA transformation and then a gaussian filter with variance 1
+    
+    Params:
+        matrix_z: np.ndarray
+            input signal to mask
+    
+    Returns:
+        zca_gauss_z: np.ndarray
+            masked signal
+    """
+
+    zca_z = zca_whiten(matrix_z)
+    # adding zca filter for filtering out background noise gradient
+    zca_gauss_z = ndimage.gaussian_filter(zca_z, 1)
+    # adding gaussia fliter with unitary variance for blurring the signal and reducing noise
+
+    return zca_gauss_z
+
+
 def extract_feature(
     x: np.ndarray,
     y: np.ndarray,
@@ -830,32 +893,55 @@ def extract_feature(
     find_min: bool,
     min_points:int=5
 ):
-    """Extract feature using confidence intervals.
+    """
+    This function first manipulates the input raw signal by filtering out background noise:
+    it first applies a custom filter mask (see custom_filter_mask function for more info)
+    and then finds the biggest peak for each DC bias value;
+    the masked signal is then clustered (see clustering function) in order to dclassify the relevant signal for the experiment
+    
+    Params:
+        x: np.ndarray
+            x-values of the input signal to process
 
-    Given a dataset of the form (x, y, z) where a spike or a valley is expected,
-    this function discriminate the points (x, y) with a signal, from the pure noise
-    and return the first ones.
+        y: np.ndarray
+            y-values of the input signal to process
+
+        z: np.array
+            z-values of the input signal to process
+
+        find_min: bool
+            if True it finds minimum peaks of the input signal
+        
+        min_points: int=5
+            minimum size of points for a cluster to be considered true signal
+
+    Returns:
+        peaks_dict['x']['val'][signal_classification]: np.ndarray
+            x-values of the classified signal 
+
+        peaks_dict['y']['val'][signal_classification]: np.ndarray
+            y-values of the classified signal
+
     """
     x_ = np.unique(x)
     y_ = np.unique(y)
     # background removed over y axis
     z_ = z.reshape(len(y_), len(x_))
-    zca_z = zca_whiten(z_)
-    # adding zca filter for filtering out background noise gradient (usually in the edges?)
-    zca_gauss_z = ndimage.gaussian_filter(zca_z, 1)
-    # adding gaussia fliter with unitary variance for blurring the signal and reducing noise
-    z_min = np.min(zca_gauss_z, axis=1)
-    zca_gauss_norm = ((zca_gauss_z.T - z_min)/(np.max(zca_gauss_z, axis=1) - z_min)).T
+    
+    z_masked = custom_filter_mask(z_)
+    z_min = np.min(z_masked, axis=1)
+    z_masked_norm = ((z_masked.T - z_min)/(np.max(z_masked, axis=1) - z_min)).T
 
     # filter data using find_peaks
     peaks = {"x": {"idx": [], "val": []}, "y": {"idx": [], "val": []}}
     for y_idx, y_val in enumerate(y_):
-        signal_fixed_y = zca_gauss_norm[y_idx]
+        signal_fixed_y = z_masked_norm[y_idx]
         peak, info = find_peaks(
             -signal_fixed_y if find_min else signal_fixed_y, prominence=0.2
         )
         if len(peak) > 0:
             idx = np.argmax(info["prominences"])
+            # if multiple peaks per bias are found, select the one with the highest prominence
             x_idx = peak[idx]
             peaks["x"]["idx"].append(x_idx)
             peaks["x"]["val"].append(x_[x_idx])
@@ -863,24 +949,15 @@ def extract_feature(
             peaks["y"]["val"].append(y_val)
 
     peaks_dict = {feat: {kind: np.array(vals) for kind, vals in smth.items()} for feat, smth in peaks.items()}
+    
     peaks_x = peaks_dict['x']['idx']
     peaks_y = peaks_dict['y']['idx']
-    peaks_sf = zca_gauss_z[peaks_y,peaks_x]
+    peaks_sf = z_masked[peaks_y,peaks_x]
+    clustering_tuple = (peaks_x, peaks_y, peaks_sf)
 
-    # TODO: adding scikit-learn HDBSCAN clustering method for separating noise to signal
-    hdb = HDBSCAN(copy=True, min_cluster_size=2)
+    signal_classification = clustering(clustering_tuple, min_points)
 
-    X = np.stack((peaks_x, peaks_y, peaks_sf)).T
-    hdb.fit(X)
-    hdb.labels_.shape == (X.shape[0],)
-    labels = hdb.labels_
-
-    clusters = np.unique(labels)
-    valid_clusters = [c for c in clusters if np.sum(labels == c) >= min_points]
-    medians = [np.median(peaks_sf[labels == c]) for c in valid_clusters]
-    signal = valid_clusters[np.argmax(medians)]
-
-    return peaks_dict['x']['val'][labels == signal], peaks_dict['y']['val'][labels == signal]
+    return peaks_dict['x']['val'][signal_classification], peaks_dict['y']['val'][signal_classification]
 
 
 def guess_period(x, y):
