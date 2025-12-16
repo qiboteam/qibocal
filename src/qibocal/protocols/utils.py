@@ -9,11 +9,10 @@ import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
 from qibolab._core.components import Config
-from scipy import constants, sparse
+from scipy import constants, ndimage, sparse
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 from scipy.stats import norm as scipy_norm
-from scipy import ndimage
 from sklearn.cluster import HDBSCAN
 
 from qibocal.auto.operation import Data, QubitId, Results
@@ -801,7 +800,7 @@ def zca_whiten(X):
 
     X must be a 2D array and returns ZCA whitened 2D array.
     """
-    assert(X.ndim == 2)
+    assert X.ndim == 2
     EPS = 10e-5
 
     #   covariance matrix
@@ -809,7 +808,7 @@ def zca_whiten(X):
     #   d = (lambda1, lambda2, ..., lambdaN)
     d, E = np.linalg.eigh(cov)
     #   D = diag(d) ^ (-1/2)
-    D = np.diag(1. / np.sqrt(d + EPS))
+    D = np.diag(1.0 / np.sqrt(d + EPS))
     #   W_zca = E * D * E.T
     W = np.dot(np.dot(E, D), E.T)
 
@@ -818,9 +817,9 @@ def zca_whiten(X):
     return X_white
 
 
-def clustering(data:tuple, min_points_per_cluster:int) -> list[bool]:
+def clustering(data: tuple, min_points_per_cluster: int) -> list[bool]:
     """Divides the processed signal into clusters for separating signal from noise.
-    
+
     In this function Hierarchical Density-Based Spatial Clustering of Applications with Noise (HDBSCAN) algorithm is used;
     HDBSCAN good for successfully capture clusters with different densities.
 
@@ -830,7 +829,7 @@ def clustering(data:tuple, min_points_per_cluster:int) -> list[bool]:
     """
 
     hdb = HDBSCAN(copy=True, min_cluster_size=2)
-    
+
     peaks_vals = data[2]
     X = np.stack(data).T
     hdb.fit(X)
@@ -838,24 +837,25 @@ def clustering(data:tuple, min_points_per_cluster:int) -> list[bool]:
     labels = hdb.labels_
 
     clusters = np.unique(labels)
-    valid_clusters = [c for c in clusters if np.sum(labels == c) >= min_points_per_cluster]
-    # since we allowed for clustering even a group of 2 points, we filter the allowed eligible clusters 
+    valid_clusters = [
+        c for c in clusters if np.sum(labels == c) >= min_points_per_cluster
+    ]
+    # since we allowed for clustering even a group of 2 points, we filter the allowed eligible clusters
     # to be at least composed by a minimum number of points given by min_points_per_cluster parameter
 
     medians = [np.median(peaks_vals[labels == c]) for c in valid_clusters]
     if len(medians) == 0:
         return [False] * len(labels)
-    
+
     signal = valid_clusters[np.argmax(medians)]
-    # in general the true signal has the highest magnitude across the whoole dataset, so we distinguish 
+    # in general the true signal has the highest magnitude across the whoole dataset, so we distinguish
     # if from background noise by selecting the cluster with the highest median of the signal
-    
+
     return labels == signal
 
 
-def custom_filter_mask(matrix_z:np.ndarray):
-    """Applying a mask compsosed by first a ZCA transformation and then a gaussian filter with variance 1.
-    """
+def custom_filter_mask(matrix_z: np.ndarray):
+    """Applying a mask compsosed by first a ZCA transformation and then a gaussian filter with variance 1."""
 
     zca_z = zca_whiten(matrix_z)
     # adding zca filter for filtering out background noise gradient
@@ -866,12 +866,8 @@ def custom_filter_mask(matrix_z:np.ndarray):
 
 
 def extract_feature(
-    x: np.ndarray,
-    y: np.ndarray,
-    z: np.ndarray,
-    find_min: bool,
-    min_points:int=5
-) -> tuple[np.ndarray, np.ndarray]:    
+    x: np.ndarray, y: np.ndarray, z: np.ndarray, find_min: bool, min_points: int = 5
+) -> tuple[np.ndarray, np.ndarray]:
     """Extract features of the signal by filtering out background noise.
 
     It first applies a custom filter mask (see custom_filter_mask)
@@ -881,15 +877,15 @@ def extract_feature(
     min_points is the minimum number of points for a cluster to be considered relevant signal.
     Position of the relevant signal is returned.
     """
-    
+
     x_ = np.unique(x)
     y_ = np.unique(y)
     # background removed over y axis
     z_ = z.reshape(len(y_), len(x_))
-    
+
     z_masked = custom_filter_mask(z_)
     z_min = np.min(z_masked, axis=1)
-    z_masked_norm = ((z_masked.T - z_min)/(np.max(z_masked, axis=1) - z_min)).T
+    z_masked_norm = ((z_masked.T - z_min) / (np.max(z_masked, axis=1) - z_min)).T
 
     # filter data using find_peaks
     peaks = {"x": {"idx": [], "val": []}, "y": {"idx": [], "val": []}}
@@ -907,16 +903,21 @@ def extract_feature(
             peaks["y"]["idx"].append(y_idx)
             peaks["y"]["val"].append(y_val)
 
-    peaks_dict = {feat: {kind: np.array(vals) for kind, vals in smth.items()} for feat, smth in peaks.items()}
-    
-    peaks_x = peaks_dict['x']['idx']
-    peaks_y = peaks_dict['y']['idx']
-    peaks_sf = z_masked[peaks_y,peaks_x]
+    peaks_dict = {
+        feat: {kind: np.array(vals) for kind, vals in smth.items()}
+        for feat, smth in peaks.items()
+    }
+
+    peaks_x = peaks_dict["x"]["idx"]
+    peaks_y = peaks_dict["y"]["idx"]
+    peaks_sf = z_masked[peaks_y, peaks_x]
     clustering_tuple = (peaks_x, peaks_y, peaks_sf)
 
     signal_classification = clustering(clustering_tuple, min_points)
 
-    return peaks_dict['x']['val'][signal_classification], peaks_dict['y']['val'][signal_classification]
+    return peaks_dict["x"]["val"][signal_classification], peaks_dict["y"]["val"][
+        signal_classification
+    ]
 
 
 def guess_period(x, y):

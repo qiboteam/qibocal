@@ -276,7 +276,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
             crosstalk_matrix[target_qubit][flux_qubit] = (
                 popt[0] * data.matrix_element[target_qubit]
             )
-            
+
         except (RuntimeError, ValueError) as e:  # pragma: no cover
             log.error(f"Error in qubit_crosstalk protocol fit: {e} ")
 
