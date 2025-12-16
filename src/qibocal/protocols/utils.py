@@ -36,10 +36,6 @@ KB = constants.k
 H = constants.h
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
-CONFIDENCE_INTERVAL_FIRST_MASK = 99
-"""Confidence interval used to mask flux data."""
-CONFIDENCE_INTERVAL_SECOND_MASK = 70
-"""Confidence interval used to clean outliers."""
 DELAY_FIT_PERCENTAGE = 10
 """Percentage of the first and last points used to fit the cable delay."""
 STRING_TYPE = "<U100"
