@@ -794,6 +794,20 @@ actions:
       native: CZ
       parking: True
 
+  - id: chevron couplers cz
+    operation: chevron_couplers
+    targets: [[0, 1]]
+    parameters:
+      amplitude_min: 0.1
+      amplitude_max: 0.6
+      amplitude_step: 0.01
+      duration_min: 10
+      duration_max: 50
+      duration_step: 10
+      nshots: 10
+      native: CZ
+      parking: True
+
   - id: chevron cz signal
     operation: chevron_signal
     targets: [[0, 1]]
@@ -810,6 +824,20 @@ actions:
 
   - id: chevron iSWAP
     operation: chevron
+    targets: [[0, 1]]
+    parameters:
+      amplitude_min: 0.1
+      amplitude_max: 0.6
+      amplitude_step: 0.01
+      duration_min: 10
+      duration_max: 50
+      duration_step: 10
+      nshots: 10
+      native: iSWAP
+      parking: True
+
+  - id: chevron coupler iSWAP
+    operation: chevron_couplers
     targets: [[0, 1]]
     parameters:
       amplitude_min: 0.1
@@ -1052,3 +1080,62 @@ actions:
       twpa_pow_width: 10
       twpa_pow_step: 3
       nshots: 20000
+
+
+  - id: coupler_readout
+    operation: coupler_readout
+    targets: [[0,1]]
+    parameters:
+      delay_min: 1
+      delay_max: 10
+      delay_step: 1
+      drive_duration: 100
+      drive_amplitude: 0.1
+
+  - id: coupler_amplitude
+    operation: coupler_amplitude
+    targets: [[0,1]]
+    parameters:
+      amplitude_min: 0
+      amplitude_max: 0.1
+      amplitude_step: 0.02
+      amplitude_coupler_min: -0.2
+      amplitude_coupler_max:  0
+      amplitude_coupler_step: 0.02
+      duration: 10
+      native: iSWAP
+
+
+  - id: amplitude_tuning
+    operation: amplitude_tuning
+    targets: [[0,1]]
+    parameters:
+      amplitude_coupler_min: 0.3
+      amplitude_coupler_max:  0.4
+      amplitude_coupler_step: 0.01
+      duration: 40
+      flux_pulse_amplitude: 0.05
+      native: iSWAP
+
+
+  - id: phase_calibration
+    operation: phase_calibration
+    targets: [[0,1]]
+    parameters:
+      amplitude_min: 0.04
+      amplitude_max:  0.06
+      amplitude_step: 0.001
+      native: iSWAP
+
+
+  - id: coupler spectroscopy
+    operation: coupler_spectroscopy
+    targets: [[0,1]]
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 2_000_000
+      bias_width: 1
+      bias_step: 0.2
+      drive_duration: 40
+      drive_amplitude: 0.1
+      nshots: 1000

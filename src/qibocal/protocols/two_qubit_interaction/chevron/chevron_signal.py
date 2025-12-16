@@ -96,7 +96,7 @@ def _aquisition(
     for pair in targets:
         # order the qubits so that the low frequency one is the first
         ordered_pair = order_pair(pair, platform)
-        sequence, flux_pulse, parking_pulses, delays = chevron_sequence(
+        sequence, flux_pulse, coupler_pulse, parking_pulses, delays = chevron_sequence(
             platform=platform,
             ordered_pair=ordered_pair,
             duration_max=params.duration_max,
@@ -110,10 +110,15 @@ def _aquisition(
             range=(params.amplitude_min, params.amplitude_max, params.amplitude_step),
             pulses=[flux_pulse],
         )
+
+        pulses_duration_sweeper = [flux_pulse] + delays + parking_pulses
+        if coupler_pulse is not None:
+            pulses_duration_sweeper += [coupler_pulse]
+
         sweeper_duration = Sweeper(
             parameter=Parameter.duration,
             range=(params.duration_min, params.duration_max, params.duration_step),
-            pulses=[flux_pulse] + delays + parking_pulses,
+            pulses=pulses_duration_sweeper,
         )
 
         ro_high = list(sequence.channel(platform.qubits[ordered_pair[1]].acquisition))[
