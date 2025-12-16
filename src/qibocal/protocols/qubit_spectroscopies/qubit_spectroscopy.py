@@ -357,6 +357,12 @@ def _update(
 qubit_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
 """QubitSpectroscopy Routine object.
 
-A qubit spectroscopy routine that sweeps the drive frequency around the qubit frequency at which the qubit's transition from |0> to |1> occurs.
-Typically a long pulse is used to ensure a narrow frequency spectrum of the drive, and helping the qubit to get excited to a superposition state.
+A qubit spectroscopy routine that sweeps the drive frequency around the qubit
+frequency at which the qubit's transition from |0> to |1> occurs.
+Typically a long pulse is used to ensure a narrow frequency spectrum of the
+drive, and helping the qubit to get excited to a superposition state.
+
+When the frequency sweep width exceeds the IF bandwidth range (+/- 300 MHz),
+the routine automatically splits the sweep into multiple batches, adjusting
+the LO frequency accordingly for each batch.
 """
