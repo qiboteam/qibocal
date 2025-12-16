@@ -775,8 +775,6 @@ def table_html(data: dict) -> str:
 #     y_ = np.unique(y)
 #     # background removed over y axis
 #     z_ = z.reshape(len(y_), len(x_))
-#     #z_min = np.min(z_, axis=0)
-#     #z_ = (z_ - z_min)/(np.max(z_, axis=0) - z_min)
 #     z_ = z_ / np.mean(z, axis=0)
 #     normalized_z = z_.reshape(z.shape)
 
@@ -820,7 +818,7 @@ def zca_whiten(X):
     return X_white
 
 
-def clustering(data:tuple, min_points_per_cluster:int):
+def clustering(data:tuple, min_points_per_cluster:int) -> list[bool]:
     """Divides the processed signal into clusters for separating signal from noise.
     
     In this function Hierarchical Density-Based Spatial Clustering of Applications with Noise (HDBSCAN) algorithm is used;
@@ -828,7 +826,7 @@ def clustering(data:tuple, min_points_per_cluster:int):
 
     data_dict is a 3D tuple of the data to cluster, while min_points_per_cluster is the minimum size of points for a cluster to be considered relevant signal.
     It allows a min_cluster_size=2 in order to decrease as much as possible misclassification of few points.
-    The function returns classification_list, a boolean list corresponding to the indices of the relevant signal.
+    The function returns a boolean list corresponding to the indices of the relevant signal.
     """
 
     hdb = HDBSCAN(copy=True, min_cluster_size=2)
@@ -845,13 +843,14 @@ def clustering(data:tuple, min_points_per_cluster:int):
     # to be at least composed by a minimum number of points given by min_points_per_cluster parameter
 
     medians = [np.median(peaks_vals[labels == c]) for c in valid_clusters]
+    if len(medians) == 0:
+        return [False] * len(labels)
+    
     signal = valid_clusters[np.argmax(medians)]
     # in general the true signal has the highest magnitude across the whoole dataset, so we distinguish 
     # if from background noise by selecting the cluster with the highest median of the signal
     
-    classification_list = labels == signal
-
-    return classification_list
+    return labels == signal
 
 
 def custom_filter_mask(matrix_z:np.ndarray):

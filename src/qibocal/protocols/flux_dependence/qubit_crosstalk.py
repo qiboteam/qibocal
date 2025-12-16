@@ -276,10 +276,9 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
             crosstalk_matrix[target_qubit][flux_qubit] = (
                 popt[0] * data.matrix_element[target_qubit]
             )
-        except RuntimeError as e:  # pragma: no cover
-            log.error(
-                f"Off-diagonal flux fit failed for qubit {flux_qubit} due to {e}."
-            )
+            
+        except (RuntimeError, ValueError) as e:  # pragma: no cover
+            log.error(f"Error in qubit_crosstalk protocol fit: {e} ")
 
     return QubitCrosstalkResults(
         qubit_frequency_bias_point=qubit_frequency_bias_point,
