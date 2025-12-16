@@ -282,6 +282,10 @@ def fit_punchout(data: Data, fit_type: str):
         amps = getattr(qubit_data, fit_type)
         signal = qubit_data.signal
         mask_freq, mask_amps = extract_feature(freqs, amps, signal, data.find_min)
+
+        if mask_freq.size == 0:  # mask_freq and mask_amps have always the same shape
+            return [0.0, 0.0, 0.0]
+
         if fit_type == "amp":
             best_freq = np.max(mask_freq)
             bare_freq = np.min(mask_freq)
@@ -758,47 +762,12 @@ def table_html(data: dict) -> str:
     )
 
 
-# def extract_feature(
-#     x: np.ndarray,
-#     y: np.ndarray,
-#     z: np.ndarray,
-#     find_min: bool,
-# ):
-#     """Extract feature using confidence intervals.
-
-#     Given a dataset of the form (x, y, z) where a spike or a valley is expected,
-#     this function discriminate the points (x, y) with a signal, from the pure noise
-#     and return the first ones.
-#     """
-#     x_ = np.unique(x)
-#     y_ = np.unique(y)
-#     # background removed over y axis
-#     z_ = z.reshape(len(y_), len(x_))
-#     z_ = z_ / np.mean(z, axis=0)
-#     normalized_z = z_.reshape(z.shape)
-
-#     # filter data using find_peaks
-#     filtered_y = []
-#     filtered_x = []
-#     for i in y:
-#         signal_fixed_y = normalized_z[y == i]
-#         peak, _ = find_peaks(
-#             -signal_fixed_y if find_min else signal_fixed_y, prominence=0.3
-#         )
-#         if len(peak) > 0:
-#             for j in peak:
-#                 filtered_y.append(i)
-#                 filtered_x.append(x_[j])
-
-#     return np.array(filtered_x), np.array(filtered_y)
-
-
 def zca_whiten(X):
     """
     Applies ZCA whitening to the data (X)
     http://xcorr.net/2011/05/27/whiten-a-mfilters.gaussianatrix-matlab-code/
 
-    X must be a 2D array and returns ZCA whitened 2D array.
+    `X` must be a 2D array and returns ZCA whitened 2D array.
     """
     assert X.ndim == 2
     EPS = 10e-5
@@ -823,8 +792,8 @@ def clustering(data: tuple, min_points_per_cluster: int) -> list[bool]:
     In this function Hierarchical Density-Based Spatial Clustering of Applications with Noise (HDBSCAN) algorithm is used;
     HDBSCAN good for successfully capture clusters with different densities.
 
-    data_dict is a 3D tuple of the data to cluster, while min_points_per_cluster is the minimum size of points for a cluster to be considered relevant signal.
-    It allows a min_cluster_size=2 in order to decrease as much as possible misclassification of few points.
+    `data_dict` is a 3D tuple of the data to cluster, while `min_points_per_cluster` is the minimum size of points for a cluster to be considered relevant signal.
+    It allows a `min_cluster_size=2` in order to decrease as much as possible misclassification of few points.
     The function returns a boolean list corresponding to the indices of the relevant signal.
     """
 
@@ -870,11 +839,11 @@ def extract_feature(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Extract features of the signal by filtering out background noise.
 
-    It first applies a custom filter mask (see custom_filter_mask)
+    It first applies a custom filter mask (see `custom_filter_mask`)
     and then finds the biggest peak for each DC bias value;
-    the masked signal is then clustered (see clustering) in order to classify the relevant signal for the experiment.
-    If find_min is set to True it finds minimum peaks of the input signal;
-    min_points is the minimum number of points for a cluster to be considered relevant signal.
+    the masked signal is then clustered (see `clustering`) in order to classify the relevant signal for the experiment.
+    If `find_min` is set to `True` it finds minimum peaks of the input signal;
+    `min_points` is the minimum number of points for a cluster to be considered relevant signal.
     Position of the relevant signal is returned.
     """
 
