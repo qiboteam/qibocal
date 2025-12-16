@@ -3,12 +3,16 @@ from .flux_amplitude_frequency import flux_amplitude_frequency
 from .flux_gate import flux_gate
 from .qubit_crosstalk import qubit_crosstalk
 from .qubit_flux_dependence import qubit_flux
+from .qubit_flux_dependence_dc import qubit_flux_dc
 from .qubit_vz import qubit_vz
 from .resonator_flux_dependence import resonator_flux
+from .resonator_flux_dependence_dc import resonator_flux_dc
 
 __all__ = [
     "qubit_flux",
+    "qubit_flux_dc",
     "resonator_flux",
+    "resonator_flux_dc",
     "qubit_crosstalk",
     "flux_gate",
     "flux_amplitude_frequency",
