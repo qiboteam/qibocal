@@ -11,7 +11,7 @@ from ..utils import table_dict, table_html
 from .fitting import exp1B_func
 from .utils import RBData, StandardRBResult, fit, number_to_str, rb_acquisition
 
-__all__ = ["standard_rb", "StandardRBParameters", "RBData", "_plot", "_fit", "_update"]
+__all__ = ["standard_rb", "StandardRBParameters", "RBData"]
 
 
 class Depthsdict(TypedDict):
