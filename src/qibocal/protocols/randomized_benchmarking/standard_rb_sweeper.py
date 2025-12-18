@@ -1,15 +1,14 @@
 from collections import defaultdict
 
 import numpy as np
-from qibo import Circuit
 from qibo.gates import U3, Unitary
 from qibo.transpiler.unitary_decompositions import u3_decomposition
 from qibolab import (
     AcquisitionType,
     AveragingMode,
     Parameter,
-    Pulse,
     PulseSequence,
+    Readout,
     Sweeper,
     VirtualZ,
 )
@@ -27,10 +26,14 @@ from qibocal.protocols.randomized_benchmarking.utils import (
     RB_Generator,
     RBData,
     RBType,
+    add_inverse_layer,
+    layer_circuit,
     setup,
 )
 
 __all__ = ["standard_rb_sweeper"]
+
+NUM_VZ_PER_CLIFFORD = 3
 
 
 def _acquisition(
@@ -70,25 +73,22 @@ def _acquisition(
 
     for depth in params.depths:
         num_gates = depth + 1
-        num_vz_angles = num_gates * 3
+        num_vz_angles = num_gates * NUM_VZ_PER_CLIFFORD
         sweeper_angles = np.zeros((params.niter, num_vz_angles))
 
         # Setup pulse sequence first
-        sequence = PulseSequence()
-        pulses_to_sweep: list[Pulse] = []
-        ro_pulses: dict[QubitId, Pulse] = {}
+        vz_sweep_pulses = [VirtualZ(phase=0) for _ in range(num_vz_angles)]
+        ro_pulses: dict[QubitId, Readout] = {}
+        qubitseqs = {q: PulseSequence() for q in targets}
 
-        # As each 1Q Clifford is a U3 gate, we can fix the ZXZXZ decomposition per Clifford
-        # and set 3 VZ angles in advance to be swept + 2 RX90 pulses as per the decomposition
-        for _ in range(num_gates):
-            vz_lam = VirtualZ(phase=0)
-            vz_theta = VirtualZ(phase=0)
-            vz_phi = VirtualZ(phase=0)
-            pulses_to_sweep += [vz_lam, vz_theta, vz_phi]
-
+        for idx in range(num_gates):
+            pulse_idx = idx * NUM_VZ_PER_CLIFFORD
+            vz_lam, vz_theta, vz_phi = vz_sweep_pulses[
+                pulse_idx : pulse_idx + NUM_VZ_PER_CLIFFORD
+            ]
             for qubit in targets:
                 qubit_drive, rx90 = mapper[qubit]
-                sequence += (
+                qubitseqs[qubit] += (
                     [(qubit_drive, vz_lam)]
                     + rx90
                     + [(qubit_drive, vz_theta)]
@@ -96,49 +96,42 @@ def _acquisition(
                     + [(qubit_drive, vz_phi)]
                 )
 
-        for qubit_id in targets:
-            qubit = platform.qubits[qubit_id]
-            sequence.align([qubit.drive, qubit.acquisition])
+        for qubit in targets:
+            mz = platform.natives.single_qubit[qubit].MZ()
+            ro_pulses[qubit] = mz[0][1]
+            qubitseqs[qubit] |= mz
 
-            ro_channel, ro_pulse = platform.natives.single_qubit[qubit_id].MZ()[0]
-            ro_pulses[qubit_id] = ro_pulse
-            sequence += [(ro_channel, ro_pulse)]
+        sequence = PulseSequence()
+        for qseq in qubitseqs.values():
+            sequence += qseq
 
         # We iterate across the requested number of iterations for a given depth
         for iter in range(params.niter):
             # Next, we generate a RB sequence for a given depth
             # and extract the corresponding U3 angles
-            circuit = Circuit(nqubits=1)
-            random_indexes = []
-            for k in range(depth):
-                layer, index = rb_gen.layer_gen_single_qubit()
-                random_indexes.append(index)
+            circuit, random_indexes = layer_circuit(rb_gen, depth, 0)
+            for idx, layer in enumerate(circuit.queue):
                 clifford: U3 = layer if layer.name != "id" else U3(0, 0, 0, 0)
-                circuit.add(layer)
 
-                pulse_idx = k * 3
-
-                # U3 = RZ(phi + pi) RX(pi/2) RZ(theta + pi) RX(pi/2) RZ(lam)
                 theta, phi, lam = clifford.parameters
-                sweeper_angles[iter, pulse_idx] = -lam
-                sweeper_angles[iter, pulse_idx + 1] = -(theta + np.pi)
-                sweeper_angles[iter, pulse_idx + 2] = -(phi + np.pi)
+                vz_idx = idx * NUM_VZ_PER_CLIFFORD
+                sweeper_angles[iter, vz_idx : vz_idx + NUM_VZ_PER_CLIFFORD] = [
+                    -lam,
+                    -(theta + np.pi),
+                    -(phi + np.pi),
+                ]
 
-            # Solve inverse
-            theta, phi, lam = u3_decomposition(
-                Unitary(circuit.unitary(), 0).dagger().parameters[0], backend
-            )
-
-            sweeper_angles[iter, -1] = -(phi + np.pi)
-            sweeper_angles[iter, -2] = -(theta + np.pi)
-            sweeper_angles[iter, -3] = -lam
+            add_inverse_layer(circuit, rb_gen)
+            inverse_layer: Unitary = circuit.queue[-1]
+            theta, phi, lam = u3_decomposition(inverse_layer.parameters[0], backend)
+            sweeper_angles[iter, -3:] = [-lam, -(theta + np.pi), -(phi + np.pi)]
 
             for qubit in targets:
                 indexes[(qubit, depth)].append(random_indexes)
 
         sweepers = [
             Sweeper(parameter=Parameter.phase, values=angles, pulses=[pulse])
-            for pulse, angles in zip(pulses_to_sweep, sweeper_angles.transpose())
+            for pulse, angles in zip(vz_sweep_pulses, sweeper_angles.transpose())
         ]
         results = platform.execute(
             [sequence],
