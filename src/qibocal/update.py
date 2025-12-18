@@ -102,7 +102,7 @@ def lo_attenuation(
 ):
     """Update LO attenuation value in platform for specific qubit."""
     channel = getattr(platform.qubits[qubit], channel_type)
-    lo_channel = getattr(platform.channels[channel], "lo")
+    lo_channel = platform.channels[channel].lo
     platform.update({f"configs.{lo_channel}.power": attenuation})
 
 
