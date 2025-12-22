@@ -770,7 +770,7 @@ def euclidean_metric(point1: np.ndarray, point2: np.ndarray):
 def zca_whiten(X):
     """
     Applies ZCA whitening to the data (X)
-    http://xcorr.net/2011/05/27/whiten-a-mfilters.gaussianatrix-matlab-code/
+    https://en.wikipedia.org/wiki/Whitening_transformation
 
     X: numpy 2d array
         input data, rows are data points, columns are features
