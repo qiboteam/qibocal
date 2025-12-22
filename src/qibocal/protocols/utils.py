@@ -960,10 +960,9 @@ def clustering(
 
     signal_labels = np.zeros(indices_list.size, dtype=bool)
     if len(medians) != 0:
-        if not find_min:
-            signal_idx = medians[np.argmax(medians[:, 1]), 0]
-        else:
-            signal_idx = medians[np.argmin(medians[:, 1]), 0]
+        signal_idx = medians[
+            np.argmax(-medians[:, 1] if find_min else medians[:, 1]), 0
+        ]
         signal_labels[valid_clusters[signal_idx]["cluster"][-1, :].astype(int)] = True
 
     return signal_labels
@@ -1001,7 +1000,8 @@ def extract_feature(
     peaks = build_clustering_data(peaks_dict, z_masked)
 
     # clustering
-    signal_classification = clustering(peaks, min_points, np.sqrt(2) + 0.5)
+    distance = np.sqrt(2) + 0.5
+    signal_classification = clustering(peaks, find_min, min_points, distance)
 
     return peaks_dict["x"]["val"][signal_classification], peaks_dict["y"]["val"][
         signal_classification
