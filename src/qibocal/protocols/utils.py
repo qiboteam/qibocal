@@ -836,10 +836,10 @@ def build_clustering_data(peaks_dict: dict, z: np.ndarray):
     return np.stack((peaks_x, peaks_y, scaling_global(peaks_sf) * diag)).T
 
 
-def peaks_finder(x, y, z, find_min: bool) -> dict:
+def peaks_finder(x, y, z) -> dict:
     """Function for finding the peaks over the whole signal.
 
-    This function takes as input 3 features of the signal and a boolean `find_min`, which determines whether to look for positive or negative peaks.
+    This function takes as input 3 features of the signal.
     It slices the dataset along a preferred direction (`y` dimension, corresponding to the flux bias) and for each slice it determines the biggest peaks
     by using `scipy.signal.find_peaks` routine.
     It returns a dictionary `peaks_dict` containing all the features for the computed peaks.
@@ -849,9 +849,7 @@ def peaks_finder(x, y, z, find_min: bool) -> dict:
     peaks = {"x": {"idx": [], "val": []}, "y": {"idx": [], "val": []}}
     for y_idx, y_val in enumerate(y):
         signal_fixed_y = z[y_idx]
-        peak, info = find_peaks(
-            -signal_fixed_y if find_min else signal_fixed_y, prominence=0.2
-        )
+        peak, info = find_peaks(signal_fixed_y, prominence=0.2)
         if len(peak) > 0:
             idx = np.argmax(info["prominences"])
             # if multiple peaks per bias are found, select the one with the highest prominence
@@ -870,7 +868,7 @@ def peaks_finder(x, y, z, find_min: bool) -> dict:
 
 
 def clustering(
-    data: tuple, find_min: bool, min_points_per_cluster: int, distance: float = 5.0
+    data: tuple, min_points_per_cluster: int, distance: float = 5.0
 ) -> list[bool]:
     """Divides the processed signal into clusters for separating signal from noise.
 
@@ -960,9 +958,7 @@ def clustering(
 
     signal_labels = np.zeros(indices_list.size, dtype=bool)
     if len(medians) != 0:
-        signal_idx = medians[
-            np.argmax(-medians[:, 1] if find_min else medians[:, 1]), 0
-        ]
+        signal_idx = medians[np.argmax(medians[:, 1]), 0]
         signal_labels[valid_clusters[signal_idx]["cluster"][-1, :].astype(int)] = True
 
     return signal_labels
@@ -986,6 +982,8 @@ def extract_feature(
     # background removed over y axis
     z_ = z.reshape(len(y_), len(x_))
 
+    z_ = -z_ if find_min else z_
+
     # masking
     z_masked = custom_filter_mask(z_)
 
@@ -994,14 +992,14 @@ def extract_feature(
     z_masked_norm = scaling_slice(z_masked, axis=1)
 
     # filter data using find_peaks
-    peaks_dict = peaks_finder(x_, y_, z_masked_norm, find_min)
+    peaks_dict = peaks_finder(x_, y_, z_masked_norm)
 
     # normalizing peaks for clustering
     peaks = build_clustering_data(peaks_dict, z_masked)
 
     # clustering
     distance = np.sqrt(2) + 0.5
-    signal_classification = clustering(peaks, find_min, min_points, distance)
+    signal_classification = clustering(peaks, min_points, distance)
 
     return peaks_dict["x"]["val"][signal_classification], peaks_dict["y"]["val"][
         signal_classification
