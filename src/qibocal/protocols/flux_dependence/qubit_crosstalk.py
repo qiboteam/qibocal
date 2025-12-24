@@ -39,6 +39,11 @@ from .qubit_flux_dependence import (
 __all__ = ["qubit_crosstalk"]
 
 
+def drop_targets(target_list: list, qpu_platform: CalibrationPlatform):
+    """Return all qubits of a given QPU except the ones we want to target in crosstalk routine"""
+    return [q for q in qpu_platform.qubits.keys() if q not in target_list]
+
+
 @dataclass
 class QubitCrosstalkParameters(QubitFluxParameters):
     """Crosstalk runcard inputs."""
@@ -51,6 +56,14 @@ class QubitCrosstalkParameters(QubitFluxParameters):
     If given flux will be swept on the given qubits in a sequential fashion (n qubits will result to n different executions).
     Multiple qubits may be measured in each execution as specified by the ``qubits`` option in the runcard.
     """
+
+    def fill_bias_points(self, target_list: list, qpu_platform: CalibrationPlatform):
+        """if a the bias point for one or more qubit is not inserted in the input parameters the calibrated sewwtspot is used."""
+        for t in target_list:
+            if t not in self.bias_point.keys():
+                self.bias_point[t] = qpu_platform.calibration.single_qubits[
+                    t
+                ].qubit.sweetspot
 
 
 @dataclass
@@ -106,9 +119,17 @@ def _acquisition(
 ) -> QubitCrosstalkData:
     """Data acquisition for Crosstalk Experiment."""
 
-    assert set(targets).isdisjoint(set(params.flux_qubits)), (
+    flux_qubits = (
+        drop_targets(targets, platform)
+        if params.flux_qubits is None
+        else params.flux_qubits
+    )
+
+    assert set(targets).isdisjoint(set(flux_qubits)), (
         "Flux qubits must be different from targets."
     )
+
+    params.fill_bias_points(targets, platform)
 
     sequence = PulseSequence()
     ro_pulses = {}
@@ -160,7 +181,7 @@ def _acquisition(
             )
         )
 
-    for q in params.flux_qubits:
+    for q in flux_qubits:
         flux_channel = platform.qubits[q].flux
         offset0 = platform.config(flux_channel).offset
         offset_sweepers.append(
@@ -198,7 +219,7 @@ def _acquisition(
         for q in targets
     ]
 
-    for flux_qubit, offset_sweeper in zip(params.flux_qubits, offset_sweepers):
+    for flux_qubit, offset_sweeper in zip(flux_qubits, offset_sweepers):
         results = platform.execute(
             [sequence], [[offset_sweeper], freq_sweepers], **options, updates=updates
         )
@@ -276,7 +297,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
             crosstalk_matrix[target_qubit][flux_qubit] = (
                 popt[0] * data.matrix_element[target_qubit]
             )
-        except RuntimeError as e:  # pragma: no cover
+        except (ValueError, RuntimeError) as e:  # pragma: no cover
             log.error(
                 f"Off-diagonal flux fit failed for qubit {flux_qubit} due to {e}."
             )
