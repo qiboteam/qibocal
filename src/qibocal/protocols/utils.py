@@ -817,7 +817,10 @@ def scaling_global(sig: np.ndarray) -> np.ndarray:
 
 def scaling_slice(sig: np.ndarray, axis: Optional[int]) -> np.ndarray:
     """Min–max scaling over a specific axis of the np.ndarray."""
-    expand = lambda a: np.expand_dims(a, axis) if axis is not None else a
+
+    def expand(a):
+        return np.expand_dims(a, axis) if axis is not None else a
+
     sig_min = expand(np.min(sig, axis=axis))
     return (sig - sig_min) / (expand(np.max(sig, axis=axis)) - sig_min)
 
@@ -834,7 +837,7 @@ def build_clustering_data(peaks_dict: dict, z: np.ndarray):
     """Preprocessing of the data to cluster."""
     x_ = peaks_dict["x"]["idx"]
     y_ = peaks_dict["y"]["idx"]
-    z_ = z[peaks_y, peaks_x]
+    z_ = z[y_, x_]
 
     rescaling_fact = horizontal_diagonal(x_, y_) / 10
     return np.stack((x_, y_, scaling_global(z_) * rescaling_fact)).T
@@ -869,25 +872,19 @@ def peaks_finder(x, y, z) -> dict:
     }
 
 
-def clustering(
-    data: tuple, min_points_per_cluster: int, distance: float = 5.0
+def merging(
+    data: tuple, labels: list, min_points_per_cluster: int, distance: float = 5.0
 ) -> list[bool]:
     """Divides the processed signal into clusters for separating signal from noise.
 
-    In this function Hierarchical Density-Based Spatial Clustering of Applications with Noise (HDBSCAN) algorithm is used;
-    HDBSCAN good for successfully capture clusters with different densities.
-
-    `data_dict` is a 3D tuple of the data to cluster, while `min_points_per_cluster` is the minimum size of points for a cluster to be considered relevant signal.
+    `data` is a 3D tuple of the data to cluster, while `labels` is the classification made by the clustering algorithm;
+    `min_points_per_cluster` is the minimum size of points for a cluster to be considered relevant signal.
     It is also possible to set the parameter `distance`, which represents the Euclidean distance between neighboring points of two clusters.
     If this distance is smaller than `distance`, the two clusters are merged.
     It allows a `min_cluster_size=2` in order to decrease as much as possible misclassification of few points.
     The function returns a boolean list corresponding to the indices of the relevant signal.
     """
 
-    hdb = HDBSCAN(copy=True, min_cluster_size=2)
-    hdb.fit(data)
-
-    labels = hdb.labels_
     unique_labels = np.unique(labels)
 
     indices_list = np.arange(len(labels)).astype(int)
@@ -987,7 +984,7 @@ def extract_feature(
     z_ = -z_ if find_min else z_
 
     # masking
-    z_masked = custom_filter_mask(z_)
+    z_masked = filter_data(z_)
 
     # renormalizing
     # z_masked_norm = scaling_signal(z_masked)
@@ -1000,7 +997,14 @@ def extract_feature(
     peaks = build_clustering_data(peaks_dict, z_masked)
 
     # clustering
-    signal_classification = clustering(peaks, min_points, DISTANCE)
+    # In this function Hierarchical Density-Based Spatial Clustering of Applications with Noise (HDBSCAN) algorithm is used;
+    # HDBSCAN good for successfully capture clusters with different densities.
+    hdb = HDBSCAN(copy=True, min_cluster_size=2)
+    hdb.fit(peaks)
+    labels = hdb.labels_
+
+    # merging close clusters
+    signal_classification = merging(peaks, labels, min_points, DISTANCE)
 
     return peaks_dict["x"]["val"][signal_classification], peaks_dict["y"]["val"][
         signal_classification
