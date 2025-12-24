@@ -797,12 +797,10 @@ def zca_whiten(X):
 def filter_data(matrix_z: np.ndarray):
     """Filter data with a ZCA transformation and then a unit-variance Gaussian."""
 
-    zca_z = zca_whiten(matrix_z)
     # adding zca filter for filtering out background noise gradient
-    zca_gauss_z = ndimage.gaussian_filter(zca_z, 1)
-    # adding gaussia fliter with unitary variance for blurring the signal and reducing noise
-
-    return zca_gauss_z
+    zca_z = zca_whiten(matrix_z)
+    # adding gaussian fliter with unitary variance for blurring the signal and reducing noise
+    return ndimage.gaussian_filter(zca_z, 1)
 
 
 def scaling_global(sig: np.ndarray) -> np.ndarray:
