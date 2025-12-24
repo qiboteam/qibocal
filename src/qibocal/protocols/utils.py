@@ -831,9 +831,9 @@ def horizontal_diagonal(xs: np.ndarray, ys: np.ndarray) -> float:
 
 def build_clustering_data(peaks_dict: dict, z: np.ndarray):
     """Preprocessing of the data to cluster."""
-    peaks_x = peaks_dict["x"]["idx"]
-    peaks_y = peaks_dict["y"]["idx"]
-    peaks_sf = z[peaks_y, peaks_x]
+    x_ = peaks_dict["x"]["idx"]
+    y_ = peaks_dict["y"]["idx"]
+    z_ = z[peaks_y, peaks_x]
 
     diag = horizontal_diagonal(peaks_x, peaks_y)
     diag = np.sqrt(2)
