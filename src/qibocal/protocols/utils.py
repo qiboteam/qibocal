@@ -888,7 +888,7 @@ def clustering(
     data = np.vstack((data.T, indices_list))
 
     clusters = sorted(
-        [data[:, hdb.labels_ == lab] for lab in unique_labels],
+        [data[:, labels == lab] for lab in unique_labels],
         key=lambda c: np.min(c[1]),
     )
 
