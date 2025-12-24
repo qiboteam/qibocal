@@ -805,8 +805,7 @@ def filter_data(matrix_z: np.ndarray):
 
 def scaling_global(sig: np.ndarray) -> np.ndarray:
     """Min–max scaling over the whole np.ndarray (global)."""
-    sig_min = np.min(sig)
-    return (sig - sig_min) / (np.max(sig) - sig_min)
+    return scaling_slice(sig, axis=None)
 
 
 def scaling_slice(sig: np.ndarray, axis: Optional[int]) -> np.ndarray:
