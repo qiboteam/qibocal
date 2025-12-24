@@ -809,7 +809,7 @@ def scaling_global(sig: np.ndarray) -> np.ndarray:
     return (sig - sig_min) / (np.max(sig) - sig_min)
 
 
-def scaling_slice(sig: np.ndarray, axis: int) -> np.ndarray:
+def scaling_slice(sig: np.ndarray, axis: Optional[int]) -> np.ndarray:
     """Min–max scaling over a specific axis of the np.ndarray."""
     sig_min = np.min(sig, axis=axis)
     return ((sig.T - sig_min) / (np.max(sig, axis=axis) - sig_min)).T
