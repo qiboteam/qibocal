@@ -794,8 +794,8 @@ def zca_whiten(X):
     return X_white
 
 
-def custom_filter_mask(matrix_z: np.ndarray):
-    """Applying a mask compsosed by first a ZCA transformation and then a gaussian filter with variance 1."""
+def filter_data(matrix_z: np.ndarray):
+    """Filter data with a ZCA transformation and then a unit-variance Gaussian."""
 
     zca_z = zca_whiten(matrix_z)
     # adding zca filter for filtering out background noise gradient
