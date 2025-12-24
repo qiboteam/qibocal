@@ -835,9 +835,8 @@ def build_clustering_data(peaks_dict: dict, z: np.ndarray):
     y_ = peaks_dict["y"]["idx"]
     z_ = z[peaks_y, peaks_x]
 
-    diag = horizontal_diagonal(peaks_x, peaks_y)
-    diag = np.sqrt(2)
-    return np.stack((peaks_x, peaks_y, scaling_global(peaks_sf) * diag)).T
+    rescaling_fact = horizontal_diagonal(x_, y_) / 10
+    return np.stack((x_, y_, scaling_global(z_) * rescaling_fact)).T
 
 
 def peaks_finder(x, y, z) -> dict:
@@ -1000,8 +999,7 @@ def extract_feature(
     peaks = build_clustering_data(peaks_dict, z_masked)
 
     # clustering
-    distance = np.sqrt(2) + 0.5
-    signal_classification = clustering(peaks, min_points, distance)
+    signal_classification = clustering(peaks, min_points, DISTANCE)
 
     return peaks_dict["x"]["val"][signal_classification], peaks_dict["y"]["val"][
         signal_classification
