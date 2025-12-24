@@ -856,12 +856,10 @@ def peaks_finder(x, y, z) -> dict:
             peaks["y"]["idx"].append(y_idx)
             peaks["y"]["val"].append(y_val)
 
-    peaks_dict = {
+    return {
         feat: {kind: np.array(vals) for kind, vals in smth.items()}
         for feat, smth in peaks.items()
     }
-
-    return peaks_dict
 
 
 def clustering(
