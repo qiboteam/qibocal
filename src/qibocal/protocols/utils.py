@@ -48,6 +48,12 @@ Since it is given in a 3D-space, with a compressed vertical dimension, and the h
 """
 
 
+class FeatExtractionError(Exception):
+    def __init__(self, msg: str, *args):
+        print(msg)
+        super().__init__(*args)
+
+
 class PowerLevel(str, Enum):
     """Power Regime for Resonator Spectroscopy"""
 
@@ -255,55 +261,6 @@ def cumulative(input_data, points):
     function of `points`.
     """
     return np.searchsorted(np.sort(points), np.sort(input_data))
-
-
-def fit_punchout(data: Data, fit_type: str):
-    """
-    Punchout fitting function.
-
-    Args:
-
-    data (Data): Punchout acquisition data.
-    fit_type (str): Punchout type, it could be `amp` (amplitude)
-    or `att` (attenuation).
-
-    Return:
-
-    List of dictionaries containing the low, high amplitude
-    (attenuation) frequencies and the readout amplitude (attenuation)
-    for each qubit.
-    """
-    qubits = data.qubits
-
-    low_freqs = {}
-    high_freqs = {}
-    ro_values = {}
-
-    for qubit in qubits:
-        qubit_data = data[qubit]
-        freqs = qubit_data.freq
-        amps = getattr(qubit_data, fit_type)
-        signal = qubit_data.signal
-        mask_freq, mask_amps = extract_feature(freqs, amps, signal, data.find_min)
-
-        if mask_freq.size == 0:  # mask_freq and mask_amps have always the same shape
-            best_freq = 0
-            bare_freq = 0
-            ro_val = 0
-        else:
-            if fit_type == "amp":
-                best_freq = np.max(mask_freq)
-                bare_freq = np.min(mask_freq)
-            else:
-                best_freq = np.min(mask_freq)
-                bare_freq = np.max(mask_freq)
-            ro_val = np.max(mask_amps[mask_freq == best_freq])
-
-        low_freqs[qubit] = best_freq
-        high_freqs[qubit] = bare_freq
-        ro_values[qubit] = ro_val
-
-    return [low_freqs, high_freqs, ro_values]
 
 
 def eval_magnitude(value):
@@ -873,7 +830,11 @@ def peaks_finder(x, y, z) -> dict:
 
 
 def merging(
-    data: tuple, labels: list, min_points_per_cluster: int, distance: float = 5.0
+    data: tuple,
+    labels: list,
+    min_points_per_cluster: int,
+    distance: float,
+    target: QubitId,
 ) -> list[bool]:
     """Divides the processed signal into clusters for separating signal from noise.
 
@@ -885,7 +846,12 @@ def merging(
     The function returns a boolean list corresponding to the indices of the relevant signal.
     """
 
-    unique_labels = np.unique(labels)
+    # removing data classified as noise
+    unique_labels = np.unique(labels[labels >= 0])
+    if len(unique_labels) == 0:  # if all points are noise
+        raise FeatExtractionError(
+            f"Qubit {target}: Clustering Failed - no signal but random noise is found."
+        )
 
     indices_list = np.arange(len(labels)).astype(int)
     indexed_labels = np.stack((labels, indices_list)).T
@@ -949,6 +915,10 @@ def merging(
     }
     # since we allowed for clustering even a group of 2 points, we filter the allowed eligible clusters
     # to be at least composed by a minimum number of points given by min_points_per_cluster parameter
+    if len(valid_clusters.keys()) == 0:  # if no big enough clusters are found
+        raise FeatExtractionError(
+            f"Qubit {target}: Clustering Failed - not enough big clusters after merging routine."
+        )
 
     medians = np.array(
         [[lab, np.median(cl["cluster"][2, :])] for lab, cl in valid_clusters.items()]
@@ -964,7 +934,12 @@ def merging(
 
 
 def extract_feature(
-    x: np.ndarray, y: np.ndarray, z: np.ndarray, find_min: bool, min_points: int = 5
+    x: np.ndarray,
+    y: np.ndarray,
+    z: np.ndarray,
+    qubit: QubitId,
+    find_min: bool,
+    min_points: int = 5,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Extract features of the signal by filtering out background noise.
 
@@ -992,6 +967,11 @@ def extract_feature(
 
     # filter data using find_peaks
     peaks_dict = peaks_finder(x_, y_, z_masked_norm)
+    if len(peaks_dict.keys()) == 0:  # if find_peaks fails
+        print(
+            f"Qubit {qubit}: Peaks Detection Failed - no peaks found in peaks_finder routine."
+        )
+        return [], []
 
     # normalizing peaks for clustering
     peaks = build_clustering_data(peaks_dict, z_masked)
@@ -1004,7 +984,10 @@ def extract_feature(
     labels = hdb.labels_
 
     # merging close clusters
-    signal_classification = merging(peaks, labels, min_points, DISTANCE)
+    try:
+        signal_classification = merging(peaks, labels, min_points, DISTANCE, qubit)
+    except FeatExtractionError:
+        return [], []
 
     return peaks_dict["x"]["val"][signal_classification], peaks_dict["y"]["val"][
         signal_classification

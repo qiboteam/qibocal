@@ -15,7 +15,6 @@ from qibolab import (
 from qibocal.auto.operation import Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
-from ...result import magnitude
 from ...update import replace
 from ..resonator_spectroscopies.resonator_punchout import ResonatorPunchoutData
 from ..utils import HZ_TO_GHZ, readout_frequency
@@ -97,6 +96,8 @@ def _acquisition(
     # data
     data = QubitPowerSpectroscopyData(
         resonator_type=platform.resonator_type,
+        amplitudes=amp_sweeper.values.tolist(),
+        frequencies={qubit: freq_sweepers[qubit].values.tolist() for qubit in targets},
     )
 
     results = platform.execute(
@@ -115,13 +116,7 @@ def _acquisition(
     # retrieve the results for every qubit
     for qubit, ro_pulse in ro_pulses.items():
         # average signal, phase, i and q over the number of shots defined in the runcard
-        result = results[ro_pulse.id]
-        data.register_qubit(
-            qubit,
-            signal=magnitude(result),
-            freq=freq_sweepers[qubit].values,
-            amp=amp_sweeper.values,
-        )
+        data.data[qubit] = results[ro_pulse.id]
 
     return data
 
@@ -140,16 +135,14 @@ def _plot(
     figures = []
     fitting_report = ""
     fig = go.Figure()
-    qubit_data = data[target]
-    frequencies = qubit_data.freq * HZ_TO_GHZ
-    amplitudes = qubit_data.amp
-
+    x, y, _ = data.grid(target)
     fig.add_trace(
         go.Heatmap(
-            x=frequencies,
-            y=amplitudes,
-            z=qubit_data.signal,
-            colorbar_x=0.46,
+            x=x * HZ_TO_GHZ,
+            y=y,
+            z=data.normalized_signal(target).ravel(),
+            colorbar=dict(title="Normalized signal"),
+            colorscale="Viridis",
         )
     )
 
