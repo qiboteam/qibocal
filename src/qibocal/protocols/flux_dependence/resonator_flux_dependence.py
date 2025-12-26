@@ -255,8 +255,9 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             resonator_freq[qubit] = fit_function(sweetspot[qubit], *popt) * GHZ_TO_HZ
             coupling[qubit] = popt[0]
             asymmetry[qubit] = popt[1]
-        except ValueError as e:
+        except (TypeError, ValueError) as e:
             log.error(f"Error in resonator_flux protocol fit: {e} ")
+
     return ResonatorFluxResults(
         frequency=resonator_freq,
         coupling=coupling,
@@ -267,7 +268,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     )
 
 
-def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
+def _plot(data: ResonatorFluxData, target: QubitId, fit: ResonatorFluxResults = None):
     """Plotting function for ResonatorFlux Experiment."""
     figures = utils.flux_dependence_plot(
         data, fit, target, utils.transmon_readout_frequency
