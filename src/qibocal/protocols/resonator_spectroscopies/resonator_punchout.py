@@ -247,6 +247,9 @@ def _plot(
         legend=dict(orientation="h"),
     )
 
+    fig.update_xaxes(title_text="Frequency [GHz]")
+    fig.update_yaxes(title_text="Amplitude [a.u.]")
+
     figures.append(fig)
 
     return figures, fitting_report
