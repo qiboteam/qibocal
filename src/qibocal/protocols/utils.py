@@ -52,6 +52,12 @@ DISTANCE_Z = 0.5
 """See :const:`DISTANCE_XY`."""
 
 
+class FeatExtractionError(Exception):
+    def __init__(self, msg: str, *args):
+        print(msg)
+        super().__init__(*args)
+
+
 class PowerLevel(str, Enum):
     """Power Regime for Resonator Spectroscopy"""
 
@@ -831,6 +837,7 @@ def merging(
     min_points_per_cluster: int,
     distance_xy: float,
     distance_z: float,
+    target: QubitId,
 ) -> list[bool]:
     """Divides the processed signal into clusters for separating signal from noise.
 
@@ -842,7 +849,12 @@ def merging(
     The function returns a boolean list corresponding to the indices of the relevant signal.
     """
 
-    unique_labels = np.unique(labels)
+    # removing data classified as noise
+    unique_labels = np.unique(labels[labels >= 0])
+    if len(unique_labels) == 0:  # if all points are noise
+        raise FeatExtractionError(
+            f"Qubit {target}: Clustering Failed - no signal but random noise is found."
+        )
 
     indices_list = np.arange(len(labels)).astype(int)
     indexed_labels = np.stack((labels, indices_list)).T
@@ -919,6 +931,10 @@ def merging(
 
     # since we allowed for clustering even a group of 2 points, we filter the allowed eligible clusters
     # to be at least composed by a minimum number of points given by min_points_per_cluster parameter
+    if len(valid_clusters.keys()) == 0:  # if no big enough clusters are found
+        raise FeatExtractionError(
+            f"Qubit {target}: Clustering Failed - not enough big clusters after merging routine."
+        )
 
     medians = np.array(
         [[lab, np.median(cl["cluster"][2, :])] for lab, cl in valid_clusters.items()]
@@ -934,7 +950,12 @@ def merging(
 
 
 def extract_feature(
-    x: np.ndarray, y: np.ndarray, z: np.ndarray, find_min: bool, min_points: int = 5
+    x: np.ndarray,
+    y: np.ndarray,
+    z: np.ndarray,
+    qubit: QubitId,
+    find_min: bool,
+    min_points: int = 5,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Extract features of the signal by filtering out background noise.
 
@@ -962,6 +983,11 @@ def extract_feature(
 
     # filter data using find_peaks
     peaks_dict = peaks_finder(x_, y_, z_masked_norm)
+    if len(peaks_dict.keys()) == 0:  # if find_peaks fails
+        print(
+            f"Qubit {qubit}: Peaks Detection Failed - no peaks found in peaks_finder routine."
+        )
+        return None, None
 
     # normalizing peaks for clustering
     peaks = build_clustering_data(peaks_dict, z_masked)
