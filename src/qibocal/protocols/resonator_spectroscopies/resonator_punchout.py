@@ -157,17 +157,10 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
     for qubit in data.qubits:
         filtered_x, filtered_y = data.filtered_data(qubit)
 
-<<<<<<< HEAD
         if (
             filtered_x is None or filtered_y is None
         ):  # filtered_x and filtered_y have always the same shape
             successful_fit[qubit] = False
-=======
-        if filtered_x is None:  # filtered_x and filtered_y have always the same shape
-            best_freq = None
-            bare_freq = None
-            ro_val = None
->>>>>>> 929001e0 (minor changes for handling problems in finding the signal)
         else:
             # new handling for detecting dressed and bare resonator frequencies
             # by definition bare resonator frequency is given for high amplitude values,
@@ -283,28 +276,14 @@ def _plot(
 def _update(
     results: ResonatorPunchoutResults, platform: CalibrationPlatform, target: QubitId
 ):
-<<<<<<< HEAD
     if results.successful_fit[target]:
-=======
-    if results.readout_frequency[target] is not None:
->>>>>>> 929001e0 (minor changes for handling problems in finding the signal)
         update.readout_frequency(results.readout_frequency[target], platform, target)
         update.dressed_resonator_frequency(
             results.readout_frequency[target], platform, target
         )
-<<<<<<< HEAD
         update.bare_resonator_frequency(
             results.bare_frequency[target], platform, target
         )
-=======
-
-    if results.bare_frequency[target] is not None:
-        update.bare_resonator_frequency(
-            results.bare_frequency[target], platform, target
-        )
-
-    if results.readout_amplitude[target] is not None:
->>>>>>> 929001e0 (minor changes for handling problems in finding the signal)
         update.readout_amplitude(results.readout_amplitude[target], platform, target)
 =======
     update.readout_frequency(results.readout_frequency[target], platform, target)
