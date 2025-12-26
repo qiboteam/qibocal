@@ -251,13 +251,8 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 np.round(popt[1] * middle_bias + popt[2]) - popt[2]
             ) / popt[1]
             matrix_element[qubit] = popt[1]
-        except ValueError as e:
-            log.error(
-                f"Error in qubit_flux protocol fit: {e} "
-                "The threshold for the SNR mask is probably too high. "
-                "Lowering the value of `threshold` in `extract_*_feature`"
-                "should fix the problem."
-            )
+        except (TypeError, ValueError) as e:
+            log.error(f"Error in qubit_flux protocol fit: {e}.")
 
     return QubitFluxResults(
         frequency=frequency,

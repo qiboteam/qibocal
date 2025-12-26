@@ -971,7 +971,7 @@ def extract_feature(
         print(
             f"Qubit {qubit}: Peaks Detection Failed - no peaks found in peaks_finder routine."
         )
-        return None, None
+        return [], []
 
     # normalizing peaks for clustering
     peaks = build_clustering_data(peaks_dict, z_masked)
@@ -987,7 +987,7 @@ def extract_feature(
     try:
         signal_classification = merging(peaks, labels, min_points, DISTANCE, qubit)
     except FeatExtractionError:
-        return None, None
+        return [], []
 
     return peaks_dict["x"]["val"][signal_classification], peaks_dict["y"]["val"][
         signal_classification
