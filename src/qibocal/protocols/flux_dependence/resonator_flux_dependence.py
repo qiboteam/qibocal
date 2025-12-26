@@ -255,7 +255,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             resonator_freq[qubit] = fit_function(sweetspot[qubit], *popt) * GHZ_TO_HZ
             coupling[qubit] = popt[0]
             asymmetry[qubit] = popt[1]
-        except (TypeError, ValueError) as e:
+        except ValueError as e:
             log.error(f"Error in resonator_flux protocol fit: {e} ")
 
     return ResonatorFluxResults(

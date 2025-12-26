@@ -251,7 +251,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 np.round(popt[1] * middle_bias + popt[2]) - popt[2]
             ) / popt[1]
             matrix_element[qubit] = popt[1]
-        except (TypeError, ValueError) as e:
+        except ValueError as e:
             log.error(f"Error in qubit_flux protocol fit: {e}.")
 
     return QubitFluxResults(
