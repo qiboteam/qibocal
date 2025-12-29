@@ -40,13 +40,6 @@ DELAY_FIT_PERCENTAGE = 10
 """Percentage of the first and last points used to fit the cable delay."""
 STRING_TYPE = "<U100"
 
-DISTANCE = np.sqrt(2) + 0.5
-"""Minimum distance for separate clusters.
-
-Clusters below this distance will be merged.
-Since it is given in a 3D-space, with a compressed vertical dimension, and the horizontal plane measured in pixels, this distance correspond to diagonally adjacent pixels, with some additional leeway for the extra dimension.
-"""
-
 
 class PowerLevel(str, Enum):
     """Power Regime for Resonator Spectroscopy"""
@@ -840,6 +833,14 @@ def build_clustering_data(peaks_dict: dict, z: np.ndarray):
     z_ = z[y_, x_]
 
     rescaling_fact = horizontal_diagonal(x_, y_) / 10
+    global DISTANCE
+    DISTANCE = 1.5 * rescaling_fact  # very euristic
+    """Minimum distance for separate clusters.
+
+    Clusters below this distance will be merged.
+    Since it is given in a 3D-space, with a compressed vertical dimension, and the horizontal plane measured in pixels, this distance correspond to diagonally adjacent pixels, with some additional leeway for the extra dimension.
+    """
+
     return np.stack((x_, y_, scaling_global(z_) * rescaling_fact)).T
 
 
