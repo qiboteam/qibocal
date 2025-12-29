@@ -276,6 +276,7 @@ def _plot(
 def _update(
     results: ResonatorPunchoutResults, platform: CalibrationPlatform, target: QubitId
 ):
+<<<<<<< HEAD
     if results.successful_fit[target]:
         update.readout_frequency(results.readout_frequency[target], platform, target)
         update.dressed_resonator_frequency(
@@ -285,6 +286,14 @@ def _update(
             results.bare_frequency[target], platform, target
         )
         update.readout_amplitude(results.readout_amplitude[target], platform, target)
+=======
+    update.readout_frequency(results.readout_frequency[target], platform, target)
+    update.dressed_resonator_frequency(
+        results.readout_frequency[target], platform, target
+    )
+    update.bare_resonator_frequency(results.bare_frequency[target], platform, target)
+    update.readout_amplitude(results.readout_amplitude[target], platform, target)
+>>>>>>> 11a0a238 (handling failed extract_feature routine)
 
 
 resonator_punchout = Routine(_acquisition, _fit, _plot, _update)
