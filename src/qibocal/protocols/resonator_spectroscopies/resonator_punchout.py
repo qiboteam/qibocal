@@ -41,6 +41,8 @@ class ResonatorPunchoutResults(Results):
     """Bare resonator frequency [GHz] for each qubit."""
     readout_amplitude: dict[QubitId, float]
     """Readout amplitude for each qubit."""
+    successful_fit: dict[QubitId, bool]
+    """flag for each qubit to see whether the fit was successful."""
 
 
 @dataclass
@@ -144,6 +146,7 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
     low_freqs = {}
     high_freqs = {}
     ro_values = {}
+    successful_fit = {}
 
     for qubit in data.qubits:
         filtered_x, filtered_y = data.filtered_data(qubit)
@@ -151,9 +154,7 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
         if (
             filtered_x is None or filtered_y is None
         ):  # filtered_x and filtered_y have always the same shape
-            low_freqs[qubit] = None
-            high_freqs[qubit] = None
-            ro_values[qubit] = None
+            successful_fit[qubit] = False
         else:
             # TODO: understand what is going on here
             if fit_type == "amp":
@@ -164,14 +165,16 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
                 bare_freq = np.max(filtered_x)
             ro_val = np.max(filtered_y[filtered_x == best_freq])
 
-        low_freqs[qubit] = best_freq
-        high_freqs[qubit] = bare_freq
-        ro_values[qubit] = ro_val
+            low_freqs[qubit] = best_freq
+            high_freqs[qubit] = bare_freq
+            ro_values[qubit] = ro_val
+            successful_fit[qubit] = True
 
     return ResonatorPunchoutResults(
         readout_frequency=low_freqs,
         bare_frequency=high_freqs,
         readout_amplitude=ro_values,
+        successful_fit=successful_fit,
     )
 
 
@@ -194,7 +197,7 @@ def _plot(
     )
     filtered_x, filtered_y = data.filtered_data(target)
 
-    if filtered_x is None or filtered_y is None:
+    if filtered_x is not None and filtered_y is not None:
         fig.add_trace(
             go.Scatter(
                 x=filtered_x * HZ_TO_GHZ,
@@ -206,7 +209,7 @@ def _plot(
             )
         )
 
-    if fit is not None:
+    if fit is not None and fit.successful_fit[target]:
         # if fit.readout_frequency[target] is None then all the other two fields are None, one field
         # cannot be None with the remaining being not None
         fig.add_trace(
@@ -259,12 +262,15 @@ def _plot(
 def _update(
     results: ResonatorPunchoutResults, platform: CalibrationPlatform, target: QubitId
 ):
-    update.readout_frequency(results.readout_frequency[target], platform, target)
-    update.dressed_resonator_frequency(
-        results.readout_frequency[target], platform, target
-    )
-    update.bare_resonator_frequency(results.bare_frequency[target], platform, target)
-    update.readout_amplitude(results.readout_amplitude[target], platform, target)
+    if results.successful_fit[target]:
+        update.readout_frequency(results.readout_frequency[target], platform, target)
+        update.dressed_resonator_frequency(
+            results.readout_frequency[target], platform, target
+        )
+        update.bare_resonator_frequency(
+            results.bare_frequency[target], platform, target
+        )
+        update.readout_amplitude(results.readout_amplitude[target], platform, target)
 
 
 resonator_punchout = Routine(_acquisition, _fit, _plot, _update)

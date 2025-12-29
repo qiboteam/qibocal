@@ -59,7 +59,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
 
     filtered_freq, filtered_bias = data.filtered_data(qubit)
 
-    if filtered_freq is None or filtered_bias is None:
+    if filtered_freq is not None and filtered_bias is not None:
         fig.add_trace(
             go.Scatter(
                 x=filtered_freq * HZ_TO_GHZ,
@@ -75,7 +75,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
         fit is not None
         and fit_function is not None
         and not data.__class__.__name__ == "CouplerSpectroscopyData"
-        and qubit in fit.fitted_parameters
+        and fit.successful_fit[qubit]
     ):
         params = fit.fitted_parameters[qubit]
         bias = np.unique(qubit_data.bias)
@@ -151,8 +151,8 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
             row=1,
             col=col + 1,
         )
-        if fit is not None:
-            if flux_qubit[1] != qubit and flux_qubit in fit.fitted_parameters:
+        if fit is not None and fit.successful_fit[qubit]:
+            if flux_qubit[1] != qubit:
                 fig.add_trace(
                     go.Scatter(
                         x=fit_function(
