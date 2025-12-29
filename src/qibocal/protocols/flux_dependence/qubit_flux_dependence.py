@@ -214,45 +214,52 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         # extract signal from 2D plot based on SNR mask
         frequencies, biases = data.filtered_data(qubit)
 
-        def fit_function(x, w_max, normalization, offset):
-            return utils.transmon_frequency(
-                xi=x,
-                w_max=w_max,
-                xj=0,
-                d=0,
-                normalization=normalization,
-                offset=offset,
-                crosstalk_element=1,
-                charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
-            )
+        if frequencies is None or biases is None:
+            frequency[qubit] = None
+            sweetspot[qubit] = None
+            matrix_element[qubit] = None
+            fitted_parameters[qubit] = None
+        else:
 
-        try:
-            popt = curve_fit(
-                fit_function,
-                biases,
-                frequencies * HZ_TO_GHZ,
-                bounds=utils.qubit_flux_dependence_fit_bounds(
-                    data.qubit_frequency[qubit],
-                ),
-                maxfev=100000,
-            )[0]
-            fitted_parameters[qubit] = {
-                "w_max": popt[0],
-                "xj": 0,
-                "d": 0,
-                "normalization": popt[1],
-                "offset": popt[2],
-                "crosstalk_element": 1,
-                "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
-            }
-            frequency[qubit] = popt[0] * GHZ_TO_HZ
-            middle_bias = (np.max(qubit_data.bias) + np.min(qubit_data.bias)) / 2
-            sweetspot[qubit] = (
-                np.round(popt[1] * middle_bias + popt[2]) - popt[2]
-            ) / popt[1]
-            matrix_element[qubit] = popt[1]
-        except ValueError as e:
-            log.error(f"Error in qubit_flux protocol fit: {e}.")
+            def fit_function(x, w_max, normalization, offset):
+                return utils.transmon_frequency(
+                    xi=x,
+                    w_max=w_max,
+                    xj=0,
+                    d=0,
+                    normalization=normalization,
+                    offset=offset,
+                    crosstalk_element=1,
+                    charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
+                )
+
+            try:
+                popt = curve_fit(
+                    fit_function,
+                    biases,
+                    frequencies * HZ_TO_GHZ,
+                    bounds=utils.qubit_flux_dependence_fit_bounds(
+                        data.qubit_frequency[qubit],
+                    ),
+                    maxfev=100000,
+                )[0]
+                fitted_parameters[qubit] = {
+                    "w_max": popt[0],
+                    "xj": 0,
+                    "d": 0,
+                    "normalization": popt[1],
+                    "offset": popt[2],
+                    "crosstalk_element": 1,
+                    "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
+                }
+                frequency[qubit] = popt[0] * GHZ_TO_HZ
+                middle_bias = (np.max(qubit_data.bias) + np.min(qubit_data.bias)) / 2
+                sweetspot[qubit] = (
+                    np.round(popt[1] * middle_bias + popt[2]) - popt[2]
+                ) / popt[1]
+                matrix_element[qubit] = popt[1]
+            except ValueError as e:
+                log.error(f"Error in qubit_flux protocol fit: {e}.")
 
     return QubitFluxResults(
         frequency=frequency,

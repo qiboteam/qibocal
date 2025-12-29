@@ -190,73 +190,84 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         # extract signal from 2D plot based on SNR mask
         frequencies, biases = data.filtered_data(qubit)
 
-        # define fit function
-        def fit_function(
-            x: float,
-            g: float,
-            d: float,
-            offset: float,
-            normalization: float,
-            freq: float,
-            charging_energy: float,
-        ):
-            """Fit function for resonator flux dependence."""
-            return utils.transmon_readout_frequency(
-                xi=x,
-                w_max=data.qubit_frequency[qubit] * HZ_TO_GHZ,
-                xj=0,
-                d=d,
-                normalization=normalization,
-                offset=offset,
-                crosstalk_element=1,
-                charging_energy=charging_energy,
-                resonator_freq=freq,
-                g=g,
-            )
+        if frequencies is None or biases is None:
+            fitted_parameters[qubit] = None
+            matrix_element[qubit] = None
+            sweetspot[qubit] = None
+            resonator_freq[qubit] = None
+            coupling[qubit] = None
+            asymmetry[qubit] = None
 
-        try:
-            popt, _ = curve_fit(
-                fit_function,
-                biases,
-                frequencies * HZ_TO_GHZ,
-                bounds=(
-                    [
-                        0,
-                        0,
-                        -1,
-                        0,
-                        data.bare_resonator_frequency[qubit] * HZ_TO_GHZ - 0.5,
-                        0,
-                    ],
-                    [
-                        0.5,
-                        1,
-                        1,
-                        np.inf,
-                        data.bare_resonator_frequency[qubit] * HZ_TO_GHZ + 0.5,
-                        data.charging_energy[qubit] * HZ_TO_GHZ + 0.3,
-                    ],
-                ),
-                maxfev=100000,
-            )
-            fitted_parameters[qubit] = {
-                "w_max": data.qubit_frequency[qubit] * HZ_TO_GHZ,
-                "xj": 0,
-                "d": popt[1],
-                "normalization": popt[3],
-                "offset": popt[2],
-                "crosstalk_element": 1,
-                "charging_energy": popt[5],
-                "resonator_freq": popt[4],
-                "g": popt[0],
-            }
-            matrix_element[qubit] = popt[3]
-            sweetspot[qubit] = (np.round(popt[2]) - popt[2]) / popt[3]
-            resonator_freq[qubit] = fit_function(sweetspot[qubit], *popt) * GHZ_TO_HZ
-            coupling[qubit] = popt[0]
-            asymmetry[qubit] = popt[1]
-        except ValueError as e:
-            log.error(f"Error in resonator_flux protocol fit: {e} ")
+        else:
+            # define fit function
+            def fit_function(
+                x: float,
+                g: float,
+                d: float,
+                offset: float,
+                normalization: float,
+                freq: float,
+                charging_energy: float,
+            ):
+                """Fit function for resonator flux dependence."""
+                return utils.transmon_readout_frequency(
+                    xi=x,
+                    w_max=data.qubit_frequency[qubit] * HZ_TO_GHZ,
+                    xj=0,
+                    d=d,
+                    normalization=normalization,
+                    offset=offset,
+                    crosstalk_element=1,
+                    charging_energy=charging_energy,
+                    resonator_freq=freq,
+                    g=g,
+                )
+
+            try:
+                popt, _ = curve_fit(
+                    fit_function,
+                    biases,
+                    frequencies * HZ_TO_GHZ,
+                    bounds=(
+                        [
+                            0,
+                            0,
+                            -1,
+                            0,
+                            data.bare_resonator_frequency[qubit] * HZ_TO_GHZ - 0.5,
+                            0,
+                        ],
+                        [
+                            0.5,
+                            1,
+                            1,
+                            np.inf,
+                            data.bare_resonator_frequency[qubit] * HZ_TO_GHZ + 0.5,
+                            data.charging_energy[qubit] * HZ_TO_GHZ + 0.3,
+                        ],
+                    ),
+                    maxfev=100000,
+                )
+                fitted_parameters[qubit] = {
+                    "w_max": data.qubit_frequency[qubit] * HZ_TO_GHZ,
+                    "xj": 0,
+                    "d": popt[1],
+                    "normalization": popt[3],
+                    "offset": popt[2],
+                    "crosstalk_element": 1,
+                    "charging_energy": popt[5],
+                    "resonator_freq": popt[4],
+                    "g": popt[0],
+                }
+                matrix_element[qubit] = popt[3]
+                sweetspot[qubit] = (np.round(popt[2]) - popt[2]) / popt[3]
+                resonator_freq[qubit] = (
+                    fit_function(sweetspot[qubit], *popt) * GHZ_TO_HZ
+                )
+                coupling[qubit] = popt[0]
+                asymmetry[qubit] = popt[1]
+            except ValueError as e:
+                log.error(f"Error in resonator_flux protocol fit: {e} ")
 
     return ResonatorFluxResults(
         frequency=resonator_freq,
