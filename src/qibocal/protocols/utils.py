@@ -970,7 +970,7 @@ def extract_feature(
         print(
             f"Qubit {qubit}: Peaks Detection Failed - no peaks found in peaks_finder routine."
         )
-        return [], []
+        return None, None
 
     # normalizing peaks for clustering
     peaks, scaling_factor = build_clustering_data(peaks_dict, z_masked)

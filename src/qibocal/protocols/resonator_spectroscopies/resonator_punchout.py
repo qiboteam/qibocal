@@ -148,8 +148,12 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
     for qubit in data.qubits:
         filtered_x, filtered_y = data.filtered_data(qubit)
 
-        if filtered_x is None:  # filtered_x and filtered_y have always the same shape
-            return None
+        if (
+            filtered_x is None or filtered_y is None
+        ):  # filtered_x and filtered_y have always the same shape
+            low_freqs[qubit] = None
+            high_freqs[qubit] = None
+            ro_values[qubit] = None
         else:
             # TODO: understand what is going on here
             if fit_type == "amp":
@@ -190,16 +194,17 @@ def _plot(
     )
     filtered_x, filtered_y = data.filtered_data(target)
 
-    fig.add_trace(
-        go.Scatter(
-            x=filtered_x * HZ_TO_GHZ,
-            y=filtered_y,
-            mode="markers",
-            name="Estimated points",
-            marker=dict(color="rgb(248, 248, 248)"),
-            showlegend=True,
+    if filtered_x is None or filtered_y is None:
+        fig.add_trace(
+            go.Scatter(
+                x=filtered_x * HZ_TO_GHZ,
+                y=filtered_y,
+                mode="markers",
+                name="Estimated points",
+                marker=dict(color="rgb(248, 248, 248)"),
+                showlegend=True,
+            )
         )
-    )
 
     if fit is not None:
         # if fit.readout_frequency[target] is None then all the other two fields are None, one field
@@ -254,15 +259,12 @@ def _plot(
 def _update(
     results: ResonatorPunchoutResults, platform: CalibrationPlatform, target: QubitId
 ):
-    if results is not None:
-        update.readout_frequency(results.readout_frequency[target], platform, target)
-        update.dressed_resonator_frequency(
-            results.readout_frequency[target], platform, target
-        )
-        update.bare_resonator_frequency(
-            results.bare_frequency[target], platform, target
-        )
-        update.readout_amplitude(results.readout_amplitude[target], platform, target)
+    update.readout_frequency(results.readout_frequency[target], platform, target)
+    update.dressed_resonator_frequency(
+        results.readout_frequency[target], platform, target
+    )
+    update.bare_resonator_frequency(results.bare_frequency[target], platform, target)
+    update.readout_amplitude(results.readout_amplitude[target], platform, target)
 
 
 resonator_punchout = Routine(_acquisition, _fit, _plot, _update)
