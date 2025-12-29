@@ -44,6 +44,9 @@ class ResonatorFluxResults(Results):
     matrix_element: dict[QubitId, float] = field(default_factory=dict)
     """Sweetspot for each qubit."""
     fitted_parameters: dict[QubitId, float] = field(default_factory=dict)
+    """Optimal parameters found from the fit,"""
+    successful_fit: dict[QubitId, bool] = field(default_factory=dict)
+    """flag for each qubit to see whether the fit was successful."""
 
 
 ResFluxType = np.dtype(
@@ -185,18 +188,14 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     fitted_parameters = {}
     sweetspot = {}
     matrix_element = {}
+    successful_fit = {}
 
     for qubit in data.qubits:
         # extract signal from 2D plot based on SNR mask
         frequencies, biases = data.filtered_data(qubit)
 
         if frequencies is None or biases is None:
-            fitted_parameters[qubit] = None
-            matrix_element[qubit] = None
-            sweetspot[qubit] = None
-            resonator_freq[qubit] = None
-            coupling[qubit] = None
-            asymmetry[qubit] = None
+            successful_fit[qubit] = False
 
         else:
             # define fit function
@@ -266,7 +265,9 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 )
                 coupling[qubit] = popt[0]
                 asymmetry[qubit] = popt[1]
+                successful_fit[qubit] = True
             except ValueError as e:
+                successful_fit[qubit] = False
                 log.error(f"Error in resonator_flux protocol fit: {e} ")
 
     return ResonatorFluxResults(
@@ -276,6 +277,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         sweetspot=sweetspot,
         asymmetry=asymmetry,
         fitted_parameters=fitted_parameters,
+        successful_fit=successful_fit,
     )
 
 
@@ -285,7 +287,7 @@ def _plot(data: ResonatorFluxData, target: QubitId, fit: ResonatorFluxResults = 
         data, fit, target, utils.transmon_readout_frequency
     )
 
-    if fit is not None:
+    if fit is not None and fit.successful_fit[target]:
         fitting_report = table_html(
             table_dict(
                 target,
@@ -318,11 +320,12 @@ def _plot(data: ResonatorFluxData, target: QubitId, fit: ResonatorFluxResults = 
 def _update(
     results: ResonatorFluxResults, platform: CalibrationPlatform, qubit: QubitId
 ):
-    update.dressed_resonator_frequency(results.frequency[qubit], platform, qubit)
-    update.readout_frequency(results.frequency[qubit], platform, qubit)
-    update.coupling(results.coupling[qubit], platform, qubit)
-    update.flux_offset(results.sweetspot[qubit], platform, qubit)
-    update.sweetspot(results.sweetspot[qubit], platform, qubit)
+    if results.successful_fit[qubit]:
+        update.dressed_resonator_frequency(results.frequency[qubit], platform, qubit)
+        update.readout_frequency(results.frequency[qubit], platform, qubit)
+        update.coupling(results.coupling[qubit], platform, qubit)
+        update.flux_offset(results.sweetspot[qubit], platform, qubit)
+        update.sweetspot(results.sweetspot[qubit], platform, qubit)
 
 
 resonator_flux = Routine(_acquisition, _fit, _plot, _update)

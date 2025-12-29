@@ -62,6 +62,8 @@ class QubitFluxResults(Results):
     """Raw fitting output."""
     matrix_element: dict[QubitId, float] = field(default_factory=dict)
     """V_ii coefficient."""
+    successful_fit: dict[QubitId, bool] = field(default_factory=dict)
+    """flag for each qubit to see whether the fit was successful."""
 
 
 QubitFluxType = np.dtype(
@@ -207,6 +209,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     sweetspot = {}
     matrix_element = {}
     fitted_parameters = {}
+    successful_fit = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
@@ -215,10 +218,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         frequencies, biases = data.filtered_data(qubit)
 
         if frequencies is None or biases is None:
-            frequency[qubit] = None
-            sweetspot[qubit] = None
-            matrix_element[qubit] = None
-            fitted_parameters[qubit] = None
+            successful_fit[qubit] = False
         else:
 
             def fit_function(x, w_max, normalization, offset):
@@ -258,7 +258,9 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     np.round(popt[1] * middle_bias + popt[2]) - popt[2]
                 ) / popt[1]
                 matrix_element[qubit] = popt[1]
+                successful_fit[qubit] = True
             except ValueError as e:
+                successful_fit[qubit] = False
                 log.error(f"Error in qubit_flux protocol fit: {e}.")
 
     return QubitFluxResults(
@@ -266,6 +268,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         sweetspot=sweetspot,
         matrix_element=matrix_element,
         fitted_parameters=fitted_parameters,
+        successful_fit=successful_fit,
     )
 
 
@@ -299,13 +302,14 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
 
 
 def _update(results: QubitFluxResults, platform: CalibrationPlatform, qubit: QubitId):
-    update.drive_frequency(results.frequency[qubit], platform, qubit)
-    update.sweetspot(results.sweetspot[qubit], platform, qubit)
-    update.flux_offset(results.sweetspot[qubit], platform, qubit)
-    platform.calibration.single_qubits[qubit].qubit.maximum_frequency = int(
-        results.frequency[qubit]
-    )
-    update.crosstalk_matrix(results.matrix_element[qubit], platform, qubit, qubit)
+    if results.successful_fit[qubit]:
+        update.drive_frequency(results.frequency[qubit], platform, qubit)
+        platform.calibration.single_qubits[qubit].qubit.maximum_frequency = int(
+            results.frequency[qubit]
+        )
+        update.sweetspot(results.sweetspot[qubit], platform, qubit)
+        update.flux_offset(results.sweetspot[qubit], platform, qubit)
+        update.crosstalk_matrix(results.matrix_element[qubit], platform, qubit, qubit)
 
 
 qubit_flux = Routine(_acquisition, _fit, _plot, _update)
