@@ -1010,14 +1010,17 @@ def extract_feature(
     labels = hdb.labels_
 
     # merging close clusters
-    signal_classification = merging(
-        peaks,
-        labels,
-        min_points,
-        distance_xy=DISTANCE_XY,
-        distance_z=DISTANCE_Z,
-        target=qubit
-    )
+    try:
+        signal_classification = merging(
+            peaks,
+            labels,
+            min_points,
+            distance_xy=DISTANCE_XY,
+            distance_z=DISTANCE_Z,
+            target=qubit
+        )
+    except FeatExtractionError:
+        return None, None
 
     return peaks_dict["x"]["val"][signal_classification], peaks_dict["y"]["val"][
         signal_classification
