@@ -1016,6 +1016,7 @@ def extract_feature(
         min_points,
         distance_xy=DISTANCE_XY,
         distance_z=DISTANCE_Z,
+        target=qubit
     )
 
     return peaks_dict["x"]["val"][signal_classification], peaks_dict["y"]["val"][
