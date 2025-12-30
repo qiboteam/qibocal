@@ -78,6 +78,8 @@ class LongCryoscopeResults(Results):
     """feedforward taps"""
     feedback_taps: dict[QubitId, list[float]] = field(default_factory=dict)
     """feedback taps"""
+    successful_fit: dict[QubitId, bool] = field(default_factory=dict)
+    """flag for each qubit to see whether the fit was successful."""
 
 
 @dataclass
@@ -109,10 +111,9 @@ class LongCryoscopeData(Data):
         freq, delay = extract_feature(*self.grid(qubit), qubit=qubit, find_min=False)
         return delay, freq
 
-    def step_reponse(self, qubit: QubitId) -> list[float]:
+    def step_reponse(self, filtered_freq: np.ndarray, qubit: QubitId) -> list[float]:
         """Compute expected frequency by averaging over last half."""
-        _, freq = self.filtered_data(qubit)
-        freq_ghz = (freq - self.frequency[qubit]) * HZ_TO_GHZ
+        freq_ghz = (filtered_freq - self.frequency[qubit]) * HZ_TO_GHZ
         p = np.poly1d(self.flux_coefficients[qubit])
         amplitude = [
             max((p - f).roots) if True else min((p - f).roots) for f in freq_ghz
@@ -238,27 +239,36 @@ def _fit(data: LongCryoscopeData) -> LongCryoscopeResults:
     time_decay = {}
     alpha = {}
     g = {}
+    successful_fit = {}
+
     sampling_rate = 1 / (data.duration_swept[1] - data.duration_swept[0])
     for qubit in data.qubits:
-        delay, _ = data.filtered_data(qubit)
+        delay, freq = data.filtered_data(qubit)
 
-        step_response = data.step_reponse(qubit)
-        try:
-            exp_params = exponential_params(
-                delay, step_response, tau_guess=np.median(data.duration_swept)
-            )
-            feedback_taps[qubit], feedforward_taps[qubit] = filter_calc(
-                exp_params, sampling_rate
-            )
-            time_decay[qubit], alpha[qubit], g[qubit] = exp_params
-        except RuntimeError:
-            log.info("Fit failed")
+        if delay is not None:
+            step_response = data.step_reponse(freq, qubit)
+            try:
+                exp_params = exponential_params(
+                    delay, step_response, tau_guess=np.median(data.duration_swept)
+                )
+                feedback_taps[qubit], feedforward_taps[qubit] = filter_calc(
+                    exp_params, sampling_rate
+                )
+                time_decay[qubit], alpha[qubit], g[qubit] = exp_params
+                successful_fit[qubit] = True
+            except RuntimeError:
+                successful_fit[qubit] = False
+                log.info("Fit failed")
+        else:
+            successful_fit[qubit] = False
+
     return LongCryoscopeResults(
         exp_amplitude=alpha,
         g=g,
         tau=time_decay,
         feedback_taps=feedback_taps,
         feedforward_taps=feedforward_taps,
+        successful_fit=successful_fit,
     )
 
 
@@ -272,8 +282,6 @@ def _plot(data: LongCryoscopeData, fit: LongCryoscopeResults, target: QubitId):
         shared_xaxes=True,
     )
     fitting_report = ""
-    delay, freq = data.filtered_data(target)
-    step_response = data.step_reponse(target)
     fig.add_trace(
         go.Heatmap(
             x=data.duration_swept,
@@ -286,33 +294,38 @@ def _plot(data: LongCryoscopeData, fit: LongCryoscopeResults, target: QubitId):
         col=1,
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=delay,
-            y=freq * HZ_TO_GHZ,
-            mode="markers",
-            showlegend=True,
-            legendgroup="Data",
-            name="Extract feature",
-            marker=dict(color="rgb(248, 248, 248)"),
-        ),
-        row=1,
-        col=1,
-    )
+    delay, freq = data.filtered_data(target)
+    step_response = data.step_reponse(freq, target)
 
-    fig.add_trace(
-        go.Scatter(
-            x=delay,
-            y=step_response,
-            showlegend=False,
-            legendgroup="Data",
-            mode="markers",
-            name="Extract feature",
-        ),
-        row=2,
-        col=1,
-    )
-    if fit is not None:
+    if delay is not None and freq is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=delay,
+                y=freq * HZ_TO_GHZ,
+                mode="markers",
+                showlegend=True,
+                legendgroup="Data",
+                name="Extract feature",
+                marker=dict(color="rgb(248, 248, 248)"),
+            ),
+            row=1,
+            col=1,
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=delay,
+                y=step_response,
+                showlegend=False,
+                legendgroup="Data",
+                mode="markers",
+                name="Extract feature",
+            ),
+            row=2,
+            col=1,
+        )
+
+    if fit is not None and fit.successful_fit[target]:
         fig.add_trace(
             go.Scatter(
                 x=delay,
