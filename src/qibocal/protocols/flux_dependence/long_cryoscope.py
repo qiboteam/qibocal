@@ -106,7 +106,7 @@ class LongCryoscopeData(Data):
 
     def filtered_data(self, qubit: QubitId) -> tuple[np.ndarray]:
         """Extract relevant x and y."""
-        freq, delay = extract_feature(*self.grid(qubit), find_min=False)
+        freq, delay = extract_feature(*self.grid(qubit), qubit, find_min=False)
         return delay, freq
 
     def step_reponse(self, qubit: QubitId) -> list[float]:
