@@ -245,7 +245,7 @@ def _fit(data: LongCryoscopeData) -> LongCryoscopeResults:
     for qubit in data.qubits:
         delay, freq = data.filtered_data(qubit)
 
-        if delay is not None:
+        if delay is not None and freq is not None:
             step_response = data.step_reponse(freq, qubit)
             try:
                 exp_params = exponential_params(
@@ -295,9 +295,9 @@ def _plot(data: LongCryoscopeData, fit: LongCryoscopeResults, target: QubitId):
     )
 
     delay, freq = data.filtered_data(target)
-    step_response = data.step_reponse(freq, target)
 
     if delay is not None and freq is not None:
+        step_response = data.step_reponse(freq, target)
         fig.add_trace(
             go.Scatter(
                 x=delay,
