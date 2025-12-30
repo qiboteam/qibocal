@@ -855,8 +855,7 @@ def peaks_finder(x, y, z) -> dict:
     # filter data using find_peaks
     peaks = {"x": {"idx": [], "val": []}, "y": {"idx": [], "val": []}}
     for y_idx, y_val in enumerate(y):
-        signal_fixed_y = z[y_idx]
-        peak, info = find_peaks(signal_fixed_y, prominence=0.2)
+        peak, info = find_peaks(z[y_idx], prominence=0.2)
         if len(peak) > 0:
             idx = np.argmax(info["prominences"])
             # if multiple peaks per bias are found, select the one with the highest prominence
