@@ -984,7 +984,7 @@ def extract_feature(
 
     # merging close clusters
     signal_classification = merging(
-        peaks, labels, min_points, DISTANCE * scaling_factor
+        peaks, labels, min_points, DISTANCE * scaling_factor, qubit
     )
 
     return peaks_dict["x"]["val"][signal_classification], peaks_dict["y"]["val"][
