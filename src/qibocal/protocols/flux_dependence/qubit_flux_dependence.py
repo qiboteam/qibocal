@@ -281,7 +281,7 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
         target,
         fit_function=utils.transmon_frequency,
     )
-    if fit is not None:
+    if fit is not None and fit.successful_fit[target]:
         fitting_report = table_html(
             table_dict(
                 target,
