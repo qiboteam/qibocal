@@ -106,7 +106,6 @@ class QubitFluxData(Data):
             self.data[qubit].freq,
             self.data[qubit].bias,
             self.data[qubit].signal,
-            qubit,
             self.find_min,
         )
 
