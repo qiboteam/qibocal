@@ -15,6 +15,11 @@ from ..utils import HZ_TO_GHZ, extract_feature, scaling_slice, table_dict, table
 __all__ = ["resonator_punchout", "ResonatorPunchoutData"]
 
 
+ResonatorPunchoutType = np.dtype(
+    [("freq", np.float64), ("amp", np.float64), ("iq", np.float64, (2,))]
+)
+
+
 @dataclass
 class ResonatorPunchoutParameters(Parameters):
     """ResonatorPunchout runcard inputs."""
@@ -61,18 +66,34 @@ class ResonatorPunchoutData(Data):
         return self.resonator_type == "2D"
 
     def signal(self, qubit: QubitId) -> np.ndarray:
-        return magnitude(self.data[qubit])
+        return magnitude(self.data[qubit].iq)
 
     def grid(self, qubit: QubitId) -> tuple[np.ndarray]:
         x, y = np.meshgrid(self.frequencies[qubit], self.amplitudes)
         return x.ravel(), y.ravel(), self.signal(qubit).ravel()
 
     def normalized_signal(self, qubit: QubitId) -> np.ndarray:
-        return scaling_slice(self.signal(qubit), axis=1)
+        signal = self.signal(qubit).reshape(
+            (
+                len(np.unique(self.data[qubit].amp)),
+                len(np.unique(self.data[qubit].freq)),
+            )
+        )
+        return scaling_slice(signal, axis=1)
 
     def filtered_data(self, qubit: QubitId) -> tuple[np.ndarray]:
         x, y, _ = self.grid(qubit)
         return extract_feature(x, y, self.signal(qubit).ravel(), self.find_min)
+
+    def register_qubit(self, qubit, iq, freq, amp):
+        """Store output for single qubit."""
+        size = len(freq) * len(amp)
+        ar = np.empty(size, dtype=ResonatorPunchoutType)
+        frequency, amplitudes = np.meshgrid(freq, amp)
+        ar["freq"] = frequency.ravel()
+        ar["amp"] = amplitudes.ravel()
+        ar["iq"] = iq.reshape((size, 2))
+        self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -132,9 +153,14 @@ def _acquisition(
     )
 
     # retrieve the results for every qubit
-    for qubit, ro_pulse in ro_pulses.items():
-        # average signal, phase, i and q over the number of shots defined in the runcard
-        data.data[qubit] = results[ro_pulse.id]
+    for qubit in targets:
+        result = results[ro_pulses[qubit].id]
+        data.register_qubit(
+            qubit,
+            iq=result,
+            freq=freq_sweepers[qubit].values,
+            amp=data.amplitudes,
+        )
 
     return data
 
