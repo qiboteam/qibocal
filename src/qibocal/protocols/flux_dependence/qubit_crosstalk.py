@@ -229,8 +229,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
             qubit_data.freq,
             qubit_data.bias,
             qubit_data.signal,
-            target_flux_qubit,
-            "max" if data.resonator_type == "2D" else "min",
+            data.resonator_type == "2D",
         )
 
         target_qubit, flux_qubit = target_flux_qubit
