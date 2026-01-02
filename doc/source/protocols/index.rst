@@ -38,6 +38,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     qubit_vz
     flux_gate/index
     cryoscope/cryoscope
+    long_cryoscope/index
     chevron
     virtual_z
     state_tomographies

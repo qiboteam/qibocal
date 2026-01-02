@@ -32,7 +32,7 @@ def test_cryoscope_acquisition(platform):
 
 
 def test_cryoscope_postprocessing():
-    datafolder = TEST_FILE_DIR / "cryoscope_data" / "data" / "cryoscope-0"
+    datafolder = TEST_FILE_DIR / "cryoscope_data" / "data" / "cryoscope 1-0"
     metadatafolder = TEST_FILE_DIR / "cryoscope_data" / "meta.json"
 
     data = cryoscope.data_type.load(datafolder)
@@ -80,7 +80,7 @@ def test_cryoscope_postprocessing():
 
 
 def test_cryoscope_plot():
-    datafolder = TEST_FILE_DIR / "cryoscope_data" / "data" / "cryoscope-0"
+    datafolder = TEST_FILE_DIR / "cryoscope_data" / "data" / "cryoscope 1-0"
     metadatafolder = TEST_FILE_DIR / "cryoscope_data" / "meta.json"
 
     results = cryoscope.results_type.load(datafolder)

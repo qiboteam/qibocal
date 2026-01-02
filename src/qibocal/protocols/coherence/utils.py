@@ -84,7 +84,6 @@ def dynamical_decoupling_sequence(
         sequence.append((ro_channel, ro_pulse))
         all_delays.extend(drive_delays)
         all_delays.extend(ro_delays)
-    print(sequence)
     return sequence, all_delays
 
 
