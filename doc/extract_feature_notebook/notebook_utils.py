@@ -5,7 +5,7 @@ from scipy import ndimage
 from scipy.signal import find_peaks
 from sklearn.cluster import HDBSCAN
 
-DISTANCE = np.sqrt(2)
+DISTANCE = 5
 
 
 def euclidean_metric(point1: np.ndarray, point2: np.ndarray):
