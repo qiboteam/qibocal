@@ -5,7 +5,7 @@ from scipy import ndimage
 from scipy.signal import find_peaks
 from sklearn.cluster import HDBSCAN
 
-DISTANCE = 1.5
+DISTANCE = np.sqrt(2)
 
 
 def euclidean_metric(point1: np.ndarray, point2: np.ndarray):
@@ -78,8 +78,8 @@ def build_clustering_data(peaks_dict: dict, z: np.ndarray):
     y_ = peaks_dict["y"]["idx"]
     z_ = z[y_, x_]
 
-    rescaling_fact = horizontal_diagonal(x_, y_) / 10
-    return np.stack((x_, y_, scaling_global(z_) * rescaling_fact)).T, rescaling_fact
+    rescaling_fact = np.sqrt(2)
+    return np.stack((x_, y_, scaling_global(z_) * rescaling_fact)).T
 
 
 def peaks_finder(x, y, z) -> dict:
@@ -232,7 +232,7 @@ def extract_feature(
     peaks_dict = peaks_finder(x_, y_, z_masked_norm)
 
     # normalizing peaks for clustering
-    peaks, scaling_factor = build_clustering_data(peaks_dict, z_masked)
+    peaks = build_clustering_data(peaks_dict, z_masked)
 
     # clustering
     # In this function Hierarchical Density-Based Spatial Clustering of Applications with Noise (HDBSCAN) algorithm is used;
@@ -242,9 +242,7 @@ def extract_feature(
     labels = hdb.labels_
 
     # merging close clusters
-    signal_classification = merging(
-        peaks, labels, min_points, DISTANCE * scaling_factor
-    )
+    signal_classification = merging(peaks, labels, min_points, DISTANCE)
 
     return peaks_dict["x"]["val"][signal_classification], peaks_dict["y"]["val"][
         signal_classification
