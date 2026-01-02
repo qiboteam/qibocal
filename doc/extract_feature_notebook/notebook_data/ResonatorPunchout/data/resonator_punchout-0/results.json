@@ -1,0 +1,14 @@
+{
+    "\"readout_frequency\"": {
+        "\"B1\"": 7120241314.0
+    },
+    "\"bare_frequency\"": {
+        "\"B1\"": 7118641314.0
+    },
+    "\"readout_amplitude\"": {
+        "\"B1\"": 0.199
+    },
+    "\"successful_fit\"": {
+        "\"B1\"": true
+    }
+}
