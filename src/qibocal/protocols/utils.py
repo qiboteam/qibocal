@@ -850,11 +850,11 @@ def merging(
     # removing data classified as noise
     unique_labels = np.unique(labels[labels >= 0])
     if len(unique_labels) == 0:  # if all points are noise
-        raise FeatExtractionError()
         """
         Clustering Failed:
         no signal but random noise is found.
         """
+        raise FeatExtractionError()
 
     indices_list = np.arange(len(labels)).astype(int)
     indexed_labels = np.stack((labels, indices_list)).T
@@ -942,11 +942,11 @@ def merging(
     # since we allowed for clustering even a group of 2 points, we filter the allowed eligible clusters
     # to be at least composed by a minimum number of points given by min_points_per_cluster parameter
     if len(valid_clusters.keys()) == 0:  # if no big enough clusters are found
-        raise FeatExtractionError()
         """
         Clustering Failed:
         not enough big clusters after merging routine.
         """
+        raise FeatExtractionError()
 
     medians = np.array(
         [[lab, np.median(cl["cluster"][2, :])] for lab, cl in valid_clusters.items()]
