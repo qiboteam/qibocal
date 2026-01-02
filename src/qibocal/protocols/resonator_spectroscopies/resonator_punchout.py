@@ -15,11 +15,6 @@ from ..utils import HZ_TO_GHZ, extract_feature, scaling_slice, table_dict, table
 __all__ = ["resonator_punchout", "ResonatorPunchoutData"]
 
 
-ResonatorPunchoutType = np.dtype(
-    [("freq", np.float64), ("amp", np.float64), ("iq", np.float64, (2,))]
-)
-
-
 @dataclass
 class ResonatorPunchoutParameters(Parameters):
     """ResonatorPunchout runcard inputs."""
@@ -66,7 +61,7 @@ class ResonatorPunchoutData(Data):
         return self.resonator_type == "2D"
 
     def signal(self, qubit: QubitId) -> np.ndarray:
-        return magnitude(self.data[qubit].iq)
+        return magnitude(self.data[qubit])
 
     def grid(self, qubit: QubitId) -> tuple[np.ndarray]:
         x, y = np.meshgrid(self.frequencies[qubit], self.amplitudes)
@@ -75,8 +70,8 @@ class ResonatorPunchoutData(Data):
     def normalized_signal(self, qubit: QubitId) -> np.ndarray:
         signal = self.signal(qubit).reshape(
             (
-                len(np.unique(self.data[qubit].amp)),
-                len(np.unique(self.data[qubit].freq)),
+                len(np.unique(self.amplitudes)),
+                len(np.unique(self.frequencies[qubit])),
             )
         )
         return scaling_slice(signal, axis=1)
@@ -84,16 +79,6 @@ class ResonatorPunchoutData(Data):
     def filtered_data(self, qubit: QubitId) -> tuple[np.ndarray]:
         x, y, _ = self.grid(qubit)
         return extract_feature(x, y, self.signal(qubit).ravel(), self.find_min)
-
-    def register_qubit(self, qubit, iq, freq, amp):
-        """Store output for single qubit."""
-        size = len(freq) * len(amp)
-        ar = np.empty(size, dtype=ResonatorPunchoutType)
-        frequency, amplitudes = np.meshgrid(freq, amp)
-        ar["freq"] = frequency.ravel()
-        ar["amp"] = amplitudes.ravel()
-        ar["iq"] = iq.reshape((size, 2))
-        self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -155,13 +140,7 @@ def _acquisition(
 
     # retrieve the results for every qubit
     for qubit in targets:
-        result = results[ro_pulses[qubit].id]
-        data.register_qubit(
-            qubit,
-            iq=result,
-            freq=freq_sweepers[qubit].values,
-            amp=data.amplitudes,
-        )
+        data.data[qubit] = results[ro_pulses[qubit].id]
 
     return data
 
@@ -169,8 +148,8 @@ def _acquisition(
 def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResults:
     """Fit frequency and attenuation at high and low power for a given resonator."""
 
-    low_freqs = {}
-    high_freqs = {}
+    readout_freqs = {}
+    bare_freqs = {}
     ro_values = {}
     successful_fit = {}
 
@@ -182,23 +161,31 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
         ):  # filtered_x and filtered_y have always the same shape
             successful_fit[qubit] = False
         else:
-            # TODO: understand what is going on here
-            if fit_type == "amp":
-                best_freq = np.max(filtered_x)
-                bare_freq = np.min(filtered_x)
-            else:
-                best_freq = np.min(filtered_x)
-                bare_freq = np.max(filtered_x)
-            ro_val = np.max(filtered_y[filtered_x == best_freq])
+            # new handling for detecting dressed and bare resonator frequencies
+            # by definition bare resonator frequency is given for high amplitude values,
+            # why by applying low amplitude readout signal we estimate dressed frequency.
+            freq_max = np.mean(filtered_x.max())
+            idx_max = filtered_x.argmax()
+            amp_max = np.mean(filtered_y[idx_max])
 
-            low_freqs[qubit] = best_freq
-            high_freqs[qubit] = bare_freq
+            freq_min = np.mean(filtered_x.min())
+            idx_min = filtered_x.argmin()
+            amp_min = np.mean(filtered_y[idx_min])
+
+            readout_freq, bare_freq = (
+                (freq_min, freq_max) if amp_min < amp_max else (freq_max, freq_min)
+            )
+
+            ro_val = np.max(filtered_y[filtered_x == readout_freq])
+
+            readout_freqs[qubit] = readout_freq
+            bare_freqs[qubit] = bare_freq
             ro_values[qubit] = ro_val
             successful_fit[qubit] = True
 
     return ResonatorPunchoutResults(
-        readout_frequency=low_freqs,
-        bare_frequency=high_freqs,
+        readout_frequency=readout_freqs,
+        bare_frequency=bare_freqs,
         readout_amplitude=ro_values,
         successful_fit=successful_fit,
     )
