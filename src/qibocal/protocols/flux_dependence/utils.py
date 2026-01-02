@@ -46,8 +46,6 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
     qubit_data = data[qubit]
     frequencies = qubit_data.freq * HZ_TO_GHZ
 
-    filtered_freq, filtered_bias = data.filtered_data(qubit)
-
     fig = go.Figure()
     fig.add_trace(
         go.Heatmap(
@@ -59,22 +57,25 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
         ),
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=filtered_freq * HZ_TO_GHZ,
-            y=filtered_bias,
-            name="Estimated points",
-            mode="markers",
-            marker=dict(color="rgb(248, 248, 248)"),
+    filtered_freq, filtered_bias = data.filtered_data(qubit)
+
+    if filtered_freq is not None and filtered_bias is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=filtered_freq * HZ_TO_GHZ,
+                y=filtered_bias,
+                name="Estimated points",
+                mode="markers",
+                marker=dict(color="rgb(248, 248, 248)"),
+            )
         )
-    )
 
     # TODO: This fit is for frequency, can it be reused here, do we even want the fit ?
     if (
         fit is not None
         and fit_function is not None
         and not data.__class__.__name__ == "CouplerSpectroscopyData"
-        and qubit in fit.fitted_parameters
+        and fit.successful_fit[qubit]
     ):
         params = fit.fitted_parameters[qubit]
         bias = np.unique(qubit_data.bias)
@@ -150,8 +151,8 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
             row=1,
             col=col + 1,
         )
-        if fit is not None:
-            if flux_qubit[1] != qubit and flux_qubit in fit.fitted_parameters:
+        if fit is not None and fit.successful_fit[qubit]:
+            if flux_qubit[1] != qubit:
                 fig.add_trace(
                     go.Scatter(
                         x=fit_function(

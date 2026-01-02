@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
@@ -11,7 +10,7 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude
 
-from ..utils import HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
+from ..utils import HZ_TO_GHZ, extract_feature, scaling_slice, table_dict, table_html
 
 __all__ = ["resonator_punchout", "ResonatorPunchoutData"]
 
@@ -42,16 +41,8 @@ class ResonatorPunchoutResults(Results):
     """Bare resonator frequency [GHz] for each qubit."""
     readout_amplitude: dict[QubitId, float]
     """Readout amplitude for each qubit."""
-
-
-ResPunchoutType = np.dtype(
-    [
-        ("freq", np.float64),
-        ("amp", np.float64),
-        ("signal", np.float64),
-    ]
-)
-"""Custom dtype for resonator punchout."""
+    successful_fit: dict[QubitId, bool]
+    """flag for each qubit to see whether the fit was successful."""
 
 
 @dataclass
@@ -60,24 +51,34 @@ class ResonatorPunchoutData(Data):
 
     resonator_type: str
     """Resonator type."""
-    amplitudes: dict[QubitId, float] = field(default_factory=dict)
-    """Amplitudes provided by the user."""
-    data: dict[QubitId, npt.NDArray[ResPunchoutType]] = field(default_factory=dict)
+    amplitudes: dict[QubitId, list] = field(default_factory=dict)
+    frequencies: dict[QubitId, list] = field(default_factory=dict)
+    data: dict[QubitId, np.ndarray] = field(default_factory=dict)
     """Raw data acquired."""
 
     @property
-    def find_min(self):
-        return self.resonator_type != "2D"
+    def find_min(self) -> bool:
+        return self.resonator_type == "2D"
 
-    def register_qubit(self, qubit, freq, amp, signal):
-        """Store output for single qubit."""
-        size = len(freq) * len(amp)
-        frequency, amplitude = np.meshgrid(freq, amp)
-        ar = np.empty(size, dtype=ResPunchoutType)
-        ar["freq"] = frequency.ravel()
-        ar["amp"] = amplitude.ravel()
-        ar["signal"] = signal.ravel()
-        self.data[qubit] = np.rec.array(ar)
+    def signal(self, qubit: QubitId) -> np.ndarray:
+        return magnitude(self.data[qubit])
+
+    def grid(self, qubit: QubitId) -> tuple[np.ndarray]:
+        x, y = np.meshgrid(self.frequencies[qubit], self.amplitudes)
+        return x.ravel(), y.ravel(), self.signal(qubit).ravel()
+
+    def normalized_signal(self, qubit: QubitId) -> np.ndarray:
+        signal = self.signal(qubit).reshape(
+            (
+                len(np.unique(self.amplitudes)),
+                len(np.unique(self.frequencies[qubit])),
+            )
+        )
+        return scaling_slice(signal, axis=1)
+
+    def filtered_data(self, qubit: QubitId) -> tuple[np.ndarray]:
+        x, y, _ = self.grid(qubit)
+        return extract_feature(x, y, self.signal(qubit).ravel(), self.find_min)
 
 
 def _acquisition(
@@ -123,7 +124,8 @@ def _acquisition(
     )
 
     data = ResonatorPunchoutData(
-        amplitudes=amplitudes,
+        amplitudes=amp_sweeper.values.tolist(),
+        frequencies={qubit: freq_sweepers[qubit].values.tolist() for qubit in targets},
         resonator_type=platform.resonator_type,
     )
 
@@ -137,22 +139,56 @@ def _acquisition(
     )
 
     # retrieve the results for every qubit
-    for qubit, ro_pulse in ro_pulses.items():
-        # average signal, phase, i and q over the number of shots defined in the runcard
-        result = results[ro_pulse.id]
-        data.register_qubit(
-            qubit,
-            signal=magnitude(result),
-            freq=freq_sweepers[qubit].values,
-            amp=amp_sweeper.values,
-        )
+    for qubit in targets:
+        data.data[qubit] = results[ro_pulses[qubit].id]
 
     return data
 
 
 def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResults:
     """Fit frequency and attenuation at high and low power for a given resonator."""
-    return ResonatorPunchoutResults(*fit_punchout(data, fit_type))
+
+    readout_freqs = {}
+    bare_freqs = {}
+    ro_values = {}
+    successful_fit = {}
+
+    for qubit in data.qubits:
+        filtered_x, filtered_y = data.filtered_data(qubit)
+
+        if (
+            filtered_x is None or filtered_y is None
+        ):  # filtered_x and filtered_y have always the same shape
+            successful_fit[qubit] = False
+        else:
+            # new handling for detecting dressed and bare resonator frequencies
+            # by definition bare resonator frequency is given for high amplitude values,
+            # why by applying low amplitude readout signal we estimate dressed frequency.
+            freq_max = np.mean(filtered_x.max())
+            idx_max = filtered_x.argmax()
+            amp_max = np.mean(filtered_y[idx_max])
+
+            freq_min = np.mean(filtered_x.min())
+            idx_min = filtered_x.argmin()
+            amp_min = np.mean(filtered_y[idx_min])
+
+            readout_freq, bare_freq = (
+                (freq_min, freq_max) if amp_min < amp_max else (freq_max, freq_min)
+            )
+
+            ro_val = np.max(filtered_y[filtered_x == readout_freq])
+
+            readout_freqs[qubit] = readout_freq
+            bare_freqs[qubit] = bare_freq
+            ro_values[qubit] = ro_val
+            successful_fit[qubit] = True
+
+    return ResonatorPunchoutResults(
+        readout_frequency=readout_freqs,
+        bare_frequency=bare_freqs,
+        readout_amplitude=ro_values,
+        successful_fit=successful_fit,
+    )
 
 
 def _plot(
@@ -162,26 +198,33 @@ def _plot(
     figures = []
     fitting_report = ""
     fig = go.Figure()
-    qubit_data = data[target]
-    frequencies = qubit_data.freq * HZ_TO_GHZ
-    amplitudes = qubit_data.amp
-    n_amps = len(np.unique(qubit_data.amp))
-    n_freq = len(np.unique(qubit_data.freq))
-    for i in range(n_amps):
-        qubit_data.signal[i * n_freq : (i + 1) * n_freq] = norm(
-            qubit_data.signal[i * n_freq : (i + 1) * n_freq]
-        )
-
+    x, y, _ = data.grid(target)
     fig.add_trace(
         go.Heatmap(
-            x=frequencies,
-            y=amplitudes,
-            z=qubit_data.signal,
-            colorbar_x=0.46,
+            x=x * HZ_TO_GHZ,
+            y=y,
+            z=data.normalized_signal(target).ravel(),
+            colorbar=dict(title="Normalized signal"),
+            colorscale="Viridis",
         )
     )
+    filtered_x, filtered_y = data.filtered_data(target)
 
-    if fit is not None:
+    if filtered_x is not None and filtered_y is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=filtered_x * HZ_TO_GHZ,
+                y=filtered_y,
+                mode="markers",
+                name="Estimated points",
+                marker=dict(color="rgb(248, 248, 248)"),
+                showlegend=True,
+            )
+        )
+
+    if fit is not None and fit.successful_fit[target]:
+        # if fit.readout_frequency[target] is None then all the other two fields are None, one field
+        # cannot be None with the remaining being not None
         fig.add_trace(
             go.Scatter(
                 x=[
@@ -193,7 +236,7 @@ def _plot(
                 mode="markers",
                 marker=dict(
                     size=8,
-                    color="gray",
+                    color="red",
                     symbol="circle",
                 ),
                 name="Estimated readout point",
@@ -232,12 +275,15 @@ def _plot(
 def _update(
     results: ResonatorPunchoutResults, platform: CalibrationPlatform, target: QubitId
 ):
-    update.readout_frequency(results.readout_frequency[target], platform, target)
-    update.bare_resonator_frequency(results.bare_frequency[target], platform, target)
-    update.dressed_resonator_frequency(
-        results.readout_frequency[target], platform, target
-    )
-    update.readout_amplitude(results.readout_amplitude[target], platform, target)
+    if results.successful_fit[target]:
+        update.readout_frequency(results.readout_frequency[target], platform, target)
+        update.dressed_resonator_frequency(
+            results.readout_frequency[target], platform, target
+        )
+        update.bare_resonator_frequency(
+            results.bare_frequency[target], platform, target
+        )
+        update.readout_amplitude(results.readout_amplitude[target], platform, target)
 
 
 resonator_punchout = Routine(_acquisition, _fit, _plot, _update)
