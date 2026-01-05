@@ -41,6 +41,7 @@ DELAY_FIT_PERCENTAGE = 10
 STRING_TYPE = "<U100"
 
 DISTANCE = 1.5  # very heuristic
+DISTANCE_Z = 1  # very heuristic
 """ Minimum distance for separate clusters.
 Clusters below this distance will be merged.
 Since it is given in a 3D-space, with a compressed vertical dimension, and the horizontal plane measured in pixels,
@@ -840,7 +841,7 @@ def build_clustering_data(peaks_dict: dict, z: np.ndarray):
     z_ = z[y_, x_]
 
     rescaling_fact = horizontal_diagonal(x_, y_) / 20
-    return np.stack((x_, y_, scaling_global(z_) * rescaling_fact)).T
+    return np.stack((x_, y_, scaling_global(z_) * rescaling_fact)).T, rescaling_fact
 
 
 def peaks_finder(x, y, z) -> dict:
@@ -993,7 +994,7 @@ def extract_feature(
     peaks_dict = peaks_finder(x_, y_, z_masked_norm)
 
     # normalizing peaks for clustering
-    peaks = build_clustering_data(peaks_dict, z_masked)
+    peaks, scaling_factor = build_clustering_data(peaks_dict, z_masked)
 
     # clustering
     # In this function Hierarchical Density-Based Spatial Clustering of Applications with Noise (HDBSCAN) algorithm is used;
@@ -1003,7 +1004,8 @@ def extract_feature(
     labels = hdb.labels_
 
     # merging close clusters
-    signal_classification = merging(peaks, labels, min_points, DISTANCE)
+    dist = np.sqrt(DISTANCE**2 + (DISTANCE_Z * scaling_factor) ** 2)
+    signal_classification = merging(peaks, labels, min_points, dist)
 
     return peaks_dict["x"]["val"][signal_classification], peaks_dict["y"]["val"][
         signal_classification
