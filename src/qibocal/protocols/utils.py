@@ -920,7 +920,7 @@ def merging(
             cluster_label = indexed_labels[cluster_leftmost[3].astype(int), 0]
 
             d = euclidean_metric(
-                active_clusters[idx]["rightmost"][:-2], cluster_leftmost[:-2]
+                active_clusters[idx]["rightmost"][:-1], cluster_leftmost[:-1]
             )
             if d <= threshold:  # keep the list
                 distances_list.append(d)
