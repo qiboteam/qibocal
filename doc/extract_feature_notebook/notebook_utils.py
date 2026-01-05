@@ -6,6 +6,7 @@ from scipy.signal import find_peaks
 from sklearn.cluster import HDBSCAN
 
 DISTANCE = 1.5
+DISTANCE_Z = 1
 
 
 def euclidean_metric(point1: np.ndarray, point2: np.ndarray):
@@ -79,7 +80,7 @@ def build_clustering_data(peaks_dict: dict, z: np.ndarray):
     z_ = z[y_, x_]
 
     rescaling_fact = horizontal_diagonal(x_, y_) / 20
-    return np.stack((x_, y_, scaling_global(z_) * rescaling_fact)).T
+    return np.stack((x_, y_, scaling_global(z_) * rescaling_fact)).T, rescaling_fact
 
 
 def peaks_finder(x, y, z) -> dict:
@@ -158,7 +159,7 @@ def merging(
             cluster_label = indexed_labels[cluster_leftmost[3].astype(int), 0]
 
             d = euclidean_metric(
-                active_clusters[idx]["rightmost"][:-2], cluster_leftmost[:-2]
+                active_clusters[idx]["rightmost"][:-1], cluster_leftmost[:-1]
             )
             if d <= threshold:  # keep the list
                 distances_list.append(d)
@@ -232,7 +233,7 @@ def extract_feature(
     peaks_dict = peaks_finder(x_, y_, z_masked_norm)
 
     # normalizing peaks for clustering
-    peaks = build_clustering_data(peaks_dict, z_masked)
+    peaks, scaling_factor = build_clustering_data(peaks_dict, z_masked)
 
     # clustering
     # In this function Hierarchical Density-Based Spatial Clustering of Applications with Noise (HDBSCAN) algorithm is used;
@@ -242,7 +243,8 @@ def extract_feature(
     labels = hdb.labels_
 
     # merging close clusters
-    signal_classification = merging(peaks, labels, min_points, DISTANCE)
+    dist = np.sqrt(DISTANCE**2 + (DISTANCE_Z * scaling_factor) ** 2)
+    signal_classification = merging(peaks, labels, min_points, dist)
 
     return peaks_dict["x"]["val"][signal_classification], peaks_dict["y"]["val"][
         signal_classification
