@@ -41,7 +41,7 @@ DELAY_FIT_PERCENTAGE = 10
 STRING_TYPE = "<U100"
 
 DISTANCE = 1.5  # very heuristic
-DISTANCE_Z = 1  # very heuristic
+DISTANCE_Z = 1.5
 """ Minimum distance for separate clusters.
 Clusters below this distance will be merged.
 Since it is given in a 3D-space, with a compressed vertical dimension, and the horizontal plane measured in pixels,
