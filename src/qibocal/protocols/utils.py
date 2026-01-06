@@ -40,8 +40,10 @@ DELAY_FIT_PERCENTAGE = 10
 """Percentage of the first and last points used to fit the cable delay."""
 STRING_TYPE = "<U100"
 
-DISTANCE_XY = 1.5  # very heuristic
-DISTANCE_Z = 1.5
+MAX_PIXEL_DISTANCE = 2
+"""Maximul pixel distance of signals to be merged in a single cluster"""
+DISTANCE_XY = 1.5 * MAX_PIXEL_DISTANCE  # very heuristic
+DISTANCE_Z = 0.5
 """ Minimum distance for separate clusters.
 Clusters below this distance will be merged.
 Since it is given in a 3D-space, with a compressed vertical dimension, and the horizontal plane measured in pixels,
@@ -899,7 +901,7 @@ def merging(
     noise_points = data[:, labels < 0]
 
     for i in range(noise_points.shape[1]):
-        clusters.append(noise_points[:, i][:, np.newaxis])
+        clusters.append(np.array(noise_points[:, i])[:, np.newaxis])
 
     clusters = sorted(
         clusters,
@@ -950,6 +952,10 @@ def merging(
                 :, np.argmax(updated_cluster[1, :])
             ]
         else:
+            if cluster_label < 0:
+                cluster_label = np.max(unique_labels) + 1
+                unique_labels = np.append(unique_labels, cluster_label)
+
             active_clusters[cluster_label] = {
                 "cluster": cluster,
                 "leftmost": cluster_leftmost,
