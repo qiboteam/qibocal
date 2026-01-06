@@ -895,8 +895,14 @@ def merging(
     indexed_labels = np.stack((labels, indices_list)).T
     data = np.vstack((data.T, indices_list))
 
+    clusters = [data[:, labels == lab] for lab in unique_labels if lab >= 0]
+    noise_points = data[:, labels < 0]
+
+    for i in range(noise_points.shape[1]):
+        clusters.append(np.array(noise_points[:, i])[:, np.newaxis])
+
     clusters = sorted(
-        [data[:, labels == lab] for lab in unique_labels],
+        clusters,
         key=lambda c: np.min(c[1]),
     )
 
@@ -955,6 +961,7 @@ def merging(
         for lab, v_clust in active_clusters.items()
         if v_clust["cluster"].shape[1] >= min_points_per_cluster
     }
+
     # since we allowed for clustering even a group of 2 points, we filter the allowed eligible clusters
     # to be at least composed by a minimum number of points given by min_points_per_cluster parameter
 
