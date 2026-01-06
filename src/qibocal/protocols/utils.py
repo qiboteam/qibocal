@@ -40,7 +40,7 @@ DELAY_FIT_PERCENTAGE = 10
 """Percentage of the first and last points used to fit the cable delay."""
 STRING_TYPE = "<U100"
 
-DISTANCE = 1.5  # very heuristic
+DISTANCE_XY = 1.5  # very heuristic
 DISTANCE_Z = 1.5
 """ Minimum distance for separate clusters.
 Clusters below this distance will be merged.
@@ -873,7 +873,11 @@ def peaks_finder(x, y, z) -> dict:
 
 
 def merging(
-    data: tuple, labels: list, min_points_per_cluster: int, distance: float = 5.0
+    data: tuple,
+    labels: list,
+    min_points_per_cluster: int,
+    distance_xy: float,
+    distance_z: float,
 ) -> list[bool]:
     """Divides the processed signal into clusters for separating signal from noise.
 
@@ -910,7 +914,8 @@ def merging(
     }
 
     for cluster in clusters[1:]:
-        threshold = distance
+        threshold_xy = distance_xy
+        threshold_z = distance_z
         distances_list = []
         indices = []
 
@@ -919,11 +924,14 @@ def merging(
             cluster_leftmost = cluster[:, np.argmin(cluster[1, :])]
             cluster_label = indexed_labels[cluster_leftmost[3].astype(int), 0]
 
-            d = euclidean_metric(
-                active_clusters[idx]["rightmost"][:-1], cluster_leftmost[:-1]
+            d_xy = euclidean_metric(
+                active_clusters[idx]["rightmost"][:-2], cluster_leftmost[:-2]
             )
-            if d <= threshold:  # keep the list
-                distances_list.append(d)
+            d_z = euclidean_metric(
+                active_clusters[idx]["rightmost"][-2], cluster_leftmost[-2]
+            )
+            if d_xy <= threshold_xy and d_z <= threshold_z:  # keep the list
+                distances_list.append(np.sqrt(d_xy**2 + d_z**2))
                 indices.append(idx)
 
         if len(distances_list) != 0:
@@ -1004,8 +1012,13 @@ def extract_feature(
     labels = hdb.labels_
 
     # merging close clusters
-    dist = np.sqrt(DISTANCE**2 + (DISTANCE_Z * scaling_factor) ** 2)
-    signal_classification = merging(peaks, labels, min_points, dist)
+    signal_classification = merging(
+        peaks,
+        labels,
+        min_points,
+        distance_xy=DISTANCE_XY,
+        distance_z=DISTANCE_Z * scaling_factor,
+    )
 
     return peaks_dict["x"]["val"][signal_classification], peaks_dict["y"]["val"][
         signal_classification
