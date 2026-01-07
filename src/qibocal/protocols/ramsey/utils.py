@@ -99,12 +99,13 @@ def fitting(x: list, y: list, errors: list = None) -> list:
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)
     amplitude_guess = abs(q80 - q20)
+    sin_phase = (y[0] - median_sig) / amplitude_guess
 
     p0 = [
         median_sig,
         amplitude_guess,
         omega,
-        np.arcsin((y[0] - median_sig) / amplitude_guess),
+        np.arcsin(sin_phase if abs(sin_phase) < 1 else np.sign(sin_phase) * 1),
         1,
     ]
 
