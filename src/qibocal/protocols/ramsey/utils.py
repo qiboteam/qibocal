@@ -105,7 +105,7 @@ def fitting(x: list, y: list, errors: list = None) -> list:
         median_sig,
         amplitude_guess,
         omega,
-        np.arcsin(sin_phase if abs(sin_phase) < 1 else np.sign(sin_phase) * 1),
+        np.arcsin(sin_phase if abs(sin_phase) < 1 else np.sign(sin_phase)),
         1,
     ]
 
