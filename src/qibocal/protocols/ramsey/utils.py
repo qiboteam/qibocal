@@ -99,7 +99,7 @@ def fitting(x: list, y: list, errors: list = None) -> list:
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)
     amplitude_guess = abs(q80 - q20)
-    print(q80, q20)
+
     p0 = [
         median_sig,
         amplitude_guess,
@@ -127,8 +127,7 @@ def fitting(x: list, y: list, errors: list = None) -> list:
         angle_wrap(popt[3] - x_min * popt[2] / delta_x),
         popt[4] / delta_x,
     ]
-    print(popt[3])
-    print("----------------------")
+
     perr = np.sqrt(np.diag(perr))
     perr = [
         delta_y * perr[0],
