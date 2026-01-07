@@ -40,10 +40,11 @@ DELAY_FIT_PERCENTAGE = 10
 """Percentage of the first and last points used to fit the cable delay."""
 STRING_TYPE = "<U100"
 
-MAX_PIXEL_DISTANCE = 2
-"""Maximul pixel distance of signals to be merged in a single cluster"""
-DISTANCE_XY = 1.5 * MAX_PIXEL_DISTANCE  # very heuristic
-DISTANCE_Z = 0.5
+MAX_PIXELS = 2
+"""How many pixels at most two clusters' endpoints should be far for merging them."""
+DISTANCE_XY = 1.5 * MAX_PIXELS  # very heuristic
+"""taking as a threshold the diagonal distance of MAX_PIXELS + some rounding."""
+DISTANCE_Z = 5.0
 """ Minimum distance for separate clusters.
 Clusters below this distance will be merged.
 Since it is given in a 3D-space, with a compressed vertical dimension, and the horizontal plane measured in pixels,
@@ -922,8 +923,6 @@ def merging(
     }
 
     for cluster in clusters[1:]:
-        threshold_xy = distance_xy
-        threshold_z = distance_z
         distances_list = []
         indices = []
 
@@ -938,7 +937,7 @@ def merging(
             d_z = euclidean_metric(
                 active_clusters[idx]["rightmost"][-2], cluster_leftmost[-2]
             )
-            if d_xy <= threshold_xy and d_z <= threshold_z:  # keep the list
+            if d_xy <= distance_xy and d_z <= distance_z:  # keep the list
                 distances_list.append(np.sqrt(d_xy**2 + d_z**2))
                 indices.append(idx)
 
@@ -1030,7 +1029,7 @@ def extract_feature(
         labels,
         min_points,
         distance_xy=DISTANCE_XY,
-        distance_z=DISTANCE_Z * scaling_factor,
+        distance_z=DISTANCE_Z,
     )
 
     return peaks_dict["x"]["val"][signal_classification], peaks_dict["y"]["val"][
