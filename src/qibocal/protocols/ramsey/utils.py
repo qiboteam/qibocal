@@ -73,6 +73,11 @@ def ramsey_fit(x, offset, amplitude, delta, phase, decay):
     return offset + amplitude * np.sin(x * delta + phase) * np.exp(-x * decay)
 
 
+def angle_wrap(angle: float):
+    """Wrap an angle in [0,np.inf] into the [0,2*np.pi] domain"""
+    return angle % (2 * np.pi)
+
+
 def fitting(x: list, y: list, errors: list = None) -> list:
     """
     Given the inputs list `x` and outputs one `y`, this function fits the
@@ -90,14 +95,16 @@ def fitting(x: list, y: list, errors: list = None) -> list:
 
     period = fallback_period(guess_period(x, y))
     omega = 2 * np.pi / period
-    idx = np.argmin(x)
-    mean_sig = (max(y) + min(y)) / 2
-    amplitude_guess = (max(y) - min(y)) / 2
+    median_sig = np.median(y)
+    q80 = np.quantile(y, 0.8)
+    q20 = np.quantile(y, 0.2)
+    amplitude_guess = abs(q80 - q20)
+    print(q80, q20)
     p0 = [
-        mean_sig,
+        median_sig,
         amplitude_guess,
         omega,
-        np.arcsin((y[idx] - mean_sig) / amplitude_guess),
+        np.arcsin((y[0] - median_sig) / amplitude_guess),
         1,
     ]
 
@@ -108,8 +115,8 @@ def fitting(x: list, y: list, errors: list = None) -> list:
         p0=p0,
         maxfev=5000,
         bounds=(
-            [0, 0, 0, -np.pi, 0],
-            [1, 1, np.inf, np.pi, np.inf],
+            [0, 0, -np.inf, -np.inf, 0],
+            [1, 1, np.inf, np.inf, np.inf],
         ),
         sigma=err,
     )
@@ -117,9 +124,11 @@ def fitting(x: list, y: list, errors: list = None) -> list:
         delta_y * popt[0] + y_min,
         delta_y * popt[1] * np.exp(x_min * popt[4] / delta_x),
         popt[2] / delta_x,
-        popt[3] - x_min * popt[2] / delta_x,
+        angle_wrap(popt[3] - x_min * popt[2] / delta_x),
         popt[4] / delta_x,
     ]
+    print(popt[3])
+    print("----------------------")
     perr = np.sqrt(np.diag(perr))
     perr = [
         delta_y * perr[0],
