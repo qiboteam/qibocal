@@ -902,7 +902,7 @@ def merging(
     noise_points = data[:, labels < 0]
 
     for i in range(noise_points.shape[1]):
-        clusters.append(np.array(noise_points[:, i])[:, np.newaxis])
+        clusters.append(noise_points[:, i][:, np.newaxis])
 
     clusters = sorted(
         clusters,
