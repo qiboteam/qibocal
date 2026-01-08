@@ -74,7 +74,7 @@ def ramsey_fit(x, offset, amplitude, delta, phase, decay):
 
 
 def angle_wrap(angle: float):
-    """Wrap an angle in [0,np.inf] into the [0,2*np.pi] domain"""
+    """Wrap an angle from [-np.inf,np.inf] into the [0,2*np.pi] domain"""
     return angle % (2 * np.pi)
 
 
