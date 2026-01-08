@@ -7,7 +7,7 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Parameters, QubitId
 from qibocal.update import replace
 
-from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
+from ..utils import COLORBAND, COLORBAND_LINE, angle_wrap, table_dict, table_html
 
 
 def rabi_amplitude_function(x, offset, amplitude, period, phase):
@@ -305,7 +305,6 @@ def sequence_length(
 def fit_length_function(
     x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
 ):
-    inf_bounds = [0, -1, 0, -np.pi, 0] if signal else [0, 0, 0, -np.pi, 0]
     popt, perr = curve_fit(
         rabi_length_function,
         x,
@@ -313,8 +312,8 @@ def fit_length_function(
         p0=guess,
         maxfev=100000,
         bounds=(
-            inf_bounds,
-            [1, 1, np.inf, np.pi, np.inf],
+            # [0, -1 if signal else 0, 0, -np.inf, 0]
+            [0, 0, 0, -np.inf, 0][1, 1, np.inf, np.inf, np.inf],
         ),
         sigma=sigma,
     )
@@ -327,7 +326,7 @@ def fit_length_function(
             popt[0],
             popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
             popt[2] * (x_max - x_min),
-            popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
+            angle_wrap(popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min)),
             popt[4] / (x_max - x_min),
         ]
         perr = np.sqrt(np.diag(perr))
@@ -354,8 +353,8 @@ def fit_amplitude_function(
         p0=guess,
         maxfev=100000,
         bounds=(
-            [0, 0, 0, 0],
-            [1, 1, np.inf, 2 * np.pi],
+            [0, 0, 0, -np.inf],
+            [1, 1, np.inf, np.inf],
         ),
         sigma=sigma,
     )
@@ -366,7 +365,10 @@ def fit_amplitude_function(
             y_limits[0] + (y_limits[1] - y_limits[0]) * popt[0],
             (y_limits[1] - y_limits[0]) * popt[1],
             popt[2] * (x_limits[1] - x_limits[0]),
-            popt[3] - 2 * np.pi * x_limits[0] / (x_limits[1] - x_limits[0]) / popt[2],
+            angle_wrap(
+                popt[3]
+                - 2 * np.pi * x_limits[0] / (x_limits[1] - x_limits[0]) / popt[2]
+            ),
         ]
     pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
     return popt, perr, pi_pulse_parameter

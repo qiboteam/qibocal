@@ -5,7 +5,7 @@ from qibolab import Delay, Platform, Pulse, PulseSequence, Rectangular
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import QubitId
-from qibocal.protocols.utils import GHZ_TO_HZ, fallback_period, guess_period
+from qibocal.protocols.utils import GHZ_TO_HZ, angle_wrap, fallback_period, guess_period
 
 POPT_EXCEPTION = [0, 0, 0, 0, 1]
 """Fit parameters output to handle exceptions"""
@@ -95,11 +95,6 @@ def ramsey_sequence(
 def ramsey_fit(x, offset, amplitude, delta, phase, decay):
     """Dumped sinusoidal fit."""
     return offset + amplitude * np.sin(x * delta + phase) * np.exp(-x * decay)
-
-
-def angle_wrap(angle: float):
-    """Wrap an angle from [-np.inf,np.inf] into the [0,2*np.pi] domain"""
-    return angle % (2 * np.pi)
 
 
 def fitting(x: list, y: list, errors: list = None) -> list:

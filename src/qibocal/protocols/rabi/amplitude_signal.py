@@ -144,7 +144,12 @@ def _fit(data: RabiAmplitudeSignalData) -> RabiAmplitudeSignalResults:
         y = (voltages - y_min) / (y_max - y_min)
 
         period = fallback_period(guess_period(x, y))
-        pguess = [0.5, 0.5, period, np.pi]
+        median_sig = np.median(y)
+        q80 = np.quantile(y, 0.8)
+        q20 = np.quantile(y, 0.2)
+        amplitude_guess = abs(q80 - q20)
+
+        pguess = [median_sig, amplitude_guess, period, 0, 0]
         try:
             popt, _, pi_pulse_parameter = utils.fit_amplitude_function(
                 x,
