@@ -1015,7 +1015,6 @@ def extract_feature(
 
     # normalizing peaks for clustering
     peaks, scaling_factor = build_clustering_data(peaks_dict, z_masked)
-
     # clustering
     # In this function Hierarchical Density-Based Spatial Clustering of Applications with Noise (HDBSCAN) algorithm is used;
     # HDBSCAN good for successfully capture clusters with different densities.
