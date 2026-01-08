@@ -13,7 +13,7 @@
         "hamiltonian": {
             "kind": "hamiltonian",
             "transmon_levels": 3,
-            "single_qubit": {
+            "qubits": {
                 "0": {
                     "frequency": 5114000000.0,
                     "anharmonicity": -330000000.0,
