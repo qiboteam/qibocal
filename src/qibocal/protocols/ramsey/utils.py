@@ -98,7 +98,7 @@ def fitting(x: list, y: list, errors: list = None) -> list:
     median_sig = np.median(y)
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)
-    amplitude_guess = abs(q80 - q20)
+    amplitude_guess = abs(q80 - q20) / 1.62  # normalization factor
 
     p0 = [
         median_sig,
