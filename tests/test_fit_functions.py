@@ -10,7 +10,7 @@ from qibocal.protocols.ramsey.utils import process_fit as ramsey_process_fit
 TEST_FILE_DIR = Path(__file__).resolve().parent
 
 
-def test_extract_feat():
+def test_ramsey_fit():
     test_folder = TEST_FILE_DIR / "ramsey_fit_data"
 
     subfolders = [p for p in test_folder.iterdir() if p.is_dir()]
