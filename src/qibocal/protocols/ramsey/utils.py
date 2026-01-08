@@ -99,13 +99,12 @@ def fitting(x: list, y: list, errors: list = None) -> list:
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)
     amplitude_guess = abs(q80 - q20)
-    sin_phase = (y[0] - median_sig) / amplitude_guess
 
     p0 = [
         median_sig,
         amplitude_guess,
         omega,
-        np.arcsin(sin_phase if abs(sin_phase) < 1 else np.sign(sin_phase)),
+        np.pi / 2,  # since at tau=0 the probability of the excited state is maximum
         1,
     ]
 
@@ -116,7 +115,7 @@ def fitting(x: list, y: list, errors: list = None) -> list:
         p0=p0,
         maxfev=5000,
         bounds=(
-            [0, 0, -np.inf, -np.inf, 0],
+            [0, 0, 0, -np.inf, 0],
             [1, 1, np.inf, np.inf, np.inf],
         ),
         sigma=err,
