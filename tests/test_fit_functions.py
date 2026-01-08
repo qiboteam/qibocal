@@ -4,8 +4,13 @@ from pathlib import Path
 
 import numpy as np
 
+from qibocal.protocols.rabi.utils import (
+    fit_amplitude_function as rabi_fit_amplitude_function,
+)
+from qibocal.protocols.rabi.utils import fit_length_function as rabi_fit_length_function
 from qibocal.protocols.ramsey.utils import fitting as ramsey_fitting
 from qibocal.protocols.ramsey.utils import process_fit as ramsey_process_fit
+from qibocal.protocols.utils import fallback_period, guess_period
 
 TEST_FILE_DIR = Path(__file__).resolve().parent
 
@@ -44,3 +49,88 @@ def test_ramsey_fit():
             assert math.isclose(
                 results['"delta_fitting"'][f][0], delta_fit[0], rel_tol=2.5e-2
             )
+
+
+def test_rabi_fit():
+    test_folder = TEST_FILE_DIR / "rabi_fit_data"
+
+    subfolders = [p for p in test_folder.iterdir() if p.is_dir()]
+    for sub in subfolders:
+        data_file = sub / "data.npz"
+        results_file = str(sub / "results.json")
+
+        numpy_data = np.load(data_file)
+        for f in numpy_data.files:
+            dataset = numpy_data[f]
+            if len(dataset[0]) == 3:
+                x, signal, errors = zip(*dataset)
+            else:
+                x, signal = zip(*dataset)
+                errors = None
+
+            with open(results_file) as file1:
+                results = json.load(file1)
+
+            if any([f in sub for f in ["freq", "signal"]]):
+                sig_min = np.min(signal)
+                sig_max = np.max(signal)
+                x_min = np.min(x)
+                x_max = np.max(x)
+                x = (x - x_min) / (x_max - x_min)
+                signal = (signal - sig_min) / (sig_max - sig_min)
+                x_lims = (x_min, x_max)
+                signal_lims = (sig_min, sig_max)
+
+            else:
+                x_lims = (None, None)
+                signal_lims = (None, None)
+
+            period = fallback_period(guess_period(x, signal))
+            median_sig = np.median(signal)
+            q80 = np.quantile(signal, 0.8)
+            q20 = np.quantile(signal, 0.2)
+            amplitude_guess = abs(q80 - q20)
+
+            pguess = [median_sig, amplitude_guess, period, 0, 0]
+
+            if "amp" in sub:
+                signal_flag = "signal" in sub
+                _, _, pi_pulse_parameter = rabi_fit_amplitude_function(
+                    x,
+                    signal,
+                    pguess,
+                    sigma=errors,
+                    signal=signal_flag,
+                    x_limits=x_lims,
+                    y_limits=signal_lims,
+                )
+
+                if isinstance(pi_pulse_parameter, list):
+                    new_amplitude = pi_pulse_parameter[0]
+                    true_amplitude = results['"amplitude"'][f][0]
+                else:
+                    new_amplitude = pi_pulse_parameter
+                    true_amplitude = results['"amplitude"'][f]
+
+                assert math.isclose(true_amplitude, new_amplitude, rel_tol=2.5e-2)
+
+            if "length" in sub:
+                signal_flag = "signal" in sub
+                _, _, pi_pulse_parameter = rabi_fit_length_function(
+                    x,
+                    signal,
+                    pguess,
+                    sigma=errors,
+                    signal=signal_flag,
+                    x_limits=x_lims,
+                    y_limits=signal_lims,
+                )
+
+                if isinstance(pi_pulse_parameter, list):
+                    new_duration = pi_pulse_parameter[0]
+                    true_duration = results['"duration"'][f][0]
+                else:
+                    new_amplitude = pi_pulse_parameter
+                    true_duration = results['"duration"'][f]
+
+                assert math.isclose(true_duration, new_duration, rel_tol=2.5e-2)
