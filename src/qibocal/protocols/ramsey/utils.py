@@ -25,10 +25,6 @@ Assuming that samples are dense enough that they could be represented by the con
 distribution, essentially projecting a uniform measure over an interval through a single
 sinusoidal oscillation.
 
-.. todo::
-
-    Move the above paragraph to the Rabi equivalent, and replace here with a reference
-
 However, for damped oscillations, the factor is not easily determined, since the
 value associated to a certian quantile depends on the observation window extent, and the
 ratio between the decay rate and the oscillation.

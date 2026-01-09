@@ -24,7 +24,7 @@ from qibocal.protocols.utils import (
 
 from ...result import magnitude, phase
 from .amplitude_signal import RabiAmplitudeSignalResults
-from .utils import fit_amplitude_function, sequence_amplitude
+from .utils import DAMPED_CONSTANT, fit_amplitude_function, sequence_amplitude
 
 __all__ = [
     "RabiAmplitudeSignalResults",
@@ -33,9 +33,6 @@ __all__ = [
     "_update",
     "rabi_amplitude_frequency_signal",
 ]
-
-
-DAMPING_CONSTANT = 1.5
 
 
 @dataclass
@@ -200,7 +197,7 @@ def _fit(data: RabiAmplitudeFreqSignalData) -> RabiAmplitudeFrequencySignalResul
         median_sig = np.median(y)
         q80 = np.quantile(y, 0.8)
         q20 = np.quantile(y, 0.2)
-        amplitude_guess = abs(q80 - q20) / DAMPING_CONSTANT
+        amplitude_guess = abs(q80 - q20) / DAMPED_CONSTANT
 
         pguess = [median_sig, amplitude_guess, period, np.pi / 2]
 
