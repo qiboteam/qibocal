@@ -63,25 +63,27 @@ def test_rabi_fit():
         for f in numpy_data.files:
             dataset = numpy_data[f]
             if len(dataset[0]) == 3:
-                x, signal, errors = zip(*dataset)
+                raw_x, raw_signal, errors = zip(*dataset)
             else:
-                x, signal = zip(*dataset)
+                raw_x, raw_signal = zip(*dataset)
                 errors = None
 
             with open(results_file) as file1:
                 results = json.load(file1)
 
             if any([f in sub for f in ["freq", "signal"]]):
-                sig_min = np.min(signal)
-                sig_max = np.max(signal)
-                x_min = np.min(x)
-                x_max = np.max(x)
-                x = (x - x_min) / (x_max - x_min)
-                signal = (signal - sig_min) / (sig_max - sig_min)
+                sig_min = np.min(raw_signal)
+                sig_max = np.max(raw_signal)
+                x_min = np.min(raw_x)
+                x_max = np.max(raw_x)
+                x = (raw_x - x_min) / (x_max - x_min)
+                signal = (raw_signal - sig_min) / (sig_max - sig_min)
                 x_lims = (x_min, x_max)
                 signal_lims = (sig_min, sig_max)
 
             else:
+                signal = raw_signal
+                x = raw_x
                 x_lims = (None, None)
                 signal_lims = (None, None)
 
