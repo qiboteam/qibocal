@@ -13,11 +13,31 @@ PERR_EXCEPTION = [1] * 5
 """Fit errors to handle exceptions; their choice has no physical meaning
 and is meant to avoid breaking the code."""
 THRESHOLD = 0.5
-"""Threshold parameters for find_peaks to guess
-   frequency for sinusoidal fit."""
+"""Threshold parameters for find_peaks to guess frequency for sinusoidal fit."""
 DAMPED_CONSTANT = 1.5
-"""For damped oscillations, the factor is not easily determined, since the percentile depends on how much of the decay you see.
-By dividing the amplitude guess by this constant, the estimation will lend closer to the actual amplitude.
+"""Scaling factor to recover amplitude from quantiles.
+
+Measuring intermediate quantiles is less noise sensitive then meauring extremal points
+(minimum and maximum), but it is not a direct measurement of the amplitude itself.
+For pure sinusoidal oscillations, the scaling from the value associated to a given
+quantile and the amplitude is asymptotically fixed, for a large number of oscillations.
+Assuming that samples are dense enough that they could be represented by the continuous
+distribution, essentially projecting a uniform measure over an interval through a single
+sinusoidal oscillation.
+
+.. todo::
+
+    Move the above paragraph to the Rabi equivalent, and replace here with a reference
+
+However, for damped oscillations, the factor is not easily determined, since the
+value associated to a certian quantile depends on the observation window extent, and the
+ratio between the decay rate and the oscillation.
+
+Assuming a mild decay, and we can approximate this factor with the same one for the
+pure oscillation. This can be assumed to be slightly decreased because of the dampening,
+but there is no general control about how much.
+By reducing the amplitude by this rough 30%, the estimation will lend closer to the
+actual amplitude. We rely anyhow on the fit to determine the precise value.
 """
 
 
