@@ -24,6 +24,9 @@ __all__ = [
 ]
 
 
+DAMPING_CONSTANT = 1.5
+
+
 @dataclass
 class RabiAmplitudeSignalParameters(Parameters):
     """RabiAmplitude runcard inputs."""
@@ -147,9 +150,9 @@ def _fit(data: RabiAmplitudeSignalData) -> RabiAmplitudeSignalResults:
         median_sig = np.median(y)
         q80 = np.quantile(y, 0.8)
         q20 = np.quantile(y, 0.2)
-        amplitude_guess = abs(q80 - q20)
+        amplitude_guess = abs(q80 - q20) / DAMPING_CONSTANT
 
-        pguess = [median_sig, amplitude_guess, period, 0, 0]
+        pguess = [median_sig, amplitude_guess, period, np.pi / 2]
         try:
             popt, _, pi_pulse_parameter = utils.fit_amplitude_function(
                 x,

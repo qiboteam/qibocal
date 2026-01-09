@@ -26,6 +26,9 @@ from .utils import fit_length_function, rabi_length_function, sequence_length
 __all__ = ["rabi_length_frequency"]
 
 
+DAMPING_CONSTANT = 1.5
+
+
 @dataclass
 class RabiLengthFrequencyParameters(RabiLengthFrequencySignalParameters):
     """RabiLengthFrequency runcard inputs."""
@@ -166,9 +169,9 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
         median_sig = np.median(y)
         q80 = np.quantile(y, 0.8)
         q20 = np.quantile(y, 0.2)
-        amplitude_guess = abs(q80 - q20)
+        amplitude_guess = abs(q80 - q20) / DAMPING_CONSTANT
 
-        pguess = [median_sig, amplitude_guess, period, 0, 0]
+        pguess = [median_sig, amplitude_guess, period, np.pi, 0]
 
         try:
             popt, perr, pi_pulse_parameter = fit_length_function(
