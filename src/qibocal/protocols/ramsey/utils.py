@@ -15,6 +15,10 @@ and is meant to avoid breaking the code."""
 THRESHOLD = 0.5
 """Threshold parameters for find_peaks to guess
    frequency for sinusoidal fit."""
+DAMPED_CONSTANT = 1.5
+"""For damped oscillations, the factor is not easily determined, since the percentile depends on how much of the decay you see.
+By dividing the amplitude guess by this constant, the estimation will lend closer to the actual amplitude.
+"""
 
 
 def ramsey_sequence(
@@ -98,7 +102,7 @@ def fitting(x: list, y: list, errors: list = None) -> list:
     median_sig = np.median(y)
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)
-    amplitude_guess = abs(q80 - q20) / 1.62  # normalization factor
+    amplitude_guess = abs(q80 - q20) / DAMPED_CONSTANT
 
     p0 = [
         median_sig,
