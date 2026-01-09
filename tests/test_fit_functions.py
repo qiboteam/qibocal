@@ -59,6 +59,8 @@ def test_rabi_fit():
         data_file = sub / "data.npz"
         results_file = str(sub / "results.json")
 
+        str_sub = str(sub)
+
         numpy_data = np.load(data_file)
         for f in numpy_data.files:
             dataset = numpy_data[f]
@@ -71,7 +73,7 @@ def test_rabi_fit():
             with open(results_file) as file1:
                 results = json.load(file1)
 
-            if any([f in sub for f in ["freq", "signal"]]):
+            if any([f in str_sub for f in ["freq", "signal"]]):
                 sig_min = np.min(raw_signal)
                 sig_max = np.max(raw_signal)
                 x_min = np.min(raw_x)
@@ -93,10 +95,14 @@ def test_rabi_fit():
             q20 = np.quantile(signal, 0.2)
             amplitude_guess = abs(q80 - q20)
 
-            pguess = [median_sig, amplitude_guess, period, 0, 0]
-
-            if "amp" in sub:
-                signal_flag = "signal" in sub
+            if "amp" in str_sub:
+                signal_flag = "signal" in str_sub
+                pguess = [
+                    median_sig,
+                    amplitude_guess,
+                    period,
+                    np.pi / 2 if signal_flag else np.pi,
+                ]
                 _, _, pi_pulse_parameter = rabi_fit_amplitude_function(
                     x,
                     signal,
@@ -116,8 +122,15 @@ def test_rabi_fit():
 
                 assert math.isclose(true_amplitude, new_amplitude, rel_tol=2.5e-2)
 
-            if "length" in sub:
-                signal_flag = "signal" in sub
+            if "length" in str_sub:
+                signal_flag = "signal" in str_sub
+                pguess = [
+                    median_sig,
+                    amplitude_guess,
+                    period,
+                    np.pi / 2 if signal_flag else np.pi,
+                    0,
+                ]
                 _, _, pi_pulse_parameter = rabi_fit_length_function(
                     x,
                     signal,
