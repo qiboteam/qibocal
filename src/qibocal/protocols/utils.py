@@ -836,6 +836,7 @@ def merging(
     min_points_per_cluster: int,
     distance_xy: float,
     distance_z: float,
+    num_output_clusters: int,
 ) -> list[bool]:
     """Divides the processed signal into clusters for separating signal from noise.
 
@@ -952,13 +953,19 @@ def merging(
         [[lab, np.median(cl["cluster"][2, :])] for lab, cl in valid_clusters.items()]
     )
     # we only take the first three values of each point in the cluster because they correspond to the 3 features (x,y,z)
+    sorted_medians = sorted(medians, key=lambda x: x[1], reverse=True)
 
-    signal_labels = np.zeros(indices_list.size, dtype=bool)
     if len(medians) != 0:
-        signal_idx = medians[np.argmax(medians[:, 1]), 0]
-        signal_labels[valid_clusters[signal_idx]["cluster"][-1, :].astype(int)] = True
+        signals_list = []
+        for signal_idx, _ in sorted_medians[:num_output_clusters]:
+            signal_labels = np.zeros(indices_list.size, dtype=bool)
+            signal_labels[valid_clusters[signal_idx]["cluster"][-1, :].astype(int)] = (
+                True
+            )
+            signals_list.append(signal_labels)
+        return signals_list
 
-    return signal_labels
+    return [np.zeros(indices_list.size, dtype=bool)]
 
 
 def extract_feature(
@@ -966,6 +973,7 @@ def extract_feature(
     y: np.ndarray,
     z: np.ndarray,
     find_min: bool,
+    punchout_flag: bool = False,
     min_points: int = 5,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Extract features of the signal by filtering out background noise.
@@ -1019,7 +1027,9 @@ def extract_feature(
             min_points,
             distance_xy=DISTANCE_XY,
             distance_z=DISTANCE_Z,
-            target=qubit
+            # if we are doing a punchout experiment hence we want to select two clusters (bare and dressed frequencies),
+            # otherwise we we select just 1
+            num_output_clusters=1 if not punchout_flag else 2,
         )
     except FeatExtractionError:
         return None, None

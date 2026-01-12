@@ -92,6 +92,7 @@ class ResonatorFluxData(Data):
             self.data[qubit].bias,
             self.data[qubit].signal,
             self.find_min,
+            punchout_flag=False,
         )
 
 
