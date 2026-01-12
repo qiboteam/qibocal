@@ -9,10 +9,11 @@ import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
 from qibolab._core.components import Config
-from scipy import constants, sparse
+from scipy import constants, ndimage, sparse
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 from scipy.stats import norm as scipy_norm
+from sklearn.cluster import HDBSCAN
 
 from qibocal.auto.operation import Data, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
@@ -35,13 +36,20 @@ KB = constants.k
 H = constants.h
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
-CONFIDENCE_INTERVAL_FIRST_MASK = 99
-"""Confidence interval used to mask flux data."""
-CONFIDENCE_INTERVAL_SECOND_MASK = 70
-"""Confidence interval used to clean outliers."""
 DELAY_FIT_PERCENTAGE = 10
 """Percentage of the first and last points used to fit the cable delay."""
 STRING_TYPE = "<U100"
+
+MAX_PIXELS = 2
+"""How many pixels at most two clusters' endpoints should be far for merging them."""
+DISTANCE_XY = 1.5 * MAX_PIXELS  # very heuristic
+""" Minimum distance for separate clusters.
+Clusters below this distance will be merged.
+Since it is given in a 3D-space, with a compressed vertical dimension, and the horizontal plane measured in pixels,
+this distance correspond to diagonally adjacent pixels, with some additional leeway for the extra dimension.
+"""
+DISTANCE_Z = 0.5
+"""See :const:`DISTANCE_XY`."""
 
 
 class PowerLevel(str, Enum):
@@ -281,16 +289,24 @@ def fit_punchout(data: Data, fit_type: str):
         amps = getattr(qubit_data, fit_type)
         signal = qubit_data.signal
         mask_freq, mask_amps = extract_feature(freqs, amps, signal, data.find_min)
-        if fit_type == "amp":
-            best_freq = np.max(mask_freq)
-            bare_freq = np.min(mask_freq)
+
+        if mask_freq.size == 0:  # mask_freq and mask_amps have always the same shape
+            best_freq = 0
+            bare_freq = 0
+            ro_val = 0
         else:
-            best_freq = np.min(mask_freq)
-            bare_freq = np.max(mask_freq)
-        ro_val = np.max(mask_amps[mask_freq == best_freq])
+            if fit_type == "amp":
+                best_freq = np.max(mask_freq)
+                bare_freq = np.min(mask_freq)
+            else:
+                best_freq = np.min(mask_freq)
+                bare_freq = np.max(mask_freq)
+            ro_val = np.max(mask_amps[mask_freq == best_freq])
+
         low_freqs[qubit] = best_freq
         high_freqs[qubit] = bare_freq
         ro_values[qubit] = ro_val
+
     return [low_freqs, high_freqs, ro_values]
 
 
@@ -757,39 +773,267 @@ def table_html(data: dict) -> str:
     )
 
 
-def extract_feature(
-    x: np.ndarray,
-    y: np.ndarray,
-    z: np.ndarray,
-    find_min: bool,
-):
-    """Extract feature using confidence intervals.
+def euclidean_metric(point1: np.ndarray, point2: np.ndarray):
+    """Euclidean distance between two arrays."""
+    return np.linalg.norm(point1 - point2)
 
-    Given a dataset of the form (x, y, z) where a spike or a valley is expected,
-    this function discriminate the points (x, y) with a signal, from the pure noise
-    and return the first ones.
+
+def zca_whiten(X):
     """
+    Applies ZCA whitening to the data (X)
+    https://en.wikipedia.org/wiki/Whitening_transformation
+
+    X: numpy 2d array
+        input data, rows are data points, columns are features
+
+    Returns: ZCA whitened 2d array
+    """
+    assert X.ndim == 2
+    EPS = 10e-5
+
+    #   covariance matrix
+    cov = np.dot(X.T, X)
+    #   d = (lambda1, lambda2, ..., lambdaN)
+    d, E = np.linalg.eigh(cov)
+    #   D = diag(d) ^ (-1/2)
+    D = np.diag(1.0 / np.sqrt(d + EPS))
+    #   W_zca = E * D * E.T
+    W = np.dot(np.dot(E, D), E.T)
+
+    X_white = np.dot(X, W)
+
+    return X_white
+
+
+def filter_data(matrix_z: np.ndarray):
+    """Filter data with a ZCA transformation and then a unit-variance Gaussian."""
+
+    # adding zca filter for filtering out background noise gradient
+    zca_z = zca_whiten(matrix_z)
+    # adding gaussian fliter with unitary variance for blurring the signal and reducing noise
+    return ndimage.gaussian_filter(zca_z, 1)
+
+
+def scaling_global(sig: np.ndarray) -> np.ndarray:
+    """Min–max scaling over the whole np.ndarray (global)."""
+    return scaling_slice(sig, axis=None)
+
+
+def scaling_slice(sig: np.ndarray, axis: Optional[int]) -> np.ndarray:
+    """Min–max scaling over a specific axis of the np.ndarray."""
+
+    def expand(a):
+        return np.expand_dims(a, axis) if axis is not None else a
+
+    sig_min = expand(np.min(sig, axis=axis))
+    return (sig - sig_min) / (expand(np.max(sig, axis=axis)) - sig_min)
+
+
+def horizontal_diagonal(xs: np.ndarray, ys: np.ndarray) -> float:
+    """Computing the lenght of the diagonal of a two dimensional grid."""
+    sizes = np.empty(2)
+    for i, values in enumerate([xs, ys]):
+        sizes[i] = np.max(values) - np.min(values)
+    return np.sqrt((sizes**2).sum())
+
+
+def build_clustering_data(peaks_dict: dict, z: np.ndarray):
+    """Preprocessing of the data to cluster."""
+    x_ = peaks_dict["x"]["idx"]
+    y_ = peaks_dict["y"]["idx"]
+    z_ = z[y_, x_]
+
+    return np.stack((x_, y_, scaling_global(z_))).T
+
+
+def peaks_finder(x, y, z) -> dict:
+    """Function for finding the peaks over the whole signal.
+
+    This function takes as input 3 features of the signal.
+    It slices the dataset along a preferred direction (`y` dimension, corresponding to the flux bias) and for each slice it determines the biggest peaks
+    by using `scipy.signal.find_peaks` routine.
+    It returns a dictionary `peaks_dict` containing all the features for the computed peaks.
+    """
+
+    # filter data using find_peaks
+    peaks = {"x": {"idx": [], "val": []}, "y": {"idx": [], "val": []}}
+    for y_idx, y_val in enumerate(y):
+        peak, info = find_peaks(z[y_idx], prominence=0.2)
+        if len(peak) > 0:
+            idx = np.argmax(info["prominences"])
+            # if multiple peaks per bias are found, select the one with the highest prominence
+            x_idx = peak[idx]
+            peaks["x"]["idx"].append(x_idx)
+            peaks["x"]["val"].append(x[x_idx])
+            peaks["y"]["idx"].append(y_idx)
+            peaks["y"]["val"].append(y_val)
+
+    return {
+        feat: {kind: np.array(vals) for kind, vals in smth.items()}
+        for feat, smth in peaks.items()
+    }
+
+
+def merging(
+    data: tuple,
+    labels: list,
+    min_points_per_cluster: int,
+    distance_xy: float,
+    distance_z: float,
+) -> list[bool]:
+    """Divides the processed signal into clusters for separating signal from noise.
+
+    `data` is a 3D tuple of the data to cluster, while `labels` is the classification made by the clustering algorithm;
+    `min_points_per_cluster` is the minimum size of points for a cluster to be considered relevant signal.
+    It is also possible to set the parameter `distance`, which represents the Euclidean distance between neighboring points of two clusters.
+    If this distance is smaller than `distance`, the two clusters are merged.
+    It allows a `min_cluster_size=2` in order to decrease as much as possible misclassification of few points.
+    The function returns a boolean list corresponding to the indices of the relevant signal.
+    """
+
+    unique_labels = np.unique(labels)
+
+    indices_list = np.arange(len(labels)).astype(int)
+    indexed_labels = np.stack((labels, indices_list)).T
+    data = np.vstack((data.T, indices_list))
+
+    clusters = [data[:, labels == lab] for lab in unique_labels if lab >= 0]
+    noise_points = data[:, labels < 0]
+
+    for i in range(noise_points.shape[1]):
+        clusters.append(noise_points[:, i][:, np.newaxis])
+
+    clusters = sorted(
+        clusters,
+        key=lambda c: np.min(c[1]),
+    )
+
+    first = clusters[0]
+    first_leftmost = first[:, np.argmin(first[1, :])]
+    first_rightmost = first[:, np.argmax(first[1, :])]
+    first_label = indexed_labels[first_leftmost[3].astype(int), 0]
+
+    active_clusters = {
+        first_label: {
+            "cluster": first,
+            "leftmost": first_leftmost,
+            "rightmost": first_rightmost,
+        }
+    }
+
+    for cluster in clusters[1:]:
+        distances_list = []
+        indices = []
+
+        for idx in active_clusters.keys():
+            cluster_rightmost = cluster[:, np.argmax(cluster[1, :])]
+            cluster_leftmost = cluster[:, np.argmin(cluster[1, :])]
+            cluster_label = indexed_labels[cluster_leftmost[3].astype(int), 0]
+
+            d_xy = euclidean_metric(
+                active_clusters[idx]["rightmost"][:-2], cluster_leftmost[:-2]
+            )
+            d_z = euclidean_metric(
+                active_clusters[idx]["rightmost"][-2], cluster_leftmost[-2]
+            )
+            if d_xy <= distance_xy and d_z <= distance_z:  # keep the list
+                distances_list.append(np.sqrt(d_xy**2 + d_z**2))
+                indices.append(idx)
+
+        if len(distances_list) != 0:
+            best_dist = np.argmin(distances_list)
+            best_idx = indices[best_dist]
+            old_cluster = active_clusters[best_idx]["cluster"]
+            updated_cluster = np.hstack((old_cluster, cluster))
+            active_clusters[best_idx]["cluster"] = updated_cluster
+            active_clusters[best_idx]["rightmost"] = updated_cluster[
+                :, np.argmax(updated_cluster[1, :])
+            ]
+        else:
+            if cluster_label < 0:
+                cluster_label = np.max(unique_labels) + 1
+                unique_labels = np.append(unique_labels, cluster_label)
+
+            active_clusters[cluster_label] = {
+                "cluster": cluster,
+                "leftmost": cluster_leftmost,
+                "rightmost": cluster_rightmost,
+            }
+
+    valid_clusters = {
+        lab: v_clust
+        for lab, v_clust in active_clusters.items()
+        if v_clust["cluster"].shape[1] >= min_points_per_cluster
+    }
+
+    # since we allowed for clustering even a group of 2 points, we filter the allowed eligible clusters
+    # to be at least composed by a minimum number of points given by min_points_per_cluster parameter
+
+    medians = np.array(
+        [[lab, np.median(cl["cluster"][2, :])] for lab, cl in valid_clusters.items()]
+    )
+    # we only take the first three values of each point in the cluster because they correspond to the 3 features (x,y,z)
+
+    signal_labels = np.zeros(indices_list.size, dtype=bool)
+    if len(medians) != 0:
+        signal_idx = medians[np.argmax(medians[:, 1]), 0]
+        signal_labels[valid_clusters[signal_idx]["cluster"][-1, :].astype(int)] = True
+
+    return signal_labels
+
+
+def extract_feature(
+    x: np.ndarray, y: np.ndarray, z: np.ndarray, find_min: bool, min_points: int = 5
+) -> tuple[np.ndarray, np.ndarray]:
+    """Extract features of the signal by filtering out background noise.
+
+    It first applies a custom filter mask (see `custom_filter_mask`)
+    and then finds the biggest peak for each DC bias value;
+    the masked signal is then clustered (see `clustering`) in order to classify the relevant signal for the experiment.
+    If `find_min` is set to `True` it finds minimum peaks of the input signal;
+    `min_points` is the minimum number of points for a cluster to be considered relevant signal.
+    Position of the relevant signal is returned.
+    """
+
     x_ = np.unique(x)
     y_ = np.unique(y)
     # background removed over y axis
     z_ = z.reshape(len(y_), len(x_))
-    z_ = z_ / np.mean(z, axis=0)
-    normalized_z = z_.reshape(z.shape)
+
+    z_ = -z_ if find_min else z_
+
+    # masking
+    z_masked = filter_data(z_)
+
+    # renormalizing
+    # z_masked_norm = scaling_signal(z_masked)
+    z_masked_norm = scaling_slice(z_masked, axis=1)
 
     # filter data using find_peaks
-    filtered_y = []
-    filtered_x = []
-    for i in y:
-        signal_fixed_y = normalized_z[y == i]
-        peak, _ = find_peaks(
-            -signal_fixed_y if find_min else signal_fixed_y, prominence=0.3
-        )
-        if len(peak) > 0:
-            for j in peak:
-                filtered_y.append(i)
-                filtered_x.append(x_[j])
+    peaks_dict = peaks_finder(x_, y_, z_masked_norm)
 
-    return np.array(filtered_x), np.array(filtered_y)
+    # normalizing peaks for clustering
+    peaks = build_clustering_data(peaks_dict, z_masked)
+
+    # clustering
+    # In this function Hierarchical Density-Based Spatial Clustering of Applications with Noise (HDBSCAN) algorithm is used;
+    # HDBSCAN good for successfully capture clusters with different densities.
+    hdb = HDBSCAN(copy=True, min_cluster_size=2)
+    hdb.fit(peaks)
+    labels = hdb.labels_
+
+    # merging close clusters
+    signal_classification = merging(
+        peaks,
+        labels,
+        min_points,
+        distance_xy=DISTANCE_XY,
+        distance_z=DISTANCE_Z,
+    )
+
+    return peaks_dict["x"]["val"][signal_classification], peaks_dict["y"]["val"][
+        signal_classification
+    ]
 
 
 def guess_period(x, y):
