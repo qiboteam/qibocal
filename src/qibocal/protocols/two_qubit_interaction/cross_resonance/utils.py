@@ -52,7 +52,11 @@ def cr_sequence(
     sequence = PulseSequence()
     natives_control = platform.natives.single_qubit[control]
     natives_target = platform.natives.single_qubit[target]
-    cr_channel = platform.qubits[control].drive_extra[target]
+    try:
+        cr_channel = platform.qubits[control].drive_extra[target]
+    except Exception:
+        cr_channel = platform.qubits[control].drive_extra[(1, 2)]
+
     cr_drive_pulse = Pulse(
         duration=duration,
         amplitude=amplitude,
