@@ -135,26 +135,64 @@ def _acquisition(
                     pulses=cr_pulses + cr_target_pulses + delays,
                 )
 
-            updates = []
-            updates.append(
-                {
+            try:
+                cr_frequency = {
                     platform.qubits[control].drive_extra[target]: {
                         "frequency": platform.config(
                             platform.qubits[target].drive
                         ).frequency
                     }
                 }
-            )
-            # execute the sweep
-            results = platform.execute(
-                [sequence],
-                [[sweeper]],
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.DISCRIMINATION,
-                averaging_mode=AveragingMode.SINGLESHOT,
-                updates=updates,
-            )
+                target_offset_sweeper = control_offset_sweeper = None
+            except Exception:
+                cr_frequency = {
+                    platform.qubits[control].drive_extra[(1, 2)]: {
+                        "frequency": platform.config(
+                            platform.qubits[target].drive
+                        ).frequency
+                    }
+                }
+                target_channel = platform.qubits[target].flux
+                target_offset = platform.config(target_channel).offset
+                target_offset_sweeper = Sweeper(
+                    parameter=Parameter.offset,
+                    values=np.array([target_offset]),
+                    channels=[target_channel],
+                )
+                control_channel = platform.qubits[control].flux
+                control_offset = platform.config(control_channel).offset
+                control_offset_sweeper = Sweeper(
+                    parameter=Parameter.offset,
+                    values=np.array([control_offset]),
+                    channels=[control_channel],
+                )
+
+            updates = []
+            updates.append(cr_frequency)
+
+            if target_offset_sweeper is not None:
+                # execute the sweep
+                results = platform.execute(
+                    [sequence],
+                    [[target_offset_sweeper], [control_offset_sweeper], [sweeper]],
+                    nshots=params.nshots,
+                    relaxation_time=params.relaxation_time,
+                    acquisition_type=AcquisitionType.DISCRIMINATION,
+                    averaging_mode=AveragingMode.SINGLESHOT,
+                    updates=updates,
+                )
+            else:
+                # execute the sweep
+                results = platform.execute(
+                    [sequence],
+                    [[sweeper]],
+                    nshots=params.nshots,
+                    relaxation_time=params.relaxation_time,
+                    acquisition_type=AcquisitionType.DISCRIMINATION,
+                    averaging_mode=AveragingMode.SINGLESHOT,
+                    updates=updates,
+                )
+
             target_acq_handle = list(
                 sequence.channel(platform.qubits[target].acquisition)
             )[-1].id
@@ -163,6 +201,14 @@ def _acquisition(
             )[-1].id
             prob_target = probability(results[target_acq_handle], state=1)
             prob_control = probability(results[control_acq_handle], state=1)
+
+            if target_offset_sweeper is not None:
+                prob_target = prob_target[0][0]
+                prob_control = prob_control[0][0]
+            import rich
+
+            rich.print(prob_target)
+            rich.print(prob_control)
             data.register_qubit(
                 CrossResonanceLengthType,
                 (control, target, setup),
