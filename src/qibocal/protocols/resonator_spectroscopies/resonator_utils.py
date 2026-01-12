@@ -2,6 +2,7 @@ import numpy as np
 import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
+from scipy import ndimage
 from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import leastsq, minimize
 
@@ -11,9 +12,17 @@ from ..utils import (
     COLORBAND,
     COLORBAND_LINE,
     DELAY_FIT_PERCENTAGE,
+    DISTANCE_XY,
+    DISTANCE_Z,
     HZ_TO_GHZ,
+    FeatExtractionError,
     PowerLevel,
+    clustering,
     lorentzian,
+    merging,
+    peaks_finder,
+    reshaping_raw_signal,
+    scaling_slice,
     table_dict,
     table_html,
 )
@@ -794,3 +803,66 @@ def phase_centered(
 def periodic_boundary(angle: float) -> float:
     """Maps arbitrary `angle` (in rad) to interval [-np.pi, np.pi)."""
     return (angle + np.pi) % (2 * np.pi) - np.pi
+
+
+def punchout_extract_feature(
+    x: np.ndarray,
+    y: np.ndarray,
+    z: np.ndarray,
+    find_min: bool,
+    min_points: int = 5,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Extract features of the signal by filtering out background noise.
+
+    It first applies a custom filter mask (see `custom_filter_mask`)
+    and then finds the biggest peak for each DC bias value;
+    the masked signal is then clustered (see `clustering`) in order to classify the relevant signal for the experiment.
+    If `find_min` is set to `True` it finds minimum peaks of the input signal;
+    `min_points` is the minimum number of points for a cluster to be considered relevant signal.
+    Position of the relevant signal is returned.
+    """
+
+    reshaped_x, reshaped_y, reshaped_z = reshaping_raw_signal(x, y, z)
+    reshaped_z = -reshaped_z if find_min else reshaped_z
+
+    z_masked = ndimage.gaussian_filter(reshaped_z, 1)
+
+    # renormalizing
+    z_masked_norm = scaling_slice(z_masked, axis=1)
+
+    # filter data using find_peaks
+    peaks_dict = peaks_finder(reshaped_x, reshaped_y, z_masked_norm)
+    if len(peaks_dict.keys()) == 0:  # if find_peaks fails
+        """
+        Peaks Detection Failed:
+        no peaks found in peaks_finder routine.
+        """
+        return None, None
+
+    peaks, labels = clustering(peaks_dict, z_masked)
+
+    # merging close clusters
+    try:
+        signal_clusters = merging(
+            peaks,
+            labels,
+            min_points,
+            distance_xy=DISTANCE_XY,
+            distance_z=DISTANCE_Z,
+        )
+
+    except FeatExtractionError:
+        return None, None
+
+    medians = np.array(
+        [[lab, np.median(cl["cluster"][2, :])] for lab, cl in signal_clusters.items()]
+    )
+    sorted_medians = sorted(medians, key=lambda x: x[1], reverse=True)
+
+    signal_labels = np.zeros(labels.size, dtype=bool)
+    # for resonator punchout protocol we cannot merge efficiently th two branches of the whole signal, hence we
+    # select the two clusters that maximise the median value of the signal
+    for signal_idx, _ in sorted_medians[:2]:
+        signal_labels[signal_clusters[signal_idx]["cluster"][-1, :].astype(int)] = True
+
+    return peaks_dict["x"]["val"][signal_labels], peaks_dict["y"]["val"][signal_labels]

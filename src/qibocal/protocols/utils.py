@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
 from qibolab._core.components import Config
-from scipy import constants, ndimage, sparse
+from scipy import constants, sparse
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 from scipy.stats import norm as scipy_norm
@@ -40,6 +40,7 @@ DELAY_FIT_PERCENTAGE = 10
 """Percentage of the first and last points used to fit the cable delay."""
 STRING_TYPE = "<U100"
 
+# constants for signal detection
 MAX_PIXELS = 2
 """How many pixels at most two clusters' endpoints should be far for merging them."""
 DISTANCE_XY = 1.5 * MAX_PIXELS  # very heuristic
@@ -761,15 +762,6 @@ def zca_whiten(X):
     return X_white
 
 
-def filter_data(matrix_z: np.ndarray):
-    """Filter data with a ZCA transformation and then a unit-variance Gaussian."""
-
-    # adding zca filter for filtering out background noise gradient
-    zca_z = zca_whiten(matrix_z)
-    # adding gaussian fliter with unitary variance for blurring the signal and reducing noise
-    return ndimage.gaussian_filter(zca_z, 1)
-
-
 def scaling_global(sig: np.ndarray) -> np.ndarray:
     """Min–max scaling over the whole np.ndarray (global)."""
     return scaling_slice(sig, axis=None)
@@ -836,7 +828,6 @@ def merging(
     min_points_per_cluster: int,
     distance_xy: float,
     distance_z: float,
-    num_output_clusters: int,
 ) -> list[bool]:
     """Divides the processed signal into clusters for separating signal from noise.
 
@@ -860,6 +851,10 @@ def merging(
     indices_list = np.arange(len(labels)).astype(int)
     indexed_labels = np.stack((labels, indices_list)).T
     data = np.vstack((data.T, indices_list))
+
+    if len(unique_labels) == 1:
+        # only one cluster found
+        return {unique_labels[0]}
 
     clusters = [data[:, labels == lab] for lab in unique_labels if lab >= 0]
     noise_points = data[:, labels < 0]
@@ -939,94 +934,32 @@ def merging(
         """
         raise FeatExtractionError()
 
-    medians = np.array(
-        [[lab, np.median(cl["cluster"][2, :])] for lab, cl in valid_clusters.items()]
-    )
-    # we only take the first three values of each point in the cluster because they correspond to the 3 features (x,y,z)
-    sorted_medians = sorted(medians, key=lambda x: x[1], reverse=True)
-
-    signal_labels = np.zeros(indices_list.size, dtype=bool)
-    if len(medians) != 0:
-        for signal_idx, _ in sorted_medians[:num_output_clusters]:
-            signal_labels[valid_clusters[signal_idx]["cluster"][-1, :].astype(int)] = (
-                True
-            )
-
-    return signal_labels
+    return valid_clusters
 
 
-def extract_feature(
-    x: np.ndarray,
-    y: np.ndarray,
-    z: np.ndarray,
-    find_min: bool,
-    punchout_flag: bool = False,
-    min_points: int = 5,
-) -> tuple[np.ndarray, np.ndarray]:
-    """Extract features of the signal by filtering out background noise.
-
-    It first applies a custom filter mask (see `custom_filter_mask`)
-    and then finds the biggest peak for each DC bias value;
-    the masked signal is then clustered (see `clustering`) in order to classify the relevant signal for the experiment.
-    If `find_min` is set to `True` it finds minimum peaks of the input signal;
-    `min_points` is the minimum number of points for a cluster to be considered relevant signal.
-    Position of the relevant signal is returned.
+def clustering(peaks_dict, z_masked):
+    """In this function Hierarchical Density-Based Spatial Clustering of Applications with Noise (HDBSCAN) algorithm is used;
+    HDBSCAN is a good algorithm for successfully capture clusters with different densities.
     """
-
-    x_ = np.unique(x)
-    y_ = np.unique(y)
-    # background removed over y axis
-    z_ = z.reshape(len(y_), len(x_))
-
-    z_ = -z_ if find_min else z_
-
-    # masking, skip for resonator punchout experiment
-    if not punchout_flag:
-        z_masked = filter_data(z_)
-    else:
-        z_masked = z_
-
-    # renormalizing
-    # z_masked_norm = scaling_signal(z_masked)
-    z_masked_norm = scaling_slice(z_masked, axis=1)
-
-    # filter data using find_peaks
-    peaks_dict = peaks_finder(x_, y_, z_masked_norm)
-    if len(peaks_dict.keys()) == 0:  # if find_peaks fails
-        """
-        Peaks Detection Failed:
-        no peaks found in peaks_finder routine.
-        """
-        return None, None
 
     # normalizing peaks for clustering
     peaks = build_clustering_data(peaks_dict, z_masked)
 
     # clustering
-    # In this function Hierarchical Density-Based Spatial Clustering of Applications with Noise (HDBSCAN) algorithm is used;
-    # HDBSCAN good for successfully capture clusters with different densities.
     hdb = HDBSCAN(copy=True, min_cluster_size=2)
     hdb.fit(peaks)
     labels = hdb.labels_
 
-    # merging close clusters
-    try:
-        signal_classification = merging(
-            peaks,
-            labels,
-            min_points,
-            distance_xy=DISTANCE_XY,
-            distance_z=DISTANCE_Z,
-            # if we are doing a punchout experiment hence we want to select two clusters (bare and dressed frequencies),
-            # otherwise we we select just 1
-            num_output_clusters=1 if not punchout_flag else 2,
-        )
-    except FeatExtractionError:
-        return None, None
+    return peaks, labels
 
-    return peaks_dict["x"]["val"][signal_classification], peaks_dict["y"]["val"][
-        signal_classification
-    ]
+
+def reshaping_raw_signal(x, y, z):
+    x_ = np.unique(x)
+    y_ = np.unique(y)
+    # background removed over y axis
+    z_ = z.reshape(len(y_), len(x_))
+
+    return x_, y_, z_
 
 
 def guess_period(x, y):
