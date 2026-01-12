@@ -230,6 +230,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
             qubit_data.bias,
             qubit_data.signal,
             data.resonator_type == "2D",
+            punchout_flag=False,
         )
 
         target_qubit, flux_qubit = target_flux_qubit
