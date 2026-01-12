@@ -23,7 +23,6 @@ from ...update import replace
 from ..utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
-    extract_feature,
     readout_frequency,
     table_dict,
     table_html,
@@ -225,12 +224,11 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
     successful_fit = {}
 
     for target_flux_qubit, qubit_data in data.data.items():
-        frequencies, biases = extract_feature(
+        frequencies, biases = utils.flux_extract_feature(
             qubit_data.freq,
             qubit_data.bias,
             qubit_data.signal,
             data.resonator_type == "2D",
-            punchout_flag=False,
         )
 
         target_qubit, flux_qubit = target_flux_qubit

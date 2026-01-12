@@ -10,7 +10,7 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude
 
-from ..utils import HZ_TO_GHZ, extract_feature, scaling_slice, table_dict, table_html
+from ..utils import HZ_TO_GHZ, scaling_slice, table_dict, table_html
 
 __all__ = ["resonator_punchout", "ResonatorPunchoutData"]
 
@@ -78,7 +78,7 @@ class ResonatorPunchoutData(Data):
 
     def filtered_data(self, qubit: QubitId) -> tuple[np.ndarray]:
         x, y, _ = self.grid(qubit)
-        return extract_feature(
+        return resonator_punchout(
             x, y, self.signal(qubit).ravel(), self.find_min, punchout_flag=True
         )
 

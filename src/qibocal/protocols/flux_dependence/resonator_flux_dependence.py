@@ -14,7 +14,6 @@ from ...result import magnitude
 from ..utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
-    extract_feature,
     readout_frequency,
     table_dict,
     table_html,
@@ -87,7 +86,7 @@ class ResonatorFluxData(Data):
 
     def filtered_data(self, qubit: QubitId) -> np.ndarray:
         """Apply mask to specific qubit data."""
-        return extract_feature(
+        return utils.flux_extract_feature(
             self.data[qubit].freq,
             self.data[qubit].bias,
             self.data[qubit].signal,
