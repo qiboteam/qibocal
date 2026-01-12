@@ -78,7 +78,9 @@ class ResonatorPunchoutData(Data):
 
     def filtered_data(self, qubit: QubitId) -> tuple[np.ndarray]:
         x, y, _ = self.grid(qubit)
-        return extract_feature(x, y, self.signal(qubit).ravel(), self.find_min)
+        return extract_feature(
+            x, y, self.signal(qubit).ravel(), self.find_min, punchout_flag=True
+        )
 
 
 def _acquisition(
