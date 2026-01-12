@@ -955,17 +955,14 @@ def merging(
     # we only take the first three values of each point in the cluster because they correspond to the 3 features (x,y,z)
     sorted_medians = sorted(medians, key=lambda x: x[1], reverse=True)
 
+    signal_labels = np.zeros(indices_list.size, dtype=bool)
     if len(medians) != 0:
-        signals_list = []
         for signal_idx, _ in sorted_medians[:num_output_clusters]:
-            signal_labels = np.zeros(indices_list.size, dtype=bool)
             signal_labels[valid_clusters[signal_idx]["cluster"][-1, :].astype(int)] = (
                 True
             )
-            signals_list.append(signal_labels)
-        return signals_list
 
-    return [np.zeros(indices_list.size, dtype=bool)]
+    return signal_labels
 
 
 def extract_feature(
@@ -993,8 +990,9 @@ def extract_feature(
 
     z_ = -z_ if find_min else z_
 
-    # masking
-    z_masked = filter_data(z_)
+    # masking, skip for resonator punchout experiment
+    if not punchout_flag:
+        z_masked = filter_data(z_)
 
     # renormalizing
     # z_masked_norm = scaling_signal(z_masked)

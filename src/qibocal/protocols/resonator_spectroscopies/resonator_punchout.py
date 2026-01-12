@@ -164,7 +164,7 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
         else:
             # new handling for detecting dressed and bare resonator frequencies
             # by definition bare resonator frequency is given for high amplitude values,
-            # why by applying low amplitude readout signal we estimate dressed frequency.
+            # while by applying low amplitude readout signal we estimate dressed frequency.
             freq_max = np.mean(filtered_x.max())
             idx_max = filtered_x.argmax()
             amp_max = np.mean(filtered_y[idx_max])
