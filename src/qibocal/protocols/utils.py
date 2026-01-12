@@ -993,6 +993,8 @@ def extract_feature(
     # masking, skip for resonator punchout experiment
     if not punchout_flag:
         z_masked = filter_data(z_)
+    else:
+        z_masked = z_
 
     # renormalizing
     # z_masked_norm = scaling_signal(z_masked)
