@@ -43,13 +43,13 @@ STRING_TYPE = "<U100"
 MAX_PIXELS = 2
 """How many pixels at most two clusters' endpoints should be far for merging them."""
 DISTANCE_XY = 1.5 * MAX_PIXELS  # very heuristic
-"""taking as a threshold the diagonal distance of MAX_PIXELS + some rounding."""
-DISTANCE_Z = 5.0
 """ Minimum distance for separate clusters.
 Clusters below this distance will be merged.
 Since it is given in a 3D-space, with a compressed vertical dimension, and the horizontal plane measured in pixels,
 this distance correspond to diagonally adjacent pixels, with some additional leeway for the extra dimension.
 """
+DISTANCE_Z = 0.5
+"""See :py::const:DISTANCE_XY."""
 
 
 class PowerLevel(str, Enum):
@@ -843,8 +843,7 @@ def build_clustering_data(peaks_dict: dict, z: np.ndarray):
     y_ = peaks_dict["y"]["idx"]
     z_ = z[y_, x_]
 
-    rescaling_fact = horizontal_diagonal(x_, y_) / 20
-    return np.stack((x_, y_, scaling_global(z_) * rescaling_fact)).T, rescaling_fact
+    return np.stack((x_, y_, scaling_global(z_))).T
 
 
 def peaks_finder(x, y, z) -> dict:
@@ -1014,7 +1013,7 @@ def extract_feature(
     peaks_dict = peaks_finder(x_, y_, z_masked_norm)
 
     # normalizing peaks for clustering
-    peaks, scaling_factor = build_clustering_data(peaks_dict, z_masked)
+    peaks = build_clustering_data(peaks_dict, z_masked)
 
     # clustering
     # In this function Hierarchical Density-Based Spatial Clustering of Applications with Noise (HDBSCAN) algorithm is used;
