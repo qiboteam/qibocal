@@ -49,7 +49,7 @@ Since it is given in a 3D-space, with a compressed vertical dimension, and the h
 this distance correspond to diagonally adjacent pixels, with some additional leeway for the extra dimension.
 """
 DISTANCE_Z = 0.5
-"""See :py::const:DISTANCE_XY."""
+"""See :const:`DISTANCE_XY`."""
 
 
 class PowerLevel(str, Enum):
