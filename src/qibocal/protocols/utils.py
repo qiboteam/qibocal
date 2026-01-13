@@ -49,7 +49,7 @@ Clusters below this distance will be merged.
 Since it is given in a 3D-space, with a compressed vertical dimension, and the horizontal plane measured in pixels,
 this distance correspond to diagonally adjacent pixels, with some additional leeway for the extra dimension.
 """
-DISTANCE_Z = 0.5
+DISTANCE_Z = 1.0
 """See :const:`DISTANCE_XY`."""
 
 
@@ -739,6 +739,17 @@ def zca_whiten(X):
     """
     Applies ZCA whitening to the data (X)
     https://en.wikipedia.org/wiki/Whitening_transformation
+    This implementation is analoguous of calling :func:`np.linalg.svd` function and
+    multiplying `U` and `Vh` matrices;
+    Example for matrix `X`:
+
+    ```python
+    U, S, Vh = np.linalg.svd(V)
+    ZCA_X = X @ U @ Vh
+    ```
+    The aforementioned method does not require any regularization term `EPS`, making it formally more correct;
+    however the current method is preferred because it scales better with respect to `X` dimensions and
+    the relative error scales linear with `EPS`.
 
     X: numpy 2d array
         input data, rows are data points, columns are features
