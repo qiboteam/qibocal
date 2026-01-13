@@ -146,7 +146,7 @@ def _acquisition(
             sweepers.append(
                 Sweeper(
                     parameter=Parameter.frequency,
-                    values= f0 + delta_frequency_range,
+                    values=f0 + delta_frequency_range,
                     channels=[qd_channel],
                 )
             )
