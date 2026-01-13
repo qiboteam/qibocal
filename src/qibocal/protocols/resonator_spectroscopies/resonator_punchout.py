@@ -11,6 +11,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude
 
 from ..utils import HZ_TO_GHZ, scaling_slice, table_dict, table_html
+from .resonator_utils import punchout_extract_feature
 
 __all__ = ["resonator_punchout", "ResonatorPunchoutData"]
 
@@ -78,9 +79,7 @@ class ResonatorPunchoutData(Data):
 
     def filtered_data(self, qubit: QubitId) -> tuple[np.ndarray]:
         x, y, _ = self.grid(qubit)
-        return resonator_punchout(
-            x, y, self.signal(qubit).ravel(), self.find_min, punchout_flag=True
-        )
+        return punchout_extract_feature(x, y, self.signal(qubit).ravel(), self.find_min)
 
 
 def _acquisition(
