@@ -258,7 +258,7 @@ def _acquisition(
         _phase = np.concatenate(all_phases[qubit])
 
         # Handle errors
-        if all_error_signals[qubit][0] is not None:
+        if all(x is not None for x in all_error_signals[qubit]):
             error_signal = np.concatenate(all_error_signals[qubit])
             error_phase = np.concatenate(all_error_phases[qubit])
         else:
