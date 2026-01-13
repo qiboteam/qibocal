@@ -2,7 +2,6 @@ import numpy as np
 import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
-from scipy import ndimage
 from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import leastsq, minimize
 
@@ -825,7 +824,8 @@ def punchout_extract_feature(
     reshaped_x, reshaped_y, reshaped_z = reshaping_raw_signal(x, y, z)
     reshaped_z = -reshaped_z if find_min else reshaped_z
 
-    z_masked = ndimage.gaussian_filter(reshaped_z, 1)
+    # z_masked = ndimage.gaussian_filter(reshaped_z, 1)
+    z_masked = reshaped_z
 
     # renormalizing
     z_masked_norm = scaling_slice(z_masked, axis=1)
