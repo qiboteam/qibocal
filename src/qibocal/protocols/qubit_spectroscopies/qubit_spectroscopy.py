@@ -143,21 +143,10 @@ def _acquisition(
             sequence.append((ro_channel, ro_pulse))
 
             f0 = platform.config(qd_channel).frequency
-            sweeper_values = f0 + delta_frequency_range
-
-            # ----->>> Remove after tests
-            if len(batches) > 1:
-                print(
-                    f"Executing batch: "
-                    f"LO offset = {lo_offset / 1e6:.1f} MHz, "
-                    f"sweep range = [{delta_frequency_range[0] / 1e6:.1f}, {delta_frequency_range[-1] / 1e6:.1f}] MHz"
-                    f"sweeper values = [{sweeper_values[0] / 1e6:.1f} - {sweeper_values[-1] / 1e6:.1f}] MHz"
-                )
-
             sweepers.append(
                 Sweeper(
                     parameter=Parameter.frequency,
-                    values=f0 + delta_frequency_range,
+                    values= f0 + delta_frequency_range,
                     channels=[qd_channel],
                 )
             )
@@ -167,9 +156,7 @@ def _acquisition(
         for qubit in targets:
             update_dict = {}
 
-            # I have to update the frequency of the drive channel to avoid raising an error
-            # when the frequency is out of the allowed range (this is anyways swept by the
-            # range of the nco sweeper, but the validation checks the static config frequency)
+            # Update the frequency of the drive channel to avoid raising a validation an error
             update_dict[drive_channels[qubit]] = {
                 "frequency": platform.config(drive_channels[qubit]).frequency
                 + lo_offset
