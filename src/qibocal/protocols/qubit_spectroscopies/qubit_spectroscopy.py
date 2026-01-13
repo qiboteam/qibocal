@@ -1,6 +1,6 @@
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Optional
-from collections import defaultdict
 
 import numpy as np
 from qibolab import Delay, Parameter, PulseSequence, Sweeper
@@ -70,9 +70,7 @@ class QubitSpectroscopyData(ResonatorSpectroscopyData):
     """QubitSpectroscopy acquisition outputs."""
 
 
-def _calculate_batches(
-    freq_width: int, max_if_bandwidth: int = 300_000_000
-):
+def _calculate_batches(freq_width: int, max_if_bandwidth: int = 300_000_000):
     """
     Calculate frequency batches for wideband spectroscopy.
 
@@ -153,13 +151,13 @@ def _acquisition(
                     f"Executing batch: "
                     f"LO offset = {lo_offset / 1e6:.1f} MHz, "
                     f"sweep range = [{delta_frequency_range[0] / 1e6:.1f}, {delta_frequency_range[-1] / 1e6:.1f}] MHz"
-                    f"sweeper values = [{sweeper_values[0]/1e6:.1f} - {sweeper_values[-1]/1e6:.1f}] MHz"
+                    f"sweeper values = [{sweeper_values[0] / 1e6:.1f} - {sweeper_values[-1] / 1e6:.1f}] MHz"
                 )
 
             sweepers.append(
                 Sweeper(
                     parameter=Parameter.frequency,
-                    values= f0 + delta_frequency_range,
+                    values=f0 + delta_frequency_range,
                     channels=[qd_channel],
                 )
             )
@@ -210,9 +208,7 @@ def _acquisition(
                 error_phase = None
 
             # Store results with absolute frequencies
-            values[qubit]["frequency"].append(
-                delta_frequency_range + f0
-            )
+            values[qubit]["frequency"].append(delta_frequency_range + f0)
             values[qubit]["signal"].append(signal)
             values[qubit]["phase"].append(_phase)
             values[qubit]["error_signal"].append(error_signal)
