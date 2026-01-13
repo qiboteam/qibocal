@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qibocal"
-version = "0.2.4"
+version = "0.2.5"
 description = "Qibo's quantum calibration, characterization and validation module."
 authors = ["The Qibo team"]
 license = "Apache License 2.0"
