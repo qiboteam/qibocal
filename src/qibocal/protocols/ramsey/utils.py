@@ -13,8 +13,32 @@ PERR_EXCEPTION = [1] * 5
 """Fit errors to handle exceptions; their choice has no physical meaning
 and is meant to avoid breaking the code."""
 THRESHOLD = 0.5
-"""Threshold parameters for find_peaks to guess
-   frequency for sinusoidal fit."""
+"""Threshold parameters for find_peaks to guess frequency for sinusoidal fit."""
+DAMPED_CONSTANT = 1.5
+"""Scaling factor to recover amplitude from quantiles.
+
+Measuring intermediate quantiles is less noise sensitive then meauring extremal points
+(minimum and maximum), but it is not a direct measurement of the amplitude itself.
+For pure sinusoidal oscillations, the scaling from the value associated to a given
+quantile and the amplitude is asymptotically fixed, for a large number of oscillations.
+Assuming that samples are dense enough that they could be represented by the continuous
+distribution, essentially projecting a uniform measure over an interval through a single
+sinusoidal oscillation.
+
+.. todo::
+
+    Move the above paragraph to the Rabi equivalent, and replace here with a reference
+
+However, for damped oscillations, the factor is not easily determined, since the
+value associated to a certian quantile depends on the observation window extent, and the
+ratio between the decay rate and the oscillation.
+
+Assuming a mild decay, and we can approximate this factor with the same one for the
+pure oscillation. This can be assumed to be slightly decreased because of the dampening,
+but there is no general control about how much.
+By reducing the amplitude by this rough 30%, the estimation will lend closer to the
+actual amplitude. We rely anyhow on the fit to determine the precise value.
+"""
 
 
 def ramsey_sequence(
@@ -73,6 +97,11 @@ def ramsey_fit(x, offset, amplitude, delta, phase, decay):
     return offset + amplitude * np.sin(x * delta + phase) * np.exp(-x * decay)
 
 
+def angle_wrap(angle: float):
+    """Wrap an angle from [-np.inf,np.inf] into the [0,2*np.pi] domain"""
+    return angle % (2 * np.pi)
+
+
 def fitting(x: list, y: list, errors: list = None) -> list:
     """
     Given the inputs list `x` and outputs one `y`, this function fits the
@@ -90,13 +119,19 @@ def fitting(x: list, y: list, errors: list = None) -> list:
 
     period = fallback_period(guess_period(x, y))
     omega = 2 * np.pi / period
+    median_sig = np.median(y)
+    q80 = np.quantile(y, 0.8)
+    q20 = np.quantile(y, 0.2)
+    amplitude_guess = abs(q80 - q20) / DAMPED_CONSTANT
+
     p0 = [
-        0.5,
-        0.5,
+        median_sig,
+        amplitude_guess,
         omega,
-        0,
+        np.pi / 2,  # since at tau=0 the probability of the excited state is maximum
         1,
     ]
+
     popt, perr = curve_fit(
         ramsey_fit,
         x,
@@ -104,8 +139,8 @@ def fitting(x: list, y: list, errors: list = None) -> list:
         p0=p0,
         maxfev=5000,
         bounds=(
-            [0, 0, 0, -np.pi, 0],
-            [1, 1, np.inf, np.pi, np.inf],
+            [0, 0, 0, -np.inf, 0],
+            [1, 1, np.inf, np.inf, np.inf],
         ),
         sigma=err,
     )
@@ -113,9 +148,10 @@ def fitting(x: list, y: list, errors: list = None) -> list:
         delta_y * popt[0] + y_min,
         delta_y * popt[1] * np.exp(x_min * popt[4] / delta_x),
         popt[2] / delta_x,
-        popt[3] - x_min * popt[2] / delta_x,
+        angle_wrap(popt[3] - x_min * popt[2] / delta_x),
         popt[4] / delta_x,
     ]
+
     perr = np.sqrt(np.diag(perr))
     perr = [
         delta_y * perr[0],

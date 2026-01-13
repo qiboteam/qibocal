@@ -7,6 +7,7 @@ import click
 import yaml
 
 from ..auto.runcard import Runcard
+from ..auto.serialize import load
 from .acquisition import acquire as acquisition
 from .compare import compare_reports
 from .fit import fit as fitting
@@ -124,7 +125,13 @@ def acquire(runcard, folder, force, platform, backend):
 @click.argument(
     "folder", metavar="folder", type=click.Path(exists=True, path_type=pathlib.Path)
 )
-def update(folder):
+@click.option(
+    "--skip-qubits",
+    multiple=True,
+    default=None,
+    help="Qubits that will not be updated.",
+)
+def update(folder, skip_qubits):
     """Update platform configuration.
 
     All configuration files related to platform will be copied
@@ -134,7 +141,8 @@ def update(folder):
         - folder: Qibocal output folder.
 
     """
-    updating(folder)
+    skip_qubits = [load(q) for q in skip_qubits] if skip_qubits else None
+    updating(folder, skip_qubits)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)

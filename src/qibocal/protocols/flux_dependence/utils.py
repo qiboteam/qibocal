@@ -1,16 +1,36 @@
+from dataclasses import dataclass
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from ...auto.operation import Parameters
 from ..utils import HZ_TO_GHZ
 
 
-def is_crosstalk(data):
-    """Check if keys are tuple which corresponds to crosstalk data structure."""
-    return all(isinstance(key, tuple) for key in data.data.keys())
+@dataclass(kw_only=True)
+class FluxFrequencySweepParameters(Parameters):
+    """Parameters to define flux DC sweep."""
+
+    freq_width: int
+    """Width for frequency sweep relative to the readout frequency [Hz]."""
+    freq_step: int
+    """Frequency step for sweep [Hz]."""
+    bias_width: float
+    """Width for bias sweep [V]."""
+    bias_step: float
+    """Bias step for sweep [V]."""
+
+    @property
+    def frequency_range(self) -> np.ndarray:
+        return np.arange(-self.freq_width / 2, self.freq_width / 2, self.freq_step)
+
+    @property
+    def bias_range(self) -> np.ndarray:
+        return np.arange(-self.bias_width / 2, self.bias_width / 2, self.bias_step)
 
 
-def create_data_array(freq, bias, signal, phase, dtype):
+def create_data_array(freq, bias, signal, dtype):
     """Create custom dtype array for acquired data."""
     size = len(freq) * len(bias)
     ar = np.empty(size, dtype=dtype)
@@ -18,7 +38,6 @@ def create_data_array(freq, bias, signal, phase, dtype):
     ar["freq"] = frequency.ravel()
     ar["bias"] = biases.ravel()
     ar["signal"] = signal.ravel()
-    ar["phase"] = phase.ravel()
     return np.rec.array(ar)
 
 
@@ -27,32 +46,33 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
     qubit_data = data[qubit]
     frequencies = qubit_data.freq * HZ_TO_GHZ
 
-    subplot_titles = (
-        "Signal [a.u.]",
-        "Phase [rad]",
-    )
-    fig = make_subplots(
-        rows=1,
-        cols=2,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=subplot_titles,
-    )
+    filtered_freq, filtered_bias = data.filtered_data(qubit)
 
+    fig = go.Figure()
     fig.add_trace(
         go.Heatmap(
             x=qubit_data.freq * HZ_TO_GHZ,
             y=qubit_data.bias,
             z=qubit_data.signal,
-            colorbar_x=0.46,
+            colorbar=dict(title="Signal [a.u.]"),
+            colorscale="Viridis",
         ),
-        row=1,
-        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=filtered_freq * HZ_TO_GHZ,
+            y=filtered_bias,
+            name="Estimated points",
+            mode="markers",
+            marker=dict(color="rgb(248, 248, 248)"),
+        )
     )
 
     # TODO: This fit is for frequency, can it be reused here, do we even want the fit ?
     if (
         fit is not None
+        and fit_function is not None
         and not data.__class__.__name__ == "CouplerSpectroscopyData"
         and qubit in fit.fitted_parameters
     ):
@@ -64,11 +84,10 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
                 y=bias,
                 showlegend=True,
                 name="Fit",
-                marker=dict(color="green"),
+                marker=dict(color="rgb(248, 248, 248)"),
             ),
-            row=1,
-            col=1,
         )
+
         fig.add_trace(
             go.Scatter(
                 x=[
@@ -80,39 +99,17 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
                 mode="markers",
                 marker=dict(
                     size=8,
-                    color="black",
-                    symbol="cross",
+                    color="red",
                 ),
                 name="Sweetspot",
                 showlegend=True,
             ),
-            row=1,
-            col=1,
         )
 
     fig.update_xaxes(
         title_text="Frequency [GHz]",
-        row=1,
-        col=1,
     )
-
-    fig.update_yaxes(title_text="Bias [V]", row=1, col=1)
-
-    fig.add_trace(
-        go.Heatmap(
-            x=qubit_data.freq * HZ_TO_GHZ,
-            y=qubit_data.bias,
-            z=qubit_data.phase,
-            colorbar_x=1.01,
-        ),
-        row=1,
-        col=2,
-    )
-    fig.update_xaxes(
-        title_text="Frequency [GHz]",
-        row=1,
-        col=2,
-    )
+    fig.update_yaxes(title_text="Bias [V]")
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
 
@@ -288,25 +285,20 @@ def transmon_readout_frequency(
      Returns:
          (float): resonator frequency as a function of bias.
     """
-    return resonator_freq + g**2 * G_f_d(
-        xi,
-        xj,
-        offset=offset,
+
+    qubit_frequency = transmon_frequency(
+        xi=xi,
+        xj=xj,
+        w_max=w_max,
         d=d,
         normalization=normalization,
+        offset=offset,
         crosstalk_element=crosstalk_element,
-    ) / (
-        resonator_freq
-        - transmon_frequency(
-            xi=xi,
-            xj=xj,
-            w_max=w_max,
-            d=d,
-            normalization=normalization,
-            offset=offset,
-            crosstalk_element=crosstalk_element,
-            charging_energy=charging_energy,
-        )
+        charging_energy=charging_energy,
+    )
+    return resonator_freq + g**2 * (
+        1 / (resonator_freq - qubit_frequency)
+        - 1 / (resonator_freq - qubit_frequency + charging_energy)
     )
 
 
