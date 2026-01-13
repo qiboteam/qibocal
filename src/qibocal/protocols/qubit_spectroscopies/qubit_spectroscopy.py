@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Optional
+from collections import defaultdict
 
 import numpy as np
 from qibolab import Delay, Parameter, PulseSequence, Sweeper
@@ -70,45 +71,17 @@ class QubitSpectroscopyData(ResonatorSpectroscopyData):
 
 
 def _calculate_batches(
-    freq_width: int, freq_step: int, max_if_bandwidth: int = 300_000_000
+    freq_width: int, max_if_bandwidth: int = 300_000_000
 ):
     """
     Calculate frequency batches for wideband spectroscopy.
 
     """
-    # If freq_width fits within the IF bandwidth, no batching needed
-    if freq_width <= 2 * max_if_bandwidth:
-        delta_frequency_range = np.arange(-freq_width / 2, freq_width / 2, freq_step)
-        return [{"delta_freq_range": delta_frequency_range, "lo_offset": 0}]
-
-    # Calculate number of batches needed
-    # Each batch covers 2 * max_if_bandwidth
-    batch_width = 2 * max_if_bandwidth
-    num_batches = int(np.ceil(freq_width / batch_width))
-
-    # Calculate starting frequency (relative to center)
-    start_freq = -freq_width / 2
-
-    batches = []
-    for batch_idx in range(num_batches):
-        # Calculate this batch's frequency range
-        batch_start = start_freq + batch_idx * batch_width
-        batch_end = min(batch_start + batch_width, freq_width / 2)
-
-        # Center of this batch
-        batch_center = (batch_start + batch_end) / 2
-
-        # LO should set to the batch center (maybe better to the batch edge and make smaller sweeps?)
-        lo_offset = batch_center
-
-        # Frequency range relative to the batch center (LO position)
-        delta_freq_range = np.arange(
-            batch_start - batch_center, batch_end - batch_center, freq_step
-        )
-
-        batches.append({"delta_freq_range": delta_freq_range, "lo_offset": lo_offset})
-
-    return batches
+    batch_starts = np.arange(-freq_width / 2, freq_width / 2, 2 * max_if_bandwidth)
+    batch_ends = np.append(batch_starts[1:], freq_width / 2)
+    batch_limits = np.stack((batch_starts, batch_ends))
+    lo_offsets = batch_limits.sum(axis=0) / 2 if len(batch_starts) > 1 else [0]
+    return np.vstack((batch_limits, lo_offsets)).T
 
 
 def _acquisition(
@@ -122,7 +95,7 @@ def _acquisition(
     """
 
     # Calculate batches
-    batches = _calculate_batches(params.freq_width, params.freq_step)
+    batches = _calculate_batches(params.freq_width)
 
     # Get drive channels and LO channels for each qubit
     drive_channels = {}
@@ -139,26 +112,13 @@ def _acquisition(
         else:
             lo_channels[qubit] = None
 
-    # Storage for aggregated results across all batches
-    all_frequencies = {qubit: [] for qubit in targets}
-    all_signals = {qubit: [] for qubit in targets}
-    all_phases = {qubit: [] for qubit in targets}
-    all_error_signals = {qubit: [] for qubit in targets}
-    all_error_phases = {qubit: [] for qubit in targets}
-    amplitudes = {}
+    # Initialize storage for intermediate results
+    values = {qubit: defaultdict(list) for qubit in targets}
+    amplitudes = {qubit: None for qubit in targets}
 
     # Execute each batch
-    for batch_idx, batch in enumerate(batches):
-        delta_frequency_range = batch["delta_freq_range"]
-        lo_offset = batch["lo_offset"]
-
-        # ----->>> Remover after tests
-        if len(batches) > 1:
-            print(
-                f"Executing batch {batch_idx + 1}/{len(batches)}: "
-                f"LO offset = {lo_offset / 1e6:.1f} MHz, "
-                f"sweep range = [{delta_frequency_range[0] / 1e6:.1f}, {delta_frequency_range[-1] / 1e6:.1f}] MHz"
-            )
+    for start, end, lo_offset in batches:
+        delta_frequency_range = np.arange(start, end, params.freq_step)
 
         # Build the pulse sequence
         sequence = PulseSequence()
@@ -185,11 +145,21 @@ def _acquisition(
             sequence.append((ro_channel, ro_pulse))
 
             f0 = platform.config(qd_channel).frequency
+            sweeper_values = f0 + delta_frequency_range
+
+            # ----->>> Remove after tests
+            if len(batches) > 1:
+                print(
+                    f"Executing batch: "
+                    f"LO offset = {lo_offset / 1e6:.1f} MHz, "
+                    f"sweep range = [{delta_frequency_range[0] / 1e6:.1f}, {delta_frequency_range[-1] / 1e6:.1f}] MHz"
+                    f"sweeper values = [{sweeper_values[0]/1e6:.1f} - {sweeper_values[-1]/1e6:.1f}] MHz"
+                )
 
             sweepers.append(
                 Sweeper(
                     parameter=Parameter.frequency,
-                    values=f0 + lo_offset + delta_frequency_range,
+                    values= f0 + delta_frequency_range,
                     channels=[qd_channel],
                 )
             )
@@ -206,6 +176,7 @@ def _acquisition(
                 "frequency": platform.config(drive_channels[qubit]).frequency
                 + lo_offset
             }
+
             # If we're batching, update the LO
             if lo_offset != 0 and lo_channels[qubit] is not None:
                 f0 = platform.config(drive_channels[qubit]).frequency
@@ -239,11 +210,13 @@ def _acquisition(
                 error_phase = None
 
             # Store results with absolute frequencies
-            all_frequencies[qubit].append(delta_frequency_range + f0 + lo_offset)
-            all_signals[qubit].append(signal)
-            all_phases[qubit].append(_phase)
-            all_error_signals[qubit].append(error_signal)
-            all_error_phases[qubit].append(error_phase)
+            values[qubit]["frequency"].append(
+                delta_frequency_range + f0
+            )
+            values[qubit]["signal"].append(signal)
+            values[qubit]["phase"].append(_phase)
+            values[qubit]["error_signal"].append(error_signal)
+            values[qubit]["error_phase"].append(error_phase)
 
     # Create data structure and aggregate results
     data = QubitSpectroscopyData(
@@ -253,26 +226,17 @@ def _acquisition(
     # Combine all batches for each qubit
     for qubit in targets:
         # Concatenate arrays from all batches
-        freq = np.concatenate(all_frequencies[qubit])
-        signal = np.concatenate(all_signals[qubit])
-        _phase = np.concatenate(all_phases[qubit])
+        freq = np.concatenate(values[qubit]["frequency"])
+        signal = np.concatenate(values[qubit]["signal"])
+        _phase = np.concatenate(values[qubit]["phase"])
 
-        # Handle errors
-        if all(x is not None for x in all_error_signals[qubit]):
-            error_signal = np.concatenate(all_error_signals[qubit])
-            error_phase = np.concatenate(all_error_phases[qubit])
+        # Handle when error signals are available
+        if all(x is not None for x in values[qubit]["error_signal"]):
+            error_signal = np.concatenate(values[qubit]["error_signal"])
+            error_phase = np.concatenate(values[qubit]["error_phase"])
         else:
             error_signal = None
             error_phase = None
-
-        # Sort by frequency (batches should already be in order, but just to be safe)
-        sort_idx = np.argsort(freq)
-        freq = freq[sort_idx]
-        signal = signal[sort_idx]
-        _phase = _phase[sort_idx]
-        if error_signal is not None:
-            error_signal = error_signal[sort_idx]
-            error_phase = error_phase[sort_idx]
 
         data.register_qubit(
             ResSpecType,
@@ -336,9 +300,9 @@ def _update(
 
 
 qubit_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
-"""QubitSpectroscopy Routine object.
+"""Qubit Spectroscopy routine.
 
-A qubit spectroscopy routine that sweeps the drive frequency around the qubit
+A qubit spectroscopy sweeps the drive frequency around the qubit
 frequency at which the qubit's transition from |0> to |1> occurs.
 Typically a long pulse is used to ensure a narrow frequency spectrum of the
 drive, and helping the qubit to get excited to a superposition state.
