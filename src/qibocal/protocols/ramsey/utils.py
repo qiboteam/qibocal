@@ -15,7 +15,7 @@ and is meant to avoid breaking the code."""
 THRESHOLD = 0.5
 """Threshold parameters for find_peaks to guess frequency for sinusoidal fit."""
 DAMPED_CONSTANT = 1.5
-"""See :py:const:`rabi.utils.DAMPED_CONSTANT` for details.
+"""See :const:`rabi.utils.DAMPED_CONSTANT` for details.
 """
 
 
