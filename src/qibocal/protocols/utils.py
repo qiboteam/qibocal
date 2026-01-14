@@ -49,7 +49,7 @@ Clusters below this distance will be merged.
 Since it is given in a 3D-space, with a compressed vertical dimension, and the horizontal plane measured in pixels,
 this distance correspond to diagonally adjacent pixels, with some additional leeway for the extra dimension.
 """
-DISTANCE_Z = 1.0
+DISTANCE_Z = 0.5
 """See :const:`DISTANCE_XY`."""
 
 
@@ -788,6 +788,7 @@ def scaling_slice(sig: np.ndarray, axis: Optional[int]) -> np.ndarray:
     return (sig - sig_min) / (expand(np.max(sig, axis=axis)) - sig_min)
 
 
+# not used - we can remove
 def horizontal_diagonal(xs: np.ndarray, ys: np.ndarray) -> float:
     """Computing the lenght of the diagonal of a two dimensional grid."""
     sizes = np.empty(2)
