@@ -1,8 +1,10 @@
+from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
 from qibolab import Delay, Parameter, PulseSequence, Sweeper
+from qibolab._core.components import IqChannel
 
 from qibocal.auto.operation import Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
@@ -19,7 +21,6 @@ from ..utils import (
     chi2_reduced,
     lorentzian,
     lorentzian_fit,
-    readout_frequency,
 )
 
 __all__ = [
@@ -69,91 +70,169 @@ class QubitSpectroscopyData(ResonatorSpectroscopyData):
     """QubitSpectroscopy acquisition outputs."""
 
 
+def _calculate_batches(freq_width: int, max_if_bandwidth: int = 300_000_000):
+    """
+    Calculate frequency batches for wideband spectroscopy.
+
+    """
+    batch_starts = np.arange(-freq_width / 2, freq_width / 2, 2 * max_if_bandwidth)
+    batch_ends = np.append(batch_starts[1:], freq_width / 2)
+    batch_limits = np.stack((batch_starts, batch_ends))
+    lo_offsets = batch_limits.sum(axis=0) / 2 if len(batch_starts) > 1 else [0]
+    return np.vstack((batch_limits, lo_offsets)).T
+
+
 def _acquisition(
     params: QubitSpectroscopyParameters,
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> QubitSpectroscopyData:
-    """Data acquisition for qubit spectroscopy."""
-    # create a sequence of pulses for the experiment:
-    # long drive probing pulse - MZ
+    """Data acquisition for qubit spectroscopy.
 
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
+    Handles wideband spectroscopy by batching when the frequency range exceeds ±300 MHz from the LO
+    """
 
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
-    sequence = PulseSequence()
-    ro_pulses = {}
-    qd_pulses = {}
-    amplitudes = {}
-    sweepers = []
+    # Calculate batches
+    batches = _calculate_batches(params.freq_width)
+
+    # Get drive channels and LO channels for each qubit
+    drive_channels = {}
+    lo_channels = {}
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
-        qd_channel, qd_pulse = natives.RX()[0]
-        ro_channel, ro_pulse = natives.MZ()[0]
+        qd_channel, _ = natives.RX()[0]
+        drive_channels[qubit] = qd_channel
 
-        qd_pulse = replace(qd_pulse, duration=params.drive_duration)
-        if params.drive_amplitude is not None:
-            qd_pulse = replace(qd_pulse, amplitude=params.drive_amplitude)
+        # Get the LO channel associated with this drive channel
+        channel_obj = platform.channels[qd_channel]
+        if isinstance(channel_obj, IqChannel) and channel_obj.lo is not None:
+            lo_channels[qubit] = channel_obj.lo
+        else:
+            lo_channels[qubit] = None
 
-        amplitudes[qubit] = qd_pulse.amplitude
-        qd_pulses[qubit] = qd_pulse
-        ro_pulses[qubit] = ro_pulse
+    # Initialize storage for intermediate results
+    values = {qubit: defaultdict(list) for qubit in targets}
+    amplitudes = {qubit: None for qubit in targets}
 
-        sequence.append((qd_channel, qd_pulse))
-        sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
-        sequence.append((ro_channel, ro_pulse))
+    # Execute each batch
+    for start, end, lo_offset in batches:
+        delta_frequency_range = np.arange(start, end, params.freq_step)
 
-        f0 = platform.config(qd_channel).frequency
-        sweepers.append(
-            Sweeper(
-                parameter=Parameter.frequency,
-                values=f0 + delta_frequency_range,
-                channels=[qd_channel],
+        # Build the pulse sequence
+        sequence = PulseSequence()
+        ro_pulses = {}
+        sweepers = []
+
+        for qubit in targets:
+            natives = platform.natives.single_qubit[qubit]
+            qd_channel = drive_channels[qubit]
+            _, qd_pulse = natives.RX()[0]
+            ro_channel, ro_pulse = natives.MZ()[0]
+
+            qd_pulse = replace(qd_pulse, duration=params.drive_duration)
+            if params.drive_amplitude is not None:
+                qd_pulse = replace(qd_pulse, amplitude=params.drive_amplitude)
+
+            if qubit not in amplitudes:
+                amplitudes[qubit] = qd_pulse.amplitude
+
+            ro_pulses[qubit] = ro_pulse
+
+            sequence.append((qd_channel, qd_pulse))
+            sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
+            sequence.append((ro_channel, ro_pulse))
+
+            f0 = platform.config(qd_channel).frequency
+            sweepers.append(
+                Sweeper(
+                    parameter=Parameter.frequency,
+                    values=f0 + delta_frequency_range,
+                    channels=[qd_channel],
+                )
             )
+
+        # Prepare updates for this batch
+        batch_updates = []
+        for qubit in targets:
+            update_dict = {}
+
+            # Update the frequency of the drive channel to avoid raising a validation an error
+            update_dict[drive_channels[qubit]] = {
+                "frequency": platform.config(drive_channels[qubit]).frequency
+                + lo_offset
+            }
+
+            # If we're batching, update the LO
+            if lo_offset != 0 and lo_channels[qubit] is not None:
+                f0 = platform.config(drive_channels[qubit]).frequency
+                update_dict[lo_channels[qubit]] = {"frequency": f0 + lo_offset}
+
+            batch_updates.append(update_dict)
+
+        # Execute this batch
+        results = platform.execute(
+            [sequence],
+            [sweepers],
+            updates=batch_updates,
+            **params.execution_parameters,
         )
 
-    # Create data structure for data acquisition.
+        # Collect results from this batch
+        for qubit in targets:
+            result = results[ro_pulses[qubit].id]
+            f0 = platform.config(drive_channels[qubit]).frequency
+
+            signal = magnitude(result)
+            _phase = phase(result)
+
+            if len(signal.shape) > 1:
+                error_signal = np.std(signal, axis=0, ddof=1) / np.sqrt(signal.shape[0])
+                signal = np.mean(signal, axis=0)
+                error_phase = np.std(_phase, axis=0, ddof=1) / np.sqrt(_phase.shape[0])
+                _phase = np.mean(_phase, axis=0)
+            else:
+                error_signal = None
+                error_phase = None
+
+            # Store results with absolute frequencies
+            values[qubit]["frequency"].append(delta_frequency_range + f0)
+            values[qubit]["signal"].append(signal)
+            values[qubit]["phase"].append(_phase)
+            values[qubit]["error_signal"].append(error_signal)
+            values[qubit]["error_phase"].append(error_phase)
+
+    # Create data structure and aggregate results
     data = QubitSpectroscopyData(
         resonator_type=platform.resonator_type, amplitudes=amplitudes
     )
 
-    results = platform.execute(
-        [sequence],
-        [sweepers],
-        updates=[
-            {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
-            for q in targets
-        ],
-        **params.execution_parameters,
-    )
+    # Combine all batches for each qubit
+    for qubit in targets:
+        # Concatenate arrays from all batches
+        freq = np.concatenate(values[qubit]["frequency"])
+        signal = np.concatenate(values[qubit]["signal"])
+        _phase = np.concatenate(values[qubit]["phase"])
 
-    # retrieve the results for every qubit
-    for qubit, ro_pulse in ro_pulses.items():
-        result = results[ro_pulse.id]
-        # store the results
-        f0 = platform.config(platform.qubits[qubit].drive).frequency
-        signal = magnitude(result)
-        _phase = phase(result)
-        if len(signal.shape) > 1:
-            error_signal = np.std(signal, axis=0, ddof=1) / np.sqrt(signal.shape[0])
-            signal = np.mean(signal, axis=0)
-            error_phase = np.std(_phase, axis=0, ddof=1) / np.sqrt(_phase.shape[0])
-            _phase = np.mean(_phase, axis=0)
+        # Handle when error signals are available
+        if all(x is not None for x in values[qubit]["error_signal"]):
+            error_signal = np.concatenate(values[qubit]["error_signal"])
+            error_phase = np.concatenate(values[qubit]["error_phase"])
         else:
-            error_signal, error_phase = None, None
+            error_signal = None
+            error_phase = None
+
         data.register_qubit(
             ResSpecType,
             (qubit),
             dict(
                 signal=signal,
                 phase=_phase,
-                freq=delta_frequency_range + f0,
+                freq=freq,
                 error_signal=error_signal,
                 error_phase=error_phase,
             ),
         )
+
     return data
 
 
@@ -204,4 +283,5 @@ def _update(
 
 
 qubit_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
-"""QubitSpectroscopy Routine object."""
+"""Qubit Spectroscopy routine.
+"""
