@@ -5,20 +5,19 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, PulseSequence
-from sklearn.base import ClassifierMixin
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
+from sklearn.discriminant_analysis import (
+    LinearDiscriminantAnalysis,
+    QuadraticDiscriminantAnalysis,
+)
 from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
-from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import confusion_matrix
 
 classifiers = {
     "knn": KNeighborsClassifier(5),
@@ -54,7 +53,6 @@ from qibocal.protocols.utils import (
 )
 
 from .utils import plot_confusion_matrix, plot_distribution
-from matplotlib.figure import Figure
 
 ROC_LENGHT = 800
 ROC_WIDTH = 800
@@ -101,7 +99,7 @@ class SingleShotClassificationParameters(Parameters):
     - "adaboost"
     - "naive_bayes"
     - "lda"
-    - "qda" 
+    - "qda"
     """
 
 
@@ -258,7 +256,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         snr=snr,
         confusion_matrix=confusion_matrix_,
         states=states,
-        classifier = data.classifier,
+        classifier=data.classifier,
     )
 
 
@@ -284,7 +282,7 @@ def _plot(
     nshots = len(data.data[target, 0])
     X = np.vstack([data.data[target, 0], data.data[target, 1]])
     y = np.array([0] * nshots + [1] * nshots)
-    clf = classifiers[data.classifier].fit(X, y) # Train this again to plot he boundary
+    clf = classifiers[data.classifier].fit(X, y)  # Train this again to plot he boundary
 
     for state in [0, 1]:
         plot_distribution(
@@ -315,7 +313,7 @@ def _plot(
         max_x = np.max(np.stack([data.data[target, 0].T[0], data.data[target, 1].T[0]]))
         min_y = np.min(np.stack([data.data[target, 0].T[1], data.data[target, 1].T[1]]))
         max_y = np.max(np.stack([data.data[target, 0].T[1], data.data[target, 1].T[1]]))
-        
+
         if fit.threshold[target] is not None and fit.angle[target] is not None:
             x = np.linspace(min_x, max_x, 100)
             y = (-fit.threshold[target] + x * np.cos(fit.angle[target])) / np.sin(
@@ -332,7 +330,7 @@ def _plot(
                 row=2,
                 col=1,
             )
-       
+
         # Plot decision boundary manually (Decision boundary from sklearn uses matplotlib)
         X1, X2 = np.meshgrid(
             np.linspace(min_x, max_x, 200), np.linspace(min_y, max_y, 200)
@@ -341,14 +339,14 @@ def _plot(
 
         fig.add_trace(
             go.Contour(
-            x=np.linspace(min_x, max_x, 200),
-            y=np.linspace(min_y, max_y, 200),
-            z=Z,
-            showscale=False,
-            colorscale=[colors[0], colors[1]],
-            hoverinfo="skip",
-            line_width=0,
-            opacity=0.3,
+                x=np.linspace(min_x, max_x, 200),
+                y=np.linspace(min_y, max_y, 200),
+                z=Z,
+                showscale=False,
+                colorscale=[colors[0], colors[1]],
+                hoverinfo="skip",
+                line_width=0,
+                opacity=0.3,
             ),
             row=2,
             col=1,
