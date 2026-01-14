@@ -5,8 +5,36 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, PulseSequence
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.base import ClassifierMixin
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis, QuadraticDiscriminantAnalysis
+from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
+from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.gaussian_process.kernels import RBF
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import confusion_matrix
+
+classifiers = {
+    "knn": KNeighborsClassifier(5),
+    "linear_svc": SVC(kernel="linear", C=0.025, random_state=42),
+    "rbf_svc": SVC(gamma=2, C=1, random_state=42),
+    "gaussian_process": GaussianProcessClassifier(1.0 * RBF(1.0), random_state=42),
+    "decision_tree": DecisionTreeClassifier(max_depth=5, random_state=42),
+    "random_forest": RandomForestClassifier(
+        max_depth=5, n_estimators=10, max_features=1, random_state=42
+    ),
+    "neural_net": MLPClassifier(alpha=1, max_iter=1000, random_state=42),
+    "adaboost": AdaBoostClassifier(random_state=42),
+    "naive_bayes": GaussianNB(),
+    "lda": LinearDiscriminantAnalysis(),
+    "qda": QuadraticDiscriminantAnalysis(),
+}
 
 from qibocal import update
 from qibocal.auto.operation import (
@@ -26,10 +54,11 @@ from qibocal.protocols.utils import (
 )
 
 from .utils import plot_confusion_matrix, plot_distribution
+from matplotlib.figure import Figure
 
 ROC_LENGHT = 800
 ROC_WIDTH = 800
-DEFAULT_CLASSIFIER = "qubit_fit"
+DEFAULT_CLASSIFIER = "lda"
 
 __all__ = [
     "single_shot_classification",
@@ -60,6 +89,21 @@ class SingleShotClassificationParameters(Parameters):
     Defaults to ``False``.
     """
 
+    classifier: str = DEFAULT_CLASSIFIER
+    """Classifier to use. Available options are:
+    - "knn"
+    - "linear_svc"
+    - "rbf_svc"
+    - "gaussian_process"
+    - "decision_tree"
+    - "random_forest"
+    - "neural_net"
+    - "adaboost"
+    - "naive_bayes"
+    - "lda"
+    - "qda" 
+    """
+
 
 @dataclass
 class SingleShotClassificationData(Data):
@@ -67,6 +111,8 @@ class SingleShotClassificationData(Data):
     """Number of shots."""
     qubit_frequencies: dict[QubitId, float] = field(default_factory=dict)
     """Qubit frequencies."""
+    classifier: str = DEFAULT_CLASSIFIER
+    """Classifier used."""
     data: dict[tuple[QubitId, int], npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -82,6 +128,7 @@ class SingleShotClassificationResults(Results):
     effective_temperature: dict[QubitId, float] = field(default_factory=dict)
     confusion_matrix: dict[QubitId, list[list[float]]] = field(default_factory=dict)
     states: dict[tuple[QubitId, int], list[float]] = field(default_factory=dict)
+    classifier: str = DEFAULT_CLASSIFIER
 
     def __contains__(self, key):
         return key in self.angle
@@ -140,6 +187,7 @@ def _acquisition(
 
     data = SingleShotClassificationData(
         nshots=params.nshots,
+        classifier=params.classifier,
         qubit_frequencies={
             qubit: platform.config(platform.qubits[qubit].drive).frequency
             for qubit in targets
@@ -179,20 +227,20 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         X = np.vstack([data.data[qubit, 0], data.data[qubit, 1]])
         y = np.array([0] * nshots + [1] * nshots)
 
-        lda = LinearDiscriminantAnalysis().fit(X, y)
-        w = lda.coef_[0]
-        b = lda.intercept_[0]
+        clf = classifiers[data.classifier].fit(X, y)
+        w = clf.coef_[0] if hasattr(clf, "coef_") else np.zeros(2)
+        b = clf.intercept_[0] if hasattr(clf, "intercept_") else 0.0
 
         angle[qubit] = -np.arctan2(w[1], w[0])
         threshold[qubit] = -b / np.linalg.norm(w)
 
-        pred_y = lda.predict(X)
+        pred_y = clf.predict(X)
         snr[qubit] = float(
             compute_snr(zeros=data.data[qubit, 0], ones=data.data[qubit, 1])
         )
         assignment_fidelity[qubit] = np.array(y == pred_y).sum() / 2 / nshots
         effective_temperature[qubit] = effective_qubit_temperature(
-            lda.predict(data.data[qubit, 0]),
+            clf.predict(data.data[qubit, 0]),
             qubit_frequency=data.qubit_frequencies[qubit],
             nshots=nshots,
         )
@@ -210,6 +258,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         snr=snr,
         confusion_matrix=confusion_matrix_,
         states=states,
+        classifier = data.classifier,
     )
 
 
@@ -232,6 +281,11 @@ def _plot(
         horizontal_spacing=0.02,
         vertical_spacing=0.02,
     )
+    nshots = len(data.data[target, 0])
+    X = np.vstack([data.data[target, 0], data.data[target, 1]])
+    y = np.array([0] * nshots + [1] * nshots)
+    clf = classifiers[data.classifier].fit(X, y) # Train this again to plot he boundary
+
     for state in [0, 1]:
         plot_distribution(
             fig=fig,
@@ -261,22 +315,46 @@ def _plot(
         max_x = np.max(np.stack([data.data[target, 0].T[0], data.data[target, 1].T[0]]))
         min_y = np.min(np.stack([data.data[target, 0].T[1], data.data[target, 1].T[1]]))
         max_y = np.max(np.stack([data.data[target, 0].T[1], data.data[target, 1].T[1]]))
-        xrange = np.linspace(min_x, max_x, 10000)
-        y = (-fit.threshold[target] + xrange * np.cos(fit.angle[target])) / np.sin(
-            fit.angle[target]
+        
+        if fit.threshold[target] is not None and fit.angle[target] is not None:
+            x = np.linspace(min_x, max_x, 100)
+            y = (-fit.threshold[target] + x * np.cos(fit.angle[target])) / np.sin(
+                fit.angle[target]
+            )
+            indices = np.where(np.logical_and(y > min_y, y < max_y))
+            fig.add_trace(
+                go.Scatter(
+                    x=x[indices],
+                    y=y[indices],
+                    name="Separation",
+                    line=dict(color="black", dash="dot"),
+                ),
+                row=2,
+                col=1,
+            )
+       
+        # Plot decision boundary manually (Decision boundary from sklearn uses matplotlib)
+        X1, X2 = np.meshgrid(
+            np.linspace(min_x, max_x, 200), np.linspace(min_y, max_y, 200)
         )
-        indices = np.where(np.logical_and(y > min_y, y < max_y))
+        Z = clf.predict(np.c_[X1.ravel(), X2.ravel()]).reshape(X1.shape)
+
         fig.add_trace(
-            go.Scatter(
-                x=xrange[indices],
-                y=y[indices],
-                name="Separation",
-                line=dict(color="black", dash="dot"),
+            go.Contour(
+            x=np.linspace(min_x, max_x, 200),
+            y=np.linspace(min_y, max_y, 200),
+            z=Z,
+            showscale=False,
+            colorscale=[colors[0], colors[1]],
+            hoverinfo="skip",
+            line_width=0,
+            opacity=0.3,
             ),
             row=2,
             col=1,
         )
 
+        # Average states
         for state in [0, 1]:
             fig.add_scatter(
                 x=[np.mean(data.data[target, state].T[0])],
