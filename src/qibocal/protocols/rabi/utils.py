@@ -9,7 +9,6 @@ from qibocal.update import replace
 
 from ..utils import COLORBAND, COLORBAND_LINE, angle_wrap, table_dict, table_html
 
-DAMPED_CONSTANT = 1.5
 """Scaling factor to recover amplitude from quantiles.
 
 Measuring intermediate quantiles is less noise sensitive then meauring extremal points
