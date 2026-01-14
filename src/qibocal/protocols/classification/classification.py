@@ -235,7 +235,10 @@ def _plot(
     for state in [0, 1]:
         plot_distribution(
             fig=fig,
-            data={"I": data.data[target, state].T[0], "Q": data.data[target, state].T[1]},
+            data={
+                "I": data.data[target, state].T[0],
+                "Q": data.data[target, state].T[1],
+            },
             color=colors[state],
             label=f"State {state}",
         )
