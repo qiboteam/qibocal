@@ -22,6 +22,7 @@ from ..utils import (
     merging,
     peaks_finder,
     reshaping_raw_signal,
+    scaling_global,
     scaling_slice,
     table_dict,
     table_html,
@@ -805,6 +806,22 @@ def periodic_boundary(angle: float) -> float:
     return (angle + np.pi) % (2 * np.pi) - np.pi
 
 
+def punchout_mask(matrix_z: np.ndarray) -> np.ndarray:
+    """Mask function for punchout experiment. First a gaussian filter is applied, then a minmax-scaling is performed;
+    sequently :func:`scipy.ndimage.gaussian_laplace` is applied and finally another mixmax-scaling."""
+
+    gauss_layer_1 = ndimage.gaussian_filter(matrix_z, 1)
+
+    # renormalizing
+    minmax_layer_1 = scaling_slice(gauss_layer_1, axis=1)
+
+    laplace_layer_1 = -ndimage.gaussian_laplace(minmax_layer_1, sigma=1)
+
+    global_minmax_layer_1 = scaling_global(laplace_layer_1)
+
+    return global_minmax_layer_1
+
+
 def punchout_extract_feature(
     x: np.ndarray,
     y: np.ndarray,
@@ -825,14 +842,10 @@ def punchout_extract_feature(
     reshaped_x, reshaped_y, reshaped_z = reshaping_raw_signal(x, y, z)
     reshaped_z = -reshaped_z if find_min else reshaped_z
 
-    z_masked = ndimage.gaussian_filter(reshaped_z, 1)
-    # z_masked = reshaped_z
-
-    # renormalizing
-    z_masked_norm = scaling_slice(z_masked, axis=1)
+    z_masked = punchout_mask(reshaped_z)
 
     # filter data using find_peaks
-    peaks_dict = peaks_finder(reshaped_x, reshaped_y, z_masked_norm)
+    peaks_dict = peaks_finder(reshaped_x, reshaped_y, z_masked)
     if len(peaks_dict.keys()) == 0:  # if find_peaks fails
         """
         Peaks Detection Failed:
