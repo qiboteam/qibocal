@@ -103,6 +103,10 @@ class ResonatorPunchoutAttenuationData(Data):
         ar["phase"] = phase.ravel()
         self.data[qubit] = np.rec.array(ar)
 
+    @property
+    def find_min(self):
+        return self.resonator_type != "2D"
+
 
 def _acquisition(
     params: ResonatorPunchoutAttenuationParameters,
