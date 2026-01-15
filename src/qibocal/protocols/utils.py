@@ -912,6 +912,15 @@ def merging(
     first_leftmost = first[:, np.argmin(first[1, :])]
     first_rightmost = first[:, np.argmax(first[1, :])]
     first_label = indexed_labels[first_leftmost[3].astype(int), 0]
+    # If the leftmost point is classified as noise (label = -1),
+    # we still use it as the initial cluster for the merge step.
+    # Its label is reassigned to a unique value;
+    # This avoids edge cases where true signal is fused first with one
+    # noise points and then since it takes -1 label gets fused with
+    # all other unmerged noise points
+    if first_label < 0:
+        max_lab = np.max(indexed_labels[:, 0]) + 1
+        first_label = max_lab
 
     active_clusters = {
         first_label: {
