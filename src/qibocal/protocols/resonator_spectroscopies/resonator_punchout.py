@@ -11,7 +11,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude
 
 from ..utils import HZ_TO_GHZ, scaling_slice, table_dict, table_html
-from .resonator_utils import punchout_extract_feature
+from .resonator_utils import fit_punchout, punchout_extract_feature
 
 __all__ = ["resonator_punchout", "ResonatorPunchoutData"]
 
@@ -145,43 +145,10 @@ def _acquisition(
     return data
 
 
-def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResults:
+def _fit(data: ResonatorPunchoutData) -> ResonatorPunchoutResults:
     """Fit frequency and attenuation at high and low power for a given resonator."""
 
-    readout_freqs = {}
-    bare_freqs = {}
-    ro_values = {}
-    successful_fit = {}
-
-    for qubit in data.qubits:
-        filtered_x, filtered_y = data.filtered_data(qubit)
-
-        if (
-            filtered_x is None or filtered_y is None
-        ):  # filtered_x and filtered_y have always the same shape
-            successful_fit[qubit] = False
-        else:
-            # new handling for detecting dressed and bare resonator frequencies
-            # by definition bare resonator frequency is given for high amplitude values,
-            # while by applying low amplitude readout signal we estimate dressed frequency.
-            freq_max = np.mean(filtered_x.max())
-            idx_max = filtered_x.argmax()
-            amp_max = np.mean(filtered_y[idx_max])
-
-            freq_min = np.mean(filtered_x.min())
-            idx_min = filtered_x.argmin()
-            amp_min = np.mean(filtered_y[idx_min])
-
-            readout_freq, bare_freq = (
-                (freq_min, freq_max) if amp_min < amp_max else (freq_max, freq_min)
-            )
-
-            ro_val = np.max(filtered_y[filtered_x == readout_freq])
-
-            readout_freqs[qubit] = readout_freq
-            bare_freqs[qubit] = bare_freq
-            ro_values[qubit] = ro_val
-            successful_fit[qubit] = True
+    bare_freqs, readout_freqs, ro_values, successful_fit = fit_punchout(data)
 
     return ResonatorPunchoutResults(
         readout_frequency=readout_freqs,
