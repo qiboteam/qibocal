@@ -220,6 +220,7 @@ def _plot(
 ):
     fitting_report = ""
     figures = []
+    colors = ["red", "blue"]
     fig = make_subplots(
         rows=2,
         cols=2,
@@ -231,19 +232,16 @@ def _plot(
         horizontal_spacing=0.02,
         vertical_spacing=0.02,
     )
-    plot_distribution(
-        fig=fig,
-        data={"I": data.data[target, 0].T[0], "Q": data.data[target, 0].T[1]},
-        color="red",
-        label="State 0",
-    )
-
-    plot_distribution(
-        fig=fig,
-        data={"I": data.data[target, 1].T[0], "Q": data.data[target, 1].T[1]},
-        color="blue",
-        label="State 1",
-    )
+    for state in [0, 1]:
+        plot_distribution(
+            fig=fig,
+            data={
+                "I": data.data[target, state].T[0],
+                "Q": data.data[target, state].T[1],
+            },
+            color=colors[state],
+            label=f"State {state}",
+        )
 
     fig.update_layout(
         hovermode="closest",
@@ -254,6 +252,7 @@ def _plot(
 
     fig.update_xaxes(showticklabels=False, row=1, col=1)
     fig.update_yaxes(showticklabels=False, row=2, col=2)
+    fig.update_yaxes(scaleanchor="x", scaleratio=1, row=2, col=1)
 
     # fig0.add_traces(fig1.data)
     figures.append(fig)
@@ -277,7 +276,18 @@ def _plot(
             row=2,
             col=1,
         )
-        # TODO: Plot mean point
+
+        for state in [0, 1]:
+            fig.add_scatter(
+                x=[np.mean(data.data[target, state].T[0])],
+                y=[np.mean(data.data[target, state].T[1])],
+                mode="markers",
+                marker=dict(color=f"dark{colors[state]}", symbol="x", size=12),
+                name=f"Average State |{state}>",
+                row=2,
+                col=1,
+            )
+
         fitting_report = table_html(
             table_dict(
                 target,
