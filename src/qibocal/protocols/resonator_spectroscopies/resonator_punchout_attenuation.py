@@ -107,6 +107,7 @@ class ResonatorPunchoutAttenuationData(Data):
     def find_min(self):
         return self.resonator_type != "2D"
 
+
 def _acquisition(
     params: ResonatorPunchoutAttenuationParameters,
     platform: CalibrationPlatform,
