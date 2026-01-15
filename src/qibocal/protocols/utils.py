@@ -912,6 +912,9 @@ def merging(
     first_leftmost = first[:, np.argmin(first[1, :])]
     first_rightmost = first[:, np.argmax(first[1, :])]
     first_label = indexed_labels[first_leftmost[3].astype(int), 0]
+    if first_label < 0:
+        max_lab = np.max(indexed_labels[:, 0]) + 1
+        first_label = max_lab
 
     active_clusters = {
         first_label: {
