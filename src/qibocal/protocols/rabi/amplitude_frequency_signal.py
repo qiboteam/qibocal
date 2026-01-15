@@ -24,7 +24,7 @@ from qibocal.protocols.utils import (
 
 from ...result import magnitude, phase
 from .amplitude_signal import RabiAmplitudeSignalResults
-from .utils import fit_amplitude_function, sequence_amplitude
+from .utils import QUANTILE_CONSTANT, fit_amplitude_function, sequence_amplitude
 
 __all__ = [
     "RabiAmplitudeSignalResults",
@@ -194,7 +194,12 @@ def _fit(data: RabiAmplitudeFreqSignalData) -> RabiAmplitudeFrequencySignalResul
         y = (y - y_min) / (y_max - y_min)
 
         period = fallback_period(guess_period(x, y))
-        pguess = [0.5, 0.5, period, 0]
+        median_sig = np.median(y)
+        q80 = np.quantile(y, 0.8)
+        q20 = np.quantile(y, 0.2)
+        amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT
+
+        pguess = [median_sig, amplitude_guess, period, np.pi / 2]
 
         try:
             popt, _, pi_pulse_parameter = fit_amplitude_function(
