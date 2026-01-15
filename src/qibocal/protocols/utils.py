@@ -57,12 +57,6 @@ class FeatExtractionError(Exception):
         super().__init__(*args)
 
 
-class FeatExtractionError(Exception):
-    def __init__(self, msg: str, *args):
-        print(msg)
-        super().__init__(*args)
-
-
 class PowerLevel(str, Enum):
     """Power Regime for Resonator Spectroscopy"""
 
