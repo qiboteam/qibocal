@@ -28,7 +28,7 @@ from .amplitude_frequency_signal import (
     _update,
 )
 from .utils import (
-    DAMPED_CONSTANT,
+    QUANTILE_CONSTANT,
     fit_amplitude_function,
     rabi_amplitude_function,
     sequence_amplitude,
@@ -163,7 +163,7 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         median_sig = np.median(y)
         q80 = np.quantile(y, 0.8)
         q20 = np.quantile(y, 0.2)
-        amplitude_guess = abs(q80 - q20) / DAMPED_CONSTANT
+        amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT
 
         pguess = [median_sig, amplitude_guess, period, np.pi]
 

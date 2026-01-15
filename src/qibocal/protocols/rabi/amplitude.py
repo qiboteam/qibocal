@@ -112,7 +112,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         median_sig = np.median(y)
         q80 = np.quantile(y, 0.8)
         q20 = np.quantile(y, 0.2)
-        amplitude_guess = abs(q80 - q20) / utils.DAMPED_CONSTANT
+        amplitude_guess = abs(q80 - q20) / utils.QUANTILE_CONSTANT
 
         pguess = [median_sig, amplitude_guess, period, np.pi]
         try:

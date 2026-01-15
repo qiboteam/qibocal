@@ -16,6 +16,18 @@ THRESHOLD = 0.5
 """Threshold parameters for find_peaks to guess frequency for sinusoidal fit."""
 DAMPED_CONSTANT = 1.5
 """See :const:`rabi.utils.DAMPED_CONSTANT` for details.
+
+In general in Ramsey it's intended to observe the decay of the signal due to decoherence, hence we
+need to correct and decrease a little the value of :const:`rabi.utils.DAMPED_CONSTANT`;
+Indeed, for damped oscillations, the factor is not easily determined, since the
+value associated to a certian quantile depends on the observation window extent, and the
+ratio between the decay rate and the oscillation.
+
+Assuming a mild decay, and we can approximate this factor with the same one for the
+pure oscillation. This can be assumed to be slightly decreased because of the dampening,
+but there is no general control about how much.
+By reducing the amplitude by this rough 30%, the estimation will lend closer to the
+actual amplitude. We rely anyhow on the fit to determine the precise value.
 """
 
 
