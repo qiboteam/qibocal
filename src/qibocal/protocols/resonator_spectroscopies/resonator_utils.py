@@ -2,6 +2,7 @@ import numpy as np
 import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
+from scipy import ndimage
 from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import leastsq, minimize
 
@@ -11,12 +12,24 @@ from ..utils import (
     COLORBAND,
     COLORBAND_LINE,
     DELAY_FIT_PERCENTAGE,
+    DISTANCE_XY,
+    DISTANCE_Z,
     HZ_TO_GHZ,
+    FeatExtractionError,
     PowerLevel,
+    clustering,
     lorentzian,
+    merging,
+    peaks_finder,
+    reshaping_raw_signal,
+    scaling_global,
+    scaling_slice,
     table_dict,
     table_html,
 )
+
+# from .resonator_punchout import ResonatorPunchoutData
+# from .resonator_punchout_attenuation import ResonatorPunchoutAttenuationData
 
 PHASES_THRESHOLD_PERCENTAGE = 80
 r"""Threshold percentage to ensure the phase data covers a significant portion of the full 2 :math:\pi circle."""
@@ -794,3 +807,107 @@ def phase_centered(
 def periodic_boundary(angle: float) -> float:
     """Maps arbitrary `angle` (in rad) to interval [-np.pi, np.pi)."""
     return (angle + np.pi) % (2 * np.pi) - np.pi
+
+
+def punchout_mask(matrix_z: np.ndarray) -> np.ndarray:
+    """Mask function for punchout experiment. First a gaussian filter is applied, then a minmax-scaling is performed;
+    sequently :func:`scipy.ndimage.gaussian_laplace` is applied and finally another mixmax-scaling."""
+
+    gauss_layer_1 = ndimage.gaussian_filter(matrix_z, 1)
+
+    # renormalizing
+    minmax_layer_1 = scaling_slice(gauss_layer_1, axis=1)
+
+    laplace_layer_1 = -ndimage.gaussian_laplace(minmax_layer_1, sigma=1)
+
+    global_minmax_layer_1 = scaling_global(laplace_layer_1)
+
+    return global_minmax_layer_1
+
+
+def punchout_extract_feature(
+    x: np.ndarray,
+    y: np.ndarray,
+    z: np.ndarray,
+    find_min: bool,
+    min_points: int = 5,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Extract features of the signal by filtering out background noise.
+
+    It first applies a custom filter mask (see `custom_filter_mask`)
+    and then finds the biggest peak for each DC bias value;
+    the masked signal is then clustered (see `clustering`) in order to classify the relevant signal for the experiment.
+    If `find_min` is set to `True` it finds minimum peaks of the input signal;
+    `min_points` is the minimum number of points for a cluster to be considered relevant signal.
+    Position of the relevant signal is returned.
+    """
+
+    reshaped_x, reshaped_y, reshaped_z = reshaping_raw_signal(x, y, z)
+    reshaped_z = -reshaped_z if find_min else reshaped_z
+
+    z_masked = punchout_mask(reshaped_z)
+
+    # filter data using find_peaks
+    peaks_dict = peaks_finder(reshaped_x, reshaped_y, z_masked)
+    if len(peaks_dict.keys()) == 0:  # if find_peaks fails
+        """
+        Peaks Detection Failed:
+        no peaks found in peaks_finder routine.
+        """
+        return None, None
+
+    peaks, labels = clustering(peaks_dict, z_masked)
+
+    # merging close clusters
+    try:
+        signal_clusters = merging(
+            peaks,
+            labels,
+            min_points,
+            distance_xy=DISTANCE_XY,
+            distance_z=DISTANCE_Z,
+        )
+
+    except FeatExtractionError:
+        return None, None
+
+    medians = np.array(
+        [[lab, np.median(cl["cluster"][2, :])] for lab, cl in signal_clusters.items()]
+    )
+    sorted_medians = sorted(medians, key=lambda x: x[1], reverse=True)
+
+    signal_labels = np.zeros(labels.size, dtype=bool)
+    # for resonator punchout protocol we cannot merge efficiently th two branches of the whole signal, hence we
+    # select the two clusters that maximise the median value of the signal
+    for signal_idx, _ in sorted_medians[:2]:
+        signal_labels[signal_clusters[signal_idx]["cluster"][-1, :].astype(int)] = True
+
+    return peaks_dict["x"]["val"][signal_labels], peaks_dict["y"]["val"][signal_labels]
+
+
+def fit_punchout(filtered_x, filtered_y):
+    """Fit frequency and attenuation at high and low power for a given resonator."""
+
+    if (
+        filtered_x is None or filtered_y is None
+    ):  # filtered_x and filtered_y have always the same shape
+        return [False] * 4
+    else:
+        # new handling for detecting dressed and bare resonator frequencies
+        # by definition bare resonator frequency is given for high amplitude values,
+        # while by applying low amplitude readout signal we estimate dressed frequency.
+        freq_max = np.mean(filtered_x.max())
+        idx_max = filtered_x.argmax()
+        y_max = np.mean(filtered_y[idx_max])
+
+        freq_min = np.mean(filtered_x.min())
+        idx_min = filtered_x.argmin()
+        y_min = np.mean(filtered_y[idx_min])
+
+        readout_freq, bare_freq = (
+            (freq_min, freq_max) if y_min < y_max else (freq_max, freq_min)
+        )
+
+        ro_val = np.mean(filtered_y[filtered_x == readout_freq])
+
+    return bare_freq, readout_freq, ro_val, True
