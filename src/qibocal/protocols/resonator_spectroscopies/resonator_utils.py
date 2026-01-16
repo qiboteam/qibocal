@@ -6,7 +6,7 @@ from scipy import ndimage
 from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import leastsq, minimize
 
-from qibocal.auto.operation import Data, Results
+from qibocal.auto.operation import Results
 
 from ..utils import (
     COLORBAND,
@@ -27,6 +27,9 @@ from ..utils import (
     table_dict,
     table_html,
 )
+
+# from .resonator_punchout import ResonatorPunchoutData
+# from .resonator_punchout_attenuation import ResonatorPunchoutAttenuationData
 
 PHASES_THRESHOLD_PERCENTAGE = 80
 r"""Threshold percentage to ensure the phase data covers a significant portion of the full 2 :math:\pi circle."""
@@ -882,42 +885,29 @@ def punchout_extract_feature(
     return peaks_dict["x"]["val"][signal_labels], peaks_dict["y"]["val"][signal_labels]
 
 
-def fit_punchout(data: Data):
+def fit_punchout(filtered_x, filtered_y):
     """Fit frequency and attenuation at high and low power for a given resonator."""
 
-    readout_freqs = {}
-    bare_freqs = {}
-    ro_values = {}
-    successful_fit = {}
+    if (
+        filtered_x is None or filtered_y is None
+    ):  # filtered_x and filtered_y have always the same shape
+        return [False] * 4
+    else:
+        # new handling for detecting dressed and bare resonator frequencies
+        # by definition bare resonator frequency is given for high amplitude values,
+        # while by applying low amplitude readout signal we estimate dressed frequency.
+        freq_max = np.mean(filtered_x.max())
+        idx_max = filtered_x.argmax()
+        y_max = np.mean(filtered_y[idx_max])
 
-    for qubit in data.qubits:
-        filtered_x, filtered_y = data.filtered_data(qubit)
+        freq_min = np.mean(filtered_x.min())
+        idx_min = filtered_x.argmin()
+        y_min = np.mean(filtered_y[idx_min])
 
-        if (
-            filtered_x is None or filtered_y is None
-        ):  # filtered_x and filtered_y have always the same shape
-            successful_fit[qubit] = False
-        else:
-            # new handling for detecting dressed and bare resonator frequencies
-            # by definition bare resonator frequency is given for high amplitude values,
-            # while by applying low amplitude readout signal we estimate dressed frequency.
-            freq_max = np.mean(filtered_x.max())
-            idx_max = filtered_x.argmax()
-            amp_max = np.mean(filtered_y[idx_max])
+        readout_freq, bare_freq = (
+            (freq_min, freq_max) if y_min < y_max else (freq_max, freq_min)
+        )
 
-            freq_min = np.mean(filtered_x.min())
-            idx_min = filtered_x.argmin()
-            amp_min = np.mean(filtered_y[idx_min])
+        ro_val = np.mean(filtered_y[filtered_x == readout_freq])
 
-            readout_freq, bare_freq = (
-                (freq_min, freq_max) if amp_min < amp_max else (freq_max, freq_min)
-            )
-
-            ro_val = np.max(filtered_y[filtered_x == readout_freq])
-
-            readout_freqs[qubit] = readout_freq
-            bare_freqs[qubit] = bare_freq
-            ro_values[qubit] = ro_val
-            successful_fit[qubit] = True
-
-    return bare_freqs, readout_freqs, ro_values, successful_fit
+    return bare_freq, readout_freq, ro_val, True
