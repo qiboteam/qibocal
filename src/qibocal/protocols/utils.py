@@ -153,6 +153,86 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         log.warning(f"Lorentzian fit not successful due to {e}")
 
 
+def lorentzian_dispersive(frequency, amplitude, center, sigma, offset, alpha):
+    """Lorentzian function with an arbitary linear offset background term."""
+    return (amplitude / np.pi) * (1 + (frequency - center) / center * alpha) * (
+        sigma / ((frequency - center) ** 2 + sigma**2)
+    ) + offset
+
+
+def lorentzian_dispersive_fit(data, resonator_type=None, fit=None):
+    frequencies = data.freq * HZ_TO_GHZ
+    voltages = data.signal
+
+    guess_alpha = (voltages[-1] - voltages[0]) / (
+        (frequencies[-1] - frequencies[0]) / np.mean(frequencies)
+    )
+    guess_offset = np.mean(
+        voltages[np.abs(voltages - np.mean(voltages)) < np.std(voltages)]
+    )
+    if resonator_type == "3D":
+        peaks, _ = find_peaks(
+            voltages, height=(np.max(voltages) - np.min(voltages)) * 0.2
+        )
+    else:
+        peaks, _ = find_peaks(
+            np.min(voltages) - voltages,
+            height=np.max(np.min(voltages) - voltages) * 0.2,
+        )
+
+    if len(peaks) == 0:
+        guess_center = frequencies[np.argmin(voltages)]
+        guess_peak_voltage = voltages[np.argmin(voltages)]
+    else:
+        guess_center = frequencies[peaks[0]]
+        guess_peak_voltage = voltages[peaks[0]]
+
+    half_volt = (guess_peak_voltage + guess_offset) / 2
+    half_max_freq = frequencies[np.argmin(np.abs(voltages - half_volt))]
+
+    guess_sigma = abs(guess_center - half_max_freq)
+    guess_amplitude = (np.max(voltages) - guess_peak_voltage) * guess_sigma * np.pi
+
+    initial_parameters = [
+        guess_amplitude,
+        guess_center,
+        guess_sigma,
+        guess_offset,
+        guess_alpha,
+    ]
+
+    # fit the model with the data and guessed parameters
+    try:
+        if hasattr(data, "error_signal"):
+            if not np.isnan(data.error_signal).any():
+                fit_parameters, perr = curve_fit(
+                    lorentzian_dispersive,
+                    frequencies,
+                    voltages,
+                    p0=initial_parameters,
+                    sigma=data.error_signal,
+                )
+                perr = np.sqrt(np.diag(perr)).tolist()
+                model_parameters = list(fit_parameters)
+        else:
+            fit_parameters, perr = curve_fit(
+                lorentzian_dispersive,
+                frequencies,
+                voltages,
+                p0=initial_parameters,
+            )
+            perr = [0] * 5
+            model_parameters = list(fit_parameters)
+
+        return model_parameters[1] * GHZ_TO_HZ, model_parameters, perr
+    except RuntimeError as e:
+        log.warning(
+            f"Lorentzian dispersive fit not successful due to a runtime error: {e}"
+        )
+    except Exception as e:
+        log.warning(f"Lorentzian dispersive fit not successful:{e}")
+
+
 class DcFilteredConfig(Config):
     """Dummy config for dc with filters.
 
