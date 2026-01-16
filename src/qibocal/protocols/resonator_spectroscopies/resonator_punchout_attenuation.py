@@ -12,7 +12,7 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
-from ..utils import HZ_TO_GHZ, scaling_slice, table_dict, table_html
+from ..utils import HZ_TO_GHZ, table_dict, table_html
 from .resonator_utils import fit_punchout, punchout_extract_feature
 
 __all__ = ["resonator_punchout_attenuation", "ResonatorPunchoutAttenuationData"]
@@ -97,15 +97,6 @@ class ResonatorPunchoutAttenuationData(Data):
         x, y, _ = self.grid(qubit)
         return punchout_extract_feature(x, y, self.signal(qubit).ravel(), self.find_min)
 
-    def normalized_signal(self, qubit: QubitId) -> np.ndarray:
-        signal = self.signal(qubit).reshape(
-            (
-                len(np.unique(self.attenuations)),
-                len(np.unique(self.frequencies[qubit])),
-            )
-        )
-        return scaling_slice(signal, axis=1)
-
 
 def _acquisition(
     params: ResonatorPunchoutAttenuationParameters,
@@ -121,8 +112,9 @@ def _acquisition(
         ResonatorPunchoutAttenuationData
     """
 
-    assert params.min_attenuation <= 0, """min_attenuation is always <=0"""
-    assert params.max_attenuation >= 0, """max_attenuation is always >=0"""
+    assert params.max_attenuation >= params.min_attenuation, (
+        """max_attenuation is always >= min_attenuation"""
+    )
     assert params.step_attenuation >= 0, """step_attenuation is always >=0"""
 
     # Get readout LO channels for each qubit
@@ -250,7 +242,7 @@ def _plot(
         ),
     )
 
-    qubit_signal = data.normalized_signal(target).ravel()
+    qubit_signal = data.signal(target).ravel()
     qubit_phase = data.phase(target)
     frequencies, attenuations, _ = data.grid(target)
     frequencies *= HZ_TO_GHZ
@@ -285,7 +277,7 @@ def _plot(
         fig.add_trace(
             go.Scatter(
                 x=[fit.readout_frequency[target] * HZ_TO_GHZ],
-                y=[fit.readout_attenuation[target]],
+                y=[-fit.readout_attenuation[target]],
                 mode="markers",
                 marker=dict(
                     size=8,
