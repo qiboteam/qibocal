@@ -52,10 +52,11 @@ class ResonatorPunchoutData(Data):
 
     resonator_type: str
     """Resonator type."""
-    amplitudes: dict[QubitId, list] = field(default_factory=dict)
+    # TODO: maybe we want different amplitudes for each qubit (if possible) ?
+    amplitudes: list = None
     frequencies: dict[QubitId, list] = field(default_factory=dict)
     data: dict[QubitId, np.ndarray] = field(default_factory=dict)
-    """Raw data acquired."""
+    """Raw data acquired, IQ components of the readout signal."""
 
     @property
     def find_min(self) -> bool:
@@ -99,7 +100,6 @@ def _acquisition(
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     ro_pulses = {}
-    amplitudes = {}
     freq_sweepers = {}
     sequence = PulseSequence()
     for qubit in targets:
@@ -107,7 +107,6 @@ def _acquisition(
         ro_channel, ro_pulse = natives.MZ()[0]
 
         ro_pulses[qubit] = ro_pulse
-        amplitudes[qubit] = ro_pulse.probe.amplitude
         sequence.append((ro_channel, ro_pulse))
 
         probe = platform.qubits[qubit].probe
@@ -149,7 +148,21 @@ def _acquisition(
 def _fit(data: ResonatorPunchoutData) -> ResonatorPunchoutResults:
     """Fit frequency and attenuation at high and low power for a given resonator."""
 
-    bare_freqs, readout_freqs, ro_values, successful_fit = fit_punchout(data)
+    readout_freqs = {}
+    bare_freqs = {}
+    ro_values = {}
+    successful_fit = {}
+
+    for qubit in data.qubits:
+        filtered_x, filtered_y = data.filtered_data(qubit)
+
+        bare_freq, readout_freq, ro_val, fit_flag = fit_punchout(filtered_x, filtered_y)
+
+        if fit_flag:
+            readout_freqs[qubit] = readout_freq
+            bare_freqs[qubit] = bare_freq
+            ro_values[qubit] = ro_val
+        successful_fit[qubit] = fit_flag
 
     return ResonatorPunchoutResults(
         readout_frequency=readout_freqs,
