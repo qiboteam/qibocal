@@ -125,12 +125,14 @@ def _acquisition(
     # Get readout LO channels for each qubit
     ro_los = {}
     ro_pulses = {}
+    ro_channels = {}
     original_attenuations = {}
 
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
         ro_channel, ro_pulse = natives.MZ()[0]
         ro_pulses[qubit] = ro_pulse
+        ro_channels[qubit] = ro_channel
 
         # Get the LO channel for this readout
         probe = platform.qubits[qubit].probe
@@ -163,8 +165,8 @@ def _acquisition(
 
         for qubit in targets:
             natives = platform.natives.single_qubit[qubit]
-            ro_channel, ro_pulse = natives.MZ()[0]
-            sequence.append((ro_channel, ro_pulse))
+            # ro_channel, ro_pulse = natives.MZ()[0]
+            sequence.append((ro_channels[qubit], ro_pulses[qubit]))
 
             # Create frequency sweeper
             probe = platform.qubits[qubit].probe
@@ -189,7 +191,7 @@ def _acquisition(
         # Collect results for this attenuation level
         for qubit in targets:
             ro_pulse = ro_pulses[qubit]
-            result = list(results.items())[0][1]
+            result = results[ro_pulse.id]
             all_signals[qubit].append(magnitude(result))
             all_phases[qubit].append(phase(result))
 
