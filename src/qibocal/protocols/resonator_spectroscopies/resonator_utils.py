@@ -939,7 +939,7 @@ def fit_punchout(filtered_x, filtered_y):
     ):  # filtered_x and filtered_y have always the same shape
         return [False] * 4
 
-    window, saturation_flag = punchout_saturation(filtered_x, SATURATION_TOLERANCE)
+    window, saturation_flag = punchout_saturation(filtered_y, SATURATION_TOLERANCE)
 
     if not saturation_flag:
         log.warning(
