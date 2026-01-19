@@ -345,7 +345,7 @@ def fit_length_function(
         p0=guess,
         maxfev=100000,
         bounds=(
-            [0, 0, 0, -np.inf, 0],
+            [0, -1 if signal else 0, 0, -np.inf, 0],
             [1, 1, np.inf, np.inf, np.inf],
         ),
         sigma=sigma,
