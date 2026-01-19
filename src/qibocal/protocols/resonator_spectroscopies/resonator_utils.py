@@ -39,9 +39,9 @@ STD_DEV_GAUSSIAN_KERNEL = 30
 """Standard deviation for the Gaussian kernel."""
 PHASE_ELEMENTS = 5
 """Number of values to better guess :math:`\theta` (in rad) in the phase fit function."""
-SATURATION_WINDOW = 10
+SATURATION_WINDOW_RATIO = 4
 """The length of the window for evaluating the effective saturation of the punchout signal."""
-SAVGOL_FILTER_WINDOW = 5
+SAVGOL_FILTER_WINDOW_RATIO = 10
 """The length of the Sav-Gol filter window."""
 SAVGOL_FILTER_DERIVATIVE = 1
 """The order of the derivative to compute."""
@@ -899,15 +899,18 @@ def punchout_extract_feature(
 def punchout_saturation(peaks_x, tol: float = SATURATION_TOLERANCE):
     """Checking if punchout experiment saturated, hence the results are reliable."""
 
+    sat_window = int(len(peaks_x) / SATURATION_WINDOW_RATIO)
+    savgol_window = int(len(peaks_x) / SAVGOL_FILTER_WINDOW_RATIO)
+
     savgol_signal = savgol_filter(
         peaks_x,
-        window_length=SAVGOL_FILTER_WINDOW,
+        window_length=savgol_window,
         polyorder=SAVGOL_FILTER_ORDER,
         deriv=SAVGOL_FILTER_DERIVATIVE,
     )
 
-    low_y_sat = savgol_signal[:SATURATION_WINDOW]
-    high_y_sat = savgol_signal[-SATURATION_WINDOW:]
+    low_y_sat = savgol_signal[:sat_window]
+    high_y_sat = savgol_signal[-sat_window:]
 
     return np.median(low_y_sat) <= tol and np.median(high_y_sat) <= tol
 
@@ -929,10 +932,10 @@ def fit_punchout(filtered_x, filtered_y):
     # new handling for detecting dressed and bare resonator frequencies
     # by definition bare resonator frequency is given for high amplitude (low attenuation) values,
     # while by applying low amplitude (high attenuation) readout signal we estimate dressed frequency.
-    freq_high_limit = np.median(filtered_x[-SATURATION_WINDOW:])
+    freq_high_limit = np.median(filtered_x[-SATURATION_WINDOW_RATIO:])
 
-    low_limit = np.median(filtered_y[:SATURATION_WINDOW])
-    freq_low_limit = np.median(filtered_x[:SATURATION_WINDOW])
+    low_limit = np.median(filtered_y[:SATURATION_WINDOW_RATIO])
+    freq_low_limit = np.median(filtered_x[:SATURATION_WINDOW_RATIO])
 
     readout_freq, bare_freq = freq_low_limit, freq_high_limit
 
