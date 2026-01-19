@@ -147,7 +147,7 @@ def _fit(data: RabiLengthSignalData) -> RabiLengthSignalResults:
         x = (rabi_parameter - x_min) / (x_max - x_min)
         y = (voltages - y_min) / (y_max - y_min) - 1 / 2
 
-        pguess = utils.rabi_initial_guess(x, y, "length")
+        pguess = utils.rabi_initial_guess(x, y, "length", signal=True)
 
         try:
             popt, _, pi_pulse_parameter = utils.fit_length_function(

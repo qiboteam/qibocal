@@ -17,7 +17,7 @@ from ..utils import (
     table_html,
 )
 
-QUANTILE_CONSTANT = 1.6
+QUANTILE_CONSTANT = 1.5
 """Scaling factor to recover signal amplitude from quantiles.
 
 Measuring intermediate quantiles is less noise sensitive then meauring extremal points
@@ -52,17 +52,18 @@ def rabi_length_function(x, offset, amplitude, period, phase, t2_inv):
     )
 
 
-def rabi_initial_guess(x, y, experiment: str):
+def rabi_initial_guess(x, y, experiment: str, signal: bool):
     period = fallback_period(guess_period(x, y))
     median_sig = np.median(y)
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)
     amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT
+    phase_guess = np.pi if not signal else np.pi / 2
 
     if experiment == "length":
-        return [median_sig, amplitude_guess, period, np.pi, 0]
+        return [median_sig, amplitude_guess, period, phase_guess, 0]
     else:
-        return [median_sig, amplitude_guess, period, np.pi]
+        return [median_sig, amplitude_guess, period, phase_guess]
 
 
 def plot(data, qubit, fit, rx90):
@@ -345,7 +346,7 @@ def fit_length_function(
         p0=guess,
         maxfev=100000,
         bounds=(
-            [0, 0, 0, -np.inf, 0],
+            [0, -1 if signal else 0, 0, -np.inf, 0],
             [1, 1, np.inf, np.inf, np.inf],
         ),
         sigma=sigma,

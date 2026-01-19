@@ -167,7 +167,7 @@ def _fit(data: RabiLengthFreqData) -> RabiLengthFrequencyResults:
         x = (durations - x_min) / (x_max - x_min)
         y = (y - y_min) / (y_max - y_min)
 
-        pguess = rabi_initial_guess(x, y, "length")
+        pguess = rabi_initial_guess(x, y, "length", signal=False)
 
         try:
             popt, perr, pi_pulse_parameter = fit_length_function(
