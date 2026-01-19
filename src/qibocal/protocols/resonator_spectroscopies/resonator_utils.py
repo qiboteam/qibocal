@@ -915,13 +915,13 @@ def punchout_saturation(peaks, tol: float):
 
     low_sat = []
     for x in filtered_signal:
-        if x <= tol:
+        if abs(x) <= tol:
             low_sat.append(x)
         else:
             break
     high_sat = []
     for x in filtered_signal[::-1]:
-        if x <= tol:
+        if abs(x) <= tol:
             high_sat.append(x)
         else:
             break
@@ -953,7 +953,7 @@ def fit_punchout(filtered_x, filtered_y):
     freq_high_limit = np.median(filtered_x[-window:])
 
     low_limit = np.median(filtered_y[:window])
-    freq_low_limit = np.max(filtered_x[:window])
+    freq_low_limit = np.median(filtered_x[:window])
 
     readout_freq, bare_freq = freq_low_limit, freq_high_limit
 
