@@ -5,8 +5,10 @@ from plotly.subplots import make_subplots
 from scipy import ndimage
 from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import leastsq, minimize
+from scipy.signal import savgol_filter
 
 from qibocal.auto.operation import Results
+from qibocal.config import log
 
 from ..utils import (
     COLORBAND,
@@ -37,6 +39,15 @@ STD_DEV_GAUSSIAN_KERNEL = 30
 """Standard deviation for the Gaussian kernel."""
 PHASE_ELEMENTS = 5
 """Number of values to better guess :math:`\theta` (in rad) in the phase fit function."""
+SATURATION_WINDOW = 10
+"""The length of the window for evaluating the effective saturation of the punchout signal."""
+SAVGOL_FILTER_WINDOW = 5
+"""The length of the Sav-Gol filter window."""
+SAVGOL_FILTER_DERIVATIVE = 1
+"""The order of the derivative to compute."""
+SAVGOL_FILTER_ORDER = 3
+"""The order of the polynomial used to fit the samples."""
+SATURATION_TOLERANCE = 1e-3
 
 
 def s21(
@@ -885,6 +896,22 @@ def punchout_extract_feature(
     return peaks_dict["x"]["val"][signal_labels], peaks_dict["y"]["val"][signal_labels]
 
 
+def punchout_saturation(peaks_x, tol: float = SATURATION_TOLERANCE):
+    """Checking if punchout experiment saturated, hence the results are reliable."""
+
+    savgol_signal = savgol_filter(
+        peaks_x,
+        window_length=SAVGOL_FILTER_WINDOW,
+        polyorder=SAVGOL_FILTER_ORDER,
+        deriv=SAVGOL_FILTER_DERIVATIVE,
+    )
+
+    low_y_sat = savgol_signal[:SATURATION_WINDOW]
+    high_y_sat = savgol_signal[-SATURATION_WINDOW:]
+
+    return np.median(low_y_sat) <= tol and np.median(high_y_sat) <= tol
+
+
 def fit_punchout(filtered_x, filtered_y):
     """Fit frequency and attenuation at high and low power for a given resonator."""
 
@@ -892,22 +919,23 @@ def fit_punchout(filtered_x, filtered_y):
         filtered_x is None or filtered_y is None
     ):  # filtered_x and filtered_y have always the same shape
         return [False] * 4
-    else:
-        # new handling for detecting dressed and bare resonator frequencies
-        # by definition bare resonator frequency is given for high amplitude values,
-        # while by applying low amplitude readout signal we estimate dressed frequency.
-        freq_max = np.mean(filtered_x.max())
-        idx_max = filtered_x.argmax()
-        y_max = np.mean(filtered_y[idx_max])
 
-        freq_min = np.mean(filtered_x.min())
-        idx_min = filtered_x.argmin()
-        y_min = np.mean(filtered_y[idx_min])
-
-        readout_freq, bare_freq = (
-            (freq_min, freq_max) if y_min < y_max else (freq_max, freq_min)
+    if not punchout_saturation(filtered_x, SATURATION_TOLERANCE):
+        log.warning(
+            "Punchout did not saturate for high input values, increase sweep values."
         )
+        return [False] * 4
 
-        ro_val = np.mean(filtered_y[filtered_x == readout_freq])
+    # new handling for detecting dressed and bare resonator frequencies
+    # by definition bare resonator frequency is given for high amplitude (low attenuation) values,
+    # while by applying low amplitude (high attenuation) readout signal we estimate dressed frequency.
+    freq_high_limit = np.median(filtered_x[-SATURATION_WINDOW:])
+
+    low_limit = np.median(filtered_y[:SATURATION_WINDOW])
+    freq_low_limit = np.median(filtered_x[:SATURATION_WINDOW])
+
+    readout_freq, bare_freq = freq_low_limit, freq_high_limit
+
+    ro_val = low_limit
 
     return bare_freq, readout_freq, ro_val, True
