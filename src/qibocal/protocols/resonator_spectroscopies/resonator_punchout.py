@@ -84,7 +84,7 @@ class ResonatorPunchoutData(Data):
         if self.filtered_signal is None:
             x, y, z = self.grid(qubit)
             self.filtered_signal = punchout_extract_feature(x, y, z, self.find_min)
-        return self.filter
+        return self.filtered_signal
 
 
 def _acquisition(
