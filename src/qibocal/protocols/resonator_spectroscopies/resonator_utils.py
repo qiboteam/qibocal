@@ -47,7 +47,7 @@ SAVGOL_FILTER_DERIVATIVE = 1
 """The order of the derivative to compute."""
 SAVGOL_FILTER_ORDER = 3
 """The order of the polynomial used to fit the samples."""
-SATURATION_TOLERANCE = 2e-3
+SATURATION_TOLERANCE = 1.5e-3
 
 
 def s21(
@@ -903,8 +903,16 @@ def moving_average(x, window):
 def punchout_saturation(peaks, tol: float):
     """Checking if punchout experiment saturated, hence the results are reliable."""
 
-    sat_window = len(peaks) // SATURATION_WINDOW_RATIO
-    savgol_window = len(peaks) // SAVGOL_FILTER_WINDOW_RATIO
+    sat_window = (
+        len(peaks) // SATURATION_WINDOW_RATIO
+        if len(peaks) // SATURATION_WINDOW_RATIO > 8
+        else 8
+    )
+    savgol_window = (
+        len(peaks) // SAVGOL_FILTER_WINDOW_RATIO
+        if len(peaks) // SAVGOL_FILTER_WINDOW_RATIO > 5
+        else 5
+    )
 
     filtered_signal = savgol_filter(
         peaks,
@@ -943,7 +951,9 @@ def fit_punchout(filtered_x, filtered_y):
 
     if not saturation_flag:
         log.warning(
-            "Punchout did not saturate for high input values, increase sweep values."
+            """Punchout did not saturate for high input values, increase sweep values or
+            increase sweep resolution.
+            """
         )
         return [False] * 4
 
@@ -952,7 +962,7 @@ def fit_punchout(filtered_x, filtered_y):
     # while by applying low amplitude (high attenuation) readout signal we estimate dressed frequency.
     freq_high_limit = np.median(filtered_x[-window:])
 
-    low_limit = np.median(filtered_y[:window])
+    low_limit = np.max(filtered_y[:window])
     freq_low_limit = np.median(filtered_x[:window])
 
     readout_freq, bare_freq = freq_low_limit, freq_high_limit
