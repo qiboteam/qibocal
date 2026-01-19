@@ -157,7 +157,7 @@ def _fit(data: RabiAmplitudeFreqData) -> RabiAmplitudeFrequencyResults:
         x = (amps - x_min) / (x_max - x_min)
         y = (y - y_min) / (y_max - y_min)
 
-        pguess = rabi_initial_guess(x, y)
+        pguess = rabi_initial_guess(x, y, "amp")
 
         try:
             popt, perr, pi_pulse_parameter = fit_amplitude_function(

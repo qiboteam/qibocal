@@ -108,7 +108,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         x = qubit_data.amp
         y = qubit_data.prob
 
-        pguess = utils.rabi_initial_guess(x, y)
+        pguess = utils.rabi_initial_guess(x, y, "amp")
         try:
             popt, perr, pi_pulse_parameter = utils.fit_amplitude_function(
                 x,
