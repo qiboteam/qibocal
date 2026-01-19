@@ -7,7 +7,15 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Parameters, QubitId
 from qibocal.update import replace
 
-from ..utils import COLORBAND, COLORBAND_LINE, angle_wrap, table_dict, table_html
+from ..utils import (
+    COLORBAND,
+    COLORBAND_LINE,
+    angle_wrap,
+    fallback_period,
+    guess_period,
+    table_dict,
+    table_html,
+)
 
 QUANTILE_CONSTANT = 1.6
 """Scaling factor to recover signal amplitude from quantiles.
@@ -42,6 +50,19 @@ def rabi_length_function(x, offset, amplitude, period, phase, t2_inv):
     return offset + amplitude * np.cos(2 * np.pi * x / period + phase) * np.exp(
         -x * t2_inv
     )
+
+
+def rabi_initial_guess(x, y, experiment: str):
+    period = fallback_period(guess_period(x, y))
+    median_sig = np.median(y)
+    q80 = np.quantile(y, 0.8)
+    q20 = np.quantile(y, 0.2)
+    amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT
+
+    if experiment == "length":
+        return [median_sig, amplitude_guess, period, np.pi, 0]
+    else:
+        return [median_sig, amplitude_guess, period, np.pi]
 
 
 def plot(data, qubit, fit, rx90):
@@ -324,7 +345,7 @@ def fit_length_function(
         p0=guess,
         maxfev=100000,
         bounds=(
-            [0, -1 if signal else 0, 0, -np.inf, 0],
+            [0, 0, 0, -np.inf, 0],
             [1, 1, np.inf, np.inf, np.inf],
         ),
         sigma=sigma,

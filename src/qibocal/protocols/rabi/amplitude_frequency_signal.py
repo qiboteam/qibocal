@@ -15,8 +15,6 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import (
     HZ_TO_GHZ,
-    fallback_period,
-    guess_period,
     readout_frequency,
     table_dict,
     table_html,
@@ -24,7 +22,7 @@ from qibocal.protocols.utils import (
 
 from ...result import magnitude, phase
 from .amplitude_signal import RabiAmplitudeSignalResults
-from .utils import QUANTILE_CONSTANT, fit_amplitude_function, sequence_amplitude
+from .utils import fit_amplitude_function, rabi_initial_guess, sequence_amplitude
 
 __all__ = [
     "RabiAmplitudeSignalResults",
@@ -193,13 +191,7 @@ def _fit(data: RabiAmplitudeFreqSignalData) -> RabiAmplitudeFrequencySignalResul
         x = (amps - x_min) / (x_max - x_min)
         y = (y - y_min) / (y_max - y_min)
 
-        period = fallback_period(guess_period(x, y))
-        median_sig = np.median(y)
-        q80 = np.quantile(y, 0.8)
-        q20 = np.quantile(y, 0.2)
-        amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT
-
-        pguess = [median_sig, amplitude_guess, period, np.pi / 2]
+        pguess = rabi_initial_guess(x, y)
 
         try:
             popt, _, pi_pulse_parameter = fit_amplitude_function(

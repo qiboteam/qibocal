@@ -11,7 +11,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.result import probability
 
-from ..utils import chi2_reduced, fallback_period, guess_period
+from ..utils import chi2_reduced
 from . import utils
 from .length_signal import RabiLengthSignalData, RabiLengthSignalResults
 
@@ -130,13 +130,7 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         y = qubit_data.prob
         x = (raw_x - min_x) / (max_x - min_x)
 
-        period = fallback_period(guess_period(x, y))
-        median_sig = np.median(y)
-        q80 = np.quantile(y, 0.8)
-        q20 = np.quantile(y, 0.2)
-        amplitude_guess = abs(q80 - q20) / utils.QUANTILE_CONSTANT
-
-        pguess = [median_sig, amplitude_guess, period, np.pi, 0]
+        pguess = utils.rabi_initial_guess(x, y, "length")
 
         try:
             popt, perr, pi_pulse_parameter = utils.fit_length_function(

@@ -15,7 +15,7 @@ and is meant to avoid breaking the code."""
 THRESHOLD = 0.5
 """Threshold parameters for find_peaks to guess frequency for sinusoidal fit."""
 DAMPED_CONSTANT = 1.5
-"""See :const:`rabi.utils.DAMPED_CONSTANT` for details.
+"""See :const:`rabi.utils.QUANTILE_CONSTANT` for details.
 
 In general in Ramsey it's intended to observe the decay of the signal due to decoherence, hence we
 need to correct and decrease a little the value of :const:`rabi.utils.DAMPED_CONSTANT`;
