@@ -112,6 +112,7 @@ def _acquisition(
         ResonatorPunchoutAttenuationData
     """
 
+    assert params.min_attenuation >= 0, """minimum attenuation value is defined >=0"""
     assert params.max_attenuation >= params.min_attenuation, (
         """max_attenuation is always >= min_attenuation"""
     )
@@ -120,6 +121,9 @@ def _acquisition(
     # Get readout LO channels for each qubit
     ro_los = {}
     original_attenuations = {}
+
+    if "qm" in platform.instruments:
+        params.attenuation_range = -1 * params.attenuation_range
 
     sequence = PulseSequence()
     ro_pulses = {}
@@ -167,7 +171,7 @@ def _acquisition(
         updates = []
         for qubit in targets:
             lo_channel = ro_los[qubit]
-            updates.append({lo_channel: {"power": -attenuation}})
+            updates.append({lo_channel: {"power": attenuation}})
 
         # Execute with frequency sweep only
         results = platform.execute(
