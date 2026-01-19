@@ -903,11 +903,13 @@ def moving_average(x, window):
 def punchout_saturation(peaks, tol: float):
     """Checking if punchout experiment saturated, hence the results are reliable."""
 
-    sat_window = (
-        len(peaks) // SATURATION_WINDOW_RATIO
-        if len(peaks) // SATURATION_WINDOW_RATIO > 8
-        else 8
-    )
+    if len(peaks) // SATURATION_WINDOW_RATIO > 10:
+        sat_window = 10
+    elif len(peaks) // SATURATION_WINDOW_RATIO < 5:
+        sat_window = 5
+    else:
+        sat_window = len(peaks) // SATURATION_WINDOW_RATIO
+
     savgol_window = (
         len(peaks) // SAVGOL_FILTER_WINDOW_RATIO
         if len(peaks) // SAVGOL_FILTER_WINDOW_RATIO > 5
