@@ -921,6 +921,7 @@ def merging(
     if first_label < 0:
         max_lab = np.max(indexed_labels[:, 0]) + 1
         first_label = max_lab
+        unique_labels = np.append(unique_labels, max_lab)
 
     active_clusters = {
         first_label: {
