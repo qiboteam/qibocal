@@ -167,7 +167,7 @@ def _acquisition(
         updates = []
         for qubit in targets:
             lo_channel = ro_los[qubit]
-            updates.append({lo_channel: {"power": attenuation}})
+            updates.append({lo_channel: {"power": -attenuation}})
 
         # Execute with frequency sweep only
         results = platform.execute(
