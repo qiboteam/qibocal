@@ -41,8 +41,14 @@ PHASE_ELEMENTS = 5
 """Number of values to better guess :math:`\theta` (in rad) in the phase fit function."""
 SATURATION_WINDOW_RATIO = 5
 """The ratio of the signal of the window for evaluating the effective saturation of the punchout signal."""
-SAVGOL_FILTER_WINDOW_RATIO = 10
+SATURATION_WINDOW_MAX = 10
+"""Maximum length of the saturation window."""
+SATURATION_WINDOW_MIN = 5
+"""Minimum length of the window the saturation window."""
+SAVGOL_FILTER_WINDOW_RATIO = 5
 """The ratio of the signal of the Sav-Gol filter window."""
+SAVGOL_FILTER_WINDOW_MIN = 5
+"""The min length forthe Sav-Gol filter window."""
 SAVGOL_FILTER_DERIVATIVE = 1
 """The order of the derivative to compute."""
 SAVGOL_FILTER_ORDER = 3
@@ -896,24 +902,20 @@ def punchout_extract_feature(
     return peaks_dict["x"]["val"][signal_labels], peaks_dict["y"]["val"][signal_labels]
 
 
-def moving_average(x, window):
-    return np.convolve(x, np.ones(window) / window, mode="valid")
-
-
 def punchout_saturation(peaks, tol: float):
     """Checking if punchout experiment saturated, hence the results are reliable."""
 
-    if len(peaks) // SATURATION_WINDOW_RATIO > 10:
-        sat_window = 10
-    elif len(peaks) // SATURATION_WINDOW_RATIO < 5:
-        sat_window = 5
+    if len(peaks) // SATURATION_WINDOW_RATIO > SATURATION_WINDOW_MAX:
+        sat_window = SATURATION_WINDOW_MAX
+    elif len(peaks) // SATURATION_WINDOW_RATIO < SATURATION_WINDOW_MIN:
+        sat_window = SATURATION_WINDOW_MIN
     else:
         sat_window = len(peaks) // SATURATION_WINDOW_RATIO
 
     savgol_window = (
         len(peaks) // SAVGOL_FILTER_WINDOW_RATIO
-        if len(peaks) // SAVGOL_FILTER_WINDOW_RATIO > 5
-        else 5
+        if len(peaks) // SAVGOL_FILTER_WINDOW_RATIO > SAVGOL_FILTER_WINDOW_MIN
+        else SAVGOL_FILTER_WINDOW_MIN
     )
 
     filtered_signal = savgol_filter(
