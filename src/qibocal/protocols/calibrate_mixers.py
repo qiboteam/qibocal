@@ -1,12 +1,13 @@
 from dataclasses import dataclass, field
+from sys import platform
 
 import plotly.graph_objects as go
 from qibolab._core.instruments.qblox.sequence import Q1Sequence
 from qibolab._core.execution_parameters import AcquisitionType
 from qibolab._core.components.channels import IqChannel
 from qibolab._core.instruments.abstract import Controller
-from qibolab._core.instruments.qblox.cluster import Cluster as qiboCluster
-
+from qibolab._core.instruments.qblox.cluster import Cluster
+from qibocal.auto.operation import QubitId
 from qblox_instruments import Module
 
 from qibocal.auto.operation import Data, Parameters, Results, Routine
@@ -37,19 +38,45 @@ class ModuleCalibrationData:
     nco_freq: dict[int, list[float]]
     """NCO frequencies per output and sequencer."""
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "ModuleCalibrationData":
+        """Create ModuleCalibrationData from a dictionary.
+        
+        Args:
+            data: Dictionary containing calibration data
+            
+        Returns:
+            ModuleCalibrationData instance
+        """
+        # Convert string keys to int for nested dicts
+        gain_ratio = {int(k): v for k, v in data.get("gain_ratio", {}).items()}
+        phase_offset = {int(k): v for k, v in data.get("phase_offset", {}).items()}
+        lo_freq = {int(k): v for k, v in data.get("lo_freq", {}).items()}
+        nco_freq = {int(k): v for k, v in data.get("nco_freq", {}).items()}
+        
+        return cls(
+            module_name=data["module_name"],
+            offset_i=data["offset_i"],
+            offset_q=data["offset_q"],
+            gain_ratio=gain_ratio,
+            phase_offset=phase_offset,
+            lo_freq=lo_freq,
+            nco_freq=nco_freq,
+        )
+
 
 @dataclass
 class CalibrateMixersParameters(Parameters):
     """Calibrate mixers runcard inputs."""
-
     pass
 
 
 @dataclass
 class CalibrateMixersResults(Results):
     """Calibrate mixers outputs."""
-
-    pass
+    final_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
+    """Final calibration values after running calibration."""
+    
 
 
 @dataclass
@@ -148,7 +175,7 @@ def _acquisition(
     for _, instr in instrs.items():
         if not isinstance(instr, Controller):
             continue # Skip TWPA
-        cluster: qiboCluster = instr
+        cluster: Cluster = instr
 
         # Get list of channels that are IqChannel
         channels = {
@@ -202,7 +229,7 @@ def _fit(data: CalibrateMixersData) -> CalibrateMixersResults:
     Returns:
         Empty results
     """
-    return CalibrateMixersResults()
+    return CalibrateMixersResults(data.final_calibration)
 
 
 def _plot(
@@ -220,15 +247,21 @@ def _plot(
     Returns:
         Tuple of (list of figures, HTML report)
     """
-
     figures = []
     # Create a comprehensive table with all calibration data
     table_rows = []
-    
+
+    modules = data.initial_calibration.keys()
+
     for module_key in sorted(data.initial_calibration.keys()):
-        initial = ModuleCalibrationData(**data.initial_calibration[module_key])
-        final = ModuleCalibrationData(**data.final_calibration[module_key])
-        
+        initial = data.initial_calibration[module_key]
+        final = data.final_calibration[module_key]
+
+        # Need this when loading from JSON
+        if type(initial) is not ModuleCalibrationData or type(final) is not ModuleCalibrationData:
+            initial = ModuleCalibrationData.from_dict(initial)
+            final = ModuleCalibrationData.from_dict(final)
+
         # Add module header
         table_rows.append([
             f"<b>{initial.module_name}</b>",
@@ -335,6 +368,33 @@ def _plot(
     
     return figures, fitting_report
 
+def _update(results: CalibrateMixersResults, platform: CalibrationPlatform, qubit: QubitId):
+    """Update platform parameters with final calibration values.
 
-calibrate_mixers = Routine(_acquisition, _fit, _plot)
+    Args:
+        results: Fit results
+        platform: Calibration platform to update
+        qubit: Qubit identifier (unused)
+    """
+    final_cal = results.final_calibration
+   
+    for _, instr in platform.instruments.items():
+        if not isinstance(instr, Controller):
+            continue # Skip non-controller instruments (e.g. TWPA)
+        cluster: Cluster = instr
+
+        for ch_name, ch in cluster.channels.items():
+            if type(ch) is not IqChannel:
+                continue
+            cal_key = platform.name + "_" + ch.path.split('/')[0]
+            if cal_key not in results.final_calibration:
+                continue
+            else:
+                cal = ModuleCalibrationData.from_dict(final_cal[cal_key])
+                output = int(ch.path.split('/')[-1][-1])-1
+                platform.update({f"configs.{ch.mixer}.offset_i": cal.offset_i[output]})
+                platform.update({f"configs.{ch.mixer}.offset_q": cal.offset_q[output]})
+
+
+calibrate_mixers = Routine(_acquisition, _fit, _plot, _update)
 """Calibrate mixers Routine object."""
