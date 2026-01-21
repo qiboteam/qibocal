@@ -1,5 +1,6 @@
 from . import (
     allxy,
+    calibrate_mixers,
     classification,
     coherence,
     dispersive_shift,
@@ -17,9 +18,9 @@ from . import (
     tomographies,
     two_qubit_interaction,
     twpa,
-    calibrate_mixers
 )
 from .allxy import *
+from .calibrate_mixers import *
 from .classification import *
 from .coherence import *
 from .dispersive_shift import *
@@ -37,7 +38,6 @@ from .signal_experiments import *
 from .tomographies import *
 from .two_qubit_interaction import *
 from .twpa import *
-from .calibrate_mixers import *
 
 __all__ = []
 __all__ += ["allxy"]

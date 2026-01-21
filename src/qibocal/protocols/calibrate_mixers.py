@@ -1,16 +1,14 @@
 from dataclasses import dataclass, field
-from sys import platform
 
 import plotly.graph_objects as go
-from qibolab._core.instruments.qblox.sequence import Q1Sequence
-from qibolab._core.execution_parameters import AcquisitionType
+from qblox_instruments import Module
 from qibolab._core.components.channels import IqChannel
+from qibolab._core.execution_parameters import AcquisitionType
 from qibolab._core.instruments.abstract import Controller
 from qibolab._core.instruments.qblox.cluster import Cluster
-from qibocal.auto.operation import QubitId
-from qblox_instruments import Module
+from qibolab._core.instruments.qblox.sequence import Q1Sequence
 
-from qibocal.auto.operation import Data, Parameters, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
 __all__ = ["calibrate_mixers"]
@@ -41,10 +39,10 @@ class ModuleCalibrationData:
     @classmethod
     def from_dict(cls, data: dict) -> "ModuleCalibrationData":
         """Create ModuleCalibrationData from a dictionary.
-        
+
         Args:
             data: Dictionary containing calibration data
-            
+
         Returns:
             ModuleCalibrationData instance
         """
@@ -53,7 +51,7 @@ class ModuleCalibrationData:
         phase_offset = {int(k): v for k, v in data.get("phase_offset", {}).items()}
         lo_freq = {int(k): v for k, v in data.get("lo_freq", {}).items()}
         nco_freq = {int(k): v for k, v in data.get("nco_freq", {}).items()}
-        
+
         return cls(
             module_name=data["module_name"],
             offset_i=data["offset_i"],
@@ -68,15 +66,16 @@ class ModuleCalibrationData:
 @dataclass
 class CalibrateMixersParameters(Parameters):
     """Calibrate mixers runcard inputs."""
+
     pass
 
 
 @dataclass
 class CalibrateMixersResults(Results):
     """Calibrate mixers outputs."""
+
     final_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
     """Final calibration values after running calibration."""
-    
 
 
 @dataclass
@@ -89,9 +88,7 @@ class CalibrateMixersData(Data):
     """Final calibration values after running calibration."""
 
 
-def _get_hardware_calibration(
-    module: Module, channels: dict
-) -> ModuleCalibrationData:
+def _get_hardware_calibration(module: Module, channels: dict) -> ModuleCalibrationData:
     """Get hardware calibration values from a QBlox module."""
 
     module_name = module._short_name
@@ -127,9 +124,7 @@ def _get_hardware_calibration(
         for idx_seq, seq in enumerate(seq_list):
             sequencer = getattr(module, seq)
             gain_ratio[output_n][idx_seq] = sequencer.mixer_corr_gain_ratio()
-            phase_offset[output_n][idx_seq] = (
-                sequencer.mixer_corr_phase_offset_degree()
-            )
+            phase_offset[output_n][idx_seq] = sequencer.mixer_corr_phase_offset_degree()
             nco_freq[output_n][idx_seq] = sequencer.nco_freq()
 
     return ModuleCalibrationData(
@@ -151,7 +146,7 @@ def _acquisition(
     """Data acquisition for mixer calibration.
 
     This routine calibrates the IQ mixer offsets, gain ratios, and phase offsets
-    for all QBlox RF modules in the platform. This is currently done specifically for 
+    for all QBlox RF modules in the platform. This is currently done specifically for
     QBlox electromnics but could be included as part of qibolab to make it more general.
 
     Args:
@@ -174,18 +169,18 @@ def _acquisition(
 
     for _, instr in instrs.items():
         if not isinstance(instr, Controller):
-            continue # Skip TWPA
+            continue  # Skip TWPA
         cluster: Cluster = instr
 
         # Get list of channels that are IqChannel
         channels = {
-            chn: ch
-            for chn, ch in cluster.channels.items()
-            if isinstance(ch, IqChannel)
+            chn: ch for chn, ch in cluster.channels.items() if isinstance(ch, IqChannel)
         }
 
         # Setup one sequencer per channel with a dummy sequence (not working, )
-        seqs = cluster._configure({ch: Q1Sequence.empty() for ch in channels}, configs, AcquisitionType.RAW)
+        seqs = cluster._configure(
+            {ch: Q1Sequence.empty() for ch in channels}, configs, AcquisitionType.RAW
+        )
 
         modules: dict[str, Module] = cluster._cluster.get_connected_modules(
             lambda mod: mod.is_rf_type
@@ -208,7 +203,9 @@ def _acquisition(
             if module.is_qcm_type:
                 getattr(module, f"out{output_number - 1}_lo_cal")()
             else:
-                getattr(module, f"out{output_number - 1}_in{output_number-1}_lo_cal")()
+                getattr(
+                    module, f"out{output_number - 1}_in{output_number - 1}_lo_cal"
+                )()
 
         # Read final calibration values
         for module_idx, module in modules.items():
@@ -232,9 +229,7 @@ def _fit(data: CalibrateMixersData) -> CalibrateMixersResults:
     return CalibrateMixersResults(data.final_calibration)
 
 
-def _plot(
-    data: CalibrateMixersData, target: str, fit: CalibrateMixersResults = None
-):
+def _plot(data: CalibrateMixersData, target: str, fit: CalibrateMixersResults = None):
     """Plotting function for mixer calibration.
 
     Creates a table showing initial and final calibration values for all modules.
@@ -258,45 +253,56 @@ def _plot(
         final = data.final_calibration[module_key]
 
         # Need this when loading from JSON
-        if type(initial) is not ModuleCalibrationData or type(final) is not ModuleCalibrationData:
+        if (
+            type(initial) is not ModuleCalibrationData
+            or type(final) is not ModuleCalibrationData
+        ):
             initial = ModuleCalibrationData.from_dict(initial)
             final = ModuleCalibrationData.from_dict(final)
 
         # Add module header
-        table_rows.append([
-            f"<b>{initial.module_name}</b>",
-            "<b>Initial</b>",
-            "<b>Final</b>",
-            "<b>Change</b>"
-        ])
-        
+        table_rows.append(
+            [
+                f"<b>{initial.module_name}</b>",
+                "<b>Initial</b>",
+                "<b>Final</b>",
+                "<b>Change</b>",
+            ]
+        )
+
         # Add offset data for each output
         for output_n in range(len(initial.offset_i)):
             offset_i_change = final.offset_i[output_n] - initial.offset_i[output_n]
             offset_q_change = final.offset_q[output_n] - initial.offset_q[output_n]
-            
-            table_rows.append([
-                f"Out{output_n} Offset I",
-                f"{initial.offset_i[output_n]:.6f}",
-                f"{final.offset_i[output_n]:.6f}",
-                f"{offset_i_change:.6f}"
-            ])
-            table_rows.append([
-                f"Out{output_n} Offset Q",
-                f"{initial.offset_q[output_n]:.6f}",
-                f"{final.offset_q[output_n]:.6f}",
-                f"{offset_q_change:.6f}"
-            ])
-            
+
+            table_rows.append(
+                [
+                    f"Out{output_n} Offset I",
+                    f"{initial.offset_i[output_n]:.6f}",
+                    f"{final.offset_i[output_n]:.6f}",
+                    f"{offset_i_change:.6f}",
+                ]
+            )
+            table_rows.append(
+                [
+                    f"Out{output_n} Offset Q",
+                    f"{initial.offset_q[output_n]:.6f}",
+                    f"{final.offset_q[output_n]:.6f}",
+                    f"{offset_q_change:.6f}",
+                ]
+            )
+
             # Add LO frequency
             lo_freq_change = final.lo_freq[output_n] - initial.lo_freq[output_n]
-            table_rows.append([
-                f"Out{output_n} LO Freq (Hz)",
-                f"{initial.lo_freq[output_n]:.0f}",
-                f"{final.lo_freq[output_n]:.0f}",
-                f"{lo_freq_change:.0f}"
-            ])
-            
+            table_rows.append(
+                [
+                    f"Out{output_n} LO Freq (Hz)",
+                    f"{initial.lo_freq[output_n]:.0f}",
+                    f"{final.lo_freq[output_n]:.0f}",
+                    f"{lo_freq_change:.0f}",
+                ]
+            )
+
             # Add sequencer-specific data
             if output_n in initial.gain_ratio:
                 for seq_idx in range(len(initial.gain_ratio[output_n])):
@@ -312,63 +318,75 @@ def _plot(
                         final.nco_freq[output_n][seq_idx]
                         - initial.nco_freq[output_n][seq_idx]
                     )
-                    
-                    table_rows.append([
-                        f"  Seq{seq_idx} Gain Ratio",
-                        f"{initial.gain_ratio[output_n][seq_idx]:.6f}",
-                        f"{final.gain_ratio[output_n][seq_idx]:.6f}",
-                        f"{gain_change:.6f}"
-                    ])
-                    table_rows.append([
-                        f"  Seq{seq_idx} Phase Offset (°)",
-                        f"{initial.phase_offset[output_n][seq_idx]:.4f}",
-                        f"{final.phase_offset[output_n][seq_idx]:.4f}",
-                        f"{phase_change:.4f}"
-                    ])
-                    table_rows.append([
-                        f"  Seq{seq_idx} NCO Freq (Hz)",
-                        f"{initial.nco_freq[output_n][seq_idx]:.0f}",
-                        f"{final.nco_freq[output_n][seq_idx]:.0f}",
-                        f"{nco_change:.0f}"
-                    ])
-        
+
+                    table_rows.append(
+                        [
+                            f"  Seq{seq_idx} Gain Ratio",
+                            f"{initial.gain_ratio[output_n][seq_idx]:.6f}",
+                            f"{final.gain_ratio[output_n][seq_idx]:.6f}",
+                            f"{gain_change:.6f}",
+                        ]
+                    )
+                    table_rows.append(
+                        [
+                            f"  Seq{seq_idx} Phase Offset (°)",
+                            f"{initial.phase_offset[output_n][seq_idx]:.4f}",
+                            f"{final.phase_offset[output_n][seq_idx]:.4f}",
+                            f"{phase_change:.4f}",
+                        ]
+                    )
+                    table_rows.append(
+                        [
+                            f"  Seq{seq_idx} NCO Freq (Hz)",
+                            f"{initial.nco_freq[output_n][seq_idx]:.0f}",
+                            f"{final.nco_freq[output_n][seq_idx]:.0f}",
+                            f"{nco_change:.0f}",
+                        ]
+                    )
+
         # Add separator row
         table_rows.append(["", "", "", ""])
-    
+
     # Create plotly table
     if table_rows:
         fig = go.Figure(
             data=[
                 go.Table(
                     header=dict(
-                        values=["<b>Parameter</b>", "<b>Initial</b>", "<b>Final</b>", "<b>Change</b>"],
+                        values=[
+                            "<b>Parameter</b>",
+                            "<b>Initial</b>",
+                            "<b>Final</b>",
+                            "<b>Change</b>",
+                        ],
                         align="left",
                         fill_color="gray",
                         font_color="white",
-                        font=dict(size=12)
+                        font=dict(size=12),
                     ),
                     cells=dict(
-                        values=list(zip(*table_rows)),
-                        align="left",
-                        font=dict(size=11)
+                        values=list(zip(*table_rows)), align="left", font=dict(size=11)
                     ),
                 )
             ]
         )
-        
+
         fig.update_layout(
             title="QBlox Mixer Calibration Results",
             height=max(400, len(table_rows) * 25),
         )
-        
+
         figures.append(fig)
-    
+
     fitting_report = "<h3>Mixer Calibration Complete</h3>"
     fitting_report += f"<p>Calibrated {len(data.initial_calibration)} module(s)</p>"
-    
+
     return figures, fitting_report
 
-def _update(results: CalibrateMixersResults, platform: CalibrationPlatform, qubit: QubitId):
+
+def _update(
+    results: CalibrateMixersResults, platform: CalibrationPlatform, qubit: QubitId
+):
     """Update platform parameters with final calibration values.
 
     Args:
@@ -377,21 +395,21 @@ def _update(results: CalibrateMixersResults, platform: CalibrationPlatform, qubi
         qubit: Qubit identifier (unused)
     """
     final_cal = results.final_calibration
-   
+
     for _, instr in platform.instruments.items():
         if not isinstance(instr, Controller):
-            continue # Skip non-controller instruments (e.g. TWPA)
+            continue  # Skip non-controller instruments (e.g. TWPA)
         cluster: Cluster = instr
 
         for ch_name, ch in cluster.channels.items():
             if type(ch) is not IqChannel:
                 continue
-            cal_key = platform.name + "_" + ch.path.split('/')[0]
+            cal_key = platform.name + "_" + ch.path.split("/")[0]
             if cal_key not in results.final_calibration:
                 continue
             else:
                 cal = ModuleCalibrationData.from_dict(final_cal[cal_key])
-                output = int(ch.path.split('/')[-1][-1])-1
+                output = int(ch.path.split("/")[-1][-1]) - 1
                 platform.update({f"configs.{ch.mixer}.offset_i": cal.offset_i[output]})
                 platform.update({f"configs.{ch.mixer}.offset_q": cal.offset_q[output]})
 
