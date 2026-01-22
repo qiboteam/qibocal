@@ -1990,8 +1990,8 @@ qulacs = ["qulacs (>=0.6.4,<0.7.0) ; python_version < \"3.13\""]
 [package.source]
 type = "git"
 url = "https://github.com/qiboteam/qibo"
-reference = "backends"
-resolved_reference = "78fb4ad6be1bae278a4beacdd125a2f4d55b7861"
+reference = "HEAD"
+resolved_reference = "a8173fd49cb3c087fd6fd58dd7ba945d02e41e5b"
 
 [[package]]
 name = "qibolab"
@@ -2999,4 +2999,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "0d72f95aa34fb72f7022792de69d725feda04f62fa398f91069d4ac050531fa6"
+content-hash = "e950fa2c054b27b3eae74499755a2aac7385c4bae6bd070386bda657e24c2686"
