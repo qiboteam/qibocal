@@ -3,6 +3,7 @@ from .chsh import chsh
 from .cross_resonance import (
     cross_resonance_amplitude,
     cross_resonance_length,
+    hamiltonian_tomography_cr_amplitude,
     hamiltonian_tomography_cr_length,
 )
 from .optimize import optimize_two_qubit_gate
@@ -15,5 +16,6 @@ __all__ += [
     "cross_resonance_amplitude",
     "hamiltonian_tomography_cr_length",
     "cross_resonance_length",
+    "hamiltonian_tomography_cr_amplitude",
 ]
 __all__ += ["chsh"]

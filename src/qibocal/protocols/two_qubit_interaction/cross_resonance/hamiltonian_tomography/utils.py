@@ -4,11 +4,16 @@ from typing import Optional, Union
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from scipy.constants import kilo
 from scipy.optimize import curve_fit
 
-from .....auto.operation import QubitId, QubitPairId
+from .....auto.operation import (
+    Data,
+    QubitId,
+    QubitPairId,
+)
 from .....config import log
-from ....utils import fallback_period, guess_period
+from ....utils import fallback_period, guess_period, table_dict, table_html
 from ..utils import Basis, SetControl
 from . import fitting
 
@@ -39,6 +44,7 @@ def tomography_cr_fit(
     Finally we perform a simultaneous fit all three components taking into account
     constraint on the parameters.
     """
+
     fitted_parameters = {}
     for pair in data.pairs:
         for setup in SetControl:
@@ -113,6 +119,7 @@ def tomography_cr_fit(
                     pair_data.x,
                     pair_data.prob_target,
                     maxfev=int(1e6),
+                    p0=pguess,
                     sigma=pair_data.error_target,
                     absolute_sigma=True,
                     bounds=(
@@ -135,9 +142,10 @@ def tomography_cr_fit(
                 pair[0], pair[1], Basis.Y, setup
             ][:3]
             pguess = fitted_parameters[pair[0], pair[1], setup]
+            combined_data = data[pair[0], pair[1], Basis.X, setup]
             popt, _ = curve_fit(
                 fitting.combined_fit,
-                np.concatenate([pair_data.x, pair_data.x, pair_data.x]),
+                np.concatenate([combined_data.x, combined_data.x, combined_data.x]),
                 np.concatenate(
                     [
                         data.data[pair[0], pair[1], Basis.X, setup].prob_target,
@@ -157,39 +165,6 @@ def tomography_cr_fit(
             )
             fitted_parameters[pair[0], pair[1], setup] = popt.tolist()
     return fitted_parameters
-
-
-def extract_hamiltonian_terms(pair: QubitPairId, fitted_parameters: dict) -> dict:
-    """Extract Hamiltonian terms from fitted parameters.
-
-    We follow the procedure presented in the paper https://arxiv.org/pdf/2303.01427.
-    """
-    hamiltonian_terms = {}
-    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.ZX] = 0.5 * (
-        fitted_parameters[pair[0], pair[1], SetControl.Id][0]
-        - fitted_parameters[pair[0], pair[1], SetControl.X][0]
-    )
-    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.IX] = 0.5 * (
-        fitted_parameters[pair[0], pair[1], SetControl.Id][0]
-        + fitted_parameters[pair[0], pair[1], SetControl.X][0]
-    )
-    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.ZY] = 0.5 * (
-        fitted_parameters[pair[0], pair[1], SetControl.Id][1]
-        - fitted_parameters[pair[0], pair[1], SetControl.X][1]
-    )
-    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.IY] = 0.5 * (
-        fitted_parameters[pair[0], pair[1], SetControl.Id][1]
-        + fitted_parameters[pair[0], pair[1], SetControl.X][1]
-    )
-    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.ZZ] = 0.5 * (
-        fitted_parameters[pair[0], pair[1], SetControl.Id][2]
-        - fitted_parameters[pair[0], pair[1], SetControl.X][2]
-    )
-    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.IZ] = 0.5 * (
-        fitted_parameters[pair[0], pair[1], SetControl.Id][2]
-        + fitted_parameters[pair[0], pair[1], SetControl.X][2]
-    )
-    return hamiltonian_terms
 
 
 def compute_total_expectation_value(
@@ -238,6 +213,129 @@ def compute_bloch_vector(
         bloch_fit = bloch_func(times_range, pair, fitted_parameters)
 
     return bloch_exp, bloch_fit
+
+
+def extract_hamiltonian_terms(pair: QubitPairId, fitted_parameters: dict) -> dict:
+    """Extract Hamiltonian terms from fitted parameters.
+
+    We follow the procedure presented in the paper https://arxiv.org/pdf/2303.01427.
+    """
+    hamiltonian_terms = {}
+    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.ZX] = 0.5 * (
+        fitted_parameters[pair[0], pair[1], SetControl.Id][0]
+        - fitted_parameters[pair[0], pair[1], SetControl.X][0]
+    )
+    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.IX] = 0.5 * (
+        fitted_parameters[pair[0], pair[1], SetControl.Id][0]
+        + fitted_parameters[pair[0], pair[1], SetControl.X][0]
+    )
+    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.ZY] = 0.5 * (
+        fitted_parameters[pair[0], pair[1], SetControl.Id][1]
+        - fitted_parameters[pair[0], pair[1], SetControl.X][1]
+    )
+    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.IY] = 0.5 * (
+        fitted_parameters[pair[0], pair[1], SetControl.Id][1]
+        + fitted_parameters[pair[0], pair[1], SetControl.X][1]
+    )
+    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.ZZ] = 0.5 * (
+        fitted_parameters[pair[0], pair[1], SetControl.Id][2]
+        - fitted_parameters[pair[0], pair[1], SetControl.X][2]
+    )
+    hamiltonian_terms[pair[0], pair[1], HamiltonianTerm.IZ] = 0.5 * (
+        fitted_parameters[pair[0], pair[1], SetControl.Id][2]
+        + fitted_parameters[pair[0], pair[1], SetControl.X][2]
+    )
+    return hamiltonian_terms
+
+
+def linear_fit(x, a, b):
+    return a * x + b
+
+
+def fitting_func(x, y):
+    pguess = [0, 0]
+    try:
+        popt, _ = curve_fit(
+            linear_fit,
+            x,
+            y,
+            p0=pguess,
+            maxfev=int(1e6),
+            absolute_sigma=True,
+            bounds=([-np.inf, np.inf], [np.inf, np.inf]),
+        )
+
+    except Exception as e:
+        raise e
+
+    return popt
+
+
+def amp_tom_linear_fit(x, y, q_pair, term, result_dict):
+    try:
+        term_fit = fitting_func(x, y)
+        result_dict[term] = term_fit
+    except Exception as e:
+        log.warning(f"{term} term vs amplitudes fit failed for {q_pair} due to {e}.")
+
+    return result_dict
+
+
+def refactor_hamiltoanian_terms(ham_terms: dict, pair: QubitPairId):
+    ham_terms[HamiltonianTerm.IX] = ham_terms.pop(
+        (pair[0], pair[1], HamiltonianTerm.IX)
+    )
+    ham_terms[HamiltonianTerm.IY] = ham_terms.pop(
+        (pair[0], pair[1], HamiltonianTerm.IY)
+    )
+    ham_terms[HamiltonianTerm.IZ] = ham_terms.pop(
+        (pair[0], pair[1], HamiltonianTerm.IZ)
+    )
+    ham_terms[HamiltonianTerm.ZX] = ham_terms.pop(
+        (pair[0], pair[1], HamiltonianTerm.ZX)
+    )
+    ham_terms[HamiltonianTerm.ZY] = ham_terms.pop(
+        (pair[0], pair[1], HamiltonianTerm.ZY)
+    )
+    ham_terms[HamiltonianTerm.ZZ] = ham_terms.pop(
+        (pair[0], pair[1], HamiltonianTerm.ZZ)
+    )
+
+    return ham_terms
+
+
+def amplitude_tomography_cr_fit(data: Data):
+    amp_hamiltonian_params = {}
+    for amp in data.amplitudes:
+        amp_data = data.select_amplitude(amp)
+        amp_fitted_params = tomography_cr_fit(amp_data)
+        for pair in amp_data.pairs:
+            terms = extract_hamiltonian_terms(pair, amp_fitted_params)
+            terms = refactor_hamiltoanian_terms(terms, pair)
+            res_tuple = (amp, terms)
+            if pair not in amp_hamiltonian_params:
+                amp_hamiltonian_params[pair] = [res_tuple]
+            else:
+                amp_hamiltonian_params[pair].append(res_tuple)
+
+    amp_lin_fit_params = {}
+    for pair_key, pair_value in amp_hamiltonian_params.items():
+        num_terms = [[]] * 6
+        amplitudes = []
+        for vals in pair_value:
+            amplitudes.append(vals[0])
+            for n, t in zip(num_terms, HamiltonianTerm):
+                n.append(vals[1][t])
+
+        fit_params_pair = {}
+        for n, t in zip(num_terms, HamiltonianTerm):
+            fit_params_pair = amp_tom_linear_fit(
+                x=amplitudes, y=n, q_pair=pair_key, term=t, result_dict=fit_params_pair
+            )
+
+        amp_lin_fit_params[pair_key] = fit_params_pair
+
+    return amp_hamiltonian_params, amp_lin_fit_params
 
 
 def tomography_cr_plot(
@@ -420,3 +518,74 @@ def tomography_cr_plot(
     fig.update_yaxes(title_text="|R(t)|", row=4, col=1)
 
     return [fig], ""
+
+
+def amplitude_tomography_cr_plot(
+    target: QubitPairId,
+    fit: Optional[
+        "HamiltonianTomographyCRAmplitudeResults"  # noqa: F821
+    ] = None,
+) -> tuple[list[go.Figure], str]:
+    """Plotting function for HamiltonianTomographyCRLength."""
+    figures = []
+    fitting_report = ""
+
+    if fit is not None:
+        for t in HamiltonianTerm:
+            eff_ham_term = [f for f in fit.hamiltonian_terms[target][1][t]]
+            amplitudes = [a for a in fit.hamiltonian_terms[target][0]]
+            fig = go.Figure(
+                [
+                    go.Scatter(
+                        x=amplitudes,
+                        y=eff_ham_term,
+                        opacity=1,
+                        name=f"{t.name}",
+                        showlegend=True,
+                        legendgroup="Probability",
+                        mode="lines",
+                    )
+                ]
+            )
+
+            if fit.fitted_parameters[target][t] is not None:
+                amp_range = np.linspace(
+                    min(amplitudes),
+                    max(amplitudes),
+                    2 * len(amplitudes),
+                )
+                params = fit.fitted_parameters[target][t]
+                fig.add_trace(
+                    go.Scatter(
+                        x=amp_range,
+                        y=linear_fit(amp_range, *params),
+                        name=f"{t.name} Fit",
+                        line=go.scatter.Line(dash="dot"),
+                        marker_color="rgb(255, 130, 67)",
+                    ),
+                )
+
+                fig.update_layout(
+                    showlegend=True,
+                    xaxis_title=(
+                        "Target cancellation amplitude [a.u]"
+                        if fit.cancellation_calibration
+                        else "Control drive amplitude [a.u]"
+                    ),
+                    yaxis_title="Interaction strength [MHz]",
+                )
+
+                fitting_report = table_html(
+                    table_dict(
+                        6 * [target],
+                        [f"{term.name} [MHz]" for term in HamiltonianTerm],
+                        [
+                            fit.hamiltonian_terms[target[0], target[1]][term] * kilo
+                            for term in HamiltonianTerm
+                        ],
+                    )
+                )
+
+            figures.append(fig)
+
+    return figures, fitting_report
