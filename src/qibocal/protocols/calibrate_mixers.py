@@ -186,11 +186,10 @@ def _acquisition(
 
         # Setup one sequencer per channel with a dummy sequence (not working, )
         seqs = cluster.configure(
-            configs = configs, 
-            acquisition= AcquisitionType.RAW,
-            sequences={ch: Q1Sequence.empty() for ch in channels.keys()}
+            configs=configs,
+            acquisition=AcquisitionType.RAW,
+            sequences={ch: Q1Sequence.empty() for ch in channels.keys()},
         )
-        
 
         modules: dict[str, Module] = cluster._cluster.get_connected_modules(
             lambda mod: mod.is_rf_type
