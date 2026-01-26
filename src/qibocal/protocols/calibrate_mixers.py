@@ -48,6 +48,10 @@ class ModuleCalibrationData:
         """
         if type(data) is ModuleCalibrationData:
             return data
+        elif not isinstance(data, dict):
+            raise TypeError(
+                f"Cannot create ModuleCalibrationData from type {type(data)}"
+            )
         
         # Convert string keys to int for nested dicts
         gain_ratio = {int(k): v for k, v in data.get("gain_ratio", {}).items()}
