@@ -52,7 +52,7 @@ class ModuleCalibrationData:
             raise TypeError(
                 f"Cannot create ModuleCalibrationData from type {type(data)}"
             )
-        
+
         # Convert string keys to int for nested dicts
         gain_ratio = {int(k): v for k, v in data.get("gain_ratio", {}).items()}
         phase_offset = {int(k): v for k, v in data.get("phase_offset", {}).items()}
