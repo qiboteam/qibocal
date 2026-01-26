@@ -46,6 +46,9 @@ class ModuleCalibrationData:
         Returns:
             ModuleCalibrationData instance
         """
+        if type(data) is ModuleCalibrationData:
+            return data
+        
         # Convert string keys to int for nested dicts
         gain_ratio = {int(k): v for k, v in data.get("gain_ratio", {}).items()}
         phase_offset = {int(k): v for k, v in data.get("phase_offset", {}).items()}
