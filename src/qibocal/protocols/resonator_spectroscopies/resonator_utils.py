@@ -220,7 +220,6 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
             label = "Qubit Frequency [Hz]"
             freq = fit.frequency
 
-
         if data.amplitudes[qubit] is not None:
             if show_error_bars:
                 labels = [label, "Amplitude", "Chi2 reduced"]
@@ -247,7 +246,6 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                 display_error=show_error_bars,
             )
         )
-            
 
     fig.update_layout(
         showlegend=True,
