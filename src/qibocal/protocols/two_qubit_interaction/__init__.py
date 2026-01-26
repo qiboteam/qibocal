@@ -5,6 +5,7 @@ from .cross_resonance import (
     cross_resonance_length,
     hamiltonian_tomography_cr_amplitude,
     hamiltonian_tomography_cr_length,
+    hamiltonian_tomography_cr_phase,
 )
 from .optimize import optimize_two_qubit_gate
 from .snz_optimize import snz_optimize
@@ -26,6 +27,7 @@ __all__ += [
     "hamiltonian_tomography_cr_length",
     "cross_resonance_length",
     "hamiltonian_tomography_cr_amplitude",
+    "hamiltonian_tomography_cr_phase",
 ]
 __all__ += ["chsh"]
 __all__ += ["cross_resonance_length", "cross_resonance_amplitude"]

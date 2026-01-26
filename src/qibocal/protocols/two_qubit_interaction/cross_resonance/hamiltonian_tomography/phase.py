@@ -15,7 +15,6 @@ from qibolab import (
     Parameter,
     Sweeper,
 )
-from scipy.constants import kilo
 
 from .....auto.operation import (
     Data,
@@ -26,40 +25,49 @@ from .....auto.operation import (
     Routine,
 )
 from .....calibration import CalibrationPlatform
-from .....result import probability
-from ....utils import table_dict, table_html
 from ..utils import Basis, SetControl, cr_sequence
+from .length import HamiltonianTomographyCRLengthResults
 from .utils import (
+    EPS,
     HamiltonianTerm,
-    extract_hamiltonian_terms,
-    tomography_cr_fit,
-    tomography_cr_plot,
+    calibration_cr_plot,
+    cyclic_prob,
+    phase_tomography_cr_fit,
 )
 
-HamiltonianTomographyCRLengthType = np.dtype(
+HamiltonianTomographyCRPhaseType = np.dtype(
     [
         ("prob_target", np.float64),
         ("error_target", np.float64),
         ("prob_control", np.float64),
         ("error_control", np.float64),
+        ("phase", np.float64),
         ("x", np.int64),
     ]
 )
-"""Custom dtype for CR length."""
+"""Custom dtype for CR amplitude."""
 
 
 @dataclass
-class HamiltonianTomographyCRLengthParameters(Parameters):
-    """HamiltonianTomographyCRLength runcard inputs."""
+class HamiltonianTomographyCRPhaseParameters(Parameters):
+    """HamiltonianTomographyCRAmplitude runcard inputs."""
 
+    cancellation_calibration: bool
+    """Sweep over control or target qubit amplitude"""
     pulse_duration_start: float
     """Initial duration of CR pulse [ns]."""
     pulse_duration_end: float
     """Final duration of CR pulse [ns]."""
     pulse_duration_step: float
     """Step CR pulse duration [ns]."""
-    pulse_amplitude: float
-    """CR pulse amplitude"""
+    control_amplitude: float
+    """Initial amplitude of CR pulse."""
+    control_phase: float
+    """Initial amplitude of CR pulse."""
+    phase_end: float
+    """Final amplitude of CR pulse."""
+    phase_step: float
+    """Step CR pulse amplitude."""
     phase: float = 0
     """Phase of CR pulse."""
     target_amplitude: float = 0
@@ -73,6 +81,22 @@ class HamiltonianTomographyCRLengthParameters(Parameters):
 
     The ECR is described in https://arxiv.org/pdf/1210.7011
     """
+    phase_plot_dict: dict[QubitPairId, list] = field(default_factory=dict)
+    """
+    Dictionary containing the values of phases for which plot hamiltonian tomography
+    for each qubit.
+    """
+
+    @property
+    def phase_range(self) -> np.ndarray:
+        """Amplitude range for CR pulses."""
+        return np.arange(
+            self.control_phase
+            if not self.cancellation_calibration
+            else self.target_phase,
+            self.phase_end,
+            self.phase_step,
+        )
 
     @property
     def duration_range(self) -> np.ndarray:
@@ -83,14 +107,20 @@ class HamiltonianTomographyCRLengthParameters(Parameters):
 
 
 @dataclass
-class HamiltonianTomographyCRLengthResults(Results):
-    """HamiltonianTomographyCRLength outputs."""
+class HamiltonianTomographyCRPhaseResults(Results):
+    """HamiltonianTomographyCRAmplitude outputs."""
 
-    hamiltonian_terms: dict[QubitId, QubitId, HamiltonianTerm] = field(
-        default_factory=dict
-    )
+    cancellation_calibration: bool
+    """Sweep over control or target qubit amplitude"""
+
+    hamiltonian_terms: dict[QubitId, QubitId] = field(default_factory=dict)
     """Terms in effective Hamiltonian."""
-    fitted_parameters: dict[tuple[QubitId, QubitId, Basis, SetControl], list] = field(
+    fitted_parameters: dict[tuple[QubitId, QubitId], dict[HamiltonianTerm, list]] = (
+        field(default_factory=dict)
+    )
+    """Fitted parameters from X,Y,Z expectation values for different phases."""
+
+    tomography_length_parameters: HamiltonianTomographyCRLengthResults = field(
         default_factory=dict
     )
     """Fitted parameters from X,Y,Z expectation values."""
@@ -100,25 +130,55 @@ class HamiltonianTomographyCRLengthResults(Results):
 
 
 @dataclass
-class HamiltonianTomographyCRLengthData(Data):
-    """Data structure for CR length."""
+class HamiltonianTomographyCRPhaseData(Data):
+    """Data structure for CR Amplitude."""
 
+    cancellation_calibration: bool
+    phases: list = None
     data: dict[
         tuple[QubitId, QubitId, Basis, SetControl],
-        npt.NDArray[HamiltonianTomographyCRLengthType],
+        npt.NDArray[HamiltonianTomographyCRPhaseType],
     ] = field(default_factory=dict)
     """Raw data acquired."""
+    phase_plot_dict: dict[QubitPairId, list] = field(default_factory=dict)
+    """
+    Dictionary containing the values of amplitude for which plot hamiltonian tomography
+    for each qubit.
+    """
 
     @property
     def pairs(self):
         return {(i[0], i[1]) for i in self.data}
 
+    def select_phase(self, phase: float):
+        new_data = HamiltonianTomographyCRPhaseData(
+            cancellation_calibration=self.cancellation_calibration
+        )
+        new_data.data = {k: d[d.phase == phase] for k, d in self.data.items()}
+        return new_data
+
+    def register_qubit(self, dtype, data_keys, data_dict):
+        """Store output for single qubit."""
+        duration_list = data_dict["x"]
+        phase_list = data_dict["phase"]
+        size = len(duration_list) * len(phase_list)
+        ar = np.empty(size, dtype=dtype)
+        phases, durations = np.meshgrid(phase_list, duration_list)
+        ar["x"] = durations.ravel()
+        ar["phase"] = phases.ravel()
+        ar["prob_target"] = data_dict["prob_target"].ravel()
+        ar["error_target"] = data_dict["error_target"]
+        ar["prob_control"] = data_dict["prob_control"].ravel()
+        ar["error_control"] = data_dict["error_control"]
+
+        self.data[data_keys] = np.rec.array(ar)
+
 
 def _acquisition(
-    params: HamiltonianTomographyCRLengthParameters,
+    params: HamiltonianTomographyCRPhaseParameters,
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
-) -> HamiltonianTomographyCRLengthData:
+) -> HamiltonianTomographyCRPhaseData:
     """Data acquisition for Hamiltonian tomography CR protocol.
 
     We measure the expectation values X,Y and Z on the target qubit after
@@ -130,11 +190,23 @@ def _acquisition(
 
     """
 
-    data = HamiltonianTomographyCRLengthData()
+    data = HamiltonianTomographyCRPhaseData(
+        cancellation_calibration=params.cancellation_calibration,
+        phases=params.phase_range.astype(float).tolist(),
+        phase_plot_dict=params.phase_plot_dict,
+    )
 
     for pair in targets:
         control, target = pair
         pair = (control, target)
+
+        if params.cancellation_calibration:
+            ctrl_phase = params.control_phase
+            target_phase = params.phase_end
+        else:
+            ctrl_phase = params.phase_end
+            target_phase = params.target_phase
+
         for basis in Basis:
             for setup in SetControl:
                 sequence, cr_pulses, cr_target_pulses, delays = cr_sequence(
@@ -142,28 +214,36 @@ def _acquisition(
                     control=control,
                     target=target,
                     setup=setup,
-                    amplitude=params.pulse_amplitude,
+                    amplitude=ctrl_phase,
                     phase=params.phase,
                     target_amplitude=params.target_amplitude,
-                    target_phase=params.target_phase,
+                    target_phase=target_phase,
                     duration=params.pulse_duration_end,
-                    interpolated_sweeper=params.interpolated_sweeper,
                     echo=params.echo,
                     basis=basis,
                 )
-
                 if params.interpolated_sweeper:
-                    sweeper = Sweeper(
+                    length_sweeper = Sweeper(
                         parameter=Parameter.duration_interpolated,
                         values=params.duration_range,
                         pulses=cr_pulses + cr_target_pulses,
                     )
                 else:
-                    sweeper = Sweeper(
+                    length_sweeper = Sweeper(
                         parameter=Parameter.duration,
                         values=params.duration_range,
                         pulses=cr_pulses + cr_target_pulses + delays,
                     )
+
+                phase_sweeper = Sweeper(
+                    parameter=Parameter.relative_phase,
+                    values=params.phase_range,
+                    pulses=(
+                        cr_target_pulses
+                        if params.cancellation_calibration
+                        else cr_pulses
+                    ),
+                )
 
                 updates = []
                 updates.append(
@@ -177,11 +257,11 @@ def _acquisition(
                 )
                 results = platform.execute(
                     [sequence],
-                    [[sweeper]],
+                    [[length_sweeper], [phase_sweeper]],
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
                     acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=AveragingMode.SINGLESHOT,
+                    averaging_mode=AveragingMode.CYCLIC,
                     updates=updates,
                 )
                 target_acq_handle = list(
@@ -190,22 +270,26 @@ def _acquisition(
                 control_acq_handle = list(
                     sequence.channel(platform.qubits[control].acquisition)
                 )[-1].id
-                prob_target = probability(results[target_acq_handle], state=1)
-                prob_control = probability(results[control_acq_handle], state=1)
-                # TODO: possibly drop control probablity even if it might be useful later on
-                # to compute leakage
+
+                prob_target = cyclic_prob(results[target_acq_handle], state=1).ravel()
+                prob_control = cyclic_prob(results[control_acq_handle], state=1).ravel()
+
                 data.register_qubit(
-                    HamiltonianTomographyCRLengthType,
+                    HamiltonianTomographyCRPhaseType,
                     (control, target, basis, setup),
                     dict(
-                        x=sweeper.values,
+                        x=length_sweeper.values,
+                        phase=phase_sweeper.values,
                         prob_target=1 - 2 * prob_target,
                         error_target=(
-                            2 * np.sqrt(prob_target * (1 - prob_target) / params.nshots)
+                            EPS
+                            + 2
+                            * np.sqrt(prob_target * (1 - prob_target) / params.nshots)
                         ).tolist(),
                         prob_control=prob_control,
-                        error_control=np.sqrt(
-                            prob_control * (1 - prob_control) / params.nshots
+                        error_control=(
+                            EPS
+                            + np.sqrt(prob_control * (1 - prob_control) / params.nshots)
                         ).tolist(),
                     ),
                 )
@@ -213,54 +297,38 @@ def _acquisition(
 
 
 def _fit(
-    data: HamiltonianTomographyCRLengthData,
-) -> HamiltonianTomographyCRLengthResults:
-    """Post-processing function for HamiltonianTomographyCRLength.
+    data: HamiltonianTomographyCRPhaseData,
+) -> HamiltonianTomographyCRPhaseResults:
+    """Post-processing function for HamiltonianTomographyCRAmplitude.
 
     We fit the expectation values using the Eq. S10 from the paper https://arxiv.org/pdf/2303.01427.
     Afterwards, we extract the Hamiltonian terms from the fitted parameters.
 
     """
-    fitted_parameters = tomography_cr_fit(
+    length_tom_params, hamiltonian_terms, fitted_parameters = phase_tomography_cr_fit(
         data=data,
     )
-    hamiltonian_terms = {}
-    for pair in data.pairs:
-        hamiltonian_terms |= extract_hamiltonian_terms(
-            pair=pair, fitted_parameters=fitted_parameters
-        )
+    length_tom_params = HamiltonianTomographyCRLengthResults(
+        fitted_parameters=length_tom_params
+    )
 
-    return HamiltonianTomographyCRLengthResults(
+    return HamiltonianTomographyCRPhaseResults(
+        cancellation_calibration=data.cancellation_calibration,
         hamiltonian_terms=hamiltonian_terms,
         fitted_parameters=fitted_parameters,
+        tomography_length_parameters=length_tom_params,
     )
 
 
 def _plot(
-    data: HamiltonianTomographyCRLengthData,
+    data: HamiltonianTomographyCRPhaseData,
     target: QubitPairId,
-    fit: HamiltonianTomographyCRLengthResults,
+    fit: HamiltonianTomographyCRPhaseResults,
 ):
-    """Plotting function for HamiltonianTomographyCRLength."""
-    figs, fitting_report = tomography_cr_plot(data, target, fit)
-    figs[0].update_layout(
-        xaxis3_title="CR pulse length [ns]",
-    )
-    if fit is not None:
-        fitting_report = table_html(
-            table_dict(
-                6 * [target],
-                [f"{term.name} [MHz]" for term in HamiltonianTerm],
-                [
-                    fit.hamiltonian_terms[target[0], target[1], term] * kilo
-                    for term in HamiltonianTerm
-                ],
-            )
-        )
-    else:
-        fitting_report = ""
+    """Plotting function for HamiltonianTomographyCRAmplitude."""
+    figs, fitting_report = calibration_cr_plot(data, target, fit)
     return figs, fitting_report
 
 
-hamiltonian_tomography_cr_length = Routine(_acquisition, _fit, _plot)
+hamiltonian_tomography_cr_phase = Routine(_acquisition, _fit, _plot)
 """HamiltonianTomography Routine object."""
