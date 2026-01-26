@@ -47,3 +47,11 @@ def combined_fit(
             fit_Z_exp(t3, wx, wy, wz, w),
         ]
     )
+
+
+def linear_fit(x, a, b):
+    return a * x + b
+
+
+def sin_fit(x, a, b, omega, phi):
+    return a * np.sin(x * omega + phi) + b

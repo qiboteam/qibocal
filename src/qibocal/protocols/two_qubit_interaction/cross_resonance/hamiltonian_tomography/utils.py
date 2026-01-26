@@ -4,7 +4,6 @@ from typing import Optional, Union
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from scipy.constants import kilo
 from scipy.optimize import curve_fit
 
 from .....auto.operation import (
@@ -18,6 +17,7 @@ from ..utils import Basis, SetControl
 from . import fitting
 
 EPS = 1e-15
+QUANTILE_CONSTANT = 1.5
 
 
 class HamiltonianTerm(str, Enum):
@@ -29,6 +29,10 @@ class HamiltonianTerm(str, Enum):
     ZX = "ZX"
     ZY = "ZY"
     ZZ = "ZZ"
+
+
+def cyclic_prob(values: float, state: int):
+    return np.minimum(values, 1) if state == 1 else np.maximum(1 - values, 0)
 
 
 def tomography_cr_fit(
@@ -248,39 +252,6 @@ def extract_hamiltonian_terms(pair: QubitPairId, fitted_parameters: dict) -> dic
     return hamiltonian_terms
 
 
-def linear_fit(x, a, b):
-    return a * x + b
-
-
-def fitting_func(x, y):
-    pguess = [0, 0]
-    try:
-        popt, _ = curve_fit(
-            linear_fit,
-            x,
-            y,
-            p0=pguess,
-            maxfev=int(1e6),
-            absolute_sigma=True,
-            bounds=([-np.inf, np.inf], [np.inf, np.inf]),
-        )
-
-    except Exception as e:
-        raise e
-
-    return popt
-
-
-def amp_tom_linear_fit(x, y, q_pair, term, result_dict):
-    try:
-        term_fit = fitting_func(x, y)
-        result_dict[term] = term_fit
-    except Exception as e:
-        log.warning(f"{term} term vs amplitudes fit failed for {q_pair} due to {e}.")
-
-    return result_dict
-
-
 def refactor_hamiltoanian_terms(ham_terms: dict, pair: QubitPairId):
     ham_terms[HamiltonianTerm.IX] = ham_terms.pop(
         (pair[0], pair[1], HamiltonianTerm.IX)
@@ -304,13 +275,33 @@ def refactor_hamiltoanian_terms(ham_terms: dict, pair: QubitPairId):
     return ham_terms
 
 
+def amp_tom_fit(x, y, q_pair, term, result_dict):
+    try:
+        pguess = [0, 0]
+        popt, _ = curve_fit(
+            fitting.linear_fit,
+            x,
+            y,
+            p0=pguess,
+            maxfev=int(1e6),
+            absolute_sigma=True,
+            bounds=([-np.inf, -np.inf], [np.inf, np.inf]),
+        )
+        term_fit = popt.tolist()
+        result_dict[term] = term_fit
+    except Exception as e:
+        log.warning(f"{term} term vs amplitudes fit failed for {q_pair} due to {e}.")
+
+    return result_dict
+
+
 def amplitude_tomography_cr_fit(data: Data):
     amp_hamiltonian_params = {}
     for amp in data.amplitudes:
         amp_data = data.select_amplitude(amp)
-        amp_fitted_params = tomography_cr_fit(amp_data)
+        amp_length_params = tomography_cr_fit(amp_data)
         for pair in amp_data.pairs:
-            terms = extract_hamiltonian_terms(pair, amp_fitted_params)
+            terms = extract_hamiltonian_terms(pair, amp_length_params)
             terms = refactor_hamiltoanian_terms(terms, pair)
             res_tuple = (amp, terms)
             if pair not in amp_hamiltonian_params:
@@ -320,7 +311,7 @@ def amplitude_tomography_cr_fit(data: Data):
 
     amp_lin_fit_params = {}
     for pair_key, pair_value in amp_hamiltonian_params.items():
-        num_terms = [[]] * 6
+        num_terms = [[] for _ in range(6)]
         amplitudes = []
         for vals in pair_value:
             amplitudes.append(vals[0])
@@ -328,14 +319,81 @@ def amplitude_tomography_cr_fit(data: Data):
                 n.append(vals[1][t])
 
         fit_params_pair = {}
-        for n, t in zip(num_terms, HamiltonianTerm):
-            fit_params_pair = amp_tom_linear_fit(
-                x=amplitudes, y=n, q_pair=pair_key, term=t, result_dict=fit_params_pair
+        for nterm, t in zip(num_terms, HamiltonianTerm):
+            fit_params_pair = amp_tom_fit(
+                x=amplitudes,
+                y=nterm,
+                q_pair=pair_key,
+                term=t,
+                result_dict=fit_params_pair,
             )
 
         amp_lin_fit_params[pair_key] = fit_params_pair
 
-    return amp_hamiltonian_params, amp_lin_fit_params
+    return amp_length_params, amp_hamiltonian_params, amp_lin_fit_params
+
+
+def phase_tom_fit(x, y, q_pair, term, result_dict):
+    period = fallback_period(guess_period(x, y))
+    median_sig = np.median(y)
+    q80 = np.quantile(y, 0.8)
+    q20 = np.quantile(y, 0.2)
+    amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT
+    phase_guess = 0
+    pguess = [amplitude_guess, median_sig, period, phase_guess]
+    try:
+        popt, _ = curve_fit(
+            fitting.sin_fit,
+            x,
+            y,
+            p0=pguess,
+            maxfev=int(1e6),
+            absolute_sigma=True,
+            bounds=(
+                [-np.inf, -np.inf, -np.inf, -np.inf],
+                [np.inf, np.inf, np.inf, np.inf],
+            ),
+        )
+        term_fit = popt.tolist()
+        result_dict[term] = term_fit
+    except Exception as e:
+        log.warning(f"{term} term vs amplitudes fit failed for {q_pair} due to {e}.")
+
+    return result_dict
+
+
+def phase_tomography_cr_fit(data: Data):
+    phase_hamiltonian_params = {}
+    for phase in data.phases:
+        phase_data = data.select_phase(phase)
+        phase_length_params = tomography_cr_fit(phase_data)
+        for pair in phase_data.pairs:
+            terms = extract_hamiltonian_terms(pair, phase_length_params)
+            terms = refactor_hamiltoanian_terms(terms, pair)
+            res_tuple = (phase, terms)
+            if pair not in phase_hamiltonian_params:
+                phase_hamiltonian_params[pair] = [res_tuple]
+            else:
+                phase_hamiltonian_params[pair].append(res_tuple)
+
+    phase_sin_fit_params = {}
+    for pair_key, pair_value in phase_hamiltonian_params.items():
+        num_terms = [[] for _ in range(6)]
+        phases = []
+        for vals in pair_value:
+            phases.append(vals[0])
+            for n, t in zip(num_terms, HamiltonianTerm):
+                n.append(vals[1][t])
+
+        fit_params_pair = {}
+        for nterm, t in zip(num_terms, HamiltonianTerm):
+            fit_params_pair = phase_tom_fit(
+                x=phases, y=nterm, q_pair=pair_key, term=t, result_dict=fit_params_pair
+            )
+
+        phase_sin_fit_params[pair_key] = fit_params_pair
+
+    return phase_length_params, phase_hamiltonian_params, phase_sin_fit_params
 
 
 def tomography_cr_plot(
@@ -360,9 +418,9 @@ def tomography_cr_plot(
         shared_xaxes=True,
         shared_yaxes=True,
     )
+    target = target if target in data.pairs else (target[1], target[0])
     for i, basis in enumerate(Basis):
         for setup in SetControl:
-            target = target if target in data.pairs else (target[1], target[0])
             pair_data = data.data[target[0], target[1], basis, setup]
             fig.add_trace(
                 go.Scatter(
@@ -382,7 +440,11 @@ def tomography_cr_plot(
                 row=i + 1,
                 col=1,
             )
-            if fit is not None:
+            if (
+                fit is not None
+                and not fit.fitted_parameters
+                and (*target, basis, setup) in fit.fitted_parameters
+            ):
                 x = np.linspace(pair_data.x.min(), pair_data.x.max(), 100)
                 if basis == Basis.Z:
                     fig.add_trace(
@@ -520,24 +582,57 @@ def tomography_cr_plot(
     return [fig], ""
 
 
-def amplitude_tomography_cr_plot(
+def calibration_cr_plot(
+    data: Union[
+        "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
+        "HamiltonianTomographyCRPhaseData",  # noqa: F821
+    ],
     target: QubitPairId,
     fit: Optional[
-        "HamiltonianTomographyCRAmplitudeResults"  # noqa: F821
+        Union[
+            "HamiltonianTomographyCRAmplitudeResults",  # noqa: F821
+            "HamiltonianTomographyCRPhaseResults",  # noqa: F821
+        ]
     ] = None,
 ) -> tuple[list[go.Figure], str]:
     """Plotting function for HamiltonianTomographyCRLength."""
     figures = []
     fitting_report = ""
 
+    if type(data).__name__ == "HamiltonianTomographyCRAmplitudeData":
+        fit_func = fitting.linear_fit
+        x_title = "amplitude [a.u.]"
+        for a in data.amplitude_plot_dict[target]:
+            if a in data.amplitudes:
+                amp_data = data.select_amplitude(a)
+                amp_fig, _ = tomography_cr_plot(
+                    amp_data, target, fit.tomography_length_parameters
+                )
+                figures.append(amp_fig[0])
+            else:
+                log.warning("inserted non existing amplitudes values to plot.")
+
+    if type(data).__name__ == "HamiltonianTomographyCRPhaseData":
+        fit_func = fitting.sin_fit
+        x_title = "phase [rad.]"
+        for p in data.phase_plot_dict[target]:
+            if p in data.phases:
+                phase_data = data.select_phase(p)
+                phase_fig, _ = tomography_cr_plot(
+                    phase_data, target, fit.tomography_length_parameters
+                )
+                figures.append(phase_fig[0])
+            else:
+                log.warning("inserted non existing amplitudes values to plot.")
+
     if fit is not None:
         for t in HamiltonianTerm:
-            eff_ham_term = [f for f in fit.hamiltonian_terms[target][1][t]]
-            amplitudes = [a for a in fit.hamiltonian_terms[target][0]]
+            eff_ham_term = [f[1][t] for f in fit.hamiltonian_terms[target]]
+            exp_sweeper = [a[0] for a in fit.hamiltonian_terms[target]]
             fig = go.Figure(
                 [
                     go.Scatter(
-                        x=amplitudes,
+                        x=exp_sweeper,
                         y=eff_ham_term,
                         opacity=1,
                         name=f"{t.name}",
@@ -548,17 +643,21 @@ def amplitude_tomography_cr_plot(
                 ]
             )
 
-            if fit.fitted_parameters[target][t] is not None:
+            if (
+                not fit.fitted_parameters
+                and target in fit.fitted_parameters
+                and t in fit.fitted_parameters[target]
+            ):
                 amp_range = np.linspace(
-                    min(amplitudes),
-                    max(amplitudes),
-                    2 * len(amplitudes),
+                    min(exp_sweeper),
+                    max(exp_sweeper),
+                    2 * len(exp_sweeper),
                 )
                 params = fit.fitted_parameters[target][t]
                 fig.add_trace(
                     go.Scatter(
                         x=amp_range,
-                        y=linear_fit(amp_range, *params),
+                        y=fit_func(amp_range, *params),
                         name=f"{t.name} Fit",
                         line=go.scatter.Line(dash="dot"),
                         marker_color="rgb(255, 130, 67)",
@@ -568,9 +667,9 @@ def amplitude_tomography_cr_plot(
                 fig.update_layout(
                     showlegend=True,
                     xaxis_title=(
-                        "Target cancellation amplitude [a.u]"
+                        f"Target cancellation {x_title}"
                         if fit.cancellation_calibration
-                        else "Control drive amplitude [a.u]"
+                        else f"Control drive {x_title}"
                     ),
                     yaxis_title="Interaction strength [MHz]",
                 )
@@ -578,9 +677,9 @@ def amplitude_tomography_cr_plot(
                 fitting_report = table_html(
                     table_dict(
                         6 * [target],
-                        [f"{term.name} [MHz]" for term in HamiltonianTerm],
+                        [f"{term.name}: Fitted_parameters" for term in HamiltonianTerm],
                         [
-                            fit.hamiltonian_terms[target[0], target[1]][term] * kilo
+                            fit.fitted_parameters[target][term]
                             for term in HamiltonianTerm
                         ],
                     )

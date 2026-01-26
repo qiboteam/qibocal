@@ -26,11 +26,13 @@ from .....auto.operation import (
 )
 from .....calibration import CalibrationPlatform
 from ..utils import Basis, SetControl, cr_sequence
+from .length import HamiltonianTomographyCRLengthResults
 from .utils import (
     EPS,
     HamiltonianTerm,
     amplitude_tomography_cr_fit,
-    amplitude_tomography_cr_plot,
+    calibration_cr_plot,
+    cyclic_prob,
 )
 
 HamiltonianTomographyCRAmplitudeType = np.dtype(
@@ -46,10 +48,6 @@ HamiltonianTomographyCRAmplitudeType = np.dtype(
 """Custom dtype for CR amplitude."""
 
 
-def cyclic_prob(values: float, state: int):
-    return values if state == 1 else 1 - values
-
-
 @dataclass
 class HamiltonianTomographyCRAmplitudeParameters(Parameters):
     """HamiltonianTomographyCRAmplitude runcard inputs."""
@@ -62,13 +60,13 @@ class HamiltonianTomographyCRAmplitudeParameters(Parameters):
     """Final duration of CR pulse [ns]."""
     pulse_duration_step: float
     """Step CR pulse duration [ns]."""
-    pulse_amplitude: float
+    control_amplitude: float
     """Initial amplitude of CR pulse."""
     amplitude_end: float
     """Final amplitude of CR pulse."""
     amplitude_step: float
     """Step CR pulse amplitude."""
-    phase: float = 0
+    control_phase: float = 0
     """Phase of CR pulse."""
     target_amplitude: float = 0
     """Amplitude of cancellation pulse."""
@@ -81,12 +79,17 @@ class HamiltonianTomographyCRAmplitudeParameters(Parameters):
 
     The ECR is described in https://arxiv.org/pdf/1210.7011
     """
+    amplitude_plot_dict: dict[QubitPairId, list] = field(default_factory=dict)
+    """
+    Dictionary containing the values of amplitude for which plot hamiltonian tomography
+    for each qubit.
+    """
 
     @property
     def amplitude_range(self) -> np.ndarray:
         """Amplitude range for CR pulses."""
         return np.arange(
-            self.pulse_amplitude
+            self.control_amplitude
             if not self.cancellation_calibration
             else self.target_amplitude,
             self.amplitude_end,
@@ -113,6 +116,11 @@ class HamiltonianTomographyCRAmplitudeResults(Results):
     fitted_parameters: dict[tuple[QubitId, QubitId], dict[HamiltonianTerm, list]] = (
         field(default_factory=dict)
     )
+    """Fitted parameters from X,Y,Z expectation values for different amplitudes."""
+
+    tomography_length_parameters: HamiltonianTomographyCRLengthResults = field(
+        default_factory=dict
+    )
     """Fitted parameters from X,Y,Z expectation values."""
 
     def __contains__(self, pair: QubitPairId) -> bool:
@@ -130,6 +138,11 @@ class HamiltonianTomographyCRAmplitudeData(Data):
         npt.NDArray[HamiltonianTomographyCRAmplitudeType],
     ] = field(default_factory=dict)
     """Raw data acquired."""
+    amplitude_plot_dict: dict[QubitPairId, list] = field(default_factory=dict)
+    """
+    Dictionary containing the values of amplitude for which plot hamiltonian tomography
+    for each qubit.
+    """
 
     @property
     def pairs(self):
@@ -141,6 +154,22 @@ class HamiltonianTomographyCRAmplitudeData(Data):
         )
         new_data.data = {k: d[d.amp == amplitude] for k, d in self.data.items()}
         return new_data
+
+    def register_qubit(self, dtype, data_keys, data_dict):
+        """Store output for single qubit."""
+        duration_list = data_dict["x"]
+        amp_list = data_dict["amp"]
+        size = len(duration_list) * len(amp_list)
+        ar = np.empty(size, dtype=dtype)
+        amplitudes, durations = np.meshgrid(amp_list, duration_list)
+        ar["x"] = durations.ravel()
+        ar["amp"] = amplitudes.ravel()
+        ar["prob_target"] = data_dict["prob_target"].ravel()
+        ar["error_target"] = data_dict["error_target"]
+        ar["prob_control"] = data_dict["prob_control"].ravel()
+        ar["error_control"] = data_dict["error_control"]
+
+        self.data[data_keys] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -161,7 +190,8 @@ def _acquisition(
 
     data = HamiltonianTomographyCRAmplitudeData(
         cancellation_calibration=params.cancellation_calibration,
-        amplitudes=params.amplitude_range.tolist(),
+        amplitudes=params.amplitude_range.astype(float).tolist(),
+        amplitude_plot_dict=params.amplitude_plot_dict,
     )
 
     for pair in targets:
@@ -169,7 +199,7 @@ def _acquisition(
         pair = (control, target)
 
         if params.cancellation_calibration:
-            ctrl_amplitude = params.pulse_amplitude
+            ctrl_amplitude = params.control_amplitude
             target_amplitude = params.amplitude_end
         else:
             ctrl_amplitude = params.amplitude_end
@@ -183,7 +213,7 @@ def _acquisition(
                     target=target,
                     setup=setup,
                     amplitude=ctrl_amplitude,
-                    phase=params.phase,
+                    phase=params.control_phase,
                     target_amplitude=target_amplitude,
                     target_phase=params.target_phase,
                     duration=params.pulse_duration_end,
@@ -274,23 +304,30 @@ def _fit(
     Afterwards, we extract the Hamiltonian terms from the fitted parameters.
 
     """
-    hamiltonian_terms, fitted_parameters = amplitude_tomography_cr_fit(
-        data=data,
+    length_tom_params, hamiltonian_terms, fitted_parameters = (
+        amplitude_tomography_cr_fit(
+            data=data,
+        )
+    )
+    length_tom_params = HamiltonianTomographyCRLengthResults(
+        fitted_parameters=length_tom_params
     )
 
     return HamiltonianTomographyCRAmplitudeResults(
         cancellation_calibration=data.cancellation_calibration,
         hamiltonian_terms=hamiltonian_terms,
         fitted_parameters=fitted_parameters,
+        tomography_length_parameters=length_tom_params,
     )
 
 
 def _plot(
+    data: HamiltonianTomographyCRAmplitudeData,
     target: QubitPairId,
     fit: HamiltonianTomographyCRAmplitudeResults,
 ):
     """Plotting function for HamiltonianTomographyCRAmplitude."""
-    figs, fitting_report = amplitude_tomography_cr_plot(target, fit)
+    figs, fitting_report = calibration_cr_plot(data, target, fit)
     return figs, fitting_report
 
 
