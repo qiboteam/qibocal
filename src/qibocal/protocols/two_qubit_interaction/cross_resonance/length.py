@@ -205,10 +205,7 @@ def _acquisition(
             if target_offset_sweeper is not None:
                 prob_target = prob_target[0][0]
                 prob_control = prob_control[0][0]
-            import rich
 
-            rich.print(prob_target)
-            rich.print(prob_control)
             data.register_qubit(
                 CrossResonanceLengthType,
                 (control, target, setup),

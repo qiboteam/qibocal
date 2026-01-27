@@ -146,7 +146,7 @@ def tomography_cr_fit(
                 pair[0], pair[1], Basis.Y, setup
             ][:3]
             pguess = fitted_parameters[pair[0], pair[1], setup]
-            combined_data = data[pair[0], pair[1], Basis.X, setup]
+            combined_data = data.data[pair[0], pair[1], Basis.X, setup]
             popt, _ = curve_fit(
                 fitting.combined_fit,
                 np.concatenate([combined_data.x, combined_data.x, combined_data.x]),
