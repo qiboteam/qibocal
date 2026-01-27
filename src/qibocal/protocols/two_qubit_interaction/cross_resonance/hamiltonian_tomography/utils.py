@@ -12,6 +12,8 @@ from ....utils import fallback_period, guess_period
 from ..utils import Basis, SetControl
 from . import fitting
 
+EPS = 1e-15
+
 
 class HamiltonianTerm(str, Enum):
     """Hamiltonian terms for CR effective Hamiltonian."""
@@ -40,7 +42,7 @@ def tomography_cr_fit(
     fitted_parameters = {}
     for pair in data.pairs:
         for setup in SetControl:
-            pair_data = data[pair[0], pair[1], Basis.Z, setup]
+            pair_data = data.data[pair[0], pair[1], Basis.Z, setup]
             period = fallback_period(guess_period(pair_data.x, pair_data.prob_target))
             omega = 2 * np.pi / period
             pguess = [
@@ -73,7 +75,7 @@ def tomography_cr_fit(
 
     for pair in data.pairs:
         for setup in SetControl:
-            pair_data = data[pair[0], pair[1], Basis.X, setup]
+            pair_data = data.data[pair[0], pair[1], Basis.X, setup]
             omega = fitted_parameters[pair[0], pair[1], Basis.Z, setup][3]
             pguess = [0, 0, 0, omega]
 
@@ -102,7 +104,7 @@ def tomography_cr_fit(
 
     for pair in data.pairs:
         for setup in SetControl:
-            pair_data = data[pair[0], pair[1], Basis.Y, setup]
+            pair_data = data.data[pair[0], pair[1], Basis.Y, setup]
             omega = fitted_parameters[pair[0], pair[1], Basis.Z, setup][3]
             pguess = [0, 0, 0, omega]
             try:
@@ -138,18 +140,18 @@ def tomography_cr_fit(
                 np.concatenate([pair_data.x, pair_data.x, pair_data.x]),
                 np.concatenate(
                     [
-                        data[pair[0], pair[1], Basis.X, setup].prob_target,
-                        data[pair[0], pair[1], Basis.Y, setup].prob_target,
-                        data[pair[0], pair[1], Basis.Z, setup].prob_target,
+                        data.data[pair[0], pair[1], Basis.X, setup].prob_target,
+                        data.data[pair[0], pair[1], Basis.Y, setup].prob_target,
+                        data.data[pair[0], pair[1], Basis.Z, setup].prob_target,
                     ]
                 ),
                 maxfev=int(1e6),
                 p0=pguess,
                 sigma=np.concatenate(
                     [
-                        data[pair[0], pair[1], Basis.X, setup].error_target,
-                        data[pair[0], pair[1], Basis.Y, setup].error_target,
-                        data[pair[0], pair[1], Basis.Z, setup].error_target,
+                        data.data[pair[0], pair[1], Basis.X, setup].error_target,
+                        data.data[pair[0], pair[1], Basis.Y, setup].error_target,
+                        data.data[pair[0], pair[1], Basis.Z, setup].error_target,
                     ]
                 ),
             )
@@ -190,6 +192,54 @@ def extract_hamiltonian_terms(pair: QubitPairId, fitted_parameters: dict) -> dic
     return hamiltonian_terms
 
 
+def compute_total_expectation_value(
+    data: Union[
+        "HamiltonianTomographyCRLengthData",  # noqa: F821
+        "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
+    ],
+    pair: QubitPairId,
+):
+    tot_exp_vals = []
+    for basis in Basis:
+        tot_exp_vals.append(
+            data.data[pair[0], pair[1], basis, SetControl.Id].prob_target
+            + data.data[pair[0], pair[1], basis, SetControl.X].prob_target
+        )
+    return np.vstack(tot_exp_vals)
+
+
+def bloch_func(x, pair: QubitPairId, fitted_parameters: dict):
+    x = np.vstack([x, x, x])
+    id_blochfit = fitting.combined_fit(
+        x, *fitted_parameters[pair[0], pair[1], SetControl.Id]
+    ).reshape((3, -1))
+    x_blochfit = fitting.combined_fit(
+        x, *fitted_parameters[pair[0], pair[1], SetControl.X]
+    ).reshape((3, -1))
+    return np.sqrt(np.sum((id_blochfit + x_blochfit) ** 2, axis=0))
+
+
+def compute_bloch_vector(
+    data: Union[
+        "HamiltonianTomographyCRLengthData",  # noqa: F821
+        "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
+    ],
+    pair: QubitPairId,
+    fitted_parameters: dict = None,
+):
+    bloch_exp = compute_total_expectation_value(data, pair)
+    bloch_exp = np.sqrt(np.sum((bloch_exp) ** 2, axis=0))
+
+    bloch_fit = None
+    if fitted_parameters is not None:
+        times = data.data[pair[0], pair[1], Basis.Z, SetControl.Id].x
+        times_range = np.linspace(min(times), max(times), 2 * len(times))
+
+        bloch_fit = bloch_func(times_range, pair, fitted_parameters)
+
+    return bloch_exp, bloch_fit
+
+
 def tomography_cr_plot(
     data: Union[
         "HamiltonianTomographyCRLengthData",  # noqa: F821
@@ -205,7 +255,7 @@ def tomography_cr_plot(
 ) -> tuple[list[go.Figure], str]:
     """Plotting function for HamiltonianTomographyCRLength."""
     fig = make_subplots(
-        rows=3,
+        rows=4,
         cols=1,
         horizontal_spacing=0.1,
         vertical_spacing=0.05,
@@ -329,14 +379,44 @@ def tomography_cr_plot(
                     col=1,
                 )
 
+    bloch_vect, bloch_fit = compute_bloch_vector(data, target, fit.fitted_parameters)
+    fig.add_trace(
+        go.Scatter(
+            x=pair_data.x,
+            y=bloch_vect,
+            name="Bloch vector |R(t)|",
+            legendgroup="Bloch vector |R(t)|",
+            showlegend=True,
+            mode="markers",
+        ),
+        row=4,
+        col=1,
+    )
+    if bloch_fit is not None:
+        x = np.linspace(pair_data.x.min(), pair_data.x.max(), len(bloch_fit))
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=bloch_fit,
+                name="Fitted Bloch vector |R(t)|",
+                showlegend=True,
+                legendgroup="Fitted Bloch vector |R(t)|",
+                mode="lines",
+            ),
+            row=4,
+            col=1,
+        )
+
     fig.update_layout(
         yaxis1=dict(range=[-1.2, 1.2]),
         yaxis2=dict(range=[-1.2, 1.2]),
         yaxis3=dict(range=[-1.2, 1.2]),
-        height=600,
+        yaxis4=dict(range=[-0.2, 2.2]),
+        height=800,
     )
     fig.update_yaxes(title_text="<X(t)>", row=1, col=1)
     fig.update_yaxes(title_text="<Y(t)>", row=2, col=1)
     fig.update_yaxes(title_text="<Z(t)>", row=3, col=1)
+    fig.update_yaxes(title_text="|R(t)|", row=4, col=1)
 
     return [fig], ""
