@@ -6,6 +6,7 @@ channel with frequency set to the frequency of the target drive channel.
 """
 
 from dataclasses import dataclass, field
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -52,7 +53,7 @@ HamiltonianTomographyCRAmplitudeType = np.dtype(
 class HamiltonianTomographyCRAmplitudeParameters(Parameters):
     """HamiltonianTomographyCRAmplitude runcard inputs."""
 
-    cancellation_calibration: bool
+    target_calibration: bool
     """Sweep over control or target qubit amplitude"""
     pulse_duration_start: float
     """Initial duration of CR pulse [ns]."""
@@ -66,11 +67,11 @@ class HamiltonianTomographyCRAmplitudeParameters(Parameters):
     """Final amplitude of CR pulse."""
     amplitude_step: float
     """Step CR pulse amplitude."""
-    control_phase: float = 0
-    """Phase of CR pulse."""
-    target_amplitude: float = 0
+    target_amplitude: float
     """Amplitude of cancellation pulse."""
-    target_phase: float = 0
+    control_phase: Union[dict[QubitPairId, float], float] = 0
+    """Phase of CR pulse."""
+    target_phase: Union[dict[QubitPairId, float], float] = 0
     """Phase of target pulse."""
     interpolated_sweeper: bool = False
     """Use real-time interpolation if supported by instruments."""
@@ -90,7 +91,7 @@ class HamiltonianTomographyCRAmplitudeParameters(Parameters):
         """Amplitude range for CR pulses."""
         return np.arange(
             self.control_amplitude
-            if not self.cancellation_calibration
+            if not self.target_calibration
             else self.target_amplitude,
             self.amplitude_end,
             self.amplitude_step,
@@ -108,15 +109,15 @@ class HamiltonianTomographyCRAmplitudeParameters(Parameters):
 class HamiltonianTomographyCRAmplitudeResults(Results):
     """HamiltonianTomographyCRAmplitude outputs."""
 
-    cancellation_calibration: bool
+    target_calibration: bool
     """Sweep over control or target qubit amplitude"""
 
-    hamiltonian_terms: dict[QubitId, QubitId] = field(default_factory=dict)
+    hamiltonian_terms: dict[QubitPairId, dict] = field(default_factory=dict)
     """Terms in effective Hamiltonian."""
     fitted_parameters: dict[tuple[QubitId, QubitId], dict[HamiltonianTerm, list]] = (
         field(default_factory=dict)
     )
-    """Fitted parameters from X,Y,Z expectation values for different amplitudes."""
+    """Fitted parameters for Hamiltonian Terms values for different amplitudes."""
 
     tomography_length_parameters: HamiltonianTomographyCRLengthResults = field(
         default_factory=dict
@@ -131,7 +132,7 @@ class HamiltonianTomographyCRAmplitudeResults(Results):
 class HamiltonianTomographyCRAmplitudeData(Data):
     """Data structure for CR Amplitude."""
 
-    cancellation_calibration: bool
+    target_calibration: bool
     amplitudes: list = None
     data: dict[
         tuple[QubitId, QubitId, Basis, SetControl],
@@ -150,7 +151,7 @@ class HamiltonianTomographyCRAmplitudeData(Data):
 
     def select_amplitude(self, amplitude: float):
         new_data = HamiltonianTomographyCRAmplitudeData(
-            cancellation_calibration=self.cancellation_calibration
+            target_calibration=self.target_calibration
         )
         new_data.data = {k: d[d.amp == amplitude] for k, d in self.data.items()}
         return new_data
@@ -189,7 +190,7 @@ def _acquisition(
     """
 
     data = HamiltonianTomographyCRAmplitudeData(
-        cancellation_calibration=params.cancellation_calibration,
+        target_calibration=params.target_calibration,
         amplitudes=params.amplitude_range.astype(float).tolist(),
         amplitude_plot_dict=params.amplitude_plot_dict,
     )
@@ -198,7 +199,7 @@ def _acquisition(
         control, target = pair
         pair = (control, target)
 
-        if params.cancellation_calibration:
+        if params.target_calibration:
             ctrl_amplitude = params.control_amplitude
             target_amplitude = params.amplitude_end
         else:
@@ -213,9 +214,17 @@ def _acquisition(
                     target=target,
                     setup=setup,
                     amplitude=ctrl_amplitude,
-                    phase=params.control_phase,
+                    phase=(
+                        params.control_phase[pair]
+                        if isinstance(params.control_phase, dict)
+                        else params.control_phase
+                    ),
                     target_amplitude=target_amplitude,
-                    target_phase=params.target_phase,
+                    target_phase=(
+                        params.target_phase[pair]
+                        if isinstance(params.target_phase, dict)
+                        else params.target_phase
+                    ),
                     duration=params.pulse_duration_end,
                     echo=params.echo,
                     basis=basis,
@@ -238,9 +247,7 @@ def _acquisition(
                     parameter=Parameter.amplitude,
                     values=params.amplitude_range,
                     pulses=(
-                        cr_target_pulses
-                        if params.cancellation_calibration
-                        else cr_pulses
+                        cr_target_pulses if params.target_calibration else cr_pulses
                     ),
                 )
 
@@ -314,7 +321,7 @@ def _fit(
     )
 
     return HamiltonianTomographyCRAmplitudeResults(
-        cancellation_calibration=data.cancellation_calibration,
+        target_calibration=data.target_calibration,
         hamiltonian_terms=hamiltonian_terms,
         fitted_parameters=fitted_parameters,
         tomography_length_parameters=length_tom_params,
