@@ -102,7 +102,6 @@ def _acquisition(
         natives = platform.natives.single_qubit[qubit]
         ro_channel, ro_pulse = natives.MZ()[0]
         ro_pulses[qubit] = ro_pulse.model_copy(update = {'probe': ro_pulse.probe.model_copy(update={'amplitude': 1.0})})
-        import rich; rich.print(ro_pulses[qubit]); rich.print(ro_pulse)
         sequence.append((ro_channel, ro_pulses[qubit]))
 
         probe = platform.qubits[qubit].probe
