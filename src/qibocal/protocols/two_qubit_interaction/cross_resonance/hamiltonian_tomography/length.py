@@ -30,6 +30,7 @@ from .....result import probability
 from ....utils import table_dict, table_html
 from ..utils import Basis, SetControl, cr_sequence
 from .utils import (
+    EPS,
     HamiltonianTerm,
     extract_hamiltonian_terms,
     tomography_cr_fit,
@@ -168,7 +169,7 @@ def _acquisition(
                 updates = []
                 updates.append(
                     {
-                        platform.qubits[control].drive_extra[target]: {
+                        platform.qubits[control].drive_extra[(1, 2)]: {
                             "frequency": platform.config(
                                 platform.qubits[target].drive
                             ).frequency
@@ -201,11 +202,14 @@ def _acquisition(
                         x=sweeper.values,
                         prob_target=1 - 2 * prob_target,
                         error_target=(
-                            2 * np.sqrt(prob_target * (1 - prob_target) / params.nshots)
+                            2
+                            * np.sqrt(
+                                EPS + prob_target * (1 - prob_target) / params.nshots
+                            )
                         ).tolist(),
                         prob_control=prob_control,
                         error_control=np.sqrt(
-                            prob_control * (1 - prob_control) / params.nshots
+                            EPS + prob_control * (1 - prob_control) / params.nshots
                         ).tolist(),
                     ),
                 )
