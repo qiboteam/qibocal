@@ -60,8 +60,7 @@ class ResonatorPunchoutData(Data):
 
     resonator_type: str
     """Resonator type."""
-    amplitudes: dict[QubitId, float] = field(default_factory=dict)
-    """Amplitudes provided by the user."""
+
     data: dict[QubitId, npt.NDArray[ResPunchoutType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -97,16 +96,15 @@ def _acquisition(
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     ro_pulses = {}
-    amplitudes = {}
     freq_sweepers = {}
     sequence = PulseSequence()
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
         ro_channel, ro_pulse = natives.MZ()[0]
-
-        ro_pulses[qubit] = ro_pulse
-        amplitudes[qubit] = ro_pulse.probe.amplitude
-        sequence.append((ro_channel, ro_pulse))
+        ro_pulses[qubit] = ro_pulse.model_copy(
+            update={"probe": ro_pulse.probe.model_copy(update={"amplitude": 1.0})}
+        )
+        sequence.append((ro_channel, ro_pulses[qubit]))
 
         probe = platform.qubits[qubit].probe
         f0 = platform.config(probe).frequency
@@ -123,7 +121,6 @@ def _acquisition(
     )
 
     data = ResonatorPunchoutData(
-        amplitudes=amplitudes,
         resonator_type=platform.resonator_type,
     )
 
