@@ -32,15 +32,19 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
     """Maximum LO attenuation [dB]."""
     step_attenuation: float
     """Step LO attenuation [dB]."""
+    attenuation_range: np.ndarray = None
 
-    @property
-    def attenuation_range(self) -> npt.NDArray[np.float64]:
+    def compute_attenuation_range(
+        self, platform: CalibrationPlatform
+    ) -> npt.NDArray[np.float64]:
         """LO attenuation range [dB]."""
-        return np.arange(
+        self.attenuation_range = np.arange(
             self.min_attenuation,
             self.max_attenuation,
             self.step_attenuation,
         )
+        if "qm" in platform.instruments:
+            self.attenuation_range *= -1
 
     @property
     def delta_frequency_range(self) -> npt.NDArray[np.float64]:
@@ -122,12 +126,12 @@ def _acquisition(
     )
     assert params.step_attenuation >= 0, """step_attenuation is always >=0"""
 
+    # compute range of attenuation to sweep on
+    params.compute_attenuation_range(platform)
+
     # Get readout LO channels for each qubit
     ro_los = {}
     original_attenuations = {}
-
-    if "qm" in platform.instruments:
-        params.attenuation_range = -1 * params.attenuation_range
 
     sequence = PulseSequence()
     ro_pulses = {}

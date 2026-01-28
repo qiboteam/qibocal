@@ -5,10 +5,8 @@ from plotly.subplots import make_subplots
 from scipy import ndimage
 from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import leastsq, minimize
-from scipy.signal import savgol_filter
 
 from qibocal.auto.operation import Results
-from qibocal.config import log
 
 from ..utils import (
     COLORBAND,
@@ -889,58 +887,33 @@ def punchout_extract_feature(
         return None, None
 
     medians = np.array(
-        [[lab, np.median(cl["cluster"][2, :])] for lab, cl in signal_clusters.items()]
+        [
+            [
+                lab,
+                np.median(cl["cluster"][2, :]),
+                np.min(cl["cluster"][1, :]),
+                np.max(cl["cluster"][1, :]),
+            ]
+            for lab, cl in signal_clusters.items()
+        ]
     )
-    sorted_medians = sorted(medians, key=lambda x: x[1], reverse=True)
-
+    sorted_medians = medians[medians[:, 1].argsort()[::-1]]
     signal_labels = np.zeros(labels.size, dtype=bool)
     # for resonator punchout protocol we cannot merge efficiently th two branches of the whole signal, hence we
-    # select the two clusters that maximise the median value of the signal
-    for signal_idx, _ in sorted_medians[:2]:
-        signal_labels[signal_clusters[signal_idx]["cluster"][-1, :].astype(int)] = True
+    # select the two clusters that maximise the median value of the signal.
+    # In case clustering by itself selects the whole signal, we also select the clusters with minimum and maximum amplitude values,
+    # in order to filter out eventual noise clusters
+    min_amp_idx = np.argmin(sorted_medians[:2, -2])
+    signal_labels[
+        signal_clusters[sorted_medians[min_amp_idx, 0]]["cluster"][-1, :].astype(int)
+    ] = True
+    max_amp_idx = np.argmax(sorted_medians[:2, -1])
+    signal_labels[
+        signal_clusters[sorted_medians[max_amp_idx, 0]]["cluster"][-1, :].astype(int)
+    ] = True
+    signal_labels
 
     return peaks_dict["x"]["val"][signal_labels], peaks_dict["y"]["val"][signal_labels]
-
-
-def punchout_saturation(peaks, tol: float):
-    """Checking if punchout experiment saturated, hence the results are reliable."""
-
-    if len(peaks) // SATURATION_WINDOW_RATIO > SATURATION_WINDOW_MAX:
-        sat_window = SATURATION_WINDOW_MAX
-    elif len(peaks) // SATURATION_WINDOW_RATIO < SATURATION_WINDOW_MIN:
-        sat_window = SATURATION_WINDOW_MIN
-    else:
-        sat_window = len(peaks) // SATURATION_WINDOW_RATIO
-
-    savgol_window = (
-        len(peaks) // SAVGOL_FILTER_WINDOW_RATIO
-        if len(peaks) // SAVGOL_FILTER_WINDOW_RATIO > SAVGOL_FILTER_WINDOW_MIN
-        else SAVGOL_FILTER_WINDOW_MIN
-    )
-
-    filtered_signal = savgol_filter(
-        peaks,
-        window_length=savgol_window,
-        polyorder=SAVGOL_FILTER_ORDER,
-        deriv=SAVGOL_FILTER_DERIVATIVE,
-    )
-
-    low_sat = []
-    for x in filtered_signal:
-        if abs(x) <= tol:
-            low_sat.append(x)
-        else:
-            break
-    high_sat = []
-    for x in filtered_signal[::-1]:
-        if abs(x) <= tol:
-            high_sat.append(x)
-        else:
-            break
-
-    saturation = len(high_sat) >= sat_window and len(low_sat) >= sat_window
-
-    return sat_window, saturation
 
 
 def fit_punchout(filtered_x, filtered_y):
@@ -951,26 +924,29 @@ def fit_punchout(filtered_x, filtered_y):
     ):  # filtered_x and filtered_y have always the same shape
         return [False] * 4
 
-    window, saturation_flag = punchout_saturation(filtered_y, SATURATION_TOLERANCE)
-
-    if not saturation_flag:
-        log.warning(
-            """Punchout did not saturate for high input values, increase sweep values or
-            increase sweep resolution.
-            """
-        )
-        return [False] * 4
+    # tolerance for frequencies
+    diffs = np.abs(np.diff(filtered_x))
+    tol_step = np.min(diffs[diffs != 0])
 
     # new handling for detecting dressed and bare resonator frequencies
     # by definition bare resonator frequency is given for high amplitude (low attenuation) values,
     # while by applying low amplitude (high attenuation) readout signal we estimate dressed frequency.
-    freq_high_limit = np.median(filtered_x[-window:])
+    low_freq_idx = (filtered_x - np.min(filtered_x)) <= tol_step
+    high_freq_idx = (np.max(filtered_x) - filtered_x) <= tol_step
 
-    low_limit = np.max(filtered_y[:window])
-    freq_low_limit = np.median(filtered_x[:window])
+    low_freq = np.median(filtered_x[low_freq_idx])
+    high_freq = np.median(filtered_x[high_freq_idx])
 
-    readout_freq, bare_freq = freq_low_limit, freq_high_limit
+    low_freq_amp = np.max(filtered_y[low_freq_idx])
+    high_freq_amp = np.max(filtered_y[high_freq_idx])
 
-    ro_val = low_limit
+    if low_freq_amp > high_freq_amp:
+        readout_freq = high_freq
+        bare_freq = low_freq
+        ro_val = high_freq_amp
+    else:
+        readout_freq = low_freq
+        bare_freq = high_freq
+        ro_val = low_freq_amp
 
     return bare_freq, readout_freq, ro_val, True
