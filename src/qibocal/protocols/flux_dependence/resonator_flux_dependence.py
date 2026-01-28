@@ -279,7 +279,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     )
 
 
-def _plot(data: ResonatorFluxData, target: QubitId, fit: ResonatorFluxResults = None):
+def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, target: QubitId):
     """Plotting function for ResonatorFlux Experiment."""
     figures = utils.flux_dependence_plot(
         data, fit, target, utils.transmon_readout_frequency

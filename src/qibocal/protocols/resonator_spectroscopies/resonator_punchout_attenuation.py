@@ -82,8 +82,6 @@ class ResonatorPunchoutAttenuationData(Data):
     frequencies: dict[QubitId, list] = field(default_factory=dict)
     data: dict[QubitId, np.ndarray] = field(default_factory=dict)
     """Raw data acquired, IQ components of the readout signal."""
-    filtered_signal: tuple[np.ndarray, np.ndarray] = None
-    """Extrapolated signal from the whole scan"""
 
     @property
     def find_min(self):
@@ -100,10 +98,8 @@ class ResonatorPunchoutAttenuationData(Data):
         return x.ravel(), y.ravel(), self.signal(qubit).ravel()
 
     def filtered_data(self, qubit: QubitId) -> tuple[np.array, np.array]:
-        if self.filtered_signal is None:
-            x, y, z = self.grid(qubit)
-            self.filtered_signal = punchout_extract_feature(x, y, z, self.find_min)
-        return self.filtered_signal
+        x, y, z = self.grid(qubit)
+        return punchout_extract_feature(x, y, z, self.find_min)
 
 
 def _acquisition(
@@ -236,8 +232,8 @@ def _fit(data: ResonatorPunchoutAttenuationData) -> ResonatorPunchoutAttenuation
 
 def _plot(
     data: ResonatorPunchoutAttenuationData,
+    fit: ResonatorPunchoutAttenuationResults,
     target: QubitId,
-    fit: ResonatorPunchoutAttenuationResults = None,
 ):
     """Plotting function for ResonatorPunchoutAttenuation."""
     figures = []
