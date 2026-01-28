@@ -926,7 +926,10 @@ def fit_punchout(filtered_x, filtered_y):
 
     # tolerance for frequencies
     diffs = np.abs(np.diff(filtered_x))
-    tol_step = np.min(diffs[diffs != 0])
+    if any(diffs != 0):
+        tol_step = np.min(diffs[diffs != 0])
+    else:
+        tol_step = 0
 
     # new handling for detecting dressed and bare resonator frequencies
     # by definition bare resonator frequency is given for high amplitude (low attenuation) values,
