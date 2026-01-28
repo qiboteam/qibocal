@@ -51,6 +51,7 @@ ruff = "^0.9.1"
 "tests/calibration_scripts/**/*.py" = ["F821"]
 
 
+
 [tool.poetry.group.docs]
 optional = true
 
@@ -64,12 +65,14 @@ sphinx-copybutton = "^0.5.1"
 setuptools = ">=75.8,<79.0"
 
 
+
 [tool.poetry.group.dev]
 optional = true
 
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.0"
 devtools = "^0.10.0"
+pre-commit = "^4.5.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -36,8 +36,8 @@ For development make sure to install the package using [`poetry`](https://python
 ```sh
 git clone https://github.com/qiboteam/qibocal.git
 cd qibocal
-poetry install
-pre-commit install
+poetry install --with dev
+poetry run pre-commit install
 ```
 
 ## Minimal working example
