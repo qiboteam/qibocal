@@ -203,7 +203,7 @@ def _acquisition(
 
     # Create data structure and aggregate results
     data = QubitSpectroscopyData(
-        resonator_type=platform.resonator_type, amplitudes=amplitudes
+        resonator_type=platform.resonator_type, amplitudes=amplitudes, power_level=None
     )
 
     # Combine all batches for each qubit

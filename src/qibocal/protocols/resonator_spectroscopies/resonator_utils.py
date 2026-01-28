@@ -14,6 +14,7 @@ from ..utils import (
     HZ_TO_GHZ,
     PowerLevel,
     lorentzian,
+    lorentzian_dispersive,
     table_dict,
     table_html,
 )
@@ -117,7 +118,7 @@ def s21_fit(
     return model_parameters[0], model_parameters, perr
 
 
-def spectroscopy_plot(data, qubit, fit: Results = None):
+def _plot(data, qubit, fit: Results = None, model=lorentzian):
     figures = []
     fig = make_subplots(
         rows=1,
@@ -202,7 +203,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
-                y=lorentzian(freqrange, *params),
+                y=model(freqrange, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
             ),
@@ -593,6 +594,14 @@ def s21_spectroscopy_plot(data, qubit, fit: Results = None):
     figures.reverse()
 
     return figures, fitting_report
+
+
+def spectroscopy_plot(data, qubit, fit: Results = None):
+    return _plot(data, qubit, fit, lorentzian)
+
+
+def lorentzian_dispersive_plot(data, qubit, fit: Results = None):
+    return _plot(data, qubit, fit, lorentzian_dispersive)
 
 
 def cable_delay(frequencies: NDArray, phases: NDArray, num_points: int) -> float:
