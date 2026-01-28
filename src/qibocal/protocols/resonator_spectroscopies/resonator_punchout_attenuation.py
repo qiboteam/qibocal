@@ -12,8 +12,8 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
-from ..utils import HZ_TO_GHZ, table_dict, table_html
-from .resonator_utils import fit_punchout, punchout_extract_feature
+from ..utils import HZ_TO_GHZ, reshaping_raw_signal, table_dict, table_html
+from .resonator_utils import fit_punchout, punchout_extract_feature, punchout_mask
 
 __all__ = ["resonator_punchout_attenuation", "ResonatorPunchoutAttenuationData"]
 
@@ -85,7 +85,7 @@ class ResonatorPunchoutAttenuationData(Data):
 
     @property
     def find_min(self):
-        return self.resonator_type != "2D"
+        return self.resonator_type == "2D"
 
     def signal(self, qubit: QubitId) -> np.ndarray:
         return magnitude(self.data[qubit])
@@ -213,7 +213,6 @@ def _fit(data: ResonatorPunchoutAttenuationData) -> ResonatorPunchoutAttenuation
 
     for qubit in data.qubits:
         filtered_x, filtered_y = data.filtered_data(qubit)
-
         bare_freq, readout_freq, ro_val, fit_flag = fit_punchout(filtered_x, filtered_y)
 
         if fit_flag:
@@ -250,16 +249,17 @@ def _plot(
         ),
     )
 
-    qubit_signal = data.signal(target).ravel()
-    qubit_phase = data.phase(target)
-    frequencies, attenuations, _ = data.grid(target)
+    frequencies, attenuations, qubit_signal = data.grid(target)
+    _, _, qubit_signal = reshaping_raw_signal(frequencies, attenuations, qubit_signal)
+    qubit_signal = punchout_mask(qubit_signal).ravel()
+    qubit_phase = data.phase(target).ravel()
     frequencies *= HZ_TO_GHZ
 
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
             y=attenuations,
-            z=qubit_signal,
+            z=-qubit_signal,
             colorbar_x=0.46,
         ),
         row=1,
@@ -277,6 +277,21 @@ def _plot(
         col=2,
     )
 
+    filtered_x, filtered_y = data.filtered_data(target)
+    if filtered_x is not None and filtered_y is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=filtered_x * HZ_TO_GHZ,
+                y=filtered_y,
+                mode="markers",
+                name="Estimated points",
+                marker=dict(color="rgb(248, 0, 0)"),
+                showlegend=True,
+            ),
+            row=1,
+            col=1,
+        )
+
     # Flip y-axis so low attenuation (high power) is at top
     fig.update_yaxes(autorange="reversed", row=1, col=1)
     fig.update_yaxes(autorange="reversed", row=1, col=2)
@@ -285,11 +300,11 @@ def _plot(
         fig.add_trace(
             go.Scatter(
                 x=[fit.readout_frequency[target] * HZ_TO_GHZ],
-                y=[-fit.readout_attenuation[target]],
+                y=[fit.readout_attenuation[target]],
                 mode="markers",
                 marker=dict(
                     size=8,
-                    color="gray",
+                    color="green",
                     symbol="circle",
                 ),
                 name="Estimated readout point",

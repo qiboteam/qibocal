@@ -897,21 +897,29 @@ def punchout_extract_feature(
             for lab, cl in signal_clusters.items()
         ]
     )
-    sorted_medians = medians[medians[:, 1].argsort()[::-1]]
     signal_labels = np.zeros(labels.size, dtype=bool)
     # for resonator punchout protocol we cannot merge efficiently th two branches of the whole signal, hence we
     # select the two clusters that maximise the median value of the signal.
     # In case clustering by itself selects the whole signal, we also select the clusters with minimum and maximum amplitude values,
     # in order to filter out eventual noise clusters
-    min_amp_idx = np.argmin(sorted_medians[:2, -2])
-    signal_labels[
-        signal_clusters[sorted_medians[min_amp_idx, 0]]["cluster"][-1, :].astype(int)
-    ] = True
-    max_amp_idx = np.argmax(sorted_medians[:2, -1])
-    signal_labels[
-        signal_clusters[sorted_medians[max_amp_idx, 0]]["cluster"][-1, :].astype(int)
-    ] = True
-    signal_labels
+    if medians.shape[0] > 1:
+        sorted_medians = medians[medians[:, 1].argsort()[::-1]]
+        min_amp_idx = np.argmin(sorted_medians[:2, -2])
+        signal_labels[
+            signal_clusters[sorted_medians[min_amp_idx, 0]]["cluster"][-1, :].astype(
+                int
+            )
+        ] = True
+        max_amp_idx = np.argmax(sorted_medians[:2, -1])
+        signal_labels[
+            signal_clusters[sorted_medians[max_amp_idx, 0]]["cluster"][-1, :].astype(
+                int
+            )
+        ] = True
+    else:
+        signal_labels[signal_clusters[medians[0, 0]]["cluster"][-1, :].astype(int)] = (
+            True
+        )
 
     return peaks_dict["x"]["val"][signal_labels], peaks_dict["y"]["val"][signal_labels]
 

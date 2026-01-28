@@ -864,10 +864,6 @@ def merging(
     indexed_labels = np.stack((labels, indices_list)).T
     data = np.vstack((data.T, indices_list))
 
-    if len(unique_labels) == 1:
-        # only one cluster found
-        return {unique_labels[0]}
-
     clusters = [data[:, labels == lab] for lab in unique_labels if lab >= 0]
     noise_points = data[:, labels < 0]
 
@@ -901,6 +897,10 @@ def merging(
             "rightmost": first_rightmost,
         }
     }
+
+    if len(unique_labels) == 1:
+        # only one cluster found
+        return active_clusters
 
     for cluster in clusters[1:]:
         distances_list = []
