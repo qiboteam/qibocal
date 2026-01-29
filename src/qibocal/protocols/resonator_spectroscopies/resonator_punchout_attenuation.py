@@ -264,7 +264,9 @@ def _plot(
         ),
         row=1,
         col=1,
-    )
+col=1,
+reversescale=data.find_min,
+)
 
     fig.add_trace(
         go.Heatmap(
