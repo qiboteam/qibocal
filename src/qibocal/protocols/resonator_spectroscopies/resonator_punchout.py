@@ -52,7 +52,6 @@ class ResonatorPunchoutData(Data):
 
     resonator_type: str
     """Resonator type."""
-    # TODO: maybe we want different amplitudes for each qubit (if possible) ?
     amplitudes: list = None
     frequencies: dict[QubitId, list] = field(default_factory=dict)
     data: dict[QubitId, np.ndarray] = field(default_factory=dict)

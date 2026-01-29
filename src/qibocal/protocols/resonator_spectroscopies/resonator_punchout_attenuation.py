@@ -76,7 +76,6 @@ class ResonatorPunchoutAttenuationData(Data):
 
     resonator_type: str
     """Resonator type."""
-    # TODO: maybe we want different attenuations for each RO line (if possible) ?
     attenuations: list = None
     """LO attenuations provided by the user."""
     frequencies: dict[QubitId, list] = field(default_factory=dict)
@@ -264,9 +263,8 @@ def _plot(
         ),
         row=1,
         col=1,
-col=1,
-reversescale=data.find_min,
-)
+        reversescale=data.find_min,
+    )
 
     fig.add_trace(
         go.Heatmap(
