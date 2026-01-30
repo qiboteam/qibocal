@@ -43,8 +43,6 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
             self.max_attenuation,
             self.step_attenuation,
         )
-        if "qm" in platform.instruments:
-            self.attenuation_range *= -1
 
     @property
     def delta_frequency_range(self) -> npt.NDArray[np.float64]:
