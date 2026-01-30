@@ -21,7 +21,7 @@ def create() -> Platform:
     channels = {}
 
     qubits[0] = qubit = Qubit.default(
-        0, drive_extra={(1, 2): "0/drive12", 1: "01/drive"}
+        0, drive_extra={(1, 2): "0/drive12", 1: "0/drive1"}
     )
     channels |= {
         qubit.drive: IqChannel(mixer=None, lo=None),
