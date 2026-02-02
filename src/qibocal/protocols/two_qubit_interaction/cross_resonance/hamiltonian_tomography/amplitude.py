@@ -261,12 +261,13 @@ def _acquisition(
                         }
                     }
                 )
+                acquisition_type = AcquisitionType.INTEGRATION
                 results = platform.execute(
                     [sequence],
                     [[length_sweeper], [amp_sweeper]],
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.DISCRIMINATION,
+                    acquisition_type=acquisition_type,
                     averaging_mode=AveragingMode.CYCLIC,
                     updates=updates,
                 )
@@ -277,8 +278,16 @@ def _acquisition(
                     sequence.channel(platform.qubits[control].acquisition)
                 )[-1].id
 
-                prob_target = cyclic_prob(results[target_acq_handle], state=1).ravel()
-                prob_control = cyclic_prob(results[control_acq_handle], state=1).ravel()
+                if acquisition_type is AcquisitionType.INTEGRATION:
+                    prob_target = results[target_acq_handle]
+                    prob_control = results[control_acq_handle]
+                else:
+                    prob_target = cyclic_prob(
+                        results[target_acq_handle], state=1
+                    ).ravel()
+                    prob_control = cyclic_prob(
+                        results[control_acq_handle], state=1
+                    ).ravel()
 
                 data.register_qubit(
                     HamiltonianTomographyCRAmplitudeType,
