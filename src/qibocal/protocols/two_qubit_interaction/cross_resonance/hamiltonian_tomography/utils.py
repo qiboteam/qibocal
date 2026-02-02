@@ -440,11 +440,7 @@ def tomography_cr_plot(
                 row=i + 1,
                 col=1,
             )
-            if (
-                fit is not None
-                and not fit.fitted_parameters
-                and (*target, basis, setup) in fit.fitted_parameters
-            ):
+            if fit is not None and (*target, basis, setup) in fit.fitted_parameters:
                 x = np.linspace(pair_data.x.min(), pair_data.x.max(), 100)
                 if basis == Basis.Z:
                     fig.add_trace(
