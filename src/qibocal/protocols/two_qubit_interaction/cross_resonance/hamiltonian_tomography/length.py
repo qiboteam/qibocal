@@ -37,6 +37,8 @@ from .utils import (
     tomography_cr_plot,
 )
 
+# DEBUG
+
 HamiltonianTomographyCRLengthType = np.dtype(
     [
         ("prob_target", np.float64),
@@ -176,12 +178,13 @@ def _acquisition(
                         }
                     }
                 )
+                acquisition_type = AcquisitionType.INTEGRATION
                 results = platform.execute(
                     [sequence],
                     [[sweeper]],
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.DISCRIMINATION,
+                    acquisition_type=acquisition_type,
                     averaging_mode=AveragingMode.SINGLESHOT,
                     updates=updates,
                 )
@@ -191,8 +194,18 @@ def _acquisition(
                 control_acq_handle = list(
                     sequence.channel(platform.qubits[control].acquisition)
                 )[-1].id
-                prob_target = probability(results[target_acq_handle], state=1)
-                prob_control = probability(results[control_acq_handle], state=1)
+
+                if acquisition_type is AcquisitionType.INTEGRATION:
+                    prob_target = results[target_acq_handle]
+                    prob_control = results[control_acq_handle]
+                else:
+                    prob_target = probability(results[target_acq_handle], state=1)
+                    prob_control = probability(results[control_acq_handle], state=1)
+                # HERE I COULD RECOVER THE CORRECT SOLUTION ONLY FOR 'fixed-frequency-qutrits' PLATFORM
+                # STILL NOT WORKING FOR 'qutrits' PLATFORM
+                # t = datetime.datetime.now().strftime("%H:%M:%S")
+                # np.savez(f'{t}_qibocal_lengthpy_qutip_evolution.npz', np.stack([prob_control, prob_target]))
+
                 # TODO: possibly drop control probablity even if it might be useful later on
                 # to compute leakage
                 data.register_qubit(
