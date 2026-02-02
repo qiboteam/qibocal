@@ -26,12 +26,12 @@ from .....auto.operation import (
     Routine,
 )
 from .....calibration import CalibrationPlatform
-from .....result import probability
 from ....utils import table_dict, table_html
 from ..utils import Basis, SetControl, cr_sequence
 from .utils import (
     EPS,
     HamiltonianTerm,
+    cyclic_prob,
     extract_hamiltonian_terms,
     tomography_cr_fit,
     tomography_cr_plot,
@@ -199,8 +199,12 @@ def _acquisition(
                     prob_target = results[target_acq_handle]
                     prob_control = results[control_acq_handle]
                 else:
-                    prob_target = probability(results[target_acq_handle], state=1)
-                    prob_control = probability(results[control_acq_handle], state=1)
+                    prob_target = cyclic_prob(
+                        results[target_acq_handle], state=1
+                    ).ravel()
+                    prob_control = cyclic_prob(
+                        results[control_acq_handle], state=1
+                    ).ravel()
                 # HERE I COULD RECOVER THE CORRECT SOLUTION ONLY FOR 'fixed-frequency-qutrits' PLATFORM
                 # STILL NOT WORKING FOR 'qutrits' PLATFORM
                 # t = datetime.datetime.now().strftime("%H:%M:%S")
