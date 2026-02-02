@@ -5,6 +5,8 @@ after the application of a cross resonance sequence. The CR pulses are played on
 channel with frequency set to the frequency of the target drive channel.
 """
 
+# DEBUG
+import datetime
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -36,8 +38,6 @@ from .utils import (
     tomography_cr_fit,
     tomography_cr_plot,
 )
-
-# DEBUG
 
 HamiltonianTomographyCRLengthType = np.dtype(
     [
@@ -207,8 +207,11 @@ def _acquisition(
                     ).ravel()
                 # HERE I COULD RECOVER THE CORRECT SOLUTION ONLY FOR 'fixed-frequency-qutrits' PLATFORM
                 # STILL NOT WORKING FOR 'qutrits' PLATFORM
-                # t = datetime.datetime.now().strftime("%H:%M:%S")
-                # np.savez(f'{t}_qibocal_lengthpy_qutip_evolution.npz', np.stack([prob_control, prob_target]))
+                t = datetime.datetime.now().strftime("%H:%M:%S")
+                np.savez(
+                    f"{t}_qibocal_lengthpy_qutip_evolution.npz",
+                    np.stack([prob_control, prob_target]),
+                )
 
                 # TODO: possibly drop control probablity even if it might be useful later on
                 # to compute leakage
