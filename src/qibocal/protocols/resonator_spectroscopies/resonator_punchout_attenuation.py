@@ -258,10 +258,11 @@ def _plot(
             y=attenuations,
             z=qubit_signal,
             colorbar_x=0.46,
+            reversescale=data.find_min,
         ),
         row=1,
         col=1,
-        reversescale=data.find_min,
+        
     )
 
     fig.add_trace(
@@ -282,7 +283,7 @@ def _plot(
                 x=filtered_x * HZ_TO_GHZ,
                 y=filtered_y,
                 mode="markers",
-                name="Estimated points",
+                name="Estimated Resonance",
                 marker=dict(color="rgb(248, 0, 0)"),
                 showlegend=True,
             ),
