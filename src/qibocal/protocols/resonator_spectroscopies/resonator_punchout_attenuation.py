@@ -262,7 +262,6 @@ def _plot(
         ),
         row=1,
         col=1,
-        
     )
 
     fig.add_trace(
