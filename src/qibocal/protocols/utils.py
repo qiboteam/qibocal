@@ -682,15 +682,18 @@ def guess_period(x, y):
     return 1 / fft_freqs[np.argmax(mags)]
 
 
-def guess_period_numpyfied(x: np.ndarray, y: np.ndarray, axis: int = -1):
-    """Numpyfied version of :func:`guess_period`."""
+def guess_frequency_numpyfied(x: np.ndarray, y: np.ndarray, axis: int = -1):
+    """Numpyfied version of :func:`guess_period` but here we work on frequencies."""
     assert x.ndim == 1, f"Expected 1D array, got array with shape {x.shape}"
 
     fft = np.fft.rfft(y, axis=axis)
     fft_freqs = np.fft.rfftfreq(y.shape[axis], d=(x[1] - x[0]))
     mags = np.abs(fft)
     mags[0] = 0
-    return 1 / fft_freqs[np.argmax(mags, axis=axis)]
+
+    selected_freqs = fft_freqs[np.argmax(mags, axis=axis)]
+
+    return selected_freqs
 
 
 def fallback_period(period):
@@ -698,10 +701,12 @@ def fallback_period(period):
     return period if period is not None else 4
 
 
-def fallback_period_numpyfied(period: np.ndarray):
-    """Numpyfied version of :func:`fallback_period`."""
-    assert period.ndim == 1, f"Expected 1D array, got array with shape {period.shape}"
-    return np.where(np.isnan(period), 4, period)
+def fallback_frequency_numpyfied(frequency: np.ndarray):
+    """Numpyfied version of :func:`fallback_period`, but here we work on frequencies."""
+    assert frequency.ndim == 1, (
+        f"Expected 1D array, got array with shape {frequency.shape}"
+    )
+    return np.where(np.isnan(frequency), 4, frequency)
 
 
 def quinn_fernandes_algorithm(
@@ -727,7 +732,9 @@ def quinn_fernandes_algorithm(
     omegas = (
         2
         * np.pi
-        / fallback_period_numpyfied(guess_period_numpyfied(x, signal_id, axis=axis))
+        * fallback_frequency_numpyfied(
+            guess_frequency_numpyfied(x, signal_id, axis=axis)
+        )
     )
     alpha = 2 * np.cos(omegas)
 
