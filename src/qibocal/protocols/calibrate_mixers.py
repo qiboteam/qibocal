@@ -210,11 +210,26 @@ def _acquisition(
 
             # Run LO calibration
             if module.is_qcm_type:
-                getattr(module, f"out{output_number - 1}_lo_cal")()
+                getattr(module, f"out{output_number - 1}_lo_cal")() 
             else:
                 getattr(
                     module, f"out{output_number - 1}_in{output_number - 1}_lo_cal"
                 )()
+
+            # Run sequencer mixer calibrations
+            for seq_idx in range(len(seqs)):
+                seq_name = f"sequencer{seq_idx}"
+                if not hasattr(module, seq_name):
+                    continue
+                sequencer = getattr(module, seq_name, None)
+                if module.is_qcm_type:
+                    if all(sequencer._get_sequencer_connect_out(i) == 'off' for i in range(2)):
+                        # If no port is assigned to the sequencer, sconnect it to the current output
+                        getattr(module, seq_name).connect_sequencer(f"out{output_number - 1}") # 
+                else: # is qrm_type
+                    if sequencer._get_sequencer_connect_out(0) == 'off':
+                        getattr(module, seq_name).connect_sequencer(f"out{output_number - 1}") # 
+                getattr(module, seq_name).sideband_cal()
 
         # Read final calibration values
         for module_idx, module in modules.items():
