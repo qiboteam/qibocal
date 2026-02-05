@@ -4,7 +4,12 @@ from typing import Optional, Union
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from scipy.optimize import curve_fit
+from scipy.optimize import (
+    Bounds,
+    NonlinearConstraint,
+    curve_fit,
+    differential_evolution,
+)
 
 from .....auto.operation import (
     Data,
@@ -12,7 +17,7 @@ from .....auto.operation import (
     QubitPairId,
 )
 from .....config import log
-from ....utils import fallback_period, guess_period, table_dict, table_html
+from ....utils import quinn_fernandes_algorithm, table_dict, table_html
 from ..utils import Basis, SetControl
 from . import fitting
 
@@ -50,115 +55,127 @@ def tomography_cr_fit(
     """
 
     fitted_parameters = {}
-    for pair in data.pairs:
-        for setup in SetControl:
-            pair_data = data.data[pair[0], pair[1], Basis.Z, setup]
-            period = fallback_period(guess_period(pair_data.x, pair_data.prob_target))
-            omega = 2 * np.pi / period
-            pguess = [
-                omega / np.sqrt(2),
-                omega / np.sqrt(2),
-                0,
-                omega,
-            ]
-            try:
-                popt, _ = curve_fit(
-                    fitting.fit_Z_exp,
-                    pair_data.x,
-                    pair_data.prob_target,
-                    maxfev=int(1e6),
-                    p0=pguess,
-                    sigma=pair_data.error_target,
-                    bounds=(
-                        [-5 * omega, -5 * omega, -5 * omega, 0],
-                        [
-                            5 * omega,
-                            5 * omega,
-                            5 * omega,
-                            5 * omega,
-                        ],
-                    ),
-                )
-                fitted_parameters[pair[0], pair[1], Basis.Z, setup] = popt.tolist()
-            except Exception as e:  # pragma: no cover
-                log.warning(f"CR Z fit failed for pair {pair} due to {e}.")
+    # for pair in data.pairs:
+    #     for setup in SetControl:
+    #         pair_data = data.data[pair[0], pair[1], Basis.Z, setup]
+    #         period = fallback_period(guess_period(pair_data.x, pair_data.prob_target))
+    #         omega = 2 * np.pi / period
+    #         pguess = [
+    #             omega / np.sqrt(2),
+    #             omega / np.sqrt(2),
+    #             0,
+    #             omega,
+    #         ]
+    #         try:
+    #             popt, _ = curve_fit(
+    #                 fitting.fit_Z_exp,
+    #                 pair_data.x,
+    #                 pair_data.prob_target,
+    #                 maxfev=int(1e6),
+    #                 p0=pguess,
+    #                 sigma=pair_data.error_target,
+    #                 bounds=(
+    #                     [-5 * omega, -5 * omega, -5 * omega, 0],
+    #                     [
+    #                         5 * omega,
+    #                         5 * omega,
+    #                         5 * omega,
+    #                         5 * omega,
+    #                     ],
+    #                 ),
+    #             )
+    #             fitted_parameters[pair[0], pair[1], Basis.Z, setup] = popt.tolist()
+    #         except Exception as e:  # pragma: no cover
+    #             log.warning(f"CR Z fit failed for pair {pair} due to {e}.")
+
+    # for pair in data.pairs:
+    #     for setup in SetControl:
+    #         pair_data = data.data[pair[0], pair[1], Basis.X, setup]
+    #         omega = fitted_parameters[pair[0], pair[1], Basis.Z, setup][3]
+    #         pguess = [0, 0, 0, omega]
+
+    #         try:
+    #             popt, _ = curve_fit(
+    #                 fitting.fit_X_exp,
+    #                 pair_data.x,
+    #                 pair_data.prob_target,
+    #                 maxfev=int(1e6),
+    #                 p0=pguess,
+    #                 sigma=pair_data.error_target,
+    #                 absolute_sigma=True,
+    #                 bounds=(
+    #                     [-omega, -omega, -omega, 0.99 * omega],
+    #                     [
+    #                         omega,
+    #                         omega,
+    #                         omega,
+    #                         1.01 * omega,
+    #                     ],
+    #                 ),
+    #             )
+    #             fitted_parameters[pair[0], pair[1], Basis.X, setup] = popt.tolist()
+    #         except Exception as e:  # pragma: no cover
+    #             log.warning(f"CR fit failed X for pair {pair} due to {e}.")
+
+    # for pair in data.pairs:
+    #     for setup in SetControl:
+    #         pair_data = data.data[pair[0], pair[1], Basis.Y, setup]
+    #         omega = fitted_parameters[pair[0], pair[1], Basis.Z, setup][3]
+    #         pguess = [0, 0, 0, omega]
+    #         try:
+    #             popt, _ = curve_fit(
+    #                 fitting.fit_Y_exp,
+    #                 pair_data.x,
+    #                 pair_data.prob_target,
+    #                 maxfev=int(1e6),
+    #                 p0=pguess,
+    #                 sigma=pair_data.error_target,
+    #                 absolute_sigma=True,
+    #                 bounds=(
+    #                     [-omega, -omega, -omega, 0.99 * omega],
+    #                     [
+    #                         omega,
+    #                         omega,
+    #                         omega,
+    #                         1.01 * omega,
+    #                     ],
+    #                 ),
+    #             )
+    #             fitted_parameters[pair[0], pair[1], Basis.Y, setup] = popt.tolist()
+    #         except Exception as e:  # pragma: no cover
+    #             log.warning(f"CR Y fit failed for pair {pair} due to {e}.")
 
     for pair in data.pairs:
         for setup in SetControl:
-            pair_data = data.data[pair[0], pair[1], Basis.X, setup]
-            omega = fitted_parameters[pair[0], pair[1], Basis.Z, setup][3]
-            pguess = [0, 0, 0, omega]
+            concatenated_signal = np.concatenate(
+                [
+                    data.data[pair[0], pair[1], Basis.X, setup].prob_target,
+                    data.data[pair[0], pair[1], Basis.Y, setup].prob_target,
+                    data.data[pair[0], pair[1], Basis.Z, setup].prob_target,
+                ]
+            ).reshape(len(Basis), -1)
+            vector_x = data.data[pair[0], pair[1], Basis.X, setup].x
 
-            try:
-                popt, _ = curve_fit(
-                    fitting.fit_X_exp,
-                    pair_data.x,
-                    pair_data.prob_target,
-                    maxfev=int(1e6),
-                    p0=pguess,
-                    sigma=pair_data.error_target,
-                    absolute_sigma=True,
-                    bounds=(
-                        [-omega, -omega, -omega, 0.99 * omega],
-                        [
-                            omega,
-                            omega,
-                            omega,
-                            1.01 * omega,
-                        ],
-                    ),
-                )
-                fitted_parameters[pair[0], pair[1], Basis.X, setup] = popt.tolist()
-            except Exception as e:  # pragma: no cover
-                log.warning(f"CR fit failed X for pair {pair} due to {e}.")
+            sampling_rate = 1 / (vector_x[1] - vector_x[0])
+            total_omega_guess = quinn_fernandes_algorithm(
+                concatenated_signal, vector_x, sampling_rate, speedup_flag=True
+            )
 
-    for pair in data.pairs:
-        for setup in SetControl:
-            pair_data = data.data[pair[0], pair[1], Basis.Y, setup]
-            omega = fitted_parameters[pair[0], pair[1], Basis.Z, setup][3]
-            pguess = [0, 0, 0, omega]
-            try:
-                popt, _ = curve_fit(
-                    fitting.fit_Y_exp,
-                    pair_data.x,
-                    pair_data.prob_target,
-                    maxfev=int(1e6),
-                    p0=pguess,
-                    sigma=pair_data.error_target,
-                    absolute_sigma=True,
-                    bounds=(
-                        [-omega, -omega, -omega, 0.99 * omega],
-                        [
-                            omega,
-                            omega,
-                            omega,
-                            1.01 * omega,
-                        ],
-                    ),
-                )
-                fitted_parameters[pair[0], pair[1], Basis.Y, setup] = popt.tolist()
-            except Exception as e:  # pragma: no cover
-                log.warning(f"CR Y fit failed for pair {pair} due to {e}.")
+            offsets = (
+                abs(np.median(concatenated_signal, axis=-1)) * total_omega_guess**2
+            )
+            omega_guesses = np.zeros(offsets.shape)
+            omega_guesses[-1] = np.sqrt(offsets[-1])
+            omega_guesses[0] = offsets[0] / omega_guesses[-1]
+            omega_guesses[1] = offsets[1] / omega_guesses[-1]
 
-    for pair in data.pairs:
-        for setup in SetControl:
-            fitted_parameters[pair[0], pair[1], setup] = fitted_parameters[
-                pair[0], pair[1], Basis.Y, setup
-            ][:3]
-            pguess = fitted_parameters[pair[0], pair[1], setup]
-            combined_data = data.data[pair[0], pair[1], Basis.X, setup]
             popt, _ = curve_fit(
                 fitting.combined_fit,
-                np.concatenate([combined_data.x, combined_data.x, combined_data.x]),
-                np.concatenate(
-                    [
-                        data.data[pair[0], pair[1], Basis.X, setup].prob_target,
-                        data.data[pair[0], pair[1], Basis.Y, setup].prob_target,
-                        data.data[pair[0], pair[1], Basis.Z, setup].prob_target,
-                    ]
-                ),
+                np.concatenate([vector_x, vector_x, vector_x]),
+                concatenated_signal.ravel(),
                 maxfev=int(1e6),
-                p0=pguess,
+                p0=np.maximum(omega_guesses, 0),
+                bounds=([0, 0, 0], [np.inf, np.inf, np.inf]),
                 sigma=np.concatenate(
                     [
                         data.data[pair[0], pair[1], Basis.X, setup].error_target,
@@ -334,13 +351,14 @@ def amplitude_tomography_cr_fit(data: Data):
 
 
 def phase_tom_fit(x, y, q_pair, term, result_dict):
-    period = fallback_period(guess_period(x, y))
+    fs = 1 / (x[1] - x[0])
+    omega = quinn_fernandes_algorithm(y, x, fs)
     median_sig = np.median(y)
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)
     amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT
     phase_guess = 0
-    pguess = [amplitude_guess, median_sig, period, phase_guess]
+    pguess = [amplitude_guess, median_sig, omega, phase_guess]
     try:
         popt, _ = curve_fit(
             fitting.sin_fit,
@@ -684,3 +702,42 @@ def calibration_cr_plot(
             figures.append(fig)
 
     return figures, fitting_report
+
+
+def dynamic_evolution_optimizer(
+    signals_id: np.ndarray,
+    x: np.ndarray,
+    concat_x: np.ndarray,
+    use_constraints: bool = False,
+) -> np.ndarray:
+    """Optimizer for sinusoidal fitting; it exploits evolution algorithm to find the best fit parameters.
+    This algorithm is a gradient-free optimization, hence might be less affected by local minima in the cost
+    function landscape, but it can be computationally expensive, especially for large datasets or complex models.
+    """
+
+    assert x.ndim == 1, f"Expected 1D array, got array with shape {x.shape}"
+
+    sampling_rate = 1 / (np.median(np.diff(x)))
+    total_omega_guess = quinn_fernandes_algorithm(signals_id, sampling_rate, 100)
+
+    def func_to_minimize(z):
+        return np.sum((fitting.combined_fit(concat_x, *z) - signals_id.ravel()) ** 2)
+
+    def constraint(x):
+        return np.sqrt(np.sum(x**2))
+
+    bounds = Bounds(
+        [0, 0, 0], [total_omega_guess, total_omega_guess, total_omega_guess]
+    )
+    res = differential_evolution(
+        func_to_minimize,
+        bounds,
+        maxiter=int(1e6),
+        constraints=(
+            NonlinearConstraint(constraint, 0, total_omega_guess * 1.01)
+            if use_constraints
+            else ()
+        ),
+    )
+    popt = res.x
+    return popt
