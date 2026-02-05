@@ -40,6 +40,63 @@ def cyclic_prob(values: float, state: int):
     return np.minimum(values, 1) if state == 1 else np.maximum(1 - values, 0)
 
 
+def dynamic_evolution_optimizer(
+    signals_id: np.ndarray,
+    x: np.ndarray,
+    concat_x: np.ndarray,
+    init_omega_guess: float,
+    use_constraints: bool = False,
+) -> np.ndarray:
+    """Optimizer for sinusoidal fitting; it exploits evolution algorithm to find the best fit parameters.
+    This algorithm is a gradient-free optimization, hence might be less affected by local minima in the cost
+    function landscape, but it can be computationally expensive, especially for large datasets or complex models.
+    """
+
+    assert x.ndim == 1, f"Expected 1D array, got array with shape {x.shape}"
+
+    def func_to_minimize(z):
+        return np.sum((fitting.combined_fit(concat_x, *z) - signals_id.ravel()) ** 2)
+
+    def constraint(x):
+        return np.sqrt(np.sum(x**2))
+
+    bounds = Bounds([0, 0, 0], [init_omega_guess, init_omega_guess, init_omega_guess])
+    res = differential_evolution(
+        func_to_minimize,
+        bounds,
+        maxiter=int(1e6),
+        constraints=(
+            NonlinearConstraint(constraint, 0, init_omega_guess * 2)
+            if use_constraints
+            else ()
+        ),
+    )
+    popt = res.x
+    return popt
+
+
+def scipy_curve_fit_optimizer(
+    concatenated_signal, vector_x, init_omega_guess, errors=None
+):
+    offsets = abs(np.median(concatenated_signal, axis=-1)) * init_omega_guess**2
+    omega_guesses = np.zeros(offsets.shape)
+    omega_guesses[-1] = np.sqrt(offsets[-1])
+    omega_guesses[0] = offsets[0] / omega_guesses[-1]
+    omega_guesses[1] = offsets[1] / omega_guesses[-1]
+
+    popt, _ = curve_fit(
+        fitting.combined_fit,
+        np.concatenate([vector_x, vector_x, vector_x]),
+        concatenated_signal.ravel(),
+        maxfev=int(1e6),
+        p0=np.maximum(omega_guesses, 0),
+        bounds=([0, 0, 0], [np.inf, np.inf, np.inf]),
+        sigma=errors,
+    )
+
+    return popt
+
+
 def tomography_cr_fit(
     data: Union[
         "HamiltonianTomographyCRLengthData",  # noqa: F821
@@ -55,95 +112,6 @@ def tomography_cr_fit(
     """
 
     fitted_parameters = {}
-    # for pair in data.pairs:
-    #     for setup in SetControl:
-    #         pair_data = data.data[pair[0], pair[1], Basis.Z, setup]
-    #         period = fallback_period(guess_period(pair_data.x, pair_data.prob_target))
-    #         omega = 2 * np.pi / period
-    #         pguess = [
-    #             omega / np.sqrt(2),
-    #             omega / np.sqrt(2),
-    #             0,
-    #             omega,
-    #         ]
-    #         try:
-    #             popt, _ = curve_fit(
-    #                 fitting.fit_Z_exp,
-    #                 pair_data.x,
-    #                 pair_data.prob_target,
-    #                 maxfev=int(1e6),
-    #                 p0=pguess,
-    #                 sigma=pair_data.error_target,
-    #                 bounds=(
-    #                     [-5 * omega, -5 * omega, -5 * omega, 0],
-    #                     [
-    #                         5 * omega,
-    #                         5 * omega,
-    #                         5 * omega,
-    #                         5 * omega,
-    #                     ],
-    #                 ),
-    #             )
-    #             fitted_parameters[pair[0], pair[1], Basis.Z, setup] = popt.tolist()
-    #         except Exception as e:  # pragma: no cover
-    #             log.warning(f"CR Z fit failed for pair {pair} due to {e}.")
-
-    # for pair in data.pairs:
-    #     for setup in SetControl:
-    #         pair_data = data.data[pair[0], pair[1], Basis.X, setup]
-    #         omega = fitted_parameters[pair[0], pair[1], Basis.Z, setup][3]
-    #         pguess = [0, 0, 0, omega]
-
-    #         try:
-    #             popt, _ = curve_fit(
-    #                 fitting.fit_X_exp,
-    #                 pair_data.x,
-    #                 pair_data.prob_target,
-    #                 maxfev=int(1e6),
-    #                 p0=pguess,
-    #                 sigma=pair_data.error_target,
-    #                 absolute_sigma=True,
-    #                 bounds=(
-    #                     [-omega, -omega, -omega, 0.99 * omega],
-    #                     [
-    #                         omega,
-    #                         omega,
-    #                         omega,
-    #                         1.01 * omega,
-    #                     ],
-    #                 ),
-    #             )
-    #             fitted_parameters[pair[0], pair[1], Basis.X, setup] = popt.tolist()
-    #         except Exception as e:  # pragma: no cover
-    #             log.warning(f"CR fit failed X for pair {pair} due to {e}.")
-
-    # for pair in data.pairs:
-    #     for setup in SetControl:
-    #         pair_data = data.data[pair[0], pair[1], Basis.Y, setup]
-    #         omega = fitted_parameters[pair[0], pair[1], Basis.Z, setup][3]
-    #         pguess = [0, 0, 0, omega]
-    #         try:
-    #             popt, _ = curve_fit(
-    #                 fitting.fit_Y_exp,
-    #                 pair_data.x,
-    #                 pair_data.prob_target,
-    #                 maxfev=int(1e6),
-    #                 p0=pguess,
-    #                 sigma=pair_data.error_target,
-    #                 absolute_sigma=True,
-    #                 bounds=(
-    #                     [-omega, -omega, -omega, 0.99 * omega],
-    #                     [
-    #                         omega,
-    #                         omega,
-    #                         omega,
-    #                         1.01 * omega,
-    #                     ],
-    #                 ),
-    #             )
-    #             fitted_parameters[pair[0], pair[1], Basis.Y, setup] = popt.tolist()
-    #         except Exception as e:  # pragma: no cover
-    #             log.warning(f"CR Y fit failed for pair {pair} due to {e}.")
 
     for pair in data.pairs:
         for setup in SetControl:
@@ -154,6 +122,15 @@ def tomography_cr_fit(
                     data.data[pair[0], pair[1], Basis.Z, setup].prob_target,
                 ]
             ).reshape(len(Basis), -1)
+
+            # concatenated_errors = np.concatenate(
+            #     [
+            #         data.data[pair[0], pair[1], Basis.X, setup].error_target,
+            #         data.data[pair[0], pair[1], Basis.Y, setup].error_target,
+            #         data.data[pair[0], pair[1], Basis.Z, setup].error_target,
+            #     ]
+            # )
+
             vector_x = data.data[pair[0], pair[1], Basis.X, setup].x
 
             sampling_rate = 1 / abs(vector_x[1] - vector_x[0])
@@ -161,29 +138,14 @@ def tomography_cr_fit(
                 concatenated_signal, vector_x, sampling_rate, speedup_flag=True
             )
 
-            offsets = (
-                abs(np.median(concatenated_signal, axis=-1)) * total_omega_guess**2
-            )
-            omega_guesses = np.zeros(offsets.shape)
-            omega_guesses[-1] = np.sqrt(offsets[-1])
-            omega_guesses[0] = offsets[0] / omega_guesses[-1]
-            omega_guesses[1] = offsets[1] / omega_guesses[-1]
-
-            popt, _ = curve_fit(
-                fitting.combined_fit,
+            # popt = scipy_curve_fit_optimizer(concatenated_signal, vector_x, total_omega_guess, concatenated_errors)
+            popt = dynamic_evolution_optimizer(
+                concatenated_signal,
+                vector_x,
                 np.concatenate([vector_x, vector_x, vector_x]),
-                concatenated_signal.ravel(),
-                maxfev=int(1e6),
-                p0=np.maximum(omega_guesses, 0),
-                bounds=([0, 0, 0], [np.inf, np.inf, np.inf]),
-                sigma=np.concatenate(
-                    [
-                        data.data[pair[0], pair[1], Basis.X, setup].error_target,
-                        data.data[pair[0], pair[1], Basis.Y, setup].error_target,
-                        data.data[pair[0], pair[1], Basis.Z, setup].error_target,
-                    ]
-                ),
+                total_omega_guess,
             )
+
             fitted_parameters[pair[0], pair[1], setup] = popt.tolist()
     return fitted_parameters
 
@@ -638,42 +600,3 @@ def calibration_cr_plot(
             figures.append(fig)
 
     return figures, fitting_report
-
-
-def dynamic_evolution_optimizer(
-    signals_id: np.ndarray,
-    x: np.ndarray,
-    concat_x: np.ndarray,
-    use_constraints: bool = False,
-) -> np.ndarray:
-    """Optimizer for sinusoidal fitting; it exploits evolution algorithm to find the best fit parameters.
-    This algorithm is a gradient-free optimization, hence might be less affected by local minima in the cost
-    function landscape, but it can be computationally expensive, especially for large datasets or complex models.
-    """
-
-    assert x.ndim == 1, f"Expected 1D array, got array with shape {x.shape}"
-
-    sampling_rate = 1 / (np.median(np.diff(x)))
-    total_omega_guess = quinn_fernandes_algorithm(signals_id, sampling_rate, 100)
-
-    def func_to_minimize(z):
-        return np.sum((fitting.combined_fit(concat_x, *z) - signals_id.ravel()) ** 2)
-
-    def constraint(x):
-        return np.sqrt(np.sum(x**2))
-
-    bounds = Bounds(
-        [0, 0, 0], [total_omega_guess, total_omega_guess, total_omega_guess]
-    )
-    res = differential_evolution(
-        func_to_minimize,
-        bounds,
-        maxiter=int(1e6),
-        constraints=(
-            NonlinearConstraint(constraint, 0, total_omega_guess * 1.01)
-            if use_constraints
-            else ()
-        ),
-    )
-    popt = res.x
-    return popt
