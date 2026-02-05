@@ -23,7 +23,6 @@ from ... import update
 from ..utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
-    extract_feature,
     readout_frequency,
     table_dict,
     table_html,
@@ -62,6 +61,8 @@ class QubitFluxResults(Results):
     """Raw fitting output."""
     matrix_element: dict[QubitId, float] = field(default_factory=dict)
     """V_ii coefficient."""
+    successful_fit: dict[QubitId, bool] = field(default_factory=dict)
+    """flag for each qubit to see whether the fit was successful."""
 
 
 QubitFluxType = np.dtype(
@@ -100,7 +101,7 @@ class QubitFluxData(Data):
 
     def filtered_data(self, qubit: QubitId) -> np.ndarray:
         """Apply mask to specific qubit data."""
-        return extract_feature(
+        return utils.flux_extract_feature(
             self.data[qubit].freq,
             self.data[qubit].bias,
             self.data[qubit].signal,
@@ -206,6 +207,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     sweetspot = {}
     matrix_element = {}
     fitted_parameters = {}
+    successful_fit = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
@@ -213,56 +215,58 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         # extract signal from 2D plot based on SNR mask
         frequencies, biases = data.filtered_data(qubit)
 
-        def fit_function(x, w_max, normalization, offset):
-            return utils.transmon_frequency(
-                xi=x,
-                w_max=w_max,
-                xj=0,
-                d=0,
-                normalization=normalization,
-                offset=offset,
-                crosstalk_element=1,
-                charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
-            )
+        if frequencies is None or biases is None:
+            successful_fit[qubit] = False
+        else:
 
-        try:
-            popt = curve_fit(
-                fit_function,
-                biases,
-                frequencies * HZ_TO_GHZ,
-                bounds=utils.qubit_flux_dependence_fit_bounds(
-                    data.qubit_frequency[qubit],
-                ),
-                maxfev=100000,
-            )[0]
-            fitted_parameters[qubit] = {
-                "w_max": popt[0],
-                "xj": 0,
-                "d": 0,
-                "normalization": popt[1],
-                "offset": popt[2],
-                "crosstalk_element": 1,
-                "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
-            }
-            frequency[qubit] = popt[0] * GHZ_TO_HZ
-            middle_bias = (np.max(qubit_data.bias) + np.min(qubit_data.bias)) / 2
-            sweetspot[qubit] = (
-                np.round(popt[1] * middle_bias + popt[2]) - popt[2]
-            ) / popt[1]
-            matrix_element[qubit] = popt[1]
-        except ValueError as e:
-            log.error(
-                f"Error in qubit_flux protocol fit: {e} "
-                "The threshold for the SNR mask is probably too high. "
-                "Lowering the value of `threshold` in `extract_*_feature`"
-                "should fix the problem."
-            )
+            def fit_function(x, w_max, normalization, offset):
+                return utils.transmon_frequency(
+                    xi=x,
+                    w_max=w_max,
+                    xj=0,
+                    d=0,
+                    normalization=normalization,
+                    offset=offset,
+                    crosstalk_element=1,
+                    charging_energy=data.charging_energy[qubit] * HZ_TO_GHZ,
+                )
+
+            try:
+                popt = curve_fit(
+                    fit_function,
+                    biases,
+                    frequencies * HZ_TO_GHZ,
+                    bounds=utils.qubit_flux_dependence_fit_bounds(
+                        data.qubit_frequency[qubit],
+                    ),
+                    maxfev=100000,
+                )[0]
+                fitted_parameters[qubit] = {
+                    "w_max": popt[0],
+                    "xj": 0,
+                    "d": 0,
+                    "normalization": popt[1],
+                    "offset": popt[2],
+                    "crosstalk_element": 1,
+                    "charging_energy": data.charging_energy[qubit] * HZ_TO_GHZ,
+                }
+                frequency[qubit] = popt[0] * GHZ_TO_HZ
+                middle_bias = (np.max(qubit_data.bias) + np.min(qubit_data.bias)) / 2
+                sweetspot[qubit] = (
+                    np.round(popt[1] * middle_bias + popt[2]) - popt[2]
+                ) / popt[1]
+                matrix_element[qubit] = popt[1]
+                successful_fit[qubit] = True
+            except ValueError as e:
+                successful_fit[qubit] = False
+                log.error(f"Error in qubit_flux protocol fit: {e}.")
 
     return QubitFluxResults(
         frequency=frequency,
         sweetspot=sweetspot,
         matrix_element=matrix_element,
         fitted_parameters=fitted_parameters,
+        successful_fit=successful_fit,
     )
 
 
@@ -275,7 +279,7 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
         target,
         fit_function=utils.transmon_frequency,
     )
-    if fit is not None:
+    if fit is not None and fit.successful_fit[target]:
         fitting_report = table_html(
             table_dict(
                 target,
@@ -296,13 +300,14 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
 
 
 def _update(results: QubitFluxResults, platform: CalibrationPlatform, qubit: QubitId):
-    update.drive_frequency(results.frequency[qubit], platform, qubit)
-    update.sweetspot(results.sweetspot[qubit], platform, qubit)
-    update.flux_offset(results.sweetspot[qubit], platform, qubit)
-    platform.calibration.single_qubits[qubit].qubit.maximum_frequency = int(
-        results.frequency[qubit]
-    )
-    update.crosstalk_matrix(results.matrix_element[qubit], platform, qubit, qubit)
+    if results.successful_fit[qubit]:
+        update.drive_frequency(results.frequency[qubit], platform, qubit)
+        platform.calibration.single_qubits[qubit].qubit.maximum_frequency = int(
+            results.frequency[qubit]
+        )
+        update.sweetspot(results.sweetspot[qubit], platform, qubit)
+        update.flux_offset(results.sweetspot[qubit], platform, qubit)
+        update.crosstalk_matrix(results.matrix_element[qubit], platform, qubit, qubit)
 
 
 qubit_flux = Routine(_acquisition, _fit, _plot, _update)

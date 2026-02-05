@@ -12,7 +12,8 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
-from ..utils import HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
+from ..utils import HZ_TO_GHZ, table_dict, table_html
+from .resonator_utils import fit_punchout, punchout_extract_feature
 
 __all__ = ["resonator_punchout_attenuation", "ResonatorPunchoutAttenuationData"]
 
@@ -26,16 +27,18 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
     freq_step: int
     """Frequency step for sweep [Hz]."""
     min_attenuation: float
-    """Minimum LO attenuation [dB] (0 = no attenuation, higher = more attenuation)."""
+    """Minimum LO attenuation [dB] (0 = no attenuation, lower = more attenuation)."""
     max_attenuation: float
     """Maximum LO attenuation [dB]."""
     step_attenuation: float
     """Step LO attenuation [dB]."""
+    attenuation_range: np.ndarray = None
 
-    @property
-    def attenuation_range(self) -> npt.NDArray[np.float64]:
+    def compute_attenuation_range(
+        self, platform: CalibrationPlatform
+    ) -> npt.NDArray[np.float64]:
         """LO attenuation range [dB]."""
-        return np.arange(
+        self.attenuation_range = np.arange(
             self.min_attenuation,
             self.max_attenuation,
             self.step_attenuation,
@@ -61,17 +64,8 @@ class ResonatorPunchoutAttenuationResults(Results):
     """Bare resonator frequency [GHz] for each qubit."""
     readout_attenuation: dict[QubitId, float]
     """Readout LO attenuation [dB] for each qubit."""
-
-
-ResPunchoutAttType = np.dtype(
-    [
-        ("freq", np.float64),
-        ("attenuation", np.float64),
-        ("signal", np.float64),
-        ("phase", np.float64),
-    ]
-)
-"""Custom dtype for resonator punchout attenuation."""
+    successful_fit: dict[QubitId, bool]
+    """flag for each qubit to see whether the fit was successful."""
 
 
 @dataclass
@@ -80,32 +74,29 @@ class ResonatorPunchoutAttenuationData(Data):
 
     resonator_type: str
     """Resonator type."""
-    attenuations: dict[QubitId, float] = field(default_factory=dict)
+    attenuations: list = None
     """LO attenuations provided by the user."""
-    data: dict[QubitId, npt.NDArray[ResPunchoutAttType]] = field(default_factory=dict)
-    """Raw data acquired."""
-
-    def register_qubit(
-        self,
-        qubit,
-        freq: npt.NDArray[np.float64],
-        attenuation: npt.NDArray[np.float64],
-        signal: npt.NDArray[np.float64],
-        phase: npt.NDArray[np.float64],
-    ):
-        """Store output for single qubit."""
-        size = len(freq) * len(attenuation)
-        frequency, attenuation_grid = np.meshgrid(freq, attenuation)
-        ar = np.empty(size, dtype=ResPunchoutAttType)
-        ar["freq"] = frequency.ravel()
-        ar["attenuation"] = attenuation_grid.ravel()
-        ar["signal"] = signal.ravel()
-        ar["phase"] = phase.ravel()
-        self.data[qubit] = np.rec.array(ar)
+    frequencies: dict[QubitId, list] = field(default_factory=dict)
+    data: dict[QubitId, np.ndarray] = field(default_factory=dict)
+    """Raw data acquired, IQ components of the readout signal."""
 
     @property
     def find_min(self):
-        return self.resonator_type != "2D"
+        return self.resonator_type == "2D"
+
+    def signal(self, qubit: QubitId) -> np.ndarray:
+        return magnitude(self.data[qubit])
+
+    def phase(self, qubit: QubitId) -> np.ndarray:
+        return phase(self.data[qubit])
+
+    def grid(self, qubit: QubitId) -> tuple[np.ndarray]:
+        x, y = np.meshgrid(self.frequencies[qubit], self.attenuations)
+        return x.ravel(), y.ravel(), self.signal(qubit).ravel()
+
+    def filtered_data(self, qubit: QubitId) -> tuple[np.array, np.array]:
+        x, y, z = self.grid(qubit)
+        return punchout_extract_feature(x, y, z, self.find_min)
 
 
 def _acquisition(
@@ -122,18 +113,46 @@ def _acquisition(
         ResonatorPunchoutAttenuationData
     """
 
+    assert params.min_attenuation >= 0, """minimum attenuation value is defined >=0"""
+    assert params.max_attenuation >= params.min_attenuation, (
+        """max_attenuation is always >= min_attenuation"""
+    )
+    assert params.step_attenuation >= 0, """step_attenuation is always >=0"""
+
+    # compute range of attenuation to sweep on
+    params.compute_attenuation_range(platform)
+
     # Get readout LO channels for each qubit
     ro_los = {}
-    ro_pulses = {}
-    ro_channels = {}
     original_attenuations = {}
 
+    sequence = PulseSequence()
+    ro_pulses = {}
+    freq_sweepers = {}
     for qubit in targets:
+        # Create pulse sequence
         natives = platform.natives.single_qubit[qubit]
         ro_channel, ro_pulse = natives.MZ()[0]
         ro_pulses[qubit] = ro_pulse
-        ro_channels[qubit] = ro_channel
+        sequence.append((ro_channel, ro_pulse))
 
+        # Get the LO channel for this readout
+        probe = platform.qubits[qubit].probe
+        lo_channel = platform.channels[probe].lo
+        ro_los[qubit] = lo_channel
+
+        # Create frequency sweeper
+        f0 = platform.config(probe).frequency
+        freq_sweepers[qubit] = Sweeper(
+            parameter=Parameter.frequency,
+            values=f0 + params.delta_frequency_range,
+            channels=[probe],
+        )
+
+        # Store original attenuation (power in qibocal is actually attenuation)
+        original_attenuations[qubit] = platform.config(lo_channel).power
+
+    for qubit in targets:
         # Get the LO channel for this readout
         probe = platform.qubits[qubit].probe
         lo_channel = platform.channels[probe].lo
@@ -143,13 +162,9 @@ def _acquisition(
         original_attenuations[qubit] = platform.config(lo_channel).power
 
     data = ResonatorPunchoutAttenuationData(
-        attenuations=original_attenuations,
+        attenuations=(params.attenuation_range).tolist(),
         resonator_type=platform.resonator_type,
     )
-
-    # Initialize data storage for all qubits
-    all_signals = {qubit: [] for qubit in targets}
-    all_phases = {qubit: [] for qubit in targets}
 
     # Loop over attenuation values
     for attenuation in params.attenuation_range:
@@ -157,25 +172,7 @@ def _acquisition(
         updates = []
         for qubit in targets:
             lo_channel = ro_los[qubit]
-            updates.append({lo_channel: {"power": attenuation}})
-
-        # Create pulse sequence
-        sequence = PulseSequence()
-        freq_sweepers = {}
-
-        for qubit in targets:
-            natives = platform.natives.single_qubit[qubit]
-            # ro_channel, ro_pulse = natives.MZ()[0]
-            sequence.append((ro_channels[qubit], ro_pulses[qubit]))
-
-            # Create frequency sweeper
-            probe = platform.qubits[qubit].probe
-            f0 = platform.config(probe).frequency
-            freq_sweepers[qubit] = Sweeper(
-                parameter=Parameter.frequency,
-                values=f0 + params.delta_frequency_range,
-                channels=[probe],
-            )
+            updates.append({lo_channel: {"power": -attenuation}})
 
         # Execute with frequency sweep only
         results = platform.execute(
@@ -190,50 +187,56 @@ def _acquisition(
 
         # Collect results for this attenuation level
         for qubit in targets:
-            ro_pulse = ro_pulses[qubit]
-            result = results[ro_pulse.id]
-            all_signals[qubit].append(magnitude(result))
-            all_phases[qubit].append(phase(result))
+            measure = np.expand_dims(results[ro_pulses[qubit].id], axis=0)
+            if qubit not in data.data:
+                data.data[qubit] = measure
+            else:
+                data.data[qubit] = np.concatenate((data.data[qubit], measure), axis=0)
 
-    # Register data for all qubits
-    for qubit in targets:
-        probe = platform.qubits[qubit].probe
-        f0 = platform.config(probe).frequency
-        frequencies = f0 + params.delta_frequency_range
-
-        # Stack all attenuation sweeps
-        signal_array = np.array(all_signals[qubit])
-        phase_array = np.array(all_phases[qubit])
-
-        data.register_qubit(
-            qubit,
-            signal=signal_array,
-            phase=phase_array,
-            freq=frequencies,
-            attenuation=params.attenuation_range,
-        )
+    data.frequencies = {
+        qubit: freq_sweepers[qubit].values.tolist() for qubit in targets
+    }
 
     return data
 
 
-def _fit(
-    data: ResonatorPunchoutAttenuationData, fit_type="attenuation"
-) -> ResonatorPunchoutAttenuationResults:
+def _fit(data: ResonatorPunchoutAttenuationData) -> ResonatorPunchoutAttenuationResults:
     """Fit frequency and attenuation at high and low power for a given resonator."""
 
-    readout_freq, bare_freq, readout_param = fit_punchout(data, fit_type)
+    readout_freqs = {}
+    bare_freqs = {}
+    ro_values = {}
+    successful_fit = {}
+
+    for qubit in data.qubits:
+        filtered_x, filtered_y = data.filtered_data(qubit)
+
+        if filtered_x is None or filtered_y is None:
+            bare_freq = readout_freq = ro_val = None
+            fit_flag = False
+        else:
+            bare_freq, readout_freq, ro_val, fit_flag = fit_punchout(
+                filtered_x, -filtered_y
+            )
+
+        if fit_flag:
+            readout_freqs[qubit] = readout_freq
+            bare_freqs[qubit] = bare_freq
+            ro_values[qubit] = -ro_val
+        successful_fit[qubit] = fit_flag
 
     return ResonatorPunchoutAttenuationResults(
-        readout_frequency=readout_freq,
-        bare_frequency=bare_freq,
-        readout_attenuation=readout_param,
+        readout_frequency=readout_freqs,
+        bare_frequency=bare_freqs,
+        readout_attenuation=ro_values,
+        successful_fit=successful_fit,
     )
 
 
 def _plot(
     data: ResonatorPunchoutAttenuationData,
+    fit: ResonatorPunchoutAttenuationResults,
     target: QubitId,
-    fit: ResonatorPunchoutAttenuationResults = None,
 ):
     """Plotting function for ResonatorPunchoutAttenuation."""
     figures = []
@@ -245,29 +248,25 @@ def _plot(
         horizontal_spacing=0.1,
         vertical_spacing=0.2,
         subplot_titles=(
-            "Normalised Signal [a.u.]",
+            "Raw Signal [a.u.]",
             "Phase [rad]",
         ),
     )
 
-    qubit_data = data[target]
-    frequencies = qubit_data.freq * HZ_TO_GHZ
-    attenuations = qubit_data.attenuation
-    n_attenuations = len(np.unique(qubit_data.attenuation))
-    n_freq = len(np.unique(qubit_data.freq))
-
-    # Normalize signal for each attenuation level
-    for i in range(n_attenuations):
-        qubit_data.signal[i * n_freq : (i + 1) * n_freq] = norm(
-            qubit_data.signal[i * n_freq : (i + 1) * n_freq]
-        )
+    frequencies, attenuations, qubit_signal = data.grid(target)
+    qubit_phase = data.phase(target).ravel()
+    delay = np.mean(np.gradient(qubit_phase)) / (np.mean(np.gradient(frequencies)))
+    qubit_phase_compensation = delay * (frequencies - np.mean(frequencies))
+    qubit_phase -= qubit_phase_compensation
+    frequencies *= HZ_TO_GHZ
 
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
             y=attenuations,
-            z=qubit_data.signal,
+            z=qubit_signal,
             colorbar_x=0.46,
+            reversescale=data.find_min,
         ),
         row=1,
         col=1,
@@ -277,18 +276,33 @@ def _plot(
         go.Heatmap(
             x=frequencies,
             y=attenuations,
-            z=qubit_data.phase,
+            z=qubit_phase,
             colorbar_x=1.01,
         ),
         row=1,
         col=2,
     )
 
+    filtered_x, filtered_y = data.filtered_data(target)
+    if filtered_x is not None and filtered_y is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=filtered_x * HZ_TO_GHZ,
+                y=filtered_y,
+                mode="markers",
+                name="Estimated Resonance",
+                marker=dict(color="rgb(248, 0, 0)"),
+                showlegend=True,
+            ),
+            row=1,
+            col=1,
+        )
+
     # Flip y-axis so low attenuation (high power) is at top
     fig.update_yaxes(autorange="reversed", row=1, col=1)
     fig.update_yaxes(autorange="reversed", row=1, col=2)
 
-    if fit is not None:
+    if fit is not None and fit.successful_fit[target]:
         fig.add_trace(
             go.Scatter(
                 x=[fit.readout_frequency[target] * HZ_TO_GHZ],
@@ -296,7 +310,7 @@ def _plot(
                 mode="markers",
                 marker=dict(
                     size=8,
-                    color="gray",
+                    color="green",
                     symbol="circle",
                 ),
                 name="Estimated readout point",
@@ -314,9 +328,7 @@ def _plot(
                 [
                     np.round(fit.readout_frequency[target]),
                     np.round(fit.readout_attenuation[target], 2),
-                    np.round(fit.bare_frequency[target])
-                    if fit.bare_frequency[target] is not None
-                    else "N/A",
+                    np.round(fit.bare_frequency[target]),
                 ],
             )
         )
@@ -339,23 +351,21 @@ def _update(
     platform: CalibrationPlatform,
     target: QubitId,
 ):
-    """Update platform with fitted parameters."""
-
-    update.readout_frequency(results.readout_frequency[target], platform, target)
-    if results.bare_frequency[target] is not None:
+    """Update platform with fitted parameters if fit was successful."""
+    if results.successful_fit[target]:
+        update.readout_frequency(results.readout_frequency[target], platform, target)
         update.bare_resonator_frequency(
             results.bare_frequency[target], platform, target
         )
         update.dressed_resonator_frequency(
             results.readout_frequency[target], platform, target
         )
-
-    update.lo_attenuation(
-        results.readout_attenuation[target],
-        platform,
-        target,
-        channel_type="probe",
-    )
+        update.lo_attenuation(
+            results.readout_attenuation[target],
+            platform,
+            target,
+            channel_type="probe",
+        )
 
 
 resonator_punchout_attenuation = Routine(_acquisition, _fit, _plot, _update)
