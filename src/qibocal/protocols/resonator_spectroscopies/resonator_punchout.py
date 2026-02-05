@@ -3,12 +3,13 @@ from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
-from qibocal.result import magnitude
+from qibocal.result import magnitude, phase
 
 from ..utils import HZ_TO_GHZ, scaling_slice, table_dict, table_html
 from .resonator_utils import fit_punchout, punchout_extract_feature
@@ -63,6 +64,9 @@ class ResonatorPunchoutData(Data):
 
     def signal(self, qubit: QubitId) -> np.ndarray:
         return magnitude(self.data[qubit])
+
+    def phase(self, qubit: QubitId) -> np.ndarray:
+        return phase(self.data[qubit])
 
     def grid(self, qubit: QubitId) -> tuple[np.ndarray]:
         x, y = np.meshgrid(self.frequencies[qubit], self.amplitudes)
@@ -156,7 +160,13 @@ def _fit(data: ResonatorPunchoutData) -> ResonatorPunchoutResults:
     for qubit in data.qubits:
         filtered_x, filtered_y = data.filtered_data(qubit)
 
-        bare_freq, readout_freq, ro_val, fit_flag = fit_punchout(filtered_x, filtered_y)
+        if filtered_x is None or filtered_y is None:
+            bare_freq = readout_freq = ro_val = None
+            fit_flag = False
+        else:
+            bare_freq, readout_freq, ro_val, fit_flag = fit_punchout(
+                filtered_x, filtered_y
+            )
 
         if fit_flag:
             readout_freqs[qubit] = readout_freq
@@ -176,19 +186,51 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, target: Qu
     """Plotting function for ResonatorPunchout."""
     figures = []
     fitting_report = ""
-    fig = go.Figure()
-    x, y, _ = data.grid(target)
+
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.2,
+        subplot_titles=(
+            "Raw Signal [a.u.]",
+            "Phase [rad]",
+        ),
+    )
+
+    x, y, signal = data.grid(target)
+    qubit_phase = data.phase(target).ravel()
+    delay = np.mean(np.gradient(qubit_phase)) / (np.mean(np.gradient(x)))
+    qubit_phase_compensation = delay * (x - np.mean(x))
+    qubit_phase -= qubit_phase_compensation
+    x *= HZ_TO_GHZ
+
     fig.add_trace(
         go.Heatmap(
-            x=x * HZ_TO_GHZ,
+            x=x,
             y=y,
-            z=data.normalized_signal(target).ravel(),
-            colorbar=dict(title="Normalized signal"),
+            z=signal,
+            colorbar=dict(title="Raw signal"),
+            colorbar_x=1.01,
             colorscale="Viridis",
-        )
+        ),
+        row=1,
+        col=1,
     )
-    filtered_x, filtered_y = data.filtered_data(target)
 
+    fig.add_trace(
+        go.Heatmap(
+            x=x,
+            y=y,
+            z=qubit_phase,
+            colorbar_x=0.46,
+            colorscale="Viridis",
+        ),
+        row=1,
+        col=2,
+    )
+
+    filtered_x, filtered_y = data.filtered_data(target)
     if filtered_x is not None and filtered_y is not None:
         fig.add_trace(
             go.Scatter(
@@ -198,7 +240,9 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, target: Qu
                 name="Estimated points",
                 marker=dict(color="rgb(248, 248, 248)"),
                 showlegend=True,
-            )
+            ),
+            row=1,
+            col=1,
         )
 
     if fit is not None and fit.successful_fit[target]:

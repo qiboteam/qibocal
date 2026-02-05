@@ -927,11 +927,6 @@ def punchout_extract_feature(
 def fit_punchout(filtered_x, filtered_y):
     """Fit frequency and attenuation at high and low power for a given resonator."""
 
-    if (
-        filtered_x is None or filtered_y is None
-    ):  # filtered_x and filtered_y have always the same shape
-        return [False] * 4
-
     # tolerance for frequencies
     diffs = np.abs(np.diff(filtered_x))
     if any(diffs != 0):
