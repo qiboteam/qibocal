@@ -219,7 +219,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         else:
             labels = ["Qubit Frequency [Hz]"]
             freq = fit.frequency
-
+        
         if data.amplitudes[qubit] is not None:
             if show_error_bars:
                 labels = labels + ["Amplitude", "Chi2 reduced"]
@@ -234,6 +234,8 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
             else:
                 labels = labels + ["Amplitude"]
                 values = [freq[qubit], data.amplitudes[qubit]]
+        else:
+            values = [freq[qubit]]
 
         labels = labels + ["FWHM (MHz)"]
         values = values + [2 * abs(params[2]) * 1e3]
