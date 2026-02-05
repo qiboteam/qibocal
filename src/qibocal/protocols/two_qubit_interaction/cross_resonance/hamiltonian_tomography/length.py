@@ -5,8 +5,6 @@ after the application of a cross resonance sequence. The CR pulses are played on
 channel with frequency set to the frequency of the target drive channel.
 """
 
-# DEBUG
-
 from dataclasses import dataclass, field
 
 import numpy as np
