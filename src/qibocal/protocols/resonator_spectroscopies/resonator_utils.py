@@ -196,7 +196,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         max(frequencies),
         2 * len(frequencies),
     )
-    
+
     if fit is not None:
         params = fit.fitted_parameters[qubit]
         fig.add_trace(
@@ -219,7 +219,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         else:
             labels = ["Qubit Frequency [Hz]"]
             freq = fit.frequency
-        
+
         if data.amplitudes[qubit] is not None:
             if show_error_bars:
                 labels = labels + ["Amplitude", "Chi2 reduced"]
@@ -236,7 +236,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                 values = [freq[qubit], data.amplitudes[qubit]]
 
         labels = labels + ["FWHM (MHz)"]
-        values = values + [2*abs(params[2])*1e3]
+        values = values + [2 * abs(params[2]) * 1e3]
 
         fitting_report = table_html(
             table_dict(
@@ -245,7 +245,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                 values,
                 display_error=show_error_bars,
             )
-            )
+        )
 
     fig.update_layout(
         showlegend=True,
