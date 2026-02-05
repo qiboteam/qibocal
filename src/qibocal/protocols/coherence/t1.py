@@ -63,7 +63,7 @@ def _acquisition(
 
     sweeper = Sweeper(
         parameter=Parameter.duration,
-        values=ro_wait_range//num_delays,
+        values=ro_wait_range // num_delays,
         pulses=pulses,
     )
 

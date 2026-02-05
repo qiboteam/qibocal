@@ -83,7 +83,7 @@ def t1_sequence(
     sequence = PulseSequence()
     ro_pulses = {}
 
-    delays = num_delays*len(targets) * [Delay(duration=0)]
+    delays = num_delays * len(targets) * [Delay(duration=0)]
     for i, q in enumerate(targets):
         natives = platform.natives.single_qubit[q]
         qd_channel, qd_pulse = natives.RX()[0]
@@ -104,7 +104,7 @@ def t1_sequence(
         else:
             flux_pulses = []
         for j in range(num_delays):
-            sequence.append((ro_channel, delays[i*num_delays+j]))
+            sequence.append((ro_channel, delays[i * num_delays + j]))
         sequence.append((ro_channel, ro_pulse))
 
     return sequence, ro_pulses, delays + flux_pulses
@@ -127,7 +127,7 @@ def _acquisition(
 
     sweeper = Sweeper(
         parameter=Parameter.duration,
-        values=ro_wait_range//num_delays,
+        values=ro_wait_range // num_delays,
         pulses=pulses,
     )
 
