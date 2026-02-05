@@ -48,10 +48,11 @@ def _acquisition(
     params: T1Parameters, platform: CalibrationPlatform, targets: list[QubitId]
 ) -> T1Data:
     """Data acquisition for T1 experiment."""
-
+    num_delays = int(params.delay_before_readout_end // 65004) + 1
     sequence, ro_pulses, pulses = t1_sequence(
         platform=platform,
         targets=targets,
+        num_delays=num_delays,
     )
 
     ro_wait_range = np.arange(
@@ -62,7 +63,7 @@ def _acquisition(
 
     sweeper = Sweeper(
         parameter=Parameter.duration,
-        values=ro_wait_range,
+        values=ro_wait_range//num_delays,
         pulses=pulses,
     )
 

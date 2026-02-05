@@ -82,6 +82,7 @@ def t1_sequence(
     """Create sequence for T1 experiment with a given optional delay."""
     sequence = PulseSequence()
     ro_pulses = {}
+
     delays = num_delays*len(targets) * [Delay(duration=0)]
     for i, q in enumerate(targets):
         natives = platform.natives.single_qubit[q]
@@ -115,7 +116,7 @@ def _acquisition(
     """Data acquisition for T1 experiment.
 
     In this protocol the y axis is the magnitude of signal in the IQ plane."""
-    num_delays = int(params.delay_before_readout_end // 65000) + 1
+    num_delays = int(params.delay_before_readout_end // 65004) + 1
     sequence, ro_pulses, pulses = t1_sequence(platform, targets, num_delays=num_delays)
 
     ro_wait_range = np.arange(
