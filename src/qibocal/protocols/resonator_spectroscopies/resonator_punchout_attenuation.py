@@ -217,7 +217,7 @@ def _fit(data: ResonatorPunchoutAttenuationData) -> ResonatorPunchoutAttenuation
         if fit_flag:
             readout_freqs[qubit] = readout_freq
             bare_freqs[qubit] = bare_freq
-            ro_values[qubit] = ro_val
+            ro_values[qubit] = -ro_val
         successful_fit[qubit] = fit_flag
 
     return ResonatorPunchoutAttenuationResults(
