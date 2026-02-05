@@ -156,7 +156,7 @@ def tomography_cr_fit(
             ).reshape(len(Basis), -1)
             vector_x = data.data[pair[0], pair[1], Basis.X, setup].x
 
-            sampling_rate = 1 / (vector_x[1] - vector_x[0])
+            sampling_rate = 1 / abs(vector_x[1] - vector_x[0])
             total_omega_guess = quinn_fernandes_algorithm(
                 concatenated_signal, vector_x, sampling_rate, speedup_flag=True
             )
@@ -458,72 +458,8 @@ def tomography_cr_plot(
                 row=i + 1,
                 col=1,
             )
-            if fit is not None and (*target, basis, setup) in fit.fitted_parameters:
+            if fit is not None and (*target, setup) in fit.fitted_parameters:
                 x = np.linspace(pair_data.x.min(), pair_data.x.max(), 100)
-                if basis == Basis.Z:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=x,
-                            y=fitting.fit_Z_exp(
-                                x,
-                                *fit.fitted_parameters[
-                                    target[0], target[1], basis, setup
-                                ],
-                            ),
-                            name=f"Single target when control at {0 if setup is SetControl.Id else 1}",
-                            showlegend=True if basis is Basis.Z else False,
-                            legendgroup=f"Single target when control at {0 if setup is SetControl.Id else 1}",
-                            mode="lines",
-                            line=dict(
-                                color="blue" if setup is SetControl.Id else "red",
-                            ),
-                        ),
-                        row=i + 1,
-                        col=1,
-                    )
-                elif basis == Basis.X:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=x,
-                            y=fitting.fit_X_exp(
-                                x,
-                                *fit.fitted_parameters[
-                                    target[0], target[1], basis, setup
-                                ],
-                            ),
-                            name=f"Single target when control at {0 if setup is SetControl.Id else 1}",
-                            showlegend=True if basis is Basis.Z else False,
-                            legendgroup=f"Single target when control at {0 if setup is SetControl.Id else 1}",
-                            mode="lines",
-                            line=dict(
-                                color="blue" if setup is SetControl.Id else "red",
-                            ),
-                        ),
-                        row=i + 1,
-                        col=1,
-                    )
-                elif basis == Basis.Y:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=x,
-                            y=fitting.fit_Y_exp(
-                                x,
-                                *fit.fitted_parameters[
-                                    target[0], target[1], basis, setup
-                                ],
-                            ),
-                            name=f"Single target when control at {0 if setup is SetControl.Id else 1}",
-                            showlegend=True if basis is Basis.Z else False,
-                            legendgroup=f"Single target when control at {0 if setup is SetControl.Id else 1}",
-                            mode="lines",
-                            line=dict(
-                                color="blue" if setup is SetControl.Id else "red",
-                            ),
-                        ),
-                        row=i + 1,
-                        col=1,
-                    )
-
                 fig.add_trace(
                     go.Scatter(
                         x=x,
