@@ -98,10 +98,12 @@ def _acquisition(
     # Get drive channels and LO channels for each qubit
     drive_channels = {}
     lo_channels = {}
+    amplitudes = {qubit: None for qubit in targets}
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
-        qd_channel, _ = natives.RX()[0]
+        qd_channel, pulse = natives.RX()[0]
         drive_channels[qubit] = qd_channel
+        amplitudes[qubit] = pulse.amplitude
 
         # Get the LO channel associated with this drive channel
         channel_obj = platform.channels[qd_channel]
@@ -112,7 +114,6 @@ def _acquisition(
 
     # Initialize storage for intermediate results
     values = {qubit: defaultdict(list) for qubit in targets}
-    amplitudes = {qubit: None for qubit in targets}
 
     # Execute each batch
     for start, end, lo_offset in batches:

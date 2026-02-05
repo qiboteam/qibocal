@@ -196,7 +196,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         max(frequencies),
         2 * len(frequencies),
     )
-
+    
     if fit is not None:
         params = fit.fitted_parameters[qubit]
         fig.add_trace(
@@ -211,18 +211,18 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         )
 
         if data.power_level is PowerLevel.low:
-            label = "Readout Frequency [Hz]"
+            labels = ["Readout Frequency [Hz]"]
             freq = fit.frequency
         elif data.power_level is PowerLevel.high:
-            label = "Bare Resonator Frequency [Hz]"
+            labels = ["Bare Resonator Frequency [Hz]"]
             freq = fit.bare_frequency
         else:
-            label = "Qubit Frequency [Hz]"
+            labels = ["Qubit Frequency [Hz]"]
             freq = fit.frequency
-
+        
         if data.amplitudes[qubit] is not None:
             if show_error_bars:
-                labels = [label, "Amplitude", "Chi2 reduced"]
+                labels = labels + ["Amplitude", "Chi2 reduced"]
                 values = [
                     (
                         freq[qubit],
@@ -232,16 +232,19 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
                     fit.chi2_reduced[qubit],
                 ]
             else:
-                labels = [label, "Amplitude"]
+                labels = labels + ["Amplitude"]
                 values = [freq[qubit], data.amplitudes[qubit]]
 
-            fitting_report = table_html(
-                table_dict(
-                    qubit,
-                    labels,
-                    values,
-                    display_error=show_error_bars,
-                )
+        labels = labels + ["FWHM (MHz)"]
+        values = values + [2*abs(params[2])*1e3]
+
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                labels,
+                values,
+                display_error=show_error_bars,
+            )
             )
 
     fig.update_layout(
