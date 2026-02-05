@@ -210,7 +210,9 @@ def _fit(data: ResonatorPunchoutAttenuationData) -> ResonatorPunchoutAttenuation
 
     for qubit in data.qubits:
         filtered_x, filtered_y = data.filtered_data(qubit)
-        bare_freq, readout_freq, ro_val, fit_flag = fit_punchout(filtered_x, -filtered_y)
+        bare_freq, readout_freq, ro_val, fit_flag = fit_punchout(
+            filtered_x, -filtered_y
+        )
 
         if fit_flag:
             readout_freqs[qubit] = readout_freq
