@@ -77,11 +77,12 @@ def t1_sequence(
     platform: CalibrationPlatform,
     targets: list[QubitId],
     flux_pulse_amplitude: Optional[float] = None,
+    num_delays: int = 1,
 ):
     """Create sequence for T1 experiment with a given optional delay."""
     sequence = PulseSequence()
     ro_pulses = {}
-    delays = len(targets) * [Delay(duration=0)]
+    delays = num_delays*len(targets) * [Delay(duration=0)]
     for i, q in enumerate(targets):
         natives = platform.natives.single_qubit[q]
         qd_channel, qd_pulse = natives.RX()[0]
@@ -101,7 +102,8 @@ def t1_sequence(
             sequence.append((flux_channel, flux_pulses[i]))
         else:
             flux_pulses = []
-        sequence.append((ro_channel, delays[i]))
+        for j in range(num_delays):
+            sequence.append((ro_channel, delays[i*num_delays+j]))
         sequence.append((ro_channel, ro_pulse))
 
     return sequence, ro_pulses, delays + flux_pulses
@@ -113,8 +115,8 @@ def _acquisition(
     """Data acquisition for T1 experiment.
 
     In this protocol the y axis is the magnitude of signal in the IQ plane."""
-
-    sequence, ro_pulses, pulses = t1_sequence(platform, targets)
+    num_delays = int(params.delay_before_readout_end // 65000) + 1
+    sequence, ro_pulses, pulses = t1_sequence(platform, targets, num_delays=num_delays)
 
     ro_wait_range = np.arange(
         params.delay_before_readout_start,
@@ -124,7 +126,7 @@ def _acquisition(
 
     sweeper = Sweeper(
         parameter=Parameter.duration,
-        values=ro_wait_range,
+        values=ro_wait_range//num_delays,
         pulses=pulses,
     )
 
