@@ -10,7 +10,6 @@ from plotly.subplots import make_subplots
 from qibolab._core.components import Config
 from scipy import constants
 from scipy.optimize import curve_fit
-from scipy.signal import find_peaks
 
 from qibocal.auto.operation import Data, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
@@ -676,17 +675,89 @@ def extract_feature(
 
 def guess_period(x, y):
     """Return fft period estimation given a sinusoidal plot."""
-
     fft = np.fft.rfft(y)
     fft_freqs = np.fft.rfftfreq(len(y), d=(x[1] - x[0]))
-    mags = abs(fft)
+    mags = np.abs(fft)
     mags[0] = 0
-    local_maxima, _ = find_peaks(mags)
-    if len(local_maxima) > 0:
-        return 1 / fft_freqs[np.argmax(mags)]
-    return None
+    return 1 / fft_freqs[np.argmax(mags)]
+
+
+def guess_period_numpyfied(x: np.ndarray, y: np.ndarray, axis: int = -1):
+    """Numpyfied version of :func:`guess_period`."""
+    assert x.ndim == 1, f"Expected 1D array, got array with shape {x.shape}"
+
+    fft = np.fft.rfft(y, axis=axis)
+    fft_freqs = np.fft.rfftfreq(y.shape[axis], d=(x[1] - x[0]))
+    mags = np.abs(fft)
+    mags[0] = 0
+    return 1 / fft_freqs[np.argmax(mags, axis=axis)]
 
 
 def fallback_period(period):
     """Function to estimate period if guess_period fails."""
     return period if period is not None else 4
+
+
+def fallback_period_numpyfied(period: np.ndarray):
+    """Numpyfied version of :func:`fallback_period`."""
+    assert period.ndim == 1, f"Expected 1D array, got array with shape {period.shape}"
+    return np.where(np.isnan(period), 4, period)
+
+
+def quinn_fernandes_algorithm(
+    signal_id: np.ndarray,
+    x: np.ndarray,
+    fs: float,
+    speedup_flag: bool = False,
+    axis: int = -1,
+    iterations: int = 100,
+    tol: int = 1e-6,
+) -> np.ndarray:
+    """This is a custom implementation of the Quinn-Fernandes algorithm.
+
+    The Quinn–Fernandes method is a high-accuracy frequency estimator based on
+    phase interpolation of the discrete Fourier transform (DFT). It refines the
+    peak frequency obtained from the FFT by analyzing the phase evolution of the
+    complex spectrum, achieving super-resolution beyond the FFT bin spacing.
+    If :const:`speedup_flag` is set to `True`, the algorithm will change the updating rule,
+    can lead to faster convergence, especially when the initial guess is close to the true frequency.
+    Link for the original paper: https://www.jstor.org/stable/2337018?seq=3
+    """
+
+    omegas = (
+        2
+        * np.pi
+        / fallback_period_numpyfied(guess_period_numpyfied(x, signal_id, axis=axis))
+    )
+    alpha = 2 * np.cos(omegas)
+
+    signal_id = signal_id - np.mean(signal_id, axis=axis, keepdims=True)
+
+    sig_shape = list(signal_id.shape)
+    sig_shape[axis] += 2
+    buffer_beta = []
+    for _ in range(iterations):
+        xi = np.zeros(sig_shape)
+        for t in range(2, xi.shape[axis]):
+            xi[:, t] = signal_id[:, t - 2] + alpha * xi[:, t - 1] - xi[:, t - 2]
+
+        beta = np.sum((xi[:, 2:] + xi[:, :-2]) * xi[:, 1:-1], axis=axis) / np.sum(
+            xi[:, :-1] ** 2, axis=axis
+        )
+        if len(buffer_beta) >= 5:
+            buffer_beta.pop(0)
+        buffer_beta.append(beta)
+        if np.all(np.abs(np.mean(buffer_beta, axis=0) - alpha) < tol):
+            alpha = beta
+            break
+
+        if speedup_flag:
+            alpha = beta
+        else:
+            alpha = 2 * beta - alpha
+
+    alpha = np.clip(alpha, -2, 2)
+    omega_est = np.arccos(alpha / 2)
+    med_omega = np.median(omega_est)
+
+    return med_omega * fs
