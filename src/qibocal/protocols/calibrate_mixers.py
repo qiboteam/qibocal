@@ -3,11 +3,9 @@ from dataclasses import dataclass, field
 import plotly.graph_objects as go
 from qblox_instruments import Module, Sequencer
 from qibolab._core.components.channels import IqChannel
-from qibolab._core.execution_parameters import AcquisitionType
 from qibolab._core.instruments.abstract import Controller
 from qibolab._core.instruments.qblox.cluster import Cluster
 from qibolab._core.instruments.qblox.config import PortAddress
-from qibolab._core.instruments.qblox.sequence import Q1Sequence
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
