@@ -95,25 +95,26 @@ class CalibrateMixersData(Data):
     final_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
     """Final calibration values after running calibration."""
 
+# This is moslty just removing the repeated acquisiton channel information but may handle other instances of repeated mixer
+def unique_channels(cluster) -> dict[str, IqChannel]: 
+    """Get unique channels from a liost of mixers (skipping duplicates from shared channels)."""
+    unique_channels = {}
+    for ch_name, mixer in cluster._mixers.items():
+        if mixer not in unique_channels:
+            unique_channels[mixer] = ch_name
+    return unique_channels
+
 
 def _get_hardware_calibration(cluster: Cluster) -> dict[str, ModuleCalibrationData]:
     modules: dict[str, Module] = cluster._cluster.get_connected_modules(
         lambda mod: mod.is_rf_type
     )
-
-    # This is moslty just removing the repeated acquisiton channel information but may handle repeated mixer
-    unique_channels = {}
-    for ch_name, mixer in cluster._mixers.items():
-        if mixer not in unique_channels:
-            unique_channels[mixer] = ch_name
-
     data: dict[str, ModuleCalibrationData] = {}
 
-    for ch in unique_channels.values():
+    for ch in unique_channels(cluster).values():
         address = PortAddress.from_path(cluster.channels[ch].path)
         output = address.ports[0] - 1
-        module_number = address.slot
-        module = modules[module_number]
+        module = modules[address.slot]
         mod_name = module.short_name
 
         if mod_name not in data:
@@ -177,7 +178,7 @@ def _acquisition(
         cluster: Cluster = instr
 
         # Setup one sequencer per channel with a dummy sequence
-        seqs = cluster.configure(
+        seq_map, _ = cluster.configure(
             configs=configs,
             acquisition=AcquisitionType.RAW,
             sequences={
@@ -186,55 +187,49 @@ def _acquisition(
                 if isinstance(cluster.channels[ch], IqChannel)
             },
         )
-
+        
         modules: dict[str, Module] = cluster._cluster.get_connected_modules(
             lambda mod: mod.is_rf_type
         )
 
         # Read current hardware calibration values (should match those in parameters.json)
-        # data.initial_calibration = {f"{cluster.name}_{module_idx}": _get_hardware_calibration(module, cluster.channels) for module_idx, module in modules.items()}
-
         data.initial_calibration = _get_hardware_calibration(cluster)
-        rich.print(data.initial_calibration)
 
         # Perform calibration
-        for ch_name, ch_mixer in cluster._mixers.items():
-            ch = cluster.channels[ch_name]
-            module_number = int(ch.path.split("/")[0])
-            output_number = int(ch.path.split("/")[-1][-1])
-            if module_number not in modules:
-                continue
-            module = modules[module_number]
-
+        for ch_name in unique_channels(cluster).values():
+            address = PortAddress.from_path(cluster.channels[ch_name].path)
+            module = modules[address.slot]
+            port = address.ports[0]
+            
             # Run LO calibration
             if module.is_qcm_type:
-                getattr(module, f"out{output_number - 1}_lo_cal")()
+                getattr(module, f"out{port - 1}_lo_cal")()
             else:
-                getattr(
-                    module, f"out{output_number - 1}_in{output_number - 1}_lo_cal"
-                )()
+                getattr(module, f"out{port - 1}_in{port - 1}_lo_cal")()
 
             # Run sequencer mixer calibrations
-            for seq_idx in range(len(seqs)):
-                seq_name = f"sequencer{seq_idx}"
-                if not hasattr(module, seq_name):
-                    continue
-                sequencer: Sequencer = getattr(module, seq_name, None)
-                if module.is_qcm_type:
-                    if all(
-                        sequencer._get_sequencer_connect_out(i) == "off"
-                        for i in range(2)
-                    ):
-                        # If no port is assigned to the sequencer, sconnect it to the current output
-                        getattr(module, seq_name).connect_sequencer(
-                            f"out{output_number - 1}"
-                        )  #
-                else:  # is qrm_type
-                    if sequencer._get_sequencer_connect_out(0) == "off":
-                        getattr(module, seq_name).connect_sequencer(
-                            f"out{output_number - 1}"
-                        )
-                getattr(module, seq_name).sideband_cal()
+            if ch_name in seq_map[address.slot]:
+                sequence = seq_map[address.slot][ch_name]
+            else:
+                Warning(f"No sequence assigned to channel {ch_name} for module {module.short_name}, skipping mixer calibration for this channel.")
+                continue
+
+            sequencer: Sequencer = getattr(module, f"sequencer{sequence}", None)
+            if module.is_qcm_type:
+                if all(
+                    sequencer._get_sequencer_connect_out(i) == "off"
+                    for i in range(2)
+                ):
+                    # If no port is assigned to the sequencer, connect it to the current output
+                    getattr(module, f"sequencer{sequence}").connect_sequencer(
+                        f"out{port - 1}"
+                    )  #
+            else:  # is qrm_type
+                if sequencer._get_sequencer_connect_out(0) == "off":
+                    getattr(module, f"sequencer{sequence}").connect_sequencer(
+                        f"out{port - 1}"
+                    )
+            getattr(module, f"sequencer{sequence}").sideband_cal()
 
         data.final_calibration = _get_hardware_calibration(cluster)
 
