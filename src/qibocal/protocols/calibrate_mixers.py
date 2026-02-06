@@ -110,7 +110,7 @@ def _get_hardware_calibration(module: Module, channels: dict) -> ModuleCalibrati
 
         for ch in channels.values(): 
             address = PortAddress.from_path(ch.path)
-            if output_n + 1 == address.output and module.slot_idx == address.slot:
+            if output_n + 1 == address.ports[0] and module.slot_idx == address.slot:
                 seq_list.append(getattr(module, f"sequencer{idx_seq}"))
                 idx_seq += 1
 
