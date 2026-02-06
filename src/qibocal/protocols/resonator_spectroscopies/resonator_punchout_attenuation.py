@@ -203,10 +203,10 @@ def _acquisition(
 def _fit(data: ResonatorPunchoutAttenuationData) -> ResonatorPunchoutAttenuationResults:
     """Fit frequency and attenuation at high and low power for each resonator."""
 
-    readout_freqs: dict[QubitId, float|None] = {}
-    bare_freqs: dict[QubitId, float|None]  = {}
-    ro_values: dict[QubitId, float|None]  = {}
-    successful_fit: dict[QubitId, bool]  = {}
+    readout_freqs: dict[QubitId, float | None] = {}
+    bare_freqs: dict[QubitId, float | None] = {}
+    ro_values: dict[QubitId, float | None] = {}
+    successful_fit: dict[QubitId, bool] = {}
 
     for qubit in data.qubits:
         filtered_x, filtered_y = data.filtered_data(qubit)
@@ -215,9 +215,7 @@ def _fit(data: ResonatorPunchoutAttenuationData) -> ResonatorPunchoutAttenuation
             successful_fit[qubit] = False
             continue
 
-        bare_freq, readout_freq, ro_val = fit_punchout(
-            filtered_x, -filtered_y
-        )
+        bare_freq, readout_freq, ro_val = fit_punchout(filtered_x, -filtered_y)
         successful_fit[qubit] = True
 
         readout_freqs[qubit] = float(readout_freq)
