@@ -337,8 +337,7 @@ def _plot(data: CalibrateMixersData, target: str, fit: CalibrateMixersResults):
                         - initial.phase_offset[port][seq_idx]
                     )
                     nco_change = (
-                        final.nco_freq[port][seq_idx]
-                        - initial.nco_freq[port][seq_idx]
+                        final.nco_freq[port][seq_idx] - initial.nco_freq[port][seq_idx]
                     )
 
                     table_rows.append(
