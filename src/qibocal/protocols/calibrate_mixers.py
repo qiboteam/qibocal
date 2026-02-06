@@ -23,18 +23,18 @@ class ModuleCalibrationData:
 
     module_name: str
     """Module identifier."""
-    offset_i: list[float]
+    offset_i: dict[int, list[float]] = field(default_factory=dict)
     """I offset values for each output."""
-    offset_q: list[float]
+    offset_q: dict[int, list[float]] = field(default_factory=dict)
     """Q offset values for each output."""
-    gain_ratio: dict[int, list[float]]
-    """Gain ratio corrections per output and sequencer."""
-    phase_offset: dict[int, list[float]]
-    """Phase offset corrections per output and sequencer."""
-    lo_freq: dict[int, float]
+    gain_ratio: dict[int, list[float]] = field(default_factory=dict)
+    """Gain ratio corrections per sequencer."""
+    phase_offset: dict[int, list[float]] = field(default_factory=dict)
+    """Phase offset corrections per sequencer."""
+    lo_freq: dict[int, float] = field(default_factory=dict)
     """LO frequencies per output."""
-    nco_freq: dict[int, list[float]]
-    """NCO frequencies per output and sequencer."""
+    nco_freq: dict[int, list[float]] = field(default_factory=dict)
+    """NCO frequencies per sequencer."""
 
     @classmethod
     def from_dict(cls, data: dict) -> "ModuleCalibrationData":
@@ -46,35 +46,26 @@ class ModuleCalibrationData:
         Returns:
             ModuleCalibrationData instance
         """
-        if type(data) is ModuleCalibrationData:
+        if isinstance(data, ModuleCalibrationData):
             return data
-        elif not isinstance(data, dict):
+        if not isinstance(data, dict):
             raise TypeError(
                 f"Cannot create ModuleCalibrationData from type {type(data)}"
             )
 
-        # Convert string keys to int for nested dicts
-        gain_ratio = {int(k): v for k, v in data.get("gain_ratio", {}).items()}
-        phase_offset = {int(k): v for k, v in data.get("phase_offset", {}).items()}
-        lo_freq = {int(k): v for k, v in data.get("lo_freq", {}).items()}
-        nco_freq = {int(k): v for k, v in data.get("nco_freq", {}).items()}
-
-        return cls(
-            module_name=data["module_name"],
-            offset_i=data["offset_i"],
-            offset_q=data["offset_q"],
-            gain_ratio=gain_ratio,
-            phase_offset=phase_offset,
-            lo_freq=lo_freq,
-            nco_freq=nco_freq,
-        )
+        int_key_fields = ["gain_ratio", "phase_offset", "lo_freq", "nco_freq", "offset_i", "offset_q"]
+        kwargs = {
+            field: {int(k): v for k, v in data.get(field, {}).items()}
+            for field in int_key_fields
+        }
+        kwargs["module_name"] = data["module_name"]
+        
+        return cls(**kwargs)
 
 
 @dataclass
 class CalibrateMixersParameters(Parameters):
     """Calibrate mixers runcard inputs."""
-
-    pass
 
 
 @dataclass
@@ -98,51 +89,37 @@ class CalibrateMixersData(Data):
 def _get_hardware_calibration(module: Module, channels: dict) -> ModuleCalibrationData:
     """Get hardware calibration values from a QBlox module."""
 
-    module_name = module.short_name
-    offset_i, offset_q = [], []
-
-    gain_ratio = {output_n: [] for output_n in range(module.number_of_channels())}
-    phase_offset = {output_n: [] for output_n in range(module.number_of_channels())}
-    lo_freq = {output_n: 0.0 for output_n in range(module.number_of_channels())}
-    nco_freq = {output_n: [] for output_n in range(module.number_of_channels())}
+    data = ModuleCalibrationData(module.short_name)
 
     for output_n in range(module.number_of_channels()):
-        offset_i.append(getattr(module, f"out{output_n}_offset_path0")())
-        offset_q.append(getattr(module, f"out{output_n}_offset_path1")())
+        data.offset_i[output_n] = getattr(module, f"out{output_n}_offset_path0")()
+        data.offset_q[output_n] = getattr(module, f"out{output_n}_offset_path1")()
         output = (
             f"out{output_n}"
             if module.number_of_channels() > 1
             else f"out{output_n}_in{output_n}"
         )
-        lo_freq[output_n] = getattr(module, f"{output}_lo_freq")()
+        data.lo_freq[output_n] = getattr(module, f"{output}_lo_freq")()
 
         seq_list = []
         idx_seq = 0
-        for ch in channels.values():
-            path = module_name.lower() + f"/o{output_n + 1}"
+        for _, ch in channels.items():
+            path = data.module_name.lower() + f"/o{output_n + 1}"
             if f"module{ch.path}" == path:
                 seq_list.append(f"sequencer{idx_seq}")
                 idx_seq += 1
 
-        gain_ratio[output_n] = [0.0] * len(seq_list)
-        phase_offset[output_n] = [0.0] * len(seq_list)
-        nco_freq[output_n] = [0.0] * len(seq_list)
+        data.gain_ratio[output_n] = [0.0] * len(seq_list)
+        data.phase_offset[output_n] = [0.0] * len(seq_list)
+        data.nco_freq[output_n] = [0.0] * len(seq_list)
 
         for idx_seq, seq in enumerate(seq_list):
             sequencer = getattr(module, seq)
-            gain_ratio[output_n][idx_seq] = sequencer.mixer_corr_gain_ratio()
-            phase_offset[output_n][idx_seq] = sequencer.mixer_corr_phase_offset_degree()
-            nco_freq[output_n][idx_seq] = sequencer.nco_freq()
+            data.gain_ratio[output_n][idx_seq] = sequencer.mixer_corr_gain_ratio()
+            data.phase_offset[output_n][idx_seq] = sequencer.mixer_corr_phase_offset_degree()
+            data.nco_freq[output_n][idx_seq] = sequencer.nco_freq()
 
-    return ModuleCalibrationData(
-        module_name=module_name,
-        offset_i=offset_i,
-        offset_q=offset_q,
-        gain_ratio=gain_ratio,
-        phase_offset=phase_offset,
-        lo_freq=lo_freq,
-        nco_freq=nco_freq,
-    )
+    return data
 
 
 def _acquisition(
