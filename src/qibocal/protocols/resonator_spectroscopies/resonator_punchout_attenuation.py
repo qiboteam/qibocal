@@ -58,11 +58,11 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
 class ResonatorPunchoutAttenuationResults(Results):
     """ResonatorPunchoutAttenuation outputs."""
 
-    readout_frequency: dict[QubitId, float]
+    readout_frequency: dict[QubitId, float | None]
     """Readout frequency [GHz] for each qubit."""
-    bare_frequency: Optional[dict[QubitId, float]]
+    bare_frequency: Optional[dict[QubitId, float | None]]
     """Bare resonator frequency [GHz] for each qubit."""
-    readout_attenuation: dict[QubitId, float]
+    readout_attenuation: dict[QubitId, float | None]
     """Readout LO attenuation [dB] for each qubit."""
     successful_fit: dict[QubitId, bool]
     """flag for each qubit to see whether the fit was successful."""
@@ -201,30 +201,28 @@ def _acquisition(
 
 
 def _fit(data: ResonatorPunchoutAttenuationData) -> ResonatorPunchoutAttenuationResults:
-    """Fit frequency and attenuation at high and low power for a given resonator."""
+    """Fit frequency and attenuation at high and low power for each resonator."""
 
-    readout_freqs = {}
-    bare_freqs = {}
-    ro_values = {}
-    successful_fit = {}
+    readout_freqs: dict[QubitId, float|None] = {}
+    bare_freqs: dict[QubitId, float|None]  = {}
+    ro_values: dict[QubitId, float|None]  = {}
+    successful_fit: dict[QubitId, bool]  = {}
 
     for qubit in data.qubits:
         filtered_x, filtered_y = data.filtered_data(qubit)
 
         if filtered_x is None or filtered_y is None:
-            bare_freq = readout_freq = ro_val = None
-            fit_flag = False
-        else:
-            bare_freq, readout_freq, ro_val = fit_punchout(
-                filtered_x, -filtered_y
-            )
-            fit_flag = True
+            successful_fit[qubit] = False
+            continue
 
-        if fit_flag:
-            readout_freqs[qubit] = float(readout_freq)
-            bare_freqs[qubit] = float(bare_freq)
-            ro_values[qubit] = -float(ro_val)
-        successful_fit[qubit] = fit_flag
+        bare_freq, readout_freq, ro_val = fit_punchout(
+            filtered_x, -filtered_y
+        )
+        successful_fit[qubit] = True
+
+        readout_freqs[qubit] = float(readout_freq)
+        bare_freqs[qubit] = float(bare_freq)
+        ro_values[qubit] = -float(ro_val)
 
     return ResonatorPunchoutAttenuationResults(
         readout_frequency=readout_freqs,
