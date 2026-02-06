@@ -27,16 +27,16 @@ class ModuleCalibrationData:
 
     module_name: str
     """Module identifier."""
-    offset_i: dict[int, list[float]] = field(default_factory=dict)
+    offset_i: dict[int, float] = field(default_factory=dict)
     """I offset values for each output."""
-    offset_q: dict[int, list[float]] = field(default_factory=dict)
+    offset_q: dict[int, float] = field(default_factory=dict)
     """Q offset values for each output."""
+    lo_freq: dict[int, float] = field(default_factory=dict)
+    """LO frequencies per output."""
     gain_ratio: dict[int, list[float]] = field(default_factory=dict)
     """Gain ratio corrections per sequencer."""
     phase_offset: dict[int, list[float]] = field(default_factory=dict)
     """Phase offset corrections per sequencer."""
-    lo_freq: dict[int, float] = field(default_factory=dict)
-    """LO frequencies per output."""
     nco_freq: dict[int, list[float]] = field(default_factory=dict)
     """NCO frequencies per sequencer."""
 
@@ -89,34 +89,41 @@ class CalibrateMixersData(Data):
     final_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
     """Final calibration values after running calibration."""
 
+def _get_hardware_calibration(cluster: Cluster) -> dict[str, ModuleCalibrationData]:
+    modules: dict[str, Module] = cluster._cluster.get_connected_modules(lambda mod: mod.is_rf_type)
 
-def _get_hardware_calibration(module: Module, channels: dict) -> ModuleCalibrationData:
-    """Get hardware calibration values from a QBlox module."""
-    if not module.is_rf_type:
-        return None
-    
-    data = ModuleCalibrationData(module.short_name)
+    # This is moslty just removing the repeated acquisiton channel information but may handle repeated mixer
+    unique_channels = {}
+    for ch_name, mixer in cluster._mixers.items():
+        if mixer not in unique_channels:
+            unique_channels[mixer] = ch_name
 
-    for output_n in range(module.number_of_channels()):
-        data.offset_i[output_n] = getattr(module, f"out{output_n}_offset_path0")()
-        data.offset_q[output_n] = getattr(module, f"out{output_n}_offset_path1")()
+    data: dict[str, ModuleCalibrationData] = {}
+
+    for ch in unique_channels.values():
+        address = PortAddress.from_path(cluster.channels[ch].path)
+        output = address.ports[0] - 1
+        module_number = address.slot
+        module = modules[module_number]
+        mod_name = module.short_name
+
+        if mod_name not in data:
+            data[mod_name] = ModuleCalibrationData(mod_name)
+
+        data[mod_name].offset_i[output] = getattr(module, f"out{output}_offset_path0")()
+        data[mod_name].offset_q[output] = getattr(module, f"out{output}_offset_path1")()
+        data[mod_name].lo_freq[output] = getattr(module, f"out{output}_lo_freq" if module.is_qcm_type else f"out{output}_in{output}_lo_freq")()
+
+        if output not in data[mod_name].gain_ratio:
+            data[mod_name].gain_ratio[output] = []
+            data[mod_name].phase_offset[output] = []
+            data[mod_name].nco_freq[output] = []
         
-        output = f"out{output_n}" if module.is_qcm_type else f"out{output_n}_in{output_n}"
-        data.lo_freq[output_n] = getattr(module, f"{output}_lo_freq")()
-
-        # Make a list of sequencer associated to this module and output (assume they are in order!~) 
-        seq_list: list[Sequencer] = []
-        idx_seq = 0
-
-        for ch in channels.values(): 
-            address = PortAddress.from_path(ch.path)
-            if output_n + 1 == address.ports[0] and module.slot_idx == address.slot:
-                seq_list.append(getattr(module, f"sequencer{idx_seq}"))
-                idx_seq += 1
-
-        data.gain_ratio[output_n] = [sequencer.mixer_corr_gain_ratio() for sequencer in seq_list]
-        data.phase_offset[output_n] = [sequencer.mixer_corr_phase_offset_degree() for sequencer in seq_list]
-        data.nco_freq[output_n] = [sequencer.nco_freq() for sequencer in seq_list]
+        # Sequencer are added sequentially (hoping this will match while doing the calibration)
+        seq: Sequencer = getattr(module, f"sequencer{len(data[mod_name].gain_ratio[output])}")
+        data[mod_name].gain_ratio[output].append(seq.mixer_corr_gain_ratio())
+        data[mod_name].phase_offset[output].append(seq.mixer_corr_phase_offset_degree())
+        data[mod_name].nco_freq[output].append(seq.nco_freq())
 
     return data
 
@@ -153,11 +160,6 @@ def _acquisition(
     for instr in instrs.values():
         cluster: Cluster = instr
 
-        # Get list of channels that are IqChannel
-        # channels = {
-        #     chn: ch for chn, ch in cluster.channels.items() if isinstance(ch, IqChannel)
-        # } # If I iterate over the mixers instead of all channels, I don't need to save a priori what channels are IQ
-
         # Setup one sequencer per channel with a dummy sequence
         seqs = cluster.configure(
             configs=configs,
@@ -168,7 +170,10 @@ def _acquisition(
         modules: dict[str, Module] = cluster._cluster.get_connected_modules(lambda mod: mod.is_rf_type)
 
         # Read current hardware calibration values (should match those in parameters.json)
-        data.initial_calibration = {f"{cluster.name}_{module_idx}": _get_hardware_calibration(module, cluster.channels) for module_idx, module in modules.items()}
+        # data.initial_calibration = {f"{cluster.name}_{module_idx}": _get_hardware_calibration(module, cluster.channels) for module_idx, module in modules.items()}
+        
+        data.initial_calibration = _get_hardware_calibration(cluster)
+        rich.print(data.initial_calibration)
 
         # Perform calibration
         for ch_name, ch_mixer in cluster._mixers.items():
@@ -207,7 +212,7 @@ def _acquisition(
                         )
                 getattr(module, seq_name).sideband_cal()
 
-        data.final_calibration = {f"{cluster.name}_{module_idx}": _get_hardware_calibration(module, cluster.channels) for module_idx, module in modules.items()}
+        data.final_calibration = _get_hardware_calibration(cluster)
 
     return data
 
