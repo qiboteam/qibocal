@@ -215,9 +215,10 @@ def _fit(data: ResonatorPunchoutAttenuationData) -> ResonatorPunchoutAttenuation
             bare_freq = readout_freq = ro_val = None
             fit_flag = False
         else:
-            bare_freq, readout_freq, ro_val, fit_flag = fit_punchout(
+            bare_freq, readout_freq, ro_val = fit_punchout(
                 filtered_x, -filtered_y
             )
+            fit_flag = True
 
         if fit_flag:
             readout_freqs[qubit] = float(readout_freq)

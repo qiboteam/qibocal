@@ -955,4 +955,4 @@ def fit_punchout(filtered_x, filtered_y):
         bare_freq = high_freq
         ro_val = low_freq_amp
 
-    return bare_freq, readout_freq, ro_val, True
+    return bare_freq, readout_freq, ro_val
