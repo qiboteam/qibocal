@@ -11,9 +11,12 @@ from qibolab._core.instruments.qblox.sequence import Q1Sequence
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
+from qblox_instruments import Sequencer
 __all__ = ["calibrate_mixers"]
 
-# Add helper methods to qblox_instruments Module
+import rich
+
+# Helper method to qblox_instruments Module
 Module.number_of_channels = lambda self: 2 if self.is_qcm_type else 1
 
 
@@ -88,36 +91,30 @@ class CalibrateMixersData(Data):
 
 def _get_hardware_calibration(module: Module, channels: dict) -> ModuleCalibrationData:
     """Get hardware calibration values from a QBlox module."""
-
+    if not module.is_rf_type:
+        return None
+    
     data = ModuleCalibrationData(module.short_name)
 
     for output_n in range(module.number_of_channels()):
         data.offset_i[output_n] = getattr(module, f"out{output_n}_offset_path0")()
         data.offset_q[output_n] = getattr(module, f"out{output_n}_offset_path1")()
-        output = (
-            f"out{output_n}"
-            if module.number_of_channels() > 1
-            else f"out{output_n}_in{output_n}"
-        )
+        
+        output = f"out{output_n}" if module.is_qcm_type else f"out{output_n}_in{output_n}"
         data.lo_freq[output_n] = getattr(module, f"{output}_lo_freq")()
 
-        seq_list = []
+        # Make a list of sequencer associated to this module and output (assume they are in order!~) 
+        seq_list: list[Sequencer] = []
         idx_seq = 0
-        for _, ch in channels.items():
+        for ch in channels.values(): 
             path = data.module_name.lower() + f"/o{output_n + 1}"
             if f"module{ch.path}" == path:
-                seq_list.append(f"sequencer{idx_seq}")
+                seq_list.append(getattr(module, f"sequencer{idx_seq}"))
                 idx_seq += 1
 
-        data.gain_ratio[output_n] = [0.0] * len(seq_list)
-        data.phase_offset[output_n] = [0.0] * len(seq_list)
-        data.nco_freq[output_n] = [0.0] * len(seq_list)
-
-        for idx_seq, seq in enumerate(seq_list):
-            sequencer = getattr(module, seq)
-            data.gain_ratio[output_n][idx_seq] = sequencer.mixer_corr_gain_ratio()
-            data.phase_offset[output_n][idx_seq] = sequencer.mixer_corr_phase_offset_degree()
-            data.nco_freq[output_n][idx_seq] = sequencer.nco_freq()
+        data.gain_ratio[output_n] = [sequencer.mixer_corr_gain_ratio() for sequencer in seq_list]
+        data.phase_offset[output_n] = [sequencer.mixer_corr_phase_offset_degree() for sequencer in seq_list]
+        data.nco_freq[output_n] = [sequencer.nco_freq() for sequencer in seq_list]
 
     return data
 
@@ -155,28 +152,25 @@ def _acquisition(
         cluster: Cluster = instr
 
         # Get list of channels that are IqChannel
-        channels = {
-            chn: ch for chn, ch in cluster.channels.items() if isinstance(ch, IqChannel)
-        }
+        # channels = {
+        #     chn: ch for chn, ch in cluster.channels.items() if isinstance(ch, IqChannel)
+        # } # If I iterate over the mixers instead of all channels, I don't need to save a priori what channels are IQ
 
-        # Setup one sequencer per channel with a dummy sequence (not working, )
+        # Setup one sequencer per channel with a dummy sequence
         seqs = cluster.configure(
             configs=configs,
             acquisition=AcquisitionType.RAW,
-            sequences={ch: Q1Sequence.empty() for ch in channels.keys()},
+            sequences={ch: Q1Sequence.empty() for ch in cluster.channels.keys() if isinstance(cluster.channels[ch], IqChannel)},
         )
 
-        modules: dict[str, Module] = cluster._cluster.get_connected_modules(
-            lambda mod: mod.is_rf_type
-        )
+        modules: dict[str, Module] = cluster._cluster.get_connected_modules(lambda mod: mod.is_rf_type)
 
-        # Read initial calibration values
-        for module_idx, module in modules.items():
-            initial_cal = _get_hardware_calibration(module, channels)
-            data.initial_calibration[f"{cluster.name}_{module_idx}"] = initial_cal
+        # Read current hardware calibration values (should match those in parameters.json)
+        data.initial_calibration = {f"{cluster.name}_{module_idx}": _get_hardware_calibration(module, cluster.channels) for module_idx, module in modules.items()}
 
         # Perform calibration
-        for _, ch in channels.items():
+        for ch_name, ch_mixer in cluster._mixers.items():
+            ch = cluster.channels[ch_name]
             module_number = int(ch.path.split("/")[0])
             output_number = int(ch.path.split("/")[-1][-1])
             if module_number not in modules:
@@ -187,16 +181,14 @@ def _acquisition(
             if module.is_qcm_type:
                 getattr(module, f"out{output_number - 1}_lo_cal")()
             else:
-                getattr(
-                    module, f"out{output_number - 1}_in{output_number - 1}_lo_cal"
-                )()
+                getattr(module, f"out{output_number - 1}_in{output_number - 1}_lo_cal")()
 
             # Run sequencer mixer calibrations
             for seq_idx in range(len(seqs)):
                 seq_name = f"sequencer{seq_idx}"
                 if not hasattr(module, seq_name):
                     continue
-                sequencer = getattr(module, seq_name, None)
+                sequencer: Sequencer = getattr(module, seq_name, None)
                 if module.is_qcm_type:
                     if all(
                         sequencer._get_sequencer_connect_out(i) == "off"
@@ -210,13 +202,10 @@ def _acquisition(
                     if sequencer._get_sequencer_connect_out(0) == "off":
                         getattr(module, seq_name).connect_sequencer(
                             f"out{output_number - 1}"
-                        )  #
+                        )
                 getattr(module, seq_name).sideband_cal()
 
-        # Read final calibration values
-        for module_idx, module in modules.items():
-            final_cal = _get_hardware_calibration(module, channels)
-            data.final_calibration[f"{cluster.name}_{module_idx}"] = final_cal
+        data.final_calibration = {f"{cluster.name}_{module_idx}": _get_hardware_calibration(module, cluster.channels) for module_idx, module in modules.items()}
 
     return data
 
