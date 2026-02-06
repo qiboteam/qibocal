@@ -98,7 +98,7 @@ class CalibrateMixersData(Data):
 def _get_hardware_calibration(module: Module, channels: dict) -> ModuleCalibrationData:
     """Get hardware calibration values from a QBlox module."""
 
-    module_name = module._short_name
+    module_name = module.short_name
     offset_i, offset_q = [], []
 
     gain_ratio = {output_n: [] for output_n in range(module.number_of_channels())}
