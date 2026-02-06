@@ -180,12 +180,6 @@ def _acquisition(
         # Setup one sequencer per channel with a dummy sequence
         seq_map, _ = cluster.configure(
             configs=configs,
-            acquisition=AcquisitionType.RAW,
-            sequences={
-                ch: Q1Sequence.empty()
-                for ch in cluster.channels.keys()
-                if isinstance(cluster.channels[ch], IqChannel)
-            },
         )
 
         modules: dict[str, Module] = cluster._cluster.get_connected_modules(
