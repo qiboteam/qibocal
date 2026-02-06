@@ -174,7 +174,7 @@ def _acquisition(
     }
     configs = platform.parameters.configs.copy()
 
-    for _, instr in instrs.items():
+    for instr in instrs.values():
         cluster: Cluster = instr
 
         # Get list of channels that are IqChannel
