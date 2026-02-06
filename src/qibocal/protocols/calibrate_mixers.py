@@ -224,7 +224,7 @@ def _acquisition(
                     # If no port is assigned to the sequencer, connect it to the current output
                     getattr(module, f"sequencer{sequence}").connect_sequencer(
                         f"out{port - 1}"
-                    )  #
+                    )  # This may no longer be needed since the sequencerMap may already have only connected sequencerds
             else:  # is qrm_type
                 if sequencer._get_sequencer_connect_out(0) == "off":
                     getattr(module, f"sequencer{sequence}").connect_sequencer(
@@ -293,75 +293,75 @@ def _plot(data: CalibrateMixersData, target: str, fit: CalibrateMixersResults):
         )
 
         # Add offset data for each output
-        for output_n in range(len(initial.offset_i)):
-            offset_i_change = final.offset_i[output_n] - initial.offset_i[output_n]
-            offset_q_change = final.offset_q[output_n] - initial.offset_q[output_n]
+        for port in initial.offset_i.keys():
+            offset_i_change = final.offset_i[port] - initial.offset_i[port]
+            offset_q_change = final.offset_q[port] - initial.offset_q[port]
 
             table_rows.append(
                 [
-                    f"Out{output_n} Offset I",
-                    f"{initial.offset_i[output_n]:.6f}",
-                    f"{final.offset_i[output_n]:.6f}",
+                    f"Out{port} Offset I",
+                    f"{initial.offset_i[port]:.6f}",
+                    f"{final.offset_i[port]:.6f}",
                     f"{offset_i_change:.6f}",
                 ]
             )
             table_rows.append(
                 [
-                    f"Out{output_n} Offset Q",
-                    f"{initial.offset_q[output_n]:.6f}",
-                    f"{final.offset_q[output_n]:.6f}",
+                    f"Out{port} Offset Q",
+                    f"{initial.offset_q[port]:.6f}",
+                    f"{final.offset_q[port]:.6f}",
                     f"{offset_q_change:.6f}",
                 ]
             )
 
             # Add LO frequency
-            lo_freq_change = final.lo_freq[output_n] - initial.lo_freq[output_n]
+            lo_freq_change = final.lo_freq[port] - initial.lo_freq[port]
             table_rows.append(
                 [
-                    f"Out{output_n} LO Freq (Hz)",
-                    f"{initial.lo_freq[output_n]:.0f}",
-                    f"{final.lo_freq[output_n]:.0f}",
+                    f"Out{port} LO Freq (Hz)",
+                    f"{initial.lo_freq[port]:.0f}",
+                    f"{final.lo_freq[port]:.0f}",
                     f"{lo_freq_change:.0f}",
                 ]
             )
 
             # Add sequencer-specific data
-            if output_n in initial.gain_ratio:
-                for seq_idx in range(len(initial.gain_ratio[output_n])):
+            if port in initial.gain_ratio:
+                for seq_idx in range(len(initial.gain_ratio[port])):
                     gain_change = (
-                        final.gain_ratio[output_n][seq_idx]
-                        - initial.gain_ratio[output_n][seq_idx]
+                        final.gain_ratio[port][seq_idx]
+                        - initial.gain_ratio[port][seq_idx]
                     )
                     phase_change = (
-                        final.phase_offset[output_n][seq_idx]
-                        - initial.phase_offset[output_n][seq_idx]
+                        final.phase_offset[port][seq_idx]
+                        - initial.phase_offset[port][seq_idx]
                     )
                     nco_change = (
-                        final.nco_freq[output_n][seq_idx]
-                        - initial.nco_freq[output_n][seq_idx]
+                        final.nco_freq[port][seq_idx]
+                        - initial.nco_freq[port][seq_idx]
                     )
 
                     table_rows.append(
                         [
                             f"  Seq{seq_idx} Gain Ratio",
-                            f"{initial.gain_ratio[output_n][seq_idx]:.6f}",
-                            f"{final.gain_ratio[output_n][seq_idx]:.6f}",
+                            f"{initial.gain_ratio[port][seq_idx]:.6f}",
+                            f"{final.gain_ratio[port][seq_idx]:.6f}",
                             f"{gain_change:.6f}",
                         ]
                     )
                     table_rows.append(
                         [
                             f"  Seq{seq_idx} Phase Offset (°)",
-                            f"{initial.phase_offset[output_n][seq_idx]:.4f}",
-                            f"{final.phase_offset[output_n][seq_idx]:.4f}",
+                            f"{initial.phase_offset[port][seq_idx]:.4f}",
+                            f"{final.phase_offset[port][seq_idx]:.4f}",
                             f"{phase_change:.4f}",
                         ]
                     )
                     table_rows.append(
                         [
                             f"  Seq{seq_idx} NCO Freq (Hz)",
-                            f"{initial.nco_freq[output_n][seq_idx]:.0f}",
-                            f"{final.nco_freq[output_n][seq_idx]:.0f}",
+                            f"{initial.nco_freq[port][seq_idx]:.0f}",
+                            f"{final.nco_freq[port][seq_idx]:.0f}",
                             f"{nco_change:.0f}",
                         ]
                     )
