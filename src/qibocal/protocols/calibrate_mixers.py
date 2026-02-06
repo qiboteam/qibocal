@@ -1,18 +1,17 @@
 from dataclasses import dataclass, field
 
 import plotly.graph_objects as go
-from qblox_instruments import Module
+from qblox_instruments import Module, Sequencer
 from qibolab._core.components.channels import IqChannel
 from qibolab._core.execution_parameters import AcquisitionType
 from qibolab._core.instruments.abstract import Controller
 from qibolab._core.instruments.qblox.cluster import Cluster
-from qibolab._core.instruments.qblox.sequence import Q1Sequence
 from qibolab._core.instruments.qblox.config import PortAddress
+from qibolab._core.instruments.qblox.sequence import Q1Sequence
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
-from qblox_instruments import Sequencer
 __all__ = ["calibrate_mixers"]
 
 import rich
@@ -57,13 +56,20 @@ class ModuleCalibrationData:
                 f"Cannot create ModuleCalibrationData from type {type(data)}"
             )
 
-        int_key_fields = ["gain_ratio", "phase_offset", "lo_freq", "nco_freq", "offset_i", "offset_q"]
+        int_key_fields = [
+            "gain_ratio",
+            "phase_offset",
+            "lo_freq",
+            "nco_freq",
+            "offset_i",
+            "offset_q",
+        ]
         kwargs = {
             field: {int(k): v for k, v in data.get(field, {}).items()}
             for field in int_key_fields
         }
         kwargs["module_name"] = data["module_name"]
-        
+
         return cls(**kwargs)
 
 
@@ -89,8 +95,11 @@ class CalibrateMixersData(Data):
     final_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
     """Final calibration values after running calibration."""
 
+
 def _get_hardware_calibration(cluster: Cluster) -> dict[str, ModuleCalibrationData]:
-    modules: dict[str, Module] = cluster._cluster.get_connected_modules(lambda mod: mod.is_rf_type)
+    modules: dict[str, Module] = cluster._cluster.get_connected_modules(
+        lambda mod: mod.is_rf_type
+    )
 
     # This is moslty just removing the repeated acquisiton channel information but may handle repeated mixer
     unique_channels = {}
@@ -112,15 +121,22 @@ def _get_hardware_calibration(cluster: Cluster) -> dict[str, ModuleCalibrationDa
 
         data[mod_name].offset_i[output] = getattr(module, f"out{output}_offset_path0")()
         data[mod_name].offset_q[output] = getattr(module, f"out{output}_offset_path1")()
-        data[mod_name].lo_freq[output] = getattr(module, f"out{output}_lo_freq" if module.is_qcm_type else f"out{output}_in{output}_lo_freq")()
+        data[mod_name].lo_freq[output] = getattr(
+            module,
+            f"out{output}_lo_freq"
+            if module.is_qcm_type
+            else f"out{output}_in{output}_lo_freq",
+        )()
 
         if output not in data[mod_name].gain_ratio:
             data[mod_name].gain_ratio[output] = []
             data[mod_name].phase_offset[output] = []
             data[mod_name].nco_freq[output] = []
-        
+
         # Sequencer are added sequentially (hoping this will match while doing the calibration)
-        seq: Sequencer = getattr(module, f"sequencer{len(data[mod_name].gain_ratio[output])}")
+        seq: Sequencer = getattr(
+            module, f"sequencer{len(data[mod_name].gain_ratio[output])}"
+        )
         data[mod_name].gain_ratio[output].append(seq.mixer_corr_gain_ratio())
         data[mod_name].phase_offset[output].append(seq.mixer_corr_phase_offset_degree())
         data[mod_name].nco_freq[output].append(seq.nco_freq())
@@ -164,14 +180,20 @@ def _acquisition(
         seqs = cluster.configure(
             configs=configs,
             acquisition=AcquisitionType.RAW,
-            sequences={ch: Q1Sequence.empty() for ch in cluster.channels.keys() if isinstance(cluster.channels[ch], IqChannel)},
+            sequences={
+                ch: Q1Sequence.empty()
+                for ch in cluster.channels.keys()
+                if isinstance(cluster.channels[ch], IqChannel)
+            },
         )
 
-        modules: dict[str, Module] = cluster._cluster.get_connected_modules(lambda mod: mod.is_rf_type)
+        modules: dict[str, Module] = cluster._cluster.get_connected_modules(
+            lambda mod: mod.is_rf_type
+        )
 
         # Read current hardware calibration values (should match those in parameters.json)
         # data.initial_calibration = {f"{cluster.name}_{module_idx}": _get_hardware_calibration(module, cluster.channels) for module_idx, module in modules.items()}
-        
+
         data.initial_calibration = _get_hardware_calibration(cluster)
         rich.print(data.initial_calibration)
 
@@ -188,7 +210,9 @@ def _acquisition(
             if module.is_qcm_type:
                 getattr(module, f"out{output_number - 1}_lo_cal")()
             else:
-                getattr(module, f"out{output_number - 1}_in{output_number - 1}_lo_cal")()
+                getattr(
+                    module, f"out{output_number - 1}_in{output_number - 1}_lo_cal"
+                )()
 
             # Run sequencer mixer calibrations
             for seq_idx in range(len(seqs)):
