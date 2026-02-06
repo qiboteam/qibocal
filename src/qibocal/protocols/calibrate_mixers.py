@@ -14,7 +14,6 @@ from qibocal.calibration import CalibrationPlatform
 
 __all__ = ["calibrate_mixers"]
 
-import rich
 
 # Helper method to qblox_instruments Module
 Module.number_of_channels = lambda self: 2 if self.is_qcm_type else 1
@@ -95,8 +94,9 @@ class CalibrateMixersData(Data):
     final_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
     """Final calibration values after running calibration."""
 
+
 # This is moslty just removing the repeated acquisiton channel information but may handle other instances of repeated mixer
-def unique_channels(cluster) -> dict[str, IqChannel]: 
+def unique_channels(cluster) -> dict[str, IqChannel]:
     """Get unique channels from a liost of mixers (skipping duplicates from shared channels)."""
     unique_channels = {}
     for ch_name, mixer in cluster._mixers.items():
@@ -187,7 +187,7 @@ def _acquisition(
                 if isinstance(cluster.channels[ch], IqChannel)
             },
         )
-        
+
         modules: dict[str, Module] = cluster._cluster.get_connected_modules(
             lambda mod: mod.is_rf_type
         )
@@ -200,7 +200,7 @@ def _acquisition(
             address = PortAddress.from_path(cluster.channels[ch_name].path)
             module = modules[address.slot]
             port = address.ports[0]
-            
+
             # Run LO calibration
             if module.is_qcm_type:
                 getattr(module, f"out{port - 1}_lo_cal")()
@@ -211,14 +211,15 @@ def _acquisition(
             if ch_name in seq_map[address.slot]:
                 sequence = seq_map[address.slot][ch_name]
             else:
-                Warning(f"No sequence assigned to channel {ch_name} for module {module.short_name}, skipping mixer calibration for this channel.")
+                Warning(
+                    f"No sequence assigned to channel {ch_name} for module {module.short_name}, skipping mixer calibration for this channel."
+                )
                 continue
 
             sequencer: Sequencer = getattr(module, f"sequencer{sequence}", None)
             if module.is_qcm_type:
                 if all(
-                    sequencer._get_sequencer_connect_out(i) == "off"
-                    for i in range(2)
+                    sequencer._get_sequencer_connect_out(i) == "off" for i in range(2)
                 ):
                     # If no port is assigned to the sequencer, connect it to the current output
                     getattr(module, f"sequencer{sequence}").connect_sequencer(
