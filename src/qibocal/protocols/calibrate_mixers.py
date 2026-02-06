@@ -258,7 +258,7 @@ def _fit(data: CalibrateMixersData) -> CalibrateMixersResults:
     return CalibrateMixersResults(data.final_calibration)
 
 
-def _plot(data: CalibrateMixersData, target: str, fit: CalibrateMixersResults = None):
+def _plot(data: CalibrateMixersData, target: str, fit: CalibrateMixersResults):
     """Plotting function for mixer calibration.
 
     Creates a table showing initial and final calibration values for all modules.
