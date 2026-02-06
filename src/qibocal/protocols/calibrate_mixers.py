@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 from qblox_instruments import Module, Sequencer
 from qibolab._core.components.channels import IqChannel
 from qibolab._core.instruments.abstract import Controller
-from qibolab._core.instruments.qblox.cluster import Cluster, SequencerMap
+from qibolab._core.instruments.qblox.cluster import Cluster
 from qibolab._core.instruments.qblox.config import PortAddress
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
@@ -211,7 +211,8 @@ def _acquisition(
                 sequencer: Sequencer = getattr(module, f"sequencer{sequence}", None)
                 if module.is_qcm_type:
                     if all(
-                        sequencer._get_sequencer_connect_out(i) == "off" for i in range(2)
+                        sequencer._get_sequencer_connect_out(i) == "off"
+                        for i in range(2)
                     ):
                         # If no port is assigned to the sequencer, connect it to the current output
                         getattr(module, f"sequencer{sequence}").connect_sequencer(
