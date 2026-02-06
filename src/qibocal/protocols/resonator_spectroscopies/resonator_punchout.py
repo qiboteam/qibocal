@@ -169,7 +169,7 @@ def _fit(data: ResonatorPunchoutData) -> ResonatorPunchoutResults:
 
         readout_freqs[qubit] = float(readout_freq)
         bare_freqs[qubit] = float(bare_freq)
-        ro_values[qubit] = -float(ro_val)
+        ro_values[qubit] = float(ro_val)
 
     return ResonatorPunchoutResults(
         readout_frequency=readout_freqs,
