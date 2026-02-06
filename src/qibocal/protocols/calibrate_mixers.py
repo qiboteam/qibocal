@@ -175,8 +175,6 @@ def _acquisition(
     configs = platform.parameters.configs.copy()
 
     for _, instr in instrs.items():
-        if not isinstance(instr, Controller):
-            continue  # Skip TWPA
         cluster: Cluster = instr
 
         # Get list of channels that are IqChannel
