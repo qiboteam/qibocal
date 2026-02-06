@@ -7,6 +7,7 @@ from qibolab._core.execution_parameters import AcquisitionType
 from qibolab._core.instruments.abstract import Controller
 from qibolab._core.instruments.qblox.cluster import Cluster
 from qibolab._core.instruments.qblox.sequence import Q1Sequence
+from qibolab._core.instruments.qblox.config import PortAddress
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
@@ -106,9 +107,10 @@ def _get_hardware_calibration(module: Module, channels: dict) -> ModuleCalibrati
         # Make a list of sequencer associated to this module and output (assume they are in order!~) 
         seq_list: list[Sequencer] = []
         idx_seq = 0
+
         for ch in channels.values(): 
-            path = data.module_name.lower() + f"/o{output_n + 1}"
-            if f"module{ch.path}" == path:
+            address = PortAddress.from_path(ch.path)
+            if output_n + 1 == address.output and module.slot_idx == address.slot:
                 seq_list.append(getattr(module, f"sequencer{idx_seq}"))
                 idx_seq += 1
 
