@@ -118,7 +118,7 @@ def _get_hardware_calibration(module: Module, channels: dict) -> ModuleCalibrati
 
         seq_list = []
         idx_seq = 0
-        for _, ch in channels.items():
+        for ch in channels.values():
             path = module_name.lower() + f"/o{output_n + 1}"
             if f"module{ch.path}" == path:
                 seq_list.append(f"sequencer{idx_seq}")
