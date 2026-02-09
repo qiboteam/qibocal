@@ -212,7 +212,6 @@ def _acquisition(
                     platform=platform,
                     control=control,
                     target=target,
-                    setup=setup,
                     amplitude=(
                         params.control_amplitude[pair]
                         if isinstance(params.control_amplitude, dict)
@@ -227,6 +226,7 @@ def _acquisition(
                     target_phase=target_phase,
                     duration=params.pulse_duration_end,
                     echo=params.echo,
+                    setup=setup,
                     basis=basis,
                 )
                 if params.interpolated_sweeper:
