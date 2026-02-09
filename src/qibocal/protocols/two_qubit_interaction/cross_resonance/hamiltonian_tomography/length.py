@@ -95,6 +95,8 @@ class HamiltonianTomographyCRLengthResults(Results):
         default_factory=dict
     )
     """Fitted parameters from X,Y,Z expectation values."""
+    cr_lengths: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
+    """Estimated_duration of CR gate."""
 
     def __contains__(self, pair: QubitPairId) -> bool:
         return all(key[:2] == pair for key in list(self.fitted_parameters))
@@ -243,7 +245,7 @@ def _fit(
     Afterwards, we extract the Hamiltonian terms from the fitted parameters.
 
     """
-    fitted_parameters = tomography_cr_fit(
+    fitted_parameters, cr_gate_lengths = tomography_cr_fit(
         data=data,
     )
     hamiltonian_terms = {}
@@ -255,6 +257,7 @@ def _fit(
     return HamiltonianTomographyCRLengthResults(
         hamiltonian_terms=hamiltonian_terms,
         fitted_parameters=fitted_parameters,
+        cr_lengths=cr_gate_lengths,
     )
 
 

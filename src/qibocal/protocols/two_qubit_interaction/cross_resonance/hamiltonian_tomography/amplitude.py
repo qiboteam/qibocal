@@ -133,7 +133,7 @@ class HamiltonianTomographyCRAmplitudeData(Data):
     """Data structure for CR Amplitude."""
 
     target_calibration: bool
-    amplitudes: list = None
+    amplitudes: list | None = None
     data: dict[
         tuple[QubitId, QubitId, Basis, SetControl],
         npt.NDArray[HamiltonianTomographyCRAmplitudeType],
