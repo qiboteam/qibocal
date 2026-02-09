@@ -9,6 +9,7 @@ from scipy.optimize import (
     NonlinearConstraint,
     curve_fit,
     differential_evolution,
+    minimize,
 )
 
 from .....auto.operation import (
@@ -60,7 +61,7 @@ def dynamic_evolution_optimizer(
     def constraint(x):
         return np.sqrt(np.sum(x**2))
 
-    bounds = Bounds([0, 0, 0], [init_omega_guess, init_omega_guess, init_omega_guess])
+    bounds = Bounds([-init_omega_guess] * 3, [init_omega_guess] * 3)
     res = differential_evolution(
         func_to_minimize,
         bounds,
@@ -78,11 +79,15 @@ def dynamic_evolution_optimizer(
 def scipy_curve_fit_optimizer(
     concatenated_signal, vector_x, init_omega_guess, errors=None
 ):
-    offsets = abs(np.median(concatenated_signal, axis=-1)) * init_omega_guess**2
+    sampling_rate = 1 / abs(vector_x[1] - vector_x[0])
+    period = int(2 * np.pi / init_omega_guess * sampling_rate)
+
+    offsets = np.median(concatenated_signal[:, :period], axis=-1) * init_omega_guess**2
+
     omega_guesses = np.zeros(offsets.shape)
-    omega_guesses[-1] = np.sqrt(offsets[-1])
-    omega_guesses[0] = offsets[0] / omega_guesses[-1]
+    omega_guesses[-1] = np.sqrt(np.abs(offsets[-1]))
     omega_guesses[1] = offsets[1] / omega_guesses[-1]
+    omega_guesses[0] = offsets[0] / omega_guesses[-1]
 
     popt, _ = curve_fit(
         fitting.combined_fit,
@@ -90,11 +95,33 @@ def scipy_curve_fit_optimizer(
         concatenated_signal.ravel(),
         maxfev=int(1e6),
         p0=np.maximum(omega_guesses, 0),
-        bounds=([0, 0, 0], [np.inf, np.inf, np.inf]),
+        bounds=([-np.inf, -np.inf, -np.inf], [np.inf, np.inf, np.inf]),
         sigma=errors,
     )
 
     return popt
+
+
+def estimate_cr_length(
+    x_range, pair: QubitPairId, fitted_parameters: dict, tol: float = 1e-3
+):
+    x_grid = np.linspace(x_range[0], x_range[-1], 100 * len(x_range))
+
+    y_vals = np.array(
+        [bloch_func(xi, pair, fitted_parameters) for xi in x_grid]
+    ).flatten()
+
+    cr_length = x_grid[y_vals - min(y_vals) <= tol][0]
+
+    # Use a numerical minimizer starting from our guess
+    res = minimize(
+        bloch_func, x0=cr_length, args=(pair, fitted_parameters), method="Nelder-Mead"
+    )
+
+    if res.success:
+        cr_length = res.x[0]
+
+    return cr_length
 
 
 def tomography_cr_fit(
@@ -102,6 +129,7 @@ def tomography_cr_fit(
         "HamiltonianTomographyCRLengthData",  # noqa: F821
         "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
     ],
+    fit_with_evolution: bool = False,
 ) -> dict[tuple[QubitId, QubitId, Basis, SetControl], list]:
     """Perform fitting on expectation values for CR tomography.
 
@@ -112,8 +140,11 @@ def tomography_cr_fit(
     """
 
     fitted_parameters = {}
+    cr_gate_lengths = {}
 
     for pair in data.pairs:
+        vector_x = data.data[pair[0], pair[1], Basis.X, SetControl.Id].x
+        sampling_rate = 1 / abs(vector_x[1] - vector_x[0])
         for setup in SetControl:
             concatenated_signal = np.concatenate(
                 [
@@ -123,31 +154,40 @@ def tomography_cr_fit(
                 ]
             ).reshape(len(Basis), -1)
 
-            # concatenated_errors = np.concatenate(
-            #     [
-            #         data.data[pair[0], pair[1], Basis.X, setup].error_target,
-            #         data.data[pair[0], pair[1], Basis.Y, setup].error_target,
-            #         data.data[pair[0], pair[1], Basis.Z, setup].error_target,
-            #     ]
-            # )
+            concatenated_errors = np.concatenate(
+                [
+                    data.data[pair[0], pair[1], Basis.X, setup].error_target,
+                    data.data[pair[0], pair[1], Basis.Y, setup].error_target,
+                    data.data[pair[0], pair[1], Basis.Z, setup].error_target,
+                ]
+            )
 
-            vector_x = data.data[pair[0], pair[1], Basis.X, setup].x
-
-            sampling_rate = 1 / abs(vector_x[1] - vector_x[0])
             total_omega_guess = quinn_fernandes_algorithm(
                 concatenated_signal, vector_x, sampling_rate, speedup_flag=True
             )
 
-            # popt = scipy_curve_fit_optimizer(concatenated_signal, vector_x, total_omega_guess, concatenated_errors)
-            popt = dynamic_evolution_optimizer(
-                concatenated_signal,
-                vector_x,
-                np.concatenate([vector_x, vector_x, vector_x]),
-                total_omega_guess,
-            )
+            if fit_with_evolution:
+                popt = dynamic_evolution_optimizer(
+                    concatenated_signal,
+                    vector_x,
+                    np.concatenate([vector_x, vector_x, vector_x]),
+                    total_omega_guess,
+                )
+            else:
+                popt = scipy_curve_fit_optimizer(
+                    concatenated_signal,
+                    vector_x,
+                    total_omega_guess,
+                    concatenated_errors,
+                )
 
             fitted_parameters[pair[0], pair[1], setup] = popt.tolist()
-    return fitted_parameters
+
+        cr_gate_lengths[pair[0], pair[1]] = estimate_cr_length(
+            vector_x, pair, fitted_parameters
+        )
+
+    return fitted_parameters, cr_gate_lengths
 
 
 def compute_total_expectation_value(
@@ -183,7 +223,7 @@ def compute_bloch_vector(
         "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
     ],
     pair: QubitPairId,
-    fitted_parameters: dict = None,
+    fitted_parameters: dict | None = None,
 ):
     bloch_exp = compute_total_expectation_value(data, pair)
     bloch_exp = np.sqrt(np.sum((bloch_exp) ** 2, axis=0))
@@ -450,6 +490,16 @@ def tomography_cr_plot(
                     row=i + 1,
                     col=1,
                 )
+                if target in fit.cr_lengths:
+                    fig.add_vline(
+                        x=fit.cr_lengths[target],
+                        line_width=2,
+                        line_dash="dash",
+                        line_color="red",
+                        annotation_text="CR gate duration (ns)",
+                        row=i + 1,
+                        col=1,
+                    )
 
     bloch_vect, bloch_fit = compute_bloch_vector(data, target, fit.fitted_parameters)
     fig.add_trace(
@@ -464,6 +514,16 @@ def tomography_cr_plot(
         row=4,
         col=1,
     )
+    if target in fit.cr_lengths:
+        fig.add_vline(
+            x=fit.cr_lengths[target],
+            line_width=2,
+            line_dash="dash",
+            line_color="red",
+            annotation_text="CR gate duration (ns)",
+            row=4,
+            col=1,
+        )
     if bloch_fit is not None:
         x = np.linspace(pair_data.x.min(), pair_data.x.max(), len(bloch_fit))
         fig.add_trace(
