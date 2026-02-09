@@ -2,19 +2,17 @@ from dataclasses import dataclass, field
 
 import plotly.graph_objects as go
 from qblox_instruments import Module, Sequencer
-from qibolab._core.components.channels import IqChannel
+from qibolab._core.components.channels import IqChannel, AcquisitionChannel
+from qibolab._core.identifier import ChannelId
 from qibolab._core.instruments.abstract import Controller
-from qibolab._core.instruments.qblox.cluster import Cluster
-from qibolab._core.instruments.qblox.config import PortAddress
-
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
+from qibolab._core.instruments.qblox.cluster import Cluster
+from qibolab._core.instruments.qblox.config import PortAddress
+from qibolab._core.instruments.qblox.identifiers import SequencerMap
+
 __all__ = ["calibrate_mixers"]
-
-
-# Helper method to qblox_instruments Module
-Module.number_of_channels = lambda self: 2 if self.is_qcm_type else 1
 
 
 @dataclass
@@ -29,11 +27,11 @@ class ModuleCalibrationData:
     """Q offset values for each output."""
     lo_freq: dict[int, float] = field(default_factory=dict)
     """LO frequencies per output."""
-    gain_ratio: dict[int, list[float]] = field(default_factory=dict)
+    gain_ratio: dict[int, dict[int, float]] = field(default_factory=dict)
     """Gain ratio corrections per sequencer."""
-    phase_offset: dict[int, list[float]] = field(default_factory=dict)
+    phase_offset: dict[int, dict[int, float]] = field(default_factory=dict)
     """Phase offset corrections per sequencer."""
-    nco_freq: dict[int, list[float]] = field(default_factory=dict)
+    nco_freq: dict[int, dict[int, float]] = field(default_factory=dict)
     """NCO frequencies per sequencer."""
 
     @classmethod
@@ -62,7 +60,7 @@ class ModuleCalibrationData:
             "offset_q",
         ]
         kwargs = {
-            field: {int(k): v for k, v in data.get(field, {}).items()}
+            field: {int(k): {int(kk): vv for kk, vv in v.items()} for k, v in data.get(field, {}).items()}
             for field in int_key_fields
         }
         kwargs["module_name"] = data["module_name"]
@@ -82,6 +80,9 @@ class CalibrateMixersResults(Results):
     final_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
     """Final calibration values after running calibration."""
 
+    # sequencer_map: dict[str, SequencerMap] = field(default_factory=dict)
+    # """Map of module slots to channels and assigned sequencers."""
+
 
 @dataclass
 class CalibrateMixersData(Data):
@@ -91,6 +92,8 @@ class CalibrateMixersData(Data):
     """Initial calibration values before running calibration."""
     final_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
     """Final calibration values after running calibration."""
+    # sequencer_map: dict[str, SequencerMap] = field(default_factory=dict)
+    # """Map of module slots to channels and assigned sequencers."""
 
 
 # This is moslty just removing the repeated acquisiton channel information but may handle other instances of repeated mixer
@@ -103,42 +106,44 @@ def unique_channels(cluster) -> dict[str, IqChannel]:
     return unique_channels
 
 
-def _get_hardware_calibration(cluster: Cluster) -> dict[str, ModuleCalibrationData]:
+def _get_hardware_calibration(cluster: Cluster, seq_map: SequencerMap) -> dict[str, ModuleCalibrationData]:
     modules: dict[str, Module] = cluster._cluster.get_connected_modules(
         lambda mod: mod.is_rf_type
     )
     data: dict[str, ModuleCalibrationData] = {}
 
-    for ch in unique_channels(cluster).values():
-        address = PortAddress.from_path(cluster.channels[ch].path)
-        output = address.ports[0] - 1
-        module = modules[address.slot]
-        mod_name = module.short_name
+    # Iterate over seq_map to get channels and their assigned sequencers
+    for slot_id, channels in seq_map.items():
+        for ch_name, seq_id in channels.items():
+            address = PortAddress.from_path(cluster.channels[ch_name].path)
+            output = address.ports[0] - 1
+            module = modules[address.slot]
+            mod_name = module.short_name
 
-        if mod_name not in data:
-            data[mod_name] = ModuleCalibrationData(mod_name)
+            if mod_name not in data:
+                data[mod_name] = ModuleCalibrationData(mod_name)
 
-        data[mod_name].offset_i[output] = getattr(module, f"out{output}_offset_path0")()
-        data[mod_name].offset_q[output] = getattr(module, f"out{output}_offset_path1")()
-        data[mod_name].lo_freq[output] = getattr(
-            module,
-            f"out{output}_lo_freq"
-            if module.is_qcm_type
-            else f"out{output}_in{output}_lo_freq",
-        )()
+            # Only set offset and LO freq once per output (not per sequencer)
+            if output not in data[mod_name].offset_i:
+                data[mod_name].offset_i[output] = getattr(module, f"out{output}_offset_path0")()
+                data[mod_name].offset_q[output] = getattr(module, f"out{output}_offset_path1")()
+                data[mod_name].lo_freq[output] = getattr(
+                    module,
+                    f"out{output}_lo_freq"
+                    if module.is_qcm_type
+                    else f"out{output}_in{output}_lo_freq",
+                )()
 
-        if output not in data[mod_name].gain_ratio:
-            data[mod_name].gain_ratio[output] = []
-            data[mod_name].phase_offset[output] = []
-            data[mod_name].nco_freq[output] = []
+            if output not in data[mod_name].gain_ratio:
+                data[mod_name].gain_ratio[output] = {}
+                data[mod_name].phase_offset[output] = {}
+                data[mod_name].nco_freq[output] = {}
 
-        # Sequencer are added sequentially (hoping this will match while doing the calibration)
-        seq: Sequencer = getattr(
-            module, f"sequencer{len(data[mod_name].gain_ratio[output])}"
-        )
-        data[mod_name].gain_ratio[output].append(seq.mixer_corr_gain_ratio())
-        data[mod_name].phase_offset[output].append(seq.mixer_corr_phase_offset_degree())
-        data[mod_name].nco_freq[output].append(seq.nco_freq())
+            # Use the sequencer ID from seq_map
+            seq: Sequencer = getattr(module, f"sequencer{seq_id}")
+            data[mod_name].gain_ratio[output][seq_id] = seq.mixer_corr_gain_ratio()
+            data[mod_name].phase_offset[output][seq_id] = seq.mixer_corr_phase_offset_degree()
+            data[mod_name].nco_freq[output][seq_id] = seq.nco_freq()
 
     return data
 
@@ -162,37 +167,39 @@ def _acquisition(
     Returns:
         CalibrateMixersData with initial and final calibration values
     """
-
     data = CalibrateMixersData()
-
+    
     instrs = {
         i: instr
         for i, instr in platform.instruments.items()
         if isinstance(instr, Controller)
     }
+    assert len(instrs) <= 1, "Only one controller is supported at a time."
     configs = platform.parameters.configs.copy()
-
-    for instr in instrs.values():
+    
+    # data.sequencer_map[targets[0]] = {}
+    for instr_id, instr in instrs.items():
         cluster: Cluster = instr
 
         # Setup one sequencer per channel with a dummy sequence
         seq_map, _ = cluster.configure(
             configs=configs,
         )
+        # data.sequencer_map[targets[0]] = seq_map
         modules: dict[str, Module] = cluster._cluster.get_connected_modules(
             lambda mod: mod.is_rf_type
         )
 
         # Read current hardware calibration values (should match those in parameters.json, this works only instr for one at the moment)
-        data.initial_calibration = _get_hardware_calibration(cluster)
+        data.initial_calibration[instr_id] = _get_hardware_calibration(cluster, seq_map)
 
         # Perform calibration
-        for slot_num, channels in seq_map.items():
+        for channels in seq_map.values():
             for ch_name in channels:
                 address = PortAddress.from_path(cluster.channels[ch_name].path)
-                module = modules[address.slot]
+                module = modules[address.slot] 
                 port = address.ports[0]
-
+                
                 # Run LO calibration
                 if module.is_qcm_type:
                     getattr(module, f"out{port - 1}_lo_cal")()
@@ -200,7 +207,7 @@ def _acquisition(
                     getattr(module, f"out{port - 1}_in{port - 1}_lo_cal")()
 
                 # Run sequencer mixer calibrations
-                if ch_name in seq_map[address.slot]:
+                if ch_name in seq_map[address.slot]:  # This I think is always true now
                     sequence = seq_map[address.slot][ch_name]
                 else:
                     Warning(
@@ -225,7 +232,7 @@ def _acquisition(
                         )
                 getattr(module, f"sequencer{sequence}").sideband_cal()
 
-        data.final_calibration = _get_hardware_calibration(cluster)
+        data.final_calibration[instr_id] = _get_hardware_calibration(cluster, seq_map)
     return data
 
 
@@ -259,12 +266,13 @@ def _plot(data: CalibrateMixersData, target: str, fit: CalibrateMixersResults):
     figures = []
     # Create a comprehensive table with all calibration data
     table_rows = []
+    
+    inital_calibration, final_calibration = data.initial_calibration, data.final_calibration
+    instrs = list(inital_calibration.keys())
 
-    modules = data.initial_calibration.keys()
-
-    for module_key in sorted(data.initial_calibration.keys()):
-        initial = data.initial_calibration[module_key]
-        final = data.final_calibration[module_key]
+    for module_key in sorted(inital_calibration[instrs[0]].keys()):
+        initial = inital_calibration[instrs[0]][module_key]
+        final = final_calibration[instrs[0]][module_key]
 
         # Need this when loading from JSON
         if (
@@ -319,7 +327,7 @@ def _plot(data: CalibrateMixersData, target: str, fit: CalibrateMixersResults):
 
             # Add sequencer-specific data
             if port in initial.gain_ratio:
-                for seq_idx in range(len(initial.gain_ratio[port])):
+                for seq_idx in initial.gain_ratio[port]:
                     gain_change = (
                         final.gain_ratio[port][seq_idx]
                         - initial.gain_ratio[port][seq_idx]
@@ -392,7 +400,7 @@ def _plot(data: CalibrateMixersData, target: str, fit: CalibrateMixersResults):
         figures.append(fig)
 
     fitting_report = "<h3>Mixer Calibration Complete</h3>"
-    fitting_report += f"<p>Calibrated {len(data.initial_calibration)} module(s)</p>"
+    fitting_report += f"<p>Calibrated {len(data.initial_calibration[instrs[0]])} module(s)</p>"
 
     return figures, fitting_report
 
@@ -409,22 +417,34 @@ def _update(
     """
     final_cal = results.final_calibration
 
-    for _, instr in platform.instruments.items():
-        if not isinstance(instr, Controller):
-            continue  # Skip non-controller instruments (e.g. TWPA)
-        cluster: Cluster = instr
+    cluster: Cluster = list(platform.instruments.values())[0]  # Assuming only one controller/instrument
+    seq_map, _ =  cluster.configure(configs=platform.parameters.configs.copy()) # I dont know iof its healthy to reconfigure here, also there is no certainty that the sequencerMap will be the same as during acquisition
 
-        for ch_name, ch in cluster.channels.items():
-            if type(ch) is not IqChannel:
-                continue
-            cal_key = platform.name + "_" + ch.path.split("/")[0]
-            if cal_key not in results.final_calibration:
-                continue
-            else:
-                cal = ModuleCalibrationData.from_dict(final_cal[cal_key])
-                output = int(ch.path.split("/")[-1][-1]) - 1
-                platform.update({f"configs.{ch.mixer}.offset_i": cal.offset_i[output]})
-                platform.update({f"configs.{ch.mixer}.offset_q": cal.offset_q[output]})
+    for instr in final_cal.keys(): # Only one instriument supported at the moment, here for future
+        for channels in seq_map.values():
+            for ch_id, seq_id in channels.items():
+                address = PortAddress.from_path(cluster.channels[ch_id].path)
+                module = cluster._cluster.modules[address.slot - 1] # I dont know why here I need to use -1 here but not before
+                port = address.ports[0] - 1
+                mod_name = module.short_name
+                if mod_name not in final_cal[instr]:
+                    continue  # Skip if no calibration data for this module
+                
+                ch = cluster.channels[ch_id]
+                if type(ch) is AcquisitionChannel:
+                    ch = cluster.channels[ch_id.replace("acquisition", "probe")]
+
+                cal = final_cal[instr][mod_name]
+                
+                # Update platform parameters with new calibration values
+                platform.update(
+                    {
+                        f"configs.{ch.mixer}.offset_i": cal.offset_i[port],
+                        f"configs.{ch.mixer}.offset_q": cal.offset_q[port],
+                        f"configs.{ch.mixer}.scale_q": cal.gain_ratio[port][seq_id],
+                        f"configs.{ch.mixer}.phase_q": cal.phase_offset[port][seq_id],
+                    }
+                )
 
 
 calibrate_mixers = Routine(_acquisition, _fit, _plot, _update)
