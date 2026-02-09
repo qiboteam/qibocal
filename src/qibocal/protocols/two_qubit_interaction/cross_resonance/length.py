@@ -115,11 +115,11 @@ def _acquisition(
                 platform=platform,
                 control=control,
                 target=target,
-                setup=setup,
                 amplitude=params.pulse_amplitude,
                 duration=params.pulse_duration_end,
                 interpolated_sweeper=params.interpolated_sweeper,
                 echo=params.echo,
+                setup=setup,
             )
 
             if params.interpolated_sweeper:
