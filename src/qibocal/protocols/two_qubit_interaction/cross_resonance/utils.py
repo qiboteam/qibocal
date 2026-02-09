@@ -30,15 +30,15 @@ def cr_sequence(
     platform: Platform,
     control: QubitId,
     target: QubitId,
-    setup: SetControl,
     amplitude: float,
     duration: int,
+    phase: float = 0,
     target_amplitude: float = 0,
     target_phase: float = 0,
     interpolated_sweeper: bool = False,
     echo: bool = False,
+    setup: SetControl = SetControl.Id,
     basis: Basis = Basis.Z,
-    phase: float = 0,
 ) -> tuple[PulseSequence, list[Pulse], list[Pulse], list[Delay]]:
     """Creates sequence for CR experiment on ``control`` and ``target`` qubits.
 
