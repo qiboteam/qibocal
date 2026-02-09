@@ -2,15 +2,14 @@ from dataclasses import dataclass, field
 
 import plotly.graph_objects as go
 from qblox_instruments import Module, Sequencer
-from qibolab._core.components.channels import IqChannel, AcquisitionChannel
-from qibolab._core.identifier import ChannelId
+from qibolab._core.components.channels import AcquisitionChannel, IqChannel
 from qibolab._core.instruments.abstract import Controller
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
-from qibocal.calibration import CalibrationPlatform
-
 from qibolab._core.instruments.qblox.cluster import Cluster
 from qibolab._core.instruments.qblox.config import PortAddress
 from qibolab._core.instruments.qblox.identifiers import SequencerMap
+
+from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.calibration import CalibrationPlatform
 
 __all__ = ["calibrate_mixers"]
 
@@ -60,7 +59,10 @@ class ModuleCalibrationData:
             "offset_q",
         ]
         kwargs = {
-            field: {int(k): {int(kk): vv for kk, vv in v.items()} for k, v in data.get(field, {}).items()}
+            field: {
+                int(k): {int(kk): vv for kk, vv in v.items()}
+                for k, v in data.get(field, {}).items()
+            }
             for field in int_key_fields
         }
         kwargs["module_name"] = data["module_name"]
@@ -106,7 +108,9 @@ def unique_channels(cluster) -> dict[str, IqChannel]:
     return unique_channels
 
 
-def _get_hardware_calibration(cluster: Cluster, seq_map: SequencerMap) -> dict[str, ModuleCalibrationData]:
+def _get_hardware_calibration(
+    cluster: Cluster, seq_map: SequencerMap
+) -> dict[str, ModuleCalibrationData]:
     modules: dict[str, Module] = cluster._cluster.get_connected_modules(
         lambda mod: mod.is_rf_type
     )
@@ -125,8 +129,12 @@ def _get_hardware_calibration(cluster: Cluster, seq_map: SequencerMap) -> dict[s
 
             # Only set offset and LO freq once per output (not per sequencer)
             if output not in data[mod_name].offset_i:
-                data[mod_name].offset_i[output] = getattr(module, f"out{output}_offset_path0")()
-                data[mod_name].offset_q[output] = getattr(module, f"out{output}_offset_path1")()
+                data[mod_name].offset_i[output] = getattr(
+                    module, f"out{output}_offset_path0"
+                )()
+                data[mod_name].offset_q[output] = getattr(
+                    module, f"out{output}_offset_path1"
+                )()
                 data[mod_name].lo_freq[output] = getattr(
                     module,
                     f"out{output}_lo_freq"
@@ -142,7 +150,9 @@ def _get_hardware_calibration(cluster: Cluster, seq_map: SequencerMap) -> dict[s
             # Use the sequencer ID from seq_map
             seq: Sequencer = getattr(module, f"sequencer{seq_id}")
             data[mod_name].gain_ratio[output][seq_id] = seq.mixer_corr_gain_ratio()
-            data[mod_name].phase_offset[output][seq_id] = seq.mixer_corr_phase_offset_degree()
+            data[mod_name].phase_offset[output][seq_id] = (
+                seq.mixer_corr_phase_offset_degree()
+            )
             data[mod_name].nco_freq[output][seq_id] = seq.nco_freq()
 
     return data
@@ -168,7 +178,7 @@ def _acquisition(
         CalibrateMixersData with initial and final calibration values
     """
     data = CalibrateMixersData()
-    
+
     instrs = {
         i: instr
         for i, instr in platform.instruments.items()
@@ -176,7 +186,7 @@ def _acquisition(
     }
     assert len(instrs) <= 1, "Only one controller is supported at a time."
     configs = platform.parameters.configs.copy()
-    
+
     # data.sequencer_map[targets[0]] = {}
     for instr_id, instr in instrs.items():
         cluster: Cluster = instr
@@ -197,9 +207,9 @@ def _acquisition(
         for channels in seq_map.values():
             for ch_name in channels:
                 address = PortAddress.from_path(cluster.channels[ch_name].path)
-                module = modules[address.slot] 
+                module = modules[address.slot]
                 port = address.ports[0]
-                
+
                 # Run LO calibration
                 if module.is_qcm_type:
                     getattr(module, f"out{port - 1}_lo_cal")()
@@ -266,8 +276,11 @@ def _plot(data: CalibrateMixersData, target: str, fit: CalibrateMixersResults):
     figures = []
     # Create a comprehensive table with all calibration data
     table_rows = []
-    
-    inital_calibration, final_calibration = data.initial_calibration, data.final_calibration
+
+    inital_calibration, final_calibration = (
+        data.initial_calibration,
+        data.final_calibration,
+    )
     instrs = list(inital_calibration.keys())
 
     for module_key in sorted(inital_calibration[instrs[0]].keys()):
@@ -400,7 +413,9 @@ def _plot(data: CalibrateMixersData, target: str, fit: CalibrateMixersResults):
         figures.append(fig)
 
     fitting_report = "<h3>Mixer Calibration Complete</h3>"
-    fitting_report += f"<p>Calibrated {len(data.initial_calibration[instrs[0]])} module(s)</p>"
+    fitting_report += (
+        f"<p>Calibrated {len(data.initial_calibration[instrs[0]])} module(s)</p>"
+    )
 
     return figures, fitting_report
 
@@ -417,25 +432,33 @@ def _update(
     """
     final_cal = results.final_calibration
 
-    cluster: Cluster = list(platform.instruments.values())[0]  # Assuming only one controller/instrument
-    seq_map, _ =  cluster.configure(configs=platform.parameters.configs.copy()) # I dont know iof its healthy to reconfigure here, also there is no certainty that the sequencerMap will be the same as during acquisition
+    cluster: Cluster = list(platform.instruments.values())[
+        0
+    ]  # Assuming only one controller/instrument
+    seq_map, _ = cluster.configure(
+        configs=platform.parameters.configs.copy()
+    )  # I dont know iof its healthy to reconfigure here, also there is no certainty that the sequencerMap will be the same as during acquisition
 
-    for instr in final_cal.keys(): # Only one instriument supported at the moment, here for future
+    for instr in (
+        final_cal.keys()
+    ):  # Only one instriument supported at the moment, here for future
         for channels in seq_map.values():
             for ch_id, seq_id in channels.items():
                 address = PortAddress.from_path(cluster.channels[ch_id].path)
-                module = cluster._cluster.modules[address.slot - 1] # I dont know why here I need to use -1 here but not before
+                module = cluster._cluster.modules[
+                    address.slot - 1
+                ]  # I dont know why here I need to use -1 here but not before
                 port = address.ports[0] - 1
                 mod_name = module.short_name
                 if mod_name not in final_cal[instr]:
                     continue  # Skip if no calibration data for this module
-                
+
                 ch = cluster.channels[ch_id]
                 if type(ch) is AcquisitionChannel:
                     ch = cluster.channels[ch_id.replace("acquisition", "probe")]
 
                 cal = final_cal[instr][mod_name]
-                
+
                 # Update platform parameters with new calibration values
                 platform.update(
                     {
