@@ -212,7 +212,6 @@ def _acquisition(
                     platform=platform,
                     control=control,
                     target=target,
-                    setup=setup,
                     amplitude=ctrl_amplitude,
                     phase=(
                         params.control_phase[pair]
@@ -227,6 +226,7 @@ def _acquisition(
                     ),
                     duration=params.pulse_duration_end,
                     echo=params.echo,
+                    setup=setup,
                     basis=basis,
                 )
 

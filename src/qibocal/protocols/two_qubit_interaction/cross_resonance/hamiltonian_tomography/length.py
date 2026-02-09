@@ -6,6 +6,7 @@ channel with frequency set to the frequency of the target drive channel.
 """
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -14,9 +15,11 @@ from qibolab import (
     AveragingMode,
     Parameter,
     Sweeper,
+    VirtualZ,
 )
 from scipy.constants import kilo
 
+from ..... import update
 from .....auto.operation import (
     Data,
     Parameters,
@@ -87,6 +90,7 @@ class HamiltonianTomographyCRLengthParameters(Parameters):
 class HamiltonianTomographyCRLengthResults(Results):
     """HamiltonianTomographyCRLength outputs."""
 
+    echo: bool = False
     hamiltonian_terms: dict[QubitId, QubitId, HamiltonianTerm] = field(
         default_factory=dict
     )
@@ -97,6 +101,12 @@ class HamiltonianTomographyCRLengthResults(Results):
     """Fitted parameters from X,Y,Z expectation values."""
     cr_lengths: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
     """Estimated_duration of CR gate."""
+    control_amplitude: float = 0
+    control_phase: float = 0
+    target_amplitude: float = 0
+    target_phase: float = 0
+    native: Literal["CNOT"] = "CNOT"
+    """Two qubit interaction to be calibrated."""
 
     def __contains__(self, pair: QubitPairId) -> bool:
         return all(key[:2] == pair for key in list(self.fitted_parameters))
@@ -106,6 +116,11 @@ class HamiltonianTomographyCRLengthResults(Results):
 class HamiltonianTomographyCRLengthData(Data):
     """Data structure for CR length."""
 
+    echo: bool = False
+    control_amplitude: float = 0
+    control_phase: float = 0
+    target_amplitude: float = 0
+    target_phase: float = 0
     data: dict[
         tuple[QubitId, QubitId, Basis, SetControl],
         npt.NDArray[HamiltonianTomographyCRLengthType],
@@ -134,6 +149,11 @@ def _acquisition(
     """
 
     data = HamiltonianTomographyCRLengthData()
+    data.echo = params.echo
+    data.control_amplitude = params.pulse_amplitude
+    data.control_phase = params.phase
+    data.target_amplitude = params.target_amplitude
+    data.target_amplitude = params.target_phase
 
     for pair in targets:
         control, target = pair
@@ -144,7 +164,6 @@ def _acquisition(
                     platform=platform,
                     control=control,
                     target=target,
-                    setup=setup,
                     amplitude=params.pulse_amplitude,
                     phase=params.phase,
                     target_amplitude=params.target_amplitude,
@@ -152,6 +171,7 @@ def _acquisition(
                     duration=params.pulse_duration_end,
                     interpolated_sweeper=params.interpolated_sweeper,
                     echo=params.echo,
+                    setup=setup,
                     basis=basis,
                 )
 
@@ -233,6 +253,7 @@ def _acquisition(
                         ).tolist(),
                     ),
                 )
+
     return data
 
 
@@ -255,9 +276,14 @@ def _fit(
         )
 
     return HamiltonianTomographyCRLengthResults(
+        echo=data.echo,
         hamiltonian_terms=hamiltonian_terms,
         fitted_parameters=fitted_parameters,
         cr_lengths=cr_gate_lengths,
+        control_amplitude=data.control_amplitude,
+        control_phase=data.control_phase,
+        target_amplitude=data.target_amplitude,
+        target_phase=data.target_phase,
     )
 
 
@@ -287,5 +313,34 @@ def _plot(
     return figs, fitting_report
 
 
-hamiltonian_tomography_cr_length = Routine(_acquisition, _fit, _plot)
+def _update(
+    results: HamiltonianTomographyCRLengthResults,
+    platform: CalibrationPlatform,
+    target: QubitPairId,
+):
+    target = target[::-1] if target not in results.cr_lengths else target
+
+    new_cr_seq, _, _, _ = cr_sequence(
+        platform=platform,
+        control=target[0],
+        target=target[1],
+        amplitude=results.control_amplitude,
+        duration=results.cr_lengths[target],
+        phase=results.control_phase,
+        target_amplitude=results.target_amplitude,
+        target_phase=results.target_phase,
+        echo=results.echo,
+        basis=Basis.Y,
+    )
+
+    new_cr_seq.insert(
+        -4, (platform.qubits[target[0]].drive, VirtualZ(phase=-np.pi / 2))
+    )
+
+    getattr(update, f"{results.native}_sequence")(new_cr_seq, platform, target)
+
+
+hamiltonian_tomography_cr_length = Routine(
+    _acquisition, _fit, _plot, _update, two_qubit_gates=True
+)
 """HamiltonianTomography Routine object."""
