@@ -133,7 +133,7 @@ class HamiltonianTomographyCRPhaseData(Data):
     """Data structure for CR Amplitude."""
 
     target_calibration: bool
-    phases: list = None
+    phases: list | None = None
     data: dict[
         tuple[QubitId, QubitId, Basis, SetControl],
         npt.NDArray[HamiltonianTomographyCRPhaseType],
