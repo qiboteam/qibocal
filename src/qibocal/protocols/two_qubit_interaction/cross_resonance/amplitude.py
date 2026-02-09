@@ -103,10 +103,10 @@ def _acquisition(
                 platform=platform,
                 control=control,
                 target=target,
-                setup=setup,
                 amplitude=params.min_amp,
                 duration=params.pulse_duration,
                 echo=params.echo,
+                setup=setup,
             )
             sweeper = Sweeper(
                 parameter=Parameter.amplitude,

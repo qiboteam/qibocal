@@ -102,26 +102,91 @@ def scipy_curve_fit_optimizer(
     return popt
 
 
-def estimate_cr_length(
-    x_range, pair: QubitPairId, fitted_parameters: dict, tol: float = 1e-3
+def compute_total_expectation_value(
+    data: Union[
+        "HamiltonianTomographyCRLengthData",  # noqa: F821
+        "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
+    ],
+    pair: QubitPairId,
 ):
-    x_grid = np.linspace(x_range[0], x_range[-1], 100 * len(x_range))
+    tot_exp_vals = []
+    for basis in Basis:
+        tot_exp_vals.append(
+            data.data[pair[0], pair[1], basis, SetControl.Id].prob_target
+            + data.data[pair[0], pair[1], basis, SetControl.X].prob_target
+        )
+    return np.vstack(tot_exp_vals)
 
-    y_vals = np.array(
-        [bloch_func(xi, pair, fitted_parameters) for xi in x_grid]
-    ).flatten()
 
-    cr_length = x_grid[y_vals - min(y_vals) <= tol][0]
+def bloch_func(x, pair: QubitPairId, fitted_parameters: dict):
+    x = np.vstack([x, x, x])
+    id_blochfit = fitting.combined_fit(
+        x, *fitted_parameters[pair[0], pair[1], SetControl.Id]
+    ).reshape((3, -1))
+    x_blochfit = fitting.combined_fit(
+        x, *fitted_parameters[pair[0], pair[1], SetControl.X]
+    ).reshape((3, -1))
+    return np.sqrt(np.sum((id_blochfit + x_blochfit) ** 2, axis=0))
 
-    # Use a numerical minimizer starting from our guess
-    res = minimize(
-        bloch_func, x0=cr_length, args=(pair, fitted_parameters), method="Nelder-Mead"
-    )
 
-    if res.success:
-        cr_length = res.x[0]
+def compute_bloch_vector(
+    data: Union[
+        "HamiltonianTomographyCRLengthData",  # noqa: F821
+        "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
+    ],
+    pair: QubitPairId,
+    fitted_parameters: dict | None = None,
+):
+    bloch_exp = compute_total_expectation_value(data, pair)
+    bloch_exp = np.sqrt(np.sum((bloch_exp) ** 2, axis=0))
 
-    return cr_length
+    bloch_fit = None
+    if fitted_parameters is not None:
+        times = data.data[pair[0], pair[1], Basis.Z, SetControl.Id].x
+        times_range = np.linspace(min(times), max(times), 2 * len(times))
+
+        bloch_fit = bloch_func(times_range, pair, fitted_parameters)
+
+    return bloch_exp, bloch_fit
+
+
+def estimate_cr_length(
+    x_range,
+    data: Union[
+        "HamiltonianTomographyCRLengthData",  # noqa: F821
+        "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
+    ],
+    pair: QubitPairId,
+    fitted_parameters: dict,
+    tol: float = 1e-3,
+):
+    if all([(pair[0], pair[1], s) in fitted_parameters for s in SetControl]):
+        bloch_data, bloch_fit = compute_bloch_vector(data, pair, fitted_parameters)
+
+        if min(bloch_data) > min(bloch_fit):
+            x_grid = np.linspace(x_range[0], x_range[-1], 100 * len(x_range))
+
+            y_vals = np.array(
+                [bloch_func(xi, pair, fitted_parameters) for xi in x_grid]
+            ).flatten()
+
+            cr_length = x_grid[y_vals - min(y_vals) <= tol][0]
+
+            # Use a numerical minimizer starting from our guess
+            res = minimize(
+                bloch_func,
+                x0=cr_length,
+                args=(pair, fitted_parameters),
+                method="Nelder-Mead",
+            )
+
+            if res.success:
+                cr_length = res.x[0]
+
+            return int(cr_length)
+
+    idx = np.argmin(bloch_data)
+    return int(data.data[pair[0], pair[1], Basis.Z, SetControl.Id].x[idx])
 
 
 def tomography_cr_fit(
@@ -184,58 +249,10 @@ def tomography_cr_fit(
             fitted_parameters[pair[0], pair[1], setup] = popt.tolist()
 
         cr_gate_lengths[pair[0], pair[1]] = estimate_cr_length(
-            vector_x, pair, fitted_parameters
+            vector_x, data, pair, fitted_parameters
         )
 
     return fitted_parameters, cr_gate_lengths
-
-
-def compute_total_expectation_value(
-    data: Union[
-        "HamiltonianTomographyCRLengthData",  # noqa: F821
-        "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
-    ],
-    pair: QubitPairId,
-):
-    tot_exp_vals = []
-    for basis in Basis:
-        tot_exp_vals.append(
-            data.data[pair[0], pair[1], basis, SetControl.Id].prob_target
-            + data.data[pair[0], pair[1], basis, SetControl.X].prob_target
-        )
-    return np.vstack(tot_exp_vals)
-
-
-def bloch_func(x, pair: QubitPairId, fitted_parameters: dict):
-    x = np.vstack([x, x, x])
-    id_blochfit = fitting.combined_fit(
-        x, *fitted_parameters[pair[0], pair[1], SetControl.Id]
-    ).reshape((3, -1))
-    x_blochfit = fitting.combined_fit(
-        x, *fitted_parameters[pair[0], pair[1], SetControl.X]
-    ).reshape((3, -1))
-    return np.sqrt(np.sum((id_blochfit + x_blochfit) ** 2, axis=0))
-
-
-def compute_bloch_vector(
-    data: Union[
-        "HamiltonianTomographyCRLengthData",  # noqa: F821
-        "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
-    ],
-    pair: QubitPairId,
-    fitted_parameters: dict | None = None,
-):
-    bloch_exp = compute_total_expectation_value(data, pair)
-    bloch_exp = np.sqrt(np.sum((bloch_exp) ** 2, axis=0))
-
-    bloch_fit = None
-    if fitted_parameters is not None:
-        times = data.data[pair[0], pair[1], Basis.Z, SetControl.Id].x
-        times_range = np.linspace(min(times), max(times), 2 * len(times))
-
-        bloch_fit = bloch_func(times_range, pair, fitted_parameters)
-
-    return bloch_exp, bloch_fit
 
 
 def extract_hamiltonian_terms(pair: QubitPairId, fitted_parameters: dict) -> dict:
