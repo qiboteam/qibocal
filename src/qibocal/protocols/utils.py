@@ -806,13 +806,15 @@ def build_clustering_data(peaks_dict: dict, z: np.ndarray):
     return np.stack((x_, y_, scaling_global(z_))).T
 
 
-def peaks_finder(x, y, z) -> dict:
+def peaks_finder(x, y, z) -> dict | None:
     """Function for finding the peaks over the whole signal.
 
-    This function takes as input 3 features of the signal.
-    It slices the dataset along a preferred direction (`y` dimension, corresponding to the flux bias) and for each slice it determines the biggest peaks
-    by using `scipy.signal.find_peaks` routine.
-    It returns a dictionary `peaks_dict` containing all the features for the computed peaks.
+    This function takes as input 3 features of the signal. It slices the dataset along a
+    preferred direction (`y` dimension, corresponding to the flux bias) and for each
+    slice it determines the biggest peaks by using `scipy.signal.find_peaks` routine.
+
+    If peaks are found, it returns a dictionary `peaks_dict` containing all the features
+    for the computed peaks. If no peaks are found returns None.
     """
 
     # filter data using find_peaks
@@ -828,6 +830,9 @@ def peaks_finder(x, y, z) -> dict:
             peaks["y"]["idx"].append(y_idx)
             peaks["y"]["val"].append(y_val)
 
+    if len(peaks["x"]["idx"]) == 0:
+        return None
+
     return {
         feat: {kind: np.array(vals) for kind, vals in smth.items()}
         for feat, smth in peaks.items()
@@ -840,7 +845,7 @@ def merging(
     min_points_per_cluster: int,
     distance_xy: float,
     distance_z: float,
-) -> list[bool]:
+):
     """Divides the processed signal into clusters for separating signal from noise.
 
     `data` is a 3D tuple of the data to cluster, while `labels` is the classification made by the clustering algorithm;
