@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import plotly.graph_objects as go
 from numpy.typing import NDArray
@@ -846,7 +848,7 @@ def punchout_extract_feature(
     z: np.ndarray,
     find_min: bool,
     min_points: int = 5,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray] | tuple[None, None]:
     """Extract features of the signal by filtering out background noise.
 
     It first applies a custom filter mask (see `custom_filter_mask`)
@@ -864,11 +866,11 @@ def punchout_extract_feature(
 
     # filter data using find_peaks
     peaks_dict = peaks_finder(reshaped_x, reshaped_y, z_masked)
-    if len(peaks_dict.keys()) == 0:  # if find_peaks fails
-        """
+    if peaks_dict is None:  # if find_peaks fails
+        logging.warning("""
         Peaks Detection Failed:
         no peaks found in peaks_finder routine.
-        """
+        """)
         return None, None
 
     peaks, labels = clustering(peaks_dict, z_masked)
