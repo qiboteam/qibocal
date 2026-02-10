@@ -118,34 +118,33 @@ def _get_hardware_calibration(
 
     # Iterate over seq_map to get channels and their assigned sequencers
     for slot_id, channels in seq_map.items():
+        module = modules[address.slot]
+        mod_name = module.short_name
+        mod_data = data[mod_name] = ModuleCalibrationData(mod_name)
+        
         for ch_name, seq_id in channels.items():
             address = PortAddress.from_path(cluster.channels[ch_name].path)
             output = address.ports[0] - 1
-            module = modules[address.slot]
-            mod_name = module.short_name
-
-            if mod_name not in data:
-                data[mod_name] = ModuleCalibrationData(mod_name)
 
             # Only set offset and LO freq once per output (not per sequencer)
-            if output not in data[mod_name].offset_i:
-                data[mod_name].offset_i[output] = getattr(
+            if output not in mod_data.offset_i:
+                mod_data.offset_i[output] = getattr(
                     module, f"out{output}_offset_path0"
                 )()
-                data[mod_name].offset_q[output] = getattr(
+                mod_data.offset_q[output] = getattr(
                     module, f"out{output}_offset_path1"
                 )()
-                data[mod_name].lo_freq[output] = getattr(
+                mod_data.lo_freq[output] = getattr(
                     module,
                     f"out{output}_lo_freq"
                     if module.is_qcm_type
                     else f"out{output}_in{output}_lo_freq",
                 )()
 
-            if output not in data[mod_name].gain_ratio:
-                data[mod_name].gain_ratio[output] = {}
-                data[mod_name].phase_offset[output] = {}
-                data[mod_name].nco_freq[output] = {}
+            if output not in mod_data.gain_ratio:
+                mod_data.gain_ratio[output] = {}
+                mod_data.phase_offset[output] = {}
+                mod_data.nco_freq[output] = {}
 
             # Use the sequencer ID from seq_map
             seq: Sequencer = getattr(module, f"sequencer{seq_id}")
