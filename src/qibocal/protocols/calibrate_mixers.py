@@ -121,7 +121,7 @@ def _get_hardware_calibration(
         module = modules[address.slot]
         mod_name = module.short_name
         mod_data = data[mod_name] = ModuleCalibrationData(mod_name)
-        
+
         for ch_name, seq_id in channels.items():
             address = PortAddress.from_path(cluster.channels[ch_name].path)
             output = address.ports[0] - 1
