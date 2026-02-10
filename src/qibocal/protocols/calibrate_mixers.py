@@ -210,10 +210,7 @@ def _acquisition(
                 port = address.ports[0]
 
                 # Run LO calibration
-                if module.is_qcm_type:
-                    getattr(module, f"out{port - 1}_lo_cal")()
-                else:
-                    getattr(module, f"out{port - 1}_in{port - 1}_lo_cal")()
+                getattr(module, f"{address.prefix(module.is_qcm_type)}_lo_cal")()
 
                 # Run sequencer mixer calibrations
                 if ch_name in seq_map[address.slot]:  # This I think is always true now
