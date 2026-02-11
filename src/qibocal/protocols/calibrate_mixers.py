@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 import plotly.graph_objects as go
 from qblox_instruments import Module, Sequencer
-from qibolab._core.components.channels import AcquisitionChannel, IqChannel
+from qibolab._core.components.channels import AcquisitionChannel
 from qibolab._core.instruments.abstract import Controller
 from qibolab._core.instruments.qblox.cluster import Cluster
 from qibolab._core.instruments.qblox.config import PortAddress
