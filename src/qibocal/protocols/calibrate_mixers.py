@@ -99,8 +99,6 @@ class CalibrateMixersData(Data):
     """Initial calibration values before running calibration."""
     final_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
     """Final calibration values after running calibration."""
-    # sequencer_map: dict[str, SequencerMap] = field(default_factory=dict)
-    # """Map of module slots to channels and assigned sequencers."""
 
 
 # This is moslty just removing the repeated acquisiton channel information but may handle other instances of repeated mixer
@@ -425,27 +423,19 @@ def _update(
     """
     final_cal = results.final_calibration
 
-    cluster: Cluster = list(platform.instruments.values())[
-        0
-    ]  # Assuming only one controller/instrument
-    seq_map, _ = cluster.configure(
-        configs=platform.parameters.configs.copy()
-    )  # I dont know iof its healthy to reconfigure here, also there is no certainty that the sequencerMap will be the same as during acquisition
-
     for instr in (
         final_cal.keys()
     ):  # Only one instriument supported at the moment, here for future
-        for channels in seq_map.values():
-            for ch_id, seq_id in channels.items():
-                address = PortAddress.from_path(cluster.channels[ch_id].path)
-                module = cluster._cluster.modules[
-                    address.slot - 1
-                ]  # I dont know why here I need to use -1 here but not before
+        cluster: Cluster = platform.instruments[instr]
+        channels_by_module:dict = cluster._channels_by_module
+        for slot, channels in channels_by_module.items():
+            for seq_id, (ch_id, address) in enumerate(channels):
+                module = cluster._cluster.modules[slot - 1] 
                 port = address.ports[0] - 1
                 mod_name = module.short_name
                 if mod_name not in final_cal[instr]:
                     continue  # Skip if no calibration data for this module
-
+                                
                 ch = cluster.channels[ch_id]
                 if type(ch) is AcquisitionChannel:
                     ch = cluster.channels[ch_id.replace("acquisition", "probe")]
