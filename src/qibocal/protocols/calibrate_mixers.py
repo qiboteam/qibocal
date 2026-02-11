@@ -427,15 +427,15 @@ def _update(
         final_cal.keys()
     ):  # Only one instriument supported at the moment, here for future
         cluster: Cluster = platform.instruments[instr]
-        channels_by_module:dict = cluster._channels_by_module
+        channels_by_module: dict = cluster._channels_by_module
         for slot, channels in channels_by_module.items():
             for seq_id, (ch_id, address) in enumerate(channels):
-                module = cluster._cluster.modules[slot - 1] 
+                module = cluster._cluster.modules[slot - 1]
                 port = address.ports[0] - 1
                 mod_name = module.short_name
                 if mod_name not in final_cal[instr]:
                     continue  # Skip if no calibration data for this module
-                                
+
                 ch = cluster.channels[ch_id]
                 if type(ch) is AcquisitionChannel:
                     ch = cluster.channels[ch_id.replace("acquisition", "probe")]
