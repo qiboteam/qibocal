@@ -11,6 +11,7 @@ from qibolab._core.instruments.qblox.identifiers import SequencerMap
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
+PortAddress.prefix = lambda self, is_qcm: f"out{self.ports[0]-1}" if is_qcm else f"out{self.ports[0]-1}_in{self.ports[0]-1}"
 __all__ = ["calibrate_mixers"]
 
 
@@ -118,7 +119,7 @@ def _get_hardware_calibration(
 
     # Iterate over seq_map to get channels and their assigned sequencers
     for slot_id, channels in seq_map.items():
-        module = modules[address.slot]
+        module = modules[slot_id]
         mod_name = module.short_name
         mod_data = data[mod_name] = ModuleCalibrationData(mod_name)
 
@@ -204,39 +205,31 @@ def _acquisition(
 
         # Perform calibration
         for channels in seq_map.values():
-            for ch_name in channels:
-                address = PortAddress.from_path(cluster.channels[ch_name].path)
+            for ch_id, seq_id in channels.items():
+                address = PortAddress.from_path(cluster.channels[ch_id].path)
                 module = modules[address.slot]
                 port = address.ports[0]
-
+               
                 # Run LO calibration
-                getattr(module, f"{address.prefix(module.is_qcm_type)}_lo_cal")()
+                getattr(module, f"{address.prefix(module.is_qcm_type)}_lo_cal")()               
 
-                # Run sequencer mixer calibrations
-                if ch_name in seq_map[address.slot]:  # This I think is always true now
-                    sequence = seq_map[address.slot][ch_name]
-                else:
-                    Warning(
-                        f"No sequence assigned to channel {ch_name} for module {module.short_name}, skipping mixer calibration for this channel."
-                    )
-                    continue
-
-                sequencer: Sequencer = getattr(module, f"sequencer{sequence}", None)
+                # Run sideband calibration
+                sequencer: Sequencer = getattr(module, f"sequencer{seq_id}", None)
                 if module.is_qcm_type:
                     if all(
                         sequencer._get_sequencer_connect_out(i) == "off"
                         for i in range(2)
                     ):
                         # If no port is assigned to the sequencer, connect it to the current output
-                        getattr(module, f"sequencer{sequence}").connect_sequencer(
-                            f"out{port - 1}"
-                        )  # This may no longer be needed since the sequencerMap may already have only connected sequencerds
-                else:  # is qrm_type
-                    if sequencer._get_sequencer_connect_out(0) == "off":
-                        getattr(module, f"sequencer{sequence}").connect_sequencer(
+                        getattr(module, f"sequencer{seq_id}").connect_sequencer(
                             f"out{port - 1}"
                         )
-                getattr(module, f"sequencer{sequence}").sideband_cal()
+                else:  # is qrm_type
+                    if sequencer._get_sequencer_connect_out(0) == "off":
+                        getattr(module, f"sequencer{seq_id}").connect_sequencer(
+                            f"out{port - 1}"
+                        )
+                getattr(module, f"sequencer{seq_id}").sideband_cal()
 
         data.final_calibration[instr_id] = _get_hardware_calibration(cluster, seq_map)
     return data
