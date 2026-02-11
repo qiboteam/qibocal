@@ -101,16 +101,6 @@ class CalibrateMixersData(Data):
     """Final calibration values after running calibration."""
 
 
-# This is moslty just removing the repeated acquisiton channel information but may handle other instances of repeated mixer
-def unique_channels(cluster) -> dict[str, IqChannel]:
-    """Get unique channels from a liost of mixers (skipping duplicates from shared channels)."""
-    unique_channels = {}
-    for ch_name, mixer in cluster._mixers.items():
-        if mixer not in unique_channels:
-            unique_channels[mixer] = ch_name
-    return unique_channels
-
-
 def _get_hardware_calibration(
     cluster: Cluster, seq_map: SequencerMap
 ) -> dict[str, ModuleCalibrationData]:
