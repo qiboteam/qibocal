@@ -46,13 +46,13 @@ class Action:
     def dump(self, path: Path):
         """Dump single action to yaml."""
         if self.parameters is not None:
+            (path / SINGLE_ACTION).parent.mkdir(parents=True, exist_ok=True)
             for param, value in self.parameters.items():
                 if type(value) is Circuit:
                     circuit_path = path / CIRCUIT
                     circuit_path.write_text(json.dumps(value.raw), encoding="utf-8")
                     self.parameters[param] = str(circuit_path)
 
-            (path / SINGLE_ACTION).parent.mkdir(parents=True, exist_ok=True)
             (path / SINGLE_ACTION).write_text(
                 yaml.safe_dump(asdict(self)), encoding="utf-8"
             )
