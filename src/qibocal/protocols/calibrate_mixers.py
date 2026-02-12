@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 
 import plotly.graph_objects as go
-from qblox_instruments import Module, Sequencer
 from qibolab._core.components.channels import AcquisitionChannel
 from qibolab._core.instruments.abstract import Controller
 from qibolab._core.instruments.qblox.cluster import Cluster
@@ -104,6 +103,8 @@ class CalibrateMixersData(Data):
 def _get_hardware_calibration(
     cluster: Cluster, seq_map: SequencerMap
 ) -> dict[str, ModuleCalibrationData]:
+    from qblox_instruments import Module, Sequencer
+    
     modules: dict[str, Module] = cluster._cluster.get_connected_modules(
         lambda mod: mod.is_rf_type
     )
@@ -169,6 +170,8 @@ def _acquisition(
     Returns:
         CalibrateMixersData with initial and final calibration values
     """
+    from qblox_instruments import Module, Sequencer
+    
     data = CalibrateMixersData()
 
     instrs = {
