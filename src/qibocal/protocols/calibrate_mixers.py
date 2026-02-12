@@ -104,7 +104,7 @@ def _get_hardware_calibration(
     cluster: Cluster, seq_map: SequencerMap
 ) -> dict[str, ModuleCalibrationData]:
     from qblox_instruments import Module, Sequencer
-    
+
     modules: dict[str, Module] = cluster._cluster.get_connected_modules(
         lambda mod: mod.is_rf_type
     )
@@ -171,7 +171,7 @@ def _acquisition(
         CalibrateMixersData with initial and final calibration values
     """
     from qblox_instruments import Module, Sequencer
-    
+
     data = CalibrateMixersData()
 
     instrs = {
