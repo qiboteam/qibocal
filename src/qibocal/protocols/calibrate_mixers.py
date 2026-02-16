@@ -417,7 +417,7 @@ def _update(
     final_cal = results.final_calibration
 
     for instr in (
-        final_cal.keys()
+        final_cal
     ):  # Only one instriument supported at the moment, here for future
         cluster: Cluster = platform.instruments[instr]
         channels_by_module: dict = cluster._channels_by_module
