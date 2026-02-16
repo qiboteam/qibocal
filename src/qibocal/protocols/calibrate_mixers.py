@@ -10,6 +10,7 @@ from qibolab._core.instruments.qblox.identifiers import SequencerMap
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
+# TODO: Remove once ported to qibolab
 PortAddress.prefix = lambda self, is_qcm: (
     f"out{self.ports[0] - 1}"
     if is_qcm
@@ -187,9 +188,13 @@ def _acquisition(
         cluster: Cluster = instr
 
         # Setup one sequencer per channel with a dummy sequence
+        # TODO: Optimize by directly using Cluster._channels_by_module to assign
+        # one sequencer per output port instead of calling configure(). This would
+        # allow sequential calibration of individual channel mixers.
         seq_map, _ = cluster.configure(
             configs=configs,
         )
+
         # data.sequencer_map[targets[0]] = seq_map
         modules: dict[str, Module] = cluster._cluster.get_connected_modules(
             lambda mod: mod.is_rf_type
