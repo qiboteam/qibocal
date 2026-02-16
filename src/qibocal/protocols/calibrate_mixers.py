@@ -261,14 +261,14 @@ def _plot(data: CalibrateMixersData, target: str, fit: CalibrateMixersResults):
     # Create a comprehensive table with all calibration data
     table_rows = []
 
-    inital_calibration, final_calibration = (
+    initial_calibration, final_calibration = (
         data.initial_calibration,
         data.final_calibration,
     )
-    instrs = list(inital_calibration.keys())
+    instrs = list(initial_calibration.keys())
 
-    for module_key in sorted(inital_calibration[instrs[0]].keys()):
-        initial = inital_calibration[instrs[0]][module_key]
+    for module_key in sorted(initial_calibration[instrs[0]]):
+        initial = initial_calibration[instrs[0]][module_key]
         final = final_calibration[instrs[0]][module_key]
 
         # Need this when loading from JSON
