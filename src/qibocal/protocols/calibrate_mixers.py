@@ -210,20 +210,14 @@ def _acquisition(
 
                 # Run sideband calibration
                 sequencer: Sequencer = getattr(module, f"sequencer{seq_id}", None)
-                if module.is_qcm_type:
-                    if all(
-                        sequencer._get_sequencer_connect_out(i) == "off"
-                        for i in range(2)
-                    ):
-                        # If no port is assigned to the sequencer, connect it to the current output
-                        getattr(module, f"sequencer{seq_id}").connect_sequencer(
-                            f"out{port - 1}"
-                        )
-                else:  # is qrm_type
-                    if sequencer._get_sequencer_connect_out(0) == "off":
-                        getattr(module, f"sequencer{seq_id}").connect_sequencer(
-                            f"out{port - 1}"
-                        )
+                if all(
+                    sequencer._get_sequencer_connect_out(i) == "off"
+                    for i in range(2 if module.is_qcm_type else 1)
+                ):
+                    # If no port is assigned to the sequencer, connect it to the current output
+                    getattr(module, f"sequencer{seq_id}").connect_sequencer(
+                        f"out{port - 1}"
+                    )
                 getattr(module, f"sequencer{seq_id}").sideband_cal()
 
         data.final_calibration[instr_id] = _get_hardware_calibration(cluster, seq_map)
