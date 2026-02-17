@@ -806,13 +806,17 @@ def calibration_cr_plot(
     ] = None,
 ) -> tuple[list[go.Figure], str]:
     """Plotting function for HamiltonianTomographyCRLength."""
-    fig = go.Figure()
+    figures = []
     fitting_report = ""
 
     if type(data).__name__ == "HamiltonianTomographyCRAmplitudeData":
         fit_func = fitting.linear_fit
         x_title = "amplitude [a.u.]"
         tunable_params = fit.cancellation_pulse_amplitudes[target]
+        plotting_terms = {
+            HamiltonianTerm.IX: "ampl_ix",
+            HamiltonianTerm.IY: "ampl_iy",
+        }
 
     if type(data).__name__ == "HamiltonianTomographyCRPhaseData":
         fit_func = fitting.sin_fit
@@ -823,21 +827,27 @@ def calibration_cr_plot(
             fit.cancellation_pulse_phases[target]["control"]
             - fit.cancellation_pulse_phases[target]["target"]
         )
+        plotting_terms = {
+            HamiltonianTerm.ZY: "phi0",
+            HamiltonianTerm.IY: "phi1",
+        }
 
     if fit is not None:
         for t in HamiltonianTerm:
             eff_ham_term = [f[1][t] for f in fit.hamiltonian_terms[target]]
             exp_sweeper = [a[0] for a in fit.hamiltonian_terms[target]]
-            fig.add_trace(
-                go.Scatter(
-                    x=exp_sweeper,
-                    y=eff_ham_term,
-                    opacity=1,
-                    name=f"{t.name}",
-                    showlegend=True,
-                    legendgroup="Probability",
-                    line=go.scatter.Line(dash="dot"),
-                )
+            fig = go.Figure(
+                [
+                    go.Scatter(
+                        x=exp_sweeper,
+                        y=eff_ham_term,
+                        opacity=1,
+                        name=f"{t.name}",
+                        showlegend=True,
+                        legendgroup="Probability",
+                        line=go.scatter.Line(dash="dot"),
+                    )
+                ]
             )
 
             if target in fit.fitted_parameters and t in fit.fitted_parameters[target]:
@@ -856,10 +866,11 @@ def calibration_cr_plot(
                     ),
                 )
 
-                for k, v in tunable_params.items():
+                if t in plotting_terms:
+                    params_name = plotting_terms[t]
                     fig.add_vline(
-                        x=v,
-                        name=f"{k}",
+                        x=tunable_params[params_name],
+                        name=f"{params_name}",
                         line_dash="dash",
                     )
 
@@ -889,4 +900,6 @@ def calibration_cr_plot(
                     )
                 )
 
-    return [fig], fitting_report
+            figures.append(fig)
+
+    return figures, fitting_report
