@@ -29,12 +29,12 @@ from .....auto.operation import (
     Routine,
 )
 from .....calibration import CalibrationPlatform
+from .....result import probability
 from ....utils import table_dict, table_html
 from ..utils import Basis, SetControl, cr_sequence
 from .utils import (
     EPS,
     HamiltonianTerm,
-    cyclic_prob,
     extract_hamiltonian_terms,
     tomography_cr_fit,
     tomography_cr_plot,
@@ -64,7 +64,7 @@ class HamiltonianTomographyCRLengthParameters(Parameters):
     """Step CR pulse duration [ns]."""
     pulse_amplitude: float
     """CR pulse amplitude"""
-    phase: float = 0
+    phase: float = 0.0
     """Phase of CR pulse."""
     target_amplitude: float = 0
     """Amplitude of cancellation pulse."""
@@ -90,7 +90,7 @@ class HamiltonianTomographyCRLengthParameters(Parameters):
 class HamiltonianTomographyCRLengthResults(Results):
     """HamiltonianTomographyCRLength outputs."""
 
-    echo: bool = False
+    echo: bool
     hamiltonian_terms: dict[QubitId, QubitId, HamiltonianTerm] = field(
         default_factory=dict
     )
@@ -116,7 +116,7 @@ class HamiltonianTomographyCRLengthResults(Results):
 class HamiltonianTomographyCRLengthData(Data):
     """Data structure for CR length."""
 
-    echo: bool = False
+    echo: bool | None = None
     control_amplitude: float = 0
     control_phase: float = 0
     target_amplitude: float = 0
@@ -153,106 +153,108 @@ def _acquisition(
     data.control_amplitude = params.pulse_amplitude
     data.control_phase = params.phase
     data.target_amplitude = params.target_amplitude
-    data.target_amplitude = params.target_phase
+    data.target_phase = params.target_phase
 
     for pair in targets:
         control, target = pair
         pair = (control, target)
         for basis in Basis:
             for setup in SetControl:
-                sequence, cr_pulses, cr_target_pulses, delays = cr_sequence(
-                    platform=platform,
-                    control=control,
-                    target=target,
-                    amplitude=params.pulse_amplitude,
-                    phase=params.phase,
-                    target_amplitude=params.target_amplitude,
-                    target_phase=params.target_phase,
-                    duration=params.pulse_duration_end,
-                    interpolated_sweeper=params.interpolated_sweeper,
-                    echo=params.echo,
-                    setup=setup,
-                    basis=basis,
-                )
-
-                if params.interpolated_sweeper:
-                    sweeper = Sweeper(
-                        parameter=Parameter.duration_interpolated,
-                        values=params.duration_range,
-                        pulses=cr_pulses + cr_target_pulses,
-                    )
-                else:
-                    sweeper = Sweeper(
-                        parameter=Parameter.duration,
-                        values=params.duration_range,
-                        pulses=cr_pulses + cr_target_pulses + delays,
+                if basis == Basis.Z and setup == SetControl.Id:
+                    sequence, cr_pulses, cr_target_pulses, delays = cr_sequence(
+                        platform=platform,
+                        control=control,
+                        target=target,
+                        amplitude=params.pulse_amplitude,
+                        phase=params.phase,
+                        target_amplitude=params.target_amplitude,
+                        target_phase=params.target_phase,
+                        duration=params.pulse_duration_end,
+                        interpolated_sweeper=params.interpolated_sweeper,
+                        echo=params.echo,
+                        setup=setup,
+                        basis=basis,
                     )
 
-                updates = []
-                updates.append(
-                    {
-                        platform.qubits[control].drive_extra[(1, 2)]: {
-                            "frequency": platform.config(
-                                platform.qubits[target].drive
-                            ).frequency
+                    if params.interpolated_sweeper:
+                        sweeper = Sweeper(
+                            parameter=Parameter.duration_interpolated,
+                            values=params.duration_range,
+                            pulses=cr_pulses + cr_target_pulses,
+                        )
+                    else:
+                        sweeper = Sweeper(
+                            parameter=Parameter.duration,
+                            values=params.duration_range,
+                            pulses=cr_pulses + cr_target_pulses + delays,
+                        )
+
+                    updates = []
+                    updates.append(
+                        {
+                            platform.qubits[control].drive_extra[(1, 2)]: {
+                                "frequency": platform.config(
+                                    platform.qubits[target].drive
+                                ).frequency
+                            }
                         }
-                    }
-                )
-                acquisition_type = AcquisitionType.INTEGRATION
-                results = platform.execute(
-                    [sequence],
-                    [[sweeper]],
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=acquisition_type,
-                    averaging_mode=AveragingMode.SINGLESHOT,
-                    updates=updates,
-                )
-                target_acq_handle = list(
-                    sequence.channel(platform.qubits[target].acquisition)
-                )[-1].id
-                control_acq_handle = list(
-                    sequence.channel(platform.qubits[control].acquisition)
-                )[-1].id
+                    )
+                    acquisition_type = AcquisitionType.INTEGRATION
+                    results = platform.execute(
+                        [sequence],
+                        [[sweeper]],
+                        nshots=params.nshots,
+                        relaxation_time=params.relaxation_time,
+                        acquisition_type=acquisition_type,
+                        averaging_mode=AveragingMode.SINGLESHOT,
+                        updates=updates,
+                    )
+                    target_acq_handle = list(
+                        sequence.channel(platform.qubits[target].acquisition)
+                    )[-1].id
+                    control_acq_handle = list(
+                        sequence.channel(platform.qubits[control].acquisition)
+                    )[-1].id
 
-                if acquisition_type is AcquisitionType.INTEGRATION:
-                    prob_target = results[target_acq_handle]
-                    prob_control = results[control_acq_handle]
-                else:
-                    prob_target = cyclic_prob(
-                        results[target_acq_handle], state=1
-                    ).ravel()
-                    prob_control = cyclic_prob(
-                        results[control_acq_handle], state=1
-                    ).ravel()
-                # HERE I COULD RECOVER THE CORRECT SOLUTION ONLY FOR 'fixed-frequency-qutrits' PLATFORM
-                # STILL NOT WORKING FOR 'qutrits' PLATFORM
-                # t = datetime.datetime.now().strftime("%H:%M:%S")
-                # np.savez(
-                #     f"{t}_qibocal_lengthpy_qutip_evolution.npz",
-                #     np.stack([prob_control, prob_target]),
-                # )
+                    if acquisition_type is AcquisitionType.INTEGRATION:
+                        prob_target = results[target_acq_handle]
+                        prob_control = results[control_acq_handle]
+                    else:
+                        prob_target = probability(
+                            results[target_acq_handle], state=1
+                        ).ravel()
+                        prob_control = probability(
+                            results[control_acq_handle], state=1
+                        ).ravel()
+                    # HERE I COULD RECOVER THE CORRECT SOLUTION ONLY FOR 'fixed-frequency-qutrits' PLATFORM
+                    # STILL NOT WORKING FOR 'qutrits' PLATFORM
+                    # t = datetime.datetime.now().strftime("%H:%M:%S")
+                    # np.savez(
+                    #     f"{t}_qibocal_lengthpy_qutip_evolution.npz",
+                    #     np.stack([prob_control, prob_target]),
+                    # )
 
-                # TODO: possibly drop control probablity even if it might be useful later on
-                # to compute leakage
-                data.register_qubit(
-                    HamiltonianTomographyCRLengthType,
-                    (control, target, basis, setup),
-                    dict(
-                        x=sweeper.values,
-                        prob_target=1 - 2 * prob_target,
-                        error_target=(
-                            2
-                            * np.sqrt(
-                                EPS + prob_target * (1 - prob_target) / params.nshots
-                            )
-                        ).tolist(),
-                        prob_control=prob_control,
-                        error_control=np.sqrt(
-                            EPS + prob_control * (1 - prob_control) / params.nshots
-                        ).tolist(),
-                    ),
-                )
+                    # TODO: possibly drop control probablity even if it might be useful later on
+                    # to compute leakage
+                    data.register_qubit(
+                        HamiltonianTomographyCRLengthType,
+                        (control, target, basis, setup),
+                        dict(
+                            x=sweeper.values,
+                            prob_target=1 - 2 * prob_target,
+                            error_target=(
+                                2
+                                * np.sqrt(
+                                    EPS
+                                    + prob_target * (1 - prob_target) / params.nshots
+                                )
+                            ).tolist(),
+                            prob_control=prob_control,
+                            error_control=np.sqrt(
+                                EPS + prob_control * (1 - prob_control) / params.nshots
+                            ).tolist(),
+                        ),
+                    )
 
     return data
 
