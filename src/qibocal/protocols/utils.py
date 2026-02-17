@@ -1,6 +1,6 @@
 from colorsys import hls_to_rgb
 from enum import Enum
-from typing import Literal, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -673,6 +673,11 @@ def extract_feature(
     return x[first_mask][second_mask], y[first_mask][second_mask]
 
 
+def angle_wrap(angle: float):
+    """Wrap an angle from [-np.inf,np.inf] into the [0,2*np.pi] domain"""
+    return angle % (2 * np.pi)
+
+
 def guess_period(x, y):
     """Return fft period estimation given a sinusoidal plot."""
     fft = np.fft.rfft(y)
@@ -703,15 +708,16 @@ def fallback_period(period):
 
 def fallback_frequency_numpyfied(frequency: np.ndarray):
     """Numpyfied version of :func:`fallback_period`, but here we work on frequencies."""
-    assert frequency.ndim == 1, (
-        f"Expected 1D array, got array with shape {frequency.shape}"
+    assert frequency.ndim <= 1, (
+        f"Expected 1D array or scalar, got array with shape {frequency.shape}"
     )
+
     return np.where(np.isnan(frequency), 4, frequency)
 
 
 def quinn_fernandes_algorithm(
-    signal_id: np.ndarray,
-    x: np.ndarray,
+    signal_id: Any,
+    x: Any,
     fs: float,
     speedup_flag: bool = False,
     axis: int = -1,
@@ -728,6 +734,12 @@ def quinn_fernandes_algorithm(
     can lead to faster convergence, especially when the initial guess is close to the true frequency.
     Link for the original paper: https://www.jstor.org/stable/2337018?seq=3
     """
+
+    if not isinstance(x, np.ndarray):
+        x = np.array(x)
+
+    if not isinstance(signal_id, np.ndarray):
+        signal_id = np.array(signal_id)
 
     omegas = (
         2
@@ -746,10 +758,10 @@ def quinn_fernandes_algorithm(
     for _ in range(iterations):
         xi = np.zeros(sig_shape)
         for t in range(2, xi.shape[axis]):
-            xi[:, t] = signal_id[:, t - 2] + alpha * xi[:, t - 1] - xi[:, t - 2]
+            xi[..., t] = signal_id[..., t - 2] + alpha * xi[..., t - 1] - xi[..., t - 2]
 
-        beta = np.sum((xi[:, 2:] + xi[:, :-2]) * xi[:, 1:-1], axis=axis) / np.sum(
-            xi[:, :-1] ** 2, axis=axis
+        beta = np.sum((xi[..., 2:] + xi[..., :-2]) * xi[..., 1:-1], axis=axis) / np.sum(
+            xi[..., :-1] ** 2, axis=axis
         )
         if len(buffer_beta) >= 5:
             buffer_beta.pop(0)

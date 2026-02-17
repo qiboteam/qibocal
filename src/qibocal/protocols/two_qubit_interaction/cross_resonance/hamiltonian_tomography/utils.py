@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Optional, Union
+from typing import Any, Callable, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -94,12 +94,40 @@ def scipy_curve_fit_optimizer(
         np.concatenate([vector_x, vector_x, vector_x]),
         concatenated_signal.ravel(),
         maxfev=int(1e6),
-        p0=np.maximum(omega_guesses, 0),
+        p0=omega_guesses,
         bounds=([-np.inf, -np.inf, -np.inf], [np.inf, np.inf, np.inf]),
         sigma=errors,
     )
 
     return popt
+
+
+def numerical_root_finder(
+    root_func,
+    x_range: Union[np.ndarray, list],
+    tol: float,
+    **kwargs,
+):
+    def func_to_solve(x):
+        return np.abs(root_func(x, **kwargs))
+
+    x_grid = np.linspace(x_range[0], x_range[-1], 100 * len(x_range))
+
+    y_vals = np.array([func_to_solve(xi) for xi in x_grid]).flatten()
+
+    cr_sig = x_grid[y_vals - np.min(y_vals) <= tol][0]
+
+    # Use a numerical minimizer starting from our guess
+    res = minimize(
+        func_to_solve,
+        x0=cr_sig,
+        method="Nelder-Mead",
+    )
+
+    if res.success:
+        cr_sig = res.x[0]
+
+    return cr_sig
 
 
 def compute_total_expectation_value(
@@ -158,35 +186,208 @@ def estimate_cr_length(
     ],
     pair: QubitPairId,
     fitted_parameters: dict,
-    tol: float = 1e-3,
+    tol: float = 1e-6,
 ):
+    bloch_data, _ = compute_bloch_vector(data, pair)
     if all([(pair[0], pair[1], s) in fitted_parameters for s in SetControl]):
         bloch_data, bloch_fit = compute_bloch_vector(data, pair, fitted_parameters)
+        x_range = data.data[pair[0], pair[1], Basis.Z, SetControl.Id].x
 
         if min(bloch_data) > min(bloch_fit):
-            x_grid = np.linspace(x_range[0], x_range[-1], 100 * len(x_range))
-
-            y_vals = np.array(
-                [bloch_func(xi, pair, fitted_parameters) for xi in x_grid]
-            ).flatten()
-
-            cr_length = x_grid[y_vals - min(y_vals) <= tol][0]
-
-            # Use a numerical minimizer starting from our guess
-            res = minimize(
-                bloch_func,
-                x0=cr_length,
-                args=(pair, fitted_parameters),
-                method="Nelder-Mead",
+            return int(
+                numerical_root_finder(
+                    root_func=bloch_func,
+                    x_range=x_range,
+                    tol=tol,
+                    pair=pair,
+                    fitted_parameters=fitted_parameters,
+                )
             )
 
-            if res.success:
-                cr_length = res.x[0]
-
-            return int(cr_length)
-
     idx = np.argmin(bloch_data)
-    return int(data.data[pair[0], pair[1], Basis.Z, SetControl.Id].x[idx])
+    return int(x_range[idx])
+
+
+def tune_cancellation_sequence(
+    x,
+    function_to_tune: Callable[Any, float],
+    interactions_to_analyze: list[HamiltonianTerm],
+    ham_term: dict,
+    fit_params: dict,
+    tuned_keys: list[str],
+    tol: float,
+):
+    assert len(tuned_keys) == len(interactions_to_analyze), (
+        """tuned_keys and interactions_to_analyze must be equally long."""
+    )
+
+    # converting list into numpy array
+    x = np.array(x)
+
+    tuned_parameters = {}
+    for ham_int, k in zip(interactions_to_analyze, tuned_keys):
+        selected_ham_term = np.abs(np.array(ham_term[ham_int]))
+        min_idx = np.argmin(selected_ham_term)
+        tuned_parameters[k] = float(x[min_idx])
+        if ham_int in fit_params:
+            x_fit = function_to_tune(x, **fit_params[ham_int])
+            if np.min(np.abs(selected_ham_term)) > np.min(np.abs(x_fit)):
+                tuned_parameters[k] = float(
+                    numerical_root_finder(
+                        root_func=function_to_tune,
+                        x_range=x,
+                        tol=tol,
+                        **fit_params[ham_int],
+                    )
+                )
+
+    return tuned_parameters
+
+
+def estimate_cancellation_amplitudes(
+    amplitudes,
+    ham_term: dict,
+    ampl_params: dict,
+    tol: float = 1e-6,
+):
+    interaction_terms = [HamiltonianTerm.IX, HamiltonianTerm.IY]
+    phases_names = ["ampl_ix", "ampl_iy"]
+
+    tuned_amplitudes = tune_cancellation_sequence(
+        x=amplitudes,
+        function_to_tune=fitting.linear_fit,
+        interactions_to_analyze=interaction_terms,
+        ham_term=ham_term,
+        fit_params=ampl_params,
+        tuned_keys=phases_names,
+        tol=tol,
+    )
+
+    return tuned_amplitudes
+
+
+def estimate_cr_phases(
+    phases,
+    ham_term: dict,
+    phase_params: dict,
+    tol: float = 1e-6,
+):
+    interaction_terms = [HamiltonianTerm.ZY, HamiltonianTerm.IY]
+    phases_names = ["phi0", "phi1"]
+
+    tuned_phases = tune_cancellation_sequence(
+        x=phases,
+        function_to_tune=fitting.sin_fit,
+        interactions_to_analyze=interaction_terms,
+        ham_term=ham_term,
+        fit_params=phase_params,
+        tuned_keys=phases_names,
+        tol=tol,
+    )
+
+    if fitting.sin_fit(HamiltonianTerm.ZX, **phase_params[HamiltonianTerm.ZX]) < 0:
+        # in https://journals.aps.org/pra/pdf/10.1103/PhysRevA.93.060302
+        # it is said we need to choose the CR phase that minimizes ZY components
+        # and maximizes ZX interaction.
+        tuned_phases["phi0"] += np.pi
+
+    if fitting.sin_fit(HamiltonianTerm.IX, **phase_params[HamiltonianTerm.IX]) < 0:
+        # same as above, but this time is more euristic.
+        tuned_phases["phi1"] += np.pi
+
+    return tuned_phases["phi0"], tuned_phases["phi0"] - tuned_phases["phi1"]
+
+
+# def estimate_cancellation_amplitudes(
+#     amplitudes,
+#     ham_term:dict,
+#     ampl_params: dict,
+#     tol:float = 1e-6,
+# ):
+
+#     # converting list into numpy array
+#     amplitudes = np.array(amplitudes)
+
+#     ix_ham_term = np.abs(np.array(ham_term[HamiltonianTerm.IX]))
+#     ix_idx = np.argmin(ix_ham_term)
+#     ampl_ix = amplitudes[ix_idx]
+#     if HamiltonianTerm.IX in ampl_params:
+#         zy_ampl_fit = fitting.sin_fit(amplitudes, *ampl_params[HamiltonianTerm.IX])
+#         if np.min(np.abs(ix_ham_term)) > np.min(np.abs(zy_ampl_fit)):
+#             ix_a, ix_b = ampl_params[HamiltonianTerm.IX]
+#             ampl_ix = numerical_root_finder(
+#                                 root_func=fitting.linear_fit,
+#                                 x_range=amplitudes,
+#                                 tol=tol,
+#                                 a=ix_a,
+#                                 b=ix_b,
+#                                 )
+
+#     iy_ham_term = np.abs(np.array(ham_term[HamiltonianTerm.IY]))
+#     t_idx = np.argmin(iy_ham_term)
+#     ampl_iy = amplitudes[t_idx]
+#     if HamiltonianTerm.IY in ampl_params:
+#         iy_ampl_fit = fitting.sin_fit(amplitudes, *ampl_params[HamiltonianTerm.IY])
+
+#         if np.min(iy_ham_term) > np.min(np.abs(iy_ampl_fit)):
+#             iy_a, iy_b = ampl_params[HamiltonianTerm.IY]
+#             ampl_iy = numerical_root_finder(
+#                                 root_func=fitting.linear_fit,
+#                                 x_range=amplitudes,
+#                                 tol=tol,
+#                                 a=iy_a,
+#                                 b=iy_b,
+#                                 )
+
+#     return float(ampl_ix), float(ampl_iy)
+
+
+# def estimate_cr_phases(
+#     phases,
+#     ham_term:dict,
+#     phase_params: dict,
+#     tol:float = 1e-6,
+# ):
+
+#     # converting list into numpy array
+#     phases = np.array(phases)
+
+#     zy_ham_term = np.abs(np.array(ham_term[HamiltonianTerm.ZY]))
+#     c_idx = np.argmin(zy_ham_term)
+#     phi0 = phases[c_idx]
+#     if HamiltonianTerm.ZY in phase_params:
+#         zy_phase_fit = fitting.sin_fit(phases, *phase_params[HamiltonianTerm.ZY])
+#         if np.min(np.abs(zy_ham_term)) > np.min(np.abs(zy_phase_fit)):
+#             c_a, c_b, c_omega, c_phi = phase_params[HamiltonianTerm.ZY]
+#             phi0 = numerical_root_finder(
+#                                 root_func=fitting.sin_fit,
+#                                 x_range=phases,
+#                                 tol=tol,
+#                                 a=c_a,
+#                                 b=c_b,
+#                                 omega=c_omega,
+#                                 phi=c_phi,
+#                                 )
+
+#     iy_ham_term = np.abs(np.array(ham_term[HamiltonianTerm.IY]))
+#     t_idx = np.argmin(iy_ham_term)
+#     phi1 = phases[t_idx]
+#     if HamiltonianTerm.IY in phase_params:
+#         iy_phase_fit = fitting.sin_fit(phases, *phase_params[HamiltonianTerm.IY])
+
+#         if np.min(iy_ham_term) > np.min(np.abs(iy_phase_fit)):
+#             t_a, t_b, t_omega, t_phi = phase_params[HamiltonianTerm.IY]
+#             phi1 = numerical_root_finder(
+#                                 root_func=fitting.sin_fit,
+#                                 x_range=phases,
+#                                 tol=tol,
+#                                 a=t_a,
+#                                 b=t_b,
+#                                 omega=t_omega,
+#                                 phi=t_phi,
+#                                 )
+
+#     return float(phi0), float(phi0 - phi1)
 
 
 def tomography_cr_fit(
@@ -195,7 +396,9 @@ def tomography_cr_fit(
         "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
     ],
     fit_with_evolution: bool = False,
-) -> dict[tuple[QubitId, QubitId, Basis, SetControl], list]:
+) -> tuple[
+    dict[tuple[QubitId, QubitId, SetControl], list], dict[tuple[QubitId, QubitId], int]
+]:
     """Perform fitting on expectation values for CR tomography.
 
     We first fit the Z expectation value to get the frequency of the CR pulse.
@@ -323,8 +526,8 @@ def amp_tom_fit(x, y, q_pair, term, result_dict):
             absolute_sigma=True,
             bounds=([-np.inf, -np.inf], [np.inf, np.inf]),
         )
-        term_fit = popt.tolist()
-        result_dict[term] = term_fit
+        result_dict[term] = {"a": popt[0], "b": popt[1]}
+
     except Exception as e:
         log.warning(f"{term} term vs amplitudes fit failed for {q_pair} due to {e}.")
 
@@ -335,7 +538,7 @@ def amplitude_tomography_cr_fit(data: Data):
     amp_hamiltonian_params = {}
     for amp in data.amplitudes:
         amp_data = data.select_amplitude(amp)
-        amp_length_params = tomography_cr_fit(amp_data)
+        amp_length_params, cr_duration = tomography_cr_fit(amp_data)
         for pair in amp_data.pairs:
             terms = extract_hamiltonian_terms(pair, amp_length_params)
             terms = refactor_hamiltoanian_terms(terms, pair)
@@ -346,27 +549,32 @@ def amplitude_tomography_cr_fit(data: Data):
                 amp_hamiltonian_params[pair].append(res_tuple)
 
     amp_lin_fit_params = {}
+    cancellating_amplitudes = {}
     for pair_key, pair_value in amp_hamiltonian_params.items():
-        num_terms = [[] for _ in range(6)]
+        num_terms = num_terms = {t: [] for t in HamiltonianTerm}
         amplitudes = []
         for vals in pair_value:
             amplitudes.append(vals[0])
-            for n, t in zip(num_terms, HamiltonianTerm):
-                n.append(vals[1][t])
+            for t in HamiltonianTerm:
+                num_terms[t].append(vals[1][t])
 
         fit_params_pair = {}
-        for nterm, t in zip(num_terms, HamiltonianTerm):
+        for t in HamiltonianTerm:
             fit_params_pair = amp_tom_fit(
                 x=amplitudes,
-                y=nterm,
+                y=num_terms[t],
                 q_pair=pair_key,
                 term=t,
                 result_dict=fit_params_pair,
             )
 
         amp_lin_fit_params[pair_key] = fit_params_pair
+        target_amplitudes = estimate_cancellation_amplitudes(
+            amplitudes=amplitudes, ham_term=num_terms, ampl_params=fit_params_pair
+        )
+        cancellating_amplitudes[pair_key] = target_amplitudes
 
-    return amp_length_params, amp_hamiltonian_params, amp_lin_fit_params
+    return amp_hamiltonian_params, amp_lin_fit_params, cancellating_amplitudes
 
 
 def phase_tom_fit(x, y, q_pair, term, result_dict):
@@ -391,8 +599,12 @@ def phase_tom_fit(x, y, q_pair, term, result_dict):
                 [np.inf, np.inf, np.inf, np.inf],
             ),
         )
-        term_fit = popt.tolist()
-        result_dict[term] = term_fit
+        result_dict[term] = {
+            "a": popt[0],
+            "b": popt[1],
+            "omega": popt[2],
+            "phi": popt[3],
+        }
     except Exception as e:
         log.warning(f"{term} term vs amplitudes fit failed for {q_pair} due to {e}.")
 
@@ -403,7 +615,7 @@ def phase_tomography_cr_fit(data: Data):
     phase_hamiltonian_params = {}
     for phase in data.phases:
         phase_data = data.select_phase(phase)
-        phase_length_params = tomography_cr_fit(phase_data)
+        phase_length_params, cr_duration = tomography_cr_fit(phase_data)
         for pair in phase_data.pairs:
             terms = extract_hamiltonian_terms(pair, phase_length_params)
             terms = refactor_hamiltoanian_terms(terms, pair)
@@ -414,23 +626,32 @@ def phase_tomography_cr_fit(data: Data):
                 phase_hamiltonian_params[pair].append(res_tuple)
 
     phase_sin_fit_params = {}
+    cancellating_phases = {}
     for pair_key, pair_value in phase_hamiltonian_params.items():
-        num_terms = [[] for _ in range(6)]
+        num_terms = {t: [] for t in HamiltonianTerm}
         phases = []
         for vals in pair_value:
             phases.append(vals[0])
-            for n, t in zip(num_terms, HamiltonianTerm):
-                n.append(vals[1][t])
+            for t in HamiltonianTerm:
+                num_terms[t].append(vals[1][t])
 
         fit_params_pair = {}
-        for nterm, t in zip(num_terms, HamiltonianTerm):
+        for t in HamiltonianTerm:
             fit_params_pair = phase_tom_fit(
-                x=phases, y=nterm, q_pair=pair_key, term=t, result_dict=fit_params_pair
+                x=phases,
+                y=num_terms[t],
+                q_pair=pair_key,
+                term=t,
+                result_dict=fit_params_pair,
             )
 
         phase_sin_fit_params[pair_key] = fit_params_pair
+        ctrl_phase, trgt_phase = estimate_cr_phases(
+            phases=phases, ham_term=num_terms, phase_params=fit_params_pair
+        )
+        cancellating_phases[pair_key] = {"control": ctrl_phase, "target": trgt_phase}
 
-    return phase_length_params, phase_hamiltonian_params, phase_sin_fit_params
+    return phase_hamiltonian_params, phase_sin_fit_params, cancellating_phases
 
 
 def tomography_cr_plot(
@@ -585,58 +806,41 @@ def calibration_cr_plot(
     ] = None,
 ) -> tuple[list[go.Figure], str]:
     """Plotting function for HamiltonianTomographyCRLength."""
-    figures = []
+    fig = go.Figure()
     fitting_report = ""
 
     if type(data).__name__ == "HamiltonianTomographyCRAmplitudeData":
         fit_func = fitting.linear_fit
         x_title = "amplitude [a.u.]"
-        for a in data.amplitude_plot_dict[target]:
-            if a in data.amplitudes:
-                amp_data = data.select_amplitude(a)
-                amp_fig, _ = tomography_cr_plot(
-                    amp_data, target, fit.tomography_length_parameters
-                )
-                figures.append(amp_fig[0])
-            else:
-                log.warning("inserted non existing amplitudes values to plot.")
+        tunable_params = fit.cancellation_pulse_amplitudes[target]
 
     if type(data).__name__ == "HamiltonianTomographyCRPhaseData":
         fit_func = fitting.sin_fit
         x_title = "phase [rad.]"
-        for p in data.phase_plot_dict[target]:
-            if p in data.phases:
-                phase_data = data.select_phase(p)
-                phase_fig, _ = tomography_cr_plot(
-                    phase_data, target, fit.tomography_length_parameters
-                )
-                figures.append(phase_fig[0])
-            else:
-                log.warning("inserted non existing amplitudes values to plot.")
+        tunable_params = {}
+        tunable_params["phi0"] = fit.cancellation_pulse_phases[target]["control"]
+        tunable_params["phi1"] = (
+            fit.cancellation_pulse_phases[target]["control"]
+            - fit.cancellation_pulse_phases[target]["target"]
+        )
 
     if fit is not None:
         for t in HamiltonianTerm:
             eff_ham_term = [f[1][t] for f in fit.hamiltonian_terms[target]]
             exp_sweeper = [a[0] for a in fit.hamiltonian_terms[target]]
-            fig = go.Figure(
-                [
-                    go.Scatter(
-                        x=exp_sweeper,
-                        y=eff_ham_term,
-                        opacity=1,
-                        name=f"{t.name}",
-                        showlegend=True,
-                        legendgroup="Probability",
-                        mode="lines",
-                    )
-                ]
+            fig.add_trace(
+                go.Scatter(
+                    x=exp_sweeper,
+                    y=eff_ham_term,
+                    opacity=1,
+                    name=f"{t.name}",
+                    showlegend=True,
+                    legendgroup="Probability",
+                    line=go.scatter.Line(dash="dot"),
+                )
             )
 
-            if (
-                not fit.fitted_parameters
-                and target in fit.fitted_parameters
-                and t in fit.fitted_parameters[target]
-            ):
+            if target in fit.fitted_parameters and t in fit.fitted_parameters[target]:
                 amp_range = np.linspace(
                     min(exp_sweeper),
                     max(exp_sweeper),
@@ -646,34 +850,43 @@ def calibration_cr_plot(
                 fig.add_trace(
                     go.Scatter(
                         x=amp_range,
-                        y=fit_func(amp_range, *params),
+                        y=fit_func(amp_range, **params),
                         name=f"{t.name} Fit",
-                        line=go.scatter.Line(dash="dot"),
-                        marker_color="rgb(255, 130, 67)",
+                        mode="lines",
                     ),
                 )
 
+                for k, v in tunable_params.items():
+                    fig.add_vline(
+                        x=v,
+                        name=f"{k}",
+                        line_dash="dash",
+                    )
+
                 fig.update_layout(
                     showlegend=True,
-                    xaxis_title=(
-                        f"Target cancellation {x_title}"
-                        if fit.cancellation_calibration
-                        else f"Control drive {x_title}"
-                    ),
+                    xaxis_title=(f"{x_title}"),
                     yaxis_title="Interaction strength [MHz]",
                 )
 
                 fitting_report = table_html(
                     table_dict(
-                        6 * [target],
-                        [f"{term.name}: Fitted_parameters" for term in HamiltonianTerm],
-                        [
-                            fit.fitted_parameters[target][term]
-                            for term in HamiltonianTerm
-                        ],
+                        8 * [target],
+                        (
+                            [
+                                f"{term.name}: Fitted_parameters"
+                                for term in HamiltonianTerm
+                            ]
+                            + [k for k in tunable_params.keys()]
+                        ),
+                        (
+                            [
+                                fit.fitted_parameters[target][term]
+                                for term in HamiltonianTerm
+                            ]
+                            + [v for v in tunable_params.values()]
+                        ),
                     )
                 )
 
-            figures.append(fig)
-
-    return figures, fitting_report
+    return [fig], fitting_report

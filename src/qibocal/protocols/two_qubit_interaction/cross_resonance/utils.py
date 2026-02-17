@@ -8,7 +8,7 @@ from qibolab import Delay, Platform, Pulse, PulseSequence, Rectangular
 from ....auto.operation import QubitId, QubitPairId
 from ....config import log
 from ....update import replace
-from ...utils import fallback_period, guess_period
+from ...utils import angle_wrap, fallback_period, guess_period
 
 
 class SetControl(str, Enum):
@@ -30,11 +30,11 @@ def cr_sequence(
     platform: Platform,
     control: QubitId,
     target: QubitId,
-    amplitude: float,
-    duration: int,
-    phase: float = 0,
-    target_amplitude: float = 0,
-    target_phase: float = 0,
+    amplitude: float | None = None,
+    duration: int | None = None,
+    phase: float | None = None,
+    target_amplitude: float | None = None,
+    target_phase: float | None = None,
     interpolated_sweeper: bool = False,
     echo: bool = False,
     setup: SetControl = SetControl.Id,
@@ -57,17 +57,52 @@ def cr_sequence(
     except Exception:
         cr_channel = platform.qubits[control].drive_extra[(1, 2)]
 
+    cr_pulse = None
+    canc_pulse = None
+
+    if len(platform.parameters.native_gates.two_qubit[(control, target)].CNOT) != 0:
+        for p in platform.parameters.native_gates.two_qubit[(control, target)].CNOT:
+            if cr_pulse is None and p[0] == "0/drive1" and isinstance(p[1], Pulse):
+                cr_pulse = p[1]
+            if canc_pulse is None and p[0] == "1/drive" and isinstance(p[1], Pulse):
+                canc_pulse = p[1]
+
+            if cr_pulse is not None and canc_pulse is not None:
+                break
+
+    try:
+        if duration is None:
+            duration = cr_pulse.duration
+
+        if amplitude is None:
+            amplitude = cr_pulse.amplitude
+
+        if phase is None:
+            phase = cr_pulse.relative_phase
+
+        if target_amplitude is None:
+            target_amplitude = canc_pulse.amplitude
+
+        if target_phase is None:
+            target_phase = canc_pulse.relative_phase
+
+    except Exception as e:
+        log.warning(
+            f"Some CR parameters are not set and cannot be retrieven by platform calibration:\n {e}."
+        )
+        raise e
+
     cr_drive_pulse = Pulse(
         duration=duration,
         amplitude=amplitude,
-        relative_phase=phase,
+        relative_phase=angle_wrap(phase),
         # envelope=GaussianSquare(rel_sigma=0.2, risefall=15),
         envelope=Rectangular(),
     )
     target_drive_pulse = Pulse(
         duration=duration,
         amplitude=target_amplitude,
-        relative_phase=target_phase,
+        relative_phase=angle_wrap(target_phase),
         # envelope=GaussianSquare(rel_sigma=0.2, risefall=15),
         envelope=Rectangular(),
     )
@@ -88,8 +123,14 @@ def cr_sequence(
     if echo:
         delays = 6 * [Delay(duration=cr_drive_pulse.duration)]
         control_delay = Delay(duration=control_drive_pulse.duration)
-        cr_pulse_minus = replace(cr_drive_pulse, relative_phase=np.pi)
-        target_pulse_minus = replace(target_drive_pulse, relative_phase=np.pi)
+        cr_pulse_minus = replace(
+            cr_drive_pulse.new(),
+            relative_phase=angle_wrap(np.pi + cr_drive_pulse.relative_phase),
+        )
+        target_pulse_minus = replace(
+            target_drive_pulse.new(),
+            relative_phase=angle_wrap(np.pi + target_drive_pulse.relative_phase),
+        )
         cr_pulses.append(cr_pulse_minus)
         cr_target_pulses.append(target_pulse_minus)
         sequence.append((cr_channel, cr_drive_pulse))
