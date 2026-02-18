@@ -104,9 +104,8 @@ class CalibrateMixersData(Data):
 def _get_hardware_calibration(
     cluster: Cluster, seq_map: SequencerMap
 ) -> dict[str, ModuleCalibrationData]:
-    from qblox_instruments import Module, Sequencer
 
-    modules: dict[str, Module] = cluster._cluster.get_connected_modules(
+    modules = cluster._cluster.get_connected_modules(
         lambda mod: mod.is_rf_type
     )
     data: dict[str, ModuleCalibrationData] = {}
@@ -142,7 +141,7 @@ def _get_hardware_calibration(
                 mod_data.nco_freq[output] = {}
 
             # Use the sequencer ID from seq_map
-            seq: Sequencer = getattr(module, f"sequencer{seq_id}")
+            seq = getattr(module, f"sequencer{seq_id}")
             data[mod_name].gain_ratio[output][seq_id] = seq.mixer_corr_gain_ratio()
             data[mod_name].phase_offset[output][seq_id] = (
                 seq.mixer_corr_phase_offset_degree()
@@ -171,8 +170,7 @@ def _acquisition(
     Returns:
         CalibrateMixersData with initial and final calibration values
     """
-    from qblox_instruments import Module, Sequencer
-
+    
     data = CalibrateMixersData()
 
     instrs = {
@@ -195,8 +193,7 @@ def _acquisition(
             configs=configs,
         )
 
-        # data.sequencer_map[targets[0]] = seq_map
-        modules: dict[str, Module] = cluster._cluster.get_connected_modules(
+        modules = cluster._cluster.get_connected_modules(
             lambda mod: mod.is_rf_type
         )
 
@@ -214,7 +211,7 @@ def _acquisition(
                 getattr(module, f"{address.prefix(module.is_qcm_type)}_lo_cal")()
 
                 # Run sideband calibration
-                sequencer: Sequencer = getattr(module, f"sequencer{seq_id}", None)
+                sequencer = getattr(module, f"sequencer{seq_id}", None)
                 if all(
                     sequencer._get_sequencer_connect_out(i) == "off"
                     for i in range(2 if module.is_qcm_type else 1)
