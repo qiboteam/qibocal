@@ -1,15 +1,18 @@
 from .amplitude import cross_resonance_amplitude
 from .hamiltonian_tomography import (
+    hamiltonian_tomography_canc_amplitude,
+    hamiltonian_tomography_canc_phase,
     hamiltonian_tomography_cr_amplitude,
     hamiltonian_tomography_cr_length,
-    hamiltonian_tomography_cr_phase,
 )
 from .length import cross_resonance_length
 
 __all__ = [
     "cross_resonance_amplitude",
     "hamiltonian_tomography_cr_length",
-    "cross_resonance_length",
     "hamiltonian_tomography_cr_amplitude",
-    "hamiltonian_tomography_cr_phase",
+    "cross_resonance_length",
+    "cross_resonance_cr_amplitude",
+    "hamiltonian_tomography_canc_amplitude",
+    "hamiltonian_tomography_canc_phase",
 ]

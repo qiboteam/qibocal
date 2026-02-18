@@ -178,7 +178,7 @@ def compute_bloch_vector(
     return bloch_exp, bloch_fit
 
 
-def estimate_cr_length(
+def estimate_cr_param(
     x_range,
     data: Union[
         "HamiltonianTomographyCRLengthData",  # noqa: F821
@@ -189,23 +189,25 @@ def estimate_cr_length(
     tol: float = 1e-6,
 ):
     bloch_data, _ = compute_bloch_vector(data, pair)
+    idx = np.argmin(bloch_data)
+    param = x_range[idx]
+
     if all([(pair[0], pair[1], s) in fitted_parameters for s in SetControl]):
         bloch_data, bloch_fit = compute_bloch_vector(data, pair, fitted_parameters)
         x_range = data.data[pair[0], pair[1], Basis.Z, SetControl.Id].x
-
-        if min(bloch_data) > min(bloch_fit):
-            return int(
-                numerical_root_finder(
-                    root_func=bloch_func,
-                    x_range=x_range,
-                    tol=tol,
-                    pair=pair,
-                    fitted_parameters=fitted_parameters,
-                )
+        if min(bloch_data) >= min(bloch_fit):
+            param = numerical_root_finder(
+                root_func=bloch_func,
+                x_range=x_range,
+                tol=tol,
+                pair=pair,
+                fitted_parameters=fitted_parameters,
             )
 
-    idx = np.argmin(bloch_data)
-    return int(x_range[idx])
+    if type(data).__name__ == "HamiltonianTomographyCRLengthData":
+        return int(param)
+
+    return float(param)
 
 
 def tune_cancellation_sequence(
@@ -231,7 +233,7 @@ def tune_cancellation_sequence(
         tuned_parameters[k] = float(x[min_idx])
         if ham_int in fit_params:
             x_fit = function_to_tune(x, **fit_params[ham_int])
-            if np.min(np.abs(selected_ham_term)) > np.min(np.abs(x_fit)):
+            if np.min(np.abs(selected_ham_term)) >= np.min(np.abs(x_fit)):
                 tuned_parameters[k] = float(
                     numerical_root_finder(
                         root_func=function_to_tune,
@@ -285,13 +287,13 @@ def estimate_cr_phases(
         tol=tol,
     )
 
-    if fitting.sin_fit(HamiltonianTerm.ZX, **phase_params[HamiltonianTerm.ZX]) < 0:
+    if fitting.sin_fit(tuned_phases["phi0"], **phase_params[HamiltonianTerm.ZX]) < 0:
         # in https://journals.aps.org/pra/pdf/10.1103/PhysRevA.93.060302
         # it is said we need to choose the CR phase that minimizes ZY components
         # and maximizes ZX interaction.
         tuned_phases["phi0"] += np.pi
 
-    if fitting.sin_fit(HamiltonianTerm.IX, **phase_params[HamiltonianTerm.IX]) < 0:
+    if fitting.sin_fit(tuned_phases["phi1"], **phase_params[HamiltonianTerm.IX]) < 0:
         # same as above, but this time is more euristic.
         tuned_phases["phi1"] += np.pi
 
@@ -408,7 +410,7 @@ def tomography_cr_fit(
     """
 
     fitted_parameters = {}
-    cr_gate_lengths = {}
+    cr_gate_x = {}
 
     for pair in data.pairs:
         vector_x = data.data[pair[0], pair[1], Basis.X, SetControl.Id].x
@@ -451,11 +453,11 @@ def tomography_cr_fit(
 
             fitted_parameters[pair[0], pair[1], setup] = popt.tolist()
 
-        cr_gate_lengths[pair[0], pair[1]] = estimate_cr_length(
+        cr_gate_x[pair[0], pair[1]] = estimate_cr_param(
             vector_x, data, pair, fitted_parameters
         )
 
-    return fitted_parameters, cr_gate_lengths
+    return fitted_parameters, cr_gate_x
 
 
 def extract_hamiltonian_terms(pair: QubitPairId, fitted_parameters: dict) -> dict:
@@ -728,13 +730,23 @@ def tomography_cr_plot(
                     row=i + 1,
                     col=1,
                 )
-                if target in fit.cr_lengths:
+
+                fit_dict = {}
+                if type(fit).__name__ == "HamiltonianTomographyCRLengthResults":
+                    fit_dict = fit.cr_lengths
+                    annotation = "CR gate duration [ns]"
+
+                if type(fit).__name__ == "HamiltonianTomographyCRAmplitudeResults":
+                    fit_dict = fit.cr_amplitudes
+                    annotation = "CR gate amplitude [a.u.]"
+
+                if target in fit_dict:
                     fig.add_vline(
-                        x=fit.cr_lengths[target],
+                        x=fit_dict[target],
                         line_width=2,
                         line_dash="dash",
                         line_color="red",
-                        annotation_text="CR gate duration (ns)",
+                        annotation_text=annotation,
                         row=i + 1,
                         col=1,
                     )
@@ -752,16 +764,25 @@ def tomography_cr_plot(
         row=4,
         col=1,
     )
-    if target in fit.cr_lengths:
+    if type(fit).__name__ == "HamiltonianTomographyCRLengthResults":
+        fit_dict = fit.cr_lengths
+        annotation = "CR gate duration [ns]"
+
+    if type(fit).__name__ == "HamiltonianTomographyCRAmplitudeResults":
+        fit_dict = fit.cr_amplitudes
+        annotation = "CR gate amplitude [a.u.]"
+
+    if target in fit_dict:
         fig.add_vline(
-            x=fit.cr_lengths[target],
+            x=fit_dict[target],
             line_width=2,
             line_dash="dash",
             line_color="red",
-            annotation_text="CR gate duration (ns)",
+            annotation_text=annotation,
             row=4,
             col=1,
         )
+
     if bloch_fit is not None:
         x = np.linspace(pair_data.x.min(), pair_data.x.max(), len(bloch_fit))
         fig.add_trace(
@@ -794,7 +815,7 @@ def tomography_cr_plot(
 
 def calibration_cr_plot(
     data: Union[
-        "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
+        "HamiltonianTomographyCANCAmplData",  # noqa: F821
         "HamiltonianTomographyCRPhaseData",  # noqa: F821
     ],
     target: QubitPairId,
@@ -809,7 +830,7 @@ def calibration_cr_plot(
     figures = []
     fitting_report = ""
 
-    if type(data).__name__ == "HamiltonianTomographyCRAmplitudeData":
+    if type(data).__name__ == "HamiltonianTomographyCANCAmplData":
         fit_func = fitting.linear_fit
         x_title = "amplitude [a.u.]"
         tunable_params = fit.cancellation_pulse_amplitudes[target]
