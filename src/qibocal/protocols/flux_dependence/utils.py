@@ -3,9 +3,21 @@ from dataclasses import dataclass
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from scipy import ndimage
 
 from ...auto.operation import Parameters
-from ..utils import HZ_TO_GHZ
+from ..utils import (
+    DISTANCE_XY,
+    DISTANCE_Z,
+    HZ_TO_GHZ,
+    FeatExtractionError,
+    clustering,
+    merging,
+    peaks_finder,
+    reshaping_raw_signal,
+    scaling_slice,
+    zca_whiten,
+)
 
 
 @dataclass(kw_only=True)
@@ -46,8 +58,6 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
     qubit_data = data[qubit]
     frequencies = qubit_data.freq * HZ_TO_GHZ
 
-    filtered_freq, filtered_bias = data.filtered_data(qubit)
-
     fig = go.Figure()
     fig.add_trace(
         go.Heatmap(
@@ -59,22 +69,25 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
         ),
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=filtered_freq * HZ_TO_GHZ,
-            y=filtered_bias,
-            name="Estimated points",
-            mode="markers",
-            marker=dict(color="rgb(248, 248, 248)"),
+    filtered_freq, filtered_bias = data.filtered_data(qubit)
+
+    if filtered_freq is not None and filtered_bias is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=filtered_freq * HZ_TO_GHZ,
+                y=filtered_bias,
+                name="Estimated points",
+                mode="markers",
+                marker=dict(color="rgb(248, 248, 248)"),
+            )
         )
-    )
 
     # TODO: This fit is for frequency, can it be reused here, do we even want the fit ?
     if (
         fit is not None
         and fit_function is not None
         and not data.__class__.__name__ == "CouplerSpectroscopyData"
-        and qubit in fit.fitted_parameters
+        and fit.successful_fit[qubit]
     ):
         params = fit.fitted_parameters[qubit]
         bias = np.unique(qubit_data.bias)
@@ -150,8 +163,8 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
             row=1,
             col=col + 1,
         )
-        if fit is not None:
-            if flux_qubit[1] != qubit and flux_qubit in fit.fitted_parameters:
+        if fit is not None and fit.successful_fit[qubit]:
+            if flux_qubit[1] != qubit:
                 fig.add_trace(
                     go.Scatter(
                         x=fit_function(
@@ -316,3 +329,72 @@ def qubit_flux_dependence_fit_bounds(qubit_frequency: float):
             1,
         ],
     )
+
+
+def filter_data(matrix_z: np.ndarray):
+    """Filter data with a ZCA transformation and then a unit-variance Gaussian."""
+
+    # adding zca filter for filtering out background noise gradient
+    zca_z = zca_whiten(matrix_z)
+    # adding gaussian fliter with unitary variance for blurring the signal and reducing noise
+    return ndimage.gaussian_filter(zca_z, 1)
+
+
+def flux_extract_feature(
+    x: np.ndarray,
+    y: np.ndarray,
+    z: np.ndarray,
+    find_min: bool,
+    min_points: int = 5,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Extract features of the signal by filtering out background noise.
+
+    It first applies a custom filter mask (see `custom_filter_mask`)
+    and then finds the biggest peak for each DC bias value;
+    the masked signal is then clustered (see `clustering`) in order to classify the relevant signal for the experiment.
+    If `find_min` is set to `True` it finds minimum peaks of the input signal;
+    `min_points` is the minimum number of points for a cluster to be considered relevant signal.
+    Position of the relevant signal is returned.
+    """
+
+    reshaped_x, reshaped_y, reshaped_z = reshaping_raw_signal(x, y, z)
+    reshaped_z = -reshaped_z if find_min else reshaped_z
+
+    z_masked = filter_data(reshaped_z)
+
+    # renormalizing
+    z_masked_norm = scaling_slice(z_masked, axis=1)
+
+    # filter data using find_peaks
+    peaks_dict = peaks_finder(reshaped_x, reshaped_y, z_masked_norm)
+    if len(peaks_dict.keys()) == 0:  # if find_peaks fails
+        """
+        Peaks Detection Failed:
+        no peaks found in peaks_finder routine.
+        """
+        return None, None
+
+    peaks, labels = clustering(peaks_dict, z_masked)
+
+    # merging close clusters
+    try:
+        signal_clusters = merging(
+            peaks,
+            labels,
+            min_points,
+            distance_xy=DISTANCE_XY,
+            distance_z=DISTANCE_Z,
+        )
+
+    except FeatExtractionError:
+        return None, None
+
+    medians = np.array(
+        [[lab, np.median(cl["cluster"][2, :])] for lab, cl in signal_clusters.items()]
+    )
+
+    signal_labels = np.zeros(labels.size, dtype=bool)
+    signal_idx = medians[np.argmax(medians[:, 1]), 0]
+    signal_labels[signal_clusters[signal_idx]["cluster"][-1, :].astype(int)] = True
+
+    return peaks_dict["x"]["val"][signal_labels], peaks_dict["y"]["val"][signal_labels]

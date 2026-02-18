@@ -199,7 +199,7 @@ class Data(AbstractData):
     """Data resulting from acquisition routine."""
 
     @property
-    def qubits(self):
+    def qubits(self) -> list[QubitId]:
         """Access qubits from data structure."""
         if set(map(type, self.data)) == {tuple}:
             return list({q[0] for q in self.data})
@@ -230,15 +230,14 @@ class Data(AbstractData):
         else:
             self.data[data_keys] = np.rec.array(ar)
 
-    def save(self, path: Path):
+    def save(self, path: Path, filename: str = DATAFILE):
         """Store data to file."""
-        super()._to_json(path, DATAFILE)
-        super()._to_npz(path, DATAFILE)
+        super().save(path, filename)
 
     @classmethod
-    def load(cls, path: Path):
+    def load(cls, path: Path, filename: str = DATAFILE):
         """Load data and parameters."""
-        return super().load(path, filename=DATAFILE)
+        return super().load(path, filename)
 
 
 @dataclass
@@ -260,14 +259,13 @@ class Results(AbstractData):
         )
 
     @classmethod
-    def load(cls, path: Path):
+    def load(cls, path: Path, filename: str = RESULTSFILE):
         """Load results."""
-        return super().load(path, filename=RESULTSFILE)
+        return super().load(path, filename)
 
-    def save(self, path: Path):
+    def save(self, path: Path, filename: str = RESULTSFILE):
         """Store results to file."""
-        super()._to_json(path, RESULTSFILE)
-        super()._to_npz(path, RESULTSFILE)
+        super().save(path, filename)
 
 
 # Internal types, in particular `_ParametersT` is used to address function

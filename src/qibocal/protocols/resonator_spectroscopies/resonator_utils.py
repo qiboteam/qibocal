@@ -1,7 +1,10 @@
+import logging
+
 import numpy as np
 import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
+from scipy import ndimage
 from scipy.ndimage import gaussian_filter1d
 from scipy.optimize import leastsq, minimize
 
@@ -11,12 +14,24 @@ from ..utils import (
     COLORBAND,
     COLORBAND_LINE,
     DELAY_FIT_PERCENTAGE,
+    DISTANCE_XY,
+    DISTANCE_Z,
     HZ_TO_GHZ,
+    FeatExtractionError,
     PowerLevel,
+    clustering,
     lorentzian,
+    merging,
+    peaks_finder,
+    reshaping_raw_signal,
+    scaling_global,
+    scaling_slice,
     table_dict,
     table_html,
 )
+
+# from .resonator_punchout import ResonatorPunchoutData
+# from .resonator_punchout_attenuation import ResonatorPunchoutAttenuationData
 
 PHASES_THRESHOLD_PERCENTAGE = 80
 r"""Threshold percentage to ensure the phase data covers a significant portion of the full 2 :math:\pi circle."""
@@ -24,6 +39,21 @@ STD_DEV_GAUSSIAN_KERNEL = 30
 """Standard deviation for the Gaussian kernel."""
 PHASE_ELEMENTS = 5
 """Number of values to better guess :math:`\theta` (in rad) in the phase fit function."""
+SATURATION_WINDOW_RATIO = 5
+"""The ratio of the signal of the window for evaluating the effective saturation of the punchout signal."""
+SATURATION_WINDOW_MAX = 10
+"""Maximum length of the saturation window."""
+SATURATION_WINDOW_MIN = 5
+"""Minimum length of the window the saturation window."""
+SAVGOL_FILTER_WINDOW_RATIO = 5
+"""The ratio of the signal of the Sav-Gol filter window."""
+SAVGOL_FILTER_WINDOW_MIN = 5
+"""The min length forthe Sav-Gol filter window."""
+SAVGOL_FILTER_DERIVATIVE = 1
+"""The order of the derivative to compute."""
+SAVGOL_FILTER_ORDER = 3
+"""The order of the polynomial used to fit the samples."""
+SATURATION_TOLERANCE = 1.5e-3
 
 
 def s21(
@@ -794,3 +824,137 @@ def phase_centered(
 def periodic_boundary(angle: float) -> float:
     """Maps arbitrary `angle` (in rad) to interval [-np.pi, np.pi)."""
     return (angle + np.pi) % (2 * np.pi) - np.pi
+
+
+def punchout_mask(matrix_z: np.ndarray) -> np.ndarray:
+    """Mask function for punchout experiment. First a gaussian filter is applied, then a minmax-scaling is performed;
+    sequently :func:`scipy.ndimage.gaussian_laplace` is applied and finally another mixmax-scaling."""
+
+    gauss_layer_1 = ndimage.gaussian_filter(matrix_z, 1)
+
+    # renormalizing
+    minmax_layer_1 = scaling_slice(gauss_layer_1, axis=1)
+
+    laplace_layer_1 = -ndimage.gaussian_laplace(minmax_layer_1, sigma=1)
+
+    global_minmax_layer_1 = scaling_global(laplace_layer_1)
+
+    return global_minmax_layer_1
+
+
+def punchout_extract_feature(
+    x: np.ndarray,
+    y: np.ndarray,
+    z: np.ndarray,
+    find_min: bool,
+    min_points: int = 5,
+) -> tuple[np.ndarray, np.ndarray] | tuple[None, None]:
+    """Extract features of the signal by filtering out background noise.
+
+    It first applies a custom filter mask (see `custom_filter_mask`)
+    and then finds the biggest peak for each DC bias value;
+    the masked signal is then clustered (see `clustering`) in order to classify the relevant signal for the experiment.
+    If `find_min` is set to `True` it finds minimum peaks of the input signal;
+    `min_points` is the minimum number of points for a cluster to be considered relevant signal.
+    Position of the relevant signal is returned.
+    """
+
+    reshaped_x, reshaped_y, reshaped_z = reshaping_raw_signal(x, y, z)
+    reshaped_z = -reshaped_z if find_min else reshaped_z
+
+    z_masked = punchout_mask(reshaped_z)
+
+    # filter data using find_peaks
+    peaks_dict = peaks_finder(reshaped_x, reshaped_y, z_masked)
+    if peaks_dict is None:  # if find_peaks fails
+        logging.warning("""
+        Peaks Detection Failed:
+        no peaks found in peaks_finder routine.
+        """)
+        return None, None
+
+    peaks, labels = clustering(peaks_dict, z_masked)
+
+    # merging close clusters
+    try:
+        signal_clusters = merging(
+            peaks,
+            labels,
+            min_points,
+            distance_xy=DISTANCE_XY,
+            distance_z=DISTANCE_Z,
+        )
+
+    except FeatExtractionError:
+        return None, None
+
+    medians = np.array(
+        [
+            [
+                lab,
+                np.median(cl["cluster"][2, :]),
+                np.min(cl["cluster"][1, :]),
+                np.max(cl["cluster"][1, :]),
+            ]
+            for lab, cl in signal_clusters.items()
+        ]
+    )
+    signal_labels = np.zeros(labels.size, dtype=bool)
+    # for resonator punchout protocol we cannot merge efficiently th two branches of the whole signal, hence we
+    # select the two clusters that maximise the median value of the signal.
+    # In case clustering by itself selects the whole signal, we also select the clusters with minimum and maximum amplitude values,
+    # in order to filter out eventual noise clusters
+    if medians.shape[0] > 1:
+        sorted_medians = medians[medians[:, 1].argsort()[::-1]]
+        min_amp_idx = np.argmin(sorted_medians[:2, -2])
+        signal_labels[
+            signal_clusters[sorted_medians[min_amp_idx, 0]]["cluster"][-1, :].astype(
+                int
+            )
+        ] = True
+        max_amp_idx = np.argmax(sorted_medians[:2, -1])
+        signal_labels[
+            signal_clusters[sorted_medians[max_amp_idx, 0]]["cluster"][-1, :].astype(
+                int
+            )
+        ] = True
+    else:
+        signal_labels[signal_clusters[medians[0, 0]]["cluster"][-1, :].astype(int)] = (
+            True
+        )
+
+    return peaks_dict["x"]["val"][signal_labels], peaks_dict["y"]["val"][signal_labels]
+
+
+def fit_punchout(filtered_x, filtered_y):
+    """Fit frequency and attenuation at high and low power for a given resonator."""
+
+    # tolerance for frequencies
+    diffs = np.abs(np.diff(filtered_x))
+    if any(diffs != 0):
+        tol_step = np.min(diffs[diffs != 0])
+    else:
+        tol_step = 0
+
+    # new handling for detecting dressed and bare resonator frequencies
+    # by definition bare resonator frequency is given for high amplitude (low attenuation) values,
+    # while by applying low amplitude (high attenuation) readout signal we estimate dressed frequency.
+    low_freq_idx = (filtered_x - np.min(filtered_x)) <= tol_step
+    high_freq_idx = (np.max(filtered_x) - filtered_x) <= tol_step
+
+    low_freq = np.median(filtered_x[low_freq_idx])
+    high_freq = np.median(filtered_x[high_freq_idx])
+
+    low_freq_amp = np.max(filtered_y[low_freq_idx])
+    high_freq_amp = np.max(filtered_y[high_freq_idx])
+
+    if low_freq_amp > high_freq_amp:
+        readout_freq = high_freq
+        bare_freq = low_freq
+        ro_val = high_freq_amp
+    else:
+        readout_freq = low_freq
+        bare_freq = high_freq
+        ro_val = low_freq_amp
+
+    return bare_freq, readout_freq, ro_val
