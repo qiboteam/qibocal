@@ -9,10 +9,9 @@ from qibolab import Config
 from scipy import constants, sparse
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
-from scipy.stats import norm as scipy_norm
 from sklearn.cluster import HDBSCAN
 
-from qibocal.auto.operation import Data, QubitId
+from qibocal.auto.operation import QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
