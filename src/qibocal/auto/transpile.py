@@ -7,8 +7,12 @@ from qibo.transpiler.unroller import NativeGates, Unroller
 from qibolab import PulseSequence
 from qibolab._core.compilers import Compiler
 from qibolab._core.native import NativeContainer
+from qibo.result import MeasurementOutcomes
 
 from qibocal.auto.operation import QubitId
+from qibocal.config import raise_error
+from qibolab import AveragingMode
+import numpy as np
 
 REPLACEMENTS = {
     "RX": "GPI2",
@@ -19,7 +23,7 @@ REPLACEMENTS = {
 def transpile_circuits(
     circuits: list[Circuit],
     qubit_maps: list[list[QubitId]],
-    backend: Backend,
+    platform,
     transpiler: Optional[Passes],
 ):
     """Transpile and pad `circuits` according to the platform.
@@ -37,7 +41,6 @@ def transpile_circuits(
         are all string or all integers.
     """
     transpiled_circuits = []
-    platform = backend.platform
     qubits = list(platform.qubits)
     if isinstance(qubit_maps[0][0], str):
         for i, qubit_map in enumerate(qubit_maps):
@@ -52,10 +55,93 @@ def transpile_circuits(
     return transpiled_circuits
 
 
+def execute_circuit(circuit, platform, compiler, initial_state=None, nshots=1000):
+    """Executes a quantum circuit.
+
+    Args:
+        circuit (:class:`qibo.models.circuit.Circuit`): Circuit to execute.
+        initial_state (:class:`qibo.models.circuit.Circuit`): Circuit to prepare the initial state.
+            If ``None`` the default ``|00...0>`` state is used.
+        nshots (int): Number of shots to sample from the experiment.
+
+    Returns:
+        ``MeasurementOutcomes`` object containing the results acquired from the execution.
+    """
+    if isinstance(initial_state, Circuit):
+        return execute_circuit(
+            circuit=initial_state + circuit,
+            platform=platform,
+            compiler=compiler,
+            nshots=nshots,
+        )
+    if initial_state is not None:
+        raise_error(
+            ValueError,
+            "Hardware backend only supports circuits as initial states.",
+        )
+
+    sequence, _measurement_map = compiler.compile(circuit, platform)
+
+    # TODO?: pass options dict
+    readout = platform.execute([sequence], nshots=nshots, averaging_mode=AveragingMode.SINGLESHOT)
+
+    result = list(readout.values())[0]
+
+    return result
+
+def execute_circuits(platform, compiler, circuits, initial_states=None, nshots=1000):
+    """Executes multiple quantum circuits with a single communication with
+    the control electronics.
+
+    Circuits are unrolled to a single pulse sequence.
+
+    Args:
+        circuits (list): List of circuits to execute.
+        initial_states (:class:`qibo.models.circuit.Circuit`): Circuit to prepare the initial state.
+            If ``None`` the default ``|00...0>`` state is used.
+        nshots (int): Number of shots to sample from the experiment.
+
+    Returns:
+        List of ``MeasurementOutcomes`` objects containing the results acquired from the execution of each circuit.
+    """
+    if isinstance(initial_states, Circuit):
+        return execute_circuits(
+            platform=platform,
+            compiler=compiler,
+            circuits=[initial_states + circuit for circuit in circuits],
+            nshots=nshots,
+        )
+    if initial_states is not None:
+        raise_error(
+            ValueError,
+            "Hardware backend only supports circuits as initial states.",
+        )
+
+    # TODO: Maybe these loops can be parallelized
+    sequences, measurement_maps = zip(
+        *(compiler.compile(circuit, platform) for circuit in circuits)
+    )
+
+    readout = platform.execute(sequences, nshots=nshots)
+
+    results = []
+    for circuit, measurement_map in zip(circuits, measurement_maps):
+        results.append(
+            MeasurementOutcomes(circuit.measurements, self, nshots=nshots)
+        )
+        for gate, sequence in measurement_map.items():
+            samples = [readout[acq.id] for _, acq in sequence.acquisitions]
+            gate.result.backend = self
+            gate.result.register_samples(np.array(samples).T)
+    return results
+
+
+
 def execute_transpiled_circuits(
     circuits: list[Circuit],
     qubit_maps: list[list[QubitId]],
-    backend: Backend,
+    platform,
+    compiler,
     transpiler: Optional[Passes],
     initial_states=None,
     nshots=1000,
@@ -73,10 +159,10 @@ def execute_transpiled_circuits(
     transpiled_circuits = transpile_circuits(
         circuits,
         qubit_maps,
-        backend,
+        platform,
         transpiler,
     )
-    return transpiled_circuits, backend.execute_circuits(
+    return transpiled_circuits, execute_circuits(platform, compiler,
         transpiled_circuits, initial_states=initial_states, nshots=nshots
     )
 
@@ -84,7 +170,8 @@ def execute_transpiled_circuits(
 def execute_transpiled_circuit(
     circuit: Circuit,
     qubit_map: list[QubitId],
-    backend: Backend,
+    platform,
+    compiler,
     transpiler: Optional[Passes],
     initial_state=None,
     nshots=1000,
@@ -103,11 +190,11 @@ def execute_transpiled_circuit(
     transpiled_circ = transpile_circuits(
         [circuit],
         [qubit_map],
-        backend,
+        platform,
         transpiler,
     )[0]
-    return transpiled_circ, backend.execute_circuit(
-        transpiled_circ, initial_state=initial_state, nshots=nshots
+    return transpiled_circ, execute_circuit(
+        transpiled_circ, platform, compiler, initial_state=initial_state, nshots=nshots
     )
 
 
@@ -148,32 +235,31 @@ def create_rule(name, natives):
     return rule
 
 
-def set_compiler(backend, natives_):
+def get_compiler(platform):
     """
     Set the compiler to execute the native gates defined by the platform.
     """
-    compiler = backend.compiler
+    native_gates = natives(platform)
+    compiler = Compiler.default()
     rules = {}
-    for name, natives_container in natives_.items():
+    for name, natives_container in native_gates.items():
         gate = getattr(gates, name)
         if gate not in compiler.rules:
             rules[gate] = create_rule(name, natives_container)
         else:
             rules[gate] = compiler.rules[gate]
     rules[gates.I] = compiler.rules[gates.I]
-    backend.compiler = Compiler(rules=rules)
+    return Compiler(rules=rules)
 
 
-def dummy_transpiler(backend: Backend) -> Passes:
+def dummy_transpiler(platform) -> Passes:
     """
     If the backend is `qibolab`, a transpiler with just an unroller is returned,
     otherwise `None`. This function overwrites the compiler defined in the
     backend, taking into account the native gates defined in the`platform` (see
     :func:`set_compiler`).
     """
-    platform = backend.platform
     native_gates = natives(platform)
-    set_compiler(backend, native_gates)
     native_gates = [getattr(gates, x) for x in native_gates]
     unroller = Unroller(NativeGates.from_gatelist(native_gates))
     return Passes(connectivity=platform.pairs, passes=[unroller])
