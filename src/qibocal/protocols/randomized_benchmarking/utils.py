@@ -27,7 +27,7 @@ from qibocal.protocols.randomized_benchmarking.dict_utils import (
     separator,
 )
 from qibocal.protocols.utils import significant_digit
-
+from qibocal.auto.transpile import get_compiler
 from .fitting import fit_exp1B_func
 
 SINGLE_QUBIT_CLIFFORDS = {
@@ -327,14 +327,13 @@ class StandardRBResult(Results):
     """Error bars for y."""
 
 
-def setup(
+def setup_data(
     params: Parameters,
-    platform: CalibrationPlatform,
     single_qubit: bool = True,
     interleave: Optional[str] = None,
 ):
     """
-    Set up the randomized benchmarking experiment backend and data class.
+    Set up the randomized benchmarking experiment data class.
 
     Args:
         params (Parameters): The parameters for the experiment.
@@ -342,9 +341,8 @@ def setup(
         interleave: (str, optional): The type of interleaving to apply. Defaults to None.
 
     Returns:
-        tuple: A tuple containing the experiment data and backend.
+        data: The experiment data class.
     """
-    backend = construct_backend(backend="qibolab", platform=platform)
     # Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     if single_qubit:
         cls = RBData
@@ -359,8 +357,7 @@ def setup(
         nshots=params.nshots,
         niter=params.niter,
     )
-
-    return data, backend
+    return data
 
 
 def get_circuits(params, targets, add_inverse_layer, interleave, single_qubit=True):
@@ -415,7 +412,7 @@ def get_circuits(params, targets, add_inverse_layer, interleave, single_qubit=Tr
     return circuits, indexes, npulses_per_clifford
 
 
-def execute_circuits(circuits, targets, params, backend, single_qubit=True):
+def execute_circuits(circuits, targets, params, platform, single_qubit=True):
     """
     Executes a list of circuits on a given backend.
 
@@ -423,7 +420,7 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
         circuits (list): List of quantum circuits to be executed.
         targets (list): List of target qubits for each circuit.
         params (Parameters): Experiment parameters.
-        backend (object): Backend to execute the circuits on.
+        platform (object): Platform to execute the circuits on.
         single_qubit (bool): Flag indicating whether the circuits are single-qubit or multi-qubit.
 
     Returns:
@@ -431,7 +428,8 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
 
     """
     # Execute the circuits
-    transpiler = dummy_transpiler(backend)
+    transpiler = dummy_transpiler(platform)
+    compiler = get_compiler(platform)
     qubit_maps = (
         [[i] for i in targets] * (len(params.depths) * params.niter)
         if single_qubit
@@ -441,7 +439,8 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
         _, executed_circuits = execute_transpiled_circuits(
             circuits,
             qubit_maps=qubit_maps,
-            backend=backend,
+            platform=platform,
+            compiler=compiler,
             nshots=params.nshots,
             transpiler=transpiler,
         )
@@ -450,7 +449,8 @@ def execute_circuits(circuits, targets, params, backend, single_qubit=True):
             execute_transpiled_circuit(
                 circuit,
                 qubit_map=qubit_map,
-                backend=backend,
+                platform=platform,
+                compiler=compiler,
                 nshots=params.nshots,
                 transpiler=transpiler,
             )[1]
@@ -479,16 +479,13 @@ def rb_acquisition(
     Returns:
         RBData: The depths, samples, and ground state probability of each experiment in the scan.
     """
-    data, backend = setup(params, platform, single_qubit=True)
+    data = setup_data(params, single_qubit=True)
     circuits, indexes, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, single_qubit=True
     )
-    executed_circuits = execute_circuits(circuits, targets, params, backend)
+    executed_circuits = execute_circuits(circuits, targets, params, platform)
 
-    samples = []
-    for circ in executed_circuits:
-        samples.extend(circ.samples())
-    samples = np.reshape(samples, (-1, len(targets), params.nshots))
+    samples = np.reshape(executed_circuits, (-1, len(targets), params.nshots))
 
     for i, depth in enumerate(params.depths):
         index = (i * params.niter, (i + 1) * params.niter)
