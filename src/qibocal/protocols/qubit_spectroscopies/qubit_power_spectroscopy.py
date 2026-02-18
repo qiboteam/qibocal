@@ -3,7 +3,6 @@ from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
@@ -16,7 +15,6 @@ from qibolab import (
 from qibocal.auto.operation import Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
-from ...result import magnitude, phase
 from ...update import replace
 from ..resonator_spectroscopies.resonator_punchout import ResonatorPunchoutData
 from ..utils import HZ_TO_GHZ, readout_frequency
@@ -98,6 +96,8 @@ def _acquisition(
     # data
     data = QubitPowerSpectroscopyData(
         resonator_type=platform.resonator_type,
+        amplitudes=amp_sweeper.values.tolist(),
+        frequencies={qubit: freq_sweepers[qubit].values.tolist() for qubit in targets},
     )
 
     results = platform.execute(
@@ -116,14 +116,7 @@ def _acquisition(
     # retrieve the results for every qubit
     for qubit, ro_pulse in ro_pulses.items():
         # average signal, phase, i and q over the number of shots defined in the runcard
-        result = results[ro_pulse.id]
-        data.register_qubit(
-            qubit,
-            signal=magnitude(result),
-            phase=phase(result),
-            freq=freq_sweepers[qubit].values,
-            amp=amp_sweeper.values,
-        )
+        data.data[qubit] = results[ro_pulse.id]
 
     return data
 
@@ -141,40 +134,16 @@ def _plot(
     """Plot QubitPunchout."""
     figures = []
     fitting_report = ""
-    fig = make_subplots(
-        rows=1,
-        cols=2,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.2,
-        subplot_titles=(
-            "Signal [a.u.]",
-            "phase [rad]",
-        ),
-    )
-    qubit_data = data[target]
-    frequencies = qubit_data.freq * HZ_TO_GHZ
-    amplitudes = qubit_data.amp
-
+    fig = go.Figure()
+    x, y, _ = data.grid(target)
     fig.add_trace(
         go.Heatmap(
-            x=frequencies,
-            y=amplitudes,
-            z=qubit_data.signal,
-            colorbar_x=0.46,
-        ),
-        row=1,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Heatmap(
-            x=frequencies,
-            y=amplitudes,
-            z=qubit_data.phase,
-            colorbar_x=1.01,
-        ),
-        row=1,
-        col=2,
+            x=x * HZ_TO_GHZ,
+            y=y,
+            z=data.normalized_signal(target).ravel(),
+            colorbar=dict(title="Normalized signal"),
+            colorscale="Viridis",
+        )
     )
 
     fig.update_layout(
@@ -182,9 +151,8 @@ def _plot(
         legend=dict(orientation="h"),
     )
 
-    fig.update_xaxes(title_text="Drive frequency [GHz]", row=1, col=1)
-    fig.update_xaxes(title_text="Drive frequency [GHz]", row=1, col=2)
-    fig.update_yaxes(title_text="Drive amplitude [a.u.]", row=1, col=1)
+    fig.update_xaxes(title_text="Drive frequency [GHz]")
+    fig.update_yaxes(title_text="Drive amplitude [a.u.]")
 
     figures.append(fig)
 

@@ -18,12 +18,11 @@ from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
-from ...result import magnitude, phase
+from ...result import magnitude
 from ...update import replace
 from ..utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
-    extract_feature,
     readout_frequency,
     table_dict,
     table_html,
@@ -70,9 +69,9 @@ class QubitCrosstalkData(QubitFluxData):
     )
     """Raw data acquired for (qubit, qubit_flux) pairs saved in nested dictionaries."""
 
-    def register_qubit(self, qubit, flux_qubit, freq, bias, signal, phase):
+    def register_qubit(self, qubit, flux_qubit, freq, bias, signal):
         """Store output for single qubit."""
-        ar = utils.create_data_array(freq, bias, signal, phase, dtype=QubitFluxType)
+        ar = utils.create_data_array(freq, bias, signal, dtype=QubitFluxType)
         if (qubit, flux_qubit) in self.data:
             self.data[qubit, flux_qubit] = np.rec.array(
                 np.concatenate((self.data[qubit, flux_qubit], ar))
@@ -93,6 +92,8 @@ class QubitCrosstalkResults(QubitFluxResults):
     """Crosstalk matrix element."""
     fitted_parameters: dict[tuple[QubitId, QubitId], dict] = field(default_factory=dict)
     """Fitted parameters for each couple target-flux qubit."""
+    successful_fit: dict[QubitId, bool] = field(default_factory=dict)
+    """flag for each qubit to see whether the fit was successful."""
 
     def __contains__(self, key: QubitId):
         """Checking if qubit is in crosstalk_matrix attribute."""
@@ -119,10 +120,6 @@ def _acquisition(
     maximum_frequency = {}
     freq_sweepers = []
     offset_sweepers = []
-
-    delta_frequency_range = np.arange(
-        -params.freq_width / 2, params.freq_width / 2, params.freq_step
-    )
 
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
@@ -159,21 +156,18 @@ def _acquisition(
         freq_sweepers.append(
             Sweeper(
                 parameter=Parameter.frequency,
-                values=platform.config(qd_channel).frequency + delta_frequency_range,
+                values=platform.config(qd_channel).frequency + params.frequency_range,
                 channels=[qd_channel],
             )
         )
 
-    delta_offset_range = np.arange(
-        -params.bias_width / 2, params.bias_width / 2, params.bias_step
-    )
     for q in params.flux_qubits:
         flux_channel = platform.qubits[q].flux
         offset0 = platform.config(flux_channel).offset
         offset_sweepers.append(
             Sweeper(
                 parameter=Parameter.offset,
-                values=offset0 + delta_offset_range,
+                values=offset0 + params.bias_range,
                 channels=[flux_channel],
             )
         )
@@ -217,7 +211,6 @@ def _acquisition(
                 qubit,
                 flux_qubit,
                 signal=magnitude(result),
-                phase=phase(result),
                 freq=freq_sweepers[i].values,
                 bias=offset_sweeper.values,
             )
@@ -228,71 +221,78 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResults:
     crosstalk_matrix = {qubit: {} for qubit in data.qubit_frequency}
     fitted_parameters = {}
     qubit_frequency_bias_point = {}
+    successful_fit = {}
 
     for target_flux_qubit, qubit_data in data.data.items():
-        frequencies, biases = extract_feature(
+        frequencies, biases = utils.flux_extract_feature(
             qubit_data.freq,
             qubit_data.bias,
             qubit_data.signal,
-            "max" if data.resonator_type == "2D" else "min",
+            data.resonator_type == "2D",
         )
+
         target_qubit, flux_qubit = target_flux_qubit
 
-        qubit_frequency_bias_point[target_qubit] = (
-            utils.transmon_frequency(
-                xi=data.bias_point[target_qubit],
-                xj=0,
-                d=0,
-                w_max=data.qubit_frequency[target_qubit] * HZ_TO_GHZ,
-                offset=data.offset[target_qubit],
-                normalization=data.matrix_element[target_qubit],
-                charging_energy=data.charging_energy[target_qubit] * HZ_TO_GHZ,
-                crosstalk_element=1,
-            )
-            * GHZ_TO_HZ
-        )
+        if frequencies is None or biases is None:
+            successful_fit[target_qubit] = False
 
-        def fit_function(x, crosstalk_element, offset):
-            return utils.transmon_frequency(
-                xi=data.bias_point[target_qubit],
-                xj=x,
-                d=0,
-                w_max=data.qubit_frequency[target_qubit] * HZ_TO_GHZ,
-                offset=offset,
-                normalization=data.matrix_element[target_qubit],
-                charging_energy=data.charging_energy[target_qubit] * HZ_TO_GHZ,
-                crosstalk_element=crosstalk_element,
+        else:
+            qubit_frequency_bias_point[target_qubit] = (
+                utils.transmon_frequency(
+                    xi=data.bias_point[target_qubit],
+                    xj=0,
+                    d=0,
+                    w_max=data.qubit_frequency[target_qubit] * HZ_TO_GHZ,
+                    offset=data.offset[target_qubit],
+                    normalization=data.matrix_element[target_qubit],
+                    charging_energy=data.charging_energy[target_qubit] * HZ_TO_GHZ,
+                    crosstalk_element=1,
+                )
+                * GHZ_TO_HZ
             )
 
-        try:
-            popt, _ = curve_fit(
-                fit_function,
-                biases,
-                frequencies * HZ_TO_GHZ,
-                bounds=((-np.inf, -1), (np.inf, 1)),
-                maxfev=100000,
-            )
-            fitted_parameters[target_qubit, flux_qubit] = dict(
-                xi=data.bias_point[target_qubit],
-                d=0,
-                w_max=data.qubit_frequency[target_qubit] * HZ_TO_GHZ,
-                offset=popt[1],
-                normalization=data.matrix_element[target_qubit],
-                charging_energy=data.charging_energy[target_qubit] * HZ_TO_GHZ,
-                crosstalk_element=float(popt[0]),
-            )
-            crosstalk_matrix[target_qubit][flux_qubit] = (
-                popt[0] * data.matrix_element[target_qubit]
-            )
-        except RuntimeError as e:  # pragma: no cover
-            log.error(
-                f"Off-diagonal flux fit failed for qubit {flux_qubit} due to {e}."
-            )
+            def fit_function(x, crosstalk_element, offset):
+                return utils.transmon_frequency(
+                    xi=data.bias_point[target_qubit],
+                    xj=x,
+                    d=0,
+                    w_max=data.qubit_frequency[target_qubit] * HZ_TO_GHZ,
+                    offset=offset,
+                    normalization=data.matrix_element[target_qubit],
+                    charging_energy=data.charging_energy[target_qubit] * HZ_TO_GHZ,
+                    crosstalk_element=crosstalk_element,
+                )
+
+            try:
+                popt, _ = curve_fit(
+                    fit_function,
+                    biases,
+                    frequencies * HZ_TO_GHZ,
+                    bounds=((-np.inf, -1), (np.inf, 1)),
+                    maxfev=100000,
+                )
+                fitted_parameters[target_qubit, flux_qubit] = dict(
+                    xi=data.bias_point[target_qubit],
+                    d=0,
+                    w_max=data.qubit_frequency[target_qubit] * HZ_TO_GHZ,
+                    offset=popt[1],
+                    normalization=data.matrix_element[target_qubit],
+                    charging_energy=data.charging_energy[target_qubit] * HZ_TO_GHZ,
+                    crosstalk_element=float(popt[0]),
+                )
+                crosstalk_matrix[target_qubit][flux_qubit] = (
+                    popt[0] * data.matrix_element[target_qubit]
+                )
+                successful_fit[target_qubit] = True
+            except (RuntimeError, ValueError) as e:  # pragma: no cover
+                successful_fit[target_qubit] = False
+                log.error(f"Error in qubit_crosstalk protocol fit: {e} ")
 
     return QubitCrosstalkResults(
         qubit_frequency_bias_point=qubit_frequency_bias_point,
         crosstalk_matrix=crosstalk_matrix,
         fitted_parameters=fitted_parameters,
+        successful_fit=successful_fit,
     )
 
 
@@ -301,7 +301,7 @@ def _plot(data: QubitCrosstalkData, fit: QubitCrosstalkResults, target: QubitId)
     figures, fitting_report = utils.flux_crosstalk_plot(
         data, target, fit, fit_function=utils.transmon_frequency
     )
-    if fit is not None:
+    if fit is not None and fit.successful_fit[target]:
         labels = [
             "Qubit Frequency at Bias point [Hz]",
         ]

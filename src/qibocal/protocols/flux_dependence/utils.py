@@ -1,16 +1,48 @@
+from dataclasses import dataclass
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from scipy import ndimage
 
-from ..utils import HZ_TO_GHZ
+from ...auto.operation import Parameters
+from ..utils import (
+    DISTANCE_XY,
+    DISTANCE_Z,
+    HZ_TO_GHZ,
+    FeatExtractionError,
+    clustering,
+    merging,
+    peaks_finder,
+    reshaping_raw_signal,
+    scaling_slice,
+    zca_whiten,
+)
 
 
-def is_crosstalk(data):
-    """Check if keys are tuple which corresponds to crosstalk data structure."""
-    return all(isinstance(key, tuple) for key in data.data.keys())
+@dataclass(kw_only=True)
+class FluxFrequencySweepParameters(Parameters):
+    """Parameters to define flux DC sweep."""
+
+    freq_width: int
+    """Width for frequency sweep relative to the readout frequency [Hz]."""
+    freq_step: int
+    """Frequency step for sweep [Hz]."""
+    bias_width: float
+    """Width for bias sweep [V]."""
+    bias_step: float
+    """Bias step for sweep [V]."""
+
+    @property
+    def frequency_range(self) -> np.ndarray:
+        return np.arange(-self.freq_width / 2, self.freq_width / 2, self.freq_step)
+
+    @property
+    def bias_range(self) -> np.ndarray:
+        return np.arange(-self.bias_width / 2, self.bias_width / 2, self.bias_step)
 
 
-def create_data_array(freq, bias, signal, phase, dtype):
+def create_data_array(freq, bias, signal, dtype):
     """Create custom dtype array for acquired data."""
     size = len(freq) * len(bias)
     ar = np.empty(size, dtype=dtype)
@@ -18,7 +50,6 @@ def create_data_array(freq, bias, signal, phase, dtype):
     ar["freq"] = frequency.ravel()
     ar["bias"] = biases.ravel()
     ar["signal"] = signal.ravel()
-    ar["phase"] = phase.ravel()
     return np.rec.array(ar)
 
 
@@ -27,34 +58,36 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
     qubit_data = data[qubit]
     frequencies = qubit_data.freq * HZ_TO_GHZ
 
-    subplot_titles = (
-        "Signal [a.u.]",
-        "Phase [rad]",
-    )
-    fig = make_subplots(
-        rows=1,
-        cols=2,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=subplot_titles,
-    )
-
+    fig = go.Figure()
     fig.add_trace(
         go.Heatmap(
             x=qubit_data.freq * HZ_TO_GHZ,
             y=qubit_data.bias,
             z=qubit_data.signal,
-            colorbar_x=0.46,
+            colorbar=dict(title="Signal [a.u.]"),
+            colorscale="Viridis",
         ),
-        row=1,
-        col=1,
     )
+
+    filtered_freq, filtered_bias = data.filtered_data(qubit)
+
+    if filtered_freq is not None and filtered_bias is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=filtered_freq * HZ_TO_GHZ,
+                y=filtered_bias,
+                name="Estimated points",
+                mode="markers",
+                marker=dict(color="rgb(248, 248, 248)"),
+            )
+        )
 
     # TODO: This fit is for frequency, can it be reused here, do we even want the fit ?
     if (
         fit is not None
+        and fit_function is not None
         and not data.__class__.__name__ == "CouplerSpectroscopyData"
-        and qubit in fit.fitted_parameters
+        and fit.successful_fit[qubit]
     ):
         params = fit.fitted_parameters[qubit]
         bias = np.unique(qubit_data.bias)
@@ -64,11 +97,10 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
                 y=bias,
                 showlegend=True,
                 name="Fit",
-                marker=dict(color="green"),
+                marker=dict(color="rgb(248, 248, 248)"),
             ),
-            row=1,
-            col=1,
         )
+
         fig.add_trace(
             go.Scatter(
                 x=[
@@ -80,39 +112,17 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
                 mode="markers",
                 marker=dict(
                     size=8,
-                    color="black",
-                    symbol="cross",
+                    color="red",
                 ),
                 name="Sweetspot",
                 showlegend=True,
             ),
-            row=1,
-            col=1,
         )
 
     fig.update_xaxes(
         title_text="Frequency [GHz]",
-        row=1,
-        col=1,
     )
-
-    fig.update_yaxes(title_text="Bias [V]", row=1, col=1)
-
-    fig.add_trace(
-        go.Heatmap(
-            x=qubit_data.freq * HZ_TO_GHZ,
-            y=qubit_data.bias,
-            z=qubit_data.phase,
-            colorbar_x=1.01,
-        ),
-        row=1,
-        col=2,
-    )
-    fig.update_xaxes(
-        title_text="Frequency [GHz]",
-        row=1,
-        col=2,
-    )
+    fig.update_yaxes(title_text="Bias [V]")
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
 
@@ -153,8 +163,8 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
             row=1,
             col=col + 1,
         )
-        if fit is not None:
-            if flux_qubit[1] != qubit and flux_qubit in fit.fitted_parameters:
+        if fit is not None and fit.successful_fit[qubit]:
+            if flux_qubit[1] != qubit:
                 fig.add_trace(
                     go.Scatter(
                         x=fit_function(
@@ -288,25 +298,20 @@ def transmon_readout_frequency(
      Returns:
          (float): resonator frequency as a function of bias.
     """
-    return resonator_freq + g**2 * G_f_d(
-        xi,
-        xj,
-        offset=offset,
+
+    qubit_frequency = transmon_frequency(
+        xi=xi,
+        xj=xj,
+        w_max=w_max,
         d=d,
         normalization=normalization,
+        offset=offset,
         crosstalk_element=crosstalk_element,
-    ) / (
-        resonator_freq
-        - transmon_frequency(
-            xi=xi,
-            xj=xj,
-            w_max=w_max,
-            d=d,
-            normalization=normalization,
-            offset=offset,
-            crosstalk_element=crosstalk_element,
-            charging_energy=charging_energy,
-        )
+        charging_energy=charging_energy,
+    )
+    return resonator_freq + g**2 * (
+        1 / (resonator_freq - qubit_frequency)
+        - 1 / (resonator_freq - qubit_frequency + charging_energy)
     )
 
 
@@ -324,3 +329,72 @@ def qubit_flux_dependence_fit_bounds(qubit_frequency: float):
             1,
         ],
     )
+
+
+def filter_data(matrix_z: np.ndarray):
+    """Filter data with a ZCA transformation and then a unit-variance Gaussian."""
+
+    # adding zca filter for filtering out background noise gradient
+    zca_z = zca_whiten(matrix_z)
+    # adding gaussian fliter with unitary variance for blurring the signal and reducing noise
+    return ndimage.gaussian_filter(zca_z, 1)
+
+
+def flux_extract_feature(
+    x: np.ndarray,
+    y: np.ndarray,
+    z: np.ndarray,
+    find_min: bool,
+    min_points: int = 5,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Extract features of the signal by filtering out background noise.
+
+    It first applies a custom filter mask (see `custom_filter_mask`)
+    and then finds the biggest peak for each DC bias value;
+    the masked signal is then clustered (see `clustering`) in order to classify the relevant signal for the experiment.
+    If `find_min` is set to `True` it finds minimum peaks of the input signal;
+    `min_points` is the minimum number of points for a cluster to be considered relevant signal.
+    Position of the relevant signal is returned.
+    """
+
+    reshaped_x, reshaped_y, reshaped_z = reshaping_raw_signal(x, y, z)
+    reshaped_z = -reshaped_z if find_min else reshaped_z
+
+    z_masked = filter_data(reshaped_z)
+
+    # renormalizing
+    z_masked_norm = scaling_slice(z_masked, axis=1)
+
+    # filter data using find_peaks
+    peaks_dict = peaks_finder(reshaped_x, reshaped_y, z_masked_norm)
+    if len(peaks_dict.keys()) == 0:  # if find_peaks fails
+        """
+        Peaks Detection Failed:
+        no peaks found in peaks_finder routine.
+        """
+        return None, None
+
+    peaks, labels = clustering(peaks_dict, z_masked)
+
+    # merging close clusters
+    try:
+        signal_clusters = merging(
+            peaks,
+            labels,
+            min_points,
+            distance_xy=DISTANCE_XY,
+            distance_z=DISTANCE_Z,
+        )
+
+    except FeatExtractionError:
+        return None, None
+
+    medians = np.array(
+        [[lab, np.median(cl["cluster"][2, :])] for lab, cl in signal_clusters.items()]
+    )
+
+    signal_labels = np.zeros(labels.size, dtype=bool)
+    signal_idx = medians[np.argmax(medians[:, 1]), 0]
+    signal_labels[signal_clusters[signal_idx]["cluster"][-1, :].astype(int)] = True
+
+    return peaks_dict["x"]["val"][signal_labels], peaks_dict["y"]["val"][signal_labels]
