@@ -7,7 +7,7 @@ channel with frequency set to the frequency of the target drive channel.
 
 import datetime
 from dataclasses import dataclass, field
-from typing import Literal, Union
+from typing import Any, Literal, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -29,31 +29,30 @@ from .....auto.operation import (
     Routine,
 )
 from .....calibration import CalibrationPlatform
-from .....result import probability
 from ..utils import Basis, SetControl, cr_sequence
 from .utils import (
     EPS,
     HamiltonianTerm,
-    amplitude_tomography_cr_fit,
     calibration_cr_plot,
+    phase_tomography_cr_fit,
 )
 
-HamiltonianTomographyCRAmplitudeType = np.dtype(
+HamiltonianTomographyCANCPhaseType = np.dtype(
     [
         ("prob_target", np.float64),
         ("error_target", np.float64),
         ("prob_control", np.float64),
         ("error_control", np.float64),
-        ("amp", np.float64),
+        ("phase", np.float64),
         ("x", np.int64),
     ]
 )
-"""Custom dtype for CR amplitude."""
+"""Custom dtype for Cancellation phase."""
 
 
 @dataclass
-class HamiltonianTomographyCRAmplitudeParameters(Parameters):
-    """HamiltonianTomographyCRAmplitude runcard inputs."""
+class HamiltonianTomographyCANCPhaseParameters(Parameters):
+    """HamiltonianTomographyCANCPhase runcard inputs."""
 
     pulse_duration_start: float
     """Initial duration of CR pulse [ns]."""
@@ -61,14 +60,14 @@ class HamiltonianTomographyCRAmplitudeParameters(Parameters):
     """Final duration of CR pulse [ns]."""
     pulse_duration_step: float
     """Step CR pulse duration [ns]."""
-    control_amplitude: float
+    control_phase_step: float
+    """Step CR pulse phase."""
+    control_phase: float = 0
+    """Initial phase of CR pulse."""
+    control_phase_end: float = 2 * np.pi
+    """Final phase of CR pulse."""
+    control_amplitude: Union[dict[QubitPairId, float], float] = 0.1
     """Initial amplitude of CR pulse."""
-    target_amplitude: float
-    """Amplitude of cancellation pulse."""
-    target_ampl_end: float
-    """Final amplitude of CR pulse."""
-    target_ampl_step: float
-    """Step CR pulse amplitude."""
     interpolated_sweeper: bool = False
     """Use real-time interpolation if supported by instruments."""
     echo: bool = False
@@ -78,12 +77,12 @@ class HamiltonianTomographyCRAmplitudeParameters(Parameters):
     """
 
     @property
-    def amplitude_range(self) -> np.ndarray:
+    def phase_range(self) -> np.ndarray:
         """Amplitude range for CR pulses."""
         return np.arange(
-            self.target_amplitude,
-            self.target_ampl_end,
-            self.target_ampl_step,
+            self.control_phase,
+            self.control_phase_end,
+            self.control_phase_step,
         )
 
     @property
@@ -95,19 +94,21 @@ class HamiltonianTomographyCRAmplitudeParameters(Parameters):
 
 
 @dataclass
-class HamiltonianTomographyCRAmplitudeResults(Results):
-    """HamiltonianTomographyCRAmplitude outputs."""
+class HamiltonianTomographyCANCPhaseResults(Results):
+    """HamiltonianTomographyCANCPhase outputs."""
 
     echo: bool
+
     control_amplitude: Union[dict[QubitPairId, float], float]
+
     hamiltonian_terms: dict[QubitPairId, dict] = field(default_factory=dict)
     """Terms in effective Hamiltonian."""
     fitted_parameters: dict[tuple[QubitId, QubitId], dict[HamiltonianTerm, list]] = (
         field(default_factory=dict)
     )
-    """Fitted parameters for Hamiltonian Terms values for different amplitudes."""
+    """Fitted parameters from Hamiltonian Terms values for different phases."""
 
-    cancellation_pulse_amplitudes: dict[QubitPairId, dict[str, float]] = field(
+    cancellation_pulse_phases: dict[QubitPairId, dict[str, float]] = field(
         default_factory=dict
     )
     """Fitted parameters for cancellation pulse phases."""
@@ -119,39 +120,37 @@ class HamiltonianTomographyCRAmplitudeResults(Results):
 
 
 @dataclass
-class HamiltonianTomographyCRAmplitudeData(Data):
+class HamiltonianTomographyCANCPhaseData(Data):
     """Data structure for CR Amplitude."""
 
     echo: bool
-    control_amplitude: Union[dict[QubitPairId, float], float]
-    amplitudes: list | None = None
+    control_amplitude: Any = (None,)
+    phases: list | None = None
     data: dict[
         tuple[QubitId, QubitId, Basis, SetControl],
-        npt.NDArray[HamiltonianTomographyCRAmplitudeType],
+        npt.NDArray[HamiltonianTomographyCANCPhaseType],
     ] = field(default_factory=dict)
-    """Raw data acquired."""
 
     @property
     def pairs(self):
         return {(i[0], i[1]) for i in self.data}
 
-    def select_amplitude(self, amplitude: float):
-        new_data = HamiltonianTomographyCRAmplitudeData(
+    def select_phase(self, phase: float):
+        new_data = HamiltonianTomographyCANCPhaseData(
             echo=self.echo,
-            control_amplitude=self.control_amplitude,
         )
-        new_data.data = {k: d[d.amp == amplitude] for k, d in self.data.items()}
+        new_data.data = {k: d[d.phase == phase] for k, d in self.data.items()}
         return new_data
 
     def register_qubit(self, dtype, data_keys, data_dict):
         """Store output for single qubit."""
         duration_list = data_dict["x"]
-        amp_list = data_dict["amp"]
-        size = len(duration_list) * len(amp_list)
+        phase_list = data_dict["phase"]
+        size = len(duration_list) * len(phase_list)
         ar = np.empty(size, dtype=dtype)
-        amplitudes, durations = np.meshgrid(amp_list, duration_list)
+        phases, durations = np.meshgrid(phase_list, duration_list)
         ar["x"] = durations.ravel()
-        ar["amp"] = amplitudes.ravel()
+        ar["phase"] = phases.ravel()
         ar["prob_target"] = data_dict["prob_target"].ravel()
         ar["error_target"] = data_dict["error_target"].ravel()
         ar["prob_control"] = data_dict["prob_control"].ravel()
@@ -161,11 +160,11 @@ class HamiltonianTomographyCRAmplitudeData(Data):
 
 
 def _acquisition(
-    params: HamiltonianTomographyCRAmplitudeParameters,
+    params: HamiltonianTomographyCANCPhaseParameters,
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
-) -> HamiltonianTomographyCRAmplitudeData:
-    """Data acquisition for Hamiltonian tomography CR protocol.
+) -> HamiltonianTomographyCANCPhaseData:
+    """Data acquisition for Hamiltonian tomography CR ctrl_phaseprotocol.
 
     We measure the expectation values X,Y and Z on the target qubit after
     applying the CR sequence specified by the input parameters. We repeat the
@@ -176,9 +175,9 @@ def _acquisition(
 
     """
 
-    data = HamiltonianTomographyCRAmplitudeData(
+    data = HamiltonianTomographyCANCPhaseData(
         echo=params.echo,
-        amplitudes=params.amplitude_range.astype(float).tolist(),
+        phases=params.phase_range.astype(float).tolist(),
         control_amplitude=params.control_amplitude,
     )
 
@@ -187,20 +186,24 @@ def _acquisition(
 
         for basis in Basis:
             for setup in SetControl:
+                # if basis == Basis.Z and setup==SetControl.Id:
                 sequence, cr_pulses, cr_target_pulses, delays = cr_sequence(
                     platform=platform,
                     control=control,
                     target=target,
-                    amplitude=params.control_amplitude,
-                    phase=None,
-                    target_amplitude=params.target_ampl_end,
-                    target_phase=None,
+                    amplitude=(
+                        params.control_amplitude[pair]
+                        if isinstance(params.control_amplitude, dict)
+                        else params.control_amplitude
+                    ),
+                    phase=params.control_phase_end,
+                    target_amplitude=0,
+                    target_phase=0,
                     duration=params.pulse_duration_end,
                     echo=params.echo,
                     setup=setup,
                     basis=basis,
                 )
-
                 if params.interpolated_sweeper:
                     length_sweeper = Sweeper(
                         parameter=Parameter.duration_interpolated,
@@ -213,12 +216,21 @@ def _acquisition(
                         values=params.duration_range,
                         pulses=cr_pulses + cr_target_pulses + delays,
                     )
-
-                amp_sweeper = Sweeper(
-                    parameter=Parameter.amplitude,
-                    values=params.amplitude_range,
-                    pulses=cr_target_pulses,
-                )
+                phase_sweepers = [
+                    Sweeper(
+                        parameter=Parameter.relative_phase,
+                        values=params.phase_range,
+                        pulses=[cr_pulses[0]],
+                    )
+                ]
+                if params.echo:
+                    phase_sweepers.append(
+                        Sweeper(
+                            parameter=Parameter.relative_phase,
+                            values=params.phase_range + np.pi,
+                            pulses=[cr_pulses[1]],
+                        )
+                    )
 
                 updates = []
                 updates.append(
@@ -230,14 +242,13 @@ def _acquisition(
                         }
                     }
                 )
-                acquisition_type = AcquisitionType.INTEGRATION
-                # acquisition_type = AcquisitionType.DISCRIMINATION
+
                 results = platform.execute(
                     [sequence],
-                    [[length_sweeper], [amp_sweeper]],
+                    [[length_sweeper], phase_sweepers],
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
-                    acquisition_type=acquisition_type,
+                    acquisition_type=AcquisitionType.DISCRIMINATION,
                     averaging_mode=AveragingMode.CYCLIC,
                     updates=updates,
                 )
@@ -248,23 +259,15 @@ def _acquisition(
                     sequence.channel(platform.qubits[control].acquisition)
                 )[-1].id
 
-                if acquisition_type is AcquisitionType.INTEGRATION:
-                    prob_target = results[target_acq_handle]
-                    prob_control = results[control_acq_handle]
-                else:
-                    prob_target = probability(
-                        results[target_acq_handle], state=1
-                    ).ravel()
-                    prob_control = probability(
-                        results[control_acq_handle], state=1
-                    ).ravel()
+                prob_target = results[target_acq_handle].ravel()
+                prob_control = results[control_acq_handle].ravel()
 
                 data.register_qubit(
-                    HamiltonianTomographyCRAmplitudeType,
+                    HamiltonianTomographyCANCPhaseType,
                     (control, target, basis, setup),
                     dict(
                         x=length_sweeper.values,
-                        amp=amp_sweeper.values,
+                        phase=phase_sweepers[0].values,
                         prob_target=1 - 2 * prob_target,
                         error_target=2
                         * np.sqrt(
@@ -278,54 +281,52 @@ def _acquisition(
                 )
 
     t = datetime.datetime.now().strftime("%d_%m_%Y_%H:%M:%S")
-    np.savez(f"./{t}_acquisition_data_amplitude_tomography", data)
+    np.savez(f"./{t}_acquisition_data_phase_tomography", data)
 
     return data
 
 
 def _fit(
-    data: HamiltonianTomographyCRAmplitudeData,
-) -> HamiltonianTomographyCRAmplitudeResults:
-    """Post-processing function for HamiltonianTomographyCRAmplitude.
+    data: HamiltonianTomographyCANCPhaseData,
+) -> HamiltonianTomographyCANCPhaseResults:
+    """Post-processing function for HamiltonianTomographyCANCPhase.
 
     We fit the expectation values using the Eq. S10 from the paper https://arxiv.org/pdf/2303.01427.
     Afterwards, we extract the Hamiltonian terms from the fitted parameters.
 
     """
-    hamiltonian_terms, fitted_parameters, canc_amplitudes = amplitude_tomography_cr_fit(
+    hamiltonian_terms, fitted_parameters, pulses_phases = phase_tomography_cr_fit(
         data=data,
     )
 
-    return HamiltonianTomographyCRAmplitudeResults(
+    return HamiltonianTomographyCANCPhaseResults(
         echo=data.echo,
         control_amplitude=data.control_amplitude,
         hamiltonian_terms=hamiltonian_terms,
         fitted_parameters=fitted_parameters,
-        cancellation_pulse_amplitudes=canc_amplitudes,
+        cancellation_pulse_phases=pulses_phases,
     )
 
 
 def _plot(
-    data: HamiltonianTomographyCRAmplitudeData,
+    data: HamiltonianTomographyCANCPhaseData,
     target: QubitPairId,
-    fit: HamiltonianTomographyCRAmplitudeResults,
+    fit: HamiltonianTomographyCANCPhaseResults,
 ):
-    """Plotting function for HamiltonianTomographyCRAmplitude."""
+    """Plotting function for HamiltonianTomographyCANCPhase."""
     figs, fitting_report = calibration_cr_plot(data, target, fit)
     return figs, fitting_report
 
 
 def _update(
-    results: HamiltonianTomographyCRAmplitudeResults,
+    results: HamiltonianTomographyCANCPhaseResults,
     platform: CalibrationPlatform,
     target: QubitPairId,
 ):
     # here is updated the full CNOT Pulse Sequence, which is composed by a CR sequence followe by a X_pi/2 and Z_(-pi/2) rotations on
     # target and control qubit respectively
 
-    target = (
-        target[::-1] if target not in results.cancellation_pulse_amplitudes else target
-    )
+    target = target[::-1] if target not in results.cancellation_pulse_phases else target
 
     new_cr_seq, _, _, _ = cr_sequence(
         platform=platform,
@@ -335,9 +336,9 @@ def _update(
         if isinstance(results.control_amplitude, dict)
         else results.control_amplitude,
         duration=None,
-        phase=None,
-        target_amplitude=results.cancellation_pulse_amplitudes[target]["ampl_iy"],
-        target_phase=None,
+        phase=results.cancellation_pulse_phases[target]["control"],
+        target_amplitude=0,
+        target_phase=results.cancellation_pulse_phases[target]["target"],
         echo=results.echo,
         setup=SetControl.Id,
         basis=Basis.Y,
@@ -350,5 +351,5 @@ def _update(
     getattr(update, f"{results.native}_sequence")(new_cr_seq, platform, target)
 
 
-hamiltonian_tomography_cr_amplitude = Routine(_acquisition, _fit, _plot, _update)
-"""HamiltonianTomography Routine object."""
+hamiltonian_tomography_canc_phase = Routine(_acquisition, _fit, _plot, _update)
+"""HamiltonianTomographyCANCPhase Routine object."""
