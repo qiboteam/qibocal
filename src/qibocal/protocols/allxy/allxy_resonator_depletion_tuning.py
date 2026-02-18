@@ -1,15 +1,13 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AveragingMode, PulseSequence
+from qibolab import AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
-from .allxy import AllXYType, allxy_sequence, gatelist
+from .allxy import allxy_sequence, gatelist
 
 
 @dataclass
@@ -30,6 +28,10 @@ class AllXYResonatorParameters(Parameters):
     beta_param: float = None
     """Beta parameter for drag pulse."""
 
+    @property
+    def delay_range(self) -> np.ndarray:
+        return np.arange(self.delay_start, self.delay_end, self.delay_step)
+
 
 @dataclass
 class AllXYResonatorResults(Results):
@@ -40,17 +42,12 @@ class AllXYResonatorResults(Results):
 class AllXYResonatorData(Data):
     """AllXY acquisition outputs."""
 
-    delay_param: Optional[float] = None
-    """Delay parameter for resonator depletion."""
-    data: dict[tuple[QubitId, float], npt.NDArray[AllXYType]] = field(
-        default_factory=dict
-    )
+    delays: list[float] = field(default_factory=dict)
+    data: dict[QubitId, np.ndarray] = field(default_factory=dict)
     """Raw data acquired."""
 
-    @property
-    def delay_params(self):
-        """Access qubits from data structure."""
-        return np.unique([b[1] for b in self.data])
+    def z(self, qubit: QubitId) -> np.ndarray:
+        return 2 * self.data[qubit] - 1
 
 
 def _acquisition(
@@ -66,50 +63,42 @@ def _acquisition(
     until the allXY pattern looks right.
     """
 
-    data = AllXYResonatorData()
+    data = AllXYResonatorData(delays=params.delay_range.tolist())
+    data_ = {qubit: [] for qubit in targets}
 
-    delays = np.arange(params.delay_start, params.delay_end, params.delay_step)
-    # sweep the parameters
-    for delay in delays:
-        sequences, all_ro_pulses = [], []
-        for gates in gatelist:
-            sequence = PulseSequence()
-            ro_pulses = {}
-            for qubit in targets:
-                qubit_sequence, ro_pulses[qubit] = allxy_sequence(
-                    platform,
-                    gates,
-                    qubit,
-                    beta_param=params.beta_param,
-                    sequence_delay=delay,
-                    readout_delay=1000,
-                )
-                sequence += qubit_sequence
-            sequences.append(sequence)
-            all_ro_pulses.append(ro_pulses)
-        options = dict(nshots=params.nshots, averaging_mode=AveragingMode.CYCLIC)
-        if params.unrolling:
-            results = platform.execute(sequences, **options)
-        else:
-            results = {}
-            for sequence in sequences:
-                results.update(platform.execute([sequence], **options))
+    for gates in gatelist:
+        sequence = PulseSequence()
+        ro_pulses = {}
+        all_delays = []
+        for qubit in targets:
+            qubit_sequence, delays, ro_pulses[qubit] = allxy_sequence(
+                platform,
+                gates,
+                qubit,
+                beta_param=params.beta_param,
+                readout_delay=1000,
+            )
+            all_delays += delays
+            sequence += qubit_sequence
 
-        for gates, ro_pulses in zip(gatelist, all_ro_pulses):
-            gate = "-".join(gates)
-            for qubit in targets:
-                prob = 1 - results[ro_pulses[qubit].id]
-                z_proj = 2 * prob - 1
-                errors = 2 * np.sqrt(prob * (1 - prob) / params.nshots)
-                data.register_qubit(
-                    AllXYType,
-                    (qubit, float(delay)),
-                    dict(
-                        prob=np.array([z_proj]),
-                        gate=np.array([gate]),
-                        errors=np.array([errors]),
-                    ),
-                )
+        sweeper = Sweeper(
+            parameter=Parameter.duration,
+            values=params.delay_range,
+            pulses=all_delays,
+        )
+
+        results = platform.execute(
+            [sequence],
+            [[sweeper]],
+            nshots=params.nshots,
+            averaging_mode=AveragingMode.CYCLIC,
+        )
+
+        for qubit in targets:
+            prob = 1 - results[ro_pulses[qubit].id]
+            data_[qubit].append(prob)
+
+    data.data = {qubit: np.column_stack(data_[qubit]) for qubit in targets}
 
     return data
 
@@ -126,19 +115,16 @@ def _plot(data: AllXYResonatorData, target: QubitId, fit: AllXYResonatorResults 
     fitting_report = ""
 
     fig = go.Figure()
-    delay_params = data.delay_params
-
-    for j, delay_param in enumerate(delay_params):
-        delay_param_data = data[target, delay_param]
+    for i, data_ in enumerate(data.z(target)):
         fig.add_trace(
             go.Scatter(
-                x=delay_param_data.gate,
-                y=delay_param_data.prob,
+                x=["".join(gate) for gate in gatelist],
+                y=data_,
                 mode="markers+lines",
                 opacity=0.5,
-                name=f"Delay {delay_param}",
+                name=f"Delay {data.delays[i]}",
                 showlegend=True,
-                legendgroup=f"group{j}",
+                legendgroup=f"group{i}",
                 text=gatelist,
                 textposition="bottom center",
             ),

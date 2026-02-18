@@ -95,7 +95,7 @@ def _acquisition(
         sequence = PulseSequence()
         ro_pulses = {}
         for qubit in targets:
-            qubit_sequence, ro_pulses[qubit] = allxy_sequence(
+            qubit_sequence, _, ro_pulses[qubit] = allxy_sequence(
                 platform, gates, qubit, beta_param=params.beta_param
             )
             sequence += qubit_sequence
@@ -152,15 +152,22 @@ def allxy_sequence(
     platform: CalibrationPlatform,
     gates,
     qubit,
-    sequence_delay=None,
     readout_delay=None,
     beta_param=None,
 ):
     natives = platform.natives.single_qubit[qubit]
     qd_channel, _ = natives.RX()[0]
+    ro_channel, _ = natives.MZ()[0]
     sequence = PulseSequence()
-    if sequence_delay is not None:
-        sequence.append((qd_channel, Delay(duration=sequence_delay)))
+
+    delays = []
+    if readout_delay is not None:
+        delays = 2 * [Delay(duration=0)]
+        sequence += natives.MZ()
+        sequence.append((qd_channel, Delay(duration=natives.MZ().duration)))
+        sequence.append((qd_channel, delays[0]))
+        sequence.append((ro_channel, delays[1]))
+
     for gate in gates:
         if gate == "I":
             pass
@@ -201,7 +208,7 @@ def allxy_sequence(
             )
         )
     sequence.append((ro_channel, ro_pulse))
-    return sequence, ro_pulse
+    return sequence, delays, ro_pulse
 
 
 def _fit(_data: AllXYData) -> AllXYResults:
