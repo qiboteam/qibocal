@@ -16,7 +16,7 @@ from .utils import _get_lo_frequency
 
 __all__ = ["time_of_flight_readout"]
 
-MINIMUM_TOF = 24
+MINIMUM_TOF = 28
 """Minimum value for time of flight"""
 
 
