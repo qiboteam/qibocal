@@ -3,9 +3,10 @@ from .chsh import chsh
 from .cross_resonance import (
     cross_resonance_amplitude,
     cross_resonance_length,
+    hamiltonian_tomography_canc_amplitude,
+    hamiltonian_tomography_canc_phase,
     hamiltonian_tomography_cr_amplitude,
     hamiltonian_tomography_cr_length,
-    hamiltonian_tomography_cr_phase,
 )
 from .optimize import optimize_two_qubit_gate
 from .snz_optimize import snz_optimize
@@ -25,9 +26,10 @@ __all__ += ["snz_optimize", "snz_optimize_t_idle", "snz_optimize_t_idle_vs_t_tot
 __all__ += [
     "cross_resonance_amplitude",
     "hamiltonian_tomography_cr_length",
-    "cross_resonance_length",
     "hamiltonian_tomography_cr_amplitude",
-    "hamiltonian_tomography_cr_phase",
+    "cross_resonance_length",
+    "hamiltonian_tomography_canc_amplitude",
+    "hamiltonian_tomography_canc_phase",
 ]
 __all__ += ["chsh"]
 __all__ += ["cross_resonance_length", "cross_resonance_amplitude"]
