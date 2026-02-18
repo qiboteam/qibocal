@@ -88,6 +88,7 @@ def scipy_curve_fit_optimizer(
     omega_guesses[-1] = np.sqrt(np.abs(offsets[-1]))
     omega_guesses[1] = offsets[1] / omega_guesses[-1]
     omega_guesses[0] = offsets[0] / omega_guesses[-1]
+    omega_guesses = np.concatenate([omega_guesses, [0]])
 
     popt, _ = curve_fit(
         fitting.combined_fit,
@@ -95,7 +96,7 @@ def scipy_curve_fit_optimizer(
         concatenated_signal.ravel(),
         maxfev=int(1e6),
         p0=omega_guesses,
-        bounds=([-np.inf, -np.inf, -np.inf], [np.inf, np.inf, np.inf]),
+        bounds=([-np.inf, -np.inf, -np.inf, 0], [np.inf, np.inf, np.inf, np.inf]),
         sigma=errors,
     )
 
@@ -125,7 +126,7 @@ def numerical_root_finder(
     )
 
     if res.success:
-        cr_sig = res.x[0]
+        cr_sig = min(res.x)
 
     return cr_sig
 
@@ -287,109 +288,19 @@ def estimate_cr_phases(
         tol=tol,
     )
 
-    if fitting.sin_fit(tuned_phases["phi0"], **phase_params[HamiltonianTerm.ZX]) < 0:
+    if fitting.sin_fit(tuned_phases["phi0"], **phase_params[HamiltonianTerm.ZX]) > 0:
         # in https://journals.aps.org/pra/pdf/10.1103/PhysRevA.93.060302
         # it is said we need to choose the CR phase that minimizes ZY components
-        # and maximizes ZX interaction.
+        # and maximizes ZX interaction; though we compensate it with the final
+        # X rotation on target qubit for building CNOT (otherwise add a n.pi
+        # relative phase on X gate)
         tuned_phases["phi0"] += np.pi
 
-    if fitting.sin_fit(tuned_phases["phi1"], **phase_params[HamiltonianTerm.IX]) < 0:
+    if fitting.sin_fit(tuned_phases["phi1"], **phase_params[HamiltonianTerm.IX]) > 0:
         # same as above, but this time is more euristic.
         tuned_phases["phi1"] += np.pi
 
     return tuned_phases["phi0"], tuned_phases["phi0"] - tuned_phases["phi1"]
-
-
-# def estimate_cancellation_amplitudes(
-#     amplitudes,
-#     ham_term:dict,
-#     ampl_params: dict,
-#     tol:float = 1e-6,
-# ):
-
-#     # converting list into numpy array
-#     amplitudes = np.array(amplitudes)
-
-#     ix_ham_term = np.abs(np.array(ham_term[HamiltonianTerm.IX]))
-#     ix_idx = np.argmin(ix_ham_term)
-#     ampl_ix = amplitudes[ix_idx]
-#     if HamiltonianTerm.IX in ampl_params:
-#         zy_ampl_fit = fitting.sin_fit(amplitudes, *ampl_params[HamiltonianTerm.IX])
-#         if np.min(np.abs(ix_ham_term)) > np.min(np.abs(zy_ampl_fit)):
-#             ix_a, ix_b = ampl_params[HamiltonianTerm.IX]
-#             ampl_ix = numerical_root_finder(
-#                                 root_func=fitting.linear_fit,
-#                                 x_range=amplitudes,
-#                                 tol=tol,
-#                                 a=ix_a,
-#                                 b=ix_b,
-#                                 )
-
-#     iy_ham_term = np.abs(np.array(ham_term[HamiltonianTerm.IY]))
-#     t_idx = np.argmin(iy_ham_term)
-#     ampl_iy = amplitudes[t_idx]
-#     if HamiltonianTerm.IY in ampl_params:
-#         iy_ampl_fit = fitting.sin_fit(amplitudes, *ampl_params[HamiltonianTerm.IY])
-
-#         if np.min(iy_ham_term) > np.min(np.abs(iy_ampl_fit)):
-#             iy_a, iy_b = ampl_params[HamiltonianTerm.IY]
-#             ampl_iy = numerical_root_finder(
-#                                 root_func=fitting.linear_fit,
-#                                 x_range=amplitudes,
-#                                 tol=tol,
-#                                 a=iy_a,
-#                                 b=iy_b,
-#                                 )
-
-#     return float(ampl_ix), float(ampl_iy)
-
-
-# def estimate_cr_phases(
-#     phases,
-#     ham_term:dict,
-#     phase_params: dict,
-#     tol:float = 1e-6,
-# ):
-
-#     # converting list into numpy array
-#     phases = np.array(phases)
-
-#     zy_ham_term = np.abs(np.array(ham_term[HamiltonianTerm.ZY]))
-#     c_idx = np.argmin(zy_ham_term)
-#     phi0 = phases[c_idx]
-#     if HamiltonianTerm.ZY in phase_params:
-#         zy_phase_fit = fitting.sin_fit(phases, *phase_params[HamiltonianTerm.ZY])
-#         if np.min(np.abs(zy_ham_term)) > np.min(np.abs(zy_phase_fit)):
-#             c_a, c_b, c_omega, c_phi = phase_params[HamiltonianTerm.ZY]
-#             phi0 = numerical_root_finder(
-#                                 root_func=fitting.sin_fit,
-#                                 x_range=phases,
-#                                 tol=tol,
-#                                 a=c_a,
-#                                 b=c_b,
-#                                 omega=c_omega,
-#                                 phi=c_phi,
-#                                 )
-
-#     iy_ham_term = np.abs(np.array(ham_term[HamiltonianTerm.IY]))
-#     t_idx = np.argmin(iy_ham_term)
-#     phi1 = phases[t_idx]
-#     if HamiltonianTerm.IY in phase_params:
-#         iy_phase_fit = fitting.sin_fit(phases, *phase_params[HamiltonianTerm.IY])
-
-#         if np.min(iy_ham_term) > np.min(np.abs(iy_phase_fit)):
-#             t_a, t_b, t_omega, t_phi = phase_params[HamiltonianTerm.IY]
-#             phi1 = numerical_root_finder(
-#                                 root_func=fitting.sin_fit,
-#                                 x_range=phases,
-#                                 tol=tol,
-#                                 a=t_a,
-#                                 b=t_b,
-#                                 omega=t_omega,
-#                                 phi=t_phi,
-#                                 )
-
-#     return float(phi0), float(phi0 - phi1)
 
 
 def tomography_cr_fit(
@@ -718,6 +629,7 @@ def tomography_cr_plot(
                                     ]
                                 )
                             ),
+                            gamma=fit.fitted_parameters[target[0], target[1], setup][3],
                         ),
                         name=f"Simultaneous Fit of target when control at {0 if setup is SetControl.Id else 1}",
                         showlegend=True if basis is Basis.Z else False,
