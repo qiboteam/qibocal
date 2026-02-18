@@ -105,9 +105,7 @@ def _get_hardware_calibration(
     cluster: Cluster, seq_map: SequencerMap
 ) -> dict[str, ModuleCalibrationData]:
 
-    modules = cluster._cluster.get_connected_modules(
-        lambda mod: mod.is_rf_type
-    )
+    modules = cluster._cluster.get_connected_modules(lambda mod: mod.is_rf_type)
     data: dict[str, ModuleCalibrationData] = {}
 
     # Iterate over seq_map to get channels and their assigned sequencers
@@ -170,7 +168,7 @@ def _acquisition(
     Returns:
         CalibrateMixersData with initial and final calibration values
     """
-    
+
     data = CalibrateMixersData()
 
     instrs = {
@@ -193,9 +191,7 @@ def _acquisition(
             configs=configs,
         )
 
-        modules = cluster._cluster.get_connected_modules(
-            lambda mod: mod.is_rf_type
-        )
+        modules = cluster._cluster.get_connected_modules(lambda mod: mod.is_rf_type)
 
         # Read current hardware calibration values (should match those in parameters.json, this works only instr for one at the moment)
         data.initial_calibration[instr_id] = _get_hardware_calibration(cluster, seq_map)
