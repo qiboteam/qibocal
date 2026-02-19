@@ -215,7 +215,10 @@ def _fit(data: ResonatorPunchoutAttenuationData) -> ResonatorPunchoutAttenuation
             successful_fit[qubit] = False
             continue
 
-        bare_freq, readout_freq, ro_val = fit_punchout(filtered_x, -filtered_y)
+        # flipping sign to the filtered signal: convert attenuation (positive) to
+        # power (negative)
+        filtered_y = -filtered_y
+        bare_freq, readout_freq, ro_val = fit_punchout(filtered_x, filtered_y)
         successful_fit[qubit] = True
 
         readout_freqs[qubit] = float(readout_freq)
