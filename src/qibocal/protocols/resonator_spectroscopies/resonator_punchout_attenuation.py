@@ -307,7 +307,7 @@ def _plot(
         fig.add_trace(
             go.Scatter(
                 x=[fit.readout_frequency[target] * HZ_TO_GHZ],
-                y=[fit.readout_attenuation[target]],
+                y=[-fit.readout_attenuation[target]],
                 mode="markers",
                 marker=dict(
                     size=8,
