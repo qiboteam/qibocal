@@ -257,11 +257,15 @@ def _plot(
     qubit_phase -= qubit_phase_compensation
     frequencies *= HZ_TO_GHZ
 
+    signal_norm = qubit_signal / 10 ** (-attenuations / 20)
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
             y=attenuations,
-            z=qubit_signal,
+            z=signal_norm,
+            zmin=np.percentile(signal_norm, 0.5),
+            zmax=np.percentile(signal_norm, 99.5),
+            colorbar=dict(title="Raw signal"),
             colorbar_x=0.46,
             reversescale=data.find_min,
         ),
