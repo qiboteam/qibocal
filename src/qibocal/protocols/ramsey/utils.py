@@ -5,7 +5,7 @@ from qibolab import Delay, Platform, Pulse, PulseSequence, Rectangular
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import QubitId
-from qibocal.protocols.utils import GHZ_TO_HZ, fallback_period, guess_period
+from qibocal.protocols.utils import GHZ_TO_HZ, angle_wrap, fallback_period, guess_period
 
 POPT_EXCEPTION = [0, 0, 0, 0, 1]
 """Fit parameters output to handle exceptions"""
@@ -15,21 +15,11 @@ and is meant to avoid breaking the code."""
 THRESHOLD = 0.5
 """Threshold parameters for find_peaks to guess frequency for sinusoidal fit."""
 DAMPED_CONSTANT = 1.5
-"""Scaling factor to recover amplitude from quantiles.
+"""See :const:`rabi.utils.QUANTILE_CONSTANT` for details.
 
-Measuring intermediate quantiles is less noise sensitive then meauring extremal points
-(minimum and maximum), but it is not a direct measurement of the amplitude itself.
-For pure sinusoidal oscillations, the scaling from the value associated to a given
-quantile and the amplitude is asymptotically fixed, for a large number of oscillations.
-Assuming that samples are dense enough that they could be represented by the continuous
-distribution, essentially projecting a uniform measure over an interval through a single
-sinusoidal oscillation.
-
-.. todo::
-
-    Move the above paragraph to the Rabi equivalent, and replace here with a reference
-
-However, for damped oscillations, the factor is not easily determined, since the
+In general in Ramsey it's intended to observe the decay of the signal due to decoherence, hence we
+need to correct and decrease a little the value of :const:`rabi.utils.DAMPED_CONSTANT`;
+Indeed, for damped oscillations, the factor is not easily determined, since the
 value associated to a certian quantile depends on the observation window extent, and the
 ratio between the decay rate and the oscillation.
 
@@ -95,11 +85,6 @@ def ramsey_sequence(
 def ramsey_fit(x, offset, amplitude, delta, phase, decay):
     """Dumped sinusoidal fit."""
     return offset + amplitude * np.sin(x * delta + phase) * np.exp(-x * decay)
-
-
-def angle_wrap(angle: float):
-    """Wrap an angle from [-np.inf,np.inf] into the [0,2*np.pi] domain"""
-    return angle % (2 * np.pi)
 
 
 def fitting(x: list, y: list, errors: list = None) -> list:
