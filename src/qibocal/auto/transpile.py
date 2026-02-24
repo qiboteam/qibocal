@@ -80,7 +80,7 @@ def execute_circuit(circuit, platform, compiler, initial_state=None, nshots=1000
 
     # TODO?: pass options dict
     readout = platform.execute(
-        [sequence], nshots=nshots, averaging_mode=AveragingMode.SINGLESHOT
+        [sequence], nshots=nshots, averaging_mode=AveragingMode.CYCLIC
     )
 
     result = list(readout.values())[0]
@@ -121,7 +121,9 @@ def execute_circuits(platform, compiler, circuits, initial_states=None, nshots=1
         *(compiler.compile(circuit, platform) for circuit in circuits)
     )
 
-    readout = platform.execute(sequences, nshots=nshots)
+    readout = platform.execute(
+        sequences, nshots=nshots, averaging_mode=AveragingMode.CYCLIC
+    )
 
     result = list(readout.values())
 

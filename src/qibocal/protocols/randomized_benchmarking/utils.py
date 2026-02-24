@@ -84,7 +84,7 @@ GLOBAL_PHASES = [
 
 RBType = np.dtype(
     [
-        ("samples", np.int32),
+        ("samples", np.float64),
     ]
 )
 """Custom dtype for RB."""
@@ -278,9 +278,7 @@ class RBData(Data):
         """Extract the probabilities given `qubit`"""
         probs = []
         for depth in self.depths:
-            data_list = np.array(self.data[qubit, depth].tolist())
-            data_list = data_list.reshape((-1, self.nshots))
-            probs.append(np.count_nonzero(1 - data_list, axis=1) / data_list.shape[1])
+            probs.append(1 - self.data[qubit, depth]["samples"])
         return probs
 
 
@@ -485,17 +483,23 @@ def rb_acquisition(
     )
     executed_circuits = execute_circuits(circuits, targets, params, platform)
 
-    samples = np.reshape(executed_circuits, (-1, len(targets), params.nshots))
+    samples = np.reshape(executed_circuits, (-1, len(targets)))
 
-    for i, depth in enumerate(params.depths):
-        index = (i * params.niter, (i + 1) * params.niter)
+    niter = params.niter
+    depths = params.depths
+    for i, depth in enumerate(depths):
+        # get the samples coresponding to a given circuit depth
+        start_depth = i * niter
+        stop_depth = (i + 1) * niter
+        depth_samples = samples[start_depth:stop_depth]
+
         for nqubit, qubit_id in enumerate(targets):
             data.register_qubit(
                 RBType,
                 (qubit_id, depth),
-                dict(
-                    samples=samples[index[0] : index[1]][:, nqubit],
-                ),
+                {
+                    "samples": depth_samples[:, nqubit],
+                },
             )
     data.circuits = indexes
     data.npulses_per_clifford = npulses_per_clifford
