@@ -7,7 +7,6 @@ from typing import Callable, Iterable, Optional, Tuple, Union
 import numpy as np
 import numpy.typing as npt
 from qibo import gates
-from qibo.backends import construct_backend
 from qibo.models import Circuit
 
 from qibocal.auto.operation import Data, Parameters, QubitId, QubitPairId, Results
@@ -15,6 +14,7 @@ from qibocal.auto.transpile import (
     dummy_transpiler,
     execute_transpiled_circuit,
     execute_transpiled_circuits,
+    get_compiler,
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.randomized_benchmarking.dict_utils import (
@@ -27,7 +27,7 @@ from qibocal.protocols.randomized_benchmarking.dict_utils import (
     separator,
 )
 from qibocal.protocols.utils import significant_digit
-from qibocal.auto.transpile import get_compiler
+
 from .fitting import fit_exp1B_func
 
 SINGLE_QUBIT_CLIFFORDS = {
@@ -505,7 +505,6 @@ def rb_acquisition(
 
 def twoq_rb_acquisition(
     params: Parameters,
-    platform: CalibrationPlatform,
     targets: list[QubitPairId],
     add_inverse_layer: bool = True,
     interleave: str = None,
@@ -523,7 +522,7 @@ def twoq_rb_acquisition(
         RB2QData: The acquired data for two qubit randomized benchmarking.
     """
     targets = [tuple(pair) if isinstance(pair, list) else pair for pair in targets]
-    data, backend = setup(params, platform, single_qubit=False, interleave=interleave)
+    data, backend = setup_data(params, single_qubit=False, interleave=interleave)
     circuits, indexes, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, single_qubit=False
     )

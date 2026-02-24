@@ -1,18 +1,14 @@
 from typing import Optional
 
 from qibo import Circuit, gates
-from qibo.backends import Backend
 from qibo.transpiler.pipeline import Passes
 from qibo.transpiler.unroller import NativeGates, Unroller
-from qibolab import PulseSequence
+from qibolab import AveragingMode, PulseSequence
 from qibolab._core.compilers import Compiler
 from qibolab._core.native import NativeContainer
-from qibo.result import MeasurementOutcomes
 
 from qibocal.auto.operation import QubitId
 from qibocal.config import raise_error
-from qibolab import AveragingMode
-import numpy as np
 
 REPLACEMENTS = {
     "RX": "GPI2",
@@ -83,11 +79,14 @@ def execute_circuit(circuit, platform, compiler, initial_state=None, nshots=1000
     sequence, _measurement_map = compiler.compile(circuit, platform)
 
     # TODO?: pass options dict
-    readout = platform.execute([sequence], nshots=nshots, averaging_mode=AveragingMode.SINGLESHOT)
+    readout = platform.execute(
+        [sequence], nshots=nshots, averaging_mode=AveragingMode.SINGLESHOT
+    )
 
     result = list(readout.values())[0]
 
     return result
+
 
 def execute_circuits(platform, compiler, circuits, initial_states=None, nshots=1000):
     """Executes multiple quantum circuits with a single communication with
@@ -118,23 +117,15 @@ def execute_circuits(platform, compiler, circuits, initial_states=None, nshots=1
         )
 
     # TODO: Maybe these loops can be parallelized
-    sequences, measurement_maps = zip(
+    sequences, _measurement_maps = zip(
         *(compiler.compile(circuit, platform) for circuit in circuits)
     )
 
     readout = platform.execute(sequences, nshots=nshots)
 
-    results = []
-    for circuit, measurement_map in zip(circuits, measurement_maps):
-        results.append(
-            MeasurementOutcomes(circuit.measurements, self, nshots=nshots)
-        )
-        for gate, sequence in measurement_map.items():
-            samples = [readout[acq.id] for _, acq in sequence.acquisitions]
-            gate.result.backend = self
-            gate.result.register_samples(np.array(samples).T)
-    return results
+    result = list(readout.values())
 
+    return result
 
 
 def execute_transpiled_circuits(
@@ -162,8 +153,12 @@ def execute_transpiled_circuits(
         platform,
         transpiler,
     )
-    return transpiled_circuits, execute_circuits(platform, compiler,
-        transpiled_circuits, initial_states=initial_states, nshots=nshots
+    return transpiled_circuits, execute_circuits(
+        platform,
+        compiler,
+        transpiled_circuits,
+        initial_states=initial_states,
+        nshots=nshots,
     )
 
 
