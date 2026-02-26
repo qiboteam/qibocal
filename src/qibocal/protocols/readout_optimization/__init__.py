@@ -1,7 +1,7 @@
-from .resonator_amplitude import resonator_amplitude
-from .resonator_frequency import resonator_frequency
-from .resonator_optimization import resonator_optimization
+from .amplitude import readout_amplitude_optimization
+from .frequency import readout_frequency_optimization
+from .optimization import readout_optimization
 
-__all__ = ["resonator_amplitude"]
-__all__ += ["resonator_optimization"]
-__all__ += ["resonator_frequency"]
+__all__ = ["readout_amplitude_optimization"]
+__all__ += ["readout_optimization"]
+__all__ += ["readout_frequency_optimization"]

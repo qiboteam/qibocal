@@ -14,7 +14,6 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.update import replace
 
 from ... import update
-from ...result import magnitude, phase
 from ..utils import readout_frequency
 from . import utils
 from .amplitude_signal import (
@@ -79,9 +78,6 @@ def _acquisition(
         sequence.append((qd12_channel, Delay(duration=qd_pulse.duration)))
         sequence.append((qd12_channel, qd12_pulse))
         sequence.append(
-            (qd_channel, Delay(duration=qd_pulse.duration + qd12_pulse.duration))
-        )
-        sequence.append(
             (ro_channel, Delay(duration=qd_pulse.duration + qd12_pulse.duration))
         )
         sequence.append((ro_channel, ro_pulse))
@@ -95,7 +91,6 @@ def _acquisition(
     assert not params.rx90, "Rabi ef available only for RX pulses."
 
     data = RabiAmplitudeEFData(durations=durations, rx90=False)
-
     # sweep the parameter
     results = platform.execute(
         [sequence],
@@ -104,7 +99,7 @@ def _acquisition(
             {
                 platform.qubits[q].probe: {
                     "frequency": readout_frequency(q, platform, state=1)
-                }
+                },
             }
             for q in targets
         ],
@@ -120,8 +115,8 @@ def _acquisition(
             (qubit),
             dict(
                 amp=sweeper.values,
-                signal=magnitude(result),
-                phase=phase(result),
+                signal=result.T[0],
+                phase=result.T[1],
             ),
         )
     return data

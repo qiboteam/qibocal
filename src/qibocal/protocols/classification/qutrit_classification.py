@@ -1,24 +1,21 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
+import numpy as np
+from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, PulseSequence
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.metrics import confusion_matrix
 
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
-from qibocal.protocols.utils import plot_results, readout_frequency
+from qibocal.protocols.utils import readout_frequency
 
 from ...auto.operation import Results
 from ..classification.classification import (
-    ClassificationType,
     SingleShotClassificationData,
     SingleShotClassificationParameters,
 )
-
-COLUMNWIDTH = 600
-LEGEND_FONT_SIZE = 20
-TITLE_SIZE = 25
-SPACING = 0.1
-DEFAULT_CLASSIFIER = "naive_bayes"
+from .utils import plot_confusion_matrix, plot_distribution
 
 __all__ = ["qutrit_classification"]
 
@@ -30,15 +27,14 @@ class QutritClassificationParameters(SingleShotClassificationParameters):
 
 @dataclass
 class QutritClassificationData(SingleShotClassificationData):
-    classifiers_list: Optional[list[str]] = field(
-        default_factory=lambda: [DEFAULT_CLASSIFIER]
-    )
-    """List of models to classify the qubit states"""
+    """Qutrit classification results."""
 
 
 @dataclass
 class QutritClassificationResults(Results):
     """Qutrit classification results"""
+
+    confusion_matrix: dict[QubitId, list[list[float]]] = field(default_factory=dict)
 
 
 def _acquisition(
@@ -93,8 +89,6 @@ def _acquisition(
 
     data = QutritClassificationData(
         nshots=params.nshots,
-        classifiers_list=params.classifiers_list,
-        savedir=params.savedir,
     )
 
     options = dict(
@@ -106,7 +100,7 @@ def _acquisition(
         {
             platform.qubits[q].probe: {
                 "frequency": readout_frequency(q, platform, state=1)
-            }
+            },
         }
         for q in targets
     ]
@@ -119,23 +113,23 @@ def _acquisition(
 
     for state, ro_pulses in zip(states, all_ro_pulses):
         for qubit in targets:
-            serial = ro_pulses[qubit]
-            result = results[serial]
-            data.register_qubit(
-                ClassificationType,
-                (qubit),
-                dict(
-                    i=result[..., 0],
-                    q=result[..., 1],
-                    state=[state] * params.nshots,
-                ),
-            )
+            data.data[qubit, state] = results[ro_pulses[qubit]]
 
     return data
 
 
 def _fit(data: QutritClassificationData) -> QutritClassificationResults:
-    return QutritClassificationResults()
+    confusion_matrix_ = {}
+    for qubit in data.qubits:
+        nshots = len(data.data[qubit, 0])
+        X = np.vstack([data.data[qubit, i] for i in range(3)])
+        y = np.array([0] * nshots + [1] * nshots + [2] * nshots)
+
+        lda = LinearDiscriminantAnalysis().fit(X, y)
+        confusion_matrix_[qubit] = confusion_matrix(
+            y, lda.predict(X), normalize="true"
+        ).tolist()
+    return QutritClassificationResults(confusion_matrix=confusion_matrix_)
 
 
 def _plot(
@@ -143,9 +137,59 @@ def _plot(
     target: QubitId,
     fit: QutritClassificationResults,
 ):
-    figures = plot_results(data, target, 3, None)
-    fitting_report = ""
-    return figures, fitting_report
+    figures = []
+
+    fig = make_subplots(
+        rows=2,
+        cols=2,
+        column_widths=[0.8, 0.2],
+        row_heights=[0.2, 0.8],
+        specs=[[{"type": "xy"}, {"type": "xy"}], [{"type": "xy"}, {"type": "xy"}]],
+        shared_xaxes=True,
+        shared_yaxes=True,
+        horizontal_spacing=0.02,
+        vertical_spacing=0.02,
+    )
+    plot_distribution(
+        fig=fig,
+        data={"I": data.data[target, 0].T[0], "Q": data.data[target, 0].T[1]},
+        color="red",
+        label="State 0",
+    )
+
+    plot_distribution(
+        fig=fig,
+        data={"I": data.data[target, 1].T[0], "Q": data.data[target, 1].T[1]},
+        color="blue",
+        label="State 1",
+    )
+
+    plot_distribution(
+        fig=fig,
+        data={"I": data.data[target, 2].T[0], "Q": data.data[target, 2].T[1]},
+        color="green",
+        label="State 2",
+    )
+
+    fig.update_layout(
+        hovermode="closest",
+        barmode="overlay",
+        xaxis3_title="I",
+        yaxis3_title="Q",
+    )
+
+    fig.update_xaxes(showticklabels=False, row=1, col=1)
+    fig.update_yaxes(showticklabels=False, row=2, col=2)
+
+    figures.append(fig)
+
+    if fit is not None:
+        figures.append(
+            plot_confusion_matrix(
+                confusion_matrix=fit.confusion_matrix[target], labels=["0", "1", "2"]
+            )
+        )
+    return figures, ""
 
 
 qutrit_classification = Routine(_acquisition, _fit, _plot)
