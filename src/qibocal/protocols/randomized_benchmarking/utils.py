@@ -1,5 +1,4 @@
 import pathlib
-from collections import defaultdict
 from dataclasses import dataclass, field
 from numbers import Number
 from typing import Callable, Iterable, Optional, Tuple, Union
@@ -95,7 +94,7 @@ def random_clifford(random_index_gen):
     random_index = int(random_index_gen(SINGLE_QUBIT_CLIFFORDS))
     clifford_gate = SINGLE_QUBIT_CLIFFORDS[random_index](0)
 
-    return clifford_gate, random_index
+    return clifford_gate
 
 
 def random_2q_clifford(random_index_gen, two_qubit_cliffords):
@@ -105,7 +104,7 @@ def random_2q_clifford(random_index_gen, two_qubit_cliffords):
     clifford = two_qubit_cliffords[str(random_index)]
     clifford_gate = clifford2gates(clifford)
 
-    return clifford_gate, random_index
+    return clifford_gate
 
 
 def random_circuits(
@@ -121,17 +120,15 @@ def random_circuits(
     """Returns random (self-inverting) Clifford circuits."""
 
     circuits = []
-    indexes = defaultdict(list)
     for _ in range(niter):
         for target in targets:
-            circuit, random_index = layer_circuit(rb_gen, depth, target, interleave)
+            circuit = layer_circuit(rb_gen, depth, target, interleave)
             if inverse_layer:
                 add_inverse_layer(circuit, rb_gen, single_qubit, file_inv)
             add_measurement_layer(circuit)
             circuits.append(circuit)
-            indexes[target].append(random_index)
 
-    return circuits, indexes
+    return circuits
 
 
 def number_to_str(
@@ -266,10 +263,6 @@ class RBData(Data):
         default_factory=dict
     )
     """Raw data acquired."""
-    circuits: dict[Union[QubitId, QubitPairId], list[list[int]]] = field(
-        default_factory=dict
-    )
-    """Clifford gate indexes executed."""
     npulses_per_clifford: float = 1.875
     """Number of pulses for an average clifford."""
 
@@ -376,7 +369,6 @@ def get_circuits(params, targets, add_inverse_layer, interleave, single_qubit=Tr
 
     """
     circuits = []
-    indexes = {}
     qubits_ids = targets
     rb_gen = (
         RB_Generator(params.seed)
@@ -387,7 +379,7 @@ def get_circuits(params, targets, add_inverse_layer, interleave, single_qubit=Tr
     inv_file = params.file_inv if not single_qubit else None
     for depth in params.depths:
         # TODO: This does not generate multi qubit circuits
-        circuits_depth, random_indexes = random_circuits(
+        circuits_depth = random_circuits(
             depth,
             qubits_ids,
             params.niter,
@@ -398,13 +390,7 @@ def get_circuits(params, targets, add_inverse_layer, interleave, single_qubit=Tr
             interleave,
         )
         circuits.extend(circuits_depth)
-        if single_qubit:
-            for qubit in random_indexes:
-                indexes[(qubit, depth)] = random_indexes[qubit]
-        else:
-            for qubit in random_indexes:
-                indexes[(qubit[0], qubit[1], depth)] = random_indexes[qubit]
-    return circuits, indexes, npulses_per_clifford
+    return circuits, npulses_per_clifford
 
 
 def execute_circuits(circuits, targets, params, platform, single_qubit=True):
@@ -462,7 +448,7 @@ def rb_acquisition(
         RBData: The depths, samples, and ground state probability of each experiment in the scan.
     """
     data = setup_data(params, single_qubit=True)
-    circuits, indexes, npulses_per_clifford = get_circuits(
+    circuits, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, single_qubit=True
     )
     executed_circuits = execute_circuits(circuits, targets, params, platform)
@@ -485,7 +471,6 @@ def rb_acquisition(
                     "samples": depth_samples[:, nqubit],
                 },
             )
-    data.circuits = indexes
     data.npulses_per_clifford = npulses_per_clifford
 
     return data
@@ -537,7 +522,6 @@ def twoq_rb_acquisition(
                     samples=samples[index[0] : index[1]][:, nqubit],
                 ),
             )
-    data.circuits = indexes
     data.npulses_per_clifford = npulses_per_clifford
 
     return data
@@ -558,7 +542,6 @@ def layer_circuit(
         Circuit: with `depth` many layers.
     """
     full_circuit = None
-    random_indexes = []
     if isinstance(target, (str, int)):
         nqubits = 1
         rb_gen_layer = rb_gen.layer_gen_single_qubit
@@ -570,8 +553,7 @@ def layer_circuit(
     # Build each layer, there will be depth many in the final circuit.
     for _ in range(depth):
         # Generate a layer.
-        new_layer, random_index = rb_gen_layer()
-        random_indexes.append(random_index)
+        new_layer = rb_gen_layer()
         new_circuit = Circuit(nqubits)
         if nqubits == 1:
             new_circuit.add(new_layer)
@@ -583,12 +565,11 @@ def layer_circuit(
                 interleaved_clifford = rb_gen.two_qubit_cliffords["13"]
                 interleaved_clifford_gate = clifford2gates(interleaved_clifford)
                 new_circuit.add(interleaved_clifford_gate)
-                random_indexes.append("13")
 
         if full_circuit is None:  # instantiate in first loop
             full_circuit = Circuit(new_circuit.nqubits)
         full_circuit = full_circuit + new_circuit
-    return full_circuit, random_indexes
+    return full_circuit
 
 
 def add_inverse_layer(
