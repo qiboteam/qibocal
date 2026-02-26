@@ -41,12 +41,6 @@ class StandardRBParameters(Parameters):
     If ``None``,
     it computes the standard deviation. Otherwise it computes the corresponding confidence interval. Defaults `None`.
     """
-    unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple circuits in a
-    single instrument call.
-
-    Defaults to ``False``.
-    """
     seed: Optional[int] = None
     """A fixed seed to initialize ``np.random.Generator``.
 

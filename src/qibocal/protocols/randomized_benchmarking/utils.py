@@ -12,7 +12,6 @@ from qibo.models import Circuit
 from qibocal.auto.operation import Data, Parameters, QubitId, QubitPairId, Results
 from qibocal.auto.transpile import (
     dummy_transpiler,
-    execute_transpiled_circuit,
     execute_transpiled_circuits,
     get_compiler,
 )
@@ -398,7 +397,6 @@ def get_circuits(params, targets, add_inverse_layer, interleave, single_qubit=Tr
             inv_file,
             interleave,
         )
-
         circuits.extend(circuits_depth)
         if single_qubit:
             for qubit in random_indexes:
@@ -406,7 +404,6 @@ def get_circuits(params, targets, add_inverse_layer, interleave, single_qubit=Tr
         else:
             for qubit in random_indexes:
                 indexes[(qubit[0], qubit[1], depth)] = random_indexes[qubit]
-
     return circuits, indexes, npulses_per_clifford
 
 
@@ -433,27 +430,14 @@ def execute_circuits(circuits, targets, params, platform, single_qubit=True):
         if single_qubit
         else [list(i) for i in targets] * (len(params.depths) * params.niter)
     )
-    if params.unrolling:
-        _, executed_circuits = execute_transpiled_circuits(
-            circuits,
-            qubit_maps=qubit_maps,
-            platform=platform,
-            compiler=compiler,
-            nshots=params.nshots,
-            transpiler=transpiler,
-        )
-    else:
-        executed_circuits = [
-            execute_transpiled_circuit(
-                circuit,
-                qubit_map=qubit_map,
-                platform=platform,
-                compiler=compiler,
-                nshots=params.nshots,
-                transpiler=transpiler,
-            )[1]
-            for circuit, qubit_map in zip(circuits, qubit_maps)
-        ]
+    _, executed_circuits = execute_transpiled_circuits(
+        circuits,
+        qubit_maps=qubit_maps,
+        platform=platform,
+        compiler=compiler,
+        nshots=params.nshots,
+        transpiler=transpiler,
+    )
     return executed_circuits
 
 
