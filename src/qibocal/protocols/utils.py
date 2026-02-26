@@ -1007,6 +1007,11 @@ def fallback_period(period):
     return period if period is not None else 4
 
 
+def angle_wrap(angle: float):
+    """Wrap an angle from [-np.inf,np.inf] into the [0,2*np.pi] domain"""
+    return angle % (2 * np.pi)
+
+
 def baseline_als(data: NDArray, lamda: float, p: float, niter: int = 10) -> NDArray:
     """Estimate data baseline with "asymmetric least squares" method.
 

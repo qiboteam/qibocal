@@ -10,7 +10,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.result import probability
 
-from ..utils import chi2_reduced, fallback_period, guess_period
+from ..utils import chi2_reduced
 from . import utils
 from .amplitude_signal import RabiAmplitudeSignalParameters, RabiAmplitudeSignalResults
 
@@ -108,8 +108,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         x = qubit_data.amp
         y = qubit_data.prob
 
-        period = fallback_period(guess_period(x, y))
-        pguess = [0.5, 0.5, period, np.pi]
+        pguess = utils.rabi_initial_guess(x, y, "amp", signal=False)
         try:
             popt, perr, pi_pulse_parameter = utils.fit_amplitude_function(
                 x,
