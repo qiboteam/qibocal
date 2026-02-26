@@ -153,7 +153,8 @@ def virtual_phases(
     else:  # pragma: no cover
         new_native = native_sequence
     for qubit, phase in phases.items():
-        new_native.append((platform.qubits[qubit].drive, VirtualZ(phase=phase)))
+        if set(qubit) == set(pair):
+            new_native.append((platform.qubits[qubit[0]].drive, VirtualZ(phase=phase)))
 
     platform.update(
         {f"native_gates.two_qubit.{f'{pair[0]}-{pair[1]}'}.{native}": new_native}
