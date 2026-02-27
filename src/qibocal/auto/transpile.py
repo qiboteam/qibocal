@@ -147,7 +147,7 @@ def execute_transpiled_circuits(
     The input `transpiler` is optional, but it should be provided if the backend
     is `qibolab`.
     For the qubit map look :func:`dummy_transpiler`.
-    This function returns the list of transpiled circuits and the execution results.
+    This function returns a list of the execution results.
     """
     transpiled_circuits = transpile_circuits(
         circuits,
@@ -155,7 +155,7 @@ def execute_transpiled_circuits(
         platform,
         transpiler,
     )
-    return transpiled_circuits, execute_circuits(
+    return execute_circuits(
         platform,
         compiler,
         transpiled_circuits,
