@@ -376,9 +376,10 @@ def get_circuits(params, targets, inverse_layer, interleave, single_qubit=True):
     )
     npulses_per_clifford = rb_gen.calculate_average_pulses()
     inv_file = params.file_inv if not single_qubit else None
-    # TODO: This does not generate multi qubit circuits
-    for _ in range(params.niter):
-        for depth in params.depths:
+    # TODO: This does not generate multi qubit circuits TODO: make it such that
+    # subsequent functions don't assume the inner for loop is over iterations
+    for depth in params.depths:
+        for _ in range(params.niter):
             for target in targets:
                 circuit = layer_circuit(rb_gen, depth, target, interleave)
                 if inverse_layer:
