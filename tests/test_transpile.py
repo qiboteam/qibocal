@@ -65,7 +65,7 @@ def test_execute_transpiled_circuits():
     qubit_map = [1, 2]
     backend = construct_backend("qibolab", platform="dummy")
     transpiler = dummy_transpiler(backend)
-    transpiled_circuits, _ = execute_transpiled_circuits(
+    transpiled_circuits = execute_transpiled_circuits(
         [circuit], [qubit_map], backend, transpiler=transpiler
     )
     true_circuit = Circuit(5)

@@ -44,7 +44,7 @@ def _acquisition(
     targets: list[QubitPairId],
 ) -> RB2QInterData:
     """Data acquisition for two qubit Interleaved Randomized Benchmarking."""
-    data = twoq_rb_acquisition(params, platform, targets, interleave=params.interleave)
+    data = twoq_rb_acquisition(params, targets, interleave=params.interleave)
     fidelity = {}
     for target in targets:
         assert target in platform.calibration.two_qubits, (
