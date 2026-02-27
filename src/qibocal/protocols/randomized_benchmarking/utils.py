@@ -228,11 +228,11 @@ class RB_Generator:
         """Generates a random index within the range of the given file len."""
         return self.local_state.integers(0, len(gate_dict), 1)
 
-    def layer_gen_single_qubit(self):
+    def random_layer_gen_single_qubit(self):
         """Generates a random single-qubit clifford gate."""
         return random_clifford(self.random_index)
 
-    def layer_gen_two_qubit(self):
+    def random_layer_gen_two_qubit(self):
         """Generates a random two-qubit clifford gate."""
         return random_2q_clifford(self.random_index, self.two_qubit_cliffords)
 
@@ -350,14 +350,14 @@ def setup_data(
     return data
 
 
-def get_circuits(params, targets, add_inverse_layer, interleave, single_qubit=True):
+def get_circuits(params, targets, inverse_layer, interleave, single_qubit=True):
     """
     Generate randomized benchmarking circuits.
 
     Args:
         params (Parameters): Experiment parameters.
         targets (list): List of target qubit IDs.
-        add_inverse_layer (bool): Flag indicating whether to add an inverse layer to the circuits.
+        inverse_layer (bool): Flag indicating whether to add an inverse layer to the circuits.
         interleave (str): String indicating whether to interleave the circuits with the given gate.
         single_qubit (bool, optional): Flag indicating whether to generate single qubit circuits.
 
@@ -369,7 +369,6 @@ def get_circuits(params, targets, add_inverse_layer, interleave, single_qubit=Tr
 
     """
     circuits = []
-    qubits_ids = targets
     rb_gen = (
         RB_Generator(params.seed)
         if single_qubit
@@ -377,19 +376,15 @@ def get_circuits(params, targets, add_inverse_layer, interleave, single_qubit=Tr
     )
     npulses_per_clifford = rb_gen.calculate_average_pulses()
     inv_file = params.file_inv if not single_qubit else None
-    for depth in params.depths:
-        # TODO: This does not generate multi qubit circuits
-        circuits_depth = random_circuits(
-            depth,
-            qubits_ids,
-            params.niter,
-            rb_gen,
-            add_inverse_layer,
-            single_qubit,
-            inv_file,
-            interleave,
-        )
-        circuits.extend(circuits_depth)
+    # TODO: This does not generate multi qubit circuits
+    for _ in range(params.niter):
+        for depth in params.depths:
+            for target in targets:
+                circuit = layer_circuit(rb_gen, depth, target, interleave)
+                if inverse_layer:
+                    add_inverse_layer(circuit, rb_gen, single_qubit, inv_file)
+                add_measurement_layer(circuit)
+                circuits.append(circuit)
     return circuits, npulses_per_clifford
 
 
@@ -411,12 +406,13 @@ def execute_circuits(circuits, targets, params, platform, single_qubit=True):
     # Execute the circuits
     transpiler = dummy_transpiler(platform)
     compiler = get_compiler(platform)
+    # TODO: get rid of this
     qubit_maps = (
         [[i] for i in targets] * (len(params.depths) * params.niter)
         if single_qubit
         else [list(i) for i in targets] * (len(params.depths) * params.niter)
     )
-    _, executed_circuits = execute_transpiled_circuits(
+    executed_circuits = execute_transpiled_circuits(
         circuits,
         qubit_maps=qubit_maps,
         platform=platform,
@@ -478,6 +474,7 @@ def rb_acquisition(
 
 def twoq_rb_acquisition(
     params: Parameters,
+    platform,
     targets: list[QubitPairId],
     add_inverse_layer: bool = True,
     interleave: str = None,
@@ -494,13 +491,12 @@ def twoq_rb_acquisition(
     Returns:
         RB2QData: The acquired data for two qubit randomized benchmarking.
     """
-    targets = [tuple(pair) if isinstance(pair, list) else pair for pair in targets]
-    data, backend = setup_data(params, single_qubit=False, interleave=interleave)
-    circuits, indexes, npulses_per_clifford = get_circuits(
+    data = setup_data(params, single_qubit=False, interleave=interleave)
+    circuits, npulses_per_clifford = get_circuits(
         params, targets, add_inverse_layer, interleave, single_qubit=False
     )
     executed_circuits = execute_circuits(
-        circuits, targets, params, backend, single_qubit=False
+        circuits, targets, params, platform, single_qubit=False
     )
 
     samples = []
@@ -544,13 +540,14 @@ def layer_circuit(
     full_circuit = None
     if isinstance(target, (str, int)):
         nqubits = 1
-        rb_gen_layer = rb_gen.layer_gen_single_qubit
+        rb_gen_layer = rb_gen.random_layer_gen_single_qubit
     elif isinstance(target, Tuple):  # Tuple for qubit pair
         nqubits = 2
-        rb_gen_layer = rb_gen.layer_gen_two_qubit
+        rb_gen_layer = rb_gen.random_layer_gen_two_qubit
     else:
         raise NotImplementedError("RB with more than 2 qubits is not implemented")
     # Build each layer, there will be depth many in the final circuit.
+
     for _ in range(depth):
         # Generate a layer.
         new_layer = rb_gen_layer()
@@ -568,7 +565,7 @@ def layer_circuit(
 
         if full_circuit is None:  # instantiate in first loop
             full_circuit = Circuit(new_circuit.nqubits)
-        full_circuit = full_circuit + new_circuit
+        full_circuit += new_circuit
     return full_circuit
 
 
