@@ -21,5 +21,4 @@ __all__ = [
     "chsh",
     "cross_resonance_length",
     "cross_resonance_amplitude",
-
 ]
