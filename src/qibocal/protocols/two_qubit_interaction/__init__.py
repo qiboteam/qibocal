@@ -1,6 +1,8 @@
 from .chevron import chevron, chevron_signal
 from .chsh import chsh
 from .cross_resonance import (
+    cr_crosstalk_amplitude,
+    cr_crosstalk_length,
     cross_resonance_amplitude,
     cross_resonance_length,
     hamiltonian_tomography_canc_amplitude,
@@ -30,6 +32,8 @@ __all__ += [
     "cross_resonance_length",
     "hamiltonian_tomography_canc_amplitude",
     "hamiltonian_tomography_canc_phase",
+    "cr_crosstalk_amplitude",
+    "cr_crosstalk_length",
 ]
 __all__ += ["chsh"]
 __all__ += ["cross_resonance_length", "cross_resonance_amplitude"]
