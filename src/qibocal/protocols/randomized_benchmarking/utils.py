@@ -230,7 +230,7 @@ class RB_Generator:
 
     def random_index(self, gate_dict):
         """Generates a random index within the range of the given file len."""
-        return self.local_state.integers(0, len(gate_dict), 1)
+        return self.local_state.integers(0, len(gate_dict))
 
     def layer_gen_single_qubit(self):
         """Generates a random single-qubit clifford gate."""
