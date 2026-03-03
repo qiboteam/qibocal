@@ -118,6 +118,7 @@ def random_circuits(
     single_qubit=True,
     file_inv=pathlib.Path(),
     interleave=None,
+    backend=None,
 ) -> Iterable:
     """Returns random (self-inverting) Clifford circuits."""
 
@@ -127,7 +128,9 @@ def random_circuits(
         for target in targets:
             circuit, random_index = layer_circuit(rb_gen, depth, target, interleave)
             if inverse_layer:
-                add_inverse_layer(circuit, rb_gen, single_qubit, file_inv)
+                add_inverse_layer(
+                    circuit, rb_gen, single_qubit, file_inv, backend=backend
+                )
             add_measurement_layer(circuit)
             circuits.append(circuit)
             indexes[target].append(random_index)
@@ -363,7 +366,9 @@ def setup(
     return data, backend
 
 
-def get_circuits(params, targets, add_inverse_layer, interleave, single_qubit=True):
+def get_circuits(
+    params, targets, add_inverse_layer, interleave, single_qubit=True, backend=None
+):
     """
     Generate randomized benchmarking circuits.
 
@@ -402,6 +407,7 @@ def get_circuits(params, targets, add_inverse_layer, interleave, single_qubit=Tr
             single_qubit,
             inv_file,
             interleave,
+            backend=backend,
         )
 
         circuits.extend(circuits_depth)
@@ -481,7 +487,12 @@ def rb_acquisition(
     """
     data, backend = setup(params, platform, single_qubit=True)
     circuits, indexes, npulses_per_clifford = get_circuits(
-        params, targets, add_inverse_layer, interleave, single_qubit=True
+        params,
+        targets,
+        add_inverse_layer,
+        interleave,
+        single_qubit=True,
+        backend=backend,
     )
     executed_circuits = execute_circuits(circuits, targets, params, backend)
 
@@ -528,7 +539,12 @@ def twoq_rb_acquisition(
     targets = [tuple(pair) if isinstance(pair, list) else pair for pair in targets]
     data, backend = setup(params, platform, single_qubit=False, interleave=interleave)
     circuits, indexes, npulses_per_clifford = get_circuits(
-        params, targets, add_inverse_layer, interleave, single_qubit=False
+        params,
+        targets,
+        add_inverse_layer,
+        interleave,
+        single_qubit=False,
+        backend=backend,
     )
     executed_circuits = execute_circuits(
         circuits, targets, params, backend, single_qubit=False
@@ -608,7 +624,11 @@ def layer_circuit(
 
 
 def add_inverse_layer(
-    circuit: Circuit, rb_gen: RB_Generator, single_qubit=True, file_inv=pathlib.Path()
+    circuit: Circuit,
+    rb_gen: RB_Generator,
+    single_qubit=True,
+    file_inv=pathlib.Path(),
+    backend=None,
 ):
     """Adds an inverse gate/inverse gates at the end of a circuit (in place).
 
@@ -631,7 +651,7 @@ def add_inverse_layer(
             clifford_matrices_inv = np.load(path)
 
         if circuit.depth > 0:
-            clifford = circuit.unitary()
+            clifford = circuit.unitary(backend=backend)
 
             cliffords = [clifford * global_phase for global_phase in GLOBAL_PHASES]
             cliffords_inv = [np.linalg.inv(clifford).round(3) for clifford in cliffords]

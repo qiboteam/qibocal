@@ -150,7 +150,7 @@ def _acquisition(
             )
             data.register_qubit(
                 TomographyType,
-                pair + (basis1, basis2),
+                tuple(pair) + (basis1, basis2),
                 {
                     "frequencies": np.array([frequencies[i] for i in OUTCOMES]),
                     "simulation_probabilities": simulation_probabilities,
@@ -162,7 +162,9 @@ def _acquisition(
                     q for q in range(nqubits) if q not in (2 * i, 2 * i + 1)
                 )
                 data.ideal[pair] = partial_trace(
-                    simulation_result.state(), traced_qubits
+                    simulation_result.state(),
+                    traced_qubits,
+                    backend=simulator,
                 )
 
     return data
@@ -237,7 +239,9 @@ def _fit(data: StateTomographyData) -> StateTomographyResults:
         results.measured_raw_density_matrix_imag[pair] = measured_rho.imag.tolist()
         results.measured_density_matrix_real[pair] = measured_rho_proj.real.tolist()
         results.measured_density_matrix_imag[pair] = measured_rho_proj.imag.tolist()
-        results.fidelity[pair] = fidelity(measured_rho_proj, data.ideal[pair])
+        results.fidelity[pair] = fidelity(
+            measured_rho_proj, data.ideal[pair], backend=NumpyBackend()
+        )
 
     return results
 
