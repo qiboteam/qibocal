@@ -215,12 +215,15 @@ def _fit(data: ResonatorPunchoutAttenuationData) -> ResonatorPunchoutAttenuation
             successful_fit[qubit] = False
             continue
 
-        bare_freq, readout_freq, ro_val = fit_punchout(filtered_x, -filtered_y)
+        # flipping sign to the filtered signal: convert attenuation (positive) to
+        # power (negative)
+        filtered_y = -filtered_y
+        bare_freq, readout_freq, ro_val = fit_punchout(filtered_x, filtered_y)
         successful_fit[qubit] = True
 
         readout_freqs[qubit] = float(readout_freq)
         bare_freqs[qubit] = float(bare_freq)
-        ro_values[qubit] = -float(ro_val)
+        ro_values[qubit] = float(ro_val)
 
     return ResonatorPunchoutAttenuationResults(
         readout_frequency=readout_freqs,
@@ -257,11 +260,15 @@ def _plot(
     qubit_phase -= qubit_phase_compensation
     frequencies *= HZ_TO_GHZ
 
+    signal_norm = qubit_signal / 10 ** (-attenuations / 20)
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
             y=attenuations,
-            z=qubit_signal,
+            z=signal_norm,
+            zmin=np.percentile(signal_norm, 0.5),
+            zmax=np.percentile(signal_norm, 99.5),
+            colorbar=dict(title="Raw signal"),
             colorbar_x=0.46,
             reversescale=data.find_min,
         ),
@@ -303,7 +310,7 @@ def _plot(
         fig.add_trace(
             go.Scatter(
                 x=[fit.readout_frequency[target] * HZ_TO_GHZ],
-                y=[fit.readout_attenuation[target]],
+                y=[-fit.readout_attenuation[target]],
                 mode="markers",
                 marker=dict(
                     size=8,

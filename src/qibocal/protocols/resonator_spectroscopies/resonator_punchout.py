@@ -202,11 +202,14 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, target: Qu
     qubit_phase -= qubit_phase_compensation
     x *= HZ_TO_GHZ
 
+    signal_norm = signal / np.repeat(data.amplitudes, len(data.frequencies[target]))
     fig.add_trace(
         go.Heatmap(
             x=x,
             y=y,
-            z=signal,
+            z=signal_norm,
+            zmin=np.percentile(signal_norm, 0.5),
+            zmax=np.percentile(signal_norm, 99.5),
             colorbar=dict(title="Raw signal"),
             colorbar_x=1.01,
             colorscale="Viridis",
