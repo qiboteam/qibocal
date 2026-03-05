@@ -27,6 +27,30 @@ from qibocal.protocols.randomized_benchmarking.dict_utils import (
 from qibocal.protocols.utils import significant_digit
 
 from .fitting import fit_exp1B_func
+from collections import defaultdict
+
+
+@dataclass(frozen=True)
+class CircuitIndex:
+    """Tracks the (qubit, depth, iteration) CircuitIndex of a circuit."""
+    qubit: Union[QubitId, QubitPairId]
+    depth: int
+    iteration: int
+
+
+@dataclass
+class IndexedCircuit:
+    """A circuit paired with its (qubit, depth, iteration) CircuitIndex."""
+    circuit: Circuit
+    index: CircuitIndex
+
+
+@dataclass
+class IndexedResult:
+    """An execution result paired with its (qubit, depth, iteration) CircuitIndex."""
+    result: np.ndarray
+    index: CircuitIndex
+
 
 SINGLE_QUBIT_CLIFFORDS = {
     # Virtual gates
@@ -124,7 +148,7 @@ def random_circuits(
         for target in targets:
             circuit = layer_circuit(rb_gen, depth, target, interleave)
             if inverse_layer:
-                add_inverse_layer(circuit, rb_gen, single_qubit, file_inv)
+                add_inverse_layer(circuit, rb_gen, file_inv)
             add_measurement_layer(circuit)
             circuits.append(circuit)
 
@@ -319,6 +343,7 @@ class StandardRBResult(Results):
 
 def setup_data(
     params: Parameters,
+    npulses_per_clifford: float,
     single_qubit: bool = True,
     interleave: Optional[str] = None,
 ):
@@ -346,55 +371,103 @@ def setup_data(
         seed=params.seed,
         nshots=params.nshots,
         niter=params.niter,
+        npulses_per_clifford=npulses_per_clifford,
     )
     return data
 
 
-def get_circuits(params, targets, inverse_layer, interleave, single_qubit=True):
-    """
-    Generate randomized benchmarking circuits.
+def generate_indexed_circuits(
+    params: Parameters,
+    rb_gen: RB_Generator,
+    targets,  # list[QubitId] or list[QubitPairId]
+    inverse_layer: bool = True,
+    interleave: Optional[str] = None,
+) -> list[IndexedCircuit]:
+    """Generate randomized benchmarking circuits with explicit indexing of
+    (qubit, depth, iteration) coordinates.
 
     Args:
-        params (Parameters): Experiment parameters.
-        targets (list): List of target qubit IDs.
-        inverse_layer (bool): Flag indicating whether to add an inverse layer to the circuits.
-        interleave (str): String indicating whether to interleave the circuits with the given gate.
-        single_qubit (bool, optional): Flag indicating whether to generate single qubit circuits.
+        params: Experiment parameters containing depths, niter.
+        rb_gen: RB_Generator instance to use for generating Clifford gates.
+        targets: List of target qubit IDs.
+        inverse_layer: Whether to add an inverse layer to the circuits. Defaults to True.
+        interleave: Interleaving pattern for the circuits. Defaults to None.
 
     Returns:
-        tuple: A tuple containing the generated circuits, indexes, and the number of pulses per Clifford.
-            - circuits (list): List of generated circuits.
-            - indexes (dict): Dictionary containing the random indexes for each qubit and depth.
-            - npulses_per_clifford (float): Number of pulses per Clifford.
-
+        List of IndexedCircuit objects with explicit (qubit, depth, iteration) metadata.
     """
-    circuits = []
-    rb_gen = (
-        RB_Generator(params.seed)
-        if single_qubit
-        else RB_Generator(params.seed, params.file)
-    )
-    npulses_per_clifford = rb_gen.calculate_average_pulses()
-    inv_file = params.file_inv if not single_qubit else None
-    # TODO: This does not generate multi qubit circuits TODO: make it such that
-    # subsequent functions don't assume the inner for loop is over iterations
+    indexed_circuits: list[IndexedCircuit] = []
+
+    inv_file = getattr(params, 'file_inv', None)
+
     for depth in params.depths:
-        for _ in range(params.niter):
-            for target in targets:
+        for target in targets:
+            for iteration in range(params.niter):
                 circuit = layer_circuit(rb_gen, depth, target, interleave)
                 if inverse_layer:
-                    add_inverse_layer(circuit, rb_gen, single_qubit, inv_file)
+                    add_inverse_layer(circuit, rb_gen, inv_file)
                 add_measurement_layer(circuit)
-                circuits.append(circuit)
-    return circuits, npulses_per_clifford
+
+                index = CircuitIndex(qubit=target, depth=depth, iteration=iteration)
+                indexed_circuits.append(IndexedCircuit(circuit=circuit, index=index))
+
+    return indexed_circuits
+
+
+
+def execute_indexed_circuits(
+    indexed_circuits: list[IndexedCircuit],
+    params: Parameters,
+    platform: CalibrationPlatform,
+) -> list[IndexedResult]:
+    """Execute indexed circuits and return results paired with their indices.
+
+    Args:
+        indexed_circuits: List of IndexedCircuit objects to execute.
+        targets: List of target qubit IDs.
+        params: Experiment parameters.
+        platform: CalibrationPlatform to execute on.
+
+    Returns:
+        List of IndexedResult objects with execution results paired with their indices.
+    """
+
+    qubit_maps = []
+    circuits = []
+    for indexed_circuit in indexed_circuits:
+        qubit = indexed_circuit.index.qubit
+        if isinstance(qubit, (list, tuple)):  # Multi-qubit
+            qubit_maps.append(list(qubit))
+        else:  # Single-qubit
+            qubit_maps.append([qubit])
+        circuits.append(indexed_circuit.circuit)
+
+    transpiler = dummy_transpiler(platform)
+    compiler = get_compiler(platform)
+
+    executed_results = execute_transpiled_circuits(
+        circuits,
+        qubit_maps=qubit_maps,
+        platform=platform,
+        compiler=compiler,
+        nshots=params.nshots,
+        transpiler=transpiler,
+    )
+
+    indexed_results = [
+        IndexedResult(result=result, index=ic.index)
+        for ic, result in zip(indexed_circuits, executed_results)
+    ]
+
+    return indexed_results
 
 
 def execute_circuits(circuits, targets, params, platform, single_qubit=True):
     """
-    Executes a list of circuits on a given backend.
+    Executes circuits on a given backend.
 
     Args:
-        circuits (list): List of quantum circuits to be executed.
+        circuits (dict): dict of quantum circuits to be executed.
         targets (list): List of target qubits for each circuit.
         params (Parameters): Experiment parameters.
         platform (object): Platform to execute the circuits on.
@@ -428,47 +501,53 @@ def rb_acquisition(
     params: Parameters,
     platform: CalibrationPlatform,
     targets: list[QubitId],
-    add_inverse_layer: bool = True,
-    interleave: str = None,
+    inverse_layer: bool = True,
+    interleave: str | None = None,
 ) -> RBData:
-    """RB data acquisition function.
-
-    This function performs data acquisition for randomized benchmarking experiments.
+    """RB data acquisition function using explicit circuit indexing.
 
     Args:
-        params (RBParameters): All parameters in one object.
-        targets (dict[int, Union[str, int]] or list[Union[str, int]]): List of qubits the experiment is executed on.
-        add_inverse_layer (bool, optional): Whether to add an inverse layer to the circuits. Defaults to True.
-        interleave (str, optional): Interleaving pattern for the circuits. Defaults to None.
+        params: Experiment parameters including depths, niter, nshots, seed.
+        platform: CalibrationPlatform to execute circuits on.
+        targets: List of target qubit IDs.
+        inverse_layer: Whether to add an inverse layer to circuits. Defaults to True.
+        interleave: Interleaving pattern for circuits. Defaults to None.
 
     Returns:
-        RBData: The depths, samples, and ground state probability of each experiment in the scan.
+        RBData: Validated RB data structure with results organized by (qubit, depth).
     """
-    data = setup_data(params, single_qubit=True)
-    circuits, npulses_per_clifford = get_circuits(
-        params, targets, add_inverse_layer, interleave, single_qubit=True
+    rb_gen = RB_Generator(params.seed)
+
+    npulses_per_clifford = rb_gen.calculate_average_pulses()
+    data = setup_data(params, npulses_per_clifford=npulses_per_clifford, single_qubit=True)
+
+    indexed_circuits = generate_indexed_circuits(
+        params=params,
+        rb_gen=rb_gen,
+        targets=targets,
+        inverse_layer=inverse_layer,
+        interleave=interleave,
     )
-    executed_circuits = execute_circuits(circuits, targets, params, platform)
 
-    samples = np.reshape(executed_circuits, (-1, len(targets)))
+    indexed_results = execute_indexed_circuits(
+        indexed_circuits=indexed_circuits,
+        params=params,
+        platform=platform,
+    )
 
-    niter = params.niter
-    depths = params.depths
-    for i, depth in enumerate(depths):
-        # get the samples coresponding to a given circuit depth
-        start_depth = i * niter
-        stop_depth = (i + 1) * niter
-        depth_samples = samples[start_depth:stop_depth]
+    # Create a dict of the form {(qubit, depth): list[result]}.
+    # This marginalises over the iterations for a given (qubit, depth)
+    grouped: defaultdict = defaultdict(list)
+    for indexed_result in indexed_results:
+        key = (indexed_result.index.qubit, indexed_result.index.depth)
+        grouped[key].append(indexed_result.result)
 
-        for nqubit, qubit_id in enumerate(targets):
-            data.register_qubit(
-                RBType,
-                (qubit_id, depth),
-                {
-                    "samples": depth_samples[:, nqubit],
-                },
-            )
-    data.npulses_per_clifford = npulses_per_clifford
+    for (qubit, depth), results in grouped.items():
+        data.register_qubit(
+            RBType,
+            (qubit, depth),
+            {"samples": results},
+        )
 
     return data
 
@@ -478,7 +557,7 @@ def twoq_rb_acquisition(
     platform,
     targets: list[QubitPairId],
     add_inverse_layer: bool = True,
-    interleave: str = None,
+    interleave: str | None = None,
 ) -> Union[RB2QData, RB2QInterData]:
     """
     The data acquisition stage of two qubit Standard Randomized Benchmarking.
@@ -525,8 +604,8 @@ def twoq_rb_acquisition(
 
 
 def layer_circuit(
-    rb_gen: Callable, depth: int, target, interleave: str = None
-) -> tuple[Circuit, list]:
+    rb_gen: RB_Generator, depth: int, target, interleave: Optional[str] = None
+) -> Circuit:
     """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`
     and a dictionary with random indexes used to select the clifford gates.
 
@@ -571,19 +650,14 @@ def layer_circuit(
 
 
 def add_inverse_layer(
-    circuit: Circuit, rb_gen: RB_Generator, single_qubit=True, file_inv=pathlib.Path()
+    circuit: Circuit, rb_gen: RB_Generator, file_inv: pathlib.Path | None = None
 ):
     """Adds an inverse gate/inverse gates at the end of a circuit (in place).
 
     Args:
         circuit (Circuit): circuit
     """
-    if single_qubit:
-        if circuit.depth > 0:
-            circuit.add(
-                gates.Unitary(circuit.unitary(), *range(circuit.nqubits)).dagger()
-            )
-    else:
+    if file_inv: # if file_inv is not none, it is for a two qubit gate circuit
         two_qubit_cliffords = rb_gen.two_qubit_cliffords
         path = pathlib.Path(__file__).parent / file_inv
         if file_inv is None and not path.is_file():
@@ -621,7 +695,11 @@ def add_inverse_layer(
 
             for gate in clifford_gate:
                 circuit.add(gate)
-
+    else: # single qubit gate circuit
+        if circuit.depth > 0:
+            circuit.add(
+                gates.Unitary(circuit.unitary(), *range(circuit.nqubits)).dagger()
+            )
 
 def add_measurement_layer(circuit: Circuit):
     """Adds a measurement layer at the end of the circuit.
@@ -633,9 +711,15 @@ def add_measurement_layer(circuit: Circuit):
     circuit.add(gates.M(*range(circuit.nqubits)))
 
 
-def fit(targets, data):
+def fit(data):
     """Takes data, extracts the depths and the signal and fits it with an
     exponential function y = Ap^x+B."""
+
+    targets = data.qubits
+    if isinstance(targets, tuple):
+        dimension = 2 ** len(targets)
+    else:
+        dimension = 2
 
     fidelity, pulse_fidelity = {}, {}
     popts, perrs = {}, {}
@@ -659,10 +743,7 @@ def fit(targets, data):
         )
 
         popt, perr = fit_exp1B_func(x, samples_mean, sigma=sigma, bounds=[0, 1])
-        if isinstance(targets, tuple):
-            dimension = 2 ** len(targets)
-        else:
-            dimension = 2
+
         # Compute the fidelities
         infidelity = (1 - popt[1]) * (dimension - 1) / dimension
         fidelity[target] = 1 - infidelity
