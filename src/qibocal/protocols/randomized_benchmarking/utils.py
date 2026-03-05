@@ -1,7 +1,8 @@
 import pathlib
+from collections import defaultdict
 from dataclasses import dataclass, field
 from numbers import Number
-from typing import Callable, Iterable, Optional, Tuple, Union
+from typing import Iterable, Optional, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -27,12 +28,12 @@ from qibocal.protocols.randomized_benchmarking.dict_utils import (
 from qibocal.protocols.utils import significant_digit
 
 from .fitting import fit_exp1B_func
-from collections import defaultdict
 
 
 @dataclass(frozen=True)
 class CircuitIndex:
     """Tracks the (qubit, depth, iteration) CircuitIndex of a circuit."""
+
     qubit: Union[QubitId, QubitPairId]
     depth: int
     iteration: int
@@ -41,6 +42,7 @@ class CircuitIndex:
 @dataclass
 class IndexedCircuit:
     """A circuit paired with its (qubit, depth, iteration) CircuitIndex."""
+
     circuit: Circuit
     index: CircuitIndex
 
@@ -48,6 +50,7 @@ class IndexedCircuit:
 @dataclass
 class IndexedResult:
     """An execution result paired with its (qubit, depth, iteration) CircuitIndex."""
+
     result: np.ndarray
     index: CircuitIndex
 
@@ -398,7 +401,7 @@ def generate_indexed_circuits(
     """
     indexed_circuits: list[IndexedCircuit] = []
 
-    inv_file = getattr(params, 'file_inv', None)
+    inv_file = getattr(params, "file_inv", None)
 
     for depth in params.depths:
         for target in targets:
@@ -412,7 +415,6 @@ def generate_indexed_circuits(
                 indexed_circuits.append(IndexedCircuit(circuit=circuit, index=index))
 
     return indexed_circuits
-
 
 
 def execute_indexed_circuits(
@@ -519,7 +521,9 @@ def rb_acquisition(
     rb_gen = RB_Generator(params.seed)
 
     npulses_per_clifford = rb_gen.calculate_average_pulses()
-    data = setup_data(params, npulses_per_clifford=npulses_per_clifford, single_qubit=True)
+    data = setup_data(
+        params, npulses_per_clifford=npulses_per_clifford, single_qubit=True
+    )
 
     indexed_circuits = generate_indexed_circuits(
         params=params,
@@ -657,7 +661,7 @@ def add_inverse_layer(
     Args:
         circuit (Circuit): circuit
     """
-    if file_inv: # if file_inv is not none, it is for a two qubit gate circuit
+    if file_inv:  # if file_inv is not none, it is for a two qubit gate circuit
         two_qubit_cliffords = rb_gen.two_qubit_cliffords
         path = pathlib.Path(__file__).parent / file_inv
         if file_inv is None and not path.is_file():
@@ -695,11 +699,12 @@ def add_inverse_layer(
 
             for gate in clifford_gate:
                 circuit.add(gate)
-    else: # single qubit gate circuit
+    else:  # single qubit gate circuit
         if circuit.depth > 0:
             circuit.add(
                 gates.Unitary(circuit.unitary(), *range(circuit.nqubits)).dagger()
             )
+
 
 def add_measurement_layer(circuit: Circuit):
     """Adds a measurement layer at the end of the circuit.
