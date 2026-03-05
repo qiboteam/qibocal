@@ -90,7 +90,7 @@ def _fit(data: RBData) -> StandardRBResult:
     Returns:
         StandardRBResult: Aggregated and processed data.
     """
-    return fit(data.qubits, data)
+    return fit(data)
 
 
 def _plot(
