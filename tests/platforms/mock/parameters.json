@@ -14,6 +14,10 @@
       "kind": "iq",
       "frequency": 4000000000.0
     },
+    "01/drive": {
+      "kind": "iq",
+      "frequency": 4200000000.0
+    },
     "1/drive": {
       "kind": "iq",
       "frequency": 4200000000.0
