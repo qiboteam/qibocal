@@ -2009,8 +2009,8 @@ qulacs = ["qulacs (>=0.6.4,<0.7.0) ; python_version < \"3.13\""]
 [package.source]
 type = "git"
 url = "https://github.com/qiboteam/qibo"
-reference = "pygridsynth"
-resolved_reference = "b0364904f0805e55837ae940567c77ec3f76ff36"
+reference = "HEAD"
+resolved_reference = "f0eb6435722b670c229e905102a3d53e07297d22"
 
 [[package]]
 name = "qibolab"
@@ -3022,4 +3022,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "10be985d4aaf52b2a08b6f94167de485edc3a837aae1522327cecbbab9dd8286"
+content-hash = "e950fa2c054b27b3eae74499755a2aac7385c4bae6bd070386bda657e24c2686"
