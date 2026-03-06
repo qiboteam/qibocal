@@ -2,7 +2,7 @@ import pathlib
 from collections import defaultdict
 from dataclasses import dataclass, field
 from numbers import Number
-from typing import Iterable, Optional, Tuple, Union
+from typing import Optional, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -534,7 +534,7 @@ def rb_acquisition(
 
 def twoq_rb_acquisition(
     params: Parameters,
-    platform,
+    platform: CalibrationPlatform,
     targets: list[QubitPairId],
     add_inverse_layer: bool = True,
     interleave: str | None = None,
@@ -551,34 +551,56 @@ def twoq_rb_acquisition(
     Returns:
         RB2QData: The acquired data for two qubit randomized benchmarking.
     """
-    data = setup_data(params, single_qubit=False, interleave=interleave)
-    circuits, npulses_per_clifford = get_circuits(
-        params, targets, add_inverse_layer, interleave, single_qubit=False
-    )
-    executed_circuits = execute_circuits(
-        circuits, targets, params, platform, single_qubit=False
+    rb_gen = RB_Generator(params.seed, file=params.file)
+
+    npulses_per_clifford = rb_gen.calculate_average_pulses()
+    data = setup_data(
+        params,
+        npulses_per_clifford=npulses_per_clifford,
+        single_qubit=False,
+        interleave=interleave,
     )
 
-    samples = []
-    for circ in executed_circuits:
-        # Post process [0,0] to 0 and [1,0], [0,1], [1,1] to 1
-        converted_samples = (
-            1 - np.all(circ.samples() == [0], axis=1).astype(int)
-        ).tolist()
-        samples.extend(converted_samples)
-    samples = np.reshape(samples, (-1, len(targets), params.nshots))
+    indexed_circuits = generate_indexed_circuits(
+        params=params,
+        rb_gen=rb_gen,
+        targets=targets,
+        inverse_layer=add_inverse_layer,
+        interleave=interleave,
+    )
 
-    for i, depth in enumerate(params.depths):
-        index = (i * params.niter, (i + 1) * params.niter)
-        for nqubit, qubit_id in enumerate(targets):
-            data.register_qubit(
-                RBType,
-                (qubit_id[0], qubit_id[1], depth),
-                dict(
-                    samples=samples[index[0] : index[1]][:, nqubit],
-                ),
-            )
-    data.npulses_per_clifford = npulses_per_clifford
+    indexed_results = execute_indexed_circuits(
+        indexed_circuits=indexed_circuits,
+        params=params,
+        platform=platform,
+    )
+
+    # Create a dict of the form {(qubit[0], qubit[1], depth): list[result]}.
+    # This marginalises over the iterations for a given (qubit_pair, depth)
+    grouped: defaultdict = defaultdict(list)
+    for indexed_result in indexed_results:
+        qubit_pair = indexed_result.index.qubit
+        assert isinstance(qubit_pair, QubitPairId)
+        depth = indexed_result.index.depth
+        key = (qubit_pair[0], qubit_pair[1], depth)
+        grouped[key].append(indexed_result.result)
+
+    for (qubit0, qubit1, depth), results in grouped.items():
+        # Post process each result: [0,0] to 0 and [1,0], [0,1], [1,1] to 1
+        # BUG: not sure if this works for cyclic data acqusition, but anyway even when
+        # doing singleshot the twoq_rb protocal is broken.
+        samples = []
+        for result in results:
+            result_samples = result.samples()
+            # Convert: [0,0] -> 0, else -> 1
+            converted = 1 - np.all(result_samples == [0], axis=1).astype(int)
+            samples.append(converted)
+
+        data.register_qubit(
+            RBType,
+            (qubit0, qubit1, depth),
+            {"samples": samples},
+        )
 
     return data
 
