@@ -134,30 +134,6 @@ def random_2q_clifford(random_index_gen, two_qubit_cliffords):
     return clifford_gate
 
 
-def random_circuits(
-    depth: int,
-    targets: list[Union[QubitId, QubitPairId]],
-    niter,
-    rb_gen,
-    inverse_layer=True,
-    single_qubit=True,
-    file_inv=pathlib.Path(),
-    interleave=None,
-) -> Iterable:
-    """Returns random (self-inverting) Clifford circuits."""
-
-    circuits = []
-    for _ in range(niter):
-        for target in targets:
-            circuit = layer_circuit(rb_gen, depth, target, interleave)
-            if inverse_layer:
-                add_inverse_layer(circuit, rb_gen, file_inv)
-            add_measurement_layer(circuit)
-            circuits.append(circuit)
-
-    return circuits
-
-
 def number_to_str(
     value: Number,
     uncertainty: Optional[Union[Number, list, tuple, np.ndarray]] = None,
