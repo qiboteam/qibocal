@@ -536,7 +536,7 @@ def twoq_rb_acquisition(
     params: Parameters,
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
-    add_inverse_layer: bool = True,
+    inverse_layer: bool = True,
     interleave: str | None = None,
 ) -> Union[RB2QData, RB2QInterData]:
     """
@@ -545,7 +545,7 @@ def twoq_rb_acquisition(
     Args:
         params (RB2QParameters): The parameters for the randomized benchmarking experiment.
         targets (list[QubitPairId]): The list of qubit pair IDs on which to perform the benchmarking.
-        add_inverse_layer (bool, optional): Whether to add an inverse layer to the circuits. Defaults to True.
+        inverse_layer (bool, optional): Whether to add an inverse layer to the circuits. Defaults to True.
         interleave (str, optional): The type of interleaving to apply. Defaults to None.
 
     Returns:
@@ -565,7 +565,7 @@ def twoq_rb_acquisition(
         params=params,
         rb_gen=rb_gen,
         targets=targets,
-        inverse_layer=add_inverse_layer,
+        inverse_layer=inverse_layer,
         interleave=interleave,
     )
 
