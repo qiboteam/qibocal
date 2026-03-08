@@ -3,7 +3,7 @@ from typing import Optional
 from qibo import Circuit, gates
 from qibo.transpiler.pipeline import Passes
 from qibo.transpiler.unroller import NativeGates, Unroller
-from qibolab import AveragingMode, PulseSequence
+from qibolab import AveragingMode, Platform, PulseSequence
 from qibolab._core.compilers import Compiler
 from qibolab._core.native import NativeContainer
 
@@ -51,6 +51,7 @@ def transpile_circuits(
     return transpiled_circuits
 
 
+# TODO: a lot of repetition in execute_circuit and execute_circuits
 def execute_circuit(circuit, platform, compiler, initial_state=None, nshots=1000):
     """Executes a quantum circuit.
 
@@ -130,6 +131,8 @@ def execute_circuits(platform, compiler, circuits, initial_states=None, nshots=1
     return result
 
 
+# TODO: I don't like this. The name suggests it executes transpiled circuits, but it
+# also transpiles them. There is no benefit turning two actions into a single function.
 def execute_transpiled_circuits(
     circuits: list[Circuit],
     qubit_maps: list[list[QubitId]],
@@ -167,7 +170,7 @@ def execute_transpiled_circuits(
 def execute_transpiled_circuit(
     circuit: Circuit,
     qubit_map: list[QubitId],
-    platform,
+    platform: Platform,
     compiler,
     transpiler: Optional[Passes],
     initial_state=None,
@@ -195,7 +198,7 @@ def execute_transpiled_circuit(
     )
 
 
-def natives(platform) -> dict[str, NativeContainer]:
+def natives(platform: Platform) -> dict[str, NativeContainer]:
     """
     Return the dict of native gates name with the associated native container
     defined in the `platform`. This function assumes the native gates to be the same for each
