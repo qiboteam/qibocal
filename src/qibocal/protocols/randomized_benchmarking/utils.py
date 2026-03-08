@@ -606,7 +606,10 @@ def twoq_rb_acquisition(
 
 
 def layer_circuit(
-    rb_gen: RB_Generator, depth: int, target, interleave: Optional[str] = None
+    rb_gen: RB_Generator,
+    depth: int,
+    target: Union[QubitId, QubitPairId],
+    interleave: Optional[str] = None,
 ) -> Circuit:
     """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`
     and a dictionary with random indexes used to select the clifford gates.

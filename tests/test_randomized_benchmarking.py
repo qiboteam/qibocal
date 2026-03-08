@@ -132,8 +132,8 @@ def test_random_clifford(qubits, seed):
     if isinstance(qubits, int):
         qubits = [qubits]
     gates = []
-    for qubit in qubits:
-        gate, index = random_clifford(rb_gen.random_index)
+    for _qubit in qubits:
+        gate = random_clifford(rb_gen.random_index)
         gates.append(gate)
 
     matrix = reduce(np.kron, [gate.matrix() for gate in gates])
@@ -163,7 +163,7 @@ def test_layer_circuit_single_qubit(mocker, depth):
     single_qubit_spy = mocker.spy(rb_gen, "random_layer_gen_single_qubit")
     two_qubit_spy = mocker.spy(rb_gen, "random_layer_gen_two_qubit")
 
-    circuit, indices = layer_circuit(rb_gen, depth, qubit)
+    circuit = layer_circuit(rb_gen, depth, qubit)
 
     # assert that generator was called expected number of times
     assert single_qubit_spy.call_count == depth
@@ -172,10 +172,8 @@ def test_layer_circuit_single_qubit(mocker, depth):
     # assert that results from generator calls were used
     assert circuit.depth == depth
     circuit_gates = {g for m in circuit.queue.moments for g in m}
-    indices = set(indices)
-    for gate, i in single_qubit_spy.spy_return_list:
+    for gate in single_qubit_spy.spy_return_list:
         assert gate in circuit_gates
-        assert i in indices
 
 
 @pytest.mark.parametrize("depth", [2, 24, 47])
@@ -185,7 +183,7 @@ def test_layer_circuit_two_qubit(mocker, depth):
     single_qubit_spy = mocker.spy(rb_gen, "random_layer_gen_single_qubit")
     two_qubit_spy = mocker.spy(rb_gen, "random_layer_gen_two_qubit")
 
-    circuit, indices = layer_circuit(rb_gen, depth, qubit_pair)
+    circuit = layer_circuit(rb_gen, depth, qubit_pair)
 
     # assert that generator was called expected number of times
     assert single_qubit_spy.call_count == 0
@@ -194,7 +192,5 @@ def test_layer_circuit_two_qubit(mocker, depth):
     # assert that results from generator calls were used
     assert circuit.depth >= depth
     circuit_gates = [g for m in circuit.queue.moments for g in m if g is not None]
-    indices = set(indices)
-    for gates, i in two_qubit_spy.spy_return_list:
+    for gates in two_qubit_spy.spy_return_list:
         assert all(g in circuit_gates for g in gates)
-        assert i in indices
