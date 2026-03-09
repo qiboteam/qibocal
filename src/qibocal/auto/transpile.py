@@ -1,5 +1,7 @@
+from collections import Counter
 from typing import Optional
 
+import numpy as np
 from qibo import Circuit, gates
 from qibo.transpiler.pipeline import Passes
 from qibo.transpiler.unroller import NativeGates, Unroller
@@ -52,7 +54,14 @@ def transpile_circuits(
 
 
 # TODO: a lot of repetition in execute_circuit and execute_circuits
-def execute_circuit(circuit, platform, compiler, initial_state=None, nshots=1000):
+def execute_circuit(
+    circuit,
+    platform,
+    compiler,
+    initial_state=None,
+    nshots=1000,
+    averaging_mode=AveragingMode.SINGLESHOT,
+) -> Counter:
     """Executes a quantum circuit.
 
     Args:
@@ -70,6 +79,7 @@ def execute_circuit(circuit, platform, compiler, initial_state=None, nshots=1000
             platform=platform,
             compiler=compiler,
             nshots=nshots,
+            averaging_mode=averaging_mode,
         )
     if initial_state is not None:
         raise_error(
@@ -77,19 +87,33 @@ def execute_circuit(circuit, platform, compiler, initial_state=None, nshots=1000
             "Hardware backend only supports circuits as initial states.",
         )
 
-    sequence, _measurement_map = compiler.compile(circuit, platform)
+    sequence, measurement_map = compiler.compile(circuit, platform)
 
     # TODO?: pass options dict
-    readout = platform.execute(
-        [sequence], nshots=nshots, averaging_mode=AveragingMode.CYCLIC
-    )
+    readout = platform.execute([sequence], nshots=nshots, averaging_mode=averaging_mode)
 
-    result = list(readout.values())[0]
+    result = {}
+    for gate, sequence in measurement_map.items():
+        # assert that a single measurement gate only measures the state of a single qubit
+        assert len(gate.qubits) == 1
+        assert len(sequence.acquisitions) == 1
+        result[gate.qubits[0]] = readout[sequence.acquisitions[0][1].id]
 
-    return result
+    arr = np.stack([result[q] for q in sorted(result)])
+
+    counts = Counter("".join(map(str, col)) for col in arr.T)
+
+    return counts
 
 
-def execute_circuits(platform, compiler, circuits, initial_states=None, nshots=1000):
+def execute_circuits(
+    platform,
+    compiler,
+    circuits,
+    initial_states=None,
+    nshots=1000,
+    averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
+):
     """Executes multiple quantum circuits with a single communication with
     the control electronics.
 
@@ -110,6 +134,7 @@ def execute_circuits(platform, compiler, circuits, initial_states=None, nshots=1
             compiler=compiler,
             circuits=[initial_states + circuit for circuit in circuits],
             nshots=nshots,
+            averaging_mode=averaging_mode,
         )
     if initial_states is not None:
         raise_error(
@@ -118,17 +143,33 @@ def execute_circuits(platform, compiler, circuits, initial_states=None, nshots=1
         )
 
     # TODO: Maybe these loops can be parallelized
-    sequences, _measurement_maps = zip(
+    sequences, measurement_maps = zip(
         *(compiler.compile(circuit, platform) for circuit in circuits)
     )
 
-    readout = platform.execute(
-        sequences, nshots=nshots, averaging_mode=AveragingMode.CYCLIC
-    )
+    # TODO?: pass options dict
+    readout = platform.execute(sequences, nshots=nshots, averaging_mode=averaging_mode)
 
-    result = list(readout.values())
+    countslist = []
+    if averaging_mode.average:
+        for excited_frac in readout.values():
+            countslist.append(
+                Counter(
+                    {0: int((1 - excited_frac) * nshots), 1: int(excited_frac * nshots)}
+                )
+            )
+    else:
+        for measurement_map in measurement_maps:
+            result = {}
+            for gate, sequence in measurement_map.items():
+                # assert that a single measurement gate only measures the state of a single qubit
+                assert len(gate.qubits) == 1
+                assert len(sequence.acquisitions) == 1
+                result[gate.qubits[0]] = readout[sequence.acquisitions[0][1].id]
+            arr = np.stack([result[q] for q in sorted(result)])
+            countslist.append(Counter("".join(map(str, col)) for col in arr.T))
 
-    return result
+    return countslist
 
 
 # TODO: I don't like this. The name suggests it executes transpiled circuits, but it
@@ -141,6 +182,7 @@ def execute_transpiled_circuits(
     transpiler: Optional[Passes],
     initial_states=None,
     nshots=1000,
+    averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
 ):
     """Transpile `circuits`.
 
@@ -164,9 +206,12 @@ def execute_transpiled_circuits(
         transpiled_circuits,
         initial_states=initial_states,
         nshots=nshots,
+        averaging_mode=averaging_mode,
     )
 
 
+# TODO: I don't like this. The name suggests it executes transpiled circuits, but it
+# also transpiles them. There is no benefit turning two actions into a single function.
 def execute_transpiled_circuit(
     circuit: Circuit,
     qubit_map: list[QubitId],
@@ -175,6 +220,7 @@ def execute_transpiled_circuit(
     transpiler: Optional[Passes],
     initial_state=None,
     nshots=1000,
+    averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
 ):
     """Transpile `circuit`.
 
@@ -194,7 +240,12 @@ def execute_transpiled_circuit(
         transpiler,
     )[0]
     return transpiled_circ, execute_circuit(
-        transpiled_circ, platform, compiler, initial_state=initial_state, nshots=nshots
+        transpiled_circ,
+        platform,
+        compiler,
+        initial_state=initial_state,
+        nshots=nshots,
+        averaging_mode=averaging_mode,
     )
 
 

@@ -133,10 +133,14 @@ def _acquisition(
                 for i in range(len(targets))
             )
 
-        basis_circuit.add(
-            gates.M(2 * i, 2 * i + 1, register_name=f"reg{i}")
+        pairs = (
+            (
+                gates.M(2 * i, register_name=f"reg{i}a"),
+                gates.M(2 * i + 1, register_name=f"reg{i}b"),
+            )
             for i in range(len(targets))
         )
+        basis_circuit.add(meas for pair in pairs for meas in pair)
 
         simulation_result = simulator.execute_circuit(basis_circuit)
         _, results = execute_transpiled_circuit(

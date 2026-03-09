@@ -8,6 +8,7 @@ import numpy as np
 import numpy.typing as npt
 from qibo import gates
 from qibo.models import Circuit
+from qibolab import AveragingMode
 
 from qibocal.auto.operation import Data, Parameters, QubitId, QubitPairId, Results
 from qibocal.auto.transpile import (
@@ -397,6 +398,7 @@ def execute_indexed_circuits(
     indexed_circuits: list[IndexedCircuit],
     params: Parameters,
     platform: CalibrationPlatform,
+    averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
 ) -> list[IndexedResult]:
     """Execute indexed circuits and return results paired with their indices.
 
@@ -430,6 +432,7 @@ def execute_indexed_circuits(
         compiler=compiler,
         nshots=params.nshots,
         transpiler=transpiler,
+        averaging_mode=averaging_mode,
     )
 
     indexed_results = [
@@ -513,6 +516,7 @@ def rb_acquisition(
         indexed_circuits=indexed_circuits,
         params=params,
         platform=platform,
+        averaging_mode=AveragingMode.CYCLIC,
     )
 
     # Create a dict of the form {(qubit, depth): list[result]}.
