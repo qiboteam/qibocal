@@ -5,7 +5,6 @@ after the application of a cross resonance sequence. The CR pulses are played on
 channel with frequency set to the frequency of the target drive channel.
 """
 
-import datetime
 from dataclasses import dataclass, field
 from typing import Literal, Union
 
@@ -267,8 +266,8 @@ def _acquisition(
                     ),
                 )
 
-    t = datetime.datetime.now().strftime("%d_%m_%Y_%H:%M:%S")
-    np.savez(f"./{t}_acquisition_data_amplitude_tomography", data)
+    # t = datetime.datetime.now().strftime("%d_%m_%Y_%H:%M:%S")
+    # np.savez(f"./{t}_acquisition_data_amplitude_tomography", data)
 
     return data
 

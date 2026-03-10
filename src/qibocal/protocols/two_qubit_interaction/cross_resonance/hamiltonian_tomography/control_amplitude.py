@@ -29,7 +29,6 @@ from .....auto.operation import (
     Routine,
 )
 from .....calibration import CalibrationPlatform
-from .....result import probability
 from ....utils import table_dict, table_html
 from ..utils import Basis, SetControl, cr_sequence
 from .utils import (
@@ -197,7 +196,7 @@ def _acquisition(
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
                     acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=AveragingMode.SINGLESHOT,
+                    averaging_mode=AveragingMode.CYCLIC,
                     updates=updates,
                 )
                 target_acq_handle = list(
@@ -207,8 +206,8 @@ def _acquisition(
                     sequence.channel(platform.qubits[control].acquisition)
                 )[-1].id
 
-                prob_target = probability(results[target_acq_handle], state=1).ravel()
-                prob_control = probability(results[control_acq_handle], state=1).ravel()
+                prob_target = results[target_acq_handle].ravel()
+                prob_control = results[control_acq_handle].ravel()
 
                 # TODO: possibly drop control probablity even if it might be useful later on
                 # to compute leakage
