@@ -106,14 +106,17 @@ def execute_circuit(
     return counts
 
 
+# TODO: instead of returning a list of Counters, can we return a list of the rate of
+# ground states? If the rate of ground states is all we need use in qibocal for circuit
+# execution, that should be enrough, but I'm not entirely sure that is the case.
 def execute_circuits(
-    platform,
-    compiler,
-    circuits,
-    initial_states=None,
-    nshots=1000,
+    platform: Platform,
+    compiler: Compiler,
+    circuits: list[Circuit],
+    initial_states: Optional[Circuit] = None,
+    nshots: int = 1000,
     averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
-):
+) -> list[Counter[str]]:
     """Executes multiple quantum circuits with a single communication with
     the control electronics.
 
@@ -155,7 +158,10 @@ def execute_circuits(
         for excited_frac in readout.values():
             countslist.append(
                 Counter(
-                    {0: int((1 - excited_frac) * nshots), 1: int(excited_frac * nshots)}
+                    {
+                        "0": np.round((1 - excited_frac) * nshots),
+                        "1": np.round(excited_frac * nshots),
+                    }
                 )
             )
     else:
@@ -168,6 +174,10 @@ def execute_circuits(
                 result[gate.qubits[0]] = readout[sequence.acquisitions[0][1].id]
             arr = np.stack([result[q] for q in sorted(result)])
             countslist.append(Counter("".join(map(str, col)) for col in arr.T))
+
+    assert all(sum(counts.values()) == nshots for counts in countslist), (
+        "The sum of shots in all possible outcomes should be equal to nshots."
+    )
 
     return countslist
 

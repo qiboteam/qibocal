@@ -1,5 +1,5 @@
 import pathlib
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from numbers import Number
 from typing import Optional, Tuple, Union
@@ -13,8 +13,10 @@ from qibolab import AveragingMode
 from qibocal.auto.operation import Data, Parameters, QubitId, QubitPairId, Results
 from qibocal.auto.transpile import (
     dummy_transpiler,
+    execute_circuits,
     execute_transpiled_circuits,
     get_compiler,
+    transpile_circuits,
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.randomized_benchmarking.dict_utils import (
@@ -52,7 +54,7 @@ class IndexedCircuit:
 class IndexedResult:
     """An execution result paired with its (qubit, depth, iteration) CircuitIndex."""
 
-    result: np.ndarray
+    result: Counter
     index: CircuitIndex
 
 
@@ -435,6 +437,20 @@ def execute_indexed_circuits(
         averaging_mode=averaging_mode,
     )
 
+    transpiled_circuits = transpile_circuits(
+        circuits,
+        qubit_maps,
+        platform,
+        transpiler,
+    )
+    executed_results = execute_circuits(
+        platform,
+        compiler,
+        transpiled_circuits,
+        nshots=params.nshots,
+        averaging_mode=averaging_mode,
+    )
+
     indexed_results = [
         IndexedResult(result=result, index=ic.index)
         for ic, result in zip(indexed_circuits, executed_results)
@@ -489,7 +505,8 @@ def rb_acquisition(
     grouped: defaultdict = defaultdict(list)
     for indexed_result in indexed_results:
         key = (indexed_result.index.qubit, indexed_result.index.depth)
-        grouped[key].append(indexed_result.result)
+        prob_excited = indexed_result.result["1"] / params.nshots
+        grouped[key].append(prob_excited)
 
     for (qubit, depth), results in grouped.items():
         data.register_qubit(
