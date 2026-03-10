@@ -30,7 +30,6 @@ from .....auto.operation import (
     Routine,
 )
 from .....calibration import CalibrationPlatform
-from .....result import probability
 from ....utils import table_dict, table_html
 from ..utils import Basis, SetControl, cr_sequence
 from .utils import (
@@ -206,7 +205,7 @@ def _acquisition(
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
                     acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=AveragingMode.SINGLESHOT,
+                    averaging_mode=AveragingMode.CYCLIC,
                     updates=updates,
                 )
                 target_acq_handle = list(
@@ -216,8 +215,8 @@ def _acquisition(
                     sequence.channel(platform.qubits[control].acquisition)
                 )[-1].id
 
-                prob_target = probability(results[target_acq_handle], state=1).ravel()
-                prob_control = probability(results[control_acq_handle], state=1).ravel()
+                prob_target = results[target_acq_handle].ravel()
+                prob_control = results[control_acq_handle].ravel()
 
                 # TODO: possibly drop control probablity even if it might be useful later on
                 # to compute leakage
@@ -289,12 +288,14 @@ def _plot(
     if fit is not None:
         fitting_report = table_html(
             table_dict(
-                6 * [target],
-                [f"{term.name} [MHz]" for term in HamiltonianTerm],
+                7 * [target],
+                [f"{term.name} [MHz]" for term in HamiltonianTerm]
+                + ["CR duration (ns)"],
                 [
                     fit.hamiltonian_terms[target[0], target[1], term] * kilo
                     for term in HamiltonianTerm
-                ],
+                ]
+                + [fit.cr_lengths[target] if target in fit.cr_lengths else None],
             )
         )
     else:
@@ -319,6 +320,7 @@ def _update(
         target_amplitude=results.target_amplitude,
         target_phase=results.target_phase,
         echo=results.echo,
+        setup=SetControl.Id,
         basis=Basis.Y,
     )
 
@@ -333,3 +335,8 @@ hamiltonian_tomography_cr_length = Routine(
     _acquisition, _fit, _plot, _update, two_qubit_gates=True
 )
 """HamiltonianTomographyCRLength Routine object."""
+
+"""
+Check http://login.qrccluster.com:9000/u7Xw0C4_Rti6s2JdJ_HI4g== for a good experiment result found on emulator with 1% of classical crosstalk between
+the two qubits.
+"""

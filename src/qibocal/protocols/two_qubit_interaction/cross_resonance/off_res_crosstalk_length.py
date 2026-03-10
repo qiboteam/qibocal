@@ -316,3 +316,7 @@ cr_crosstalk_length = Routine(
     _plot,
 )
 """CrCrosstalkLength Routine object."""
+
+"""See for an example of CrCrosstalkLength experiment executed on the simulator:
+    http://login.qrccluster.com:9000/Nt3r6j2ITFCvjRKqHwpeBg==
+"""

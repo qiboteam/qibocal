@@ -1054,11 +1054,6 @@ def baseline_als(data: NDArray, lamda: float, p: float, niter: int = 10) -> NDAr
     return z
 
 
-def angle_wrap(angle: float):
-    """Wrap an angle from [-np.inf,np.inf] into the [0,2*np.pi] domain"""
-    return angle % (2 * np.pi)
-
-
 def guess_period(x, y):
     """Return fft period estimation given a sinusoidal plot."""
     fft = np.fft.rfft(y)
