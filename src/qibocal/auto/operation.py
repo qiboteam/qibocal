@@ -9,7 +9,7 @@ from typing import Callable, Generic, NewType, Optional, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, Platform, Qubit
+from qibolab import Platform, Qubit
 
 from qibocal.config import log
 
@@ -73,8 +73,11 @@ class Parameters:
     """Wait time for the qubit to decohere back to the `gnd` state."""
     hardware_average: bool = False
     """By default hardware average will be performed."""
-    classify: bool = False
-    """By default qubit state classification will not be performed."""
+
+    # # TODO: this is an inherent propery of the expirment so I don't see why is thould be
+    # # exposed as a parameter. Also thin it's not used anyway, so remove it.
+    # classify: bool = False
+    # """By default qubit state classification will not be performed."""
 
     @classmethod
     def load(cls, input_parameters):
@@ -99,23 +102,24 @@ class Parameters:
             setattr(instantiated_class, parameter, value)
         return instantiated_class
 
-    @property
-    def execution_parameters(self):
-        """Default execution parameters."""
-        averaging_mode = (
-            AveragingMode.CYCLIC if self.hardware_average else AveragingMode.SINGLESHOT
-        )
-        acquisition_type = (
-            AcquisitionType.DISCRIMINATION
-            if self.classify
-            else AcquisitionType.INTEGRATION
-        )
-        return dict(
-            nshots=self.nshots,
-            relaxation_time=self.relaxation_time,
-            acquisition_type=acquisition_type,
-            averaging_mode=averaging_mode,
-        )
+    # # TODO: I think this is not used anywhere, so remove it.
+    # @property
+    # def execution_parameters(self):
+    #     """Default execution parameters."""
+    #     averaging_mode = (
+    #         AveragingMode.CYCLIC if self.hardware_average else AveragingMode.SINGLESHOT
+    #     )
+    #     acquisition_type = (
+    #         AcquisitionType.DISCRIMINATION
+    #         if self.classify
+    #         else AcquisitionType.INTEGRATION
+    #     )
+    #     return dict(
+    #         nshots=self.nshots,
+    #         relaxation_time=self.relaxation_time,
+    #         acquisition_type=acquisition_type,
+    #         averaging_mode=averaging_mode,
+    #     )
 
 
 class AbstractData:

@@ -566,8 +566,8 @@ def twoq_rb_acquisition(
     grouped: defaultdict = defaultdict(list)
     for indexed_result in indexed_results:
         qubit_pair = indexed_result.index.qubit
-        assert isinstance(qubit_pair, QubitPairId)
         depth = indexed_result.index.depth
+        assert isinstance(qubit_pair, (list, tuple))
         key = (qubit_pair[0], qubit_pair[1], depth)
         grouped[key].append(indexed_result.result)
 
