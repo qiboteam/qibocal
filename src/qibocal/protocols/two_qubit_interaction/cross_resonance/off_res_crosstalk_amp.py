@@ -304,3 +304,7 @@ cr_crosstalk_amplitude = Routine(
     _plot,
 )
 """CrCrosstalkAmplitude Routine object."""
+
+"""See for an example of CrCrosstalkAmplitude experiment executed on the simulator:
+    http://login.qrccluster.com:9000/00xqkYftTkaKTRGtjIlnRw==
+"""

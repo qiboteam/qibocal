@@ -148,7 +148,7 @@ class HamiltonianTomographyCANCPhaseData(Data):
         phase_list = data_dict["phase"]
         size = len(duration_list) * len(phase_list)
         ar = np.empty(size, dtype=dtype)
-        phases, durations = np.meshgrid(phase_list, duration_list)
+        durations, phases = np.meshgrid(duration_list, phase_list)
         ar["x"] = durations.ravel()
         ar["phase"] = phases.ravel()
         ar["prob_target"] = data_dict["prob_target"].ravel()
@@ -245,7 +245,7 @@ def _acquisition(
 
                 results = platform.execute(
                     [sequence],
-                    [[length_sweeper], phase_sweepers],
+                    [phase_sweepers, [length_sweeper]],
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
                     acquisition_type=AcquisitionType.DISCRIMINATION,
@@ -353,3 +353,6 @@ def _update(
 
 hamiltonian_tomography_canc_phase = Routine(_acquisition, _fit, _plot, _update)
 """HamiltonianTomographyCANCPhase Routine object."""
+
+"""See http://login.qrccluster.com:9000/2SqsD4XFRLWeks72CWH2Bw== for an example run on the emulator.
+"""
