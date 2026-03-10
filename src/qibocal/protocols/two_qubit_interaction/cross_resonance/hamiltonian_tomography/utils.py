@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Callable, Optional, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -18,7 +18,7 @@ from .....auto.operation import (
     QubitPairId,
 )
 from .....config import log
-from ....utils import quinn_fernandes_algorithm, table_dict, table_html
+from ....utils import angle_wrap, quinn_fernandes_algorithm, table_dict, table_html
 from ..utils import Basis, SetControl
 from . import fitting
 
@@ -35,10 +35,6 @@ class HamiltonianTerm(str, Enum):
     ZX = "ZX"
     ZY = "ZY"
     ZZ = "ZZ"
-
-
-def cyclic_prob(values: float, state: int):
-    return np.minimum(values, 1) if state == 1 else np.maximum(1 - values, 0)
 
 
 def dynamic_evolution_optimizer(
@@ -77,8 +73,16 @@ def dynamic_evolution_optimizer(
 
 
 def scipy_curve_fit_optimizer(
-    concatenated_signal, vector_x, init_omega_guess, errors=None
-):
+    concatenated_signal: np.ndarray,
+    vector_x: np.ndarray,
+    init_omega_guess: np.ndarray,
+    errors: np.ndarray | None = None,
+) -> np.ndarray:
+    """Optimizer for sinusoidal fitting; it exploits gradient-based algorithms to find the best fit parameters.
+    This algorithm is a gradient-base optimization, hence might be affected by local minima in the cost
+    function landscape when dealing with sinusoidal functions due to their periodicity.
+    """
+
     sampling_rate = 1 / abs(vector_x[1] - vector_x[0])
     period = int(2 * np.pi / init_omega_guess * sampling_rate)
 
@@ -88,6 +92,8 @@ def scipy_curve_fit_optimizer(
     omega_guesses[-1] = np.sqrt(np.abs(offsets[-1]))
     omega_guesses[1] = offsets[1] / omega_guesses[-1]
     omega_guesses[0] = offsets[0] / omega_guesses[-1]
+    omega_guesses[omega_guesses == 0] = init_omega_guess
+    omega_guesses[~np.isfinite(omega_guesses)] = 0
     omega_guesses = np.concatenate([omega_guesses, [0]])
 
     popt, _ = curve_fit(
@@ -104,11 +110,21 @@ def scipy_curve_fit_optimizer(
 
 
 def numerical_root_finder(
-    root_func,
-    x_range: Union[np.ndarray, list],
+    root_func: Callable[..., float],
+    x_range: np.ndarray | list[float | int],
     tol: float,
     **kwargs,
 ):
+    """Finds the root of a generic function :data:`root_func` by minimizing its absolute value.
+
+    The solver first performs a coarse grid search across the provided range to
+    identify a starting candidate, then refines the result using the
+    Nelder-Mead simplex algorithm; then, if the search is successful, the
+    algorithm returns the value where the function is closest to zero.
+    This function minimizes `abs(root_func(x))`. If the function does not
+    cross zero, it will return the local minimum of the absolute value.
+    """
+
     def func_to_solve(x):
         return np.abs(root_func(x, **kwargs))
 
@@ -137,7 +153,11 @@ def compute_total_expectation_value(
         "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
     ],
     pair: QubitPairId,
-):
+) -> np.ndarray:
+    """Given a Qubit Pair :data:`pair`=(control, target), it computes the expectation
+    values for each Pauli Basis for the target qubit.
+    """
+
     tot_exp_vals = []
     for basis in Basis:
         tot_exp_vals.append(
@@ -147,7 +167,13 @@ def compute_total_expectation_value(
     return np.vstack(tot_exp_vals)
 
 
-def bloch_func(x, pair: QubitPairId, fitted_parameters: dict):
+def bloch_func(
+    x: list[float | int] | np.ndarray, pair: QubitPairId, fitted_parameters: dict
+) -> np.ndarray:
+    """Given the fitted parameters for the target's Pauli expectation values
+    for either control qubit in |0> or in |1>, computes the estimated Bloch vector.
+    """
+
     x = np.vstack([x, x, x])
     id_blochfit = fitting.combined_fit(
         x, *fitted_parameters[pair[0], pair[1], SetControl.Id]
@@ -165,7 +191,12 @@ def compute_bloch_vector(
     ],
     pair: QubitPairId,
     fitted_parameters: dict | None = None,
-):
+) -> tuple[np.ndarray, np.ndarray | None]:
+    """For a given qubit pair :data:`pair`, it computes the Bloch vector R for each data point and
+    also estimates the Bloch vector using the fitted parameters of the Hamiltonian Tomography.
+    See `arXiv:1603.04821 <https://arxiv.org/abs/1603.04821>`__ for further information.
+    """
+
     bloch_exp = compute_total_expectation_value(data, pair)
     bloch_exp = np.sqrt(np.sum((bloch_exp) ** 2, axis=0))
 
@@ -180,7 +211,7 @@ def compute_bloch_vector(
 
 
 def estimate_cr_param(
-    x_range,
+    x_range: np.ndarray,
     data: Union[
         "HamiltonianTomographyCRLengthData",  # noqa: F821
         "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
@@ -188,38 +219,61 @@ def estimate_cr_param(
     pair: QubitPairId,
     fitted_parameters: dict,
     tol: float = 1e-6,
-):
-    bloch_data, _ = compute_bloch_vector(data, pair)
-    idx = np.argmin(bloch_data)
-    param = x_range[idx]
+) -> float | int:
+    """Function for estimating important parameters for the cross resonance, depending on the
+    specific experiment run; if :data:`data` is type :class:`HamiltonianTomographyCRLengthData` it finds the
+    thuned pulse duration, while if :data:`data` is type :class:`HamiltonianTomographyCRAmplitudeData` it
+    finds the tuned pulse amplitude.
+
+    The cross resonance parameter is computed by finding the value that solves the Bloch vector R.
+    To do so, the function checks whether all the fits in the Hamiltonian Tomography experiment succeeded;
+    if so the Bloch vector is computed by using the fitted parameter, otherwise it simply computes
+    R only for the acquired datapoints.
+    """
 
     if all([(pair[0], pair[1], s) in fitted_parameters for s in SetControl]):
-        bloch_data, bloch_fit = compute_bloch_vector(data, pair, fitted_parameters)
+        bloch_data, _ = compute_bloch_vector(data, pair, fitted_parameters)
         x_range = data.data[pair[0], pair[1], Basis.Z, SetControl.Id].x
-        if min(bloch_data) >= min(bloch_fit):
-            param = numerical_root_finder(
-                root_func=bloch_func,
-                x_range=x_range,
-                tol=tol,
-                pair=pair,
-                fitted_parameters=fitted_parameters,
-            )
+        param = numerical_root_finder(
+            root_func=bloch_func,
+            x_range=x_range,
+            tol=tol,
+            pair=pair,
+            fitted_parameters=fitted_parameters,
+        )
+    else:
+        bloch_data, _ = compute_bloch_vector(data, pair)
+        idx = np.argmin(bloch_data)
+        param = x_range[idx]
 
     if type(data).__name__ == "HamiltonianTomographyCRLengthData":
+        # time duration must be integer
         return int(param)
 
     return float(param)
 
 
 def tune_cancellation_sequence(
-    x,
-    function_to_tune: Callable[Any, float],
+    x: list[float | int] | np.ndarray,
+    function_to_tune: Callable[..., float],
     interactions_to_analyze: list[HamiltonianTerm],
     ham_term: dict,
     fit_params: dict,
     tuned_keys: list[str],
     tol: float,
-):
+) -> dict[str, float]:
+    """Function for estimating parameters for the cancellation pulse sequence, depending on the
+    specific experiment (either pulses phase tuning or cancellation amplitude tuning).
+
+    The specific parameter is computed by finding the value that solves an input function :data:`function_to_tune`.
+    To do so, the function checks whether all the fits in the Hamiltonian Tomography experiment succeeded;
+    if so roots are solved by using the fitted parameter, otherwise it simply computes :data:`function_to_tune` only
+    for the acquired datapoints and the closest value to 0 is selected.
+
+    These parameters are computed for every term of the Cross Resonance Hamiltonian: IX, ZX, IY, ZY, IZ, ZZ and saved
+    into a dictionary.
+    """
+
     assert len(tuned_keys) == len(interactions_to_analyze), (
         """tuned_keys and interactions_to_analyze must be equally long."""
     )
@@ -229,30 +283,36 @@ def tune_cancellation_sequence(
 
     tuned_parameters = {}
     for ham_int, k in zip(interactions_to_analyze, tuned_keys):
-        selected_ham_term = np.abs(np.array(ham_term[ham_int]))
-        min_idx = np.argmin(selected_ham_term)
-        tuned_parameters[k] = float(x[min_idx])
         if ham_int in fit_params:
-            x_fit = function_to_tune(x, **fit_params[ham_int])
-            if np.min(np.abs(selected_ham_term)) >= np.min(np.abs(x_fit)):
-                tuned_parameters[k] = float(
-                    numerical_root_finder(
-                        root_func=function_to_tune,
-                        x_range=x,
-                        tol=tol,
-                        **fit_params[ham_int],
-                    )
+            tuned_parameters[k] = float(
+                numerical_root_finder(
+                    root_func=function_to_tune,
+                    x_range=x,
+                    tol=tol,
+                    **fit_params[ham_int],
                 )
+            )
+        else:
+            selected_ham_term = np.abs(np.array(ham_term[ham_int]))
+            min_idx = np.argmin(selected_ham_term)
+            tuned_parameters[k] = float(x[min_idx])
 
     return tuned_parameters
 
 
 def estimate_cancellation_amplitudes(
-    amplitudes,
+    amplitudes: list[float | int] | np.ndarray,
     ham_term: dict,
     ampl_params: dict,
     tol: float = 1e-6,
-):
+) -> dict[str, float]:
+    """Extrapolates the cancellation pulse amplitude for the cross resonance pulse sequence.
+
+    This function estimates the optimal amplitudes for cancelling unwanted Hamiltonian terms
+    (IX and IY) in the cross resonance pulse sequence. It uses linear fitting to determine
+    the amplitude values that minimize these interaction terms.
+    """
+
     interaction_terms = [HamiltonianTerm.IX, HamiltonianTerm.IY]
     phases_names = ["ampl_ix", "ampl_iy"]
 
@@ -270,11 +330,18 @@ def estimate_cancellation_amplitudes(
 
 
 def estimate_cr_phases(
-    phases,
+    phases: list[float | int] | np.ndarray,
     ham_term: dict,
     phase_params: dict,
     tol: float = 1e-6,
-):
+) -> tuple[float, float]:
+    """Extrapolates the cancellation pulse phases for the cross resonance pulse sequence.
+
+    This function estimates the optimal phases for cancelling unwanted Hamiltonian terms
+    (ZY and IY) in the cross resonance pulse sequence. It uses sinusoidal fitting to determine
+    the phase values that minimize these interaction terms.
+    """
+
     interaction_terms = [HamiltonianTerm.ZY, HamiltonianTerm.IY]
     phases_names = ["phi0", "phi1"]
 
@@ -294,13 +361,15 @@ def estimate_cr_phases(
         # and maximizes ZX interaction; though we compensate it with the final
         # X rotation on target qubit for building CNOT (otherwise add a n.pi
         # relative phase on X gate)
-        tuned_phases["phi0"] += np.pi
+        tuned_phases["phi0"] += phase_params[HamiltonianTerm.ZY]["omega"] * np.pi
 
     if fitting.sin_fit(tuned_phases["phi1"], **phase_params[HamiltonianTerm.IX]) > 0:
         # same as above, but this time is more euristic.
-        tuned_phases["phi1"] += np.pi
+        tuned_phases["phi1"] += phase_params[HamiltonianTerm.IY]["omega"] * np.pi
 
-    return tuned_phases["phi0"], tuned_phases["phi0"] - tuned_phases["phi1"]
+    return angle_wrap(tuned_phases["phi0"]), angle_wrap(
+        tuned_phases["phi0"] - tuned_phases["phi1"]
+    )
 
 
 def tomography_cr_fit(
@@ -310,14 +379,14 @@ def tomography_cr_fit(
     ],
     fit_with_evolution: bool = False,
 ) -> tuple[
-    dict[tuple[QubitId, QubitId, SetControl], list], dict[tuple[QubitId, QubitId], int]
+    dict[tuple[QubitId, QubitId, SetControl], list[float]],
+    dict[tuple[QubitId, QubitId], int],
 ]:
-    """Perform fitting on expectation values for CR tomography.
+    """Fit Hamiltonian tomography data for cross-resonance gates.
 
-    We first fit the Z expectation value to get the frequency of the CR pulse.
-    We then fit both the X and Y component.
-    Finally we perform a simultaneous fit all three components taking into account
-    constraint on the parameters.
+    This function performs sinusoidal fitting on tomography data collected for
+    cross-resonance interactions between qubit pairs. It fits the measurement
+    probabilities in X, Y, and Z bases across different control settings.
     """
 
     fitted_parameters = {}
@@ -371,7 +440,10 @@ def tomography_cr_fit(
     return fitted_parameters, cr_gate_x
 
 
-def extract_hamiltonian_terms(pair: QubitPairId, fitted_parameters: dict) -> dict:
+def extract_hamiltonian_terms(
+    pair: QubitPairId,
+    fitted_parameters: dict[tuple[QubitId, QubitId, SetControl], list[float]],
+) -> dict[QubitPairId, dict[HamiltonianTerm, float]]:
     """Extract Hamiltonian terms from fitted parameters.
 
     We follow the procedure presented in the paper https://arxiv.org/pdf/2303.01427.
@@ -404,7 +476,16 @@ def extract_hamiltonian_terms(pair: QubitPairId, fitted_parameters: dict) -> dic
     return hamiltonian_terms
 
 
-def refactor_hamiltoanian_terms(ham_terms: dict, pair: QubitPairId):
+def refactor_hamiltoanian_terms(
+    ham_terms: dict[tuple[QubitId, QubitId, HamiltonianTerm], float],
+    pair: QubitPairId,
+) -> dict[HamiltonianTerm, float]:
+    """Refactor Hamiltonian terms by removing qubit pair information from keys.
+
+    Converts dictionary keys from (qubit_id_0, qubit_id_1, HamiltonianTerm) tuples
+    to just HamiltonianTerm, simplifying the data structure.
+    """
+
     ham_terms[HamiltonianTerm.IX] = ham_terms.pop(
         (pair[0], pair[1], HamiltonianTerm.IX)
     )
@@ -427,7 +508,18 @@ def refactor_hamiltoanian_terms(ham_terms: dict, pair: QubitPairId):
     return ham_terms
 
 
-def amp_tom_fit(x, y, q_pair, term, result_dict):
+def amp_tom_fit(
+    x: list[float | int] | np.ndarray,
+    y: list[float | int] | np.ndarray,
+    q_pair: QubitPairId,
+    term: HamiltonianTerm,
+    result_dict: dict[HamiltonianTerm, dict[str, float]],
+) -> dict[HamiltonianTerm, dict[str, float]]:
+    """Fit linear function to amplitude vs Hamiltonian term data.
+
+    Performs a linear fit on the provided data to extract amplitude-dependent
+    parameters for a specific Hamiltonian term.
+    """
     try:
         pguess = [0, 0]
         popt, _ = curve_fit(
@@ -447,11 +539,24 @@ def amp_tom_fit(x, y, q_pair, term, result_dict):
     return result_dict
 
 
-def amplitude_tomography_cr_fit(data: Data):
+def amplitude_tomography_cr_fit(
+    data: Data,
+) -> tuple[
+    dict[QubitPairId, list[tuple[float, dict[HamiltonianTerm, float]]]],
+    dict[QubitPairId, dict[HamiltonianTerm, dict[str, float]]],
+    dict[QubitPairId, dict[str, float]],
+]:
+    """Perform amplitude-dependent tomography fitting for cross-resonance Hamiltonian.
+
+    Fits the dependence of Hamiltonian term parameters on the CR pulse amplitude.
+    Extracts Hamiltonian terms at different amplitudes and fits their variation
+    with amplitude to obtain linear parameters and cancellation amplitudes.
+    """
+
     amp_hamiltonian_params = {}
     for amp in data.amplitudes:
         amp_data = data.select_amplitude(amp)
-        amp_length_params, cr_duration = tomography_cr_fit(amp_data)
+        amp_length_params, _ = tomography_cr_fit(amp_data)
         for pair in amp_data.pairs:
             terms = extract_hamiltonian_terms(pair, amp_length_params)
             terms = refactor_hamiltoanian_terms(terms, pair)
@@ -464,7 +569,7 @@ def amplitude_tomography_cr_fit(data: Data):
     amp_lin_fit_params = {}
     cancellating_amplitudes = {}
     for pair_key, pair_value in amp_hamiltonian_params.items():
-        num_terms = num_terms = {t: [] for t in HamiltonianTerm}
+        num_terms = {t: [] for t in HamiltonianTerm}
         amplitudes = []
         for vals in pair_value:
             amplitudes.append(vals[0])
@@ -490,33 +595,43 @@ def amplitude_tomography_cr_fit(data: Data):
     return amp_hamiltonian_params, amp_lin_fit_params, cancellating_amplitudes
 
 
-def phase_tom_fit(x, y, q_pair, term, result_dict):
-    fs = 1 / (x[1] - x[0])
-    omega = quinn_fernandes_algorithm(y, x, fs)
+def phase_tom_fit(
+    x: list[float | int] | np.ndarray,
+    y: list[float | int] | np.ndarray,
+    q_pair: QubitPairId,
+    term: HamiltonianTerm,
+    result_dict: dict[HamiltonianTerm, dict[str, float]],
+) -> dict[HamiltonianTerm, dict[str, float]]:
+    """Fit sinusoidal function to phase vs Hamiltonian term data.
+
+    Performs a sinusoidal fit on the provided data to extract phase-dependent
+    parameters for a specific Hamiltonian term.
+    """
+
     median_sig = np.median(y)
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)
     amplitude_guess = abs(q80 - q20) / QUANTILE_CONSTANT
     phase_guess = 0
-    pguess = [amplitude_guess, median_sig, omega, phase_guess]
+    pguess = [amplitude_guess, median_sig, phase_guess]
     try:
         popt, _ = curve_fit(
-            fitting.sin_fit,
+            lambda x, a, b, phi: fitting.sin_fit(x, a, b, 1, phi),
             x,
             y,
             p0=pguess,
             maxfev=int(1e6),
             absolute_sigma=True,
             bounds=(
-                [-np.inf, -np.inf, -np.inf, -np.inf],
-                [np.inf, np.inf, np.inf, np.inf],
+                [-np.inf, -np.inf, -np.inf],
+                [np.inf, np.inf, np.inf],
             ),
         )
         result_dict[term] = {
             "a": popt[0],
             "b": popt[1],
-            "omega": popt[2],
-            "phi": popt[3],
+            "omega": 1,
+            "phi": popt[2],
         }
     except Exception as e:
         log.warning(f"{term} term vs amplitudes fit failed for {q_pair} due to {e}.")
@@ -524,15 +639,28 @@ def phase_tom_fit(x, y, q_pair, term, result_dict):
     return result_dict
 
 
-def phase_tomography_cr_fit(data: Data):
+def phase_tomography_cr_fit(
+    data: Data,
+) -> tuple[
+    dict[QubitPairId, list[tuple[float, dict[HamiltonianTerm, float]]]],
+    dict[QubitPairId, dict[HamiltonianTerm, dict[str, float]]],
+    dict[QubitPairId, dict[str, float]],
+]:
+    """Fit phase-dependent Hamiltonian parameters using cross-resonance tomography.
+
+    Extracts and fits Hamiltonian terms for different phases across all qubit pairs,
+    performing sinusoidal fits on phase-dependent data and estimating cancelling phases
+    for control and target qubits.
+    """
+
     phase_hamiltonian_params = {}
-    for phase in data.phases:
-        phase_data = data.select_phase(phase)
-        phase_length_params, cr_duration = tomography_cr_fit(phase_data)
+    for p in data.phases:
+        phase_data = data.select_phase(p)
+        phase_length_params, _ = tomography_cr_fit(phase_data)
         for pair in phase_data.pairs:
             terms = extract_hamiltonian_terms(pair, phase_length_params)
             terms = refactor_hamiltoanian_terms(terms, pair)
-            res_tuple = (phase, terms)
+            res_tuple = (p, terms)
             if pair not in phase_hamiltonian_params:
                 phase_hamiltonian_params[pair] = [res_tuple]
             else:
@@ -580,7 +708,8 @@ def tomography_cr_plot(
         ]
     ] = None,
 ) -> tuple[list[go.Figure], str]:
-    """Plotting function for HamiltonianTomographyCRLength."""
+    """Generate plots for Hamiltonian tomography experiment."""
+
     fig = make_subplots(
         rows=4,
         cols=1,
@@ -728,17 +857,24 @@ def tomography_cr_plot(
 def calibration_cr_plot(
     data: Union[
         "HamiltonianTomographyCANCAmplData",  # noqa: F821
-        "HamiltonianTomographyCRPhaseData",  # noqa: F821
+        "HamiltonianTomographyCANCPhaseData",  # noqa: F821
     ],
     target: QubitPairId,
     fit: Optional[
         Union[
             "HamiltonianTomographyCRAmplitudeResults",  # noqa: F821
-            "HamiltonianTomographyCRPhaseResults",  # noqa: F821
+            "HamiltonianTomographyCANCPhaseResults",  # noqa: F821
         ]
     ] = None,
 ) -> tuple[list[go.Figure], str]:
-    """Plotting function for HamiltonianTomographyCRLength."""
+    """Plot calibration results for cross-resonance Hamiltonian tomography when
+    tuning cancellation pulses.
+
+    Generates plots for either amplitude or phase calibration data of cancellation pulses
+    in cross-resonance interactions. Fits effective Hamiltonian terms and visualizes the
+    results with fitted curves overlaid on experimental data.
+    """
+
     figures = []
     fitting_report = ""
 
@@ -751,12 +887,12 @@ def calibration_cr_plot(
             HamiltonianTerm.IY: "ampl_iy",
         }
 
-    if type(data).__name__ == "HamiltonianTomographyCRPhaseData":
+    if type(data).__name__ == "HamiltonianTomographyCANCPhaseData":
         fit_func = fitting.sin_fit
         x_title = "phase [rad.]"
         tunable_params = {}
         tunable_params["phi0"] = fit.cancellation_pulse_phases[target]["control"]
-        tunable_params["phi1"] = (
+        tunable_params["phi1"] = angle_wrap(
             fit.cancellation_pulse_phases[target]["control"]
             - fit.cancellation_pulse_phases[target]["target"]
         )
@@ -787,7 +923,7 @@ def calibration_cr_plot(
                 amp_range = np.linspace(
                     min(exp_sweeper),
                     max(exp_sweeper),
-                    2 * len(exp_sweeper),
+                    2 * len(exp_sweeper) if len(exp_sweeper) >= 100 else 200,
                 )
                 params = fit.fitted_parameters[target][t]
                 fig.add_trace(
