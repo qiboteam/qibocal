@@ -443,41 +443,6 @@ def execute_indexed_circuits(
     return indexed_results
 
 
-def execute_circuits(circuits, targets, params, platform, single_qubit=True):
-    """
-    Executes circuits on a given backend.
-
-    Args:
-        circuits (dict): dict of quantum circuits to be executed.
-        targets (list): List of target qubits for each circuit.
-        params (Parameters): Experiment parameters.
-        platform (object): Platform to execute the circuits on.
-        single_qubit (bool): Flag indicating whether the circuits are single-qubit or multi-qubit.
-
-    Returns:
-        list: List of executed circuits.
-
-    """
-    # Execute the circuits
-    transpiler = dummy_transpiler(platform)
-    compiler = get_compiler(platform)
-    # TODO: get rid of this
-    qubit_maps = (
-        [[i] for i in targets] * (len(params.depths) * params.niter)
-        if single_qubit
-        else [list(i) for i in targets] * (len(params.depths) * params.niter)
-    )
-    executed_circuits = execute_transpiled_circuits(
-        circuits,
-        qubit_maps=qubit_maps,
-        platform=platform,
-        compiler=compiler,
-        nshots=params.nshots,
-        transpiler=transpiler,
-    )
-    return executed_circuits
-
-
 def rb_acquisition(
     params: Parameters,
     platform: CalibrationPlatform,
