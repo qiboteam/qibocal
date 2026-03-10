@@ -700,7 +700,8 @@ def add_measurement_layer(circuit: Circuit):
         circuit (Circuit): Measurement gates added in place to end of this circuit.
     """
 
-    circuit.add(gates.M(*range(circuit.nqubits)))
+    for qubit in range(circuit.nqubits):
+        circuit.add(gates.M(qubit))
 
 
 def fit(data):
