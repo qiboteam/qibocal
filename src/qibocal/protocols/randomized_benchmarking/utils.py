@@ -213,7 +213,7 @@ def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
     return uncertainties
 
 
-class RB_Generator:
+class RBGenerator:
     """
     This class generates random two qubit cliffords for randomized benchmarking.
     """
@@ -353,7 +353,7 @@ def setup_data(
 
 def generate_indexed_circuits(
     params: Parameters,
-    rb_gen: RB_Generator,
+    rb_gen: RBGenerator,
     targets,  # list[QubitId] or list[QubitPairId]
     inverse_layer: bool = True,
     interleave: Optional[str] = None,
@@ -363,7 +363,7 @@ def generate_indexed_circuits(
 
     Args:
         params: Experiment parameters containing depths, niter.
-        rb_gen: RB_Generator instance to use for generating Clifford gates.
+        rb_gen: RBGenerator instance to use for generating Clifford gates.
         targets: List of target qubit IDs.
         inverse_layer: Whether to add an inverse layer to the circuits. Defaults to True.
         interleave: Interleaving pattern for the circuits. Defaults to None.
@@ -471,7 +471,7 @@ def rb_acquisition(
     Returns:
         RBData: Validated RB data structure with results organized by (qubit, depth).
     """
-    rb_gen = RB_Generator(params.seed)
+    rb_gen = RBGenerator(params.seed)
 
     npulses_per_clifford = rb_gen.calculate_average_pulses()
     data = setup_data(
@@ -533,7 +533,7 @@ def twoq_rb_acquisition(
     Returns:
         RB2QData: The acquired data for two qubit randomized benchmarking.
     """
-    rb_gen = RB_Generator(params.seed, file=params.file)
+    rb_gen = RBGenerator(params.seed, file=params.file)
 
     npulses_per_clifford = rb_gen.calculate_average_pulses()
     data = setup_data(
@@ -588,7 +588,7 @@ def twoq_rb_acquisition(
 
 
 def layer_circuit(
-    rb_gen: RB_Generator,
+    rb_gen: RBGenerator,
     depth: int,
     target: Union[QubitId, QubitPairId],
     interleave: Optional[str] = None,
@@ -637,7 +637,7 @@ def layer_circuit(
 
 
 def add_inverse_layer(
-    circuit: Circuit, rb_gen: RB_Generator, file_inv: pathlib.Path | None = None
+    circuit: Circuit, rb_gen: RBGenerator, file_inv: pathlib.Path | None = None
 ):
     """Adds an inverse gate/inverse gates at the end of a circuit (in place).
 
