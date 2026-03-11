@@ -38,7 +38,7 @@ def _acquisition(
 
 
 def _fit(data: RB2QData) -> StandardRBResult:
-    return fit(data)
+    return fit(data, single_qubit=False)
 
 
 def _update(
