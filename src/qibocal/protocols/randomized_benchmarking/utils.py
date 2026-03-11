@@ -112,7 +112,7 @@ GLOBAL_PHASES = [
 
 RBType = np.dtype(
     [
-        ("samples", np.float64),
+        ("survival_probs", np.float64),
     ]
 )
 """Custom dtype for RB."""
@@ -271,13 +271,6 @@ class RBData(Data):
     """Raw data acquired."""
     npulses_per_clifford: float = 1.875
     """Number of pulses for an average clifford."""
-
-    def extract_probabilities(self, qubit):
-        """Extract the probabilities given `qubit`"""
-        probs = []
-        for depth in self.depths:
-            probs.append(1 - self.data[qubit, depth]["samples"])
-        return probs
 
 
 @dataclass
@@ -505,14 +498,17 @@ def rb_acquisition(
     grouped: defaultdict = defaultdict(list)
     for indexed_result in indexed_results:
         key = (indexed_result.index.qubit, indexed_result.index.depth)
-        prob_excited = indexed_result.result["1"] / params.nshots
+        survival_counts = (
+            indexed_result.result["0"] if inverse_layer else indexed_result.result["1"]
+        )
+        prob_excited = survival_counts / params.nshots
         grouped[key].append(prob_excited)
 
     for (qubit, depth), results in grouped.items():
         data.register_qubit(
             RBType,
             (qubit, depth),
-            {"samples": results},
+            {"survival_probs": results},
         )
 
     return data
@@ -585,7 +581,7 @@ def twoq_rb_acquisition(
         data.register_qubit(
             RBType,
             (qubit0, qubit1, depth),
-            {"samples": samples},
+            {"survival_probs": samples},
         )
 
     return data
@@ -718,24 +714,18 @@ def fit(data):
     popts, perrs = {}, {}
     error_barss = {}
     for target in targets:
-        # Extract depths and probabilities
-        x = data.depths
-        probs = data.extract_probabilities(target)
-        samples_mean = np.mean(probs, axis=1)
-        # TODO: Should we use the median or the mean?
-        median = np.median(probs, axis=1)
+        probs_array = np.array(
+            [
+                val["survival_probs"]
+                for key, val in data.data.items()
+                if key[0] == target
+            ]
+        )  # rows -> depths, cols -> iterations
 
-        error_bars = data_uncertainties(
-            probs,
-            method=data.uncertainties,
-            data_median=median,
+        sigma = np.std(probs_array, axis=1)
+        popt, perr = fit_exp1B_func(
+            data.depths, np.mean(probs_array, axis=1), sigma=sigma, bounds=[0, 1]
         )
-
-        sigma = (
-            np.max(error_bars, axis=0) if data.uncertainties is not None else error_bars
-        )
-
-        popt, perr = fit_exp1B_func(x, samples_mean, sigma=sigma, bounds=[0, 1])
 
         # Compute the fidelities
         infidelity = (1 - popt[1]) * (dimension - 1) / dimension
@@ -743,8 +733,7 @@ def fit(data):
         pulse_fidelity[target] = 1 - infidelity / data.npulses_per_clifford
 
         # conversion from np.array to list/tuple
-        error_bars = error_bars.tolist()
-        error_barss[target] = error_bars
+        error_barss[target] = sigma.tolist()
         perrs[target] = perr
         popts[target] = popt
 

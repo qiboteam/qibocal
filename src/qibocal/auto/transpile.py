@@ -173,7 +173,7 @@ def execute_circuits(
                 assert len(gate.qubits) == 1
                 assert len(sequence.acquisitions) == 1
                 result[gate.qubits[0]] = readout[sequence.acquisitions[0][1].id]
-            arr = np.stack([result[q] for q in sorted(result)])
+            arr = np.stack([result[q] for q in sorted(result)]).astype(int)
             countslist.append(Counter("".join(map(str, col)) for col in arr.T))
 
     assert all(sum(counts.values()) == nshots for counts in countslist), (
