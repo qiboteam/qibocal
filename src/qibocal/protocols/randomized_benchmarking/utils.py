@@ -501,8 +501,8 @@ def rb_acquisition(
         survival_counts = (
             indexed_result.result["0"] if inverse_layer else indexed_result.result["1"]
         )
-        prob_excited = survival_counts / params.nshots
-        grouped[key].append(prob_excited)
+        survival_prob = survival_counts / params.nshots
+        grouped[key].append(survival_prob)
 
     for (qubit, depth), results in grouped.items():
         data.register_qubit(
@@ -562,26 +562,21 @@ def twoq_rb_acquisition(
     grouped: defaultdict = defaultdict(list)
     for indexed_result in indexed_results:
         qubit_pair = indexed_result.index.qubit
-        depth = indexed_result.index.depth
-        assert isinstance(qubit_pair, (list, tuple))
-        key = (qubit_pair[0], qubit_pair[1], depth)
-        grouped[key].append(indexed_result.result)
+        assert isinstance(qubit_pair, tuple)
+        key = (qubit_pair[0], qubit_pair[1], indexed_result.index.depth)
+        survival_counts = (
+            indexed_result.result["00"]
+            if inverse_layer
+            else indexed_result.result["11"]
+        )
+        survival_prob = survival_counts / params.nshots
+        grouped[key].append(survival_prob)
 
     for (qubit0, qubit1, depth), results in grouped.items():
-        # Post process each result: [0,0] to 0 and [1,0], [0,1], [1,1] to 1
-        # BUG: not sure if this works for cyclic data acqusition, but anyway even when
-        # doing singleshot the twoq_rb protocal is broken.
-        samples = []
-        for result in results:
-            result_samples = result.samples()
-            # Convert: [0,0] -> 0, else -> 1
-            converted = 1 - np.all(result_samples == [0], axis=1).astype(int)
-            samples.append(converted)
-
         data.register_qubit(
-            RBType,
-            (qubit0, qubit1, depth),
-            {"survival_probs": samples},
+            dtype=RBType,
+            data_keys=(qubit0, qubit1, depth),
+            data_dict={"survival_probs": results},
         )
 
     return data
@@ -705,20 +700,22 @@ def fit(data):
     exponential function y = Ap^x+B."""
 
     targets = data.qubits
-    if isinstance(targets, tuple):
-        dimension = 2 ** len(targets)
-    else:
+    single_qubit = isinstance(targets[0], int)
+    if single_qubit:
         dimension = 2
+    else:
+        dimension = 2 ** len(targets)
 
     fidelity, pulse_fidelity = {}, {}
     popts, perrs = {}, {}
     error_barss = {}
     for target in targets:
+        key_len = 1 if single_qubit else 2
         probs_array = np.array(
             [
                 val["survival_probs"]
                 for key, val in data.data.items()
-                if key[0] == target
+                if key[:key_len] == target
             ]
         )  # rows -> depths, cols -> iterations
 

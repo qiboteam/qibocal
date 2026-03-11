@@ -206,7 +206,7 @@ class Data(AbstractData):
     def qubits(self) -> list[QubitId]:
         """Access qubits from data structure."""
         if set(map(type, self.data)) == {tuple}:
-            return list({q[0] for q in self.data})
+            return list({tuple(sorted(q[:2])) for q in self.data})
         return [q for q in self.data]
 
     @property
