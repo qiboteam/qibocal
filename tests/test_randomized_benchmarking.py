@@ -6,7 +6,7 @@ import pytest
 from qibocal.protocols.randomized_benchmarking import fitting
 from qibocal.protocols.randomized_benchmarking.dict_utils import load_inverse_cliffords
 from qibocal.protocols.randomized_benchmarking.utils import (
-    RB_Generator,
+    RBGenerator,
     generate_inv_dict_cliffords_file,
     layer_circuit,
     load_cliffords,
@@ -114,7 +114,7 @@ def test_exp2_fitting():
 @pytest.mark.parametrize("seed", [10])
 @pytest.mark.parametrize("qubits", [1, 2, [0, 1], np.array([0, 1])])
 def test_random_clifford(qubits, seed):
-    rb_gen = RB_Generator(seed)
+    rb_gen = RBGenerator(seed)
 
     result_single = np.array([[1j, -1j], [-1j, -1j]]) / np.sqrt(2)
 
@@ -159,7 +159,7 @@ def test_generate_inv_dict_cliffords_file(tmp_path):
 @pytest.mark.parametrize("depth", [1, 10, 34])
 def test_layer_circuit_single_qubit(mocker, depth):
     qubit = 0
-    rb_gen = RB_Generator(123)
+    rb_gen = RBGenerator(123)
     single_qubit_spy = mocker.spy(rb_gen, "random_layer_gen_single_qubit")
     two_qubit_spy = mocker.spy(rb_gen, "random_layer_gen_two_qubit")
 
@@ -179,7 +179,7 @@ def test_layer_circuit_single_qubit(mocker, depth):
 @pytest.mark.parametrize("depth", [2, 24, 47])
 def test_layer_circuit_two_qubit(mocker, depth):
     qubit_pair = (0, 1)
-    rb_gen = RB_Generator(123, file="2qubitCliffs.json")
+    rb_gen = RBGenerator(123, file="2qubitCliffs.json")
     single_qubit_spy = mocker.spy(rb_gen, "random_layer_gen_single_qubit")
     two_qubit_spy = mocker.spy(rb_gen, "random_layer_gen_two_qubit")
 
