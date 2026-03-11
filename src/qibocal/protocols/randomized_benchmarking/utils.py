@@ -695,27 +695,26 @@ def add_measurement_layer(circuit: Circuit):
         circuit.add(gates.M(qubit))
 
 
-def fit(data):
+def fit(data, single_qubit: bool = True) -> StandardRBResult:
     """Takes data, extracts the depths and the signal and fits it with an
     exponential function y = Ap^x+B."""
 
-    targets = data.qubits
-    single_qubit = isinstance(targets[0], int)
     if single_qubit:
+        targets = data.qubits
         dimension = 2
     else:
+        targets = data.pairs
         dimension = 2 ** len(targets)
 
     fidelity, pulse_fidelity = {}, {}
     popts, perrs = {}, {}
     error_barss = {}
     for target in targets:
-        key_len = 1 if single_qubit else 2
         probs_array = np.array(
             [
                 val["survival_probs"]
                 for key, val in data.data.items()
-                if key[:key_len] == target
+                if (key[0] if single_qubit == 1 else key[:2]) == target
             ]
         )  # rows -> depths, cols -> iterations
 

@@ -205,14 +205,17 @@ class Data(AbstractData):
     @property
     def qubits(self) -> list[QubitId]:
         """Access qubits from data structure."""
+        # TODO: what is this for? Seems like a hacky way to implement something. Also
+        # means we can't do multi qubit in a sensbile way since, but isntead rely on the
+        # `pairs` property below, since tuples are now used for whatever this is.
         if set(map(type, self.data)) == {tuple}:
-            return list({tuple(sorted(q[:2])) for q in self.data})
+            return list({q[0] for q in self.data})
         return [q for q in self.data]
 
     @property
     def pairs(self):
-        """Access qubit pairs ordered alphanumerically from data structure."""
-        return list({tuple(sorted(q[:2])) for q in self.data})
+        """Access qubit pairs from data structure."""
+        return list({tuple(q[:2]) for q in self.data})
 
     def register_qubit(self, dtype, data_keys, data_dict):
         """Store output for single qubit.

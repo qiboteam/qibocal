@@ -113,12 +113,11 @@ def _plot(
     fitting_report = ""
     x = data.depths
     single_qubit = isinstance(target, int)
-    key_len = 1 if single_qubit else 2
     raw_data = np.array(
         [
             val["survival_probs"]
             for key, val in data.data.items()
-            if key[:key_len] == target
+            if (key[0] if single_qubit == 1 else key[:2]) == target
         ]
     )  # rows -> depths, cols -> iterations
     y = np.mean(raw_data, axis=1)
