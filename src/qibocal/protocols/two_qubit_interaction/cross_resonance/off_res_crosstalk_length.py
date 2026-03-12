@@ -24,7 +24,6 @@ from qibocal.auto.operation import (
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.rabi import utils as rabi_utils
-from qibocal.result import probability
 
 from ...utils import (
     COLORBAND,
@@ -164,11 +163,11 @@ def _acquisition(
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.SINGLESHOT,
+        averaging_mode=AveragingMode.CYCLIC,
     )
 
     for pair in targets:
-        prob = probability(results[ro_pulses[pair].id], state=1)
+        prob = results[ro_pulses[pair].id]
         data.register_qubit(
             CrCrosstalkLenType,
             (pair),
