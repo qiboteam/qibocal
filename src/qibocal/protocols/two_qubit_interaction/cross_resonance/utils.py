@@ -110,13 +110,13 @@ def cr_sequence(
     cr_target_pulses.append(target_drive_pulse)
     control_drive_channel, control_drive_pulse = natives_control.RX()[0]
     target_drive_channel, _ = natives_target.RX()[0]
-    ro_channel, ro_pulse = natives_target.MZ()[0]
+    ro_channel_target, ro_pulse_target = natives_target.MZ()[0]
     ro_channel_control, ro_pulse_control = natives_control.MZ()[0]
     if setup == SetControl.X:
         control_delay = Delay(duration=control_drive_pulse.duration)
         sequence.append((control_drive_channel, control_drive_pulse))
         sequence.append((target_drive_channel, control_delay))
-        sequence.append((ro_channel, control_delay))
+        sequence.append((ro_channel_target, control_delay))
         sequence.append((ro_channel_control, control_delay))
         sequence.append((cr_channel, control_delay))
 
@@ -156,18 +156,18 @@ def cr_sequence(
                 cr_channel,
                 target_drive_channel,
                 control_drive_channel,
-                ro_channel,
+                ro_channel_target,
                 ro_channel_control,
             ]
         )
     else:
-        sequence.append((ro_channel, delays[0]))
+        sequence.append((ro_channel_target, delays[0]))
         sequence.append((ro_channel_control, delays[1]))
         if echo:
-            sequence.append((ro_channel, delays[2]))
+            sequence.append((ro_channel_target, delays[2]))
             sequence.append((ro_channel_control, delays[3]))
             sequence.append(
-                (ro_channel, Delay(duration=2 * control_drive_pulse.duration))
+                (ro_channel_target, Delay(duration=2 * control_drive_pulse.duration))
             )
             sequence.append(
                 (ro_channel_control, Delay(duration=2 * control_drive_pulse.duration))
@@ -191,9 +191,9 @@ def cr_sequence(
     target_delay = Delay(
         duration=natives_target.R(theta=np.pi / 2, phi=np.pi / 2)[0][1].duration
     )
-    sequence.append((ro_channel, target_delay))
+    sequence.append((ro_channel_target, target_delay))
     sequence.append((ro_channel_control, target_delay))
-    sequence.append((ro_channel, ro_pulse))
+    sequence.append((ro_channel_target, ro_pulse_target))
     sequence.append((ro_channel_control, ro_pulse_control))
     return sequence, cr_pulses, cr_target_pulses, delays
 
