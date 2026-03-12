@@ -17,7 +17,6 @@ from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routi
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.rabi import utils as rabi_utils
-from qibocal.result import probability
 
 from ...utils import (
     COLORBAND,
@@ -107,11 +106,6 @@ def _acquisition(
         qd_channel, qd_pulse = control_natives.RX()[0]
         ro_channel, ro_pulse = target_natives.MZ()[0]
 
-        # #####################################
-        # # test
-        # target_channel, target_pulse = target_natives.RX()[0]
-        # #####################################
-
         if params.off_resonance:
             cr_channel = platform.qubits[control_q].drive_extra[target_q]
         else:
@@ -125,14 +119,6 @@ def _acquisition(
         ro_pulses[pair] = ro_pulse
 
         sequence.append((cr_channel, qd_pulses[pair]))
-        # ##################################################
-        # # test
-        # sequence.append((target_channel, Delay(duration=durations[pair])))
-        # sequence.append((target_channel, target_pulse))
-        # sequence.append((target_channel, Delay(duration=durations[pair])))
-        # sequence.append((ro_channel, Delay(duration=target_pulse.duration)))
-        # sequence.append((ro_channel, Delay(duration=durations[pair])))
-        # ##################################################
         sequence.append((ro_channel, Delay(duration=durations[pair])))
         sequence.append((ro_channel, ro_pulse))
 
@@ -151,10 +137,10 @@ def _acquisition(
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.SINGLESHOT,
+        averaging_mode=AveragingMode.CYCLIC,
     )
     for pair in targets:
-        prob = probability(results[ro_pulses[pair].id], state=1)
+        prob = results[ro_pulses[pair].id]
         data.register_qubit(
             CrCrosstalkAmpType,
             (pair),
