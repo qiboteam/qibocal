@@ -1,5 +1,6 @@
 import json
 from collections import Counter, defaultdict
+from collections.abc import Sequence
 from copy import deepcopy
 from dataclasses import dataclass, field
 from itertools import product
@@ -97,6 +98,25 @@ class StateTomographyResults(Results):
     """State fidelity."""
 
 
+def marginalize_qubit_counts(counts: Counter, indices: Sequence[int] | int):
+    """
+    Extract marginal distribution from measurement counts over selected qubit indices.
+
+    Args:
+        counts: Counter mapping bitstrings to counts (e.g., {'0101': 10, ...})
+        indices: Qubit positions to marginalize over.
+
+    Returns:
+        Counter of the marginal distribution.
+    """
+    out = Counter()
+    indices_list = [indices] if isinstance(indices, int) else indices
+    for state, count in counts.items():
+        reduced = "".join(state[i] for i in indices_list)
+        out[reduced] += count
+    return out
+
+
 def _acquisition(
     params: StateTomographyParameters,
     platform: CalibrationPlatform,
@@ -135,8 +155,8 @@ def _acquisition(
 
         pairs = (
             (
-                gates.M(2 * i, register_name=f"reg{i}a"),
-                gates.M(2 * i + 1, register_name=f"reg{i}b"),
+                gates.M(2 * i),
+                gates.M(2 * i + 1),
             )
             for i in range(len(targets))
         )
@@ -153,7 +173,7 @@ def _acquisition(
         )
 
         for i, pair in enumerate(targets):
-            frequencies = results.frequencies(registers=True)[f"reg{i}"]
+            frequencies = marginalize_qubit_counts(results, (2 * i, 2 * i + 1))
             simulation_probabilities = simulation_result.probabilities(
                 qubits=(2 * i, 2 * i + 1)
             )
