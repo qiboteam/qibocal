@@ -204,6 +204,7 @@ def _acquisition(
                     setup=setup,
                     basis=basis,
                 )
+
                 if params.interpolated_sweeper:
                     length_sweeper = Sweeper(
                         parameter=Parameter.duration_interpolated,
