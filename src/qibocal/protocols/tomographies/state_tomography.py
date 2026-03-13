@@ -8,11 +8,13 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibo import Circuit, gates
-from qibo.backends import NumpyBackend, construct_backend, matrices
+from qibo.backends import NumpyBackend, matrices
 from qibo.quantum_info import fidelity, partial_trace
 
+from qibocal.protocols.utils import marginalize_qubit_counts
+
 from ...auto.operation import DATAFILE, Data, Parameters, QubitId, Results, Routine
-from ...auto.transpile import dummy_transpiler, execute_transpiled_circuit
+from ...auto.transpile import dummy_transpiler, execute_transpiled_circuit, get_compiler
 from ...calibration import CalibrationPlatform
 from ..utils import table_dict, table_html
 
@@ -109,8 +111,8 @@ def _acquisition(
     if params.circuit is None:
         params.circuit = Circuit(len(targets))
 
-    backend = construct_backend("qibolab", platform=platform)
-    transpiler = dummy_transpiler(backend)
+    transpiler = dummy_transpiler(platform)
+    compiler = get_compiler(platform)
 
     data = StateTomographyData(
         circuit=params.circuit, targets={target: i for i, target in enumerate(targets)}
@@ -123,21 +125,21 @@ def _acquisition(
             for i in range(len(targets)):
                 basis_circuit.add(getattr(gates, basis)(i).basis_rotation())
 
-        basis_circuit.add(gates.M(*range(len(targets))))
+        for i in range(len(targets)):
+            basis_circuit.add(gates.M(i))
         _, results = execute_transpiled_circuit(
             basis_circuit,
             targets,
-            backend,
+            platform,
+            compiler,
             nshots=params.nshots,
             transpiler=transpiler,
         )
-        for i, target in enumerate(targets):
+        for target in targets:
             data.register_qubit(
                 TomographyType,
                 (target, basis),
-                dict(
-                    samples=np.array(results.samples()).T[i],
-                ),
+                dict(samples=marginalize_qubit_counts(results[0], [i])),
             )
     return data
 

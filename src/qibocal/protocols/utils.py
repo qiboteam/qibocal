@@ -1,3 +1,5 @@
+from collections import Counter
+from collections.abc import Sequence
 from colorsys import hls_to_rgb
 from enum import Enum
 from typing import Literal, Optional, Union
@@ -232,6 +234,25 @@ def compute_qnd(
 
     qnd = np.sum(np.diag(p_o)) / 2 if not pi else np.sum(np.diag(p_o[::-1])) / 2
     return qnd, lambda_m.tolist(), lambda_m2.tolist()
+
+
+def marginalize_qubit_counts(counts: Counter, indices: Sequence[int] | int):
+    """
+    Extract marginal distribution from measurement counts over selected qubit indices.
+
+    Args:
+        counts: Counter mapping bitstrings to counts (e.g., {'0101': 10, ...})
+        indices: Qubit positions to marginalize over.
+
+    Returns:
+        Counter of the marginal distribution.
+    """
+    out = Counter()
+    indices_list = [indices] if isinstance(indices, int) else indices
+    for state, count in counts.items():
+        reduced = "".join(state[i] for i in indices_list)
+        out[reduced] += count
+    return out
 
 
 def compute_assignment_fidelity(
