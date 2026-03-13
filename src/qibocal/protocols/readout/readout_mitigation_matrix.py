@@ -5,11 +5,14 @@ import numpy as np
 import numpy.typing as npt
 import plotly.express as px
 from qibo import gates
-from qibo.backends import construct_backend
 from qibo.models import Circuit
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
-from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
+from qibocal.auto.transpile import (
+    dummy_transpiler,
+    execute_transpiled_circuit,
+    get_compiler,
+)
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
@@ -70,8 +73,8 @@ def _acquisition(
     data = ReadoutMitigationMatrixData(
         nshots=params.nshots, qubit_list=[list(qq) for qq in targets]
     )
-    backend = construct_backend("qibolab", platform=platform)
-    transpiler = dummy_transpiler(backend)
+    transpiler = dummy_transpiler(platform)
+    compiler = get_compiler(platform)
 
     for qubits in targets:
         nqubits = len(qubits)
@@ -83,12 +86,18 @@ def _acquisition(
             for q, bit in enumerate(state):
                 if bit == "1":
                     c.add(gates.X(q))
-            c.add(gates.M(*range(nqubits)))
+            for i in range(nqubits):
+                c.add(gates.M(i))
             _, results = execute_transpiled_circuit(
-                c, qubits, backend, nshots=params.nshots, transpiler=transpiler
+                c,
+                qubits,
+                platform,
+                compiler,
+                nshots=params.nshots,
+                transpiler=transpiler,
             )
             frequencies = np.zeros(2 ** len(qubits))
-            for i, freq in results.frequencies().items():
+            for i, freq in results[0]:
                 frequencies[int(i, 2)] = freq
             for freq in frequencies:
                 data.register_qubit(
