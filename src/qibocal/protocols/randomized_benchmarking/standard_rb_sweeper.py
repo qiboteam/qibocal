@@ -35,6 +35,8 @@ __all__ = ["standard_rb_sweeper"]
 NUM_VZ_PER_CLIFFORD = 3
 
 
+# BUG: this module was slightly changed to avoid pytest failing due to non-exisiting
+# imports, but it does not reflect the change to RBType in PR #1393
 def _acquisition(
     params: StandardRBParameters,
     platform: CalibrationPlatform,
