@@ -61,7 +61,7 @@ def execute_circuit(
     initial_state=None,
     nshots=1000,
     averaging_mode=AveragingMode.SINGLESHOT,
-) -> Counter:
+) -> list[Counter[str]]:
     """Executes a quantum circuit.
 
     Args:
@@ -92,18 +92,38 @@ def execute_circuit(
     # TODO?: pass options dict
     readout = platform.execute([sequence], nshots=nshots, averaging_mode=averaging_mode)
 
-    result = {}
-    for gate, sequence in measurement_map.items():
-        # assert that a single measurement gate only measures the state of a single qubit
-        assert len(gate.qubits) == 1
-        assert len(sequence.acquisitions) == 1
-        result[gate.qubits[0]] = readout[sequence.acquisitions[0][1].id]
+    # TODO: is it really correct that readout can have more than one entry? I think so
+    # since there can be multiple measurement gates.
+    countslist = []
+    if averaging_mode.average:
+        # NOTE: averaging mode only makes sense for a two state readout. If ther eare
+        # more states it would have to be conditional since the excited state probablity
+        # of idividual qubits does not provide full information about the probablity
+        # distribution of the full set of basis states.
+        for excited_frac in readout.values():
+            countslist.append(
+                Counter(
+                    {
+                        "0": np.round((1 - excited_frac) * nshots),
+                        "1": np.round(excited_frac * nshots),
+                    }
+                )
+            )
+    else:
+        result = {}
+        for gate, sequence in measurement_map.items():
+            # assert that a single measurement gate only measures the state of a single qubit
+            assert len(gate.qubits) == 1
+            assert len(sequence.acquisitions) == 1
+            result[gate.qubits[0]] = readout[sequence.acquisitions[0][1].id]
+        arr = np.stack([result[q] for q in sorted(result)]).astype(int)
+        countslist.append(Counter("".join(map(str, col)) for col in arr.T))
 
-    arr = np.stack([result[q] for q in sorted(result)]).astype(int)
+    assert all(sum(counts.values()) == nshots for counts in countslist), (
+        "The sum of shots in all possible outcomes should be equal to nshots."
+    )
 
-    counts = Counter("".join(map(str, col)) for col in arr.T)
-
-    return counts
+    return countslist
 
 
 # TODO: instead of returning a list of Counters, can we return a list of the rate of
@@ -156,6 +176,10 @@ def execute_circuits(
 
     countslist = []
     if averaging_mode.average:
+        # NOTE: averaging mode only makes sense for a two state readout. If ther eare
+        # more states it would have to be conditional since the excited state probablity
+        # of idividual qubits does not provide full information about the probablity
+        # distribution of the full set of basis states.
         for excited_frac in readout.values():
             countslist.append(
                 Counter(
