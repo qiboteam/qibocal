@@ -46,7 +46,7 @@ class StateTomographyParameters(Parameters):
 
 TomographyType = np.dtype(
     [
-        ("samples", np.int64),
+        ("excited_state_rate", float),
     ]
 )
 """Custom dtype for tomography."""
@@ -135,11 +135,13 @@ def _acquisition(
             nshots=params.nshots,
             transpiler=transpiler,
         )
-        for target in targets:
+        for i, target in enumerate(targets):
+            single_qubit_state_counter = marginalize_qubit_counts(results[0], [i])
+            excited_state_rate = single_qubit_state_counter.get(1, 0) / params.nshots
             data.register_qubit(
                 TomographyType,
                 (target, basis),
-                dict(samples=marginalize_qubit_counts(results[0], [i])),
+                dict(excited_state_rate=excited_state_rate),
             )
     return data
 
@@ -157,9 +159,9 @@ def _fit(data: StateTomographyData) -> StateTomographyResults:
     for i, qubit in enumerate(data.targets):
         traced_qubits = [q for q in range(len(data.qubits)) if q != i]
         target_density_matrix = partial_trace(total_density_matrix, traced_qubits)
-        x_exp = 1 - 2 * np.mean(data[qubit, "X"].samples)
-        y_exp = 1 - 2 * np.mean(data[qubit, "Y"].samples)
-        z_exp = 1 - 2 * np.mean(data[qubit, "Z"].samples)
+        x_exp = 1 - 2 * data[qubit, "X"].excited_state_rate
+        y_exp = 1 - 2 * data[qubit, "Y"].excited_state_rate
+        z_exp = 1 - 2 * data[qubit, "Z"].excited_state_rate
         measured_density_matrix = 0.5 * (
             matrices.I + matrices.X * x_exp + matrices.Y * y_exp + matrices.Z * z_exp
         )
