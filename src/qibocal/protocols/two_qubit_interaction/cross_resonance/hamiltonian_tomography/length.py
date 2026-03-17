@@ -22,7 +22,6 @@ from scipy.constants import kilo
 
 from ..... import update
 from .....auto.operation import (
-    Data,
     Parameters,
     QubitId,
     QubitPairId,
@@ -35,6 +34,7 @@ from ..utils import Basis, SetControl, cr_sequence
 from .utils import (
     EPS,
     HamiltonianTerm,
+    HamiltonianTomographyData,
     extract_hamiltonian_terms,
     tomography_cr_fit,
     tomography_cr_plot,
@@ -91,7 +91,7 @@ class HamiltonianTomographyCRLengthResults(Results):
     """HamiltonianTomographyCRLength outputs."""
 
     echo: bool
-    hamiltonian_terms: dict[QubitId, QubitId, HamiltonianTerm] = field(
+    hamiltonian_terms: dict[tuple[QubitId, QubitId, HamiltonianTerm], float] = field(
         default_factory=dict
     )
     """Terms in effective Hamiltonian."""
@@ -113,7 +113,7 @@ class HamiltonianTomographyCRLengthResults(Results):
 
 
 @dataclass
-class HamiltonianTomographyCRLengthData(Data):
+class HamiltonianTomographyCRLengthData(HamiltonianTomographyData):
     """Data structure for CR length."""
 
     echo: bool | None = None
@@ -323,9 +323,10 @@ def _update(
         setup=SetControl.Id,
         basis=Basis.Y,
     )
+    new_cr_seq = new_cr_seq[:-2]  # remove acquisition pulses
 
     new_cr_seq.insert(
-        -4, (platform.qubits[target[0]].drive, VirtualZ(phase=-np.pi / 2))
+        -2, (platform.qubits[target[0]].drive, VirtualZ(phase=-np.pi / 2))
     )
 
     getattr(update, f"{results.native}_sequence")(new_cr_seq, platform, target)
