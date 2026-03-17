@@ -5,9 +5,8 @@ after the application of a cross resonance sequence. The CR pulses are played on
 channel with frequency set to the frequency of the target drive channel.
 """
 
-import datetime
 from dataclasses import dataclass, field
-from typing import Any, Literal, Union
+from typing import Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -18,10 +17,10 @@ from qibolab import (
     Sweeper,
     VirtualZ,
 )
+from scipy.constants import kilo
 
 from ..... import update
 from .....auto.operation import (
-    Data,
     Parameters,
     QubitId,
     QubitPairId,
@@ -29,12 +28,15 @@ from .....auto.operation import (
     Routine,
 )
 from .....calibration import CalibrationPlatform
+from ....utils import table_dict, table_html
 from ..utils import Basis, SetControl, cr_sequence
 from .utils import (
     EPS,
     HamiltonianTerm,
+    HamiltonianTomographyData,
     calibration_cr_plot,
     phase_tomography_cr_fit,
+    reconstruct_full_hamiltonian_terms,
 )
 
 HamiltonianTomographyCANCPhaseType = np.dtype(
@@ -66,7 +68,7 @@ class HamiltonianTomographyCANCPhaseParameters(Parameters):
     """Initial phase of CR pulse."""
     control_phase_end: float = 2 * np.pi
     """Final phase of CR pulse."""
-    control_amplitude: Union[dict[QubitPairId, float], float] = 0.1
+    control_amplitude: float | None = None
     """Initial amplitude of CR pulse."""
     interpolated_sweeper: bool = False
     """Use real-time interpolation if supported by instruments."""
@@ -75,6 +77,8 @@ class HamiltonianTomographyCANCPhaseParameters(Parameters):
 
     The ECR is described in https://arxiv.org/pdf/1210.7011
     """
+    verbose_plot: bool = False
+    """If `True` in the report all the single Hamiltonian tomographies are plotted."""
 
     @property
     def phase_range(self) -> np.ndarray:
@@ -99,9 +103,11 @@ class HamiltonianTomographyCANCPhaseResults(Results):
 
     echo: bool
 
-    control_amplitude: Union[dict[QubitPairId, float], float]
+    control_amplitude: float
 
-    hamiltonian_terms: dict[QubitPairId, dict] = field(default_factory=dict)
+    hamiltonian_terms: dict[
+        QubitPairId, list[tuple[float, dict[HamiltonianTerm, float]]]
+    ] = field(default_factory=dict)
     """Terms in effective Hamiltonian."""
     fitted_parameters: dict[tuple[QubitId, QubitId], dict[HamiltonianTerm, list]] = (
         field(default_factory=dict)
@@ -112,24 +118,56 @@ class HamiltonianTomographyCANCPhaseResults(Results):
         default_factory=dict
     )
     """Fitted parameters for cancellation pulse phases."""
+    hamiltonian_tom_params: dict[
+        float, dict[tuple[QubitId, QubitId, SetControl], list[float]]
+    ] = field(default_factory=dict)
+    """Fitted parameters for of Hamiltonian Tomography experiment for each qubit and per amplitude value.
+    Used for plotting with the `verbose_plot` option"""
+
+    cr_lengths: dict[float, dict[tuple[QubitId, QubitId, SetControl], list[float]]] = (
+        field(default_factory=dict)
+    )
+    """Cross resonance pulse duration found in Hamiltonian Tomography experiment for each qubit and per amplitude value.
+    Used for plotting with the `verbose_plot` option"""
+
+    verbose_plot: bool = False
+    """If `True` in the report all the single Hamiltonian tomographies are plotted."""
+
     native: Literal["CNOT"] = "CNOT"
     """Two qubit interaction to be calibrated."""
 
     def __contains__(self, pair: QubitPairId) -> bool:
         return all(key[:2] == pair for key in list(self.fitted_parameters))
 
+    def select_pair_and_phase_ham_params(self, phase: float, pair: QubitPairId):
+        """Data
+        Select and refactor Hamiltonian tomography parameters for a given amplitude and qubit pair.
+        """
+        selected_ham_tom_params = next(
+            (
+                val_ham_params
+                for (phi, val_ham_params) in self.hamiltonian_terms[pair]
+                if phi == phase
+            ),
+            None,
+        )
+
+        return reconstruct_full_hamiltonian_terms(selected_ham_tom_params, pair)
+
 
 @dataclass
-class HamiltonianTomographyCANCPhaseData(Data):
+class HamiltonianTomographyCANCPhaseData(HamiltonianTomographyData):
     """Data structure for CR Amplitude."""
 
     echo: bool
-    control_amplitude: Any = (None,)
+    control_amplitude: float | None = None
     phases: list | None = None
     data: dict[
         tuple[QubitId, QubitId, Basis, SetControl],
         npt.NDArray[HamiltonianTomographyCANCPhaseType],
     ] = field(default_factory=dict)
+    verbose_plot: bool = False
+    """If `True` in the report all the single Hamiltonian tomographies are plotted."""
 
     @property
     def pairs(self):
@@ -179,23 +217,19 @@ def _acquisition(
         echo=params.echo,
         phases=params.phase_range.astype(float).tolist(),
         control_amplitude=params.control_amplitude,
+        verbose_plot=params.verbose_plot,
     )
 
     for pair in targets:
         control, target = pair
 
-        for basis in Basis:
+        for basis in [Basis.Y, Basis.X]:
             for setup in SetControl:
-                # if basis == Basis.Z and setup==SetControl.Id:
                 sequence, cr_pulses, cr_target_pulses, delays = cr_sequence(
                     platform=platform,
                     control=control,
                     target=target,
-                    amplitude=(
-                        params.control_amplitude[pair]
-                        if isinstance(params.control_amplitude, dict)
-                        else params.control_amplitude
-                    ),
+                    amplitude=params.control_amplitude,
                     phase=params.control_phase_end,
                     target_amplitude=0,
                     target_phase=0,
@@ -281,9 +315,6 @@ def _acquisition(
                     ),
                 )
 
-    t = datetime.datetime.now().strftime("%d_%m_%Y_%H:%M:%S")
-    np.savez(f"./{t}_acquisition_data_phase_tomography", data)
-
     return data
 
 
@@ -296,8 +327,10 @@ def _fit(
     Afterwards, we extract the Hamiltonian terms from the fitted parameters.
 
     """
-    hamiltonian_terms, fitted_parameters, pulses_phases = phase_tomography_cr_fit(
-        data=data,
+    hamiltonian_terms, fitted_parameters, pulses_phases, ham_tom_params, cr_lengths = (
+        phase_tomography_cr_fit(
+            data=data,
+        )
     )
 
     return HamiltonianTomographyCANCPhaseResults(
@@ -306,6 +339,9 @@ def _fit(
         hamiltonian_terms=hamiltonian_terms,
         fitted_parameters=fitted_parameters,
         cancellation_pulse_phases=pulses_phases,
+        hamiltonian_tom_params=ham_tom_params,
+        cr_lengths=cr_lengths,
+        verbose_plot=data.verbose_plot,
     )
 
 
@@ -316,6 +352,46 @@ def _plot(
 ):
     """Plotting function for HamiltonianTomographyCANCPhase."""
     figs, fitting_report = calibration_cr_plot(data, target, fit)
+
+    if fit.verbose_plot:
+        from qibocal.protocols.two_qubit_interaction.cross_resonance.hamiltonian_tomography.length import (
+            HamiltonianTomographyCRLengthResults,
+        )
+        from qibocal.protocols.two_qubit_interaction.cross_resonance.hamiltonian_tomography.utils import (
+            tomography_cr_plot,
+        )
+
+        for phi in data.phases:
+            selected_ham_terms = fit.select_pair_and_phase_ham_params(phi, target)
+            ampl_data = data.select_phase(phi)
+            ham_tom_fit = HamiltonianTomographyCRLengthResults(
+                echo=fit.echo,
+                hamiltonian_terms=selected_ham_terms,
+                fitted_parameters=fit.hamiltonian_tom_params[phi],
+                cr_lengths=fit.cr_lengths[phi],
+            )
+            f, _ = tomography_cr_plot(ampl_data, target, ham_tom_fit)
+            figs += f
+            if ham_tom_fit is not None:
+                fitting_report += "\n" + table_html(
+                    table_dict(
+                        8 * [target],
+                        [f"{term.name} [MHz]" for term in HamiltonianTerm]
+                        + ["CR duration (ns)", "Cancellation phase [rad.]"],
+                        [
+                            ham_tom_fit.hamiltonian_terms[target[0], target[1], term]
+                            * kilo
+                            for term in HamiltonianTerm
+                        ]
+                        + [
+                            fit.cr_lengths[phi][target]
+                            if target in fit.cr_lengths[phi]
+                            else None
+                        ]
+                        + [phi],
+                    )
+                )
+
     return figs, fitting_report
 
 
@@ -333,9 +409,7 @@ def _update(
         platform=platform,
         control=target[0],
         target=target[1],
-        amplitude=results.control_amplitude[target]
-        if isinstance(results.control_amplitude, dict)
-        else results.control_amplitude,
+        amplitude=results.control_amplitude,
         duration=None,
         phase=results.cancellation_pulse_phases[target]["control"],
         target_amplitude=0,
@@ -344,9 +418,10 @@ def _update(
         setup=SetControl.Id,
         basis=Basis.Y,
     )
+    new_cr_seq = new_cr_seq[:-2]  # remove acquisition pulses
 
     new_cr_seq.insert(
-        -4, (platform.qubits[target[0]].drive, VirtualZ(phase=-np.pi / 2))
+        -2, (platform.qubits[target[0]].drive, VirtualZ(phase=-np.pi / 2))
     )
 
     getattr(update, f"{results.native}_sequence")(new_cr_seq, platform, target)
@@ -355,5 +430,5 @@ def _update(
 hamiltonian_tomography_canc_phase = Routine(_acquisition, _fit, _plot, _update)
 """HamiltonianTomographyCANCPhase Routine object."""
 
-"""See http://login.qrccluster.com:9000/2SqsD4XFRLWeks72CWH2Bw== for an example run on the emulator.
+"""See http://login.qrccluster.com:9000/bf6RezP1SpCnI861v6UNpA== for an example run on the emulator.
 """
