@@ -57,17 +57,28 @@ def cr_sequence(
     except Exception:
         cr_channel = platform.qubits[control].drive_extra[(1, 2)]
 
+    # Try to retrieve CR pulse parameters from platform calibration.
+    # If not provided as input, they will be used to create the CR and cancellation pulses.
     cr_pulse = None
     canc_pulse = None
-
     if len(platform.parameters.native_gates.two_qubit[(control, target)].CNOT) != 0:
         for p in platform.parameters.native_gates.two_qubit[(control, target)].CNOT:
-            if cr_pulse is None and p[0] == "0/drive1" and isinstance(p[1], Pulse):
-                cr_pulse = p[1]
-            if canc_pulse is None and p[0] == "1/drive" and isinstance(p[1], Pulse):
-                canc_pulse = p[1]
+            if (
+                cr_pulse is None
+                and str(control) == str(p[0]).split("/")[0]
+                and isinstance(p[1], Pulse)
+            ):
+                cr_pulse = p[1].model_copy()
+            if (
+                canc_pulse is None
+                and str(target) == str(p[0]).split("/")[0]
+                and isinstance(p[1], Pulse)
+            ):
+                canc_pulse = p[1].model_copy()
 
             if cr_pulse is not None and canc_pulse is not None:
+                # here we identified both the CR and cancellation pulse,
+                # we can stop looking at the remaining pulses
                 break
 
     try:
@@ -78,7 +89,7 @@ def cr_sequence(
             amplitude = cr_pulse.amplitude
 
         if phase is None:
-            phase = cr_pulse.relative_phase
+            phase = cr_pulse.relative_phase + np.pi
 
         if target_amplitude is None:
             target_amplitude = canc_pulse.amplitude
