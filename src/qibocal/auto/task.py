@@ -133,15 +133,15 @@ class Task:
         self,
         platform: Optional[Platform] = None,
         targets: Optional[Targets] = None,
-        mode: Optional[ExecutionMode] = [],
+        mode: Optional[ExecutionMode] = None,
         folder: Optional[Path] = None,
     ) -> "Completed":
         if self.targets is None:
             self.action.targets = targets
 
         if mode is None:
-            # None is no iterable so code might crash in lines
-            # 169 and 185
+            # None is no iterable so code might crash later when checking
+            # executino modes if-statements since None is not iterable
             mode = []
 
         completed = Completed(self, folder)
