@@ -14,7 +14,6 @@ from qibocal.auto.operation import Data, Parameters, QubitId, QubitPairId, Resul
 from qibocal.auto.transpile import (
     dummy_transpiler,
     execute_circuits,
-    execute_transpiled_circuits,
     get_compiler,
     transpile_circuits,
 )
@@ -419,16 +418,6 @@ def execute_indexed_circuits(
 
     transpiler = dummy_transpiler(platform)
     compiler = get_compiler(platform)
-
-    executed_results = execute_transpiled_circuits(
-        circuits,
-        qubit_maps=qubit_maps,
-        platform=platform,
-        compiler=compiler,
-        nshots=params.nshots,
-        transpiler=transpiler,
-        averaging_mode=averaging_mode,
-    )
 
     transpiled_circuits = transpile_circuits(
         circuits,
