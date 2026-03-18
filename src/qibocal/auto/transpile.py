@@ -132,44 +132,6 @@ def execute_circuits(
 
 # TODO: I don't like this. The name suggests it executes transpiled circuits, but it
 # also transpiles them. There is no benefit turning two actions into a single function.
-def execute_transpiled_circuits(
-    circuits: list[Circuit],
-    qubit_maps: list[list[QubitId]],
-    platform,
-    compiler,
-    transpiler: Optional[Passes],
-    initial_states=None,
-    nshots=1000,
-    averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
-):
-    """Transpile `circuits`.
-
-    If the `qibolab` backend is used, this function pads the `circuits` in new
-    ones with a number of qubits equal to the one provided by the platform.
-    At the end, the circuits are transpiled, executed and the results returned.
-    The input `transpiler` is optional, but it should be provided if the backend
-    is `qibolab`.
-    For the qubit map look :func:`dummy_transpiler`.
-    This function returns a list of the execution results.
-    """
-    transpiled_circuits = transpile_circuits(
-        circuits,
-        qubit_maps,
-        platform,
-        transpiler,
-    )
-    return execute_circuits(
-        platform,
-        compiler,
-        transpiled_circuits,
-        initial_states=initial_states,
-        nshots=nshots,
-        averaging_mode=averaging_mode,
-    )
-
-
-# TODO: I don't like this. The name suggests it executes transpiled circuits, but it
-# also transpiles them. There is no benefit turning two actions into a single function.
 def execute_transpiled_circuit(
     circuit: Circuit,
     qubit_map: Sequence[QubitId],

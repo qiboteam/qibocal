@@ -61,7 +61,7 @@ def test_execute_transpiled_circuit():
     assert np.all(true_circuit.unitary() == transpiled_circuit.unitary())
 
 
-def test_execute_transpiled_circuits():
+def test_transpile_circuits():
     platform = create_platform("dummy")
     transpiler = dummy_transpiler(platform)
 
