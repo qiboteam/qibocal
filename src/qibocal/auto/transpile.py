@@ -130,45 +130,6 @@ def execute_circuits(
     return countslist
 
 
-# TODO: I don't like this. The name suggests it executes transpiled circuits, but it
-# also transpiles them. There is no benefit turning two actions into a single function.
-def execute_transpiled_circuit(
-    circuit: Circuit,
-    qubit_map: Sequence[QubitId],
-    platform: Platform,
-    compiler,
-    transpiler: Optional[Passes],
-    initial_state=None,
-    nshots=1000,
-    averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
-):
-    """Transpile `circuit`.
-
-    If the `qibolab` backend is used, this function pads the `circuit` in new a
-    one with a number of qubits equal to the one provided by the platform.
-    At the end, the circuit is transpiled, executed and the results returned.
-    The input `transpiler` is optional, but it should be provided if the backend
-    is `qibolab`.
-    For the qubit map look :func:`dummy_transpiler`.
-    This function returns the transpiled circuit and the execution results.
-    """
-
-    transpiled_circs = transpile_circuits(
-        [circuit],
-        [qubit_map],
-        platform,
-        transpiler,
-    )
-    return transpiled_circs[0], execute_circuits(
-        platform,
-        compiler,
-        transpiled_circs,
-        initial_states=initial_state,
-        nshots=nshots,
-        averaging_mode=averaging_mode,
-    )
-
-
 def natives(platform: Platform) -> dict[str, NativeContainer]:
     """
     Return the dict of native gates name with the associated native container

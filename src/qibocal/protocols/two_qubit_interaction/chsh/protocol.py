@@ -17,8 +17,9 @@ from qibocal.auto.operation import (
 )
 from qibocal.auto.transpile import (
     dummy_transpiler,
-    execute_transpiled_circuit,
+    execute_circuits,
     get_compiler,
+    transpile_circuits,
 )
 
 from .circuits import create_chsh_circuits
@@ -170,15 +171,20 @@ def _acquisition(
                     native=params.native,
                 )
                 for basis, circuit in chsh_circuits.items():
-                    _, result = execute_transpiled_circuit(
-                        circuit,
-                        pair,
+                    transpiled_circuits = transpile_circuits(
+                        [circuit],
+                        [pair],
                         platform,
-                        compiler=compiler,
-                        transpiler=transpiler,
+                        transpiler,
+                    )
+                    results = execute_circuits(
+                        platform,
+                        compiler,
+                        transpiled_circuits,
                         nshots=params.nshots,
                     )
-                    data.register_basis(pair, bell_state, basis, result[0])
+                    assert len(results) == 1
+                    data.register_basis(pair, bell_state, basis, results[0])
 
             data.frequencies[bell_state] = freqs = merge_frequencies(
                 data.data, pair, bell_state
