@@ -326,6 +326,14 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
         return "targets" in inspect.signature(self.acquisition).parameters
 
 
+ProtocolsCollection = dict[str, Routine]
+"""Collection of protocols.
+
+This collection is supposed to be a bundle, either built-in or provided by external
+extensions.
+"""
+
+
 @dataclass
 class DummyPars(Parameters):
     """Dummy parameters."""

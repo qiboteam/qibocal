@@ -3,7 +3,14 @@ from typing import Any, Optional
 from qibolab import Platform
 
 from qibocal.auto.mode import AUTOCALIBRATION, ExecutionMode
-from qibocal.auto.operation import Data, OperationId, Parameters, Results, Routine
+from qibocal.auto.operation import (
+    Data,
+    OperationId,
+    Parameters,
+    ProtocolsCollection,
+    Results,
+    Routine,
+)
 from qibocal.auto.task import Action, Completed, Id, Targets, Task
 
 from . import (
@@ -37,17 +44,22 @@ from . import (
 from .allxy import *
 from .classification import *
 from .coherence import *
+from .coherence import spin_echo, t1, t2
 from .dispersive_shift import *
 from .drag import *
 from .flipping import *
 from .flux_dependence import *
 from .qubit_spectroscopies import *
+from .qubit_spectroscopies import qubit_spectroscopy
 from .rabi import *
+from .rabi import rabi_amplitude, rabi_length
 from .ramsey import *
+from .ramsey import ramsey
 from .randomized_benchmarking import *
 from .readout import *
 from .readout_optimization import *
 from .resonator_spectroscopies import *
+from .resonator_spectroscopies import resonator_spectroscopy
 from .signal_experiments import *
 from .tomographies import *
 from .two_qubit_interaction import *
@@ -122,10 +134,28 @@ _ph = CalibrationProtocol()
 "Placeholder."
 
 
+# The following class is exposed only for documentation purpose, to statically annotate
+# a base set of protocols as `Executor` attributes.
+# They are supposed to be dynamically overwritten with the `PROTOCOLS` below anyhow,
+# during the `Executor` initialization.
 class BaseSet:
-    a: CalibrationProtocol = _ph
-    b: CalibrationProtocol = _ph
-    c: CalibrationProtocol = _ph
+    resonator_spectroscopy: CalibrationProtocol = _ph
+    qubit_spectroscopy: CalibrationProtocol = _ph
+    rabi_amplitude: CalibrationProtocol = _ph
+    rabi_length: CalibrationProtocol = _ph
+    ramsey: CalibrationProtocol = _ph
+    t1: CalibrationProtocol = _ph
+    t2: CalibrationProtocol = _ph
+    spin_echo: CalibrationProtocol = _ph
 
 
-PROTOCOLS: dict[str, Routine] = {}
+PROTOCOLS: ProtocolsCollection = {
+    "resonator_spectroscopy": resonator_spectroscopy,
+    "qubit_spectroscopy": qubit_spectroscopy,
+    "rabi_amplitude": rabi_amplitude,
+    "rabi_length": rabi_length,
+    "ramsey": ramsey,
+    "t1": t1,
+    "t2": t2,
+    "spin_echo": spin_echo,
+}
