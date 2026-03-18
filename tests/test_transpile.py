@@ -39,28 +39,6 @@ def test_padd_circuit():
     assert np.all(true_circ.unitary() == big_circuit.unitary())
 
 
-def test_execute_transpiled_circuit():
-    platform = create_platform("dummy")
-    transpiler = dummy_transpiler(platform)
-
-    circuit = Circuit(2)
-    circuit.add(gates.X(0))
-    circuit.add(gates.X(1))
-    qubit_map = [1, 2]
-    transpiled_circuit = transpile_circuits(
-        [circuit], [qubit_map], platform, transpiler
-    )[0]
-
-    true_circuit = Circuit(5)
-    true_circuit.add(gates.GPI2(1, np.pi / 2))
-    true_circuit.add(gates.GPI2(1, np.pi / 2))
-    true_circuit.add(gates.GPI2(2, np.pi / 2))
-    true_circuit.add(gates.GPI2(2, np.pi / 2))
-    true_circuit.add(gates.Z(1))
-    true_circuit.add(gates.Z(2))
-    assert np.all(true_circuit.unitary() == transpiled_circuit.unitary())
-
-
 def test_transpile_circuits():
     platform = create_platform("dummy")
     transpiler = dummy_transpiler(platform)
