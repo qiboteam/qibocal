@@ -53,10 +53,6 @@ def transpile_circuits(
     return transpiled_circuits
 
 
-# TODO: instead of returning a list of Counters, can we return a list of the rate of
-# ground states? If the rate of ground states is all we need use in qibocal for circuit
-# execution, that should be enrough, but I'm not entirely sure that is the case.
-# What about tomographies?
 def execute_circuits(
     platform: Platform,
     compiler: Compiler,
