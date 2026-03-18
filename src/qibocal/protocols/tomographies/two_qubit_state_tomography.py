@@ -23,8 +23,9 @@ from qibocal.auto.operation import (
 )
 from qibocal.auto.transpile import (
     dummy_transpiler,
-    execute_transpiled_circuit,
+    execute_circuits,
     get_compiler,
+    transpile_circuits,
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import marginalize_qubit_counts
@@ -144,16 +145,22 @@ def _acquisition(
         basis_circuit.add(meas for pair in pairs for meas in pair)
 
         simulation_result = simulator.execute_circuit(basis_circuit)
-        _, results = execute_transpiled_circuit(
-            basis_circuit,
-            qubits,
+
+        transpiled_circs = transpile_circuits(
+            [basis_circuit],
+            [qubits],
             platform,
-            compiler=compiler,
+            transpiler,
+        )
+        results = execute_circuits(
+            platform,
+            compiler,
+            transpiled_circs,
             nshots=params.nshots,
-            transpiler=transpiler,
         )
 
         for i, pair in enumerate(targets):
+            assert len(results) == 1
             frequencies = marginalize_qubit_counts(results[0], (2 * i, 2 * i + 1))
             simulation_probabilities = simulation_result.probabilities(
                 qubits=(2 * i, 2 * i + 1)
