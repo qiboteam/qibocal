@@ -53,79 +53,6 @@ def transpile_circuits(
     return transpiled_circuits
 
 
-# TODO: a lot of repetition in execute_circuit and execute_circuits
-def execute_circuit(
-    circuit,
-    platform,
-    compiler,
-    initial_state=None,
-    nshots=1000,
-    averaging_mode=AveragingMode.SINGLESHOT,
-) -> list[Counter[str]]:
-    """Executes a quantum circuit.
-
-    Args:
-        circuit (:class:`qibo.models.circuit.Circuit`): Circuit to execute.
-        initial_state (:class:`qibo.models.circuit.Circuit`): Circuit to prepare the initial state.
-            If ``None`` the default ``|00...0>`` state is used.
-        nshots (int): Number of shots to sample from the experiment.
-
-    Returns:
-        ``MeasurementOutcomes`` object containing the results acquired from the execution.
-    """
-    if isinstance(initial_state, Circuit):
-        return execute_circuit(
-            circuit=initial_state + circuit,
-            platform=platform,
-            compiler=compiler,
-            nshots=nshots,
-            averaging_mode=averaging_mode,
-        )
-    if initial_state is not None:
-        raise_error(
-            ValueError,
-            "Hardware backend only supports circuits as initial states.",
-        )
-
-    sequence, measurement_map = compiler.compile(circuit, platform)
-
-    # TODO?: pass options dict
-    readout = platform.execute([sequence], nshots=nshots, averaging_mode=averaging_mode)
-
-    # TODO: is it really correct that readout can have more than one entry? I think so
-    # since there can be multiple measurement gates.
-    countslist = []
-    if averaging_mode.average:
-        # NOTE: averaging mode only makes sense for a two state readout. If ther eare
-        # more states it would have to be conditional since the excited state probablity
-        # of idividual qubits does not provide full information about the probablity
-        # distribution of the full set of basis states.
-        for excited_frac in readout.values():
-            countslist.append(
-                Counter(
-                    {
-                        "0": np.round((1 - excited_frac) * nshots),
-                        "1": np.round(excited_frac * nshots),
-                    }
-                )
-            )
-    else:
-        result = {}
-        for gate, sequence in measurement_map.items():
-            # assert that a single measurement gate only measures the state of a single qubit
-            assert len(gate.qubits) == 1
-            assert len(sequence.acquisitions) == 1
-            result[gate.qubits[0]] = readout[sequence.acquisitions[0][1].id]
-        arr = np.stack([result[q] for q in sorted(result)]).astype(int)
-        countslist.append(Counter("".join(map(str, col)) for col in arr.T))
-
-    assert all(sum(counts.values()) == nshots for counts in countslist), (
-        "The sum of shots in all possible outcomes should be equal to nshots."
-    )
-
-    return countslist
-
-
 # TODO: instead of returning a list of Counters, can we return a list of the rate of
 # ground states? If the rate of ground states is all we need use in qibocal for circuit
 # execution, that should be enrough, but I'm not entirely sure that is the case.
@@ -274,11 +201,11 @@ def execute_transpiled_circuit(
         platform,
         transpiler,
     )[0]
-    return transpiled_circ, execute_circuit(
-        transpiled_circ,
+    return transpiled_circ, execute_circuits(
         platform,
         compiler,
-        initial_state=initial_state,
+        transpiled_circ,
+        initial_states=initial_state,
         nshots=nshots,
         averaging_mode=averaging_mode,
     )
