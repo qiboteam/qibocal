@@ -1,5 +1,5 @@
 from collections import Counter
-from typing import Optional
+from typing import Optional, Sequence
 
 import numpy as np
 from qibo import Circuit, gates
@@ -20,7 +20,7 @@ REPLACEMENTS = {
 
 def transpile_circuits(
     circuits: list[Circuit],
-    qubit_maps: list[list[QubitId]],
+    qubit_maps: list[Sequence[QubitId]],
     platform,
     transpiler: Optional[Passes],
 ):
@@ -172,7 +172,7 @@ def execute_transpiled_circuits(
 # also transpiles them. There is no benefit turning two actions into a single function.
 def execute_transpiled_circuit(
     circuit: Circuit,
-    qubit_map: list[QubitId],
+    qubit_map: Sequence[QubitId],
     platform: Platform,
     compiler,
     transpiler: Optional[Passes],
@@ -191,16 +191,16 @@ def execute_transpiled_circuit(
     This function returns the transpiled circuit and the execution results.
     """
 
-    transpiled_circ = transpile_circuits(
+    transpiled_circs = transpile_circuits(
         [circuit],
         [qubit_map],
         platform,
         transpiler,
-    )[0]
-    return transpiled_circ, execute_circuits(
+    )
+    return transpiled_circs[0], execute_circuits(
         platform,
         compiler,
-        transpiled_circ,
+        transpiled_circs,
         initial_states=initial_state,
         nshots=nshots,
         averaging_mode=averaging_mode,
