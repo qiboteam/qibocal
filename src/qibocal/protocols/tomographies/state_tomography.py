@@ -32,12 +32,33 @@ CIRCUIT_PATH = "circuit.json"
 __all__ = ["state_tomography", "StateTomographyParameters", "plot_reconstruction"]
 
 
+def parse_circuit(value: Optional[Union[str, Circuit]]) -> Optional[Circuit]:
+    if value is None:
+        circuit = None
+
+    elif isinstance(value, str):
+        path = Path(value)
+        if not path.exists():
+            raise FileNotFoundError(f"Circuit file not found: {path}")
+
+        raw = json.loads(path.read_text())
+        circuit = Circuit.from_dict(raw)
+
+    elif isinstance(value, Circuit):
+        circuit = value
+
+    else:
+        raise TypeError(f"circuit must be str, Circuit, or None, got {type(value)}")
+    return circuit
+
+
 @dataclass
 class StateTomographyParameters(Parameters):
     """Tomography input parameters"""
 
-    def __post_init__(self):
-        self._circuit = None
+    def __init__(self, circuit: Optional[Union[str, Circuit]] = None, **kwargs):
+        self._circuit = parse_circuit(circuit)
+        super().__init__(**kwargs)
 
     @property
     def circuit(self) -> Optional[Circuit]:
