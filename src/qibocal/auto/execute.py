@@ -154,29 +154,6 @@ class Executor(BaseModel, protocols.BaseSet):
 
         return completed
 
-    def __getattribute__(self, name: str):
-        """Provide access to routines through the executor.
-
-        This is done mainly to support the import mechanics: the routines retrieved
-        through the object will have it pre-registered.
-        """
-        modname = super().__getattribute__("name")
-        if modname is None:
-            # no module registration, immediately fall back
-            return super().__getattribute__(name)
-
-        try:
-            # routines look up
-            if name.startswith("_"):
-                # internal attributes should never be routines
-                raise AttributeError
-
-            protocol = getattr(protocols, name)
-            return self._wrapped_protocol(protocol, name)
-        except AttributeError:
-            # fall back on regular attributes
-            return super().__getattribute__(name)
-
     def _wrapped_protocol(self, protocol: Routine, operation: str):
         """Create a bound protocol.
 
