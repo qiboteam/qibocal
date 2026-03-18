@@ -2,13 +2,17 @@
 
 import importlib
 import importlib.util
+import operator
 import os
 import sys
 from contextlib import contextmanager
 from copy import deepcopy
-from dataclasses import dataclass, fields
+from dataclasses import fields
+from functools import reduce
 from pathlib import Path
+from typing import Any
 
+from pydantic import BaseModel, ConfigDict, Field
 from qibo.backends import construct_backend
 
 from qibocal import protocols
@@ -17,7 +21,7 @@ from qibocal.config import log
 from ..calibration import CalibrationPlatform, create_calibration_platform
 from .history import History
 from .mode import AUTOCALIBRATION, ExecutionMode
-from .operation import Routine
+from .operation import ProtocolsCollection, Routine
 from .output import Metadata, Output
 from .task import Action, Completed, Targets, Task
 
@@ -76,9 +80,10 @@ def _register(name: str, obj):
     obj.__spec__ = None
 
 
-@dataclass
-class Executor:
+class Executor(BaseModel, protocols.BaseSet):
     """Execute a tasks' graph and tracks its history."""
+
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
 
     history: History
     """The execution history, with results and exit states."""
@@ -88,6 +93,8 @@ class Executor:
     """Qubits' platform."""
     update: bool = True
     """Runcard update mechanism."""
+    sources: list[ProtocolsCollection] = Field(default_factory=list)
+    """Sources to extend core protocol set."""
     name: str | None = None
     """Symbol for the executor.
 
@@ -105,10 +112,15 @@ class Executor:
     path: Path | None = None
     meta: Metadata | None = None
 
-    def __post_init__(self):
+    def model_post_init(self, context: Any) -> None:
         """Register as a module, if a name is specified."""
         if self.name is not None:
             _register(self.name, self)
+        _ = context
+
+        protocols_ = reduce(operator.or_, [protocols.PROTOCOLS] + self.sources)
+        for name, protocol in protocols_.items():
+            object.__setattr__(self, name, self.wrapped_protocol(protocol))
 
     @classmethod
     def create(cls, name: str, platform: CalibrationPlatform | str | None = None):
@@ -219,13 +231,13 @@ class Executor:
         """
 
         def wrapper(
-            *args,
+            *args: Any,
             parameters: dict | None = None,
             id: str = operation,
             mode: ExecutionMode = AUTOCALIBRATION,
             update: bool = True,
             targets: Targets | None = None,
-            **kwargs,
+            **kwargs: Any,
         ):
             positional = dict(
                 zip((f.name for f in fields(protocol.parameters_type)), args)
