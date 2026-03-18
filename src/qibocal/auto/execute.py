@@ -277,6 +277,14 @@ class Executor:
         if update is not None:
             self.update = update
         if targets is not None:
+            if not isinstance(targets, list) or not all(
+                isinstance(t, (tuple, int, str)) for t in targets
+            ):
+                raise TypeError(
+                    "targets must be a list of qubit IDs (of type int/str) or qubit "
+                    f"pairs (of type tuple), got {type(targets).__name__} with value: "
+                    f"{targets}"
+                )
             self.targets = targets
 
         # generate output folder
