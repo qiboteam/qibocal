@@ -6,7 +6,7 @@
 # and dummy_transpiler are called for every circuit exeuction instead of just once per
 # protocol, so I'm not convinced that's what should be done.
 from collections import Counter
-from typing import Callable, Optional
+from typing import Callable
 
 import numpy as np
 from qibo import Circuit, gates
@@ -17,7 +17,6 @@ from qibolab._core.compilers import Compiler
 from qibolab._core.native import NativeContainer
 
 from qibocal.auto.operation import QubitId
-from qibocal.config import raise_error
 
 REPLACEMENTS = {
     "RX": "GPI2",
@@ -67,7 +66,6 @@ def execute_circuits(
     platform: Platform,
     compiler: Compiler,
     circuits: list[Circuit],
-    initial_states: Optional[Circuit] = None,
     nshots: int = 1000,
     averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
 ) -> list[Counter[str]]:
@@ -78,26 +76,11 @@ def execute_circuits(
 
     Args:
         circuits (list): List of circuits to execute.
-        initial_states (:class:`qibo.models.circuit.Circuit`): Circuit to prepare the initial state.
-            If ``None`` the default ``|00...0>`` state is used.
         nshots (int): Number of shots to sample from the experiment.
 
     Returns:
         List of ``MeasurementOutcomes`` objects containing the results acquired from the execution of each circuit.
     """
-    if isinstance(initial_states, Circuit):
-        return execute_circuits(
-            platform=platform,
-            compiler=compiler,
-            circuits=[initial_states + circuit for circuit in circuits],
-            nshots=nshots,
-            averaging_mode=averaging_mode,
-        )
-    if initial_states is not None:
-        raise_error(
-            ValueError,
-            "Hardware backend only supports circuits as initial states.",
-        )
 
     # TODO: Maybe these loops can be parallelized
     sequences, measurement_maps = zip(
