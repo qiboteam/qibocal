@@ -429,6 +429,7 @@ def execute_indexed_circuits(
         platform,
         compiler,
         transpiled_circuits,
+        qubit_maps,
         nshots=params.nshots,
         averaging_mode=averaging_mode,
     )

@@ -181,6 +181,7 @@ def _acquisition(
                         platform,
                         compiler,
                         transpiled_circuits,
+                        [pair],
                         nshots=params.nshots,
                     )
                     data.register_basis(pair, bell_state, basis, result)

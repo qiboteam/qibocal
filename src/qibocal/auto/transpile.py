@@ -113,11 +113,9 @@ def execute_circuits(
                 )
             )
     else:
-        # The mapping from physical to logical qubits
-        phys_to_logic_mapping = {
-            q: i for qubit_map in qubit_maps for i, q in enumerate(qubit_map)
-        }
-        for measurement_map in measurement_maps:
+        for qubit_map, measurement_map in zip(qubit_maps, measurement_maps):
+            # The mapping from physical to logical qubits
+            phys_to_logic_mapping = {q: i for i, q in enumerate(qubit_map)}
             result = {}
             for gate, sequence in measurement_map.items():
                 # assert that a single measurement gate only measures the state of a single qubit
@@ -128,8 +126,8 @@ def execute_circuits(
             # The inverse sorting is to have little-endian bitstring notation, which
             # means that the qubit with the smalles qubitId is the most significant bit
             # in the output string (on the right).
-            invsorted_result = sorted(result)
-            arr = np.stack([result[q] for q in invsorted_result[::-1]]).astype(int)
+            invsorted_result = sorted(result)[::-1]
+            arr = np.stack([result[q] for q in invsorted_result]).astype(int)
             countslist.append(Counter("".join(map(str, col)) for col in arr.T))
 
     assert all(sum(counts.values()) == nshots for counts in countslist)
