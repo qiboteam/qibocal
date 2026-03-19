@@ -66,6 +66,7 @@ def execute_circuits(
     platform: Platform,
     compiler: Compiler,
     circuits: list[Circuit],
+    qubit_maps: list[list[QubitId]],
     nshots: int = 1000,
     averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
 ) -> list[Counter[str]]:
@@ -112,14 +113,23 @@ def execute_circuits(
                 )
             )
     else:
+        # The mapping from physical to logical qubits
+        phys_to_logic_mapping = {
+            q: i for qubit_map in qubit_maps for i, q in enumerate(qubit_map)
+        }
         for measurement_map in measurement_maps:
             result = {}
             for gate, sequence in measurement_map.items():
                 # assert that a single measurement gate only measures the state of a single qubit
                 assert len(gate.qubits) == 1
                 assert len(sequence.acquisitions) == 1
-                result[gate.qubits[0]] = readout[sequence.acquisitions[0][1].id]
-            arr = np.stack([result[q] for q in sorted(result)]).astype(int)
+                logical_qubit = phys_to_logic_mapping[gate.qubits[0]]
+                result[logical_qubit] = readout[sequence.acquisitions[0][1].id]
+            # The inverse sorting is to have little-endian bitstring notation, which
+            # means that the qubit with the smalles qubitId is the most significant bit
+            # in the output string (on the right).
+            invsorted_result = sorted(result)
+            arr = np.stack([result[q] for q in invsorted_result[::-1]]).astype(int)
             countslist.append(Counter("".join(map(str, col)) for col in arr.T))
 
     assert all(sum(counts.values()) == nshots for counts in countslist)
@@ -200,7 +210,7 @@ def dummy_transpiler(platform: Platform) -> Passes:
 def pad_circuit(nqubits: int, circuit: Circuit, qubit_map: list[int]) -> Circuit:
     """
     Pad `circuit` in a new one with `nqubits` qubits, according to `qubit_map`.
-    `qubit_map` is a list `[i, j, k, ...]`, where the i-th physical qubit is mapped
+    `qubit_map` is a list `[i, j, k, ...]`, where physica qubit i is mapped
     into the 0th logical qubit and so on.
     """
     new_circuit = Circuit(nqubits)
