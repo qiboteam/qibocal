@@ -156,6 +156,7 @@ def _acquisition(
             platform,
             compiler,
             transpiled_circs,
+            [qubits],
             nshots=params.nshots,
         )
 
