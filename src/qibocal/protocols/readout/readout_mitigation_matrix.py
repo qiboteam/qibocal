@@ -98,6 +98,7 @@ def _acquisition(
                 platform,
                 compiler,
                 transpiled_circuits,
+                [qubits],
                 nshots=params.nshots,
             )
             frequencies = np.zeros(2 ** len(qubits))

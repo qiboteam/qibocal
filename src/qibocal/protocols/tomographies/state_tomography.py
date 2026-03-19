@@ -185,6 +185,7 @@ def _acquisition(
             platform,
             compiler,
             transpiled_circs,
+            [targets],
             nshots=params.nshots,
         )
         for i, target in enumerate(targets):
