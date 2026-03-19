@@ -2,7 +2,9 @@
 #
 # TODO: Since these functions are always used in the same way, we should probably
 # provide a single function that takes care of setting the compiler, transpiler, doing
-# the transpilation and execution in a single call.
+# the transpilation and execution in a single call. This would mean that set_compiler
+# and dummy_transpiler are called for every circuit exeuction instead of just once per
+# protocol, so I'm not convinced that's what should be done.
 from collections import Counter
 from typing import Callable, Optional
 
