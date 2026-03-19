@@ -181,14 +181,14 @@ def _acquisition(
             platform,
             transpiler,
         )
-        results = execute_circuits(
+        [result] = execute_circuits(
             platform,
             compiler,
             transpiled_circs,
             nshots=params.nshots,
         )
         for i, target in enumerate(targets):
-            single_qubit_state_counter = marginalize_qubit_counts(results[0], [i])
+            single_qubit_state_counter = marginalize_qubit_counts(result, [i])
             excited_state_rate = single_qubit_state_counter.get(1, 0) / params.nshots
             data.register_qubit(
                 TomographyType,

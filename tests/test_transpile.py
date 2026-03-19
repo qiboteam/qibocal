@@ -2,6 +2,7 @@ import numpy as np
 from qibo import Circuit, gates
 from qibolab import create_platform
 
+from qibocal.auto.operation import QubitId
 from qibocal.auto.transpile import (
     dummy_transpiler,
     pad_circuit,
@@ -18,10 +19,10 @@ def test_natives():
 
     circuit = Circuit(2)
     circuit.add(gates.iSWAP(0, 1))
-    qubit_map = [1, 2]
-    transpiled_circuit = transpile_circuits(
+    qubit_map: list[int | str] = [1, 2]
+    [transpiled_circuit] = transpile_circuits(
         [circuit], [qubit_map], platform, transpiler
-    )[0]
+    )
     sequence, _ = compiler.compile(transpiled_circuit, platform)
     assert len(sequence) == 4  # dummy compiles iSWAP in 4 pulses
 
@@ -46,10 +47,10 @@ def test_transpile_circuits():
     circuit = Circuit(2)
     circuit.add(gates.X(0))
     circuit.add(gates.X(1))
-    qubit_map = [1, 2]
-    transpiled_circuit = transpile_circuits(
+    qubit_map: list[QubitId] = [1, 2]
+    [transpiled_circuit] = transpile_circuits(
         [circuit], [qubit_map], platform, transpiler
-    )[0]
+    )
 
     true_circuit = Circuit(5)
     true_circuit.add(gates.GPI2(1, np.pi / 2))

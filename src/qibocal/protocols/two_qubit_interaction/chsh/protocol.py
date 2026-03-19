@@ -177,14 +177,13 @@ def _acquisition(
                         platform,
                         transpiler,
                     )
-                    results = execute_circuits(
+                    [result] = execute_circuits(
                         platform,
                         compiler,
                         transpiled_circuits,
                         nshots=params.nshots,
                     )
-                    assert len(results) == 1
-                    data.register_basis(pair, bell_state, basis, results[0])
+                    data.register_basis(pair, bell_state, basis, result)
 
             data.frequencies[bell_state] = freqs = merge_frequencies(
                 data.data, pair, bell_state
