@@ -75,11 +75,17 @@ def execute_circuits(
     Circuits are unrolled to a single pulse sequence.
 
     Args:
-        circuits (list): List of circuits to execute.
-        nshots (int): Number of shots to sample from the experiment.
+        platform: The quantum platform to execute circuits on.
+        compiler: The compiler to use for circuit compilation.
+        circuits: List of quantum circuits to execute.
+        nshots: Number of times to sample from the experiment. Default is 1000.
+        averaging_mode: Averaging mode for measurements.
+        Default is SINGLESHOT (CYCLIC only works with a single qubit).
 
     Returns:
-        List of ``MeasurementOutcomes`` objects containing the results acquired from the execution of each circuit.
+        List of measurement outcome as Counter objects, one per circuit. Each Counter
+        maps measurement outcome states as strings (e.g., "01", "10") to their
+        occurrence counts. Total counts per counter equals nshots.
     """
 
     # TODO: Maybe these loops can be parallelized
