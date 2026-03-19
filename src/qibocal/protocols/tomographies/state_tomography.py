@@ -17,7 +17,7 @@ from ...auto.operation import DATAFILE, Data, Parameters, QubitId, Results, Rout
 from ...auto.transpile import (
     dummy_transpiler,
     execute_circuits,
-    get_compiler,
+    set_compiler,
     transpile_circuits,
 )
 from ...calibration import CalibrationPlatform
@@ -160,7 +160,7 @@ def _acquisition(
         params.circuit = Circuit(len(targets))
 
     transpiler = dummy_transpiler(platform)
-    compiler = get_compiler(platform)
+    compiler = set_compiler(platform)
 
     data = StateTomographyData(
         circuit=params.circuit, targets={target: i for i, target in enumerate(targets)}

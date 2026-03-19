@@ -11,7 +11,7 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.auto.transpile import (
     dummy_transpiler,
     execute_circuits,
-    get_compiler,
+    set_compiler,
     transpile_circuits,
 )
 from qibocal.calibration import CalibrationPlatform
@@ -74,7 +74,7 @@ def _acquisition(
     assert params.nshots is not None
     data = ReadoutMitigationMatrixData(nshots=params.nshots, qubit_list=targets)
     transpiler = dummy_transpiler(platform)
-    compiler = get_compiler(platform)
+    compiler = set_compiler(platform)
 
     for qubits in targets:
         nqubits = len(qubits)

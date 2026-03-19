@@ -18,7 +18,7 @@ from qibocal.auto.operation import (
 from qibocal.auto.transpile import (
     dummy_transpiler,
     execute_circuits,
-    get_compiler,
+    set_compiler,
     transpile_circuits,
 )
 
@@ -154,7 +154,7 @@ def _acquisition(
     data = CHSHData(bell_states=params.bell_states, thetas=thetas.tolist())
 
     transpiler = dummy_transpiler(platform)
-    compiler = get_compiler(platform)
+    compiler = set_compiler(platform)
     for pair in targets:
         try:
             mitigation_matrix = (
