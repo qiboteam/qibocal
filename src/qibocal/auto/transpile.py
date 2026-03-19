@@ -1,3 +1,8 @@
+# This file contains functions to transpile and execute quantum circuits.
+#
+# TODO: Since these functions are always used in the same way, we should probably
+# provide a single function that takes care of setting the compiler, transpiler, doing
+# the transpilation and execution in a single call.
 from collections import Counter
 from typing import Callable, Optional
 
