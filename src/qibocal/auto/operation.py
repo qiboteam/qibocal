@@ -201,9 +201,10 @@ class Data(AbstractData):
     @property
     def qubits(self) -> list[QubitId]:
         """Access qubits from data structure."""
-        # TODO: what is this for? Seems like a hacky way to implement something. Also
-        # means we can't do multi qubit in a sensbile way since, but isntead rely on the
-        # `pairs` property below, since tuples are now used for whatever this is.
+        # TODO: I don't understand the rationale of this function. Perhaps it would be
+        # nice if we could do Data.qubits and get a list of either qubits or pairs
+        # instead of having a separate function for each case even though they serve the
+        # same purpose just for different routines.
         if set(map(type, self.data)) == {tuple}:
             return list({q[0] for q in self.data})
         return [q for q in self.data]
