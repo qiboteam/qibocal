@@ -24,7 +24,7 @@ from qibocal.auto.operation import (
 from qibocal.auto.transpile import (
     dummy_transpiler,
     execute_circuits,
-    get_compiler,
+    set_compiler,
     transpile_circuits,
 )
 from qibocal.calibration import CalibrationPlatform
@@ -117,7 +117,7 @@ def _acquisition(
 
     simulator = NumpyBackend()
     transpiler = dummy_transpiler(platform)
-    compiler = get_compiler(platform)
+    compiler = set_compiler(platform)
 
     simulated_state = simulator.execute_circuit(deepcopy(params.circuit))
     data = StateTomographyData(simulated=simulated_state)

@@ -1,5 +1,5 @@
 from collections import Counter
-from typing import Optional, Sequence
+from typing import Callable, Optional
 
 import numpy as np
 from qibo import Circuit, gates
@@ -20,10 +20,10 @@ REPLACEMENTS = {
 
 def transpile_circuits(
     circuits: list[Circuit],
-    qubit_maps: list[Sequence[QubitId]],
-    platform,
-    transpiler: Optional[Passes],
-):
+    qubit_maps: list[list[QubitId]],
+    platform: Platform,
+    transpiler: Passes,
+) -> list[Circuit]:
     """Transpile and pad `circuits` according to the platform.
 
     Apply the `transpiler` to `circuits` and pad them in
@@ -40,12 +40,15 @@ def transpile_circuits(
     """
     transpiled_circuits = []
     qubits = list(platform.qubits)
-    if isinstance(qubit_maps[0][0], str):
-        for i, qubit_map in enumerate(qubit_maps):
-            qubit_map = map(lambda x: qubits.index(x), qubit_map)
-            qubit_maps[i] = list(qubit_map)
+    # QubitId can be integers or strings. pad_circuit only works with integer qubit IDs,
+    # so if the qubit maps contain string IDs, we convert them to integer indices based
+    # on the platform's qubit order.
+    _qubit_maps: list[list[int]] = [
+        [q if isinstance(q, int) else qubits.index(q) for q in qubit_map]
+        for qubit_map in qubit_maps
+    ]
     platform_nqubits = platform.nqubits
-    for circuit, qubit_map in zip(circuits, qubit_maps):
+    for circuit, qubit_map in zip(circuits, _qubit_maps):
         new_circuit = pad_circuit(platform_nqubits, circuit, qubit_map)
         transpiled_circ, _ = transpiler(new_circuit)
         transpiled_circuits.append(transpiled_circ)
@@ -123,9 +126,7 @@ def execute_circuits(
             arr = np.stack([result[q] for q in sorted(result)]).astype(int)
             countslist.append(Counter("".join(map(str, col)) for col in arr.T))
 
-    assert all(sum(counts.values()) == nshots for counts in countslist), (
-        "The sum of shots in all possible outcomes should be equal to nshots."
-    )
+    assert all(sum(counts.values()) == nshots for counts in countslist)
 
     return countslist
 
@@ -158,7 +159,7 @@ def natives(platform: Platform) -> dict[str, NativeContainer]:
     }
 
 
-def create_rule(name, natives):
+def create_rule(name: str, natives: NativeContainer) -> Callable:
     """Create rule for gate name given container natives."""
 
     def rule(gate: gates.Gate, natives: NativeContainer) -> PulseSequence:
@@ -167,9 +168,12 @@ def create_rule(name, natives):
     return rule
 
 
-def get_compiler(platform):
-    """
-    Set the compiler to execute the native gates defined by the platform.
+def set_compiler(platform: Platform) -> Compiler:
+    """Build a compiler that follows the native gates defined by `platform`.
+
+    Starting from :meth:`Compiler.default`, this function overrides and extends
+    gate rules using the native containers available on the platform so circuit
+    compilation is consistent with the selected hardware configuration.
     """
     native_gates = natives(platform)
     compiler = Compiler.default()
@@ -184,7 +188,7 @@ def get_compiler(platform):
     return Compiler(rules=rules)
 
 
-def dummy_transpiler(platform) -> Passes:
+def dummy_transpiler(platform: Platform) -> Passes:
     """
     If the backend is `qibolab`, a transpiler with just an unroller is returned,
     otherwise `None`. This function overwrites the compiler defined in the
@@ -197,7 +201,7 @@ def dummy_transpiler(platform) -> Passes:
     return Passes(connectivity=platform.pairs, passes=[unroller])
 
 
-def pad_circuit(nqubits, circuit: Circuit, qubit_map: list[int]) -> Circuit:
+def pad_circuit(nqubits: int, circuit: Circuit, qubit_map: list[int]) -> Circuit:
     """
     Pad `circuit` in a new one with `nqubits` qubits, according to `qubit_map`.
     `qubit_map` is a list `[i, j, k, ...]`, where the i-th physical qubit is mapped

@@ -4,15 +4,15 @@ from qibolab import create_platform
 
 from qibocal.auto.transpile import (
     dummy_transpiler,
-    get_compiler,
     pad_circuit,
+    set_compiler,
     transpile_circuits,
 )
 
 
 def test_natives():
     platform = create_platform("dummy")
-    compiler = get_compiler(platform)
+    compiler = set_compiler(platform)
     transpiler = dummy_transpiler(platform)
     assert gates.iSWAP in compiler.rules
 
