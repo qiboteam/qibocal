@@ -69,7 +69,7 @@ class ReadoutMitigationMatrixData(Data):
 def _acquisition(
     params: ReadoutMitigationMatrixParameters,
     platform: CalibrationPlatform,
-    targets: list[Sequence[QubitId]],
+    targets: list[list[QubitId]],
 ) -> ReadoutMitigationMatrixData:
     assert params.nshots is not None
     data = ReadoutMitigationMatrixData(nshots=params.nshots, qubit_list=targets)
@@ -94,14 +94,14 @@ def _acquisition(
                 platform,
                 transpiler,
             )
-            results = execute_circuits(
+            [result] = execute_circuits(
                 platform,
                 compiler,
                 transpiled_circuits,
                 nshots=params.nshots,
             )
             frequencies = np.zeros(2 ** len(qubits))
-            for i, freq in results[0].items():
+            for i, freq in result.items():
                 frequencies[int(i, 2)] = freq
             for freq in frequencies:
                 data.register_qubit(

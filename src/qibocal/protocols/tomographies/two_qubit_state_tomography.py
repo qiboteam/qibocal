@@ -152,7 +152,7 @@ def _acquisition(
             platform,
             transpiler,
         )
-        results = execute_circuits(
+        [result] = execute_circuits(
             platform,
             compiler,
             transpiled_circs,
@@ -160,8 +160,7 @@ def _acquisition(
         )
 
         for i, pair in enumerate(targets):
-            assert len(results) == 1
-            frequencies = marginalize_qubit_counts(results[0], (2 * i, 2 * i + 1))
+            frequencies = marginalize_qubit_counts(result, (2 * i, 2 * i + 1))
             simulation_probabilities = simulation_result.probabilities(
                 qubits=(2 * i, 2 * i + 1)
             )
