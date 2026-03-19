@@ -43,7 +43,7 @@ def _acquisition(
         RBData: The depths, samples and ground state probability of each experiment in the scan.
     """
 
-    return rb_acquisition(params, platform, targets, add_inverse_layer=False)
+    return rb_acquisition(params, platform, targets, inverse_layer=False)
 
 
 def _fit(data: RBData) -> FilteredRBResult:
@@ -78,7 +78,9 @@ def _plot(
     fig = go.Figure()
     fitting_report = ""
     x = data.depths
-    raw_data = data.extract_probabilities(qubit)
+    raw_data = np.array(
+        [val["survival_probs"] for key, val in data.data.items() if key[0] == target]
+    )  # rows -> depths, cols -> iterations
     y = np.mean(raw_data, axis=1)
     raw_depths = [[depth] * data.niter for depth in data.depths]
 

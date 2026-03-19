@@ -23,13 +23,23 @@ from qibocal.protocols.randomized_benchmarking.standard_rb import (
     _update,
 )
 from qibocal.protocols.randomized_benchmarking.utils import (
-    RB_Generator,
     RBData,
     RBType,
     add_inverse_layer,
     layer_circuit,
-    setup,
 )
+
+try:
+    from qibocal.protocols.randomized_benchmarking.utils import (
+        RB_Generator,
+        setup,
+    )
+except ImportError:
+    """Warning: a significant rewrite of the treatment of circuits means that this
+    protocol is no longer working. See https://github.com/qiboteam/qibocal/pull/1393.
+
+    The ImportError is caught to avoid breaking the entire package.
+    """
 
 __all__ = ["standard_rb_sweeper"]
 

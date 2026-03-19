@@ -8,11 +8,18 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibo import Circuit, gates
-from qibo.backends import NumpyBackend, construct_backend, matrices
+from qibo.backends import NumpyBackend, matrices
 from qibo.quantum_info import fidelity, partial_trace
 
+from qibocal.protocols.utils import marginalize_qubit_counts
+
 from ...auto.operation import DATAFILE, Data, Parameters, QubitId, Results, Routine
-from ...auto.transpile import dummy_transpiler, execute_transpiled_circuit
+from ...auto.transpile import (
+    dummy_transpiler,
+    execute_circuits,
+    set_compiler,
+    transpile_circuits,
+)
 from ...calibration import CalibrationPlatform
 from ..utils import table_dict, table_html
 
@@ -25,26 +32,69 @@ CIRCUIT_PATH = "circuit.json"
 __all__ = ["state_tomography", "StateTomographyParameters", "plot_reconstruction"]
 
 
+def parse_circuit(value: Optional[Union[str, Circuit]]) -> Optional[Circuit]:
+    if value is None:
+        circuit = None
+
+    elif isinstance(value, str):
+        path = Path(value)
+        if not path.exists():
+            raise FileNotFoundError(f"Circuit file not found: {path}")
+
+        raw = json.loads(path.read_text())
+        circuit = Circuit.from_dict(raw)
+
+    elif isinstance(value, Circuit):
+        circuit = value
+
+    else:
+        raise TypeError(f"circuit must be str, Circuit, or None, got {type(value)}")
+    return circuit
+
+
 @dataclass
 class StateTomographyParameters(Parameters):
     """Tomography input parameters"""
 
-    circuit: Optional[Union[str, Circuit]] = None
-    """Circuit to prepare initial state.
+    def __init__(self, circuit: Optional[Union[str, Circuit]] = None, **kwargs):
+        self._circuit = parse_circuit(circuit)
+        super().__init__(**kwargs)
 
-        It can also be provided the path to a json file containing
-        a serialized circuit.
-    """
+    @property
+    def circuit(self) -> Optional[Circuit]:
+        # Circuit to prepare initial state.
+        return self._circuit
 
-    def __post_init__(self):
-        if isinstance(self.circuit, str):
-            raw = json.loads((Path.cwd() / self.circuit).read_text())
-            self.circuit = Circuit.from_dict(raw)
+    # Circuit can be provided as an instance of a Circuit class, or as a sting encoding
+    # the path to a json file containing a serialized circuit. However,
+    # StateTomographyParameters.circuit is either a Circuit or None, never a string.
+    # This is the reason for using a setter instead of a simple attribute of the
+    # dataclass of either type Optional[Circuit] or Union[None, str, Circuit], which
+    # would not fully capture the difference in expected types between getting and
+    # setting
+    @circuit.setter
+    def circuit(self, value: Optional[Union[str, Circuit]]):
+        if value is None:
+            self._circuit = None
+
+        elif isinstance(value, str):
+            path = Path(value)
+            if not path.exists():
+                raise FileNotFoundError(f"Circuit file not found: {path}")
+
+            raw = json.loads(path.read_text())
+            self._circuit = Circuit.from_dict(raw)
+
+        elif isinstance(value, Circuit):
+            self._circuit = value
+
+        else:
+            raise TypeError(f"circuit must be str, Circuit, or None, got {type(value)}")
 
 
 TomographyType = np.dtype(
     [
-        ("samples", np.int64),
+        ("excited_state_rate", float),
     ]
 )
 """Custom dtype for tomography."""
@@ -109,8 +159,8 @@ def _acquisition(
     if params.circuit is None:
         params.circuit = Circuit(len(targets))
 
-    backend = construct_backend("qibolab", platform=platform)
-    transpiler = dummy_transpiler(backend)
+    transpiler = dummy_transpiler(platform)
+    compiler = set_compiler(platform)
 
     data = StateTomographyData(
         circuit=params.circuit, targets={target: i for i, target in enumerate(targets)}
@@ -123,21 +173,28 @@ def _acquisition(
             for i in range(len(targets)):
                 basis_circuit.add(getattr(gates, basis)(i).basis_rotation())
 
-        basis_circuit.add(gates.M(*range(len(targets))))
-        _, results = execute_transpiled_circuit(
-            basis_circuit,
-            targets,
-            backend,
+        for i in range(len(targets)):
+            basis_circuit.add(gates.M(i))
+        transpiled_circs = transpile_circuits(
+            [basis_circuit],
+            [targets],
+            platform,
+            transpiler,
+        )
+        [result] = execute_circuits(
+            platform,
+            compiler,
+            transpiled_circs,
+            [targets],
             nshots=params.nshots,
-            transpiler=transpiler,
         )
         for i, target in enumerate(targets):
+            single_qubit_state_counter = marginalize_qubit_counts(result, [i])
+            excited_state_rate = single_qubit_state_counter.get(1, 0) / params.nshots
             data.register_qubit(
                 TomographyType,
                 (target, basis),
-                dict(
-                    samples=np.array(results.samples()).T[i],
-                ),
+                dict(excited_state_rate=excited_state_rate),
             )
     return data
 
@@ -155,9 +212,9 @@ def _fit(data: StateTomographyData) -> StateTomographyResults:
     for i, qubit in enumerate(data.targets):
         traced_qubits = [q for q in range(len(data.qubits)) if q != i]
         target_density_matrix = partial_trace(total_density_matrix, traced_qubits)
-        x_exp = 1 - 2 * np.mean(data[qubit, "X"].samples)
-        y_exp = 1 - 2 * np.mean(data[qubit, "Y"].samples)
-        z_exp = 1 - 2 * np.mean(data[qubit, "Z"].samples)
+        x_exp = 1 - 2 * data[qubit, "X"].excited_state_rate
+        y_exp = 1 - 2 * data[qubit, "Y"].excited_state_rate
+        z_exp = 1 - 2 * data[qubit, "Z"].excited_state_rate
         measured_density_matrix = 0.5 * (
             matrices.I + matrices.X * x_exp + matrices.Y * y_exp + matrices.Z * z_exp
         )

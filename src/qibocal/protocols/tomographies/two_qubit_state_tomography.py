@@ -9,7 +9,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibo import Circuit, gates
-from qibo.backends import NumpyBackend, construct_backend
+from qibo.backends import NumpyBackend
 from qibo.quantum_info import fidelity, partial_trace
 from qibo.result import QuantumState
 
@@ -21,8 +21,14 @@ from qibocal.auto.operation import (
     Results,
     Routine,
 )
-from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
+from qibocal.auto.transpile import (
+    dummy_transpiler,
+    execute_circuits,
+    set_compiler,
+    transpile_circuits,
+)
 from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.utils import marginalize_qubit_counts
 
 from ..utils import table_dict, table_html
 from .state_tomography import StateTomographyParameters, plot_reconstruction
@@ -110,8 +116,8 @@ def _acquisition(
         params.circuit = Circuit(len(qubits))
 
     simulator = NumpyBackend()
-    backend = construct_backend("qibolab", platform=platform)
-    transpiler = dummy_transpiler(backend)
+    transpiler = dummy_transpiler(platform)
+    compiler = set_compiler(platform)
 
     simulated_state = simulator.execute_circuit(deepcopy(params.circuit))
     data = StateTomographyData(simulated=simulated_state)
@@ -129,22 +135,33 @@ def _acquisition(
                 for i in range(len(targets))
             )
 
-        basis_circuit.add(
-            gates.M(2 * i, 2 * i + 1, register_name=f"reg{i}")
+        pairs = (
+            (
+                gates.M(2 * i),
+                gates.M(2 * i + 1),
+            )
             for i in range(len(targets))
         )
+        basis_circuit.add(meas for pair in pairs for meas in pair)
 
         simulation_result = simulator.execute_circuit(basis_circuit)
-        _, results = execute_transpiled_circuit(
-            basis_circuit,
-            qubits,
-            backend,
+
+        transpiled_circs = transpile_circuits(
+            [basis_circuit],
+            [qubits],
+            platform,
+            transpiler,
+        )
+        [result] = execute_circuits(
+            platform,
+            compiler,
+            transpiled_circs,
+            [qubits],
             nshots=params.nshots,
-            transpiler=transpiler,
         )
 
         for i, pair in enumerate(targets):
-            frequencies = results.frequencies(registers=True)[f"reg{i}"]
+            frequencies = marginalize_qubit_counts(result, (2 * i, 2 * i + 1))
             simulation_probabilities = simulation_result.probabilities(
                 qubits=(2 * i, 2 * i + 1)
             )
