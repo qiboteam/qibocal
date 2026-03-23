@@ -151,7 +151,7 @@ def execute_circuits(
     if averaging_mode.average:
         # NOTE: averaging mode only makes sense for a two state readout. If there are
         # more states it would have to be conditional since the excited state
-        # probability of idividual qubits does not provide full information about the
+        # probability of individual qubits does not provide full information about the
         # probability distribution of the full set of basis states.
         for excited_frac in readout.values():
             countslist.append(
