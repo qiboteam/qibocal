@@ -79,14 +79,42 @@ def execute_circuits(
         platform: The quantum platform to execute circuits on.
         compiler: The compiler to use for circuit compilation.
         circuits: List of quantum circuits to execute.
+        qubit_maps: List of qubit maps, one per circuit. Each qubit map maps physical
+            qubit IDs to logical qubit indices.
         nshots: Number of times to sample from the experiment. Default is 1000.
-        averaging_mode: Averaging mode for measurements.
+        averaging_mode: Averaging mode for measurements. Only 'SINGLESHOT' supports
+            multiple qubits and multi-qubit readout. 'CYCLIC' is single-qubit only and
+            uses hardware average. Default is SINGLESHOT.
         Default is SINGLESHOT (CYCLIC only works with a single qubit).
 
     Returns:
         List of measurement outcome as Counter objects, one per circuit. Each Counter
         maps measurement outcome states as strings (e.g., "01", "10") to their
         occurrence counts. Total counts per counter equals nshots.
+
+    Examples:
+        .. testcode::
+
+        from qibo import Circuit, gates
+        from qibolab import create_platform
+        from qibocal.auto.transpile import execute_circuits, set_compiler
+
+        platform = create_platform("dummy")
+        compiler = set_compiler(platform)
+
+        circuit = Circuit(1)
+        circuit.add(gates.M(0))
+
+        qubit = next(iter(platform.qubits))
+        [counts] = execute_circuits(
+            platform=platform,
+            compiler=compiler,
+            circuits=[circuit],
+            qubit_maps=[[qubit]],
+            nshots=100,
+        )
+
+        assert sum(counts.values()) == 100
     """
 
     # TODO: Maybe these loops can be parallelized
@@ -96,6 +124,14 @@ def execute_circuits(
 
     # TODO?: pass options dict
     readout = platform.execute(sequences, nshots=nshots, averaging_mode=averaging_mode)
+
+    if averaging_mode.average and len(qubit_maps[0]) > 1:
+        raise ValueError("""Averaging mode CYCLIC only supports single qubit readout.
+                            Use SINGLESHOT instead. The reason is that the excited state
+                            probability of individual qubits (which is what CYCLIC
+                            extracts) does not provide full information about the
+                            probability distribution of the full set of basis states in
+                            a multi-qubit setup.""")
 
     countslist = []
     if averaging_mode.average:
@@ -114,6 +150,7 @@ def execute_circuits(
             )
     else:
         for qubit_map, measurement_map in zip(qubit_maps, measurement_maps):
+            assert len(qubit_map) == len(measurement_map)
             # The mapping from physical to logical qubits
             phys_to_logic_mapping = {q: i for i, q in enumerate(qubit_map)}
             result = {}
@@ -178,6 +215,12 @@ def set_compiler(platform: Platform) -> Compiler:
     Starting from :meth:`Compiler.default`, this function overrides and extends
     gate rules using the native containers available on the platform so circuit
     compilation is consistent with the selected hardware configuration.
+
+    Args:
+        platform: The quantum platform containing native gate definitions.
+
+    Returns:
+        A Compiler instance with rules set according to the platform's native gates.
     """
     native_gates = natives(platform)
     compiler = Compiler.default()
@@ -198,6 +241,12 @@ def dummy_transpiler(platform: Platform) -> Passes:
     otherwise `None`. This function overwrites the compiler defined in the
     backend, taking into account the native gates defined in the`platform` (see
     :func:`set_compiler`).
+
+    Args:
+        platform: The quantum platform containing native gate definitions.
+
+    Returns:
+        A Passes instance with an unroller set according to the platform's native gates.
     """
     native_gates = natives(platform)
     native_gates = [getattr(gates, x) for x in native_gates]
@@ -208,8 +257,17 @@ def dummy_transpiler(platform: Platform) -> Passes:
 def pad_circuit(nqubits: int, circuit: Circuit, qubit_map: list[int]) -> Circuit:
     """
     Pad `circuit` in a new one with `nqubits` qubits, according to `qubit_map`.
-    `qubit_map` is a list `[i, j, k, ...]`, where physica qubit i is mapped
-    into the 0th logical qubit and so on.
+    `qubit_map` is a list `[i, j, k, ...]`, where physical qubit i is mapped into the
+    0th logical qubit and so on.
+
+    Args:
+        nqubits: The total number of qubits in the new circuit.
+        circuit: The original quantum circuit to be padded.
+        qubit_map: A list mapping physical qubits to logical qubits in the new circuit.
+
+    Returns:
+        A Circuit instance with `nqubits` qubits, containing the original circuit's
+        gates mapped according to `qubit_map`.
     """
     new_circuit = Circuit(nqubits)
     new_circuit.add(circuit.on_qubits(*qubit_map))
