@@ -43,6 +43,16 @@ def transpile_circuits(
 
         In this function we are implicitly assume that the qubit ids
         are all string or all integers.
+
+    Args:
+        circuits: List of quantum circuits to transpile and pad.
+        qubit_maps: List of qubit maps, one per circuit. Each qubit map maps physical
+            qubit IDs to logical qubit indices.
+        platform: The quantum platform to transpile circuits for.
+        transpiler: The transpiler to apply to the circuits.
+
+    Returns:
+        List of transpiled and padded Circuit instances, one per input circuit.
     """
     transpiled_circuits = []
     qubits = list(platform.qubits)
@@ -117,6 +127,10 @@ def execute_circuits(
         assert sum(counts.values()) == 100
     """
 
+    assert len(circuits) == len(qubit_maps), (
+        "Number of circuits and qubit maps must match."
+    )
+
     sequences, measurement_maps = zip(
         *(compiler.compile(circuit, platform) for circuit in circuits)
     )
@@ -135,10 +149,10 @@ def execute_circuits(
 
     countslist = []
     if averaging_mode.average:
-        # NOTE: averaging mode only makes sense for a two state readout. If ther eare
-        # more states it would have to be conditional since the excited state probablity
-        # of idividual qubits does not provide full information about the probablity
-        # distribution of the full set of basis states.
+        # NOTE: averaging mode only makes sense for a two state readout. If there are
+        # more states it would have to be conditional since the excited state
+        # probability of idividual qubits does not provide full information about the
+        # probability distribution of the full set of basis states.
         for excited_frac in readout.values():
             countslist.append(
                 Counter(
