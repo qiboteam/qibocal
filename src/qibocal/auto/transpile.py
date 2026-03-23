@@ -126,12 +126,13 @@ def execute_circuits(
     readout = platform.execute(sequences, nshots=nshots, averaging_mode=averaging_mode)
 
     if averaging_mode.average and len(qubit_maps[0]) > 1:
-        raise ValueError("""Averaging mode CYCLIC only supports single qubit readout.
-                            Use SINGLESHOT instead. The reason is that the excited state
-                            probability of individual qubits (which is what CYCLIC
-                            extracts) does not provide full information about the
-                            probability distribution of the full set of basis states in
-                            a multi-qubit setup.""")
+        raise ValueError(
+            "Averaging mode CYCLIC only supports single qubit readout. "
+            "Use SINGLESHOT instead. The reason is that the excited state probability "
+            "individual qubits (which is what CYCLIC extracts) does not provide full "
+            "information about the probability distribution of the full set of basis "
+            "states in a multi-qubit setup."
+        )
 
     countslist = []
     if averaging_mode.average:
@@ -143,8 +144,8 @@ def execute_circuits(
             countslist.append(
                 Counter(
                     {
-                        "0": np.round((1 - excited_frac) * nshots),
-                        "1": np.round(excited_frac * nshots),
+                        "0": int(np.round((1 - excited_frac) * nshots)),
+                        "1": int(np.round(excited_frac * nshots)),
                     }
                 )
             )
