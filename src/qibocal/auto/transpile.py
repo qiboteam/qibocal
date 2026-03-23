@@ -72,6 +72,37 @@ def transpile_circuits(
     return transpiled_circuits
 
 
+def _validate_measurement(gate, sequence, qubit_map, readout):
+    """Validate measurement gate and sequence consistency.
+
+    Args:
+        gate: The measurement gate to validate.
+        sequence: The pulse sequence containing acquisitions.
+        qubit_map: Mapping of physical to logical qubits.
+        readout: Dictionary of readout results.
+
+    Raises:
+        ValueError: If gate or sequence structure is invalid.
+        KeyError: If qubit or acquisition ID is not found.
+    """
+    if len(gate.qubits) != 1:
+        raise ValueError(
+            f"Measurement gate must measure a single qubit. "
+            f"Got gate with {len(gate.qubits)} qubits."
+        )
+    if len(sequence.acquisitions) != 1:
+        raise ValueError(
+            f"Measurement sequence must have exactly one acquisition. "
+            f"Got {len(sequence.acquisitions)} acquisitions."
+        )
+    if gate.qubits[0] not in qubit_map:
+        raise KeyError(f"Qubit {gate.qubits[0]} not found in qubit map: {qubit_map}.")
+    if sequence.acquisitions[0][1].id not in readout:
+        raise KeyError(
+            f"Acquisition ID {sequence.acquisitions[0][1].id} not found in readout results."
+        )
+
+
 def execute_circuits(
     platform: Platform,
     compiler: Compiler,
@@ -169,9 +200,7 @@ def execute_circuits(
             phys_to_logic_mapping = {q: i for i, q in enumerate(qubit_map)}
             result = {}
             for gate, sequence in measurement_map.items():
-                # assert that a single measurement gate only measures the state of a single qubit
-                assert len(gate.qubits) == 1
-                assert len(sequence.acquisitions) == 1
+                _validate_measurement(gate, sequence, phys_to_logic_mapping, readout)
                 logical_qubit = phys_to_logic_mapping[gate.qubits[0]]
                 result[logical_qubit] = readout[sequence.acquisitions[0][1].id]
             # The inverse sorting is to have little-endian bitstring notation, which
