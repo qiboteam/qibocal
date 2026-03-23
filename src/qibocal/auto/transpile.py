@@ -117,7 +117,6 @@ def execute_circuits(
         assert sum(counts.values()) == 100
     """
 
-    # TODO: Maybe these loops can be parallelized
     sequences, measurement_maps = zip(
         *(compiler.compile(circuit, platform) for circuit in circuits)
     )
