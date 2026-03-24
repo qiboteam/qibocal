@@ -190,7 +190,7 @@ def _acquisition(
         )
         for i, target in enumerate(targets):
             single_qubit_state_counter = marginalize_qubit_counts(result, [i])
-            excited_state_rate = single_qubit_state_counter.get(1, 0) / params.nshots
+            excited_state_rate = single_qubit_state_counter["1"] / params.nshots
             data.register_qubit(
                 TomographyType,
                 (target, basis),
