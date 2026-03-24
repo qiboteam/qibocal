@@ -1,3 +1,5 @@
+from collections import Counter
+
 import numpy as np
 import pytest
 from qibo import Circuit, gates
@@ -148,3 +150,43 @@ def test_execute_circuits_cyclic_raises_for_multi_qubit():
             nshots=20,
             averaging_mode=AveragingMode.CYCLIC,
         )
+
+
+def test_execute_circuits_cyclic_maps_readout_to_circuit_order(monkeypatch):
+    # Test that we correctly use the acquisition ids to associate the results with the
+    # sequence in execute_circuits. This way we don't depend on the order in which the
+    # platform returns the results, which may not always remain the same as the sequence
+    # order, e.g. when batching reorders to optimize resource in hardware
+    platform = create_platform("dummy")
+    compiler = set_compiler(platform)
+    nshots = 20
+
+    circuit0 = Circuit(1)
+    circuit0.add(gates.M(0))
+    circuit1 = Circuit(1)
+    circuit1.add(gates.M(0))
+
+    qubit = list(platform.qubits)[0]
+    qubit_maps = [[qubit], [qubit]]
+
+    def execute_reversed_order(sequences, nshots, averaging_mode):
+        assert averaging_mode == AveragingMode.CYCLIC
+        first_id = sequences[0].acquisitions[0][1].id
+        second_id = sequences[1].acquisitions[0][1].id
+        return {
+            second_id: 0.8,
+            first_id: 0.3,
+        }
+
+    monkeypatch.setattr(platform, "execute", execute_reversed_order)
+
+    countslist = execute_circuits(
+        platform=platform,
+        compiler=compiler,
+        circuits=[circuit0, circuit1],
+        qubit_maps=qubit_maps,
+        nshots=nshots,
+        averaging_mode=AveragingMode.CYCLIC,
+    )
+
+    assert countslist == [Counter({"0": 14, "1": 6}), Counter({"0": 4, "1": 16})]

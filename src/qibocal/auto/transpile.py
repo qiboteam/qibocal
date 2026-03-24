@@ -169,22 +169,30 @@ def execute_circuits(
     # TODO?: pass options dict
     readout = platform.execute(sequences, nshots=nshots, averaging_mode=averaging_mode)
 
-    if averaging_mode.average and len(qubit_maps[0]) > 1:
-        raise ValueError(
-            "Averaging mode CYCLIC only supports single qubit readout. "
-            "Use SINGLESHOT instead. The reason is that the excited state probability "
-            "individual qubits (which is what CYCLIC extracts) does not provide full "
-            "information about the probability distribution of the full set of basis "
-            "states in a multi-qubit setup."
-        )
-
     countslist = []
     if averaging_mode.average:
         # NOTE: averaging mode only makes sense for a two state readout. If there are
         # more states it would have to be conditional since the excited state
         # probability of individual qubits does not provide full information about the
         # probability distribution of the full set of basis states.
-        for excited_frac in readout.values():
+        for qubit_map, measurement_map in zip(qubit_maps, measurement_maps):
+            if len(qubit_map) > 1:
+                raise ValueError(
+                    "Averaging mode CYCLIC only supports single qubit readout. "
+                    "Use SINGLESHOT instead. The reason is that the excited state probability "
+                    "individual qubits (which is what CYCLIC extracts) does not provide full "
+                    "information about the probability distribution of the full set of basis "
+                    "states in a multi-qubit setup."
+                )
+            if len(measurement_map) != 1:
+                raise ValueError(
+                    "Averaging mode CYCLIC requires exactly one measurement acquisition "
+                    "per circuit."
+                )
+            phys_to_logic_mapping = {q: i for i, q in enumerate(qubit_map)}
+            [(gate, sequence)] = measurement_map.items()
+            _validate_measurement(gate, sequence, phys_to_logic_mapping, readout)
+            excited_frac = readout[sequence.acquisitions[0][1].id]
             countslist.append(
                 Counter(
                     {
