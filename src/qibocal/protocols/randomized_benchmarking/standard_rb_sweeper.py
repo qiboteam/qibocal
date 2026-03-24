@@ -35,11 +35,11 @@ try:
         setup,
     )
 except ImportError:
-    """Warning: a significant rewrite of the treatment of circuits means that this
-    protocol is no longer working. See https://github.com/qiboteam/qibocal/pull/1393.
-
-    The ImportError is caught to avoid breaking the entire package.
-    """
+    print(
+        "ImportError: a significant rewrite of the treatment of circuits means that this "
+        "protocol is no longer working. See https://github.com/qiboteam/qibocal/pull/1393.\n\n"
+        "The ImportError is caught to avoid breaking the entire package."
+    )
 
 __all__ = ["standard_rb_sweeper"]
 
