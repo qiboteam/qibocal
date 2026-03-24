@@ -3,7 +3,7 @@
 # TODO: Since these functions are always used in the same way, we should probably
 # provide a single function that takes care of setting the compiler, transpiler, doing
 # the transpilation and execution in a single call. This would mean that set_compiler
-# and dummy_transpiler are called for every circuit exeuction instead of just once per
+# and dummy_transpiler are called for every circuit execution instead of just once per
 # protocol, so I'm not convinced that's what should be done.
 from collections import Counter
 from typing import Callable
@@ -204,7 +204,7 @@ def execute_circuits(
                 logical_qubit = phys_to_logic_mapping[gate.qubits[0]]
                 result[logical_qubit] = readout[sequence.acquisitions[0][1].id]
             # The inverse sorting is to have little-endian bitstring notation, which
-            # means that the qubit with the smalles qubitId is the most significant bit
+            # means that the qubit with the smallest qubitId is the most significant bit
             # in the output string (on the right).
             invsorted_result = sorted(result)[::-1]
             arr = np.stack([result[q] for q in invsorted_result]).astype(int)

@@ -65,7 +65,7 @@ class StateTomographyParameters(Parameters):
         # Circuit to prepare initial state.
         return self._circuit
 
-    # Circuit can be provided as an instance of a Circuit class, or as a sting encoding
+    # Circuit can be provided as an instance of a Circuit class, or as a string encoding
     # the path to a json file containing a serialized circuit. However,
     # StateTomographyParameters.circuit is either a Circuit or None, never a string.
     # This is the reason for using a setter instead of a simple attribute of the
