@@ -694,7 +694,7 @@ def fit(data, single_qubit: bool = True) -> StandardRBResult:
         dimension = 2
     else:
         targets = data.pairs
-        dimension = 2 ** len(targets)
+        dimension = 2**2
 
     fidelity, pulse_fidelity = {}, {}
     popts, perrs = {}, {}
