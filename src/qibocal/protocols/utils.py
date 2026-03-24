@@ -250,7 +250,8 @@ def marginalize_qubit_counts(counts: Counter, indices: Sequence[int] | int):
     out = Counter()
     indices_list = [indices] if isinstance(indices, int) else indices
     for state, count in counts.items():
-        reduced = "".join(state[i] for i in indices_list)
+        # -1-i because logical qubit 0 is on the right. See execute_circuits.
+        reduced = "".join(state[-1 - i] for i in indices_list)
         out[reduced] += count
     return out
 
