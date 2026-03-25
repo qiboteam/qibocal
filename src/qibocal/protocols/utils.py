@@ -1070,7 +1070,7 @@ def guess_frequency_numpyfied(x: np.ndarray, y: np.ndarray, axis: int = -1):
     fft = np.fft.rfft(y, axis=axis)
     fft_freqs = np.fft.rfftfreq(y.shape[axis], d=(x[1] - x[0]))
     mags = np.abs(fft)
-    mags[0] = 0
+    mags[:, 0] = 0
 
     selected_freqs = fft_freqs[np.argmax(mags, axis=axis)]
 
@@ -1139,6 +1139,7 @@ def quinn_fernandes_algorithm(
         beta = np.sum((xi[..., 2:] + xi[..., :-2]) * xi[..., 1:-1], axis=axis) / np.sum(
             xi[..., :-1] ** 2, axis=axis
         )
+        beta[np.isnan(beta)] = 0
         if len(buffer_beta) >= 5:
             buffer_beta.pop(0)
         buffer_beta.append(beta)
