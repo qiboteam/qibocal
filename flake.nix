@@ -6,6 +6,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     flake-parts.url = "github:hercules-ci/flake-parts";
+    nixpkgs-python = {
+      url = "github:cachix/nixpkgs-python";
+      inputs = {nixpkgs.follows = "nixpkgs";};
+    };
   };
 
   outputs = {
@@ -35,6 +39,7 @@
           languages = {
             python = {
               enable = true;
+              version = "3.12";
               libraries = with pkgs; [zlib];
               poetry = {
                 enable = true;
