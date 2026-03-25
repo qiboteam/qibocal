@@ -282,18 +282,10 @@ def _fit(
                 np.sqrt(2 / dof),
             )
             amplitudes[qubit] = fitted_parameters[qubit][0]
-    if data.power_level is PowerLevel.high:
-        return ResonatorSpectroscopyResults(
-            frequency=frequency,
-            fitted_parameters=fitted_parameters,
-            bare_frequency=bare_frequency,
-            error_fit_pars=error_fit_pars,
-            chi2_reduced=chi2,
-            amplitude=data.amplitudes,
-        )
     return ResonatorSpectroscopyResults(
         frequency=frequency,
         fitted_parameters=fitted_parameters,
+        bare_frequency=bare_frequency if data.power_level is PowerLevel.high else {},
         error_fit_pars=error_fit_pars,
         chi2_reduced=chi2,
         amplitude=data.amplitudes,

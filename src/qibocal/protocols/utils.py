@@ -94,11 +94,11 @@ def readout_frequency(
     return platform_frequency
 
 
-def lorentzian(frequency, amplitude, center, sigma, offset):
+def lorentzian(frequency, amplitude, center, sigma, offset, slope):
     # http://openafox.com/science/peak-function-derivations.html
-    return (amplitude / np.pi) * (
-        sigma / ((frequency - center) ** 2 + sigma**2)
-    ) + offset
+    lorentzian = (amplitude / np.pi) * (sigma / ((frequency - center) ** 2 + sigma**2))
+    background = offset + frequency * slope
+    return lorentzian + background
 
 
 def lorentzian_fit(data, resonator_type=None, fit=None):
@@ -110,6 +110,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
     guess_offset = np.mean(
         voltages[np.abs(voltages - np.mean(voltages)) < np.std(voltages)]
     )
+    guess_slope = 0.0
     if (resonator_type == "3D" and fit == "resonator") or (
         resonator_type == "2D" and fit == "qubit"
     ):
@@ -131,29 +132,31 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         guess_center,
         guess_sigma,
         guess_offset,
+        guess_slope,
     ]
     # fit the model with the data and guessed parameters
     try:
-        if hasattr(data, "error_signal"):
-            if not np.isnan(data.error_signal).any():
-                fit_parameters, perr = curve_fit(
-                    lorentzian,
-                    frequencies,
-                    voltages,
-                    p0=initial_parameters,
-                    sigma=data.error_signal,
-                )
-                perr = np.sqrt(np.diag(perr)).tolist()
-                model_parameters = list(fit_parameters)
-                return model_parameters[1] * GHZ_TO_HZ, list(model_parameters), perr
+        sigma = (
+            data.error_signal
+            if (hasattr(data, "error_signal") and not np.isnan(data.error_signal).any())
+            else None
+        )
+
         fit_parameters, perr = curve_fit(
             lorentzian,
             frequencies,
             voltages,
             p0=initial_parameters,
+            sigma=sigma,
         )
-        perr = [0] * 4
-        model_parameters = list(fit_parameters)
+        # The output results are stored in a json, but ndarray is not JSON serializable,
+        # so the paramters are converted to list.
+        perr = (
+            np.sqrt(np.diag(perr)).tolist()
+            if sigma is not None
+            else [0] * len(initial_parameters)
+        )
+        model_parameters = fit_parameters.tolist()
         return model_parameters[1] * GHZ_TO_HZ, model_parameters, perr
     except RuntimeError as e:
         log.warning(f"Lorentzian fit not successful due to {e}")
