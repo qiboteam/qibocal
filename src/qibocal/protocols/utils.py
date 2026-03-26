@@ -96,9 +96,9 @@ def readout_frequency(
 
 def lorentzian(frequency, amplitude, center, sigma, offset, slope):
     # http://openafox.com/science/peak-function-derivations.html
-    lorentzian = (amplitude / np.pi) * (sigma / ((frequency - center) ** 2 + sigma**2))
+    peak = (amplitude / np.pi) * (sigma / ((frequency - center) ** 2 + sigma**2))
     background = offset + frequency * slope
-    return lorentzian + background
+    return peak + background
 
 
 def lorentzian_fit(data, resonator_type=None, fit=None):
@@ -150,7 +150,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
             sigma=sigma,
         )
         # The output results are stored in a json, but ndarray is not JSON serializable,
-        # so the paramters are converted to list.
+        # so the parameters are converted to list.
         perr = (
             np.sqrt(np.diag(perr)).tolist()
             if sigma is not None
