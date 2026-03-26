@@ -253,9 +253,7 @@ class Output:
             self.history._tasks[task_id.id][task_id.iteration] = completed.task.run(
                 platform=self.platform,
                 mode=mode,
-                folder=self.history.task_path(
-                    self.history._executed_task_id(task_id.id), output
-                ),
+                folder=self.history.task_path(task_id, output),
             )
             if update and completed.task.update:
                 completed.update_platform(platform=self.platform)
