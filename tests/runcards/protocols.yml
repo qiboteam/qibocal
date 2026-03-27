@@ -65,7 +65,7 @@ actions:
       drive_amplitude: 0.001
       drive_duration: 1000
       freq_width: 2_000_000
-      freq_step: 500_000
+      freq_step: 200_000
       nshots: 10
 
   - id: qubit power spectroscopy
@@ -84,7 +84,7 @@ actions:
       drive_amplitude: 0.001
       drive_duration: 1000
       freq_width: 2_000_000
-      freq_step: 500_000
+      freq_step: 200_000
       nshots: 10
       hardware_average: false
 
@@ -103,7 +103,7 @@ actions:
       drive_amplitude: 0.001
       drive_duration: 1000
       freq_width: 2_000_000
-      freq_step: 500_000
+      freq_step: 200_000
       nshots: 10
       hardware_average: false
 
