@@ -245,7 +245,6 @@ def _fit(
     fitted_parameters = {}
     error_fit_pars = {}
     chi2 = {}
-    amplitudes = {}
 
     fit = FITS[data.fit_function]
 
@@ -281,7 +280,6 @@ def _fit(
                 ),
                 np.sqrt(2 / dof),
             )
-            amplitudes[qubit] = fitted_parameters[qubit][0]
     return ResonatorSpectroscopyResults(
         frequency=frequency,
         fitted_parameters=fitted_parameters,
