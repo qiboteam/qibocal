@@ -43,7 +43,7 @@ def _validate_targets(targets):
         )
 
 
-def _register(name: str, obj):
+def _register(name: str, obj: Any) -> None:
     """Register object as module.
 
     With a small abuse of the Python module system, the object is registered as a
@@ -76,7 +76,7 @@ def _register(name: str, obj):
         setattr(parent_module, child_name, obj)
 
     sys.modules[qualified] = obj
-    obj.name = obj.__name__ = qualified
+    obj.__name__ = qualified
     obj.__spec__ = None
 
 
@@ -120,7 +120,7 @@ class Executor(BaseModel, protocols.BaseSet):
 
         protocols_ = reduce(operator.or_, [protocols.PROTOCOLS] + self.sources)
         for name, protocol in protocols_.items():
-            object.__setattr__(self, name, self.wrapped_protocol(protocol))
+            object.__setattr__(self, name, self._wrapped_protocol(protocol, name))
 
     @classmethod
     def create(cls, name: str, platform: CalibrationPlatform | str | None = None):
