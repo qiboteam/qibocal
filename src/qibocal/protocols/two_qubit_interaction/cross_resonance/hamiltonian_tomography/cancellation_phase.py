@@ -21,6 +21,7 @@ from scipy.constants import kilo
 
 from ..... import update
 from .....auto.operation import (
+    Data,
     Parameters,
     QubitId,
     QubitPairId,
@@ -30,12 +31,11 @@ from .....auto.operation import (
 from .....calibration import CalibrationPlatform
 from ....utils import table_dict, table_html
 from ..utils import Basis, SetControl, cr_sequence
+from .length import HamiltonianTomographyCRLengthData
 from .utils import (
-    EPS,
     HamiltonianTerm,
-    HamiltonianTomographyData,
-    calibration_cr_plot,
-    phase_tomography_cr_fit,
+    cancellation_calibration_plot,
+    cancellation_phase_fit,
     reconstruct_full_hamiltonian_terms,
 )
 
@@ -156,7 +156,7 @@ class HamiltonianTomographyCANCPhaseResults(Results):
 
 
 @dataclass
-class HamiltonianTomographyCANCPhaseData(HamiltonianTomographyData):
+class HamiltonianTomographyCANCPhaseData(Data):
     """Data structure for CR Amplitude."""
 
     echo: bool
@@ -173,8 +173,8 @@ class HamiltonianTomographyCANCPhaseData(HamiltonianTomographyData):
     def pairs(self):
         return {(i[0], i[1]) for i in self.data}
 
-    def select_phase(self, phase: float):
-        new_data = HamiltonianTomographyCANCPhaseData(
+    def select_phase(self, phase: float) -> HamiltonianTomographyCRLengthData:
+        new_data = HamiltonianTomographyCRLengthData(
             echo=self.echo,
         )
         new_data.data = {k: d[d.phase == phase] for k, d in self.data.items()}
@@ -223,7 +223,7 @@ def _acquisition(
     for pair in targets:
         control, target = pair
 
-        for basis in [Basis.Y, Basis.X]:
+        for basis in Basis:
             for setup in SetControl:
                 sequence, cr_pulses, cr_target_pulses, delays = cr_sequence(
                     platform=platform,
@@ -305,12 +305,10 @@ def _acquisition(
                         phase=phase_sweepers[0].values,
                         prob_target=1 - 2 * prob_target,
                         error_target=2
-                        * np.sqrt(
-                            EPS + prob_target * (1 - prob_target) / params.nshots
-                        ),
+                        * np.sqrt(prob_target * (1 - prob_target) / params.nshots),
                         prob_control=prob_control,
                         error_control=np.sqrt(
-                            EPS + prob_control * (1 - prob_control) / params.nshots
+                            prob_control * (1 - prob_control) / params.nshots
                         ),
                     ),
                 )
@@ -328,7 +326,7 @@ def _fit(
 
     """
     hamiltonian_terms, fitted_parameters, pulses_phases, ham_tom_params, cr_lengths = (
-        phase_tomography_cr_fit(
+        cancellation_phase_fit(
             data=data,
         )
     )
@@ -351,7 +349,7 @@ def _plot(
     fit: HamiltonianTomographyCANCPhaseResults,
 ):
     """Plotting function for HamiltonianTomographyCANCPhase."""
-    figs, fitting_report = calibration_cr_plot(data, target, fit)
+    figs, fitting_report = cancellation_calibration_plot(data, target, fit)
 
     if fit.verbose_plot:
         from qibocal.protocols.two_qubit_interaction.cross_resonance.hamiltonian_tomography.length import (

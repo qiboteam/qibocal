@@ -21,6 +21,7 @@ from scipy.constants import kilo
 
 from ..... import update
 from .....auto.operation import (
+    Data,
     Parameters,
     QubitId,
     QubitPairId,
@@ -30,12 +31,11 @@ from .....auto.operation import (
 from .....calibration import CalibrationPlatform
 from ....utils import table_dict, table_html
 from ..utils import Basis, SetControl, cr_sequence
+from .length import HamiltonianTomographyCRLengthData
 from .utils import (
-    EPS,
     HamiltonianTerm,
-    HamiltonianTomographyData,
-    amplitude_tomography_cr_fit,
-    calibration_cr_plot,
+    cancellation_amplitude_fit,
+    cancellation_calibration_plot,
     reconstruct_full_hamiltonian_terms,
 )
 
@@ -152,7 +152,7 @@ class HamiltonianTomographyCANCAmplResults(Results):
 
 
 @dataclass
-class HamiltonianTomographyCANCAmplData(HamiltonianTomographyData):
+class HamiltonianTomographyCANCAmplData(Data):
     """Data structure for CR Amplitude."""
 
     echo: bool
@@ -169,8 +169,8 @@ class HamiltonianTomographyCANCAmplData(HamiltonianTomographyData):
     def pairs(self):
         return {(i[0], i[1]) for i in self.data}
 
-    def select_amplitude(self, amplitude: float):
-        new_data = HamiltonianTomographyCANCAmplData(
+    def select_amplitude(self, amplitude: float) -> HamiltonianTomographyCRLengthData:
+        new_data = HamiltonianTomographyCRLengthData(
             echo=self.echo,
         )
         new_data.data = {k: d[d.amp == amplitude] for k, d in self.data.items()}
@@ -291,12 +291,10 @@ def _acquisition(
                         amp=amp_sweeper.values,
                         prob_target=1 - 2 * prob_target,
                         error_target=2
-                        * np.sqrt(
-                            EPS + prob_target * (1 - prob_target) / params.nshots
-                        ),
+                        * np.sqrt(prob_target * (1 - prob_target) / params.nshots),
                         prob_control=prob_control,
                         error_control=np.sqrt(
-                            EPS + prob_control * (1 - prob_control) / params.nshots
+                            prob_control * (1 - prob_control) / params.nshots
                         ),
                     ),
                 )
@@ -314,7 +312,7 @@ def _fit(
 
     """
     hamiltonian_terms, fitted_parameters, cal_amplitudes, ham_tom_params, cr_lengths = (
-        amplitude_tomography_cr_fit(
+        cancellation_amplitude_fit(
             data=data,
         )
     )
@@ -336,7 +334,7 @@ def _plot(
     fit: HamiltonianTomographyCANCAmplResults,
 ):
     """Plotting function for HamiltonianTomographyCANCAmpl."""
-    figs, fitting_report = calibration_cr_plot(data, target, fit)
+    figs, fitting_report = cancellation_calibration_plot(data, target, fit)
 
     if fit.verbose_plot:
         from qibocal.protocols.two_qubit_interaction.cross_resonance.hamiltonian_tomography.length import (

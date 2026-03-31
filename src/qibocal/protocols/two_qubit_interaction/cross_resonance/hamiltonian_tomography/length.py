@@ -21,6 +21,7 @@ from scipy.constants import kilo
 
 from ..... import update
 from .....auto.operation import (
+    Data,
     Parameters,
     QubitId,
     QubitPairId,
@@ -31,9 +32,7 @@ from .....calibration import CalibrationPlatform
 from ....utils import table_dict, table_html
 from ..utils import Basis, SetControl, cr_sequence
 from .utils import (
-    EPS,
     HamiltonianTerm,
-    HamiltonianTomographyData,
     extract_hamiltonian_terms,
     tomography_cr_fit,
     tomography_cr_plot,
@@ -99,7 +98,7 @@ class HamiltonianTomographyCRLengthResults(Results):
     )
     """Fitted parameters from X,Y,Z expectation values."""
     cr_lengths: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
-    """Estimated_duration of CR gate."""
+    """Estimated durations of CR gate."""
     control_amplitude: float = 0
     control_phase: float = 0
     target_amplitude: float = 0
@@ -112,10 +111,10 @@ class HamiltonianTomographyCRLengthResults(Results):
 
 
 @dataclass
-class HamiltonianTomographyCRLengthData(HamiltonianTomographyData):
+class HamiltonianTomographyCRLengthData(Data):
     """Data structure for CR length."""
 
-    echo: bool | None = None
+    echo: bool
     control_amplitude: float = 0
     control_phase: float = 0
     target_amplitude: float = 0
@@ -147,8 +146,7 @@ def _acquisition(
 
     """
 
-    data = HamiltonianTomographyCRLengthData()
-    data.echo = params.echo
+    data = HamiltonianTomographyCRLengthData(echo=params.echo)
     data.control_amplitude = params.pulse_amplitude
     data.control_phase = params.phase
     data.target_amplitude = params.target_amplitude
@@ -217,8 +215,6 @@ def _acquisition(
                 prob_target = results[target_acq_handle].ravel()
                 prob_control = results[control_acq_handle].ravel()
 
-                # TODO: possibly drop control probablity even if it might be useful later on
-                # to compute leakage
                 data.register_qubit(
                     HamiltonianTomographyCRLengthType,
                     (control, target, basis, setup),
@@ -226,14 +222,11 @@ def _acquisition(
                         x=sweeper.values,
                         prob_target=1 - 2 * prob_target,
                         error_target=(
-                            2
-                            * np.sqrt(
-                                EPS + prob_target * (1 - prob_target) / params.nshots
-                            )
+                            2 * np.sqrt(prob_target * (1 - prob_target) / params.nshots)
                         ).tolist(),
                         prob_control=prob_control,
                         error_control=np.sqrt(
-                            EPS + prob_control * (1 - prob_control) / params.nshots
+                            prob_control * (1 - prob_control) / params.nshots
                         ).tolist(),
                     ),
                 )
@@ -286,12 +279,24 @@ def _plot(
             table_dict(
                 7 * [target],
                 [f"{term.name} [MHz]" for term in HamiltonianTerm]
-                + ["CR duration (ns)"],
+                + [
+                    "CR duration (ns)",
+                    "Control amplitude (a.u.)",
+                    "Control phase (rad)",
+                    "Target amplitude (a.u.)",
+                    "Target phase (rad)",
+                ],
                 [
                     fit.hamiltonian_terms[target[0], target[1], term] * kilo
                     for term in HamiltonianTerm
                 ]
-                + [fit.cr_lengths[target] if target in fit.cr_lengths else None],
+                + [fit.cr_lengths[target] if target in fit.cr_lengths else None]
+                + [
+                    fit.control_amplitude,
+                    fit.control_phase,
+                    fit.target_amplitude,
+                    fit.target_phase,
+                ],
             )
         )
     else:
