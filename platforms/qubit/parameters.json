@@ -5,27 +5,27 @@
   },
   "configs": {
     "emulator/bounds": {
-    "kind": "bounds",
-    "waveforms": 1000000,
-    "readout": 50,
-    "instructions": 200
-  },
-  "hamiltonian":{
-    "transmon_levels": 2,
-    "qubits": {
-      "0": {
-        "frequency": 5e9,
-        "anharmonicity": -200e6,
-        "t1": {
-          "0-1": 1000
-        },
-        "t2": {
-          "0-1": 1900
-        }
-      }
+      "kind": "bounds",
+      "waveforms": 1000000,
+      "readout": 50,
+      "instructions": 200
     },
-    "kind": "hamiltonian"
-  },
+    "hamiltonian": {
+      "transmon_levels": 2,
+      "single_qubit": {
+        "0": {
+          "frequency": 5e9,
+          "anharmonicity": -200e6,
+          "t1": {
+            "0-1": 1000
+          },
+          "t2": {
+            "0-1": 1900
+          }
+        }
+      },
+      "kind": "hamiltonian"
+    },
     "0/drive": {
       "kind": "drive-emulator",
       "frequency": 5e9,
@@ -38,18 +38,18 @@
       "rabi_frequency": 20e6,
       "scale_factor": 10
     },
-  "0/probe": {
-    "kind": "iq",
-    "frequency": 5200000000.0
-  },
-  "0/acquisition": {
-    "kind": "acquisition",
-    "delay": 0.0,
-    "smearing": 0.0,
-    "threshold": 0.0,
-    "iq_angle": 0.0,
-    "kernel": null
-  }
+    "0/probe": {
+      "kind": "iq",
+      "frequency": 5200000000.0
+    },
+    "0/acquisition": {
+      "kind": "acquisition",
+      "delay": 0.0,
+      "smearing": 0.0,
+      "threshold": 0.0,
+      "iq_angle": 0.0,
+      "kernel": null
+    }
   },
   "native_gates": {
     "single_qubit": {
@@ -109,5 +109,5 @@
         "CP": null
       }
     }
-    }
   }
+}
