@@ -49,21 +49,22 @@ class ModuleCalibrationData:
                 f"Cannot create ModuleCalibrationData from type {type(data)}"
             )
 
-        int_key_fields = [
-            "gain_ratio",
-            "phase_offset",
-            "lo_freq",
-            "nco_freq",
-            "offset_i",
-            "offset_q",
-        ]
+        flat_fields = ["offset_i", "offset_q", "lo_freq"]
+        nested_fields = ["gain_ratio", "phase_offset", "nco_freq"]
+
         kwargs = {
             field: {
-                int(k): {int(kk): vv for kk, vv in v.items()}
-                for k, v in data.get(field, {}).items()
+                int(port): {int(seq): value for seq, value in seq_values.items()}
+                for port, seq_values in data.get(field, {}).items()
             }
-            for field in int_key_fields
+            for field in nested_fields
         }
+        kwargs.update(
+            {
+                field: {int(port): value for port, value in data.get(field, {}).items()}
+                for field in flat_fields
+            }
+        )
         kwargs["module_name"] = data["module_name"]
 
         return cls(**kwargs)
