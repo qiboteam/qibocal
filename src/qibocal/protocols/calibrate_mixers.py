@@ -33,7 +33,7 @@ class ModuleCalibrationData:
     """NCO frequencies per sequencer."""
 
     @classmethod
-    def from_dict(cls, data: dict) -> "ModuleCalibrationData":
+    def from_dict(cls, data: "dict | ModuleCalibrationData") -> "ModuleCalibrationData":
         """Create ModuleCalibrationData from a dictionary.
 
         Args:
@@ -52,22 +52,27 @@ class ModuleCalibrationData:
         flat_fields = ["offset_i", "offset_q", "lo_freq"]
         nested_fields = ["gain_ratio", "phase_offset", "nco_freq"]
 
-        kwargs = {
+        nested_values = {
             field: {
                 int(port): {int(seq): value for seq, value in seq_values.items()}
                 for port, seq_values in data.get(field, {}).items()
             }
             for field in nested_fields
         }
-        kwargs.update(
-            {
-                field: {int(port): value for port, value in data.get(field, {}).items()}
-                for field in flat_fields
-            }
-        )
-        kwargs["module_name"] = data["module_name"]
+        flat_values = {
+            field: {int(port): value for port, value in data.get(field, {}).items()}
+            for field in flat_fields
+        }
 
-        return cls(**kwargs)
+        return cls(
+            module_name=data["module_name"],
+            offset_i=flat_values["offset_i"],
+            offset_q=flat_values["offset_q"],
+            lo_freq=flat_values["lo_freq"],
+            gain_ratio=nested_values["gain_ratio"],
+            phase_offset=nested_values["phase_offset"],
+            nco_freq=nested_values["nco_freq"],
+        )
 
 
 @dataclass
