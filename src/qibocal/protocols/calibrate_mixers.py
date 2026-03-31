@@ -1,3 +1,7 @@
+"""This function performs mixer calibration for QBlox RF modules by running the built-in
+LO and sideband calibration routines. To be moved to the qblox-driver.
+"""
+
 from dataclasses import dataclass, field
 
 import plotly.graph_objects as go
@@ -88,9 +92,6 @@ class CalibrateMixersResults(Results):
     )
     """Final calibration values after running calibration."""
 
-    # sequencer_map: dict[str, SequencerMap] = field(default_factory=dict)
-    # """Map of module slots to channels and assigned sequencers."""
-
 
 @dataclass
 class CalibrateMixersData(Data):
@@ -100,6 +101,7 @@ class CalibrateMixersData(Data):
         default_factory=dict
     )
     """Initial calibration values before running calibration."""
+
     final_calibration: dict[str, dict[str, ModuleCalibrationData]] = field(
         default_factory=dict
     )
@@ -117,9 +119,8 @@ def _get_hardware_calibration(
 
     # Iterate over seq_map to get channels and their assigned sequencers
     for slot_id, channels in seq_map.items():
-        try:
-            module = modules[slot_id]
-        except KeyError:
+        module = modules.get(slot_id)
+        if module is None:
             continue  # Skip if the module for this slot is not found (e.g. non-RF module)
         mod_name = module.short_name
         mod_data = data[mod_name] = ModuleCalibrationData(mod_name)
@@ -181,61 +182,60 @@ def _acquisition(
 
     data = CalibrateMixersData()
 
-    instrs = {
-        i: instr
+    clusters = [
+        (i, instr)
         for i, instr in platform.instruments.items()
         if isinstance(instr, Cluster)
-    }
-    assert len(instrs) <= 1, "Only one controller is supported at a time."
+    ]
+    assert len(clusters) == 1
+    [(cluster_id, cluster)] = clusters
     configs = platform.parameters.configs.copy()
 
-    # data.sequencer_map[targets[0]] = {}
-    for instr_id, instr in instrs.items():
-        cluster: Cluster = instr
+    # Setup one sequencer per channel with a dummy sequence
+    # TODO: Optimize by directly using Cluster._channels_by_module to assign
+    # one sequencer per output port instead of calling configure(). This would
+    # allow sequential calibration of individual channel mixers.
+    seq_map, _ = cluster.configure(
+        configs=configs,
+    )
 
-        # Setup one sequencer per channel with a dummy sequence
-        # TODO: Optimize by directly using Cluster._channels_by_module to assign
-        # one sequencer per output port instead of calling configure(). This would
-        # allow sequential calibration of individual channel mixers.
-        seq_map, _ = cluster.configure(
-            configs=configs,
-        )
+    modules = cluster.cluster.get_connected_modules(lambda mod: mod.is_rf_type)
 
-        modules = cluster.cluster.get_connected_modules(lambda mod: mod.is_rf_type)
+    # Read current hardware calibration values (should match those in
+    # parameters.json, this works only for one instr at the moment)
+    data.initial_calibration[cluster_id] = _get_hardware_calibration(cluster, seq_map)
 
-        # Read current hardware calibration values (should match those in parameters.json, this works only instr for one at the moment)
-        data.initial_calibration[instr_id] = _get_hardware_calibration(cluster, seq_map)
+    # Perform calibration
+    # seq_map is of shape {module_id: {ch_name: seq_id}}, so the outer loop is over
+    # modules
+    for channels in seq_map.values():
+        for ch_id, seq_id in channels.items():
+            address = PortAddress.from_path(cluster.channels[ch_id].path)
+            module = modules.get(address.slot)
+            if module is None:
+                continue  # Skip if the module for this channel is not found (e.g. non-RF module)
+            port = address.ports[0]
 
-        # Perform calibration
-        for channels in seq_map.values():
-            for ch_id, seq_id in channels.items():
-                address = PortAddress.from_path(cluster.channels[ch_id].path)
-                try:
-                    module = modules[address.slot]
-                except KeyError:
-                    continue  # Skip if the module for this channel is not found (e.g. non-RF module)
-                port = address.ports[0]
+            # Run LO calibration
+            output = port - 1
+            qblox_function = (
+                f"out{output}_lo_cal"
+                if module.is_qcm_type
+                else f"out{output}_in{output}_lo_cal"
+            )
+            getattr(module, qblox_function)()
 
-                # Run LO calibration
-                output = port - 1
-                qblox_function = (
-                    f"out{output}_lo_cal"
-                    if module.is_qcm_type
-                    else f"out{output}_in{output}_lo_cal"
-                )
-                getattr(module, qblox_function)()
+            # Run sideband calibration
+            sequencer = getattr(module, f"sequencer{seq_id}")
+            if all(
+                sequencer._get_sequencer_connect_out(i) == "off"
+                for i in range(2 if module.is_qcm_type else 1)
+            ):
+                # If no port is assigned to the sequencer, connect it to the current output
+                sequencer.connect_sequencer(f"out{port - 1}")
+            sequencer.sideband_cal()
 
-                # Run sideband calibration
-                sequencer = getattr(module, f"sequencer{seq_id}")
-                if all(
-                    sequencer._get_sequencer_connect_out(i) == "off"
-                    for i in range(2 if module.is_qcm_type else 1)
-                ):
-                    # If no port is assigned to the sequencer, connect it to the current output
-                    sequencer.connect_sequencer(f"out{port - 1}")
-                sequencer.sideband_cal()
-
-        data.final_calibration[instr_id] = _get_hardware_calibration(cluster, seq_map)
+    data.final_calibration[cluster_id] = _get_hardware_calibration(cluster, seq_map)
     return data
 
 
