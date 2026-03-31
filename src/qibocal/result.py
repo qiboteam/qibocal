@@ -81,4 +81,4 @@ def phase(iq: npt.NDArray):
 def probability(values: npt.NDArray, state: int = 0):
     """Return the statistical frequency of the specified state."""
     means = np.sum(values == state, axis=0) / len(values)
-    return np.minimum(means, 1)
+    return np.clip(means, 0, 1)
