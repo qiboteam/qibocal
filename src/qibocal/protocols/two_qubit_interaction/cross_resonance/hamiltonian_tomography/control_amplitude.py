@@ -143,22 +143,6 @@ class HamiltonianTomographyCRAmplData(Data):
     def pairs(self):
         return {(i[0], i[1]) for i in self.data}
 
-    def register_qubit(self, dtype, data_keys, data_dict):
-        """Store output for single qubit."""
-        duration_list = data_dict["x"]
-        amp_list = data_dict["amp"]
-        size = len(duration_list) * len(amp_list)
-        ar = np.empty(size, dtype=dtype)
-        amplitudes, durations = np.meshgrid(amp_list, duration_list)
-        ar["x"] = durations.ravel()
-        ar["amp"] = amplitudes.ravel()
-        ar["prob_target"] = data_dict["prob_target"].ravel()
-        ar["error_target"] = data_dict["error_target"].ravel()
-        ar["prob_control"] = data_dict["prob_control"].ravel()
-        ar["error_control"] = data_dict["error_control"].ravel()
-
-        self.data[data_keys] = np.rec.array(ar)
-
 
 def _acquisition(
     params: HamiltonianTomographyCRAmplParameters,
@@ -240,14 +224,15 @@ def _acquisition(
                     HamiltonianTomographyCRAmplType,
                     (control, target, basis, setup),
                     dict(
-                        amp=amp_sweeper.values,
+                        x=amp_sweeper.values,
                         prob_target=1 - 2 * prob_target,
-                        error_target=2
-                        * np.sqrt(prob_target * (1 - prob_target) / params.nshots),
+                        error_target=(
+                            2 * np.sqrt(prob_target * (1 - prob_target) / params.nshots)
+                        ).tolist(),
                         prob_control=prob_control,
                         error_control=np.sqrt(
                             prob_control * (1 - prob_control) / params.nshots
-                        ),
+                        ).tolist(),
                     ),
                 )
 
@@ -294,25 +279,34 @@ def _plot(
     figs[0].update_layout(
         xaxis3_title="CR pulse amplitude [a.u.]",
     )
+
     if fit is not None:
         fitting_report = table_html(
             table_dict(
-                7 * [target],
-                [f"{term.name} [MHz]" for term in HamiltonianTerm]
-                + [
-                    "CR duration (ns)",
-                    "Control amplitude (a.u.)",
-                    "Control phase (rad)",
-                    "Target amplitude (a.u.)",
-                    "Target phase (rad)",
-                ],
-                [
-                    fit.hamiltonian_terms[target[0], target[1], term] * kilo
-                    for term in HamiltonianTerm
-                ]
-                + [fit.cr_duration]
-                + [fit.cr_amplitudes[target] if target in fit.cr_amplitudes else None]
-                + [fit.control_phase, fit.target_amplitude, fit.target_phase],
+                11 * [target],
+                (
+                    [f"{term.name} [MHz]" for term in HamiltonianTerm]
+                    + [
+                        "CR duration (ns)",
+                        "Control amplitude (a.u.)",
+                        "Control phase (rad)",
+                        "Target amplitude (a.u.)",
+                        "Target phase (rad)",
+                    ]
+                ),
+                (
+                    [
+                        fit.hamiltonian_terms[target[0], target[1], term] * kilo
+                        for term in HamiltonianTerm
+                    ]
+                    + [fit.cr_duration]
+                    + [
+                        fit.cr_amplitudes[target]
+                        if target in fit.cr_amplitudes
+                        else None
+                    ]
+                    + [fit.control_phase, fit.target_amplitude, fit.target_phase]
+                ),
             )
         )
     else:

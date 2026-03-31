@@ -274,29 +274,34 @@ def _plot(
     figs[0].update_layout(
         xaxis3_title="CR pulse length [ns]",
     )
+
     if fit is not None:
         fitting_report = table_html(
             table_dict(
-                7 * [target],
-                [f"{term.name} [MHz]" for term in HamiltonianTerm]
-                + [
-                    "CR duration (ns)",
-                    "Control amplitude (a.u.)",
-                    "Control phase (rad)",
-                    "Target amplitude (a.u.)",
-                    "Target phase (rad)",
-                ],
-                [
-                    fit.hamiltonian_terms[target[0], target[1], term] * kilo
-                    for term in HamiltonianTerm
-                ]
-                + [fit.cr_lengths[target] if target in fit.cr_lengths else None]
-                + [
-                    fit.control_amplitude,
-                    fit.control_phase,
-                    fit.target_amplitude,
-                    fit.target_phase,
-                ],
+                11 * [target],
+                (
+                    [f"{term.name} [MHz]" for term in HamiltonianTerm]
+                    + [
+                        "CR duration (ns)",
+                        "Control amplitude (a.u.)",
+                        "Control phase (rad)",
+                        "Target amplitude (a.u.)",
+                        "Target phase (rad)",
+                    ]
+                ),
+                (
+                    [
+                        fit.hamiltonian_terms[target[0], target[1], term] * kilo
+                        for term in HamiltonianTerm
+                    ]
+                    + [fit.cr_lengths[target] if target in fit.cr_lengths else None]
+                    + [
+                        fit.control_amplitude,
+                        fit.control_phase,
+                        fit.target_amplitude,
+                        fit.target_phase,
+                    ]
+                ),
             )
         )
     else:
