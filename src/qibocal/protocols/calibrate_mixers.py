@@ -1,8 +1,7 @@
 from dataclasses import dataclass, field
 
 import plotly.graph_objects as go
-from qibolab._core.components.channels import AcquisitionChannel
-from qibolab._core.instruments.abstract import Controller
+from qibolab._core.components.channels import AcquisitionChannel, IqChannel
 from qibolab._core.instruments.qblox.cluster import Cluster
 from qibolab._core.instruments.qblox.config import PortAddress
 from qibolab._core.instruments.qblox.identifiers import SequencerMap
@@ -111,7 +110,7 @@ def _get_hardware_calibration(
     cluster: Cluster, seq_map: SequencerMap
 ) -> dict[str, ModuleCalibrationData]:
 
-    modules = cluster._cluster.get_connected_modules(
+    modules = cluster.cluster.get_connected_modules(
         lambda mod: mod.is_rf_type
     )  # Make a list of RF modules
     data: dict[str, ModuleCalibrationData] = {}
@@ -185,7 +184,7 @@ def _acquisition(
     instrs = {
         i: instr
         for i, instr in platform.instruments.items()
-        if isinstance(instr, Controller)
+        if isinstance(instr, Cluster)
     }
     assert len(instrs) <= 1, "Only one controller is supported at a time."
     configs = platform.parameters.configs.copy()
@@ -202,7 +201,7 @@ def _acquisition(
             configs=configs,
         )
 
-        modules = cluster._cluster.get_connected_modules(lambda mod: mod.is_rf_type)
+        modules = cluster.cluster.get_connected_modules(lambda mod: mod.is_rf_type)
 
         # Read current hardware calibration values (should match those in parameters.json, this works only instr for one at the moment)
         data.initial_calibration[instr_id] = _get_hardware_calibration(cluster, seq_map)
@@ -227,16 +226,14 @@ def _acquisition(
                 getattr(module, qblox_function)()
 
                 # Run sideband calibration
-                sequencer = getattr(module, f"sequencer{seq_id}", None)
+                sequencer = getattr(module, f"sequencer{seq_id}")
                 if all(
                     sequencer._get_sequencer_connect_out(i) == "off"
                     for i in range(2 if module.is_qcm_type else 1)
                 ):
                     # If no port is assigned to the sequencer, connect it to the current output
-                    getattr(module, f"sequencer{seq_id}").connect_sequencer(
-                        f"out{port - 1}"
-                    )
-                getattr(module, f"sequencer{seq_id}").sideband_cal()
+                    sequencer.connect_sequencer(f"out{port - 1}")
+                sequencer.sideband_cal()
 
         data.final_calibration[instr_id] = _get_hardware_calibration(cluster, seq_map)
     return data
@@ -431,23 +428,27 @@ def _update(
     for (
         instr
     ) in final_cal:  # Only one instriument supported at the moment, here for future
-        cluster: Cluster = platform.instruments[instr]
+        instrument = platform.instruments[instr]
+        assert isinstance(instrument, Cluster)
+        cluster = instrument
         channels_by_module: dict = cluster._channels_by_module
         for slot, channels in channels_by_module.items():
             for seq_id, (ch_id, address) in enumerate(channels):
-                module = cluster._cluster.modules[slot - 1]
+                module = cluster.cluster.modules[slot - 1]
                 port = address.ports[0] - 1
                 mod_name = module.short_name
                 if mod_name not in final_cal[instr]:
                     continue  # Skip if no calibration data for this module
 
                 ch = cluster.channels[ch_id]
-                if type(ch) is AcquisitionChannel:
+                if isinstance(ch, AcquisitionChannel):
+                    # The mixer relevant for an acquisition channel is the one
+                    # associated to the corresponding probe channel
                     ch = cluster.channels[ch_id.replace("acquisition", "probe")]
-
                 cal = final_cal[instr][mod_name]
 
                 # Update platform parameters with new calibration values
+                assert isinstance(ch, IqChannel)
                 platform.update(
                     {
                         f"configs.{ch.mixer}.offset_i": cal.offset_i[port],
