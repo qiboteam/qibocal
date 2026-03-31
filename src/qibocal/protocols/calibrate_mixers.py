@@ -181,7 +181,9 @@ def _acquisition(
     clusters = [
         instr for instr in platform.instruments.values() if isinstance(instr, Cluster)
     ]
-    assert len(clusters) == 1, "Only a single controller/cluster is supported."
+    assert len(clusters) == 1, (
+        "This protocol only works for platforms with exactly one qblox Cluster as controller."
+    )
     cluster = clusters[0]
     configs = platform.parameters.configs.copy()
 
@@ -434,7 +436,9 @@ def _update(
             if isinstance(ch, AcquisitionChannel):
                 # The mixer relevant for an acquisition channel is the one associated to
                 # the corresponding probe channel
-                ch = cluster.channels[ch_id.replace("acquisition", "probe")]
+                probe_channel_id = ch.probe
+                assert probe_channel_id is not None
+                ch = cluster.channels[probe_channel_id]
             cal = final_cal[mod_name]
 
             # Update platform parameters with new calibration values
