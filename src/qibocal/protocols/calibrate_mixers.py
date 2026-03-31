@@ -105,13 +105,15 @@ def _get_hardware_calibration(
     cluster: Cluster, seq_map: SequencerMap
 ) -> dict[str, ModuleCalibrationData]:
 
-    modules = cluster._cluster.get_connected_modules(lambda mod: mod.is_rf_type) # Make a list of RF modules
+    modules = cluster._cluster.get_connected_modules(
+        lambda mod: mod.is_rf_type
+    )  # Make a list of RF modules
     data: dict[str, ModuleCalibrationData] = {}
 
     # Iterate over seq_map to get channels and their assigned sequencers
     for slot_id, channels in seq_map.items():
         if slot_id not in modules:
-            continue # Make sure that the module used by the sequence is in the list of RF modules
+            continue  # Make sure that the module used by the sequence is in the list of RF modules
         module = modules[slot_id]
         mod_name = module.short_name
         mod_data = data[mod_name] = ModuleCalibrationData(mod_name)
