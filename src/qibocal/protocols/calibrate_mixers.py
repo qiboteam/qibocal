@@ -87,9 +87,7 @@ class CalibrateMixersParameters(Parameters):
 class CalibrateMixersResults(Results):
     """Calibrate mixers outputs."""
 
-    final_calibration: dict[str, dict[str, ModuleCalibrationData]] = field(
-        default_factory=dict
-    )
+    final_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
     """Final calibration values after running calibration."""
 
 
@@ -97,14 +95,10 @@ class CalibrateMixersResults(Results):
 class CalibrateMixersData(Data):
     """Calibrate mixers acquisition outputs."""
 
-    initial_calibration: dict[str, dict[str, ModuleCalibrationData]] = field(
-        default_factory=dict
-    )
+    initial_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
     """Initial calibration values before running calibration."""
 
-    final_calibration: dict[str, dict[str, ModuleCalibrationData]] = field(
-        default_factory=dict
-    )
+    final_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
     """Final calibration values after running calibration."""
 
 
@@ -184,11 +178,11 @@ def _acquisition(
 
     data = CalibrateMixersData()
 
-    [(cluster_id, cluster)] = [
-        (i, instr)
-        for i, instr in platform.instruments.items()
-        if isinstance(instr, Cluster)
+    clusters = [
+        instr for instr in platform.instruments.values() if isinstance(instr, Cluster)
     ]
+    assert len(clusters) == 1, "Only a single controller/cluster is supported."
+    cluster = clusters[0]
     configs = platform.parameters.configs.copy()
 
     # Setup one sequencer per channel with a dummy sequence
@@ -201,9 +195,8 @@ def _acquisition(
 
     modules = cluster.cluster.get_connected_modules(lambda mod: mod.is_rf_type)
 
-    # Read current hardware calibration values (should match those in
-    # parameters.json, this works only for one instr at the moment)
-    data.initial_calibration[cluster_id] = _get_hardware_calibration(cluster, seq_map)
+    # Read current hardware calibration values.
+    data.initial_calibration = _get_hardware_calibration(cluster, seq_map)
 
     # Perform calibration
     # seq_map is of shape {module_id: {ch_name: seq_id}}, so the outer loop is over
@@ -237,7 +230,7 @@ def _acquisition(
                 sequencer.connect_sequencer(f"out{port - 1}")
             sequencer.sideband_cal()
 
-    data.final_calibration[cluster_id] = _get_hardware_calibration(cluster, seq_map)
+    data.final_calibration = _get_hardware_calibration(cluster, seq_map)
     return data
 
 
@@ -276,11 +269,9 @@ def _plot(data: CalibrateMixersData, target: str, fit: CalibrateMixersResults):
         data.initial_calibration,
         data.final_calibration,
     )
-    instrs = list(initial_calibration.keys())
-
-    for module_key in sorted(initial_calibration[instrs[0]]):
-        initial = initial_calibration[instrs[0]][module_key]
-        final = final_calibration[instrs[0]][module_key]
+    for module_key in sorted(initial_calibration):
+        initial = initial_calibration[module_key]
+        final = final_calibration[module_key]
 
         # Need this when loading from JSON
         if (
@@ -408,9 +399,7 @@ def _plot(data: CalibrateMixersData, target: str, fit: CalibrateMixersResults):
         figures.append(fig)
 
     fitting_report = "<h3>Mixer Calibration Complete</h3>"
-    fitting_report += (
-        f"<p>Calibrated {len(data.initial_calibration[instrs[0]])} module(s)</p>"
-    )
+    fitting_report += f"<p>Calibrated {len(data.initial_calibration)} module(s)</p>"
 
     return figures, fitting_report
 
@@ -426,39 +415,38 @@ def _update(
         qubit: Qubit identifier (unused)
     """
     final_cal = results.final_calibration
+    clusters = [
+        instr for instr in platform.instruments.values() if isinstance(instr, Cluster)
+    ]
+    assert len(clusters) == 1, "Exactly one cluster is required."
+    cluster = clusters[0]
 
-    for (
-        instr
-    ) in final_cal:  # Only one instriument supported at the moment, here for future
-        instrument = platform.instruments[instr]
-        assert isinstance(instrument, Cluster)
-        cluster = instrument
-        channels_by_module: dict = cluster._channels_by_module
-        for slot, channels in channels_by_module.items():
-            for seq_id, (ch_id, address) in enumerate(channels):
-                module = cluster.cluster.modules[slot - 1]
-                port = address.ports[0] - 1
-                mod_name = module.short_name
-                if mod_name not in final_cal[instr]:
-                    continue  # Skip if no calibration data for this module
+    channels_by_module: dict = cluster._channels_by_module
+    for slot, channels in channels_by_module.items():
+        for seq_id, (ch_id, address) in enumerate(channels):
+            module = cluster.cluster.modules[slot - 1]
+            port = address.ports[0] - 1
+            mod_name = module.short_name
+            if mod_name not in final_cal:
+                continue  # Skip if no calibration data for this module
 
-                ch = cluster.channels[ch_id]
-                if isinstance(ch, AcquisitionChannel):
-                    # The mixer relevant for an acquisition channel is the one
-                    # associated to the corresponding probe channel
-                    ch = cluster.channels[ch_id.replace("acquisition", "probe")]
-                cal = final_cal[instr][mod_name]
+            ch = cluster.channels[ch_id]
+            if isinstance(ch, AcquisitionChannel):
+                # The mixer relevant for an acquisition channel is the one associated to
+                # the corresponding probe channel
+                ch = cluster.channels[ch_id.replace("acquisition", "probe")]
+            cal = final_cal[mod_name]
 
-                # Update platform parameters with new calibration values
-                assert isinstance(ch, IqChannel)
-                platform.update(
-                    {
-                        f"configs.{ch.mixer}.offset_i": cal.offset_i[port],
-                        f"configs.{ch.mixer}.offset_q": cal.offset_q[port],
-                        f"configs.{ch.mixer}.scale_q": cal.gain_ratio[port][seq_id],
-                        f"configs.{ch.mixer}.phase_q": cal.phase_offset[port][seq_id],
-                    }
-                )
+            # Update platform parameters with new calibration values
+            assert isinstance(ch, IqChannel)
+            platform.update(
+                {
+                    f"configs.{ch.mixer}.offset_i": cal.offset_i[port],
+                    f"configs.{ch.mixer}.offset_q": cal.offset_q[port],
+                    f"configs.{ch.mixer}.scale_q": cal.gain_ratio[port][seq_id],
+                    f"configs.{ch.mixer}.phase_q": cal.phase_offset[port][seq_id],
+                }
+            )
 
 
 calibrate_mixers = Routine(_acquisition, _fit, _plot, _update)
