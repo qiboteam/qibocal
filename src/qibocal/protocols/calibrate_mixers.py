@@ -87,6 +87,9 @@ class CalibrateMixersParameters(Parameters):
 class CalibrateMixersResults(Results):
     """Calibrate mixers outputs."""
 
+    sequencer_map: SequencerMap = field(default_factory=dict)
+    """Channel to sequencer assignment."""
+
     final_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
     """Final calibration values after running calibration."""
 
@@ -94,6 +97,9 @@ class CalibrateMixersResults(Results):
 @dataclass
 class CalibrateMixersData(Data):
     """Calibrate mixers acquisition outputs."""
+
+    sequencer_map: SequencerMap = field(default_factory=dict)
+    """Channel to sequencer assignment."""
 
     initial_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
     """Initial calibration values before running calibration."""
@@ -165,7 +171,7 @@ def _acquisition(
 
     This routine calibrates the IQ mixer offsets, gain ratios, and phase offsets
     for all QBlox RF modules in the platform. This is currently done specifically for
-    QBlox electromnics but could be included as part of qibolab to make it more general.
+    QBlox electronics but could be included as part of qibolab to make it more general.
 
     Args:
         params: Input parameters (currently empty)
@@ -198,7 +204,7 @@ def _acquisition(
     modules = cluster.cluster.get_connected_modules(lambda mod: mod.is_rf_type)
 
     # Read current hardware calibration values.
-    data.initial_calibration = _get_hardware_calibration(cluster, seq_map)
+    initial_calibration = _get_hardware_calibration(cluster, seq_map)
 
     # Perform calibration
     # seq_map is of shape {module_id: {ch_name: seq_id}}, so the outer loop is over
@@ -232,7 +238,14 @@ def _acquisition(
                 sequencer.connect_sequencer(f"out{port - 1}")
             sequencer.sideband_cal()
 
-    data.final_calibration = _get_hardware_calibration(cluster, seq_map)
+    final_calibration = _get_hardware_calibration(cluster, seq_map)
+
+    data = CalibrateMixersData(
+        sequencer_map=dict(seq_map),  # outer defaultdict -> dict for JSON serialization
+        initial_calibration=initial_calibration,
+        final_calibration=final_calibration,
+    )
+
     return data
 
 
@@ -247,7 +260,10 @@ def _fit(data: CalibrateMixersData) -> CalibrateMixersResults:
     Returns:
         Empty results
     """
-    return CalibrateMixersResults(data.final_calibration)
+    return CalibrateMixersResults(
+        sequencer_map=data.sequencer_map,
+        final_calibration=data.final_calibration,
+    )
 
 
 def _plot(data: CalibrateMixersData, target: str, fit: CalibrateMixersResults):
@@ -417,18 +433,23 @@ def _update(
         qubit: Qubit identifier (unused)
     """
     final_cal = results.final_calibration
+
     clusters = [
-        instr for instr in platform.instruments.values() if isinstance(instr, Cluster)
+        instrument
+        for instrument in platform.instruments.values()
+        if isinstance(instrument, Cluster)
     ]
     assert len(clusters) == 1, "Exactly one cluster is required."
     cluster = clusters[0]
 
-    channels_by_module: dict = cluster._channels_by_module
+    channels_by_module: dict = (
+        cluster._channels_by_module
+    )  # _channels_by_module is not intended as public
     for slot, channels in channels_by_module.items():
-        for seq_id, (ch_id, address) in enumerate(channels):
-            module = cluster.cluster.modules[slot - 1]
-            port = address.ports[0] - 1
-            mod_name = module.short_name
+        for ch_id, address in channels:
+            mod_name = cluster._modules[
+                slot
+            ].short_name  # _modules is not intended as public
             if mod_name not in final_cal:
                 continue  # Skip if no calibration data for this module
 
@@ -442,6 +463,8 @@ def _update(
             cal = final_cal[mod_name]
 
             # Update platform parameters with new calibration values
+            port = address.ports[0] - 1
+            seq_id = results.sequencer_map[slot][ch_id]
             assert isinstance(ch, IqChannel)
             platform.update(
                 {

@@ -39,7 +39,7 @@ from .tomographies import *
 from .two_qubit_interaction import *
 from .twpa import *
 
-# TODO: This is a temporary workaround to avoid trying to import the calbrate_mixers
+# TODO: This is a temporary workaround to avoid trying to import the calibrate_mixers
 # module when the optional qblox_instrument dependency is not installed (such as during
 # the CI tests). The mixer calibration should be moved to the qibolab qblox driver.
 try:
