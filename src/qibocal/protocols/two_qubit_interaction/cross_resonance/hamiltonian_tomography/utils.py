@@ -37,14 +37,9 @@ class HamiltonianTerm(str, Enum):
     ZZ = "ZZ"
 
 
-class HamiltonianTomographyData(Data):
-    pass
-
-
 def dynamic_evolution_optimizer(
     signals_id: np.ndarray,
     x: np.ndarray,
-    concat_x: np.ndarray,
     init_omega_guess: float,
     use_constraints: bool = False,
 ) -> np.ndarray:
@@ -54,6 +49,7 @@ def dynamic_evolution_optimizer(
     """
 
     assert x.ndim == 1, f"Expected 1D array, got array with shape {x.shape}"
+    concat_x = np.concatenate([x, x, x])
 
     def func_to_minimize(z):
         return np.sum((fitting.combined_fit(concat_x, *z) - signals_id.ravel()) ** 2)
@@ -79,8 +75,7 @@ def dynamic_evolution_optimizer(
 def scipy_curve_fit_optimizer(
     concatenated_signal: np.ndarray,
     vector_x: np.ndarray,
-    init_omega_guess: np.ndarray,
-    errors: np.ndarray | None = None,
+    init_omega_guess: float,
 ) -> np.ndarray:
     """Optimizer for sinusoidal fitting; it exploits gradient-based algorithms to find the best fit parameters.
     This algorithm is a gradient-base optimization, hence might be affected by local minima in the cost
@@ -96,12 +91,7 @@ def scipy_curve_fit_optimizer(
     omega_guesses[-1] = np.sqrt(np.abs(offsets[-1]))
     omega_guesses[1] = offsets[1] / omega_guesses[-1]
     omega_guesses[0] = offsets[0] / omega_guesses[-1]
-    omega_guesses[omega_guesses == 0] = init_omega_guess
-    omega_guesses[~np.isfinite(omega_guesses)] = 0
     omega_guesses = np.concatenate([omega_guesses, [0]])
-
-    concatenated_signal = np.clip(concatenated_signal, 0, 1)
-    errors[np.isnan(errors)] = 1e-8
 
     popt, _ = curve_fit(
         fitting.combined_fit,
@@ -110,7 +100,6 @@ def scipy_curve_fit_optimizer(
         maxfev=int(1e6),
         p0=omega_guesses,
         bounds=([-np.inf, -np.inf, -np.inf, 0], [np.inf, np.inf, np.inf, np.inf]),
-        sigma=errors,
     )
 
     return popt
@@ -156,7 +145,7 @@ def numerical_root_finder(
 
 def compute_total_expectation_value(
     data: Union[
-        HamiltonianTomographyData,
+        "HamiltonianTomographyCRLengthData",  # noqa: F821
         "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
     ],
     pair: QubitPairId,
@@ -193,7 +182,7 @@ def bloch_func(
 
 def compute_bloch_vector(
     data: Union[
-        HamiltonianTomographyData,
+        "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
         "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
     ],
     pair: QubitPairId,
@@ -217,53 +206,9 @@ def compute_bloch_vector(
     return bloch_exp, bloch_fit
 
 
-def compute_vector(
-    data: Union[
-        HamiltonianTomographyData,
-        "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
-    ],
-    pair: QubitPairId,
-    fitted_parameters: dict | None = None,
-) -> tuple[np.ndarray, np.ndarray | None]:
-    """For a given qubit pair :data:`pair`, it computes the Bloch vector R for each data point and
-    also estimates the Bloch vector using the fitted parameters of the Hamiltonian Tomography.
-    See `arXiv:1603.04821 <https://arxiv.org/abs/1603.04821>`__ for further information.
-    """
-
-    id_vector = []
-    x_vector = []
-    for basis in Basis:
-        id_vector.append(data.data[pair[0], pair[1], basis, SetControl.Id].prob_target)
-        x_vector.append(data.data[pair[0], pair[1], basis, SetControl.X].prob_target)
-
-    fit_id_vector = None
-    fit_x_vector = None
-    if fitted_parameters is not None:
-        times = data.data[pair[0], pair[1], Basis.Z, SetControl.Id].x
-        times_range = np.linspace(min(times), max(times), 10 * len(times))
-
-        times_range = np.vstack([times_range, times_range, times_range])
-        fit_id_vector = fitting.combined_fit(
-            times_range, *fitted_parameters[pair[0], pair[1], SetControl.Id]
-        ).reshape((3, -1))
-        fit_x_vector = fitting.combined_fit(
-            times_range, *fitted_parameters[pair[0], pair[1], SetControl.X]
-        ).reshape((3, -1))
-
-    return (
-        np.sqrt(np.sum(np.vstack(id_vector) ** 2, axis=0)),
-        np.sqrt(np.sum(np.vstack(x_vector) ** 2, axis=0)),
-        np.sqrt(np.sum(np.vstack(fit_id_vector) ** 2, axis=0)),
-        np.sqrt(np.sum(np.vstack(fit_x_vector) ** 2, axis=0)),
-    )
-
-
 def estimate_cr_param(
     x_range: np.ndarray,
-    data: Union[
-        HamiltonianTomographyData,
-        "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
-    ],
+    data: "HamiltonianTomographyCRLengthData",  # noqa: F821
     pair: QubitPairId,
     fitted_parameters: dict,
     tol: float = 1e-6,
@@ -294,7 +239,7 @@ def estimate_cr_param(
         idx = np.argmin(bloch_data)
         param = x_range[idx]
 
-    if isinstance(data, HamiltonianTomographyData):
+    if data.__name__ == "HamiltonianTomographyCRLengthData":
         # time duration must be integer
         return int(param)
 
@@ -422,7 +367,7 @@ def estimate_cr_phases(
 
 def tomography_cr_fit(
     data: Union[
-        HamiltonianTomographyData,
+        "HamiltonianTomographyCRLengthData",  # noqa: F821
         "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
     ],
     fit_with_evolution: bool = False,
@@ -452,14 +397,6 @@ def tomography_cr_fit(
                 ]
             ).reshape(len(Basis), -1)
 
-            concatenated_errors = np.concatenate(
-                [
-                    data.data[pair[0], pair[1], Basis.X, setup].error_target,
-                    data.data[pair[0], pair[1], Basis.Y, setup].error_target,
-                    data.data[pair[0], pair[1], Basis.Z, setup].error_target,
-                ]
-            )
-
             total_omega_guess = quinn_fernandes_algorithm(
                 concatenated_signal, vector_x, sampling_rate, speedup_flag=True
             )
@@ -468,7 +405,6 @@ def tomography_cr_fit(
                 popt = dynamic_evolution_optimizer(
                     concatenated_signal,
                     vector_x,
-                    np.concatenate([vector_x, vector_x, vector_x]),
                     total_omega_guess,
                 )
             else:
@@ -476,7 +412,6 @@ def tomography_cr_fit(
                     concatenated_signal,
                     vector_x,
                     total_omega_guess,
-                    concatenated_errors,
                 )
 
             fitted_parameters[pair[0], pair[1], setup] = popt.tolist()
@@ -587,7 +522,7 @@ def amp_tom_fit(
     return result_dict
 
 
-def amplitude_tomography_cr_fit(
+def cancellation_amplitude_fit(
     data: Data,
 ) -> tuple[
     dict[QubitPairId, list[tuple[float, dict[HamiltonianTerm, float]]]],
@@ -596,7 +531,8 @@ def amplitude_tomography_cr_fit(
     dict[float, dict[tuple[QubitId, QubitId, SetControl], list[float]]],
     dict[float, dict[tuple[QubitId, QubitId], int]],
 ]:
-    """Perform amplitude-dependent tomography fitting for cross-resonance Hamiltonian.
+    """Perform amplitude-dependent tomography fitting for calibrating
+    cross resonance cancellation pulse.
 
     Fits the dependence of Hamiltonian term parameters on the CR pulse amplitude.
     Extracts Hamiltonian terms at different amplitudes and fits their variation
@@ -699,7 +635,7 @@ def phase_tom_fit(
     return result_dict
 
 
-def phase_tomography_cr_fit(
+def cancellation_phase_fit(
     data: Data,
 ) -> tuple[
     dict[QubitPairId, list[tuple[float, dict[HamiltonianTerm, float]]]],
@@ -769,7 +705,7 @@ def phase_tomography_cr_fit(
 
 def tomography_cr_plot(
     data: Union[
-        HamiltonianTomographyData,
+        "HamiltonianTomographyCRLengthData",  # noqa: F821
         "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
     ],
     target: QubitPairId,
@@ -783,7 +719,7 @@ def tomography_cr_plot(
     """Generate plots for Hamiltonian tomography experiment."""
 
     fig = make_subplots(
-        rows=5,
+        rows=4,
         cols=1,
         horizontal_spacing=0.1,
         vertical_spacing=0.05,
@@ -924,77 +860,18 @@ def tomography_cr_plot(
     fig.update_yaxes(title_text="<Z(t)>", row=3, col=1)
     fig.update_yaxes(title_text="|R(t)|", row=4, col=1)
 
-    #################################################################################################
-    ## DEBUG
-    exp_id_vect, exp_x_vect, fit_id_vect, fit_x_vect = compute_vector(
-        data, target, fit.fitted_parameters
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=pair_data.x,
-            y=exp_id_vect,
-            name="Control qubit in 0",
-            legendgroup="qubit vector, control in 0",
-            showlegend=True,
-            mode="markers",
-        ),
-        row=5,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=pair_data.x,
-            y=exp_x_vect,
-            name="Control qubit in 1",
-            legendgroup="qubit vector, control in 1",
-            showlegend=True,
-            mode="markers",
-        ),
-        row=5,
-        col=1,
-    )
-    if fit_id_vect is not None and fit_x_vect is not None:
-        fig.add_trace(
-            go.Scatter(
-                x=pair_data.x,
-                y=fit_id_vect,
-                name="Control qubit in 0 - fit",
-                legendgroup="qubit vector, control in 0 - fit",
-                showlegend=True,
-                mode="lines",
-            ),
-            row=5,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=pair_data.x,
-                y=fit_x_vect,
-                name="Control qubit in 1 - fit",
-                legendgroup="qubit vector, control in 1 - fit",
-                showlegend=True,
-                mode="lines",
-            ),
-            row=5,
-            col=1,
-        )
-    fig.update_yaxes(title_text="|Qubit Ray(t)|", row=5, col=1)
-    #################################################################################################
-
     return [fig], ""
 
 
-def calibration_cr_plot(
+def cancellation_calibration_plot(
     data: Union[
         "HamiltonianTomographyCANCAmplData",  # noqa: F821
-        "HamiltonianTomographyCRAmplData",  # noqa: F821
         "HamiltonianTomographyCANCPhaseData",  # noqa: F821
     ],
     target: QubitPairId,
     fit: Optional[
         Union[
             "HamiltonianTomographyCANCAmplitudeResults",  # noqa: F821
-            "HamiltonianTomographyCRAmplitudeResults",  # noqa: F821
             "HamiltonianTomographyCANCPhaseResults",  # noqa: F821
         ]
     ] = None,
@@ -1014,15 +891,6 @@ def calibration_cr_plot(
         fit_func = fitting.linear_fit
         x_title = "amplitude [a.u.]"
         tunable_params = fit.cancellation_pulse_amplitudes[target]
-        plotting_terms = {
-            HamiltonianTerm.IX: "ampl_ix",
-            HamiltonianTerm.IY: "ampl_iy",
-        }
-
-    if type(data).__name__ == "HamiltonianTomographyCRAmplData":
-        fit_func = fitting.linear_fit
-        x_title = "amplitude [a.u.]"
-        tunable_params = fit.control_pulse_amplitudes[target]
         plotting_terms = {
             HamiltonianTerm.IX: "ampl_ix",
             HamiltonianTerm.IY: "ampl_iy",
