@@ -15,8 +15,11 @@ from qibolab import (
     AveragingMode,
     Parameter,
     Sweeper,
+    VirtualZ,
 )
 from scipy.constants import kilo
+
+from qibocal import update
 
 from .....auto.operation import (
     Data,
@@ -314,7 +317,36 @@ def _plot(
     return figs, fitting_report
 
 
+def _update(
+    results: HamiltonianTomographyCRAmplResults,
+    platform: CalibrationPlatform,
+    target: QubitPairId,
+):
+    target = target[::-1] if target not in results.cr_amplitudes else target
+
+    new_cr_seq, _, _, _ = cr_sequence(
+        platform=platform,
+        control=target[0],
+        target=target[1],
+        amplitude=results.cr_amplitudes[target],
+        duration=results.cr_duration,
+        phase=results.control_phase,
+        target_amplitude=results.target_amplitude,
+        target_phase=results.target_phase,
+        echo=results.echo,
+        setup=SetControl.Id,
+        basis=Basis.Y,
+    )
+    new_cr_seq = new_cr_seq[:-2]  # remove acquisition pulses
+
+    new_cr_seq.insert(
+        -2, (platform.qubits[target[0]].drive, VirtualZ(phase=-np.pi / 2))
+    )
+
+    getattr(update, f"{results.native.lower()}_sequence")(new_cr_seq, platform, target)
+
+
 hamiltonian_tomography_cr_amplitude = Routine(
-    _acquisition, _fit, _plot, two_qubit_gates=True
+    _acquisition, _fit, _plot, _update, two_qubit_gates=True
 )
 """HamiltonianTomographyCRAmplitude Routine object."""
