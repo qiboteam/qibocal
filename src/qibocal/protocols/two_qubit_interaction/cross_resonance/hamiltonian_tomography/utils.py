@@ -239,7 +239,7 @@ def estimate_cr_param(
         idx = np.argmin(bloch_data)
         param = x_range[idx]
 
-    if data.__name__ == "HamiltonianTomographyCRLengthData":
+    if type(data).__name__ == "HamiltonianTomographyCRLengthData":
         # time duration must be integer
         return int(param)
 
