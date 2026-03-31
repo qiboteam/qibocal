@@ -1,6 +1,7 @@
+from qibocal.config import log
+
 from . import (
     allxy,
-    calibrate_mixers,
     classification,
     coherence,
     dispersive_shift,
@@ -20,7 +21,6 @@ from . import (
     twpa,
 )
 from .allxy import *
-from .calibrate_mixers import *
 from .classification import *
 from .coherence import *
 from .dispersive_shift import *
@@ -38,6 +38,22 @@ from .signal_experiments import *
 from .tomographies import *
 from .two_qubit_interaction import *
 from .twpa import *
+
+# TODO: This is a temporary workaround to avoid trying to import the calbrate_mixers
+# module when the optional qblox_instrument dependency is not installed (such as during
+# the CI tests). The mixer calibration should be moved to the qibolab qblox driver.
+try:
+    from . import calibrate_mixers
+    from .calibrate_mixers import *
+except ModuleNotFoundError as exc:
+    # Keep protocols importable when optional QBlox dependencies are absent.
+    if exc.name != "qblox_instruments":
+        raise
+    log.warning(
+        "Skipping calibrate_mixers import because the optional qblox_instruments "
+        "dependency is not installed. While optional, it is required for the mixer "
+        "calibration protocol."
+    )
 
 __all__ = []
 __all__ += ["allxy"]
@@ -59,4 +75,5 @@ __all__ += ["resonator_spectroscopies"]
 __all__ += ["qubit_spectroscopies"]
 __all__ += ["two_qubit_interaction"]
 __all__ += ["twpa"]
-__all__ += ["calibrate_mixers"]
+if "calibrate_mixers" in globals():
+    __all__ += ["calibrate_mixers"]
