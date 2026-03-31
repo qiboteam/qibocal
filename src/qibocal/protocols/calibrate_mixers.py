@@ -112,9 +112,10 @@ def _get_hardware_calibration(
 
     # Iterate over seq_map to get channels and their assigned sequencers
     for slot_id, channels in seq_map.items():
-        if slot_id not in modules:
-            continue  # Make sure that the module used by the sequence is in the list of RF modules
-        module = modules[slot_id]
+        try:
+            module = modules[slot_id]
+        except KeyError:
+            continue  # Skip if the module for this slot is not found (e.g. non-RF module)
         mod_name = module.short_name
         mod_data = data[mod_name] = ModuleCalibrationData(mod_name)
 
@@ -204,7 +205,10 @@ def _acquisition(
         for channels in seq_map.values():
             for ch_id, seq_id in channels.items():
                 address = PortAddress.from_path(cluster.channels[ch_id].path)
-                module = modules[address.slot]
+                try:
+                    module = modules[address.slot]
+                except KeyError:
+                    continue  # Skip if the module for this channel is not found (e.g. non-RF module)
                 port = address.ports[0]
 
                 # Run LO calibration
