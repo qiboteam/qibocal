@@ -335,7 +335,7 @@ def _update(
         -2, (platform.qubits[target[0]].drive, VirtualZ(phase=-np.pi / 2))
     )
 
-    getattr(update, f"{results.native}_sequence")(new_cr_seq, platform, target)
+    getattr(update, f"{results.native.lower()}_sequence")(new_cr_seq, platform, target)
 
 
 hamiltonian_tomography_cr_length = Routine(
