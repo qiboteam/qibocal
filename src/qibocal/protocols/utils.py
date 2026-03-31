@@ -1067,14 +1067,15 @@ def guess_frequency_numpyfied(x: np.ndarray, y: np.ndarray, axis: int = -1):
     """Numpyfied version of :func:`guess_period` but here we work on frequencies."""
     assert x.ndim == 1, f"Expected 1D array, got array with shape {x.shape}"
 
-    fft = np.fft.rfft(y, axis=axis)
-    fft_freqs = np.fft.rfftfreq(y.shape[axis], d=(x[1] - x[0]))
+    y = np.moveaxis(y, axis, -1)
+    fft = np.fft.rfft(y, axis=-1)
+    fft_freqs = np.fft.rfftfreq(y.shape[-1], d=(x[1] - x[0]))
     mags = np.abs(fft)
     mags[:, 0] = 0
 
-    selected_freqs = fft_freqs[np.argmax(mags, axis=axis)]
+    selected_freqs = fft_freqs[np.argmax(mags, axis=-1)]
 
-    return selected_freqs
+    return np.moveaxis(selected_freqs, -1, axis)
 
 
 def fallback_period(period):
@@ -1098,7 +1099,7 @@ def quinn_fernandes_algorithm(
     speedup_flag: bool = False,
     axis: int = -1,
     iterations: int = 100,
-    tol: int = 1e-6,
+    tol: int = 1e-8,
 ) -> np.ndarray:
     """This is a custom implementation of the Quinn-Fernandes algorithm.
 

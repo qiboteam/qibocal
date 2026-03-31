@@ -19,6 +19,7 @@ from qibolab import (
 from scipy.constants import kilo
 
 from .....auto.operation import (
+    Data,
     Parameters,
     QubitId,
     QubitPairId,
@@ -29,12 +30,11 @@ from .....calibration import CalibrationPlatform
 from ....utils import table_dict, table_html
 from ..utils import Basis, SetControl, cr_sequence
 from .utils import (
-    EPS,
     HamiltonianTerm,
-    HamiltonianTomographyData,
-    amplitude_tomography_cr_fit,
-    calibration_cr_plot,
+    extract_hamiltonian_terms,
     reconstruct_full_hamiltonian_terms,
+    tomography_cr_fit,
+    tomography_cr_plot,
 )
 
 HamiltonianTomographyCRAmplType = np.dtype(
@@ -43,8 +43,7 @@ HamiltonianTomographyCRAmplType = np.dtype(
         ("error_target", np.float64),
         ("prob_control", np.float64),
         ("error_control", np.float64),
-        ("amp", np.float64),
-        ("x", np.int64),
+        ("x", np.float64),
     ]
 )
 """Custom dtype for Cancellation amplitude."""
@@ -54,12 +53,8 @@ HamiltonianTomographyCRAmplType = np.dtype(
 class HamiltonianTomographyCRAmplParameters(Parameters):
     """HamiltonianTomographyCRAmplitude runcard inputs."""
 
-    pulse_duration_start: float
-    """Initial duration of CR pulse [ns]."""
-    pulse_duration_end: float
-    """Final duration of CR pulse [ns]."""
-    pulse_duration_step: float
-    """Step CR pulse duration [ns]."""
+    pulse_duration: float
+    """Duration of CR pulse [ns]."""
     control_ampl_start: float
     """Amplitude of cancellation pulse."""
     control_ampl_end: float
@@ -72,15 +67,11 @@ class HamiltonianTomographyCRAmplParameters(Parameters):
     """Phase of the Cancellation pulse on the target qubit"""
     target_amplitude: float | None = 0.0
     """Amplitude of the Cancellation pulse on the target qubit"""
-    interpolated_sweeper: bool = False
-    """Use real-time interpolation if supported by instruments."""
     echo: bool = False
     """Apply echo sequence or not.
 
     The ECR is described in https://arxiv.org/pdf/1210.7011
     """
-    verbose_plot: bool = False
-    """If `True` in the report all the single Hamiltonian tomographies are plotted."""
 
     @property
     def amplitude_range(self) -> np.ndarray:
@@ -91,19 +82,13 @@ class HamiltonianTomographyCRAmplParameters(Parameters):
             self.control_ampl_step,
         )
 
-    @property
-    def duration_range(self) -> np.ndarray:
-        """Duration range for CR pulses."""
-        return np.arange(
-            self.pulse_duration_start, self.pulse_duration_end, self.pulse_duration_step
-        )
-
 
 @dataclass
 class HamiltonianTomographyCRAmplResults(Results):
     """HamiltonianTomographyCRAmpl outputs."""
 
     echo: bool
+    cr_duration: float
     hamiltonian_terms: dict[
         tuple[QubitId, QubitId], list[tuple[float, dict[HamiltonianTerm, float]]]
     ] = field(default_factory=dict)
@@ -112,27 +97,11 @@ class HamiltonianTomographyCRAmplResults(Results):
         field(default_factory=dict)
     )
     """Fitted parameters for Hamiltonian Terms values for different amplitudes."""
-
-    control_pulse_amplitudes: dict[QubitPairId, dict[str, float]] = field(
-        default_factory=dict
-    )
-    """Fitted parameters for cancellation pulse amplitudes."""
-
-    hamiltonian_tom_params: dict[
-        float, dict[tuple[QubitId, QubitId, SetControl], list[float]]
-    ] = field(default_factory=dict)
-    """Fitted parameters for of Hamiltonian Tomography experiment for each qubit and per amplitude value.
-    Used for plotting with the `verbose_plot` option"""
-
-    cr_lengths: dict[float, dict[tuple[QubitId, QubitId, SetControl], list[float]]] = (
-        field(default_factory=dict)
-    )
-    """Cross resonance pulse duration found in Hamiltonian Tomography experiment for each qubit and per amplitude value.
-    Used for plotting with the `verbose_plot` option"""
-
-    verbose_plot: bool = False
-    """If `True` in the report all the single Hamiltonian tomographies are plotted."""
-
+    cr_amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
+    """Estimated amplitudes of CR gate."""
+    control_phase: float = 0
+    target_amplitude: float = 0
+    target_phase: float = 0
     native: Literal["CNOT"] = "CNOT"
     """Two qubit interaction to be calibrated."""
 
@@ -156,29 +125,23 @@ class HamiltonianTomographyCRAmplResults(Results):
 
 
 @dataclass
-class HamiltonianTomographyCRAmplData(HamiltonianTomographyData):
+class HamiltonianTomographyCRAmplData(Data):
     """Data structure for CR Amplitude."""
 
     echo: bool
-    amplitudes: list | None = None
+    cr_duration: float
+    control_phase: float = 0
+    target_amplitude: float = 0
+    target_phase: float = 0
     data: dict[
         tuple[QubitId, QubitId, Basis, SetControl],
         npt.NDArray[HamiltonianTomographyCRAmplType],
     ] = field(default_factory=dict)
     """Raw data acquired."""
-    verbose_plot: bool = False
-    """If `True` in the report all the single Hamiltonian tomographies are plotted."""
 
     @property
     def pairs(self):
         return {(i[0], i[1]) for i in self.data}
-
-    def select_amplitude(self, amplitude: float):
-        new_data = HamiltonianTomographyCRAmplData(
-            echo=self.echo,
-        )
-        new_data.data = {k: d[d.amp == amplitude] for k, d in self.data.items()}
-        return new_data
 
     def register_qubit(self, dtype, data_keys, data_dict):
         """Store output for single qubit."""
@@ -215,8 +178,7 @@ def _acquisition(
 
     data = HamiltonianTomographyCRAmplData(
         echo=params.echo,
-        amplitudes=params.amplitude_range.astype(float).tolist(),
-        verbose_plot=params.verbose_plot,
+        cr_duration=params.pulse_duration,
     )
 
     for pair in targets:
@@ -224,11 +186,11 @@ def _acquisition(
 
         for basis in Basis:
             for setup in SetControl:
-                sequence, cr_pulses, cr_target_pulses, delays = cr_sequence(
+                sequence, cr_pulses, _, _ = cr_sequence(
                     platform=platform,
                     control=control,
                     target=target,
-                    duration=params.pulse_duration_end,
+                    duration=params.pulse_duration,
                     amplitude=params.control_ampl_end,
                     phase=params.control_phase,
                     target_amplitude=params.target_amplitude,
@@ -237,19 +199,6 @@ def _acquisition(
                     setup=setup,
                     basis=basis,
                 )
-
-                if params.interpolated_sweeper:
-                    length_sweeper = Sweeper(
-                        parameter=Parameter.duration_interpolated,
-                        values=params.duration_range,
-                        pulses=cr_pulses + cr_target_pulses,
-                    )
-                else:
-                    length_sweeper = Sweeper(
-                        parameter=Parameter.duration,
-                        values=params.duration_range,
-                        pulses=cr_pulses + cr_target_pulses + delays,
-                    )
 
                 amp_sweeper = Sweeper(
                     parameter=Parameter.amplitude,
@@ -270,7 +219,7 @@ def _acquisition(
 
                 results = platform.execute(
                     [sequence],
-                    [[length_sweeper], [amp_sweeper]],
+                    [[amp_sweeper]],
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
                     acquisition_type=AcquisitionType.DISCRIMINATION,
@@ -291,16 +240,13 @@ def _acquisition(
                     HamiltonianTomographyCRAmplType,
                     (control, target, basis, setup),
                     dict(
-                        x=length_sweeper.values,
                         amp=amp_sweeper.values,
                         prob_target=1 - 2 * prob_target,
                         error_target=2
-                        * np.sqrt(
-                            EPS + prob_target * (1 - prob_target) / params.nshots
-                        ),
+                        * np.sqrt(prob_target * (1 - prob_target) / params.nshots),
                         prob_control=prob_control,
                         error_control=np.sqrt(
-                            EPS + prob_control * (1 - prob_control) / params.nshots
+                            prob_control * (1 - prob_control) / params.nshots
                         ),
                     ),
                 )
@@ -317,20 +263,24 @@ def _fit(
     Afterwards, we extract the Hamiltonian terms from the fitted parameters.
 
     """
-    hamiltonian_terms, fitted_parameters, cal_amplitudes, ham_tom_params, cr_lengths = (
-        amplitude_tomography_cr_fit(
-            data=data,
-        )
+    fitted_parameters, cr_gate_ampls = tomography_cr_fit(
+        data=data,
     )
+    hamiltonian_terms = {}
+    for pair in data.pairs:
+        hamiltonian_terms |= extract_hamiltonian_terms(
+            pair=pair, fitted_parameters=fitted_parameters
+        )
 
     return HamiltonianTomographyCRAmplResults(
         echo=data.echo,
         hamiltonian_terms=hamiltonian_terms,
         fitted_parameters=fitted_parameters,
-        control_pulse_amplitudes=cal_amplitudes,
-        hamiltonian_tom_params=ham_tom_params,
-        cr_lengths=cr_lengths,
-        verbose_plot=data.verbose_plot,
+        cr_amplitudes=cr_gate_ampls,
+        cr_duration=data.cr_duration,
+        control_phase=data.control_phase,
+        target_amplitude=data.target_amplitude,
+        target_phase=data.target_phase,
     )
 
 
@@ -340,47 +290,33 @@ def _plot(
     fit: HamiltonianTomographyCRAmplResults,
 ):
     """Plotting function for HamiltonianTomographyCRAmpl."""
-    figs, fitting_report = calibration_cr_plot(data, target, fit)
-
-    if fit.verbose_plot:
-        from qibocal.protocols.two_qubit_interaction.cross_resonance.hamiltonian_tomography.length import (
-            HamiltonianTomographyCRLengthResults,
-        )
-        from qibocal.protocols.two_qubit_interaction.cross_resonance.hamiltonian_tomography.utils import (
-            tomography_cr_plot,
-        )
-
-        for a in data.amplitudes:
-            selected_ham_terms = fit.select_pair_and_ampl_ham_params(a, target)
-            ampl_data = data.select_amplitude(a)
-            ham_tom_fit = HamiltonianTomographyCRLengthResults(
-                echo=fit.echo,
-                hamiltonian_terms=selected_ham_terms,
-                fitted_parameters=fit.hamiltonian_tom_params[a],
-                cr_lengths=fit.cr_lengths[a],
+    figs, fitting_report = tomography_cr_plot(data, target, fit)
+    figs[0].update_layout(
+        xaxis3_title="CR pulse amplitude [a.u.]",
+    )
+    if fit is not None:
+        fitting_report = table_html(
+            table_dict(
+                7 * [target],
+                [f"{term.name} [MHz]" for term in HamiltonianTerm]
+                + [
+                    "CR duration (ns)",
+                    "Control amplitude (a.u.)",
+                    "Control phase (rad)",
+                    "Target amplitude (a.u.)",
+                    "Target phase (rad)",
+                ],
+                [
+                    fit.hamiltonian_terms[target[0], target[1], term] * kilo
+                    for term in HamiltonianTerm
+                ]
+                + [fit.cr_duration]
+                + [fit.cr_amplitudes[target] if target in fit.cr_amplitudes else None]
+                + [fit.control_phase, fit.target_amplitude, fit.target_phase],
             )
-            f, _ = tomography_cr_plot(ampl_data, target, ham_tom_fit)
-            figs += f
-            if ham_tom_fit is not None:
-                fitting_report += "\n" + table_html(
-                    table_dict(
-                        8 * [target],
-                        [f"{term.name} [MHz]" for term in HamiltonianTerm]
-                        + ["CR duration (ns)", "Cancellation amplitude [a.u.]"],
-                        [
-                            ham_tom_fit.hamiltonian_terms[target[0], target[1], term]
-                            * kilo
-                            for term in HamiltonianTerm
-                        ]
-                        + [
-                            fit.cr_lengths[a][target]
-                            if target in fit.cr_lengths[a]
-                            else None
-                        ]
-                        + [a],
-                    )
-                )
-
+        )
+    else:
+        fitting_report = ""
     return figs, fitting_report
 
 

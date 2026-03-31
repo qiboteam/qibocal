@@ -37,7 +37,7 @@ def fit_Y_exp(
     return (
         (-w * wx * np.sin(w * t) - wy * wz * np.cos(t * w) + wy * wz)
         / w**2
-        * np.exp(-gamma * t)
+        * np.exp(-abs(gamma) * t)
     )
 
 
@@ -55,6 +55,7 @@ def combined_fit(
 
     w = np.sqrt(wx**2 + wy**2 + wz**2)
     t1, t2, t3 = np.split(t, 3)
+    gamma = np.abs(gamma)
     return np.concatenate(
         [
             fit_X_exp(t1, wx, wy, wz, w, gamma),
