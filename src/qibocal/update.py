@@ -188,7 +188,7 @@ def iSWAP_amplitude(amp: float, platform: Platform, pair: QubitPairId):
     )
 
 
-def CNOT_sequence(cr_sequence: PulseSequence, platform: Platform, pair: QubitPairId):
+def cnot_sequence(cr_sequence: PulseSequence, platform: Platform, pair: QubitPairId):
     platform.update(
         {f"native_gates.two_qubit.{f'{pair[0]}-{pair[1]}'}.CNOT": cr_sequence}
     )
