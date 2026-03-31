@@ -10,12 +10,6 @@ from qibolab._core.instruments.qblox.identifiers import SequencerMap
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
-# TODO: Remove once ported to qibolab
-PortAddress.prefix = lambda self, is_qcm: (
-    f"out{self.ports[0] - 1}"
-    if is_qcm
-    else f"out{self.ports[0] - 1}_in{self.ports[0] - 1}"
-)
 __all__ = ["calibrate_mixers"]
 
 
@@ -212,7 +206,13 @@ def _acquisition(
                 port = address.ports[0]
 
                 # Run LO calibration
-                getattr(module, f"{address.prefix(module.is_qcm_type)}_lo_cal")()
+                output = port - 1
+                qblox_function = (
+                    f"out{output}_lo_cal"
+                    if module.is_qcm_type
+                    else f"out{output}_in{output}_lo_cal"
+                )
+                getattr(module, qblox_function)()
 
                 # Run sideband calibration
                 sequencer = getattr(module, f"sequencer{seq_id}", None)
