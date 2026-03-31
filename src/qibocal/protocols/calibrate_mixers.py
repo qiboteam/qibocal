@@ -78,7 +78,9 @@ class CalibrateMixersParameters(Parameters):
 class CalibrateMixersResults(Results):
     """Calibrate mixers outputs."""
 
-    final_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
+    final_calibration: dict[str, dict[str, ModuleCalibrationData]] = field(
+        default_factory=dict
+    )
     """Final calibration values after running calibration."""
 
     # sequencer_map: dict[str, SequencerMap] = field(default_factory=dict)
@@ -89,9 +91,13 @@ class CalibrateMixersResults(Results):
 class CalibrateMixersData(Data):
     """Calibrate mixers acquisition outputs."""
 
-    initial_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
+    initial_calibration: dict[str, dict[str, ModuleCalibrationData]] = field(
+        default_factory=dict
+    )
     """Initial calibration values before running calibration."""
-    final_calibration: dict[str, ModuleCalibrationData] = field(default_factory=dict)
+    final_calibration: dict[str, dict[str, ModuleCalibrationData]] = field(
+        default_factory=dict
+    )
     """Final calibration values after running calibration."""
 
 
