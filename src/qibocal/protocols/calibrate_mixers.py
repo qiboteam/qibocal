@@ -111,6 +111,7 @@ class CalibrateMixersData(Data):
 def _get_hardware_calibration(
     cluster: Cluster, seq_map: SequencerMap
 ) -> dict[str, ModuleCalibrationData]:
+    """Read the calibration values from the cluster."""
 
     modules = cluster.cluster.get_connected_modules(
         lambda mod: mod.is_rf_type
@@ -121,7 +122,8 @@ def _get_hardware_calibration(
     for slot_id, channels in seq_map.items():
         module = modules.get(slot_id)
         if module is None:
-            continue  # Skip if the module for this slot is not found (e.g. non-RF module)
+            # Skip if the module for this slot is not found (e.g. non-RF module)
+            continue
         mod_name = module.short_name
         mod_data = data[mod_name] = ModuleCalibrationData(mod_name)
 
@@ -182,13 +184,11 @@ def _acquisition(
 
     data = CalibrateMixersData()
 
-    clusters = [
+    [(cluster_id, cluster)] = [
         (i, instr)
         for i, instr in platform.instruments.items()
         if isinstance(instr, Cluster)
     ]
-    assert len(clusters) == 1
-    [(cluster_id, cluster)] = clusters
     configs = platform.parameters.configs.copy()
 
     # Setup one sequencer per channel with a dummy sequence
@@ -213,7 +213,8 @@ def _acquisition(
             address = PortAddress.from_path(cluster.channels[ch_id].path)
             module = modules.get(address.slot)
             if module is None:
-                continue  # Skip if the module for this channel is not found (e.g. non-RF module)
+                # Skip if the module for this channel is not found (e.g.non-RF module)
+                continue
             port = address.ports[0]
 
             # Run LO calibration
@@ -231,7 +232,8 @@ def _acquisition(
                 sequencer._get_sequencer_connect_out(i) == "off"
                 for i in range(2 if module.is_qcm_type else 1)
             ):
-                # If no port is assigned to the sequencer, connect it to the current output
+                # If no port is assigned to the sequencer, connect it to the current
+                # output
                 sequencer.connect_sequencer(f"out{port - 1}")
             sequencer.sideband_cal()
 
