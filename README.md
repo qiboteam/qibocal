@@ -2,6 +2,7 @@
 [![codecov](https://codecov.io/gh/qiboteam/qibocal/branch/main/graph/badge.svg?token=1EKZKVEVX0)](https://codecov.io/gh/qiboteam/qibocal)
 ![PyPI - Version](https://img.shields.io/pypi/v/qibocal)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/qibocal)
+[![Documentation](https://github.com/qiboteam/qibocal/actions/workflows/docs.yml/badge.svg)](https://github.com/qiboteam/qibocal/actions/workflows/docs.yml)
 
 Qibocal provides calibration protocols using [Qibo](https://github.com/qiboteam/qibo) and [Qibolab](https://github.com/qiboteam/qibolab).
 
@@ -13,13 +14,7 @@ Qibocal key features:
 
 ## Documentation
 
-[![docs](https://github.com/qiboteam/qibocal/actions/workflows/publish.yml/badge.svg)](https://qibo.science/qibocal/stable/)
-
-Qibocal documentation is available [here](https://qibo.science/qibocal/stable/).
-
->[!NOTE]
-> Qibocal `main` contains some breaking changes compared to `0.1` versions.
-> A small guide to make the transition as smooth as possible can be found [`here`](changes.md).
+Qibocal documentation is available at https://qibo.science/qibocal/stable/.
 
 ## Installation
 
@@ -127,7 +122,7 @@ In order to upload the report to a centralized server, send to the server admini
 
 Contributions, issues and feature requests are welcome!
 Feel free to check
-<a href="https://github.com/qiboteam/qibocal/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-closed/qiboteam/qibocal"/></a>
+<a href="https://github.com/qiboteam/qibocal/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues/qiboteam/qibocal"/></a>
 
 ## Citation policy
 [![arXiv](https://img.shields.io/badge/arXiv-2303.10397-b31b1b.svg)](https://arxiv.org/abs/2303.10397)
