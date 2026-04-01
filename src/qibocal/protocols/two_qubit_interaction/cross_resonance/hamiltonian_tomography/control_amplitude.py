@@ -40,6 +40,8 @@ from .utils import (
     tomography_cr_plot,
 )
 
+__all__ = ["hamiltonian_tomography_cr_amplitude"]
+
 HamiltonianTomographyCRAmplType = np.dtype(
     [
         ("prob_target", np.float64),
@@ -64,11 +66,11 @@ class HamiltonianTomographyCRAmplParameters(Parameters):
     """Final amplitude of CR pulse."""
     control_ampl_step: float
     """Step CR pulse amplitude."""
-    control_phase: float | None = 0.0
+    control_phase: float = 0.0
     """Phase of the CR pulse on the control qubit"""
-    target_phase: float | None = 0.0
+    target_phase: float = 0.0
     """Phase of the Cancellation pulse on the target qubit"""
-    target_amplitude: float | None = 0.0
+    target_amplitude: float = 0.0
     """Amplitude of the Cancellation pulse on the target qubit"""
     echo: bool = False
     """Apply echo sequence or not.
@@ -335,10 +337,19 @@ def _update(
         target_phase=results.target_phase,
         echo=results.echo,
         setup=SetControl.Id,
-        basis=Basis.Y,
+        basis=Basis.Z,
     )
     new_cr_seq = new_cr_seq[:-2]  # remove acquisition pulses
 
+    new_cr_seq.insert(
+        -2,
+        (
+            platform.qubits[target[1]].drive,
+            platform.natives.single_qubit[target[1]].R(theta=3 * np.pi / 2, phi=0)[0][
+                1
+            ],
+        ),
+    )
     new_cr_seq.insert(
         -2, (platform.qubits[target[0]].drive, VirtualZ(phase=-np.pi / 2))
     )
