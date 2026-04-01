@@ -108,6 +108,17 @@ class CalibrateMixersData(Data):
     """Final calibration values after running calibration."""
 
 
+def _cluster(platform: CalibrationPlatform) -> Cluster:
+    """Return the QBlox cluster available in the platform."""
+    clusters = [
+        instrument
+        for instrument in platform.instruments.values()
+        if isinstance(instrument, Cluster)
+    ]
+    assert len(clusters) == 1, "Exactly one cluster is required."
+    return clusters[0]
+
+
 def _get_hardware_calibration(
     cluster: Cluster, seq_map: SequencerMap
 ) -> dict[str, ModuleCalibrationData]:
@@ -219,15 +230,7 @@ def _acquisition(
 
     data = CalibrateMixersData()
 
-    clusters = [
-        instrument
-        for instrument in platform.instruments.values()
-        if isinstance(instrument, Cluster)
-    ]
-    assert len(clusters) == 1, (
-        "This protocol only works for platforms with exactly one qblox Cluster as controller."
-    )
-    cluster = clusters[0]
+    cluster = _cluster(platform)
     configs = platform.parameters.configs.copy()
 
     # Setup one sequencer per channel with a dummy sequence
@@ -447,13 +450,7 @@ def _update(
             "Loading calibrate_mixers results from JSON is not supported."
         )
 
-    clusters = [
-        instrument
-        for instrument in platform.instruments.values()
-        if isinstance(instrument, Cluster)
-    ]
-    assert len(clusters) == 1, "Exactly one cluster is required."
-    cluster = clusters[0]
+    cluster = _cluster(platform)
 
     channels_by_module: dict = (
         cluster._channels_by_module
