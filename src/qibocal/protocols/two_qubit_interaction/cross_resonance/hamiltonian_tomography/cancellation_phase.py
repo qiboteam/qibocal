@@ -30,7 +30,7 @@ from .....auto.operation import (
 )
 from .....calibration import CalibrationPlatform
 from ....utils import table_dict, table_html
-from ..utils import Basis, SetControl, cr_sequence
+from ..utils import Basis, SetControl, cr_sequence, retrieve_cr_parameters
 from .length import HamiltonianTomographyCRLengthData
 from .utils import (
     HamiltonianTerm,
@@ -38,6 +38,8 @@ from .utils import (
     cancellation_phase_fit,
     reconstruct_full_hamiltonian_terms,
 )
+
+__all__ = ["hamiltonian_tomography_canc_phase"]
 
 HamiltonianTomographyCANCPhaseType = np.dtype(
     [
@@ -62,7 +64,7 @@ class HamiltonianTomographyCANCPhaseParameters(Parameters):
     """Final duration of CR pulse [ns]."""
     pulse_duration_step: float
     """Step CR pulse duration [ns]."""
-    control_phase_step: float
+    control_phase_step: float = np.pi / 5
     """Step CR pulse phase."""
     control_phase: float = 0
     """Initial phase of CR pulse."""
@@ -222,6 +224,15 @@ def _acquisition(
 
     for pair in targets:
         control, target = pair
+
+        if params.control_amplitude is None:
+            cr_pulse, _ = retrieve_cr_parameters(platform, control, target)
+            if cr_pulse is None:
+                raise ValueError(
+                    "Control amplitude not specified and CR pulse not"
+                    f"found for control {control} and target {target}."
+                )
+            params.control_amplitude = cr_pulse["amplitude"]
 
         for basis in Basis:
             for setup in SetControl:
@@ -414,10 +425,19 @@ def _update(
         target_phase=results.cancellation_pulse_phases[target]["target"],
         echo=results.echo,
         setup=SetControl.Id,
-        basis=Basis.Y,
+        basis=Basis.Z,
     )
     new_cr_seq = new_cr_seq[:-2]  # remove acquisition pulses
 
+    new_cr_seq.insert(
+        -2,
+        (
+            platform.qubits[target[1]].drive,
+            platform.natives.single_qubit[target[1]].R(theta=3 * np.pi / 2, phi=0)[0][
+                1
+            ],
+        ),
+    )
     new_cr_seq.insert(
         -2, (platform.qubits[target[0]].drive, VirtualZ(phase=-np.pi / 2))
     )
