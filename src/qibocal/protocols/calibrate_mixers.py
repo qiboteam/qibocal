@@ -162,6 +162,41 @@ def _get_hardware_calibration(
     return data
 
 
+def _perform_calibration(cluster: Cluster, seq_map: SequencerMap):
+    """Run the QBlox LO and sideband calibration routines for each channel."""
+    modules = cluster.cluster.get_connected_modules(lambda mod: mod.is_rf_type)
+    # seq_map is of shape {module_id: {ch_name: seq_id}}, so the outer loop is over
+    # modules
+    for channels in seq_map.values():
+        for ch_id, seq_id in channels.items():
+            address = PortAddress.from_path(cluster.channels[ch_id].path)
+            module = modules.get(address.slot)
+            if module is None:
+                # Skip if the module for this channel is not found (e.g. non-RF module)
+                continue
+            port = address.ports[0]
+
+            # Run LO calibration
+            output = port - 1
+            qblox_function = (
+                f"out{output}_lo_cal"
+                if module.is_qcm_type
+                else f"out{output}_in{output}_lo_cal"
+            )
+            getattr(module, qblox_function)()
+
+            # Run sideband calibration
+            sequencer = getattr(module, f"sequencer{seq_id}")
+            if all(
+                sequencer._get_sequencer_connect_out(i) == "off"
+                for i in range(2 if module.is_qcm_type else 1)
+            ):
+                # If no port is assigned to the sequencer, connect it to the current
+                # output
+                sequencer.connect_sequencer(f"out{port - 1}")
+            sequencer.sideband_cal()
+
+
 def _acquisition(
     params: CalibrateMixersParameters,
     platform: CalibrationPlatform,
@@ -203,43 +238,13 @@ def _acquisition(
         configs=configs,
     )
 
-    modules = cluster.cluster.get_connected_modules(lambda mod: mod.is_rf_type)
-
     # Read current hardware calibration values.
     initial_calibration = _get_hardware_calibration(cluster, seq_map)
 
     # Perform calibration
-    # seq_map is of shape {module_id: {ch_name: seq_id}}, so the outer loop is over
-    # modules
-    for channels in seq_map.values():
-        for ch_id, seq_id in channels.items():
-            address = PortAddress.from_path(cluster.channels[ch_id].path)
-            module = modules.get(address.slot)
-            if module is None:
-                # Skip if the module for this channel is not found (e.g. non-RF module)
-                continue
-            port = address.ports[0]
+    _perform_calibration(cluster, seq_map)
 
-            # Run LO calibration
-            output = port - 1
-            qblox_function = (
-                f"out{output}_lo_cal"
-                if module.is_qcm_type
-                else f"out{output}_in{output}_lo_cal"
-            )
-            getattr(module, qblox_function)()
-
-            # Run sideband calibration
-            sequencer = getattr(module, f"sequencer{seq_id}")
-            if all(
-                sequencer._get_sequencer_connect_out(i) == "off"
-                for i in range(2 if module.is_qcm_type else 1)
-            ):
-                # If no port is assigned to the sequencer, connect it to the current
-                # output
-                sequencer.connect_sequencer(f"out{port - 1}")
-            sequencer.sideband_cal()
-
+    # Read final hardware calibration values.
     final_calibration = _get_hardware_calibration(cluster, seq_map)
 
     data = CalibrateMixersData(
