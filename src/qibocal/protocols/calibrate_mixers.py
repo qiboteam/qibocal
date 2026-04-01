@@ -434,6 +434,13 @@ def _update(
         qubit: Qubit identifier (unused)
     """
     final_cal = results.final_calibration
+    if not isinstance(next(iter(final_cal.values())), ModuleCalibrationData):
+        # The only supported workflow to load results from JSON is through `qq fit`, but
+        # ince there is not fit to be done for calibrate loading from a JSON is not
+        # needed and therefore not implemented.
+        raise NotImplementedError(
+            "Loading calibrate_mixers results from JSON is not supported."
+        )
 
     clusters = [
         instrument
@@ -448,9 +455,9 @@ def _update(
     )  # _channels_by_module is not intended as public
     for slot, channels in channels_by_module.items():
         for ch_id, address in channels:
-            mod_name = cluster._modules[
-                slot
-            ].short_name  # _modules is not intended as public
+            # NOTE: _modules require a connection with the cluster. Also it is not
+            # intended as public
+            mod_name = cluster._modules[slot].short_name
             if mod_name not in final_cal:
                 continue  # Skip if no calibration data for this module
 
