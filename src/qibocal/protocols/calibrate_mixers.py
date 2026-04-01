@@ -1,4 +1,4 @@
-"""This function performs mixer calibration for QBlox RF modules by running the built-in
+"""This function performs mixer calibration for Qblox RF modules by running the built-in
 LO and sideband calibration routines. To be moved to the qblox-driver.
 """
 
@@ -18,7 +18,7 @@ __all__ = ["calibrate_mixers"]
 
 @dataclass
 class ModuleCalibrationData:
-    """Calibration data for a single QBlox module."""
+    """Calibration data for a single Qblox module."""
 
     module_name: str
     """Module identifier."""
@@ -109,7 +109,7 @@ class CalibrateMixersData(Data):
 
 
 def _cluster(platform: CalibrationPlatform) -> Cluster:
-    """Return the QBlox cluster available in the platform."""
+    """Return the Qblox cluster available in the platform."""
     clusters = [
         instrument
         for instrument in platform.instruments.values()
@@ -174,7 +174,7 @@ def _get_hardware_calibration(
 
 
 def _perform_calibration(cluster: Cluster, seq_map: SequencerMap):
-    """Run the QBlox LO and sideband calibration routines for each channel."""
+    """Run the Qblox LO and sideband calibration routines for each channel."""
     modules = cluster.cluster.get_connected_modules(lambda mod: mod.is_rf_type)
     # seq_map is of shape {module_id: {ch_name: seq_id}}, so the outer loop is over
     # modules
@@ -216,8 +216,8 @@ def _acquisition(
     """Data acquisition for mixer calibration.
 
     This routine calibrates the IQ mixer offsets, gain ratios, and phase offsets
-    for all QBlox RF modules in the platform. This is currently done specifically for
-    QBlox electronics but could be included as part of qibolab to make it more general.
+    for all Qblox RF modules in the platform. This is currently done specifically for
+    Qblox electronics but could be included as part of qibolab to make it more general.
 
     Args:
         params: Input parameters (currently empty)
@@ -419,7 +419,7 @@ def _plot(data: CalibrateMixersData, target: QubitId, fit: CalibrateMixersResult
         )
 
         fig.update_layout(
-            title="QBlox Mixer Calibration Results",
+            title="Qblox Mixer Calibration Results",
             height=max(400, len(table_rows) * 25),
         )
 
@@ -458,7 +458,8 @@ def _update(
     for slot, channels in channels_by_module.items():
         for ch_id, address in channels:
             # NOTE: _modules require a connection with the cluster. Also it is not
-            # intended as public
+            # intended as public, but that's mainly because it's Qblox-specific, but
+            # so is this whole routine for the time being.
             mod_name = cluster._modules[slot].short_name
             if mod_name not in final_cal:
                 continue  # Skip if no calibration data for this module

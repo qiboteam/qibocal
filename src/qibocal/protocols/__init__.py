@@ -46,7 +46,7 @@ try:
     from . import calibrate_mixers
     from .calibrate_mixers import *
 except ModuleNotFoundError as exc:
-    # Keep protocols importable when optional QBlox dependencies are absent.
+    # Keep protocols importable when optional Qblox dependencies are absent.
     if exc.name != "qblox_instruments":
         raise
     log.warning(
