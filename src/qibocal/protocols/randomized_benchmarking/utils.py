@@ -569,7 +569,8 @@ def twoq_rb_acquisition_parallel(
 ) -> Union[RB2QData, RB2QInterData]:
     """
     The data acquisition stage of two qubit Standard Randomized Benchmarking.
-    Instead of running the benchmarking sequentially across pairs, a
+    Instead of running the benchmarking sequentially across pairs, we generate a common sequence and
+    duplicate it across all the targeted qubit pairs.
 
     Args:
         params (RB2QParameters): The parameters for the randomized benchmarking experiment.
