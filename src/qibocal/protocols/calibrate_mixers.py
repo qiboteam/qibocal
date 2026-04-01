@@ -125,7 +125,7 @@ def _get_hardware_calibration(
             # Skip if the module for this slot is not found (e.g. non-RF module)
             continue
         mod_name = module.short_name
-        mod_data = data[mod_name] = ModuleCalibrationData(mod_name)
+        mod_data = ModuleCalibrationData(mod_name)
 
         for ch_name, seq_id in channels.items():
             address = PortAddress.from_path(cluster.channels[ch_name].path)
@@ -153,11 +153,11 @@ def _get_hardware_calibration(
 
             # Use the sequencer ID from seq_map
             seq = getattr(module, f"sequencer{seq_id}")
-            data[mod_name].gain_ratio[output][seq_id] = seq.mixer_corr_gain_ratio()
-            data[mod_name].phase_offset[output][seq_id] = (
-                seq.mixer_corr_phase_offset_degree()
-            )
-            data[mod_name].nco_freq[output][seq_id] = seq.nco_freq()
+            mod_data.gain_ratio[output][seq_id] = seq.mixer_corr_gain_ratio()
+            mod_data.phase_offset[output][seq_id] = seq.mixer_corr_phase_offset_degree()
+            mod_data.nco_freq[output][seq_id] = seq.nco_freq()
+
+        data[mod_name] = mod_data
 
     return data
 
@@ -185,7 +185,9 @@ def _acquisition(
     data = CalibrateMixersData()
 
     clusters = [
-        instr for instr in platform.instruments.values() if isinstance(instr, Cluster)
+        instrument
+        for instrument in platform.instruments.values()
+        if isinstance(instrument, Cluster)
     ]
     assert len(clusters) == 1, (
         "This protocol only works for platforms with exactly one qblox Cluster as controller."
@@ -214,7 +216,7 @@ def _acquisition(
             address = PortAddress.from_path(cluster.channels[ch_id].path)
             module = modules.get(address.slot)
             if module is None:
-                # Skip if the module for this channel is not found (e.g.non-RF module)
+                # Skip if the module for this channel is not found (e.g. non-RF module)
                 continue
             port = address.ports[0]
 
@@ -266,7 +268,7 @@ def _fit(data: CalibrateMixersData) -> CalibrateMixersResults:
     )
 
 
-def _plot(data: CalibrateMixersData, target: str, fit: CalibrateMixersResults):
+def _plot(data: CalibrateMixersData, target: QubitId, fit: CalibrateMixersResults):
     """Plotting function for mixer calibration.
 
     Creates a table showing initial and final calibration values for all modules.
@@ -292,9 +294,8 @@ def _plot(data: CalibrateMixersData, target: str, fit: CalibrateMixersResults):
         final = final_calibration[module_key]
 
         # Need this when loading from JSON
-        if (
-            type(initial) is not ModuleCalibrationData
-            or type(final) is not ModuleCalibrationData
+        if isinstance(initial, ModuleCalibrationData) or isinstance(
+            final, ModuleCalibrationData
         ):
             initial = ModuleCalibrationData.from_dict(initial)
             final = ModuleCalibrationData.from_dict(final)

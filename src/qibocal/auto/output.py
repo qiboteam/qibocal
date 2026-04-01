@@ -238,8 +238,8 @@ class Output:
         backend = construct_backend(
             backend=self.meta.backend, platform=self.meta.platform
         )
+        assert backend.platform is not None
         self.platform = CalibrationPlatform.from_platform(backend.platform)
-        assert self.platform is not None
 
         for task_id, completed in self.history.items():
             # TODO: should we drop this check as well, and just allow overwriting?
