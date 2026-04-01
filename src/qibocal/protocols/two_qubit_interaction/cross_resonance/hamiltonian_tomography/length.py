@@ -318,7 +318,7 @@ def _update(
 ):
     target = target[::-1] if target not in results.cr_lengths else target
 
-    new_cr_seq, _, _, _ = cr_sequence(
+    cr_seq, _, _, _ = cr_sequence(
         platform=platform,
         control=target[0],
         target=target[1],
@@ -331,20 +331,16 @@ def _update(
         setup=SetControl.Id,
         basis=Basis.Z,
     )
-    new_cr_seq = new_cr_seq[:-2]  # remove acquisition pulses
 
+    new_cr_seq = cr_seq.filter_acquisition_probe_channels()
     new_cr_seq.insert(
-        -2,
+        0,
         (
             platform.qubits[target[1]].drive,
-            platform.natives.single_qubit[target[1]].R(theta=3 * np.pi / 2, phi=0)[0][
-                1
-            ],
+            platform.natives.single_qubit[target[1]].R(theta=np.pi / 2, phi=0)[0][1],
         ),
     )
-    new_cr_seq.insert(
-        -2, (platform.qubits[target[0]].drive, VirtualZ(phase=-np.pi / 2))
-    )
+    new_cr_seq.insert(0, (platform.qubits[target[0]].drive, VirtualZ(phase=np.pi / 2)))
 
     getattr(update, f"{results.native.lower()}_sequence")(new_cr_seq, platform, target)
 

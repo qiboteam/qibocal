@@ -70,8 +70,6 @@ class HamiltonianTomographyCANCPhaseParameters(Parameters):
     """Initial phase of CR pulse."""
     control_phase_end: float = 2 * np.pi
     """Final phase of CR pulse."""
-    control_amplitude: float | None = None
-    """Initial amplitude of CR pulse."""
     interpolated_sweeper: bool = False
     """Use real-time interpolation if supported by instruments."""
     echo: bool = False
@@ -104,8 +102,6 @@ class HamiltonianTomographyCANCPhaseResults(Results):
     """HamiltonianTomographyCANCPhase outputs."""
 
     echo: bool
-
-    control_amplitude: float
 
     hamiltonian_terms: dict[
         QubitPairId, list[tuple[float, dict[HamiltonianTerm, float]]]
@@ -162,7 +158,6 @@ class HamiltonianTomographyCANCPhaseData(Data):
     """Data structure for CR Amplitude."""
 
     echo: bool
-    control_amplitude: float | None = None
     phases: list | None = None
     data: dict[
         tuple[QubitId, QubitId, Basis, SetControl],
@@ -218,21 +213,21 @@ def _acquisition(
     data = HamiltonianTomographyCANCPhaseData(
         echo=params.echo,
         phases=params.phase_range.astype(float).tolist(),
-        control_amplitude=params.control_amplitude,
         verbose_plot=params.verbose_plot,
     )
 
     for pair in targets:
         control, target = pair
 
-        if params.control_amplitude is None:
-            cr_pulse, _ = retrieve_cr_parameters(platform, control, target)
-            if cr_pulse is None:
-                raise ValueError(
-                    "Control amplitude not specified and CR pulse not"
-                    f"found for control {control} and target {target}."
-                )
-            params.control_amplitude = cr_pulse["amplitude"]
+        cr_pulse, canc_pulse = retrieve_cr_parameters(platform, control, target)
+        if cr_pulse is None:
+            raise ValueError(
+                "Control amplitude not specified and CR pulse not"
+                f"found for control {control} and target {target}."
+            )
+        control_amplitude = cr_pulse["amplitude"]
+        target_amplitude = canc_pulse["amplitude"]
+        target_phase = canc_pulse["relative_phase"]
 
         for basis in Basis:
             for setup in SetControl:
@@ -240,10 +235,10 @@ def _acquisition(
                     platform=platform,
                     control=control,
                     target=target,
-                    amplitude=params.control_amplitude,
+                    amplitude=control_amplitude,
                     phase=params.control_phase_end,
-                    target_amplitude=0,
-                    target_phase=0,
+                    target_amplitude=target_amplitude,
+                    target_phase=target_phase,
                     duration=params.pulse_duration_end,
                     echo=params.echo,
                     setup=setup,
@@ -295,7 +290,7 @@ def _acquisition(
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
                     acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=AveragingMode.CYCLIC,
+                    averaging_mode=AveragingMode.SINGLESHOT,
                     updates=updates,
                 )
                 target_acq_handle = list(
@@ -344,7 +339,6 @@ def _fit(
 
     return HamiltonianTomographyCANCPhaseResults(
         echo=data.echo,
-        control_amplitude=data.control_amplitude,
         hamiltonian_terms=hamiltonian_terms,
         fitted_parameters=fitted_parameters,
         cancellation_pulse_phases=pulses_phases,
@@ -414,33 +408,36 @@ def _update(
 
     target = target[::-1] if target not in results.cancellation_pulse_phases else target
 
-    new_cr_seq, _, _, _ = cr_sequence(
+    # now no check is needed since the acquisition was executed correctly,
+    # which means we have all parameters defined.
+    cr_pulse, canc_pulse = retrieve_cr_parameters(platform, target[0], target[1])
+    gate_duration = cr_pulse["duration"]
+    control_amplitude = cr_pulse["amplitude"]
+    target_amplitude = canc_pulse["amplitude"]
+
+    cr_seq, _, _, _ = cr_sequence(
         platform=platform,
         control=target[0],
         target=target[1],
-        amplitude=results.control_amplitude,
-        duration=None,
+        amplitude=control_amplitude,
+        duration=gate_duration,
         phase=results.cancellation_pulse_phases[target]["control"],
-        target_amplitude=0,
+        target_amplitude=target_amplitude,
         target_phase=results.cancellation_pulse_phases[target]["target"],
         echo=results.echo,
         setup=SetControl.Id,
         basis=Basis.Z,
     )
-    new_cr_seq = new_cr_seq[:-2]  # remove acquisition pulses
 
+    new_cr_seq = cr_seq.filter_acquisition_probe_channels()
     new_cr_seq.insert(
-        -2,
+        0,
         (
             platform.qubits[target[1]].drive,
-            platform.natives.single_qubit[target[1]].R(theta=3 * np.pi / 2, phi=0)[0][
-                1
-            ],
+            platform.natives.single_qubit[target[1]].R(theta=np.pi / 2, phi=0)[0][1],
         ),
     )
-    new_cr_seq.insert(
-        -2, (platform.qubits[target[0]].drive, VirtualZ(phase=-np.pi / 2))
-    )
+    new_cr_seq.insert(0, (platform.qubits[target[0]].drive, VirtualZ(phase=np.pi / 2)))
 
     getattr(update, f"{results.native.lower()}_sequence")(new_cr_seq, platform, target)
 

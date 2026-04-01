@@ -238,7 +238,7 @@ def _acquisition(
                     target=target,
                     amplitude=control_amplitude,
                     phase=control_phase,
-                    target_ampl_start=params.target_ampl_end,
+                    target_amplitude=params.target_ampl_end,
                     target_phase=target_phase,
                     duration=params.pulse_duration_end,
                     echo=params.echo,
@@ -402,33 +402,37 @@ def _update(
         target[::-1] if target not in results.cancellation_pulse_amplitudes else target
     )
 
-    new_cr_seq, _, _, _ = cr_sequence(
+    # now no check is needed since the acquisition was executed correctly,
+    # which means we have all parameters defined.
+    cr_pulse, canc_pulse = retrieve_cr_parameters(platform, target[0], target[1])
+    gate_duration = cr_pulse["duration"]
+    control_amplitude = cr_pulse["amplitude"]
+    control_phase = cr_pulse["relative_phase"]
+    target_phase = canc_pulse["relative_phase"]
+
+    cr_seq, _, _, _ = cr_sequence(
         platform=platform,
         control=target[0],
         target=target[1],
-        amplitude=None,
-        duration=None,
-        phase=None,
+        amplitude=control_amplitude,
+        duration=gate_duration,
+        phase=control_phase,
         target_ampl_start=results.cancellation_pulse_amplitudes[target]["ampl_iy"],
-        target_phase=None,
+        target_phase=target_phase,
         echo=results.echo,
         setup=SetControl.Id,
         basis=Basis.Z,
     )
-    new_cr_seq = new_cr_seq[:-2]  # remove acquisition pulses
 
+    new_cr_seq = cr_seq.filter_acquisition_probe_channels()
     new_cr_seq.insert(
-        -2,
+        0,
         (
             platform.qubits[target[1]].drive,
-            platform.natives.single_qubit[target[1]].R(theta=3 * np.pi / 2, phi=0)[0][
-                1
-            ],
+            platform.natives.single_qubit[target[1]].R(theta=np.pi / 2, phi=0)[0][1],
         ),
     )
-    new_cr_seq.insert(
-        -2, (platform.qubits[target[0]].drive, VirtualZ(phase=-np.pi / 2))
-    )
+    new_cr_seq.insert(0, (platform.qubits[target[0]].drive, VirtualZ(phase=np.pi / 2)))
 
     getattr(update, f"{results.native.lower()}_sequence")(new_cr_seq, platform, target)
 
