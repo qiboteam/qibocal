@@ -354,9 +354,7 @@ def estimate_cr_phases(
     if fitting.sin_fit(tuned_phases["phi0"], **phase_params[HamiltonianTerm.ZX]) > 0:
         # in https://journals.aps.org/pra/pdf/10.1103/PhysRevA.93.060302
         # it is said we need to choose the CR phase that minimizes ZY components
-        # and maximizes ZX interaction; though we compensate it with the final
-        # X rotation on target qubit for building CNOT (otherwise add a n.pi
-        # relative phase on X gate)
+        # and maximizes ZX interaction.
         tuned_phases["phi0"] += phase_params[HamiltonianTerm.ZY]["omega"] * np.pi
 
     if fitting.sin_fit(tuned_phases["phi1"], **phase_params[HamiltonianTerm.IX]) > 0:
