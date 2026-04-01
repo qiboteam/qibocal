@@ -39,7 +39,7 @@ def retrieve_cr_parameters(
     cr_params = None
     canc_params = None
     if len(platform.parameters.native_gates.two_qubit[(control, target)].CNOT) != 0:
-        for p in platform.parameters.native_gates.two_qubit[(control, target)].CNOT:
+        for p in platform.parameters.native_gates.two_qubit[(control, target)].CNOT[2:]:
             if (
                 cr_params is None
                 and str(control) == str(p[0]).split("/")[0]
