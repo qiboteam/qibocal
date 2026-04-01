@@ -146,7 +146,7 @@ def numerical_root_finder(
 def compute_total_expectation_value(
     data: Union[
         "HamiltonianTomographyCRLengthData",  # noqa: F821
-        "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
+        "HamiltonianTomographyCRAmplData",  # noqa: F821
     ],
     pair: QubitPairId,
 ) -> np.ndarray:
@@ -182,8 +182,8 @@ def bloch_func(
 
 def compute_bloch_vector(
     data: Union[
-        "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
-        "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
+        "HamiltonianTomographyCRLengthData",  # noqa: F821
+        "HamiltonianTomographyCRAmplData",  # noqa: F821
     ],
     pair: QubitPairId,
     fitted_parameters: dict | None = None,
@@ -208,14 +208,17 @@ def compute_bloch_vector(
 
 def estimate_cr_param(
     x_range: np.ndarray,
-    data: "HamiltonianTomographyCRLengthData",  # noqa: F821
+    data: Union[
+        "HamiltonianTomographyCRLengthData",  # noqa: F821
+        "HamiltonianTomographyCRAmplData",  # noqa: F821
+    ],
     pair: QubitPairId,
     fitted_parameters: dict,
     tol: float = 1e-6,
 ) -> float | int:
     """Function for estimating important parameters for the cross resonance, depending on the
     specific experiment run; if :data:`data` is type :class:`HamiltonianTomographyData` it finds the
-    thuned pulse duration, while if :data:`data` is type :class:`HamiltonianTomographyCRAmplitudeData` it
+    thuned pulse duration, while if :data:`data` is type :class:`HamiltonianTomographyCRAmplData` it
     finds the tuned pulse amplitude.
 
     The cross resonance parameter is computed by finding the value that solves the Bloch vector R.
@@ -368,7 +371,7 @@ def estimate_cr_phases(
 def tomography_cr_fit(
     data: Union[
         "HamiltonianTomographyCRLengthData",  # noqa: F821
-        "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
+        "HamiltonianTomographyCRAmplData",  # noqa: F821
     ],
     fit_with_evolution: bool = False,
 ) -> tuple[
@@ -706,13 +709,13 @@ def cancellation_phase_fit(
 def tomography_cr_plot(
     data: Union[
         "HamiltonianTomographyCRLengthData",  # noqa: F821
-        "HamiltonianTomographyCRAmplitudeData",  # noqa: F821
+        "HamiltonianTomographyCRAmplData",  # noqa: F821
     ],
     target: QubitPairId,
     fit: Optional[
         Union[
             "HamiltonianTomographyCRLengthResults",  # noqa: F821
-            "HamiltonianTomographyCRAmplitudeResults",  # noqa: F821
+            "HamiltonianTomographyCRAmplResults",  # noqa: F821
         ]
     ] = None,
 ) -> tuple[list[go.Figure], str]:
@@ -786,7 +789,7 @@ def tomography_cr_plot(
                     fit_dict = fit.cr_lengths
                     annotation = "CR gate duration [ns]"
 
-                if type(fit).__name__ == "HamiltonianTomographyCRAmplitudeResults":
+                if type(fit).__name__ == "HamiltonianTomographyCRAmplResults":
                     fit_dict = fit.cr_amplitudes
                     annotation = "CR gate amplitude [a.u.]"
 
@@ -818,7 +821,7 @@ def tomography_cr_plot(
         fit_dict = fit.cr_lengths
         annotation = "CR gate duration [ns]"
 
-    if type(fit).__name__ == "HamiltonianTomographyCRAmplitudeResults":
+    if type(fit).__name__ == "HamiltonianTomographyCRAmplResults":
         fit_dict = fit.cr_amplitudes
         annotation = "CR gate amplitude [a.u.]"
 

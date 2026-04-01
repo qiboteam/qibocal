@@ -26,6 +26,49 @@ class Basis(str, Enum):
     Z = "Z"
 
 
+def retrieve_cr_parameters(
+    platform: Platform,
+    control: QubitId,
+    target: QubitId,
+) -> tuple[Optional[dict[str, float]], Optional[dict[str, float]]]:
+    """Retrieve cross-resonance (CR) pulse parameters from platform calibration.
+    This function extracts the CR pulse and its corresponding cancellation pulse
+    from the platform's native gates configuration for a given control-target qubit pair.
+    """
+
+    cr_params = None
+    canc_params = None
+    if len(platform.parameters.native_gates.two_qubit[(control, target)].CNOT) != 0:
+        for p in platform.parameters.native_gates.two_qubit[(control, target)].CNOT:
+            if (
+                cr_params is None
+                and str(control) == str(p[0]).split("/")[0]
+                and isinstance(p[1], Pulse)
+            ):
+                cr_params = {
+                    "amplitude": p[1].amplitude,
+                    "duration": p[1].duration,
+                    "relative_phase": p[1].relative_phase,
+                }
+            if (
+                canc_params is None
+                and str(target) == str(p[0]).split("/")[0]
+                and isinstance(p[1], Pulse)
+            ):
+                canc_params = {
+                    "amplitude": p[1].amplitude,
+                    "duration": p[1].duration,
+                    "relative_phase": p[1].relative_phase,
+                }
+
+            if cr_params is not None and canc_params is not None:
+                # here we identified both the CR and cancellation pulse,
+                # we can stop looking at the remaining pulses
+                break
+
+    return cr_params, canc_params
+
+
 def cr_sequence(
     platform: Platform,
     control: QubitId,
@@ -52,56 +95,7 @@ def cr_sequence(
     sequence = PulseSequence()
     natives_control = platform.natives.single_qubit[control]
     natives_target = platform.natives.single_qubit[target]
-    try:
-        cr_channel = platform.qubits[control].drive_extra[target]
-    except Exception:
-        cr_channel = platform.qubits[control].drive_extra[(1, 2)]
-
-    # Try to retrieve CR pulse parameters from platform calibration.
-    # If not provided as input, they will be used to create the CR and cancellation pulses.
-    cr_pulse = None
-    canc_pulse = None
-    if len(platform.parameters.native_gates.two_qubit[(control, target)].CNOT) != 0:
-        for p in platform.parameters.native_gates.two_qubit[(control, target)].CNOT:
-            if (
-                cr_pulse is None
-                and str(control) == str(p[0]).split("/")[0]
-                and isinstance(p[1], Pulse)
-            ):
-                cr_pulse = p[1].model_copy()
-            if (
-                canc_pulse is None
-                and str(target) == str(p[0]).split("/")[0]
-                and isinstance(p[1], Pulse)
-            ):
-                canc_pulse = p[1].model_copy()
-
-            if cr_pulse is not None and canc_pulse is not None:
-                # here we identified both the CR and cancellation pulse,
-                # we can stop looking at the remaining pulses
-                break
-
-    try:
-        if duration is None:
-            duration = cr_pulse.duration
-
-        if amplitude is None:
-            amplitude = cr_pulse.amplitude
-
-        if phase is None:
-            phase = cr_pulse.relative_phase + np.pi
-
-        if target_amplitude is None:
-            target_amplitude = canc_pulse.amplitude
-
-        if target_phase is None:
-            target_phase = canc_pulse.relative_phase
-
-    except Exception as e:
-        log.warning(
-            f"Some CR parameters are not set and cannot be retrieven by platform calibration:\n {e}."
-        )
-        raise e
+    cr_channel = platform.qubits[control].drive_extra[target]
 
     cr_drive_pulse = Pulse(
         duration=duration,
@@ -200,7 +194,7 @@ def cr_sequence(
         )
 
     target_delay = Delay(
-        duration=natives_target.R(theta=np.pi / 2, phi=np.pi / 2)[0][1].duration
+        duration=natives_target.R(theta=3 * np.pi / 2, phi=np.pi / 2)[0][1].duration
     )
     sequence.append((ro_channel_target, target_delay))
     sequence.append((ro_channel_control, target_delay))
