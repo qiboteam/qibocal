@@ -94,6 +94,9 @@ class HamiltonianTomographyCRAmplResults(Results):
 
     echo: bool
     cr_duration: float
+    control_phase: float
+    target_amplitude: float
+    target_phase: float
     hamiltonian_terms: dict[
         tuple[QubitId, QubitId], list[tuple[float, dict[HamiltonianTerm, float]]]
     ] = field(default_factory=dict)
@@ -104,9 +107,6 @@ class HamiltonianTomographyCRAmplResults(Results):
     """Fitted parameters for Hamiltonian Terms values for different amplitudes."""
     cr_amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
     """Estimated amplitudes of CR gate."""
-    control_phase: float = 0
-    target_amplitude: float = 0
-    target_phase: float = 0
     native: Literal["CNOT"] = "CNOT"
     """Two qubit interaction to be calibrated."""
 
@@ -135,9 +135,9 @@ class HamiltonianTomographyCRAmplData(Data):
 
     echo: bool
     cr_duration: float
-    control_phase: float = 0
-    target_amplitude: float = 0
-    target_phase: float = 0
+    control_phase: float
+    target_amplitude: float
+    target_phase: float
     data: dict[
         tuple[QubitId, QubitId, Basis, SetControl],
         npt.NDArray[HamiltonianTomographyCRAmplType],
@@ -326,7 +326,7 @@ def _update(
 ):
     target = target[::-1] if target not in results.cr_amplitudes else target
 
-    new_cr_seq, _, _, _ = cr_sequence(
+    cr_seq, _, _, _ = cr_sequence(
         platform=platform,
         control=target[0],
         target=target[1],
@@ -339,20 +339,16 @@ def _update(
         setup=SetControl.Id,
         basis=Basis.Z,
     )
-    new_cr_seq = new_cr_seq[:-2]  # remove acquisition pulses
 
+    new_cr_seq = cr_seq.filter_acquisition_probe_channels()
     new_cr_seq.insert(
-        -2,
+        0,
         (
             platform.qubits[target[1]].drive,
-            platform.natives.single_qubit[target[1]].R(theta=3 * np.pi / 2, phi=0)[0][
-                1
-            ],
+            platform.natives.single_qubit[target[1]].R(theta=np.pi / 2, phi=0)[0][1],
         ),
     )
-    new_cr_seq.insert(
-        -2, (platform.qubits[target[0]].drive, VirtualZ(phase=-np.pi / 2))
-    )
+    new_cr_seq.insert(0, (platform.qubits[target[0]].drive, VirtualZ(phase=np.pi / 2)))
 
     getattr(update, f"{results.native.lower()}_sequence")(new_cr_seq, platform, target)
 
