@@ -69,19 +69,17 @@ def retrieve_cr_parameters(
     return cr_params, canc_params
 
 
-def cr_sequence(
+def cross_res_sequence(
     platform: Platform,
     control: QubitId,
     target: QubitId,
-    amplitude: float | None = None,
-    duration: int | None = None,
-    phase: float | None = None,
-    target_amplitude: float | None = None,
-    target_phase: float | None = None,
+    duration: int,
+    control_amplitude: float,
+    control_phase: float,
+    target_amplitude: float,
+    target_phase: float,
+    echo: bool,
     interpolated_sweeper: bool = False,
-    echo: bool = False,
-    setup: SetControl = SetControl.Id,
-    basis: Basis = Basis.Z,
 ) -> tuple[PulseSequence, list[Pulse], list[Pulse], list[Delay]]:
     """Creates sequence for CR experiment on ``control`` and ``target`` qubits.
 
@@ -90,117 +88,228 @@ def cr_sequence(
     With ``basis`` it is possible to set the measurement basis. If it is not provided
     the default is Z."""
 
-    cr_pulses = []
+    cr_control_pulses = []
     cr_target_pulses = []
+    # delays introduced by the cross resonance sequence
+    cr_delays = []
+
     sequence = PulseSequence()
+
     natives_control = platform.natives.single_qubit[control]
     natives_target = platform.natives.single_qubit[target]
+
+    # qubit channels necessary for the cross resonance sequence
     cr_channel = platform.qubits[control].drive_extra[target]
+    control_drive_channel, control_drive_pulse = natives_control.RX()[0]
+    target_drive_channel, _ = natives_target.RX()[0]
 
     cr_drive_pulse = Pulse(
         duration=duration,
-        amplitude=amplitude,
-        relative_phase=angle_wrap(phase),
-        # envelope=GaussianSquare(rel_sigma=0.2, risefall=15),
+        amplitude=control_amplitude,
+        relative_phase=angle_wrap(control_phase),
         envelope=Rectangular(),
     )
     target_drive_pulse = Pulse(
         duration=duration,
         amplitude=target_amplitude,
         relative_phase=angle_wrap(target_phase),
-        # envelope=GaussianSquare(rel_sigma=0.2, risefall=15),
         envelope=Rectangular(),
     )
-    cr_pulses.append(cr_drive_pulse)
+    cr_control_pulses.append(cr_drive_pulse)
     cr_target_pulses.append(target_drive_pulse)
-    control_drive_channel, control_drive_pulse = natives_control.RX()[0]
-    target_drive_channel, _ = natives_target.RX()[0]
-    ro_channel_target, ro_pulse_target = natives_target.MZ()[0]
-    ro_channel_control, ro_pulse_control = natives_control.MZ()[0]
-    if setup == SetControl.X:
-        control_delay = Delay(duration=control_drive_pulse.duration)
-        sequence.append((control_drive_channel, control_drive_pulse))
-        sequence.append((target_drive_channel, control_delay))
-        sequence.append((ro_channel_target, control_delay))
-        sequence.append((ro_channel_control, control_delay))
-        sequence.append((cr_channel, control_delay))
+
+    # delays introduced by cross resonance pulses
+    cr_delays.append(Delay(duration=cr_drive_pulse.duration))
+    # first cross resonance pulse
+    sequence.append((cr_channel, cr_drive_pulse))
+    sequence.append((target_drive_channel, target_drive_pulse))
+    if interpolated_sweeper:
+        _ = sequence.align([control_drive_channel, cr_channel, target_drive_channel])
+    else:
+        sequence.append((control_drive_channel, cr_delays[-1]))
 
     if echo:
-        delays = 6 * [Delay(duration=cr_drive_pulse.duration)]
-        control_delay = Delay(duration=control_drive_pulse.duration)
-        cr_pulse_minus = replace(
+        # phase-flipped cross resonance pulses
+        cr_drive_pulse_flipped = replace(
             cr_drive_pulse.new(),
             relative_phase=angle_wrap(np.pi + cr_drive_pulse.relative_phase),
         )
-        target_pulse_minus = replace(
+        cr_control_pulses.append(cr_drive_pulse_flipped)
+
+        target_pulse_flipped = replace(
             target_drive_pulse.new(),
             relative_phase=angle_wrap(np.pi + target_drive_pulse.relative_phase),
         )
-        cr_pulses.append(cr_pulse_minus)
-        cr_target_pulses.append(target_pulse_minus)
-        sequence.append((cr_channel, cr_drive_pulse))
-        sequence.append((control_drive_channel, delays[-1]))
-        sequence.append((target_drive_channel, target_drive_pulse))
-        sequence.append((control_drive_channel, control_drive_pulse))
-        sequence.append((cr_channel, control_delay))
-        sequence.append((target_drive_channel, control_delay))
-        sequence.append((cr_channel, cr_pulse_minus))
-        sequence.append((control_drive_channel, delays[-2]))
-        sequence.append((target_drive_channel, target_pulse_minus))
-        sequence.append((control_drive_channel, control_drive_pulse))
-        sequence.append((target_drive_channel, control_delay))
+        cr_target_pulses.append(target_pulse_flipped)
 
-    else:
-        delays = 2 * [Delay(duration=cr_drive_pulse.duration)]
-        sequence.append((cr_channel, cr_drive_pulse))
-        sequence.append((target_drive_channel, target_drive_pulse))
+        # delay introduced by echo sequence
+        echo_delay = Delay(duration=control_drive_pulse.duration)
+
+        # first echo pulse
+        sequence.append((control_drive_channel, control_drive_pulse))
+        sequence.append((cr_channel, echo_delay))
+        sequence.append((target_drive_channel, echo_delay))
+
+        # delays introduced by cross resonance pulses
+        cr_delays.append(Delay(duration=cr_drive_pulse.duration))
+        # second cross resonance pulse with flipped phase
+        sequence.append((cr_channel, cr_drive_pulse_flipped))
+        sequence.append((target_drive_channel, target_pulse_flipped))
+        if interpolated_sweeper:
+            _ = sequence.align(
+                [control_drive_channel, cr_channel, target_drive_channel]
+            )
+        else:
+            sequence.append((control_drive_channel, cr_delays[-1]))
+
+        # second echo pulse
+        sequence.append((control_drive_channel, control_drive_pulse))
+        sequence.append((cr_channel, echo_delay))
+        sequence.append((target_drive_channel, echo_delay))
+
+    return sequence, cr_control_pulses, cr_target_pulses, cr_delays
+
+
+def appending_ro_sequence(
+    platform: Platform,
+    control: QubitId,
+    target: QubitId,
+    exp_sequence: PulseSequence,
+    basis: Basis,
+    interpolated_sweeper: bool,
+) -> PulseSequence:
+    """Append a readout pulse sequence for two qubits with a specified delay.
+
+    This function constructs a pulse sequence that applies readout operations to both
+    control and target qubits with an initial delay on each readout channel.
+    """
+    natives_control = platform.natives.single_qubit[control]
+    natives_target = platform.natives.single_qubit[target]
+
+    # platform acquisition channels and pulses for control and target qubits
+    ro_channel_control, ro_pulse_control = natives_control.MZ()[0]
+    ro_channel_target, ro_pulse_target = natives_target.MZ()[0]
+
+    # switching measurement basis for target line and align all the others
+    target_drive_channel, _ = natives_target.RX()[0]
+    # delay
+    ro_delays = 2 * [Delay(duration=exp_sequence.duration)]
 
     if interpolated_sweeper:
-        sequence.align(
+        # if using interpolated_sweepers I need all the channels to be aligned
+        control_drive_channel, _ = natives_control.RX()[0]
+        cr_channel = platform.qubits[control].drive_extra[target]
+
+        # align all the channels of the sequence
+        _ = exp_sequence.align(
             [
                 cr_channel,
                 target_drive_channel,
                 control_drive_channel,
-                ro_channel_target,
                 ro_channel_control,
+                ro_channel_target,
             ]
         )
     else:
-        sequence.append((ro_channel_target, delays[0]))
-        sequence.append((ro_channel_control, delays[1]))
-        if echo:
-            sequence.append((ro_channel_target, delays[2]))
-            sequence.append((ro_channel_control, delays[3]))
-            sequence.append(
-                (ro_channel_target, Delay(duration=2 * control_drive_pulse.duration))
-            )
-            sequence.append(
-                (ro_channel_control, Delay(duration=2 * control_drive_pulse.duration))
-            )
+        # switching measurement basis for target line and align all the others
+        target_drive_channel, _ = natives_target.RX()[0]
+
+        # delay to align the readout pulses of control and target qubits
+        # done in every case, even when measurinz Z-basis (no additional pulse on target)
+        # to have the same timing for all the measurements
+        target_delay = Delay(
+            duration=natives_target.R(theta=3 * np.pi / 2, phi=np.pi / 2)[0][1].duration
+        )
+        exp_sequence.append((ro_channel_control, target_delay))
+        exp_sequence.append((ro_channel_target, target_delay))
+
+        # wait the whole cr-sequence duration before starting the readout pulses
+        exp_sequence.append((ro_channel_target, ro_delays[0]))
+        exp_sequence.append((ro_channel_control, ro_delays[1]))
 
     if basis == Basis.X:
-        sequence.append(
+        exp_sequence.append(
             (
                 target_drive_channel,
                 natives_target.R(theta=np.pi / 2, phi=np.pi / 2)[0][1],
             )
         )
     elif basis == Basis.Y:
-        sequence.append(
+        exp_sequence.append(
             (
                 target_drive_channel,
                 natives_target.R(theta=np.pi / 2, phi=0)[0][1],
             )
         )
 
-    target_delay = Delay(
-        duration=natives_target.R(theta=3 * np.pi / 2, phi=np.pi / 2)[0][1].duration
+    # adding readout pulses
+    exp_sequence.append((ro_channel_target, ro_pulse_target))
+    exp_sequence.append((ro_channel_control, ro_pulse_control))
+
+    return exp_sequence, ro_delays
+
+
+def cross_resonance_experiment(
+    platform: Platform,
+    control: QubitId,
+    target: QubitId,
+    duration: int,
+    control_amplitude: float,
+    control_phase: float,
+    target_amplitude: float,
+    target_phase: float,
+    basis: Basis = Basis.Z,
+    setup: SetControl = SetControl.Id,
+    echo: bool = False,
+    interpolated_sweeper: bool = False,
+) -> tuple[PulseSequence, list[Pulse], list[Pulse], list[Delay], list[Delay]]:
+    """Creates sequence for CR experiment on ``control`` and ``target`` qubits.
+
+    With ``setup`` it is possible to set the control qubit to 1 or keep it at 0.
+    If ``echo`` is set to ``True`` a ECR gate will be played.
+    With ``basis`` it is possible to set the measurement basis. If it is not provided
+    the default is Z."""
+
+    # adding pi-pulse if we want to set control to 1
+    cntl_setup_sequence = PulseSequence()
+    if setup == SetControl.X:
+        control_drive_channel, control_drive_pulse = platform.natives.single_qubit[
+            control
+        ].RX()[0]
+        target_drive_channel, _ = platform.natives.single_qubit[target].RX()[0]
+        cr_channel = platform.qubits[control].drive_extra[target]
+
+        control_delay = Delay(duration=control_drive_pulse.duration)
+
+        cntl_setup_sequence.append((control_drive_channel, control_drive_pulse))
+        cntl_setup_sequence.append((target_drive_channel, control_delay))
+        cntl_setup_sequence.append((cr_channel, control_delay))
+
+    cr_sequence, cr_pulses, cr_target_pulses, cr_delays = cross_res_sequence(
+        platform=platform,
+        control=control,
+        target=target,
+        amplitude=control_amplitude,
+        duration=duration,
+        phase=control_phase,
+        target_amplitude=target_amplitude,
+        target_phase=target_phase,
+        echo=echo,
+        setup=setup,
+        interpolated_sweeper=interpolated_sweeper,
     )
-    sequence.append((ro_channel_target, target_delay))
-    sequence.append((ro_channel_control, target_delay))
-    sequence.append((ro_channel_target, ro_pulse_target))
-    sequence.append((ro_channel_control, ro_pulse_control))
-    return sequence, cr_pulses, cr_target_pulses, delays
+    cr_sequence = cntl_setup_sequence | cr_sequence
+
+    total_sequence, ro_delays = appending_ro_sequence(
+        platform=platform,
+        control=control,
+        target=target,
+        exp_sequence=cr_sequence,
+        basis=basis,
+        interpolated_sweeper=interpolated_sweeper,
+    )
+
+    return total_sequence, cr_pulses, cr_target_pulses, cr_delays, ro_delays
 
 
 def cr_fit(

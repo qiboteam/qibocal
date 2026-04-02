@@ -13,6 +13,7 @@ import numpy.typing as npt
 from qibolab import (
     AcquisitionType,
     AveragingMode,
+    ParallelSweepers,
     Parameter,
     Sweeper,
     VirtualZ,
@@ -30,7 +31,7 @@ from .....auto.operation import (
 )
 from .....calibration import CalibrationPlatform
 from ....utils import table_dict, table_html
-from ..utils import Basis, SetControl, cr_sequence
+from ..utils import Basis, SetControl, cross_res_sequence, cross_resonance_experiment
 from .utils import (
     HamiltonianTerm,
     extract_hamiltonian_terms,
@@ -79,10 +80,31 @@ class HamiltonianTomographyCRLengthParameters(Parameters):
     """
 
     @property
-    def duration_range(self) -> np.ndarray:
+    def cr_duration_range(self) -> np.ndarray:
         """Duration range for CR pulses."""
         return np.arange(
             self.pulse_duration_start, self.pulse_duration_end, self.pulse_duration_step
+        )
+
+    def ro_delay_range(
+        self,
+        echo: bool,
+        cntl_setup: SetControl,
+        control: QubitId,
+        platform: CalibrationPlatform,
+    ) -> np.ndarray:
+        """Delay range for RO pulses."""
+
+        # add the duration of the pi-pulses if we are in echo mode or if we want to set the control to 1
+        echo_k = 1 + int(echo)
+        setup_k = 2 * int(echo) + int(cntl_setup == SetControl.X)
+
+        pi_pulse_duration = platform.natives.single_qubit[control].RX()[0].duration
+
+        return np.arange(
+            echo_k * self.pulse_duration_start + setup_k * pi_pulse_duration,
+            echo_k * self.pulse_duration_end + setup_k * pi_pulse_duration,
+            self.pulse_duration_step,
         )
 
 
@@ -91,6 +113,12 @@ class HamiltonianTomographyCRLengthResults(Results):
     """HamiltonianTomographyCRLength outputs."""
 
     echo: bool
+    control_amplitude: float
+    control_phase: float
+    target_amplitude: float
+    target_phase: float
+    cr_lengths: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
+    """Estimated durations of CR gate."""
     hamiltonian_terms: dict[tuple[QubitId, QubitId, HamiltonianTerm], float] = field(
         default_factory=dict
     )
@@ -99,12 +127,6 @@ class HamiltonianTomographyCRLengthResults(Results):
         default_factory=dict
     )
     """Fitted parameters from X,Y,Z expectation values."""
-    cr_lengths: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
-    """Estimated durations of CR gate."""
-    control_amplitude: float = 0
-    control_phase: float = 0
-    target_amplitude: float = 0
-    target_phase: float = 0
     native: Literal["CNOT"] = "CNOT"
     """Two qubit interaction to be calibrated."""
 
@@ -117,10 +139,10 @@ class HamiltonianTomographyCRLengthData(Data):
     """Data structure for CR length."""
 
     echo: bool
-    control_amplitude: float = 0
-    control_phase: float = 0
-    target_amplitude: float = 0
-    target_phase: float = 0
+    control_amplitude: float
+    control_phase: float
+    target_amplitude: float
+    target_phase: float
     data: dict[
         tuple[QubitId, QubitId, Basis, SetControl],
         npt.NDArray[HamiltonianTomographyCRLengthType],
@@ -148,49 +170,64 @@ def _acquisition(
 
     """
 
-    data = HamiltonianTomographyCRLengthData(echo=params.echo)
-    data.control_amplitude = params.pulse_amplitude
-    data.control_phase = params.phase
-    data.target_amplitude = params.target_amplitude
-    data.target_phase = params.target_phase
+    data = HamiltonianTomographyCRLengthData(
+        echo=params.echo,
+        control_amplitude=params.pulse_amplitude,
+        control_phase=params.phase,
+        target_amplitude=params.target_amplitude,
+        target_phase=params.target_phase,
+    )
 
     for pair in targets:
         control, target = pair
         pair = (control, target)
         for basis in Basis:
             for setup in SetControl:
-                sequence, cr_pulses, cr_target_pulses, delays = cr_sequence(
-                    platform=platform,
-                    control=control,
-                    target=target,
-                    amplitude=params.pulse_amplitude,
-                    phase=params.phase,
-                    target_amplitude=params.target_amplitude,
-                    target_phase=params.target_phase,
-                    duration=params.pulse_duration_end,
-                    interpolated_sweeper=params.interpolated_sweeper,
-                    echo=params.echo,
-                    setup=setup,
-                    basis=basis,
+                sequence, cr_pulses, cr_target_pulses, cr_delays, ro_delays = (
+                    cross_resonance_experiment(
+                        platform=platform,
+                        control=control,
+                        target=target,
+                        duration=params.pulse_duration_end,
+                        control_amplitude=params.pulse_amplitude,
+                        control_phase=params.phase,
+                        target_amplitude=params.target_amplitude,
+                        target_phase=params.target_phase,
+                        basis=basis,
+                        setup=setup,
+                        echo=params.echo,
+                        interpolated_sweeper=params.interpolated_sweeper,
+                    )
                 )
 
                 if params.interpolated_sweeper:
-                    sweeper = Sweeper(
+                    cr_sweeper = Sweeper(
                         parameter=Parameter.duration_interpolated,
-                        values=params.duration_range,
+                        values=params.cr_duration_range,
                         pulses=cr_pulses + cr_target_pulses,
                     )
+                    duration_parallel_sweeper = ParallelSweepers([cr_sweeper])
                 else:
-                    sweeper = Sweeper(
+                    cr_sweeper = Sweeper(
                         parameter=Parameter.duration,
-                        values=params.duration_range,
-                        pulses=cr_pulses + cr_target_pulses + delays,
+                        values=params.cr_duration_range,
+                        pulses=cr_pulses + cr_target_pulses + cr_delays,
+                    )
+                    ro_sweeper = Sweeper(
+                        parameter=Parameter.duration,
+                        values=params.ro_delay_range(
+                            params.echo, setup, control, platform
+                        ),
+                        pulses=ro_delays,
+                    )
+                    duration_parallel_sweeper = ParallelSweepers(
+                        [cr_sweeper, ro_sweeper]
                     )
 
                 updates = []
                 updates.append(
                     {
-                        platform.qubits[control].drive_extra[(1, 2)]: {
+                        platform.qubits[control].drive_extra[target]: {
                             "frequency": platform.config(
                                 platform.qubits[target].drive
                             ).frequency
@@ -200,7 +237,7 @@ def _acquisition(
 
                 results = platform.execute(
                     [sequence],
-                    [[sweeper]],
+                    [duration_parallel_sweeper],
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
                     acquisition_type=AcquisitionType.DISCRIMINATION,
@@ -221,7 +258,7 @@ def _acquisition(
                     HamiltonianTomographyCRLengthType,
                     (control, target, basis, setup),
                     dict(
-                        x=sweeper.values,
+                        x=cr_sweeper.values,
                         prob_target=1 - 2 * prob_target,
                         error_target=(
                             2 * np.sqrt(prob_target * (1 - prob_target) / params.nshots)
@@ -318,21 +355,18 @@ def _update(
 ):
     target = target[::-1] if target not in results.cr_lengths else target
 
-    cr_seq, _, _, _ = cr_sequence(
+    new_cr_seq, _, _, _ = cross_res_sequence(
         platform=platform,
         control=target[0],
         target=target[1],
-        amplitude=results.control_amplitude,
         duration=results.cr_lengths[target],
-        phase=results.control_phase,
+        control_amplitude=results.control_amplitude,
+        control_phase=results.control_phase,
         target_amplitude=results.target_amplitude,
         target_phase=results.target_phase,
         echo=results.echo,
-        setup=SetControl.Id,
-        basis=Basis.Z,
     )
 
-    new_cr_seq = cr_seq.filter_acquisition_probe_channels()
     new_cr_seq.insert(
         0,
         (
