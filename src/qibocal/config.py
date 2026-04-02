@@ -31,11 +31,21 @@ class CustomHandler(logging.StreamHandler):
         super().__init__()
         self.FORMATS = None
 
+    @staticmethod
+    def _qibocal_version():
+        """Return qibocal version without importing package root during init."""
+        try:
+            from qibocal.version import __version__
+
+            return __version__
+        except Exception:
+            return "unknown"
+
     def format(self, record):
         """Format the record with specific format."""
-        from qibocal import __version__
+        version = self._qibocal_version()
 
-        fmt = f"[Qibocal {__version__}|%(levelname)s|%(asctime)s]: %(message)s"
+        fmt = f"[Qibocal {version}|%(levelname)s|%(asctime)s]: %(message)s"
 
         grey = "\x1b[38;20m"
         green = "\x1b[92m"
