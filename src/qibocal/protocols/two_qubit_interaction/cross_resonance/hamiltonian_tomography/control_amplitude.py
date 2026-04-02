@@ -31,7 +31,7 @@ from .....auto.operation import (
 )
 from .....calibration import CalibrationPlatform
 from ....utils import table_dict, table_html
-from ..utils import Basis, SetControl, cr_sequence
+from ..utils import Basis, SetControl, cross_res_sequence, cross_resonance_experiment
 from .utils import (
     HamiltonianTerm,
     extract_hamiltonian_terms,
@@ -97,6 +97,8 @@ class HamiltonianTomographyCRAmplResults(Results):
     control_phase: float
     target_amplitude: float
     target_phase: float
+    cr_amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
+    """Estimated amplitudes of CR gate."""
     hamiltonian_terms: dict[
         tuple[QubitId, QubitId], list[tuple[float, dict[HamiltonianTerm, float]]]
     ] = field(default_factory=dict)
@@ -105,8 +107,6 @@ class HamiltonianTomographyCRAmplResults(Results):
         field(default_factory=dict)
     )
     """Fitted parameters for Hamiltonian Terms values for different amplitudes."""
-    cr_amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
-    """Estimated amplitudes of CR gate."""
     native: Literal["CNOT"] = "CNOT"
     """Two qubit interaction to be calibrated."""
 
@@ -168,6 +168,9 @@ def _acquisition(
     data = HamiltonianTomographyCRAmplData(
         echo=params.echo,
         cr_duration=params.pulse_duration,
+        control_phase=params.control_phase,
+        target_amplitude=params.target_amplitude,
+        target_phase=params.target_phase,
     )
 
     for pair in targets:
@@ -175,18 +178,18 @@ def _acquisition(
 
         for basis in Basis:
             for setup in SetControl:
-                sequence, cr_pulses, _, _ = cr_sequence(
+                sequence, cr_pulses, _, _ = cross_resonance_experiment(
                     platform=platform,
                     control=control,
                     target=target,
                     duration=params.pulse_duration,
-                    amplitude=params.control_ampl_end,
-                    phase=params.control_phase,
+                    control_amplitude=params.control_ampl_end,
+                    control_phase=params.control_phase,
                     target_amplitude=params.target_amplitude,
                     target_phase=params.target_phase,
-                    echo=params.echo,
-                    setup=setup,
                     basis=basis,
+                    setup=setup,
+                    echo=params.echo,
                 )
 
                 amp_sweeper = Sweeper(
@@ -326,21 +329,18 @@ def _update(
 ):
     target = target[::-1] if target not in results.cr_amplitudes else target
 
-    cr_seq, _, _, _ = cr_sequence(
+    new_cr_seq, _, _, _ = cross_res_sequence(
         platform=platform,
         control=target[0],
         target=target[1],
-        amplitude=results.cr_amplitudes[target],
         duration=results.cr_duration,
-        phase=results.control_phase,
+        control_amplitude=results.cr_amplitudes[target],
+        control_phase=results.control_phase,
         target_amplitude=results.target_amplitude,
         target_phase=results.target_phase,
         echo=results.echo,
-        setup=SetControl.Id,
-        basis=Basis.Z,
     )
 
-    new_cr_seq = cr_seq.filter_acquisition_probe_channels()
     new_cr_seq.insert(
         0,
         (
