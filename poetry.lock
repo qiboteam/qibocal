@@ -1847,24 +1847,28 @@ qulacs = ["qulacs (>=0.6.4,<0.7.0)"]
 
 [[package]]
 name = "qibolab"
-version = "0.2.12"
+version = "0.2.13"
 description = "Quantum hardware module and drivers for Qibo"
 optional = false
-python-versions = "<3.14,>=3.10"
-files = [
-    {file = "qibolab-0.2.12-py3-none-any.whl", hash = "sha256:f83facea0504ccd226247db51a2f7abb0fff3cee4eb0670862d2fe19fa92bce9"},
-    {file = "qibolab-0.2.12.tar.gz", hash = "sha256:24de1aceceb91fe3553034812affd4bd1d12ab3865ca64a3e1bc3a67337099ad"},
-]
+python-versions = ">=3.10,<3.14"
+files = []
+develop = false
 
 [package.dependencies]
 numpy = ">=1.26.4,<3"
-pydantic = ">=2.4.0,<3.0.0"
-scipy = ">=1.13.0,<2.0.0"
+pydantic = "^2.4.0"
+scipy = "^1.13.0"
 
 [package.extras]
 backend = ["qibo (>=0.3.0,<0.4.0)"]
 emulator = ["qutip (>=5.0.2,<6.0.0)"]
 qrng = ["pyserial (>=3.5,<4.0)"]
+
+[package.source]
+type = "git"
+url = "https://github.com/qiboteam/qibolab"
+reference = "HEAD"
+resolved_reference = "6aa585bfc75f3ce7351f1302826d190abf65a107"
 
 [[package]]
 name = "recommonmark"
@@ -2667,4 +2671,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.14"
-content-hash = "71e0829616e81524fd54adafeb1c6051816b42807a66bd551f887606c7b71c6f"
+content-hash = "bc331f30b5584c66ecded0f9ad6c761f6b091c6759f9ab6fe117e0efee051862"
