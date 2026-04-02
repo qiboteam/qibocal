@@ -30,7 +30,13 @@ from .....auto.operation import (
 )
 from .....calibration import CalibrationPlatform
 from ....utils import table_dict, table_html
-from ..utils import Basis, SetControl, cr_sequence, retrieve_cr_parameters
+from ..utils import (
+    Basis,
+    SetControl,
+    cross_res_sequence,
+    cross_resonance_experiment,
+    retrieve_cr_parameters,
+)
 from .length import HamiltonianTomographyCRLengthData
 from .utils import (
     HamiltonianTerm,
@@ -232,18 +238,21 @@ def _acquisition(
 
         for basis in Basis:
             for setup in SetControl:
-                sequence, cr_pulses, cr_target_pulses, delays = cr_sequence(
-                    platform=platform,
-                    control=control,
-                    target=target,
-                    amplitude=control_amplitude,
-                    phase=control_phase,
-                    target_amplitude=params.target_ampl_end,
-                    target_phase=target_phase,
-                    duration=params.pulse_duration_end,
-                    echo=params.echo,
-                    setup=setup,
-                    basis=basis,
+                sequence, cr_pulses, cr_target_pulses, delays = (
+                    cross_resonance_experiment(
+                        platform=platform,
+                        control=control,
+                        target=target,
+                        duration=params.pulse_duration_end,
+                        control_amplitude=control_amplitude,
+                        control_phase=control_phase,
+                        target_amplitude=params.target_ampl_end,
+                        target_phase=target_phase,
+                        basis=basis,
+                        setup=setup,
+                        echo=params.echo,
+                        interpolated_sweeper=params.interpolated_sweeper,
+                    )
                 )
 
                 if params.interpolated_sweeper:
@@ -410,18 +419,16 @@ def _update(
     control_phase = cr_pulse["relative_phase"]
     target_phase = canc_pulse["relative_phase"]
 
-    cr_seq, _, _, _ = cr_sequence(
+    cr_seq, _, _, _ = cross_res_sequence(
         platform=platform,
         control=target[0],
         target=target[1],
-        amplitude=control_amplitude,
         duration=gate_duration,
-        phase=control_phase,
-        target_ampl_start=results.cancellation_pulse_amplitudes[target]["ampl_iy"],
+        control_amplitude=control_amplitude,
+        control_phase=control_phase,
+        target_amplitude=results.cancellation_pulse_amplitudes[target]["ampl_iy"],
         target_phase=target_phase,
         echo=results.echo,
-        setup=SetControl.Id,
-        basis=Basis.Z,
     )
 
     new_cr_seq = cr_seq.filter_acquisition_probe_channels()

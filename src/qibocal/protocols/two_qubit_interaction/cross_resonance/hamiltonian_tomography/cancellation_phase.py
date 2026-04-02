@@ -30,7 +30,13 @@ from .....auto.operation import (
 )
 from .....calibration import CalibrationPlatform
 from ....utils import table_dict, table_html
-from ..utils import Basis, SetControl, cr_sequence, retrieve_cr_parameters
+from ..utils import (
+    Basis,
+    SetControl,
+    cross_res_sequence,
+    cross_resonance_experiment,
+    retrieve_cr_parameters,
+)
 from .length import HamiltonianTomographyCRLengthData
 from .utils import (
     HamiltonianTerm,
@@ -231,18 +237,21 @@ def _acquisition(
 
         for basis in Basis:
             for setup in SetControl:
-                sequence, cr_pulses, cr_target_pulses, delays = cr_sequence(
-                    platform=platform,
-                    control=control,
-                    target=target,
-                    amplitude=control_amplitude,
-                    phase=params.control_phase_end,
-                    target_amplitude=target_amplitude,
-                    target_phase=target_phase,
-                    duration=params.pulse_duration_end,
-                    echo=params.echo,
-                    setup=setup,
-                    basis=basis,
+                sequence, cr_pulses, cr_target_pulses, delays = (
+                    cross_resonance_experiment(
+                        platform=platform,
+                        control=control,
+                        target=target,
+                        duration=params.pulse_duration_end,
+                        control_amplitude=control_amplitude,
+                        control_phase=params.control_phase_end,
+                        target_amplitude=target_amplitude,
+                        target_phase=target_phase,
+                        basis=basis,
+                        setup=setup,
+                        echo=params.echo,
+                        interpolated_sweeper=params.interpolated_sweeper,
+                    )
                 )
 
                 if params.interpolated_sweeper:
@@ -290,7 +299,7 @@ def _acquisition(
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
                     acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=AveragingMode.SINGLESHOT,
+                    averaging_mode=AveragingMode.CYCLIC,
                     updates=updates,
                 )
                 target_acq_handle = list(
@@ -415,21 +424,18 @@ def _update(
     control_amplitude = cr_pulse["amplitude"]
     target_amplitude = canc_pulse["amplitude"]
 
-    cr_seq, _, _, _ = cr_sequence(
+    new_cr_seq, _, _, _ = cross_res_sequence(
         platform=platform,
         control=target[0],
         target=target[1],
-        amplitude=control_amplitude,
         duration=gate_duration,
-        phase=results.cancellation_pulse_phases[target]["control"],
+        control_amplitude=control_amplitude,
+        control_phase=results.cancellation_pulse_phases[target]["control"],
         target_amplitude=target_amplitude,
         target_phase=results.cancellation_pulse_phases[target]["target"],
         echo=results.echo,
-        setup=SetControl.Id,
-        basis=Basis.Z,
     )
 
-    new_cr_seq = cr_seq.filter_acquisition_probe_channels()
     new_cr_seq.insert(
         0,
         (
