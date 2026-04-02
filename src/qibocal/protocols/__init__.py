@@ -1,5 +1,3 @@
-from qibocal.config import log
-
 from . import (
     allxy,
     classification,
@@ -45,15 +43,10 @@ from .twpa import *
 try:
     from . import calibrate_mixers
     from .calibrate_mixers import *
-except ModuleNotFoundError as exc:
+except ModuleNotFoundError as e:
     # Keep protocols importable when optional Qblox dependencies are absent.
-    if exc.name != "qblox_instruments":
+    if e.name != "qblox_instruments":
         raise
-    log.warning(
-        "Skipping calibrate_mixers import because the optional qblox_instruments "
-        "dependency is not installed. While optional, it is required for the mixer "
-        "calibration protocol."
-    )
 
 __all__ = []
 __all__ += ["allxy"]
