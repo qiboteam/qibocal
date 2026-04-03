@@ -3,8 +3,6 @@ from .chsh import chsh
 from .cross_resonance import (
     cr_crosstalk_amplitude,
     cr_crosstalk_length,
-    cross_resonance_amplitude,
-    cross_resonance_length,
     hamiltonian_tomography_canc_amplitude,
     hamiltonian_tomography_canc_phase,
     hamiltonian_tomography_cr_amplitude,
@@ -21,15 +19,11 @@ __all__ += ["chevron", "chevron_signal"]
 __all__ += ["optimize_two_qubit_gate", "correct_virtual_z_phases"]
 __all__ += ["snz_optimize", "snz_optimize_t_idle", "snz_optimize_t_idle_vs_t_tot"]
 __all__ += [
-    "cross_resonance_amplitude",
     "hamiltonian_tomography_cr_length",
     "hamiltonian_tomography_cr_amplitude",
-    "cross_resonance_length",
     "hamiltonian_tomography_canc_amplitude",
     "hamiltonian_tomography_canc_phase",
     "cr_crosstalk_amplitude",
     "cr_crosstalk_length",
 ]
 __all__ += ["chsh"]
-__all__ += ["cross_resonance_length", "cross_resonance_amplitude"]
-__all__ += ["hamiltonian_tomography_cr_length", "hamiltonian_tomography_cr_amplitude"]
