@@ -1,32 +1,50 @@
-"""Protocol to measure CR interaction varying drive amplitude."""
+"""Hamiltonian tomography protocol for CR gate calibration.
 
-from dataclasses import dataclass, field
+This protocol computes the expectation values for X, Y and Z for the target qubit after the application of a cross resonance sequence.
+The CR pulses are played on the control drive channel with frequency set to the frequency of the target drive channel.
+"""
+
+from dataclasses import dataclass
 
 import numpy as np
-import numpy.typing as npt
 from qibolab import (
     AcquisitionType,
     AveragingMode,
+    ParallelSweepers,
     Parameter,
     Sweeper,
+    VirtualZ,
 )
 from scipy.constants import kilo
 
-from ....auto.operation import (
-    Data,
-    Parameters,
-    QubitId,
+from qibocal import update
+from qibocal.auto.operation import (
     QubitPairId,
-    Results,
     Routine,
 )
-from ....calibration import CalibrationPlatform
-from ....result import probability
-from ...rabi.utils import fit_length_function, rabi_length_function
-from ...utils import table_dict, table_html
-from .utils import SetControl, cr_fit, cr_plot, cr_sequence
+from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.utils import table_dict, table_html
 
-CrossResonanceLengthType = np.dtype(
+from .ham_tomography_utils import (
+    HamiltonianTerm,
+    HamiltonianTomographyData,
+    HamiltonianTomographyParameters,
+    HamiltonianTomographyResults,
+    extract_hamiltonian_terms,
+    tomography_cr_fit,
+    tomography_cr_plot,
+)
+from .utils import (
+    Basis,
+    SetControl,
+    cross_res_sequence,
+    cross_resonance_experiment,
+    ro_delay_range,
+)
+
+__all__ = ["hamiltonian_tomography_cr_length"]
+
+HamiltonianTomographyCRLengthType = np.dtype(
     [
         ("prob_target", np.float64),
         ("error_target", np.float64),
@@ -38,244 +56,274 @@ CrossResonanceLengthType = np.dtype(
 """Custom dtype for CR length."""
 
 
-@dataclass
-class CrossResonanceLengthParameters(Parameters):
-    """CrossResonanceLength runcard inputs."""
+@dataclass(kw_only=True)
+class HamiltonianTomographyCRLengthParameters(HamiltonianTomographyParameters):
+    """HamiltonianTomographyCRLength runcard inputs."""
 
-    pulse_duration_start: float
-    """Initial pi pulse duration [ns]."""
-    pulse_duration_end: float
-    """Final pi pulse duration [ns]."""
-    pulse_duration_step: float
-    """Step pi pulse duration [ns]."""
     pulse_amplitude: float
     """CR pulse amplitude"""
-    interpolated_sweeper: bool = False
-    """Use real-time interpolation if supported by instruments."""
-    echo: bool = False
-    """Apply echo sequence or not."""
-
-    @property
-    def duration_range(self):
-        return np.arange(
-            self.pulse_duration_start, self.pulse_duration_end, self.pulse_duration_step
-        )
+    phase: float = 0.0
+    """Phase of CR pulse."""
+    target_amplitude: float = 0
+    """Amplitude of cancellation pulse."""
+    target_phase: float = 0
+    """Phase of target pulse."""
 
 
-@dataclass
-class CrossResonanceLengthResults(Results):
-    """CrossResonanceLength outputs."""
+@dataclass(kw_only=True)
+class HamiltonianTomographyCRLengthResults(HamiltonianTomographyResults):
+    """HamiltonianTomographyCRLength outputs."""
 
-    effective_coupling: dict[tuple[QubitId, QubitId], float] = field(
-        default_factory=dict
-    )
-    fitted_parameters: dict[tuple[QubitPairId, str], list] = field(default_factory=dict)
-
-    def __contains__(self, pair: QubitPairId):
-        return all(key[:2] == pair for key in list(self.fitted_parameters))
+    control_amplitude: float = 0
+    control_phase: float = 0
+    target_amplitude: float = 0
+    target_phase: float = 0
 
 
-@dataclass
-class CrossResonanceLengthData(Data):
+@dataclass(kw_only=True)
+class HamiltonianTomographyCRLengthData(HamiltonianTomographyData):
     """Data structure for CR length."""
 
-    anharmonicity: dict[QubitPairId, float] = field(default_factory=dict)
-    detuning: dict[QubitPairId, float] = field(default_factory=dict)
-    data: dict[tuple[QubitId, QubitId, str], npt.NDArray[CrossResonanceLengthType]] = (
-        field(default_factory=dict)
-    )
-    """Raw data acquired."""
-
-    @property
-    def pairs(self):
-        return {(i[0], i[1]) for i in self.data}
+    control_amplitude: float
+    control_phase: float
+    target_amplitude: float
+    target_phase: float
 
 
 def _acquisition(
-    params: CrossResonanceLengthParameters,
+    params: HamiltonianTomographyCRLengthParameters,
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
-) -> CrossResonanceLengthData:
-    """Data acquisition for cross resonance protocol."""
+) -> HamiltonianTomographyCRLengthData:
+    """Data acquisition for Hamiltonian tomography CR protocol.
 
-    data = CrossResonanceLengthData()
+    We measure the expectation values X,Y and Z on the target qubit after
+    applying the CR sequence specified by the input parameters. We repeat the
+    measurement twice for each target qubit, once with the control qubit in state 0
+    and once with the control qubit in state 1.
+
+    We store the probability of the control qubit and the expectation value of the target qubit.
+
+    """
+
+    data = HamiltonianTomographyCRLengthData(
+        echo=params.echo,
+        control_amplitude=params.pulse_amplitude,
+        control_phase=params.phase,
+        target_amplitude=params.target_amplitude,
+        target_phase=params.target_phase,
+    )
 
     for pair in targets:
         control, target = pair
-        pair = (control, target)
-        data.detuning[pair] = (
-            platform.config(platform.qubits[control].drive).frequency
-            - platform.config(platform.qubits[target].drive).frequency
-        )
-        data.anharmonicity[pair] = platform.calibration.single_qubits[
-            control
-        ].qubit.anharmonicity
-        for setup in SetControl:
-            sequence, cr_pulses, cr_target_pulses, delays = cr_sequence(
-                platform=platform,
-                control=control,
-                target=target,
-                amplitude=params.pulse_amplitude,
-                duration=params.pulse_duration_end,
-                interpolated_sweeper=params.interpolated_sweeper,
-                echo=params.echo,
-                setup=setup,
-            )
-
-            if params.interpolated_sweeper:
-                sweeper = Sweeper(
-                    parameter=Parameter.duration_interpolated,
-                    values=params.duration_range,
-                    pulses=cr_pulses + cr_target_pulses,
-                )
-            else:
-                sweeper = Sweeper(
-                    parameter=Parameter.duration,
-                    values=params.duration_range,
-                    pulses=cr_pulses + cr_target_pulses + delays,
+        for basis in Basis:
+            for setup in SetControl:
+                sequence, cr_pulses, cr_target_pulses, cr_delays, ro_delays = (
+                    cross_resonance_experiment(
+                        platform=platform,
+                        control=control,
+                        target=target,
+                        duration=params.pulse_duration_end,
+                        control_amplitude=params.pulse_amplitude,
+                        control_phase=params.phase,
+                        target_amplitude=params.target_amplitude,
+                        target_phase=params.target_phase,
+                        basis=basis,
+                        setup=setup,
+                        echo=params.echo,
+                        interpolated_sweeper=params.interpolated_sweeper,
+                    )
                 )
 
-            try:
-                cr_frequency = {
-                    platform.qubits[control].drive_extra[target]: {
-                        "frequency": platform.config(
-                            platform.qubits[target].drive
-                        ).frequency
+                if params.interpolated_sweeper:
+                    cr_sweeper = Sweeper(
+                        parameter=Parameter.duration_interpolated,
+                        values=params.duration_range,
+                        pulses=cr_pulses + cr_target_pulses,
+                    )
+                    duration_parallel_sweeper = ParallelSweepers([cr_sweeper])
+                else:
+                    cr_sweeper = Sweeper(
+                        parameter=Parameter.duration,
+                        values=params.duration_range,
+                        pulses=cr_pulses + cr_target_pulses + cr_delays,
+                    )
+                    ro_sweeper = Sweeper(
+                        parameter=Parameter.duration,
+                        values=ro_delay_range(
+                            cr_pulse_duration_range=params.duration_range,
+                            echo=params.echo,
+                            cntl_setup=setup,
+                            control=control,
+                            platform=platform,
+                        ),
+                        pulses=ro_delays,
+                    )
+                    duration_parallel_sweeper = ParallelSweepers(
+                        [cr_sweeper, ro_sweeper]
+                    )
+
+                updates = []
+                updates.append(
+                    {
+                        platform.qubits[control].drive_extra[target]: {
+                            "frequency": platform.config(
+                                platform.qubits[target].drive
+                            ).frequency
+                        }
                     }
-                }
-                target_offset_sweeper = control_offset_sweeper = None
-            except Exception:
-                cr_frequency = {
-                    platform.qubits[control].drive_extra[(1, 2)]: {
-                        "frequency": platform.config(
-                            platform.qubits[target].drive
-                        ).frequency
-                    }
-                }
-                target_channel = platform.qubits[target].flux
-                target_offset = platform.config(target_channel).offset
-                target_offset_sweeper = Sweeper(
-                    parameter=Parameter.offset,
-                    values=np.array([target_offset]),
-                    channels=[target_channel],
-                )
-                control_channel = platform.qubits[control].flux
-                control_offset = platform.config(control_channel).offset
-                control_offset_sweeper = Sweeper(
-                    parameter=Parameter.offset,
-                    values=np.array([control_offset]),
-                    channels=[control_channel],
                 )
 
-            updates = []
-            updates.append(cr_frequency)
-
-            if target_offset_sweeper is not None:
-                # execute the sweep
                 results = platform.execute(
                     [sequence],
-                    [[target_offset_sweeper], [control_offset_sweeper], [sweeper]],
+                    [duration_parallel_sweeper],
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
                     acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=AveragingMode.SINGLESHOT,
+                    averaging_mode=AveragingMode.CYCLIC,
                     updates=updates,
                 )
-            else:
-                # execute the sweep
-                results = platform.execute(
-                    [sequence],
-                    [[sweeper]],
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=AveragingMode.SINGLESHOT,
-                    updates=updates,
+                target_acq_handle = list(
+                    sequence.channel(platform.qubits[target].acquisition)
+                )[-1].id
+                control_acq_handle = list(
+                    sequence.channel(platform.qubits[control].acquisition)
+                )[-1].id
+
+                prob_target = results[target_acq_handle].ravel()
+                prob_control = results[control_acq_handle].ravel()
+
+                data.register_qubit(
+                    HamiltonianTomographyCRLengthType,
+                    (control, target, basis, setup),
+                    dict(
+                        x=cr_sweeper.values,
+                        prob_target=1 - 2 * prob_target,
+                        error_target=(
+                            2 * np.sqrt(prob_target * (1 - prob_target) / params.nshots)
+                        ).tolist(),
+                        prob_control=prob_control,
+                        error_control=np.sqrt(
+                            prob_control * (1 - prob_control) / params.nshots
+                        ).tolist(),
+                    ),
                 )
 
-            target_acq_handle = list(
-                sequence.channel(platform.qubits[target].acquisition)
-            )[-1].id
-            control_acq_handle = list(
-                sequence.channel(platform.qubits[control].acquisition)
-            )[-1].id
-            prob_target = probability(results[target_acq_handle], state=1)
-            prob_control = probability(results[control_acq_handle], state=1)
-
-            if target_offset_sweeper is not None:
-                prob_target = prob_target[0][0]
-                prob_control = prob_control[0][0]
-
-            data.register_qubit(
-                CrossResonanceLengthType,
-                (control, target, setup),
-                dict(
-                    x=sweeper.values,
-                    prob_target=prob_target,
-                    error_target=np.sqrt(
-                        prob_target * (1 - prob_target) / params.nshots
-                    ).tolist(),
-                    prob_control=prob_control,
-                    error_control=np.sqrt(
-                        prob_control * (1 - prob_control) / params.nshots
-                    ).tolist(),
-                ),
-            )
-    # finally, save the remaining data
     return data
 
 
 def _fit(
-    data: CrossResonanceLengthData,
-) -> CrossResonanceLengthResults:
-    """Post-processing function for CrossResonanceLength.
+    data: HamiltonianTomographyCRLengthData,
+) -> HamiltonianTomographyCRLengthResults:
+    """Post-processing function for HamiltonianTomographyCRLength.
 
-    After fitting the data with dumped cosine function, the effective coupling
-    is computed as specified in https://arxiv.org/pdf/1905.11480.
+    We fit the expectation values using the Eq. S10 from the paper https://arxiv.org/pdf/2303.01427.
+    Afterwards, we extract the Hamiltonian terms from the fitted parameters.
 
     """
-    fitted_parameters = cr_fit(data=data, fitting_function=fit_length_function)
-    effective_coupling = {}
+    fitted_parameters, cr_gate_lengths = tomography_cr_fit(
+        data=data,
+    )
+    hamiltonian_terms = {}
     for pair in data.pairs:
-        try:
-            effective_coupling[pair] = (
-                1 / fitted_parameters[pair[0], pair[1], SetControl.X][2]
-                - 1 / fitted_parameters[pair[0], pair[1], SetControl.Id][2]
-            ) / 2
-        except KeyError:  # pragma: no cover
-            pass
-    return CrossResonanceLengthResults(
-        effective_coupling=effective_coupling,
+        hamiltonian_terms |= extract_hamiltonian_terms(
+            pair=pair, fitted_parameters=fitted_parameters
+        )
+
+    return HamiltonianTomographyCRLengthResults(
+        echo=data.echo,
+        hamiltonian_terms=hamiltonian_terms,
         fitted_parameters=fitted_parameters,
+        cr_lengths=cr_gate_lengths,
+        control_amplitude=data.control_amplitude,
+        control_phase=data.control_phase,
+        target_amplitude=data.target_amplitude,
+        target_phase=data.target_phase,
     )
 
 
 def _plot(
-    data: CrossResonanceLengthData,
+    data: HamiltonianTomographyCRLengthData,
     target: QubitPairId,
-    fit: CrossResonanceLengthResults,
+    fit: HamiltonianTomographyCRLengthResults,
 ):
-    """Plotting function for CrossResonanceLength."""
-    figs, fitting_report = cr_plot(
-        data=data, target=target, fit=fit, fitting_function=rabi_length_function
+    """Plotting function for HamiltonianTomographyCRLength."""
+    figs, fitting_report = tomography_cr_plot(data, target, fit)
+    figs[0].update_layout(
+        xaxis3_title="CR pulse length [ns]",
     )
+
     if fit is not None:
         fitting_report = table_html(
             table_dict(
-                [target],
-                [
-                    "Effective coupling [MHz]",
-                ],
-                [fit.effective_coupling[target] * kilo],
+                11 * [target],
+                (
+                    [f"{term.name} [MHz]" for term in HamiltonianTerm]
+                    + [
+                        "CR duration (ns)",
+                        "Control amplitude (a.u.)",
+                        "Control phase (rad)",
+                        "Target amplitude (a.u.)",
+                        "Target phase (rad)",
+                    ]
+                ),
+                (
+                    [
+                        fit.hamiltonian_terms[target[0], target[1], term] * kilo
+                        for term in HamiltonianTerm
+                    ]
+                    + [fit.cr_lengths[target] if target in fit.cr_lengths else None]
+                    + [
+                        fit.control_amplitude,
+                        fit.control_phase,
+                        fit.target_amplitude,
+                        fit.target_phase,
+                    ]
+                ),
             )
         )
-
-    figs[0].update_layout(
-        xaxis_title="Cross resonance pulse duration [ns]",
-        yaxis_title="Excited state population",
-    )
+    else:
+        fitting_report = ""
     return figs, fitting_report
 
 
-cross_resonance_length = Routine(_acquisition, _fit, _plot)
-"""CrossResonance Routine object."""
+def _update(
+    results: HamiltonianTomographyCRLengthResults,
+    platform: CalibrationPlatform,
+    target: QubitPairId,
+):
+    target = target[::-1] if target not in results.cr_lengths else target
+
+    new_cr_seq, _, _, _ = cross_res_sequence(
+        platform=platform,
+        control=target[0],
+        target=target[1],
+        duration=results.cr_lengths[target],
+        control_amplitude=results.control_amplitude,
+        control_phase=results.control_phase,
+        target_amplitude=results.target_amplitude,
+        target_phase=results.target_phase,
+        echo=results.echo,
+    )
+
+    new_cr_seq.insert(
+        0,
+        (
+            platform.qubits[target[1]].drive,
+            platform.natives.single_qubit[target[1]].R(theta=np.pi / 2, phi=0)[0][1],
+        ),
+    )
+    new_cr_seq.insert(0, (platform.qubits[target[0]].drive, VirtualZ(phase=np.pi / 2)))
+
+    getattr(update, f"{results.native.lower()}_sequence")(new_cr_seq, platform, target)
+
+
+hamiltonian_tomography_cr_length = Routine(
+    _acquisition, _fit, _plot, _update, two_qubit_gates=True
+)
+"""HamiltonianTomographyCRLength Routine object."""
+
+"""
+Check http://login.qrccluster.com:9000/u7Xw0C4_Rti6s2JdJ_HI4g== for a good experiment result found on emulator with 1% of classical crosstalk between
+the two qubits.
+"""
