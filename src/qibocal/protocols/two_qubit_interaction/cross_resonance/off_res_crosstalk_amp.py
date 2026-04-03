@@ -17,8 +17,7 @@ from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routi
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.rabi import utils as rabi_utils
-
-from ...utils import (
+from qibocal.protocols.utils import (
     COLORBAND,
     COLORBAND_LINE,
     chi2_reduced,

@@ -1,8 +1,10 @@
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, Optional, Union
+from typing import Any, Callable, Literal, Union
 
 import numpy as np
 import plotly.graph_objects as go
+from numpy.typing import NDArray
 from plotly.subplots import make_subplots
 from scipy.optimize import (
     Bounds,
@@ -12,17 +14,24 @@ from scipy.optimize import (
     minimize,
 )
 
-from .....auto.operation import (
+from qibocal.auto.operation import (
     Data,
+    Parameters,
     QubitId,
     QubitPairId,
+    Results,
 )
-from .....config import log
-from ....utils import angle_wrap, quinn_fernandes_algorithm, table_dict, table_html
-from ..utils import Basis, SetControl
-from . import fitting
+from qibocal.config import log
+from qibocal.protocols.utils import (
+    angle_wrap,
+    quinn_fernandes_algorithm,
+    table_dict,
+    table_html,
+)
 
-EPS = 1e-15
+from . import fitting
+from .utils import Basis, SetControl
+
 QUANTILE_CONSTANT = 1.5
 
 
@@ -37,12 +46,75 @@ class HamiltonianTerm(str, Enum):
     ZZ = "ZZ"
 
 
+@dataclass
+class HamiltonianTomographyParameters(Parameters):
+    """Parent class for parameters in all time-sweeping hamiltonian tomography experiments."""
+
+    pulse_duration_start: float
+    """Initial duration of CR pulse [ns]."""
+    pulse_duration_end: float
+    """Final duration of CR pulse [ns]."""
+    pulse_duration_step: float
+    """Step CR pulse duration [ns]."""
+    echo: bool = False
+    """Apply echo sequence or not.
+
+    The ECR is described in https://arxiv.org/pdf/1210.7011
+    """
+    interpolated_sweeper: bool = False
+    """Use real-time interpolation if supported by instruments."""
+
+    @property
+    def duration_range(self) -> NDArray:
+        """Duration range for CR pulses."""
+        return np.arange(
+            self.pulse_duration_start, self.pulse_duration_end, self.pulse_duration_step
+        )
+
+
+@dataclass
+class HamiltonianTomographyResults(Results):
+    """Results for Hamiltonian Tomography CR Length experiment."""
+
+    echo: bool
+    cr_lengths: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
+    """Estimated durations of CR gate."""
+    hamiltonian_terms: dict[tuple[QubitId, QubitId, HamiltonianTerm], float] = field(
+        default_factory=dict
+    )
+    """Terms in effective Hamiltonian."""
+    fitted_parameters: dict[tuple[QubitId, QubitId, Basis, SetControl], list] = field(
+        default_factory=dict
+    )
+    """Fitted parameters from X,Y,Z expectation values."""
+    native: Literal["CNOT"] = "CNOT"
+    """Two qubit interaction to be calibrated."""
+
+    def __contains__(self, pair: QubitPairId) -> bool:
+        return all(key[:2] == pair for key in list(self.fitted_parameters))
+
+
+@dataclass
+class HamiltonianTomographyData(Data):
+    """Data for Hamiltonian Tomography CR Amplitude experiment."""
+
+    echo: bool
+    data: dict[tuple[QubitId, QubitId, Basis, SetControl], Any] = field(
+        default_factory=dict
+    )
+    """Raw data acquired."""
+
+    @property
+    def pairs(self):
+        return {(i[0], i[1]) for i in self.data}
+
+
 def dynamic_evolution_optimizer(
-    signals_id: np.ndarray,
-    x: np.ndarray,
+    signals_id: NDArray,
+    x: NDArray,
     init_omega_guess: float,
     use_constraints: bool = False,
-) -> np.ndarray:
+) -> NDArray:
     """Optimizer for sinusoidal fitting; it exploits evolution algorithm to find the best fit parameters.
     This algorithm is a gradient-free optimization, hence might be less affected by local minima in the cost
     function landscape, but it can be computationally expensive, especially for large datasets or complex models.
@@ -73,10 +145,10 @@ def dynamic_evolution_optimizer(
 
 
 def scipy_curve_fit_optimizer(
-    concatenated_signal: np.ndarray,
-    vector_x: np.ndarray,
+    concatenated_signal: NDArray,
+    vector_x: NDArray,
     init_omega_guess: float,
-) -> np.ndarray:
+) -> NDArray:
     """Optimizer for sinusoidal fitting; it exploits gradient-based algorithms to find the best fit parameters.
     This algorithm is a gradient-base optimization, hence might be affected by local minima in the cost
     function landscape when dealing with sinusoidal functions due to their periodicity.
@@ -107,7 +179,7 @@ def scipy_curve_fit_optimizer(
 
 def numerical_root_finder(
     root_func: Callable[..., float],
-    x_range: np.ndarray | list[float | int],
+    x_range: NDArray | list[float | int],
     tol: float,
     **kwargs,
 ):
@@ -149,7 +221,7 @@ def compute_total_expectation_value(
         "HamiltonianTomographyCRAmplData",  # noqa: F821
     ],
     pair: QubitPairId,
-) -> np.ndarray:
+) -> NDArray:
     """Given a Qubit Pair :data:`pair`=(control, target), it computes the expectation
     values for each Pauli Basis for the target qubit.
     """
@@ -164,8 +236,8 @@ def compute_total_expectation_value(
 
 
 def bloch_func(
-    x: list[float | int] | np.ndarray, pair: QubitPairId, fitted_parameters: dict
-) -> np.ndarray:
+    x: list[float | int] | NDArray, pair: QubitPairId, fitted_parameters: dict
+) -> NDArray:
     """Given the fitted parameters for the target's Pauli expectation values
     for either control qubit in |0> or in |1>, computes the estimated Bloch vector.
     """
@@ -187,7 +259,7 @@ def compute_bloch_vector(
     ],
     pair: QubitPairId,
     fitted_parameters: dict | None = None,
-) -> tuple[np.ndarray, np.ndarray | None]:
+) -> tuple[NDArray, NDArray | None]:
     """For a given qubit pair :data:`pair`, it computes the Bloch vector R for each data point and
     also estimates the Bloch vector using the fitted parameters of the Hamiltonian Tomography.
     See `arXiv:1603.04821 <https://arxiv.org/abs/1603.04821>`__ for further information.
@@ -207,11 +279,8 @@ def compute_bloch_vector(
 
 
 def estimate_cr_param(
-    x_range: np.ndarray,
-    data: Union[
-        "HamiltonianTomographyCRLengthData",  # noqa: F821
-        "HamiltonianTomographyCRAmplData",  # noqa: F821
-    ],
+    x_range: NDArray,
+    data: HamiltonianTomographyData,
     pair: QubitPairId,
     fitted_parameters: dict,
     tol: float = 1e-6,
@@ -242,15 +311,15 @@ def estimate_cr_param(
         idx = np.argmin(bloch_data)
         param = x_range[idx]
 
-    if type(data).__name__ == "HamiltonianTomographyCRLengthData":
+    if type(data).__name__ == "HamiltonianTomographyCRAmplData":
         # time duration must be integer
-        return int(param)
+        return float(param)
 
-    return float(param)
+    return int(param)
 
 
 def tune_cancellation_sequence(
-    x: list[float | int] | np.ndarray,
+    x: list[float | int] | NDArray,
     function_to_tune: Callable[..., float],
     interactions_to_analyze: list[HamiltonianTerm],
     ham_term: dict,
@@ -297,7 +366,7 @@ def tune_cancellation_sequence(
 
 
 def estimate_cancellation_amplitudes(
-    amplitudes: list[float | int] | np.ndarray,
+    amplitudes: list[float | int] | NDArray,
     ham_term: dict,
     ampl_params: dict,
     tol: float = 1e-6,
@@ -326,7 +395,7 @@ def estimate_cancellation_amplitudes(
 
 
 def estimate_cr_phases(
-    phases: list[float | int] | np.ndarray,
+    phases: list[float | int] | NDArray,
     ham_term: dict,
     phase_params: dict,
     tol: float = 1e-6,
@@ -367,14 +436,11 @@ def estimate_cr_phases(
 
 
 def tomography_cr_fit(
-    data: Union[
-        "HamiltonianTomographyCRLengthData",  # noqa: F821
-        "HamiltonianTomographyCRAmplData",  # noqa: F821
-    ],
+    data: HamiltonianTomographyData,
     fit_with_evolution: bool = False,
 ) -> tuple[
     dict[tuple[QubitId, QubitId, SetControl], list[float]],
-    dict[tuple[QubitId, QubitId], int],
+    dict[tuple[QubitId, QubitId], int | float],
 ]:
     """Fit Hamiltonian tomography data for cross-resonance gates.
 
@@ -493,8 +559,8 @@ def reconstruct_full_hamiltonian_terms(
 
 
 def amp_tom_fit(
-    x: list[float | int] | np.ndarray,
-    y: list[float | int] | np.ndarray,
+    x: list[float | int] | NDArray,
+    y: list[float | int] | NDArray,
     q_pair: QubitPairId,
     term: HamiltonianTerm,
     result_dict: dict[HamiltonianTerm, dict[str, float]],
@@ -593,8 +659,8 @@ def cancellation_amplitude_fit(
 
 
 def phase_tom_fit(
-    x: list[float | int] | np.ndarray,
-    y: list[float | int] | np.ndarray,
+    x: list[float | int] | NDArray,
+    y: list[float | int] | NDArray,
     q_pair: QubitPairId,
     term: HamiltonianTerm,
     result_dict: dict[HamiltonianTerm, dict[str, float]],
@@ -705,17 +771,9 @@ def cancellation_phase_fit(
 
 
 def tomography_cr_plot(
-    data: Union[
-        "HamiltonianTomographyCRLengthData",  # noqa: F821
-        "HamiltonianTomographyCRAmplData",  # noqa: F821
-    ],
+    data: HamiltonianTomographyData,
     target: QubitPairId,
-    fit: Optional[
-        Union[
-            "HamiltonianTomographyCRLengthResults",  # noqa: F821
-            "HamiltonianTomographyCRAmplResults",  # noqa: F821
-        ]
-    ] = None,
+    fit: HamiltonianTomographyResults | None = None,
 ) -> tuple[list[go.Figure], str]:
     """Generate plots for Hamiltonian tomography experiment."""
 
@@ -782,14 +840,12 @@ def tomography_cr_plot(
                     col=1,
                 )
 
-                fit_dict = {}
-                if type(fit).__name__ == "HamiltonianTomographyCRLengthResults":
-                    fit_dict = fit.cr_lengths
-                    annotation = "CR gate duration [ns]"
-
                 if type(fit).__name__ == "HamiltonianTomographyCRAmplResults":
                     fit_dict = fit.cr_amplitudes
                     annotation = "CR gate amplitude [a.u.]"
+                else:
+                    fit_dict = fit.cr_lengths
+                    annotation = "CR gate duration [ns]"
 
                 if target in fit_dict:
                     fig.add_vline(
@@ -865,17 +921,9 @@ def tomography_cr_plot(
 
 
 def cancellation_calibration_plot(
-    data: Union[
-        "HamiltonianTomographyCANCAmplData",  # noqa: F821
-        "HamiltonianTomographyCANCPhaseData",  # noqa: F821
-    ],
+    data: HamiltonianTomographyData,
     target: QubitPairId,
-    fit: Optional[
-        Union[
-            "HamiltonianTomographyCANCAmplitudeResults",  # noqa: F821
-            "HamiltonianTomographyCANCPhaseResults",  # noqa: F821
-        ]
-    ] = None,
+    fit: HamiltonianTomographyResults | None = None,
 ) -> tuple[list[go.Figure], str]:
     """Plot calibration results for cross-resonance Hamiltonian tomography when
     tuning cancellation pulses.
