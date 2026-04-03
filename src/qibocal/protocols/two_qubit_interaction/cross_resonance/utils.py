@@ -3,12 +3,13 @@ from typing import Callable, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
+from numpy.typing import NDArray
 from qibolab import Delay, Platform, Pulse, PulseSequence, Rectangular
 
-from ....auto.operation import QubitId, QubitPairId
-from ....config import log
-from ....update import replace
-from ...utils import angle_wrap, fallback_period, guess_period
+from qibocal.auto.operation import QubitId, QubitPairId
+from qibocal.config import log
+from qibocal.protocols.utils import angle_wrap, fallback_period, guess_period
+from qibocal.update import replace
 
 
 class SetControl(str, Enum):
@@ -67,6 +68,37 @@ def retrieve_cr_parameters(
                 break
 
     return cr_params, canc_params
+
+
+def ro_delay_range(
+    cr_pulse_duration_range: NDArray,
+    echo: bool,
+    cntl_setup: SetControl,
+    control: QubitId,
+    platform: Platform,
+) -> NDArray:
+    """Delay range for RO pulses.
+
+    add the number of the pi-pulses if we are in echo mode
+    or if we want to set the control to 1.
+    num_cr_pulses is the number of cross resonance pulses:
+    == 1 if there is no echo sequence
+    == 2 if there is echo sequence
+    num_pi_pulses is the number of pi-pulses:
+    == 0 if there is no echo and control at 0
+    == 1 if there is no echo and control at 1
+    == 2 if there is echo and control at 0
+    == 3 if there is echo and control at 1
+    """
+
+    num_cr_pulses = 1 + int(echo)
+    num_pi_pulses = 2 * int(echo) + int(cntl_setup == SetControl.X)
+
+    pi_pulse_duration = platform.natives.single_qubit[control].RX()[0][1].duration
+
+    # compute the total duration of the cross resonance sequence:
+    # num_cr_pulses * cr_duraiton + num_pi_pulses * pi_pulse_duration
+    return num_cr_pulses * cr_pulse_duration_range + num_pi_pulses * pi_pulse_duration
 
 
 def cross_res_sequence(
@@ -289,13 +321,12 @@ def cross_resonance_experiment(
         platform=platform,
         control=control,
         target=target,
-        amplitude=control_amplitude,
         duration=duration,
-        phase=control_phase,
+        control_amplitude=control_amplitude,
+        control_phase=control_phase,
         target_amplitude=target_amplitude,
         target_phase=target_phase,
         echo=echo,
-        setup=setup,
         interpolated_sweeper=interpolated_sweeper,
     )
     cr_sequence = cntl_setup_sequence | cr_sequence

@@ -6,13 +6,12 @@ channel with frequency set to the frequency of the target drive channel.
 """
 
 from dataclasses import dataclass, field
-from typing import Literal
 
 import numpy as np
-import numpy.typing as npt
 from qibolab import (
     AcquisitionType,
     AveragingMode,
+    ParallelSweepers,
     Parameter,
     Sweeper,
     VirtualZ,
@@ -20,24 +19,28 @@ from qibolab import (
 from scipy.constants import kilo
 
 from qibocal import update
-
-from .....auto.operation import (
-    Data,
+from qibocal.auto.operation import (
     Parameters,
     QubitId,
     QubitPairId,
-    Results,
     Routine,
 )
-from .....calibration import CalibrationPlatform
-from ....utils import table_dict, table_html
-from ..utils import Basis, SetControl, cross_res_sequence, cross_resonance_experiment
-from .utils import (
+from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.utils import table_dict, table_html
+
+from .ham_tomography_utils import (
     HamiltonianTerm,
+    HamiltonianTomographyData,
+    HamiltonianTomographyResults,
     extract_hamiltonian_terms,
-    reconstruct_full_hamiltonian_terms,
     tomography_cr_fit,
     tomography_cr_plot,
+)
+from .utils import (
+    Basis,
+    SetControl,
+    cross_res_sequence,
+    cross_resonance_experiment,
 )
 
 __all__ = ["hamiltonian_tomography_cr_amplitude"]
@@ -54,7 +57,7 @@ HamiltonianTomographyCRAmplType = np.dtype(
 """Custom dtype for Cancellation amplitude."""
 
 
-@dataclass
+@dataclass(kw_only=True)
 class HamiltonianTomographyCRAmplParameters(Parameters):
     """HamiltonianTomographyCRAmplitude runcard inputs."""
 
@@ -88,11 +91,10 @@ class HamiltonianTomographyCRAmplParameters(Parameters):
         )
 
 
-@dataclass
-class HamiltonianTomographyCRAmplResults(Results):
+@dataclass(kw_only=True)
+class HamiltonianTomographyCRAmplResults(HamiltonianTomographyResults):
     """HamiltonianTomographyCRAmpl outputs."""
 
-    echo: bool
     cr_duration: float
     control_phase: float
     target_amplitude: float
@@ -107,46 +109,16 @@ class HamiltonianTomographyCRAmplResults(Results):
         field(default_factory=dict)
     )
     """Fitted parameters for Hamiltonian Terms values for different amplitudes."""
-    native: Literal["CNOT"] = "CNOT"
-    """Two qubit interaction to be calibrated."""
-
-    def __contains__(self, pair: QubitPairId) -> bool:
-        return all(key[:2] == pair for key in list(self.fitted_parameters))
-
-    def select_pair_and_ampl_ham_params(self, amplitude: float, pair: QubitPairId):
-        """Data
-        Select and refactor Hamiltonian tomography parameters for a given amplitude and qubit pair.
-        """
-        selected_ham_tom_params = next(
-            (
-                val_ham_params
-                for (amp, val_ham_params) in self.hamiltonian_terms[pair]
-                if amp == amplitude
-            ),
-            None,
-        )
-
-        return reconstruct_full_hamiltonian_terms(selected_ham_tom_params, pair)
 
 
-@dataclass
-class HamiltonianTomographyCRAmplData(Data):
+@dataclass(kw_only=True)
+class HamiltonianTomographyCRAmplData(HamiltonianTomographyData):
     """Data structure for CR Amplitude."""
 
-    echo: bool
     cr_duration: float
     control_phase: float
     target_amplitude: float
     target_phase: float
-    data: dict[
-        tuple[QubitId, QubitId, Basis, SetControl],
-        npt.NDArray[HamiltonianTomographyCRAmplType],
-    ] = field(default_factory=dict)
-    """Raw data acquired."""
-
-    @property
-    def pairs(self):
-        return {(i[0], i[1]) for i in self.data}
 
 
 def _acquisition(
@@ -178,7 +150,7 @@ def _acquisition(
 
         for basis in Basis:
             for setup in SetControl:
-                sequence, cr_pulses, _, _ = cross_resonance_experiment(
+                sequence, cr_pulses, _, _, _ = cross_resonance_experiment(
                     platform=platform,
                     control=control,
                     target=target,
@@ -211,7 +183,7 @@ def _acquisition(
 
                 results = platform.execute(
                     [sequence],
-                    [[amp_sweeper]],
+                    [ParallelSweepers([amp_sweeper])],
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
                     acquisition_type=AcquisitionType.DISCRIMINATION,
