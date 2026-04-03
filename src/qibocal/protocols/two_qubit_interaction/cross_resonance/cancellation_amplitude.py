@@ -346,6 +346,7 @@ def _plot(
             selected_ham_terms = fit.select_pair_and_ampl_ham_params(a, target)
             ampl_data = data.select_amplitude(a)
             ham_tom_fit = HamiltonianTomographyResults(
+                echo=fit.echo,
                 hamiltonian_terms=selected_ham_terms,
                 fitted_parameters=fit.hamiltonian_tom_params[a],
                 cr_lengths=fit.cr_lengths[a],
@@ -395,7 +396,7 @@ def _update(
     control_phase = cr_pulse["relative_phase"]
     target_phase = canc_pulse["relative_phase"]
 
-    cr_seq, _, _, _ = cross_res_sequence(
+    new_cr_seq, _, _, _ = cross_res_sequence(
         platform=platform,
         control=target[0],
         target=target[1],
@@ -407,7 +408,6 @@ def _update(
         echo=results.echo,
     )
 
-    new_cr_seq = cr_seq.filter_acquisition_probe_channels()
     new_cr_seq.insert(
         0,
         (
