@@ -79,13 +79,9 @@ class HamiltonianTomographyResults(Results):
     echo: bool
     cr_lengths: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
     """Estimated durations of CR gate."""
-    hamiltonian_terms: dict[tuple[QubitId, QubitId, HamiltonianTerm], float] = field(
-        default_factory=dict
-    )
+    hamiltonian_terms: dict = field(default_factory=dict)
     """Terms in effective Hamiltonian."""
-    fitted_parameters: dict[tuple[QubitId, QubitId, Basis, SetControl], list] = field(
-        default_factory=dict
-    )
+    fitted_parameters: dict = field(default_factory=dict)
     """Fitted parameters from X,Y,Z expectation values."""
     native: Literal["CNOT"] = "CNOT"
     """Two qubit interaction to be calibrated."""
@@ -858,19 +854,38 @@ def tomography_cr_plot(
                         col=1,
                     )
 
-    bloch_vect, bloch_fit = compute_bloch_vector(data, target, fit.fitted_parameters)
-    fig.add_trace(
-        go.Scatter(
-            x=pair_data.x,
-            y=bloch_vect,
-            name="Bloch vector |R(t)|",
-            legendgroup="Bloch vector |R(t)|",
-            showlegend=True,
-            mode="markers",
-        ),
-        row=4,
-        col=1,
-    )
+    if fit is not None and fit.fitted_parameters:
+        bloch_vect, bloch_fit = compute_bloch_vector(
+            data, target, fit.fitted_parameters
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=pair_data.x,
+                y=bloch_vect,
+                name="Bloch vector |R(t)|",
+                legendgroup="Bloch vector |R(t)|",
+                showlegend=True,
+                mode="markers",
+            ),
+            row=4,
+            col=1,
+        )
+
+        if bloch_fit is not None:
+            x = np.linspace(pair_data.x.min(), pair_data.x.max(), len(bloch_fit))
+            fig.add_trace(
+                go.Scatter(
+                    x=x,
+                    y=bloch_fit,
+                    name="Fitted Bloch vector |R(t)|",
+                    showlegend=True,
+                    legendgroup="Fitted Bloch vector |R(t)|",
+                    mode="lines",
+                ),
+                row=4,
+                col=1,
+            )
+
     if type(fit).__name__ == "HamiltonianTomographyCRLengthResults":
         fit_dict = fit.cr_lengths
         annotation = "CR gate duration [ns]"
@@ -886,21 +901,6 @@ def tomography_cr_plot(
             line_dash="dash",
             line_color="red",
             annotation_text=annotation,
-            row=4,
-            col=1,
-        )
-
-    if bloch_fit is not None:
-        x = np.linspace(pair_data.x.min(), pair_data.x.max(), len(bloch_fit))
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=bloch_fit,
-                name="Fitted Bloch vector |R(t)|",
-                showlegend=True,
-                legendgroup="Fitted Bloch vector |R(t)|",
-                mode="lines",
-            ),
             row=4,
             col=1,
         )
