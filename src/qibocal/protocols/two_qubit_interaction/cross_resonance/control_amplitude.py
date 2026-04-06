@@ -101,12 +101,12 @@ class HamiltonianTomographyCRAmplResults(HamiltonianTomographyResults):
     target_phase: float
     cr_amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
     """Estimated amplitudes of CR gate."""
-    hamiltonian_terms: dict[
-        tuple[QubitId, QubitId], list[tuple[float, dict[HamiltonianTerm, float]]]
-    ] = field(default_factory=dict)
+    hamiltonian_terms: dict[tuple[QubitId, QubitId, HamiltonianTerm], float] = field(
+        default_factory=dict
+    )
     """Terms in effective Hamiltonian."""
-    fitted_parameters: dict[tuple[QubitId, QubitId], dict[HamiltonianTerm, list]] = (
-        field(default_factory=dict)
+    fitted_parameters: dict[tuple[QubitId, QubitId, SetControl], list] = field(
+        default_factory=dict
     )
     """Fitted parameters for Hamiltonian Terms values for different amplitudes."""
 

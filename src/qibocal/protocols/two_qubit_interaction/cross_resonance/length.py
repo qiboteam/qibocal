@@ -4,7 +4,7 @@ This protocol computes the expectation values for X, Y and Z for the target qubi
 The CR pulses are played on the control drive channel with frequency set to the frequency of the target drive channel.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 from qibolab import (
@@ -36,6 +36,7 @@ from .ham_tomography_utils import (
 )
 from .utils import (
     Basis,
+    QubitId,
     SetControl,
     cross_res_sequence,
     cross_resonance_experiment,
@@ -78,6 +79,14 @@ class HamiltonianTomographyCRLengthResults(HamiltonianTomographyResults):
     control_phase: float = 0
     target_amplitude: float = 0
     target_phase: float = 0
+    hamiltonian_terms: dict[tuple[QubitId, QubitId, HamiltonianTerm], float] = field(
+        default_factory=dict
+    )
+    """Terms in effective Hamiltonian."""
+    fitted_parameters: dict[tuple[QubitId, QubitId, SetControl], list] = field(
+        default_factory=dict
+    )
+    """Fitted parameters from X,Y,Z expectation values."""
 
 
 @dataclass(kw_only=True)

@@ -1,14 +1,12 @@
 from enum import Enum
-from typing import Callable, Optional, Union
+from typing import Optional
 
 import numpy as np
-import plotly.graph_objects as go
 from numpy.typing import NDArray
 from qibolab import Delay, Platform, Pulse, PulseSequence, Rectangular
 
-from qibocal.auto.operation import QubitId, QubitPairId
-from qibocal.config import log
-from qibocal.protocols.utils import angle_wrap, fallback_period, guess_period
+from qibocal.auto.operation import QubitId
+from qibocal.protocols.utils import angle_wrap
 from qibocal.update import replace
 
 
@@ -341,129 +339,3 @@ def cross_resonance_experiment(
     )
 
     return total_sequence, cr_pulses, cr_target_pulses, cr_delays, ro_delays
-
-
-def cr_fit(
-    data: Union[
-        "CrossResonanceLengthData",  # noqa: F821
-        "CrossResonanceAmplitudeData",  # noqa: F821
-    ],
-    fitting_function: Callable,
-) -> dict[tuple[QubitId, QubitId, SetControl], list]:
-    """Perform fitting on CR data for probabilities.
-
-    We fit oscillations observed in the target qubit. Using a cosine function.
-    When on the x axis we change the duration of the CR pulse we include an exponential
-    term to address the relaxation time of the qubit.
-    """
-    fitted_parameters = {}
-    for pair in data.pairs:
-        for setup in SetControl:
-            pair_data = data[pair[0], pair[1], setup]
-            pair = (pair[0], pair[1])
-            raw_x = pair_data.x
-            min_x = np.min(raw_x)
-            max_x = np.max(raw_x)
-            y = pair_data.prob_target
-            x = (raw_x - min_x) / (max_x - min_x)
-
-            period = fallback_period(guess_period(x, y))
-            pguess = (
-                [0, 0.5, period, 0, 0]
-                if fitting_function.__name__ == "fit_length_function"
-                else [0, 0.5, period, 0]
-            )
-
-            try:
-                popt, _, _ = fitting_function(
-                    x,
-                    y,
-                    pguess,
-                    sigma=pair_data.error_target,
-                    signal=False,
-                    x_limits=(min_x, max_x),
-                )
-                fitted_parameters[pair[0], pair[1], setup] = popt
-            except Exception as e:  # pragma: no cover
-                log.warning(f"CR fit failed for pair {pair} due to {e}.")
-    return fitted_parameters
-
-
-def cr_plot(
-    data: Union[
-        "CrossResonanceLengthData",  # noqa: F821
-        "CrossResonanceAmplitudeData",  # noqa: F821
-    ],
-    target: QubitPairId,
-    fit: Optional[
-        Union[
-            "CrossResonanceLengthResults",  # noqa: F821
-            "CrossResonanceAmplitudeResults",  # noqa: F821
-        ]
-    ] = None,
-    fitting_function: Optional[Callable] = None,
-) -> tuple[list[go.Figure], str]:
-    """Plotting function for CR protocols."""
-    fig = go.Figure()
-    for setup in SetControl:
-        target = target if target in data.pairs else (target[1], target[0])
-        pair_data = data.data[target[0], target[1], setup]
-        fig.add_trace(
-            go.Scatter(
-                x=pair_data.x,
-                y=pair_data.prob_target,
-                name=f"Target when Control at {0 if setup is SetControl.Id else 1}",
-                showlegend=True,
-                legendgroup=f"Target when Control at {0 if setup is SetControl.Id else 1}",
-                mode="markers",
-                marker=dict(color="blue" if setup is SetControl.Id else "red"),
-                error_y=dict(
-                    type="data",
-                    array=pair_data.error_target,
-                    visible=True,
-                ),
-            )
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=pair_data.x,
-                y=pair_data.prob_control,
-                name=f"Control at {0 if setup is SetControl.Id else 1}",
-                showlegend=True,
-                legendgroup=f"Control at {0 if setup is SetControl.Id else 1}",
-                mode="markers",
-                marker=dict(color="green" if setup is SetControl.Id else "orange"),
-                error_y=dict(
-                    type="data",
-                    array=pair_data.error_control,
-                    visible=True,
-                ),
-            )
-        )
-        if fit is not None:
-            if (target[0], target[1], setup) in fit.fitted_parameters:
-                x = np.linspace(pair_data.x.min(), pair_data.x.max(), 100)
-                fig.add_trace(
-                    go.Scatter(
-                        x=x,
-                        y=fitting_function(
-                            x,
-                            *fit.fitted_parameters[target[0], target[1], setup],
-                        ),
-                        name=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
-                        showlegend=True,
-                        legendgroup=f"Fit target when control at {0 if setup is SetControl.Id else 1}",
-                        mode="lines",
-                        line=dict(
-                            color="blue" if setup is SetControl.Id else "red",
-                        ),
-                    )
-                )
-
-    fig.update_layout(
-        yaxis1=dict(range=[-0.1, 1.1]),
-        yaxis2=dict(range=[-0.1, 1.1]),
-        yaxis3=dict(range=[-0.1, 1.1]),
-        height=600,
-    )
-    return [fig], ""
