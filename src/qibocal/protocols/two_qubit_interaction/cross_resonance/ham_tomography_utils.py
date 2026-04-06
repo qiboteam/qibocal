@@ -886,24 +886,23 @@ def tomography_cr_plot(
                 col=1,
             )
 
-    if type(fit).__name__ == "HamiltonianTomographyCRLengthResults":
-        fit_dict = fit.cr_lengths
-        annotation = "CR gate duration [ns]"
+        if type(fit).__name__ == "HamiltonianTomographyCRAmplResults":
+            fit_dict = fit.cr_amplitudes
+            annotation = "CR gate amplitude [a.u.]"
+        else:
+            fit_dict = fit.cr_lengths
+            annotation = "CR gate duration [ns]"
 
-    if type(fit).__name__ == "HamiltonianTomographyCRAmplResults":
-        fit_dict = fit.cr_amplitudes
-        annotation = "CR gate amplitude [a.u.]"
-
-    if target in fit_dict:
-        fig.add_vline(
-            x=fit_dict[target],
-            line_width=2,
-            line_dash="dash",
-            line_color="red",
-            annotation_text=annotation,
-            row=4,
-            col=1,
-        )
+        if target in fit_dict:
+            fig.add_vline(
+                x=fit_dict[target],
+                line_width=2,
+                line_dash="dash",
+                line_color="red",
+                annotation_text=annotation,
+                row=4,
+                col=1,
+            )
 
     fig.update_layout(
         yaxis1=dict(range=[-1.2, 1.2]),
