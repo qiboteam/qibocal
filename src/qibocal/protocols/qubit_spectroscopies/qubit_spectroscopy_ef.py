@@ -11,7 +11,7 @@ from ... import update
 from ...result import magnitude, phase
 from ..resonator_spectroscopies.resonator_spectroscopy import ResSpecType
 from ..resonator_spectroscopies.resonator_utils import spectroscopy_plot
-from ..utils import readout_frequency, table_dict, table_html
+from ..utils import GHZ_TO_HZ, readout_frequency, table_dict, table_html
 from .qubit_spectroscopy import (
     QubitSpectroscopyData,
     QubitSpectroscopyParameters,
@@ -25,6 +25,9 @@ __all__ = ["qubit_spectroscopy_ef"]
 @dataclass
 class QubitSpectroscopyEFParameters(QubitSpectroscopyParameters):
     """QubitSpectroscopyEF runcard inputs."""
+
+    lo_offset: float = -0.15
+    """LO offset in GHz."""
 
 
 @dataclass
@@ -118,7 +121,6 @@ def _acquisition(
         amplitudes=amplitudes,
         drive_frequencies=drive_frequencies,
     )
-
     results = platform.execute(
         [sequence],
         [sweepers],
@@ -126,13 +128,16 @@ def _acquisition(
             {
                 platform.qubits[q].probe: {
                     "frequency": readout_frequency(q, platform, state=1)
-                }
+                },
+                platform.channels[platform.qubits[q].drive].lo: {
+                    "frequency": platform.config(platform.qubits[q].drive).frequency
+                    + params.lo_offset * GHZ_TO_HZ
+                },
             }
             for q in targets
         ],
         **params.execution_parameters,
     )
-
     # retrieve the results for every qubit
     for qubit, ro_pulse in ro_pulses.items():
         result = results[ro_pulse.id]
