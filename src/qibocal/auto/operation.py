@@ -201,14 +201,18 @@ class Data(AbstractData):
     @property
     def qubits(self) -> list[QubitId]:
         """Access qubits from data structure."""
+        # TODO: I don't understand the rationale of this function. Perhaps it would be
+        # nice if we could do Data.qubits and get a list of either qubits or pairs
+        # instead of having a separate function for each case even though they serve the
+        # same purpose just for different routines.
         if set(map(type, self.data)) == {tuple}:
             return list({q[0] for q in self.data})
         return [q for q in self.data]
 
     @property
     def pairs(self):
-        """Access qubit pairs ordered alphanumerically from data structure."""
-        return list({tuple(sorted(q[:2])) for q in self.data})
+        """Access qubit pairs from data structure."""
+        return list({tuple(q[:2]) for q in self.data})
 
     def register_qubit(self, dtype, data_keys, data_dict):
         """Store output for single qubit.

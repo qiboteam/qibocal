@@ -1,15 +1,19 @@
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from typing import Optional, Sequence, Tuple
 
 import numpy as np
 import numpy.typing as npt
 import plotly.express as px
 from qibo import gates
-from qibo.backends import construct_backend
 from qibo.models import Circuit
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
-from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
+from qibocal.auto.transpile import (
+    dummy_transpiler,
+    execute_circuits,
+    set_compiler,
+    transpile_circuits,
+)
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
@@ -37,7 +41,7 @@ class ReadoutMitigationMatrixResults(Results):
 ReadoutMitigationMatrixType = np.dtype(
     [
         ("state", int),
-        ("frequency", np.float64),
+        ("frequency", int),
     ]
 )
 
@@ -54,7 +58,7 @@ The two strings represents the expected state and the measured state.
 class ReadoutMitigationMatrixData(Data):
     """ReadoutMitigationMatrix acquisition outputs."""
 
-    qubit_list: list[QubitId]
+    qubit_list: Sequence[Sequence[QubitId]]
     """List of qubit ids"""
     nshots: int
     """Number of shots"""
@@ -67,28 +71,38 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[list[QubitId]],
 ) -> ReadoutMitigationMatrixData:
-    data = ReadoutMitigationMatrixData(
-        nshots=params.nshots, qubit_list=[list(qq) for qq in targets]
-    )
-    backend = construct_backend("qibolab", platform=platform)
-    transpiler = dummy_transpiler(backend)
+    assert params.nshots is not None
+    data = ReadoutMitigationMatrixData(nshots=params.nshots, qubit_list=targets)
+    transpiler = dummy_transpiler(platform)
+    compiler = set_compiler(platform)
 
     for qubits in targets:
         nqubits = len(qubits)
         for i in range(2**nqubits):
             state = format(i, f"0{nqubits}b")
-            c = Circuit(
+            circuit = Circuit(
                 nqubits,
             )
             for q, bit in enumerate(state):
                 if bit == "1":
-                    c.add(gates.X(q))
-            c.add(gates.M(*range(nqubits)))
-            _, results = execute_transpiled_circuit(
-                c, qubits, backend, nshots=params.nshots, transpiler=transpiler
+                    circuit.add(gates.X(q))
+            for i in range(nqubits):
+                circuit.add(gates.M(i))
+            transpiled_circuits = transpile_circuits(
+                [circuit],
+                [qubits],
+                platform,
+                transpiler,
+            )
+            [result] = execute_circuits(
+                platform,
+                compiler,
+                transpiled_circuits,
+                [qubits],
+                nshots=params.nshots,
             )
             frequencies = np.zeros(2 ** len(qubits))
-            for i, freq in results.frequencies().items():
+            for i, freq in result.items():
                 frequencies[int(i, 2)] = freq
             for freq in frequencies:
                 data.register_qubit(
