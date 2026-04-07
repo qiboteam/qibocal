@@ -291,8 +291,8 @@ def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
         fitting_report = table_html(
             table_dict(
                 target,
-                ["Optimal Beta Param", "Chi2 reduced"],
-                [(np.round(fit.betas[target], 4), 0), fit.chi2[target]],
+                ["Beta", "Chi2 reduced"],
+                [(np.round(fit.betas[target], 4), "not determined"), fit.chi2[target]],
                 display_error=True,
             )
         )
