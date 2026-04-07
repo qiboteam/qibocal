@@ -87,7 +87,7 @@ def ramsey_fit(x, offset, amplitude, delta, phase, decay):
     return offset + amplitude * np.sin(x * delta + phase) * np.exp(-x * decay)
 
 
-def fitting(x: list, y: list, errors: list = None) -> list:
+def fitting(x: list, y: list, errors: list = None) -> tuple[list[float], list[float]]:
     """
     Given the inputs list `x` and outputs one `y`, this function fits the
     `ramsey_fit` function and returns a list with the fit parameters.
@@ -152,7 +152,7 @@ def fitting(x: list, y: list, errors: list = None) -> list:
 
 def process_fit(
     popt: list[float], perr: list[float], qubit_frequency: float, detuning: float
-):
+) -> tuple[list[float], list[float], list[float], list[float], list[float]]:
     """Processing Ramsey fitting results."""
 
     delta_fitting = popt[2] / (2 * np.pi)

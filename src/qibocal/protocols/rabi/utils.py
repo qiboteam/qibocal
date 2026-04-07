@@ -338,7 +338,7 @@ def sequence_length(
 
 def fit_length_function(
     x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
-):
+) -> tuple[list[float], list[float], float]:
     popt, perr = curve_fit(
         rabi_length_function,
         x,
@@ -365,21 +365,23 @@ def fit_length_function(
         ]
         perr = np.sqrt(np.diag(perr))
     else:
-        popt = [  # change it according to the fit function
-            (y_max - y_min) * (popt[0] + 1 / 2) + y_min,
-            (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
-            popt[2] * (x_max - x_min),
-            popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
-            popt[4] / (x_max - x_min),
-        ]
+        popt = np.array(
+            [  # change it according to the fit function
+                (y_max - y_min) * (popt[0] + 1 / 2) + y_min,
+                (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
+                popt[2] * (x_max - x_min),
+                popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
+                popt[4] / (x_max - x_min),
+            ]
+        )
 
     pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
-    return popt, perr, pi_pulse_parameter
+    return popt.tolist(), perr.tolist(), pi_pulse_parameter
 
 
 def fit_amplitude_function(
     x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
-):
+) -> tuple[list[float], list[float], float]:
     popt, perr = curve_fit(
         rabi_amplitude_function,
         x,
@@ -395,14 +397,17 @@ def fit_amplitude_function(
     if signal is False:
         perr = np.sqrt(np.diag(perr))
     if None not in y_limits and None not in x_limits:
-        popt = [
-            y_limits[0] + (y_limits[1] - y_limits[0]) * popt[0],
-            (y_limits[1] - y_limits[0]) * popt[1],
-            popt[2] * (x_limits[1] - x_limits[0]),
-            angle_wrap(
-                popt[3]
-                - 2 * np.pi * x_limits[0] / (x_limits[1] - x_limits[0]) / popt[2]
-            ),
-        ]
+        popt = np.array(
+            [
+                y_limits[0] + (y_limits[1] - y_limits[0]) * popt[0],
+                (y_limits[1] - y_limits[0]) * popt[1],
+                popt[2] * (x_limits[1] - x_limits[0]),
+                angle_wrap(
+                    popt[3]
+                    - 2 * np.pi * x_limits[0] / (x_limits[1] - x_limits[0]) / popt[2]
+                ),
+            ]
+        )
     pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
-    return popt, perr, pi_pulse_parameter
+
+    return popt.tolist(), perr.tolist(), pi_pulse_parameter
