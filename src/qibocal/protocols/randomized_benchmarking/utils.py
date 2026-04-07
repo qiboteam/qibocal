@@ -1,6 +1,7 @@
 import pathlib
 from collections import defaultdict
 from dataclasses import dataclass, field
+from itertools import chain
 from numbers import Number
 from typing import Callable, Iterable, Optional, Tuple, Union
 
@@ -9,6 +10,7 @@ import numpy.typing as npt
 from qibo import gates
 from qibo.backends import construct_backend
 from qibo.models import Circuit
+from qibo.result import MeasurementOutcomes
 
 from qibocal.auto.operation import Data, Parameters, QubitId, QubitPairId, Results
 from qibocal.auto.transpile import (
@@ -556,6 +558,89 @@ def twoq_rb_acquisition(
     data.circuits = indexes
     data.npulses_per_clifford = npulses_per_clifford
 
+    return data
+
+
+def twoq_rb_acquisition_parallel(
+    params: Parameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitPairId],
+    interleave: str = None,
+) -> Union[RB2QData, RB2QInterData]:
+    """
+    The data acquisition stage of two qubit Standard Randomized Benchmarking.
+    Instead of running the benchmarking sequentially across pairs, we generate a common sequence and
+    duplicate it across all the targeted qubit pairs.
+
+    Args:
+        params (RB2QParameters): The parameters for the randomized benchmarking experiment.
+        targets (list[QubitPairId]): The list of qubit pair IDs on which to perform the benchmarking.
+        interleave (str, optional): The type of interleaving to apply. Defaults to None.
+
+    Returns:
+        RB2QData: The acquired data for two qubit randomized benchmarking.
+    """
+    data, backend = setup(params, platform, interleave=interleave, single_qubit=False)
+    rb_gen = RB_Generator(params.seed, params.file)
+    indexes = defaultdict(list)
+    wire_names = list(chain(*targets))
+    circuit_pairs = [(i, i + 1) for i in range(0, len(wire_names), 2)]
+
+    for depth in params.depths:
+        meas_regs: defaultdict[QubitPairId, list[MeasurementOutcomes]] = defaultdict(
+            list
+        )
+
+        for iter in range(params.niter):
+            random_circuit, random_indexes = layer_circuit(rb_gen, depth, (0, 1))
+            add_inverse_layer(
+                random_circuit, rb_gen, single_qubit=False, file_inv=params.file_inv
+            )
+
+            for q0, q1 in circuit_pairs:
+                indexes[(q0, q1, depth)].append(random_indexes)
+
+            circuit = Circuit(nqubits=len(targets) * 2, wire_names=wire_names)
+            for layer in random_circuit.queue:
+                if layer.name == "id":
+                    continue
+                elif layer.name == "cz":
+                    for q0, q1 in circuit_pairs:
+                        circuit.add(gates.CZ(q0, q1))
+                elif layer.name == "u3":
+                    first_qubit = layer.qubits[0] == 0
+                    for q0, q1 in circuit_pairs:
+                        target_qubit = q0 if first_qubit else q1
+                        circuit.add(gates.U3(target_qubit, *layer.parameters))
+                else:
+                    raise ValueError("Unrecognized gate", layer)
+
+            for actual_pair, circuit_pair in zip(targets, circuit_pairs):
+                meas_regs[actual_pair].append(circuit.add(gates.M(*circuit_pair)))
+
+            transpiler = dummy_transpiler(backend)
+            transpiled_circuit, _ = transpiler(circuit)
+            backend.execute_circuit(transpiled_circuit, nshots=params.nshots)
+
+        for (q0, q1), registers in meas_regs.items():
+            samples = []
+            for register in registers:
+                converted_samples = (
+                    1 - np.all(register.samples() == [0], axis=1).astype(int)
+                ).tolist()
+                samples.extend(converted_samples)
+
+            samples = np.reshape(samples, (params.niter, params.nshots))
+            data.register_qubit(
+                RBType,
+                (q0, q1, depth),
+                dict(
+                    samples=samples,
+                ),
+            )
+
+    data.circuits = indexes
+    data.npulses_per_clifford = rb_gen.calculate_average_pulses()
     return data
 
 
