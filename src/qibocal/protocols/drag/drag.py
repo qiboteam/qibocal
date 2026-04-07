@@ -10,7 +10,6 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.result import probability
 from qibocal.update import replace
 
 from ..utils import (
@@ -43,9 +42,6 @@ class DragTuningParameters(Parameters):
     """DRAG pulse beta end sweep parameter."""
     beta_step: float
     """DRAG pulse beta sweep step parameter."""
-    unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
-    Defaults to ``False``."""
     nflips: int = 1
     """Repetitions of (Xpi - Xmpi)."""
 
@@ -131,44 +127,32 @@ def _acquisition(
         "nshots": params.nshots,
         "relaxation_time": params.relaxation_time,
         "acquisition_type": AcquisitionType.DISCRIMINATION,
-        "averaging_mode": AveragingMode.SINGLESHOT,
+        "averaging_mode": AveragingMode.CYCLIC,
     }
 
-    # execute the pulse sequence
-    if params.unrolling:
-        results = platform.execute(sequences, **options)
-        for beta, ro_pulses in zip(beta_param_range, all_ro_pulses):
-            for qubit in targets:
-                result = results[ro_pulses[qubit].id]
-                prob = probability(result, state=0)
-                # store the results
-                data.register_qubit(
-                    DragTuningType,
-                    (qubit),
-                    dict(
-                        prob=np.array([prob]),
-                        error=np.array([np.sqrt(prob * (1 - prob) / params.nshots)]),
-                        beta=np.array([beta]),
+    # execute the pulse sequences
+    results = platform.execute(sequences, **options)
+    for beta, ro_pulses in zip(beta_param_range, all_ro_pulses):
+        for qubit in targets:
+            ground_state_prob = 1 - results[ro_pulses[qubit].id]
+            # store the results
+            data.register_qubit(
+                DragTuningType,
+                (qubit),
+                dict(
+                    prob=np.array([ground_state_prob]),
+                    error=np.array(
+                        [
+                            np.sqrt(
+                                ground_state_prob
+                                * (1 - ground_state_prob)
+                                / params.nshots
+                            )
+                        ]
                     ),
-                )
-    else:
-        for i, sequence in enumerate(sequences):
-            result = platform.execute([sequence], **options)
-            for qubit in targets:
-                ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[
-                    -1
-                ]
-                prob = probability(result[ro_pulse.id], state=0)
-                # store the results
-                data.register_qubit(
-                    DragTuningType,
-                    (qubit),
-                    dict(
-                        prob=np.array([prob]),
-                        error=np.array([np.sqrt(prob * (1 - prob) / params.nshots)]),
-                        beta=np.array([beta_param_range[i]]),
-                    ),
-                )
+                    beta=np.array([beta]),
+                ),
+            )
 
     return data
 
