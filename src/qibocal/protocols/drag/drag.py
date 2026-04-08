@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -206,7 +207,33 @@ def _fit(data: DragTuningData) -> DragTuningResults:
             ]
             fitted_parameters[qubit] = translated_popt
             predicted_prob = drag_fit(beta_params, *translated_popt)
-            betas_optimal[qubit] = beta_params[np.argmax(predicted_prob)]
+
+            period_fit = translated_popt[2]
+            phase_fit = translated_popt[3]
+
+            # calculate the smallest and largest k for which the maximum lies in the
+            # beta interval. Using that maxima of drag_fit(x, offset, amplitude, period,
+            # phase) occur for x = period * (k - phase / (2*pi)), for integer k.
+            phase_2pi = phase_fit / (2 * np.pi)
+            k_min = math.ceil(beta_min / period_fit + phase_2pi)
+            k_max = math.floor(beta_max / period_fit + phase_2pi)
+
+            if k_min <= k_max:
+                # Choose beta value with the smallest absolute value that falls inside
+                # the beta interval.
+                candidate_ks = np.arange(k_min, k_max + 1)
+                candidate_betas = [period_fit * (k - phase_2pi) for k in candidate_ks]
+                betas_optimal[qubit] = min(candidate_betas, key=abs)
+            else:
+                # If no analytical maximum lies in the beta interval, maximum is
+                # fixed at one of the interval boundaries. Bounds during the fit
+                # mean
+                left_value = drag_fit(beta_min, *translated_popt)
+                right_value = drag_fit(beta_max, *translated_popt)
+                betas_optimal[qubit] = (
+                    beta_min if left_value >= right_value else beta_max
+                )
+
             chi2[qubit] = (
                 chi2_reduced(
                     prob,
