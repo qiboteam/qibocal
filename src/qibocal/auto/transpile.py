@@ -149,9 +149,11 @@ def _execute_circuits(
     countslist = []
     if averaging_mode.average:
         # NOTE: averaging mode only makes sense for a two state readout. If there are
-        # more states it would have to be conditional since the excited state
-        # probability of individual qubits does not provide full information about the
-        # probability distribution of the full set of basis states.
+        # more states it would have to be conditional since the probability of
+        # individual qubits to be in the first excited state does not provide full
+        # information about the probability distribution of the full set of basis
+        # states. Here we only check that the qubit maps contain a single qubit, not for
+        # the intention to do qutrit measurements.
         for qubit_map, measurement_map in zip(qubit_maps, measurement_maps):
             if len(qubit_map) > 1:
                 raise ValueError(
