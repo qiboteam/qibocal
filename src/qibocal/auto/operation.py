@@ -201,10 +201,9 @@ class Data(AbstractData):
     @property
     def qubits(self) -> list[QubitId]:
         """Access qubits from data structure."""
-        # TODO: I don't understand the rationale of this function. Perhaps it would be
-        # nice if we could do Data.qubits and get a list of either qubits or pairs
-        # instead of having a separate function for each case even though they serve the
-        # same purpose just for different routines.
+        # TODO: In the two-qubit case, a set of the first elements of the tuples is
+        # returned. This behaviour is not reflected in the name of the property so may
+        # lead to confusion and should therefore be changed.
         if set(map(type, self.data)) == {tuple}:
             return list({q[0] for q in self.data})
         return [q for q in self.data]
