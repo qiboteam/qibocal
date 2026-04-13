@@ -90,12 +90,12 @@ def _validate_measurement(gate, sequence, qubit_map, readout):
     """Validate measurement gate and sequence consistency."""
     if len(gate.qubits) != 1:
         raise ValueError(
-            f"Measurement gate must measure a single qubit. "
+            "Measurement gate must measure a single qubit. "
             f"Got gate with {len(gate.qubits)} qubits."
         )
     if len(sequence.acquisitions) != 1:
         raise ValueError(
-            f"Measurement sequence must have exactly one acquisition. "
+            "Measurement sequence must have exactly one acquisition. "
             f"Got {len(sequence.acquisitions)} acquisitions."
         )
     if gate.qubits[0] not in qubit_map:
