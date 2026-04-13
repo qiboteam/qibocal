@@ -12,7 +12,6 @@ from qibocal.auto.transpile import (
     dummy_transpiler,
     execute_circuits,
     set_compiler,
-    transpile_circuits,
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
@@ -88,17 +87,12 @@ def _acquisition(
                     circuit.add(gates.X(q))
             for i in range(nqubits):
                 circuit.add(gates.M(i))
-            transpiled_circuits = transpile_circuits(
+            [result] = execute_circuits(
                 [circuit],
                 [qubits],
                 platform,
                 transpiler,
-            )
-            [result] = execute_circuits(
-                platform,
                 compiler,
-                transpiled_circuits,
-                [qubits],
                 nshots=params.nshots,
             )
             frequencies = np.zeros(2 ** len(qubits))

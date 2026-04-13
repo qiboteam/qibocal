@@ -25,7 +25,6 @@ from qibocal.auto.transpile import (
     dummy_transpiler,
     execute_circuits,
     set_compiler,
-    transpile_circuits,
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import marginalize_qubit_counts
@@ -146,17 +145,12 @@ def _acquisition(
 
         simulation_result = simulator.execute_circuit(basis_circuit)
 
-        transpiled_circs = transpile_circuits(
+        [result] = execute_circuits(
             [basis_circuit],
             [qubits],
             platform,
             transpiler,
-        )
-        [result] = execute_circuits(
-            platform,
             compiler,
-            transpiled_circs,
-            [qubits],
             nshots=params.nshots,
         )
 

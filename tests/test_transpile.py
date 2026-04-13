@@ -7,11 +7,11 @@ from qibolab import AveragingMode, create_platform
 
 from qibocal.auto.operation import QubitId
 from qibocal.auto.transpile import (
+    _execute_circuits,
+    _transpile_circuits,
     dummy_transpiler,
-    execute_circuits,
     pad_circuit,
     set_compiler,
-    transpile_circuits,
 )
 
 
@@ -24,7 +24,7 @@ def test_natives():
     circuit = Circuit(2)
     circuit.add(gates.iSWAP(0, 1))
     qubit_map: list[int | str] = [1, 2]
-    [transpiled_circuit] = transpile_circuits(
+    [transpiled_circuit] = _transpile_circuits(
         [circuit], [qubit_map], platform, transpiler
     )
     sequence, _ = compiler.compile(transpiled_circuit, platform)
@@ -52,7 +52,7 @@ def test_transpile_circuits():
     circuit.add(gates.X(0))
     circuit.add(gates.X(1))
     qubit_map: list[QubitId] = [1, 2]
-    [transpiled_circuit] = transpile_circuits(
+    [transpiled_circuit] = _transpile_circuits(
         [circuit], [qubit_map], platform, transpiler
     )
 
@@ -79,7 +79,7 @@ def test_transpile_circuits_with_string_qubit_ids():
     circuit.add(gates.X(0))
     circuit.add(gates.X(1))
 
-    [transpiled_circuit] = transpile_circuits(
+    [transpiled_circuit] = _transpile_circuits(
         [circuit], [["q2", "q0"]], PlatformStub(), mock_transpiler
     )
 
@@ -99,7 +99,7 @@ def test_execute_circuits_single_shot():
     qubit_map = list(platform.qubits)[:2]
     nshots = 32
 
-    [counts] = execute_circuits(
+    [counts] = _execute_circuits(
         platform=platform,
         compiler=compiler,
         circuits=[circuit],
@@ -120,7 +120,7 @@ def test_execute_circuits_cyclic():
     qubit_map = [list(platform.qubits)[0]]
     nshots = 20
 
-    [counts] = execute_circuits(
+    [counts] = _execute_circuits(
         platform=platform,
         compiler=compiler,
         circuits=[circuit],
@@ -142,7 +142,7 @@ def test_execute_circuits_cyclic_raises_for_multi_qubit():
     qubit_map = list(platform.qubits)[:2]
 
     with pytest.raises(ValueError, match="CYCLIC only supports single qubit readout"):
-        execute_circuits(
+        _execute_circuits(
             platform=platform,
             compiler=compiler,
             circuits=[circuit],
@@ -180,7 +180,7 @@ def test_execute_circuits_cyclic_maps_readout_to_circuit_order(monkeypatch):
 
     monkeypatch.setattr(platform, "execute", execute_reversed_order)
 
-    countslist = execute_circuits(
+    countslist = _execute_circuits(
         platform=platform,
         compiler=compiler,
         circuits=[circuit0, circuit1],

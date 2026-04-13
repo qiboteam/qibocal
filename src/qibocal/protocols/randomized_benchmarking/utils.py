@@ -15,7 +15,6 @@ from qibocal.auto.transpile import (
     dummy_transpiler,
     execute_circuits,
     set_compiler,
-    transpile_circuits,
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.randomized_benchmarking.dict_utils import (
@@ -419,17 +418,12 @@ def execute_indexed_circuits(
     transpiler = dummy_transpiler(platform)
     compiler = set_compiler(platform)
 
-    transpiled_circuits = transpile_circuits(
+    executed_results = execute_circuits(
         circuits,
         qubit_maps,
         platform,
         transpiler,
-    )
-    executed_results = execute_circuits(
-        platform,
         compiler,
-        transpiled_circuits,
-        qubit_maps,
         nshots=params.nshots,
         averaging_mode=averaging_mode,
     )

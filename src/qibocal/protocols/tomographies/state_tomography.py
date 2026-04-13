@@ -18,7 +18,6 @@ from ...auto.transpile import (
     dummy_transpiler,
     execute_circuits,
     set_compiler,
-    transpile_circuits,
 )
 from ...calibration import CalibrationPlatform
 from ..utils import table_dict, table_html
@@ -175,17 +174,12 @@ def _acquisition(
 
         for i in range(len(targets)):
             basis_circuit.add(gates.M(i))
-        transpiled_circs = transpile_circuits(
+        [result] = execute_circuits(
             [basis_circuit],
             [targets],
             platform,
             transpiler,
-        )
-        [result] = execute_circuits(
-            platform,
             compiler,
-            transpiled_circs,
-            [targets],
             nshots=params.nshots,
         )
         for i, target in enumerate(targets):

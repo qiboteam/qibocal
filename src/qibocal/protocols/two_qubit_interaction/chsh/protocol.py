@@ -19,7 +19,6 @@ from qibocal.auto.transpile import (
     dummy_transpiler,
     execute_circuits,
     set_compiler,
-    transpile_circuits,
 )
 
 from .circuits import create_chsh_circuits
@@ -171,17 +170,12 @@ def _acquisition(
                     native=params.native,
                 )
                 for basis, circuit in chsh_circuits.items():
-                    transpiled_circuits = transpile_circuits(
+                    [result] = execute_circuits(
                         [circuit],
                         [pair],
                         platform,
                         transpiler,
-                    )
-                    [result] = execute_circuits(
-                        platform,
                         compiler,
-                        transpiled_circuits,
-                        [pair],
                         nshots=params.nshots,
                     )
                     data.register_basis(pair, bell_state, basis, result)

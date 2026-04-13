@@ -1,10 +1,4 @@
 # This file contains functions to transpile and execute quantum circuits.
-#
-# TODO: Since these functions are always used in the same way, we should probably
-# provide a single function that takes care of setting the compiler, transpiler, doing
-# the transpilation and execution in a single call. This would mean that set_compiler
-# and dummy_transpiler are called for every circuit execution instead of just once per
-# protocol, so I'm not convinced that's what should be done.
 from collections import Counter
 from typing import Callable
 
@@ -24,7 +18,7 @@ REPLACEMENTS = {
 }
 
 
-def transpile_circuits(
+def _transpile_circuits(
     circuits: list[Circuit],
     qubit_maps: list[list[QubitId]],
     platform: Platform,
@@ -43,13 +37,6 @@ def transpile_circuits(
 
         In this function we are implicitly assume that the qubit ids
         are all string or all integers.
-
-    Args:
-        circuits: List of quantum circuits to transpile and pad.
-        qubit_maps: List of qubit maps, one per circuit. Each qubit map maps physical
-            qubit IDs to logical qubit indices.
-        platform: The quantum platform to transpile circuits for.
-        transpiler: The transpiler to apply to the circuits.
 
     Returns:
         List of transpiled and padded Circuit instances, one per input circuit.
@@ -73,18 +60,7 @@ def transpile_circuits(
 
 
 def _validate_measurement(gate, sequence, qubit_map, readout):
-    """Validate measurement gate and sequence consistency.
-
-    Args:
-        gate: The measurement gate to validate.
-        sequence: The pulse sequence containing acquisitions.
-        qubit_map: Mapping of physical to logical qubits.
-        readout: Dictionary of readout results.
-
-    Raises:
-        ValueError: If gate or sequence structure is invalid.
-        KeyError: If qubit or acquisition ID is not found.
-    """
+    """Validate measurement gate and sequence consistency."""
     if len(gate.qubits) != 1:
         raise ValueError(
             f"Measurement gate must measure a single qubit. "
@@ -103,7 +79,7 @@ def _validate_measurement(gate, sequence, qubit_map, readout):
         )
 
 
-def execute_circuits(
+def _execute_circuits(
     platform: Platform,
     compiler: Compiler,
     circuits: list[Circuit],
@@ -115,47 +91,6 @@ def execute_circuits(
     the control electronics.
 
     Circuits are unrolled to a single pulse sequence.
-
-    Args:
-        platform: The quantum platform to execute circuits on.
-        compiler: The compiler to use for circuit compilation.
-        circuits: List of quantum circuits to execute.
-        qubit_maps: List of qubit maps, one per circuit. Each qubit map maps physical
-            qubit IDs to logical qubit indices.
-        nshots: Number of times to sample from the experiment. Default is 1000.
-        averaging_mode: Averaging mode for measurements. Only 'SINGLESHOT' supports
-            multiple qubits and multi-qubit readout. 'CYCLIC' is single-qubit only and
-            uses hardware average. Default is SINGLESHOT.
-        Default is SINGLESHOT (CYCLIC only works with a single qubit).
-
-    Returns:
-        List of measurement outcome as Counter objects, one per circuit. Each Counter
-        maps measurement outcome states as strings (e.g., "01", "10") to their
-        occurrence counts. Total counts per counter equals nshots.
-
-    Examples:
-        .. testcode::
-
-        from qibo import Circuit, gates
-        from qibolab import create_platform
-        from qibocal.auto.transpile import execute_circuits, set_compiler
-
-        platform = create_platform("dummy")
-        compiler = set_compiler(platform)
-
-        circuit = Circuit(1)
-        circuit.add(gates.M(0))
-
-        qubit = next(iter(platform.qubits))
-        [counts] = execute_circuits(
-            platform=platform,
-            compiler=compiler,
-            circuits=[circuit],
-            qubit_maps=[[qubit]],
-            nshots=100,
-        )
-
-        assert sum(counts.values()) == 100
     """
 
     assert len(circuits) == len(qubit_maps), (
@@ -221,6 +156,75 @@ def execute_circuits(
     assert all(sum(counts.values()) == nshots for counts in countslist)
 
     return countslist
+
+
+def execute_circuits(
+    circuits: list[Circuit],
+    qubit_maps: list[list[QubitId]],
+    platform: Platform,
+    transpiler: Passes,
+    compiler: Compiler,
+    nshots: int = 1000,
+    averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
+) -> list[Counter[str]]:
+    """Execute multiple quantum circuits.
+
+    Combines :func:`transpile_circuits` and :func:`execute_circuits` into a single call.
+
+    Args:
+        circuits: List of quantum circuits to transpile and execute.
+        qubit_maps: List of qubit maps, one per circuit. Each qubit map maps physical
+            qubit IDs to logical qubit indices.
+        platform: The platform to transpile circuits for and execute on.
+        transpiler: The transpiler to apply to the circuits.
+        compiler: The compiler to use for circuit compilation.
+        nshots: Number of times to sample from the experiment. Default is 1000.
+        averaging_mode: Averaging mode for measurements. Default is SINGLESHOT.
+
+    Returns:
+        List of measurement outcome as Counter objects, one per circuit. Each Counter
+        maps measurement outcome states as strings (e.g., "01", "10") to their
+        occurrence counts. Total counts per counter equals nshots.
+
+    Examples:
+        .. testcode::
+
+        from qibo import Circuit, gates
+        from qibolab import create_platform
+        from qibocal.auto.transpile import (
+            dummy_transpiler,
+            set_compiler,
+            execute_circuits,
+        )
+
+        platform = create_platform("dummy")
+        transpiler = dummy_transpiler(platform)
+        compiler = set_compiler(platform)
+
+        circuit = Circuit(1)
+        circuit.add(gates.M(0))
+
+        qubit = next(iter(platform.qubits))
+        [counts] = execute_circuits(
+            circuits=[circuit],
+            qubit_maps=[[qubit]],
+            platform=platform,
+            transpiler=transpiler,
+            compiler=compiler,
+            nshots=100,
+        )
+
+        assert sum(counts.values()) == 100
+    """
+    transpiled = _transpile_circuits(circuits, qubit_maps, platform, transpiler)
+    return _execute_circuits(
+        platform,
+        compiler,
+        transpiled,
+        qubit_maps,
+        nshots=nshots,
+        averaging_mode=averaging_mode,
+    )
 
 
 def natives(platform: Platform) -> dict[str, NativeContainer]:
