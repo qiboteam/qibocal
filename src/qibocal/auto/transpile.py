@@ -86,24 +86,34 @@ def _transpile_circuits(
     return transpiled_circuits
 
 
-def _validate_measurement(gate, sequence, qubit_map, readout):
-    """Validate measurement gate and sequence consistency."""
+def _validate_gate(gate, qubit_map):
+    """Validate measurement gate against qubit map."""
     if len(gate.qubits) != 1:
         raise ValueError(
             "Measurement gate must measure a single qubit. "
             f"Got gate with {len(gate.qubits)} qubits."
         )
+    if gate.qubits[0] not in qubit_map:
+        raise KeyError(f"Qubit {gate.qubits[0]} not found in qubit map: {qubit_map}.")
+
+
+def _validate_sequence(sequence, readout):
+    """Validate measurement sequence against readout results."""
     if len(sequence.acquisitions) != 1:
         raise ValueError(
             "Measurement sequence must have exactly one acquisition. "
             f"Got {len(sequence.acquisitions)} acquisitions."
         )
-    if gate.qubits[0] not in qubit_map:
-        raise KeyError(f"Qubit {gate.qubits[0]} not found in qubit map: {qubit_map}.")
     if sequence.acquisitions[0][1].id not in readout:
         raise KeyError(
             f"Acquisition ID {sequence.acquisitions[0][1].id} not found in readout results."
         )
+
+
+def _validate_measurement(gate, sequence, qubit_map, readout):
+    """Validate measurement gate and sequence consistency."""
+    _validate_gate(gate, qubit_map)
+    _validate_sequence(sequence, readout)
 
 
 def _execute_circuits(
