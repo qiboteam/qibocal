@@ -8,9 +8,9 @@ from qibolab import AveragingMode, create_platform
 from qibocal.auto.operation import QubitId
 from qibocal.auto.transpile import (
     _execute_circuits,
+    _pad_circuit,
     _transpile_circuits,
     dummy_transpiler,
-    pad_circuit,
     set_compiler,
 )
 
@@ -36,7 +36,7 @@ def test_pad_circuit():
     small_circuit.add(gates.X(0))
     small_circuit.add(gates.X(1))
     qubit_map = [1, 2]
-    big_circuit = pad_circuit(4, small_circuit, qubit_map)
+    big_circuit = _pad_circuit(4, small_circuit, qubit_map)
 
     true_circ = Circuit(4)
     true_circ.add(gates.X(1))

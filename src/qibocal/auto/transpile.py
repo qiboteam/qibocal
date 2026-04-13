@@ -18,6 +18,40 @@ REPLACEMENTS = {
 }
 
 
+def _string_to_integer_qubit_maps(
+    qubit_maps: list[list[QubitId]], platform: Platform
+) -> list[list[int]]:
+    """QubitId can be integers or strings. ``pad_circuit`` only works with integer qubit
+    IDs, so if the qubit maps contain string IDs, we convert them to integer indices
+    based on the platform's qubit order.
+    """
+    qubits = list(platform.qubits)
+    return [
+        [q if isinstance(q, int) else qubits.index(q) for q in qubit_map]
+        for qubit_map in qubit_maps
+    ]
+
+
+def _pad_circuit(nqubits: int, circuit: Circuit, qubit_map: list[int]) -> Circuit:
+    """
+    Pad `circuit` in a new one with `nqubits` qubits, according to `qubit_map`.
+    `qubit_map` is a list `[i, j, k, ...]`, where physical qubit i is mapped into the
+    0th logical qubit and so on.
+
+    Args:
+        nqubits: The total number of qubits in the new circuit.
+        circuit: The original quantum circuit to be padded.
+        qubit_map: A list mapping physical qubits to logical qubits in the new circuit.
+
+    Returns:
+        A Circuit instance with `nqubits` qubits, containing the original circuit's
+        gates mapped according to `qubit_map`.
+    """
+    new_circuit = Circuit(nqubits)
+    new_circuit.add(circuit.on_qubits(*qubit_map))
+    return new_circuit
+
+
 def _transpile_circuits(
     circuits: list[Circuit],
     qubit_maps: list[list[QubitId]],
@@ -42,17 +76,10 @@ def _transpile_circuits(
         List of transpiled and padded Circuit instances, one per input circuit.
     """
     transpiled_circuits = []
-    qubits = list(platform.qubits)
-    # QubitId can be integers or strings. pad_circuit only works with integer qubit IDs,
-    # so if the qubit maps contain string IDs, we convert them to integer indices based
-    # on the platform's qubit order.
-    _qubit_maps: list[list[int]] = [
-        [q if isinstance(q, int) else qubits.index(q) for q in qubit_map]
-        for qubit_map in qubit_maps
-    ]
+    _qubit_maps = _string_to_integer_qubit_maps(qubit_maps, platform)
     platform_nqubits = platform.nqubits
     for circuit, qubit_map in zip(circuits, _qubit_maps):
-        new_circuit = pad_circuit(platform_nqubits, circuit, qubit_map)
+        new_circuit = _pad_circuit(platform_nqubits, circuit, qubit_map)
         transpiled_circ, _ = transpiler(new_circuit)
         transpiled_circuits.append(transpiled_circ)
 
@@ -227,7 +254,7 @@ def execute_circuits(
     )
 
 
-def natives(platform: Platform) -> dict[str, NativeContainer]:
+def _natives(platform: Platform) -> dict[str, NativeContainer]:
     """
     Return the dict of native gates name with the associated native container
     defined in the `platform`. This function assumes the native gates to be the same for each
@@ -255,7 +282,7 @@ def natives(platform: Platform) -> dict[str, NativeContainer]:
     }
 
 
-def create_rule(name: str, natives: NativeContainer) -> Callable:
+def _create_rule(name: str, natives: NativeContainer) -> Callable:
     """Create rule for gate name given container natives."""
 
     def rule(gate: gates.Gate, natives: NativeContainer) -> PulseSequence:
@@ -277,13 +304,13 @@ def set_compiler(platform: Platform) -> Compiler:
     Returns:
         A Compiler instance with rules set according to the platform's native gates.
     """
-    native_gates = natives(platform)
+    native_gates = _natives(platform)
     compiler = Compiler.default()
     rules = {}
     for name, natives_container in native_gates.items():
         gate = getattr(gates, name)
         if gate not in compiler.rules:
-            rules[gate] = create_rule(name, natives_container)
+            rules[gate] = _create_rule(name, natives_container)
         else:
             rules[gate] = compiler.rules[gate]
     rules[gates.I] = compiler.rules[gates.I]
@@ -303,27 +330,7 @@ def dummy_transpiler(platform: Platform) -> Passes:
     Returns:
         A Passes instance with an unroller set according to the platform's native gates.
     """
-    native_gates = natives(platform)
+    native_gates = _natives(platform)
     native_gates = [getattr(gates, x) for x in native_gates]
     unroller = Unroller(NativeGates.from_gatelist(native_gates))
     return Passes(connectivity=platform.pairs, passes=[unroller])
-
-
-def pad_circuit(nqubits: int, circuit: Circuit, qubit_map: list[int]) -> Circuit:
-    """
-    Pad `circuit` in a new one with `nqubits` qubits, according to `qubit_map`.
-    `qubit_map` is a list `[i, j, k, ...]`, where physical qubit i is mapped into the
-    0th logical qubit and so on.
-
-    Args:
-        nqubits: The total number of qubits in the new circuit.
-        circuit: The original quantum circuit to be padded.
-        qubit_map: A list mapping physical qubits to logical qubits in the new circuit.
-
-    Returns:
-        A Circuit instance with `nqubits` qubits, containing the original circuit's
-        gates mapped according to `qubit_map`.
-    """
-    new_circuit = Circuit(nqubits)
-    new_circuit.add(circuit.on_qubits(*qubit_map))
-    return new_circuit
