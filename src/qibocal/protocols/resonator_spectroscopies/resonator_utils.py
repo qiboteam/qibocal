@@ -966,9 +966,9 @@ from scipy.optimize import curve_fit, fsolve
 
 def purcell_s_out_in(
     w: float,
-    A: float,
-    k: float,
-    w_0: float,
+    # A: float,
+    # k: float,
+    # w_0: float,
     phi: float,
     k_p: float,
     w_p: float,
@@ -979,14 +979,14 @@ def purcell_s_out_in(
     Full model of the Purcell resonator described by equation (A1) in "Enhancing Dispersive Readout of Superconducting Qubits Through Dynamic Control
     of the Dispersive Shift: Experiment and Theory" (see https://arxiv.org/abs/2307.07765).
 
-    The equation describes the (complex) output signal of a readout resonator coupled to a Purcell filter based on an input-output model. It assumes a
-    linear baseline background signal.
+    The equation describes the (complex) output signal of a readout resonator coupled to a Purcell filter based on an input-output model. Here we assume
+    an already normalized linear baseline background signal, and we care about the amplitude (i.e. the absolute value) of the output signal only.
 
     Args:
         w: frequency at which to compute the complex amplitude
-        A: baseline amplitude at center
-        k: "tilt" or slope of the baseline
-        w_0: frequency at which to center the spectrum
+        # A: baseline amplitude at center
+        # k: "tilt" or slope of the baseline
+        # w_0: frequency at which to center the spectrum
         phi: phase rotation induced by capacitive coupling to other lines
         k_p: external coupling rate of the Purcell filter
         w_p: Purcell filter frequency
@@ -997,17 +997,19 @@ def purcell_s_out_in(
         Complex amplitude signal
     """
     return (
-        (A
-         + (k*(w-w_0)/w_0 if w_0!=0 else k*w))
-        *(np.cos(phi)
+        # (A
+        #  + (k*(w-w_0)/w_0 if w_0!=0 else k*w))
+        1*np.abs((np.cos(phi)
           -np.exp(1j*phi)
           * (k_p*(-2j*(w-w_r)))
           / (4*J**2+(k_p-2j*(w-w_p))*(-2j*(w-w_r)))
-        )
+        ))
     )
 
 def purcell_fit(
     data: NDArray,
+    resonator_type=None,
+    fit=None,
 ) -> tuple[NDArray,NDArray]:
     """
     Fit a model of Purcell resonator to the given data based on the one described by purcell_s_out_in above.
@@ -1027,7 +1029,7 @@ def purcell_fit(
         data: data to be fit. As in other functions
 
     Return:
-        tuple with two entries: firstly the array of optimized parameters, and secondly the covariance matrix for them
+        ordered pair: first the array of optimized parameters, and second the covariance matrix for them
     """
 
     # collecting frequencies and complex signals
@@ -1036,7 +1038,7 @@ def purcell_fit(
 
     ### step (1)
     # removing baseline from the absolute signals
-    lamda = 1e6 # hyperparameter, recommended to be between 1e6 and 1e9
+    lamda = 1e6 # hyperparameter, recommended from ALS paper to be between 1e6 and 1e9
     p=0.99 # hyperparameter
     z_filt = baseline_als(data=np.abs(z),lamda=lamda,p=p)
 
@@ -1082,4 +1084,4 @@ def purcell_fit(
     # fitting data normalized by baseline from these guesses using curve_fit
     popt, pcov = curve_fit(model,frequencies,np.abs(z)/z_filt,p0=initial_guess)
 
-    return popt, pcov
+    return popt[3], popt, np.sqrt(np.abs(np.diag(pcov)))
