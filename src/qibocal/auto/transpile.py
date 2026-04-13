@@ -6,7 +6,7 @@ import numpy as np
 from qibo import Circuit, gates
 from qibo.transpiler.pipeline import Passes
 from qibo.transpiler.unroller import NativeGates, Unroller
-from qibolab import AveragingMode, Platform, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence
 from qibolab._core.compilers import Compiler
 from qibolab._core.native import NativeContainer
 
@@ -121,7 +121,7 @@ def _execute_circuits(
     compiler: Compiler,
     circuits: list[Circuit],
     qubit_maps: list[list[QubitId]],
-    nshots: int = 1000,
+    nshots: int,
     averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
 ) -> list[Counter[str]]:
     """Executes multiple quantum circuits with a single communication with
@@ -138,8 +138,13 @@ def _execute_circuits(
         *(compiler.compile(circuit, platform) for circuit in circuits)
     )
 
-    # TODO?: pass options dict
-    readout = platform.execute(sequences, nshots=nshots, averaging_mode=averaging_mode)
+    # aqcuisition_type is always DISCRIMINATION for circuits.
+    readout = platform.execute(
+        sequences,
+        nshots=nshots,
+        averaging_mode=averaging_mode,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+    )
 
     countslist = []
     if averaging_mode.average:
@@ -201,7 +206,7 @@ def execute_circuits(
     platform: Platform,
     transpiler: Passes,
     compiler: Compiler,
-    nshots: int = 1000,
+    nshots: int,
     averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
 ) -> list[Counter[str]]:
     """Execute multiple quantum circuits.
@@ -215,7 +220,7 @@ def execute_circuits(
         platform: The platform to transpile circuits for and execute on.
         transpiler: The transpiler to apply to the circuits.
         compiler: The compiler to use for circuit compilation.
-        nshots: Number of times to sample from the experiment. Default is 1000.
+        nshots: Number of times to sample from the experiment.
         averaging_mode: Averaging mode for measurements. Default is SINGLESHOT.
 
     Returns:
