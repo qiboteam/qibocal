@@ -84,7 +84,7 @@ def mitigated_frequencies(frequencies, mitigation_matrix, thetas):
                 freq_array[int(k, 2)] = v[i]
             freq_array = freq_array.reshape(-1, 1)
             for j, val in enumerate(mitigation_matrix @ freq_array):
-                mitigated_freq[format(j, f"0{2}b")].append(float(val))
+                mitigated_freq[format(j, f"0{2}b")].append(float(val[0]))
         mitigated_freq_list.append(mitigated_freq)
     return mitigated_freq_list
 
