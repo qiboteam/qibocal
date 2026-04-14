@@ -6,6 +6,7 @@ from typing import Optional, Tuple, Union
 
 import numpy as np
 import numpy.typing as npt
+from pydantic import BaseModel, ConfigDict
 from qibo import gates
 from qibo.models import Circuit
 from qibolab import AveragingMode
@@ -31,29 +32,36 @@ from qibocal.protocols.utils import significant_digit
 from .fitting import fit_exp1B_func
 
 
-@dataclass(frozen=True)
-class CircuitIndex:
+class CircuitIndex(BaseModel):
     """Tracks the (qubit, depth, iteration) CircuitIndex of a circuit."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     qubit: Union[QubitId, QubitPairId]
     depth: int
     iteration: int
 
 
-@dataclass
-class IndexedCircuit:
+class IndexedCircuit(BaseModel):
     """A circuit paired with its (qubit, depth, iteration) CircuitIndex."""
+
+    # arbitrary_types_allowed is needed to allow the Circuit type to be a field.
+    model_config = ConfigDict(frozen=True, extra="forbid", arbitrary_types_allowed=True)
 
     circuit: Circuit
     index: CircuitIndex
 
 
-@dataclass
-class IndexedResult:
+class IndexedResult(BaseModel):
     """An execution result paired with its (qubit, depth, iteration) CircuitIndex."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     result: Counter
     index: CircuitIndex
+
+
+CircuitDepth = int
 
 
 SINGLE_QUBIT_CLIFFORDS = {
@@ -254,7 +262,7 @@ class RBGenerator:
 class RBData(Data):
     """The output of the acquisition function."""
 
-    depths: list
+    depths: list[CircuitDepth]
     """Circuits depths."""
     uncertainties: Optional[float]
     """Parameters uncertainties."""
@@ -263,9 +271,9 @@ class RBData(Data):
     """Number of shots."""
     niter: int
     """Number of iterations for each depth."""
-    data: dict[Union[QubitId, QubitPairId], npt.NDArray[RBType]] = field(
-        default_factory=dict
-    )
+    data: dict[
+        tuple[Union[QubitId, QubitPairId], CircuitDepth], npt.NDArray[RBType]
+    ] = field(default_factory=dict)
     """Raw data acquired."""
     npulses_per_clifford: float = 1.875
     """Number of pulses for an average clifford."""
@@ -349,7 +357,7 @@ def setup_data(
     return data
 
 
-def generate_indexed_circuits(
+def _generate_indexed_circuits(
     params: Parameters,
     rb_gen: RBGenerator,
     targets,  # list[QubitId] or list[QubitPairId]
@@ -387,7 +395,7 @@ def generate_indexed_circuits(
     return indexed_circuits
 
 
-def execute_indexed_circuits(
+def _execute_indexed_circuits(
     indexed_circuits: list[IndexedCircuit],
     params: Parameters,
     platform: CalibrationPlatform,
@@ -462,7 +470,7 @@ def rb_acquisition(
         params, npulses_per_clifford=npulses_per_clifford, single_qubit=True
     )
 
-    indexed_circuits = generate_indexed_circuits(
+    indexed_circuits = _generate_indexed_circuits(
         params=params,
         rb_gen=rb_gen,
         targets=targets,
@@ -470,7 +478,7 @@ def rb_acquisition(
         interleave=interleave,
     )
 
-    indexed_results = execute_indexed_circuits(
+    indexed_results = _execute_indexed_circuits(
         indexed_circuits=indexed_circuits,
         params=params,
         platform=platform,
@@ -527,7 +535,7 @@ def twoq_rb_acquisition(
         interleave=interleave,
     )
 
-    indexed_circuits = generate_indexed_circuits(
+    indexed_circuits = _generate_indexed_circuits(
         params=params,
         rb_gen=rb_gen,
         targets=targets,
@@ -535,7 +543,7 @@ def twoq_rb_acquisition(
         interleave=interleave,
     )
 
-    indexed_results = execute_indexed_circuits(
+    indexed_results = _execute_indexed_circuits(
         indexed_circuits=indexed_circuits,
         params=params,
         platform=platform,
@@ -559,10 +567,11 @@ def twoq_rb_acquisition(
     for (qubit0, qubit1, depth), results in grouped.items():
         data.register_qubit(
             dtype=RBType,
-            data_keys=(qubit0, qubit1, depth),
+            data_keys=((qubit0, qubit1), depth),
             data_dict={"survival_probs": results},
         )
 
+    assert isinstance(data, Union[RB2QData, RB2QInterData])
     return data
 
 
