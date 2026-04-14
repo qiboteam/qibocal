@@ -201,14 +201,17 @@ class Data(AbstractData):
     @property
     def qubits(self) -> list[QubitId]:
         """Access qubits from data structure."""
+        # TODO: In the two-qubit case, a set of the first elements of the tuples is
+        # returned. This behaviour is not reflected in the name of the property so may
+        # lead to confusion and should therefore be changed.
         if set(map(type, self.data)) == {tuple}:
             return list({q[0] for q in self.data})
         return [q for q in self.data]
 
     @property
     def pairs(self):
-        """Access qubit pairs ordered alphanumerically from data structure."""
-        return list({tuple(sorted(q[:2])) for q in self.data})
+        """Access qubit pairs from data structure."""
+        return list({tuple(q[:2]) for q in self.data})
 
     def register_qubit(self, dtype, data_keys, data_dict):
         """Store output for single qubit.

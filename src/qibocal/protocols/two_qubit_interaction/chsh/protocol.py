@@ -5,7 +5,6 @@ from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
-from qibo.backends import construct_backend
 from qibolab import Platform
 
 from qibocal.auto.operation import (
@@ -16,7 +15,11 @@ from qibocal.auto.operation import (
     Results,
     Routine,
 )
-from qibocal.auto.transpile import dummy_transpiler, execute_transpiled_circuit
+from qibocal.auto.transpile import (
+    build_native_gate_compiler,
+    build_native_gate_transpiler,
+    execute_circuits,
+)
 
 from .circuits import create_chsh_circuits
 from .utils import READOUT_BASIS, compute_chsh
@@ -149,8 +152,8 @@ def _acquisition(
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
     data = CHSHData(bell_states=params.bell_states, thetas=thetas.tolist())
 
-    backend = construct_backend("qibolab", platform=platform)
-    transpiler = dummy_transpiler(backend)
+    transpiler = build_native_gate_transpiler(platform)
+    compiler = build_native_gate_compiler(platform)
     for pair in targets:
         try:
             mitigation_matrix = (
@@ -167,15 +170,15 @@ def _acquisition(
                     native=params.native,
                 )
                 for basis, circuit in chsh_circuits.items():
-                    _, result = execute_transpiled_circuit(
-                        circuit,
-                        pair,
-                        backend,
-                        transpiler=transpiler,
+                    [result] = execute_circuits(
+                        [circuit],
+                        [pair],
+                        platform,
+                        transpiler,
+                        compiler,
                         nshots=params.nshots,
                     )
-                    frequencies = result.frequencies()
-                    data.register_basis(pair, bell_state, basis, frequencies)
+                    data.register_basis(pair, bell_state, basis, result)
 
             data.frequencies[bell_state] = freqs = merge_frequencies(
                 data.data, pair, bell_state

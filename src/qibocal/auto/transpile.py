@@ -1,10 +1,12 @@
-from typing import Optional
+# This file contains functions to transpile and execute quantum circuits.
+from collections import Counter
+from typing import Callable
 
+import numpy as np
 from qibo import Circuit, gates
-from qibo.backends import Backend
 from qibo.transpiler.pipeline import Passes
 from qibo.transpiler.unroller import NativeGates, Unroller
-from qibolab import PulseSequence
+from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence
 from qibolab._core.compilers import Compiler
 from qibolab._core.native import NativeContainer
 
@@ -16,12 +18,46 @@ REPLACEMENTS = {
 }
 
 
-def transpile_circuits(
+def _string_to_integer_qubit_maps(
+    qubit_maps: list[list[QubitId]], platform: Platform
+) -> list[list[int]]:
+    """QubitId can be integers or strings. ``pad_circuit`` only works with integer qubit
+    IDs, so if the qubit maps contain string IDs, we convert them to integer indices
+    based on the platform's qubit order.
+    """
+    qubits = list(platform.qubits)
+    return [
+        [q if isinstance(q, int) else qubits.index(q) for q in qubit_map]
+        for qubit_map in qubit_maps
+    ]
+
+
+def _pad_circuit(nqubits: int, circuit: Circuit, qubit_map: list[int]) -> Circuit:
+    """
+    Pad `circuit` in a new one with `nqubits` qubits, according to `qubit_map`.
+    `qubit_map` is a list `[i, j, k, ...]`, where physical qubit i is mapped into the
+    0th logical qubit and so on.
+
+    Args:
+        nqubits: The total number of qubits in the new circuit.
+        circuit: The original quantum circuit to be padded.
+        qubit_map: A list mapping physical qubits to logical qubits in the new circuit.
+
+    Returns:
+        A Circuit instance with `nqubits` qubits, containing the original circuit's
+        gates mapped according to `qubit_map`.
+    """
+    new_circuit = Circuit(nqubits)
+    new_circuit.add(circuit.on_qubits(*qubit_map))
+    return new_circuit
+
+
+def _transpile_circuits(
     circuits: list[Circuit],
     qubit_maps: list[list[QubitId]],
-    backend: Backend,
-    transpiler: Optional[Passes],
-):
+    platform: Platform,
+    transpiler: Passes,
+) -> list[Circuit]:
     """Transpile and pad `circuits` according to the platform.
 
     Apply the `transpiler` to `circuits` and pad them in
@@ -35,83 +71,220 @@ def transpile_circuits(
 
         In this function we are implicitly assume that the qubit ids
         are all string or all integers.
+
+    Returns:
+        List of transpiled and padded Circuit instances, one per input circuit.
     """
     transpiled_circuits = []
-    platform = backend.platform
-    qubits = list(platform.qubits)
-    if isinstance(qubit_maps[0][0], str):
-        for i, qubit_map in enumerate(qubit_maps):
-            qubit_map = map(lambda x: qubits.index(x), qubit_map)
-            qubit_maps[i] = list(qubit_map)
+    _qubit_maps = _string_to_integer_qubit_maps(qubit_maps, platform)
     platform_nqubits = platform.nqubits
-    for circuit, qubit_map in zip(circuits, qubit_maps):
-        new_circuit = pad_circuit(platform_nqubits, circuit, qubit_map)
+    for circuit, qubit_map in zip(circuits, _qubit_maps):
+        new_circuit = _pad_circuit(platform_nqubits, circuit, qubit_map)
         transpiled_circ, _ = transpiler(new_circuit)
         transpiled_circuits.append(transpiled_circ)
 
     return transpiled_circuits
 
 
-def execute_transpiled_circuits(
+def _validate_gate(gate, qubit_map):
+    """Validate measurement gate against qubit map."""
+    if len(gate.qubits) != 1:
+        raise ValueError(
+            "Measurement gate must measure a single qubit. "
+            f"Got gate with {len(gate.qubits)} qubits."
+        )
+    if gate.qubits[0] not in qubit_map:
+        raise KeyError(f"Qubit {gate.qubits[0]} not found in qubit map: {qubit_map}.")
+
+
+def _validate_sequence(sequence, readout):
+    """Validate measurement sequence against readout results."""
+    if len(sequence.acquisitions) != 1:
+        raise ValueError(
+            "Measurement sequence must have exactly one acquisition. "
+            f"Got {len(sequence.acquisitions)} acquisitions."
+        )
+    if sequence.acquisitions[0][1].id not in readout:
+        raise KeyError(
+            f"Acquisition ID {sequence.acquisitions[0][1].id} not found in readout results."
+        )
+
+
+def _validate_measurement(gate, sequence, qubit_map, readout):
+    """Validate measurement gate and sequence consistency."""
+    _validate_gate(gate, qubit_map)
+    _validate_sequence(sequence, readout)
+
+
+def _counts_with_hardware_averaging(
+    qubit_maps: list[list[QubitId]],
+    measurement_maps,
+    readout,
+    nshots: int,
+) -> list[Counter[str]]:
+    """Build Counters when hardware averaging is enabled."""
+    counts_per_circuit = []
+    for qubit_map, measurement_map in zip(qubit_maps, measurement_maps):
+        if len(qubit_map) != 1 or len(measurement_map) != 1:
+            raise ValueError(
+                "Hardware averaging is only supported for single qubit readout."
+            )
+
+        [(_, sequence)] = measurement_map.items()
+        excited_frac = readout[sequence.acquisitions[0][1].id]
+        counts_per_circuit.append(
+            Counter(
+                {
+                    "0": int(np.round((1 - excited_frac) * nshots)),
+                    "1": int(np.round(excited_frac * nshots)),
+                }
+            )
+        )
+
+    return counts_per_circuit
+
+
+def _counts_with_singleshot(
+    qubit_maps: list[list[QubitId]],
+    measurement_maps,
+    readout,
+) -> list[Counter[str]]:
+    """Build Counters when single-shot measurements are available."""
+    counts_per_circuit = []
+    for qubit_map, measurement_map in zip(qubit_maps, measurement_maps):
+        assert len(qubit_map) == len(measurement_map)
+        result = {}
+        for gate, sequence in measurement_map.items():
+            logical_qubit = qubit_map.index(gate.qubits[0])
+            result[logical_qubit] = readout[sequence.acquisitions[0][1].id]
+        # The inverse sorting is to have little-endian bitstring notation, which
+        # means that the qubit with the smallest qubitId is the most significant bit
+        # in the output string (on the right).
+        inverse_sorted_qubits = sorted(result, reverse=True)
+        arr = np.stack([result[q] for q in inverse_sorted_qubits]).astype(int)
+        counts_per_circuit.append(Counter("".join(map(str, col)) for col in arr.T))
+
+    return counts_per_circuit
+
+
+def _execute_circuits(
+    platform: Platform,
+    compiler: Compiler,
     circuits: list[Circuit],
     qubit_maps: list[list[QubitId]],
-    backend: Backend,
-    transpiler: Optional[Passes],
-    initial_states=None,
-    nshots=1000,
-):
-    """Transpile `circuits`.
+    nshots: int,
+    averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
+) -> list[Counter[str]]:
+    """Executes multiple quantum circuits with a single communication with
+    the control electronics.
 
-    If the `qibolab` backend is used, this function pads the `circuits` in new
-    ones with a number of qubits equal to the one provided by the platform.
-    At the end, the circuits are transpiled, executed and the results returned.
-    The input `transpiler` is optional, but it should be provided if the backend
-    is `qibolab`.
-    For the qubit map look :func:`dummy_transpiler`.
-    This function returns the list of transpiled circuits and the execution results.
+    Circuits are unrolled to a single pulse sequence.
     """
-    transpiled_circuits = transpile_circuits(
-        circuits,
+
+    assert len(circuits) == len(qubit_maps), (
+        "Number of circuits and qubit maps must match."
+    )
+
+    sequences, measurement_maps = zip(
+        *(compiler.compile(circuit, platform) for circuit in circuits)
+    )
+
+    # acquisition_type is always DISCRIMINATION for circuits.
+    readout = platform.execute(
+        list(sequences),
+        nshots=nshots,
+        averaging_mode=averaging_mode,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+    )
+
+    for qubit_map, measurement_map in zip(qubit_maps, measurement_maps):
+        for gate, sequence in measurement_map.items():
+            _validate_measurement(gate, sequence, qubit_map, readout)
+
+    if averaging_mode.average:
+        counts_per_circuit = _counts_with_hardware_averaging(
+            qubit_maps, measurement_maps, readout, nshots
+        )
+    else:
+        counts_per_circuit = _counts_with_singleshot(
+            qubit_maps, measurement_maps, readout
+        )
+
+    assert all(sum(counts.values()) == nshots for counts in counts_per_circuit)
+
+    return counts_per_circuit
+
+
+def execute_circuits(
+    circuits: list[Circuit],
+    qubit_maps: list[list[QubitId]],
+    platform: Platform,
+    transpiler: Passes,
+    compiler: Compiler,
+    nshots: int,
+    averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
+) -> list[Counter[str]]:
+    """Execute multiple quantum circuits.
+
+    Combines :func:`transpile_circuits` and :func:`execute_circuits` into a single call.
+
+    Args:
+        circuits: List of quantum circuits to transpile and execute.
+        qubit_maps: List of qubit maps, one per circuit. Each qubit map maps physical
+            qubit IDs to logical qubit indices.
+        platform: The platform to transpile circuits for and execute on.
+        transpiler: The transpiler to apply to the circuits.
+        compiler: The compiler to use for circuit compilation.
+        nshots: Number of times to sample from the experiment.
+        averaging_mode: Averaging mode for measurements. Default is single-shot.
+
+    Returns:
+        List of measurement outcome as Counter objects, one per circuit. Each Counter
+        maps measurement outcome states as strings (e.g., "01", "10") to their
+        occurrence counts. Total counts per counter equals nshots.
+
+    Examples:
+        .. testcode::
+
+        from qibo import Circuit, gates
+        from qibolab import create_platform
+        from qibocal.auto.transpile import (
+            dummy_transpiler,
+            set_compiler,
+            execute_circuits,
+        )
+
+        platform = create_platform("dummy")
+        transpiler = dummy_transpiler(platform)
+        compiler = set_compiler(platform)
+
+        circuit = Circuit(1)
+        circuit.add(gates.M(0))
+
+        qubit = next(iter(platform.qubits))
+        [counts] = execute_circuits(
+            circuits=[circuit],
+            qubit_maps=[[qubit]],
+            platform=platform,
+            transpiler=transpiler,
+            compiler=compiler,
+            nshots=100,
+        )
+
+        assert sum(counts.values()) == 100
+    """
+    transpiled = _transpile_circuits(circuits, qubit_maps, platform, transpiler)
+    return _execute_circuits(
+        platform,
+        compiler,
+        transpiled,
         qubit_maps,
-        backend,
-        transpiler,
-    )
-    return transpiled_circuits, backend.execute_circuits(
-        transpiled_circuits, initial_states=initial_states, nshots=nshots
+        nshots=nshots,
+        averaging_mode=averaging_mode,
     )
 
 
-def execute_transpiled_circuit(
-    circuit: Circuit,
-    qubit_map: list[QubitId],
-    backend: Backend,
-    transpiler: Optional[Passes],
-    initial_state=None,
-    nshots=1000,
-):
-    """Transpile `circuit`.
-
-    If the `qibolab` backend is used, this function pads the `circuit` in new a
-    one with a number of qubits equal to the one provided by the platform.
-    At the end, the circuit is transpiled, executed and the results returned.
-    The input `transpiler` is optional, but it should be provided if the backend
-    is `qibolab`.
-    For the qubit map look :func:`dummy_transpiler`.
-    This function returns the transpiled circuit and the execution results.
-    """
-
-    transpiled_circ = transpile_circuits(
-        [circuit],
-        [qubit_map],
-        backend,
-        transpiler,
-    )[0]
-    return transpiled_circ, backend.execute_circuit(
-        transpiled_circ, initial_state=initial_state, nshots=nshots
-    )
-
-
-def natives(platform) -> dict[str, NativeContainer]:
+def _natives(platform: Platform) -> dict[str, NativeContainer]:
     """
     Return the dict of native gates name with the associated native container
     defined in the `platform`. This function assumes the native gates to be the same for each
@@ -139,7 +312,7 @@ def natives(platform) -> dict[str, NativeContainer]:
     }
 
 
-def create_rule(name, natives):
+def _create_rule(name: str, natives: NativeContainer) -> Callable:
     """Create rule for gate name given container natives."""
 
     def rule(gate: gates.Gate, natives: NativeContainer) -> PulseSequence:
@@ -148,43 +321,46 @@ def create_rule(name, natives):
     return rule
 
 
-def set_compiler(backend, natives_):
+def build_native_gate_compiler(platform: Platform) -> Compiler:
+    """Build a compiler that follows the native gates defined by `platform`.
+
+    Starting from :meth:`Compiler.default`, this function overrides and extends
+    gate rules using the native containers available on the platform so circuit
+    compilation is consistent with the selected hardware configuration.
+
+    Args:
+        platform: The quantum platform containing native gate definitions.
+
+    Returns:
+        A Compiler instance with rules set according to the platform's native gates.
     """
-    Set the compiler to execute the native gates defined by the platform.
-    """
-    compiler = backend.compiler
+    native_gates = _natives(platform)
+    compiler = Compiler.default()
     rules = {}
-    for name, natives_container in natives_.items():
+    for name, natives_container in native_gates.items():
         gate = getattr(gates, name)
         if gate not in compiler.rules:
-            rules[gate] = create_rule(name, natives_container)
+            rules[gate] = _create_rule(name, natives_container)
         else:
             rules[gate] = compiler.rules[gate]
     rules[gates.I] = compiler.rules[gates.I]
-    backend.compiler = Compiler(rules=rules)
+    return Compiler(rules=rules)
 
 
-def dummy_transpiler(backend: Backend) -> Passes:
+def build_native_gate_transpiler(platform: Platform) -> Passes:
     """
     If the backend is `qibolab`, a transpiler with just an unroller is returned,
     otherwise `None`. This function overwrites the compiler defined in the
     backend, taking into account the native gates defined in the`platform` (see
-    :func:`set_compiler`).
+    :func:`build_native_gate_compiler`).
+
+    Args:
+        platform: The quantum platform containing native gate definitions.
+
+    Returns:
+        A Passes instance with an unroller set according to the platform's native gates.
     """
-    platform = backend.platform
-    native_gates = natives(platform)
-    set_compiler(backend, native_gates)
+    native_gates = _natives(platform)
     native_gates = [getattr(gates, x) for x in native_gates]
     unroller = Unroller(NativeGates.from_gatelist(native_gates))
     return Passes(connectivity=platform.pairs, passes=[unroller])
-
-
-def pad_circuit(nqubits, circuit: Circuit, qubit_map: list[int]) -> Circuit:
-    """
-    Pad `circuit` in a new one with `nqubits` qubits, according to `qubit_map`.
-    `qubit_map` is a list `[i, j, k, ...]`, where the i-th physical qubit is mapped
-    into the 0th logical qubit and so on.
-    """
-    new_circuit = Circuit(nqubits)
-    new_circuit.add(circuit.on_qubits(*qubit_map))
-    return new_circuit

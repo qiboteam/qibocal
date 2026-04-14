@@ -1,3 +1,5 @@
+from collections import Counter
+from collections.abc import Sequence
 from colorsys import hls_to_rgb
 from enum import Enum
 from typing import Literal, Optional, Union
@@ -232,6 +234,31 @@ def compute_qnd(
 
     qnd = np.sum(np.diag(p_o)) / 2 if not pi else np.sum(np.diag(p_o[::-1])) / 2
     return qnd, lambda_m.tolist(), lambda_m2.tolist()
+
+
+def marginalize_qubit_counts(counts: Counter[str], qubit_id: Sequence[int] | int):
+    """
+    Extract marginal distribution from measurement counts over selected qubit indices.
+
+    Args:
+        counts: Counter mapping big-endian bitstrings to counts (e.g. {'0101': 10, ...})
+        qubit_id: Qubit ids to marginalize over.
+
+    Returns:
+        Counter of the marginal distribution.
+    """
+    out = Counter()
+    indices_list = [qubit_id] if isinstance(qubit_id, int) else qubit_id
+    # Indices are the qubit ids. Since results are returned in big-endian format this
+    # means that the qubit with id 0 is the rightmost bit in the bitstring, so we need to
+    # remap the indices to account for this.
+    assert len(set(map(len, counts))) == 1, "All bitstrings must have the same length"
+    nqubits = len(next(iter(counts)))
+    state_indices = [nqubits - 1 - i for i in indices_list]
+    for state, count in counts.items():
+        reduced = "".join(state[i] for i in state_indices)
+        out[reduced] += count
+    return out
 
 
 def compute_assignment_fidelity(

@@ -41,12 +41,6 @@ class StandardRBParameters(Parameters):
     If ``None``,
     it computes the standard deviation. Otherwise it computes the corresponding confidence interval. Defaults `None`.
     """
-    unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple circuits in a
-    single instrument call.
-
-    Defaults to ``False``.
-    """
     seed: Optional[int] = None
     """A fixed seed to initialize ``np.random.Generator``.
 
@@ -96,7 +90,7 @@ def _fit(data: RBData) -> StandardRBResult:
     Returns:
         StandardRBResult: Aggregated and processed data.
     """
-    return fit(data.qubits, data)
+    return fit(data)
 
 
 def _plot(
@@ -118,7 +112,14 @@ def _plot(
     fig = go.Figure()
     fitting_report = ""
     x = data.depths
-    raw_data = data.extract_probabilities(qubit)
+    single_qubit = isinstance(target, int)
+    raw_data = np.array(
+        [
+            val["survival_probs"]
+            for key, val in data.data.items()
+            if (key[0] if single_qubit else key[:2]) == target
+        ]
+    )  # rows -> depths, cols -> iterations
     y = np.mean(raw_data, axis=1)
     raw_depths = [[depth] * data.niter for depth in data.depths]
 

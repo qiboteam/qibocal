@@ -26,6 +26,20 @@ PLATFORM_DIR = "platform"
 """Folder where platform will be dumped."""
 
 
+def _validate_targets(targets):
+    if not isinstance(targets, list):
+        raise TypeError(
+            f"targets must be a list, got {type(targets).__name__} with value: {targets}"
+        )
+
+    invalid_targets = [t for t in targets if not isinstance(t, (tuple, int, str))]
+    if invalid_targets:
+        raise TypeError(
+            "targets must contain only qubit IDs (int/str) or qubit pairs (tuple), "
+            f"got invalid entries: {invalid_targets}"
+        )
+
+
 def _register(name: str, obj):
     """Register object as module.
 
@@ -277,6 +291,7 @@ class Executor:
         if update is not None:
             self.update = update
         if targets is not None:
+            _validate_targets(targets)
             self.targets = targets
 
         # generate output folder
