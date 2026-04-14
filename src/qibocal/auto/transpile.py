@@ -116,6 +116,57 @@ def _validate_measurement(gate, sequence, qubit_map, readout):
     _validate_sequence(sequence, readout)
 
 
+def _counts_with_hardware_averaging(
+    qubit_maps: list[list[QubitId]],
+    measurement_maps,
+    readout,
+    nshots: int,
+) -> list[Counter[str]]:
+    """Build Counters when hardware averaging is enabled."""
+    counts_per_circuit = []
+    for qubit_map, measurement_map in zip(qubit_maps, measurement_maps):
+        if len(qubit_map) != 1 or len(measurement_map) != 1:
+            raise ValueError(
+                "Hardware averaging is only supported for single qubit readout."
+            )
+
+        [(_, sequence)] = measurement_map.items()
+        excited_frac = readout[sequence.acquisitions[0][1].id]
+        counts_per_circuit.append(
+            Counter(
+                {
+                    "0": int(np.round((1 - excited_frac) * nshots)),
+                    "1": int(np.round(excited_frac * nshots)),
+                }
+            )
+        )
+
+    return counts_per_circuit
+
+
+def _counts_with_singleshot(
+    qubit_maps: list[list[QubitId]],
+    measurement_maps,
+    readout,
+) -> list[Counter[str]]:
+    """Build Counters when single-shot measurements are available."""
+    counts_per_circuit = []
+    for qubit_map, measurement_map in zip(qubit_maps, measurement_maps):
+        assert len(qubit_map) == len(measurement_map)
+        result = {}
+        for gate, sequence in measurement_map.items():
+            logical_qubit = qubit_map.index(gate.qubits[0])
+            result[logical_qubit] = readout[sequence.acquisitions[0][1].id]
+        # The inverse sorting is to have little-endian bitstring notation, which
+        # means that the qubit with the smallest qubitId is the most significant bit
+        # in the output string (on the right).
+        inverse_sorted_qubits = sorted(result, reverse=True)
+        arr = np.stack([result[q] for q in inverse_sorted_qubits]).astype(int)
+        counts_per_circuit.append(Counter("".join(map(str, col)) for col in arr.T))
+
+    return counts_per_circuit
+
+
 def _execute_circuits(
     platform: Platform,
     compiler: Compiler,
@@ -138,68 +189,30 @@ def _execute_circuits(
         *(compiler.compile(circuit, platform) for circuit in circuits)
     )
 
-    # aqcuisition_type is always DISCRIMINATION for circuits.
+    # acquisition_type is always DISCRIMINATION for circuits.
     readout = platform.execute(
-        sequences,
+        list(sequences),
         nshots=nshots,
         averaging_mode=averaging_mode,
         acquisition_type=AcquisitionType.DISCRIMINATION,
     )
 
-    countslist = []
+    for qubit_map, measurement_map in zip(qubit_maps, measurement_maps):
+        for gate, sequence in measurement_map.items():
+            _validate_measurement(gate, sequence, qubit_map, readout)
+
     if averaging_mode.average:
-        # NOTE: averaging mode only makes sense for a two state readout. If there are
-        # more states it would have to be conditional since the probability of
-        # individual qubits to be in the first excited state does not provide full
-        # information about the probability distribution of the full set of basis
-        # states. Here we only check that the qubit maps contain a single qubit, not for
-        # the intention to do qutrit measurements.
-        for qubit_map, measurement_map in zip(qubit_maps, measurement_maps):
-            if len(qubit_map) > 1:
-                raise ValueError(
-                    "Averaging mode CYCLIC only supports single qubit readout. "
-                    "Use SINGLESHOT instead. The reason is that the excited state probability "
-                    "individual qubits (which is what CYCLIC extracts) does not provide full "
-                    "information about the probability distribution of the full set of basis "
-                    "states in a multi-qubit setup."
-                )
-            if len(measurement_map) != 1:
-                raise ValueError(
-                    "Averaging mode CYCLIC requires exactly one measurement acquisition "
-                    "per circuit."
-                )
-            phys_to_logic_mapping = {q: i for i, q in enumerate(qubit_map)}
-            [(gate, sequence)] = measurement_map.items()
-            _validate_measurement(gate, sequence, phys_to_logic_mapping, readout)
-            excited_frac = readout[sequence.acquisitions[0][1].id]
-            countslist.append(
-                Counter(
-                    {
-                        "0": int(np.round((1 - excited_frac) * nshots)),
-                        "1": int(np.round(excited_frac * nshots)),
-                    }
-                )
-            )
+        counts_per_circuit = _counts_with_hardware_averaging(
+            qubit_maps, measurement_maps, readout, nshots
+        )
     else:
-        for qubit_map, measurement_map in zip(qubit_maps, measurement_maps):
-            assert len(qubit_map) == len(measurement_map)
-            # The mapping from physical to logical qubits
-            phys_to_logic_mapping = {q: i for i, q in enumerate(qubit_map)}
-            result = {}
-            for gate, sequence in measurement_map.items():
-                _validate_measurement(gate, sequence, phys_to_logic_mapping, readout)
-                logical_qubit = phys_to_logic_mapping[gate.qubits[0]]
-                result[logical_qubit] = readout[sequence.acquisitions[0][1].id]
-            # The inverse sorting is to have little-endian bitstring notation, which
-            # means that the qubit with the smallest qubitId is the most significant bit
-            # in the output string (on the right).
-            invsorted_result = sorted(result)[::-1]
-            arr = np.stack([result[q] for q in invsorted_result]).astype(int)
-            countslist.append(Counter("".join(map(str, col)) for col in arr.T))
+        counts_per_circuit = _counts_with_singleshot(
+            qubit_maps, measurement_maps, readout
+        )
 
-    assert all(sum(counts.values()) == nshots for counts in countslist)
+    assert all(sum(counts.values()) == nshots for counts in counts_per_circuit)
 
-    return countslist
+    return counts_per_circuit
 
 
 def execute_circuits(
@@ -223,7 +236,7 @@ def execute_circuits(
         transpiler: The transpiler to apply to the circuits.
         compiler: The compiler to use for circuit compilation.
         nshots: Number of times to sample from the experiment.
-        averaging_mode: Averaging mode for measurements. Default is SINGLESHOT.
+        averaging_mode: Averaging mode for measurements. Default is single-shot.
 
     Returns:
         List of measurement outcome as Counter objects, one per circuit. Each Counter
@@ -308,7 +321,7 @@ def _create_rule(name: str, natives: NativeContainer) -> Callable:
     return rule
 
 
-def set_compiler(platform: Platform) -> Compiler:
+def build_native_gate_compiler(platform: Platform) -> Compiler:
     """Build a compiler that follows the native gates defined by `platform`.
 
     Starting from :meth:`Compiler.default`, this function overrides and extends
@@ -334,12 +347,12 @@ def set_compiler(platform: Platform) -> Compiler:
     return Compiler(rules=rules)
 
 
-def dummy_transpiler(platform: Platform) -> Passes:
+def build_native_gate_transpiler(platform: Platform) -> Passes:
     """
     If the backend is `qibolab`, a transpiler with just an unroller is returned,
     otherwise `None`. This function overwrites the compiler defined in the
     backend, taking into account the native gates defined in the`platform` (see
-    :func:`set_compiler`).
+    :func:`build_native_gate_compiler`).
 
     Args:
         platform: The quantum platform containing native gate definitions.

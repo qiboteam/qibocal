@@ -15,9 +15,9 @@ from qibocal.protocols.utils import marginalize_qubit_counts
 
 from ...auto.operation import DATAFILE, Data, Parameters, QubitId, Results, Routine
 from ...auto.transpile import (
-    dummy_transpiler,
+    build_native_gate_compiler,
+    build_native_gate_transpiler,
     execute_circuits,
-    set_compiler,
 )
 from ...calibration import CalibrationPlatform
 from ..utils import table_dict, table_html
@@ -158,8 +158,8 @@ def _acquisition(
     if params.circuit is None:
         params.circuit = Circuit(len(targets))
 
-    transpiler = dummy_transpiler(platform)
-    compiler = set_compiler(platform)
+    transpiler = build_native_gate_transpiler(platform)
+    compiler = build_native_gate_compiler(platform)
 
     data = StateTomographyData(
         circuit=params.circuit, targets={target: i for i, target in enumerate(targets)}

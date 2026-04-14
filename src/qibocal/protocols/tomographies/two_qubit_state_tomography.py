@@ -22,9 +22,9 @@ from qibocal.auto.operation import (
     Routine,
 )
 from qibocal.auto.transpile import (
-    dummy_transpiler,
+    build_native_gate_compiler,
+    build_native_gate_transpiler,
     execute_circuits,
-    set_compiler,
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import marginalize_qubit_counts
@@ -115,8 +115,8 @@ def _acquisition(
         params.circuit = Circuit(len(qubits))
 
     simulator = NumpyBackend()
-    transpiler = dummy_transpiler(platform)
-    compiler = set_compiler(platform)
+    transpiler = build_native_gate_transpiler(platform)
+    compiler = build_native_gate_compiler(platform)
 
     simulated_state = simulator.execute_circuit(deepcopy(params.circuit))
     data = StateTomographyData(simulated=simulated_state)

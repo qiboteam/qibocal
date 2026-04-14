@@ -3,22 +3,22 @@ from collections import Counter
 import numpy as np
 import pytest
 from qibo import Circuit, gates
-from qibolab import AveragingMode, create_platform
+from qibolab import AcquisitionType, AveragingMode, create_platform
 
 from qibocal.auto.operation import QubitId
 from qibocal.auto.transpile import (
     _execute_circuits,
     _pad_circuit,
     _transpile_circuits,
-    dummy_transpiler,
-    set_compiler,
+    build_native_gate_compiler,
+    build_native_gate_transpiler,
 )
 
 
 def test_natives():
     platform = create_platform("dummy")
-    compiler = set_compiler(platform)
-    transpiler = dummy_transpiler(platform)
+    compiler = build_native_gate_compiler(platform)
+    transpiler = build_native_gate_transpiler(platform)
     assert gates.iSWAP in compiler.rules
 
     circuit = Circuit(2)
@@ -46,7 +46,7 @@ def test_pad_circuit():
 
 def test_transpile_circuits():
     platform = create_platform("dummy")
-    transpiler = dummy_transpiler(platform)
+    transpiler = build_native_gate_transpiler(platform)
 
     circuit = Circuit(2)
     circuit.add(gates.X(0))
@@ -92,7 +92,7 @@ def test_transpile_circuits_with_string_qubit_ids():
 
 def test_execute_circuits_single_shot():
     platform = create_platform("dummy")
-    compiler = set_compiler(platform)
+    compiler = build_native_gate_compiler(platform)
     circuit = Circuit(2)
     circuit.add(gates.M(0))
     circuit.add(gates.M(1))
@@ -114,7 +114,7 @@ def test_execute_circuits_single_shot():
 
 def test_execute_circuits_cyclic():
     platform = create_platform("dummy")
-    compiler = set_compiler(platform)
+    compiler = build_native_gate_compiler(platform)
     circuit = Circuit(2)
     circuit.add(gates.M(0))
     qubit_map = [list(platform.qubits)[0]]
@@ -135,13 +135,16 @@ def test_execute_circuits_cyclic():
 
 def test_execute_circuits_cyclic_raises_for_multi_qubit():
     platform = create_platform("dummy")
-    compiler = set_compiler(platform)
+    compiler = build_native_gate_compiler(platform)
     circuit = Circuit(2)
     circuit.add(gates.M(0))
     circuit.add(gates.M(1))
     qubit_map = list(platform.qubits)[:2]
 
-    with pytest.raises(ValueError, match="CYCLIC only supports single qubit readout"):
+    with pytest.raises(
+        ValueError,
+        match="Hardware averaging is only supported for single qubit readout.",
+    ):
         _execute_circuits(
             platform=platform,
             compiler=compiler,
@@ -158,7 +161,7 @@ def test_execute_circuits_cyclic_maps_readout_to_circuit_order(monkeypatch):
     # platform returns the results, which may not always remain the same as the sequence
     # order, e.g. when batching reorders to optimize resource in hardware
     platform = create_platform("dummy")
-    compiler = set_compiler(platform)
+    compiler = build_native_gate_compiler(platform)
     nshots = 20
 
     circuit0 = Circuit(1)
@@ -169,8 +172,9 @@ def test_execute_circuits_cyclic_maps_readout_to_circuit_order(monkeypatch):
     qubit = list(platform.qubits)[0]
     qubit_maps = [[qubit], [qubit]]
 
-    def execute_reversed_order(sequences, nshots, averaging_mode):
+    def execute_reversed_order(sequences, averaging_mode, acquisition_type, **options):
         assert averaging_mode == AveragingMode.CYCLIC
+        assert acquisition_type == AcquisitionType.DISCRIMINATION
         first_id = sequences[0].acquisitions[0][1].id
         second_id = sequences[1].acquisitions[0][1].id
         return {

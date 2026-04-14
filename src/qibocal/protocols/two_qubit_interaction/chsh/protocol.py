@@ -16,9 +16,9 @@ from qibocal.auto.operation import (
     Routine,
 )
 from qibocal.auto.transpile import (
-    dummy_transpiler,
+    build_native_gate_compiler,
+    build_native_gate_transpiler,
     execute_circuits,
-    set_compiler,
 )
 
 from .circuits import create_chsh_circuits
@@ -152,8 +152,8 @@ def _acquisition(
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
     data = CHSHData(bell_states=params.bell_states, thetas=thetas.tolist())
 
-    transpiler = dummy_transpiler(platform)
-    compiler = set_compiler(platform)
+    transpiler = build_native_gate_transpiler(platform)
+    compiler = build_native_gate_compiler(platform)
     for pair in targets:
         try:
             mitigation_matrix = (

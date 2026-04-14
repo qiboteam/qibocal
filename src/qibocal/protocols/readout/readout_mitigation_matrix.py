@@ -9,9 +9,9 @@ from qibo.models import Circuit
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.auto.transpile import (
-    dummy_transpiler,
+    build_native_gate_compiler,
+    build_native_gate_transpiler,
     execute_circuits,
-    set_compiler,
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
@@ -72,8 +72,8 @@ def _acquisition(
 ) -> ReadoutMitigationMatrixData:
     assert params.nshots is not None
     data = ReadoutMitigationMatrixData(nshots=params.nshots, qubit_list=targets)
-    transpiler = dummy_transpiler(platform)
-    compiler = set_compiler(platform)
+    transpiler = build_native_gate_transpiler(platform)
+    compiler = build_native_gate_compiler(platform)
 
     for qubits in targets:
         nqubits = len(qubits)

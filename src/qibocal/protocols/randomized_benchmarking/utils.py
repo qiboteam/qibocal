@@ -12,9 +12,9 @@ from qibolab import AveragingMode
 
 from qibocal.auto.operation import Data, Parameters, QubitId, QubitPairId, Results
 from qibocal.auto.transpile import (
-    dummy_transpiler,
+    build_native_gate_compiler,
+    build_native_gate_transpiler,
     execute_circuits,
-    set_compiler,
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.randomized_benchmarking.dict_utils import (
@@ -415,8 +415,8 @@ def execute_indexed_circuits(
             qubit_maps.append([qubit])
         circuits.append(indexed_circuit.circuit)
 
-    transpiler = dummy_transpiler(platform)
-    compiler = set_compiler(platform)
+    transpiler = build_native_gate_transpiler(platform)
+    compiler = build_native_gate_compiler(platform)
 
     executed_results = execute_circuits(
         circuits,
