@@ -33,7 +33,7 @@ cma = "^3.3.0"
 optional = true
 
 [tool.poetry.group.tests.dependencies]
-qibolab = "^0.2.13"
+qibolab = "^0.2.13" # "bounds" are not defined in the test platform but required by earlier versions of qibolab
 pytest = ">=7.1.2,<10.0.0"
 pytest-cov = "^3.0.0"
 pytest-env = "^0.8.1"
