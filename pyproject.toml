@@ -17,7 +17,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.14"
-qibolab = { git = "https://github.com/qiboteam/qibolab" }
+qibolab = ">=0.2.8"
 qibo = "^0.3.1"
 numpy = ">=1.26.4,<3"
 scipy = "^1.10.1"
@@ -33,6 +33,7 @@ cma = "^3.3.0"
 optional = true
 
 [tool.poetry.group.tests.dependencies]
+qibolab = ">=0.2.13"
 pytest = ">=7.1.2,<10.0.0"
 pytest-cov = "^3.0.0"
 pytest-env = "^0.8.1"
