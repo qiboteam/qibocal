@@ -8,7 +8,13 @@ from qibocal.protocols.randomized_benchmarking.standard_rb import (
 )
 
 from ...calibration.calibration import TwoQubitCalibration
-from .utils import RB2QData, StandardRBResult, fit, twoq_rb_acquisition
+from .utils import (
+    RB2QData,
+    StandardRBResult,
+    fit,
+    twoq_rb_acquisition,
+    twoq_rb_acquisition_parallel,
+)
 
 __all__ = ["standard_rb_2q", "StandardRB2QParameters"]
 
@@ -25,6 +31,8 @@ class StandardRB2QParameters(StandardRBParameters):
     """File with the cliffords to be used."""
     file_inv: str = FILE_INV
     """File with the cliffords to be used in an inverted dict."""
+    parallel: bool = False
+    """If true, the benchmarking will be performed on all the qubit pairs simultaneously"""
 
 
 def _acquisition(
@@ -33,8 +41,10 @@ def _acquisition(
     targets: list[QubitPairId],
 ) -> RB2QData:
     """Data acquisition for two qubit Standard Randomized Benchmarking."""
-
-    return twoq_rb_acquisition(params, platform, targets)
+    if params.parallel:
+        return twoq_rb_acquisition_parallel(params, platform, targets)
+    else:
+        return twoq_rb_acquisition(params, platform, targets)
 
 
 def _fit(data: RB2QData) -> StandardRBResult:

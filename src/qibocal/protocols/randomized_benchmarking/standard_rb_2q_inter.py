@@ -9,7 +9,13 @@ from qibocal.protocols.randomized_benchmarking.standard_rb_2q import (
     StandardRB2QParameters,
 )
 
-from .utils import RB2QInterData, StandardRBResult, fit, twoq_rb_acquisition
+from .utils import (
+    RB2QInterData,
+    StandardRBResult,
+    fit,
+    twoq_rb_acquisition,
+    twoq_rb_acquisition_parallel,
+)
 
 __all__ = ["standard_rb_2q_inter"]
 
@@ -44,7 +50,14 @@ def _acquisition(
     targets: list[QubitPairId],
 ) -> RB2QInterData:
     """Data acquisition for two qubit Interleaved Randomized Benchmarking."""
-    data = twoq_rb_acquisition(params, platform, targets, interleave=params.interleave)
+    if params.parallel:
+        data = twoq_rb_acquisition_parallel(
+            params, platform, targets, interleave=params.interleave
+        )
+    else:
+        data = twoq_rb_acquisition(
+            params, platform, targets, interleave=params.interleave
+        )
     fidelity = {}
     for target in targets:
         assert target in platform.calibration.two_qubits, (
