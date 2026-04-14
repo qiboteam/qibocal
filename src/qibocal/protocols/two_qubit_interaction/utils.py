@@ -53,7 +53,7 @@ def fit_flux_amplitude(matrix, amps, times):
 
     amplitude = amps[np.argmax(std)]
     delta = fs[np.argmax(std)]
-    index = int(np.where(np.unique(amps) == amplitude)[0])
+    index = int(np.where(np.unique(amps) == amplitude)[0][0])
     return amplitude, index, delta
 
 
