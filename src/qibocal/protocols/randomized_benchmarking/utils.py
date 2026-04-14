@@ -272,7 +272,8 @@ class RBData(Data):
     niter: int
     """Number of iterations for each depth."""
     data: dict[
-        tuple[Union[QubitId, QubitPairId], CircuitDepth], npt.NDArray[RBType]
+        tuple[QubitId, CircuitDepth] | tuple[QubitId, QubitId, CircuitDepth],
+        npt.NDArray[RBType],
     ] = field(default_factory=dict)
     """Raw data acquired."""
     npulses_per_clifford: float = 1.875
@@ -567,7 +568,7 @@ def twoq_rb_acquisition(
     for (qubit0, qubit1, depth), results in grouped.items():
         data.register_qubit(
             dtype=RBType,
-            data_keys=((qubit0, qubit1), depth),
+            data_keys=(qubit0, qubit1, depth),
             data_dict={"survival_probs": results},
         )
 
@@ -701,7 +702,7 @@ def fit(data, single_qubit: bool = True) -> StandardRBResult:
 
     fidelity, pulse_fidelity = {}, {}
     popts, perrs = {}, {}
-    error_barss = {}
+    error_bars = {}
     for target in targets:
         probs_array = np.array(
             [
@@ -722,8 +723,8 @@ def fit(data, single_qubit: bool = True) -> StandardRBResult:
         pulse_fidelity[target] = 1 - infidelity / data.npulses_per_clifford
 
         # conversion from np.array to list/tuple
-        error_barss[target] = sigma.tolist()
+        error_bars[target] = sigma.tolist()
         perrs[target] = perr
         popts[target] = popt
 
-    return StandardRBResult(fidelity, pulse_fidelity, popts, perrs, error_barss)
+    return StandardRBResult(fidelity, pulse_fidelity, popts, perrs, error_bars)
