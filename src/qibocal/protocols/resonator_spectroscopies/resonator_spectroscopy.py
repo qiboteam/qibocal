@@ -21,7 +21,15 @@ from ..utils import (
     lorentzian_fit,
     readout_frequency,
 )
-from .resonator_utils import s21, s21_fit, s21_spectroscopy_plot, spectroscopy_plot, purcell_fit, purcell_s_out_in, purcell_spectroscopy_plot
+from .resonator_utils import (
+    purcell_fit,
+    purcell_s_out_in,
+    purcell_spectroscopy_plot,
+    s21,
+    s21_fit,
+    s21_spectroscopy_plot,
+    spectroscopy_plot,
+)
 
 __all__ = ["resonator_spectroscopy", "ResonatorSpectroscopyData", "ResSpecType"]
 
@@ -161,6 +169,7 @@ class ResonatorSpectroscopyData(Data):
     power_level: PowerLevel = PowerLevel.low
     """Power regime of the resonator."""
 
+
 def _acquisition(
     params: ResonatorSpectroscopyParameters,
     platform: CalibrationPlatform,
@@ -239,6 +248,7 @@ def _acquisition(
             ),
         )
     return data
+
 
 def _fit(
     data: ResonatorSpectroscopyData,
