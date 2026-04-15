@@ -6,9 +6,13 @@ from numpy.typing import NDArray
 from plotly.subplots import make_subplots
 from scipy import ndimage
 from scipy.ndimage import gaussian_filter1d
-from scipy.optimize import leastsq, minimize
+from scipy.optimize import curve_fit, fsolve, leastsq, minimize
+from scipy.signal import find_peaks, peak_widths
 
 from qibocal.auto.operation import Results
+
+# for purcell fit
+from qibocal.protocols.utils import baseline_als
 
 from ..utils import (
     COLORBAND,
@@ -959,11 +963,8 @@ def fit_punchout(filtered_x, filtered_y):
 
     return bare_freq, readout_freq, ro_val
 
-##### Purcell Fit utils #####
-from qibocal.protocols.utils import baseline_als
-from scipy.signal import find_peaks, peak_widths
-from scipy.optimize import curve_fit, fsolve
 
+##### Purcell Fit utils #####
 def purcell_s_out_in(
     w: float,
     phi: float,
@@ -990,19 +991,19 @@ def purcell_s_out_in(
     Returns:
         Complex amplitude signal
     """
-    return (
-        1*(np.cos(phi)
-          -np.exp(1j*phi)
-          * (k_p*(-2j*(w-w_r)))
-          / (4*J**2+(k_p-2j*(w-w_p))*(-2j*(w-w_r)))
-        )
+    return 1 * (
+        np.cos(phi)
+        - np.exp(1j * phi)
+        * (k_p * (-2j * (w - w_r)))
+        / (4 * J**2 + (k_p - 2j * (w - w_p)) * (-2j * (w - w_r)))
     )
+
 
 def purcell_fit(
     data: NDArray,
     resonator_type=None,
     fit=None,
-) -> tuple[NDArray,NDArray]:
+) -> tuple[NDArray, NDArray]:
     """
     Fit a model of Purcell resonator to the given data based on the one described by purcell_s_out_in above.
 
@@ -1011,8 +1012,8 @@ def purcell_fit(
         (2) Find peaks and their widths to determine initial guesses for the parameters to be fit;
         (3) Perform the fit to data with removed baseline.
 
-    For (1) there is already an implementation in qibocal.protocols.utils. For (2) we use the scipy functions 
-    find_peaks and peak_widths for steps related to peaks characterization, and fsolve in scipy for determination 
+    For (1) there is already an implementation in qibocal.protocols.utils. For (2) we use the scipy functions
+    find_peaks and peak_widths for steps related to peaks characterization, and fsolve in scipy for determination
     of the initial guesses based on (2) in https://arxiv.org/pdf/2307.07765. In (3) we employs curve_fit.
 
     Obs.: (1) and (2) contain hyperparameters.
@@ -1030,15 +1031,17 @@ def purcell_fit(
 
     ### step (1)
     # removing baseline from the absolute signals
-    lamda = 1e6 # hyperparameter, recommended from ALS paper to be between 1e6 and 1e9
-    p=0.99 # hyperparameter
-    z_filt = baseline_als(data=np.abs(z),lamda=lamda,p=p)
+    lamda = 1e6  # hyperparameter, recommended from ALS paper to be between 1e6 and 1e9
+    p = 0.99  # hyperparameter
+    z_filt = baseline_als(data=np.abs(z), lamda=lamda, p=p)
 
     ### step (2)
     # finding the peaks and their widths
-    peaks, properties = find_peaks(-(np.abs(z)-z_filt)/abs(min(np.abs(z)-z_filt)),height=0.0, prominence=0.5) # height filters peaks above 0
-    rel_height = 0.5 # hyperparameter, using standard value for peak width determination at half height of the peak
-    widths = peak_widths(-(np.abs(z)-z_filt), peaks, rel_height=rel_height)
+    peaks, properties = find_peaks(
+        -(np.abs(z) - z_filt) / abs(min(np.abs(z) - z_filt)), height=0.0, prominence=0.5
+    )  # height filters peaks above 0
+    rel_height = 0.5  # hyperparameter, using standard value for peak width determination at half height of the peak
+    widths = peak_widths(-(np.abs(z) - z_filt), peaks, rel_height=rel_height)
 
     # determining initial guesses for intermediate parameters
     w_l_guess, w_h_guess = frequencies[peaks]
@@ -1049,12 +1052,12 @@ def purcell_fit(
     def equations(vars):
         w_r, w_p, k_p, J = vars
 
-        expr = np.sqrt((w_r - w_p + 1j * k_p * 0.5)**2 + 4 * (J**2))
+        expr = np.sqrt((w_r - w_p + 1j * k_p * 0.5) ** 2 + 4 * (J**2))
 
-        eq1 = 0.5*(w_r + w_p) + 0.5*np.real(expr) - w_h_guess
-        eq2 = 0.5*(w_r + w_p) - 0.5*np.real(expr) - w_l_guess
-        eq3 = 0.5*k_p - np.imag(expr) - k_h_guess
-        eq4 = 0.5*k_p + np.imag(expr) - k_l_guess
+        eq1 = 0.5 * (w_r + w_p) + 0.5 * np.real(expr) - w_h_guess
+        eq2 = 0.5 * (w_r + w_p) - 0.5 * np.real(expr) - w_l_guess
+        eq3 = 0.5 * k_p - np.imag(expr) - k_h_guess
+        eq4 = 0.5 * k_p + np.imag(expr) - k_l_guess
 
         return [eq1, eq2, eq3, eq4]
 
@@ -1063,16 +1066,24 @@ def purcell_fit(
     w_r_guess, w_p_guess, k_p_guess, J_guess = solution
 
     # initial guess for phi
-    phi_guess = data.phase[np.argmax(frequencies - w_r_guess)] # phi_guess is taken as the phase of the signal point corresponding to the furthest frequency to w_r
+    phi_guess = data.phase[
+        np.argmax(frequencies - w_r_guess)
+    ]  # phi_guess is taken as the phase of the signal point corresponding to the furthest frequency to w_r
 
     ### step (3)
     # wrapping all up and fitting
     initial_guess = [phi_guess, k_p_guess, w_p_guess, w_r_guess, J_guess]
-    
+
     # fitting data normalized by baseline from these guesses using curve_fit
-    popt, pcov = curve_fit(lambda *params: np.abs(purcell_s_out_in(*params)),frequencies,np.abs(z)/z_filt,p0=initial_guess)
+    popt, pcov = curve_fit(
+        lambda *params: np.abs(purcell_s_out_in(*params)),
+        frequencies,
+        np.abs(z) / z_filt,
+        p0=initial_guess,
+    )
 
     return popt[3], popt, np.sqrt(np.abs(np.diag(pcov)))
+
 
 def purcell_spectroscopy_plot(data, qubit, fit: Results = None):
     figures = []
@@ -1095,7 +1106,6 @@ def purcell_spectroscopy_plot(data, qubit, fit: Results = None):
         -phase if data.phase_sign else phase
     )  # TODO: tmp patch for the sign of the phase
     phase = np.unwrap(phase)  # TODO: move phase unwrapping in qibolab
-    z_raw = np.abs(signal) * np.exp(1j * phase)
 
     # plotting the data first
     fig_raw.add_trace(
@@ -1170,11 +1180,13 @@ def purcell_spectroscopy_plot(data, qubit, fit: Results = None):
     # plotting fit if it succeeded
     if fit is not None:
         params = fit.fitted_parameters[qubit]
-        purcell_fitted = purcell_s_out_in(frequencies,*params)
+        purcell_fitted = purcell_s_out_in(frequencies, *params)
         # recovering baseline from the absolute signals
-        lamda = 1e6 # hyperparameter, recommended from ALS paper to be between 1e6 and 1e9
-        p=0.99 # hyperparameter
-        z_als = baseline_als(data=np.abs(signal),lamda=lamda,p=p)
+        lamda = (
+            1e6  # hyperparameter, recommended from ALS paper to be between 1e6 and 1e9
+        )
+        p = 0.99  # hyperparameter
+        z_als = baseline_als(data=np.abs(signal), lamda=lamda, p=p)
 
         fig_raw.add_trace(
             go.Scatter(
