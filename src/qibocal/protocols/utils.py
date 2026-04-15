@@ -22,6 +22,8 @@ from qibocal.fitting.classifier import run
 
 GHZ_TO_HZ = 1e9
 HZ_TO_GHZ = 1e-9
+MHZ_TO_HZ = 1e6
+HZ_TO_MHZ = 1e-6
 V_TO_UV = 1e6
 S_TO_NS = 1e9
 MESH_SIZE = 50

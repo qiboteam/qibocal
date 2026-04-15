@@ -157,6 +157,8 @@ class Calibration(Model):
 
     single_qubits: dict[QubitId, QubitCalibration] = Field(default_factory=dict)
     """Dict with single qubit calibration."""
+    tunable_couplers: dict[QubitPairId, QubitCalibration] = Field(default_factory=dict)
+    """Dict with single qubit calibration for couplers"""
     two_qubits: dict[QubitPairId, TwoQubitCalibration] = Field(default_factory=dict)
     """Dict with qubit pairs calibration."""
     readout_mitigation_matrix: Optional[SparseArray] = None
@@ -180,9 +182,18 @@ class Calibration(Model):
         """Number of qubits available."""
         return len(self.qubits)
 
+    @property
+    def couplers(self) -> list:
+        """List of couplers available in the model."""
+        return list(self.tunable_couplers)
+
     def qubit_index(self, qubit: QubitId):
         """Return qubit index from platform qubits."""
         return self.qubits.index(qubit)
+
+    def coupler_index(self, qubits: QubitPairId):
+        """Return couplers index from platform qubits."""
+        return self.couplers.index(qubits)
 
     # TODO: add crosstalk object where I can do this
     def get_crosstalk_element(self, qubit1: QubitId, qubit2: QubitId):
