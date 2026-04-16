@@ -27,11 +27,11 @@ pip install .
 
 
 ### Developer instructions
-For development make sure to install the package using [`poetry`](https://python-poetry.org/) and to install the pre-commit hooks:
+For development make sure to install the package using [`uv`](https://docs.astral.sh/uv/) and to install the pre-commit hooks:
 ```sh
 git clone https://github.com/qiboteam/qibocal.git
 cd qibocal
-poetry install
+uv sync
 pre-commit install
 ```
 

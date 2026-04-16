@@ -1,49 +1,59 @@
-[tool.poetry]
+[project]
 name = "qibocal"
 version = "0.2.5"
 description = "Qibo's quantum calibration, characterization and validation module."
-authors = ["The Qibo team"]
-license = "Apache License 2.0"
+authors = [{name = "The Qibo team"}]
+license = "Apache-2.0"
 readme = "README.md"
-homepage = "https://qibo.science/"
-repository = "https://github.com/qiboteam/qibocal/"
-documentation = "https://qibo.science/qibocal/stable/"
 keywords = []
 classifiers = [
   "Programming Language :: Python :: 3",
   "Topic :: Scientific/Engineering :: Physics",
 ]
+requires-python = ">=3.10,<3.14"
+dependencies = [
+  "qibolab>=0.2.8,<0.3.0",
+  "qibo>=0.3.1,<0.4.0",
+  "numpy>=1.26.4,<3",
+  "scipy>=1.10.1,<2.0.0",
+  "pandas[html]>=2.2.2,<3.0.0",
+  "pydantic>=2.8.0,<3.0.0",
+  "click>=8.1.3,<9.0.0",
+  "jinja2>=3.1.2,<4.0.0",
+  "plotly>=5.22.0,<6.0.0",
+  "skops>=0.11,<0.14",
+  "cma>=3.3.0,<4.0.0",
+]
 
+[project.urls]
+Homepage = "https://qibo.science/"
+Repository = "https://github.com/qiboteam/qibocal/"
+Documentation = "https://qibo.science/qibocal/stable/"
 
-[tool.poetry.dependencies]
-python = ">=3.10,<3.14"
-qibolab = "^0.2.8"
-qibo = "^0.3.1"
-numpy = ">=1.26.4,<3"
-scipy = "^1.10.1"
-pandas = { version = "^2.2.2", extras = ["html"] }
-pydantic = "^2.8.0"
-click = "^8.1.3"
-jinja2 = "^3.1.2"
-plotly = "^5.22.0"
-skops = ">=0.11,<0.14"
-cma = "^3.3.0"
-
-[tool.poetry.group.tests]
-optional = true
-
-[tool.poetry.group.tests.dependencies]
-qibolab = "^0.2.13" # "bounds" are not defined in the test platform but required by earlier versions of qibolab
-pytest = ">=7.1.2,<10.0.0"
-pytest-cov = "^3.0.0"
-pytest-env = "^0.8.1"
-pytest-mock = "^3.14.0"
-
-[tool.poetry.group.analysis]
-optional = true
-
-[tool.poetry.group.analysis.dependencies]
-ruff = "^0.9.1"
+[dependency-groups]
+tests = [
+  "qibolab>=0.2.13,<0.3.0", # "bounds" are not defined in the test platform but required by earlier versions of qibolab
+  "pytest>=7.1.2,<10.0.0",
+  "pytest-cov>=3.0.0,<4.0.0",
+  "pytest-env>=0.8.1,<0.9.0",
+  "pytest-mock>=3.14.0,<4.0.0",
+]
+analysis = [
+  "ruff>=0.9.1,<0.10.0",
+]
+docs = [
+  "sphinx>=7.4.7,<8.0.0",
+  "furo>=2023.3.27",
+  "sphinxcontrib-bibtex>=2.6.0,<3.0.0",
+  "recommonmark>=0.7.1,<0.8.0",
+  "sphinx_markdown_tables>=0.0.17,<0.0.18",
+  "sphinx-copybutton>=0.5.1,<0.6.0",
+  "setuptools>=75.8,<79.0",
+]
+dev = [
+  "ipython>=8.0,<9.0",
+  "devtools>=0.10.0,<0.11.0",
+]
 
 [tool.ruff.lint.per-file-ignores]
 "simple.py" = ["E402"]
@@ -51,35 +61,12 @@ ruff = "^0.9.1"
 "calibration_scripts/**/*.py" = ["F821"]
 "tests/calibration_scripts/**/*.py" = ["F821"]
 
-
-[tool.poetry.group.docs]
-optional = true
-
-[tool.poetry.group.docs.dependencies]
-sphinx = "^7.4.7"
-furo = "^2023.3.27"
-sphinxcontrib-bibtex = "^2.6.0"
-recommonmark = "^0.7.1"
-sphinx_markdown_tables = "^0.0.17"
-sphinx-copybutton = "^0.5.1"
-setuptools = ">=75.8,<79.0"
-
-
-[tool.poetry.group.dev]
-optional = true
-
-[tool.poetry.group.dev.dependencies]
-ipython = "^8.0"
-devtools = "^0.10.0"
-
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.11.7,<0.12"]
+build-backend = "uv_build"
 
-
-[tool.poetry.scripts]
+[project.scripts]
 qq = "qibocal:command"
-
 
 [tool.poe.tasks]
 test = "pytest"
