@@ -223,7 +223,7 @@ def appending_ro_sequence(
     # switching measurement basis for target line and align all the others
     target_drive_channel, _ = natives_target.RX()[0]
     # delay
-    ro_delays = 2 * [Delay(duration=exp_sequence.duration)]
+    ro_delays = [Delay(duration=exp_sequence.duration) for _ in range(2)]
 
     if interpolated_sweeper:
         # if using interpolated_sweepers I need all the channels to be aligned
@@ -245,13 +245,13 @@ def appending_ro_sequence(
         target_drive_channel, _ = natives_target.RX()[0]
 
         # delay to align the readout pulses of control and target qubits
-        # done in every case, even when measurinz Z-basis (no additional pulse on target)
+        # done in every case, even when measuring Z-basis (no additional pulse on target)
         # to have the same timing for all the measurements
         target_delay = Delay(
             duration=natives_target.R(theta=3 * np.pi / 2, phi=np.pi / 2)[0][1].duration
         )
         exp_sequence.append((ro_channel_control, target_delay))
-        exp_sequence.append((ro_channel_target, target_delay))
+        exp_sequence.append((ro_channel_target, target_delay.new()))
 
         # wait the whole cr-sequence duration before starting the readout pulses
         exp_sequence.append((ro_channel_target, ro_delays[0]))
