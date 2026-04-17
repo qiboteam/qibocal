@@ -3,10 +3,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# test outputs
-cls_result/
-qubit*/
-
 # C extensions
 *.so
 
