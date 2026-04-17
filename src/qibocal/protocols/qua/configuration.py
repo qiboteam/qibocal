@@ -100,12 +100,22 @@ def waveforms(platform, qubits):
     for q in qubits:
         acq_channel, readout = platform.natives.single_qubit[q].MZ[0]
         pulse = readout.probe
+        acquisition = readout.acquisition
         channel = platform.channels[acq_channel].probe
         if isinstance(pulse.envelope, Rectangular):
-            _waveforms[f"mz_{q}"] = {
-                "type": "constant",
-                "sample": MAX_OUTPUT * pulse.amplitude,
-            }
+            if pulse.duration == acquisition.duration:
+                _waveforms[f"mz_{q}"] = {
+                    "type": "constant",
+                    "sample": MAX_OUTPUT * pulse.amplitude,
+                }
+            else:
+                assert acquisition.duration > pulse.duration
+                n_on = int(pulse.duration)
+                n_off = int(acquisition.duration - pulse.duration)
+                _waveforms[f"mz_{q}"] = {
+                    "type": "arbitrary",
+                    "samples": n_on * [MAX_OUTPUT * pulse.amplitude] + n_off * [0],
+                }
         else:
             sampling_rate = get_sampling_rate(platform, channel)
             _waveforms[f"mz_{q}_i"] = {
@@ -160,14 +170,16 @@ def flux_pulses(platform, qubit):
 def pulses(platform, qubits):
     _pulses = {}
     for q in qubits:
-        pulse = platform.natives.single_qubit[q].MZ[0][1].probe
-        if isinstance(pulse.envelope, Rectangular):
+        readout = platform.natives.single_qubit[q].MZ[0][1]
+        probe = readout.probe
+        acquisition = readout.acquisition
+        if isinstance(probe.envelope, Rectangular):
             mz_waveforms = {"I": f"mz_{q}", "Q": "zero"}
         else:
             mz_waveforms = {"I": f"mz_{q}_i", "Q": f"mz_{q}_q"}
         _pulses[f"mz_{q}"] = {
             "operation": "measurement",
-            "length": int(pulse.duration),
+            "length": int(acquisition.duration),
             "waveforms": mz_waveforms,
             "integration_weights": {
                 "cos": f"cosine_weights{q}",
@@ -184,7 +196,7 @@ def pulses(platform, qubits):
 def integration_weights(platform, qubits):
     _integration_weights = {}
     for q in qubits:
-        _duration = platform.natives.single_qubit[q].MZ[0][1].probe.duration
+        _duration = platform.natives.single_qubit[q].MZ[0][1].acquisition.duration
         _integration_weights.update(
             {
                 f"cosine_weights{q}": {
@@ -217,9 +229,12 @@ def register_element(config, qubit, time_of_flight, smearing):
         config.register_flux_element(qubit)
 
 
-def generate_config(platform, qubits, targets=None):
+def generate_config(platform, qubits=None, targets=None):
     controller = platform._controller
     assert isinstance(controller, QmController)
+
+    if qubits is None:
+        qubits = platform.qubits
 
     channel_configs = platform.parameters.configs
     for q in qubits:
