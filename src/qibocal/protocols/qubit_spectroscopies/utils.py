@@ -5,7 +5,6 @@ import numpy as np
 import numpy.typing as npt
 from qibolab import (
     Delay,
-    ParallelSweepers,
     Parameter,
     PulseLike,
     PulseSequence,
@@ -137,8 +136,8 @@ def create_spectr_sweeper_and_updates(
     delta_frequency_range: npt.NDArray,
     los_channels: dict[ChannelId],
     lo_offset: float,
-) -> tuple[ParallelSweepers, dict[str, float]]:
-    """Create a parallel sweeper configuration for spectroscopy measurements on multiple qubits.
+) -> tuple[dict[QubitId, Sweeper], dict[str, float]]:
+    """Create a sweeper dictionary configuration for spectroscopy measurements on multiple qubits.
 
     This function creates a parallel sweeper that sweeps the frequency of drive channels
     across a specified range for each target qubit. It also prepares batch updates to
@@ -147,16 +146,14 @@ def create_spectr_sweeper_and_updates(
     LO channel frequencies are only updated if lo_offset is non-zero and the LO channel exists.
     """
 
-    parsweep = ParallelSweepers()
+    parsweep = {}
     batch_updates = {}
     for q in targets:
         f0 = platform.config(drive_channels[q]).frequency
-        parsweep.append(
-            Sweeper(
-                parameter=Parameter.frequency,
-                values=f0 + delta_frequency_range,
-                channels=[drive_channels[q]],
-            )
+        parsweep[q] = Sweeper(
+            parameter=Parameter.frequency,
+            values=f0 + delta_frequency_range,
+            channels=[drive_channels[q]],
         )
 
         # Update the frequency of the drive channel to avoid raising a validation an error
@@ -166,4 +163,4 @@ def create_spectr_sweeper_and_updates(
         if lo_offset != 0 and los_channels[q] is not None:
             batch_updates[los_channels[q]] = {"frequency": f0 + lo_offset}
 
-        return parsweep, batch_updates
+    return parsweep, batch_updates
