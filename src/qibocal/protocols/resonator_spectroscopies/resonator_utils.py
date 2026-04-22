@@ -6,9 +6,13 @@ from numpy.typing import NDArray
 from plotly.subplots import make_subplots
 from scipy import ndimage
 from scipy.ndimage import gaussian_filter1d
-from scipy.optimize import leastsq, minimize
+from scipy.optimize import curve_fit, fsolve, leastsq, minimize
+from scipy.signal import find_peaks, peak_widths
 
 from qibocal.auto.operation import Results
+
+# for purcell fit
+from qibocal.protocols.utils import baseline_als
 
 from ..utils import (
     COLORBAND,
@@ -958,3 +962,310 @@ def fit_punchout(filtered_x, filtered_y):
         ro_val = low_freq_amp
 
     return bare_freq, readout_freq, ro_val
+
+
+##### Purcell Fit utils #####
+def purcell_s_out_in(
+    w: float,
+    phi: float,
+    k_p: float,
+    w_p: float,
+    w_r: float,
+    J: float,
+) -> float:
+    """
+    Full model of the Purcell resonator described by equation (A1) in "Enhancing Dispersive Readout of Superconducting Qubits Through Dynamic Control
+    of the Dispersive Shift: Experiment and Theory" (see https://arxiv.org/abs/2307.07765).
+
+    The equation describes the (complex) output signal of a readout resonator coupled to a Purcell filter based on an input-output model. Here we assume
+    an already normalized linear baseline background signal.
+
+    Args:
+        w: frequency at which to compute the complex amplitude
+        phi: phase rotation induced by capacitive coupling to other lines
+        k_p: external coupling rate of the Purcell filter
+        w_p: Purcell filter frequency
+        w_r: resonator frequency of interest (i.e. for ground or excited state)
+        J: the transmon-resonator coupling rate
+
+    Returns:
+        Complex amplitude signal
+    """
+    return 1 * (
+        np.cos(phi)
+        - np.exp(1j * phi)
+        * (k_p * (-2j * (w - w_r)))
+        / (4 * J**2 + (k_p - 2j * (w - w_p)) * (-2j * (w - w_r)))
+    )
+
+
+def purcell_fit(
+    data: NDArray,
+    resonator_type=None,
+    fit=None,
+) -> tuple[NDArray, NDArray]:
+    """
+    Fit a model of Purcell resonator to the given data based on the one described by purcell_s_out_in above.
+
+    The fit works in three steps:
+        (1) Use of Asymmetric Least Square to remove baseline background;
+        (2) Find peaks and their widths to determine initial guesses for the parameters to be fit;
+        (3) Perform the fit to data with removed baseline.
+
+    For (1) there is already an implementation in qibocal.protocols.utils. For (2) we use the scipy functions
+    find_peaks and peak_widths for steps related to peaks characterization, and fsolve in scipy for determination
+    of the initial guesses based on (2) in https://arxiv.org/pdf/2307.07765. In (3) we employs curve_fit.
+
+    Obs.: (1) and (2) contain hyperparameters.
+
+    Args:
+        data: data to be fit. As in other functions
+
+    Return:
+        ordered pair: first the array of optimized parameters, and second the covariance matrix for them
+    """
+
+    # collecting frequencies and complex signals
+    frequencies = data.freq
+    z = np.abs(data.signal) * np.exp(1j * data.phase)
+
+    ### step (1)
+    # removing baseline from the absolute signals
+    # lamda and p below are hyperparameters from ALS. lamda is recommended to be between 1e6 and 1e9, while
+    # p to be between 0 and 1. The closest to the lower bound, the more flexible to background signals shapes
+    # we are. Here we keep lamda at its lowest and p to a mean value working for most of test cases
+    lamda = 1e6
+    p = 0.7
+    z_filt = baseline_als(data=np.abs(z), lamda=lamda, p=p)
+
+    ### step (2)
+    # finding the peaks and their widths
+    peaks, properties = find_peaks(
+        -(np.abs(z) - z_filt) / abs(min(np.abs(z) - z_filt)), height=0.0, prominence=0.2
+    )  # height filters peaks above 0, with relative height to its neighbours equal to "prominence"
+    rel_height = 0.5  # hyperparameter, using standard value for peak width determination at half height of the peak
+    widths = peak_widths(-(np.abs(z) - z_filt), peaks, rel_height=rel_height)
+
+    # selecting the two widest peaks and ordering then
+    widest_peaks_indices = sorted(
+        range(len(widths[0])), key=lambda i: widths[0][i], reverse=True
+    )[:2]
+    widest_peaks_frequencies = [frequencies[peaks[i]] for i in widest_peaks_indices]
+    widest_peaks_widths = [widths[0][i] for i in widest_peaks_indices]
+    if widest_peaks_frequencies[0] > widest_peaks_frequencies[1]:
+        w_l_guess, w_h_guess = widest_peaks_frequencies[1], widest_peaks_frequencies[0]
+        k_l_guess, k_h_guess = widest_peaks_widths[1], widest_peaks_widths[0]
+    else:
+        w_l_guess, w_h_guess = widest_peaks_frequencies[0], widest_peaks_frequencies[1]
+        k_l_guess, k_h_guess = widest_peaks_widths[0], widest_peaks_widths[1]
+
+    ## solving system of equations to get initial guesses for the parameters of interest ##
+    # auxiliar function to solve system of equations
+    def equations(vars):
+        w_r, w_p, k_p, J = vars
+
+        expr = np.sqrt((w_r - w_p + 1j * k_p * 0.5) ** 2 + 4 * (J**2))
+
+        eq1 = 0.5 * (w_r + w_p) + 0.5 * np.real(expr) - w_h_guess
+        eq2 = 0.5 * (w_r + w_p) - 0.5 * np.real(expr) - w_l_guess
+        eq3 = 0.5 * k_p - np.imag(expr) - k_h_guess
+        eq4 = 0.5 * k_p + np.imag(expr) - k_l_guess
+
+        return [eq1, eq2, eq3, eq4]
+
+    # solving and getting the intitial guesses for w_r, w_p, k_p and J
+    solution = fsolve(
+        equations, [600, 650, 1, 2]
+    )  # the initial guess for fsolve is a naive one from typical ratios for the quantities
+    w_r_guess, w_p_guess, k_p_guess, J_guess = solution
+
+    # initial guess for phi
+    phi_guess = data.phase[
+        np.argmax(frequencies - w_r_guess)
+    ]  # phi_guess is taken as the phase of the signal point corresponding to the furthest frequency to w_r
+
+    ### step (3)
+    # wrapping all up and fitting
+    initial_guess = [phi_guess, k_p_guess, w_p_guess, w_r_guess, J_guess]
+
+    # fitting data normalized by baseline from these guesses using curve_fit
+    popt, pcov = curve_fit(
+        lambda *params: np.abs(purcell_s_out_in(*params)),
+        frequencies,
+        np.abs(z) / z_filt,
+        p0=initial_guess,
+    )
+
+    return popt[3], popt, np.sqrt(np.abs(np.diag(pcov)))
+
+
+def purcell_spectroscopy_plot(data, qubit, fit: Results = None):
+    figures = []
+    fig_raw = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        specs=[
+            [{"rowspan": 2}, {}],
+            [None, {}],
+        ],
+    )
+    qubit_data = data[qubit]
+    fitting_report = ""
+    frequencies = qubit_data.freq
+    signal = qubit_data.signal
+    phase = qubit_data.phase
+    phase = (
+        -phase if data.phase_sign else phase
+    )  # TODO: tmp patch for the sign of the phase
+    phase = np.unwrap(phase)  # TODO: move phase unwrapping in qibolab
+
+    # plotting the data first
+    fig_raw.add_trace(
+        go.Scatter(
+            x=frequencies * HZ_TO_GHZ,
+            y=np.abs(signal),
+            mode="markers",
+            marker=dict(
+                size=4,
+            ),
+            opacity=1,
+            name="Amplitude data",
+            showlegend=True,
+            legendgroup="Amplitude data",
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig_raw.add_trace(
+        go.Scatter(
+            x=frequencies * HZ_TO_GHZ,
+            y=phase,
+            mode="markers",
+            marker=dict(
+                size=4,
+            ),
+            opacity=1,
+            name="Phase data",
+            showlegend=True,
+            legendgroup="Phase data",
+        ),
+        row=1,
+        col=2,
+    )
+
+    # plotting error bars if it is the case
+    show_error_bars = not np.isnan(qubit_data.error_signal).any()
+    if show_error_bars:
+        errors_signal = qubit_data.error_signal
+        errors_phase = qubit_data.error_phase
+        fig_raw.add_trace(
+            go.Scatter(
+                x=np.concatenate((frequencies, frequencies[::-1])) * HZ_TO_GHZ,
+                y=np.concatenate(
+                    (signal + errors_signal, (signal - errors_signal)[::-1])
+                ),
+                fill="toself",
+                fillcolor=COLORBAND,
+                line=dict(color=COLORBAND_LINE),
+                showlegend=True,
+                name="Amplitude Errors",
+            ),
+            row=1,
+            col=1,
+        )
+
+        fig_raw.add_trace(
+            go.Scatter(
+                x=np.concatenate((frequencies, frequencies[::-1])) * HZ_TO_GHZ,
+                y=np.concatenate((phase + errors_phase, (phase - errors_phase)[::-1])),
+                fill="toself",
+                fillcolor=COLORBAND,
+                line=dict(color=COLORBAND_LINE),
+                showlegend=True,
+                name="Phase Errors",
+            ),
+            row=1,
+            col=2,
+        )
+
+    # plotting fit if it succeeded
+    if fit is not None:
+        params = fit.fitted_parameters[qubit]
+        purcell_fitted = purcell_s_out_in(frequencies, *params)
+        # recovering baseline from the absolute signals
+        lamda = (
+            1e6  # hyperparameter, recommended from ALS paper to be between 1e6 and 1e9
+        )
+        p = 0.99  # hyperparameter
+        z_als = baseline_als(data=np.abs(signal), lamda=lamda, p=p)
+
+        fig_raw.add_trace(
+            go.Scatter(
+                x=frequencies * HZ_TO_GHZ,
+                y=z_als * np.abs(purcell_fitted),
+                mode="lines",
+                opacity=1,
+                name="Purcell Fit",
+                line=go.scatter.Line(dash="solid"),
+            ),
+            row=1,
+            col=1,
+        )
+
+        fig_raw.add_trace(
+            go.Scatter(
+                x=frequencies * HZ_TO_GHZ,
+                y=np.angle(purcell_fitted),
+                mode="lines",
+                opacity=1,
+                name="Purcell Fit",
+                line=go.scatter.Line(dash="solid"),
+            ),
+            row=1,
+            col=2,
+        )
+
+        if data.power_level is PowerLevel.low:
+            label = "Readout Frequency [Hz]"
+            freq = fit.frequency
+        elif data.power_level is PowerLevel.high:
+            label = "Bare Resonator Frequency [Hz]"
+            freq = fit.bare_frequency
+
+        if data.amplitudes[qubit] is not None:
+            if show_error_bars:
+                labels = [label, "Amplitude", "Chi2 reduced"]
+                values = [
+                    (
+                        freq[qubit],
+                        fit.error_fit_pars[qubit][1],
+                    ),
+                    (data.amplitudes[qubit], 0),
+                    fit.chi2_reduced[qubit],
+                ]
+            else:
+                labels = [label, "Amplitude"]
+                values = [freq[qubit], data.amplitudes[qubit]]
+
+            fitting_report = table_html(
+                table_dict(
+                    qubit,
+                    labels,
+                    values,
+                    display_error=show_error_bars,
+                )
+            )
+
+    fig_raw.update_layout(
+        showlegend=True,
+        xaxis_title="Frequency [GHz]",
+        yaxis_title="Signal [a.u.]",
+        xaxis2_title="Frequency [GHz]",
+        yaxis2_title="Phase [rad]",
+    )
+    figures.append(fig_raw)
+
+    return figures, fitting_report
