@@ -978,7 +978,7 @@ def purcell_s_out_in(
     of the Dispersive Shift: Experiment and Theory" (see https://arxiv.org/abs/2307.07765).
 
     The equation describes the (complex) output signal of a readout resonator coupled to a Purcell filter based on an input-output model. Here we assume
-    an already normalized linear baseline background signal, and we care about the amplitude (i.e. the absolute value) of the output signal only.
+    an already normalized linear baseline background signal.
 
     Args:
         w: frequency at which to compute the complex amplitude
@@ -1031,21 +1031,33 @@ def purcell_fit(
 
     ### step (1)
     # removing baseline from the absolute signals
-    lamda = 1e6  # hyperparameter, recommended from ALS paper to be between 1e6 and 1e9
-    p = 0.99  # hyperparameter
+    # lamda and p below are hyperparameters from ALS. lamda is recommended to be between 1e6 and 1e9, while
+    # p to be between 0 and 1. The closest to the lower bound, the more flexible to background signals shapes
+    # we are. Here we keep lamda at its lowest and p to a mean value working for most of test cases
+    lamda = 1e6
+    p = 0.7
     z_filt = baseline_als(data=np.abs(z), lamda=lamda, p=p)
 
     ### step (2)
     # finding the peaks and their widths
     peaks, properties = find_peaks(
-        -(np.abs(z) - z_filt) / abs(min(np.abs(z) - z_filt)), height=0.0, prominence=0.5
-    )  # height filters peaks above 0
+        -(np.abs(z) - z_filt) / abs(min(np.abs(z) - z_filt)), height=0.0, prominence=0.2
+    )  # height filters peaks above 0, with relative height to its neighbours equal to "prominence"
     rel_height = 0.5  # hyperparameter, using standard value for peak width determination at half height of the peak
     widths = peak_widths(-(np.abs(z) - z_filt), peaks, rel_height=rel_height)
 
-    # determining initial guesses for intermediate parameters
-    w_l_guess, w_h_guess = frequencies[peaks]
-    k_l_guess, k_h_guess = widths[0]
+    # selecting the two widest peaks and ordering then
+    widest_peaks_indices = sorted(
+        range(len(widths[0])), key=lambda i: widths[0][i], reverse=True
+    )[:2]
+    widest_peaks_frequencies = [frequencies[peaks[i]] for i in widest_peaks_indices]
+    widest_peaks_widths = [widths[0][i] for i in widest_peaks_indices]
+    if widest_peaks_frequencies[0] > widest_peaks_frequencies[1]:
+        w_l_guess, w_h_guess = widest_peaks_frequencies[1], widest_peaks_frequencies[0]
+        k_l_guess, k_h_guess = widest_peaks_widths[1], widest_peaks_widths[0]
+    else:
+        w_l_guess, w_h_guess = widest_peaks_frequencies[0], widest_peaks_frequencies[1]
+        k_l_guess, k_h_guess = widest_peaks_widths[0], widest_peaks_widths[1]
 
     ## solving system of equations to get initial guesses for the parameters of interest ##
     # auxiliar function to solve system of equations
@@ -1062,7 +1074,9 @@ def purcell_fit(
         return [eq1, eq2, eq3, eq4]
 
     # solving and getting the intitial guesses for w_r, w_p, k_p and J
-    solution = fsolve(equations, [1, 1, 1, 1])
+    solution = fsolve(
+        equations, [600, 650, 1, 2]
+    )  # the initial guess for fsolve is a naive one from typical ratios for the quantities
     w_r_guess, w_p_guess, k_p_guess, J_guess = solution
 
     # initial guess for phi
