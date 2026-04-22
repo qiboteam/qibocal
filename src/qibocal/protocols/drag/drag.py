@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -11,7 +12,6 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.result import probability
 from qibocal.update import replace
 
 from ..utils import (
@@ -44,9 +44,6 @@ class DragTuningParameters(Parameters):
     """DRAG pulse beta end sweep parameter."""
     beta_step: float
     """DRAG pulse beta sweep step parameter."""
-    unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
-    Defaults to ``False``."""
     nflips: int = 1
     """Repetitions of (Xpi - Xmpi)."""
 
@@ -132,44 +129,32 @@ def _acquisition(
         "nshots": params.nshots,
         "relaxation_time": params.relaxation_time,
         "acquisition_type": AcquisitionType.DISCRIMINATION,
-        "averaging_mode": AveragingMode.SINGLESHOT,
+        "averaging_mode": AveragingMode.CYCLIC,
     }
 
-    # execute the pulse sequence
-    if params.unrolling:
-        results = platform.execute(sequences, **options)
-        for beta, ro_pulses in zip(beta_param_range, all_ro_pulses):
-            for qubit in targets:
-                result = results[ro_pulses[qubit].id]
-                prob = probability(result, state=0)
-                # store the results
-                data.register_qubit(
-                    DragTuningType,
-                    (qubit),
-                    dict(
-                        prob=np.array([prob]),
-                        error=np.array([np.sqrt(prob * (1 - prob) / params.nshots)]),
-                        beta=np.array([beta]),
+    # execute the pulse sequences
+    results = platform.execute(sequences, **options)
+    for beta, ro_pulses in zip(beta_param_range, all_ro_pulses):
+        for qubit in targets:
+            ground_state_prob = 1 - results[ro_pulses[qubit].id]
+            # store the results
+            data.register_qubit(
+                DragTuningType,
+                (qubit),
+                dict(
+                    prob=np.array([ground_state_prob]),
+                    error=np.array(
+                        [
+                            np.sqrt(
+                                ground_state_prob
+                                * (1 - ground_state_prob)
+                                / params.nshots
+                            )
+                        ]
                     ),
-                )
-    else:
-        for i, sequence in enumerate(sequences):
-            result = platform.execute([sequence], **options)
-            for qubit in targets:
-                ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[
-                    -1
-                ]
-                prob = probability(result[ro_pulse.id], state=0)
-                # store the results
-                data.register_qubit(
-                    DragTuningType,
-                    (qubit),
-                    dict(
-                        prob=np.array([prob]),
-                        error=np.array([np.sqrt(prob * (1 - prob) / params.nshots)]),
-                        beta=np.array([beta_param_range[i]]),
-                    ),
-                )
+                    beta=np.array([beta]),
+                ),
+            )
 
     return data
 
@@ -223,7 +208,33 @@ def _fit(data: DragTuningData) -> DragTuningResults:
             ]
             fitted_parameters[qubit] = translated_popt
             predicted_prob = drag_fit(beta_params, *translated_popt)
-            betas_optimal[qubit] = beta_params[np.argmax(predicted_prob)]
+
+            period_fit = translated_popt[2]
+            phase_fit = translated_popt[3]
+
+            # calculate the smallest and largest k for which the maximum lies in the
+            # beta interval. Using that maxima of drag_fit(x, offset, amplitude, period,
+            # phase) occur for x = period * (k - phase / (2*pi)), for integer k.
+            phase_2pi = phase_fit / (2 * np.pi)
+            k_min = math.ceil(beta_min / period_fit + phase_2pi)
+            k_max = math.floor(beta_max / period_fit + phase_2pi)
+
+            if k_min <= k_max:
+                # Choose beta value with the smallest absolute value that falls inside
+                # the beta interval.
+                candidate_ks = np.arange(k_min, k_max + 1)
+                candidate_betas = [period_fit * (k - phase_2pi) for k in candidate_ks]
+                betas_optimal[qubit] = min(candidate_betas, key=abs)
+            else:
+                # If no analytical maximum lies in the beta interval, maximum is
+                # fixed at one of the interval boundaries. Bounds during the fit
+                # mean
+                left_value = drag_fit(beta_min, *translated_popt)
+                right_value = drag_fit(beta_max, *translated_popt)
+                betas_optimal[qubit] = (
+                    beta_min if left_value >= right_value else beta_max
+                )
+
             chi2[qubit] = (
                 chi2_reduced(
                     prob,
@@ -292,8 +303,8 @@ def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
         fitting_report = table_html(
             table_dict(
                 target,
-                ["Optimal Beta Param", "Chi2 reduced"],
-                [(np.round(fit.betas[target], 4), 0), fit.chi2[target]],
+                ["Beta", "Chi2 reduced"],
+                [(np.round(fit.betas[target], 4), "not determined"), fit.chi2[target]],
                 display_error=True,
             )
         )
