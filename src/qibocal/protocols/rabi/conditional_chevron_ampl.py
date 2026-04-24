@@ -147,16 +147,8 @@ def _acquisition(
 
     if params.activate_spectators:
         complete_sequence += PulseSequence(list(spectators_drive_dict.values()))
-        compl_seq_len = complete_sequence.duration
-        complete_sequence += PulseSequence(
-            (ch, Delay(duration=compl_seq_len)) for ch in t_sequence.channels
-        )
-        complete_sequence += PulseSequence(
-            (seq[0], Delay(duration=compl_seq_len))
-            for seq in spectators_ro_dict.values()
-        )
 
-    complete_sequence += t_sequence
+    complete_sequence |= t_sequence
     complete_sequence += PulseSequence(
         (spectators_ro_dict[s][0], Delay(duration=t_qd_pulses[t].duration))
         for t, s in targets
@@ -270,9 +262,9 @@ def _plot(
         horizontal_spacing=0.1,
         vertical_spacing=0.2,
         subplot_titles=(
-            ("PI pulse applied -" if fit.activate_spectators else "")
+            ("PI pulse applied -" if data.activate_spectators else "")
             + f" Prob Target {target[0]}",
-            ("PI pulse applied -" if fit.activate_spectators else "")
+            ("PI pulse applied -" if data.activate_spectators else "")
             + f" Prob Spectator {target[1]}",
         ),
     )

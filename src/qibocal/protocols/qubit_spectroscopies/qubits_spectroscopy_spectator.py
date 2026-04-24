@@ -105,7 +105,7 @@ def _acquisition(
     # Calculate batches
     batches = calculate_batches(params.freq_width)
 
-    spectro_seq, ro_pulses, drive_channels, los_channels, amplitudes = (
+    spectro_seq, targ_ro_seq, ro_pulses, drive_channels, los_channels, amplitudes = (
         spectroscopy_sequence(
             params=params,
             platform=platform,
@@ -121,15 +121,21 @@ def _acquisition(
     )
 
     # executing the experiment for each spectator qubit separately
-    spectator_seq, spectator_ro_pulses, spectator_drive_ch, spectator_los_ch, _ = (
-        spectroscopy_sequence(
-            params=params,
-            platform=platform,
-            targets=spectator_qubits_list,
-        )
+    (
+        spectator_seq,
+        spectator_ro_seq,
+        spectator_ro_pulses,
+        spectator_drive_ch,
+        spectator_los_ch,
+        _,
+    ) = spectroscopy_sequence(
+        params=params,
+        platform=platform,
+        targets=spectator_qubits_list,
     )
 
     complete_seq = spectator_seq + spectro_seq
+    complete_seq |= spectator_ro_seq + targ_ro_seq
 
     # Execute each batch
     for start, end, lo_offset in batches:

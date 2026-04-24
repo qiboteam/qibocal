@@ -4,7 +4,6 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 from qibolab import (
-    Delay,
     Parameter,
     PulseLike,
     PulseSequence,
@@ -78,6 +77,7 @@ def spectroscopy_sequence(
     targets: list[QubitId],
 ) -> tuple[
     PulseSequence,
+    PulseSequence,
     dict[QubitId, PulseLike],
     dict[QubitId, ChannelId],
     dict[QubitId, ChannelId],
@@ -85,6 +85,7 @@ def spectroscopy_sequence(
 ]:
     # Build the pulse sequence
     sequence = PulseSequence()
+    ro_sequence = PulseSequence()
     ro_pulses = {}
     drive_channels = {}
     los_channels = {}
@@ -111,10 +112,17 @@ def spectroscopy_sequence(
             los_channels[qubit] = None
 
         sequence.append((qd_channel, qd_pulse))
-        sequence.append((ro_channel, Delay(duration=qd_pulse.duration)))
-        sequence.append((ro_channel, ro_pulse))
 
-    return sequence, ro_pulses, drive_channels, los_channels, drive_amplitudes
+        ro_sequence.append((ro_channel, ro_pulse))
+
+    return (
+        sequence,
+        ro_sequence,
+        ro_pulses,
+        drive_channels,
+        los_channels,
+        drive_amplitudes,
+    )
 
 
 def calculate_batches(freq_width: int, max_if_bandwidth: int = 300_000_000):
