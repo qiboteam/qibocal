@@ -67,7 +67,7 @@ def _register(name: str, obj: Any) -> None:
     obj.__spec__ = None
 
 
-class Executor(BaseModel, protocols.BaseSet):
+class Executor(BaseModel):
     """Execute a tasks' graph and tracks its history."""
 
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
