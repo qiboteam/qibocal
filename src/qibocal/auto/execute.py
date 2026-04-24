@@ -14,6 +14,7 @@ from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 from qibo.backends import construct_backend
+from qibolab import Platform
 
 from qibocal import protocols
 from qibocal.config import log
@@ -109,21 +110,31 @@ class Executor(BaseModel, protocols.BaseSet):
             object.__setattr__(self, name, self._wrapped_protocol(protocol, name))
 
     @classmethod
-    def create(cls, name: str, platform: Union[CalibrationPlatform, str, None] = None):
-        """Load list of protocols."""
+    def create(
+        cls,
+        platform: Union[CalibrationPlatform, Platform, str, None] = None,
+        **kwargs: Any,
+    ) -> "Executor":
+        """Create protocols' executor.
+
+        This is a wrapper of the default constructor, which is only handling different
+        platforms specification.
+        All the extra arguments in `kwargs` are then passed to the default one.
+        """
         platform = (
             platform
             if isinstance(platform, CalibrationPlatform)
+            else CalibrationPlatform.from_platform(platform)
+            if isinstance(platform, Platform)
             else create_calibration_platform(
                 platform if isinstance(platform, str) else "mock"
             )
         )
         return cls(
-            name=name,
             history=History(),
             platform=platform,
             targets=list(platform.qubits),
-            update=True,
+            **kwargs,
         )
 
     def run_protocol(
@@ -251,15 +262,6 @@ class Executor(BaseModel, protocols.BaseSet):
         targets: Optional[Targets] = None,
     ):
         """Initialize execution."""
-        if platform is None or isinstance(platform, CalibrationPlatform):
-            platform = self.platform
-        elif isinstance(platform, str):
-            platform = self.platform = create_calibration_platform(platform)
-        else:
-            platform = self.platform = CalibrationPlatform.from_platform(platform)
-
-        assert isinstance(platform, CalibrationPlatform)
-
         backend = construct_backend(backend="qibolab", platform=platform)
 
         if update is not None:
