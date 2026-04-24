@@ -167,16 +167,8 @@ def _acquisition(
 
     if params.activate_spectators:
         complete_sequence += PulseSequence(list(spectators_drive_dict.values()))
-        compl_seq_len = complete_sequence.duration
-        complete_sequence += PulseSequence(
-            (ch, Delay(duration=compl_seq_len)) for ch in t_sequence.channels
-        )
-        complete_sequence += PulseSequence(
-            (seq[0], Delay(duration=compl_seq_len))
-            for seq in spectators_ro_dict.values()
-        )
 
-    complete_sequence += t_sequence
+    complete_sequence |= t_sequence
     complete_sequence += PulseSequence(
         (spectators_ro_dict[s][0], Delay(duration=t_qd_pulses[t].duration))
         for t, s in targets
@@ -287,6 +279,7 @@ def _plot(
     fit: ConditionalRabiChevronAmplSignalResults = None,
 ):
     """Plotting function for ConditionalRabiChevron."""
+
     figures = []
     fitting_report = ""
     fig = make_subplots(
@@ -294,9 +287,9 @@ def _plot(
         cols=2,
         horizontal_spacing=0.1,
         subplot_titles=(
-            ("PI pulse applied -" if fit.activate_spectators else "")
+            ("PI pulse applied -" if data.activate_spectators else "")
             + f"Signal [a.u.] - Target {target[0]}",
-            ("PI pulse applied -" if fit.activate_spectators else "")
+            ("PI pulse applied -" if data.activate_spectators else "")
             + f"Phase [rad] - Target {target[0]}",
         ),
     )
@@ -332,6 +325,7 @@ def _plot(
 
     fig.update_xaxes(title_text="Amplitude [a.u.]", row=1, col=1)
     fig.update_xaxes(title_text="Amplitude [a.u.]", row=1, col=2)
+    fig.update_yaxes(title_text="Frequency [GHz]", row=1, col=1)
     fig.update_yaxes(title_text="Frequency [GHz]", row=1, col=2)
 
     fig.update_layout(
@@ -345,9 +339,9 @@ def _plot(
         cols=2,
         horizontal_spacing=0.1,
         subplot_titles=(
-            ("PI pulse applied -" if fit.activate_spectators else "")
+            ("PI pulse applied -" if data.activate_spectators else "")
             + f"Signal [a.u.] - Spectator {target[1]}",
-            ("PI pulse applied -" if fit.activate_spectators else "")
+            ("PI pulse applied -" if data.activate_spectators else "")
             + f"Phase [rad] - Spectator {target[1]}",
         ),
     )
@@ -377,6 +371,7 @@ def _plot(
     fig.update_xaxes(title_text="Amplitude [a.u.]", row=1, col=1)
     fig.update_xaxes(title_text="Amplitude [a.u.]", row=1, col=2)
     fig.update_yaxes(title_text="Frequency [GHz]", row=1, col=1)
+    fig.update_yaxes(title_text="Frequency [GHz]", row=1, col=2)
 
     fig.update_layout(
         showlegend=False,

@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import Delay, PulseSequence
+from qibolab import PulseSequence
 
 from qibocal.auto.operation import QubitId, QubitPairId, Routine
 from qibocal.calibration import CalibrationPlatform
@@ -99,7 +99,7 @@ def _acquisition(
     # Calculate batches
     batches = calculate_batches(params.freq_width)
 
-    spectro_seq, ro_pulses, drive_channels, los_channels, amplitudes = (
+    spectro_seq, target_ro_seq, ro_pulses, drive_channels, los_channels, amplitudes = (
         spectroscopy_sequence(
             params=params,
             platform=platform,
@@ -129,23 +129,10 @@ def _acquisition(
         # add pi-pulse for the spectator qubit
         spectators_drive_sequence.append((spect_drive_channel, spect_pulse))
         # appending readout pulse for spectator qubit
-        spectators_ro_sequence.append(
-            (
-                spect_ro_channel,
-                Delay(
-                    duration=(spectro_seq.duration + spectators_drive_sequence.duration)
-                ),
-            )
-        )
         spectators_ro_sequence.append((spect_ro_channel, spect_ro_pulse))
 
-    # adding delay for target channels
-    spect_drive_seq_duration = spectators_drive_sequence.duration
-    spectators_drive_sequence += PulseSequence(
-        (ch, Delay(duration=spect_drive_seq_duration)) for ch in spectro_seq.channels
-    )
-
-    complete_sequence = spectators_drive_sequence + spectro_seq + spectators_ro_sequence
+    complete_sequence = spectators_drive_sequence | spectro_seq
+    complete_sequence |= target_ro_seq + spectators_ro_sequence
 
     # Execute each batch
     for start, end, lo_offset in batches:
@@ -169,7 +156,8 @@ def _acquisition(
         )
 
         # Collect results from this batch
-        for t, s in targets:
+        for pair in targets:
+            t, s = pair
             # Collect results for spectator qubits
             spectator_result = results[spectator_ro_pulses[s].id]
             spectator_signal = magnitude(spectator_result)
@@ -180,9 +168,8 @@ def _acquisition(
             _phase = phase(result)
 
             data.register_qubit(
-                target=t,
-                spectator=s,
-                target_freq=parsweep[t],
+                pair=pair,
+                target_freq=parsweep[t].values,
                 target_signal=signal,
                 target_phase=_phase,
                 spectator_signal=spectator_signal,
