@@ -1,4 +1,3 @@
-import logging
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -8,7 +7,10 @@ from .calibration import CALIBRATION, Calibration
 
 __all__ = ["CalibrationPlatform", "create_calibration_platform"]
 
-log = logging.getLogger(__name__)
+
+class CalibrationError(Exception):
+    def __init__(self, *args):
+        super().__init__(*args)
 
 
 @dataclass
@@ -30,23 +32,24 @@ class CalibrationPlatform(Platform):
         for q in self.qubits:
             phase_rx = (
                 True
-                if natives[q].RX() is None
-                else natives[q].RX()[0][1].relative_phase == 0.0
+                if natives[q].RX is None
+                else natives[q].RX[0][1].relative_phase == 0.0
             )
             phase_rx90 = (
                 True
-                if natives[q].RX90() is None
-                else natives[q].RX90()[0][1].relative_phase == 0.0
+                if natives[q].RX90 is None
+                else natives[q].RX90[0][1].relative_phase == 0.0
             )
             phase_rx12 = (
                 True
-                if natives[q].RX() is None
-                else natives[q].RX12()[0][1].relative_phase == 0.0
+                if natives[q].RX12 is None
+                else natives[q].RX12[0][1].relative_phase == 0.0
             )
 
             if not (phase_rx and phase_rx90 and phase_rx12):
-                log.error("%s - All X rotation must be set with relative_phase = 0.")
-                raise ValueError
+                raise CalibrationError(
+                    "All X rotation must be set with relative_phase = 0."
+                )
 
     @classmethod
     def from_platform(cls, platform: Platform):
