@@ -70,6 +70,7 @@ optional = true
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.0"
 devtools = "^0.10.0"
+marimo = "^0.23.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
