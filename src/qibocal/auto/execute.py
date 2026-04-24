@@ -8,7 +8,7 @@ import sys
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import fields
-from functools import reduce
+from functools import cached_property, reduce
 from pathlib import Path
 from typing import Any
 
@@ -94,6 +94,9 @@ class Executor(BaseModel):
     """Qubits' platform."""
     update: bool = True
     """Runcard update mechanism."""
+    path: Path
+    meta: Metadata
+
     sources: list[ProtocolsCollection] = Field(default_factory=list)
     """Sources to extend core protocol set."""
     name: str | None = None
@@ -110,8 +113,6 @@ class Executor(BaseModel):
         are also allowed, and they are interpreted relative to this package (in the top
         scope).
     """
-    path: Path | None = None
-    meta: Metadata | None = None
 
     def model_post_init(self, context: Any) -> None:
         """Register as a module, if a name is specified."""
@@ -119,36 +120,12 @@ class Executor(BaseModel):
             _register(self.name, self)
         _ = context
 
-        protocols_ = reduce(operator.or_, [protocols.PROTOCOLS] + self.sources)
-        for name, protocol in protocols_.items():
+        for name, protocol in self.protocols.items():
             object.__setattr__(self, name, self._wrapped_protocol(protocol, name))
 
-    def create(
-        cls,
-        platform: CalibrationPlatform | Platform | str | None = None,
-        **kwargs: Any,
-    ) -> "Executor":
-        """Create protocols' executor.
-
-        This is a wrapper of the default constructor, which is only handling different
-        platforms specification.
-        All the extra arguments in `kwargs` are then passed to the default one.
-        """
-        platform = (
-            platform
-            if isinstance(platform, CalibrationPlatform)
-            else CalibrationPlatform.from_platform(platform)
-            if isinstance(platform, Platform)
-            else create_calibration_platform(
-                platform if isinstance(platform, str) else "mock"
-            )
-        )
-        return cls(
-            history=History(),
-            platform=platform,
-            targets=list(platform.qubits),
-            **kwargs,
-        )
+    @cached_property
+    def protocols(self) -> ProtocolsCollection:
+        return reduce(operator.or_, [protocols.PROTOCOLS] + self.sources)
 
     def run_protocol(
         self,
@@ -266,17 +243,48 @@ class Executor(BaseModel):
             # it has been explicitly unloaded, no need to do it again
             pass
 
+    @classmethod
+    def create(
+        cls,
+        path: os.PathLike,
+        platform: CalibrationPlatform | Platform | str | None = None,
+        **kwargs: Any,
+    ) -> "Executor":
+        """Create protocols' executor.
+
+        This is a wrapper of the default constructor, which is only handling different
+        platforms specification.
+        All the extra arguments in `kwargs` are then passed to the default one.
+        """
+        platform = (
+            platform
+            if isinstance(platform, CalibrationPlatform)
+            else CalibrationPlatform.from_platform(platform)
+            if isinstance(platform, Platform)
+            else create_calibration_platform(
+                platform if isinstance(platform, str) else "mock"
+            )
+        )
+        path_ = Path(path)
+        backend = construct_backend(backend="qibolab", platform=platform)
+        return cls(
+            history=History(),
+            platform=platform,
+            targets=list(platform.qubits),
+            path=path_,
+            meta=Metadata.generate(path_.name, backend),
+            **kwargs,
+        )
+
     def init(
         self,
-        path: os.PathLike,
         force: bool = False,
-        platform: CalibrationPlatform | str | None = None,
         update: bool | None = None,
         targets: Targets | None = None,
     ):
         """Initialize execution."""
-        backend = construct_backend(backend="qibolab", platform=platform)
-
+        # TODO: if they are not None, you may want to use only for the session, and do
+        # not update the default ones
         if update is not None:
             self.update = update
         if targets is not None:
@@ -284,27 +292,21 @@ class Executor(BaseModel):
             self.targets = targets
 
         # generate output folder
-        path = Output.mkdir(Path(path), force)
+        path = Output.mkdir(self.path, force)
 
         # generate meta
-        meta = Metadata.generate(path.name, backend)
-        output = Output(History(), meta, platform)
+        output = Output(History(), self.meta, self.platform)
         output.dump(path)
 
-        # run
-        meta.start()
+        # start timer
+        self.meta.start()
 
         # connect and initialize platform
-        platform.connect()
+        self.platform.connect()
 
-        self.path = path
-        self.meta = meta
-
-    def close(self, path: os.PathLike | None = None):
+    def close(self):
         """Close execution."""
         assert self.meta is not None and self.path is not None
-
-        path = self.path if path is None else Path(path)
 
         # stop and disconnect platform
         self.platform.disconnect()
@@ -313,7 +315,7 @@ class Executor(BaseModel):
 
         # dump history, metadata, and updated platform
         output = Output(self.history, self.meta, self.platform)
-        output.dump(path)
+        output.dump(self.path)
 
         # attempt unloading
         self.__del__()
@@ -322,7 +324,6 @@ class Executor(BaseModel):
     @contextmanager
     def open(
         cls,
-        name: str,
         path: os.PathLike,
         force: bool = False,
         platform: CalibrationPlatform | str | None = None,
@@ -330,8 +331,8 @@ class Executor(BaseModel):
         targets: Targets | None = None,
     ):
         """Enter the execution context."""
-        ex = cls.create(name, platform)
-        ex.init(path, force, platform, update, targets)
+        ex = cls.create(path=path, platform=platform)
+        ex.init(force, update, targets)
         try:
             yield ex
         finally:
