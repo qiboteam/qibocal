@@ -31,22 +31,17 @@ from . import (
 from .allxy import *
 from .classification import *
 from .coherence import *
-from .coherence import spin_echo, t1, t2
 from .dispersive_shift import *
 from .drag import *
 from .flipping import *
 from .flux_dependence import *
 from .qubit_spectroscopies import *
-from .qubit_spectroscopies import qubit_spectroscopy
 from .rabi import *
-from .rabi import rabi_amplitude, rabi_length
 from .ramsey import *
-from .ramsey import ramsey
 from .randomized_benchmarking import *
 from .readout import *
 from .readout_optimization import *
 from .resonator_spectroscopies import *
-from .resonator_spectroscopies import resonator_spectroscopy
 from .signal_experiments import *
 from .tomographies import *
 from .two_qubit_interaction import *
@@ -73,14 +68,4 @@ __all__ += qubit_spectroscopies.__all__
 __all__ += two_qubit_interaction.__all__
 __all__ += twpa.__all__
 
-
-PROTOCOLS: ProtocolsCollection = {
-    "resonator_spectroscopy": resonator_spectroscopy,
-    "qubit_spectroscopy": qubit_spectroscopy,
-    "rabi_amplitude": rabi_amplitude,
-    "rabi_length": rabi_length,
-    "ramsey": ramsey,
-    "t1": t1,
-    "t2": t2,
-    "spin_echo": spin_echo,
-}
+PROTOCOLS: ProtocolsCollection = {name: globals()[name] for name in __all__}
