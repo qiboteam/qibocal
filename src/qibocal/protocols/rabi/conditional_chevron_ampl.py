@@ -1,4 +1,4 @@
-"""Rabi experiment that sweeps length and frequency."""
+"""Rabi experiment that sweeps amplitude and frequency when toggling a spectator qubit."""
 
 from dataclasses import dataclass, field
 from typing import Optional, Union
@@ -16,19 +16,25 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routine
+from qibocal.auto.operation import (
+    Data,
+    Parameters,
+    QubitId,
+    QubitPairId,
+    Results,
+    Routine,
+)
 from qibocal.calibration import CalibrationPlatform
-from qibocal.config import log
 
 from ..utils import HZ_TO_GHZ, readout_frequency
-from .utils import fit_amplitude_function, rabi_initial_guess, sequence_amplitude
+from .utils import sequence_amplitude
 
 __all__ = ["conditional_rabi_chevron_ampl"]
 
 
 @dataclass
 class ConditionalRabiChevronAmplParameters(Parameters):
-    """ConditionalRabiChevron runcard inputs."""
+    """ConditionalRabiAmplChevron runcard inputs."""
 
     amplitude_start: float
     """Initial pi pulse amplitude [a.u.]."""
@@ -66,7 +72,7 @@ class ConditionalRabiChevronAmplParameters(Parameters):
 
 @dataclass
 class ConditionalRabiChevronAmplResults(Results):
-    """ConditionalRabiChevron outputs."""
+    """ConditionalRabiAmplChevron outputs."""
 
     activate_spectators: bool
     """Flag for setting spectator qbuit in state 1."""
@@ -84,12 +90,12 @@ CondRabiAmplChevronType = np.dtype(
         ("spectator", np.float64),
     ]
 )
-"""Custom dtype for rabi length."""
+"""Custom dtype for rabi amplitude with spectator."""
 
 
 @dataclass
-class RabiLengthFreqSignalData(Data):
-    """RabiLengthFreqSignal data acquisition."""
+class ConditionalRabiChevronAmplData(Data):
+    """ConditionalRabiAmplChevron data acquisition."""
 
     activate_spectators: bool
     """Flag for setting spectator qbuit in state 1."""
@@ -110,7 +116,7 @@ class RabiLengthFreqSignalData(Data):
         self.data[pair] = np.rec.array(data)
 
     def amplitudes(self, qubit_pair: QubitPairId) -> npt.NDArray:
-        """Unique qubit lengths."""
+        """Unique qubit amplitudes."""
         return np.unique(self[qubit_pair].ampl)
 
     def frequencies(self, qubit_pair: QubitPairId) -> npt.NDArray:
@@ -122,8 +128,8 @@ def _acquisition(
     params: ConditionalRabiChevronAmplParameters,
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
-) -> RabiLengthFreqSignalData:
-    """Data acquisition for Rabi experiment sweeping length."""
+) -> ConditionalRabiChevronAmplData:
+    """Data acquisition for ConditionalRabiChevron."""
 
     if any(isinstance(x, (str, int)) for x in targets):
         raise ValueError("At least one target is not a QubitPairId type.")
@@ -138,8 +144,8 @@ def _acquisition(
 
     complete_sequence = PulseSequence()
 
-    spectators_drive_dict = {}
-    spectators_ro_dict = {}
+    spectators_drive_dict: dict[QubitId, PulseSequence] = {}
+    spectators_ro_dict: dict[QubitId, PulseSequence] = {}
     for s in spectator_qubits_list:
         spectator_natives = platform.natives.single_qubit[s]
         spectators_drive_dict[s] = spectator_natives.RX()[0]
@@ -161,7 +167,7 @@ def _acquisition(
         pulses=[t_qd_pulses[q] for q in target_qubits_list],
     )
 
-    freq_sweepers = {}
+    freq_sweepers: dict[QubitId, Sweeper] = {}
     for t in target_qubits_list:
         target_drive_ch = platform.qubits[t].drive
         freq_sweepers[t] = Sweeper(
@@ -170,7 +176,9 @@ def _acquisition(
             channels=[target_drive_ch],
         )
 
-    data = RabiLengthFreqSignalData(activate_spectators=params.activate_spectators)
+    data = ConditionalRabiChevronAmplData(
+        activate_spectators=params.activate_spectators
+    )
 
     results = platform.execute(
         [complete_sequence],
@@ -198,60 +206,20 @@ def _acquisition(
     return data
 
 
-def _fit(data: RabiLengthFreqSignalData) -> ConditionalRabiChevronAmplResults:
+def _fit(data: ConditionalRabiChevronAmplData) -> ConditionalRabiChevronAmplResults:
     """Do not perform any fitting procedure."""
-    fitted_frequencies = {}
-    fitted_amplitudes = {}
-    fitted_parameters = {}
-
-    for pair in data.data:
-        amplitudes = data.amplitudes(pair)
-        freqs = data.frequencies(pair)
-        target_prob = data[pair].target
-        t_prob_matrix = target_prob.reshape(len(amplitudes), len(freqs)).T
-
-        # guess optimal frequency maximizing oscillatio amplitude
-        index = np.argmax([max(x) - min(x) for x in t_prob_matrix])
-        frequency = freqs[index]
-
-        y = t_prob_matrix[index]
-
-        y_min = np.min(y)
-        y_max = np.max(y)
-        x_min = np.min(amplitudes)
-        x_max = np.max(amplitudes)
-        x = (amplitudes - x_min) / (x_max - x_min)
-        y = (y - y_min) / (y_max - y_min)
-
-        pguess = rabi_initial_guess(x, y, "amplitude", signal=False)
-
-        try:
-            popt, _, pi_pulse_parameter = fit_amplitude_function(
-                x,
-                y,
-                pguess,
-                signal=False,
-                x_limits=(x_min, x_max),
-                y_limits=(y_min, y_max),
-            )
-            fitted_frequencies[pair] = frequency
-            fitted_amplitudes[pair] = pi_pulse_parameter
-            fitted_parameters[pair] = popt
-
-        except Exception as e:
-            log.warning(f"Rabi fit failed for pair {pair} due to {e}.")
 
     return ConditionalRabiChevronAmplResults(
         activate_spectators=data.activate_spectators,
-        amplitude=fitted_amplitudes,
-        fitted_parameters=fitted_parameters,
+        amplitude={},
+        fitted_parameters={},
     )
 
 
 def _plot(
-    data: RabiLengthFreqSignalData,
+    data: ConditionalRabiChevronAmplData,
     target: QubitPairId,
-    fit: ConditionalRabiChevronAmplResults = None,
+    fit: Optional[ConditionalRabiChevronAmplResults] = None,
 ):
     """Plotting function for ConditionalRabiChevron."""
     figures = []

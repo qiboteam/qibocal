@@ -5,6 +5,7 @@ from .amplitude_signal import rabi_amplitude_signal
 from .conditional_chevron_ampl import conditional_rabi_chevron_ampl
 from .conditional_chevron_ampl_signal import conditional_rabi_chevron_ampl_signal
 from .conditional_chevron_length_signal import conditional_rabi_chevron_len_signal
+from .conditional_cross_chevron_ampl import conditional_crossrabi_chevron_ampl
 from .ef import rabi_amplitude_ef
 from .length import rabi_length
 from .length_frequency import rabi_length_frequency
@@ -24,4 +25,5 @@ __all__ = [
     "conditional_rabi_chevron_len_signal",
     "conditional_rabi_chevron_ampl_signal",
     "conditional_rabi_chevron_ampl",
+    "conditional_crossrabi_chevron_ampl",
 ]

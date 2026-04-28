@@ -16,7 +16,14 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routine
+from qibocal.auto.operation import (
+    Data,
+    Parameters,
+    QubitId,
+    QubitPairId,
+    Results,
+    Routine,
+)
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
@@ -134,7 +141,7 @@ class RabiLengthFreqSignalData(Data):
         """Compute magnitude of the spectator qubit signal"""
         return np.sqrt(self[qubit_pair].s_i ** 2 + self[qubit_pair].s_q ** 2)
 
-    def computespectator_phase(self, qubit_pair: QubitPairId) -> npt.NDArray:
+    def compute_spectator_phase(self, qubit_pair: QubitPairId) -> npt.NDArray:
         """Compute phase of the spectator qubit signal"""
         return np.unwrap(np.arctan2(self[qubit_pair].s_i, self[qubit_pair].s_q))
 
@@ -158,8 +165,8 @@ def _acquisition(
     )
 
     complete_sequence = PulseSequence()
-    spectators_drive_dict = {}
-    spectators_ro_dict = {}
+    spectators_drive_dict: dict[QubitId, PulseSequence] = {}
+    spectators_ro_dict: dict[QubitId, PulseSequence] = {}
     for s in spectator_qubits_list:
         spectator_natives = platform.natives.single_qubit[s]
         spectators_drive_dict[s] = spectator_natives.RX()[0]
@@ -181,7 +188,7 @@ def _acquisition(
         pulses=[t_qd_pulses[q] for q in target_qubits_list],
     )
 
-    freq_sweepers = {}
+    freq_sweepers: dict[QubitId, Sweeper] = {}
     for t in target_qubits_list:
         target_drive_ch = platform.qubits[t].drive
         freq_sweepers[t] = Sweeper(
@@ -299,7 +306,7 @@ def _plot(
     t_mag = data.compute_target_magnitude(target)
     t_phase = data.compute_target_phase(target)
     s_mag = data.compute_spectator_magnitude(target)
-    s_phase = data.computespectator_phase(target)
+    s_phase = data.compute_spectator_phase(target)
 
     fig.add_trace(
         go.Heatmap(
