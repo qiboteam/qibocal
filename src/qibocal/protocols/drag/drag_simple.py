@@ -2,13 +2,12 @@ from dataclasses import dataclass
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Delay, Drag, Pulse, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, Drag, Pulse, PulseSequence
 from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
-from qibocal.result import probability
 from qibocal.update import replace
 
 from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
@@ -67,8 +66,10 @@ def _acquisition(
     """
 
     data = DragTuningSimpleData()
-    beta_range = np.arange(params.beta_start, params.beta_end, params.beta_step)
-
+    # TODO: update input parameters to reflect num instead of step. np.arange should only
+    # be used for integer steps and can cause issues with floating point precision.
+    num = abs(round((params.beta_end - params.beta_start) / params.beta_step)) + 1
+    beta_range = np.linspace(params.beta_start, params.beta_end, num=num, endpoint=True)
     sequences, all_ro_pulses = [], []
     for beta in beta_range:
         for setup in SEQUENCES:
@@ -81,31 +82,18 @@ def _acquisition(
                 if setup == "YpX9":
                     ry_sequence = natives.R(phi=np.pi / 2)
                     rx90_sequence = natives.R(theta=np.pi / 2)
-                    for channel, pulse in ry_sequence:
-                        sequence.append((qd_channel, add_drag(pulse, beta=beta)))
-                    for channel, pulse in rx90_sequence:
-                        sequence.append((qd_channel, add_drag(pulse, beta=beta)))
-                    sequence.append(
-                        (
-                            ro_channel,
-                            Delay(
-                                duration=rx90_sequence.duration + ry_sequence.duration
-                            ),
-                        )
-                    )
+                    for _channel, pulse in ry_sequence:
+                        sequence |= [(qd_channel, add_drag(pulse, beta=beta))]
+                    for _channel, pulse in rx90_sequence:
+                        sequence |= [(qd_channel, add_drag(pulse, beta=beta))]
                 else:
                     _, rx = natives.RX()[0]
                     ry90_sequence = natives.R(theta=np.pi / 2, phi=np.pi / 2)
-                    sequence.append((qd_channel, add_drag(rx, beta=beta)))
-                    for channel, pulse in ry90_sequence:
-                        sequence.append((qd_channel, add_drag(pulse, beta=beta)))
-                    sequence.append(
-                        (
-                            ro_channel,
-                            Delay(duration=rx.duration + ry90_sequence.duration),
-                        )
-                    )
-                sequence.append((ro_channel, ro_pulse))
+                    sequence |= [(qd_channel, add_drag(rx, beta=beta))]
+                    for _channel, pulse in ry90_sequence:
+                        sequence |= [(qd_channel, add_drag(pulse, beta=beta))]
+
+                sequence |= [(ro_channel, ro_pulse)]
 
             sequences.append(sequence)
             all_ro_pulses.append(
@@ -121,45 +109,44 @@ def _acquisition(
         "nshots": params.nshots,
         "relaxation_time": params.relaxation_time,
         "acquisition_type": AcquisitionType.DISCRIMINATION,
-        "averaging_mode": AveragingMode.SINGLESHOT,
+        "averaging_mode": AveragingMode.CYCLIC,
     }
 
-    # execute the pulse sequence
-    if params.unrolling:
-        results = platform.execute(sequences, **options)
-        for beta, ro_pulses in zip(np.repeat(beta_range, 2), all_ro_pulses):
-            for qubit in targets:
-                result = results[ro_pulses[qubit].id]
-                prob = probability(result, state=1)
-                # store the results
-                data.register_qubit(
-                    DragTuningType,
-                    (qubit),
-                    dict(
-                        prob=np.array([prob]),
-                        error=np.array([np.sqrt(prob * (1 - prob) / params.nshots)]),
-                        beta=np.array([beta]),
-                    ),
-                )
-    else:
-        for i, sequence in enumerate(sequences):
-            result = platform.execute([sequence], **options)
-            setup = "YpX9" if i % 2 == 2 else "XpY9"
-            for qubit in targets:
-                ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[
-                    -1
-                ]
-                prob = probability(result[ro_pulse.id], state=1)
-                # store the results
-                data.register_qubit(
-                    DragTuningType,
-                    (qubit),
-                    dict(
-                        prob=np.array([prob]),
-                        error=np.array([np.sqrt(prob * (1 - prob) / params.nshots)]),
-                        beta=np.array([beta_range[i // 2]]),
-                    ),
-                )
+    results = platform.execute(sequences, **options)
+    for beta, ro_pulses in zip(np.repeat(beta_range, 2), all_ro_pulses):
+        for qubit in targets:
+            prob = results[ro_pulses[qubit].id]
+            # prob = probability(result, state=1)
+            # store the results
+            data.register_qubit(
+                DragTuningType,
+                (qubit),
+                dict(
+                    prob=np.array([prob]),
+                    error=np.array([np.sqrt(prob * (1 - prob) / params.nshots)]),
+                    beta=np.array([beta]),
+                ),
+            )
+
+    # for i, sequence in enumerate(sequences):
+    #     result = platform.execute([sequence], **options)
+    #     setup = "YpX9" if i % 2 == 2 else "XpY9"
+    #     for qubit in targets:
+    #         ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[
+    #             -1
+    #         ]
+    #         prob = result[ro_pulse.id]
+    #         # prob = probability(result[ro_pulse.id], state=1)
+    #         # store the results
+    #         data.register_qubit(
+    #             DragTuningType,
+    #             (qubit),
+    #             dict(
+    #                 prob=np.array([prob]),
+    #                 error=np.array([np.sqrt(prob * (1 - prob) / params.nshots)]),
+    #                 beta=np.array([beta_range[i // 2]]),
+    #             ),
+    #         )
 
     return data
 

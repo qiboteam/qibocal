@@ -18,7 +18,6 @@ from qibocal.protocols.utils import (
     table_html,
 )
 
-from ..result import probability
 from .utils import COLORBAND, COLORBAND_LINE, chi2_reduced
 
 __all__ = ["flipping"]
@@ -152,7 +151,7 @@ def _acquisition(
         "nshots": params.nshots,
         "relaxation_time": params.relaxation_time,
         "acquisition_type": AcquisitionType.DISCRIMINATION,
-        "averaging_mode": AveragingMode.SINGLESHOT,
+        "averaging_mode": AveragingMode.CYCLIC,
     }
 
     sequences = []
@@ -185,7 +184,8 @@ def _acquisition(
                 result = results[ro_pulse.id]
             else:
                 result = results[i][ro_pulse.id]
-            prob = probability(result, state=1)
+            # prob = probability(result, state=1)
+            prob = result
             error = np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
                 FlippingType,
