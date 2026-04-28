@@ -382,9 +382,9 @@ def _generate_indexed_circuits(
 
     inv_file = getattr(params, "file_inv", None)
 
-    for depth in params.depths:
-        for target in targets:
-            for iteration in range(params.niter):
+    for target in targets:
+        for iteration in range(params.niter):
+            for depth in params.depths:
                 circuit = layer_circuit(rb_gen, depth, target, interleave)
                 if inverse_layer:
                     add_inverse_layer(circuit, rb_gen, inv_file)
