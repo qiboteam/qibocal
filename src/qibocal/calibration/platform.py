@@ -21,8 +21,8 @@ class CalibrationPlatform(Platform):
     """Calibration information."""
 
     def __post_init__(self):
-        """
-        Post-initialization method for the Platform class.
+        """Post-initialization method for the Platform class.
+
         Validates that all X rotation native gates (RX, RX90, RX12) for each qubit
         have a relative_phase of 0.0. If any gate does not meet this condition,
         logs an error and raises a ValueError.
