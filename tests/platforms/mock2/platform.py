@@ -11,10 +11,7 @@ from qibocal.protocols.utils import DcFilteredConfig
 
 ConfigKinds.extend([DcFilteredConfig])
 
-FOLDER = pathlib.Path(__file__).parent
-
-
-def create_mock_hardware() -> Hardware:
+def create() -> Hardware:
     """Create dummy hardware configuration based on the dummy instrument."""
 
     qubits = {}
@@ -43,9 +40,3 @@ def create_mock_hardware() -> Hardware:
         pump_name: DummyLocalOscillator(address="0.0.0.0"),
     }
     return Hardware(instruments=instruments, qubits=qubits, couplers=couplers)
-
-
-def create() -> Platform:
-    """Create a dummy platform using the dummy instrument."""
-    hardware = create_mock_hardware()
-    return Platform.load(path=FOLDER, **vars(hardware))
