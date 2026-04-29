@@ -27,5 +27,4 @@ actions:
   - id: single shot classification
     operation: single_shot_classification
     parameters:
-      unrolling: False
       nshots: 100

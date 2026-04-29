@@ -557,13 +557,6 @@ actions:
   - id: single shot classification
     operation: single_shot_classification
     parameters:
-      unrolling: False
-      nshots: 10
-
-  - id: single shot classification with unrolling
-    operation: single_shot_classification
-    parameters:
-      unrolling: True
       nshots: 10
 
   - id: single shot classification with classifiers
@@ -873,12 +866,6 @@ actions:
     operation: qutrit_classification
     parameters:
       nshots: 1000
-
-  - id: qutrit unrolling
-    operation: qutrit_classification
-    parameters:
-      nshots: 1000
-      unrolling: true
 
   - id: optimize cz
     operation: optimize_two_qubit_gate

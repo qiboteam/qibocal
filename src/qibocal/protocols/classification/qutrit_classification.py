@@ -110,12 +110,8 @@ def _acquisition(
         }
         for q in targets
     ]
-    if params.unrolling:
-        results = platform.execute(sequences, **options, updates=updates)
-    else:
-        results = {}
-        for sequence in sequences:
-            results.update(platform.execute([sequence], **options, updates=updates))
+
+    results = platform.execute(sequences, **options, updates=updates)
 
     for state, ro_pulses in zip(states, all_ro_pulses):
         for qubit in targets:
