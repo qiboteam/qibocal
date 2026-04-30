@@ -60,14 +60,6 @@ def evaluate_snr(zeros: npt.NDArray, ones: npt.NDArray) -> float:
 class SingleShotClassificationParameters(Parameters):
     """SingleShotClassification runcard inputs."""
 
-    unrolling: bool = False
-    """Whether to unroll the sequences.
-
-    If ``True`` it uses sequence unrolling to deploy multiple sequences in a
-    single instrument call.
-
-    Defaults to ``False``.
-    """
     classifiers_list: Optional[list[str]] = field(
         default_factory=lambda: [DEFAULT_CLASSIFIER]
     )
@@ -248,12 +240,7 @@ def _acquisition(
         acquisition_type=AcquisitionType.INTEGRATION,
     )
 
-    if params.unrolling:
-        results = platform.execute(sequences, **options)
-    else:
-        results = {}
-        for sequence in sequences:
-            results.update(platform.execute([sequence], **options))
+    results = platform.execute(sequences, **options)
 
     for state, ro_pulses in zip([0, 1], all_ro_pulses):
         for qubit in targets:
