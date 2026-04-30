@@ -4,15 +4,13 @@ from typing import Optional, Union
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Parameter, Readout, Sweeper
+from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal.calibration import CalibrationPlatform
 
 from ...auto.operation import QubitId, Routine
 from ...config import log
-from ...result import probability
-from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
-from .ramsey import RamseyType
+from ..utils import table_dict, table_html
 from .ramsey_signal import (
     RamseySignalData,
     RamseySignalParameters,
@@ -24,6 +22,15 @@ from .utils import fitting, process_fit, ramsey_fit, ramsey_sequence
 __all__ = ["ramsey_zz"]
 
 EPS = 1  # Hz
+
+
+class AnharmError(Exception):
+    def __init__(self, *args):
+        super().__init__(*args)
+
+
+RamseyZZType = np.dtype([("wait", np.float64), ("prob", np.float64)])
+"""Custom dtype for coherence routines."""
 
 
 def compute_coupling_strength(
@@ -81,7 +88,7 @@ class RamseyZZData(RamseySignalData):
     """Anharmonicity of spectator qubit."""
     frequency_spectator_qubit: float = 0
     "Frequency of spectator qubit."
-    data: dict[tuple[QubitId, str], npt.NDArray[RamseyType]] = field(
+    data: dict[tuple[QubitId, str], npt.NDArray[RamseyZZType]] = field(
         default_factory=dict
     )
     """Raw data acquired."""
@@ -104,19 +111,27 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
+    try:
+        target_anharmonicities = {
+            qubit: platform.calibration.single_qubits[qubit].qubit.anharmonicity
+            for qubit in targets
+        }
+        spectator_anharmonicity = platform.calibration.single_qubits[
+            params.spectator_qubit
+        ].qubit.anharmonicity
+    except KeyError:
+        raise AnharmError(
+            "One or more anharmonicities are not calibrated yet, calibrate e-f transition for all qubits."
+        )
+
     data = RamseyZZData(
         detuning=params.detuning,
         qubit_freqs={
             qubit: platform.config(platform.qubits[qubit].drive).frequency
             for qubit in targets
         },
-        anharmonicity={
-            qubit: platform.calibration.single_qubits[qubit].qubit.anharmonicity
-            for qubit in targets
-        },
-        anharmonicity_spectator_qubit=platform.calibration.single_qubits[
-            params.spectator_qubit
-        ].qubit.anharmonicity,
+        anharmonicity=target_anharmonicities,
+        anharmonicity_spectator_qubit=spectator_anharmonicity,
         frequency_spectator_qubit=platform.config(
             platform.qubits[params.spectator_qubit].drive
         ).frequency,
@@ -131,85 +146,38 @@ def _acquisition(
             updates.append({channel: {"frequency": f0 + params.detuning}})
 
     for setup in ["I", "X"]:
-        if not params.unrolling:
-            sequence, delays = ramsey_sequence(
-                platform=platform,
-                targets=targets,
-                spectator_qubit=params.spectator_qubit if setup == "X" else None,
-            )
+        sequence, delays = ramsey_sequence(
+            platform=platform,
+            targets=targets,
+            spectator_qubit=params.spectator_qubit if setup == "X" else None,
+        )
 
-            sweeper = Sweeper(
-                parameter=Parameter.duration,
-                values=waits,
-                pulses=delays,
-            )
+        sweeper = Sweeper(
+            parameter=Parameter.duration,
+            values=waits,
+            pulses=delays,
+        )
 
-            # execute the sweep
-            results = platform.execute(
-                [sequence],
-                [[sweeper]],
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.DISCRIMINATION,
-                averaging_mode=AveragingMode.SINGLESHOT,
-                updates=updates,
-            )
-
-            for qubit in targets:
-                ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[
-                    -1
-                ]
-                probs = probability(results[ro_pulse.id], state=1)
-                errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
-
-        else:
-            sequences, all_ro_pulses = [], []
-            probs, errors = [], []
-            for wait in waits:
-                sequence, _ = ramsey_sequence(
-                    platform=platform,
-                    targets=targets,
-                    wait=wait,
-                    spectator_qubit=params.spectator_qubit if setup == "X" else None,
-                )
-                sequences.append(sequence)
-                all_ro_pulses.append(
-                    {
-                        qubit: [
-                            readout
-                            for readout in sequence.channel(
-                                platform.qubits[qubit].acquisition
-                            )
-                            if isinstance(readout, Readout)
-                        ][0]
-                        for qubit in targets
-                    }
-                )
-
-            results = platform.execute(
-                sequences,
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.DISCRIMINATION,
-                averaging_mode=AveragingMode.SINGLESHOT,
-                updates=updates,
-            )
-
-            for wait, ro_pulses in zip(waits, all_ro_pulses):
-                for qubit in targets:
-                    result = results[ro_pulses[qubit].id]
-                    prob = probability(result, state=1)
-                    probs.append(prob)
-                    errors.append(np.sqrt(prob * (1 - prob) / params.nshots))
+        # execute the sweep
+        results = platform.execute(
+            [sequence],
+            [[sweeper]],
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.DISCRIMINATION,
+            averaging_mode=AveragingMode.CYCLIC,
+            updates=updates,
+        )
 
         for qubit in targets:
+            ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+            probs = results[ro_pulse.id]
             data.register_qubit(
-                RamseyType,
+                RamseyZZType,
                 (qubit, setup),
                 dict(
                     wait=waits,
                     prob=probs,
-                    errors=errors,
                 ),
             )
 
@@ -237,7 +205,7 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
             qubit_freq = data.qubit_freqs[qubit]
             probs = qubit_data["prob"]
             try:
-                popt, perr = fitting(waits, probs, qubit_data.errors)
+                popt, perr = fitting(waits, probs)
                 (
                     freq_measure[qubit, setup],
                     t2_measure[qubit, setup],
@@ -283,8 +251,6 @@ def _plot(data: RamseyZZData, target: QubitId, fit: RamseyZZResults = None):
     probs_I = data.data[target, "I"].prob
     probs_X = data.data[target, "X"].prob
 
-    error_bars_I = data.data[target, "I"].errors
-    error_bars_X = data.data[target, "X"].errors
     fig = go.Figure(
         [
             go.Scatter(
@@ -294,18 +260,7 @@ def _plot(data: RamseyZZData, target: QubitId, fit: RamseyZZResults = None):
                 name="I",
                 showlegend=True,
                 legendgroup="I ",
-                mode="lines",
-            ),
-            go.Scatter(
-                x=np.concatenate((waits, waits[::-1])),
-                y=np.concatenate(
-                    (probs_I + error_bars_I, (probs_I - error_bars_I)[::-1])
-                ),
-                fill="toself",
-                fillcolor=COLORBAND,
-                line=dict(color=COLORBAND_LINE),
-                showlegend=True,
-                name="Errors I",
+                mode="markers",
             ),
             go.Scatter(
                 x=waits,
@@ -314,55 +269,45 @@ def _plot(data: RamseyZZData, target: QubitId, fit: RamseyZZResults = None):
                 name="X",
                 showlegend=True,
                 legendgroup="X",
-                mode="lines",
-            ),
-            go.Scatter(
-                x=np.concatenate((waits, waits[::-1])),
-                y=np.concatenate(
-                    (probs_X + error_bars_X, (probs_X - error_bars_X)[::-1])
-                ),
-                fill="toself",
-                fillcolor=COLORBAND,
-                line=dict(color=COLORBAND_LINE),
-                showlegend=True,
-                name="Errors X",
+                mode="markers",
             ),
         ]
     )
 
     if fit is not None:
+        fit_waits = np.linspace(min(waits), max(waits), 20 * len(waits))
         fig.add_trace(
             go.Scatter(
-                x=waits,
-                y=ramsey_fit(waits, *fit.fitted_parameters[target, "I"]),
+                x=fit_waits,
+                y=ramsey_fit(fit_waits, *fit.fitted_parameters[target, "I"]),
                 name="Fit I",
-                line=go.scatter.Line(dash="dot"),
+                mode="lines",
             )
         )
 
         fig.add_trace(
             go.Scatter(
-                x=waits,
-                y=ramsey_fit(waits, *fit.fitted_parameters[target, "X"]),
+                x=fit_waits,
+                y=ramsey_fit(fit_waits, *fit.fitted_parameters[target, "X"]),
                 name="Fit X",
-                line=go.scatter.Line(dash="dot"),
+                mode="lines",
             )
         )
         fitting_report = table_html(
             table_dict(
                 target,
                 [
-                    f"ZZ  with {data.spectator_qubit} [kHz]",
+                    f"ZZ  with {data.spectator_qubit} [MHz]",
                     f"Coupling with {data.spectator_qubit} [MHz]",
                 ],
                 [
                     np.round(
-                        fit.zz[target] * 1e-3,
-                        0,
+                        fit.zz[target] * 1e-6,
+                        3,
                     ),
                     np.round(
                         fit.coupling[target] * 1e-6,
-                        2,
+                        3,
                     ),
                 ],
             )
