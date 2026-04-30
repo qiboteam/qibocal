@@ -95,8 +95,6 @@ class ResonatorSpectroscopyParameters(Parameters):
     amplitude: Optional[float] = None
     """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
-    hardware_average: bool = True
-    """By default hardware average will be performed."""
 
     def __post_init__(self):
         if isinstance(self.power_level, str):
