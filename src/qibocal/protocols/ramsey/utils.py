@@ -35,7 +35,7 @@ def ramsey_sequence(
     platform: Platform,
     targets: list[QubitId],
     wait: int = 0,
-    target_qubit: Optional[QubitId] = None,
+    spectator_qubit: Optional[QubitId] = None,
     flux_pulse_amplitude: Optional[float] = None,
 ):
     """Pulse sequence used in Ramsey (detuned) experiments.
@@ -72,11 +72,11 @@ def ramsey_sequence(
             flux_channel = platform.qubits[qubit].flux
             sequence.append((flux_channel, Delay(duration=rx90_sequence.duration)))
             sequence.append((flux_channel, flux_pulses[i]))
-        if target_qubit is not None:
-            assert target_qubit not in targets, (
-                f"Cannot run Ramsey experiment on qubit {target_qubit} if it is already in Ramsey sequence."
+        if spectator_qubit is not None:
+            assert spectator_qubit not in targets, (
+                f"Cannot run Ramsey experiment on qubit {spectator_qubit} if it is already in Ramsey sequence."
             )
-            natives = platform.natives.single_qubit[target_qubit]
+            natives = platform.natives.single_qubit[spectator_qubit]
             sequence += natives.RX()
 
     return sequence, delays + flux_pulses
