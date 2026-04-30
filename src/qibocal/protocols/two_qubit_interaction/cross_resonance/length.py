@@ -211,9 +211,10 @@ def _acquisition(
                         error_target=(
                             2 * np.sqrt(prob_target * (1 - prob_target) / params.nshots)
                         ).tolist(),
-                        prob_control=prob_control,
-                        error_control=np.sqrt(
-                            prob_control * (1 - prob_control) / params.nshots
+                        prob_control=1 - 2 * prob_control,
+                        error_control=(
+                            2
+                            * np.sqrt(prob_control * (1 - prob_control) / params.nshots)
                         ).tolist(),
                     ),
                 )
