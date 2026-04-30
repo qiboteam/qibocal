@@ -10,7 +10,7 @@ actions:
       nshots: 1024
       readout_amplitude: 0.5
 
-  - id: resonator high power high amplitude average
+  - id: resonator high power high amplitude
     operation: resonator_spectroscopy
     parameters:
       freq_width: 10_000_000
@@ -18,16 +18,6 @@ actions:
       amplitude: 0.4
       power_level: high
       nshots: 10
-
-  - id: resonator high power high amplitude single shot
-    operation: resonator_spectroscopy
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 100_000
-      amplitude: 0.4
-      power_level: high
-      nshots: 10
-      hardware_average: false
 
   - id: resonator punchout
     operation: resonator_punchout

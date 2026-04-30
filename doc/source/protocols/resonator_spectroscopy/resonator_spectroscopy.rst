@@ -48,17 +48,6 @@ Example
             nshots: 1024
             relaxation_time: 100000
 
-.. note::
-    The resonator spectroscopy experiment will be performed by computing
-    the average on hardware. If the user wants to retrieve all the shots
-    and perform the average afterward it can be done by specifying the
-    entry hardware_average: false in the experiment parameters. In this
-    case, the fitting procedure will consider errors and error bands
-    will be included in the plot.
-
-    .. image:: resonator_spectroscopy_error_bars.png
-
-
 .. image:: resonator_spectroscopy_high.png
 
 Lowering the amplitude we can see a shift in the peak, e.g.:
