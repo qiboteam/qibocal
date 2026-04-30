@@ -26,7 +26,7 @@ from qibocal.auto.operation import (
 )
 from qibocal.calibration import CalibrationPlatform
 
-from ..utils import HZ_TO_GHZ, readout_frequency
+from ..utils import HZ_TO_GHZ
 from .utils import sequence_amplitude
 
 __all__ = ["conditional_rabi_chevron_ampl"]
@@ -138,11 +138,9 @@ def _acquisition(
     if any(s in target_qubits_list for s in spectator_qubits_list):
         raise ValueError("One or multiple qubits are set as both spectator and target.")
 
-    t_sequence, t_qd_pulses, t_ro_pulses, _ = sequence_amplitude(
+    complete_sequence, t_qd_pulses, t_ro_pulses, _ = sequence_amplitude(
         target_qubits_list, params, platform, False
     )
-
-    complete_sequence = PulseSequence()
 
     spectators_drive_dict: dict[QubitId, PulseSequence] = {}
     spectators_ro_dict: dict[QubitId, PulseSequence] = {}
@@ -151,15 +149,16 @@ def _acquisition(
         spectators_drive_dict[s] = spectator_natives.RX()[0]
         spectators_ro_dict[s] = spectator_natives.MZ()[0]
 
-    if params.activate_spectators:
-        complete_sequence += PulseSequence(list(spectators_drive_dict.values()))
-
-    complete_sequence |= t_sequence
     complete_sequence += PulseSequence(
         (spectators_ro_dict[s][0], Delay(duration=t_qd_pulses[t].duration))
         for t, s in targets
     )
     complete_sequence += PulseSequence(list(spectators_ro_dict.values()))
+
+    if params.activate_spectators:
+        complete_sequence = (
+            PulseSequence(list(spectators_drive_dict.values())) | complete_sequence
+        )
 
     ampl_sweeper = Sweeper(
         parameter=Parameter.amplitude,
@@ -183,22 +182,19 @@ def _acquisition(
     results = platform.execute(
         [complete_sequence],
         [list(freq_sweepers.values()), [ampl_sweeper]],
-        updates=[
-            {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
-            for q in target_qubits_list + spectator_qubits_list
-        ],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.DISCRIMINATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
     for pair in targets:
-        target_result = results[t_ro_pulses[pair[0]].id]
-        spect_result = results[spectators_ro_dict[pair[1]][1].id]
+        t, s = pair
+        target_result = results[t_ro_pulses[t].id]
+        spect_result = results[spectators_ro_dict[s][1].id]
 
         data.register_qubit(
             pair=pair,
-            freq=freq_sweepers[pair[0]].values,
+            freq=freq_sweepers[t].values,
             ampl=ampl_sweeper.values,
             p_targ=target_result,
             p_spect=spect_result,
