@@ -466,7 +466,7 @@ actions:
       delay_between_pulses_end: 20
       delay_between_pulses_step: 1
       detuning: 0
-      target_qubit: 1
+      spectator_qubit: 1
       nshots: 1024
 
   - id: calibrate_state_discrimination
