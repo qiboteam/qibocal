@@ -319,6 +319,13 @@ def round_report(
     rounded_values = []
     rounded_errors = []
     for value, error in measure:
+        if isinstance(error, str):
+            rounded_values.append(
+                np.format_float_scientific(value, trim="-").replace("e+00", "")
+            )
+            rounded_errors.append(error)
+            continue
+
         if value:
             magnitude = eval_magnitude(value)
         else:
