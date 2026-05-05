@@ -3,49 +3,33 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Parameter, Readout, Sweeper
 
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.result import probability
 
-from ..utils import COLORBAND, COLORBAND_LINE, chi2_reduced, table_dict, table_html
-from .ramsey_signal import (
-    RamseySignalData,
-    RamseySignalParameters,
-    RamseySignalResults,
-    _update,
+from ..utils import table_dict, table_html
+from .ramsey_acquisition import (
+    RamseyData,
+    RamseyParameters,
+    RamseyResults,
+    execute_experiment,
+    ramsey_sequence,
 )
-from .utils import fitting, process_fit, ramsey_fit, ramsey_sequence
+from .utils import fitting, process_fit, ramsey_fit, ramsey_update
 
-__all__ = ["ramsey", "RamseyType"]
-
-
-@dataclass
-class RamseyParameters(RamseySignalParameters):
-    """Ramsey runcard inputs."""
+__all__ = ["ramsey"]
 
 
-@dataclass
-class RamseyResults(RamseySignalResults):
-    """Ramsey outputs."""
-
-    chi2: dict[QubitId, tuple[float, float | None]]
-    """Chi squared estimate mean value and error. """
-
-
-RamseyType = np.dtype(
-    [("wait", np.float64), ("prob", np.float64), ("errors", np.float64)]
-)
+RamseyProbType = np.dtype([("wait", np.float64), ("prob", np.float64)])
 """Custom dtype for coherence routines."""
 
 
 @dataclass
-class RamseyData(RamseySignalData):
+class RamseyProbData(RamseyData):
     """Ramsey acquisition outputs."""
 
-    data: dict[QubitId, npt.NDArray[RamseyType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[RamseyProbType]] = field(default_factory=dict)
     """Raw data acquired."""
 
 
@@ -73,13 +57,7 @@ def _acquisition(
     shot classification. Error bars are provided as binomial distribution error.
     """
 
-    waits = np.arange(
-        params.delay_between_pulses_start,
-        params.delay_between_pulses_end,
-        params.delay_between_pulses_step,
-    )
-
-    data = RamseyData(
+    data = RamseyProbData(
         detuning=params.detuning,
         qubit_freqs={
             qubit: platform.config(platform.qubits[qubit].drive).frequency
@@ -87,86 +65,27 @@ def _acquisition(
         },
     )
 
-    updates = []
-    if params.detuning is not None:
-        for qubit in targets:
-            channel = platform.qubits[qubit].drive
-            f0 = platform.config(channel).frequency
-            updates.append({channel: {"frequency": f0 + params.detuning}})
+    sequence, delays = ramsey_sequence(platform, targets)
 
-    if not params.unrolling:
-        sequence, delays = ramsey_sequence(platform, targets)
-        sweeper = Sweeper(
-            parameter=Parameter.duration,
-            values=waits,
-            pulses=delays,
+    results = execute_experiment(
+        sequence=sequence,
+        delays=delays,
+        platform=platform,
+        targets=targets,
+        params=params,
+        return_probs=True,
+    )
+
+    for qubit in targets:
+        ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+        data.register_qubit(
+            RamseyProbType,
+            (qubit),
+            dict(
+                wait=np.arange(*params.delay_range),
+                prob=results[ro_pulse.id],
+            ),
         )
-
-        # execute the sweep
-        results = platform.execute(
-            [sequence],
-            [[sweeper]],
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
-            updates=updates,
-        )
-        for qubit in targets:
-            ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
-            probs = probability(results[ro_pulse.id], state=1)
-            # The probability errors are the standard errors of the binomial distribution
-            errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
-            data.register_qubit(
-                RamseyType,
-                (qubit),
-                dict(
-                    wait=waits,
-                    prob=probs,
-                    errors=errors,
-                ),
-            )
-    else:
-        sequences, all_ro_pulses = [], []
-        for wait in waits:
-            sequence, _ = ramsey_sequence(platform, targets, wait)
-            sequences.append(sequence)
-            all_ro_pulses.append(
-                {
-                    qubit: [
-                        pulse
-                        for pulse in list(
-                            sequence.channel(platform.qubits[qubit].acquisition)
-                        )
-                        if isinstance(pulse, Readout)
-                    ][0]
-                    for qubit in targets
-                }
-            )
-
-        results = platform.execute(
-            sequences,
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
-            updates=updates,
-        )
-
-        for wait, ro_pulses in zip(waits, all_ro_pulses):
-            for qubit in targets:
-                result = results[ro_pulses[qubit].id]
-                prob = probability(result, state=1)
-                error = np.sqrt(prob * (1 - prob) / params.nshots)
-                data.register_qubit(
-                    RamseyType,
-                    (qubit),
-                    dict(
-                        wait=np.array([wait]),
-                        prob=np.array([prob]),
-                        errors=np.array([error]),
-                    ),
-                )
 
     return data
 
@@ -184,13 +103,12 @@ def _fit(data: RamseyData) -> RamseyResults:
     t2_measure = {}
     delta_phys_measure = {}
     delta_fitting_measure = {}
-    chi2 = {}
     for qubit in qubits:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
         probs = qubit_data["prob"]
         try:
-            popt, perr = fitting(waits, probs, qubit_data.errors)
+            popt, perr = fitting(waits, probs)
             (
                 freq_measure[qubit],
                 t2_measure[qubit],
@@ -199,14 +117,6 @@ def _fit(data: RamseyData) -> RamseyResults:
                 popts[qubit],
             ) = process_fit(popt, perr, qubit_freq, data.detuning)
 
-            chi2[qubit] = (
-                chi2_reduced(
-                    probs,
-                    ramsey_fit(waits, *popts[qubit]),
-                    qubit_data.errors,
-                ),
-                np.sqrt(2 / len(probs)),
-            )
         except Exception as e:
             log.warning(f"Ramsey fitting failed for qubit {qubit} due to {e}.")
     return RamseyResults(
@@ -216,7 +126,6 @@ def _fit(data: RamseyData) -> RamseyResults:
         delta_phys=delta_phys_measure,
         delta_fitting=delta_fitting_measure,
         fitted_parameters=popts,
-        chi2=chi2,
     )
 
 
@@ -230,7 +139,6 @@ def _plot(data: RamseyData, target: QubitId, fit: RamseyResults = None):
     qubit_data = data.data[target]
     waits = data.waits
     probs = qubit_data["prob"]
-    error_bars = qubit_data["errors"]
     fig = go.Figure(
         [
             go.Scatter(
@@ -242,15 +150,6 @@ def _plot(data: RamseyData, target: QubitId, fit: RamseyResults = None):
                 legendgroup="Probability of State 1",
                 mode="lines",
             ),
-            go.Scatter(
-                x=np.concatenate((waits, waits[::-1])),
-                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
-                fill="toself",
-                fillcolor=COLORBAND,
-                line=dict(color=COLORBAND_LINE),
-                showlegend=True,
-                name="Errors",
-            ),
         ]
     )
 
@@ -258,14 +157,7 @@ def _plot(data: RamseyData, target: QubitId, fit: RamseyResults = None):
         fig.add_trace(
             go.Scatter(
                 x=waits,
-                y=ramsey_fit(
-                    waits,
-                    float(fit.fitted_parameters[target][0]),
-                    float(fit.fitted_parameters[target][1]),
-                    float(fit.fitted_parameters[target][2]),
-                    float(fit.fitted_parameters[target][3]),
-                    float(fit.fitted_parameters[target][4]),
-                ),
+                y=ramsey_fit(waits, *fit.fitted_parameters[target]),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
             )
@@ -278,14 +170,12 @@ def _plot(data: RamseyData, target: QubitId, fit: RamseyResults = None):
                     "Delta Frequency (with detuning) [Hz]",
                     "Drive Frequency [Hz]",
                     "T2* [ns]",
-                    "chi2 reduced",
                 ],
                 [
                     fit.delta_phys[target],
                     fit.delta_fitting[target],
                     fit.frequency[target],
                     fit.t2[target],
-                    fit.chi2[target],
                 ],
                 display_error=True,
             )
@@ -302,5 +192,5 @@ def _plot(data: RamseyData, target: QubitId, fit: RamseyResults = None):
     return figures, fitting_report
 
 
-ramsey = Routine(_acquisition, _fit, _plot, _update)
+ramsey = Routine(_acquisition, _fit, _plot, ramsey_update)
 """Ramsey Routine object."""
