@@ -137,7 +137,7 @@ def _acquisition(
             }
             for q in targets
         ],
-        averaging_mode=AveragingMode.SINGLESHOT,
+        averaging_mode=AveragingMode.CYCLIC,
         acquisition_type=AcquisitionType.INTEGRATION,
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,

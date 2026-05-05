@@ -179,7 +179,7 @@ def _acquisition(
             [sequence],
             [sweepers],
             updates=batch_updates,
-            averaging_mode=AveragingMode.SINGLESHOT,
+            averaging_mode=AveragingMode.CYCLIC,
             acquisition_type=AcquisitionType.INTEGRATION,
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
