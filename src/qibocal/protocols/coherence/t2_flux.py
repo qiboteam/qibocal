@@ -6,9 +6,10 @@ from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 
 from qibocal.auto.operation import QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.ramsey.ramsey_acquisition import ramsey_sequence
 
 from ...config import log
-from ..ramsey.utils import fitting, ramsey_sequence
+from ..ramsey.utils import fitting
 from ..utils import COLORBAND, COLORBAND_LINE, HZ_TO_GHZ
 from .t1_flux import T1FluxData, T1FluxParameters
 

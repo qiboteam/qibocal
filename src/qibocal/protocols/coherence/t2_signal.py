@@ -7,9 +7,9 @@ from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 from qibocal import update
 from qibocal.auto.operation import Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.ramsey.ramsey_acquisition import ramsey_sequence
 
 from ...result import magnitude, phase
-from ..ramsey.utils import ramsey_sequence
 from ..utils import readout_frequency, table_dict, table_html
 from . import utils
 from .t1_signal import T1SignalData

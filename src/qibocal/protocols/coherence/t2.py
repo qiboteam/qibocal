@@ -7,7 +7,7 @@ from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
 
 from ...result import probability
-from ..ramsey.utils import ramsey_sequence
+from ..ramsey.ramsey_acquisition import ramsey_sequence
 from . import utils
 from .t1 import CoherenceProbType, T1Data
 from .t2_signal import T2SignalParameters, T2SignalResults, update_t2
