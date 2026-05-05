@@ -3,7 +3,14 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
-from qibolab import Delay, Parameter, PulseSequence, Sweeper
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Delay,
+    Parameter,
+    PulseSequence,
+    Sweeper,
+)
 from qibolab._core.components import IqChannel
 
 from qibocal.auto.operation import Parameters, QubitId, Results, Routine
@@ -44,8 +51,6 @@ class QubitSpectroscopyParameters(Parameters):
     """Drive pulse duration [ns]. Same for all qubits."""
     drive_amplitude: Optional[float] = None
     """Drive pulse amplitude (optional). Same for all qubits."""
-    hardware_average: bool = True
-    """By default hardware average will be performed."""
 
 
 @dataclass
@@ -174,7 +179,10 @@ def _acquisition(
             [sequence],
             [sweepers],
             updates=batch_updates,
-            **params.execution_parameters,
+            averaging_mode=AveragingMode.CYCLIC,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
         )
 
         # Collect results from this batch

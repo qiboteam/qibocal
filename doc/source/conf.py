@@ -38,7 +38,7 @@ autodoc_default_options = {
     "undoc-members": True,
     "private-members": True,
     "inherited-members": True,
-    "exclude-members": "load, execution_parameters, classify",
+    "exclude-members": "load",
 }
 
 # Add any Sphinx extension module names here, as strings. They can be
