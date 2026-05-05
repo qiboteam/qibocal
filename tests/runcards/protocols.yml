@@ -49,7 +49,7 @@ actions:
       fit_function: s21
       nshots: 10
 
-  - id: qubit spectroscopy average
+  - id: qubit spectroscopy
     operation: qubit_spectroscopy
     parameters:
       drive_amplitude: 0.001
@@ -68,17 +68,7 @@ actions:
       step_amp: 0.05
       duration: 100
 
-  - id: qubit spectroscopy singleshot
-    operation: qubit_spectroscopy
-    parameters:
-      drive_amplitude: 0.001
-      drive_duration: 1000
-      freq_width: 2_000_000
-      freq_step: 200_000
-      nshots: 10
-      hardware_average: false
-
-  - id: qubit spectroscopy ef average
+  - id: qubit spectroscopy ef
     operation: qubit_spectroscopy_ef
     parameters:
       drive_amplitude: 0.001
@@ -86,17 +76,6 @@ actions:
       freq_width: 2_000_000
       freq_step: 500_000
       nshots: 10
-
-  - id: qubit spectroscopy ef single shot
-    operation: qubit_spectroscopy_ef
-    parameters:
-      drive_amplitude: 0.001
-      drive_duration: 1000
-      freq_width: 2_000_000
-      freq_step: 200_000
-      nshots: 10
-      hardware_average: false
-
 
   - id: resonator flux dependence bias
     operation: resonator_flux

@@ -1,7 +1,14 @@
 from dataclasses import asdict, dataclass, field
 
 import numpy as np
-from qibolab import Delay, Parameter, PulseSequence, Sweeper
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Delay,
+    Parameter,
+    PulseSequence,
+    Sweeper,
+)
 
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
@@ -130,7 +137,10 @@ def _acquisition(
             }
             for q in targets
         ],
-        **params.execution_parameters,
+        averaging_mode=AveragingMode.SINGLESHOT,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
     )
 
     # retrieve the results for every qubit
