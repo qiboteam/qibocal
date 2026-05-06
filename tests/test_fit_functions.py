@@ -9,8 +9,8 @@ from qibocal.protocols.rabi.utils import (
     fit_amplitude_function as rabi_fit_amplitude_function,
 )
 from qibocal.protocols.rabi.utils import fit_length_function as rabi_fit_length_function
-from qibocal.protocols.ramsey.utils import fitting as ramsey_fitting
-from qibocal.protocols.ramsey.utils import process_fit as ramsey_process_fit
+from qibocal.protocols.ramsey.processing import fitting as ramsey_fitting
+from qibocal.protocols.ramsey.processing import process_fit as ramsey_process_fit
 from qibocal.protocols.resonator_spectroscopies.resonator_spectroscopy import (
     ResonatorSpectroscopyData,
     ResonatorSpectroscopyResults,

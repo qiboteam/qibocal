@@ -18,10 +18,15 @@ from qibolab import (
 )
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
-
-from ...result import probability
-from ..ramsey.utils import fitting, ramsey_fit
-from ..utils import COLORBAND, COLORBAND_LINE, GHZ_TO_HZ, table_dict, table_html
+from qibocal.protocols.ramsey.processing import fitting, ramsey_fit
+from qibocal.protocols.utils import (
+    COLORBAND,
+    COLORBAND_LINE,
+    GHZ_TO_HZ,
+    table_dict,
+    table_html,
+)
+from qibocal.result import probability
 
 __all__ = ["flux_gate"]
 

@@ -6,7 +6,7 @@ from qibocal.auto.operation import QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import GHZ_TO_HZ, angle_wrap, fallback_period, guess_period
 
-from .ramsey_acquisition import RamseyResults
+from .acquisition import RamseyResults
 
 POPT_EXCEPTION = [0, 0, 0, 0, 1]
 """Fit parameters output to handle exceptions"""

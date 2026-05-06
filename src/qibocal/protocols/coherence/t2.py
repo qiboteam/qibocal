@@ -5,9 +5,9 @@ from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.ramsey.acquisition import ramsey_sequence
+from qibocal.result import probability
 
-from ...result import probability
-from ..ramsey.ramsey_acquisition import ramsey_sequence
 from . import utils
 from .t1 import CoherenceProbType, T1Data
 from .t2_signal import T2SignalParameters, T2SignalResults, update_t2

@@ -9,14 +9,14 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
 from ..utils import table_dict, table_html
-from .ramsey_acquisition import (
+from .acquisition import (
     RamseyData,
     RamseyParameters,
     RamseyResults,
     execute_experiment,
     ramsey_sequence,
 )
-from .utils import fitting, process_fit, ramsey_fit, ramsey_update
+from .processing import fitting, process_fit, ramsey_fit, ramsey_update
 
 __all__ = ["ramsey_zz"]
 
