@@ -115,7 +115,7 @@ def _acquisition(
                 RamseyZZType,
                 (qubit, setup),
                 dict(
-                    wait=np.arange(params.delay_range),
+                    wait=np.arange(*params.delay_range),
                     prob=results[ro_pulse.id],
                 ),
             )

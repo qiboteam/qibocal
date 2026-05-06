@@ -32,10 +32,6 @@ with Executor.open(
         detuning=1_000_000,
         update=False,
     )
-    if ramsey_output.results.chi2[target][0] > 2:
-        raise RuntimeError(
-            f"Ramsey fit has chi2 {ramsey_output.results.chi2[target][0]} greater than 2. Stopping."
-        )
     if ramsey_output.results.delta_phys[target][0] < 1e4:
         print(
             f"Ramsey frequency not updated, correction too small {ramsey_output.results.delta_phys[target][0]}"

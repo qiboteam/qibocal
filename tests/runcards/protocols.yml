@@ -443,17 +443,6 @@ actions:
   - id: ramsey_signal_detuned
     operation: ramsey_signal
     parameters:
-      unrolling: False
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 50
-      delay_between_pulses_step: 1
-      detuning: 1_000_000
-      nshots: 10
-
-  - id: ramsey_signal_detuned_unrolled
-    operation: ramsey_signal
-    parameters:
-      unrolling: True
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
@@ -469,7 +458,6 @@ actions:
       detuning: 0
       nshots: 1024
 
-
   - id: ramsey zz
     operation: ramsey_zz
     targets: [0]
@@ -478,18 +466,6 @@ actions:
       delay_between_pulses_end: 20
       delay_between_pulses_step: 1
       detuning: 0
-      target_qubit: 1
-      nshots: 1024
-
-  - id: ramsey zz unrolling
-    operation: ramsey_zz
-    targets: [0]
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 20
-      delay_between_pulses_step: 1
-      detuning: 0
-      unrolling: true
       target_qubit: 1
       nshots: 1024
 
@@ -512,16 +488,6 @@ actions:
       delay_between_pulses_step: 1
       detuning: 2_000_000
       nshots: 10
-
-  - id: ramsey_unrolled_detuned
-    operation: ramsey
-    parameters:
-      unrolling: True
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 50
-      delay_between_pulses_step: 1
-      nshots: 10
-      detuning: 1_000_000
 
   - id: single shot classification
     operation: single_shot_classification

@@ -96,10 +96,9 @@ def _fit(data: T2FluxData) -> T2FluxResults:
     t2s = {qubit: [] for qubit in data.qubits}
     for qubit in data.qubits:
         prob = data.probability(qubit)
-        error = data.error(qubit)
         for i in range(len(data.detuning[qubit])):
             try:
-                popt, perr = fitting(np.array(data.wait_range), prob[i], error[i])
+                popt, perr = fitting(np.array(data.wait_range), prob[i])
                 t2 = 1 / popt[4]
                 t2s[qubit].append([t2, perr[4] * (t2**2)])
             except Exception as e:
