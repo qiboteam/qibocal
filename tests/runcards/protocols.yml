@@ -739,9 +739,9 @@ actions:
       amplitude_step: 0.01
       duration_min: 10
       duration_max: 50
-      duration_step: 10
-      nshots: 10
+      duration_step: 1
       native: CZ
+      nshots: 1000
       parking: True
 
   - id: chevron cz signal
@@ -996,3 +996,35 @@ actions:
       twpa_pow_width: 10
       twpa_pow_step: 3
       nshots: 20000
+
+  - id: CR tomography amplitude
+    operation: hamiltonian_tomography_cr_amplitude
+    targets: [[0, 1]]
+    parameters:
+      control_ampl_start: 0.01
+      control_ampl_end: 0.1
+      control_ampl_step: 0.01
+      echo: true
+      nshots: 2000
+      pulse_duration: 10
+
+  - id: CR tomography length
+    operation: hamiltonian_tomography_cr_length
+    targets: [[0, 1]]
+    parameters:
+      pulse_duration_start: 10
+      pulse_duration_end: 20
+      pulse_duration_step: 1
+      pulse_amplitude: 0.1
+      nshots: 2000
+
+  - id: CR tomography interpolated
+    operation: hamiltonian_tomography_cr_length
+    targets: [[0, 1]]
+    parameters:
+      pulse_duration_start: 10
+      pulse_duration_end: 20
+      pulse_duration_step: 1
+      nshots: 2000
+      pulse_amplitude: 0.1
+      interpolated_sweeper: true

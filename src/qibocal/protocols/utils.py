@@ -2,7 +2,7 @@ from collections import Counter
 from collections.abc import Sequence
 from colorsys import hls_to_rgb
 from enum import Enum
-from typing import Literal, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -1019,24 +1019,6 @@ def reshaping_raw_signal(x, y, z):
     return x_, y_, z_
 
 
-def guess_period(x, y):
-    """Return fft period estimation given a sinusoidal plot."""
-
-    fft = np.fft.rfft(y)
-    fft_freqs = np.fft.rfftfreq(len(y), d=(x[1] - x[0]))
-    mags = abs(fft)
-    mags[0] = 0
-    local_maxima, _ = find_peaks(mags)
-    if len(local_maxima) > 0:
-        return 1 / fft_freqs[np.argmax(mags)]
-    return None
-
-
-def fallback_period(period):
-    """Function to estimate period if guess_period fails."""
-    return period if period is not None else 4
-
-
 def angle_wrap(angle: float):
     """Wrap an angle from [-np.inf,np.inf] into the [0,2*np.pi] domain"""
     return angle % (2 * np.pi)
@@ -1070,3 +1052,109 @@ def baseline_als(data: NDArray, lamda: float, p: float, niter: int = 10) -> NDAr
         z = sparse.linalg.spsolve(a, b)
         weights = p * (data > z) + (1 - p) * (data < z)
     return z
+
+
+def guess_period(x, y):
+    """Return fft period estimation given a sinusoidal plot."""
+    fft = np.fft.rfft(y)
+    fft_freqs = np.fft.rfftfreq(len(y), d=(x[1] - x[0]))
+    mags = np.abs(fft)
+    mags[0] = 0
+    return 1 / fft_freqs[np.argmax(mags)]
+
+
+def guess_frequency_numpyfied(x: np.ndarray, y: np.ndarray, axis: int = -1):
+    """Numpyfied version of :func:`guess_period` but here we work on frequencies."""
+    assert x.ndim == 1, f"Expected 1D array, got array with shape {x.shape}"
+
+    y = np.moveaxis(y, axis, -1)
+    fft = np.fft.rfft(y, axis=-1)
+    fft_freqs = np.fft.rfftfreq(y.shape[-1], d=(x[1] - x[0]))
+    mags = np.abs(fft)
+    mags[:, 0] = 0
+
+    selected_freqs = fft_freqs[np.argmax(mags, axis=-1)]
+
+    return np.moveaxis(selected_freqs, -1, axis)
+
+
+def fallback_period(period):
+    """Function to estimate period if guess_period fails."""
+    return period if period is not None else 4
+
+
+def fallback_frequency_numpyfied(frequency: np.ndarray):
+    """Numpyfied version of :func:`fallback_period`, but here we work on frequencies."""
+    assert frequency.ndim <= 1, (
+        f"Expected 1D array or scalar, got array with shape {frequency.shape}"
+    )
+
+    return np.where(np.isnan(frequency), 4, frequency)
+
+
+def quinn_fernandes_algorithm(
+    signal_id: Any,
+    x: Any,
+    fs: float,
+    speedup_flag: bool = False,
+    axis: int = -1,
+    iterations: int = 100,
+    tol: int = 1e-8,
+) -> np.ndarray:
+    """This is a custom implementation of the Quinn-Fernandes algorithm.
+
+    The Quinn–Fernandes method is a high-accuracy frequency estimator based on
+    phase interpolation of the discrete Fourier transform (DFT). It refines the
+    peak frequency obtained from the FFT by analyzing the phase evolution of the
+    complex spectrum, achieving super-resolution beyond the FFT bin spacing.
+    If :const:`speedup_flag` is set to `True`, the algorithm will change the updating rule,
+    can lead to faster convergence, especially when the initial guess is close to the true frequency.
+    Link for the original paper: https://www.jstor.org/stable/2337018?seq=3
+    """
+
+    if not isinstance(x, np.ndarray):
+        x = np.array(x)
+
+    if not isinstance(signal_id, np.ndarray):
+        signal_id = np.array(signal_id)
+
+    omegas = (
+        2
+        * np.pi
+        * fallback_frequency_numpyfied(
+            guess_frequency_numpyfied(x, signal_id, axis=axis)
+        )
+    )
+    alpha = 2 * np.cos(omegas)
+
+    signal_id = signal_id - np.mean(signal_id, axis=axis, keepdims=True)
+
+    sig_shape = list(signal_id.shape)
+    sig_shape[axis] += 2
+    buffer_beta = []
+    for _ in range(iterations):
+        xi = np.zeros(sig_shape)
+        for t in range(2, xi.shape[axis]):
+            xi[..., t] = signal_id[..., t - 2] + alpha * xi[..., t - 1] - xi[..., t - 2]
+
+        beta = np.sum((xi[..., 2:] + xi[..., :-2]) * xi[..., 1:-1], axis=axis) / np.sum(
+            xi[..., :-1] ** 2, axis=axis
+        )
+        beta[np.isnan(beta)] = 0
+        if len(buffer_beta) >= 5:
+            buffer_beta.pop(0)
+        buffer_beta.append(beta)
+        if np.all(np.abs(np.mean(buffer_beta, axis=0) - alpha) < tol):
+            alpha = beta
+            break
+
+        if speedup_flag:
+            alpha = beta
+        else:
+            alpha = 2 * beta - alpha
+
+    alpha = np.clip(alpha, -2, 2)
+    omega_est = np.arccos(alpha / 2)
+    med_omega = np.median(omega_est)
+
+    return med_omega * fs

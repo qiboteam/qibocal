@@ -44,4 +44,5 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     coherence/index
     chsh
     twpa_calibration/twpa
+    cross_resonance/cross_resonance
     references
