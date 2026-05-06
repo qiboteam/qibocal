@@ -90,11 +90,11 @@ def _fit(data: RamseySignalData) -> RamseyResults:
     """
     qubits = data.qubits
     waits = data.waits
-    popts = {}
-    freq_measure = {}
-    t2_measure = {}
-    delta_phys_measure = {}
-    delta_fitting_measure = {}
+    popts: dict[QubitId, list[float]] = {}
+    freq_measure: dict[QubitId, list[float]] = {}
+    t2_measure: dict[QubitId, list[float]] = {}
+    delta_phys_measure: dict[QubitId, list[float]] = {}
+    delta_fitting_measure: dict[QubitId, list[float]] = {}
     for qubit in qubits:
         qubit_freq = data.qubit_freqs[qubit]
         signal = data.compute_qubit_signal(qubit)

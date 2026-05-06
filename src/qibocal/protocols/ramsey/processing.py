@@ -1,4 +1,7 @@
+from typing import Union
+
 import numpy as np
+from numpy.typing import NDArray
 from scipy.optimize import curve_fit
 
 from qibocal import update
@@ -34,7 +37,7 @@ actual amplitude. We rely anyhow on the fit to determine the precise value.
 
 def ramsey_update(
     results: RamseyResults, platform: CalibrationPlatform, target: QubitId
-):
+) -> None:
     """Update the platform calibration with the results of the Ramsey experiment."""
     if results.detuning is not None:
         update.drive_frequency(results.frequency[target][0], platform, target)
@@ -45,16 +48,18 @@ def ramsey_update(
         update.t2(results.t2[target], platform, target)
 
 
-def ramsey_fit(x, offset, amplitude, delta, phase, decay):
+def ramsey_fit(x, offset, amplitude, delta, phase, decay) -> Union[NDArray, float]:
     """Dumped sinusoidal fit."""
     return offset + amplitude * np.sin(x * delta + phase) * np.exp(-x * decay)
 
 
-def fitting(x: list, y: list) -> list:
+def fitting(x: list, y: list) -> tuple[list[float], list[float]]:
     """
     Given the inputs list `x` and outputs one `y`, this function fits the
     `ramsey_fit` function and returns a list with the fit parameters.
     """
+
+    # performing a min-max scaling on x and y arrays
     y_max = np.max(y)
     y_min = np.min(y)
     x_max = np.max(x)
@@ -90,6 +95,8 @@ def fitting(x: list, y: list) -> list:
             [1, 1, np.inf, np.inf, np.inf],
         ),
     )
+
+    # inverting the scaling
     popt = [
         delta_y * popt[0] + y_min,
         delta_y * popt[1] * np.exp(x_min * popt[4] / delta_x),
@@ -99,6 +106,7 @@ def fitting(x: list, y: list) -> list:
     ]
 
     perr = np.sqrt(np.diag(perr))
+    # error propagation in the original units
     perr = [
         delta_y * perr[0],
         delta_y
@@ -113,7 +121,7 @@ def fitting(x: list, y: list) -> list:
 
 def process_fit(
     popt: list[float], perr: list[float], qubit_frequency: float, detuning: float
-):
+) -> tuple[list[float], list[float], list[float], list[float], list[float]]:
     """Processing Ramsey fitting results."""
 
     delta_fitting = popt[2] / (2 * np.pi)

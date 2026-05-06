@@ -131,13 +131,13 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
 
     """
     waits = data.waits
-    popts = {}
-    freq_measure = {}
-    t2_measure = {}
-    delta_phys_measure = {}
-    delta_fitting_measure = {}
-    zz = {}
-    coupling = {}
+    popts: dict[QubitId, list[float]] = {}
+    freq_measure: dict[QubitId, list[float]] = {}
+    t2_measure: dict[QubitId, list[float]] = {}
+    delta_phys_measure: dict[QubitId, list[float]] = {}
+    delta_fitting_measure: dict[QubitId, list[float]] = {}
+    zz: dict[QubitId, list[float]] = {}
+    coupling: dict[QubitId, list[float]] = {}
     for qubit in data.qubits:
         for setup in ["I", "X"]:
             qubit_data = data[qubit, setup]

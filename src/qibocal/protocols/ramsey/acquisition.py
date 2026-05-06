@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -54,15 +54,13 @@ class RamseyResults(Results):
 
     detuning: Optional[float] = None
     """Qubit frequency detuning."""
-    frequency: dict[QubitId, Union[float, list[float]]] = field(default_factory=dict)
+    frequency: dict[QubitId, list[float]] = field(default_factory=dict)
     """Drive frequency [GHz] for each qubit."""
-    t2: dict[QubitId, Union[float, list[float]]] = field(default_factory=dict)
+    t2: dict[QubitId, list[float]] = field(default_factory=dict)
     """T2 for each qubit [ns]."""
-    delta_phys: dict[QubitId, Union[float, list[float]]] = field(default_factory=dict)
+    delta_phys: dict[QubitId, list[float]] = field(default_factory=dict)
     """Drive frequency [Hz] correction for each qubit."""
-    delta_fitting: dict[QubitId, Union[float, list[float]]] = field(
-        default_factory=dict
-    )
+    delta_fitting: dict[QubitId, list[float]] = field(default_factory=dict)
     """Raw drive frequency [Hz] correction for each qubit.
        including the detuning."""
     fitted_parameters: dict[QubitId, list[float]] = field(default_factory=dict)
