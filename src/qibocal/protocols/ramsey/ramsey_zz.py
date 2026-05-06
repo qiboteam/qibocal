@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -34,12 +34,12 @@ RamseyZZType = np.dtype([("wait", np.float64), ("prob", np.float64)])
 
 
 def compute_coupling_strength(
-    omega1: Union[npt.NDArray, float],
-    omega2: Union[npt.NDArray, float],
-    anharmonicity1: Union[npt.NDArray, float],
-    anharmonicity2: Union[npt.NDArray, float],
-    zz: Union[npt.NDArray, float],
-) -> npt.NDArray:
+    omega1: float,
+    omega2: float,
+    anharmonicity1: float,
+    anharmonicity2: float,
+    zz: list[float],
+) -> list[float]:
     """Compute the ZZ coupling from the difference in frequency and anharmonicity.
 
     coupling computing by inverting the following formula
@@ -53,8 +53,11 @@ def compute_coupling_strength(
         delta_qubit_freq + anharmonicity1
     )
 
-    # here we compute coupling as a frequency
-    return np.sqrt(np.abs(zz / 2 / denominator))
+    # here we compute coupling as a frequency and do error propagation
+    return [
+        float(np.sqrt(np.abs(zz[0] / 2 / denominator))),
+        float(zz[1] / 2 / np.sqrt(2 * abs(denominator * zz[0]))),
+    ]
 
 
 @dataclass
@@ -69,8 +72,8 @@ class RamseyZZParameters(RamseySignalParameters):
 class RamseyZZResults(RamseySignalResults):
     """RamseyZZ outputs."""
 
-    zz: dict[QubitId, float] = field(default_factory=dict)
-    coupling: dict[QubitId, float] = field(default_factory=dict)
+    zz: dict[QubitId, list[float]] = field(default_factory=dict)
+    coupling: dict[QubitId, list[float]] = field(default_factory=dict)
 
     def __contains__(self, qubit: QubitId):
         return qubit in self.zz
@@ -217,17 +220,22 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
                 log.warning(f"Ramsey fitting failed for qubit {qubit} due to {e}.")
         # compute zz and qq coupling
         # zz the difference in frequency between the two measurement
-        zz[qubit] = float(freq_measure[qubit, "X"][0] - freq_measure[qubit, "I"][0])
+        zz[qubit] = [
+            float(freq_measure[qubit, "X"][0] - freq_measure[qubit, "I"][0]),
+            float(
+                np.sqrt(
+                    freq_measure[qubit, "X"][1] ** 2 + freq_measure[qubit, "I"][1] ** 2
+                )
+            ),
+        ]
 
         # here we compute coupling as a frequency
-        coupling[qubit] = float(
-            compute_coupling_strength(
-                omega1=data.qubit_freqs[qubit],
-                omega2=data.frequency_spectator_qubit,
-                anharmonicity1=data.anharmonicity[qubit],
-                anharmonicity2=data.anharmonicity_spectator_qubit,
-                zz=zz[qubit],
-            )
+        coupling[qubit] = compute_coupling_strength(
+            omega1=data.qubit_freqs[qubit],
+            omega2=data.frequency_spectator_qubit,
+            anharmonicity1=data.anharmonicity[qubit],
+            anharmonicity2=data.anharmonicity_spectator_qubit,
+            zz=zz[qubit],
         )
 
     return RamseyZZResults(
@@ -297,19 +305,14 @@ def _plot(data: RamseyZZData, target: QubitId, fit: RamseyZZResults = None):
             table_dict(
                 target,
                 [
-                    f"ZZ  with {data.spectator_qubit} [MHz]",
-                    f"Coupling with {data.spectator_qubit} [MHz]",
+                    f"ZZ  with {data.spectator_qubit} [Hz]",
+                    f"Coupling with {data.spectator_qubit} [Hz]",
                 ],
                 [
-                    np.round(
-                        fit.zz[target] * 1e-6,
-                        3,
-                    ),
-                    np.round(
-                        fit.coupling[target] * 1e-6,
-                        3,
-                    ),
+                    fit.zz[target],
+                    fit.coupling[target],
                 ],
+                display_error=True,
             )
         )
 
