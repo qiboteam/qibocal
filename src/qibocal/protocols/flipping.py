@@ -17,7 +17,6 @@ from qibocal.protocols.utils import (
     table_html,
 )
 
-from ..result import probability
 from .utils import COLORBAND, COLORBAND_LINE, chi2_reduced
 
 __all__ = ["flipping"]
@@ -66,9 +65,6 @@ class FlippingParameters(Parameters):
     """Maximum number of flips ([RX(pi) - RX(pi)] sequences). """
     nflips_step: int
     """Flip step."""
-    unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
-    Defaults to ``False``."""
     delta_amplitude: float = 0
     """Amplitude detuning."""
     rx90: bool = False
@@ -85,8 +81,8 @@ class FlippingResults(Results):
     """Difference in amplitude between initial value and fit."""
     delta_amplitude_detuned: dict[QubitId, float | list[float]]
     """Difference in amplitude between detuned value and fit."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitting output."""
+    fitted_parameters: dict[QubitId, list[float]]
+    """Raw fitting output"""
     rx90: bool
     """Pi or Pi_half calibration"""
     chi2: dict[QubitId, list[float]] = field(default_factory=dict)
@@ -122,25 +118,20 @@ def _acquisition(
     r"""
     Data acquisition for flipping.
 
-    The flipping experiment correct the delta amplitude in the qubit drive pulse. We measure a qubit after applying
-    a Rx(pi/2) and N flips (Rx(pi) rotations). After fitting we can obtain the delta amplitude to refine pi pulses.
-    On the y axis we measure the excited state probability.
-
-    Args:
-        params (:class:`SingleShotClassificationParameters`): input parameters
-        platform (:class:`CalibrationPlatform`): Qibolab's platform
-        qubits (dict): dict of target :class:`Qubit` objects to be characterized
-
-    Returns:
-        data (:class:`FlippingData`)
+    The flipping experiment correct the delta amplitude in the qubit drive pulse. We
+    measure a qubit after applying a Rx(pi/2) and N flips (Rx(pi) rotations). After
+    fitting we can obtain the delta amplitude to refine pi pulses. On the y axis we
+    measure the excited state probability.
     """
 
     data = FlippingData(
         resonator_type=platform.resonator_type,
         delta_amplitude=params.delta_amplitude,
         pulse_amplitudes={
-            qubit: getattr(
-                platform.natives.single_qubit[qubit], "RX90" if params.rx90 else "RX"
+            qubit: (
+                platform.natives.single_qubit[qubit].RX90()
+                if params.rx90
+                else platform.natives.single_qubit[qubit].RX()
             )[0][1].amplitude
             for qubit in targets
         },
@@ -151,7 +142,7 @@ def _acquisition(
         "nshots": params.nshots,
         "relaxation_time": params.relaxation_time,
         "acquisition_type": AcquisitionType.DISCRIMINATION,
-        "averaging_mode": AveragingMode.SINGLESHOT,
+        "averaging_mode": AveragingMode.CYCLIC,
     }
 
     sequences = []
@@ -170,30 +161,26 @@ def _acquisition(
 
         sequences.append(sequence)
 
-    if params.unrolling:
-        results = platform.execute(sequences, **options)
-    else:
-        results = [platform.execute([sequence], **options) for sequence in sequences]
+    results = platform.execute(sequences, **options)
 
-    for i in range(len(sequences)):
+    for idx, sequence in enumerate(sequences):
+        flips = flips_sweep[idx]
         for qubit in targets:
-            ro_pulse = list(sequences[i].channel(platform.qubits[qubit].acquisition))[
-                -1
-            ]
-            if params.unrolling:
-                result = results[ro_pulse.id]
-            else:
-                result = results[i][ro_pulse.id]
-            prob = probability(result, state=1)
+            acq_channel = platform.qubits[qubit].acquisition
+            ro_pulses = list(sequence.channel(acq_channel))
+            if not ro_pulses:
+                continue  # Skip if no acquisition pulse found
+            ro_pulse = ro_pulses[-1]
+            prob = results[ro_pulse.id]
             error = np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
                 FlippingType,
-                (qubit),
-                dict(
-                    flips=np.array([flips_sweep[i]]),
-                    prob=np.array([prob]),
-                    error=np.array([error]),
-                ),
+                qubit,
+                {
+                    "flips": np.array([flips]),
+                    "prob": np.array([prob]),
+                    "error": np.array([error]),
+                },
             )
     return data
 
@@ -220,8 +207,8 @@ def _fit(data: FlippingData) -> FlippingResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         detuned_pulse_amplitude = data.pulse_amplitudes[qubit] + data.delta_amplitude
-        y = qubit_data.prob
-        x = qubit_data.flips
+        y = qubit_data["prob"]
+        x = qubit_data["flips"]
 
         period = fallback_period(guess_period(x, y))
         pguess = [0.5, 0.5, 2 * np.pi / period, 0, 0]
@@ -237,7 +224,7 @@ def _fit(data: FlippingData) -> FlippingResults:
                     [0.4, 0.4, -np.inf, -np.pi / 4, 0],
                     [0.6, 0.6, np.inf, np.pi / 4, np.inf],
                 ),
-                sigma=qubit_data.error,
+                sigma=qubit_data["error"],
             )
             perr = np.sqrt(np.diag(perr)).tolist()
             popt = popt.tolist()
@@ -277,7 +264,7 @@ def _fit(data: FlippingData) -> FlippingResults:
                 chi2_reduced(
                     y,
                     flipping_fit(x, *popt),
-                    qubit_data.error,
+                    qubit_data["error"],
                 ),
                 np.sqrt(2 / len(x)),
             ]
@@ -294,7 +281,7 @@ def _fit(data: FlippingData) -> FlippingResults:
     )
 
 
-def _plot(data: FlippingData, target: QubitId, fit: FlippingResults = None):
+def _plot(data: FlippingData, target: QubitId, fit: FlippingResults | None = None):
     """Plotting function for Flipping."""
 
     figures = []
@@ -302,13 +289,13 @@ def _plot(data: FlippingData, target: QubitId, fit: FlippingResults = None):
     fitting_report = ""
     qubit_data = data[target]
 
-    probs = qubit_data.prob
-    error_bars = qubit_data.error
+    probs = qubit_data["prob"]
+    error_bars = qubit_data["error"]
 
     fig.add_trace(
         go.Scatter(
-            x=qubit_data.flips,
-            y=qubit_data.prob,
+            x=qubit_data["flips"],
+            y=qubit_data["prob"],
             opacity=1,
             name="Signal",
             showlegend=True,
@@ -317,7 +304,7 @@ def _plot(data: FlippingData, target: QubitId, fit: FlippingResults = None):
     )
     fig.add_trace(
         go.Scatter(
-            x=np.concatenate((qubit_data.flips, qubit_data.flips[::-1])),
+            x=np.concatenate((qubit_data["flips"], qubit_data["flips"][::-1])),
             y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
             fill="toself",
             fillcolor=COLORBAND,
@@ -329,8 +316,8 @@ def _plot(data: FlippingData, target: QubitId, fit: FlippingResults = None):
 
     if fit is not None:
         flips_range = np.linspace(
-            min(qubit_data.flips),
-            max(qubit_data.flips),
+            min(qubit_data["flips"]),
+            max(qubit_data["flips"]),
             2 * len(qubit_data),
         )
 
