@@ -4,14 +4,21 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Delay, Drag, PulseSequence
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Delay,
+    Drag,
+    Pulse,
+    PulseSequence,
+    Readout,
+)
 from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.update import replace
 
 from ..utils import (
     COLORBAND,
@@ -83,7 +90,9 @@ def _acquisition(
     """
 
     data = DragTuningData()
-    beta_param_range = np.arange(params.beta_start, params.beta_end, params.beta_step)
+    beta_param_range = np.arange(
+        params.beta_start, params.beta_end, params.beta_step
+    ).tolist()
 
     sequences, all_ro_pulses = [], []
     for beta_param in beta_param_range:
@@ -93,15 +102,16 @@ def _acquisition(
             natives = platform.natives.single_qubit[q]
             qd_channel, qd_pulse = natives.RX()[0]
             ro_channel, ro_pulse = natives.MZ()[0]
-
-            drag = replace(
-                qd_pulse,
-                envelope=Drag(
-                    rel_sigma=qd_pulse.envelope.rel_sigma,
-                    beta=beta_param,
-                ),
+            assert isinstance(qd_pulse, Pulse) and isinstance(qd_pulse.envelope, Drag)
+            drag = qd_pulse.model_copy(
+                update={
+                    "envelope": Drag(
+                        rel_sigma=qd_pulse.envelope.rel_sigma,
+                        beta=beta_param,
+                    )
+                }
             )
-            drag_negative = replace(drag, relative_phase=np.pi)
+            drag_negative = drag.model_copy(update={"relative_phase": np.pi})
 
             for _ in range(params.nflips):
                 sequence.append((qd_channel, drag))
@@ -117,22 +127,22 @@ def _acquisition(
             )
             sequence.append((ro_channel, ro_pulse))
         sequences.append(sequence)
-        all_ro_pulses.append(
-            {
-                qubit: list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
-                for qubit in targets
-            }
-        )
-
-    options = {
-        "nshots": params.nshots,
-        "relaxation_time": params.relaxation_time,
-        "acquisition_type": AcquisitionType.DISCRIMINATION,
-        "averaging_mode": AveragingMode.CYCLIC,
-    }
+        for qubit in targets:
+            acq_channel = platform.qubits[qubit].acquisition
+            assert acq_channel is not None
+            ro_pulse = list(sequence.channel(acq_channel))[-1]
+            assert isinstance(ro_pulse, Readout)
+            ro_pulses[qubit] = ro_pulse
+        all_ro_pulses.append(ro_pulses)
 
     # execute the pulse sequences
-    results = platform.execute(sequences, **options)
+    results = platform.execute(
+        sequences,
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.CYCLIC,
+    )
     for beta, ro_pulses in zip(beta_param_range, all_ro_pulses):
         for qubit in targets:
             ground_state_prob = 1 - results[ro_pulses[qubit].id]
@@ -172,13 +182,13 @@ def _fit(data: DragTuningData) -> DragTuningResults:
         qubit_data = data[qubit]
 
         # normalize prob
-        prob = qubit_data.prob
+        prob = qubit_data["prob"]
         prob_min = np.min(prob)
         prob_max = np.max(prob)
         normalized_prob = (prob - prob_min) / (prob_max - prob_min)
 
         # normalize beta
-        beta_params = qubit_data.beta
+        beta_params = qubit_data["beta"]
         beta_min = np.min(beta_params)
         beta_max = np.max(beta_params)
         normalized_beta = (beta_params - beta_min) / (beta_max - beta_min)
@@ -197,7 +207,7 @@ def _fit(data: DragTuningData) -> DragTuningResults:
                     [0, 0, 0, -np.pi],
                     [1, 1, np.inf, np.pi],
                 ),
-                sigma=qubit_data.error,
+                sigma=qubit_data["error"],
             )
             translated_popt = [
                 popt[0] * (prob_max - prob_min) + prob_min,
@@ -238,7 +248,7 @@ def _fit(data: DragTuningData) -> DragTuningResults:
                 chi2_reduced(
                     prob,
                     predicted_prob,
-                    qubit_data.error,
+                    qubit_data["error"],
                 ),
                 np.sqrt(2 / len(prob)),
             )
@@ -254,12 +264,12 @@ def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
     fitting_report = ""
 
     qubit_data = data[target]
-    betas = qubit_data.beta
+    betas = qubit_data["beta"]
     fig = go.Figure(
         [
             go.Scatter(
-                x=qubit_data.beta,
-                y=qubit_data.prob,
+                x=qubit_data["beta"],
+                y=qubit_data["prob"],
                 opacity=1,
                 mode="lines",
                 name="Probability",
@@ -270,8 +280,8 @@ def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
                 x=np.concatenate((betas, betas[::-1])),
                 y=np.concatenate(
                     (
-                        qubit_data.prob + qubit_data.error,
-                        (qubit_data.prob - qubit_data.error)[::-1],
+                        qubit_data["prob"] + qubit_data["error"],
+                        (qubit_data["prob"] - qubit_data["error"])[::-1],
                     )
                 ),
                 fill="toself",
