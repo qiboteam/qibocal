@@ -653,16 +653,6 @@ actions:
       nshots: 50
       delta_amplitude: 0.1
 
-  - id: flipping unrolling
-    operation: flipping
-    parameters:
-      nflips_max: 10
-      nflips_step: 1
-      nshots: 50
-      unrolling: True
-      rx90: True
-
-
   - id: dispersive shift
     operation: dispersive_shift
     parameters:
