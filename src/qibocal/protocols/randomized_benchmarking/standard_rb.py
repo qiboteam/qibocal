@@ -1,5 +1,6 @@
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable, Optional, TypedDict, Union
+from typing import TypedDict
 
 import numpy as np
 import plotly.graph_objects as go
@@ -27,21 +28,21 @@ class Depthsdict(TypedDict):
 class StandardRBParameters(Parameters):
     """Standard Randomized Benchmarking runcard inputs."""
 
-    depths: Union[list, Depthsdict]
+    depths: list | Depthsdict
     """A list of depths/sequence lengths.
 
     If a dictionary is given the list will be build.
     """
     niter: int
     """Sets how many iterations over the same depth value."""
-    uncertainties: Optional[float] = None
+    uncertainties: float | None = None
     """Method of computing the error bars of the signal and uncertainties of
     the fit.
 
     If ``None``,
     it computes the standard deviation. Otherwise it computes the corresponding confidence interval. Defaults `None`.
     """
-    seed: Optional[int] = None
+    seed: int | None = None
     """A fixed seed to initialize ``np.random.Generator``.
 
     If ``None``, uses a random seed.

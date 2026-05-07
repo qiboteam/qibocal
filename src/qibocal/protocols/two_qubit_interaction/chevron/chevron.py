@@ -1,7 +1,7 @@
 """SWAP experiment for two qubit gates, chevron plot."""
 
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -38,7 +38,7 @@ class ChevronParameters(Parameters):
     """Duration maximum."""
     duration_step: float
     """Duration step."""
-    dt: Optional[int] = 0
+    dt: int | None = 0
     """Time delay between flux pulses and readout."""
     parking: bool = True
     """Wether to park non interacting qubits or not."""
@@ -83,7 +83,7 @@ class ChevronData(Data):
     """
     data: dict[QubitPairId, npt.NDArray[ChevronType]] = field(default_factory=dict)
 
-    label: Optional[str] = None
+    label: str | None = None
     """Label for the data."""
 
     def register_qubit(self, low_qubit, high_qubit, length, amp, prob_low, prob_high):

@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 from qibolab import AcquisitionType, PulseSequence
 
@@ -30,7 +29,7 @@ class QutritClassificationParameters(SingleShotClassificationParameters):
 
 @dataclass
 class QutritClassificationData(SingleShotClassificationData):
-    classifiers_list: Optional[list[str]] = field(
+    classifiers_list: list[str] | None = field(
         default_factory=lambda: [DEFAULT_CLASSIFIER]
     )
     """List of models to classify the qubit states"""

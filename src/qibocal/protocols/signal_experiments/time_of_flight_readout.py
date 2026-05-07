@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -26,9 +25,9 @@ class TimeOfFlightReadoutParameters(Parameters):
 
     detuning: float = 10e6
     """Detuning with respect to corresponding LO frequency [Hz]."""
-    readout_amplitude: Optional[int] = None
+    readout_amplitude: int | None = None
     """Amplitude of the readout pulse."""
-    window_size: Optional[int] = 10
+    window_size: int | None = 10
     """Window size for the moving average."""
 
 

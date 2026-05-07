@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -59,7 +58,7 @@ class DragTuningResults(Results):
     """Optimal beta paramter for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
-    chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
+    chi2: dict[QubitId, tuple[float, float | None]] = field(default_factory=dict)
     """Chi2 calculation."""
 
 

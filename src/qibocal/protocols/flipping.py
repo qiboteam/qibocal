@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -80,11 +79,11 @@ class FlippingParameters(Parameters):
 class FlippingResults(Results):
     """Flipping outputs."""
 
-    amplitude: dict[QubitId, Union[float, list[float]]]
+    amplitude: dict[QubitId, float | list[float]]
     """Drive amplitude for each qubit."""
-    delta_amplitude: dict[QubitId, Union[float, list[float]]]
+    delta_amplitude: dict[QubitId, float | list[float]]
     """Difference in amplitude between initial value and fit."""
-    delta_amplitude_detuned: dict[QubitId, Union[float, list[float]]]
+    delta_amplitude_detuned: dict[QubitId, float | list[float]]
     """Difference in amplitude between detuned value and fit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""

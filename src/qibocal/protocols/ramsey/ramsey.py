@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -32,7 +31,7 @@ class RamseyParameters(RamseySignalParameters):
 class RamseyResults(RamseySignalResults):
     """Ramsey outputs."""
 
-    chi2: dict[QubitId, tuple[float, Optional[float]]]
+    chi2: dict[QubitId, tuple[float, float | None]]
     """Chi squared estimate mean value and error. """
 
 

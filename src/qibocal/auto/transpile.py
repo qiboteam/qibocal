@@ -1,6 +1,6 @@
 # This file contains functions to transpile and execute quantum circuits.
 from collections import Counter
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 from qibo import Circuit, gates

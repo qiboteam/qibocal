@@ -1,7 +1,6 @@
 """virtual correction experiment for two qubit gates, tune landscape."""
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -50,7 +49,7 @@ class OptimizeTwoQubitGateParameters(Parameters):
     """Maximum duration of flux pulse swept."""
     duration_step: int
     """Step duration of flux pulse swept."""
-    dt: Optional[float] = 0
+    dt: float | None = 0
     """Time delay between flux pulses and readout."""
     native: str = "CZ"
     """Two qubit interaction to be calibrated.

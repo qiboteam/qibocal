@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -34,7 +33,7 @@ class RabiAmplitudeSignalParameters(Parameters):
     """Maximum amplitude."""
     step_amp: float
     """Step amplitude."""
-    pulse_length: Optional[float] = None
+    pulse_length: float | None = None
     """RX pulse duration [ns]."""
     rx90: bool = False
     """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
@@ -44,9 +43,9 @@ class RabiAmplitudeSignalParameters(Parameters):
 class RabiAmplitudeSignalResults(Results):
     """RabiAmplitude outputs."""
 
-    amplitude: dict[QubitId, Union[float, list[float]]]
+    amplitude: dict[QubitId, float | list[float]]
     """Drive amplitude for each qubit."""
-    length: dict[QubitId, Union[float, list[float]]]
+    length: dict[QubitId, float | list[float]]
     """Drive pulse duration. Same for all qubits."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitted parameters."""

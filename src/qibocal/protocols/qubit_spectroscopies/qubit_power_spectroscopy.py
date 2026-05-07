@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -129,7 +128,7 @@ def _fit(data: QubitPowerSpectroscopyData) -> Results:
 def _plot(
     data: ResonatorPunchoutData,
     target: QubitId,
-    fit: Optional[QubitSpectroscopyResults] = None,
+    fit: QubitSpectroscopyResults | None = None,
 ):
     """Plot QubitPunchout."""
     figures = []

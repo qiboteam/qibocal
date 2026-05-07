@@ -1,5 +1,3 @@
-from typing import Optional
-
 import numpy as np
 from qibolab import Delay, Platform, Pulse, PulseSequence, Rectangular
 from scipy.optimize import curve_fit
@@ -35,8 +33,8 @@ def ramsey_sequence(
     platform: Platform,
     targets: list[QubitId],
     wait: int = 0,
-    target_qubit: Optional[QubitId] = None,
-    flux_pulse_amplitude: Optional[float] = None,
+    target_qubit: QubitId | None = None,
+    flux_pulse_amplitude: float | None = None,
 ):
     """Pulse sequence used in Ramsey (detuned) experiments.
 

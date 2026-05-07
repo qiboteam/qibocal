@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -39,7 +38,7 @@ class ResonatorPunchoutResults(Results):
 
     readout_frequency: dict[QubitId, float | None]
     """Readout frequency [GHz] for each qubit."""
-    bare_frequency: Optional[dict[QubitId, float | None]]
+    bare_frequency: dict[QubitId, float | None] | None
     """Bare resonator frequency [GHz] for each qubit."""
     readout_amplitude: dict[QubitId, float | None]
     """Readout amplitude for each qubit."""

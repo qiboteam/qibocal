@@ -1,7 +1,6 @@
 from _collections_abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass, field, fields
-from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -84,7 +83,7 @@ class ResonatorSpectroscopyParameters(Parameters):
     """Width for frequency sweep relative  to the readout frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
-    power_level: Union[PowerLevel, str]
+    power_level: PowerLevel | str
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
     fit_function: str = "lorentzian"
@@ -92,7 +91,7 @@ class ResonatorSpectroscopyParameters(Parameters):
     phase_sign: bool = True
     """Several instruments have their convention about the sign of the phase. If True, the routine
     will apply a minus to the phase data."""
-    amplitude: Optional[float] = None
+    amplitude: float | None = None
     """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
 
@@ -109,17 +108,17 @@ class ResonatorSpectroscopyResults(Results):
     """Readout frequency [Hz] for each qubit."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitted parameters."""
-    bare_frequency: Optional[dict[QubitId, float]] = field(
+    bare_frequency: dict[QubitId, float] | None = field(
         default_factory=dict,
     )
     """Bare resonator frequency [Hz] for each qubit."""
     error_fit_pars: dict[QubitId, list] = field(default_factory=dict)
     """Errors of the fit parameters."""
-    chi2_reduced: dict[QubitId, tuple[float, Optional[float]]] = field(
+    chi2_reduced: dict[QubitId, tuple[float, float | None]] = field(
         default_factory=dict
     )
     """Chi2 reduced."""
-    amplitude: Optional[dict[QubitId, float]] = field(
+    amplitude: dict[QubitId, float] | None = field(
         default_factory=dict,
     )
     """Readout amplitude for each qubit."""

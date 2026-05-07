@@ -34,13 +34,13 @@ class Model(BaseModel):
 class Resonator(Model):
     """Representation of resonator parameters."""
 
-    bare_frequency: Optional[float] = None
+    bare_frequency: float | None = None
     """Bare resonator frequency [Hz]."""
-    dressed_frequency: Optional[float] = None
+    dressed_frequency: float | None = None
     """Dressed resonator frequency [Hz]."""
-    depletion_time: Optional[int] = None
+    depletion_time: int | None = None
     """Depletion time [ns]."""
-    bare_frequency_amplitude: Optional[float] = None
+    bare_frequency_amplitude: float | None = None
     """Readout amplitude at high frequency."""
 
     @property
@@ -55,17 +55,17 @@ class Resonator(Model):
 class Qubit(Model):
     """Representation of Qubit parameters"""
 
-    frequency_01: Optional[float] = None
+    frequency_01: float | None = None
     """"0->1 transition frequency [Hz]."""
-    frequency_12: Optional[float] = None
+    frequency_12: float | None = None
     """1->2 transition frequency [Hz]."""
-    maximum_frequency: Optional[float] = None
+    maximum_frequency: float | None = None
     """Maximum transition frequency [Hz]."""
-    asymmetry: Optional[float] = None
+    asymmetry: float | None = None
     """Junctions asymmetry."""
-    sweetspot: Optional[float] = None
+    sweetspot: float | None = None
     """Qubit sweetspot [V]."""
-    flux_coefficients: Optional[list[float]] = None
+    flux_coefficients: list[float] | None = None
     """Amplitude - frequency dispersion relation coefficients """
 
     @property
@@ -103,11 +103,11 @@ class Qubit(Model):
 class Readout(Model):
     """Readout parameters."""
 
-    fidelity: Optional[float] = None
+    fidelity: float | None = None
     """Readout fidelity."""
-    coupling: Optional[float] = None
+    coupling: float | None = None
     """Readout coupling [Hz]."""
-    effective_temperature: Optional[float] = None
+    effective_temperature: float | None = None
     """Qubit effective temperature."""
     ground_state: list[float] = Field(default_factory=list)
     """Ground state position in IQ plane."""
@@ -131,24 +131,24 @@ class QubitCalibration(Model):
     """Qubit calibration."""
     readout: Readout = Field(default_factory=Readout)
     """Readout information."""
-    t1: Optional[Measure] = None
+    t1: Measure | None = None
     """Relaxation time [ns]."""
-    t2: Optional[Measure] = None
+    t2: Measure | None = None
     """T2 of the qubit [ns]."""
-    t2_spin_echo: Optional[Measure] = None
+    t2_spin_echo: Measure | None = None
     """T2 hanh echo [ns]."""
-    rb_fidelity: Optional[Measure] = None
+    rb_fidelity: Measure | None = None
     """Standard rb pulse fidelity."""
 
 
 class TwoQubitCalibration(Model):
     """Container for calibration of qubit pair."""
 
-    rb_fidelity: Optional[Measure] = None
+    rb_fidelity: Measure | None = None
     """Two qubit standard rb fidelity."""
-    cz_fidelity: Optional[Measure] = None
+    cz_fidelity: Measure | None = None
     """CZ interleaved rb fidelity."""
-    coupling: Optional[float] = None
+    coupling: float | None = None
     """Qubit-qubit coupling."""
 
 
@@ -159,9 +159,9 @@ class Calibration(Model):
     """Dict with single qubit calibration."""
     two_qubits: dict[QubitPairId, TwoQubitCalibration] = Field(default_factory=dict)
     """Dict with qubit pairs calibration."""
-    readout_mitigation_matrix: Optional[SparseArray] = None
+    readout_mitigation_matrix: SparseArray | None = None
     """Readout mitigation matrix."""
-    flux_crosstalk_matrix: Optional[NdArray] = None
+    flux_crosstalk_matrix: NdArray | None = None
     """Crosstalk flux matrix."""
 
     def dump(self, path: Path):

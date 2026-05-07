@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -51,7 +50,7 @@ class T1SignalParameters(Parameters):
 class T1SignalResults(Results):
     """T1 Signal outputs."""
 
-    t1: dict[QubitId, Union[float, list[float]]]
+    t1: dict[QubitId, float | list[float]]
     """T1 for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -76,7 +75,7 @@ class T1SignalData(Data):
 def t1_sequence(
     platform: CalibrationPlatform,
     targets: list[QubitId],
-    flux_pulse_amplitude: Optional[float] = None,
+    flux_pulse_amplitude: float | None = None,
 ):
     """Create sequence for T1 experiment with a given optional delay."""
     sequence = PulseSequence()

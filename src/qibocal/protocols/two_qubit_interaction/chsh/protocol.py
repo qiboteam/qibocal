@@ -1,7 +1,6 @@
 """Protocol for CHSH experiment using both circuits and pulses."""
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -49,7 +48,7 @@ class CHSHParameters(Parameters):
     """
     ntheta: int
     """Number of angles probed linearly between 0 and 2 pi."""
-    native: Optional[bool] = True
+    native: bool | None = True
     """If True a circuit will be created using only GPI2 and CZ gates."""
 
 

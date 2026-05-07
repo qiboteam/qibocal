@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -28,7 +27,7 @@ class RabiLengthParameters(Parameters):
     """Final pi pulse duration [ns]."""
     pulse_duration_step: float
     """Step pi pulse duration [ns]."""
-    pulse_amplitude: Optional[float] = None
+    pulse_amplitude: float | None = None
     """Pi pulse amplitude. Same for all qubits."""
     rx90: bool = False
     """Calibration of native pi pulse, if true calibrates pi/2 pulse"""

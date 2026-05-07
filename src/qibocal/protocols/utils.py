@@ -2,7 +2,7 @@ from collections import Counter
 from collections.abc import Sequence
 from colorsys import hls_to_rgb
 from enum import Enum
-from typing import Literal, Optional, Union
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -356,7 +356,7 @@ def chi2_reduced(
     observed: NDArray,
     estimated: NDArray,
     errors: NDArray,
-    dof: Optional[float] = None,
+    dof: float | None = None,
 ):
     if np.count_nonzero(errors) < len(errors):
         return EXTREME_CHI
@@ -373,7 +373,7 @@ def chi2_reduced_complex(
     observed: tuple[NDArray, NDArray],
     estimated: NDArray,
     errors: tuple[NDArray, NDArray],
-    dof: Optional[float] = None,
+    dof: float | None = None,
 ):
     observed_complex = np.abs(observed[0] * np.exp(1j * observed[1]))
 
@@ -705,7 +705,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
 
 
 def table_dict(
-    qubit: Union[list[QubitId], QubitId],
+    qubit: list[QubitId] | QubitId,
     names: list[str],
     values: list,
     display_error=False,
@@ -808,7 +808,7 @@ def scaling_global(sig: np.ndarray) -> np.ndarray:
     return scaling_slice(sig, axis=None)
 
 
-def scaling_slice(sig: np.ndarray, axis: Optional[int]) -> np.ndarray:
+def scaling_slice(sig: np.ndarray, axis: int | None) -> np.ndarray:
     """Min–max scaling over a specific axis of the np.ndarray."""
 
     def expand(a):

@@ -1,7 +1,6 @@
 """Rabi experiment that sweeps amplitude and frequency (with probability)."""
 
 from dataclasses import dataclass, field
-from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -51,7 +50,7 @@ class RabiAmplitudeFrequencySignalParameters(Parameters):
     """Frequency to use as step for the scan."""
     rx90: bool = False
     """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
-    pulse_length: Optional[float] = None
+    pulse_length: float | None = None
     """RX pulse duration [ns]."""
 
 
@@ -59,7 +58,7 @@ class RabiAmplitudeFrequencySignalParameters(Parameters):
 class RabiAmplitudeFrequencySignalResults(RabiAmplitudeSignalResults):
     """RabiAmplitudeFrequency outputs."""
 
-    frequency: dict[QubitId, Union[float, list[float]]]
+    frequency: dict[QubitId, float | list[float]]
     """Drive frequency for each qubit."""
     rx90: bool
     """Pi or Pi_half calibration"""

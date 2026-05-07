@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -42,7 +41,7 @@ __all__ = [
 class QubitFluxParameters(utils.FluxFrequencySweepParameters):
     """QubitFlux runcard inputs."""
 
-    drive_amplitude: Optional[float] = None
+    drive_amplitude: float | None = None
     """Drive amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
     drive_duration: int = 2000

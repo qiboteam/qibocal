@@ -4,7 +4,6 @@ import shutil
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 from qibo.backends import construct_backend
 
@@ -46,13 +45,13 @@ class Metadata:
     title: str
     backend: str
     platform: str
-    start_time: Optional[datetime]
-    end_time: Optional[datetime]
+    start_time: datetime | None
+    end_time: datetime | None
     stats: dict[str, TaskStats]
     versions: Versions
-    author: Optional[str] = None
-    tag: Optional[str] = None
-    targets: Optional[Targets] = None
+    author: str | None = None
+    tag: str | None = None
+    targets: Targets | None = None
 
     @classmethod
     def generate(cls, name: str, backend):
@@ -154,7 +153,7 @@ class Output:
 
     history: History
     meta: Metadata
-    platform: Optional[CalibrationPlatform] = None
+    platform: CalibrationPlatform | None = None
 
     @classmethod
     def load(cls, path: Path):
@@ -165,7 +164,7 @@ class Output:
         )
 
     @staticmethod
-    def mkdir(path: Optional[Path] = None, force: bool = False) -> Path:
+    def mkdir(path: Path | None = None, force: bool = False) -> Path:
         """Create output directory.
 
         If a `path` is given and existing, it is overwritten only in the case `force`

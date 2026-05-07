@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -21,11 +20,11 @@ class CalibrateStateDiscriminationParameters(Parameters):
     """Calibrate State Discrimination inputs."""
 
     """Frequency step for sweep (Hz)."""
-    nshots: Optional[int] = None
+    nshots: int | None = None
     """Number of shots."""
-    relaxation_time: Optional[int] = None
+    relaxation_time: int | None = None
     """Relaxation time (ns)."""
-    unrolling: Optional[bool] = False
+    unrolling: bool | None = False
 
 
 CalibrateStateDiscriminationResType = np.dtype(

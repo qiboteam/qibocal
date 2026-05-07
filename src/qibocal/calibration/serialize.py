@@ -1,6 +1,6 @@
 import base64
 import io
-from typing import Annotated, Optional, Union
+from typing import Annotated
 
 import numpy as np
 import numpy.typing as npt
@@ -21,7 +21,7 @@ def sparse_serialize(matrix: lil_matrix) -> str:
     return base64.standard_b64encode(buffer.read()).decode()
 
 
-def sparse_deserialize(data: str) -> Optional[lil_matrix]:
+def sparse_deserialize(data: str) -> lil_matrix | None:
     """Deserialize a base64 string back into a lil_matrix."""
     buffer = io.BytesIO(base64.standard_b64decode(data))
     shape = np.load(buffer, allow_pickle=True)
@@ -47,7 +47,7 @@ def ndarray_serialize(ar: npt.NDArray) -> str:
     return base64.standard_b64encode(buffer.read()).decode()
 
 
-def ndarray_deserialize(x: Union[str, npt.NDArray]) -> npt.NDArray:
+def ndarray_deserialize(x: str | npt.NDArray) -> npt.NDArray:
     """Deserialize array."""
     buffer = io.BytesIO()
     buffer.write(base64.standard_b64decode(x))
