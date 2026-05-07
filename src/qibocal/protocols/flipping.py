@@ -70,6 +70,22 @@ class FlippingParameters(Parameters):
     rx90: bool = False
     """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
 
+    def __post_init__(self):
+        if not isinstance(self.nflips_max, int):
+            raise TypeError(
+                f"nflips_max must be int, got {type(self.nflips_max).__name__}"
+            )
+        if not isinstance(self.nflips_step, int):
+            raise TypeError(
+                f"nflips_step must be int, got {type(self.nflips_step).__name__}"
+            )
+        if not isinstance(self.rx90, bool):
+            raise TypeError(f"rx90 must be boolean, got {type(self.rx90).__name__}")
+        if self.nflips_max <= 0:
+            raise ValueError("nflips_max must be greater than 0.")
+        if self.nflips_step <= 0:
+            raise ValueError("nflips_step must be greater than 0.")
+
 
 @dataclass
 class FlippingResults(Results):
@@ -128,10 +144,8 @@ def _acquisition(
         resonator_type=platform.resonator_type,
         delta_amplitude=params.delta_amplitude,
         pulse_amplitudes={
-            qubit: (
-                platform.natives.single_qubit[qubit].RX90()
-                if params.rx90
-                else platform.natives.single_qubit[qubit].RX()
+            qubit: getattr(
+                platform.natives.single_qubit[qubit], "RX90" if params.rx90 else "RX"
             )[0][1].amplitude
             for qubit in targets
         },
@@ -167,10 +181,8 @@ def _acquisition(
         flips = flips_sweep[idx]
         for qubit in targets:
             acq_channel = platform.qubits[qubit].acquisition
-            ro_pulses = list(sequence.channel(acq_channel))
-            if not ro_pulses:
-                continue  # Skip if no acquisition pulse found
-            ro_pulse = ro_pulses[-1]
+            acq_channel_pulses = list(sequence.channel(acq_channel))
+            ro_pulse = acq_channel_pulses[-1]  # Last pulse is Readout
             prob = results[ro_pulse.id]
             error = np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
