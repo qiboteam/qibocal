@@ -1,11 +1,12 @@
 import inspect
 import json
 import time
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import asdict, dataclass, fields
 from functools import wraps
 from pathlib import Path
-from typing import Callable, Generic, NewType, Optional, TypeVar, Union
+from typing import Generic, NewType, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -99,12 +100,10 @@ class Parameters:
 class AbstractData:
     """Abstract data class."""
 
-    def __init__(
-        self, data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray] = None
-    ):
+    def __init__(self, data: dict[tuple[QubitId, int] | QubitId, npt.NDArray] = None):
         self.data = data if data is not None else {}
 
-    def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
+    def __getitem__(self, qubit: QubitId | tuple[QubitId, int]):
         """Access data attribute member."""
         return self.data[qubit]
 
@@ -225,9 +224,7 @@ class Data(AbstractData):
 class Results(AbstractData):
     """Generic runcard update."""
 
-    def __contains__(
-        self, key: Union[QubitId, QubitPairId, tuple[QubitId, ...]]
-    ) -> bool:
+    def __contains__(self, key: QubitId | QubitPairId | tuple[QubitId, ...]) -> bool:
         """Checking if qubit is in Results.
 
         If key is not present means that fitting failed or was not
@@ -268,7 +265,7 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """Plotting function."""
     update: Callable[[_ResultsT, Platform], None] = None
     """Update function platform."""
-    two_qubit_gates: Optional[bool] = False
+    two_qubit_gates: bool | None = False
     """Flag to determine whether to allocate list of Qubits or Pairs."""
 
     def __post_init__(self):
@@ -331,7 +328,7 @@ def _dummy_acquisition(pars: DummyPars, platform: Platform) -> DummyData:
 
 
 def _dummy_update(
-    results: DummyRes, platform: Platform, qubit: Union[QubitId, QubitPairId]
+    results: DummyRes, platform: Platform, qubit: QubitId | QubitPairId
 ) -> None:
     """Dummy update function."""
 

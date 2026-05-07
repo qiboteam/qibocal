@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -42,9 +41,9 @@ __all__ = ["qubit_crosstalk"]
 class QubitCrosstalkParameters(QubitFluxParameters):
     """Crosstalk runcard inputs."""
 
-    bias_point: Optional[dict[QubitId, float]] = field(default_factory=dict)
+    bias_point: dict[QubitId, float] | None = field(default_factory=dict)
     """Dictionary with {qubit_id: bias_point_qubit_id}."""
-    flux_qubits: Optional[list[QubitId]] = None
+    flux_qubits: list[QubitId] | None = None
     """IDs of the qubits that we will sweep the flux on.
     If ``None`` flux will be swept on all qubits that we are running the routine on in a multiplex fashion.
     If given flux will be swept on the given qubits in a sequential fashion (n qubits will result to n different executions).

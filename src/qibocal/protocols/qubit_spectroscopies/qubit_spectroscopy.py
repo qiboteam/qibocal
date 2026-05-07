@@ -1,6 +1,5 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 from qibolab import (
@@ -49,7 +48,7 @@ class QubitSpectroscopyParameters(Parameters):
     """Frequency [Hz] step for sweep."""
     drive_duration: int
     """Drive pulse duration [ns]. Same for all qubits."""
-    drive_amplitude: Optional[float] = None
+    drive_amplitude: float | None = None
     """Drive pulse amplitude (optional). Same for all qubits."""
 
 
@@ -63,7 +62,7 @@ class QubitSpectroscopyResults(Results):
     """Input drive amplitude. Same for all qubits."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
-    chi2_reduced: dict[QubitId, tuple[float, Optional[float]]] = field(
+    chi2_reduced: dict[QubitId, tuple[float, float | None]] = field(
         default_factory=dict
     )
     """Chi2 reduced."""

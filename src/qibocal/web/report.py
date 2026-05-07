@@ -1,6 +1,6 @@
 import pathlib
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from qibocal.auto.history import History
 from qibocal.auto.serialize import _nested_list_to_tuples

@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -33,7 +32,7 @@ class ZenoResults(Results):
     """Raw fitting output."""
     pcov: dict[QubitId, list[float]]
     """Approximate covariance of fitted parameters."""
-    chi2: dict[QubitId, tuple[float, Optional[float]]]
+    chi2: dict[QubitId, tuple[float, float | None]]
     """Chi squared estimate mean value and error."""
 
 

@@ -1,7 +1,6 @@
 """Protocol to calibrate TWPA power and frequency for a specific probe frequency."""
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -36,9 +35,9 @@ class TwpaCalibrationParameters(Parameters):
     """Width for TPWA power sweep (dBm)."""
     twpa_pow_step: int
     """TPWA power step (dBm)."""
-    nshots: Optional[int] = None
+    nshots: int | None = None
     """Number of shots."""
-    relaxation_time: Optional[int] = None
+    relaxation_time: int | None = None
     """Relaxation time (ns)."""
 
 

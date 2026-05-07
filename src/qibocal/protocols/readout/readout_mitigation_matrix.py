@@ -1,5 +1,5 @@
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Optional, Sequence, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -23,9 +23,9 @@ __all__ = ["readout_mitigation_matrix"]
 class ReadoutMitigationMatrixParameters(Parameters):
     """ReadoutMitigationMatrix matrix inputs."""
 
-    nshots: Optional[int] = None
+    nshots: int | None = None
     """Number of shots."""
-    relaxation_time: Optional[int] = None
+    relaxation_time: int | None = None
     """Relaxation time [ns]."""
 
 
@@ -45,7 +45,7 @@ ReadoutMitigationMatrixType = np.dtype(
 )
 
 
-ReadoutMitigationMatrixId = tuple[Tuple[QubitId, ...], str, str]
+ReadoutMitigationMatrixId = tuple[tuple[QubitId, ...], str, str]
 """Data identifier for single list of qubits.
 
 Tuple[QubitId, ...] is the qubits which have been passed on as parameters.

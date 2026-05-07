@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -28,7 +27,7 @@ __all__ = ["ramsey_zz"]
 class RamseyZZParameters(RamseySignalParameters):
     """RamseyZZ runcard inputs."""
 
-    target_qubit: Optional[QubitId] = None
+    target_qubit: QubitId | None = None
     """Target qubit that will be excited."""
 
 
@@ -47,7 +46,7 @@ class RamseyZZResults(RamseySignalResults):
 class RamseyZZData(RamseySignalData):
     """RamseyZZ acquisition outputs."""
 
-    target_qubit: Optional[QubitId] = None
+    target_qubit: QubitId | None = None
     """Qubit that will be excited."""
     anharmonicity: dict[QubitId, float] = field(default_factory=dict)
     """Targets qubit anharmonicity."""

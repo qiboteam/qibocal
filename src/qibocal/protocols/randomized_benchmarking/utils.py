@@ -2,7 +2,7 @@ import pathlib
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from numbers import Number
-from typing import Optional, Tuple, Union
+from typing import Union
 
 import numpy as np
 import numpy.typing as npt
@@ -37,7 +37,7 @@ class CircuitIndex(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    qubit: Union[QubitId, QubitPairId]
+    qubit: QubitId | QubitPairId
     depth: int
     iteration: int
 
@@ -145,8 +145,8 @@ def random_2q_clifford(random_index_gen, two_qubit_cliffords):
 
 def number_to_str(
     value: Number,
-    uncertainty: Optional[Union[Number, list, tuple, np.ndarray]] = None,
-    precision: Optional[int] = None,
+    uncertainty: Number | list | tuple | np.ndarray | None = None,
+    precision: int | None = None,
 ):
     """Converts a number into a string.
 
@@ -264,9 +264,9 @@ class RBData(Data):
 
     depths: list[CircuitDepth]
     """Circuits depths."""
-    uncertainties: Optional[float]
+    uncertainties: float | None
     """Parameters uncertainties."""
-    seed: Optional[int]
+    seed: int | None
     nshots: int
     """Number of shots."""
     niter: int
@@ -317,9 +317,7 @@ class StandardRBResult(Results):
     """Raw fitting parameters."""
     fit_uncertainties: dict[QubitId, list[float]]
     """Fitting parameters uncertainties."""
-    error_bars: dict[QubitId, Optional[Union[float, list[float]]]] = field(
-        default_factory=dict
-    )
+    error_bars: dict[QubitId, float | list[float] | None] = field(default_factory=dict)
     """Error bars for y."""
 
 
@@ -327,7 +325,7 @@ def setup_data(
     params: Parameters,
     npulses_per_clifford: float,
     single_qubit: bool = True,
-    interleave: Optional[str] = None,
+    interleave: str | None = None,
 ):
     """
     Set up the randomized benchmarking experiment data class.
@@ -363,7 +361,7 @@ def _generate_indexed_circuits(
     rb_gen: RBGenerator,
     targets,  # list[QubitId] or list[QubitPairId]
     inverse_layer: bool = True,
-    interleave: Optional[str] = None,
+    interleave: str | None = None,
 ) -> list[IndexedCircuit]:
     """Generate randomized benchmarking circuits with explicit indexing of
     (qubit, depth, iteration) coordinates.
@@ -513,7 +511,7 @@ def twoq_rb_acquisition(
     targets: list[QubitPairId],
     inverse_layer: bool = True,
     interleave: str | None = None,
-) -> Union[RB2QData, RB2QInterData]:
+) -> RB2QData | RB2QInterData:
     """
     The data acquisition stage of two qubit Standard Randomized Benchmarking.
 
@@ -579,8 +577,8 @@ def twoq_rb_acquisition(
 def layer_circuit(
     rb_gen: RBGenerator,
     depth: int,
-    target: Union[QubitId, QubitPairId],
-    interleave: Optional[str] = None,
+    target: QubitId | QubitPairId,
+    interleave: str | None = None,
 ) -> Circuit:
     """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`
     and a dictionary with random indexes used to select the clifford gates.
@@ -597,7 +595,7 @@ def layer_circuit(
     if isinstance(target, (str, int)):
         nqubits = 1
         rb_gen_layer = rb_gen.random_layer_gen_single_qubit
-    elif isinstance(target, Tuple):  # Tuple for qubit pair
+    elif isinstance(target, tuple):  # Tuple for qubit pair
         nqubits = 2
         rb_gen_layer = rb_gen.random_layer_gen_two_qubit
     else:

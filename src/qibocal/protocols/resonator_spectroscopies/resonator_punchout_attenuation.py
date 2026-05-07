@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -60,7 +59,7 @@ class ResonatorPunchoutAttenuationResults(Results):
 
     readout_frequency: dict[QubitId, float | None]
     """Readout frequency [GHz] for each qubit."""
-    bare_frequency: Optional[dict[QubitId, float | None]]
+    bare_frequency: dict[QubitId, float | None] | None
     """Bare resonator frequency [GHz] for each qubit."""
     readout_attenuation: dict[QubitId, float | None]
     """Readout LO attenuation [dB] for each qubit."""

@@ -1,7 +1,7 @@
 """Helper functions to update parameters in platform."""
 
 from collections.abc import Iterable
-from typing import Literal, Union
+from typing import Literal
 
 import numpy as np
 from pydantic import BaseModel
@@ -44,9 +44,7 @@ def readout_amplitude(amp: float, platform: Platform, qubit: QubitId):
     platform.update({f"native_gates.single_qubit.{qubit}.MZ.0.1.probe.amplitude": amp})
 
 
-def drive_frequency(
-    freq: Union[float, tuple, list], platform: Platform, qubit: QubitId
-):
+def drive_frequency(freq: float | tuple | list, platform: Platform, qubit: QubitId):
     """Update drive frequency value in platform for specific qubit."""
     if isinstance(freq, Iterable):
         freq = freq[0]
@@ -55,7 +53,7 @@ def drive_frequency(
 
 
 def drive_amplitude(
-    amp: Union[float, tuple, list], rx90: bool, platform: Platform, qubit: QubitId
+    amp: float | tuple | list, rx90: bool, platform: Platform, qubit: QubitId
 ):
     """Update drive frequency value in platform for specific qubit."""
     if isinstance(amp, Iterable):
@@ -67,7 +65,7 @@ def drive_amplitude(
 
 
 def drive_duration(
-    duration: Union[int, tuple, list], rx90: bool, platform: Platform, qubit: QubitId
+    duration: int | tuple | list, rx90: bool, platform: Platform, qubit: QubitId
 ):
     """Update drive duration value in platform for specific qubit."""
     if isinstance(duration, Iterable):
@@ -244,9 +242,7 @@ def drive_12_amplitude(amplitude: float, platform: Platform, qubit: QubitId):
     )
 
 
-def drive_12_duration(
-    duration: Union[int, tuple, list], platform: Platform, qubit: QubitId
-):
+def drive_12_duration(duration: int | tuple | list, platform: Platform, qubit: QubitId):
     """Update drive duration value in platform for specific qubit."""
     platform.update(
         {f"native_gates.single_qubit.{qubit}.RX12.0.1.duration": int(duration)}

@@ -2,7 +2,7 @@
 
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any
 
 import yaml
 from pydantic.dataclasses import dataclass
@@ -24,7 +24,7 @@ class Runcard:
 
     actions: list[Action]
     """List of action to be executed."""
-    targets: Optional[Targets] = None
+    targets: Targets | None = None
     """Qubits to be calibrated.
 
     If `None` the protocols will be executed on all qubits
@@ -37,7 +37,7 @@ class Runcard:
     update: bool = True
 
     @classmethod
-    def load(cls, runcard: Union[dict[str, Any], Path]):
+    def load(cls, runcard: dict[str, Any] | Path):
         """Load a runcard dict or path."""
         if not isinstance(runcard, dict):
             return cls(yaml.safe_load((runcard / RUNCARD).read_text(encoding="utf-8")))

@@ -1,7 +1,7 @@
 """CZ virtual correction experiment for two qubit gates, tune landscape."""
 
 from dataclasses import dataclass, field
-from typing import Literal, Optional
+from typing import Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -52,7 +52,7 @@ class VirtualZPhasesParameters(Parameters):
     iSWAP and CZ are the possible options.
 
     """
-    dt: Optional[float] = 16
+    dt: float | None = 16
     """Time delay between flux pulses and readout."""
     gate_repetition: int = 1
     """Number of CZ repetition"""
@@ -69,9 +69,9 @@ class VirtualZPhasesResults(Results):
     gate_repetition: int
     leakage: dict[QubitPairId, dict[QubitId, float]]
     """Leakage on control qubit for pair."""
-    angle: Optional[dict[QubitPairId, float]] = None
+    angle: dict[QubitPairId, float] | None = None
     """Native angle."""
-    virtual_phase: Optional[dict[QubitPairId, dict[QubitId, float]]] = None
+    virtual_phase: dict[QubitPairId, dict[QubitId, float]] | None = None
     """Virtual Z phase correction."""
 
     def __contains__(self, key: QubitPairId):
@@ -119,7 +119,7 @@ def create_sequence(
     dt: float,
     flux_pulse_max_duration: float = None,
     gate_repetition: int = 1,
-    flux_pulse: Optional[list] = None,
+    flux_pulse: list | None = None,
 ) -> tuple[PulseSequence, Pulse, Pulse, list[Pulse]]:
     """
     Create the pulse sequence for the calibration of two-qubit gate virtual phases.

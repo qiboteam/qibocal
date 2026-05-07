@@ -2,7 +2,6 @@ import json
 from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -31,7 +30,7 @@ CIRCUIT_PATH = "circuit.json"
 __all__ = ["state_tomography", "StateTomographyParameters", "plot_reconstruction"]
 
 
-def parse_circuit(value: Optional[Union[str, Circuit]]) -> Optional[Circuit]:
+def parse_circuit(value: str | Circuit | None) -> Circuit | None:
     if value is None:
         circuit = None
 
@@ -55,12 +54,12 @@ def parse_circuit(value: Optional[Union[str, Circuit]]) -> Optional[Circuit]:
 class StateTomographyParameters(Parameters):
     """Tomography input parameters"""
 
-    def __init__(self, circuit: Optional[Union[str, Circuit]] = None, **kwargs):
+    def __init__(self, circuit: str | Circuit | None = None, **kwargs):
         self._circuit = parse_circuit(circuit)
         super().__init__(**kwargs)
 
     @property
-    def circuit(self) -> Optional[Circuit]:
+    def circuit(self) -> Circuit | None:
         # Circuit to prepare initial state.
         return self._circuit
 
@@ -72,7 +71,7 @@ class StateTomographyParameters(Parameters):
     # would not fully capture the difference in expected types between getting and
     # setting
     @circuit.setter
-    def circuit(self, value: Optional[Union[str, Circuit]]):
+    def circuit(self, value: str | Circuit | None):
         if value is None:
             self._circuit = None
 
@@ -334,9 +333,9 @@ def plot_reconstruction(ideal, measured):
 
     tickvals = list(range(len(ideal)))
     if len(tickvals) == 2:  # single qubit tomography
-        ticktext = ["{:01b}".format(i) for i in tickvals]
+        ticktext = [f"{i:01b}" for i in tickvals]
     else:  # two qubit tomography
-        ticktext = ["{:02b}".format(i) for i in tickvals]
+        ticktext = [f"{i:02b}" for i in tickvals]
     fig.update_scenes(
         xaxis=dict(tickvals=tickvals, ticktext=ticktext),
         yaxis=dict(tickvals=tickvals, ticktext=ticktext),

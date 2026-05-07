@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -34,7 +33,7 @@ class RamseySignalParameters(Parameters):
     """Final delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_step: int
     """Step delay between RX(pi/2) pulses in ns."""
-    detuning: Optional[int] = None
+    detuning: int | None = None
     """Frequency detuning [Hz] (optional).
         If 0 standard Ramsey experiment is performed."""
     unrolling: bool = False
@@ -48,13 +47,13 @@ class RamseySignalResults(Results):
 
     detuning: float
     """Qubit frequency detuning."""
-    frequency: dict[QubitId, Union[float, list[float]]]
+    frequency: dict[QubitId, float | list[float]]
     """Drive frequency [GHz] for each qubit."""
-    t2: dict[QubitId, Union[float, list[float]]]
+    t2: dict[QubitId, float | list[float]]
     """T2 for each qubit [ns]."""
-    delta_phys: dict[QubitId, Union[float, list[float]]]
+    delta_phys: dict[QubitId, float | list[float]]
     """Drive frequency [Hz] correction for each qubit."""
-    delta_fitting: dict[QubitId, Union[float, list[float]]]
+    delta_fitting: dict[QubitId, float | list[float]]
     """Raw drive frequency [Hz] correction for each qubit.
        including the detuning."""
     fitted_parameters: dict[QubitId, list[float]]
@@ -69,7 +68,7 @@ RamseySignalType = np.dtype([("wait", np.float64), ("signal", np.float64)])
 class RamseySignalData(Data):
     """Ramsey acquisition outputs."""
 
-    detuning: Optional[int] = None
+    detuning: int | None = None
     """Frequency detuning [Hz]."""
     qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
     """Qubit freqs for each qubit."""

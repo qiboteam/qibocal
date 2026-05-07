@@ -3,7 +3,6 @@ from collections import Counter, defaultdict
 from copy import deepcopy
 from dataclasses import dataclass, field
 from itertools import product
-from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -55,7 +54,7 @@ class StateTomographyData(Data):
         default_factory=dict
     )
     ideal: dict[QubitPairId, np.ndarray] = field(default_factory=dict)
-    simulated: Optional[QuantumState] = None
+    simulated: QuantumState | None = None
 
     def save(self, path):
         self._to_npz(path, DATAFILE)

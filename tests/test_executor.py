@@ -2,7 +2,6 @@ from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 import pytest
 from qibolab import Platform, create_platform
@@ -89,7 +88,7 @@ def _fit(data: FakeData) -> FakeResults:
     return FakeResults(par={0: data.par})
 
 
-def _plot(data: FakeData, target: QubitId, fit: Optional[FakeResults] = None):
+def _plot(data: FakeData, target: QubitId, fit: FakeResults | None = None):
     pass
 
 

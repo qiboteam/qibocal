@@ -8,7 +8,6 @@ from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import Optional, Union
 
 from qibo.backends import construct_backend
 
@@ -89,7 +88,7 @@ class Executor:
     """Qubits' platform."""
     update: bool = True
     """Runcard update mechanism."""
-    name: Optional[str] = None
+    name: str | None = None
     """Symbol for the executor.
 
     This can be used generically to distinguish the executor, but its specific use is to
@@ -103,8 +102,8 @@ class Executor:
         are also allowed, and they are interpreted relative to this package (in the top
         scope).
     """
-    path: Optional[Path] = None
-    meta: Optional[Metadata] = None
+    path: Path | None = None
+    meta: Metadata | None = None
 
     def __post_init__(self):
         """Register as a module, if a name is specified."""
@@ -112,7 +111,7 @@ class Executor:
             _register(self.name, self)
 
     @classmethod
-    def create(cls, name: str, platform: Union[CalibrationPlatform, str, None] = None):
+    def create(cls, name: str, platform: CalibrationPlatform | str | None = None):
         """Load list of protocols."""
         platform = (
             platform
@@ -134,7 +133,7 @@ class Executor:
         protocol: Routine,
         parameters: Action,
         mode: ExecutionMode = AUTOCALIBRATION,
-        output: Optional[Path] = None,
+        output: Path | None = None,
     ) -> Completed:
         """Run single protocol in ExecutionMode mode."""
         task = Task(action=parameters, operation=protocol)
@@ -221,11 +220,11 @@ class Executor:
 
         def wrapper(
             *args,
-            parameters: Optional[dict] = None,
+            parameters: dict | None = None,
             id: str = operation,
             mode: ExecutionMode = AUTOCALIBRATION,
             update: bool = True,
-            targets: Optional[Targets] = None,
+            targets: Targets | None = None,
             **kwargs,
         ):
             positional = dict(
@@ -272,9 +271,9 @@ class Executor:
         self,
         path: os.PathLike,
         force: bool = False,
-        platform: Union[CalibrationPlatform, str, None] = None,
-        update: Optional[bool] = None,
-        targets: Optional[Targets] = None,
+        platform: CalibrationPlatform | str | None = None,
+        update: bool | None = None,
+        targets: Targets | None = None,
     ):
         """Initialize execution."""
         if platform is None or isinstance(platform, CalibrationPlatform):
@@ -311,7 +310,7 @@ class Executor:
         self.path = path
         self.meta = meta
 
-    def close(self, path: Optional[os.PathLike] = None):
+    def close(self, path: os.PathLike | None = None):
         """Close execution."""
         assert self.meta is not None and self.path is not None
 
@@ -336,9 +335,9 @@ class Executor:
         name: str,
         path: os.PathLike,
         force: bool = False,
-        platform: Union[CalibrationPlatform, str, None] = None,
-        update: Optional[bool] = None,
-        targets: Optional[Targets] = None,
+        platform: CalibrationPlatform | str | None = None,
+        update: bool | None = None,
+        targets: Targets | None = None,
     ):
         """Enter the execution context."""
         ex = cls.create(name, platform)

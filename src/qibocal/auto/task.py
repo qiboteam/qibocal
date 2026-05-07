@@ -4,7 +4,7 @@ import copy
 import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, NewType, Optional, Union
+from typing import Any, NewType, Union
 
 import yaml
 from qibo import Circuit
@@ -36,11 +36,11 @@ class Action:
     """Action unique identifier."""
     operation: OperationId
     """Operation to be performed by the executor."""
-    targets: Optional[Targets] = None
+    targets: Targets | None = None
     """Local qubits (optional)."""
     update: bool = True
     """Runcard update mechanism."""
-    parameters: Optional[dict[str, Any]] = None
+    parameters: dict[str, Any] | None = None
     """Input parameters, either values or provider reference."""
 
     def dump(self, path: Path):
@@ -64,7 +64,7 @@ class Action:
         return cls(**yaml.safe_load((path / SINGLE_ACTION).read_text(encoding="utf-8")))
 
     @classmethod
-    def cast(cls, source: Union[dict, "Action"], operation: Optional[str] = None):
+    def cast(cls, source: Union[dict, "Action"], operation: str | None = None):
         """Cast an action source to an action."""
         if isinstance(source, Action):
             return source
@@ -131,10 +131,10 @@ class Task:
 
     def run(
         self,
-        platform: Optional[Platform] = None,
-        targets: Optional[Targets] = None,
-        mode: Optional[ExecutionMode] = None,
-        folder: Optional[Path] = None,
+        platform: Platform | None = None,
+        targets: Targets | None = None,
+        mode: ExecutionMode | None = None,
+        folder: Path | None = None,
     ) -> "Completed":
         if self.targets is None:
             self.action.targets = targets
@@ -191,11 +191,11 @@ class Completed:
         once tasks will be immutable, a separate `iteration` attribute should
         be added
     """
-    path: Optional[Path] = None
+    path: Path | None = None
     """Folder contaning data and results files for task."""
-    _data: Optional[Data] = None
+    _data: Data | None = None
     """Protocol data."""
-    _results: Optional[Results] = None
+    _results: Results | None = None
     """Fitting output."""
     data_time: float = 0
     """Protocol data."""

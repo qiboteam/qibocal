@@ -1,7 +1,6 @@
 import json
 import pathlib
 from dataclasses import asdict, dataclass, field, fields
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -60,11 +59,11 @@ def evaluate_snr(zeros: npt.NDArray, ones: npt.NDArray) -> float:
 class SingleShotClassificationParameters(Parameters):
     """SingleShotClassification runcard inputs."""
 
-    classifiers_list: Optional[list[str]] = field(
+    classifiers_list: list[str] | None = field(
         default_factory=lambda: [DEFAULT_CLASSIFIER]
     )
     """List of models to classify the qubit states."""
-    savedir: Optional[str] = " "
+    savedir: str | None = " "
     """Dumping folder of the classification results."""
 
 
@@ -82,7 +81,7 @@ class SingleShotClassificationData(Data):
     """Qubit frequencies."""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
-    classifiers_list: Optional[list[str]] = field(
+    classifiers_list: list[str] | None = field(
         default_factory=lambda: [DEFAULT_CLASSIFIER]
     )
     """List of models to classify the qubit states."""
@@ -126,9 +125,9 @@ class SingleShotClassificationResults(Results):
     """Qubit effective temperature from Boltzmann distribution."""
     models: dict[QubitId, list] = field(default_factory=list)
     """List of trained classification models."""
-    benchmark_table: Optional[dict[QubitId, pd.DataFrame]] = field(default_factory=dict)
+    benchmark_table: dict[QubitId, pd.DataFrame] | None = field(default_factory=dict)
     """Benchmark tables."""
-    classifiers_hpars: Optional[dict[QubitId, dict]] = field(default_factory=dict)
+    classifiers_hpars: dict[QubitId, dict] | None = field(default_factory=dict)
     """Classifiers hyperparameters."""
     x_tests: dict[QubitId, list] = field(default_factory=dict)
     """Test set."""

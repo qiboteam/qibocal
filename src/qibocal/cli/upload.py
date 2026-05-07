@@ -98,9 +98,7 @@ def upload_report(path: pathlib.Path, tag: str, author: str, lab: str) -> str:
             % str_line
         ) from e
     except OSError as e:
-        raise RuntimeError(
-            "Could not run the command\n{}\n: {}".format(str_line, e)
-        ) from e
+        raise RuntimeError(f"Could not run the command\n{str_line}\n: {e}") from e
 
     log.info("Connection seems OK.")
 
