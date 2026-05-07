@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, PulseSequence
+from qibolab import AcquisitionType, AveragingMode, PulseSequence, Readout
 from scipy.optimize import curve_fit
 
 from qibocal import update
@@ -174,13 +174,12 @@ def _acquisition(
         relaxation_time=params.relaxation_time,
     )
 
-    for idx, sequence in enumerate(sequences):
-        flips = flips_sweep[idx]
+    for flips, sequence in zip(flips_sweep, sequences):
         for qubit in targets:
             acq_channel = platform.qubits[qubit].acquisition
             assert acq_channel is not None
-            acq_channel_pulses = list(sequence.channel(acq_channel))
-            ro_pulse = acq_channel_pulses[-1]  # Last pulse is Readout
+            ro_pulse = list(sequence.channel(acq_channel))[-1]
+            assert isinstance(ro_pulse, Readout)
             prob = results[ro_pulse.id]
             error = np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
