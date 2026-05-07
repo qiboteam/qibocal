@@ -1,23 +1,32 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from itertools import chain
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
+from plotly.subplots import make_subplots
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Delay,
+    ParallelSweepers,
+    Parameter,
+    PulseSequence,
+    Sweeper,
+)
 
+from qibocal.auto.operation import QubitId, QubitPairId, Routine
 from qibocal.calibration import CalibrationPlatform
+from qibocal.config import log
+from qibocal.protocols.utils import table_dict, table_html
 
-from ...auto.operation import QubitId, Routine
-from ...config import log
-from ..utils import table_dict, table_html
 from .ramsey_signal import (
     RamseySignalData,
     RamseySignalParameters,
     RamseySignalResults,
     _update,
 )
-from .utils import fitting, process_fit, ramsey_fit, ramsey_sequence
+from .utils import fitting, process_fit, ramsey_fit, single_qubit_ramsey_sequence
 
 __all__ = ["ramsey_zz"]
 
@@ -27,10 +36,6 @@ EPS = 1  # Hz
 class AnharmError(Exception):
     def __init__(self, *args):
         super().__init__(*args)
-
-
-RamseyZZType = np.dtype([("wait", np.float64), ("prob", np.float64)])
-"""Custom dtype for coherence routines."""
 
 
 def compute_coupling_strength(
@@ -64,107 +69,105 @@ def compute_coupling_strength(
 class RamseyZZParameters(RamseySignalParameters):
     """RamseyZZ runcard inputs."""
 
-    spectator_qubit: Optional[QubitId] = None
-    """Spectator qubit that will be excited."""
-
 
 @dataclass
 class RamseyZZResults(RamseySignalResults):
     """RamseyZZ outputs."""
 
-    zz: dict[QubitId, list[float]] = field(default_factory=dict)
-    coupling: dict[QubitId, list[float]] = field(default_factory=dict)
+    zz: dict[QubitPairId, list[float]] = field(default_factory=dict)
+    coupling: dict[QubitPairId, list[float]] = field(default_factory=dict)
 
-    def __contains__(self, qubit: QubitId):
-        return qubit in self.zz
+    def __contains__(self, pair: QubitPairId):
+        return pair in self.zz
+
+
+RamseyZZType = np.dtype(
+    [("wait", np.float64), ("targ_prob", np.float64), ("spect_prob", np.float64)]
+)
+"""Custom dtype for coherence routines."""
 
 
 @dataclass
 class RamseyZZData(RamseySignalData):
     """RamseyZZ acquisition outputs."""
 
-    spectator_qubit: Optional[QubitId] = None
-    """Qubit that will be excited."""
     anharmonicity: dict[QubitId, float] = field(default_factory=dict)
     """Targets qubit anharmonicity."""
-    anharmonicity_spectator_qubit: float = None
-    """Anharmonicity of spectator qubit."""
-    frequency_spectator_qubit: float = 0
-    "Frequency of spectator qubit."
-    data: dict[tuple[QubitId, str], npt.NDArray[RamseyZZType]] = field(
+    data: dict[tuple[QubitPairId, str], npt.NDArray[RamseyZZType]] = field(
         default_factory=dict
     )
     """Raw data acquired."""
 
 
-def _acquisition(
-    params: RamseyZZParameters,
+def _add_spectator_readout_define_parsweepers(
     platform: CalibrationPlatform,
-    targets: list[QubitId],
+    pair: QubitPairId,
+    delay_range: tuple[float, float, float],
+) -> tuple[PulseSequence, PulseSequence, ParallelSweepers]:
+
+    init_t, fin_t, step_t = delay_range
+
+    sequence, targets_ro_seq, target_delays = single_qubit_ramsey_sequence(
+        platform=platform,
+        target=pair[0],
+        wait=init_t,
+    )
+
+    target_sweeper = Sweeper(
+        parameter=Parameter.duration,
+        range=delay_range,
+        pulses=target_delays,
+    )
+
+    # adding sequence for measuring also spectator qubit
+    spect_ro_seq = PulseSequence()
+    spect_natives = platform.natives.single_qubit[pair[1]]
+    spect_ro_ch, spect_ro_pulse = spect_natives.MZ()[0]
+
+    ramsey_duration = sequence.duration
+    # delay computed by the duration of the ramsey sequence
+    spect_ro_delay = Delay(duration=ramsey_duration)
+    spect_ro_seq.append((spect_ro_ch, spect_ro_delay))
+    spect_ro_seq.append((spect_ro_ch, spect_ro_pulse))
+
+    # sweeping over spectator delay before measuring it
+    spectator_sweeper = Sweeper(
+        parameter=Parameter.duration,
+        # here we are adding to the spectator sweeper the duration of the PI/2 pulses
+        # durations for all target qubita
+        range=(ramsey_duration, fin_t + ramsey_duration - init_t, step_t),
+        pulses=[spect_ro_delay],
+    )
+
+    return (
+        (sequence + targets_ro_seq + spect_ro_seq),
+        spect_natives.RX(),
+        ParallelSweepers([target_sweeper, spectator_sweeper]),
+    )
+
+
+def _execute_ramsey_zz(
+    platform: CalibrationPlatform,
+    pair_list: list[QubitPairId],
+    params: RamseyZZParameters,
+    data: RamseyZZData,
+    ramsey_sequence: PulseSequence,
+    spectators_flip_sequence: PulseSequence,
+    full_parsweepers: ParallelSweepers,
+    updates=list,
 ) -> RamseyZZData:
-    """Data acquisition for RamseyZZ Experiment.
-
-    Standard Ramsey experiment repeated twice.
-    In the second execution one qubit is brought to the excited state.
-    """
-
-    waits = np.arange(
-        params.delay_between_pulses_start,
-        params.delay_between_pulses_end,
-        params.delay_between_pulses_step,
-    )
-
-    try:
-        target_anharmonicities = {
-            qubit: platform.calibration.single_qubits[qubit].qubit.anharmonicity
-            for qubit in targets
-        }
-        spectator_anharmonicity = platform.calibration.single_qubits[
-            params.spectator_qubit
-        ].qubit.anharmonicity
-    except KeyError:
-        raise AnharmError(
-            "One or more anharmonicities are not calibrated yet, calibrate e-f transition for all qubits."
-        )
-
-    data = RamseyZZData(
-        detuning=params.detuning,
-        qubit_freqs={
-            qubit: platform.config(platform.qubits[qubit].drive).frequency
-            for qubit in targets
-        },
-        anharmonicity=target_anharmonicities,
-        anharmonicity_spectator_qubit=spectator_anharmonicity,
-        frequency_spectator_qubit=platform.config(
-            platform.qubits[params.spectator_qubit].drive
-        ).frequency,
-        spectator_qubit=params.spectator_qubit,
-    )
-
-    updates = []
-    if params.detuning is not None:
-        for qubit in targets:
-            channel = platform.qubits[qubit].drive
-            f0 = platform.config(channel).frequency
-            updates.append({channel: {"frequency": f0 + params.detuning}})
 
     for setup in ["I", "X"]:
-        sequence, delays = ramsey_sequence(
-            platform=platform,
-            targets=targets,
-            spectator_qubit=params.spectator_qubit if setup == "X" else None,
-        )
-
-        sweeper = Sweeper(
-            parameter=Parameter.duration,
-            values=waits,
-            pulses=delays,
-        )
+        if setup == "X":
+            # adding X gate on spectator qubit
+            experiment_sequence = spectators_flip_sequence | ramsey_sequence
+        else:
+            experiment_sequence = ramsey_sequence
 
         # execute the sweep
         results = platform.execute(
-            [sequence],
-            [[sweeper]],
+            [experiment_sequence],
+            [full_parsweepers],
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.DISCRIMINATION,
@@ -172,16 +175,141 @@ def _acquisition(
             updates=updates,
         )
 
-        for qubit in targets:
-            ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
-            probs = results[ro_pulse.id]
+        for pair in pair_list:
+            targ_ro_pulse = list(
+                experiment_sequence.channel(platform.qubits[pair[0]].acquisition)
+            )[-1]
+            targ_probs = results[targ_ro_pulse.id]
+            spect_ro_pulse = list(
+                experiment_sequence.channel(platform.qubits[pair[1]].acquisition)
+            )[-1]
+            spect_probs = results[spect_ro_pulse.id]
+
             data.register_qubit(
                 RamseyZZType,
-                (qubit, setup),
+                (pair, setup),
                 dict(
-                    wait=waits,
-                    prob=probs,
+                    wait=np.arange(
+                        params.delay_between_pulses_start,
+                        params.delay_between_pulses_end,
+                        params.delay_between_pulses_step,
+                    ),
+                    targ_prob=targ_probs,
+                    spect_prob=spect_probs,
                 ),
+            )
+
+    return data
+
+
+def _acquisition(
+    params: RamseyZZParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitPairId],
+) -> RamseyZZData:
+    """Data acquisition for RamseyZZ Experiment.
+    Targets is a list of qubit pair in the order: (target, spectator).
+
+    Standard Ramsey experiment repeated twice.
+    In the second execution one qubit is brought to the excited state.
+    """
+
+    qubits_list = list(chain.from_iterable(targets))
+    qubits_set = set(qubits_list)
+
+    if any(
+        [
+            platform.calibration.single_qubits[q].qubit.frequency_12 is None
+            for q in qubits_set
+        ]
+    ):
+        raise AnharmError("One or more e-f transitions are not calibrated.")
+
+    data = RamseyZZData(
+        detuning=params.detuning,
+        qubit_freqs={
+            q: platform.config(platform.qubits[q].drive).frequency for q in qubits_set
+        },
+        anharmonicity={
+            q: platform.calibration.single_qubits[q].qubit.anharmonicity
+            for q in qubits_set
+        },
+    )
+
+    if len(qubits_set) != len(qubits_list):
+        log.warning(
+            "In the pair list there are repeated qubits: "
+            "Parallel execution is not possible."
+        )
+        parallel_execution = False
+    else:
+        parallel_execution = True
+
+    # creating the RamseyZZ pulse sequence to run in parallel and also define the sweepers
+    ramsey_spectator_seq = PulseSequence()
+    spectators_flip_seq = PulseSequence()
+    full_parsweepers = ParallelSweepers([])
+    if parallel_execution:
+        for pair in targets:
+            updates = []
+            if params.detuning is not None:
+                channel = platform.qubits[pair[0]].drive
+                f0 = platform.config(channel).frequency
+                updates.append({channel: {"frequency": f0 + params.detuning}})
+
+            seq, spect_flip, parsweep = _add_spectator_readout_define_parsweepers(
+                platform=platform,
+                pair=pair,
+                delay_range=(
+                    params.delay_between_pulses_start,
+                    params.delay_between_pulses_end,
+                    params.delay_between_pulses_step,
+                ),
+            )
+
+            ramsey_spectator_seq += seq
+            spectators_flip_seq += spect_flip
+            full_parsweepers += parsweep
+
+        data = _execute_ramsey_zz(
+            platform=platform,
+            pair_list=targets,
+            params=params,
+            data=data,
+            ramsey_sequence=ramsey_spectator_seq,
+            spectators_flip_sequence=spectators_flip_seq,
+            full_parsweepers=full_parsweepers,
+            updates=updates,
+        )
+
+    else:
+        for pair in targets:
+            ramsey_spectator_seq, spectators_flip_seq, full_parsweepers = (
+                _add_spectator_readout_define_parsweepers(
+                    platform=platform,
+                    pair=pair,
+                    delay_range=(
+                        params.delay_between_pulses_start,
+                        params.delay_between_pulses_end,
+                        params.delay_between_pulses_step,
+                    ),
+                )
+            )
+
+            if params.detuning is not None:
+                channel = platform.qubits[pair[0]].drive
+                f0 = platform.config(channel).frequency
+                updates = [{channel: {"frequency": f0 + params.detuning}}]
+
+            data = _execute_ramsey_zz(
+                platform=platform,
+                pair_list=[pair],
+                params=params,
+                data=data,
+                ramsey_sequence=ramsey_spectator_seq,
+                spectators_flip_sequence=spectators_flip_seq,
+                full_parsweepers=full_parsweepers,
+                updates=updates,
             )
 
     return data
@@ -202,68 +330,74 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
     delta_fitting_measure = {}
     zz = {}
     coupling = {}
-    for qubit in data.qubits:
+
+    for pair in data.qubits:
+        target, spectator = pair
+
         for setup in ["I", "X"]:
-            qubit_data = data[qubit, setup]
-            qubit_freq = data.qubit_freqs[qubit]
-            probs = qubit_data["prob"]
+            qubit_freq = data.qubit_freqs[target]
             try:
-                popt, perr = fitting(waits, probs)
+                popt, perr = fitting(waits, data[pair, setup]["targ_prob"])
                 (
-                    freq_measure[qubit, setup],
-                    t2_measure[qubit, setup],
-                    delta_phys_measure[qubit, setup],
-                    delta_fitting_measure[qubit, setup],
-                    popts[qubit, setup],
+                    freq_measure[pair, setup],
+                    t2_measure[pair, setup],
+                    delta_phys_measure[pair, setup],
+                    delta_fitting_measure[pair, setup],
+                    popts[pair, setup],
                 ) = process_fit(popt, perr, qubit_freq, data.detuning)
             except Exception as e:
-                log.warning(f"Ramsey fitting failed for qubit {qubit} due to {e}.")
+                log.warning(f"Ramsey fitting failed for qubit {target} due to {e}.")
         # compute zz and qq coupling
         # zz the difference in frequency between the two measurement
-        zz[qubit] = [
-            float(freq_measure[qubit, "X"][0] - freq_measure[qubit, "I"][0]),
+        zz[pair] = [
+            float(freq_measure[pair, "X"][0] - freq_measure[pair, "I"][0]),
             float(
                 np.sqrt(
-                    freq_measure[qubit, "X"][1] ** 2 + freq_measure[qubit, "I"][1] ** 2
+                    freq_measure[pair, "X"][1] ** 2 + freq_measure[pair, "I"][1] ** 2
                 )
             ),
         ]
 
         # here we compute coupling as a frequency
-        coupling[qubit] = compute_coupling_strength(
-            omega1=data.qubit_freqs[qubit],
-            omega2=data.frequency_spectator_qubit,
-            anharmonicity1=data.anharmonicity[qubit],
-            anharmonicity2=data.anharmonicity_spectator_qubit,
-            zz=zz[qubit],
+        coupling[pair] = compute_coupling_strength(
+            omega1=data.qubit_freqs[target],
+            omega2=data.qubit_freqs[spectator],
+            anharmonicity1=data.anharmonicity[target],
+            anharmonicity2=data.anharmonicity[spectator],
+            zz=zz[pair],
         )
 
     return RamseyZZResults(
-        detuning=data.detuning,
-        frequency=freq_measure,
-        t2=t2_measure,
         delta_phys=delta_phys_measure,
-        delta_fitting=delta_fitting_measure,
         fitted_parameters=popts,
         zz=zz,
         coupling=coupling,
     )
 
 
-def _plot(data: RamseyZZData, target: QubitId, fit: RamseyZZResults = None):
+def _plot(data: RamseyZZData, target: QubitPairId, fit: RamseyZZResults = None):
     """Plotting function for Ramsey Experiment."""
+
     figures = []
     fitting_report = ""
 
     waits = data[target, "I"].wait
-    probs_I = data.data[target, "I"].prob
-    probs_X = data.data[target, "X"].prob
 
-    fig = go.Figure(
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        subplot_titles=(
+            f"Target qubit {target[0]}",
+            f"Spectator qubit {target[1]}",
+        ),
+    )
+
+    fig.add_traces(
         [
             go.Scatter(
                 x=waits,
-                y=probs_I,
+                y=data.data[target, "I"].targ_prob,
                 opacity=1,
                 name="I",
                 showlegend=True,
@@ -272,14 +406,41 @@ def _plot(data: RamseyZZData, target: QubitId, fit: RamseyZZResults = None):
             ),
             go.Scatter(
                 x=waits,
-                y=probs_X,
+                y=data.data[target, "X"].targ_prob,
                 opacity=1,
                 name="X",
                 showlegend=True,
                 legendgroup="X",
                 mode="markers",
             ),
-        ]
+        ],
+        rows=1,
+        cols=1,
+    )
+
+    fig.add_traces(
+        [
+            go.Scatter(
+                x=waits,
+                y=data.data[target, "I"].spect_prob,
+                opacity=1,
+                name="I",
+                showlegend=True,
+                legendgroup="I ",
+                mode="markers",
+            ),
+            go.Scatter(
+                x=waits,
+                y=data.data[target, "X"].spect_prob,
+                opacity=1,
+                name="X",
+                showlegend=True,
+                legendgroup="X",
+                mode="markers",
+            ),
+        ],
+        rows=1,
+        cols=2,
     )
 
     if fit is not None:
@@ -299,14 +460,16 @@ def _plot(data: RamseyZZData, target: QubitId, fit: RamseyZZResults = None):
                 y=ramsey_fit(fit_waits, *fit.fitted_parameters[target, "X"]),
                 name="Fit X",
                 mode="lines",
-            )
+            ),
+            row=1,
+            col=1,
         )
         fitting_report = table_html(
             table_dict(
-                target,
+                [target[0]] * 2,
                 [
-                    f"ZZ  with {data.spectator_qubit} [Hz]",
-                    f"Coupling with {data.spectator_qubit} [Hz]",
+                    f"ZZ  with {target[1]} [Hz]",
+                    f"Coupling with {target[1]} [Hz]",
                 ],
                 [
                     fit.zz[target],
