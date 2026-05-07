@@ -152,15 +152,7 @@ def _acquisition(
         rx90=params.rx90,
     )
 
-    options = {
-        "nshots": params.nshots,
-        "relaxation_time": params.relaxation_time,
-        "acquisition_type": AcquisitionType.DISCRIMINATION,
-        "averaging_mode": AveragingMode.CYCLIC,
-    }
-
-    sequences = []
-
+    sequences: list[PulseSequence] = []
     flips_sweep = range(0, params.nflips_max, params.nflips_step)
     for flips in flips_sweep:
         sequence = PulseSequence()
@@ -172,15 +164,21 @@ def _acquisition(
                 flips=flips,
                 rx90=params.rx90,
             )
-
         sequences.append(sequence)
 
-    results = platform.execute(sequences, **options)
+    results = platform.execute(
+        sequences,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.CYCLIC,
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+    )
 
     for idx, sequence in enumerate(sequences):
         flips = flips_sweep[idx]
         for qubit in targets:
             acq_channel = platform.qubits[qubit].acquisition
+            assert acq_channel is not None
             acq_channel_pulses = list(sequence.channel(acq_channel))
             ro_pulse = acq_channel_pulses[-1]  # Last pulse is Readout
             prob = results[ro_pulse.id]
