@@ -180,12 +180,6 @@ def _fit(data: DragTuningData) -> DragTuningResults:
     for qubit in qubits:
         qubit_data = data[qubit]
 
-        # normalize prob
-        prob = qubit_data["prob"]
-        prob_min = np.min(prob)
-        prob_max = np.max(prob)
-        normalized_prob = (prob - prob_min) / (prob_max - prob_min)
-
         # normalize beta
         beta_params = qubit_data["beta"]
         beta_min = np.min(beta_params)
@@ -193,13 +187,13 @@ def _fit(data: DragTuningData) -> DragTuningResults:
         normalized_beta = (beta_params - beta_min) / (beta_max - beta_min)
 
         # Guessing period using fourier transform
-        period = fallback_period(guess_period(normalized_beta, normalized_prob))
+        period = fallback_period(guess_period(normalized_beta, qubit_data["prob"]))
         pguess = [0.5, 0.5, period, 0]
         try:
             popt, _ = curve_fit(
                 drag_fit,
                 normalized_beta,
-                normalized_prob,
+                qubit_data["prob"],
                 p0=pguess,
                 maxfev=100000,
                 bounds=(
@@ -208,8 +202,8 @@ def _fit(data: DragTuningData) -> DragTuningResults:
                 ),
             )
             translated_popt = [
-                popt[0] * (prob_max - prob_min) + prob_min,
-                popt[1] * (prob_max - prob_min),
+                popt[0],
+                popt[1],
                 popt[2] * (beta_max - beta_min),
                 popt[3] - 2 * np.pi * beta_min / popt[2] / (beta_max - beta_min),
             ]
@@ -219,35 +213,37 @@ def _fit(data: DragTuningData) -> DragTuningResults:
             period_fit = translated_popt[2]
             phase_fit = translated_popt[3]
 
-            # calculate the smallest and largest k for which the maximum lies in the
-            # beta interval. Using that maxima of drag_fit(x, offset, amplitude, period,
-            # phase) occur for x = period * (k - phase / (2*pi)), for integer k.
+            # calculate the smallest and largest k for which the minimum lies in the
+            # beta interval. Minima of drag_fit(x, offset, amplitude, period, phase)
+            # occur for x = period * (k + 1/2 - phase / (2*pi)), for integer k.
             phase_2pi = phase_fit / (2 * np.pi)
-            k_min = math.ceil(beta_min / period_fit + phase_2pi)
-            k_max = math.floor(beta_max / period_fit + phase_2pi)
+            k_min = math.ceil(beta_min / period_fit + phase_2pi - 0.5)
+            k_max = math.floor(beta_max / period_fit + phase_2pi - 0.5)
 
             if k_min <= k_max:
                 # Choose beta value with the smallest absolute value that falls inside
                 # the beta interval.
                 candidate_ks = np.arange(k_min, k_max + 1)
-                candidate_betas = [period_fit * (k - phase_2pi) for k in candidate_ks]
+                candidate_betas = [
+                    period_fit * (k + 0.5 - phase_2pi) for k in candidate_ks
+                ]
                 betas_optimal[qubit] = min(candidate_betas, key=abs)
             else:
-                # If no analytical maximum lies in the beta interval, maximum is
+                # If no analytical minimum lies in the beta interval, minimum is
                 # fixed at one of the interval boundaries.
                 left_value = drag_fit(beta_min, *translated_popt)
                 right_value = drag_fit(beta_max, *translated_popt)
                 betas_optimal[qubit] = (
-                    beta_min if left_value >= right_value else beta_max
+                    beta_min if left_value <= right_value else beta_max
                 )
 
             chi2[qubit] = (
                 chi2_reduced(
-                    prob,
+                    qubit_data["prob"],
                     predicted_prob,
                     qubit_data["error"],
                 ),
-                np.sqrt(2 / len(prob)),
+                np.sqrt(2 / len(qubit_data["prob"])),
             )
         except Exception as e:
             log.warning(f"drag_tuning_fit failed for qubit {qubit} due to {e}.")
