@@ -16,7 +16,13 @@ from .acquisition import (
     execute_experiment,
     ramsey_sequence,
 )
-from .processing import fitting, process_fit, ramsey_fit, ramsey_update
+from .processing import (
+    MAXIMUM_FIT_POINTS,
+    fitting,
+    process_fit,
+    ramsey_fit,
+    ramsey_update,
+)
 
 __all__ = ["ramsey_zz"]
 
@@ -188,7 +194,7 @@ def zz_fit_plot(
     waits: npt.NDArray,
     fig: go.Figure,
 ) -> str:
-    fit_waits = np.linspace(min(waits), max(waits), 20 * len(waits))
+    fit_waits = np.linspace(min(waits), max(waits), MAXIMUM_FIT_POINTS)
 
     fig.add_trace(
         go.Scatter(

@@ -23,6 +23,9 @@ from qibocal.protocols.utils import (
 
 from .acquisition import RamseyResults
 
+MAXIMUM_FIT_POINTS = 1_000
+"""maximum number of points to use when plotting fit results."""
+
 POPT_EXCEPTION = [0, 0, 0, 0, 1]
 """Fit parameters output to handle exceptions"""
 PERR_EXCEPTION = [1] * 5
@@ -168,7 +171,7 @@ def fit_plot(
 ) -> str:
     """Generate the fit trace and summary table for Ramsey data."""
 
-    fit_waits = np.linspace(min(waits), max(waits), 20 * len(waits))
+    fit_waits = np.linspace(min(waits), max(waits), MAXIMUM_FIT_POINTS)
     fig.add_trace(
         go.Scatter(
             x=fit_waits,
