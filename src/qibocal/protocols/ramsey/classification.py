@@ -8,7 +8,6 @@ from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
-from ..utils import table_dict, table_html
 from .acquisition import (
     RamseyData,
     RamseyParameters,
@@ -16,7 +15,12 @@ from .acquisition import (
     execute_experiment,
     ramsey_sequence,
 )
-from .processing import fitting, process_fit, ramsey_fit, ramsey_update
+from .processing import (
+    fitting,
+    process_fit,
+    ramsey_update,
+    signal_plot,
+)
 
 __all__ = ["ramsey"]
 
@@ -38,24 +42,7 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> RamseyData:
-    """Data acquisition for Ramsey Experiment (detuned).
-
-    The protocol consists in applying the following pulse sequence
-    RX90 - wait - RX90 - MZ
-    for different waiting times `wait`.
-    The range of waiting times is defined through the attributes
-    `delay_between_pulses_*` available in `RamseyParameters`. The final range
-    will be constructed using `np.arange`.
-    It is possible to detune the drive frequency using the parameter `detuning` in
-    RamseyParameters which will increment the drive frequency accordingly.
-    Currently when `detuning==0` it will be performed a sweep over the waiting values
-    if `detuning` is not zero, all sequences with different waiting value will be
-    executed sequentially. By providing the option `unrolling=True` in RamseyParameters
-    the sequences will be unrolled when the frequency is detuned.
-    The following protocol will display on the y-axis the probability of finding the ground
-    state, therefore it is advise to execute it only after having performed the single
-    shot classification. Error bars are provided as binomial distribution error.
-    """
+    """Data acquisition for Ramsey Experiment (detuned)."""
 
     data = RamseyProbData(
         detuning=params.detuning,
@@ -129,68 +116,35 @@ def _fit(data: RamseyData) -> RamseyResults:
     )
 
 
-def _plot(data: RamseyData, target: QubitId, fit: RamseyResults = None):
+def _plot(
+    data: RamseyData, target: QubitId, fit: RamseyResults | None = None
+) -> tuple[list[go.Figure], str]:
     """Plotting function for Ramsey Experiment."""
 
-    figures = []
-    fig = go.Figure()
-    fitting_report = ""
-
-    qubit_data = data.data[target]
-    waits = data.waits
-    probs = qubit_data["prob"]
-    fig = go.Figure(
-        [
-            go.Scatter(
-                x=waits,
-                y=probs,
-                opacity=1,
-                name="Probability of State 1",
-                showlegend=True,
-                legendgroup="Probability of State 1",
-                mode="lines",
-            ),
-        ]
-    )
-
-    if fit is not None:
-        fig.add_trace(
-            go.Scatter(
-                x=waits,
-                y=ramsey_fit(waits, *fit.fitted_parameters[target]),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
-            )
-        )
-        fitting_report = table_html(
-            table_dict(
-                target,
-                [
-                    "Delta Frequency [Hz]",
-                    "Delta Frequency (with detuning) [Hz]",
-                    "Drive Frequency [Hz]",
-                    "T2* [ns]",
-                ],
-                [
-                    fit.delta_phys[target],
-                    fit.delta_fitting[target],
-                    fit.frequency[target],
-                    fit.t2[target],
-                ],
-                display_error=True,
-            )
-        )
-
-    fig.update_layout(
-        showlegend=True,
-        xaxis_title="Time [ns]",
+    return signal_plot(
+        waits=data.waits,
+        signal=data.data[target]["prob"],
+        target=target,
+        fit=fit,
         yaxis_title="Excited state probability",
     )
 
-    figures.append(fig)
-
-    return figures, fitting_report
-
 
 ramsey = Routine(_acquisition, _fit, _plot, ramsey_update)
-"""Ramsey Routine object."""
+"""Ramsey Routine object.
+
+The protocol consists in applying the following pulse sequence:
+RX90 - wait - RX90 - MZ
+for different waiting times `wait`.
+The range of waiting times is defined through the attributes
+`delay_between_pulses_*` available in `RamseyParameters`. The final range
+will be constructed using `np.arange`.
+It is possible to detune the drive frequency using the parameter `detuning` in
+RamseyParameters which will increment the drive frequency accordingly.
+Currently when `detuning==0` it will be performed a sweep over the waiting values
+if `detuning` is not zero, all sequences with different waiting value will be
+executed sequentially.
+The following protocol will display on the y-axis the probability of finding the ground
+state, therefore it is advise to execute it only after having performed the single
+shot classification.
+"""

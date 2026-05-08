@@ -1,13 +1,21 @@
 from typing import Union
 
 import numpy as np
+import plotly.graph_objects as go
 from numpy.typing import NDArray
 from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import QubitId
 from qibocal.calibration import CalibrationPlatform
-from qibocal.protocols.utils import GHZ_TO_HZ, angle_wrap, fallback_period, guess_period
+from qibocal.protocols.utils import (
+    GHZ_TO_HZ,
+    angle_wrap,
+    fallback_period,
+    guess_period,
+    table_dict,
+    table_html,
+)
 
 from .acquisition import RamseyResults
 
@@ -149,3 +157,65 @@ def process_fit(
     ]
 
     return new_frequency, t2, delta_phys_measure, delta_fitting_measure, popt
+
+
+def signal_plot(
+    waits: NDArray,
+    signal: NDArray,
+    target: QubitId,
+    fit: RamseyResults | None,
+    yaxis_title: str,
+) -> tuple[list[go.Figure], str]:
+
+    fitting_report = ""
+    fig = go.Figure(
+        [
+            go.Scatter(
+                x=waits,
+                y=signal,
+                opacity=1,
+                name=yaxis_title,
+                showlegend=True,
+                legendgroup=yaxis_title,
+                mode="markers",
+            ),
+        ]
+    )
+
+    if fit is not None:
+        fit_waits = np.linspace(min(waits), max(waits), 20 * len(waits))
+        fig.add_trace(
+            go.Scatter(
+                x=waits,
+                y=ramsey_fit(fit_waits, *fit.fitted_parameters[target]),
+                name="Fit",
+                mode="lines",
+            )
+        )
+
+        fitting_report = table_html(
+            table_dict(
+                target,
+                [
+                    "Delta Frequency [Hz]",
+                    "Delta Frequency (with detuning) [Hz]",
+                    "Drive Frequency [Hz]",
+                    "T2* [ns]",
+                ],
+                [
+                    fit.delta_phys[target],
+                    fit.delta_fitting[target],
+                    fit.frequency[target],
+                    fit.t2[target],
+                ],
+                display_error=True,
+            )
+        )
+
+    fig.update_layout(
+        showlegend=True,
+        xaxis_title="Time [ns]",
+        yaxis_title=yaxis_title,
+    )
+
+    return [fig], fitting_report

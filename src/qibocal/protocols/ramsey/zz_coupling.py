@@ -181,54 +181,55 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
     )
 
 
-def _plot(data: RamseyZZData, target: QubitId, fit: RamseyZZResults = None):
+def _plot(
+    data: RamseyZZData, target: QubitId, fit: RamseyZZResults | None = None
+) -> tuple[list[go.Figure], str]:
     """Plotting function for Ramsey Experiment."""
-    figures = []
+
     fitting_report = ""
 
-    waits = data[target, "I"].wait
-    probs_I = data.data[target, "I"].prob
-    probs_X = data.data[target, "X"].prob
-
+    waits = data.waits
     fig = go.Figure(
         [
             go.Scatter(
                 x=waits,
-                y=probs_I,
+                y=data.data[target, "I"].prob,
                 opacity=1,
                 name="I",
                 showlegend=True,
                 legendgroup="I ",
-                mode="lines",
+                mode="markers",
             ),
             go.Scatter(
                 x=waits,
-                y=probs_X,
+                y=data.data[target, "X"].prob,
                 opacity=1,
                 name="X",
                 showlegend=True,
                 legendgroup="X",
-                mode="lines",
+                mode="markers",
             ),
         ]
     )
 
     if fit is not None:
+        fit_waits = np.linspace(min(waits), max(waits), 20 * len(waits))
+
         fig.add_trace(
             go.Scatter(
                 x=waits,
-                y=ramsey_fit(waits, *fit.fitted_parameters[target, "I"]),
+                y=ramsey_fit(fit_waits, *fit.fitted_parameters[target, "I"]),
                 name="Fit I",
-                line=go.scatter.Line(dash="dot"),
+                mode="lines",
             )
         )
 
         fig.add_trace(
             go.Scatter(
                 x=waits,
-                y=ramsey_fit(waits, *fit.fitted_parameters[target, "X"]),
+                y=ramsey_fit(fit_waits, *fit.fitted_parameters[target, "X"]),
                 name="Fit X",
-                line=go.scatter.Line(dash="dot"),
+                mode="lines",
             )
         )
         fitting_report = table_html(
@@ -257,10 +258,26 @@ def _plot(data: RamseyZZData, target: QubitId, fit: RamseyZZResults = None):
         yaxis_title="Excited state probability",
     )
 
-    figures.append(fig)
-
-    return figures, fitting_report
+    return [fig], fitting_report
 
 
 ramsey_zz = Routine(_acquisition, _fit, _plot, ramsey_update)
-"""Ramsey Routine object."""
+"""Ramsey ZZ Routine object.
+
+This protocol measures the state-dependent frequency shift (ZZ interaction)
+between a selected target qubit and one spectator qubit. It
+performs two Ramsey experiments for each qubit in the target list:
+
+- "I" setup: spectator qubit remain in the ground state.
+- "X" setup: spectator qubit is excited before the Ramsey sequence.
+
+The fitted Ramsey frequencies from these two experiments are compared to
+extract the conditional ZZ shift experienced by each measured qubit. The
+difference between the two fitted frequencies is reported as the
+ZZ interaction strength. Using the measured qubit frequencies, the target
+qubit frequency, and the anharmonicities, the routine also estimates the
+effective coupling strength between each qubit and the target qubit.
+This protocol is useful for characterizing residual static coupling and
+frequency shifts induced by an excited neighboring qubit. The plot output
+shows Ramsey traces in probability for both the I and X setups.
+"""

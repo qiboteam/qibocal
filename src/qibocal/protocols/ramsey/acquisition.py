@@ -18,19 +18,24 @@ from qibolab import (
 )
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results
-from qibocal.protocols.utils import readout_frequency
-from qibocal.result import collect, magnitude
+
+
+class InputError(Exception):
+    def __init__(self, *args):
+        super().__init__(*args)
 
 
 @dataclass
 class RamseyParameters(Parameters):
     """Ramsey runcard inputs."""
 
-    delay_between_pulses_start: float
+    delay: tuple[float, float, float] | None = None
+    """Tuple of the sweeper parameters in the form: (start, stop, step)."""
+    delay_between_pulses_start: float | None = None
     """Initial delay between RX(pi/2) pulses in ns."""
-    delay_between_pulses_end: float
+    delay_between_pulses_end: float | None = None
     """Final delay between RX(pi/2) pulses in ns."""
-    delay_between_pulses_step: float
+    delay_between_pulses_step: float | None = None
     """Step delay between RX(pi/2) pulses in ns."""
     detuning: Optional[float] = None
     """Frequency detuning [Hz] (optional).
@@ -41,11 +46,18 @@ class RamseyParameters(Parameters):
         """
         Return a tuple with the delay times between pulses.
         """
-        return (
-            self.delay_between_pulses_start,
-            self.delay_between_pulses_end,
-            self.delay_between_pulses_step,
-        )
+        if self.delay is None:
+            return (
+                self.delay_between_pulses_start,
+                self.delay_between_pulses_end,
+                self.delay_between_pulses_step,
+            )
+
+        return self.delay
+
+    def __post_init__(self):
+        if any([d is None for d in self.delay_range]):
+            raise InputError("Valid delay range not inserted.")
 
 
 @dataclass
@@ -79,18 +91,12 @@ class RamseyData(Data):
     """Raw data acquired."""
 
     @property
-    def waits(self):
+    def waits(self) -> npt.NDArray:
         """
         Return a list with the waiting times without repetitions.
         """
         qubit = next(iter(self.data))
         return np.unique(self.data[qubit].wait)
-
-    def compute_qubit_signal(self, qubit: QubitId) -> npt.NDArray[np.float64]:
-        """
-        Return the signal magnitude for a given qubit.
-        """
-        return magnitude(collect(self.data[qubit].i, self.data[qubit].q))
 
 
 def ramsey_sequence(
@@ -107,12 +113,14 @@ def ramsey_sequence(
     RX90 -- wait -- RX90 -- MZ
     """
     delays = 2 * len(targets) * [Delay(duration=wait)]
-    if flux_pulse_amplitude is not None:
-        flux_pulses = len(targets) * [
-            Pulse(duration=0, amplitude=flux_pulse_amplitude, envelope=Rectangular())
-        ]
-    else:
-        flux_pulses = []
+
+    flux_pulses = (
+        len(targets)
+        * [Pulse(duration=wait, amplitude=flux_pulse_amplitude, envelope=Rectangular())]
+        if flux_pulse_amplitude is not None
+        else []
+    )
+
     sequence = PulseSequence()
     for i, qubit in enumerate(targets):
         natives = platform.natives.single_qubit[qubit]
@@ -155,10 +163,6 @@ def execute_experiment(
     """Execute Ramsey experiment on the platform."""
 
     updates = []
-    updates += [
-        {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
-        for q in targets
-    ]
     if params.detuning is not None:
         for qubit in targets:
             channel = platform.qubits[qubit].drive

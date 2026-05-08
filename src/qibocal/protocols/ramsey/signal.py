@@ -8,8 +8,7 @@ import plotly.graph_objects as go
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.protocols.utils import table_dict, table_html
-from qibocal.result import unpack
+from qibocal.result import collect, magnitude, unpack
 
 from .acquisition import (
     RamseyData,
@@ -18,7 +17,12 @@ from .acquisition import (
     execute_experiment,
     ramsey_sequence,
 )
-from .processing import fitting, process_fit, ramsey_fit, ramsey_update
+from .processing import (
+    fitting,
+    process_fit,
+    ramsey_update,
+    signal_plot,
+)
 
 __all__ = ["ramsey_signal"]
 
@@ -35,6 +39,12 @@ class RamseySignalData(RamseyData):
 
     data: dict[QubitId, npt.NDArray[RamseySignalType]] = field(default_factory=dict)
     """Raw data acquired."""
+
+    def qubit_signal(self, qubit: QubitId) -> npt.NDArray[np.float64]:
+        """
+        Return the signal magnitude for a given qubit.
+        """
+        return magnitude(collect(self.data[qubit].i, self.data[qubit].q))
 
 
 def _acquisition(
@@ -97,7 +107,7 @@ def _fit(data: RamseySignalData) -> RamseyResults:
     delta_fitting_measure: dict[QubitId, list[float]] = {}
     for qubit in qubits:
         qubit_freq = data.qubit_freqs[qubit]
-        signal = data.compute_qubit_signal(qubit)
+        signal = data.qubit_signal(qubit)
         try:
             popt, perr = fitting(waits, signal)
             (
@@ -120,70 +130,33 @@ def _fit(data: RamseySignalData) -> RamseyResults:
     )
 
 
-def _plot(data: RamseySignalData, target: QubitId, fit: Optional[RamseyResults] = None):
+def _plot(
+    data: RamseySignalData, target: QubitId, fit: Optional[RamseyResults] = None
+) -> tuple[list[go.Figure], str]:
     """Plotting function for Ramsey Experiment."""
 
-    figures = []
-    fig = go.Figure()
-    fitting_report = ""
-
-    waits = data.waits
-    signal = data.compute_qubit_signal(target)
-    fig = go.Figure(
-        [
-            go.Scatter(
-                x=waits,
-                y=signal,
-                opacity=1,
-                name="Signal",
-                showlegend=True,
-                legendgroup="Signal",
-                mode="lines",
-            ),
-        ]
-    )
-
-    if fit is not None:
-        fig.add_trace(
-            go.Scatter(
-                x=waits,
-                y=ramsey_fit(
-                    waits,
-                    *fit.fitted_parameters[target],
-                ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
-            )
-        )
-        fitting_report = table_html(
-            table_dict(
-                target,
-                [
-                    "Delta Frequency [Hz]",
-                    "Delta Frequency (with detuning) [Hz]",
-                    "Drive Frequency [Hz]",
-                    "T2* [ns]",
-                ],
-                [
-                    fit.delta_phys[target],
-                    fit.delta_fitting[target],
-                    fit.frequency[target],
-                    fit.t2[target],
-                ],
-                display_error=True,
-            )
-        )
-
-    fig.update_layout(
-        showlegend=True,
-        xaxis_title="Time [ns]",
+    return signal_plot(
+        waits=data.waits,
+        signal=data.qubit_signal(target),
+        target=target,
+        fit=fit,
         yaxis_title="Signal [a.u.]",
     )
 
-    figures.append(fig)
-
-    return figures, fitting_report
-
 
 ramsey_signal = Routine(_acquisition, _fit, _plot, ramsey_update)
-"""Ramsey Routine object."""
+"""Ramsey Routine object.
+
+The protocol consists in applying the following pulse sequence:
+RX90 - wait - RX90 - MZ
+for different waiting times `wait`.
+The range of waiting times is defined through the attributes
+`delay_between_pulses_*` available in `RamseyParameters`. The final range
+will be constructed using `np.arange`.
+It is possible to detune the drive frequency using the parameter `detuning` in
+RamseyParameters which will increment the drive frequency accordingly.
+Currently when `detuning==0` it will be performed a sweep over the waiting values
+if `detuning` is not zero, all sequences with different waiting value will be
+executed sequentially.
+The following protocol will display on the y-axis the signal amplitude.
+"""
