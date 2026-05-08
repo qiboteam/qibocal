@@ -17,7 +17,7 @@ from qibocal import update
 from qibocal.auto.operation import QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 
-from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
+from ..utils import table_dict, table_html
 from .drag import (
     DragTuningData,
     DragTuningParameters,
@@ -186,7 +186,6 @@ def _fit(data: DragTuningSimpleData) -> DragTuningSimpleResults:
                     / (qubit_data["beta"][-1] - qubit_data["beta"][0]),
                     np.mean(qubit_data["prob"]),
                 ],
-                sigma=qubit_data["error"],
             )
             fitted_parameters[qubit, setup] = popt.tolist()
         betas_optimal[qubit] = -(
@@ -201,6 +200,8 @@ def _plot(data: DragTuningSimpleData, target: QubitId, fit: DragTuningSimpleResu
     figures = []
     fitting_report = ""
 
+    setup_colors = {SEQUENCES[0]: "red", SEQUENCES[1]: "blue"}
+
     fig = go.Figure()
     for setup in SEQUENCES:
         qubit_data = data[target, setup]
@@ -208,33 +209,21 @@ def _plot(data: DragTuningSimpleData, target: QubitId, fit: DragTuningSimpleResu
             go.Scatter(
                 x=qubit_data["beta"],
                 y=qubit_data["prob"],
-                opacity=1,
-                mode="lines",
-                name=setup,
-                showlegend=True,
-                legendgroup=setup,
-            )
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=np.concatenate((qubit_data["beta"], qubit_data["beta"][::-1])),
-                y=np.concatenate(
-                    (
-                        qubit_data["prob"] + qubit_data["error"],
-                        (qubit_data["prob"] - qubit_data["error"])[::-1],
-                    )
+                error_y=dict(
+                    type="data",
+                    array=qubit_data["error"],
+                    visible=True,
+                    color=setup_colors[setup],
                 ),
-                fill="toself",
-                fillcolor=COLORBAND,
-                line=dict(color=COLORBAND_LINE),
-                name=setup,
-                showlegend=False,
-                legendgroup=setup,
+                mode="markers",
+                name=f"{setup} data",
+                showlegend=True,
+                legendgroup=f"{setup} data",
+                marker=dict(color=setup_colors[setup]),
             )
         )
 
-    # # add fitting traces
+    # add fitting traces
     if fit is not None:
         for setup in SEQUENCES:
             qubit_data = data[target, setup]
@@ -242,16 +231,18 @@ def _plot(data: DragTuningSimpleData, target: QubitId, fit: DragTuningSimpleResu
             beta_range = np.linspace(
                 min(betas),
                 max(betas),
-                20,
+                2,
             )
-
             fig.add_trace(
                 go.Scatter(
                     x=beta_range,
                     y=fit.fitted_parameters[target, setup][0] * beta_range
                     + fit.fitted_parameters[target, setup][1],
-                    name=f"Fit {setup}",
-                    line=go.scatter.Line(dash="dot"),
+                    name=f"{setup} fit",
+                    mode="lines",
+                    line=dict(color=setup_colors[setup], dash="dot"),
+                    showlegend=True,
+                    legendgroup=f"{setup} fit",
                 ),
             )
         fitting_report = table_html(
