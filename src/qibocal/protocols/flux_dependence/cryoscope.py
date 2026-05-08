@@ -24,7 +24,7 @@ from scipy.signal import lfilter
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.config import log
-from qibocal.protocols.ramsey.utils import fitting
+from qibocal.protocols.ramsey.processing import fitting
 from qibocal.protocols.utils import table_dict, table_html
 
 # TODO: remove hard-coded QM parameters

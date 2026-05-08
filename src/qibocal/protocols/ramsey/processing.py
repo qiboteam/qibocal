@@ -1,9 +1,30 @@
+"""RAMSEY protocol processing utilities.
+
+Contains fitting routines, result transformations, and figure generation
+helpers for Ramsey experiments.
+"""
+
 import numpy as np
-from qibolab import Delay, Platform, Pulse, PulseSequence, Rectangular
+import plotly.graph_objects as go
+from numpy.typing import NDArray
 from scipy.optimize import curve_fit
 
+from qibocal import update
 from qibocal.auto.operation import QubitId
-from qibocal.protocols.utils import GHZ_TO_HZ, angle_wrap, fallback_period, guess_period
+from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.utils import (
+    GHZ_TO_HZ,
+    angle_wrap,
+    fallback_period,
+    guess_period,
+    table_dict,
+    table_html,
+)
+
+from .acquisition import RamseyResults
+
+MAXIMUM_FIT_POINTS = 1_000
+"""maximum number of points to use when plotting fit results."""
 
 POPT_EXCEPTION = [0, 0, 0, 0, 1]
 """Fit parameters output to handle exceptions"""
@@ -29,67 +50,31 @@ actual amplitude. We rely anyhow on the fit to determine the precise value.
 """
 
 
-def ramsey_sequence(
-    platform: Platform,
-    targets: list[QubitId],
-    wait: int = 0,
-    target_qubit: QubitId | None = None,
-    flux_pulse_amplitude: float | None = None,
-):
-    """Pulse sequence used in Ramsey (detuned) experiments.
-
-    The pulse sequence is the following:
-
-    RX90 -- wait -- RX90 -- MZ
-    """
-    delays = 2 * len(targets) * [Delay(duration=wait)]
-    if flux_pulse_amplitude is not None:
-        flux_pulses = len(targets) * [
-            Pulse(duration=0, amplitude=flux_pulse_amplitude, envelope=Rectangular())
-        ]
+def ramsey_update(
+    results: RamseyResults, platform: CalibrationPlatform, target: QubitId
+) -> None:
+    """Update the platform calibration with the results of the Ramsey experiment."""
+    if results.detuning is not None:
+        update.drive_frequency(results.frequency[target][0], platform, target)
+        platform.calibration.single_qubits[
+            target
+        ].qubit.frequency_01 = results.frequency[target][0]
     else:
-        flux_pulses = []
-    sequence = PulseSequence()
-    for i, qubit in enumerate(targets):
-        natives = platform.natives.single_qubit[qubit]
-        qd_channel = platform.qubits[qubit].drive
-        rx90_sequence = natives.R(theta=np.pi / 2)
-        ro_channel, ro_pulse = natives.MZ()[0]
-
-        sequence += rx90_sequence
-        sequence.append((qd_channel, delays[2 * i]))
-        sequence += rx90_sequence
-        sequence.extend(
-            [
-                (ro_channel, Delay(duration=2 * rx90_sequence.duration)),
-                (ro_channel, delays[2 * i + 1]),
-                (ro_channel, ro_pulse),
-            ]
-        )
-        if flux_pulse_amplitude is not None:
-            flux_channel = platform.qubits[qubit].flux
-            sequence.append((flux_channel, Delay(duration=rx90_sequence.duration)))
-            sequence.append((flux_channel, flux_pulses[i]))
-        if target_qubit is not None:
-            assert target_qubit not in targets, (
-                f"Cannot run Ramsey experiment on qubit {target_qubit} if it is already in Ramsey sequence."
-            )
-            natives = platform.natives.single_qubit[target_qubit]
-            sequence += natives.RX()
-
-    return sequence, delays + flux_pulses
+        update.t2(results.t2[target], platform, target)
 
 
-def ramsey_fit(x, offset, amplitude, delta, phase, decay):
+def ramsey_fit(x, offset, amplitude, delta, phase, decay) -> NDArray | float:
     """Dumped sinusoidal fit."""
     return offset + amplitude * np.sin(x * delta + phase) * np.exp(-x * decay)
 
 
-def fitting(x: list, y: list, errors: list = None) -> list:
+def fitting(x: list, y: list) -> tuple[list[float], list[float]]:
     """
     Given the inputs list `x` and outputs one `y`, this function fits the
     `ramsey_fit` function and returns a list with the fit parameters.
     """
+
+    # performing a min-max scaling on x and y arrays
     y_max = np.max(y)
     y_min = np.min(y)
     x_max = np.max(x)
@@ -98,7 +83,6 @@ def fitting(x: list, y: list, errors: list = None) -> list:
     delta_x = x_max - x_min
     y = (y - y_min) / delta_y
     x = (x - x_min) / delta_x
-    err = errors / delta_y if errors is not None else None
 
     period = fallback_period(guess_period(x, y))
     omega = 2 * np.pi / period
@@ -125,8 +109,9 @@ def fitting(x: list, y: list, errors: list = None) -> list:
             [0, 0, 0, -np.inf, 0],
             [1, 1, np.inf, np.inf, np.inf],
         ),
-        sigma=err,
     )
+
+    # inverting the scaling
     popt = [
         delta_y * popt[0] + y_min,
         delta_y * popt[1] * np.exp(x_min * popt[4] / delta_x),
@@ -136,6 +121,7 @@ def fitting(x: list, y: list, errors: list = None) -> list:
     ]
 
     perr = np.sqrt(np.diag(perr))
+    # error propagation in the original units
     perr = [
         delta_y * perr[0],
         delta_y
@@ -150,7 +136,7 @@ def fitting(x: list, y: list, errors: list = None) -> list:
 
 def process_fit(
     popt: list[float], perr: list[float], qubit_frequency: float, detuning: float
-):
+) -> tuple[list[float], list[float], list[float], list[float], list[float]]:
     """Processing Ramsey fitting results."""
 
     delta_fitting = popt[2] / (2 * np.pi)
@@ -178,3 +164,79 @@ def process_fit(
     ]
 
     return new_frequency, t2, delta_phys_measure, delta_fitting_measure, popt
+
+
+def fit_plot(
+    target: QubitId, fit: RamseyResults, waits: NDArray, fig: go.Figure
+) -> str:
+    """Generate the fit trace and summary table for Ramsey data."""
+
+    fit_waits = np.linspace(min(waits), max(waits), MAXIMUM_FIT_POINTS)
+    fig.add_trace(
+        go.Scatter(
+            x=fit_waits,
+            y=ramsey_fit(fit_waits, *fit.fitted_parameters[target]),
+            name="Fit",
+            mode="lines",
+        )
+    )
+
+    return table_html(
+        table_dict(
+            target,
+            [
+                "Delta Frequency [Hz]",
+                "Delta Frequency (with detuning) [Hz]",
+                "Drive Frequency [Hz]",
+                "T2* [ns]",
+            ],
+            [
+                fit.delta_phys[target],
+                fit.delta_fitting[target],
+                fit.frequency[target],
+                fit.t2[target],
+            ],
+            display_error=True,
+        )
+    )
+
+
+def signal_plot(
+    waits: NDArray,
+    signal: NDArray,
+    target: QubitId,
+    fit: RamseyResults | None,
+    yaxis_title: str,
+) -> tuple[list[go.Figure], str]:
+    """Create a signal scatter plot and optional fit report."""
+
+    fitting_report = ""
+    fig = go.Figure(
+        [
+            go.Scatter(
+                x=waits,
+                y=signal,
+                opacity=1,
+                name=yaxis_title,
+                showlegend=True,
+                legendgroup=yaxis_title,
+                mode="markers",
+            ),
+        ]
+    )
+
+    if fit is not None:
+        fitting_report = fit_plot(
+            target=target,
+            fit=fit,
+            waits=waits,
+            fig=fig,
+        )
+
+    fig.update_layout(
+        showlegend=True,
+        xaxis_title="Time [ns]",
+        yaxis_title=yaxis_title,
+    )
+
+    return [fig], fitting_report

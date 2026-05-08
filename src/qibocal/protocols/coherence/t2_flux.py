@@ -6,9 +6,10 @@ from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 
 from qibocal.auto.operation import QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
+from qibocal.config import log
+from qibocal.protocols.ramsey.acquisition import ramsey_sequence
+from qibocal.protocols.ramsey.processing import fitting
 
-from ...config import log
-from ..ramsey.utils import fitting, ramsey_sequence
 from ..utils import COLORBAND, COLORBAND_LINE, HZ_TO_GHZ
 from .t1_flux import T1FluxData, T1FluxParameters
 
@@ -95,10 +96,9 @@ def _fit(data: T2FluxData) -> T2FluxResults:
     t2s = {qubit: [] for qubit in data.qubits}
     for qubit in data.qubits:
         prob = data.probability(qubit)
-        error = data.error(qubit)
         for i in range(len(data.detuning[qubit])):
             try:
-                popt, perr = fitting(np.array(data.wait_range), prob[i], error[i])
+                popt, perr = fitting(np.array(data.wait_range), prob[i])
                 t2 = 1 / popt[4]
                 t2s[qubit].append([t2, perr[4] * (t2**2)])
             except Exception as e:
