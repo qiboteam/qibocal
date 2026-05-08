@@ -4,6 +4,13 @@ import math
 import numpy as np
 from conftest import TEST_FILE_DIR
 
+from qibocal.protocols.drag.drag import DragTuningData, DragTuningResults
+from qibocal.protocols.drag.drag import _fit as drag_fit
+from qibocal.protocols.drag.drag_simple import (
+    DragTuningSimpleData,
+    DragTuningSimpleResults,
+)
+from qibocal.protocols.drag.drag_simple import _fit as drag_simple_fit
 from qibocal.protocols.rabi.utils import (
     fit_amplitude_function as rabi_fit_amplitude_function,
 )

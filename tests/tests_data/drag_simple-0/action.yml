@@ -1,0 +1,10 @@
+id: drag_simple
+operation: drag_simple
+parameters:
+  beta_end: 3.0
+  beta_start: -3.0
+  beta_step: 0.1
+  nshots: 1000
+targets:
+- 0
+update: true

@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 import plotly.graph_objects as go
@@ -43,8 +43,6 @@ class DragTuningSimpleResults(Results):
     """Optimal beta paramter for each qubit."""
     fitted_parameters: dict[tuple[QubitId, str], list[float]]
     """Raw fitting output: mapping qubit to setup to fit parameters [a, b] for ax+b."""
-    chi2: dict[QubitId, tuple[float, float | None]] = field(default_factory=dict)
-    """Chi2 calculation."""
 
     def __contains__(self, key):
         return key in self.betas
@@ -193,7 +191,6 @@ def _fit(data: DragTuningSimpleData) -> DragTuningSimpleResults:
         betas_optimal[qubit] = -(
             fitted_parameters[qubit, "YpX9"][1] - fitted_parameters[qubit, "XpY9"][1]
         ) / (fitted_parameters[qubit, "YpX9"][0] - fitted_parameters[qubit, "XpY9"][0])
-
     return DragTuningSimpleResults(betas_optimal, fitted_parameters)
 
 
