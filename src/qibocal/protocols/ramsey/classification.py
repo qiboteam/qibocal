@@ -42,7 +42,7 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> RamseyData:
-    """Data acquisition for Ramsey Experiment (detuned)."""
+    """Data acquisition for Ramsey Experiment."""
 
     data = RamseyProbData(
         detuning=params.detuning,
@@ -117,7 +117,7 @@ def _fit(data: RamseyData) -> RamseyResults:
 
 
 def _plot(
-    data: RamseyData, target: QubitId, fit: RamseyResults | None = None
+    data: RamseyProbData, target: QubitId, fit: RamseyResults | None = None
 ) -> tuple[list[go.Figure], str]:
     """Plotting function for Ramsey Experiment."""
 

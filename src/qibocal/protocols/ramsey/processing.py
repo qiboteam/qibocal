@@ -1,4 +1,8 @@
-from typing import Union
+"""RAMSEY protocol processing utilities.
+
+Contains fitting routines, result transformations, and figure generation
+helpers for Ramsey experiments.
+"""
 
 import numpy as np
 import plotly.graph_objects as go
@@ -56,7 +60,7 @@ def ramsey_update(
         update.t2(results.t2[target], platform, target)
 
 
-def ramsey_fit(x, offset, amplitude, delta, phase, decay) -> Union[NDArray, float]:
+def ramsey_fit(x, offset, amplitude, delta, phase, decay) -> NDArray | float:
     """Dumped sinusoidal fit."""
     return offset + amplitude * np.sin(x * delta + phase) * np.exp(-x * decay)
 
@@ -159,6 +163,41 @@ def process_fit(
     return new_frequency, t2, delta_phys_measure, delta_fitting_measure, popt
 
 
+def fit_plot(
+    target: QubitId, fit: RamseyResults, waits: NDArray, fig: go.Figure
+) -> str:
+    """Generate the fit trace and summary table for Ramsey data."""
+
+    fit_waits = np.linspace(min(waits), max(waits), 20 * len(waits))
+    fig.add_trace(
+        go.Scatter(
+            x=waits,
+            y=ramsey_fit(fit_waits, *fit.fitted_parameters[target]),
+            name="Fit",
+            mode="lines",
+        )
+    )
+
+    return table_html(
+        table_dict(
+            target,
+            [
+                "Delta Frequency [Hz]",
+                "Delta Frequency (with detuning) [Hz]",
+                "Drive Frequency [Hz]",
+                "T2* [ns]",
+            ],
+            [
+                fit.delta_phys[target],
+                fit.delta_fitting[target],
+                fit.frequency[target],
+                fit.t2[target],
+            ],
+            display_error=True,
+        )
+    )
+
+
 def signal_plot(
     waits: NDArray,
     signal: NDArray,
@@ -166,6 +205,7 @@ def signal_plot(
     fit: RamseyResults | None,
     yaxis_title: str,
 ) -> tuple[list[go.Figure], str]:
+    """Create a signal scatter plot and optional fit report."""
 
     fitting_report = ""
     fig = go.Figure(
@@ -183,33 +223,10 @@ def signal_plot(
     )
 
     if fit is not None:
-        fit_waits = np.linspace(min(waits), max(waits), 20 * len(waits))
-        fig.add_trace(
-            go.Scatter(
-                x=waits,
-                y=ramsey_fit(fit_waits, *fit.fitted_parameters[target]),
-                name="Fit",
-                mode="lines",
-            )
-        )
-
-        fitting_report = table_html(
-            table_dict(
-                target,
-                [
-                    "Delta Frequency [Hz]",
-                    "Delta Frequency (with detuning) [Hz]",
-                    "Drive Frequency [Hz]",
-                    "T2* [ns]",
-                ],
-                [
-                    fit.delta_phys[target],
-                    fit.delta_fitting[target],
-                    fit.frequency[target],
-                    fit.t2[target],
-                ],
-                display_error=True,
-            )
+        fitting_report = fit_plot(
+            target=target,
+            fit=fit,
+            waits=waits,
         )
 
     fig.update_layout(

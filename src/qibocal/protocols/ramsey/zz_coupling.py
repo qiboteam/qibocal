@@ -181,6 +181,55 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
     )
 
 
+def zz_fit_plot(
+    target: QubitId,
+    spect_qubit: QubitId,
+    fit: RamseyZZResults,
+    waits: npt.NDArray,
+    fig: go.Figure,
+) -> str:
+    fit_waits = np.linspace(min(waits), max(waits), 20 * len(waits))
+
+    fig.add_trace(
+        go.Scatter(
+            x=waits,
+            y=ramsey_fit(fit_waits, *fit.fitted_parameters[target, "I"]),
+            name="Fit I",
+            mode="lines",
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=waits,
+            y=ramsey_fit(fit_waits, *fit.fitted_parameters[target, "X"]),
+            name="Fit X",
+            mode="lines",
+        )
+    )
+    fitting_report = table_html(
+        table_dict(
+            target,
+            [
+                f"ZZ  with {spect_qubit} [kHz]",
+                f"Coupling with {spect_qubit} [MHz]",
+            ],
+            [
+                np.round(
+                    fit.zz[target] * 1e-3,
+                    0,
+                ),
+                np.round(
+                    fit.coupling[target] * 1e-6,
+                    2,
+                ),
+            ],
+        )
+    )
+
+    return fitting_report
+
+
 def _plot(
     data: RamseyZZData, target: QubitId, fit: RamseyZZResults | None = None
 ) -> tuple[list[go.Figure], str]:
@@ -213,43 +262,12 @@ def _plot(
     )
 
     if fit is not None:
-        fit_waits = np.linspace(min(waits), max(waits), 20 * len(waits))
-
-        fig.add_trace(
-            go.Scatter(
-                x=waits,
-                y=ramsey_fit(fit_waits, *fit.fitted_parameters[target, "I"]),
-                name="Fit I",
-                mode="lines",
-            )
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=waits,
-                y=ramsey_fit(fit_waits, *fit.fitted_parameters[target, "X"]),
-                name="Fit X",
-                mode="lines",
-            )
-        )
-        fitting_report = table_html(
-            table_dict(
-                target,
-                [
-                    f"ZZ  with {data.target_qubit} [kHz]",
-                    f"Coupling with {data.target_qubit} [MHz]",
-                ],
-                [
-                    np.round(
-                        fit.zz[target] * 1e-3,
-                        0,
-                    ),
-                    np.round(
-                        fit.coupling[target] * 1e-6,
-                        2,
-                    ),
-                ],
-            )
+        zz_fit_plot(
+            target=target,
+            spect_qubit=data.target_qubit,
+            fit=fit,
+            waits=waits,
+            fig=fig,
         )
 
     fig.update_layout(
