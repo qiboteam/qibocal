@@ -51,12 +51,6 @@ with Executor.open(
             f"Rabi fit has chi2 {rabi_output_2.results.chi2[target][0]} greater than 2. Stopping."
         )
 
-    drag_output = e.drag_tuning(beta_start=-4, beta_end=4, beta_step=0.5)
-    if drag_output.results.chi2[target][0] > 2:
-        raise RuntimeError(
-            f"Drag fit has chi2 {drag_output.results.chi2[target][0]} greater than 2. Stopping."
-        )
-
     rabi_output_3 = e.rabi_amplitude(
         min_amp=0,
         max_amp=0.2,
