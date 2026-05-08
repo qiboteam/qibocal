@@ -21,8 +21,6 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
 from ..utils import (
-    COLORBAND,
-    COLORBAND_LINE,
     chi2_reduced,
     fallback_period,
     guess_period,
@@ -143,20 +141,21 @@ def _acquisition(
         acquisition_type=AcquisitionType.DISCRIMINATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
+
     for beta, ro_pulses in zip(beta_param_range, all_ro_pulses):
         for qubit in targets:
-            ground_state_prob = 1 - results[ro_pulses[qubit].id]
+            excited_state_prob = results[ro_pulses[qubit].id]
             # store the results
             data.register_qubit(
                 DragTuningType,
                 (qubit),
                 dict(
-                    prob=np.array([ground_state_prob]),
+                    prob=np.array([excited_state_prob]),
                     error=np.array(
                         [
                             np.sqrt(
-                                ground_state_prob
-                                * (1 - ground_state_prob)
+                                excited_state_prob
+                                * (1 - excited_state_prob)
                                 / params.nshots
                             )
                         ]
@@ -207,7 +206,6 @@ def _fit(data: DragTuningData) -> DragTuningResults:
                     [0, 0, 0, -np.pi],
                     [1, 1, np.inf, np.pi],
                 ),
-                sigma=qubit_data["error"],
             )
             translated_popt = [
                 popt[0] * (prob_max - prob_min) + prob_min,
@@ -269,25 +267,15 @@ def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
             go.Scatter(
                 x=qubit_data["beta"],
                 y=qubit_data["prob"],
-                opacity=1,
-                mode="lines",
-                name="Probability",
+                error_y=dict(
+                    type="data",
+                    array=qubit_data["error"],
+                    visible=True,
+                ),
+                mode="markers",
+                name="Data",
                 showlegend=True,
                 legendgroup="Probability",
-            ),
-            go.Scatter(
-                x=np.concatenate((betas, betas[::-1])),
-                y=np.concatenate(
-                    (
-                        qubit_data["prob"] + qubit_data["error"],
-                        (qubit_data["prob"] - qubit_data["error"])[::-1],
-                    )
-                ),
-                fill="toself",
-                fillcolor=COLORBAND,
-                line=dict(color=COLORBAND_LINE),
-                showlegend=True,
-                name="Errors",
             ),
         ]
     )
@@ -297,7 +285,7 @@ def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
         beta_range = np.linspace(
             min(betas),
             max(betas),
-            20,
+            100,
         )
 
         fig.add_trace(
@@ -305,21 +293,20 @@ def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
                 x=beta_range,
                 y=drag_fit(beta_range, *fit.fitted_parameters[target]),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
             ),
         )
         fitting_report = table_html(
             table_dict(
                 target,
-                ["Beta", "Chi2 reduced"],
-                [np.round(fit.betas[target], 4), fit.chi2[target]],
+                ["Beta"],
+                [np.round(fit.betas[target], 4)],
             )
         )
 
     fig.update_layout(
         showlegend=True,
         xaxis_title="Beta parameter",
-        yaxis_title="Ground State Probability",
+        yaxis_title="Excited state probability",
     )
 
     figures.append(fig)

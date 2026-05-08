@@ -240,7 +240,7 @@ def _plot(data: DragTuningSimpleData, target: QubitId, fit: DragTuningSimpleResu
                     + fit.fitted_parameters[target, setup][1],
                     name=f"{setup} fit",
                     mode="lines",
-                    line=dict(color=setup_colors[setup], dash="dot"),
+                    line=dict(color=setup_colors[setup]),
                     showlegend=True,
                     legendgroup=f"{setup} fit",
                 ),
