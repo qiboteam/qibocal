@@ -236,8 +236,7 @@ def _fit(data: DragTuningData) -> DragTuningResults:
                 betas_optimal[qubit] = min(candidate_betas, key=abs)
             else:
                 # If no analytical maximum lies in the beta interval, maximum is
-                # fixed at one of the interval boundaries. Bounds during the fit
-                # mean
+                # fixed at one of the interval boundaries.
                 left_value = drag_fit(beta_min, *translated_popt)
                 right_value = drag_fit(beta_max, *translated_popt)
                 betas_optimal[qubit] = (
