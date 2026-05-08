@@ -254,7 +254,7 @@ def _fit(data: DragTuningData) -> DragTuningResults:
             )
         except Exception as e:
             log.warning(f"drag_tuning_fit failed for qubit {qubit} due to {e}.")
-    return DragTuningResults(betas_optimal, fitted_parameters, chi2=chi2)
+    return DragTuningResults(betas_optimal, fitted_parameters, chi2=chi2[0])
 
 
 def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
@@ -313,8 +313,7 @@ def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
             table_dict(
                 target,
                 ["Beta", "Chi2 reduced"],
-                [(np.round(fit.betas[target], 4), "not determined"), fit.chi2[target]],
-                display_error=True,
+                [np.round(fit.betas[target], 4), fit.chi2[target]],
             )
         )
 

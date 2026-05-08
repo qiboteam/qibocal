@@ -186,6 +186,7 @@ def _fit(data: DragTuningSimpleData) -> DragTuningSimpleResults:
                     / (qubit_data["beta"][-1] - qubit_data["beta"][0]),
                     np.mean(qubit_data["prob"]),
                 ],
+                sigma=qubit_data["error"],
             )
             fitted_parameters[qubit, setup] = popt.tolist()
         betas_optimal[qubit] = -(
@@ -256,7 +257,7 @@ def _plot(data: DragTuningSimpleData, target: QubitId, fit: DragTuningSimpleResu
         fitting_report = table_html(
             table_dict(
                 target,
-                ["Best DRAG parameter"],
+                ["Beta"],
                 [np.round(fit.betas[target], 4)],
             )
         )
