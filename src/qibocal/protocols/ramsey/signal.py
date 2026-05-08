@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -131,7 +130,7 @@ def _fit(data: RamseySignalData) -> RamseyResults:
 
 
 def _plot(
-    data: RamseySignalData, target: QubitId, fit: Optional[RamseyResults] = None
+    data: RamseySignalData, target: QubitId, fit: RamseyResults | None = None
 ) -> tuple[list[go.Figure], str]:
     """Plotting function for Ramsey Experiment."""
 

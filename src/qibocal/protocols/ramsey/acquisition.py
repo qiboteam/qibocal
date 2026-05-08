@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -37,7 +36,7 @@ class RamseyParameters(Parameters):
     """Final delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_step: float | None = None
     """Step delay between RX(pi/2) pulses in ns."""
-    detuning: Optional[float] = None
+    detuning: float | None = None
     """Frequency detuning [Hz] (optional).
         If 0 standard Ramsey experiment is performed."""
 
@@ -64,7 +63,7 @@ class RamseyParameters(Parameters):
 class RamseyResults(Results):
     """Ramsey outputs."""
 
-    detuning: Optional[float] = None
+    detuning: float | None = None
     """Qubit frequency detuning."""
     frequency: dict[QubitId, list[float]] = field(default_factory=dict)
     """Drive frequency [GHz] for each qubit."""
@@ -83,7 +82,7 @@ class RamseyResults(Results):
 class RamseyData(Data):
     """Ramsey acquisition outputs."""
 
-    detuning: Optional[float] = None
+    detuning: float | None = None
     """Frequency detuning [Hz]."""
     qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
     """Qubit freqs for each qubit."""
@@ -103,8 +102,8 @@ def ramsey_sequence(
     platform: Platform,
     targets: list[QubitId],
     wait: int = 0,
-    target_qubit: Optional[QubitId] = None,
-    flux_pulse_amplitude: Optional[float] = None,
+    target_qubit: QubitId | None = None,
+    flux_pulse_amplitude: float | None = None,
 ) -> tuple[PulseSequence, list[PulseLike]]:
     """Pulse sequence used in Ramsey (detuned) experiments.
 

@@ -227,6 +227,7 @@ def signal_plot(
             target=target,
             fit=fit,
             waits=waits,
+            fig=fig,
         )
 
     fig.update_layout(
