@@ -13,6 +13,7 @@ from qibolab import (
     AveragingMode,
     ParallelSweepers,
     Parameter,
+    PulseSequence,
     Sweeper,
     VirtualZ,
 )
@@ -301,7 +302,7 @@ def _update(
 ):
     target = target[::-1] if target not in results.cr_amplitudes else target
 
-    new_cr_seq, _, _, _ = cross_res_sequence(
+    cr_seq, _, _, _ = cross_res_sequence(
         platform=platform,
         control=target[0],
         target=target[1],
@@ -313,14 +314,20 @@ def _update(
         echo=results.echo,
     )
 
-    new_cr_seq.insert(
-        0,
-        (
-            platform.qubits[target[1]].drive,
-            platform.natives.single_qubit[target[1]].R(theta=np.pi / 2, phi=0)[0][1],
-        ),
+    target_single_qubit_operation = (
+        platform.qubits[target[1]].drive,
+        platform.natives.single_qubit[target[1]].R(theta=np.pi / 2, phi=0)[0][1],
     )
-    new_cr_seq.insert(0, (platform.qubits[target[0]].drive, VirtualZ(phase=np.pi / 2)))
+
+    control_single_qubit_operation = (
+        platform.qubits[target[0]].drive,
+        VirtualZ(phase=np.pi / 2),
+    )
+
+    new_cr_seq = (
+        PulseSequence([control_single_qubit_operation, target_single_qubit_operation])
+        | cr_seq
+    )
 
     getattr(update, f"{results.native.lower()}_sequence")(new_cr_seq, platform, target)
 
