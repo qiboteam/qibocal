@@ -171,7 +171,7 @@ def fit_plot(
     fit_waits = np.linspace(min(waits), max(waits), 20 * len(waits))
     fig.add_trace(
         go.Scatter(
-            x=waits,
+            x=fit_waits,
             y=ramsey_fit(fit_waits, *fit.fitted_parameters[target]),
             name="Fit",
             mode="lines",

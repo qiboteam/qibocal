@@ -192,7 +192,7 @@ def zz_fit_plot(
 
     fig.add_trace(
         go.Scatter(
-            x=waits,
+            x=fit_waits,
             y=ramsey_fit(fit_waits, *fit.fitted_parameters[target, "I"]),
             name="Fit I",
             mode="lines",
@@ -201,7 +201,7 @@ def zz_fit_plot(
 
     fig.add_trace(
         go.Scatter(
-            x=waits,
+            x=fit_waits,
             y=ramsey_fit(fit_waits, *fit.fitted_parameters[target, "X"]),
             name="Fit X",
             mode="lines",
@@ -262,7 +262,7 @@ def _plot(
     )
 
     if fit is not None:
-        zz_fit_plot(
+        fitting_report = zz_fit_plot(
             target=target,
             spect_qubit=data.target_qubit,
             fit=fit,
