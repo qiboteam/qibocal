@@ -136,8 +136,8 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
     t2_measure: dict[QubitId, list[float]] = {}
     delta_phys_measure: dict[QubitId, list[float]] = {}
     delta_fitting_measure: dict[QubitId, list[float]] = {}
-    zz: dict[QubitId, list[float]] = {}
-    coupling: dict[QubitId, list[float]] = {}
+    zz: dict[QubitId, float] = {}
+    coupling: dict[QubitId, float] = {}
     for qubit in data.qubits:
         for setup in ["I", "X"]:
             qubit_data = data[qubit, setup]
