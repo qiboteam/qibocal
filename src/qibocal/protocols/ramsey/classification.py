@@ -41,7 +41,7 @@ def _acquisition(
     params: RamseyParameters,
     platform: CalibrationPlatform,
     targets: list[QubitId],
-) -> RamseyData:
+) -> RamseyProbData:
     """Data acquisition for Ramsey Experiment."""
 
     data = RamseyProbData(
