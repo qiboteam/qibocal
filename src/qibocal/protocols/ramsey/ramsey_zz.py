@@ -31,9 +31,10 @@ from .utils import fitting, process_fit, ramsey_fit, single_qubit_ramsey_sequenc
 __all__ = ["ramsey_zz"]
 
 EPS = 1  # Hz
+"""we add 1Hz when computing Delta frequency between the two qubit frequencies in order to avoid numerical error."""
 
 
-class AnharmError(Exception):
+class AnharmonicityError(Exception):
     def __init__(self, *args):
         super().__init__(*args)
 
@@ -223,7 +224,7 @@ def _acquisition(
             for q in qubits_set
         ]
     ):
-        raise AnharmError("One or more e-f transitions are not calibrated.")
+        raise AnharmonicityError("One or more e-f transitions are not calibrated.")
 
     data = RamseyZZData(
         detuning=params.detuning,
