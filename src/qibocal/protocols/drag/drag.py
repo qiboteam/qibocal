@@ -38,18 +38,52 @@ __all__ = [
 
 
 # TODO: add errors in fitting
+# TODO: for ranges of floats we should probably support only linspace, meaning nsteps
+# instead of stepsize. The reason being that the endpoint inclusion becomes ambiguous
+# with floats
 @dataclass
 class DragTuningParameters(Parameters):
     """DragTuning runcard inputs."""
 
-    beta_start: float
+    beta: tuple[float, float, float] | None = None
+    """Tuple of the beta parameters in the form: (start, stop, step)."""
+    beta_start: float | None = None
     """DRAG pulse beta start sweep parameter."""
-    beta_end: float
+    beta_end: float | None = None
     """DRAG pulse beta end sweep parameter."""
-    beta_step: float
+    beta_step: float | None = None
     """DRAG pulse beta sweep step parameter."""
     nflips: int = 1
     """Repetitions of (Xpi - Xmpi)."""
+
+    @property
+    def beta_range(self) -> tuple[float, float, float]:
+        """
+        Return a tuple with the beta sweep (start, end, step).
+        """
+        has_beta = self.beta is not None
+        beta_fields = [self.beta_start, self.beta_end, self.beta_step]
+        has_any_beta_field = any(x is not None for x in beta_fields)
+        has_all_beta_fields = all(x is not None for x in beta_fields)
+
+        if has_any_beta_field and not has_all_beta_fields:
+            raise ValueError(
+                "If any of `beta_start`, `beta_end`, `beta_step` is set, all must be "
+                "set."
+            )
+        if has_beta and has_all_beta_fields:
+            raise ValueError(
+                "Define either `beta` tuple or all of `beta_start`, `beta_end`, "
+                "`beta_step`, but not both."
+            )
+        if has_beta:
+            return self.beta
+        if has_all_beta_fields:
+            return (self.beta_start, self.beta_end, self.beta_step)
+        raise ValueError(
+            "Must define either `beta` tuple or all of `beta_start`, `beta_end`, "
+            "`beta_step`."
+        )
 
 
 @dataclass
@@ -89,9 +123,7 @@ def _acquisition(
     """
 
     data = DragTuningData()
-    beta_param_range = np.arange(
-        params.beta_start, params.beta_end, params.beta_step
-    ).tolist()
+    beta_param_range = np.arange(*params.beta_range)
 
     sequences, all_ro_pulses = [], []
     for beta_param in beta_param_range:

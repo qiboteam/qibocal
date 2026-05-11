@@ -4,13 +4,6 @@ import math
 import numpy as np
 from conftest import TEST_FILE_DIR
 
-from qibocal.protocols.drag.drag import DragTuningData, DragTuningResults
-from qibocal.protocols.drag.drag import _fit as drag_fit
-from qibocal.protocols.drag.drag_simple import (
-    DragTuningSimpleData,
-    DragTuningSimpleResults,
-)
-from qibocal.protocols.drag.drag_simple import _fit as drag_simple_fit
 from qibocal.protocols.rabi.utils import (
     fit_amplitude_function as rabi_fit_amplitude_function,
 )
@@ -150,7 +143,7 @@ def test_rabi_fit():
                     new_duration = pi_pulse_parameter[0]
                     true_duration = results['"duration"'][f][0]
                 else:
-                    new_amplitude = pi_pulse_parameter
+                    new_duration = pi_pulse_parameter
                     true_duration = results['"duration"'][f]
 
                 assert math.isclose(true_duration, new_duration, rel_tol=2.5e-2)

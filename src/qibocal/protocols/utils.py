@@ -56,8 +56,7 @@ DISTANCE_Z = 0.5
 
 
 class FeatExtractionError(Exception):
-    def __init__(self, *args) -> None:
-        super().__init__(*args)
+    """Exception for feature extraction errors."""
 
 
 class PowerLevel(str, Enum):
@@ -304,7 +303,7 @@ def cumulative(input_data, points):
     return np.searchsorted(np.sort(points), np.sort(input_data))
 
 
-def eval_magnitude(value) -> int:
+def eval_magnitude(value: int | float | np.number) -> int:
     """number of non decimal digits in `value`"""
     if value == 0 or not np.isfinite(value):
         return 0
@@ -437,7 +436,7 @@ def significant_digit(number: float) -> int:
     if np.imag(number) != 0:
         position = max(position, np.ceil(-np.log10(abs(np.imag(number)))))
 
-    return position
+    return int(position)
 
 
 def evaluate_grid(
@@ -718,7 +717,7 @@ def table_dict(
     names: list[str],
     values: list,
     display_error=False,
-):
+) -> dict:
     """
     Build a dictionary to generate HTML table with `table_html`.
 
