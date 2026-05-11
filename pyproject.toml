@@ -33,7 +33,7 @@ cma = "^3.3.0"
 optional = true
 
 [tool.poetry.group.tests.dependencies]
-qibolab = "^0.2.13" # "bounds" are not defined in the test platform but required by earlier versions of qibolab
+qibolab = "^0.2.13"        # "bounds" are not defined in the test platform but required by earlier versions of qibolab
 pytest = ">=7.1.2,<10.0.0"
 pytest-cov = "^3.0.0"
 pytest-env = "^0.8.1"
@@ -50,7 +50,6 @@ ruff = "^0.9.1"
 "__init__.py" = ["F403"]
 "calibration_scripts/**/*.py" = ["F821"]
 "tests/calibration_scripts/**/*.py" = ["F821"]
-
 
 [tool.poetry.group.docs]
 optional = true
@@ -71,6 +70,8 @@ optional = true
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.0"
 devtools = "^0.10.0"
+marimo = "^0.23.5"
+matplotlib = "^3.10.9"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
