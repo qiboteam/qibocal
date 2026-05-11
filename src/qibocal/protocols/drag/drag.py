@@ -250,7 +250,9 @@ def _fit(data: DragTuningData) -> DragTuningResults:
     return DragTuningResults(betas_optimal, fitted_parameters, chi2=chi2[0])
 
 
-def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
+def _plot(
+    data: DragTuningData, target: QubitId, fit: DragTuningResults
+) -> tuple[list[go.Figure], str]:
     """Plotting function for DragTuning."""
 
     figures = []

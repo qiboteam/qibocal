@@ -52,10 +52,9 @@ class DragTuningSimpleResults(Results):
 class DragTuningSimpleData(DragTuningData):
     """DragTuningSimple acquisition outputs."""
 
-    def __getitem__(self, key: QubitId | tuple[QubitId, int] | tuple[QubitId, str]):
-        # __getitem__ is already defined for a parent class with inputs
-        # QubitId | tuple[QubitId, int]. Here neither of those is accepted and we have
-        # tuple[QubitId, str] instead.
+    def __getitem__(self, key: tuple[QubitId, str]):
+        # TODO: the input type breaks Liskov so probably the base class AbstractData
+        # should be reconsidered.
         assert isinstance(key, tuple) and len(key) == 2 and isinstance(key[1], str)
         qubit, setup = key
         if setup == "YpX9":
@@ -194,7 +193,9 @@ def _fit(data: DragTuningSimpleData) -> DragTuningSimpleResults:
     return DragTuningSimpleResults(betas_optimal, fitted_parameters)
 
 
-def _plot(data: DragTuningSimpleData, target: QubitId, fit: DragTuningSimpleResults):
+def _plot(
+    data: DragTuningSimpleData, target: QubitId, fit: DragTuningSimpleResults
+) -> tuple[list[go.Figure], str]:
     """Plotting function for DragTuning."""
 
     figures = []
