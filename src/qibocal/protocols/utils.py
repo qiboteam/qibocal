@@ -108,34 +108,45 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
     voltages = data.signal
 
     # Guess parameters for Lorentzian max or min
-    # TODO: probably this is not working on HW
-    guess_offset = np.mean(
-        voltages[np.abs(voltages - np.mean(voltages)) < np.std(voltages)]
-    )
-    guess_slope = 0.0
+    guess_slope = (voltages[-1] - voltages[0]) / (frequencies[-1] - frequencies[0])
+    guess_offset = voltages[0] - guess_slope * frequencies[0]
+    voltages_no_background = voltages - (guess_slope * frequencies + guess_offset)
+
     if (resonator_type == "3D" and fit == "resonator") or (
         resonator_type == "2D" and fit == "qubit"
     ):
-        guess_center = frequencies[
-            np.argmax(voltages)
-        ]  # Argmax = Returns the indices of the maximum values along an axis.
-        guess_sigma = abs(frequencies[np.argmin(voltages)] - guess_center)
-        guess_amp = (np.max(voltages) - guess_offset) * guess_sigma * np.pi
-
+        guess_center = frequencies[np.argmax(voltages_no_background)]
+        peak_amp = voltages_no_background.max()
+        indices_beyond_half = np.where(voltages_no_background > peak_amp / 2)[0]
     else:
-        guess_center = frequencies[
-            np.argmin(voltages)
-        ]  # Argmin = Returns the indices of the minimum values along an axis.
-        guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
-        guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
+        guess_center = frequencies[np.argmin(voltages_no_background)]
+        peak_amp = voltages_no_background.min()
+        indices_beyond_half = np.where(voltages_no_background < peak_amp / 2)[0]
+
+    if len(indices_beyond_half) >= 1:
+        guess_sigma = (
+            frequencies[indices_beyond_half[-1]] - frequencies[indices_beyond_half[0]]
+        ) / 2
+    else:
+        guess_sigma = frequencies[1] - frequencies[0]
+
+    guess_amp = peak_amp * guess_sigma * np.pi
+    guess_offset_at_center = guess_slope * guess_center + guess_offset
 
     initial_parameters = [
         guess_amp,
         guess_center,
         guess_sigma,
-        guess_offset,
+        guess_offset_at_center,
         guess_slope,
     ]
+
+    freq_domain_size = frequencies[-1] - frequencies[0]
+    bounds = (
+        [-np.inf, frequencies[0], 0.0, -np.inf, -np.inf],
+        [np.inf, frequencies[-1], freq_domain_size, np.inf, np.inf],
+    )
+
     # fit the model with the data and guessed parameters
     try:
         sigma = (
@@ -150,6 +161,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
             voltages,
             p0=initial_parameters,
             sigma=sigma,
+            bounds=bounds,
         )
         # The output results are stored in a json, but ndarray is not JSON serializable,
         # so the parameters are converted to list.
