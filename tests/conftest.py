@@ -27,7 +27,7 @@ def platform(request, monkeypatch):
     return create_calibration_platform(request.param)
 
 
-def approx_for_regression(val: float):
+def approx_for_regression(val):
     """Helper function that can be used if floating point error may lead to enlarged
     errors as is most common in regression tests."""
     return pytest.approx(val, rel=1e-5)

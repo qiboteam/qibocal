@@ -25,7 +25,7 @@ def test_drag_fit():
     assert fitted.fitted_parameters[qubit] == approx_for_regression(
         expected.fitted_parameters[qubit]
     )
-    # assert fitted.chi2[qubit] == approx_for_regression(expected.chi2[qubit])
+    assert fitted.chi2[qubit] == approx_for_regression(expected.chi2[qubit])
 
 
 def test_drag_simple_fit():
