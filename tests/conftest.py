@@ -25,3 +25,9 @@ def platform(request, monkeypatch):
     """Dummy platform to be used when there is no access to QPU."""
     monkeypatch.setenv(PLATFORMS, str(Path(__file__).parent / "platforms"))
     return create_calibration_platform(request.param)
+
+
+def approx_for_regression(val: float):
+    """Helper function that can be used if floating point error may lead to enlarged
+    errors as is most common in regression tests."""
+    return pytest.approx(val, rel=1e-5)
