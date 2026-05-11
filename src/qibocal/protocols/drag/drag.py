@@ -62,6 +62,7 @@ class DragTuningResults(Results):
     """Raw fitting output."""
     chi2: dict[QubitId, tuple[float, float | None]] = field(default_factory=dict)
     """Chi2 calculation."""
+    # The chi2 is not included in the report, but we store it at least for now.
 
 
 DragTuningType = np.dtype(
@@ -247,7 +248,7 @@ def _fit(data: DragTuningData) -> DragTuningResults:
             )
         except Exception as e:
             log.warning(f"drag_tuning_fit failed for qubit {qubit} due to {e}.")
-    return DragTuningResults(betas_optimal, fitted_parameters, chi2=chi2[0])
+    return DragTuningResults(betas_optimal, fitted_parameters, chi2=chi2)
 
 
 def _plot(
@@ -312,7 +313,9 @@ def _plot(
     return figures, fitting_report
 
 
-def _update(results: DragTuningResults, platform: CalibrationPlatform, target: QubitId):
+def _update(
+    results: DragTuningResults, platform: CalibrationPlatform, target: QubitId
+) -> None:
     update.drag_pulse_beta(
         results.betas[target],
         platform,
