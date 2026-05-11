@@ -1,6 +1,7 @@
 import pathlib
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
+from itertools import chain
 from numbers import Number
 from typing import Union
 
@@ -13,6 +14,7 @@ from qibolab import AveragingMode
 
 from qibocal.auto.operation import Data, Parameters, QubitId, QubitPairId, Results
 from qibocal.auto.transpile import (
+    _execute_circuits,
     build_native_gate_compiler,
     build_native_gate_transpiler,
     execute_circuits,
@@ -443,6 +445,28 @@ def _execute_indexed_circuits(
     return indexed_results
 
 
+def _process_executed_results(counter: Counter) -> list[Counter]:
+    """Divides a n-qubit state counter into an array of state counters corresponding to qubit pairs
+
+    Arguments:
+        counter (Counter): Counter mapping state bitstrings to state population.
+
+    Returns:
+        Array of Counter objects corresponding to each qubit pair.
+    """
+    num_pairs = len(next(iter(counter.keys()))) // 2
+    if num_pairs == 1:
+        return [counter]
+
+    counters = [Counter() for _ in range(num_pairs)]
+    for key, value in counter.items():
+        for idx in range(num_pairs):
+            pair = key[idx * 2 : (idx + 1) * 2]
+            counters[idx][pair] += value
+
+    return counters
+
+
 def rb_acquisition(
     params: Parameters,
     platform: CalibrationPlatform,
@@ -562,6 +586,93 @@ def twoq_rb_acquisition(
         )
         survival_prob = survival_counts / params.nshots
         grouped[key].append(survival_prob)
+
+    for (qubit0, qubit1, depth), results in grouped.items():
+        data.register_qubit(
+            dtype=RBType,
+            data_keys=(qubit0, qubit1, depth),
+            data_dict={"survival_probs": results},
+        )
+
+    assert isinstance(data, Union[RB2QData, RB2QInterData])
+    return data
+
+
+def twoq_rb_acquisition_parallel(
+    params: Parameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitPairId],
+    inverse_layer: bool = True,
+    interleave: str | None = None,
+) -> RB2QData | RB2QInterData:
+    """
+    The data acquisition stage of two qubit Standard Randomized Benchmarking.
+
+    Args:
+        params (RB2QParameters): The parameters for the randomized benchmarking experiment.
+        targets (list[QubitPairId]): The list of qubit pair IDs on which to perform the benchmarking.
+        inverse_layer (bool, optional): Whether to add an inverse layer to the circuits. Defaults to True.
+        interleave (str, optional): The type of interleaving to apply. Defaults to None.
+
+    Returns:
+        RB2QData: The acquired data for two qubit randomized benchmarking.
+    """
+    rb_gen = RBGenerator(params.seed, file=params.file)
+
+    npulses_per_clifford = rb_gen.calculate_average_pulses()
+    data = setup_data(
+        params,
+        npulses_per_clifford=npulses_per_clifford,
+        single_qubit=False,
+        interleave=interleave,
+    )
+    file_inv = getattr(params, "file_inv", None)
+
+    circuits: list[Circuit] = []
+    transpiler = build_native_gate_transpiler(platform)
+
+    for depth in data.depths:
+        for _ in range(data.niter):
+            # We generate a full nqubit circuit in advance
+            full_circuit = Circuit(nqubits=platform.nqubits)
+            for target in targets:
+                # Per pair, we generate a standard RB circuit
+                circuit = layer_circuit(rb_gen, depth, target, interleave)
+                if inverse_layer:
+                    add_inverse_layer(circuit, rb_gen, file_inv)
+                add_measurement_layer(circuit)
+
+                # Transpile the intermediate circuit and add it to the full circuit
+                transpiled_circ, _ = transpiler(circuit)
+                full_circuit.add(transpiled_circ.on_qubits(*target))
+
+            circuits.append(full_circuit)
+
+    compiler = build_native_gate_compiler(platform)
+    qubit_maps = [list(chain.from_iterable(targets))] * len(circuits)
+
+    executed_results = _execute_circuits(
+        platform, compiler, circuits, qubit_maps, params.nshots
+    )
+
+    grouped: defaultdict = defaultdict(list)
+
+    for idx, counter in enumerate(executed_results):
+        depth = data.depths[int(idx / data.niter)]
+        # From the execution, we have a counter of qubit states to state counts
+        # As we have parallerized the execution, the resulting state is a n-qubit state
+        # We first break up the result counter into counters for each qubit pair
+        pair_counters = _process_executed_results(counter)
+        assert len(pair_counters) == len(targets)
+
+        # Finally, we just perform the usual result assignment
+        for (qubit0, qubit1), pair_counter in zip(targets, pair_counters):
+            key = (qubit0, qubit1, depth)
+            survival_counts = (
+                pair_counter["00"] if inverse_layer else pair_counter["11"]
+            )
+            survival_prob = survival_counts / params.nshots
+            grouped[key].append(survival_prob)
 
     for (qubit0, qubit1, depth), results in grouped.items():
         data.register_qubit(
