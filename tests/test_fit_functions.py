@@ -2,6 +2,7 @@ import json
 import math
 
 import numpy as np
+from conftest import TEST_FILE_DIR
 
 from qibocal.protocols.rabi.utils import (
     fit_amplitude_function as rabi_fit_amplitude_function,
@@ -10,8 +11,6 @@ from qibocal.protocols.rabi.utils import fit_length_function as rabi_fit_length_
 from qibocal.protocols.ramsey.processing import fitting as ramsey_fitting
 from qibocal.protocols.ramsey.processing import process_fit as ramsey_process_fit
 from qibocal.protocols.utils import fallback_period, guess_period
-
-from .conftest import TEST_FILE_DIR
 
 
 def test_ramsey_fit():
