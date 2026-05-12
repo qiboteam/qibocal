@@ -183,6 +183,7 @@ def _fit(data: DragTuningSimpleData) -> DragTuningSimpleResults:
                     / (qubit_data["beta"][-1] - qubit_data["beta"][0]),
                     np.mean(qubit_data["prob"]),
                 ],
+                sigma=qubit_data["error"],
             )
             fitted_parameters[qubit, setup] = popt.tolist()
         betas_optimal[qubit] = -(

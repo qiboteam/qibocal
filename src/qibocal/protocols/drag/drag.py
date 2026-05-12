@@ -230,6 +230,7 @@ def _fit(data: DragTuningData) -> DragTuningResults:
                     [0, 0, 0, -np.pi],
                     [1, 1, np.inf, np.pi],
                 ),
+                sigma=qubit_data["error"],
             )
             translated_popt = [
                 popt[0],
