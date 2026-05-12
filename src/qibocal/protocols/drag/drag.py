@@ -1,4 +1,3 @@
-import math
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -239,8 +238,8 @@ def _fit(data: DragTuningData) -> DragTuningResults:
             phase_2pi = phase_fit / (2 * np.pi)
             beta_min = np.min(beta_params)
             beta_max = np.max(beta_params)
-            k_min = math.ceil(beta_min / period_fit + phase_2pi - 0.5)
-            k_max = math.floor(beta_max / period_fit + phase_2pi - 0.5)
+            k_min = np.ceil(beta_min / period_fit + phase_2pi - 0.5).astype(int)
+            k_max = np.floor(beta_max / period_fit + phase_2pi - 0.5).astype(int)
             if k_min <= k_max:
                 # Choose beta value with the smallest absolute value that falls inside
                 # the beta interval.
