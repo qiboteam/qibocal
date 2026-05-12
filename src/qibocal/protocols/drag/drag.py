@@ -212,17 +212,14 @@ def _fit(data: DragTuningData) -> DragTuningResults:
 
         # normalize beta
         beta_params = qubit_data["beta"]
-        beta_min = np.min(beta_params)
-        beta_max = np.max(beta_params)
-        normalized_beta = (beta_params - beta_min) / (beta_max - beta_min)
 
         # Guessing period using fourier transform
-        period = fallback_period(guess_period(normalized_beta, qubit_data["prob"]))
+        period = fallback_period(guess_period(beta_params, qubit_data["prob"]))
         pguess = [0.5, 0.5, period, 0]
         try:
             popt, _ = curve_fit(
                 drag_fit,
-                normalized_beta,
+                beta_params,
                 qubit_data["prob"],
                 p0=pguess,
                 maxfev=100000,
@@ -232,25 +229,18 @@ def _fit(data: DragTuningData) -> DragTuningResults:
                 ),
                 sigma=qubit_data["error"],
             )
-            translated_popt = [
-                popt[0],
-                popt[1],
-                popt[2] * (beta_max - beta_min),
-                popt[3] - 2 * np.pi * beta_min / popt[2] / (beta_max - beta_min),
-            ]
-            fitted_parameters[qubit] = translated_popt
-            predicted_prob = drag_fit(beta_params, *translated_popt)
-
-            period_fit = translated_popt[2]
-            phase_fit = translated_popt[3]
+            fitted_parameters[qubit] = popt
+            period_fit = popt[2]
+            phase_fit = popt[3]
 
             # calculate the smallest and largest k for which the minimum lies in the
             # beta interval. Minima of drag_fit(x, offset, amplitude, period, phase)
             # occur for x = period * (k + 1/2 - phase / (2*pi)), for integer k.
             phase_2pi = phase_fit / (2 * np.pi)
+            beta_min = np.min(beta_params)
+            beta_max = np.max(beta_params)
             k_min = math.ceil(beta_min / period_fit + phase_2pi - 0.5)
             k_max = math.floor(beta_max / period_fit + phase_2pi - 0.5)
-
             if k_min <= k_max:
                 # Choose beta value with the smallest absolute value that falls inside
                 # the beta interval.
@@ -262,12 +252,13 @@ def _fit(data: DragTuningData) -> DragTuningResults:
             else:
                 # If no analytical minimum lies in the beta interval, minimum is
                 # fixed at one of the interval boundaries.
-                left_value = drag_fit(beta_min, *translated_popt)
-                right_value = drag_fit(beta_max, *translated_popt)
+                left_value = drag_fit(beta_min, *popt)
+                right_value = drag_fit(beta_max, *popt)
                 betas_optimal[qubit] = (
                     beta_min if left_value <= right_value else beta_max
                 )
 
+            predicted_prob = drag_fit(beta_params, *popt)
             chi2[qubit] = (
                 chi2_reduced(
                     qubit_data["prob"],

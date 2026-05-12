@@ -20,7 +20,7 @@ from ..utils import (
 QUANTILE_CONSTANT = 1.5
 """Scaling factor to recover signal amplitude from quantiles.
 
-Measuring intermediate quantiles is less noise sensitive then meauring extremal points
+Measuring intermediate quantiles is less noise sensitive then measuring extremal points
 (minimum and maximum), but it is not a direct measurement of the amplitude itself.
 For pure sinusoidal oscillations, the scaling from the value associated to a given
 quantile and the amplitude is asymptotically fixed, for a large number of oscillations.
