@@ -37,9 +37,10 @@ def _acquisition(
 ) -> T2FluxData:
     """Data acquisition for T2 flux experiment."""
 
-    sequence, pulses = ramsey_sequence(
+    sequence, ro_sequence, pulses = ramsey_sequence(
         platform=platform, targets=targets, flux_pulse_amplitude=0.5
     )
+    sequence += ro_sequence
     for qubit in targets:
         assert (
             platform.calibration.single_qubits[qubit].qubit.flux_coefficients
