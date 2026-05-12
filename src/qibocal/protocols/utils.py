@@ -140,7 +140,6 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         guess_offset_at_center,
         guess_slope,
     ]
-
     freq_domain_size = frequencies[-1] - frequencies[0]
     bounds = (
         [-np.inf, frequencies[0], 0.0, -np.inf, -np.inf],
@@ -149,27 +148,16 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
 
     # fit the model with the data and guessed parameters
     try:
-        sigma = (
-            data.error_signal
-            if (hasattr(data, "error_signal") and not np.isnan(data.error_signal).any())
-            else None
-        )
-
         fit_parameters, perr = curve_fit(
             lorentzian,
             frequencies,
             voltages,
             p0=initial_parameters,
-            sigma=sigma,
             bounds=bounds,
         )
         # The output results are stored in a json, but ndarray is not JSON serializable,
         # so the parameters are converted to list.
-        perr = (
-            np.sqrt(np.diag(perr)).tolist()
-            if sigma is not None
-            else [0] * len(initial_parameters)
-        )
+        perr = np.sqrt(np.diag(perr)).tolist()
         model_parameters = fit_parameters.tolist()
         return model_parameters[1] * GHZ_TO_HZ, model_parameters, perr
     except RuntimeError as e:
