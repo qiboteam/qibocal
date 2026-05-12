@@ -89,8 +89,8 @@ class DragTuningResults(Results):
 
     betas: dict[QubitId, float]
     """Optimal beta paramter for each qubit."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitting output."""
+    fitted_parameters: dict[QubitId, list[float]]
+    """Raw fitting output as lists for JSON serialization."""
     chi2: dict[QubitId, tuple[float, float | None]] = field(default_factory=dict)
     """Chi2 calculation."""
     # The chi2 is not included in the report, but we store it at least for now.
@@ -229,7 +229,7 @@ def _fit(data: DragTuningData) -> DragTuningResults:
                 ),
                 sigma=qubit_data["error"],
             )
-            fitted_parameters[qubit] = popt
+            fitted_parameters[qubit] = popt.tolist()  # must be a list for JSON
             period_fit = popt[2]
             phase_fit = popt[3]
 
