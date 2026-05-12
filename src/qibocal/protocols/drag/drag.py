@@ -38,9 +38,6 @@ __all__ = [
 
 
 # TODO: add errors in fitting
-# TODO: for ranges of floats we should probably support only linspace, meaning nsteps
-# instead of stepsize. The reason being that the endpoint inclusion becomes ambiguous
-# with floats
 @dataclass
 class DragTuningParameters(Parameters):
     """DragTuning runcard inputs."""
