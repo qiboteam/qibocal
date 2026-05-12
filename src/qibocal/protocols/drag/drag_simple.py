@@ -83,12 +83,10 @@ def _acquisition(
     """
 
     data = DragTuningSimpleData()
-    beta_range = np.arange(
-        params.beta_start, params.beta_end, params.beta_step
-    ).tolist()
+    beta_param_range = np.arange(*params.beta_range).tolist()
 
     sequences, all_ro_pulses = [], []
-    for beta in beta_range:
+    for beta in beta_param_range:
         for setup in SEQUENCES:
             sequence = PulseSequence()
             ro_pulses = {}
@@ -148,7 +146,7 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    for beta, ro_pulses in zip(np.repeat(beta_range, 2), all_ro_pulses):
+    for beta, ro_pulses in zip(np.repeat(beta_param_range, 2), all_ro_pulses):
         for qubit in targets:
             prob = results[ro_pulses[qubit].id]
             data.register_qubit(
