@@ -224,8 +224,8 @@ def _fit(data: DragTuningData) -> DragTuningResults:
                 p0=pguess,
                 maxfev=100000,
                 bounds=(
-                    [0, 0, 0, -np.pi],
-                    [1, 1, np.inf, np.pi],
+                    [0, 0, 0, -np.inf],
+                    [1, 1, np.inf, np.inf],
                 ),
                 sigma=qubit_data["error"],
             )
