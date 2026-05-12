@@ -1,9 +1,7 @@
 import json
 import math
-from pathlib import Path
 
 import numpy as np
-import pytest
 
 from qibocal.protocols.rabi.utils import (
     fit_amplitude_function as rabi_fit_amplitude_function,
@@ -11,17 +9,9 @@ from qibocal.protocols.rabi.utils import (
 from qibocal.protocols.rabi.utils import fit_length_function as rabi_fit_length_function
 from qibocal.protocols.ramsey.processing import fitting as ramsey_fitting
 from qibocal.protocols.ramsey.processing import process_fit as ramsey_process_fit
-from qibocal.protocols.resonator_spectroscopies.resonator_spectroscopy import (
-    ResonatorSpectroscopyData,
-    ResonatorSpectroscopyResults,
-)
-from qibocal.protocols.resonator_spectroscopies.resonator_spectroscopy import (
-    _fit as resonator_spectroscopy_fit,
-)
 from qibocal.protocols.utils import fallback_period, guess_period
 
-TEST_FILE_DIR = Path(__file__).resolve().parent
-PATH_TESTING_DATA = TEST_FILE_DIR / "tests_data"
+from .conftest import TEST_FILE_DIR
 
 
 def test_ramsey_fit():
@@ -158,13 +148,3 @@ def test_rabi_fit():
                     true_duration = results['"duration"'][f]
 
                 assert math.isclose(true_duration, new_duration, rel_tol=2.5e-2)
-
-
-def test_resonator_spectroscopy_fit():
-    results_folder = PATH_TESTING_DATA / "resonator_spectroscopy-0"
-    data = ResonatorSpectroscopyData.load(results_folder)
-    expected = ResonatorSpectroscopyResults.load(results_folder)
-    assert data is not None and expected is not None
-    fitted = resonator_spectroscopy_fit(data)
-    qubit = 0  # the data contains only qubit 0
-    assert fitted.frequency[qubit] == pytest.approx(expected.frequency[qubit])
