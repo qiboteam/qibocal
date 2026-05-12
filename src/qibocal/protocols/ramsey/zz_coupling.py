@@ -228,7 +228,7 @@ def _execute_ramsey_zz(
 def _acquisition(
     params: RamseyZZParameters,
     platform: CalibrationPlatform,
-    targets: list[QubitId],
+    targets: list[QubitPairId],
 ) -> RamseyZZData:
     """Data acquisition for RamseyZZ Experiment.
     Targets is a list of qubit pair in the order: (target, spectator).
@@ -387,25 +387,28 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
 
 
 def zz_fit_plot(
-    target: QubitId,
-    spect_qubit: QubitId,
+    pair: QubitPairId,
     fit: RamseyZZResults,
     waits: npt.NDArray,
     fig: go.Figure,
 ) -> str:
+    """Plot Ramsey fit lines and return an HTML fitting report."""
+
     fit_waits = np.linspace(min(waits), max(waits), MAXIMUM_FIT_POINTS)
+
+    target_qubit, spect_qubit = pair
 
     fig.add_traces(
         [
             go.Scatter(
                 x=fit_waits,
-                y=ramsey_fit(fit_waits, *fit.fitted_parameters[target, "I"]),
+                y=ramsey_fit(fit_waits, *fit.fitted_parameters[pair, "I"]),
                 name="Fit I",
                 mode="lines",
             ),
             go.Scatter(
                 x=fit_waits,
-                y=ramsey_fit(fit_waits, *fit.fitted_parameters[target, "X"]),
+                y=ramsey_fit(fit_waits, *fit.fitted_parameters[pair, "X"]),
                 name="Fit X",
                 mode="lines",
             ),
@@ -416,31 +419,24 @@ def zz_fit_plot(
 
     fitting_report = table_html(
         table_dict(
-            target,
+            target_qubit,
             [
-                f"ZZ  with {spect_qubit} [kHz]",
-                f"Coupling with {spect_qubit} [MHz]",
+                f"ZZ  with {spect_qubit} [Hz]",
+                f"Coupling with {spect_qubit} [Hz]",
             ],
             [
-                np.round(
-                    fit.zz[target] * 1e-3,
-                    0,
-                ),
-                np.round(
-                    fit.coupling[target] * 1e-6,
-                    2,
-                )
-                if target in fit.coupling
-                else None,
+                fit.zz[pair],
+                fit.coupling[pair] if pair in fit.coupling else None,
             ],
-        )
+            display_error=True,
+        ),
     )
 
     return fitting_report
 
 
 def _plot(
-    data: RamseyZZData, target: QubitId, fit: RamseyZZResults | None = None
+    data: RamseyZZData, target: QubitPairId, fit: RamseyZZResults | None = None
 ) -> tuple[list[go.Figure], str]:
     """Plotting function for Ramsey Experiment."""
 
@@ -509,8 +505,7 @@ def _plot(
 
     if fit is not None:
         fitting_report = zz_fit_plot(
-            target=target,
-            spect_qubit=data.target_qubit,
+            pair=target,
             fit=fit,
             waits=waits,
             fig=fig,

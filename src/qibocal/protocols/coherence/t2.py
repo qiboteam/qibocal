@@ -50,7 +50,8 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
-    sequence, delays = ramsey_sequence(platform, targets)
+    sequence, ro_sequence, delays = ramsey_sequence(platform, targets)
+    sequence += ro_sequence
 
     data = T2Data()
 
