@@ -249,10 +249,8 @@ def _fit(data: DragTuningData) -> DragTuningResults:
             penalty_factor = (
                 amplitude * 0.5 * (2 * np.pi / period * (beta_step / 2)) ** 2
             )
-            penalty = (
-                penalty_factor
-                * amplitude
-                * np.abs(np.floor(beta_grid / period + phase / (2 * np.pi)))
+            penalty = penalty_factor * np.abs(
+                np.floor(beta_grid / period + phase / (2 * np.pi))
             )
             betas_optimal[qubit] = beta_grid[
                 np.argmin(drag_fit(beta_grid, *popt) + penalty)
