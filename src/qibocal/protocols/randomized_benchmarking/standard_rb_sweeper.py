@@ -1,6 +1,5 @@
-from collections import defaultdict
-
 import numpy as np
+from qibo.backends import NumpyBackend
 from qibo.gates import U3, Unitary
 from qibo.transpiler.unitary_decompositions import u3_decomposition
 from qibolab import (
@@ -24,20 +23,12 @@ from qibocal.protocols.randomized_benchmarking.standard_rb import (
 )
 from qibocal.protocols.randomized_benchmarking.utils import (
     RBData,
+    RBGenerator,
     RBType,
     add_inverse_layer,
     layer_circuit,
+    setup_data,
 )
-
-try:
-    from qibocal.protocols.randomized_benchmarking.utils import (
-        RB_Generator,
-        setup,
-    )
-except ImportError:
-    "ImportError: a significant rewrite of the treatment of circuits means that this "
-    "protocol is no longer working. See https://github.com/qiboteam/qibocal/pull/1393.\n\n"
-    "The ImportError is caught to avoid breaking the entire package."
 
 __all__ = ["standard_rb_sweeper"]
 
@@ -66,8 +57,12 @@ def _acquisition(
         RBData: The depths, samples and ground state probability of each experiment in the scan.
     """
 
-    data, backend = setup(params, platform, single_qubit=True)
-    rb_gen = RB_Generator(params.seed)
+    rb_gen = RBGenerator(params.seed)
+    npulses_per_clifford = 2
+    data = setup_data(
+        params, npulses_per_clifford=npulses_per_clifford, single_qubit=True
+    )
+    backend = NumpyBackend()
 
     # Helper map to reuse drive channel and RX90 for the pulse sequence
     mapper = {
@@ -77,7 +72,6 @@ def _acquisition(
         )
         for qubit in targets
     }
-    indexes = defaultdict(list)
 
     for depth in params.depths:
         num_gates = depth + 1
@@ -117,7 +111,7 @@ def _acquisition(
         for iter in range(params.niter):
             # Next, we generate a RB sequence for a given depth
             # and extract the corresponding U3 angles
-            circuit, random_indexes = layer_circuit(rb_gen, depth, 0)
+            circuit = layer_circuit(rb_gen, depth, 0)
             for idx, layer in enumerate(circuit.queue):
                 clifford: U3 = layer if layer.name != "id" else U3(0, 0, 0, 0)
 
@@ -134,9 +128,6 @@ def _acquisition(
             theta, phi, lam = u3_decomposition(inverse_layer.parameters[0], backend)
             sweeper_angles[iter, -3:] = [-lam, -(theta + np.pi), -(phi + np.pi)]
 
-            for qubit in targets:
-                indexes[(qubit, depth)].append(random_indexes)
-
         sweepers = [
             Sweeper(parameter=Parameter.phase, values=angles, pulses=[pulse])
             for pulse, angles in zip(vz_sweep_pulses, sweeper_angles.transpose())
@@ -147,19 +138,15 @@ def _acquisition(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
+            averaging_mode=AveragingMode.CYCLIC,
         )
-        for qubit in targets:
+        for qubit, readout_pulse in ro_pulses.items():
             data.register_qubit(
                 RBType,
                 (qubit, depth),
-                dict(
-                    samples=results[ro_pulses[qubit].id].transpose(),
-                ),
+                {"survival_probs": 1 - results[readout_pulse.id]},
             )
 
-    data.circuits = indexes
-    data.npulses_per_clifford = 2
     return data
 
 
