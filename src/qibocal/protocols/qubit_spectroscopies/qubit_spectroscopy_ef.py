@@ -23,7 +23,9 @@ from .qubit_spectroscopy import (
     QubitSpectroscopyData,
     QubitSpectroscopyParameters,
     QubitSpectroscopyResults,
-    _fit,
+)
+from .qubit_spectroscopy import (
+    _fit as qubit_fit,
 )
 
 __all__ = ["qubit_spectroscopy_ef"]
@@ -48,8 +50,8 @@ class QubitSpectroscopyEFData(QubitSpectroscopyData):
     drive_frequencies: dict[QubitId, float] = field(default_factory=dict)
 
 
-def fit_ef(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
-    results = _fit(data)
+def _fit(data: QubitSpectroscopyEFData) -> QubitSpectroscopyEFResults:
+    results = qubit_fit(data)
     anharmoncities = {
         qubit: results.frequency[qubit] - data.drive_frequencies[qubit]
         for qubit in data.qubits
@@ -148,7 +150,6 @@ def _acquisition(
         result = results[ro_pulse.id]
 
         f0 = platform.config(platform.qubits[qubit].drive_extra[1, 2]).frequency
-
         signal = magnitude(result)
         _phase = phase(result)
         if len(signal.shape) > 1:
@@ -230,5 +231,5 @@ def _update(
     ]
 
 
-qubit_spectroscopy_ef = Routine(_acquisition, fit_ef, _plot, _update)
+qubit_spectroscopy_ef = Routine(_acquisition, _fit, _plot, _update)
 """QubitSpectroscopyEF Routine object."""
