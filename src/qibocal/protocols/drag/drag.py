@@ -196,8 +196,8 @@ def _acquisition(
     return data
 
 
-def drag_fit(x, offset, amplitude, period, phase):
-    return offset + amplitude * np.cos(2 * np.pi * x / period + phase)
+def drag_fit(beta, offset, amplitude, period, phase):
+    return offset + amplitude * np.cos(2 * np.pi * beta / period + phase)
 
 
 def _fit(data: DragTuningData) -> DragTuningResults:
@@ -213,8 +213,8 @@ def _fit(data: DragTuningData) -> DragTuningResults:
         beta_params = qubit_data["beta"]
 
         # Guessing period using fourier transform
-        period = fallback_period(guess_period(beta_params, qubit_data["prob"]))
-        pguess = [0.5, 0.5, period, 0]
+        period_guess = fallback_period(guess_period(beta_params, qubit_data["prob"]))
+        pguess = [0.5, 0.5, period_guess, 0]
         try:
             popt, _ = curve_fit(
                 drag_fit,
@@ -229,33 +229,30 @@ def _fit(data: DragTuningData) -> DragTuningResults:
                 sigma=qubit_data["error"],
             )
             fitted_parameters[qubit] = popt.tolist()  # must be a list for JSON
-            period_fit = popt[2]
-            phase_fit = popt[3]
+            _offset, amplitude, period, phase = popt
 
-            # calculate the smallest and largest k for which the minimum lies in the
-            # beta interval. Minima of drag_fit(x, offset, amplitude, period, phase)
-            # occur for x = period * (k + 1/2 - phase / (2*pi)), for integer k.
-            phase_2pi = phase_fit / (2 * np.pi)
-            beta_min = np.min(beta_params)
-            beta_max = np.max(beta_params)
-            k_min = np.ceil(beta_min / period_fit + phase_2pi - 0.5).astype(int)
-            k_max = np.floor(beta_max / period_fit + phase_2pi - 0.5).astype(int)
-            if k_min <= k_max:
-                # Choose beta value with the smallest absolute value that falls inside
-                # the beta interval.
-                candidate_ks = np.arange(k_min, k_max + 1)
-                candidate_betas = [
-                    period_fit * (k + 0.5 - phase_2pi) for k in candidate_ks
-                ]
-                betas_optimal[qubit] = min(candidate_betas, key=abs)
-            else:
-                # If no analytical minimum lies in the beta interval, minimum is
-                # fixed at one of the interval boundaries.
-                left_value = drag_fit(beta_min, *popt)
-                right_value = drag_fit(beta_max, *popt)
-                betas_optimal[qubit] = (
-                    beta_min if left_value <= right_value else beta_max
-                )
+            # Evaluate drag_fit on a dense grid and select the minimum closest to
+            # beta=0. A penalty term breaks equality between equally deep minima of the
+            # sinusoidal fit and favours those points closest to beta=0.
+            #
+            # The penalty factor has to exceed the variation in drag_fit between
+            # adjacent grid points near a minimum, which from a Taylor expansion is
+            # (2*pi/period* beta_step)**2. The O(beta_step**4) term is negative so the
+            # quadratic bound is safe.
+            sampling_points = 1000
+            beta_grid = np.linspace(
+                beta_params.min(), beta_params.max(), sampling_points
+            )
+            beta_step = (beta_params.max() - beta_params.min()) / sampling_points
+            penalty_factor = amplitude * 0.5 * (2 * np.pi / period * beta_step) ** 2
+            penalty = (
+                penalty_factor
+                * amplitude
+                * np.abs(np.floor(beta_grid / period + phase / (2 * np.pi)))
+            )
+            betas_optimal[qubit] = beta_grid[
+                np.argmin(drag_fit(beta_grid, *popt) + penalty)
+            ]
 
             predicted_prob = drag_fit(beta_params, *popt)
             chi2[qubit] = (
