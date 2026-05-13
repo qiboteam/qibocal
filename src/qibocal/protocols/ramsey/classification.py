@@ -52,7 +52,8 @@ def _acquisition(
         },
     )
 
-    sequence, delays = ramsey_sequence(platform, targets)
+    sequence, ro_sequence, delays = ramsey_sequence(platform, targets)
+    sequence += ro_sequence
 
     results = execute_experiment(
         sequence=sequence,

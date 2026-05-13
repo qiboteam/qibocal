@@ -97,57 +97,84 @@ class RamseyData(Data):
         return np.unique(self.data[qubit].wait)
 
 
-def ramsey_sequence(
+def single_qubit_ramsey_sequence(
     platform: Platform,
-    targets: list[QubitId],
+    target: QubitId,
     wait: int = 0,
-    target_qubit: QubitId | None = None,
     flux_pulse_amplitude: float | None = None,
-) -> tuple[PulseSequence, list[PulseLike]]:
+) -> tuple[PulseSequence, PulseSequence, list[Pulse | Delay]]:
     """Pulse sequence used in Ramsey (detuned) experiments.
 
     The pulse sequence is the following:
 
     RX90 -- wait -- RX90 -- MZ
     """
-    delays = 2 * len(targets) * [Delay(duration=wait)]
+    delays = [Delay(duration=wait), Delay(duration=wait)]
 
-    flux_pulses = (
-        len(targets)
-        * [Pulse(duration=wait, amplitude=flux_pulse_amplitude, envelope=Rectangular())]
-        if flux_pulse_amplitude is not None
-        else []
-    )
+    # TODO: move flux lines outside this function
+    if flux_pulse_amplitude is not None:
+        flux_pulse = [
+            Pulse(duration=0, amplitude=flux_pulse_amplitude, envelope=Rectangular())
+        ]
+    else:
+        flux_pulse = []
 
     sequence = PulseSequence()
-    for i, qubit in enumerate(targets):
-        natives = platform.natives.single_qubit[qubit]
-        qd_channel = platform.qubits[qubit].drive
-        rx90_sequence = natives.R(theta=np.pi / 2)
-        ro_channel, ro_pulse = natives.MZ()[0]
+    ro_sequence = PulseSequence()
+    natives = platform.natives.single_qubit[target]
+    qd_channel = platform.qubits[target].drive
+    rx90_sequence = natives.R(theta=np.pi / 2)
+    ro_channel, ro_pulse = natives.MZ()[0]
 
-        sequence += rx90_sequence
-        sequence.append((qd_channel, delays[2 * i]))
-        sequence += rx90_sequence
-        sequence.extend(
-            [
-                (ro_channel, Delay(duration=2 * rx90_sequence.duration)),
-                (ro_channel, delays[2 * i + 1]),
-                (ro_channel, ro_pulse),
-            ]
+    sequence += rx90_sequence
+    sequence.append((qd_channel, delays[0]))
+    sequence += rx90_sequence
+
+    ro_sequence.extend(
+        [
+            (ro_channel, Delay(duration=2 * rx90_sequence.duration)),
+            (ro_channel, delays[1]),
+            (ro_channel, ro_pulse),
+        ]
+    )
+
+    # TODO: move flux lines outside this function
+    if flux_pulse_amplitude is not None:
+        flux_channel = platform.qubits[target].flux
+        sequence.append((flux_channel, Delay(duration=rx90_sequence.duration)))
+        sequence.append((flux_channel, flux_pulse[0]))
+
+    return sequence, ro_sequence, delays + flux_pulse
+
+
+def ramsey_sequence(
+    platform: Platform,
+    targets: list[QubitId],
+    wait: int = 0,
+    flux_pulse_amplitude: float | None = None,
+) -> tuple[PulseSequence, PulseSequence, list[Pulse | Delay]]:
+    """Pulse sequence used in Ramsey (detuned) experiments.
+    To be used to run in parallel multiple Ramsey sequences on a qubit list.
+
+    The pulse sequence is the following:
+
+    RX90 -- wait -- RX90 -- MZ
+    """
+    full_sequence = PulseSequence()
+    full_ro_sequence = PulseSequence()
+    full_delays: list[Pulse | Delay] = []
+    for qubit in targets:
+        qubit_seq, qubit_ro_seq, qubit_delays = single_qubit_ramsey_sequence(
+            platform=platform,
+            target=qubit,
+            wait=wait,
+            flux_pulse_amplitude=flux_pulse_amplitude,
         )
-        if flux_pulse_amplitude is not None:
-            flux_channel = platform.qubits[qubit].flux
-            sequence.append((flux_channel, Delay(duration=rx90_sequence.duration)))
-            sequence.append((flux_channel, flux_pulses[i]))
-        if target_qubit is not None:
-            assert target_qubit not in targets, (
-                f"Cannot run Ramsey experiment on qubit {target_qubit} if it is already in Ramsey sequence."
-            )
-            natives = platform.natives.single_qubit[target_qubit]
-            sequence += natives.RX()
+        full_sequence += qubit_seq
+        full_ro_sequence += qubit_ro_seq
+        full_delays += qubit_delays
 
-    return sequence, delays + flux_pulses
+    return full_sequence, full_ro_sequence, full_delays
 
 
 def execute_experiment(
