@@ -245,7 +245,7 @@ def _fit(data: DragTuningData) -> DragTuningResults:
             )
             beta_step = (beta_params.max() - beta_params.min()) / sampling_points
             # beta_step is divided by two because the worst-case scenario is where a
-            # minimum is in the middle between to sampled points
+            # minimum is in the middle between two sampled points
             penalty_factor = (
                 amplitude * 0.5 * (2 * np.pi / period * (beta_step / 2)) ** 2
             )
