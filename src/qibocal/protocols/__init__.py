@@ -6,6 +6,7 @@ from . import (
     drag,
     flipping,
     flux_dependence,
+    qua,
     qubit_spectroscopies,
     rabi,
     ramsey,
@@ -25,6 +26,7 @@ from .dispersive_shift import *
 from .drag import *
 from .flipping import *
 from .flux_dependence import *
+from .qua import *
 from .qubit_spectroscopies import *
 from .rabi import *
 from .ramsey import *
@@ -68,5 +70,6 @@ __all__ += ["resonator_spectroscopies"]
 __all__ += ["qubit_spectroscopies"]
 __all__ += ["two_qubit_interaction"]
 __all__ += ["twpa"]
+__all__ += ["qua"]
 if "calibrate_mixers" in globals():
     __all__ += ["calibrate_mixers"]
