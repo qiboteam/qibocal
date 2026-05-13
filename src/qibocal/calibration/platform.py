@@ -32,17 +32,17 @@ class CalibrationPlatform(Platform):
         for q in self.qubits:
             phase_rx = (
                 True
-                if natives[q].RX is None
+                if natives[q].RX is None or len(natives[q].RX) == 0
                 else natives[q].RX[0][1].relative_phase == 0.0
             )
             phase_rx90 = (
                 True
-                if natives[q].RX90 is None
+                if natives[q].RX90 is None or len(natives[q].RX90) == 0
                 else natives[q].RX90[0][1].relative_phase == 0.0
             )
             phase_rx12 = (
                 True
-                if natives[q].RX12 is None
+                if natives[q].RX12 is None or len(natives[q].RX12) == 0
                 else natives[q].RX12[0][1].relative_phase == 0.0
             )
 
