@@ -52,11 +52,7 @@ class DragTuningParameters(Parameters):
     nflips: int = 1
     """Repetitions of (Xpi - Xmpi)."""
 
-    @property
-    def beta_range(self) -> tuple[float, float, float]:
-        """
-        Return a tuple with the beta sweep (start, end, step).
-        """
+    def __post_init__(self):
         has_beta = self.beta is not None
         beta_fields = [self.beta_start, self.beta_end, self.beta_step]
         has_any_beta_field = any(x is not None for x in beta_fields)
@@ -72,14 +68,17 @@ class DragTuningParameters(Parameters):
                 "Define either `beta` tuple or all of `beta_start`, `beta_end`, "
                 "`beta_step`, but not both."
             )
-        if has_beta:
-            return self.beta
-        if has_all_beta_fields:
-            return (self.beta_start, self.beta_end, self.beta_step)
         raise ValueError(
             "Must define either `beta` tuple or all of `beta_start`, `beta_end`, "
             "`beta_step`."
         )
+
+    @property
+    def beta_range(self) -> tuple[float, float, float]:
+        """Return a tuple with the beta sweep (start, end, step)."""
+        if self.beta is not None:
+            return self.beta
+        return (self.beta_start, self.beta_end, self.beta_step)
 
 
 @dataclass
