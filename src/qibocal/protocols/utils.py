@@ -1095,13 +1095,14 @@ def fallback_frequency_numpyfied(frequency: np.ndarray):
 def quinn_fernandes_algorithm(
     signal_id: Any,
     x: Any,
-    fs: float,
     speedup_flag: bool = False,
     axis: int = -1,
     iterations: int = 100,
     tol: int = 1e-8,
 ) -> np.ndarray:
     """This is a custom implementation of the Quinn-Fernandes algorithm.
+    We compute the signal sampling rate from :param:x, hence this function assumes x to be
+    ordered.
 
     The Quinn–Fernandes method is a high-accuracy frequency estimator based on
     phase interpolation of the discrete Fourier transform (DFT). It refines the
@@ -1112,11 +1113,16 @@ def quinn_fernandes_algorithm(
     Link for the original paper: https://www.jstor.org/stable/2337018?seq=3
     """
 
+    fs = 1 / abs(x[0] - x[1])
+
     if not isinstance(x, np.ndarray):
         x = np.array(x)
 
     if not isinstance(signal_id, np.ndarray):
         signal_id = np.array(signal_id)
+
+    if signal_id.ndim == 1:
+        signal_id = signal_id[np.newaxis, :]
 
     omegas = (
         2

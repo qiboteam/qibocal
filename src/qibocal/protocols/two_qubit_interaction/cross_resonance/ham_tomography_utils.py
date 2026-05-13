@@ -450,7 +450,6 @@ def tomography_cr_fit(
 
     for pair in data.pairs:
         vector_x = data.data[pair[0], pair[1], Basis.X, SetControl.Id].x
-        sampling_rate = 1 / abs(vector_x[1] - vector_x[0])
         for setup in SetControl:
             concatenated_signal = np.concatenate(
                 [
@@ -461,7 +460,7 @@ def tomography_cr_fit(
             ).reshape(len(Basis), -1)
 
             total_omega_guess = quinn_fernandes_algorithm(
-                concatenated_signal, vector_x, sampling_rate, speedup_flag=True
+                concatenated_signal, vector_x, speedup_flag=True
             )
 
             if fit_with_evolution:
