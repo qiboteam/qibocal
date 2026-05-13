@@ -20,7 +20,15 @@ from ..utils import (
     lorentzian_fit,
     readout_frequency,
 )
-from .resonator_utils import s21, s21_fit, s21_spectroscopy_plot, spectroscopy_plot
+from .resonator_utils import (
+    purcell_fit,
+    purcell_s_out_in,
+    purcell_spectroscopy_plot,
+    s21,
+    s21_fit,
+    s21_spectroscopy_plot,
+    spectroscopy_plot,
+)
 
 __all__ = ["resonator_spectroscopy", "ResonatorSpectroscopyData", "ResSpecType"]
 
@@ -71,6 +79,14 @@ FITS = {
         lambda z: (z.error_signal, z.error_phase),
         s21_spectroscopy_plot,
     ),
+    "purcell": ResonatorSpectroscopyFit(
+        lambda *params: np.abs(purcell_s_out_in(*params)),
+        purcell_fit,
+        chi2_reduced,
+        lambda z: (z.signal, z.phase),
+        lambda z: (z.error_signal, z.error_phase),
+        purcell_spectroscopy_plot,
+    ),
 }
 """Dictionary of available fitting routines for ResonatorSpectroscopy."""
 
@@ -87,7 +103,7 @@ class ResonatorSpectroscopyParameters(Parameters):
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
     fit_function: str = "lorentzian"
-    """Routine function (lorentzian or s21) to fit data with a model."""
+    """Routine function (lorentzian, s21 or purcell) to fit data with a model."""
     phase_sign: bool = True
     """Several instruments have their convention about the sign of the phase. If True, the routine
     will apply a minus to the phase data."""
