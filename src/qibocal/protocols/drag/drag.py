@@ -68,10 +68,11 @@ class DragTuningParameters(Parameters):
                 "Define either `beta` tuple or all of `beta_start`, `beta_end`, "
                 "`beta_step`, but not both."
             )
-        raise ValueError(
-            "Must define either `beta` tuple or all of `beta_start`, `beta_end`, "
-            "`beta_step`."
-        )
+        if not has_beta and not has_all_beta_fields:
+            raise ValueError(
+                "Must define either `beta` tuple or all of `beta_start`, `beta_end`, "
+                "`beta_step`."
+            )
 
     @property
     def beta_range(self) -> tuple[float, float, float]:
