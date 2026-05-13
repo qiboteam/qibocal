@@ -238,7 +238,7 @@ def _fit(data: DragTuningData) -> DragTuningResults:
             # adjacent grid points near a minimum, which from a Taylor expansion is
             # (2*pi/period* beta_step)**2. The O(beta_step**4) term is negative so the
             # quadratic bound is safe.
-            sampling_points = 1000
+            sampling_points = 1000  # Has to be enough to create a dense grid in beta
             beta_grid = np.linspace(
                 beta_params.min(), beta_params.max(), sampling_points
             )
