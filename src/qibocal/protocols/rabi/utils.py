@@ -5,17 +5,15 @@ from qibolab import Delay, Platform, PulseSequence
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, QubitId
-from qibocal.update import replace
-
-from ..utils import (
+from qibocal.protocols.utils import (
     COLORBAND,
     COLORBAND_LINE,
     angle_wrap,
-    fallback_period,
-    guess_period,
+    quinn_fernandes_algorithm,
     table_dict,
     table_html,
 )
+from qibocal.update import replace
 
 QUANTILE_CONSTANT = 1.5
 """Scaling factor to recover signal amplitude from quantiles.
@@ -53,7 +51,8 @@ def rabi_length_function(x, offset, amplitude, period, phase, t2_inv):
 
 
 def rabi_initial_guess(x, y, experiment: str, signal: bool):
-    period = fallback_period(guess_period(x, y))
+    # period = fallback_period(guess_period(x, y))
+    period = quinn_fernandes_algorithm(y, x, speedup_flag=True)
     median_sig = np.median(y)
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)

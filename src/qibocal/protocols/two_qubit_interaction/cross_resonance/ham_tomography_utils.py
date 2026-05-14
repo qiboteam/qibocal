@@ -1,6 +1,7 @@
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Literal, Union
+from typing import Any, Literal, Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -196,7 +197,7 @@ def numerical_root_finder(
 
     y_vals = np.array([func_to_solve(xi) for xi in x_grid]).flatten()
 
-    cr_sig = y_vals[y_vals - np.min(y_vals) <= tol][0]
+    cr_sig = x_grid[y_vals - np.min(y_vals) <= tol][0]
 
     # Use a numerical minimizer starting from our guess
     res = minimize(
@@ -365,7 +366,7 @@ def estimate_cancellation_amplitudes(
     amplitudes: list[float | int] | NDArray,
     ham_term: dict,
     ampl_params: dict,
-    tol: float = 1e-6,
+    tol: float = 1e-8,
 ) -> dict[str, float]:
     """Extrapolates the cancellation pulse amplitude for the cross resonance pulse sequence.
 
@@ -416,15 +417,35 @@ def estimate_cr_phases(
         tol=tol,
     )
 
-    if fitting.sin_fit(tuned_phases["phi0"], **phase_params[HamiltonianTerm.ZX]) > 0:
+    zx_value = fitting.sin_fit(
+        tuned_phases["phi0"],
+        **phase_params[HamiltonianTerm.ZX],
+    )
+
+    zx_semiperiod_value = fitting.sin_fit(
+        tuned_phases["phi0"] + np.pi,
+        **phase_params[HamiltonianTerm.ZX],
+    )
+
+    if zx_value > zx_semiperiod_value:
         # in https://journals.aps.org/pra/pdf/10.1103/PhysRevA.93.060302
         # it is said we need to choose the CR phase that minimizes ZY components
         # and maximizes ZX interaction.
-        tuned_phases["phi0"] += phase_params[HamiltonianTerm.ZY]["omega"] * np.pi
+        tuned_phases["phi0"] += np.pi
 
-    if fitting.sin_fit(tuned_phases["phi1"], **phase_params[HamiltonianTerm.IX]) > 0:
+    ix_value = fitting.sin_fit(
+        tuned_phases["phi1"],
+        **phase_params[HamiltonianTerm.IX],
+    )
+
+    ix_semiperiod_value = fitting.sin_fit(
+        tuned_phases["phi1"] + np.pi,
+        **phase_params[HamiltonianTerm.IX],
+    )
+
+    if ix_value > ix_semiperiod_value:
         # same as above, but this time is more euristic.
-        tuned_phases["phi1"] += phase_params[HamiltonianTerm.IY]["omega"] * np.pi
+        tuned_phases["phi1"] += np.pi
 
     return angle_wrap(tuned_phases["phi0"]), angle_wrap(
         tuned_phases["phi0"] - tuned_phases["phi1"]
