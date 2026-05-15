@@ -108,26 +108,35 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
     voltages = data.signal
 
     # Guess parameters for Lorentzian max or min
-    # TODO: probably this is not working on HW
-    guess_offset = np.mean(
-        voltages[np.abs(voltages - np.mean(voltages)) < np.std(voltages)]
-    )
-    guess_slope = 0.0
+    guess_slope = (voltages[-1] - voltages[0]) / (frequencies[-1] - frequencies[0])
+    guess_offset = voltages[0] - guess_slope * frequencies[0]
+    guess_background = guess_offset + guess_slope * frequencies
+    voltages_no_background = voltages - guess_background
+
     if (resonator_type == "3D" and fit == "resonator") or (
         resonator_type == "2D" and fit == "qubit"
     ):
-        guess_center = frequencies[
-            np.argmax(voltages)
-        ]  # Argmax = Returns the indices of the maximum values along an axis.
-        guess_sigma = abs(frequencies[np.argmin(voltages)] - guess_center)
-        guess_amp = (np.max(voltages) - guess_offset) * guess_sigma * np.pi
-
+        guess_center = frequencies[np.argmax(voltages_no_background)]
+        guess_peak_height = voltages_no_background.max()
+        indices_beyond_half = np.where(voltages_no_background > guess_peak_height / 2)[
+            0
+        ]
     else:
-        guess_center = frequencies[
-            np.argmin(voltages)
-        ]  # Argmin = Returns the indices of the minimum values along an axis.
-        guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
-        guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
+        guess_center = frequencies[np.argmin(voltages_no_background)]
+        guess_peak_height = voltages_no_background.min()
+        indices_beyond_half = np.where(voltages_no_background < guess_peak_height / 2)[
+            0
+        ]
+
+    if len(indices_beyond_half) >= 1:
+        guess_sigma = (
+            frequencies[indices_beyond_half[-1]] - frequencies[indices_beyond_half[0]]
+        ) / 2
+    else:
+        # if there is no clear peak, we give a high flexibility
+        guess_sigma = frequencies[-1] - frequencies[0]
+
+    guess_amp = guess_peak_height * guess_sigma * np.pi
 
     initial_parameters = [
         guess_amp,
@@ -136,30 +145,26 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         guess_offset,
         guess_slope,
     ]
+    freq_domain_size = frequencies[-1] - frequencies[0]
+    bounds = (
+        [-np.inf, frequencies[0], 0.0, -np.inf, -np.inf],
+        [np.inf, frequencies[-1], freq_domain_size, np.inf, np.inf],
+    )
+
     # fit the model with the data and guessed parameters
     try:
-        sigma = (
-            data.error_signal
-            if (hasattr(data, "error_signal") and not np.isnan(data.error_signal).any())
-            else None
-        )
-
-        fit_parameters, perr = curve_fit(
+        fit_parameters, parameters_cov = curve_fit(
             lorentzian,
             frequencies,
             voltages,
             p0=initial_parameters,
-            sigma=sigma,
+            bounds=bounds,
         )
         # The output results are stored in a json, but ndarray is not JSON serializable,
         # so the parameters are converted to list.
-        perr = (
-            np.sqrt(np.diag(perr)).tolist()
-            if sigma is not None
-            else [0] * len(initial_parameters)
-        )
+        parameter_errors = np.sqrt(np.diag(parameters_cov)).tolist()
         model_parameters = fit_parameters.tolist()
-        return model_parameters[1] * GHZ_TO_HZ, model_parameters, perr
+        return model_parameters[1] * GHZ_TO_HZ, model_parameters, parameter_errors
     except RuntimeError as e:
         log.warning(f"Lorentzian fit not successful due to {e}")
 

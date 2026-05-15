@@ -10,6 +10,9 @@ TESTING_PLATFORM_NAMES = [
     "mock",
 ]
 
+TEST_FILE_DIR = Path(__file__).resolve().parent
+PATH_TESTING_DATA = TEST_FILE_DIR / "tests_data"
+
 
 @pytest.fixture(autouse=True)
 def cd(tmp_path_factory: pytest.TempdirFactory):
