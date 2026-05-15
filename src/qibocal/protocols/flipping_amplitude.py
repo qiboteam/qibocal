@@ -172,7 +172,37 @@ def _acquisition(
 
 
 def _fit(data: FlippingAmplitudeData) -> FlippingAmplitudeResults:
-    return None
+    """Find the best amplitude by minimising the variance of P(|1>) vs flips.
+    TODO: Use the same fit as in the flipping protocol to extract the rabi amp
+    per input delta detiuning, these should all bve the same so the mean value
+    can be used as the best amplitude.
+    """
+
+    best_amplitudes: dict[QubitId, list[float]] = {}
+    delta_amplitudes: dict[QubitId, list[float]] = {}
+
+    for qubit in data.qubits:
+        qubit_data = data[qubit]
+        amplitudes = np.unique(qubit_data["amplitude"])
+        variances = []
+
+        for amp in amplitudes:
+            mask = qubit_data["amplitude"] == amp
+            probs = qubit_data["prob"][mask]
+            variances.append(float(np.var(probs)))
+
+        best_idx = int(np.argmin(variances))
+        best_amp = float(amplitudes[best_idx])
+        native_amp = data.pulse_amplitudes[qubit]
+
+        best_amplitudes[qubit] = [best_amp, 0.0]
+        delta_amplitudes[qubit] = [best_amp - native_amp, 0.0]
+
+    return FlippingAmplitudeResults(
+        amplitude=best_amplitudes,
+        delta_amplitude=delta_amplitudes,
+        rx90=data.rx90,
+    )
 
 
 def _plot(
@@ -180,7 +210,64 @@ def _plot(
     target: QubitId,
     fit: FlippingAmplitudeResults | None = None,
 ):
-    return None
+    """Plotting function for FlippingAmplitude.
+
+    Produces a heatmap of excited-state probability as a function of flips
+    (x-axis) and pulse amplitude (y-axis).  When fit results are available a
+    dashed horizontal line marks the best amplitude.
+    """
+
+    qubit_data = data[target]
+    amplitudes = np.unique(qubit_data["amplitude"])
+    flips_vals = np.unique(qubit_data["flips"])
+
+    # Build 2D probability matrix: rows = amplitude, cols = flips
+    z = np.full((len(amplitudes), len(flips_vals)), np.nan)
+    amp_index = {amp: i for i, amp in enumerate(amplitudes)}
+    flip_index = {fl: j for j, fl in enumerate(flips_vals)}
+
+    for row in qubit_data:
+        i = amp_index[row["amplitude"]]
+        j = flip_index[row["flips"]]
+        z[i, j] = row["prob"]
+
+    fig = go.Figure(
+        go.Heatmap(
+            x=flips_vals,
+            y=amplitudes,
+            z=z,
+            colorscale="RdBu",
+            zmid=0.5,
+            colorbar=dict(title="Excited State Probability"),
+        )
+    )
+
+    if fit is not None and target in fit.amplitude:
+        best_amp = fit.amplitude[target][0]
+        fig.add_hline(
+            y=best_amp,
+            line=dict(color="black", dash="dash", width=2),
+            annotation_text=f"Best amp: {best_amp:.4f}",
+            annotation_position="right",
+        )
+
+    fig.update_layout(
+        xaxis_title="Flips",
+        yaxis_title="Amplitude [a.u.]",
+    )
+
+    fitting_report = ""
+    if fit is not None and target in fit.amplitude:
+        fitting_report = table_html(
+            table_dict(
+                target,
+                ["Best amplitude [a.u.]", "Delta amplitude [a.u.]"],
+                [fit.amplitude[target], fit.delta_amplitude[target]],
+                display_error=True,
+            )
+        )
+
+    return [fig], fitting_report
 
 
 def _update(
