@@ -56,8 +56,7 @@ DISTANCE_Z = 0.5
 
 
 class FeatExtractionError(Exception):
-    def __init__(self, *args):
-        super().__init__(*args)
+    """Exception for feature extraction errors."""
 
 
 class PowerLevel(str, Enum):
@@ -241,7 +240,9 @@ def compute_qnd(
     return qnd, lambda_m.tolist(), lambda_m2.tolist()
 
 
-def marginalize_qubit_counts(counts: Counter[str], qubit_id: Sequence[int] | int):
+def marginalize_qubit_counts(
+    counts: Counter[str], qubit_id: Sequence[int] | int
+) -> Counter[str]:
     """
     Extract marginal distribution from measurement counts over selected qubit indices.
 
@@ -302,7 +303,7 @@ def cumulative(input_data, points):
     return np.searchsorted(np.sort(points), np.sort(input_data))
 
 
-def eval_magnitude(value):
+def eval_magnitude(value: int | float | np.number) -> int:
     """number of non decimal digits in `value`"""
     if value == 0 or not np.isfinite(value):
         return 0
@@ -346,7 +347,7 @@ def round_report(
     return rounded_values, rounded_errors
 
 
-def format_error_single_cell(measure: tuple):
+def format_error_single_cell(measure: tuple) -> str:
     """Helper function to print mean value and error in one line."""
     # extract mean value and error
     mean = measure[0][0]
@@ -362,7 +363,7 @@ def chi2_reduced(
     estimated: NDArray,
     errors: NDArray,
     dof: float | None = None,
-):
+) -> float:
     if np.count_nonzero(errors) < len(errors):
         return EXTREME_CHI
 
@@ -371,7 +372,7 @@ def chi2_reduced(
 
     chi2 = np.sum(np.square((observed - estimated) / errors)) / dof
 
-    return chi2
+    return float(chi2)
 
 
 def chi2_reduced_complex(
@@ -379,7 +380,7 @@ def chi2_reduced_complex(
     estimated: NDArray,
     errors: tuple[NDArray, NDArray],
     dof: float | None = None,
-):
+) -> float:
     observed_complex = np.abs(observed[0] * np.exp(1j * observed[1]))
 
     observed_real = np.real(observed_complex)
@@ -403,15 +404,15 @@ def chi2_reduced_complex(
     return chi2_real + chi2_imag
 
 
-def get_color_state0(number):
+def get_color_state0(number) -> str:
     return "rgb" + str(hls_to_rgb((-0.35 - number * 9 / 20) % 1, 0.6, 0.75))
 
 
-def get_color_state1(number):
+def get_color_state1(number) -> str:
     return "rgb" + str(hls_to_rgb((-0.02 - number * 9 / 20) % 1, 0.6, 0.75))
 
 
-def significant_digit(number: float):
+def significant_digit(number: float) -> int:
     """Computes the position of the first significant digit of a given number.
 
     Args:
@@ -480,7 +481,9 @@ def evaluate_grid(
     return np.vstack([i_values.ravel(), q_values.ravel()]).T
 
 
-def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
+def plot_results(
+    data: Data, qubit: QubitId, qubit_states: list, fit: Results
+) -> list[go.Figure]:
     """
     Plots for the qubit and qutrit classification.
 

@@ -1,0 +1,11 @@
+id: drag_tuning
+operation: drag_tuning
+parameters:
+  beta_end: 1.0
+  beta_start: -1.0
+  beta_step: 0.1
+  nflips: 10
+  nshots: 2000
+targets:
+- 0
+update: true
