@@ -133,7 +133,8 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
             frequencies[indices_beyond_half[-1]] - frequencies[indices_beyond_half[0]]
         ) / 2
     else:
-        guess_sigma = frequencies[1] - frequencies[0]
+        # if there is no clear peak, we give a high flexibility
+        guess_sigma = frequencies[-1] - frequencies[0]
 
     guess_amp = guess_peak_height * guess_sigma * np.pi
 
