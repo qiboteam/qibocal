@@ -35,6 +35,21 @@ class FlippingAmplitudeParameters(Parameters):
     rx90: bool = False
     """Calibration of native pi pulse, if true calibrates pi/2 pulse."""
 
+    def __post_init__(self):
+        if not isinstance(self.nflips_max, int):
+            raise TypeError(
+                f"nflips_max must be int, got {type(self.nflips_max).__name__}"
+            )
+        if not isinstance(self.nflips_step, int):
+            raise TypeError(
+                f"nflips_step must be int, got {type(self.nflips_step).__name__}"
+            )
+        if not isinstance(self.rx90, bool):
+            raise TypeError(f"rx90 must be boolean, got {type(self.rx90).__name__}")
+        if self.nflips_max <= 0:
+            raise ValueError("nflips_max must be greater than 0.")
+        if self.nflips_step <= 0:
+            raise ValueError("nflips_step must be greater than 0.")
 
 
 @dataclass
@@ -81,7 +96,79 @@ def _acquisition(
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> FlippingAmplitudeData:
-    return None
+    r"""Data acquisition for flipping with amplitude sweep.
+
+    For each combination of (flips, delta_amplitude) a sequence is built and
+    executed.  The amplitude values are stored as absolute amplitudes
+    (native + delta).  The resulting 2D map allows identifying the correct
+    drive amplitude: at the true pi-pulse amplitude the excited-state
+    probability should remain flat regardless of the number of flips.
+    """
+
+    data = FlippingAmplitudeData(
+        resonator_type=platform.resonator_type,
+        pulse_amplitudes={
+            qubit: getattr(
+                platform.natives.single_qubit[qubit], "RX90" if params.rx90 else "RX"
+            )[0][1].amplitude
+            for qubit in targets
+        },
+        rx90=params.rx90,
+    )
+
+    flips_sweep = range(0, params.nflips_max, params.nflips_step)
+    delta_amplitude_sweep = np.arange(
+        params.delta_amplitude_min,
+        params.delta_amplitude_max,
+        params.delta_amplitude_step,
+    )
+
+    sequences: list[PulseSequence] = []
+    sweep_params: list[tuple[int, float]] = []
+
+    for flips in flips_sweep:
+        for delta_amp in delta_amplitude_sweep:
+            sequence = PulseSequence()
+            for qubit in targets:
+                sequence += flipping_sequence(
+                    platform=platform,
+                    qubit=qubit,
+                    delta_amplitude=float(delta_amp),
+                    flips=flips,
+                    rx90=params.rx90,
+                )
+            sequences.append(sequence)
+            sweep_params.append((flips, float(delta_amp)))
+
+    results = platform.execute(
+        sequences,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.CYCLIC,
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+    )
+
+    for (flips, delta_amp), sequence in zip(sweep_params, sequences):
+        for qubit in targets:
+            acq_channel = platform.qubits[qubit].acquisition
+            assert acq_channel is not None
+            ro_pulse = list(sequence.channel(acq_channel))[-1]
+            assert isinstance(ro_pulse, Readout)
+            prob = results[ro_pulse.id]
+            error = np.sqrt(prob * (1 - prob) / params.nshots)
+            native_amp = data.pulse_amplitudes[qubit]
+            data.register_qubit(
+                FlippingAmplitudeType,
+                qubit,
+                {
+                    "flips": np.array([flips]),
+                    "amplitude": np.array([native_amp + delta_amp]),
+                    "prob": np.array([prob]),
+                    "error": np.array([error]),
+                },
+            )
+
+    return data
 
 
 def _fit(data: FlippingAmplitudeData) -> FlippingAmplitudeResults:
