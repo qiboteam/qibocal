@@ -10,7 +10,6 @@ from qibolab import AcquisitionType, AveragingMode, PulseSequence, Readout
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
-from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
 from .flipping import flipping_sequence
@@ -116,8 +115,8 @@ def _acquisition(
         rx90=params.rx90,
     )
 
-    flips_sweep = range(0, params.nflips_max, params.nflips_step)
-    delta_amplitude_sweep = np.arange(
+    flips_range = range(0, params.nflips_max, params.nflips_step)
+    delta_amplitude_range = np.arange(
         params.delta_amplitude_min,
         params.delta_amplitude_max,
         params.delta_amplitude_step,
@@ -126,8 +125,9 @@ def _acquisition(
     sequences: list[PulseSequence] = []
     sweep_params: list[tuple[int, float]] = []
 
-    for flips in flips_sweep:
-        for delta_amp in delta_amplitude_sweep:
+    for flips in flips_range:
+        # TODO: The inner loop can be improved using a sweeper
+        for delta_amp in delta_amplitude_range:
             sequence = PulseSequence()
             for qubit in targets:
                 sequence += flipping_sequence(
@@ -174,7 +174,7 @@ def _acquisition(
 def _fit(data: FlippingAmplitudeData) -> FlippingAmplitudeResults:
     """Find the best amplitude by minimising the variance of P(|1>) vs flips.
     TODO: Use the same fit as in the flipping protocol to extract the rabi amp
-    per input delta detiuning, these should all bve the same so the mean value
+    per input delta detiuning, these should all be the same and the mean value
     can be used as the best amplitude.
     """
 
@@ -217,6 +217,10 @@ def _plot(
     dashed horizontal line marks the best amplitude.
     """
 
+    def ev(prob: np.ndarray) -> np.ndarray:
+        """Helper function to calculate the expectation value."""
+        return 2 * prob - 1
+
     qubit_data = data[target]
     amplitudes = np.unique(qubit_data["amplitude"])
     flips_vals = np.unique(qubit_data["flips"])
@@ -229,16 +233,16 @@ def _plot(
     for row in qubit_data:
         i = amp_index[row["amplitude"]]
         j = flip_index[row["flips"]]
-        z[i, j] = row["prob"]
+        z[i, j] = ev(row["prob"])
 
     fig = go.Figure(
         go.Heatmap(
             x=flips_vals,
             y=amplitudes,
             z=z,
-            colorscale="RdBu",
-            zmid=0.5,
-            colorbar=dict(title="Excited State Probability"),
+            colorscale="viridis",
+            zmid=0.0,
+            colorbar=dict(title="Expected value of Z"),
         )
     )
 
