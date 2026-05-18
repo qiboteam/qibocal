@@ -109,15 +109,14 @@ def single_qubit_ramsey_sequence(
 
     RX90 -- wait -- RX90 -- MZ
     """
-    delays = [Delay(duration=wait), Delay(duration=wait)]
+    delays = [Delay(duration=wait) for _ in range(2)]
 
     # TODO: move flux lines outside this function
-    if flux_pulse_amplitude is not None:
-        flux_pulse = [
-            Pulse(duration=0, amplitude=flux_pulse_amplitude, envelope=Rectangular())
-        ]
-    else:
-        flux_pulse = []
+    flux_pulse = (
+        [Pulse(duration=0, amplitude=flux_pulse_amplitude, envelope=Rectangular())]
+        if flux_pulse_amplitude is not None
+        else []
+    )
 
     sequence = PulseSequence()
     ro_sequence = PulseSequence()

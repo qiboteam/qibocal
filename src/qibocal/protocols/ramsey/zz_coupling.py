@@ -42,11 +42,14 @@ EPS = 1  # Hz
 
 
 class AnharmonicityError(Exception):
-    def __init__(self, *args):
-        super().__init__(*args)
+    pass
 
 
-def compute_coupling_strength(
+class InvalidInputQubitPairs(Exception):
+    pass
+
+
+def coupling_strength(
     omega1: float,
     omega2: float,
     anharmonicity1: float,
@@ -65,10 +68,8 @@ def compute_coupling_strength(
         raise AnharmonicityError
 
     # adding an eps to avoid numerical issues
-    delta_qubit_freq = omega1 - omega2 + EPS
-    denominator = 1 / (delta_qubit_freq - anharmonicity2) - 1 / (
-        delta_qubit_freq + anharmonicity1
-    )
+    detuning = omega1 - omega2 + EPS
+    denominator = 1 / (detuning - anharmonicity2) - 1 / (detuning + anharmonicity1)
 
     # here we compute coupling as a frequency and do error propagation
     return [
@@ -148,12 +149,16 @@ def _add_spectator_readout_define_parsweepers(
     spect_ro_seq.append((spect_ro_ch, spect_ro_delay))
     spect_ro_seq.append((spect_ro_ch, spect_ro_pulse))
 
-    # sweeping over spectator delay before measuring it
+    # bare_duration removes the initial wait time from the total Ramsey sequence duration
+    # to account for the offset when sweeping the spectator readout delay independently
+    bare_duration = ramsey_duration - init_t
+    # sweeping over spectator delay before measuring it, allowing independent control
+    # of the spectator qubit's delay while maintaining phase coherence with the target
     spectator_sweeper = Sweeper(
         parameter=Parameter.duration,
         # here we are adding to the spectator sweeper the duration of the PI/2 pulses
-        # durations for all target qubita
-        range=(ramsey_duration, fin_t + ramsey_duration - init_t, step_t),
+        # durations for all target qubits
+        range=(bare_duration + init_t, bare_duration + fin_t, step_t),
         pulses=[spect_ro_delay],
     )
 
@@ -252,72 +257,43 @@ def _acquisition(
     )
 
     if len(qubits_set) != len(qubits_list):
-        log.warning(
+        raise InvalidInputQubitPairs(
             "In the pair list there are repeated qubits: "
             "Parallel execution is not possible."
         )
-        parallel_execution = False
-    else:
-        parallel_execution = True
 
     # creating the RamseyZZ pulse sequence to run in parallel and also define the sweepers
     ramsey_spectator_seq = PulseSequence()
     spectators_flip_seq = PulseSequence()
     full_parsweepers = ParallelSweepers([])
-    if parallel_execution:
-        for pair in targets:
-            updates = []
-            if params.detuning is not None:
-                channel = platform.qubits[pair[0]].drive
-                f0 = platform.config(channel).frequency
-                updates.append({channel: {"frequency": f0 + params.detuning}})
 
-            seq, spect_flip, parsweep = _add_spectator_readout_define_parsweepers(
-                platform=platform,
-                pair=pair,
-                delay_range=params.delay_range,
-            )
+    for pair in targets:
+        updates = []
+        if params.detuning is not None:
+            channel = platform.qubits[pair[0]].drive
+            f0 = platform.config(channel).frequency
+            updates.append({channel: {"frequency": f0 + params.detuning}})
 
-            ramsey_spectator_seq += seq
-            spectators_flip_seq += spect_flip
-            full_parsweepers += parsweep
-
-        data = _execute_ramsey_zz(
+        seq, spect_flip, parsweep = _add_spectator_readout_define_parsweepers(
             platform=platform,
-            pair_list=targets,
-            params=params,
-            data=data,
-            ramsey_sequence=ramsey_spectator_seq,
-            spectators_flip_sequence=spectators_flip_seq,
-            full_parsweepers=full_parsweepers,
-            updates=updates,
+            pair=pair,
+            delay_range=params.delay_range,
         )
 
-    else:
-        for pair in targets:
-            ramsey_spectator_seq, spectators_flip_seq, full_parsweepers = (
-                _add_spectator_readout_define_parsweepers(
-                    platform=platform,
-                    pair=pair,
-                    delay_range=params.delay_range,
-                )
-            )
+        ramsey_spectator_seq += seq
+        spectators_flip_seq += spect_flip
+        full_parsweepers += parsweep
 
-            if params.detuning is not None:
-                channel = platform.qubits[pair[0]].drive
-                f0 = platform.config(channel).frequency
-                updates = [{channel: {"frequency": f0 + params.detuning}}]
-
-            data = _execute_ramsey_zz(
-                platform=platform,
-                pair_list=[pair],
-                params=params,
-                data=data,
-                ramsey_sequence=ramsey_spectator_seq,
-                spectators_flip_sequence=spectators_flip_seq,
-                full_parsweepers=full_parsweepers,
-                updates=updates,
-            )
+    data = _execute_ramsey_zz(
+        platform=platform,
+        pair_list=targets,
+        params=params,
+        data=data,
+        ramsey_sequence=ramsey_spectator_seq,
+        spectators_flip_sequence=spectators_flip_seq,
+        full_parsweepers=full_parsweepers,
+        updates=updates,
+    )
 
     return data
 
@@ -366,7 +342,7 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
 
         # here we compute coupling as a frequency
         try:
-            coupling[pair] = compute_coupling_strength(
+            coupling[pair] = coupling_strength(
                 omega1=data.qubit_freqs[target],
                 omega2=data.qubit_freqs[spectator],
                 anharmonicity1=data.anharmonicity[target],
@@ -374,9 +350,8 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
                 zz=zz[pair],
             )
         except AnharmonicityError:
-            log.warning(
-                f"e-f transitions are not calibrated for qubit pair {pair}, cannot compute coupling strength"
-            )
+            # e-f transitions are not calibrated, cannot compute coupling strength
+            pass
 
     return RamseyZZResults(
         delta_phys=delta_phys_measure,
