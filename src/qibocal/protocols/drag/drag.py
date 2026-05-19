@@ -3,19 +3,23 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, Delay, Drag, PulseSequence
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Delay,
+    Drag,
+    Pulse,
+    PulseSequence,
+    Readout,
+)
 from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.result import probability
-from qibocal.update import replace
 
 from ..utils import (
-    COLORBAND,
-    COLORBAND_LINE,
     chi2_reduced,
     fallback_period,
     guess_period,
@@ -37,17 +41,45 @@ __all__ = [
 class DragTuningParameters(Parameters):
     """DragTuning runcard inputs."""
 
-    beta_start: float
+    beta: tuple[float, float, float] | None = None
+    """Tuple of the beta parameters in the form: (start, stop, step)."""
+    beta_start: float | None = None
     """DRAG pulse beta start sweep parameter."""
-    beta_end: float
+    beta_end: float | None = None
     """DRAG pulse beta end sweep parameter."""
-    beta_step: float
+    beta_step: float | None = None
     """DRAG pulse beta sweep step parameter."""
-    unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
-    Defaults to ``False``."""
     nflips: int = 1
     """Repetitions of (Xpi - Xmpi)."""
+
+    def __post_init__(self):
+        has_beta = self.beta is not None
+        beta_fields = [self.beta_start, self.beta_end, self.beta_step]
+        has_any_beta_field = any(x is not None for x in beta_fields)
+        has_all_beta_fields = all(x is not None for x in beta_fields)
+
+        if has_any_beta_field and not has_all_beta_fields:
+            raise ValueError(
+                "If any of `beta_start`, `beta_end`, `beta_step` is set, all must be "
+                "set."
+            )
+        if has_beta and has_all_beta_fields:
+            raise ValueError(
+                "Define either `beta` tuple or all of `beta_start`, `beta_end`, "
+                "`beta_step`, but not both."
+            )
+        if not has_beta and not has_all_beta_fields:
+            raise ValueError(
+                "Must define either `beta` tuple or all of `beta_start`, `beta_end`, "
+                "`beta_step`."
+            )
+
+    @property
+    def beta_range(self) -> tuple[float, float, float]:
+        """Return a tuple with the beta sweep (start, end, step)."""
+        if self.beta is not None:
+            return self.beta
+        return (self.beta_start, self.beta_end, self.beta_step)
 
 
 @dataclass
@@ -56,10 +88,11 @@ class DragTuningResults(Results):
 
     betas: dict[QubitId, float]
     """Optimal beta paramter for each qubit."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitting output."""
+    fitted_parameters: dict[QubitId, list[float]]
+    """Raw fitting output as lists for JSON serialization."""
     chi2: dict[QubitId, tuple[float, float | None]] = field(default_factory=dict)
     """Chi2 calculation."""
+    # The chi2 is not included in the report, but we store it at least for now.
 
 
 DragTuningType = np.dtype(
@@ -86,7 +119,7 @@ def _acquisition(
     """
 
     data = DragTuningData()
-    beta_param_range = np.arange(params.beta_start, params.beta_end, params.beta_step)
+    beta_param_range = np.arange(*params.beta_range)
 
     sequences, all_ro_pulses = [], []
     for beta_param in beta_param_range:
@@ -96,15 +129,16 @@ def _acquisition(
             natives = platform.natives.single_qubit[q]
             qd_channel, qd_pulse = natives.RX()[0]
             ro_channel, ro_pulse = natives.MZ()[0]
-
-            drag = replace(
-                qd_pulse,
-                envelope=Drag(
-                    rel_sigma=qd_pulse.envelope.rel_sigma,
-                    beta=beta_param,
-                ),
+            assert isinstance(qd_pulse, Pulse) and isinstance(qd_pulse.envelope, Drag)
+            drag = qd_pulse.model_copy(
+                update={
+                    "envelope": Drag(
+                        rel_sigma=qd_pulse.envelope.rel_sigma,
+                        beta=beta_param,
+                    )
+                }
             )
-            drag_negative = replace(drag, relative_phase=np.pi)
+            drag_negative = drag.model_copy(update={"relative_phase": np.pi})
 
             for _ in range(params.nflips):
                 sequence.append((qd_channel, drag))
@@ -120,61 +154,50 @@ def _acquisition(
             )
             sequence.append((ro_channel, ro_pulse))
         sequences.append(sequence)
-        all_ro_pulses.append(
-            {
-                qubit: list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
-                for qubit in targets
-            }
-        )
+        for qubit in targets:
+            acq_channel = platform.qubits[qubit].acquisition
+            assert acq_channel is not None
+            ro_pulse = list(sequence.channel(acq_channel))[-1]
+            assert isinstance(ro_pulse, Readout)
+            ro_pulses[qubit] = ro_pulse
+        all_ro_pulses.append(ro_pulses)
 
-    options = {
-        "nshots": params.nshots,
-        "relaxation_time": params.relaxation_time,
-        "acquisition_type": AcquisitionType.DISCRIMINATION,
-        "averaging_mode": AveragingMode.SINGLESHOT,
-    }
+    # execute the pulse sequences
+    results = platform.execute(
+        sequences,
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.CYCLIC,
+    )
 
-    # execute the pulse sequence
-    if params.unrolling:
-        results = platform.execute(sequences, **options)
-        for beta, ro_pulses in zip(beta_param_range, all_ro_pulses):
-            for qubit in targets:
-                result = results[ro_pulses[qubit].id]
-                prob = probability(result, state=0)
-                # store the results
-                data.register_qubit(
-                    DragTuningType,
-                    (qubit),
-                    dict(
-                        prob=np.array([prob]),
-                        error=np.array([np.sqrt(prob * (1 - prob) / params.nshots)]),
-                        beta=np.array([beta]),
+    for beta, ro_pulses in zip(beta_param_range, all_ro_pulses):
+        for qubit in targets:
+            excited_state_prob = results[ro_pulses[qubit].id]
+            # store the results
+            data.register_qubit(
+                DragTuningType,
+                (qubit),
+                dict(
+                    prob=np.array([excited_state_prob]),
+                    error=np.array(
+                        [
+                            np.sqrt(
+                                excited_state_prob
+                                * (1 - excited_state_prob)
+                                / params.nshots
+                            )
+                        ]
                     ),
-                )
-    else:
-        for i, sequence in enumerate(sequences):
-            result = platform.execute([sequence], **options)
-            for qubit in targets:
-                ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[
-                    -1
-                ]
-                prob = probability(result[ro_pulse.id], state=0)
-                # store the results
-                data.register_qubit(
-                    DragTuningType,
-                    (qubit),
-                    dict(
-                        prob=np.array([prob]),
-                        error=np.array([np.sqrt(prob * (1 - prob) / params.nshots)]),
-                        beta=np.array([beta_param_range[i]]),
-                    ),
-                )
+                    beta=np.array([beta]),
+                ),
+            )
 
     return data
 
 
-def drag_fit(x, offset, amplitude, period, phase):
-    return offset + amplitude * np.cos(2 * np.pi * x / period + phase)
+def drag_fit(beta, offset, amplitude, period, phase):
+    return offset + amplitude * np.cos(2 * np.pi * beta / period + phase)
 
 
 def _fit(data: DragTuningData) -> DragTuningResults:
@@ -186,88 +209,91 @@ def _fit(data: DragTuningData) -> DragTuningResults:
     for qubit in qubits:
         qubit_data = data[qubit]
 
-        # normalize prob
-        prob = qubit_data.prob
-        prob_min = np.min(prob)
-        prob_max = np.max(prob)
-        normalized_prob = (prob - prob_min) / (prob_max - prob_min)
-
         # normalize beta
-        beta_params = qubit_data.beta
-        beta_min = np.min(beta_params)
-        beta_max = np.max(beta_params)
-        normalized_beta = (beta_params - beta_min) / (beta_max - beta_min)
+        beta_params = qubit_data["beta"]
 
         # Guessing period using fourier transform
-        period = fallback_period(guess_period(normalized_beta, normalized_prob))
-        pguess = [0.5, 0.5, period, 0]
+        period_guess = fallback_period(guess_period(beta_params, qubit_data["prob"]))
+        pguess = [0.5, 0.5, period_guess, 0]
         try:
             popt, _ = curve_fit(
                 drag_fit,
-                normalized_beta,
-                normalized_prob,
+                beta_params,
+                qubit_data["prob"],
                 p0=pguess,
                 maxfev=100000,
                 bounds=(
-                    [0, 0, 0, -np.pi],
-                    [1, 1, np.inf, np.pi],
+                    [0, 0, 0, -np.inf],
+                    [1, 1, np.inf, np.inf],
                 ),
-                sigma=qubit_data.error,
+                sigma=qubit_data["error"],
             )
-            translated_popt = [
-                popt[0] * (prob_max - prob_min) + prob_min,
-                popt[1] * (prob_max - prob_min),
-                popt[2] * (beta_max - beta_min),
-                popt[3] - 2 * np.pi * beta_min / popt[2] / (beta_max - beta_min),
+            fitted_parameters[qubit] = popt.tolist()  # must be a list for JSON
+            _offset, amplitude, period, phase = popt
+
+            # Evaluate drag_fit on a dense grid and select the minimum closest to
+            # beta=0. A penalty term breaks equality between equally deep minima of the
+            # sinusoidal fit and favours those points closest to beta=0.
+            #
+            # The penalty factor has to exceed the variation in drag_fit between
+            # adjacent grid points near a minimum, which from a Taylor expansion is
+            # (2*pi/period* beta_step)**2. The O(beta_step**4) term is negative so the
+            # quadratic bound is safe.
+            sampling_points = 1000  # Has to be enough to create a dense grid in beta
+            beta_grid = np.linspace(
+                beta_params.min(), beta_params.max(), sampling_points
+            )
+            beta_step = (beta_params.max() - beta_params.min()) / sampling_points
+            # beta_step is divided by two because the worst-case scenario is where a
+            # minimum is in the middle between two sampled points
+            penalty_factor = (
+                amplitude * 0.5 * (2 * np.pi / period * (beta_step / 2)) ** 2
+            )
+            penalty = penalty_factor * np.abs(
+                np.floor(beta_grid / period + phase / (2 * np.pi))
+            )
+            betas_optimal[qubit] = beta_grid[
+                np.argmin(drag_fit(beta_grid, *popt) + penalty)
             ]
-            fitted_parameters[qubit] = translated_popt
-            predicted_prob = drag_fit(beta_params, *translated_popt)
-            betas_optimal[qubit] = beta_params[np.argmax(predicted_prob)]
+
+            predicted_prob = drag_fit(beta_params, *popt)
             chi2[qubit] = (
                 chi2_reduced(
-                    prob,
+                    qubit_data["prob"],
                     predicted_prob,
-                    qubit_data.error,
+                    qubit_data["error"],
                 ),
-                np.sqrt(2 / len(prob)),
+                np.sqrt(2 / len(qubit_data["prob"])),
             )
         except Exception as e:
             log.warning(f"drag_tuning_fit failed for qubit {qubit} due to {e}.")
     return DragTuningResults(betas_optimal, fitted_parameters, chi2=chi2)
 
 
-def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
+def _plot(
+    data: DragTuningData, target: QubitId, fit: DragTuningResults
+) -> tuple[list[go.Figure], str]:
     """Plotting function for DragTuning."""
 
     figures = []
     fitting_report = ""
 
     qubit_data = data[target]
-    betas = qubit_data.beta
+    betas = qubit_data["beta"]
     fig = go.Figure(
         [
             go.Scatter(
-                x=qubit_data.beta,
-                y=qubit_data.prob,
-                opacity=1,
-                mode="lines",
-                name="Probability",
+                x=qubit_data["beta"],
+                y=qubit_data["prob"],
+                error_y=dict(
+                    type="data",
+                    array=qubit_data["error"],
+                    visible=True,
+                ),
+                mode="markers",
+                name="Data",
                 showlegend=True,
                 legendgroup="Probability",
-            ),
-            go.Scatter(
-                x=np.concatenate((betas, betas[::-1])),
-                y=np.concatenate(
-                    (
-                        qubit_data.prob + qubit_data.error,
-                        (qubit_data.prob - qubit_data.error)[::-1],
-                    )
-                ),
-                fill="toself",
-                fillcolor=COLORBAND,
-                line=dict(color=COLORBAND_LINE),
-                showlegend=True,
-                name="Errors",
             ),
         ]
     )
@@ -277,7 +303,7 @@ def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
         beta_range = np.linspace(
             min(betas),
             max(betas),
-            20,
+            100,
         )
 
         fig.add_trace(
@@ -285,22 +311,20 @@ def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
                 x=beta_range,
                 y=drag_fit(beta_range, *fit.fitted_parameters[target]),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
             ),
         )
         fitting_report = table_html(
             table_dict(
                 target,
-                ["Optimal Beta Param", "Chi2 reduced"],
-                [(np.round(fit.betas[target], 4), 0), fit.chi2[target]],
-                display_error=True,
+                ["Beta"],
+                [np.round(fit.betas[target], 4)],
             )
         )
 
     fig.update_layout(
         showlegend=True,
         xaxis_title="Beta parameter",
-        yaxis_title="Ground State Probability",
+        yaxis_title="Excited state probability",
     )
 
     figures.append(fig)
@@ -308,7 +332,9 @@ def _plot(data: DragTuningData, target: QubitId, fit: DragTuningResults):
     return figures, fitting_report
 
 
-def _update(results: DragTuningResults, platform: CalibrationPlatform, target: QubitId):
+def _update(
+    results: DragTuningResults, platform: CalibrationPlatform, target: QubitId
+) -> None:
     update.drag_pulse_beta(
         results.betas[target],
         platform,

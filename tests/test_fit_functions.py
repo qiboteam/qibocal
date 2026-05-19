@@ -143,7 +143,7 @@ def test_rabi_fit():
                     new_duration = pi_pulse_parameter[0]
                     true_duration = results['"duration"'][f][0]
                 else:
-                    new_amplitude = pi_pulse_parameter
+                    new_duration = pi_pulse_parameter
                     true_duration = results['"duration"'][f]
 
                 assert math.isclose(true_duration, new_duration, rel_tol=2.5e-2)
