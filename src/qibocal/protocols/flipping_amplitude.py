@@ -1,11 +1,20 @@
 """Flipping experiment sweeping number of flips and pulse amplitude."""
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab import AcquisitionType, AveragingMode, PulseSequence, Readout
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    Parameter,
+    Pulse,
+    PulseSequence,
+    Readout,
+    Sweeper,
+)
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
@@ -123,50 +132,66 @@ def _acquisition(
     )
 
     sequences: list[PulseSequence] = []
-    sweep_params: list[tuple[int, float]] = []
+    pulses_to_sweep: defaultdict[QubitId, list[Pulse]] = defaultdict(list)
+    parallel_sweepers: list[Sweeper] = []
 
     for flips in flips_range:
-        # TODO: The inner loop can be improved using a sweeper
-        for delta_amp in delta_amplitude_range:
-            sequence = PulseSequence()
-            for qubit in targets:
-                sequence += flipping_sequence(
-                    platform=platform,
-                    qubit=qubit,
-                    delta_amplitude=float(delta_amp),
-                    flips=flips,
-                    rx90=params.rx90,
-                )
-            sequences.append(sequence)
-            sweep_params.append((flips, float(delta_amp)))
+        sequence = PulseSequence()
+        for qubit in targets:
+            seq = flipping_sequence(
+                platform=platform,
+                qubit=qubit,
+                delta_amplitude=0,
+                flips=flips,
+                rx90=params.rx90,
+            )
+            # First two pulses are the pi/2 pulse and unused alignment and the last pulse is a readout alignment
+            # So we add every pulse in-between
+            # Technically we can reduce the number of pulses by filtering by unique UUID
+            pulses_to_sweep[qubit].extend(
+                list(seq.channel(platform.qubits[qubit].drive))[2:-1]
+            )
+            sequence += seq
+        sequences.append(sequence)
+
+    for qubit in targets:
+        parallel_sweepers.append(
+            Sweeper(
+                parameter=Parameter.amplitude,
+                values=data.pulse_amplitudes[qubit] + delta_amplitude_range,
+                pulses=pulses_to_sweep[qubit],
+            )
+        )
 
     results = platform.execute(
         sequences,
+        sweepers=[parallel_sweepers],
         acquisition_type=AcquisitionType.DISCRIMINATION,
         averaging_mode=AveragingMode.CYCLIC,
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
     )
 
-    for (flips, delta_amp), sequence in zip(sweep_params, sequences):
-        for qubit in targets:
+    for flips, sequence in zip(flips_range, sequences):
+        for qubit, sweeper in zip(targets, parallel_sweepers):
             acq_channel = platform.qubits[qubit].acquisition
             assert acq_channel is not None
             ro_pulse = list(sequence.channel(acq_channel))[-1]
             assert isinstance(ro_pulse, Readout)
-            prob = results[ro_pulse.id]
-            error = np.sqrt(prob * (1 - prob) / params.nshots)
-            native_amp = data.pulse_amplitudes[qubit]
-            data.register_qubit(
-                FlippingAmplitudeType,
-                qubit,
-                {
-                    "flips": np.array([flips]),
-                    "amplitude": np.array([native_amp + delta_amp]),
-                    "prob": np.array([prob]),
-                    "error": np.array([error]),
-                },
-            )
+            prob_array = results[ro_pulse.id]
+            assert len(prob_array) == len(sweeper.values)
+            for amp, prob in zip(sweeper.values, prob_array):
+                error = np.sqrt(prob * (1 - prob) / params.nshots)
+                data.register_qubit(
+                    FlippingAmplitudeType,
+                    qubit,
+                    {
+                        "flips": np.array([flips]),
+                        "amplitude": np.array([amp]),
+                        "prob": np.array([prob]),
+                        "error": np.array([error]),
+                    },
+                )
 
     return data
 
