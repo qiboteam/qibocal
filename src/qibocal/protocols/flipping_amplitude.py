@@ -1,6 +1,5 @@
 """Flipping experiment sweeping number of flips and pulse amplitude."""
 
-from collections import defaultdict
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -21,8 +20,6 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import table_dict, table_html
-
-from .flipping import flipping_sequence
 
 __all__ = ["flipping_amplitude"]
 
@@ -133,36 +130,35 @@ def _acquisition(
     )
 
     sequences: list[PulseSequence] = []
-    pulses_to_sweep: defaultdict[QubitId, list[Pulse]] = defaultdict(list)
-    parallel_sweepers: ParallelSweepers = []
+    pulse_to_sweep: dict[QubitId, Pulse] = {}
+    pulses_store: dict[QubitId, tuple(PulseSequence, PulseSequence)] = {}
+
+    for qubit in targets:
+        pulses_store[qubit] = (
+            platform.natives.single_qubit[qubit].R(np.pi / 2),
+            platform.natives.single_qubit[qubit].RX90() * 4
+            if params.rx90
+            else platform.natives.single_qubit[qubit].RX() * 2,
+        )
+        pulse_to_sweep[qubit] = pulses_store[qubit][1][0][1]
 
     for flips in flips_range:
         sequence = PulseSequence()
         for qubit in targets:
-            seq = flipping_sequence(
-                platform=platform,
-                qubit=qubit,
-                delta_amplitude=0,
-                flips=flips,
-                rx90=params.rx90,
-            )
-            # First two pulses are the pi/2 pulse and unused alignment and the last pulse is a readout alignment
-            # So we add every pulse in-between
-            # Technically we can reduce the number of pulses by filtering by unique UUID
-            pulses_to_sweep[qubit].extend(
-                list(seq.channel(platform.qubits[qubit].drive))[2:-1]
-            )
-            sequence += seq
+            rx90, qd_seq = pulses_store[qubit]
+            sequence += (rx90 + qd_seq * flips) | platform.natives.single_qubit[
+                qubit
+            ].MZ()
         sequences.append(sequence)
 
-    for qubit in targets:
-        parallel_sweepers.append(
-            Sweeper(
-                parameter=Parameter.amplitude,
-                values=data.pulse_amplitudes[qubit] + delta_amplitude_range,
-                pulses=pulses_to_sweep[qubit],
-            )
+    parallel_sweepers: ParallelSweepers = [
+        Sweeper(
+            parameter=Parameter.amplitude,
+            values=data.pulse_amplitudes[qubit] + delta_amplitude_range,
+            pulses=[pulse_to_sweep[qubit]],
         )
+        for qubit in targets
+    ]
 
     results = platform.execute(
         sequences,
