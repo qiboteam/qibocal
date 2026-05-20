@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 from qibolab import (
     AcquisitionType,
     AveragingMode,
+    ParallelSweepers,
     Parameter,
     Pulse,
     PulseSequence,
@@ -133,7 +134,7 @@ def _acquisition(
 
     sequences: list[PulseSequence] = []
     pulses_to_sweep: defaultdict[QubitId, list[Pulse]] = defaultdict(list)
-    parallel_sweepers: list[Sweeper] = []
+    parallel_sweepers: ParallelSweepers = []
 
     for flips in flips_range:
         sequence = PulseSequence()
