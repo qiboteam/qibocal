@@ -1,6 +1,12 @@
 from .amplitude_tuning import amplitude_tuning
 from .phase_calibration import phase_calibration
-from .chevron import chevron, chevron_couplers, chevron_signal, coupler_amplitude
+from .chevron import (
+    chevron,
+    chevron_couplers,
+    chevron_signal,
+    coupler_amplitude,
+    coupler_ramsey,
+)
 from .chsh import chsh
 from .cross_resonance import (
     cancellation_amplitude_tuning,
@@ -29,6 +35,7 @@ __all__ = [
     "cancellation_phase_tuning",
     "chevron_couplers",
     "coupler_amplitude",
+    "coupler_ramsey",
     "amplitude_tuning",
     "phase_calibration",
 ]
