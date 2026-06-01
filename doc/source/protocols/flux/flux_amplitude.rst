@@ -48,7 +48,7 @@ On the left we can see the detuning on the qubit frequency as a function of the 
 with the corresponding fit (green). Although the correct formula is given by Eq. :math:numref:`transmon`
 in this protocol we approximate the dependence using a quadratic form.
 
-On the right we derive the how the magnetic flux changing by applying a flux pulse by inverting Eq. Eq. :math:numref:`transmon`
+On the right we derive the how the magnetic flux changing by applying a flux pulse by inverting Eq. :math:numref:`transmon`
 to compute the flux experienced by the qubit. We are using an approximation where we neglect both the anharmonicity
 and asymmetry of the junction. We expect a linear dependence which is fitted accordingly.
 
