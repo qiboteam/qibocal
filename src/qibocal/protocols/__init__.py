@@ -5,6 +5,7 @@ from . import (
     dispersive_shift,
     drag,
     flipping,
+    flipping_amplitude,
     flux_dependence,
     qubit_spectroscopies,
     rabi,
@@ -24,6 +25,7 @@ from .coherence import *
 from .dispersive_shift import *
 from .drag import *
 from .flipping import *
+from .flipping_amplitude import *
 from .flux_dependence import *
 from .qubit_spectroscopies import *
 from .rabi import *
@@ -62,6 +64,7 @@ __all__ += ["dispersive_shift"]
 __all__ += ["classification"]
 __all__ += ["drag"]
 __all__ += ["flipping"]
+__all__ += ["flipping_amplitude"]
 __all__ += ["readout"]
 __all__ += ["tomographies"]
 __all__ += ["resonator_spectroscopies"]

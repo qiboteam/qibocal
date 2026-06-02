@@ -46,12 +46,13 @@ def flipping_sequence(
             qd_pulse, amplitude=qd_pulse.amplitude + delta_amplitude
         )
         sequence.append((qd_channel, qd_detuned))
-        sequence.append((qd_channel, qd_detuned))
+        # sequence.append((qd_channel, qd_detuned))
 
         if rx90:
             sequence.append((qd_channel, qd_detuned))
             sequence.append((qd_channel, qd_detuned))
 
+    sequence |= natives.R(theta=np.pi / 2, phi=0.0 if flips % 2 == 0 else np.pi)
     sequence |= natives.MZ()
 
     return sequence
