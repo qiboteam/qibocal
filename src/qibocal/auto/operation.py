@@ -6,7 +6,7 @@ from copy import deepcopy
 from dataclasses import asdict, dataclass, fields
 from functools import wraps
 from pathlib import Path
-from typing import Generic, NewType, TypeVar, Union
+from typing import Generic, NewType, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -19,8 +19,6 @@ from .serialize import deserialize, load, serialize
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
-ParameterValue = Union[float, int]
-"""Valid value for a routine and runcard parameter."""
 Qubits = dict[QubitId, Qubit]
 """Convenient way of passing qubit pairs in the routines."""
 
