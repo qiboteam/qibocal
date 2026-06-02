@@ -26,20 +26,13 @@ from .acquisition import RamseyResults
 MAXIMUM_FIT_POINTS = 1_000
 """maximum number of points to use when plotting fit results."""
 
-POPT_EXCEPTION = [0, 0, 0, 0, 1]
-"""Fit parameters output to handle exceptions"""
-PERR_EXCEPTION = [1] * 5
-"""Fit errors to handle exceptions; their choice has no physical meaning
-and is meant to avoid breaking the code."""
-THRESHOLD = 0.5
-"""Threshold parameters for find_peaks to guess frequency for sinusoidal fit."""
 DAMPED_CONSTANT = 1.5
 """See :const:`rabi.utils.QUANTILE_CONSTANT` for details.
 
 In general in Ramsey it's intended to observe the decay of the signal due to decoherence, hence we
 need to correct and decrease a little the value of :const:`rabi.utils.DAMPED_CONSTANT`;
 Indeed, for damped oscillations, the factor is not easily determined, since the
-value associated to a certian quantile depends on the observation window extent, and the
+value associated to a certain quantile depends on the observation window extent, and the
 ratio between the decay rate and the oscillation.
 
 Assuming a mild decay, and we can approximate this factor with the same one for the

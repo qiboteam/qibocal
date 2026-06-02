@@ -30,30 +30,12 @@ from ..utils import (
     table_html,
 )
 
-# from .resonator_punchout import ResonatorPunchoutData
-# from .resonator_punchout_attenuation import ResonatorPunchoutAttenuationData
-
 PHASES_THRESHOLD_PERCENTAGE = 80
 r"""Threshold percentage to ensure the phase data covers a significant portion of the full 2 :math:\pi circle."""
 STD_DEV_GAUSSIAN_KERNEL = 30
 """Standard deviation for the Gaussian kernel."""
 PHASE_ELEMENTS = 5
 """Number of values to better guess :math:`\theta` (in rad) in the phase fit function."""
-SATURATION_WINDOW_RATIO = 5
-"""The ratio of the signal of the window for evaluating the effective saturation of the punchout signal."""
-SATURATION_WINDOW_MAX = 10
-"""Maximum length of the saturation window."""
-SATURATION_WINDOW_MIN = 5
-"""Minimum length of the window the saturation window."""
-SAVGOL_FILTER_WINDOW_RATIO = 5
-"""The ratio of the signal of the Sav-Gol filter window."""
-SAVGOL_FILTER_WINDOW_MIN = 5
-"""The min length forthe Sav-Gol filter window."""
-SAVGOL_FILTER_DERIVATIVE = 1
-"""The order of the derivative to compute."""
-SAVGOL_FILTER_ORDER = 3
-"""The order of the polynomial used to fit the samples."""
-SATURATION_TOLERANCE = 1.5e-3
 
 
 def s21(
