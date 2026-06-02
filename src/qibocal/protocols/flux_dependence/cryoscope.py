@@ -203,7 +203,7 @@ def _acquisition(
         data.flux_coefficients[qubit] = platform.calibration.single_qubits[
             qubit
         ].qubit.flux_coefficients
-        data.filters[qubit] = platform.config(platform.qubits[qubit].flux).filter
+        data.filters[qubit] = platform.config(platform.qubits[qubit].flux).filters
 
     sequences_x = []
     sequences_y = []
