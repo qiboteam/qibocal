@@ -1,12 +1,7 @@
-from qibolab import ConfigKinds
 from qibolab._core.components import AcquisitionChannel, DcChannel, IqChannel
 from qibolab._core.instruments.dummy import DummyInstrument, DummyLocalOscillator
 from qibolab._core.parameters import Hardware
 from qibolab._core.qubits import Qubit
-
-from qibocal.protocols.utils import DcFilteredConfig
-
-ConfigKinds.extend([DcFilteredConfig])
 
 
 def create() -> Hardware:
