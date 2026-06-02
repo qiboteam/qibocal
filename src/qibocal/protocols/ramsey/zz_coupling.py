@@ -373,24 +373,25 @@ def zz_fit_plot(
 
     target_qubit, spect_qubit = pair
 
-    fig.add_traces(
-        [
-            go.Scatter(
-                x=fit_waits,
-                y=ramsey_fit(fit_waits, *fit.fitted_parameters[pair, "I"]),
-                name="Fit I",
-                mode="lines",
-            ),
-            go.Scatter(
-                x=fit_waits,
-                y=ramsey_fit(fit_waits, *fit.fitted_parameters[pair, "X"]),
-                name="Fit X",
-                mode="lines",
-            ),
-        ],
-        rows=1,
-        cols=1,
-    )
+    if all((pair, term) in fit.fitted_parameters for term in ("I", "X")):
+        fig.add_traces(
+            [
+                go.Scatter(
+                    x=fit_waits,
+                    y=ramsey_fit(fit_waits, *fit.fitted_parameters[pair, "I"]),
+                    name="Fit I",
+                    mode="lines",
+                ),
+                go.Scatter(
+                    x=fit_waits,
+                    y=ramsey_fit(fit_waits, *fit.fitted_parameters[pair, "X"]),
+                    name="Fit X",
+                    mode="lines",
+                ),
+            ],
+            rows=1,
+            cols=1,
+        )
 
     fitting_report = table_html(
         table_dict(
@@ -400,8 +401,8 @@ def zz_fit_plot(
                 f"Coupling with {spect_qubit} [Hz]",
             ],
             [
-                fit.zz[pair],
-                fit.coupling[pair] if pair in fit.coupling else None,
+                fit.zz[pair] if pair in fit.zz else (0, 0),
+                fit.coupling[pair] if pair in fit.coupling else (0, 0),
             ],
             display_error=True,
         ),
