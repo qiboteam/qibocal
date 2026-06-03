@@ -15,6 +15,7 @@ from qibolab import (
     Sweeper,
 )
 
+from qibocal import update
 from qibocal.auto.operation import QubitId, QubitPairId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
@@ -31,7 +32,6 @@ from .processing import (
     fitting,
     process_fit,
     ramsey_fit,
-    ramsey_update,
 )
 
 __all__ = ["ramsey_zz"]
@@ -500,7 +500,15 @@ def _plot(
     return [fig], fitting_report
 
 
-ramsey_zz = Routine(_acquisition, _fit, _plot, ramsey_update)
+def _update(
+    results: RamseyZZResults, platform: CalibrationPlatform, target: QubitPairId
+) -> None:
+    """Update the platform calibration with the results of the Ramsey ZZ experiment."""
+
+    update.pair_coupling(results.coupling[target], platform, target)
+
+
+ramsey_zz = Routine(_acquisition, _fit, _plot, _update)
 """Ramsey ZZ Routine object.
 
 This protocol measures the state-dependent frequency shift (ZZ interaction)
