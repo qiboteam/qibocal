@@ -28,25 +28,27 @@ from qibocal.auto.operation import (
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import table_dict, table_html
 
-from .ham_tomography_utils import (
+from .cr_parent_classes import (
+    Basis,
     HamiltonianTerm,
     HamiltonianTomographyData,
     HamiltonianTomographyParameters,
     HamiltonianTomographyResults,
+    SetControl,
+)
+from .ham_tomography_utils import (
     cancellation_calibration_plot,
     cancellation_phase_fit,
     reconstruct_full_hamiltonian_terms,
 )
 from .utils import (
-    Basis,
-    SetControl,
     cross_res_sequence,
     cross_resonance_experiment,
     retrieve_cr_parameters,
     ro_delay_range,
 )
 
-__all__ = ["hamiltonian_tomography_canc_phase"]
+__all__ = ["cancellation_phase_tuning"]
 
 HamiltonianTomographyCANCPhaseType = np.dtype(
     [
@@ -432,7 +434,7 @@ def _update(
     getattr(update, f"{results.native.lower()}_sequence")(new_cr_seq, platform, target)
 
 
-hamiltonian_tomography_canc_phase = Routine(_acquisition, _fit, _plot, _update)
+cancellation_phase_tuning = Routine(_acquisition, _fit, _plot, _update)
 """HamiltonianTomographyCANCPhase Routine object."""
 
 """See http://login.qrccluster.com:9000/bf6RezP1SpCnI861v6UNpA== for an example run on the emulator.

@@ -1,7 +1,5 @@
 from collections.abc import Callable
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any, Literal, Union
+from typing import Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -17,10 +15,8 @@ from scipy.optimize import (
 
 from qibocal.auto.operation import (
     Data,
-    Parameters,
     QubitId,
     QubitPairId,
-    Results,
 )
 from qibocal.config import log
 from qibocal.protocols.utils import (
@@ -31,79 +27,15 @@ from qibocal.protocols.utils import (
 )
 
 from . import fitting
-from .utils import Basis, SetControl
+from .cr_parent_classes import (
+    Basis,
+    HamiltonianTerm,
+    HamiltonianTomographyData,
+    HamiltonianTomographyResults,
+    SetControl,
+)
 
 QUANTILE_CONSTANT = 1.5
-
-
-class HamiltonianTerm(str, Enum):
-    """Hamiltonian terms for CR effective Hamiltonian."""
-
-    IX = "IX"
-    IY = "IY"
-    IZ = "IZ"
-    ZX = "ZX"
-    ZY = "ZY"
-    ZZ = "ZZ"
-
-
-@dataclass
-class HamiltonianTomographyParameters(Parameters):
-    """Parent class for parameters in all time-sweeping hamiltonian tomography experiments."""
-
-    pulse_duration_start: float
-    """Initial duration of CR pulse [ns]."""
-    pulse_duration_end: float
-    """Final duration of CR pulse [ns]."""
-    pulse_duration_step: float
-    """Step CR pulse duration [ns]."""
-    echo: bool = False
-    """Apply echo sequence or not.
-
-    The ECR is described in https://arxiv.org/pdf/1210.7011
-    """
-    interpolated_sweeper: bool = False
-    """Use real-time interpolation if supported by instruments."""
-
-    @property
-    def duration_range(self) -> NDArray:
-        """Duration range for CR pulses."""
-        return np.arange(
-            self.pulse_duration_start, self.pulse_duration_end, self.pulse_duration_step
-        )
-
-
-@dataclass
-class HamiltonianTomographyResults(Results):
-    """Results for Hamiltonian Tomography CR Length experiment."""
-
-    echo: bool
-    cr_lengths: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
-    """Estimated durations of CR gate."""
-    hamiltonian_terms: dict = field(default_factory=dict)
-    """Terms in effective Hamiltonian."""
-    fitted_parameters: dict = field(default_factory=dict)
-    """Fitted parameters from X,Y,Z expectation values."""
-    native: Literal["CNOT"] = "CNOT"
-    """Two qubit interaction to be calibrated."""
-
-    def __contains__(self, pair: QubitPairId) -> bool:
-        return all(key[:2] == pair for key in list(self.fitted_parameters))
-
-
-@dataclass
-class HamiltonianTomographyData(Data):
-    """Data for Hamiltonian Tomography CR Amplitude experiment."""
-
-    echo: bool
-    data: dict[tuple[QubitId, QubitId, Basis, SetControl], Any] = field(
-        default_factory=dict
-    )
-    """Raw data acquired."""
-
-    @property
-    def pairs(self):
-        return {(i[0], i[1]) for i in self.data}
 
 
 def dynamic_evolution_optimizer(
@@ -118,15 +50,19 @@ def dynamic_evolution_optimizer(
     """
 
     assert x.ndim == 1, f"Expected 1D array, got array with shape {x.shape}"
-    concat_x = np.concatenate([x, x, x])
 
     def func_to_minimize(z):
-        return np.sum((fitting.combined_fit(concat_x, *z) - signals_id.ravel()) ** 2)
+        return np.sum(
+            (fitting.simultaneous_expectation(x, *z) - signals_id.ravel()) ** 2
+        )
 
     def constraint(x):
         return np.sqrt(np.sum(x**2))
 
-    bounds = Bounds([-init_omega_guess] * 3, [init_omega_guess] * 3)
+    bounds = Bounds(
+        [-init_omega_guess, -init_omega_guess, -init_omega_guess, 0],
+        [init_omega_guess, init_omega_guess, init_omega_guess, np.inf],
+    )
     res = differential_evolution(
         func_to_minimize,
         bounds,
@@ -162,9 +98,12 @@ def scipy_curve_fit_optimizer(
     omega_guesses[0] = offsets[0] / omega_guesses[-1]
     omega_guesses = np.concatenate([omega_guesses, [0]])
 
+    # even though vector_x does not have the same shape as concatenated_signal,
+    # curve_fit will still work (despite it's documented the opposite) because it's just
+    # necesary fitting.simultaneous_expectation's output to have the same shape as concatenated_signal.
     popt, _ = curve_fit(
-        fitting.combined_fit,
-        np.concatenate([vector_x, vector_x, vector_x]),
+        fitting.simultaneous_expectation,
+        vector_x,
         concatenated_signal.ravel(),
         maxfev=int(1e6),
         p0=omega_guesses,
@@ -239,11 +178,10 @@ def bloch_func(
     for either control qubit in |0> or in |1>, computes the estimated Bloch vector.
     """
 
-    x = np.vstack([x, x, x])
-    id_blochfit = fitting.combined_fit(
+    id_blochfit = fitting.simultaneous_expectation(
         x, *fitted_parameters[pair[0], pair[1], SetControl.Id]
     ).reshape((3, -1))
-    x_blochfit = fitting.combined_fit(
+    x_blochfit = fitting.simultaneous_expectation(
         x, *fitted_parameters[pair[0], pair[1], SetControl.X]
     ).reshape((3, -1))
     return np.sqrt(np.sum((id_blochfit + x_blochfit) ** 2, axis=0))
@@ -380,7 +318,7 @@ def estimate_cancellation_amplitudes(
 
     tuned_amplitudes = tune_cancellation_sequence(
         x=amplitudes,
-        function_to_tune=fitting.linear_fit,
+        function_to_tune=fitting.linear_func,
         interactions_to_analyze=interaction_terms,
         ham_term=ham_term,
         fit_params=ampl_params,
@@ -409,7 +347,7 @@ def estimate_cr_phases(
 
     tuned_phases = tune_cancellation_sequence(
         x=phases,
-        function_to_tune=fitting.sin_fit,
+        function_to_tune=fitting.sin_func,
         interactions_to_analyze=interaction_terms,
         ham_term=ham_term,
         fit_params=phase_params,
@@ -417,12 +355,12 @@ def estimate_cr_phases(
         tol=tol,
     )
 
-    zx_value = fitting.sin_fit(
+    zx_value = fitting.sin_func(
         tuned_phases["phi0"],
         **phase_params[HamiltonianTerm.ZX],
     )
 
-    zx_semiperiod_value = fitting.sin_fit(
+    zx_semiperiod_value = fitting.sin_func(
         tuned_phases["phi0"] + np.pi,
         **phase_params[HamiltonianTerm.ZX],
     )
@@ -433,12 +371,12 @@ def estimate_cr_phases(
         # and maximizes ZX interaction.
         tuned_phases["phi0"] += np.pi
 
-    ix_value = fitting.sin_fit(
+    ix_value = fitting.sin_func(
         tuned_phases["phi1"],
         **phase_params[HamiltonianTerm.IX],
     )
 
-    ix_semiperiod_value = fitting.sin_fit(
+    ix_semiperiod_value = fitting.sin_func(
         tuned_phases["phi1"] + np.pi,
         **phase_params[HamiltonianTerm.IX],
     )
@@ -589,7 +527,7 @@ def amp_tom_fit(
     try:
         pguess = [0, 0]
         popt, _ = curve_fit(
-            fitting.linear_fit,
+            fitting.linear_func,
             x,
             y,
             p0=pguess,
@@ -695,7 +633,7 @@ def phase_tom_fit(
     pguess = [amplitude_guess, median_sig, phase_guess]
     try:
         popt, _ = curve_fit(
-            lambda x, a, b, phi: fitting.sin_fit(x, a, b, 1, phi),
+            lambda x, a, b, phi: fitting.sin_func(x, a, b, 1, phi),
             x,
             y,
             p0=pguess,
@@ -829,19 +767,11 @@ def tomography_cr_plot(
                 fig.add_trace(
                     go.Scatter(
                         x=x,
-                        y=getattr(fitting, f"fit_{basis.name}_exp")(
+                        y=getattr(fitting, f"pauli_{basis.name.lower()}_expectation")(
                             x,
                             wx=fit.fitted_parameters[target[0], target[1], setup][0],
                             wy=fit.fitted_parameters[target[0], target[1], setup][1],
                             wz=fit.fitted_parameters[target[0], target[1], setup][2],
-                            w=np.sqrt(
-                                np.sum(
-                                    i**2
-                                    for i in fit.fitted_parameters[
-                                        target[0], target[1], setup
-                                    ]
-                                )
-                            ),
                             gamma=fit.fitted_parameters[target[0], target[1], setup][3],
                         ),
                         name=f"Simultaneous Fit of target when control at {0 if setup is SetControl.Id else 1}",
@@ -956,7 +886,7 @@ def cancellation_calibration_plot(
     fitting_report = ""
 
     if type(data).__name__ == "HamiltonianTomographyCANCAmplData":
-        fit_func = fitting.linear_fit
+        fit_func = fitting.linear_func
         x_title = "amplitude [a.u.]"
         tunable_params = fit.cancellation_pulse_amplitudes[target]
         plotting_terms = {
@@ -965,7 +895,7 @@ def cancellation_calibration_plot(
         }
 
     if type(data).__name__ == "HamiltonianTomographyCANCPhaseData":
-        fit_func = fitting.sin_fit
+        fit_func = fitting.sin_func
         x_title = "phase [rad.]"
         tunable_params = {}
         tunable_params["phi0"] = fit.cancellation_pulse_phases[target]["control"]

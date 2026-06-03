@@ -1,11 +1,5 @@
-"""Hamiltonian tomography protocol for CR gate calibration.
-
-This protocol computes the expectation values for X, Y and Z for the target qubit
-after the application of a cross resonance sequence. The CR pulses are played on the control drive
-channel with frequency set to the frequency of the target drive channel.
-"""
-
 from dataclasses import dataclass, field
+from itertools import chain, combinations
 
 import numpy as np
 from qibolab import (
@@ -13,13 +7,10 @@ from qibolab import (
     AveragingMode,
     ParallelSweepers,
     Parameter,
-    PulseSequence,
     Sweeper,
-    VirtualZ,
 )
 from scipy.constants import kilo
 
-from qibocal import update
 from qibocal.auto.operation import (
     Parameters,
     QubitId,
@@ -29,22 +20,21 @@ from qibocal.auto.operation import (
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import table_dict, table_html
 
-from .ham_tomography_utils import (
+from .cr_parent_classes import (
+    Basis,
     HamiltonianTerm,
     HamiltonianTomographyData,
     HamiltonianTomographyResults,
+    SetControl,
+)
+from .ham_tomography_utils import (
     extract_hamiltonian_terms,
     tomography_cr_fit,
     tomography_cr_plot,
 )
-from .utils import (
-    Basis,
-    SetControl,
-    cross_res_sequence,
-    cross_resonance_experiment,
-)
+from .utils import cross_resonance_experiment, update_cnot_from_fit
 
-__all__ = ["hamiltonian_tomography_cr_amplitude"]
+__all__ = ["cr_amplitude"]
 
 HamiltonianTomographyCRAmplType = np.dtype(
     [
@@ -58,38 +48,31 @@ HamiltonianTomographyCRAmplType = np.dtype(
 """Custom dtype for Cancellation amplitude."""
 
 
+class OverlappingQubitPairError(Exception):
+    """Raised when the target qubit pairs are not independent."""
+
+    pass
+
+
 @dataclass(kw_only=True)
 class HamiltonianTomographyCRAmplParameters(Parameters):
     """HamiltonianTomographyCRAmplitude runcard inputs."""
 
     pulse_duration: float
     """Duration of CR pulse [ns]."""
-    control_ampl_start: float
-    """Amplitude of cancellation pulse."""
-    control_ampl_end: float
-    """Final amplitude of CR pulse."""
-    control_ampl_step: float
-    """Step CR pulse amplitude."""
+    amplitude_range: tuple[float, float, float]
+    """Range of amplitudes for CR pulse (start, end, step)."""
     control_phase: float = 0.0
     """Phase of the CR pulse on the control qubit"""
+    target_amplitude: float | None = None
+    """Amplitude of the Cancellation pulse on the target qubit"""
     target_phase: float = 0.0
     """Phase of the Cancellation pulse on the target qubit"""
-    target_amplitude: float = 0.0
-    """Amplitude of the Cancellation pulse on the target qubit"""
     echo: bool = False
     """Apply echo sequence or not.
 
     The ECR is described in https://arxiv.org/pdf/1210.7011
     """
-
-    @property
-    def amplitude_range(self) -> np.ndarray:
-        """Amplitude range for CR pulses."""
-        return np.arange(
-            self.control_ampl_start,
-            self.control_ampl_end,
-            self.control_ampl_step,
-        )
 
 
 @dataclass(kw_only=True)
@@ -98,7 +81,7 @@ class HamiltonianTomographyCRAmplResults(HamiltonianTomographyResults):
 
     cr_duration: float
     control_phase: float
-    target_amplitude: float
+    target_amplitude: float | None
     target_phase: float
     cr_amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
     """Estimated amplitudes of CR gate."""
@@ -118,7 +101,7 @@ class HamiltonianTomographyCRAmplData(HamiltonianTomographyData):
 
     cr_duration: float
     control_phase: float
-    target_amplitude: float
+    target_amplitude: float | None
     target_phase: float
 
 
@@ -129,13 +112,7 @@ def _acquisition(
 ) -> HamiltonianTomographyCRAmplData:
     """Data acquisition for Hamiltonian tomography CR protocol.
 
-    We measure the expectation values X,Y and Z on the target qubit after
-    applying the CR sequence specified by the input parameters. We repeat the
-    measurement twice for each target qubit, once with the control qubit in state 0
-    and once with the control qubit in state 1.
-
     We store the probability of the control qubit and the expectation value of the target qubit.
-
     """
 
     data = HamiltonianTomographyCRAmplData(
@@ -146,56 +123,64 @@ def _acquisition(
         target_phase=params.target_phase,
     )
 
-    for pair in targets:
-        control, target = pair
+    # checking if the input qubit pairs are independent, i.e. they don't share any qubit.
+    if any(set(t1) & set(t2) for t1, t2 in combinations(targets, 2)):
+        raise OverlappingQubitPairError(
+            "Target pairs must be independent, but are overlapping."
+        )
 
-        for basis in Basis:
-            for setup in SetControl:
-                sequence, cr_pulses, _, _, _ = cross_resonance_experiment(
-                    platform=platform,
-                    control=control,
-                    target=target,
-                    duration=params.pulse_duration,
-                    control_amplitude=params.control_ampl_end,
-                    control_phase=params.control_phase,
-                    target_amplitude=params.target_amplitude,
-                    target_phase=params.target_phase,
-                    basis=basis,
-                    setup=setup,
-                    echo=params.echo,
-                )
+    # update the CR channel with the target qubit frequency.
+    updates = [
+        {
+            platform.qubits[c].drive_extra[t]: {
+                "frequency": platform.config(platform.qubits[t].drive).frequency
+            }
+            for c, t in targets
+        }
+    ]
 
-                amp_sweeper = Sweeper(
-                    parameter=Parameter.amplitude,
-                    values=params.amplitude_range,
-                    pulses=cr_pulses,
-                )
+    # We create one sequence for each combination of basis and control state,
+    # and we sweep the amplitude of the CR pulse for each of them; unrolling is not performed
+    for basis in Basis:
+        for setup in SetControl:
+            sequence, cr_pulses, _, _, _ = cross_resonance_experiment(
+                platform=platform,
+                pair_list=targets,
+                duration=params.pulse_duration,
+                ctrl_ampl=0.0,  # this is the swept param
+                ctrl_phase=params.control_phase,
+                targ_ampl=params.target_amplitude,
+                targ_phase=params.target_phase,
+                basis=basis,
+                setup=setup,
+                echo=params.echo,
+            )
 
-                updates = []
-                updates.append(
-                    {
-                        platform.qubits[control].drive_extra[target]: {
-                            "frequency": platform.config(
-                                platform.qubits[target].drive
-                            ).frequency
-                        }
-                    }
-                )
+            ampl_parsweepers = ParallelSweepers(
+                [
+                    Sweeper(
+                        parameter=Parameter.amplitude,
+                        range=params.amplitude_range,
+                        pulses=list(chain.from_iterable(cr_pulses.values())),
+                    )
+                ]
+            )
 
-                results = platform.execute(
-                    [sequence],
-                    [ParallelSweepers([amp_sweeper])],
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=AveragingMode.CYCLIC,
-                    updates=updates,
-                )
+            results = platform.execute(
+                sequence,
+                [ampl_parsweepers],
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.DISCRIMINATION,
+                averaging_mode=AveragingMode.CYCLIC,
+                updates=updates,
+            )
+            for ctrl, trg in targets:
                 target_acq_handle = list(
-                    sequence.channel(platform.qubits[target].acquisition)
+                    sequence.channel(platform.qubits[trg].acquisition)
                 )[-1].id
                 control_acq_handle = list(
-                    sequence.channel(platform.qubits[control].acquisition)
+                    sequence.channel(platform.qubits[ctrl].acquisition)
                 )[-1].id
 
                 prob_target = results[target_acq_handle].ravel()
@@ -203,9 +188,9 @@ def _acquisition(
 
                 data.register_qubit(
                     HamiltonianTomographyCRAmplType,
-                    (control, target, basis, setup),
+                    (ctrl, trg, basis, setup),
                     dict(
-                        x=amp_sweeper.values,
+                        x=np.arange(*params.amplitude_range),
                         prob_target=1 - 2 * prob_target,
                         error_target=(
                             2 * np.sqrt(prob_target * (1 - prob_target) / params.nshots)
@@ -216,7 +201,6 @@ def _acquisition(
                         ).tolist(),
                     ),
                 )
-
     return data
 
 
@@ -229,9 +213,7 @@ def _fit(
     Afterwards, we extract the Hamiltonian terms from the fitted parameters.
 
     """
-    fitted_parameters, cr_gate_ampls = tomography_cr_fit(
-        data=data,
-    )
+    fitted_parameters, cr_gate_ampls = tomography_cr_fit(data=data)
     hamiltonian_terms = {}
     for pair in data.pairs:
         hamiltonian_terms |= extract_hamiltonian_terms(
@@ -300,39 +282,26 @@ def _update(
     platform: CalibrationPlatform,
     target: QubitPairId,
 ):
-    target = target[::-1] if target not in results.cr_amplitudes else target
-
-    cr_seq, _, _, _ = cross_res_sequence(
-        platform=platform,
-        control=target[0],
-        target=target[1],
-        duration=results.cr_duration,
-        control_amplitude=results.cr_amplitudes[target],
-        control_phase=results.control_phase,
-        target_amplitude=results.target_amplitude,
-        target_phase=results.target_phase,
-        echo=results.echo,
-    )
-
-    target_single_qubit_operation = (
-        platform.qubits[target[1]].drive,
-        platform.natives.single_qubit[target[1]].R(theta=np.pi / 2, phi=0)[0][1],
-    )
-
-    control_single_qubit_operation = (
-        platform.qubits[target[0]].drive,
-        VirtualZ(phase=np.pi / 2),
-    )
-
-    new_cr_seq = (
-        PulseSequence([control_single_qubit_operation, target_single_qubit_operation])
-        | cr_seq
-    )
-
-    getattr(update, f"{results.native.lower()}_sequence")(new_cr_seq, platform, target)
+    # check if the resulting fit was succsessfull
+    if target in results.cr_amplitudes:
+        update_cnot_from_fit(
+            platform=platform,
+            pair=target,
+            cr_duration=results.cr_duration,
+            cr_ampl=results.cr_amplitudes[target],
+            control_phase=results.control_phase,
+            canc_ampl=results.target_amplitude,
+            canc_phase=results.target_phase,
+            echo_flag=results.echo,
+        )
 
 
-hamiltonian_tomography_cr_amplitude = Routine(
-    _acquisition, _fit, _plot, _update, two_qubit_gates=True
-)
-"""HamiltonianTomographyCRAmplitude Routine object."""
+cr_amplitude = Routine(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
+"""Hamiltonian tomography protocol for CR gate calibration.
+
+This protocol computes the expectation values for X, Y and Z for the target qubit
+after the application of a cross resonance sequence. The CR pulses are played on the control drive
+channel with frequency set to the frequency of the target drive channel.
+We repeat the measurement twice for each target qubit, once with the control qubit in state 0
+and once with the control qubit in state 1.
+"""
