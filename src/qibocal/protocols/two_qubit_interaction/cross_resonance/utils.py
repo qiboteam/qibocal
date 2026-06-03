@@ -1,35 +1,22 @@
-from enum import Enum
-from typing import Optional
-
 import numpy as np
-from numpy.typing import NDArray
-from qibolab import Delay, Platform, Pulse, PulseSequence, Rectangular
+from qibolab import Delay, Platform, Pulse, PulseSequence, Rectangular, VirtualZ
 
-from qibocal.auto.operation import QubitId
+from qibocal.auto.operation import (
+    QubitId,
+    QubitPairId,
+)
+from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import angle_wrap
-from qibocal.update import replace
+from qibocal.update import cnot_sequence, replace
 
-
-class SetControl(str, Enum):
-    """Helper to create sequence with control set to X or I."""
-
-    Id = "Id"
-    X = "X"
-
-
-class Basis(str, Enum):
-    """Measurement basis."""
-
-    X = "X"
-    Y = "Y"
-    Z = "Z"
+from .cr_parent_classes import Basis, SetControl
 
 
 def retrieve_cr_parameters(
     platform: Platform,
     control: QubitId,
     target: QubitId,
-) -> tuple[Optional[dict[str, float]], Optional[dict[str, float]]]:
+) -> tuple[dict[str, float] | None, dict[str, float] | None]:
     """Retrieve cross-resonance (CR) pulse parameters from platform calibration.
     This function extracts the CR pulse and its corresponding cancellation pulse
     from the platform's native gates configuration for a given control-target qubit pair.
@@ -69,12 +56,12 @@ def retrieve_cr_parameters(
 
 
 def ro_delay_range(
-    cr_pulse_duration_range: NDArray,
+    cr_pulse_duration_range: tuple[float, float, float],
     echo: bool,
     cntl_setup: SetControl,
     control: QubitId,
     platform: Platform,
-) -> NDArray:
+) -> tuple[float, float, float]:
     """Delay range for RO pulses.
 
     add the number of the pi-pulses if we are in echo mode
@@ -95,8 +82,14 @@ def ro_delay_range(
     pi_pulse_duration = platform.natives.single_qubit[control].RX()[0][1].duration
 
     # compute the total duration of the cross resonance sequence:
-    # num_cr_pulses * cr_duraiton + num_pi_pulses * pi_pulse_duration
-    return num_cr_pulses * cr_pulse_duration_range + num_pi_pulses * pi_pulse_duration
+    # num_cr_pulses * cr_duration + num_pi_pulses * pi_pulse_duration
+    tot_delay_start = (
+        num_cr_pulses * cr_pulse_duration_range[0] + num_pi_pulses * pi_pulse_duration
+    )
+    tot_delay_end = (
+        num_cr_pulses * cr_pulse_duration_range[1] + num_pi_pulses * pi_pulse_duration
+    )
+    return (tot_delay_start, tot_delay_end, cr_pulse_duration_range[2])
 
 
 def cross_res_sequence(
@@ -106,7 +99,7 @@ def cross_res_sequence(
     duration: int,
     control_amplitude: float,
     control_phase: float,
-    target_amplitude: float,
+    target_amplitude: float | None,
     target_phase: float,
     echo: bool,
     interpolated_sweeper: bool = False,
@@ -139,13 +132,17 @@ def cross_res_sequence(
         relative_phase=angle_wrap(control_phase),
         envelope=Rectangular(),
     )
-    target_drive_pulse = Pulse(
-        duration=duration,
-        amplitude=target_amplitude,
-        relative_phase=angle_wrap(target_phase),
-        envelope=Rectangular(),
-    )
     cr_control_pulses.append(cr_drive_pulse)
+
+    if target_amplitude is None:
+        target_drive_pulse = Delay(duration=duration)
+    else:
+        target_drive_pulse = Pulse(
+            duration=duration,
+            amplitude=target_amplitude,
+            relative_phase=angle_wrap(target_phase),
+            envelope=Rectangular(),
+        )
     cr_target_pulses.append(target_drive_pulse)
 
     # delays introduced by cross resonance pulses
@@ -166,10 +163,13 @@ def cross_res_sequence(
         )
         cr_control_pulses.append(cr_drive_pulse_flipped)
 
-        target_pulse_flipped = replace(
-            target_drive_pulse.new(),
-            relative_phase=angle_wrap(np.pi + target_drive_pulse.relative_phase),
-        )
+        if target_amplitude is None:
+            target_pulse_flipped = target_drive_pulse.new()
+        else:
+            target_pulse_flipped = replace(
+                target_drive_pulse.new(),
+                relative_phase=angle_wrap(np.pi + target_drive_pulse.relative_phase),
+            )
         cr_target_pulses.append(target_pulse_flipped)
 
         # delay introduced by echo sequence
@@ -281,61 +281,142 @@ def appending_ro_sequence(
 
 def cross_resonance_experiment(
     platform: Platform,
-    control: QubitId,
-    target: QubitId,
-    duration: int,
-    control_amplitude: float,
-    control_phase: float,
-    target_amplitude: float,
-    target_phase: float,
-    basis: Basis = Basis.Z,
-    setup: SetControl = SetControl.Id,
+    pair_list: list[QubitPairId],
+    duration: float | dict[QubitPairId, float],
+    ctrl_ampl: float | dict[QubitPairId, float],
+    ctrl_phase: float | dict[QubitPairId, float],
+    targ_ampl: float | dict[QubitPairId, float | None] | None,
+    targ_phase: dict[QubitPairId, float],
+    basis: Basis,
+    setup: SetControl,
     echo: bool = False,
     interpolated_sweeper: bool = False,
-) -> tuple[PulseSequence, list[Pulse], list[Pulse], list[Delay], list[Delay]]:
-    """Creates sequence for CR experiment on ``control`` and ``target`` qubits.
+) -> tuple[
+    PulseSequence,
+    dict[QubitPairId, Pulse],
+    dict[QubitPairId, Pulse],
+    dict[QubitPairId, Delay],
+    dict[QubitPairId, Delay],
+]:
+    """Build the pulse sequence for a cross-resonance experiment.
 
-    With ``setup`` it is possible to set the control qubit to 1 or keep it at 0.
-    If ``echo`` is set to ``True`` a ECR gate will be played.
-    With ``basis`` it is possible to set the measurement basis. If it is not provided
-    the default is Z."""
+    The sequence is created for one or more control-target qubit pairs. The
+    control qubit can be prepared in either |0> or |1> depending on ``setup``.
+    If ``echo`` is True, an echoed cross-resonance sequence is generated.
+    The target measurement basis is selected with ``basis``.
+    """
 
-    # adding pi-pulse if we want to set control to 1
-    cntl_setup_sequence = PulseSequence()
-    if setup == SetControl.X:
-        control_drive_channel, control_drive_pulse = platform.natives.single_qubit[
-            control
-        ].RX()[0]
-        target_drive_channel, _ = platform.natives.single_qubit[target].RX()[0]
-        cr_channel = platform.qubits[control].drive_extra[target]
+    parallel_cr_sequences = PulseSequence()
+    parallel_cr_pulses: dict[QubitPairId, Pulse] = {}
+    parallel_cr_target_pulses: dict[QubitPairId, Pulse] = {}
+    parallel_cr_delays: dict[QubitPairId, Delay] = {}
+    parallel_ro_delays: dict[QubitPairId, Delay] = {}
+    for pair in pair_list:
+        control, target = pair
 
-        control_delay = Delay(duration=control_drive_pulse.duration)
+        # adding pi-pulse if we want to set control to 1
+        cntl_setup_sequence = PulseSequence()
+        if setup == SetControl.X:
+            control_drive_channel, control_drive_pulse = platform.natives.single_qubit[
+                control
+            ].RX()[0]
+            target_drive_channel, _ = platform.natives.single_qubit[target].RX()[0]
+            cr_channel = platform.qubits[control].drive_extra[target]
 
-        cntl_setup_sequence.append((control_drive_channel, control_drive_pulse))
-        cntl_setup_sequence.append((target_drive_channel, control_delay))
-        cntl_setup_sequence.append((cr_channel, control_delay))
+            control_delay = Delay(duration=control_drive_pulse.duration)
 
-    cr_sequence, cr_pulses, cr_target_pulses, cr_delays = cross_res_sequence(
+            cntl_setup_sequence.append((control_drive_channel, control_drive_pulse))
+            cntl_setup_sequence.append((target_drive_channel, control_delay))
+            cntl_setup_sequence.append((cr_channel, control_delay))
+
+        cr_sequence, cr_pulses, cr_target_pulses, cr_delays = cross_res_sequence(
+            platform=platform,
+            control=control,
+            target=target,
+            duration=duration[pair] if isinstance(duration, dict) else duration,
+            control_amplitude=ctrl_ampl[pair]
+            if isinstance(ctrl_ampl, dict)
+            else ctrl_ampl,
+            control_phase=ctrl_phase[pair]
+            if isinstance(ctrl_phase, dict)
+            else ctrl_phase,
+            target_amplitude=targ_ampl[pair]
+            if isinstance(targ_ampl, dict)
+            else targ_ampl,
+            target_phase=targ_phase[pair]
+            if isinstance(targ_phase, dict)
+            else targ_phase,
+            echo=echo,
+            interpolated_sweeper=interpolated_sweeper,
+        )
+        cr_sequence = cntl_setup_sequence | cr_sequence
+
+        total_sequence, ro_delays = appending_ro_sequence(
+            platform=platform,
+            control=control,
+            target=target,
+            exp_sequence=cr_sequence,
+            basis=basis,
+            interpolated_sweeper=interpolated_sweeper,
+        )
+
+        parallel_cr_sequences += total_sequence
+        parallel_cr_pulses |= {pair: cr_pulses}
+        parallel_cr_target_pulses |= {pair: cr_target_pulses}
+        parallel_cr_delays |= {pair: cr_delays}
+        parallel_ro_delays |= {pair: ro_delays}
+
+    return (
+        parallel_cr_sequences,
+        parallel_cr_pulses,
+        parallel_cr_target_pulses,
+        parallel_cr_delays,
+        parallel_ro_delays,
+    )
+
+
+def update_cnot_from_fit(
+    platform: CalibrationPlatform,
+    pair: QubitPairId,
+    cr_duration: float,
+    cr_ampl: float,
+    control_phase: float,
+    canc_ampl: float | None,
+    canc_phase: float,
+    echo_flag: bool,
+) -> None:
+    """Update CNOT gate calibration from cross-resonance fit parameters.
+
+    Constructs and updates the CNOT gate using cross-resonance pulses with
+    fitted parameters, including single-qubit rotations and virtual Z phases.
+    """
+    ctrl, targ = pair
+
+    cr_seq, _, _, _ = cross_res_sequence(
         platform=platform,
-        control=control,
-        target=target,
-        duration=duration,
-        control_amplitude=control_amplitude,
+        control=ctrl,
+        target=targ,
+        duration=cr_duration,
+        control_amplitude=cr_ampl,
         control_phase=control_phase,
-        target_amplitude=target_amplitude,
-        target_phase=target_phase,
-        echo=echo,
-        interpolated_sweeper=interpolated_sweeper,
-    )
-    cr_sequence = cntl_setup_sequence | cr_sequence
-
-    total_sequence, ro_delays = appending_ro_sequence(
-        platform=platform,
-        control=control,
-        target=target,
-        exp_sequence=cr_sequence,
-        basis=basis,
-        interpolated_sweeper=interpolated_sweeper,
+        target_amplitude=canc_ampl,
+        target_phase=canc_phase,
+        echo=echo_flag,
     )
 
-    return total_sequence, cr_pulses, cr_target_pulses, cr_delays, ro_delays
+    target_single_qubit_operation = (
+        platform.qubits[targ].drive,
+        platform.natives.single_qubit[targ].R(theta=np.pi / 2, phi=0)[0][1],
+    )
+
+    control_single_qubit_operation = (
+        platform.qubits[ctrl].drive,
+        VirtualZ(phase=np.pi / 2),
+    )
+
+    new_cr_seq = (
+        PulseSequence([control_single_qubit_operation, target_single_qubit_operation])
+        | cr_seq
+    )
+
+    cnot_sequence(new_cr_seq, platform, pair)

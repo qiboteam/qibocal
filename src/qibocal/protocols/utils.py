@@ -1049,17 +1049,16 @@ def baseline_als(data: NDArray, lamda: float, p: float, niter: int = 10) -> NDAr
     return z
 
 
-def guess_period(x, y):
-    """Return fft period estimation given a sinusoidal plot."""
-    fft = np.fft.rfft(y)
-    fft_freqs = np.fft.rfftfreq(len(y), d=(x[1] - x[0]))
-    mags = np.abs(fft)
-    mags[0] = 0
-    return 1 / fft_freqs[np.argmax(mags)]
+def guess_frequency(x: NDArray, y: NDArray, axis: int = -1) -> NDArray:
+    """Return FFT frequency estimation given a sinusoidal plot.
 
-
-def guess_frequency_numpyfied(x: np.ndarray, y: np.ndarray, axis: int = -1):
-    """Numpyfied version of :func:`guess_period` but here we work on frequencies."""
+    Computes the dominant frequency component from the FFT of the signal.
+    axis represents the dimension along which to compute the FFT.
+    This parameter specifies which dimension of y contains the sinusoidal
+    data to analyze. For multi-dimensional arrays, the FFT is computed
+    along this axis, and the dominant frequency is determined for each
+    slice along other dimensions.
+    """
     assert x.ndim == 1, f"Expected 1D array, got array with shape {x.shape}"
 
     y = np.moveaxis(y, axis, -1)
@@ -1073,28 +1072,27 @@ def guess_frequency_numpyfied(x: np.ndarray, y: np.ndarray, axis: int = -1):
     return np.moveaxis(selected_freqs, -1, axis)
 
 
-def fallback_period(period):
-    """Function to estimate period if guess_period fails."""
-    return period if period is not None else 4
+def fallback_frequency(frequency: NDArray) -> NDArray:
+    """Return a numeric frequency array with NaNs replaced by a fallback value.
 
-
-def fallback_frequency_numpyfied(frequency: np.ndarray):
-    """Numpyfied version of :func:`fallback_period`, but here we work on frequencies."""
+    This helper is used to ensure a valid numeric frequency is available for
+    downstream processing when the frequency estimation returns missing values.
+    """
     assert frequency.ndim <= 1, (
         f"Expected 1D array or scalar, got array with shape {frequency.shape}"
     )
 
-    return np.where(np.isnan(frequency), 4, frequency)
+    return np.where(np.isnan(frequency), 0.25, frequency)
 
 
 def quinn_fernandes_algorithm(
-    signal_id: Any,
+    signal: Any,
     x: Any,
-    speedup_flag: bool = False,
     axis: int = -1,
+    speedup_flag: bool = False,
     iterations: int = 100,
     tol: int = 1e-8,
-) -> np.ndarray:
+) -> NDArray:
     """This is a custom implementation of the Quinn-Fernandes algorithm.
     We compute the signal sampling rate from :param:x, hence this function assumes x to be
     ordered.
@@ -1113,30 +1111,24 @@ def quinn_fernandes_algorithm(
     if not isinstance(x, np.ndarray):
         x = np.array(x)
 
-    if not isinstance(signal_id, np.ndarray):
-        signal_id = np.array(signal_id)
+    if not isinstance(signal, np.ndarray):
+        signal = np.array(signal)
 
-    if signal_id.ndim == 1:
-        signal_id = signal_id[np.newaxis, :]
+    if signal.ndim == 1:
+        signal = signal[np.newaxis, :]
 
-    omegas = (
-        2
-        * np.pi
-        * fallback_frequency_numpyfied(
-            guess_frequency_numpyfied(x, signal_id, axis=axis)
-        )
-    )
+    omegas = 2 * np.pi * fallback_frequency(guess_frequency(x, signal, axis=axis))
     alpha = 2 * np.cos(omegas)
 
-    signal_id = signal_id - np.mean(signal_id, axis=axis, keepdims=True)
+    signal = signal - np.mean(signal, axis=axis, keepdims=True)
 
-    sig_shape = list(signal_id.shape)
+    sig_shape = list(signal.shape)
     sig_shape[axis] += 2
     buffer_beta = []
     for _ in range(iterations):
         xi = np.zeros(sig_shape)
         for t in range(2, xi.shape[axis]):
-            xi[..., t] = signal_id[..., t - 2] + alpha * xi[..., t - 1] - xi[..., t - 2]
+            xi[..., t] = signal[..., t - 2] + alpha * xi[..., t - 1] - xi[..., t - 2]
 
         beta = np.sum((xi[..., 2:] + xi[..., :-2]) * xi[..., 1:-1], axis=axis) / np.sum(
             xi[..., :-1] ** 2, axis=axis
@@ -1159,3 +1151,33 @@ def quinn_fernandes_algorithm(
     med_omega = np.median(omega_est)
 
     return med_omega * fs
+
+
+def guess_period(x: NDArray, y: NDArray, axis: int = -1) -> NDArray:
+    """Estimate the period(s) of a (set of) sinusoidal signal(s).
+
+    This is a thin wrapper around :func:`guess_frequency` that returns the
+    reciprocal of the estimated dominant frequency. For multi-dimensional
+    signals, the period is computed along ``axis`` of ``y`` and returned with
+    the same shape semantics as :func:`guess_frequency`.
+    """
+
+    return 1 / quinn_fernandes_algorithm(
+        signal=y,
+        x=x,
+        axis=axis,
+        speedup_flag=True,
+    )
+
+
+def fallback_period(period: NDArray) -> NDArray:
+    """Return a numeric period array with NaNs replaced by a fallback value.
+
+    This helper is used to ensure a valid numeric period is available for
+    downstream processing when the period estimation returns missing values.
+    """
+    assert period.ndim <= 1, (
+        f"Expected 1D array or scalar, got array with shape {period.shape}"
+    )
+
+    return np.where(np.isnan(period), 4, period)

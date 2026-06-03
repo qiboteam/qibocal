@@ -1,8 +1,10 @@
 from .chevron import chevron, chevron_signal
 from .chsh import chsh
 from .cross_resonance import (
-    cross_resonance_amplitude,
-    cross_resonance_length,
+    cancellation_amplitude_tuning,
+    cancellation_phase_tuning,
+    cr_amplitude,
+    cr_length,
 )
 from .optimize import optimize_two_qubit_gate
 from .snz_optimize import snz_optimize
@@ -19,6 +21,8 @@ __all__ = [
     "snz_optimize_t_idle",
     "snz_optimize_t_idle_vs_t_tot",
     "chsh",
-    "cross_resonance_length",
-    "cross_resonance_amplitude",
+    "cr_length",
+    "cr_amplitude",
+    "cancellation_amplitude_tuning",
+    "cancellation_phase_tuning",
 ]
