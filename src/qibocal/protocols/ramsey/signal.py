@@ -14,7 +14,7 @@ from .acquisition import (
     RamseyParameters,
     RamseyResults,
     execute_experiment,
-    ramsey_sequence,
+    ramsey_and_acquisition_sequence,
 )
 from .processing import (
     fitting,
@@ -64,8 +64,7 @@ def _acquisition(
         },
     )
 
-    sequence, ro_sequence, delays = ramsey_sequence(platform, targets)
-    sequence += ro_sequence
+    sequence, delays = ramsey_and_acquisition_sequence(platform, targets)
 
     results = execute_experiment(
         sequence=sequence,

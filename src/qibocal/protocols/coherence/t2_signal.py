@@ -7,7 +7,7 @@ from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 from qibocal import update
 from qibocal.auto.operation import Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
-from qibocal.protocols.ramsey.acquisition import ramsey_sequence
+from qibocal.protocols.ramsey.acquisition import ramsey_and_acquisition_sequence
 from qibocal.result import magnitude, phase
 
 from ..utils import readout_frequency, table_dict, table_html
@@ -69,8 +69,7 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
-    sequence, ro_sequence, delays = ramsey_sequence(platform, targets)
-    sequence += ro_sequence
+    sequence, delays = ramsey_and_acquisition_sequence(platform, targets)
 
     data = T2SignalData()
 

@@ -176,6 +176,24 @@ def ramsey_sequence(
     return full_sequence, full_ro_sequence, full_delays
 
 
+def ramsey_and_acquisition_sequence(
+    platform: Platform,
+    targets: list[QubitId],
+    wait: int = 0,
+    flux_pulse_amplitude: float | None = None,
+) -> dict[PulseSequence, list[Pulse | Delay]]:
+    """Wrapper to generate the Ramsey sequence and the acquisition sequence together,
+    where no other pulse has to be added."""
+    sequence, ro_sequence, delays = ramsey_sequence(
+        platform,
+        targets,
+        wait,
+        flux_pulse_amplitude,
+    )
+
+    return sequence + ro_sequence, delays
+
+
 def execute_experiment(
     sequence: PulseSequence,
     delays: list[PulseLike],
