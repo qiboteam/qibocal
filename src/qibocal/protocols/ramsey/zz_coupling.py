@@ -332,10 +332,14 @@ def _fit(data: RamseyZZData) -> RamseyZZResults:
         # compute zz and qq coupling
         # zz the difference in frequency between the two measurement
         zz[pair] = [
-            float(freq_measure[pair, "X"][0] - freq_measure[pair, "I"][0]),
+            float(
+                delta_fitting_measure[pair, "X"][0]
+                - delta_fitting_measure[pair, "I"][0]
+            ),
             float(
                 np.sqrt(
-                    freq_measure[pair, "X"][1] ** 2 + freq_measure[pair, "I"][1] ** 2
+                    delta_fitting_measure[pair, "X"][1] ** 2
+                    + delta_fitting_measure[pair, "I"][1] ** 2
                 )
             ),
         ]
