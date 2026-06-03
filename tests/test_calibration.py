@@ -66,7 +66,9 @@ def test_serialization_qubit_pairs(tmp_path):
     """Testing serialization for qubit pairs."""
 
     cal = Calibration()
-    cal.two_qubits[0, 1] = TwoQubitCalibration(rb_fidelity=[0.99, 0.1], coupling=0.5)
+    cal.two_qubits[0, 1] = TwoQubitCalibration(
+        rb_fidelity=[0.99, 0.1], coupling=[0.5, 0.01]
+    )
     cal.dump(tmp_path)
     new_cal = cal.model_validate_json((tmp_path / CALIBRATION).read_text())
     assert new_cal == cal
