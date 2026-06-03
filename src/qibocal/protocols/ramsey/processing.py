@@ -133,7 +133,7 @@ def process_fit(
     """Processing Ramsey fitting results."""
 
     delta_fitting = popt[2] / (2 * np.pi)
-    if detuning is not None:
+    if detuning is not None and detuning != 0:
         sign = np.sign(detuning)
         delta_phys = int(sign * (delta_fitting * GHZ_TO_HZ - np.abs(detuning)))
     else:
