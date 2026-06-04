@@ -6,7 +6,6 @@ from qibocal.cli.report import report
 # path = "path" Specify output path
 
 with Executor.open(
-    "myexec",
     path=path,
     platform=platform,
     targets=[target],
