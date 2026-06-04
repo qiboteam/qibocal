@@ -19,6 +19,7 @@ def protocols_execution(runcard: Runcard, folder: Path, force, update):
     """
     # rename for brevity
     backend = construct_backend(backend=runcard.backend, platform=runcard.platform)
+    assert backend.platform is not None
     platform = CalibrationPlatform.from_platform(backend.platform)
 
     if platform is None:
@@ -31,7 +32,7 @@ def protocols_execution(runcard: Runcard, folder: Path, force, update):
     runcard.dump(path)
 
     # generate meta
-    meta = Metadata.generate(path.name, backend)
+    meta = Metadata.generate(backend)
     meta.targets = runcard.targets
     output = Output(History(), meta, platform)
     output.dump(path)
