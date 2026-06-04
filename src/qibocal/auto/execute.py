@@ -30,20 +30,6 @@ PLATFORM_DIR = "platform"
 """Folder where platform will be dumped."""
 
 
-def _validate_targets(targets):
-    if not isinstance(targets, list):
-        raise TypeError(
-            f"targets must be a list, got {type(targets).__name__} with value: {targets}"
-        )
-
-    invalid_targets = [t for t in targets if not isinstance(t, (tuple, int, str))]
-    if invalid_targets:
-        raise TypeError(
-            "targets must contain only qubit IDs (int/str) or qubit pairs (tuple), "
-            f"got invalid entries: {invalid_targets}"
-        )
-
-
 def _register(name: str, obj: Any) -> None:
     """Register object as module.
 
@@ -88,7 +74,7 @@ class Executor(BaseModel):
 
     history: History
     """The execution history, with results and exit states."""
-    targets: Targets
+    targets: Targets = Field(default_factory=list)
     """Qubits/Qubit Pairs to be calibrated."""
     platform: CalibrationPlatform
     """Qubits' platform."""
@@ -116,9 +102,13 @@ class Executor(BaseModel):
 
     def model_post_init(self, context: Any) -> None:
         """Register as a module, if a name is specified."""
+        # explicitly unused
+        _ = context
+
         if self.name is not None:
             _register(self.name, self)
-        _ = context
+        if len(self.targets) == 0:
+            object.__setattr__(self, "targets", list(self.platform.qubits))
 
         for name, protocol in self.protocols.items():
             object.__setattr__(self, name, self._wrapped_protocol(protocol, name))
@@ -270,27 +260,13 @@ class Executor(BaseModel):
         return cls(
             history=History(),
             platform=platform,
-            targets=list(platform.qubits),
             path=path_,
-            meta=Metadata.generate(path_.name, backend),
+            meta=Metadata.generate(backend),
             **kwargs,
         )
 
-    def init(
-        self,
-        force: bool = False,
-        update: bool | None = None,
-        targets: Targets | None = None,
-    ):
+    def init(self, force: bool = False):
         """Initialize execution."""
-        # TODO: if they are not None, you may want to use only for the session, and do
-        # not update the default ones
-        if update is not None:
-            self.update = update
-        if targets is not None:
-            _validate_targets(targets)
-            self.targets = targets
-
         # generate output folder
         path = Output.mkdir(self.path, force)
 
@@ -331,8 +307,15 @@ class Executor(BaseModel):
         targets: Targets | None = None,
     ):
         """Enter the execution context."""
-        ex = cls.create(path=path, platform=platform)
-        ex.init(force, update, targets)
+        kwargs = {}
+        if update is not None:
+            kwargs["update"] = update
+        if targets is not None:
+            kwargs["targets"] = targets
+
+        ex = cls.create(path=path, platform=platform, **kwargs)
+        ex.init(force)
+
         try:
             yield ex
         finally:
