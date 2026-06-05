@@ -5,6 +5,7 @@ The CR pulses are played on the control drive channel with frequency set to the 
 """
 
 from dataclasses import dataclass, field
+from itertools import combinations
 
 import numpy as np
 from qibolab import (
@@ -29,6 +30,8 @@ from .cr_parent_classes import (
     HamiltonianTomographyData,
     HamiltonianTomographyParameters,
     HamiltonianTomographyResults,
+    HamiltonianTomographyType,
+    OverlappingQubitPairError,
     SetControl,
 )
 from .ham_tomography_utils import (
@@ -44,17 +47,6 @@ from .utils import (
 )
 
 __all__ = ["cr_length"]
-
-HamiltonianTomographyCRLengthType = np.dtype(
-    [
-        ("prob_target", np.float64),
-        ("error_target", np.float64),
-        ("prob_control", np.float64),
-        ("error_control", np.float64),
-        ("x", np.int64),
-    ]
-)
-"""Custom dtype for CR length."""
 
 
 @dataclass(kw_only=True)
@@ -113,6 +105,12 @@ def _acquisition(
         target_amplitude=params.target_amplitude,
         target_phase=params.target_phase,
     )
+
+    # checking if the input qubit pairs are independent, i.e. they don't share any qubit.
+    if any(set(t1) & set(t2) for t1, t2 in combinations(targets, 2)):
+        raise OverlappingQubitPairError(
+            "Target pairs must be independent, but are overlapping."
+        )
 
     # update the CR channel with the target qubit frequency.
     updates = [
@@ -209,7 +207,7 @@ def _acquisition(
                 prob_control = results[control_acq_handle].ravel()
 
                 data.register_qubit(
-                    HamiltonianTomographyCRLengthType,
+                    HamiltonianTomographyType,
                     (control, target, basis, setup),
                     dict(
                         x=np.arange(*params.duration_range),
