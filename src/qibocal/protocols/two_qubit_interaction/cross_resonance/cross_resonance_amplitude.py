@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from itertools import chain, combinations
+from itertools import chain
 
 import numpy as np
 from qibolab import (
@@ -26,8 +26,8 @@ from .cr_parent_classes import (
     HamiltonianTomographyData,
     HamiltonianTomographyResults,
     HamiltonianTomographyType,
-    OverlappingQubitPairError,
     SetControl,
+    check_qubit_overlap,
 )
 from .ham_tomography_utils import (
     extract_hamiltonian_terms,
@@ -108,11 +108,8 @@ def _acquisition(
         target_phase=params.target_phase,
     )
 
-    # checking if the input qubit pairs are independent, i.e. they don't share any qubit.
-    if any(set(t1) & set(t2) for t1, t2 in combinations(targets, 2)):
-        raise OverlappingQubitPairError(
-            "Target pairs must be independent, but are overlapping."
-        )
+    # check validity of input
+    check_qubit_overlap(targets)
 
     # update the CR channel with the target qubit frequency.
     updates = [

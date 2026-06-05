@@ -13,13 +13,10 @@ from qibolab import (
     AveragingMode,
     ParallelSweepers,
     Parameter,
-    PulseSequence,
     Sweeper,
-    VirtualZ,
 )
 from scipy.constants import kilo
 
-from qibocal import update
 from qibocal.auto.operation import (
     QubitId,
     QubitPairId,
@@ -35,6 +32,7 @@ from .cr_parent_classes import (
     HamiltonianTomographyParameters,
     HamiltonianTomographyResults,
     SetControl,
+    check_qubit_overlap,
 )
 from .ham_tomography_utils import (
     cancellation_amplitude_fit,
@@ -42,10 +40,10 @@ from .ham_tomography_utils import (
     reconstruct_full_hamiltonian_terms,
 )
 from .utils import (
-    cross_res_sequence,
     cross_resonance_experiment,
     retrieve_cr_parameters,
     ro_delay_range,
+    update_cnot_from_fit,
 )
 
 __all__ = ["cancellation_amplitude_tuning"]
@@ -57,7 +55,7 @@ HamiltonianTomographyCANCAmplType = np.dtype(
         ("prob_control", np.float64),
         ("error_control", np.float64),
         ("amp", np.float64),
-        ("x", np.int64),
+        ("x", np.float64),
     ]
 )
 """Custom dtype for Cancellation amplitude."""
@@ -67,23 +65,10 @@ HamiltonianTomographyCANCAmplType = np.dtype(
 class HamiltonianTomographyCANCAmplParameters(HamiltonianTomographyParameters):
     """HamiltonianTomographyCANCAmplitude runcard inputs."""
 
-    target_ampl_start: float
-    """Amplitude of cancellation pulse."""
-    target_ampl_end: float
-    """Final amplitude of CR pulse."""
-    target_ampl_step: float
-    """Step CR pulse amplitude."""
+    target_ampl_range: tuple[float, float, float]
+    """Amplitude range of cancellation pulse."""
     verbose_plot: bool = False
     """If `True` in the report all the single Hamiltonian tomographies are plotted."""
-
-    @property
-    def amplitude_range(self) -> np.ndarray:
-        """Amplitude range for CR pulses."""
-        return np.arange(
-            self.target_ampl_start,
-            self.target_ampl_end,
-            self.target_ampl_step,
-        )
 
 
 @dataclass(kw_only=True)
@@ -138,11 +123,15 @@ class HamiltonianTomographyCANCAmplResults(HamiltonianTomographyResults):
 
 @dataclass(kw_only=True)
 class HamiltonianTomographyCANCAmplData(HamiltonianTomographyData):
-    """Data structure for CR Amplitude."""
+    """Data structure for CANC Amplitude."""
 
-    amplitudes: list | None = None
     verbose_plot: bool = False
     """If `True` in the report all the single Hamiltonian tomographies are plotted."""
+
+    @property
+    def amplitudes(self) -> list[float]:
+        first_value = next(iter(self.data.values()))
+        return np.unique(self.data[first_value].amp).tolist()
 
     def select_amplitude(self, amplitude: float) -> HamiltonianTomographyData:
         new_data = HamiltonianTomographyData(echo=self.echo)
@@ -184,12 +173,28 @@ def _acquisition(
 
     data = HamiltonianTomographyCANCAmplData(
         echo=params.echo,
-        amplitudes=params.amplitude_range.astype(float).tolist(),
         verbose_plot=params.verbose_plot,
     )
 
+    # check validity of input
+    check_qubit_overlap(targets)
+
+    updates = []
+    control_ampls: dict[QubitPairId, float] = {}
+    control_phases: dict[QubitPairId, float] = {}
+    target_phases: dict[QubitPairId, float] = {}
     for pair in targets:
         control, target = pair
+
+        updates.append(
+            {
+                platform.qubits[control].drive_extra[target]: {
+                    "frequency": platform.config(
+                        platform.qubits[target].drive
+                    ).frequency
+                }
+            }
+        )
 
         cr_pulse, canc_pulse = retrieve_cr_parameters(platform, control, target)
         if cr_pulse is None:
@@ -197,111 +202,113 @@ def _acquisition(
                 "CR pulse not found for control {control} and target {target}. "
                 "Please check the CR pulse configuration or first run previous protocols."
             )
-        control_amplitude = cr_pulse["amplitude"]
-        control_phase = cr_pulse["relative_phase"]
-        target_phase = canc_pulse["relative_phase"]
+        control_ampls |= {pair: cr_pulse["amplitude"]}
+        control_phases |= {pair: cr_pulse["relative_phase"]}
+        target_phases |= {pair: canc_pulse["relative_phase"]}
 
-        for basis in Basis:
-            for setup in SetControl:
-                sequence, cr_pulses, cr_target_pulses, cr_delays, ro_delays = (
-                    cross_resonance_experiment(
-                        platform=platform,
-                        control=control,
-                        target=target,
-                        duration=params.pulse_duration_end,
-                        control_amplitude=control_amplitude,
-                        control_phase=control_phase,
-                        target_amplitude=params.target_ampl_end,
-                        target_phase=target_phase,
-                        basis=basis,
-                        setup=setup,
-                        echo=params.echo,
-                        interpolated_sweeper=params.interpolated_sweeper,
-                    )
+    for basis in Basis:
+        for setup in SetControl:
+            sequence, cr_pulses, cr_target_pulses, cr_delays, ro_delays = (
+                cross_resonance_experiment(
+                    platform=platform,
+                    pair_list=targets,
+                    duration=0.0,
+                    control_amplitude=control_ampls,
+                    control_phase=control_phases,
+                    target_amplitude=0.0,
+                    target_phase=target_phases,
+                    basis=basis,
+                    setup=setup,
+                    echo=params.echo,
+                    interpolated_sweeper=params.interpolated_sweeper,
                 )
+            )
 
-                if params.interpolated_sweeper:
-                    cr_sweeper = Sweeper(
-                        parameter=Parameter.duration_interpolated,
-                        values=params.duration_range,
-                        pulses=cr_pulses + cr_target_pulses,
-                    )
-                    duration_parallel_sweeper = ParallelSweepers([cr_sweeper])
-                else:
-                    cr_sweeper = Sweeper(
-                        parameter=Parameter.duration,
-                        values=params.duration_range,
-                        pulses=cr_pulses + cr_target_pulses + cr_delays,
-                    )
-                    ro_sweeper = Sweeper(
-                        parameter=Parameter.duration,
-                        values=ro_delay_range(
-                            cr_pulse_duration_range=params.duration_range,
-                            echo=params.echo,
-                            cntl_setup=setup,
-                            control=control,
-                            platform=platform,
-                        ),
-                        pulses=ro_delays,
-                    )
-                    duration_parallel_sweeper = ParallelSweepers(
-                        [cr_sweeper, ro_sweeper]
-                    )
-
-                amp_sweeper = Sweeper(
-                    parameter=Parameter.amplitude,
-                    values=params.amplitude_range,
-                    pulses=cr_target_pulses,
-                )
-
-                updates = []
-                updates.append(
-                    {
-                        platform.qubits[control].drive_extra[target]: {
-                            "frequency": platform.config(
-                                platform.qubits[target].drive
-                            ).frequency
-                        }
-                    }
-                )
-
-                results = platform.execute(
-                    [sequence],
+            if params.interpolated_sweeper:
+                duration_parallel_sweeper = ParallelSweepers(
                     [
-                        duration_parallel_sweeper,
-                        ParallelSweepers([amp_sweeper]),
-                    ],
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=AveragingMode.CYCLIC,
-                    updates=updates,
+                        Sweeper(
+                            parameter=Parameter.duration_interpolated,
+                            range=params.duration_range,
+                            pulses=cr_pulses[pair] + cr_target_pulses[pair],
+                        )
+                        for pair in targets
+                    ]
                 )
-                target_acq_handle = list(
-                    sequence.channel(platform.qubits[target].acquisition)
-                )[-1].id
-                control_acq_handle = list(
-                    sequence.channel(platform.qubits[control].acquisition)
-                )[-1].id
+            else:
+                duration_parallel_sweeper = ParallelSweepers(
+                    [
+                        Sweeper(
+                            parameter=Parameter.duration,
+                            range=params.duration_range,
+                            pulses=cr_pulses[pair]
+                            + cr_target_pulses[pair]
+                            + cr_delays[pair],
+                        )
+                        for pair in targets
+                    ]
+                )
+                ro_sweeper = ParallelSweepers(
+                    [
+                        Sweeper(
+                            parameter=Parameter.duration,
+                            range=ro_delay_range(
+                                cr_pulse_duration_range=params.duration_range,
+                                echo=params.echo,
+                                cntl_setup=setup,
+                                control=c,
+                                platform=platform,
+                            ),
+                            pulses=ro_delays[(c, t)],
+                        )
+                        for c, t in targets
+                    ]
+                )
+                duration_parallel_sweeper += ro_sweeper
 
-                prob_target = results[target_acq_handle].ravel()
-                prob_control = results[control_acq_handle].ravel()
+            amp_sweeper = Sweeper(
+                parameter=Parameter.amplitude,
+                range=params.target_ampl_range,
+                pulses=cr_target_pulses,
+            )
 
-                data.register_qubit(
-                    HamiltonianTomographyCANCAmplType,
-                    (control, target, basis, setup),
-                    dict(
-                        x=cr_sweeper.values,
-                        amp=amp_sweeper.values,
-                        prob_target=1 - 2 * prob_target,
-                        error_target=2
-                        * np.sqrt(prob_target * (1 - prob_target) / params.nshots),
-                        prob_control=prob_control,
-                        error_control=np.sqrt(
-                            prob_control * (1 - prob_control) / params.nshots
-                        ),
+            results = platform.execute(
+                [sequence],
+                [
+                    duration_parallel_sweeper,
+                    ParallelSweepers([amp_sweeper]),
+                ],
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.DISCRIMINATION,
+                averaging_mode=AveragingMode.CYCLIC,
+                updates=updates,
+            )
+            target_acq_handle = list(
+                sequence.channel(platform.qubits[target].acquisition)
+            )[-1].id
+            control_acq_handle = list(
+                sequence.channel(platform.qubits[control].acquisition)
+            )[-1].id
+
+            prob_target = results[target_acq_handle].ravel()
+            prob_control = results[control_acq_handle].ravel()
+
+            data.register_qubit(
+                HamiltonianTomographyCANCAmplType,
+                (control, target, basis, setup),
+                dict(
+                    x=np.arange(*params.duration_range),
+                    amp=np.arange(*params.target_ampl_range),
+                    prob_target=1 - 2 * prob_target,
+                    error_target=2
+                    * np.sqrt(prob_target * (1 - prob_target) / params.nshots),
+                    prob_control=prob_control,
+                    error_control=np.sqrt(
+                        prob_control * (1 - prob_control) / params.nshots
                     ),
-                )
+                ),
+            )
 
     return data
 
@@ -384,12 +391,6 @@ def _update(
     platform: CalibrationPlatform,
     target: QubitPairId,
 ):
-    # here is updated the full CNOT Pulse Sequence, which is composed by a CR sequence followe by a X_pi/2 and Z_(-pi/2) rotations on
-    # target and control qubit respectively
-
-    target = (
-        target[::-1] if target not in results.cancellation_pulse_amplitudes else target
-    )
 
     # now no check is needed since the acquisition was executed correctly,
     # which means we have all parameters defined.
@@ -399,34 +400,18 @@ def _update(
     control_phase = cr_pulse["relative_phase"]
     target_phase = canc_pulse["relative_phase"]
 
-    cr_seq, _, _, _ = cross_res_sequence(
-        platform=platform,
-        control=target[0],
-        target=target[1],
-        duration=gate_duration,
-        control_amplitude=control_amplitude,
-        control_phase=control_phase,
-        target_amplitude=results.cancellation_pulse_amplitudes[target]["ampl_iy"],
-        target_phase=target_phase,
-        echo=results.echo,
-    )
-
-    target_single_qubit_operation = (
-        platform.qubits[target[1]].drive,
-        platform.natives.single_qubit[target[1]].R(theta=np.pi / 2, phi=0)[0][1],
-    )
-
-    control_single_qubit_operation = (
-        platform.qubits[target[0]].drive,
-        VirtualZ(phase=np.pi / 2),
-    )
-
-    new_cr_seq = (
-        PulseSequence([control_single_qubit_operation, target_single_qubit_operation])
-        | cr_seq
-    )
-
-    getattr(update, f"{results.native.lower()}_sequence")(new_cr_seq, platform, target)
+    # check if the resulting fit was succsessfull
+    if target in results.cancellation_pulse_amplitudes:
+        update_cnot_from_fit(
+            platform=platform,
+            pair=target,
+            cr_duration=gate_duration,
+            cr_ampl=control_amplitude,
+            control_phase=control_phase,
+            canc_ampl=results.cancellation_pulse_amplitudes[target][["ampl_iy"]],
+            canc_phase=target_phase,
+            echo_flag=results.echo,
+        )
 
 
 cancellation_amplitude_tuning = Routine(_acquisition, _fit, _plot, _update)
