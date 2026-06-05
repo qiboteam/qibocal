@@ -25,6 +25,8 @@ from .cr_parent_classes import (
     HamiltonianTerm,
     HamiltonianTomographyData,
     HamiltonianTomographyResults,
+    HamiltonianTomographyType,
+    OverlappingQubitPairError,
     SetControl,
 )
 from .ham_tomography_utils import (
@@ -35,23 +37,6 @@ from .ham_tomography_utils import (
 from .utils import cross_resonance_experiment, update_cnot_from_fit
 
 __all__ = ["cr_amplitude"]
-
-HamiltonianTomographyCRAmplType = np.dtype(
-    [
-        ("prob_target", np.float64),
-        ("error_target", np.float64),
-        ("prob_control", np.float64),
-        ("error_control", np.float64),
-        ("x", np.float64),
-    ]
-)
-"""Custom dtype for Cancellation amplitude."""
-
-
-class OverlappingQubitPairError(Exception):
-    """Raised when the target qubit pairs are not independent."""
-
-    pass
 
 
 @dataclass(kw_only=True)
@@ -187,7 +172,7 @@ def _acquisition(
                 prob_control = results[control_acq_handle].ravel()
 
                 data.register_qubit(
-                    HamiltonianTomographyCRAmplType,
+                    HamiltonianTomographyType,
                     (ctrl, trg, basis, setup),
                     dict(
                         x=np.arange(*params.amplitude_range),

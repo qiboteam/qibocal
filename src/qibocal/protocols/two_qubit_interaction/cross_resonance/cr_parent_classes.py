@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+import numpy as np
+
 from qibocal.auto.operation import (
     Data,
     Parameters,
@@ -9,6 +11,23 @@ from qibocal.auto.operation import (
     QubitPairId,
     Results,
 )
+
+HamiltonianTomographyType = np.dtype(
+    [
+        ("prob_target", np.float64),
+        ("error_target", np.float64),
+        ("prob_control", np.float64),
+        ("error_control", np.float64),
+        ("x", np.float64),
+    ]
+)
+"""Custom dtype for Hamiltonian Tomography."""
+
+
+class OverlappingQubitPairError(Exception):
+    """Raised when the target qubit pairs are not independent."""
+
+    pass
 
 
 class SetControl(str, Enum):
