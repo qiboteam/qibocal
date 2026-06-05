@@ -14,7 +14,6 @@ from scipy.optimize import (
 )
 
 from qibocal.auto.operation import (
-    Data,
     QubitId,
     QubitPairId,
 )
@@ -115,7 +114,7 @@ def scipy_curve_fit_optimizer(
 
 def numerical_root_finder(
     root_func: Callable[..., float],
-    x_range: NDArray | list[float | int],
+    x_range: NDArray | list[float],
     tol: float,
     **kwargs,
 ):
@@ -172,7 +171,7 @@ def compute_total_expectation_value(
 
 
 def bloch_func(
-    x: list[float | int] | NDArray, pair: QubitPairId, fitted_parameters: dict
+    x: list[float] | NDArray, pair: QubitPairId, fitted_parameters: dict
 ) -> NDArray:
     """Given the fitted parameters for the target's Pauli expectation values
     for either control qubit in |0> or in |1>, computes the estimated Bloch vector.
@@ -219,7 +218,7 @@ def estimate_cr_param(
     pair: QubitPairId,
     fitted_parameters: dict,
     tol: float = 1e-6,
-) -> float | int:
+) -> float:
     """Function for estimating important parameters for the cross resonance, depending on the
     specific experiment run; if :data:`data` is type :class:`HamiltonianTomographyData` it finds the
     thuned pulse duration, while if :data:`data` is type :class:`HamiltonianTomographyCRAmplData` it
@@ -246,15 +245,11 @@ def estimate_cr_param(
         idx = np.argmin(bloch_data)
         param = x_range[idx]
 
-    if type(data).__name__ == "HamiltonianTomographyCRAmplData":
-        # time duration must be integer
-        return float(param)
-
-    return int(param)
+    return float(param)
 
 
 def tune_cancellation_sequence(
-    x: list[float | int] | NDArray,
+    x: list[float] | NDArray,
     function_to_tune: Callable[..., float],
     interactions_to_analyze: list[HamiltonianTerm],
     ham_term: dict,
@@ -301,7 +296,7 @@ def tune_cancellation_sequence(
 
 
 def estimate_cancellation_amplitudes(
-    amplitudes: list[float | int] | NDArray,
+    amplitudes: list[float] | NDArray,
     ham_term: dict,
     ampl_params: dict,
     tol: float = 1e-8,
@@ -314,7 +309,7 @@ def estimate_cancellation_amplitudes(
     """
 
     interaction_terms = [HamiltonianTerm.IX, HamiltonianTerm.IY]
-    phases_names = ["ampl_ix", "ampl_iy"]
+    amps_names = ["ampl_ix", "ampl_iy"]
 
     tuned_amplitudes = tune_cancellation_sequence(
         x=amplitudes,
@@ -322,7 +317,7 @@ def estimate_cancellation_amplitudes(
         interactions_to_analyze=interaction_terms,
         ham_term=ham_term,
         fit_params=ampl_params,
-        tuned_keys=phases_names,
+        tuned_keys=amps_names,
         tol=tol,
     )
 
@@ -330,7 +325,7 @@ def estimate_cancellation_amplitudes(
 
 
 def estimate_cr_phases(
-    phases: list[float | int] | NDArray,
+    phases: list[float] | NDArray,
     ham_term: dict,
     phase_params: dict,
     tol: float = 1e-6,
@@ -395,7 +390,7 @@ def tomography_cr_fit(
     fit_with_evolution: bool = False,
 ) -> tuple[
     dict[tuple[QubitId, QubitId, SetControl], list[float]],
-    dict[tuple[QubitId, QubitId], int | float],
+    dict[tuple[QubitId, QubitId], float],
 ]:
     """Fit Hamiltonian tomography data for cross-resonance gates.
 
@@ -513,8 +508,8 @@ def reconstruct_full_hamiltonian_terms(
 
 
 def amp_tom_fit(
-    x: list[float | int] | NDArray,
-    y: list[float | int] | NDArray,
+    x: list[float] | NDArray,
+    y: list[float] | NDArray,
     q_pair: QubitPairId,
     term: HamiltonianTerm,
     result_dict: dict[HamiltonianTerm, dict[str, float]],
@@ -544,13 +539,13 @@ def amp_tom_fit(
 
 
 def cancellation_amplitude_fit(
-    data: Data,
+    data: HamiltonianTomographyData,
 ) -> tuple[
     dict[QubitPairId, list[tuple[float, dict[HamiltonianTerm, float]]]],
     dict[QubitPairId, dict[HamiltonianTerm, dict[str, float]]],
     dict[QubitPairId, dict[str, float]],
     dict[float, dict[tuple[QubitId, QubitId, SetControl], list[float]]],
-    dict[float, dict[tuple[QubitId, QubitId], int]],
+    dict[float, dict[tuple[QubitId, QubitId], float]],
 ]:
     """Perform amplitude-dependent tomography fitting for calibrating
     cross resonance cancellation pulse.
@@ -560,9 +555,11 @@ def cancellation_amplitude_fit(
     with amplitude to obtain linear parameters and cancellation amplitudes.
     """
 
-    amp_hamiltonian_params = {}
-    ham_tomography_dict = {}
-    gate_duration_dict = {}
+    amp_hamiltonian_params: dict[QubitPairId, list[tuple[HamiltonianTerm, float]]] = {}
+    ham_tomography_dict: dict[
+        float, dict[tuple[QubitId, QubitId, SetControl], list[float]]
+    ] = {}
+    gate_duration_dict: dict[float, dict[tuple[QubitId, QubitId], float]] = {}
     for amp in data.amplitudes:
         amp_data = data.select_amplitude(amp)
         length_params, cr_durations = tomography_cr_fit(amp_data)
@@ -613,8 +610,8 @@ def cancellation_amplitude_fit(
 
 
 def phase_tom_fit(
-    x: list[float | int] | NDArray,
-    y: list[float | int] | NDArray,
+    x: list[float] | NDArray,
+    y: list[float] | NDArray,
     q_pair: QubitPairId,
     term: HamiltonianTerm,
     result_dict: dict[HamiltonianTerm, dict[str, float]],
@@ -657,13 +654,13 @@ def phase_tom_fit(
 
 
 def cancellation_phase_fit(
-    data: Data,
+    data: HamiltonianTomographyData,
 ) -> tuple[
     dict[QubitPairId, list[tuple[float, dict[HamiltonianTerm, float]]]],
     dict[QubitPairId, dict[HamiltonianTerm, dict[str, float]]],
     dict[QubitPairId, dict[str, float]],
     dict[float, dict[tuple[QubitId, QubitId, SetControl], list[float]]],
-    dict[float, dict[tuple[QubitId, QubitId], int]],
+    dict[float, dict[tuple[QubitId, QubitId], float]],
 ]:
     """Fit phase-dependent Hamiltonian parameters using cross-resonance tomography.
 
@@ -672,9 +669,13 @@ def cancellation_phase_fit(
     for control and target qubits.
     """
 
-    phase_hamiltonian_params = {}
-    ham_tomography_dict = {}
-    gate_duration_dict = {}
+    phase_hamiltonian_params: dict[
+        QubitPairId, list[tuple[float, dict[HamiltonianTerm, float]]]
+    ] = {}
+    ham_tomography_dict: dict[
+        float, tuple[QubitId, QubitId, SetControl], list[float]
+    ] = {}
+    gate_duration_dict: dict[float, dict[tuple[QubitId, QubitId], float]] = {}
     for p in data.phases:
         phase_data = data.select_phase(p)
         length_params, cr_durations = tomography_cr_fit(phase_data)

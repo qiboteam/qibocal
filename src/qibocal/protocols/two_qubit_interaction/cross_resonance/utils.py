@@ -105,7 +105,7 @@ def cross_res_sequence(
     platform: Platform,
     control: QubitId,
     target: QubitId,
-    duration: int,
+    duration: float,
     control_amplitude: float,
     control_phase: float,
     target_amplitude: float | None,
