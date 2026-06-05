@@ -76,20 +76,29 @@ def ro_delay_range(
     == 3 if there is echo and control at 1
     """
 
+    # Calculate number of CR pulses: 1 if no echo, 2 if echo is enabled
     num_cr_pulses = 1 + int(echo)
+    # Calculate number of pi-pulses: 2 per echo, plus 1 if control is set to X (SetControl.X)
     num_pi_pulses = 2 * int(echo) + int(cntl_setup == SetControl.X)
 
+    # Get the duration of the single-qubit RX (pi/2) pulse for the control qubit
     pi_pulse_duration = platform.natives.single_qubit[control].RX()[0][1].duration
 
-    # compute the total duration of the cross resonance sequence:
+    # the total duration of the cross resonance sequence is given by:
     # num_cr_pulses * cr_duration + num_pi_pulses * pi_pulse_duration
+
+    # Calculate minimum delay: start of CR range + all pi-pulses
     tot_delay_start = (
         num_cr_pulses * cr_pulse_duration_range[0] + num_pi_pulses * pi_pulse_duration
     )
+    # Calculate maximum delay: end of CR range + all pi-pulses
     tot_delay_end = (
         num_cr_pulses * cr_pulse_duration_range[1] + num_pi_pulses * pi_pulse_duration
     )
-    return (tot_delay_start, tot_delay_end, cr_pulse_duration_range[2])
+    # Calculate step size: CR pulse range step multiplied by number of CR pulses
+    tot_delay_step = num_cr_pulses * cr_pulse_duration_range[2]
+
+    return (tot_delay_start, tot_delay_end, tot_delay_step)
 
 
 def cross_res_sequence(

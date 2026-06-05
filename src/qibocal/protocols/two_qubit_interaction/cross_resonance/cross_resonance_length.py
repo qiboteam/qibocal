@@ -65,7 +65,7 @@ class HamiltonianTomographyCRLengthParameters(HamiltonianTomographyParameters):
     """CR pulse amplitude"""
     phase: float = 0.0
     """Phase of CR pulse."""
-    target_amplitude: float = 0
+    target_amplitude: float | None = None
     """Amplitude of cancellation pulse."""
     target_phase: float = 0
     """Phase of target pulse."""
