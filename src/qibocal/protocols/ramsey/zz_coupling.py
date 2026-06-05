@@ -79,11 +79,6 @@ def coupling_strength(
 
 
 @dataclass
-class RamseyZZParameters(RamseyParameters):
-    """RamseyZZ runcard inputs."""
-
-
-@dataclass
 class RamseyZZResults(RamseyResults):
     """RamseyZZ outputs."""
 
@@ -172,7 +167,7 @@ def _add_spectator_readout_define_parsweepers(
 def _execute_ramsey_zz(
     platform: CalibrationPlatform,
     pair_list: list[QubitPairId],
-    params: RamseyZZParameters,
+    params: RamseyParameters,
     data: RamseyZZData,
     ramsey_sequence: PulseSequence,
     spectators_flip_sequence: PulseSequence,
@@ -231,7 +226,7 @@ def _execute_ramsey_zz(
 
 
 def _acquisition(
-    params: RamseyZZParameters,
+    params: RamseyParameters,
     platform: CalibrationPlatform,
     targets: list[QubitPairId],
 ) -> RamseyZZData:
