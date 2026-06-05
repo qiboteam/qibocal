@@ -38,7 +38,6 @@ class CircuitIndex(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    targets: list[QubitId]
     depth: int
     iteration: int
 
@@ -360,7 +359,7 @@ def setup_data(
 def _generate_indexed_circuits(
     params: Parameters,
     rb_gen: RBGenerator,
-    targets: list[QubitId | QubitPairId],
+    targets: list[QubitId] | list[QubitPairId],
     inverse_layer: bool = True,
     interleave: str | None = None,
 ) -> list[IndexedCircuit]:
@@ -402,7 +401,6 @@ def _generate_indexed_circuits(
 
             add_measurement_layer(full_circuit)
             index = CircuitIndex(
-                targets=list(chain.from_iterable(targets)) if two_qubit else targets,
                 depth=depth,
                 iteration=iteration,
             )
@@ -415,28 +413,24 @@ def _execute_indexed_circuits(
     indexed_circuits: list[IndexedCircuit],
     params: Parameters,
     platform: CalibrationPlatform,
+    targets: list[QubitId],
     averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
 ) -> list[IndexedResult]:
     """Execute indexed circuits and return results paired with their indices.
 
     Args:
         indexed_circuits: List of IndexedCircuit objects to execute.
-        targets: List of target qubit IDs.
         params: Experiment parameters.
         platform: CalibrationPlatform to execute on.
+        targets: List of target qubit IDs.
 
     Returns:
         List of IndexedResult objects with execution results paired with their indices.
     """
 
-    qubit_maps = []
+    qubit_maps = [targets] * len(indexed_circuits)
     circuits = []
     for indexed_circuit in indexed_circuits:
-        target = indexed_circuit.index.targets
-        if isinstance(target, (list, tuple)):  # Multi-qubit, default
-            qubit_maps.append(list(target))
-        else:  # Single-qubit
-            qubit_maps.append([target])
         circuits.append(indexed_circuit.circuit)
 
     transpiler = build_native_gate_transpiler(platform)
@@ -498,6 +492,7 @@ def rb_acquisition(
         indexed_circuits=indexed_circuits,
         params=params,
         platform=platform,
+        targets=targets,
         averaging_mode=AveragingMode.CYCLIC
         if len(targets) == 1
         else AveragingMode.SINGLESHOT,
@@ -565,6 +560,7 @@ def twoq_rb_acquisition(
         indexed_circuits=indexed_circuits,
         params=params,
         platform=platform,
+        targets=list(chain.from_iterable(targets)),
     )
 
     # Create a dict of the form {(qubit[0], qubit[1], depth): list[result]}.
