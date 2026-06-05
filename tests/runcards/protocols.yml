@@ -937,7 +937,7 @@ actions:
       nshots: 20000
 
   - id: CR tomography amplitude
-    operation: hamiltonian_tomography_cr_amplitude
+    operation: cr_amplitude
     targets: [[0, 1]]
     parameters:
       control_ampl_start: 0.01
@@ -948,7 +948,7 @@ actions:
       pulse_duration: 10
 
   - id: CR tomography length
-    operation: hamiltonian_tomography_cr_length
+    operation: cr_length
     targets: [[0, 1]]
     parameters:
       pulse_duration_start: 10
@@ -958,7 +958,7 @@ actions:
       nshots: 2000
 
   - id: CR tomography interpolated
-    operation: hamiltonian_tomography_cr_length
+    operation: cr_length
     targets: [[0, 1]]
     parameters:
       pulse_duration_start: 10
