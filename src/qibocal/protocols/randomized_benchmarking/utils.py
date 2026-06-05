@@ -43,7 +43,7 @@ class CircuitIndex(BaseModel):
 
 
 class IndexedCircuit(BaseModel):
-    """A circuit paired with its (qubits, depth, iteration) CircuitIndex."""
+    """A circuit paired with its (depth, iteration) CircuitIndex."""
 
     # arbitrary_types_allowed is needed to allow the Circuit type to be a field.
     model_config = ConfigDict(frozen=True, extra="forbid", arbitrary_types_allowed=True)
@@ -53,7 +53,7 @@ class IndexedCircuit(BaseModel):
 
 
 class IndexedResult(BaseModel):
-    """An execution result paired with its (qubit, depth, iteration) CircuitIndex."""
+    """An execution result paired with its (depth, iteration) CircuitIndex."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
