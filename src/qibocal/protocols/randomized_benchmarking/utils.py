@@ -384,7 +384,7 @@ def _generate_indexed_circuits(
     two_qubit = isinstance(targets[0], tuple)
     nqubits = len(targets) * (2 if two_qubit else 1)
 
-    qubit_map = {
+    target_id_map = {
         target: (idx * 2, idx * 2 + 1) if two_qubit else (idx,)
         # Reverse assignment for big-endianess
         for idx, target in enumerate(reversed(targets))
@@ -397,7 +397,7 @@ def _generate_indexed_circuits(
                 circuit = layer_circuit(rb_gen, depth, target, interleave)
                 if inverse_layer:
                     add_inverse_layer(circuit, rb_gen, inv_file)
-                full_circuit.add(circuit.on_qubits(*qubit_map[target]))
+                full_circuit.add(circuit.on_qubits(*target_id_map[target]))
 
             add_measurement_layer(full_circuit)
             index = CircuitIndex(
