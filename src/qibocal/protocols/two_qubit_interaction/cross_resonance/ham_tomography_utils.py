@@ -184,7 +184,7 @@ def bloch_func(
     x_blochfit = fitting.simultaneous_expectation(
         x, *fitted_parameters[pair[0], pair[1], SetControl.X]
     ).reshape((3, -1))
-    return np.sqrt(np.sum((id_blochfit + x_blochfit) ** 2, axis=0))
+    return np.sqrt(np.sum((id_blochfit + x_blochfit) ** 2, axis=0)) / 2
 
 
 def compute_bloch_vector(
@@ -201,7 +201,7 @@ def compute_bloch_vector(
     """
 
     bloch_exp = compute_total_expectation_value(data, pair)
-    bloch_exp = np.sqrt(np.sum((bloch_exp) ** 2, axis=0))
+    bloch_exp = np.sqrt(np.sum((bloch_exp) ** 2, axis=0)) / 2
 
     bloch_fit = None
     if fitted_parameters is not None:
@@ -858,7 +858,7 @@ def tomography_cr_plot(
         yaxis1=dict(range=[-1.2, 1.2]),
         yaxis2=dict(range=[-1.2, 1.2]),
         yaxis3=dict(range=[-1.2, 1.2]),
-        yaxis4=dict(range=[-0.2, 2.2]),
+        yaxis4=dict(range=[-0.2, 1.2]),
         height=800,
     )
     fig.update_yaxes(title_text="<X(t)>", row=1, col=1)
