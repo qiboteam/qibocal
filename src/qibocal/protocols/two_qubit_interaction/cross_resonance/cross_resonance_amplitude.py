@@ -167,7 +167,7 @@ def _acquisition(
             )
 
             results = platform.execute(
-                sequence,
+                [sequence],
                 [ampl_parsweepers],
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
