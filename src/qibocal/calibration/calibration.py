@@ -148,7 +148,7 @@ class TwoQubitCalibration(Model):
     """Two qubit standard rb fidelity."""
     cz_fidelity: Measure | None = None
     """CZ interleaved rb fidelity."""
-    coupling: float | None = None
+    coupling: list[float] | None = None
     """Qubit-qubit coupling."""
 
 

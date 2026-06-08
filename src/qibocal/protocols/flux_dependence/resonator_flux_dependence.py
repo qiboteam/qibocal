@@ -321,7 +321,7 @@ def _update(
     if results.successful_fit[qubit]:
         update.dressed_resonator_frequency(results.frequency[qubit], platform, qubit)
         update.readout_frequency(results.frequency[qubit], platform, qubit)
-        update.coupling(results.coupling[qubit], platform, qubit)
+        update.readout_coupling(results.coupling[qubit], platform, qubit)
         update.flux_offset(results.sweetspot[qubit], platform, qubit)
         update.sweetspot(results.sweetspot[qubit], platform, qubit)
 

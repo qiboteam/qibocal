@@ -7,7 +7,7 @@ from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 from qibocal.auto.operation import QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.protocols.ramsey.acquisition import ramsey_sequence
+from qibocal.protocols.ramsey.acquisition import ramsey_and_acquisition_sequence
 from qibocal.protocols.ramsey.processing import fitting
 
 from ..utils import COLORBAND, COLORBAND_LINE, HZ_TO_GHZ
@@ -37,7 +37,7 @@ def _acquisition(
 ) -> T2FluxData:
     """Data acquisition for T2 flux experiment."""
 
-    sequence, pulses = ramsey_sequence(
+    sequence, pulses = ramsey_and_acquisition_sequence(
         platform=platform, targets=targets, flux_pulse_amplitude=0.5
     )
     for qubit in targets:

@@ -238,8 +238,12 @@ def drive_12_duration(duration: int | tuple | list, platform: Platform, qubit: Q
     platform.update({f"native_gates.single_qubit.{qubit}.RX12.0.1.duration": duration})
 
 
-def coupling(g: float, platform: Platform, qubit: QubitId):
+def readout_coupling(g: float, platform: Platform, qubit: QubitId):
     platform.calibration.single_qubits[qubit].readout.coupling = g
+
+
+def pair_coupling(g: list[float], platform: Platform, pair: QubitPairId):
+    platform.calibration.two_qubits[pair].coupling = g
 
 
 def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):

@@ -113,7 +113,7 @@ without tunable couplers such terms is expected to be of the order of a few hund
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.ramsey.zz_coupling.RamseyZZParameters
+.. autoclass:: qibocal.protocols.ramsey.acquisition.RamseyParameters
     :noindex:
 
 
@@ -128,7 +128,7 @@ Example
         delay: (10, 2000, 50)
         detuning: 500000
         nshots: 1024
-        target_qubit: D1
+        targets: [D1, D0]
 
 
 .. image:: ramsey_zz.png

@@ -329,7 +329,7 @@ def _update(
             - results.frequencies[target][0]
         )
         g = np.sqrt(np.abs(results.chi(target) * delta))
-        update.coupling(g, platform, target)
+        update.readout_coupling(g, platform, target)
         update.dressed_resonator_frequency(
             results.frequencies[target][0], platform, target
         )
