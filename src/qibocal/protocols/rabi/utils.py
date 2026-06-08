@@ -9,7 +9,7 @@ from qibocal.protocols.utils import (
     COLORBAND,
     COLORBAND_LINE,
     angle_wrap,
-    quinn_fernandes_algorithm,
+    guess_period,
     table_dict,
     table_html,
 )
@@ -51,8 +51,7 @@ def rabi_length_function(x, offset, amplitude, period, phase, t2_inv):
 
 
 def rabi_initial_guess(x, y, experiment: str, signal: bool):
-    # period = fallback_period(guess_period(x, y))
-    period = quinn_fernandes_algorithm(y, x, speedup_flag=True)
+    period = guess_period(x, y)
     median_sig = np.median(y)
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)
@@ -403,6 +402,8 @@ def fit_amplitude_function(
                 - 2 * np.pi * x_limits[0] / (x_limits[1] - x_limits[0]) / popt[2]
             ),
         ]
+    else:
+        popt = popt.tolist()
 
     pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
 

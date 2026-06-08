@@ -1153,7 +1153,9 @@ def quinn_fernandes_algorithm(
     return med_omega * fs
 
 
-def guess_period(x: NDArray, y: NDArray, axis: int = -1) -> NDArray:
+def guess_period(
+    x: NDArray, y: NDArray, axis: int = -1, speedup_flag: bool = True
+) -> NDArray:
     """Estimate the period(s) of a (set of) sinusoidal signal(s).
 
     This is a thin wrapper around :func:`guess_frequency` that returns the
@@ -1162,11 +1164,15 @@ def guess_period(x: NDArray, y: NDArray, axis: int = -1) -> NDArray:
     the same shape semantics as :func:`guess_frequency`.
     """
 
-    return 1 / quinn_fernandes_algorithm(
-        signal=y,
-        x=x,
-        axis=axis,
-        speedup_flag=True,
+    return (
+        2
+        * np.pi
+        / quinn_fernandes_algorithm(
+            signal=y,
+            x=x,
+            axis=axis,
+            speedup_flag=speedup_flag,
+        )
     )
 
 

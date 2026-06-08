@@ -939,9 +939,7 @@ actions:
     operation: cr_amplitude
     targets: [[0, 1]]
     parameters:
-      control_ampl_start: 0.01
-      control_ampl_end: 0.1
-      control_ampl_step: 0.01
+      amplitude_range: [0.01, 0.1, 0.01]
       echo: true
       nshots: 2000
       pulse_duration: 10
@@ -950,9 +948,7 @@ actions:
     operation: cr_length
     targets: [[0, 1]]
     parameters:
-      pulse_duration_start: 10
-      pulse_duration_end: 20
-      pulse_duration_step: 1
+      duration_range: [10, 20, 1]
       pulse_amplitude: 0.1
       nshots: 2000
 
@@ -960,9 +956,7 @@ actions:
     operation: cr_length
     targets: [[0, 1]]
     parameters:
-      pulse_duration_start: 10
-      pulse_duration_end: 20
-      pulse_duration_step: 1
+      duration_range: [10, 20, 1]
       nshots: 2000
       pulse_amplitude: 0.1
       interpolated_sweeper: true
