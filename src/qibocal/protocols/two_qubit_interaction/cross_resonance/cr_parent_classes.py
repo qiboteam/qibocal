@@ -31,7 +31,7 @@ class OverlappingQubitPairError(Exception):
     pass
 
 
-def check_qubit_overlap(cls, targets: list[QubitPairId]) -> None:
+def check_qubit_overlap(targets: list[QubitPairId]) -> None:
     """This function checks if the input qubit pairs are independent, i.e. they don't share any qubit."""
     if any(set(t1) & set(t2) for t1, t2 in combinations(targets, 2)):
         raise OverlappingQubitPairError(
