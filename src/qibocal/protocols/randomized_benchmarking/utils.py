@@ -34,7 +34,7 @@ from .fitting import fit_exp1B_func
 
 
 class CircuitIndex(BaseModel):
-    """Tracks the (qubits, depth, iteration) CircuitIndex of a circuit."""
+    """Tracks the (depth, iteration) CircuitIndex of a circuit."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -413,7 +413,7 @@ def _execute_indexed_circuits(
     indexed_circuits: list[IndexedCircuit],
     params: Parameters,
     platform: CalibrationPlatform,
-    targets: list[QubitId],
+    qubit_map: list[QubitId],
     averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
 ) -> list[IndexedResult]:
     """Execute indexed circuits and return results paired with their indices.
@@ -422,13 +422,13 @@ def _execute_indexed_circuits(
         indexed_circuits: List of IndexedCircuit objects to execute.
         params: Experiment parameters.
         platform: CalibrationPlatform to execute on.
-        targets: List of target qubit IDs.
+        qubit_map: List of physical qubit IDs.
 
     Returns:
         List of IndexedResult objects with execution results paired with their indices.
     """
 
-    qubit_maps = [targets] * len(indexed_circuits)
+    qubit_maps = [qubit_map] * len(indexed_circuits)
     circuits = []
     for indexed_circuit in indexed_circuits:
         circuits.append(indexed_circuit.circuit)
@@ -492,7 +492,7 @@ def rb_acquisition(
         indexed_circuits=indexed_circuits,
         params=params,
         platform=platform,
-        targets=targets,
+        qubit_map=targets,
         averaging_mode=AveragingMode.CYCLIC
         if len(targets) == 1
         else AveragingMode.SINGLESHOT,
@@ -560,7 +560,7 @@ def twoq_rb_acquisition(
         indexed_circuits=indexed_circuits,
         params=params,
         platform=platform,
-        targets=list(chain.from_iterable(targets)),
+        qubit_map=list(chain.from_iterable(targets)),
     )
 
     # Create a dict of the form {(qubit[0], qubit[1], depth): list[result]}.
