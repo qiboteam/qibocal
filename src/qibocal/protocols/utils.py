@@ -1049,15 +1049,6 @@ def baseline_als(data: NDArray, lamda: float, p: float, niter: int = 10) -> NDAr
     return z
 
 
-def guess_period(x, y):
-    """Return fft period estimation given a sinusoidal plot."""
-    fft = np.fft.rfft(y)
-    fft_freqs = np.fft.rfftfreq(len(y), d=(x[1] - x[0]))
-    mags = np.abs(fft)
-    mags[0] = 0
-    return 1 / fft_freqs[np.argmax(mags)]
-
-
 def guess_frequency_numpyfied(x: np.ndarray, y: np.ndarray, axis: int = -1):
     """Numpyfied version of :func:`guess_period` but here we work on frequencies."""
     assert x.ndim == 1, f"Expected 1D array, got array with shape {x.shape}"
@@ -1071,11 +1062,6 @@ def guess_frequency_numpyfied(x: np.ndarray, y: np.ndarray, axis: int = -1):
     selected_freqs = fft_freqs[np.argmax(mags, axis=-1)]
 
     return np.moveaxis(selected_freqs, -1, axis)
-
-
-def fallback_period(period):
-    """Function to estimate period if guess_period fails."""
-    return period if period is not None else 4
 
 
 def fallback_frequency_numpyfied(frequency: np.ndarray):
@@ -1159,3 +1145,39 @@ def quinn_fernandes_algorithm(
     med_omega = np.median(omega_est)
 
     return med_omega * fs
+
+
+def guess_period(
+    x: NDArray, y: NDArray, axis: int = -1, speedup_flag: bool = True
+) -> NDArray:
+    """Estimate the period(s) of a (set of) sinusoidal signal(s).
+
+    This is a thin wrapper around :func:`guess_frequency` that returns the
+    reciprocal of the estimated dominant frequency. For multi-dimensional
+    signals, the period is computed along ``axis`` of ``y`` and returned with
+    the same shape semantics as :func:`guess_frequency`.
+    """
+
+    return (
+        2
+        * np.pi
+        / quinn_fernandes_algorithm(
+            signal=y,
+            x=x,
+            axis=axis,
+            speedup_flag=speedup_flag,
+        )
+    )
+
+
+def fallback_period(period: NDArray) -> NDArray:
+    """Return a numeric period array with NaNs replaced by a fallback value.
+
+    This helper is used to ensure a valid numeric period is available for
+    downstream processing when the period estimation returns missing values.
+    """
+    assert period.ndim <= 1, (
+        f"Expected 1D array or scalar, got array with shape {period.shape}"
+    )
+
+    return np.where(np.isnan(period), 4, period)
