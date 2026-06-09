@@ -9,13 +9,10 @@ from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sw
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
-from qibocal.result import magnitude, phase
 from qibocal.update import replace
 
 from ..utils import (
     PowerLevel,
-    chi2_reduced,
-    chi2_reduced_complex,
     lorentzian,
     lorentzian_fit,
     readout_frequency,
@@ -29,8 +26,6 @@ ResSpecType = np.dtype(
         ("freq", np.float64),
         ("signal", np.float64),
         ("phase", np.float64),
-        ("error_signal", np.float64),
-        ("error_phase", np.float64),
     ]
 )
 """Custom dtype for resonator spectroscopy."""
@@ -44,12 +39,8 @@ class ResonatorSpectroscopyFit:
     """Routine function to fit data with a model."""
     fit: Callable
     """Fit function used for the resonance."""
-    chi2: Callable
-    """Chi2 reduced."""
     values: Callable
     """Extract values from data."""
-    errors: Callable
-    """Extract errors from data."""
     plot: Callable
     """Plotting function for ResonatorSpectroscopy."""
 
@@ -58,17 +49,13 @@ FITS = {
     "lorentzian": ResonatorSpectroscopyFit(
         lorentzian,
         lorentzian_fit,
-        chi2_reduced,
         lambda z: z.signal,
-        lambda z: z.error_signal,
         spectroscopy_plot,
     ),
     "s21": ResonatorSpectroscopyFit(
         s21,
         s21_fit,
-        chi2_reduced_complex,
         lambda z: (z.signal, z.phase),
-        lambda z: (z.error_signal, z.error_phase),
         s21_spectroscopy_plot,
     ),
 }
@@ -207,7 +194,7 @@ def _acquisition(
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
-        averaging_mode=AveragingMode.SINGLESHOT,
+        averaging_mode=AveragingMode.CYCLIC,
     )
 
     # retrieve the results for every qubit
@@ -215,17 +202,15 @@ def _acquisition(
         result = results[ro_pulses[q].id]
         # store the results
         ro_frequency = readout_frequency(q, platform, params.power_level)
-        signal = magnitude(result)
-        phase_ = phase(result)
+        signal = np.linalg.norm(result, axis=-1)
+        phase = np.unwrap(np.arctan2(result[..., 0], result[..., 1]), axis=-1)
         data.register_qubit(
             ResSpecType,
             (q),
             dict(
-                signal=signal.mean(axis=0),
-                phase=phase_.mean(axis=0),
+                signal=signal,
+                phase=phase,
                 freq=delta_frequency_range + ro_frequency,
-                error_signal=np.std(signal, axis=0, ddof=1) / np.sqrt(signal.shape[0]),
-                error_phase=np.std(phase_, axis=0, ddof=1) / np.sqrt(phase_.shape[0]),
             ),
         )
     return data
@@ -241,7 +226,6 @@ def _fit(
     frequency = {}
     fitted_parameters = {}
     error_fit_pars = {}
-    chi2 = {}
 
     fit = FITS[data.fit_function]
 
@@ -263,26 +247,14 @@ def _fit(
                 error_fit_pars[qubit],
             ) = fit_result
 
-            dof = len(data[qubit].freq) - len(fitted_parameters[qubit])
-
             if data.power_level is PowerLevel.high:
                 bare_frequency[qubit] = frequency[qubit]
 
-            chi2[qubit] = (
-                fit.chi2(
-                    fit.values(data[qubit]),
-                    fit.function(data[qubit].freq, *fitted_parameters[qubit]),
-                    fit.errors(data[qubit]),
-                    dof,
-                ),
-                np.sqrt(2 / dof),
-            )
     return ResonatorSpectroscopyResults(
         frequency=frequency,
         fitted_parameters=fitted_parameters,
         bare_frequency=bare_frequency if data.power_level is PowerLevel.high else {},
         error_fit_pars=error_fit_pars,
-        chi2_reduced=chi2,
         amplitude=data.amplitudes,
     )
 
