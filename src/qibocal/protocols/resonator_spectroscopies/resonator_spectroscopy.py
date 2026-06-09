@@ -9,6 +9,7 @@ from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sw
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
+from qibocal.result import magnitude, phase
 from qibocal.update import replace
 
 from ..utils import (
@@ -196,14 +197,14 @@ def _acquisition(
         result = results[ro_pulses[q].id]
         # store the results
         ro_frequency = readout_frequency(q, platform, params.power_level)
-        signal = np.linalg.norm(result, axis=-1)
-        phase = np.unwrap(np.arctan2(result[..., 0], result[..., 1]), axis=-1)
+        signal = magnitude(result)
+        phase_ = phase(result)
         data.register_qubit(
             ResSpecType,
             (q),
             dict(
                 signal=signal,
-                phase=phase,
+                phase=phase_,
                 freq=delta_frequency_range + ro_frequency,
             ),
         )
