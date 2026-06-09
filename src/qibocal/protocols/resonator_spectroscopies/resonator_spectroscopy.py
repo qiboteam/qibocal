@@ -99,12 +99,6 @@ class ResonatorSpectroscopyResults(Results):
         default_factory=dict,
     )
     """Bare resonator frequency [Hz] for each qubit."""
-    error_fit_pars: dict[QubitId, list] = field(default_factory=dict)
-    """Errors of the fit parameters."""
-    chi2_reduced: dict[QubitId, tuple[float, float | None]] = field(
-        default_factory=dict
-    )
-    """Chi2 reduced."""
     amplitude: dict[QubitId, float] | None = field(
         default_factory=dict,
     )
@@ -225,7 +219,6 @@ def _fit(
     bare_frequency = {}
     frequency = {}
     fitted_parameters = {}
-    error_fit_pars = {}
 
     fit = FITS[data.fit_function]
 
@@ -241,12 +234,7 @@ def _fit(
             qubit_data, resonator_type=data.resonator_type, fit="resonator"
         )
         if fit_result is not None:
-            (
-                frequency[qubit],
-                fitted_parameters[qubit],
-                error_fit_pars[qubit],
-            ) = fit_result
-
+            frequency[qubit], fitted_parameters[qubit], _ = fit_result
             if data.power_level is PowerLevel.high:
                 bare_frequency[qubit] = frequency[qubit]
 
@@ -254,7 +242,6 @@ def _fit(
         frequency=frequency,
         fitted_parameters=fitted_parameters,
         bare_frequency=bare_frequency if data.power_level is PowerLevel.high else {},
-        error_fit_pars=error_fit_pars,
         amplitude=data.amplitudes,
     )
 

@@ -20,11 +20,5 @@ def test_resonator_spectroscopy_fit():
     assert fitted.fitted_parameters[qubit] == approx_for_regression(
         expected.fitted_parameters[qubit]
     )
-    assert fitted.error_fit_pars[qubit] == approx_for_regression(
-        expected.error_fit_pars[qubit]
-    )
-    assert fitted.chi2_reduced[qubit] == approx_for_regression(
-        expected.chi2_reduced[qubit]
-    )
     assert fitted.amplitude is not None and expected.amplitude is not None
     assert fitted.amplitude[qubit] == approx_for_regression(expected.amplitude[qubit])
