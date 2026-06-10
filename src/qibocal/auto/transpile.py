@@ -104,13 +104,9 @@ def _resolve_results_mapping_singleshot(
         else:
             result = {}
             qid = tuple([platform_qubit_map[qubit_id] for qubit_id in measure.qubits])
-            for logical_qubit, (_, pulse) in enumerate(sequence.acquisitions):
-                result[logical_qubit] = readout[pulse.id]
-            # The inverse sorting is to have little-endian bitstring notation, which
-            # means that the qubit with the smallest qubitId is the most significant bit
-            # in the output string (on the right).
-            inverse_sorted_qubits = sorted(result, reverse=True)
-            arr = np.stack([result[q] for q in inverse_sorted_qubits]).astype(int)
+            arr = np.stack(
+                [readout[pulse.id] for (_, pulse) in sequence.acquisitions]
+            ).astype(int)
             measurements[qid].append(Counter("".join(map(str, col)) for col in arr.T))
 
     return measurements
