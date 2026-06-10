@@ -149,7 +149,6 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     res_frequencies = {}
     best_freqs = {}
     fitted_parameters = {}
-
     for qubit in qubits:
         freq = []
         fit_params = []
@@ -202,28 +201,18 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
         ),
     )
 
-    fitting_report = ""
+    for state in (0, 1):
+        label = f"State {state}"
+        q_data = data[target, state]
 
-    data_0 = data[target, 0]
-    data_1 = data[target, 1]
-
-    for i, label, q_data in list(
-        zip(
-            (0, 1),
-            ("State 0", "State 1"),
-            (data_0, data_1),
-        )
-    ):
-        opacity = 1
         frequencies = q_data.freq * HZ_TO_GHZ
         fig.add_trace(
             go.Scatter(
                 x=frequencies,
                 y=q_data.signal,
-                opacity=opacity,
-                name=f"{label}",
+                opacity=1,
+                name=f"{label} data",
                 showlegend=True,
-                legendgroup=f"{label}",
             ),
             row=1,
             col=1,
@@ -232,80 +221,71 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
             go.Scatter(
                 x=frequencies,
                 y=q_data.phase,
-                opacity=opacity,
-                showlegend=False,
-                legendgroup=f"{label}",
+                opacity=1,
+                name=f"{label} phase",
+                showlegend=True,
             ),
             row=1,
             col=2,
         )
-        if fit is not None:
-            fig.add_vline(
-                x=fit.best_freq[target] * HZ_TO_GHZ,
-                line=dict(color="orange", width=3, dash="dash"),
+        if fit is not None and fit.frequencies[target] is not None:
+            freqrange = np.linspace(
+                min(frequencies),
+                max(frequencies),
+                2 * len(q_data),
+            )
+            params = fit.fitted_parameters[target][state]
+            fig.add_trace(
+                go.Scatter(
+                    x=freqrange,
+                    y=lorentzian(freqrange, *params),
+                    name=f"{label} fit",
+                    showlegend=True,
+                    line=go.scatter.Line(dash="dot"),
+                ),
                 row=1,
                 col=1,
             )
+
+    fitting_report = ""
+    if fit is not None:
+        all_signals = np.concatenate((data[target, 0].signal, data[target, 1].signal))
+        fig.add_trace(
+            go.Scatter(
+                x=[fit.best_freq[target] * HZ_TO_GHZ] * 2,
+                y=[
+                    np.min(all_signals),
+                    np.max(all_signals),
+                ],
+                mode="lines",
+                line=go.scatter.Line(color="orange", width=3, dash="dash"),
+                name="Best frequency",
+                showlegend=True,
+            ),
+            row=1,
+            col=1,
+        )
+        if fit.frequencies[target] is not None:
             table_entries = [
+                "Ground state Frequency [Hz]",
+                "Excited state Frequency [Hz]",
+                "Chi [Hz]",
                 "Best Frequency [Hz]",
             ]
             table_values = np.round(
                 [
+                    fit.frequencies[target][0],
+                    fit.frequencies[target][1],
+                    fit.chi(target),
                     fit.best_freq[target],
                 ]
             )
+        else:
+            table_entries = ["Best Frequency [Hz]"]
+            table_values = np.round([fit.best_freq[target]])
 
-            if fit.frequencies[target] is not None:
-                freqrange = np.linspace(
-                    min(frequencies),
-                    max(frequencies),
-                    2 * len(q_data),
-                )
-                params = fit.fitted_parameters[target][i]
-                fig.add_trace(
-                    go.Scatter(
-                        x=freqrange,
-                        y=lorentzian(freqrange, *params),
-                        name=f"{label} Fit",
-                        line=go.scatter.Line(dash="dot"),
-                    ),
-                    row=1,
-                    col=1,
-                )
+        fitting_report = table_html(table_dict(target, table_entries, table_values))
 
-                fig.add_trace(
-                    go.Scatter(
-                        x=[
-                            fit.best_freq[target] * HZ_TO_GHZ,
-                            fit.best_freq[target] * HZ_TO_GHZ,
-                        ],
-                        y=[
-                            np.min(np.concatenate((data_0.signal, data_1.signal))),
-                            np.max(np.concatenate((data_0.signal, data_1.signal))),
-                        ],
-                        mode="lines",
-                        line=go.scatter.Line(color="orange", width=3, dash="dash"),
-                        name="Best frequency",
-                    ),
-                    row=1,
-                    col=1,
-                )
-                table_entries = [
-                    "State Zero Frequency [Hz]",
-                    "State One Frequency [Hz]",
-                    "Chi [Hz]",
-                    "Best Frequency [Hz]",
-                ]
-                table_values = np.round(
-                    [
-                        fit.frequencies[target][0],
-                        fit.frequencies[target][1],
-                        fit.chi(target),
-                        fit.best_freq[target],
-                    ]
-                )
-
-            fitting_report = table_html(table_dict(target, table_entries, table_values))
     fig.update_layout(
         showlegend=True,
         xaxis_title="Frequency [GHz]",
