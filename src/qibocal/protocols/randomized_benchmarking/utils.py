@@ -386,7 +386,7 @@ def _generate_indexed_circuits(
 
     target_id_map = {
         target: (idx * 2, idx * 2 + 1) if two_qubit else (idx,)
-        # Reverse assignment for big-endianess
+        # Reverse assignment for little-endianess resolution
         for idx, target in enumerate(reversed(targets))
     }
 
