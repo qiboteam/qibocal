@@ -97,14 +97,14 @@ def _resolve_results_mapping_singleshot(
     for measure, sequence in measurement_map.items():
         if len(measure.qubits) == 1:
             qid = platform_qubit_map[measure.qubits[0]]
-            result = readout[sequence[0][1].id]
+            result = readout[sequence.acquisitions[0][1].id]
             measurements[qid].append(
                 Counter({str(key): val for key, val in Counter(result).items()})
             )
         else:
             result = {}
             qid = tuple([platform_qubit_map[qubit_id] for qubit_id in measure.qubits])
-            for logical_qubit, (_, pulse) in enumerate(sequence):
+            for logical_qubit, (_, pulse) in enumerate(sequence.acquisitions):
                 result[logical_qubit] = readout[pulse.id]
             # The inverse sorting is to have little-endian bitstring notation, which
             # means that the qubit with the smallest qubitId is the most significant bit
@@ -127,7 +127,7 @@ def _resolve_results_mapping_averaged(
     for measure, sequence in measurement_map.items():
         assert len(measure.qubits) == 1
         qid = platform_qubit_map[measure.qubits[0]]
-        excited_frac = readout[sequence[0][1].id]
+        excited_frac = readout[sequence.acquisitions[0][1].id]
         measurements[qid].append(
             Counter(
                 {
