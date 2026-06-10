@@ -41,9 +41,9 @@ __all__ = [
 class QubitFluxParameters(utils.FluxFrequencySweepParameters):
     """QubitFlux runcard inputs."""
 
-    drive_amplitude: float = 0.01
+    drive_amplitude: float
     """Amplitude of the drive pulse."""
-    drive_duration: int = 2000
+    drive_duration: int
     """Duration of the drive pulse."""
 
 
