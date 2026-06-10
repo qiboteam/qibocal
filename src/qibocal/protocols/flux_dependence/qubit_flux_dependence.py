@@ -283,9 +283,9 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, target: QubitId):
             table_dict(
                 target,
                 [
-                    "Sweetspot [V]",
+                    "Sweetspot [a.u.]",
                     "Qubit Frequency at Sweetspot [Hz]",
-                    "Flux dependence [V]^-1",
+                    "Flux dependence [a.u.]^-1",
                 ],
                 [
                     np.round(fit.sweetspot[target], 4),

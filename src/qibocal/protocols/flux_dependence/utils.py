@@ -29,9 +29,9 @@ class FluxFrequencySweepParameters(Parameters):
     freq_step: int
     """Frequency step for sweep [Hz]."""
     bias_width: float
-    """Width for bias sweep [V]."""
+    """Width for bias sweep [a.u.]."""
     bias_step: float
-    """Bias step for sweep [V]."""
+    """Bias step for sweep [a.u.]."""
 
     @property
     def frequency_range(self) -> np.ndarray:
@@ -122,7 +122,7 @@ def flux_dependence_plot(data, fit, qubit, fit_function=None):
     fig.update_xaxes(
         title_text="Frequency [GHz]",
     )
-    fig.update_yaxes(title_text="Bias [V]")
+    fig.update_yaxes(title_text="Bias [a.u.]")
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
 
@@ -189,7 +189,7 @@ def flux_crosstalk_plot(data, qubit, fit, fit_function):
         )
 
         fig.update_yaxes(
-            title_text=f"Qubit {flux_qubit[1]}: Bias [V]", row=1, col=col + 1
+            title_text=f"Qubit {flux_qubit[1]}: Bias [a.u.]", row=1, col=col + 1
         )
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
@@ -212,7 +212,7 @@ def G_f_d(xi, xj, offset, d, crosstalk_element, normalization):
     Args:
         xi (float): bias of target qubit
         xj (float): bias of neighbor qubit
-        offset (float): phase_offset [V].
+        offset (float): phase_offset [a.u.].
         d (float): asymmetry between the two junctions of the transmon.
                    Typically denoted as :math:`d`. :math:`d = (E_J^1 - E_J^2) / (E_J^1 + E_J^2)`.
         crosstalk_element(float): off-diagonal crosstalk matrix element
@@ -247,7 +247,7 @@ def transmon_frequency(
         d (float): asymmetry between the two junctions of the transmon.
                    Typically denoted as :math:`d`. :math:`d = (E_J^1 - E_J^2) / (E_J^1 + E_J^2)`.
         normalization(float): diagonal crosstalk matrix element
-        offset (float): phase_offset [V].
+        offset (float): phase_offset [a.u.].
         crosstalk_element(float): off-diagonal crosstalk matrix element
         charging_energy (float): Ec / h (GHz)
 
@@ -289,7 +289,7 @@ def transmon_readout_frequency(
          d (float): asymmetry between the two junctions of the transmon.
                     Typically denoted as :math:`d`. :math:`d = (E_J^1 - E_J^2) / (E_J^1 + E_J^2)`.
          normalization(float): diagonal crosstalk matrix element
-         offset (float): phase_offset [V].
+         offset (float): phase_offset [a.u.].
          crosstalk_element(float): off-diagonal crosstalk matrix element
          resonator_freq (float): bare resonator frequency [GHz]
          g (float): readout coupling.
