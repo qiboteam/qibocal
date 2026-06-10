@@ -1,5 +1,5 @@
 # This file contains functions to transpile and execute quantum circuits.
-from collections import Counter
+from collections import Counter, defaultdict
 from collections.abc import Callable
 
 import numpy as np
@@ -8,7 +8,9 @@ from qibo.transpiler.pipeline import Passes
 from qibo.transpiler.unroller import NativeGates, Unroller
 from qibolab import AcquisitionType, AveragingMode, Platform, PulseSequence
 from qibolab._core.compilers import Compiler
+from qibolab._core.identifier import Result
 from qibolab._core.native import NativeContainer
+from qibolab._core.pulses import PulseId
 
 from qibocal.auto.operation import QubitId
 
@@ -17,19 +19,22 @@ REPLACEMENTS = {
     "MZ": "M",
 }
 
+QubitMap = list[QubitId]
+"""An array where the elements are physical qubit IDs (str/int) and the indices are logical qubit IDs
+on the corresponding circuit
+"""
+ResultMap = dict[QubitId | tuple[QubitId, ...], list[Counter[str]]]
+"""A dictionary mapping the physical qubit ID(s) measured to an array of state counts per requested measurement
+"""
 
-def _string_to_integer_qubit_maps(
-    qubit_maps: list[list[QubitId]], platform: Platform
-) -> list[list[int]]:
+
+def _string_to_integer_qubit_map(qubit_map: QubitMap, platform: Platform) -> list[int]:
     """QubitId can be integers or strings. ``pad_circuit`` only works with integer qubit
     IDs, so if the qubit maps contain string IDs, we convert them to integer indices
     based on the platform's qubit order.
     """
     qubits = list(platform.qubits)
-    return [
-        [q if isinstance(q, int) else qubits.index(q) for q in qubit_map]
-        for qubit_map in qubit_maps
-    ]
+    return [q if isinstance(q, int) else qubits.index(q) for q in qubit_map]
 
 
 def _pad_circuit(nqubits: int, circuit: Circuit, qubit_map: list[int]) -> Circuit:
@@ -52,18 +57,18 @@ def _pad_circuit(nqubits: int, circuit: Circuit, qubit_map: list[int]) -> Circui
     return new_circuit
 
 
-def _transpile_circuits(
-    circuits: list[Circuit],
-    qubit_maps: list[list[QubitId]],
+def _transpile_circuit(
+    circuit: Circuit,
+    qubit_map: list[int],
     platform: Platform,
     transpiler: Passes,
 ) -> list[Circuit]:
-    """Transpile and pad `circuits` according to the platform.
+    """Transpile and pad `circuit` according to the platform.
 
-    Apply the `transpiler` to `circuits` and pad them in
-    circuits with the same number of qubits in the platform.
-    Before manipulating the circuits, this function check that the
-    `qubit_maps` contain string ids and in the positive case it
+    Apply the `transpiler` to `circuit` and pad them in
+    a circuit with the same number of qubits in the platform.
+    Before manipulating the circuit, this function check that the
+    `qubit_map` contain string ids and in the positive case it
     remap them in integers, following the ids order provided by the
     platform.
 
@@ -73,66 +78,57 @@ def _transpile_circuits(
         are all string or all integers.
 
     Returns:
-        List of transpiled and padded Circuit instances, one per input circuit.
+        Transpiled and padded circuit instance.
     """
-    transpiled_circuits = []
-    _qubit_maps = _string_to_integer_qubit_maps(qubit_maps, platform)
-    platform_nqubits = platform.nqubits
-    for circuit, qubit_map in zip(circuits, _qubit_maps):
-        new_circuit = _pad_circuit(platform_nqubits, circuit, qubit_map)
-        transpiled_circ, _ = transpiler(new_circuit)
-        transpiled_circuits.append(transpiled_circ)
 
-    return transpiled_circuits
+    new_circuit = _pad_circuit(platform.nqubits, circuit, qubit_map)
+    transpiled_circ, _ = transpiler(new_circuit)
+
+    return transpiled_circ
 
 
-def _validate_gate(gate, qubit_map):
-    """Validate measurement gate against qubit map."""
-    if len(gate.qubits) != 1:
-        raise ValueError(
-            "Measurement gate must measure a single qubit. "
-            f"Got gate with {len(gate.qubits)} qubits."
-        )
-    if gate.qubits[0] not in qubit_map:
-        raise KeyError(f"Qubit {gate.qubits[0]} not found in qubit map: {qubit_map}.")
+def _resolve_results_mapping_singleshot(
+    platform_qubit_map: QubitMap,
+    readout: dict[PulseId, Result],
+    measurement_map: dict[gates.M, PulseSequence],
+) -> ResultMap:
 
-
-def _validate_sequence(sequence, readout):
-    """Validate measurement sequence against readout results."""
-    if len(sequence.acquisitions) != 1:
-        raise ValueError(
-            "Measurement sequence must have exactly one acquisition. "
-            f"Got {len(sequence.acquisitions)} acquisitions."
-        )
-    if sequence.acquisitions[0][1].id not in readout:
-        raise KeyError(
-            f"Acquisition ID {sequence.acquisitions[0][1].id} not found in readout results."
-        )
-
-
-def _validate_measurement(gate, sequence, qubit_map, readout):
-    """Validate measurement gate and sequence consistency."""
-    _validate_gate(gate, qubit_map)
-    _validate_sequence(sequence, readout)
-
-
-def _counts_with_hardware_averaging(
-    qubit_maps: list[list[QubitId]],
-    measurement_maps,
-    readout,
-    nshots: int,
-) -> list[Counter[str]]:
-    """Build Counters when hardware averaging is enabled."""
-    counts_per_circuit = []
-    for qubit_map, measurement_map in zip(qubit_maps, measurement_maps):
-        if len(qubit_map) != 1 or len(measurement_map) != 1:
-            raise ValueError(
-                "Hardware averaging is only supported for single qubit readout."
+    measurements: ResultMap = defaultdict(list)
+    for measure, sequence in measurement_map.items():
+        if len(measure.qubits) == 1:
+            qid = platform_qubit_map[measure.qubits[0]]
+            result = readout[sequence[0][1].id]
+            measurements[qid].append(
+                Counter({str(key): val for key, val in Counter(result).items()})
             )
+        else:
+            result = {}
+            qid = tuple([platform_qubit_map[qubit_id] for qubit_id in measure.qubits])
+            for logical_qubit, (_, pulse) in enumerate(sequence):
+                result[logical_qubit] = readout[pulse.id]
+            # The inverse sorting is to have little-endian bitstring notation, which
+            # means that the qubit with the smallest qubitId is the most significant bit
+            # in the output string (on the right).
+            inverse_sorted_qubits = sorted(result, reverse=True)
+            arr = np.stack([result[q] for q in inverse_sorted_qubits]).astype(int)
+            measurements[qid].append(Counter("".join(map(str, col)) for col in arr.T))
 
-        [(_, sequence)] = measurement_map.items()
-        excited_frac = readout[sequence.acquisitions[0][1].id]
-        counts_per_circuit.append(
+    return measurements
+
+
+def _resolve_results_mapping_averaged(
+    platform_qubit_map: QubitMap,
+    readout: dict[PulseId, Result],
+    measurement_map: dict[gates.M, PulseSequence],
+    nshots: int,
+) -> ResultMap:
+
+    measurements: ResultMap = defaultdict(list)
+    for measure, sequence in measurement_map.items():
+        assert len(measure.qubits) == 1
+        qid = platform_qubit_map[measure.qubits[0]]
+        excited_frac = readout[sequence[0][1].id]
+        measurements[qid].append(
             Counter(
                 {
                     "0": int(np.round((1 - excited_frac) * nshots)),
@@ -141,49 +137,21 @@ def _counts_with_hardware_averaging(
             )
         )
 
-    return counts_per_circuit
-
-
-def _counts_with_singleshot(
-    qubit_maps: list[list[QubitId]],
-    measurement_maps,
-    readout,
-) -> list[Counter[str]]:
-    """Build Counters when single-shot measurements are available."""
-    counts_per_circuit = []
-    for qubit_map, measurement_map in zip(qubit_maps, measurement_maps):
-        assert len(qubit_map) == len(measurement_map)
-        result = {}
-        for gate, sequence in measurement_map.items():
-            logical_qubit = qubit_map.index(gate.qubits[0])
-            result[logical_qubit] = readout[sequence.acquisitions[0][1].id]
-        # The inverse sorting is to have little-endian bitstring notation, which
-        # means that the qubit with the smallest qubitId is the most significant bit
-        # in the output string (on the right).
-        inverse_sorted_qubits = sorted(result, reverse=True)
-        arr = np.stack([result[q] for q in inverse_sorted_qubits]).astype(int)
-        counts_per_circuit.append(Counter("".join(map(str, col)) for col in arr.T))
-
-    return counts_per_circuit
+    return measurements
 
 
 def _execute_circuits(
     platform: Platform,
     compiler: Compiler,
     circuits: list[Circuit],
-    qubit_maps: list[list[QubitId]],
     nshots: int,
     averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
-) -> list[Counter[str]]:
+) -> list[ResultMap]:
     """Executes multiple quantum circuits with a single communication with
     the control electronics.
 
     Circuits are unrolled to a single pulse sequence.
     """
-
-    assert len(circuits) == len(qubit_maps), (
-        "Number of circuits and qubit maps must match."
-    )
 
     sequences, measurement_maps = zip(
         *(compiler.compile(circuit, platform) for circuit in circuits)
@@ -197,51 +165,59 @@ def _execute_circuits(
         acquisition_type=AcquisitionType.DISCRIMINATION,
     )
 
-    for qubit_map, measurement_map in zip(qubit_maps, measurement_maps):
-        for gate, sequence in measurement_map.items():
-            _validate_measurement(gate, sequence, qubit_map, readout)
-
+    platform_qubit_mapping = list(platform.qubits)
     if averaging_mode.average:
-        counts_per_circuit = _counts_with_hardware_averaging(
-            qubit_maps, measurement_maps, readout, nshots
-        )
+        measurements_per_circuit = [
+            _resolve_results_mapping_averaged(
+                platform_qubit_map=platform_qubit_mapping,
+                readout=readout,
+                measurement_map=measurement_map,
+                nshots=nshots,
+            )
+            for measurement_map in measurement_maps
+        ]
     else:
-        counts_per_circuit = _counts_with_singleshot(
-            qubit_maps, measurement_maps, readout
-        )
+        measurements_per_circuit = [
+            _resolve_results_mapping_singleshot(
+                platform_qubit_map=platform_qubit_mapping,
+                readout=readout,
+                measurement_map=measurement_map,
+            )
+            for measurement_map in measurement_maps
+        ]
 
-    assert all(sum(counts.values()) == nshots for counts in counts_per_circuit)
-
-    return counts_per_circuit
+    assert len(measurements_per_circuit) == len(circuits)
+    return measurements_per_circuit
 
 
 def execute_circuits(
     circuits: list[Circuit],
-    qubit_maps: list[list[QubitId]],
     platform: Platform,
     transpiler: Passes,
     compiler: Compiler,
     nshots: int,
+    qubit_map: QubitMap | None = None,
+    qubit_maps: list[QubitMap] | None = None,
     averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
-) -> list[Counter[str]]:
+) -> list[ResultMap]:
     """Execute multiple quantum circuits.
 
     Combines :func:`transpile_circuits` and :func:`execute_circuits` into a single call.
 
     Args:
         circuits: List of quantum circuits to transpile and execute.
-        qubit_maps: List of qubit maps, one per circuit. Each qubit map maps physical
-            qubit IDs to logical qubit indices.
         platform: The platform to transpile circuits for and execute on.
         transpiler: The transpiler to apply to the circuits.
         compiler: The compiler to use for circuit compilation.
         nshots: Number of times to sample from the experiment.
+        qubit_map: A mapping of physical qubit IDs to logical qubit indices.
+        qubit_maps: An array of physical qubit to logical qubit mapping per circuit.
         averaging_mode: Averaging mode for measurements. Default is single-shot.
 
     Returns:
-        List of measurement outcome as Counter objects, one per circuit. Each Counter
-        maps measurement outcome states as strings (e.g., "01", "10") to their
-        occurrence counts. Total counts per counter equals nshots.
+        List of dictionaries mapping physical qubit ID(s) to measurement outcomes as Counter objects,
+        one per circuit. Each Counter maps measurement outcome states as strings (e.g., "01", "10")
+        to their occurrence counts. Total counts per counter equals nshots.
 
     Examples:
         .. testcode::
@@ -273,12 +249,38 @@ def execute_circuits(
 
         assert sum(counts.values()) == 100
     """
-    transpiled = _transpile_circuits(circuits, qubit_maps, platform, transpiler)
+    assert qubit_map is not None or qubit_maps is not None
+    assert not (qubit_map is not None and qubit_maps is not None)
+
+    if qubit_map is not None:
+        _qubit_map = _string_to_integer_qubit_map(qubit_map, platform)
+        transpiled = [
+            _transpile_circuit(
+                circuit=circuit,
+                qubit_map=_qubit_map,
+                platform=platform,
+                transpiler=transpiler,
+            )
+            for circuit in circuits
+        ]
+    elif qubit_maps is not None:
+        assert len(qubit_maps) == len(circuits)
+        transpiled = [
+            _transpile_circuit(
+                circuit=circuit,
+                qubit_map=_string_to_integer_qubit_map(qmap, platform),
+                platform=platform,
+                transpiler=transpiler,
+            )
+            for circuit, qmap in zip(circuits, qubit_maps)
+        ]
+    else:
+        raise ValueError("Qubit mapping required")
+
     return _execute_circuits(
         platform,
         compiler,
         transpiled,
-        qubit_maps,
         nshots=nshots,
         averaging_mode=averaging_mode,
     )
