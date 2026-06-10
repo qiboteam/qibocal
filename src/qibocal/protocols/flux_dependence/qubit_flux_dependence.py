@@ -41,9 +41,8 @@ __all__ = [
 class QubitFluxParameters(utils.FluxFrequencySweepParameters):
     """QubitFlux runcard inputs."""
 
-    drive_amplitude: float | None = None
-    """Drive amplitude (optional). If defined, same amplitude will be used in all qubits.
-    Otherwise the default amplitude defined on the platform runcard will be used"""
+    drive_amplitude: float = 0.01
+    """Amplitude of the drive pulse."""
     drive_duration: int = 2000
     """Duration of the drive pulse."""
 
@@ -127,8 +126,7 @@ def _acquisition(
         ro_channel, ro_pulse = natives.MZ()[0]
 
         qd_pulse = replace(qd_pulse, duration=params.drive_duration)
-        if params.drive_amplitude is not None:
-            qd_pulse = replace(qd_pulse, amplitude=params.drive_amplitude)
+        qd_pulse = replace(qd_pulse, amplitude=params.drive_amplitude)
 
         qd_pulses[q] = qd_pulse
         ro_pulses[q] = ro_pulse
