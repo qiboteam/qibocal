@@ -1,5 +1,5 @@
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 from qibolab import (
@@ -24,8 +24,6 @@ from ..resonator_spectroscopies.resonator_spectroscopy import (
 )
 from ..resonator_spectroscopies.resonator_utils import spectroscopy_plot
 from ..utils import (
-    chi2_reduced,
-    lorentzian,
     lorentzian_fit,
 )
 
@@ -62,12 +60,6 @@ class QubitSpectroscopyResults(Results):
     """Input drive amplitude. Same for all qubits."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
-    chi2_reduced: dict[QubitId, tuple[float, float | None]] = field(
-        default_factory=dict
-    )
-    """Chi2 reduced."""
-    error_fit_pars: dict[QubitId, list] = field(default_factory=dict)
-    """Errors of the fit parameters."""
 
 
 class QubitSpectroscopyData(ResonatorSpectroscopyData):
@@ -192,21 +184,10 @@ def _acquisition(
             signal = magnitude(result)
             _phase = phase(result)
 
-            if len(signal.shape) > 1:
-                error_signal = np.std(signal, axis=0, ddof=1) / np.sqrt(signal.shape[0])
-                signal = np.mean(signal, axis=0)
-                error_phase = np.std(_phase, axis=0, ddof=1) / np.sqrt(_phase.shape[0])
-                _phase = np.mean(_phase, axis=0)
-            else:
-                error_signal = None
-                error_phase = None
-
             # Store results with absolute frequencies
             values[qubit]["frequency"].append(delta_frequency_range + f0)
             values[qubit]["signal"].append(signal)
             values[qubit]["phase"].append(_phase)
-            values[qubit]["error_signal"].append(error_signal)
-            values[qubit]["error_phase"].append(error_phase)
 
     # Create data structure and aggregate results
     data = QubitSpectroscopyData(
@@ -220,14 +201,6 @@ def _acquisition(
         signal = np.concatenate(values[qubit]["signal"])
         _phase = np.concatenate(values[qubit]["phase"])
 
-        # Handle when error signals are available
-        if all(x is not None for x in values[qubit]["error_signal"]):
-            error_signal = np.concatenate(values[qubit]["error_signal"])
-            error_phase = np.concatenate(values[qubit]["error_phase"])
-        else:
-            error_signal = None
-            error_phase = None
-
         data.register_qubit(
             ResSpecType,
             (qubit),
@@ -235,8 +208,6 @@ def _acquisition(
                 signal=signal,
                 phase=_phase,
                 freq=freq,
-                error_signal=error_signal,
-                error_phase=error_phase,
             ),
         )
 
@@ -248,30 +219,16 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     qubits = data.qubits
     frequency = {}
     fitted_parameters = {}
-    error_fit_pars = {}
-    chi2 = {}
     for qubit in qubits:
         fit_result = lorentzian_fit(
             data[qubit], resonator_type=data.resonator_type, fit="qubit"
         )
         if fit_result is not None:
-            frequency[qubit], fitted_parameters[qubit], error_fit_pars[qubit] = (
-                fit_result
-            )
-            chi2[qubit] = (
-                chi2_reduced(
-                    data[qubit].signal,
-                    lorentzian(data[qubit].freq, *fitted_parameters[qubit]),
-                    data[qubit].error_signal,
-                ),
-                np.sqrt(2 / len(data[qubit].freq)),
-            )
+            frequency[qubit], fitted_parameters[qubit], _ = fit_result
     return QubitSpectroscopyResults(
         frequency=frequency,
         fitted_parameters=fitted_parameters,
         amplitude=data.amplitudes,
-        error_fit_pars=error_fit_pars,
-        chi2_reduced=chi2,
     )
 
 
