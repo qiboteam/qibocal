@@ -210,8 +210,7 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
             go.Scatter(
                 x=frequencies,
                 y=q_data.signal,
-                opacity=1,
-                name=f"{label} data",
+                name=f"{label} signal",
                 showlegend=True,
             ),
             row=1,
@@ -221,7 +220,6 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
             go.Scatter(
                 x=frequencies,
                 y=q_data.phase,
-                opacity=1,
                 name=f"{label} phase",
                 showlegend=True,
             ),
