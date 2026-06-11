@@ -17,7 +17,6 @@ The fastest way consists in using the `Executor` class in the following way
     from qibocal.auto.mode import ExecutionMode
 
     with Executor.open(
-        "myexec", # arbitrary name for executor
         path="test_t1_signal", # path where the data will be stored
         platform="my_platform", # platform to be used
         targets=[0], # qubits on which the experiment will be executed
