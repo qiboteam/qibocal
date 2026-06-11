@@ -15,8 +15,7 @@ from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
     GHZ_TO_HZ,
     angle_wrap,
-    fallback_period,
-    guess_period,
+    quinn_fernandes_algorithm,
     table_dict,
     table_html,
 )
@@ -77,8 +76,7 @@ def fitting(x: list, y: list) -> tuple[list[float], list[float]]:
     y = (y - y_min) / delta_y
     x = (x - x_min) / delta_x
 
-    period = fallback_period(guess_period(x, y))
-    omega = 2 * np.pi / period
+    omega = quinn_fernandes_algorithm(y, x, speedup_flag=True)
     median_sig = np.median(y)
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)

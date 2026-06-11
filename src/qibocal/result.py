@@ -76,6 +76,6 @@ def phase(iq: npt.NDArray):
     return np.unwrap(np.arctan2(iq[..., 0], iq[..., 1]))
 
 
-def probability(values: npt.NDArray, state: int = 0):
+def probability(values: npt.NDArray, state: int = 0) -> npt.NDArray:
     """Return the statistical frequency of the specified state."""
-    return np.sum(values == state, axis=0) / len(values)
+    return np.mean(values == state, axis=0)
