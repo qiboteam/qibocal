@@ -95,7 +95,8 @@ def _acquisition(
                 qubit_map=qubits,
             )
             frequencies = np.zeros(2 ** len(qubits))
-            for i, freq in result[qubits][0].items():
+            [result] = result[qubits]
+            for i, freq in result.items():
                 frequencies[int(i, 2)] = freq
             for freq in frequencies:
                 data.register_qubit(

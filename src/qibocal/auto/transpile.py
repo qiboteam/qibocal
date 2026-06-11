@@ -25,6 +25,7 @@ on the corresponding circuit
 """
 ResultMap = dict[QubitId | tuple[QubitId, ...], list[Counter[str]]]
 """A dictionary mapping the physical qubit ID(s) measured to an array of state counts per requested measurement
+on the corresponding circuit
 """
 
 
