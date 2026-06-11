@@ -4,16 +4,16 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from qibolab import Platform, create_platform
+from qibolab import Platform
 
 import qibocal
 import qibocal.protocols
 from qibocal import Executor
-from qibocal.auto.history import History
 from qibocal.auto.mode import ExecutionMode
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.auto.runcard import Action
 from qibocal.calibration.platform import (
+    CalibrationPlatform,
     create_calibration_platform,
 )
 from qibocal.protocols import flipping
@@ -33,18 +33,20 @@ ACTION = Action(**action)
 
 
 @pytest.mark.parametrize("params", [ACTION, PARAMETERS])
-def test_anonymous_executor(params, platform):
+def test_anonymous_executor(
+    params: dict | Action, platform: Platform | str, tmp_path: Path
+):
     """Executor without any name."""
     platform = (
         platform
         if isinstance(platform, Platform)
         else create_calibration_platform(platform)
     )
-    executor = Executor(
-        history=History(),
+    executor = Executor.create(
         platform=platform,
         targets=list(platform.qubits),
         update=True,
+        path=tmp_path,
     )
     executor.run_protocol(
         flipping, Action.cast(params, "flipping"), mode=ExecutionMode.ACQUIRE
@@ -112,8 +114,8 @@ def fake_protocols(request):
 
 
 @pytest.fixture
-def executor(platform):
-    executor = Executor.create("my-exec")
+def executor(tmp_path: Path, platform: CalibrationPlatform):
+    executor = Executor.create(tmp_path / "out")
     yield executor
     try:
         executor.unload()
@@ -122,41 +124,24 @@ def executor(platform):
         pass
 
 
-@pytest.mark.protocols("ciao", "come")
-def test_simple(fake_protocols, platform):
-    globals_ = {}
-    exec((SCRIPTS / "simple.py").read_text(), globals_)
-    assert globals_["res"]._results.par[0] == 42
-
-
-def test_init(tmp_path: Path, executor: Executor):
-    path = tmp_path / "my-init-folder"
-
+def test_init(executor: Executor):
     init = executor.init
 
-    init(path)
+    init()
     with pytest.raises(RuntimeError, match="Directory .* already exists"):
-        init(path)
+        init()
 
-    init(path, force=True)
+    init(force=True)
 
     assert executor.meta is not None
     assert executor.meta.start is not None
 
-    init(path, force=True, platform="mock")
-    assert executor.platform.name == "mock"
 
-    init(path, force=True, platform=create_platform("mock"))
-    assert executor.platform.name == "mock"
-
-
-def test_close(tmp_path: Path, executor: Executor):
-    path = tmp_path / "my-close-folder"
-
+def test_close(executor: Executor):
     init = executor.init
     close = executor.close
 
-    init(path)
+    init()
     close()
 
     assert executor.meta is not None
@@ -164,10 +149,8 @@ def test_close(tmp_path: Path, executor: Executor):
     assert executor.meta.end is not None
 
 
-def test_context_manager(tmp_path: Path, executor: Executor):
-    path = tmp_path / "my-ctx-folder"
-
-    executor.init(path)
+def test_context_manager(executor: Executor):
+    executor.init()
 
     with executor:
         assert executor.meta is not None
@@ -177,7 +160,7 @@ def test_context_manager(tmp_path: Path, executor: Executor):
 def test_open(tmp_path: Path, platform):
     path = tmp_path / "my-open-folder"
 
-    with Executor.open("myexec", path) as e:
+    with Executor.open(path) as e:
         assert isinstance(e.t1, Callable)
         assert e.meta is not None
         assert e.meta.start is not None

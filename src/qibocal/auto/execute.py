@@ -2,14 +2,19 @@
 
 import importlib
 import importlib.util
+import operator
 import os
 import sys
 from contextlib import contextmanager
 from copy import deepcopy
-from dataclasses import dataclass, fields
+from dataclasses import fields
+from functools import cached_property, reduce
 from pathlib import Path
+from typing import Any
 
+from pydantic import BaseModel, ConfigDict, Field
 from qibo.backends import construct_backend
+from qibolab import Platform
 
 from qibocal import protocols
 from qibocal.config import log
@@ -17,7 +22,7 @@ from qibocal.config import log
 from ..calibration import CalibrationPlatform, create_calibration_platform
 from .history import History
 from .mode import AUTOCALIBRATION, ExecutionMode
-from .operation import Routine
+from .operation import ProtocolsCollection, Routine
 from .output import Metadata, Output
 from .task import Action, Completed, Targets, Task
 
@@ -25,21 +30,7 @@ PLATFORM_DIR = "platform"
 """Folder where platform will be dumped."""
 
 
-def _validate_targets(targets):
-    if not isinstance(targets, list):
-        raise TypeError(
-            f"targets must be a list, got {type(targets).__name__} with value: {targets}"
-        )
-
-    invalid_targets = [t for t in targets if not isinstance(t, (tuple, int, str))]
-    if invalid_targets:
-        raise TypeError(
-            "targets must contain only qubit IDs (int/str) or qubit pairs (tuple), "
-            f"got invalid entries: {invalid_targets}"
-        )
-
-
-def _register(name: str, obj):
+def _register(name: str, obj: Any) -> None:
     """Register object as module.
 
     With a small abuse of the Python module system, the object is registered as a
@@ -72,22 +63,28 @@ def _register(name: str, obj):
         setattr(parent_module, child_name, obj)
 
     sys.modules[qualified] = obj
-    obj.name = obj.__name__ = qualified
+    obj.__name__ = qualified
     obj.__spec__ = None
 
 
-@dataclass
-class Executor:
+class Executor(BaseModel):
     """Execute a tasks' graph and tracks its history."""
+
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
 
     history: History
     """The execution history, with results and exit states."""
-    targets: Targets
+    targets: Targets = Field(default_factory=list)
     """Qubits/Qubit Pairs to be calibrated."""
     platform: CalibrationPlatform
     """Qubits' platform."""
     update: bool = True
     """Runcard update mechanism."""
+    path: Path
+    meta: Metadata
+
+    sources: list[ProtocolsCollection] = Field(default_factory=list)
+    """Sources to extend core protocol set."""
     name: str | None = None
     """Symbol for the executor.
 
@@ -102,31 +99,23 @@ class Executor:
         are also allowed, and they are interpreted relative to this package (in the top
         scope).
     """
-    path: Path | None = None
-    meta: Metadata | None = None
 
-    def __post_init__(self):
+    def model_post_init(self, context: Any) -> None:
         """Register as a module, if a name is specified."""
+        # explicitly unused
+        _ = context
+
         if self.name is not None:
             _register(self.name, self)
+        if len(self.targets) == 0:
+            object.__setattr__(self, "targets", list(self.platform.qubits))
 
-    @classmethod
-    def create(cls, name: str, platform: CalibrationPlatform | str | None = None):
-        """Load list of protocols."""
-        platform = (
-            platform
-            if isinstance(platform, CalibrationPlatform)
-            else create_calibration_platform(
-                platform if isinstance(platform, str) else "mock"
-            )
-        )
-        return cls(
-            name=name,
-            history=History(),
-            platform=platform,
-            targets=list(platform.qubits),
-            update=True,
-        )
+        for name, protocol in self.protocols.items():
+            object.__setattr__(self, name, self._wrapped_protocol(protocol, name))
+
+    @cached_property
+    def protocols(self) -> ProtocolsCollection:
+        return reduce(operator.or_, [protocols.PROTOCOLS] + self.sources)
 
     def run_protocol(
         self,
@@ -155,29 +144,6 @@ class Executor:
                 completed.update_platform(platform=self.platform)
 
         return completed
-
-    def __getattribute__(self, name: str):
-        """Provide access to routines through the executor.
-
-        This is done mainly to support the import mechanics: the routines retrieved
-        through the object will have it pre-registered.
-        """
-        modname = super().__getattribute__("name")
-        if modname is None:
-            # no module registration, immediately fall back
-            return super().__getattribute__(name)
-
-        try:
-            # routines look up
-            if name.startswith("_"):
-                # internal attributes should never be routines
-                raise AttributeError
-
-            protocol = getattr(protocols, name)
-            return self._wrapped_protocol(protocol, name)
-        except AttributeError:
-            # fall back on regular attributes
-            return super().__getattribute__(name)
 
     def _wrapped_protocol(self, protocol: Routine, operation: str):
         """Create a bound protocol.
@@ -219,13 +185,13 @@ class Executor:
         """
 
         def wrapper(
-            *args,
+            *args: Any,
             parameters: dict | None = None,
             id: str = operation,
             mode: ExecutionMode = AUTOCALIBRATION,
             update: bool = True,
             targets: Targets | None = None,
-            **kwargs,
+            **kwargs: Any,
         ):
             positional = dict(
                 zip((f.name for f in fields(protocol.parameters_type)), args)
@@ -267,54 +233,56 @@ class Executor:
             # it has been explicitly unloaded, no need to do it again
             pass
 
-    def init(
-        self,
+    @classmethod
+    def create(
+        cls,
         path: os.PathLike,
-        force: bool = False,
-        platform: CalibrationPlatform | str | None = None,
-        update: bool | None = None,
-        targets: Targets | None = None,
-    ):
-        """Initialize execution."""
-        if platform is None or isinstance(platform, CalibrationPlatform):
-            platform = self.platform
-        elif isinstance(platform, str):
-            platform = self.platform = create_calibration_platform(platform)
-        else:
-            platform = self.platform = CalibrationPlatform.from_platform(platform)
+        platform: CalibrationPlatform | Platform | str | None = None,
+        **kwargs: Any,
+    ) -> "Executor":
+        """Create protocols' executor.
 
-        assert isinstance(platform, CalibrationPlatform)
-
+        This is a wrapper of the default constructor, which is only handling different
+        platforms specification.
+        All the extra arguments in `kwargs` are then passed to the default one.
+        """
+        platform = (
+            platform
+            if isinstance(platform, CalibrationPlatform)
+            else CalibrationPlatform.from_platform(platform)
+            if isinstance(platform, Platform)
+            else create_calibration_platform(
+                platform if isinstance(platform, str) else "mock"
+            )
+        )
+        path_ = Path(path)
         backend = construct_backend(backend="qibolab", platform=platform)
+        return cls(
+            history=History(),
+            platform=platform,
+            path=path_,
+            meta=Metadata.generate(backend),
+            **kwargs,
+        )
 
-        if update is not None:
-            self.update = update
-        if targets is not None:
-            _validate_targets(targets)
-            self.targets = targets
-
+    def init(self, force: bool = False):
+        """Initialize execution."""
         # generate output folder
-        path = Output.mkdir(Path(path), force)
+        path = Output.mkdir(self.path, force)
 
         # generate meta
-        meta = Metadata.generate(path.name, backend)
-        output = Output(History(), meta, platform)
+        output = Output(History(), self.meta, self.platform)
         output.dump(path)
 
-        # run
-        meta.start()
+        # start timer
+        self.meta.start()
 
         # connect and initialize platform
-        platform.connect()
+        self.platform.connect()
 
-        self.path = path
-        self.meta = meta
-
-    def close(self, path: os.PathLike | None = None):
+    def close(self):
         """Close execution."""
         assert self.meta is not None and self.path is not None
-
-        path = self.path if path is None else Path(path)
 
         # stop and disconnect platform
         self.platform.disconnect()
@@ -323,7 +291,7 @@ class Executor:
 
         # dump history, metadata, and updated platform
         output = Output(self.history, self.meta, self.platform)
-        output.dump(path)
+        output.dump(self.path)
 
         # attempt unloading
         self.__del__()
@@ -332,16 +300,22 @@ class Executor:
     @contextmanager
     def open(
         cls,
-        name: str,
         path: os.PathLike,
         force: bool = False,
         platform: CalibrationPlatform | str | None = None,
         update: bool | None = None,
         targets: Targets | None = None,
+        **kwargs: Any,
     ):
         """Enter the execution context."""
-        ex = cls.create(name, platform)
-        ex.init(path, force, platform, update, targets)
+        if update is not None:
+            kwargs["update"] = update
+        if targets is not None:
+            kwargs["targets"] = targets
+
+        ex = cls.create(path=path, platform=platform, **kwargs)
+        ex.init(force)
+
         try:
             yield ex
         finally:

@@ -17,6 +17,8 @@ from qibocal.config import log
 from ..calibration.calibration import QubitId, QubitPairId
 from .serialize import deserialize, load, serialize
 
+__all__ = ["ProtocolsCollection", "Routine"]
+
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
 Qubits = dict[QubitId, Qubit]
@@ -300,6 +302,14 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     def targets_dependent(self):
         """Check if acquisition involves qubits."""
         return "targets" in inspect.signature(self.acquisition).parameters
+
+
+ProtocolsCollection = dict[str, Routine]
+"""Collection of protocols.
+
+This collection is supposed to be a bundle, either built-in or provided by external
+extensions.
+"""
 
 
 @dataclass
