@@ -17,6 +17,8 @@ from qibocal.config import log
 from ..calibration.calibration import QubitId, QubitPairId
 from .serialize import deserialize, load, serialize
 
+__all__ = ["ProtocolsCollection", "Routine"]
+
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
 Qubits = dict[QubitId, Qubit]
