@@ -5,7 +5,7 @@ import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import readout_frequency
@@ -180,5 +180,5 @@ def _plot(data: RabiLengthSignalData, fit: RabiLengthSignalResults, target: Qubi
     return utils.plot(data, target, fit, data.rx90)
 
 
-rabi_length_signal = Routine(_acquisition, _fit, _plot, _update)
-"""RabiLength Routine object."""
+rabi_length_signal = Protocol(_acquisition, _fit, _plot, _update)
+"""RabiLength Protocol object."""

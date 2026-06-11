@@ -13,7 +13,7 @@ from qibolab import (
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import QubitId, Routine
+from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
@@ -332,5 +332,5 @@ def _update(
         update.crosstalk_matrix(element, platform, qubit, flux_qubit)
 
 
-qubit_crosstalk = Routine(_acquisition, _fit, _plot, _update)
-"""Qubit crosstalk Routine object"""
+qubit_crosstalk = Protocol(_acquisition, _fit, _plot, _update)
+"""Qubit crosstalk Protocol object"""

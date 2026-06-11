@@ -5,7 +5,7 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AveragingMode, PulseSequence
 
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 
 from .allxy import AllXYType, allxy_sequence, gatelist
@@ -174,5 +174,5 @@ def _plot(data: AllXYResonatorData, target: QubitId, fit: AllXYResonatorResults 
     return figures, fitting_report
 
 
-allxy_resonator_depletion_tuning = Routine(_acquisition, _fit, _plot)
-"""AllXYDrag Routine object."""
+allxy_resonator_depletion_tuning = Protocol(_acquisition, _fit, _plot)
+"""AllXYDrag Protocol object."""

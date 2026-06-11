@@ -5,7 +5,7 @@ import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, QubitId, Routine
+from qibocal.auto.operation import Data, Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.result import probability
@@ -148,5 +148,5 @@ def _update(
     update.drive_duration(results.length[target], results.rx90, platform, target)
 
 
-rabi_amplitude = Routine(_acquisition, _fit, _plot, _update)
-"""RabiAmplitude Routine object."""
+rabi_amplitude = Protocol(_acquisition, _fit, _plot, _update)
+"""RabiAmplitude Protocol object."""

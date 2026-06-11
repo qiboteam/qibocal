@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 from qibolab import AcquisitionType, PulseSequence
 
-from qibocal.auto.operation import QubitId, Routine
+from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import plot_results, readout_frequency
 
@@ -46,7 +46,7 @@ def _acquisition(
     targets: list[QubitId],
 ) -> QutritClassificationData:
     """
-    This Routine prepares the qubits in 0,1 and 2 states and measures their
+    This Protocol prepares the qubits in 0,1 and 2 states and measures their
     respective I, Q values.
 
     Args:
@@ -143,5 +143,5 @@ def _plot(
     return figures, fitting_report
 
 
-qutrit_classification = Routine(_acquisition, _fit, _plot)
-"""Qutrit classification Routine object."""
+qutrit_classification = Protocol(_acquisition, _fit, _plot)
+"""Qutrit classification Protocol object."""

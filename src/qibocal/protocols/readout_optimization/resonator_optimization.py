@@ -13,7 +13,7 @@ from qibolab import (
 )
 
 from ... import update
-from ...auto.operation import Data, Parameters, QubitId, Results, Routine
+from ...auto.operation import Data, Parameters, Protocol, QubitId, Results
 from ...calibration import CalibrationPlatform
 from ...config import log
 from ...fitting.classifier.qubit_fit import QubitFit
@@ -416,10 +416,10 @@ def _update(
     update.threshold(results.threshold[target], platform, target)
 
 
-resonator_optimization = Routine(
+resonator_optimization = Protocol(
     _acquisition,
     _fit,
     _plot,
     _update,
 )
-"""Resonator optimization Routine object"""
+"""Resonator optimization Protocol object"""

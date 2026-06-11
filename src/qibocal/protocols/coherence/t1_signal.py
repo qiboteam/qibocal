@@ -14,7 +14,7 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
@@ -234,5 +234,5 @@ def update_t1(results: T1SignalResults, platform: CalibrationPlatform, target: Q
     update.t1(results.t1[target], platform, target)
 
 
-t1_signal = Routine(_acquisition, _fit, _plot, update_t1)
-"""T1 Signal Routine object."""
+t1_signal = Protocol(_acquisition, _fit, _plot, update_t1)
+"""T1 Signal Protocol object."""

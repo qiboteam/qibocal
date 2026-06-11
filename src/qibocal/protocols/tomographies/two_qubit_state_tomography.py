@@ -15,10 +15,10 @@ from qibo.result import QuantumState
 from qibocal.auto.operation import (
     DATAFILE,
     Data,
+    Protocol,
     QubitId,
     QubitPairId,
     Results,
-    Routine,
 )
 from qibocal.auto.transpile import (
     build_native_gate_compiler,
@@ -335,4 +335,4 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitP
     return [fig_measurements, fig], fitting_report
 
 
-two_qubit_state_tomography = Routine(_acquisition, _fit, _plot)
+two_qubit_state_tomography = Protocol(_acquisition, _fit, _plot)

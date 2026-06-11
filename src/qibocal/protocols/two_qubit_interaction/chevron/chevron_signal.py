@@ -6,7 +6,7 @@ import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
-from qibocal.auto.operation import QubitPairId, Routine
+from qibocal.auto.operation import Protocol, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude
 
@@ -152,5 +152,5 @@ def _aquisition(
     return data
 
 
-chevron_signal = Routine(_aquisition, _fit, _plot, _update, two_qubit_gates=True)
+chevron_signal = Protocol(_aquisition, _fit, _plot, _update, two_qubit_gates=True)
 """Chevron routine."""

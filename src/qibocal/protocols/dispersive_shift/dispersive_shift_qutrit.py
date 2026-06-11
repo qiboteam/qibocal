@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
-from qibocal.auto.operation import QubitId, Results, Routine
+from qibocal.auto.operation import Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
     GHZ_TO_HZ,
@@ -296,4 +296,4 @@ def _plot(
     return figures, fitting_report
 
 
-dispersive_shift_qutrit = Routine(_acquisition, fit=_fit, report=_plot)
+dispersive_shift_qutrit = Protocol(_acquisition, fit=_fit, report=_plot)

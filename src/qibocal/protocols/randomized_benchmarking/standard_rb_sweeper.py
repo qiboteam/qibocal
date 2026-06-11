@@ -12,7 +12,7 @@ from qibolab import (
     VirtualZ,
 )
 
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import Protocol
 from qibocal.calibration.calibration import QubitId
 from qibocal.calibration.platform import CalibrationPlatform
 from qibocal.protocols.randomized_benchmarking.standard_rb import (
@@ -150,4 +150,4 @@ def _acquisition(
     return data
 
 
-standard_rb_sweeper = Routine(_acquisition, _fit, _plot, _update)
+standard_rb_sweeper = Protocol(_acquisition, _fit, _plot, _update)

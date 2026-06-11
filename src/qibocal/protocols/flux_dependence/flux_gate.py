@@ -17,7 +17,7 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.protocols.ramsey.processing import fitting, ramsey_fit
 from qibocal.protocols.utils import (
     COLORBAND,
@@ -216,4 +216,4 @@ def _plot(data: FluxGateData, fit: FluxGateResults, target: QubitId):
     return [fig], fitting_report
 
 
-flux_gate = Routine(_acquisition, _fit, _plot)
+flux_gate = Protocol(_acquisition, _fit, _plot)

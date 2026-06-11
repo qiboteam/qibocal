@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
-from qibocal.auto.operation import QubitId, Routine
+from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import probability
 
@@ -105,5 +105,5 @@ def _fit(data: CpmgData) -> CpmgResults:
     return CpmgResults(t2Echos, fitted_parameters, pcovs, chi2)
 
 
-cpmg = Routine(_acquisition, _fit, plot)
-"""Cpmg Routine object."""
+cpmg = Protocol(_acquisition, _fit, plot)
+"""Cpmg Protocol object."""

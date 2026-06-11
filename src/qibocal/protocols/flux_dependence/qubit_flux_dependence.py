@@ -12,7 +12,7 @@ from qibolab import (
 )
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Data, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.result import magnitude
@@ -309,5 +309,5 @@ def _update(results: QubitFluxResults, platform: CalibrationPlatform, qubit: Qub
         update.crosstalk_matrix(results.matrix_element[qubit], platform, qubit, qubit)
 
 
-qubit_flux = Routine(_acquisition, _fit, _plot, _update)
-"""QubitFlux Routine object."""
+qubit_flux = Protocol(_acquisition, _fit, _plot, _update)
+"""QubitFlux Protocol object."""

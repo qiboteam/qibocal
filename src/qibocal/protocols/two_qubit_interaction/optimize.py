@@ -12,10 +12,10 @@ from qibocal import update
 from qibocal.auto.operation import (
     Data,
     Parameters,
+    Protocol,
     QubitId,
     QubitPairId,
     Results,
-    Routine,
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
@@ -463,7 +463,7 @@ def _update(
     )
 
 
-optimize_two_qubit_gate = Routine(
+optimize_two_qubit_gate = Protocol(
     _acquisition, _fit, _plot, _update, two_qubit_gates=True
 )
 """Optimize two qubit gate protocol"""
