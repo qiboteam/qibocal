@@ -6,7 +6,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
@@ -308,5 +308,5 @@ def _update(
         update.readout_amplitude(results.readout_amplitude[target], platform, target)
 
 
-resonator_punchout = Routine(_acquisition, _fit, _plot, _update)
+resonator_punchout = Protocol(_acquisition, _fit, _plot, _update)
 """ResonatorPunchout Routine object."""

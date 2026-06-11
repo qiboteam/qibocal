@@ -5,7 +5,7 @@ from typing import TypedDict
 import numpy as np
 import plotly.graph_objects as go
 
-from qibocal.auto.operation import Parameters, QubitId, Routine
+from qibocal.auto.operation import Parameters, Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 
 from ..utils import table_dict, table_html
@@ -231,4 +231,4 @@ def _update(results: StandardRBResult, platform: CalibrationPlatform, target: Qu
     )
 
 
-standard_rb = Routine(_acquisition, _fit, _plot, _update)
+standard_rb = Protocol(_acquisition, _fit, _plot, _update)

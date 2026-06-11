@@ -7,7 +7,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
     HZ_TO_GHZ,
@@ -338,5 +338,5 @@ def _update(
         )
 
 
-dispersive_shift = Routine(_acquisition, _fit, _plot, _update)
+dispersive_shift = Protocol(_acquisition, _fit, _plot, _update)
 """Dispersive shift Routine object."""

@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 
-from qibocal.auto.operation import QubitId, Routine
+from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
@@ -130,7 +130,7 @@ def _plot(
     )
 
 
-ramsey = Routine(_acquisition, _fit, _plot, ramsey_update)
+ramsey = Protocol(_acquisition, _fit, _plot, ramsey_update)
 """Ramsey Routine object.
 
 The protocol consists in applying the following pulse sequence:

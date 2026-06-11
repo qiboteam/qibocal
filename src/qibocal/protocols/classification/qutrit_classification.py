@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 from qibolab import AcquisitionType, PulseSequence
 
-from qibocal.auto.operation import QubitId, Routine
+from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import plot_results, readout_frequency
 
@@ -143,5 +143,5 @@ def _plot(
     return figures, fitting_report
 
 
-qutrit_classification = Routine(_acquisition, _fit, _plot)
+qutrit_classification = Protocol(_acquisition, _fit, _plot)
 """Qutrit classification Routine object."""

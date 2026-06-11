@@ -2,7 +2,7 @@ from dataclasses import dataclass, fields
 
 import numpy as np
 
-from qibocal.auto.operation import QubitPairId, Routine
+from qibocal.auto.operation import Protocol, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.randomized_benchmarking.standard_rb import _plot
 from qibocal.protocols.randomized_benchmarking.standard_rb_2q import (
@@ -99,4 +99,4 @@ def _update(
     )
 
 
-standard_rb_2q_inter = Routine(_acquisition, _fit, _plot, _update)
+standard_rb_2q_inter = Protocol(_acquisition, _fit, _plot, _update)

@@ -10,7 +10,7 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal.auto.operation import QubitId, Routine
+from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.update import replace
 
@@ -200,5 +200,5 @@ def _update(
     ]
 
 
-qubit_spectroscopy_ef = Routine(_acquisition, fit_ef, _plot, _update)
+qubit_spectroscopy_ef = Protocol(_acquisition, fit_ef, _plot, _update)
 """QubitSpectroscopyEF Routine object."""

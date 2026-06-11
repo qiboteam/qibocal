@@ -12,7 +12,7 @@ from qibolab import (
 )
 from qibolab._core.components import IqChannel
 
-from qibocal.auto.operation import Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 from qibocal.update import replace
@@ -246,6 +246,6 @@ def _update(
     update.drive_frequency(results.frequency[target], platform, target)
 
 
-qubit_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
+qubit_spectroscopy = Protocol(_acquisition, _fit, _plot, _update)
 """Qubit Spectroscopy routine.
 """

@@ -8,7 +8,7 @@ from scipy.optimize import curve_fit
 from qibocal.calibration import CalibrationPlatform
 
 from ... import update
-from ...auto.operation import Data, QubitId, Results, Routine
+from ...auto.operation import Data, Protocol, QubitId, Results
 from ...config import log
 from ...result import magnitude
 from ..utils import (
@@ -326,5 +326,5 @@ def _update(
         update.sweetspot(results.sweetspot[qubit], platform, qubit)
 
 
-resonator_flux = Routine(_acquisition, _fit, _plot, _update)
+resonator_flux = Protocol(_acquisition, _fit, _plot, _update)
 """ResonatorFlux Routine object."""

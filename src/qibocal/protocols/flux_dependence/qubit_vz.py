@@ -21,9 +21,9 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import (
     Data,
     Parameters,
+    Protocol,
     QubitId,
     Results,
-    Routine,
 )
 from qibocal.config import log
 
@@ -244,4 +244,4 @@ def _update(results: QubitVzResults, platform: Platform, target: QubitId):
     pass
 
 
-qubit_vz = Routine(_acquisition, _fit, _plot, _update)
+qubit_vz = Protocol(_acquisition, _fit, _plot, _update)

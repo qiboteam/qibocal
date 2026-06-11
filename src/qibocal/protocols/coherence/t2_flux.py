@@ -4,7 +4,7 @@ import numpy as np
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 
-from qibocal.auto.operation import QubitId, Results, Routine
+from qibocal.auto.operation import Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.ramsey.acquisition import ramsey_and_acquisition_sequence
@@ -148,5 +148,5 @@ def _plot(data: T2FluxData, target: QubitId, fit: T2FluxResults = None):
     return [fig], ""
 
 
-t2_flux = Routine(_acquisition, _fit, _plot)
+t2_flux = Protocol(_acquisition, _fit, _plot)
 """T2 Routine object."""
