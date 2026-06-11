@@ -122,7 +122,10 @@ def _resolve_results_mapping_averaged(
 
     measurements: ResultMap = defaultdict(list)
     for measure, sequence in measurement_map.items():
-        assert len(measure.qubits) == 1
+        if len(measure.qubits) != 1:
+            raise ValueError(
+                "Hardware averaging is only supported for single qubit readout."
+            )
         qid = platform_qubit_map[measure.qubits[0]]
         excited_frac = readout[sequence.acquisitions[0][1].id]
         measurements[qid].append(
