@@ -421,3 +421,46 @@ Here is the expected output:
 
 
 .. image:: output.png
+
+Extend experiments' library
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Qibocal built-in protocols' collection can be extended with bundles provided at runtime.
+
+In order to consume these extensions, the only requirement is to register them in the
+:class:`~qibocal.Executor` being used::
+
+
+    with Executor.open(
+        path="test_with_extension",
+        sources=[my_collection]
+    ) as e:
+        ...
+
+The chosen source (in this case ``my_collection``) will be additional to the internal
+library, but it will take priority on it.
+
+.. admonition:: Priority
+
+   Collections appearing later in the specified sources are shadowing the names in the
+   former ones.
+
+   At the moment, no scope mechanism is provided.
+
+:attr:`~qibocal.Executor.sources` is just a list of collections, of type
+:obj:`~qibocal.ProtocolsCollection`, which just consists of a mapping of protocols'
+names to :class:`~qibocal.Routine` objects.
+
+E.g., the collection used in the previous example could consist of the protocol defined
+in the former section, and it could be defined as::
+
+    from qibocal import ProtocolsCollection  # just for typing, not required
+
+    my_collection: ProtocolsCollection = {"my_rotation": rotation}
+
+Once registered, the new protocols can be accessed through the :class:`~qibocal.Executor`::
+
+    result = e.my_rotation(...)
+
+Notice that the name used is the one specified as the dictionary key. For this reason,
+the names are constrained to be valid Python identifiers.
