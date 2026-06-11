@@ -1,5 +1,6 @@
 """Protocol for CHSH experiment using both circuits and pulses."""
 
+from collections import Counter
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -101,16 +102,14 @@ class CHSHData(Data):
     frequencies: FreqType = field(default_factory=dict)
     mitigated_frequencies: FreqType = field(default_factory=dict)
 
-    def register_basis(self, pair, bell_state, basis, frequencies):
-        """Store output for single qubit."""
+    def register_basis(
+        self, pair: QubitPairId, bell_state: int, basis: str, frequencies: Counter[str]
+    ):
+        """Store output."""
 
-        # Add zero is state do not appear in state
-        # could be removed by using high number of shots
-        for i in COMPUTATIONAL_BASIS:
-            if i not in frequencies:
-                frequencies[i] = 0
+        for state in COMPUTATIONAL_BASIS:
+            freq = frequencies.get(state, 0)
 
-        for state, freq in frequencies.items():
             if (pair[0], pair[1], bell_state, basis, state) in self.data:
                 self.data[pair[0], pair[1], bell_state, basis, state] = np.concatenate(
                     (
@@ -145,7 +144,7 @@ class CHSHResults(Results):
 def _acquisition(
     params: CHSHParameters,
     platform: Platform,
-    targets: list[list[QubitId]],
+    targets: list[QubitPairId],
 ) -> CHSHData:
     r"""Data acquisition for CHSH protocol using pulse sequences."""
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
@@ -171,13 +170,14 @@ def _acquisition(
                 for basis, circuit in chsh_circuits.items():
                     [result] = execute_circuits(
                         [circuit],
-                        [pair],
                         platform,
                         transpiler,
                         compiler,
                         nshots=params.nshots,
+                        qubit_map=pair,
                     )
-                    data.register_basis(pair, bell_state, basis, result)
+                    [state_counter] = result[pair]
+                    data.register_basis(pair, bell_state, basis, state_counter)
 
             data.frequencies[bell_state] = freqs = merge_frequencies(
                 data.data, pair, bell_state
