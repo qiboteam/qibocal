@@ -1,51 +1,25 @@
-from dataclasses import dataclass, field
-
 import numpy as np
-import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import readout_frequency
 from qibocal.result import magnitude, phase
 
 from . import utils
+from .parent_classes import (
+    RabiLengthData,
+    RabiLengthParameters,
+    RabiLengthResults,
+)
 
-__all__ = ["rabi_length_signal", "RabiLengthSignalResults"]
-
-
-@dataclass
-class RabiLengthSignalParameters(Parameters):
-    """RabiLengthSignal runcard inputs."""
-
-    pulse_duration_start: float
-    """Initial pi pulse duration [ns]."""
-    pulse_duration_end: float
-    """Final pi pulse duration [ns]."""
-    pulse_duration_step: float
-    """Step pi pulse duration [ns]."""
-    pulse_amplitude: float | None = None
-    """Pi pulse amplitude. Same for all qubits."""
-    rx90: bool = False
-    """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
-    interpolated_sweeper: bool = False
-    """Use real-time interpolation if supported by instruments."""
+__all__ = ["rabi_length_signal"]
 
 
-@dataclass
-class RabiLengthSignalResults(Results):
-    """RabiLengthSignal outputs."""
-
-    length: dict[QubitId, int | list[float]]
-    """Pi pulse duration for each qubit."""
-    amplitude: dict[QubitId, float | list[float]]
-    """Pi pulse amplitude. Same for all qubits."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitting output."""
-    rx90: bool
-    """Pi or Pi_half calibration"""
+class RabiLengthSignalResults(RabiLengthResults):
+    pass
 
 
 RabiLenSignalType = np.dtype(
@@ -54,23 +28,19 @@ RabiLenSignalType = np.dtype(
 """Custom dtype for rabi amplitude."""
 
 
-@dataclass
-class RabiLengthSignalData(Data):
-    """RabiLength acquisition outputs."""
+# @dataclass
+# class RabiLengthData(Data):
+#     """RabiLength acquisition outputs."""
 
-    rx90: bool
-    """Pi or Pi_half calibration"""
-    amplitudes: dict[QubitId, float] = field(default_factory=dict)
-    """Pulse durations provided by the user."""
-    data: dict[QubitId, npt.NDArray[RabiLenSignalType]] = field(default_factory=dict)
-    """Raw data acquired."""
+#     data: dict[QubitId, npt.NDArray[RabiLenSignalType]] = field(default_factory=dict)
+#     """Raw data acquired for signal experiment."""
 
 
 def _acquisition(
-    params: RabiLengthSignalParameters,
+    params: RabiLengthParameters,
     platform: CalibrationPlatform,
     targets: list[QubitId],
-) -> RabiLengthSignalData:
+) -> RabiLengthData:
     r"""
     Data acquisition for RabiLength Experiment.
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse length
@@ -98,7 +68,7 @@ def _acquisition(
             pulses=[qd_pulses[q] for q in targets] + [delays[q] for q in targets],
         )
 
-    data = RabiLengthSignalData(amplitudes=amplitudes, rx90=params.rx90)
+    data = RabiLengthData(amplitudes=amplitudes, rx90=params.rx90)
 
     results = platform.execute(
         [sequence],
@@ -127,7 +97,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: RabiLengthSignalData) -> RabiLengthSignalResults:
+def _fit(data: RabiLengthData) -> RabiLengthResults:
     """Post-processing for RabiLength experiment."""
 
     qubits = data.qubits
@@ -163,19 +133,15 @@ def _fit(data: RabiLengthSignalData) -> RabiLengthSignalResults:
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
-    return RabiLengthSignalResults(
-        durations, data.amplitudes, fitted_parameters, data.rx90
-    )
+    return RabiLengthResults(durations, data.amplitudes, fitted_parameters, data.rx90)
 
 
-def _update(
-    results: RabiLengthSignalResults, platform: CalibrationPlatform, target: QubitId
-):
+def _update(results: RabiLengthResults, platform: CalibrationPlatform, target: QubitId):
     update.drive_duration(results.length[target], results.rx90, platform, target)
     update.drive_amplitude(results.amplitude[target], results.rx90, platform, target)
 
 
-def _plot(data: RabiLengthSignalData, fit: RabiLengthSignalResults, target: QubitId):
+def _plot(data: RabiLengthData, fit: RabiLengthResults, target: QubitId):
     """Plotting function for RabiLength experiment."""
     return utils.plot(data, target, fit, data.rx90)
 
