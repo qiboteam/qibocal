@@ -9,7 +9,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import (
@@ -318,5 +318,5 @@ def _update(
     update.drive_frequency(results.frequency[target], platform, target)
 
 
-rabi_amplitude_frequency_signal = Routine(_acquisition, _fit, _plot, _update)
+rabi_amplitude_frequency_signal = Protocol(_acquisition, _fit, _plot, _update)
 """Rabi amplitude with frequency tuning."""

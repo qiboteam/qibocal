@@ -16,7 +16,7 @@ from qibocal.auto.serialize import _nested_list_to_tuples
 from .. import protocols
 from ..config import log
 from .mode import ExecutionMode
-from .operation import Data, DummyPars, OperationId, Results, Routine, dummy_operation
+from .operation import Data, DummyPars, OperationId, Protocol, Results, dummy_operation
 
 Id = NewType("Id", str)
 """Action identifiers type."""
@@ -95,7 +95,7 @@ DEFAULT_NSHOTS = 100
 class Task:
     action: Action
     """Action object parsed from Runcard."""
-    operation: Routine
+    operation: Protocol
 
     def __post_init__(self):
         # validate parameters
@@ -152,7 +152,7 @@ class Task:
                 if self.parameters.nshots is None:
                     self.action.parameters["nshots"] = DEFAULT_NSHOTS
 
-            operation: Routine = self.operation
+            operation: Protocol = self.operation
             parameters = self.parameters
 
         except (RuntimeError, AttributeError):

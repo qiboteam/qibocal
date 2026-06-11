@@ -20,7 +20,7 @@ from qibolab import (
 )
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 
 from ..utils import HZ_TO_GHZ, table_dict, table_html
@@ -408,4 +408,4 @@ def _update(
     )
 
 
-flux_amplitude_frequency = Routine(_acquisition, _fit, _plot, _update)
+flux_amplitude_frequency = Protocol(_acquisition, _fit, _plot, _update)

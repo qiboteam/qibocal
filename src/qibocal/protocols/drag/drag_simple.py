@@ -14,7 +14,7 @@ from qibolab import (
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import QubitId, Results, Routine
+from qibocal.auto.operation import Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 
 from ..utils import table_dict, table_html
@@ -281,5 +281,5 @@ def _update(
     )
 
 
-drag_simple = Routine(_acquisition, _fit, _plot, _update)
+drag_simple = Protocol(_acquisition, _fit, _plot, _update)
 """DragTuning Routine object."""
