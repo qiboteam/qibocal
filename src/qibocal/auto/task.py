@@ -139,6 +139,11 @@ class Task:
         if self.targets is None:
             self.action.targets = targets
 
+        if mode is None:
+            # None is no iterable so code might crash later when checking
+            # executino modes if-statements since None is not iterable
+            mode = []
+
         completed = Completed(self, folder)
         try:
             if platform is not None:
@@ -174,8 +179,13 @@ class Task:
                 )
             completed.dump_data()
         if ExecutionMode.FIT in mode:
-            completed.results, completed.results_time = operation.fit(completed.data)
-            completed.dump_results()
+            try:
+                completed.results, completed.results_time = operation.fit(
+                    completed.data
+                )
+                completed.dump_results()
+            except Exception as e:
+                log.warning(f"{e}")
         return completed
 
 
