@@ -333,4 +333,4 @@ def _update(
 
 
 qubit_crosstalk = Protocol(_acquisition, _fit, _plot, _update)
-"""Qubit crosstalk Routine object"""
+"""Qubit crosstalk Protocol object"""

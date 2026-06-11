@@ -181,4 +181,4 @@ def _plot(data: RabiLengthSignalData, fit: RabiLengthSignalResults, target: Qubi
 
 
 rabi_length_signal = Protocol(_acquisition, _fit, _plot, _update)
-"""RabiLength Routine object."""
+"""RabiLength Protocol object."""

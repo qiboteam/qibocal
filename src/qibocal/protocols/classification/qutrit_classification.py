@@ -46,7 +46,7 @@ def _acquisition(
     targets: list[QubitId],
 ) -> QutritClassificationData:
     """
-    This Routine prepares the qubits in 0,1 and 2 states and measures their
+    This Protocol prepares the qubits in 0,1 and 2 states and measures their
     respective I, Q values.
 
     Args:
@@ -144,4 +144,4 @@ def _plot(
 
 
 qutrit_classification = Protocol(_acquisition, _fit, _plot)
-"""Qutrit classification Routine object."""
+"""Qutrit classification Protocol object."""

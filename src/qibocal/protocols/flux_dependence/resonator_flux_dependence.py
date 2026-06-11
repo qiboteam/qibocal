@@ -327,4 +327,4 @@ def _update(
 
 
 resonator_flux = Protocol(_acquisition, _fit, _plot, _update)
-"""ResonatorFlux Routine object."""
+"""ResonatorFlux Protocol object."""

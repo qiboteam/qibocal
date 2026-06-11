@@ -18,9 +18,9 @@ from qibolab import (
 from scipy.constants import kilo
 
 from qibocal.auto.operation import (
+    Protocol,
     QubitId,
     QubitPairId,
-    Routine,
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import table_dict, table_html
@@ -426,8 +426,8 @@ def _update(
         )
 
 
-cancellation_phase_tuning = Routine(_acquisition, _fit, _plot, _update)
-"""HamiltonianTomographyCANCPhase Routine object."""
+cancellation_phase_tuning = Protocol(_acquisition, _fit, _plot, _update)
+"""HamiltonianTomographyCANCPhase Protocol object."""
 
 """See http://login.qrccluster.com:9000/bf6RezP1SpCnI861v6UNpA== for an example run on the emulator.
 """

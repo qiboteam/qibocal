@@ -18,9 +18,9 @@ from qibolab import (
 from scipy.constants import kilo
 
 from qibocal.auto.operation import (
+    Protocol,
     QubitId,
     QubitPairId,
-    Routine,
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import table_dict, table_html
@@ -433,5 +433,5 @@ def _update(
         )
 
 
-cancellation_amplitude_tuning = Routine(_acquisition, _fit, _plot, _update)
-"""HamiltonianTomographyCANCAmpl Routine object."""
+cancellation_amplitude_tuning = Protocol(_acquisition, _fit, _plot, _update)
+"""HamiltonianTomographyCANCAmpl Protocol object."""

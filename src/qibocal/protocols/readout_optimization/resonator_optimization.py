@@ -422,4 +422,4 @@ resonator_optimization = Protocol(
     _plot,
     _update,
 )
-"""Resonator optimization Routine object"""
+"""Resonator optimization Protocol object"""

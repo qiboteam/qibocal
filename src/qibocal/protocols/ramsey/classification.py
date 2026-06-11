@@ -131,7 +131,7 @@ def _plot(
 
 
 ramsey = Protocol(_acquisition, _fit, _plot, ramsey_update)
-"""Ramsey Routine object.
+"""Ramsey Protocol object.
 
 The protocol consists in applying the following pulse sequence:
 RX90 - wait - RX90 - MZ

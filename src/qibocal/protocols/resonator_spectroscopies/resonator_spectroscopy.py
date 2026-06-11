@@ -7,7 +7,7 @@ import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 from qibocal.update import replace
@@ -37,7 +37,7 @@ class ResonatorSpectroscopyFit:
     """ResonatorSpectroscopy fit."""
 
     function: Callable
-    """Routine function to fit data with a model."""
+    """Protocol function to fit data with a model."""
     fit: Callable
     """Fit function used for the resonance."""
     values: Callable
@@ -75,7 +75,7 @@ class ResonatorSpectroscopyParameters(Parameters):
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
     fit_function: str = "lorentzian"
-    """Routine function (lorentzian or s21) to fit data with a model."""
+    """Protocol function (lorentzian or s21) to fit data with a model."""
     phase_sign: bool = True
     """Several instruments have their convention about the sign of the phase. If True, the routine
     will apply a minus to the phase data."""
@@ -273,5 +273,5 @@ def _update(
         ].resonator.bare_frequency_amplitude = results.amplitude[target]
 
 
-resonator_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
-"""ResonatorSpectroscopy Routine object."""
+resonator_spectroscopy = Protocol(_acquisition, _fit, _plot, _update)
+"""ResonatorSpectroscopy Protocol object."""

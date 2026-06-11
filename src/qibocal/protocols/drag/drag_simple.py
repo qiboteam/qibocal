@@ -282,4 +282,4 @@ def _update(
 
 
 drag_simple = Protocol(_acquisition, _fit, _plot, _update)
-"""DragTuning Routine object."""
+"""DragTuning Protocol object."""

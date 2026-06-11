@@ -235,4 +235,4 @@ def update_t1(results: T1SignalResults, platform: CalibrationPlatform, target: Q
 
 
 t1_signal = Protocol(_acquisition, _fit, _plot, update_t1)
-"""T1 Signal Routine object."""
+"""T1 Signal Protocol object."""

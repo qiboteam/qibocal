@@ -372,4 +372,4 @@ def _update(results: FlippingResults, platform: CalibrationPlatform, qubit: Qubi
 
 
 flipping = Protocol(_acquisition, _fit, _plot, _update)
-"""Flipping Routine  object."""
+"""Flipping Protocol  object."""

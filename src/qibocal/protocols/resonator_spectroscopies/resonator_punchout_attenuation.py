@@ -372,7 +372,7 @@ def _update(
 
 
 resonator_punchout_attenuation = Protocol(_acquisition, _fit, _plot, _update)
-"""**Resonator Punchout Attenuation Qibocal Routine Object.**
+"""**Resonator Punchout Attenuation Qibocal Protocol Object.**
 
 This routine performs a resonator punchout (power shift) measurement by sweeping the LO attenuation
 and the IF frequency to determine the critical power for a qubit's resonator to be dispersively shifted.

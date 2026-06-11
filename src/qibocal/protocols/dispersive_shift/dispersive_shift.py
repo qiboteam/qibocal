@@ -317,4 +317,4 @@ def _update(
 
 
 dispersive_shift = Protocol(_acquisition, _fit, _plot, _update)
-"""Dispersive shift Routine object."""
+"""Dispersive shift Protocol object."""

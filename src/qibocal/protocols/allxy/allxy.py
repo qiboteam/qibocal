@@ -271,4 +271,4 @@ def _plot(data: AllXYData, target: QubitId, fit: AllXYResults = None):
 
 
 allxy = Protocol(_acquisition, _fit, _plot)
-"""AllXY Routine object."""
+"""AllXY Protocol object."""

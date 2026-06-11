@@ -168,4 +168,4 @@ def _plot(data: RabiLengthData, fit: RabiLengthResults, target: QubitId):
 
 
 rabi_length = Protocol(_acquisition, _fit, _plot, _update)
-"""RabiLength Routine object."""
+"""RabiLength Protocol object."""

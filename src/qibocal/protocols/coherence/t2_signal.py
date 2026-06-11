@@ -186,4 +186,4 @@ def update_t2(results: T2SignalResults, platform: CalibrationPlatform, target: Q
 
 
 t2_signal = Protocol(_acquisition, _fit, _plot, update_t2)
-"""T2Signal Routine object."""
+"""T2Signal Protocol object."""

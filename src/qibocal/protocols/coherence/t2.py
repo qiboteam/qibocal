@@ -91,4 +91,4 @@ def _fit(data: T2Data) -> T2Results:
 
 
 t2 = Protocol(_acquisition, _fit, utils.plot, update_t2)
-"""T2 Routine object."""
+"""T2 Protocol object."""

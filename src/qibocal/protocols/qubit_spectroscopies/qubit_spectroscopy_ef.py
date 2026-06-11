@@ -201,4 +201,4 @@ def _update(
 
 
 qubit_spectroscopy_ef = Protocol(_acquisition, fit_ef, _plot, _update)
-"""QubitSpectroscopyEF Routine object."""
+"""QubitSpectroscopyEF Protocol object."""

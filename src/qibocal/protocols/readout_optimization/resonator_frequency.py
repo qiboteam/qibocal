@@ -242,4 +242,4 @@ def _update(
 
 
 resonator_frequency = Protocol(_acquisition, _fit, _plot, _update)
-"""Optimization RO frequency Routine object"""
+"""Optimization RO frequency Protocol object"""

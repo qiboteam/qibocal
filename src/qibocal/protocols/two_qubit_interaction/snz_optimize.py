@@ -7,7 +7,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 from qibolab._core.pulses.envelope import Snz
 
-from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId, Results
 from qibocal.calibration import CalibrationPlatform
 
 from .utils import fit_virtualz, order_pair
@@ -333,4 +333,4 @@ def _plot(
     return [fig], fitting_report
 
 
-snz_optimize = Routine(_aquisition, _fit, _plot, two_qubit_gates=True)
+snz_optimize = Protocol(_aquisition, _fit, _plot, two_qubit_gates=True)
