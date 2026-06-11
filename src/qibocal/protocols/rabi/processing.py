@@ -1,20 +1,16 @@
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab import Delay, PulseLike, PulseSequence
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Parameters, QubitId
-from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
     COLORBAND,
     COLORBAND_LINE,
     angle_wrap,
-    guess_period,
+    quinn_fernandes_algorithm,
     table_dict,
     table_html,
 )
-from qibocal.update import replace
 
 QUANTILE_CONSTANT = 1.5
 """Scaling factor to recover signal amplitude from quantiles.
@@ -52,7 +48,8 @@ def rabi_length_function(x, offset, amplitude, period, phase, t2_inv):
 
 
 def rabi_initial_guess(x, y, experiment: str, signal: bool):
-    period = guess_period(x, y)
+    # period = fallback_period(guess_period(x, y))
+    period = quinn_fernandes_algorithm(y, x, speedup_flag=True)
     median_sig = np.median(y)
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)
@@ -260,95 +257,6 @@ def period_correction_factor(phase: float):
     return np.round(1 + x) - x
 
 
-def sequence_amplitude(
-    targets: list[QubitId],
-    params: Parameters,
-    platform: CalibrationPlatform,
-    rx90: bool,
-) -> tuple[PulseSequence, dict, dict, dict]:
-    """Return sequence for rabi amplitude."""
-
-    sequence = PulseSequence()
-    qd_pulses = {}
-    ro_pulses = {}
-    durations = {}
-    for q in targets:
-        natives = platform.natives.single_qubit[q]
-
-        qd_channel, qd_pulse = natives.RX90()[0] if rx90 else natives.RX()[0]
-        ro_channel, ro_pulse = natives.MZ()[0]
-
-        if params.pulse_length is not None:
-            qd_pulse = replace(qd_pulse, duration=params.pulse_length)
-
-        durations[q] = qd_pulse.duration
-        qd_pulses[q] = qd_pulse
-        ro_pulses[q] = ro_pulse
-
-        if rx90:
-            sequence.append((qd_channel, qd_pulses[q]))
-
-        sequence.append((qd_channel, qd_pulses[q]))
-        sequence.append((ro_channel, Delay(duration=durations[q])))
-        sequence.append((ro_channel, ro_pulse))
-    return sequence, qd_pulses, ro_pulses, durations
-
-
-def sequence_length(
-    targets: list[QubitId],
-    drive_lines: list[QubitId],
-    platform: CalibrationPlatform,
-    pulse_duration: float | None,
-    pulse_ampl: float | None,
-    rx90: bool,
-    use_align: bool = False,
-) -> tuple[PulseSequence, list[PulseLike], list[Delay], dict, dict]:
-    """Return sequence for rabi length."""
-
-    sequence = PulseSequence()
-    amplitudes = {}
-    updates = {}
-    qd_pulses: list[PulseLike] = []
-    delays: list[Delay] = []
-    for q, d in zip(targets, drive_lines):
-        natives_dict = platform.natives.single_qubit
-
-        qd_channel, qd_pulse = (
-            natives_dict[q].RX90()[0] if rx90 else natives_dict[q].RX()[0]
-        )
-        ro_channel, ro_pulse = natives_dict[q].MZ()[0]
-        if q != d:
-            # used when q is being driven with another line (cross rabi)
-            cross_channel, _ = (
-                natives_dict[d].RX90()[0] if rx90 else natives_dict[d].RX()[0]
-            )
-            qubit_freq = platform.parameters.configs[qd_channel].frequency
-            updates |= {platform.qubits[d].drive: {"frequency": qubit_freq}}
-            qd_channel = cross_channel
-
-        if pulse_ampl is not None:
-            qd_pulse = replace(qd_pulse, amplitude=pulse_ampl)
-
-        if pulse_duration is not None:
-            qd_pulse = replace(qd_pulse, duration=pulse_duration)
-
-        amplitudes[q] = qd_pulse.amplitude
-        qd_pulses.append(qd_pulse)
-
-        if rx90:
-            sequence.append((qd_channel, qd_pulse))
-
-        sequence.append((qd_channel, qd_pulse))
-        if use_align:
-            sequence.align([qd_channel, ro_channel])
-        else:
-            delays.append(Delay(duration=qd_pulse.duration))
-            sequence.append((ro_channel, delays[-1]))
-        sequence.append((ro_channel, ro_pulse))
-
-    return sequence, qd_pulses, delays, amplitudes, updates
-
-
 def fit_length_function(
     x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
 ) -> tuple[list[float], list[float], float]:
@@ -378,16 +286,18 @@ def fit_length_function(
         ]
         perr = np.sqrt(np.diag(perr))
     else:
-        popt = [  # change it according to the fit function
-            (y_max - y_min) * (popt[0] + 1 / 2) + y_min,
-            (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
-            popt[2] * (x_max - x_min),
-            popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
-            popt[4] / (x_max - x_min),
-        ]
+        popt = np.array(
+            [  # change it according to the fit function
+                (y_max - y_min) * (popt[0] + 1 / 2) + y_min,
+                (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
+                popt[2] * (x_max - x_min),
+                popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
+                popt[4] / (x_max - x_min),
+            ]
+        )
 
     pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
-    return popt, perr.tolist(), pi_pulse_parameter
+    return popt.tolist(), perr.tolist(), pi_pulse_parameter
 
 
 def fit_amplitude_function(
