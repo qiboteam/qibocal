@@ -88,6 +88,18 @@ def _transpile_circuit(
     return transpiled_circ
 
 
+def _validate_measurement(
+    gate: gates.M, sequence: PulseSequence, readout: dict[PulseId, Result]
+):
+    """Validate measurement gate and sequence consistency."""
+    for _, acquisition in sequence.acquisitions:
+        if acquisition.id not in readout:
+            raise KeyError(
+                f"Acquisition ID {acquisition.id} not found in readout results."
+            )
+    assert len(gate.qubits) == len(sequence.acquisitions)
+
+
 def _resolve_results_mapping_singleshot(
     platform_qubit_map: QubitMap,
     readout: dict[PulseId, Result],
@@ -96,6 +108,7 @@ def _resolve_results_mapping_singleshot(
 
     measurements: ResultMap = defaultdict(list)
     for measure, sequence in measurement_map.items():
+        _validate_measurement(measure, sequence, readout)
         if len(measure.qubits) == 1:
             qid = platform_qubit_map[measure.qubits[0]]
             result = readout[sequence.acquisitions[0][1].id]
@@ -122,6 +135,7 @@ def _resolve_results_mapping_averaged(
 
     measurements: ResultMap = defaultdict(list)
     for measure, sequence in measurement_map.items():
+        _validate_measurement(measure, sequence, readout)
         if len(measure.qubits) != 1:
             raise ValueError(
                 "Hardware averaging is only supported for single qubit readout."
