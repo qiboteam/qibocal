@@ -1,5 +1,4 @@
 import json
-from copy import deepcopy
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -9,8 +8,6 @@ from plotly.subplots import make_subplots
 from qibo import Circuit, gates
 from qibo.backends import NumpyBackend, matrices
 from qibo.quantum_info import fidelity, partial_trace
-
-from qibocal.protocols.utils import marginalize_qubit_counts
 
 from ...auto.operation import DATAFILE, Data, Parameters, QubitId, Results, Routine
 from ...auto.transpile import (
@@ -165,7 +162,7 @@ def _acquisition(
     )
 
     for basis in BASIS:
-        basis_circuit = deepcopy(params.circuit)
+        basis_circuit = params.circuit.copy()
         # FIXME: https://github.com/qiboteam/qibo/issues/1318
         if basis != "Z":
             for i in range(len(targets)):
@@ -175,14 +172,14 @@ def _acquisition(
             basis_circuit.add(gates.M(i))
         [result] = execute_circuits(
             [basis_circuit],
-            [targets],
             platform,
             transpiler,
             compiler,
             nshots=params.nshots,
+            qubit_map=targets,
         )
         for i, target in enumerate(targets):
-            single_qubit_state_counter = marginalize_qubit_counts(result, [i])
+            [single_qubit_state_counter] = result[target]
             excited_state_rate = single_qubit_state_counter["1"] / params.nshots
             data.register_qubit(
                 TomographyType,
