@@ -305,9 +305,9 @@ class Executor(BaseModel):
         platform: CalibrationPlatform | str | None = None,
         update: bool | None = None,
         targets: Targets | None = None,
+        **kwargs: Any,
     ):
         """Enter the execution context."""
-        kwargs = {}
         if update is not None:
             kwargs["update"] = update
         if targets is not None:
