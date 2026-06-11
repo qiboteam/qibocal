@@ -10,7 +10,7 @@ import qibocal
 import qibocal.protocols
 from qibocal import Executor
 from qibocal.auto.mode import ExecutionMode
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.auto.runcard import Action
 from qibocal.calibration.platform import (
     CalibrationPlatform,
@@ -106,7 +106,7 @@ def fake_protocols(request):
 
     protocols = {}
     for name in marker.args:
-        routine = Routine(_acquisition, _fit, _plot, _update)
+        routine = Protocol(_acquisition, _fit, _plot, _update)
         setattr(qibocal.protocols, name, routine)
         protocols[name] = routine
 

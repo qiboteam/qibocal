@@ -146,4 +146,4 @@ def _update(
 
 
 rabi_amplitude_ef = Protocol(_acquisition, _fit, _plot, _update)
-"""RabiAmplitudeEF Routine object."""
+"""RabiAmplitudeEF Protocol object."""

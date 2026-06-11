@@ -504,7 +504,7 @@ def _update(
 
 
 ramsey_zz = Protocol(_acquisition, _fit, _plot, _update)
-"""Ramsey ZZ Routine object.
+"""Ramsey ZZ Protocol object.
 
 This protocol measures the state-dependent frequency shift (ZZ interaction)
 between a selected target qubit and one spectator qubit. It

@@ -208,4 +208,4 @@ def _update(
 
 
 resonator_amplitude = Protocol(_acquisition, _fit, _plot, _update)
-"""Resonator Amplitude Routine  object."""
+"""Resonator Amplitude Protocol  object."""

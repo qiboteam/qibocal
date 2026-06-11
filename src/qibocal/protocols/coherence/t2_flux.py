@@ -149,4 +149,4 @@ def _plot(data: T2FluxData, target: QubitId, fit: T2FluxResults = None):
 
 
 t2_flux = Protocol(_acquisition, _fit, _plot)
-"""T2 Routine object."""
+"""T2 Protocol object."""

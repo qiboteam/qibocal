@@ -279,4 +279,4 @@ def _update(
 
 
 readout_characterization = Protocol(_acquisition, _fit, _plot, _update)
-"""ReadoutCharacterization Routine object."""
+"""ReadoutCharacterization Protocol object."""

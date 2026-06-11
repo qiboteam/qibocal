@@ -105,4 +105,4 @@ def _fit(data: SpinEchoData) -> SpinEchoResults:
 
 
 spin_echo = Protocol(_acquisition, _fit, plot, update_spin_echo)
-"""SpinEcho Routine object."""
+"""SpinEcho Protocol object."""

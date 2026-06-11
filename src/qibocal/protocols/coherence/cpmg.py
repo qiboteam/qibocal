@@ -106,4 +106,4 @@ def _fit(data: CpmgData) -> CpmgResults:
 
 
 cpmg = Protocol(_acquisition, _fit, plot)
-"""Cpmg Routine object."""
+"""Cpmg Protocol object."""

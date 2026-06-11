@@ -309,4 +309,4 @@ def _update(
 
 
 resonator_punchout = Protocol(_acquisition, _fit, _plot, _update)
-"""ResonatorPunchout Routine object."""
+"""ResonatorPunchout Protocol object."""

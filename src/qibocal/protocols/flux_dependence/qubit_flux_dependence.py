@@ -310,4 +310,4 @@ def _update(results: QubitFluxResults, platform: CalibrationPlatform, qubit: Qub
 
 
 qubit_flux = Protocol(_acquisition, _fit, _plot, _update)
-"""QubitFlux Routine object."""
+"""QubitFlux Protocol object."""

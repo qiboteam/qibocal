@@ -159,4 +159,4 @@ def _plot(
 
 
 qubit_power_spectroscopy = Protocol(_acquisition, _fit, _plot)
-"""QubitPowerSpectroscopy Routine object."""
+"""QubitPowerSpectroscopy Protocol object."""

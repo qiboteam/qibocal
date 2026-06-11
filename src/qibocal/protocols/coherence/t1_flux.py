@@ -197,4 +197,4 @@ def _plot(data: T1FluxData, target: QubitId, fit: T1FluxResults = None):
 
 
 t1_flux = Protocol(_acquisition, _fit, _plot)
-"""T1 flux Routine object."""
+"""T1 flux Protocol object."""

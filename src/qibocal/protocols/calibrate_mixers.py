@@ -488,4 +488,4 @@ def _update(
 
 
 calibrate_mixers = Protocol(_acquisition, _fit, _plot, _update)
-"""Calibrate mixers Routine object."""
+"""Calibrate mixers Protocol object."""

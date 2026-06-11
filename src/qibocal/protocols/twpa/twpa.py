@@ -14,7 +14,7 @@ from qibolab import (
     Sweeper,
 )
 
-from ...auto.operation import Data, Parameters, QubitId, Results, Routine
+from ...auto.operation import Data, Parameters, Protocol, QubitId, Results
 from ...result import magnitude
 from ..utils import HZ_TO_GHZ, readout_frequency, table_dict, table_html
 
@@ -268,5 +268,5 @@ def _plot(data: TwpaCalibrationData, fit: TwpaCalibrationResults, target):
     return figures, fitting_report
 
 
-twpa_calibration = Routine(_acquisition, _fit, _plot)
-"""Resonator TWPA Frequency Routine object."""
+twpa_calibration = Protocol(_acquisition, _fit, _plot)
+"""Resonator TWPA Frequency Protocol object."""

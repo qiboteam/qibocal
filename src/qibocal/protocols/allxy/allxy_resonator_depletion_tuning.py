@@ -175,4 +175,4 @@ def _plot(data: AllXYResonatorData, target: QubitId, fit: AllXYResonatorResults 
 
 
 allxy_resonator_depletion_tuning = Protocol(_acquisition, _fit, _plot)
-"""AllXYDrag Routine object."""
+"""AllXYDrag Protocol object."""

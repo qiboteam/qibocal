@@ -173,4 +173,4 @@ def _plot(data: T1Data, target: QubitId, fit: T1Results = None):
 
 
 t1 = Protocol(_acquisition, _fit, _plot, update_t1)
-"""T1 Routine object."""
+"""T1 Protocol object."""

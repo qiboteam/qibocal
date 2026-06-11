@@ -170,7 +170,7 @@ In the acquisition function we are going to perform the experiment.
         from qibocal.auto.operation import QubitId, QubitPairId
         from typing import Union
 
-        def acquisition(params: RoutineParameters, platform: Platform, targets: Union[list[QubitId], list[QubitPairId], list[list[QubitId]]]) -> RoutineData
+        def acquisition(params: ProtocolParameters, platform: Platform, targets: Union[list[QubitId], list[QubitPairId], list[list[QubitId]]]) -> ProtocolData
         """A generic acquisition function."""
 
 
@@ -252,7 +252,7 @@ The following function performs a sinusoidal fit for each qubit.
 
       .. code-block:: python
 
-        def fit(data: RoutineData) -> RoutineResults
+        def fit(data: ProtocolData) -> ProtocolResults
         """ A generic fit."
 
     where `Qubits` is a `dict[QubitId, Qubit]`.
@@ -298,7 +298,7 @@ use `plotly <https://plotly.com/python/>`_ in order to properly generate the rep
 
         import plotly.graph_objects as go
 
-        def plot(data: RoutineData, fit: RoutineResults, target: QubitId) -> list[go.Figure(), str]
+        def plot(data: ProtocolData, fit: ProtocolResults, target: QubitId) -> list[go.Figure(), str]
         """ A generic plotting function."""
 
     The ``str`` in output can be used to create a table, which has 3 columns ``target``, ``Fitting Parameter``
@@ -367,13 +367,13 @@ Here is the plotting function for the protocol that we are coding:
         return figures, fitting_report
 
 
-Create ``Routine`` object
+Create ``Protocol`` object
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. code-block:: python
 
-    rotation = Routine(acquisition, fit, plot)
-    """Rotation Routine  object."""
+    rotation = Protocol(acquisition, fit, plot)
+    """Rotation Protocol  object."""
 
 
 Add routine to `Operation` Enum
@@ -449,7 +449,7 @@ library, but it will take priority on it.
 
 :attr:`~qibocal.Executor.sources` is just a list of collections, of type
 :obj:`~qibocal.ProtocolsCollection`, which just consists of a mapping of protocols'
-names to :class:`~qibocal.Routine` objects.
+names to :class:`~qibocal.Protocol` objects.
 
 E.g., the collection used in the previous example could consist of the protocol defined
 in the former section, and it could be defined as::

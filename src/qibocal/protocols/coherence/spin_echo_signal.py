@@ -206,4 +206,4 @@ def update_spin_echo(
 
 
 spin_echo_signal = Protocol(_acquisition, _fit, _plot, update_spin_echo)
-"""SpinEcho Routine object."""
+"""SpinEcho Protocol object."""
