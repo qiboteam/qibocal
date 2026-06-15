@@ -20,7 +20,7 @@ References:
 """
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Literal, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -64,8 +64,15 @@ class SpinLockParameters(Parameters):
     """Maximum spin-lock pulse amplitude [a.u.]."""
     amplitude_step: float
     """Step spin-lock pulse amplitude [a.u.]."""
-    sequence: Literal["SL2", "SL5a", "SL5b"] = "SL2"
+    sequence: Literal["SL3", "SL5a", "SL5b"] = "SL3"
     """Spin-lock sequence type."""
+    max_batch_duration: int = 0
+    """Target maximum total duration of spin-lock pulses per execution batch [ns].
+
+    A value of ``0`` (the default) puts every duration value in its own
+    batch, which is acquired without a duration sweeper (cf.
+    :func:`_duration_batches`).
+    """
 
     @property
     def duration_range(self) -> tuple[int, int, int]:
@@ -138,58 +145,79 @@ class SpinLockData(Data):
         )
 
 
-def _acquisition(
-    params: SpinLockParameters,
+NativePulses = dict[QubitId, tuple[PulseSequence, Pulse, PulseSequence]]
+"""Per-qubit (Y90, spin-lock pulse, echo) native pulses, built once and reused
+across batches."""
+
+
+def native_pulses(
     platform: CalibrationPlatform,
     targets: list[QubitId],
-) -> SpinLockData:
-    """Data acquisition for the spin-lock (T1rho) experiment."""
+    sequence_type: str,
+    duration: int,
+    amplitude: float,
+) -> NativePulses:
+    """Build the reusable native pulses for the spin-lock sequence.
 
-    duration_range = np.arange(*params.duration_range)
-    amplitude_range = np.arange(*params.amplitude_range)
-
-    sequence = PulseSequence()
-    pulse_to_sweep: dict[QubitId, Pulse] = {}
-    ro_delays: dict[QubitId, Delay] = {}
-    ro_pulses: dict[QubitId, Pulse] = {}
-    pi_pulse_duration: dict[QubitId, float] = {}
-    pi_pulse_amplitude: dict[QubitId, float] = {}
-
-    # Build the reusable native pulses/sequences once per qubit: the Y90
-    # prepare/back-projection rotation, the spin-lock square pulse, and the
-    # optional refocusing pi pulse for the SL5a/SL5b echo variants.
-    pulses_store: dict[QubitId, tuple[PulseSequence, Pulse, PulseSequence]] = {}
+    Returns, for each qubit, the Y90 prepare/back-projection rotation, the
+    spin-lock square pulse, and the optional refocusing pi pulse for the
+    SL5a/SL5b echo variants.
+    """
+    pulses: NativePulses = {}
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
         spin_lock_pulse = Pulse(
-            duration=duration_range[0],
-            amplitude=amplitude_range[0],
+            duration=duration,
+            amplitude=amplitude,
             relative_phase=0,
             envelope=Rectangular(),
         )
         echo = (
-            natives.R(theta=np.pi, phi=0 if params.sequence == "SL5a" else np.pi)
-            if params.sequence in ("SL5a", "SL5b")
+            natives.R(theta=np.pi, phi=0 if sequence_type == "SL5a" else np.pi)
+            if sequence_type in ("SL5a", "SL5b")
             else PulseSequence()
         )
-        pulses_store[qubit] = (
+        pulses[qubit] = (
             natives.R(theta=np.pi / 2, phi=np.pi / 2),
             spin_lock_pulse,
             echo,
         )
-        pulse_to_sweep[qubit] = spin_lock_pulse
+    return pulses
 
-    for q in targets:
-        natives = platform.natives.single_qubit[q]
-        qd_channel = platform.qubits[q].drive
+
+def spin_lock_sequence(
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
+    pulses: NativePulses,
+    duration: Optional[int] = None,
+) -> tuple[
+    PulseSequence, dict[QubitId, Pulse], dict[QubitId, Delay], dict[QubitId, Pulse]
+]:
+    """Build the spin-lock pulse sequence.
+
+    If ``duration`` is given, the spin-lock pulse and readout delay are
+    fixed to that value via a pulse copy, so the sequence can be executed
+    without a duration sweeper. Otherwise, the spin-lock pulse from
+    ``pulses`` is reused as-is, to be swept externally.
+    """
+    sequence = PulseSequence()
+    pulse_to_sweep: dict[QubitId, Pulse] = {}
+    ro_delays: dict[QubitId, Delay] = {}
+    ro_pulses: dict[QubitId, Pulse] = {}
+
+    for qubit in targets:
+        natives = platform.natives.single_qubit[qubit]
+        qd_channel = platform.qubits[qubit].drive
         ro_channel, ro_pulse = natives.MZ()[0]
 
-        rx_pulse = natives.RX()[0][1]
-        pi_pulse_duration[q] = rx_pulse.duration
-        pi_pulse_amplitude[q] = rx_pulse.amplitude
-
-        y90, spin_lock_pulse, echo = pulses_store[q]
-        ro_delay = Delay(duration=duration_range[0])
+        y90, spin_lock_pulse, echo = pulses[qubit]
+        if duration is not None:
+            spin_lock_pulse = spin_lock_pulse.model_copy(
+                update={"duration": duration}
+            )
+            ro_delay = Delay(duration=duration)
+        else:
+            ro_delay = Delay(duration=spin_lock_pulse.duration)
 
         # Y90: bring |0> to the equator, aligned with the X axis
         sequence += y90
@@ -207,34 +235,61 @@ def _acquisition(
         sequence.append((ro_channel, ro_delay))
         sequence.append((ro_channel, ro_pulse))
 
-        ro_delays[q] = ro_delay
-        ro_pulses[q] = ro_pulse
+        pulse_to_sweep[qubit] = spin_lock_pulse
+        ro_delays[qubit] = ro_delay
+        ro_pulses[qubit] = ro_pulse
 
-    duration_sweeper: ParallelSweepers = [
-        Sweeper(
-            parameter=Parameter.duration,
-            values=duration_range,
-            pulses=[pulse_to_sweep[q]] + [ro_delays[q]],
-        )
-        for q in targets
-    ]
+    return sequence, pulse_to_sweep, ro_delays, ro_pulses
 
-    amplitude_sweeper: ParallelSweepers = [
-        Sweeper(
-            parameter=Parameter.amplitude,
-            values=amplitude_range,
-            pulses=[pulse_to_sweep[q]],
-        )
-        for q in targets
-    ]
 
-    results = platform.execute(
-        [sequence],
-        [amplitude_sweeper, duration_sweeper],
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.SINGLESHOT,
+def _duration_batches(
+    duration_range: npt.NDArray, max_batch_duration: int
+) -> list[npt.NDArray]:
+    """Split a duration range into batches with similar total duration.
+
+    The range is split into consecutive batches, targeting an equal sum of durations per batch
+    (``target = duration_range.sum() / n_batches``). A batch may exceed the
+    target if it consists of a single value already larger than it.
+    """
+
+    batches = []
+    current: list = []
+    current_sum = 0
+
+    for value in duration_range:
+        if current and current_sum + value > max_batch_duration :
+            batches.append(np.array(current))
+            current = []
+            current_sum = 0
+        current.append(value)
+        current_sum += value
+    batches.append(np.array(current))
+    return batches
+
+
+def _acquisition(
+    params: SpinLockParameters,
+    platform: CalibrationPlatform,
+    targets: list[QubitId],
+) -> SpinLockData:
+    """Data acquisition for the spin-lock (T1rho) experiment."""
+
+    duration_range = np.arange(*params.duration_range)
+    amplitude_range = np.arange(*params.amplitude_range)
+
+    pi_pulse_duration: dict[QubitId, float] = {}
+    pi_pulse_amplitude: dict[QubitId, float] = {}
+    for qubit in targets:
+        rx_pulse = platform.natives.single_qubit[qubit].RX()[0][1]
+        pi_pulse_duration[qubit] = rx_pulse.duration
+        pi_pulse_amplitude[qubit] = rx_pulse.amplitude
+
+    pulses = native_pulses(
+        platform,
+        targets,
+        params.sequence,
+        int(duration_range[0]),
+        float(amplitude_range[0]),
     )
 
     data = SpinLockData(
@@ -243,9 +298,76 @@ def _acquisition(
     )
 
     duration_mesh, amplitude_mesh = np.meshgrid(duration_range, amplitude_range)
+    probs: dict[QubitId, list[npt.NDArray]] = {q: [] for q in targets}
+    errors: dict[QubitId, list[npt.NDArray]] = {q: [] for q in targets}
+
+    # Sweeping the spin-lock pulse duration in batches with similar total
+    # duration, so that long pulses do not end up sharing a batch with many
+    # other values and blowing up the per-execution waveform memory. The
+    # sequence is rebuilt for every batch, since a single-value batch fixes
+    # the spin-lock pulse duration with a pulse copy instead of a sweeper.
+    duration_batches = _duration_batches(duration_range, params.max_batch_duration)
+    for duration_batch in duration_batches:
+        print(f"Acquiring batch with durations {duration_batch} ns...")
+        single_value = len(duration_batch) == 1
+        sequence, pulse_to_sweep, ro_delays, ro_pulses = spin_lock_sequence(
+            platform,
+            targets,
+            pulses,
+            duration=int(duration_batch[0]) if single_value else None,
+        )
+
+        amplitude_sweeper: ParallelSweepers = [
+            Sweeper(
+                parameter=Parameter.amplitude,
+                values=amplitude_range,
+                pulses=[pulse_to_sweep[q]],
+            )
+            for q in targets
+        ]
+
+        if single_value:
+            # A single duration value does not need a sweeper: the pulse
+            # sequence has already been built for this fixed duration.
+            sweepers = [amplitude_sweeper]
+        else:
+            duration_sweeper: ParallelSweepers = [
+                sweeper
+                for q in targets
+                for sweeper in (
+                    Sweeper(
+                        parameter=Parameter.duration,
+                        values=duration_batch,
+                        pulses=[pulse_to_sweep[q]],
+                    ),
+                    Sweeper(
+                        parameter=Parameter.duration,
+                        values=duration_batch,
+                        pulses=[ro_delays[q]],
+                    ),
+                )
+            ]
+            sweepers = [amplitude_sweeper, duration_sweeper]
+
+        results = platform.execute(
+            [sequence],
+            sweepers,
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.DISCRIMINATION,
+            averaging_mode=AveragingMode.SINGLESHOT,
+        )
+
+        for q in targets:
+            prob = probability(results[ro_pulses[q].id], state=1)
+            if single_value:
+                prob = prob[:, np.newaxis]
+            probs[q].append(prob)
+            errors[q].append(np.sqrt(prob * (1 - prob) / params.nshots))
+
     for q in targets:
-        prob = probability(results[ro_pulses[q].id], state=1)
-        error = np.sqrt(prob * (1 - prob) / params.nshots)
+        prob = np.concatenate(probs[q], axis=1)
+        error = np.concatenate(errors[q], axis=1)
         data.register_qubit(
             SpinLockType,
             (q),
