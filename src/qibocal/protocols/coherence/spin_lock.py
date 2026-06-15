@@ -30,6 +30,7 @@ from qibolab import (
     AcquisitionType,
     AveragingMode,
     Delay,
+    ParallelSweepers,
     Parameter,
     Pulse,
     PulseSequence,
@@ -71,7 +72,7 @@ class SpinLockParameters(Parameters):
     def duration_range(self) -> tuple[int, int, int]:
         """Return a tuple with the spin-lock pulse duration range."""
         return self.duration_min, self.duration_max, self.duration_step
-
+    
     @property
     def amplitude_range(self) -> tuple[float, float, float]:
         """Return a tuple with the spin-lock pulse amplitude range."""
@@ -149,11 +150,35 @@ def _acquisition(
     amplitude_range = np.arange(*params.amplitude_range)
 
     sequence = PulseSequence()
-    spin_lock_pulses = {}
-    ro_delays = {}
-    ro_pulses = {}
-    pi_pulse_duration = {}
-    pi_pulse_amplitude = {}
+    pulse_to_sweep: dict[QubitId, Pulse] = {}
+    ro_delays: dict[QubitId, Delay] = {}
+    ro_pulses: dict[QubitId, Pulse] = {}
+    pi_pulse_duration: dict[QubitId, float] = {}
+    pi_pulse_amplitude: dict[QubitId, float] = {}
+
+    # Build the reusable native pulses/sequences once per qubit: the Y90
+    # prepare/back-projection rotation, the spin-lock square pulse, and the
+    # optional refocusing pi pulse for the SL5a/SL5b echo variants.
+    pulses_store: dict[QubitId, tuple[PulseSequence, Pulse, PulseSequence]] = {}
+    for qubit in targets:
+        natives = platform.natives.single_qubit[qubit]
+        spin_lock_pulse = Pulse(
+            duration=duration_range[0],
+            amplitude=amplitude_range[0],
+            relative_phase=0,
+            envelope=Rectangular(),
+        )
+        echo = (
+            natives.R(theta=np.pi, phi=0 if params.sequence == "SL5a" else np.pi)
+            if params.sequence in ("SL5a", "SL5b")
+            else PulseSequence()
+        )
+        pulses_store[qubit] = (
+            natives.R(theta=np.pi / 2, phi=np.pi / 2),
+            spin_lock_pulse,
+            echo,
+        )
+        pulse_to_sweep[qubit] = spin_lock_pulse
 
     for q in targets:
         natives = platform.natives.single_qubit[q]
@@ -164,59 +189,46 @@ def _acquisition(
         pi_pulse_duration[q] = rx_pulse.duration
         pi_pulse_amplitude[q] = rx_pulse.amplitude
 
-        # Y90: bring |0> to the equator, aligned with the X axis
-        prepare = natives.R(theta=np.pi / 2, phi=np.pi / 2)
-        # Y90: back-project the locked state onto the Z axis for readout
-        project = natives.R(theta=np.pi / 2, phi=np.pi / 2)
-
-        # Continuous square drive along X, 90 deg phase-shifted wrt the Y90 pulses
-        spin_lock_pulse = Pulse(
-            duration=duration_range[0],
-            amplitude=amplitude_range[0],
-            relative_phase=0,
-            envelope=Rectangular(),
-        )
+        y90, spin_lock_pulse, echo = pulses_store[q]
         ro_delay = Delay(duration=duration_range[0])
 
-        sequence += prepare
-        if params.sequence in ["SL5a", "SL5b"]:
-            sequence.append(natives.R(phi=0 if params.sequence == "SL5a" else np.pi))
+        # Y90: bring |0> to the equator, aligned with the X axis
+        sequence += y90
+        # Optional refocusing pi pulse before the spin-lock drive (SL5a/SL5b)
+        sequence += echo
+        # Continuous square drive along X, 90 deg phase-shifted wrt the Y90 pulses
         sequence.append((qd_channel, spin_lock_pulse))
-        if params.sequence in ["SL5a", "SL5b"]:
-            sequence.append(natives.R(phi=0 if params.sequence == "SL5a" else np.pi))
-        sequence += project
+        # Optional refocusing pi pulse after the spin-lock drive (SL5a/SL5b)
+        sequence += echo
+        # Y90: back-project the locked state onto the Z axis for readout
+        sequence += y90
         sequence.append(
-            (
-                ro_channel,
-                Delay(
-                    duration=prepare.duration
-                    + project.duration
-                    + (0 if params.sequence == "SL2" else 2 * rx_pulse.duration)
-                ),
-            )
+            (ro_channel, Delay(duration=2 * y90.duration + 2 * echo.duration))
         )
         sequence.append((ro_channel, ro_delay))
         sequence.append((ro_channel, ro_pulse))
 
-        spin_lock_pulses[q] = spin_lock_pulse
         ro_delays[q] = ro_delay
         ro_pulses[q] = ro_pulse
 
-    rich.print("Generated sequence:", sequence)
-    duration_sweeper = Sweeper(
-        parameter=Parameter.duration,
-        values=duration_range,
-        pulses=[spin_lock_pulses[q] for q in targets] + [ro_delays[q] for q in targets],
-    )
-    amplitude_sweeper = Sweeper(
-        parameter=Parameter.amplitude,
-        values=amplitude_range,
-        pulses=[spin_lock_pulses[q] for q in targets],
-    )
+    duration_sweeper: ParallelSweepers = [
+        Sweeper(
+            parameter=Parameter.duration,
+            values=duration_range,
+            pulses=[pulse_to_sweep[q]]
+            + [ro_delays[q] ],
+        ) for q in targets ]
+    
+    amplitude_sweeper: ParallelSweepers  = [
+        Sweeper(
+            parameter=Parameter.amplitude,
+            values=amplitude_range,
+            pulses=[pulse_to_sweep[q]]
+        ) for q in targets ]
 
     results = platform.execute(
         [sequence],
-        [[amplitude_sweeper], [duration_sweeper]],
+        [amplitude_sweeper, duration_sweeper],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.DISCRIMINATION,
@@ -227,6 +239,7 @@ def _acquisition(
         pi_pulse_duration=pi_pulse_duration,
         pi_pulse_amplitude=pi_pulse_amplitude,
     )
+    
     duration_mesh, amplitude_mesh = np.meshgrid(duration_range, amplitude_range)
     for q in targets:
         prob = probability(results[ro_pulses[q].id], state=1)
