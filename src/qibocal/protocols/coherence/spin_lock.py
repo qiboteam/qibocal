@@ -25,6 +25,7 @@ from typing import Literal
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+import rich
 from qibolab import (
     AcquisitionType,
     AveragingMode,
@@ -43,7 +44,6 @@ from qibocal.result import probability
 
 from ..utils import GHZ_TO_HZ, table_dict, table_html
 from .utils import exp_decay, single_exponential_fit
-import rich
 
 __all__ = ["SpinLockParameters", "SpinLockResults", "spin_lock"]
 
@@ -64,14 +64,14 @@ class SpinLockParameters(Parameters):
     """Maximum spin-lock pulse amplitude [a.u.]."""
     amplitude_step: float
     """Step spin-lock pulse amplitude [a.u.]."""
-    sequence: Literal['SL2', 'SL5a', 'SL5b'] = 'SL2'
+    sequence: Literal["SL2", "SL5a", "SL5b"] = "SL2"
     """Spin-lock sequence type."""
 
     @property
     def duration_range(self) -> tuple[int, int, int]:
         """Return a tuple with the spin-lock pulse duration range."""
         return self.duration_min, self.duration_max, self.duration_step
-    
+
     @property
     def amplitude_range(self) -> tuple[float, float, float]:
         """Return a tuple with the spin-lock pulse amplitude range."""
@@ -179,14 +179,21 @@ def _acquisition(
         ro_delay = Delay(duration=duration_range[0])
 
         sequence += prepare
-        if params.sequence in ['SL5a', 'SL5b']:
-            sequence.append(natives.R(phi= 0 if params.sequence == 'SL5a' else np.pi))   
+        if params.sequence in ["SL5a", "SL5b"]:
+            sequence.append(natives.R(phi=0 if params.sequence == "SL5a" else np.pi))
         sequence.append((qd_channel, spin_lock_pulse))
-        if params.sequence in ['SL5a', 'SL5b']:
-            sequence.append(natives.R(phi= 0 if params.sequence == 'SL5a' else np.pi))
+        if params.sequence in ["SL5a", "SL5b"]:
+            sequence.append(natives.R(phi=0 if params.sequence == "SL5a" else np.pi))
         sequence += project
         sequence.append(
-            (ro_channel, Delay(duration=prepare.duration + project.duration + (0 if params.sequence == 'SL2' else 2 * rx_pulse.duration)))
+            (
+                ro_channel,
+                Delay(
+                    duration=prepare.duration
+                    + project.duration
+                    + (0 if params.sequence == "SL2" else 2 * rx_pulse.duration)
+                ),
+            )
         )
         sequence.append((ro_channel, ro_delay))
         sequence.append((ro_channel, ro_pulse))
@@ -199,8 +206,7 @@ def _acquisition(
     duration_sweeper = Sweeper(
         parameter=Parameter.duration,
         values=duration_range,
-        pulses=[spin_lock_pulses[q] for q in targets]
-        + [ro_delays[q] for q in targets],
+        pulses=[spin_lock_pulses[q] for q in targets] + [ro_delays[q] for q in targets],
     )
     amplitude_sweeper = Sweeper(
         parameter=Parameter.amplitude,
@@ -309,10 +315,12 @@ def _plot(data: SpinLockData, target: QubitId, fit: SpinLockResults = None):
 
     if fit is not None:
         fig_decay = go.Figure()
-        indices = np.linspace(
-            0, len(amplitudes) - 1, min(5, len(amplitudes))
-        ).astype(int)
-        duration_range = np.linspace(durations.min(), durations.max(), 2 * len(durations))
+        indices = np.linspace(0, len(amplitudes) - 1, min(5, len(amplitudes))).astype(
+            int
+        )
+        duration_range = np.linspace(
+            durations.min(), durations.max(), 2 * len(durations)
+        )
         for i in indices:
             amplitude = amplitudes[i]
             color = f"hsl({int(360 * i / max(len(amplitudes), 1))}, 70%, 45%)"
