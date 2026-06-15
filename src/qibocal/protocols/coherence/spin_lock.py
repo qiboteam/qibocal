@@ -25,7 +25,6 @@ from typing import Literal
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-import rich
 from qibolab import (
     AcquisitionType,
     AveragingMode,
@@ -72,7 +71,7 @@ class SpinLockParameters(Parameters):
     def duration_range(self) -> tuple[int, int, int]:
         """Return a tuple with the spin-lock pulse duration range."""
         return self.duration_min, self.duration_max, self.duration_step
-    
+
     @property
     def amplitude_range(self) -> tuple[float, float, float]:
         """Return a tuple with the spin-lock pulse amplitude range."""
@@ -215,16 +214,19 @@ def _acquisition(
         Sweeper(
             parameter=Parameter.duration,
             values=duration_range,
-            pulses=[pulse_to_sweep[q]]
-            + [ro_delays[q] ],
-        ) for q in targets ]
-    
-    amplitude_sweeper: ParallelSweepers  = [
+            pulses=[pulse_to_sweep[q]] + [ro_delays[q]],
+        )
+        for q in targets
+    ]
+
+    amplitude_sweeper: ParallelSweepers = [
         Sweeper(
             parameter=Parameter.amplitude,
             values=amplitude_range,
-            pulses=[pulse_to_sweep[q]]
-        ) for q in targets ]
+            pulses=[pulse_to_sweep[q]],
+        )
+        for q in targets
+    ]
 
     results = platform.execute(
         [sequence],
@@ -239,7 +241,7 @@ def _acquisition(
         pi_pulse_duration=pi_pulse_duration,
         pi_pulse_amplitude=pi_pulse_amplitude,
     )
-    
+
     duration_mesh, amplitude_mesh = np.meshgrid(duration_range, amplitude_range)
     for q in targets:
         prob = probability(results[ro_pulses[q].id], state=1)
