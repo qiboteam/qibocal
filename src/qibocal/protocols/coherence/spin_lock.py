@@ -44,6 +44,8 @@ from qibocal.result import probability
 
 from ..utils import GHZ_TO_HZ, table_dict, table_html
 from .utils import exp_decay, single_exponential_fit
+MAX_WIDTH = 2**13
+
 
 __all__ = ["SpinLockParameters", "SpinLockResults", "spin_lock"]
 
@@ -76,7 +78,34 @@ class SpinLockParameters(Parameters):
     def amplitude_range(self) -> tuple[float, float, float]:
         """Return a tuple with the spin-lock pulse amplitude range."""
         return self.amplitude_min, self.amplitude_max, self.amplitude_step
+    
+    @property
+    def n_pulses(self) -> int:
+        """Minimum N such that each sub-pulse duration fits within MAX_WIDTH samples."""
+        return max(1, -(-self.duration_max // MAX_WIDTH))
 
+    @property
+    def coerced_duration_step(self) -> int:
+        """``duration_step`` rounded to the nearest multiple of ``n_pulses``.
+
+        Guarantees that sub-pulse step ``coerced_duration_step // n_pulses`` is
+        a positive integer, removing any constraint on the user-supplied step.
+        """
+        n = self.n_pulses
+        if n <= 1:
+            return self.duration_step
+        return max(n, round(self.duration_step / n) * n)
+
+    @property
+    def extra_duration(self) -> int:
+        """Fixed extra duration [ns] appended after the N sub-pulses.
+
+        Equal to ``duration_min % n_pulses``.  Because ``coerced_duration_step``
+        is a multiple of ``n_pulses``, this remainder is constant across all
+        sweep steps, so a single fixed ``Delay`` is sufficient.
+        """
+        n = self.n_pulses
+        return self.duration_min % n if n > 1 else 0
 
 @dataclass
 class SpinLockResults(Results):
@@ -145,8 +174,16 @@ def _acquisition(
 ) -> SpinLockData:
     """Data acquisition for the spin-lock (T1rho) experiment."""
 
-    duration_range = np.arange(*params.duration_range)
     amplitude_range = np.arange(*params.amplitude_range)
+    n = params.n_pulses
+    extra_duration = params.extra_duration
+    coerced_step = params.coerced_duration_step
+
+    # Effective total durations using the coerced step (uniform multiple of n).
+    actual_duration_values = np.arange(
+        params.duration_min, params.duration_max, coerced_step
+    )
+    short_duration_values = ((actual_duration_values - extra_duration) // n).astype(int)
 
     sequence = PulseSequence()
     pulse_to_sweep: dict[QubitId, Pulse] = {}
@@ -161,8 +198,9 @@ def _acquisition(
     pulses_store: dict[QubitId, tuple[PulseSequence, Pulse, PulseSequence]] = {}
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
+        # One pulse object shared across all n repetitions. 
         spin_lock_pulse = Pulse(
-            duration=duration_range[0],
+            duration=int(short_duration_values[0]),
             amplitude=amplitude_range[0],
             relative_phase=0,
             envelope=Rectangular(),
@@ -189,14 +227,19 @@ def _acquisition(
         pi_pulse_amplitude[q] = rx_pulse.amplitude
 
         y90, spin_lock_pulse, echo = pulses_store[q]
-        ro_delay = Delay(duration=duration_range[0])
+        ro_delay = Delay(duration=int(actual_duration_values[0]))
 
         # Y90: bring |0> to the equator, aligned with the X axis
         sequence += y90
         # Optional refocusing pi pulse before the spin-lock drive (SL5a/SL5b)
         sequence += echo
-        # Continuous square drive along X, 90 deg phase-shifted wrt the Y90 pulses
-        sequence.append((qd_channel, spin_lock_pulse))
+        # Play the same pulse object n times (to share UUID)
+        for _ in range(n):
+            sequence.append((qd_channel, spin_lock_pulse))
+        # Fixed extra delay so total drive time == duration_min for the first
+        # step (and all steps when duration_step % n == 0).
+        if extra_duration > 0:
+            sequence.append((qd_channel, Delay(duration=extra_duration)))
         # Optional refocusing pi pulse after the spin-lock drive (SL5a/SL5b)
         sequence += echo
         # Y90: back-project the locked state onto the Z axis for readout
@@ -210,11 +253,19 @@ def _acquisition(
         ro_delays[q] = ro_delay
         ro_pulses[q] = ro_pulse
 
+    # The sub-pulse sweeper and the ro_delay sweeper are kept separate.
     duration_sweeper: ParallelSweepers = [
         Sweeper(
             parameter=Parameter.duration,
-            values=duration_range,
-            pulses=[pulse_to_sweep[q]] + [ro_delays[q]],
+            values=short_duration_values,
+            pulses=[pulse_to_sweep[q]],
+        )
+        for q in targets
+    ] + [
+        Sweeper(
+            parameter=Parameter.duration,
+            values=actual_duration_values,
+            pulses=[ro_delays[q]],
         )
         for q in targets
     ]
@@ -242,7 +293,7 @@ def _acquisition(
         pi_pulse_amplitude=pi_pulse_amplitude,
     )
 
-    duration_mesh, amplitude_mesh = np.meshgrid(duration_range, amplitude_range)
+    duration_mesh, amplitude_mesh = np.meshgrid(actual_duration_values, amplitude_range)
     for q in targets:
         prob = probability(results[ro_pulses[q].id], state=1)
         error = np.sqrt(prob * (1 - prob) / params.nshots)
