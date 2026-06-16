@@ -47,6 +47,7 @@ from .utils import exp_decay, single_exponential_fit
 
 __all__ = ["SpinLockParameters", "SpinLockResults", "spin_lock"]
 
+
 @dataclass
 class SpinLockParameters(Parameters):
     """SpinLock runcard inputs."""
