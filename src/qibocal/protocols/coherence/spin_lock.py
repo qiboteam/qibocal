@@ -153,7 +153,9 @@ def _acquisition(
     ro_pulses: dict[QubitId, Pulse] = {}
     pi_pulse_duration: dict[QubitId, float] = {}
     pi_pulse_amplitude: dict[QubitId, float] = {}
-    _infra: dict[QubitId, tuple] = {} # pulse infrastructure: (y90, echo, qd_channel, ro_channel, ro_pulse)
+    _infra: dict[
+        QubitId, tuple
+    ] = {}  # pulse infrastructure: (y90, echo, qd_channel, ro_channel, ro_pulse)
 
     for q in targets:
         natives = platform.natives.single_qubit[q]
@@ -189,7 +191,7 @@ def _acquisition(
             spin_lock_pulse = LongPulse(
                 duration=duration_range[0],
                 amplitude=amp,
-                relative_phase=np.pi / 2, # Lock along the rotating-frame X axis
+                relative_phase=np.pi / 2,  # Lock along the rotating-frame X axis
             )
             ro_delay = Delay(duration=duration_range[0])
 
