@@ -29,11 +29,11 @@ from qibolab import (
     AcquisitionType,
     AveragingMode,
     Delay,
+    LongPulse,
     ParallelSweepers,
     Parameter,
     Pulse,
     PulseSequence,
-    Rectangular,
     Sweeper,
 )
 
@@ -46,7 +46,6 @@ from ..utils import GHZ_TO_HZ, table_dict, table_html
 from .utils import exp_decay, single_exponential_fit
 
 __all__ = ["SpinLockParameters", "SpinLockResults", "spin_lock"]
-
 
 @dataclass
 class SpinLockParameters(Parameters):
@@ -149,23 +148,22 @@ def _acquisition(
     amplitude_range = np.arange(*params.amplitude_range)
 
     sequence = PulseSequence()
-    pulse_to_sweep: dict[QubitId, Pulse] = {}
+    pulse_to_sweep: dict[QubitId, LongPulse] = {}
     ro_delays: dict[QubitId, Delay] = {}
     ro_pulses: dict[QubitId, Pulse] = {}
     pi_pulse_duration: dict[QubitId, float] = {}
     pi_pulse_amplitude: dict[QubitId, float] = {}
 
     # Build the reusable native pulses/sequences once per qubit: the Y90
-    # prepare/back-projection rotation, the spin-lock square pulse, and the
+    # prepare/back-projection rotation, the spin-lock pulse, and the
     # optional refocusing pi pulse for the SL5a/SL5b echo variants.
-    pulses_store: dict[QubitId, tuple[PulseSequence, Pulse, PulseSequence]] = {}
+    pulses_store: dict[QubitId, tuple[PulseSequence, LongPulse, PulseSequence]] = {}
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
-        spin_lock_pulse = Pulse(
+        spin_lock_pulse = LongPulse(
             duration=duration_range[0],
             amplitude=amplitude_range[0],
             relative_phase=0,
-            envelope=Rectangular(),
         )
         echo = (
             natives.R(theta=np.pi, phi=0 if params.sequence == "SL5a" else np.pi)
@@ -210,11 +208,21 @@ def _acquisition(
         ro_delays[q] = ro_delay
         ro_pulses[q] = ro_pulse
 
+    # The LongPulse sweeper is kept separate from the ro_delay sweeper because
+    # the Qblox backend translates LongPulse duration into (duration - 4) for
+    # its internal wait register, which must not be applied to the Delay.
     duration_sweeper: ParallelSweepers = [
         Sweeper(
             parameter=Parameter.duration,
             values=duration_range,
-            pulses=[pulse_to_sweep[q]] + [ro_delays[q]],
+            pulses=[pulse_to_sweep[q]],
+        )
+        for q in targets
+    ] + [
+        Sweeper(
+            parameter=Parameter.duration,
+            values=duration_range,
+            pulses=[ro_delays[q]],
         )
         for q in targets
     ]
