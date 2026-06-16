@@ -45,7 +45,9 @@ from qibocal.result import probability
 from ..utils import GHZ_TO_HZ, table_dict, table_html
 from .utils import exp_decay, single_exponential_fit
 
-MAX_WIDTH = 2**10 # Leave space for other pulses in the sequence, e.g. readout and Y90 pulses.
+MAX_WIDTH = (
+    2**10
+)  # Leave space for other pulses in the sequence, e.g. readout and Y90 pulses.
 
 
 __all__ = ["SpinLockParameters", "SpinLockResults", "spin_lock"]
