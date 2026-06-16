@@ -44,6 +44,7 @@ from qibocal.result import probability
 
 from ..utils import GHZ_TO_HZ, table_dict, table_html
 from .utils import exp_decay, single_exponential_fit
+
 MAX_WIDTH = 2**13
 
 
@@ -78,7 +79,7 @@ class SpinLockParameters(Parameters):
     def amplitude_range(self) -> tuple[float, float, float]:
         """Return a tuple with the spin-lock pulse amplitude range."""
         return self.amplitude_min, self.amplitude_max, self.amplitude_step
-    
+
     @property
     def n_pulses(self) -> int:
         """Minimum N such that each sub-pulse duration fits within MAX_WIDTH samples."""
@@ -106,6 +107,7 @@ class SpinLockParameters(Parameters):
         """
         n = self.n_pulses
         return self.duration_min % n if n > 1 else 0
+
 
 @dataclass
 class SpinLockResults(Results):
@@ -198,7 +200,7 @@ def _acquisition(
     pulses_store: dict[QubitId, tuple[PulseSequence, Pulse, PulseSequence]] = {}
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
-        # One pulse object shared across all n repetitions. 
+        # One pulse object shared across all n repetitions.
         spin_lock_pulse = Pulse(
             duration=int(short_duration_values[0]),
             amplitude=amplitude_range[0],
