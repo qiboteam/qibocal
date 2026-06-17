@@ -1,4 +1,5 @@
 from .cpmg import cpmg
+from .cpmg_spectroscopy import cpmg_spectroscopy
 from .spin_echo import spin_echo
 from .spin_echo_signal import spin_echo_signal
 from .t1 import t1
@@ -11,6 +12,7 @@ from .zeno import zeno
 
 __all__ = [
     "cpmg",
+    "cpmg_spectroscopy",
     "spin_echo_signal",
     "t1_signal",
     "t2_signal",
