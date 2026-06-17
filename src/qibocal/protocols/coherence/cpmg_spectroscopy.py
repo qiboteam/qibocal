@@ -3,7 +3,9 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+from qibocal.protocols.coherence.spin_echo import SpinEchoParameters
 from qibolab import AcquisitionType, AveragingMode
+from qibolab._core.native import SingleQubitNatives
 
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
@@ -17,32 +19,34 @@ __all__ = ["cpmg_spectroscopy"]
 
 
 @dataclass
-class CpmgSpectroscopyParameters(Parameters):
+class CpmgSpectroscopyParameters(SpinEchoParameters):
     """CpmgSpectroscopy runcard inputs."""
 
-    tau_min: int
-    """Initial fixed delay between consecutive pulses [ns]."""
-    tau_max: int
-    """Final fixed delay between consecutive pulses [ns]."""
-    tau_step: int
-    """Step of the fixed delay between consecutive pulses [ns]."""
-    min_number_pulses: int = 1
-    """Minimum number of CPMG pulses swept for each ``tau``.
-
-    ``1`` corresponds to a spin-echo sequence.
-    """
     max_duration: int | None = None
     """Maximum total free evolution time ``n * tau`` [ns] explored for each ``tau``.
-
-    If ``None`` it is set to ``min_number_pulses * tau_max``, so that even the
-    largest ``tau`` is sampled with at least ``min_number_pulses`` points.
     """
-    n_step: int = 1
-    """Step in the number of CPMG pulses ``n`` swept for each ``tau``."""
-    unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
-    Defaults to ``False``."""
+    min_number_pulses: int = 1
+    """Minimum number of CPMG pulses swept for each ``tau``. ``1`` corresponds to a spin-echo sequence.
+    """
+    max_points_per_tau: int = 20
+    """Maximum number of distinct sequences (number of pulses values) swept for each ``tau``.
 
+    The step in the number of pulses ``n`` is chosen adaptively, for each ``tau``, so that at most this many points are sampled between
+    ``min_number_pulses`` and the maximum number of pulses allowed by ``max_duration``. 
+    """
+
+    unrolling: bool = True
+    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
+    """
+
+    @property
+    def _max_duration(self) -> int:
+        """Coerced maximum total free evolution time ``n * tau`` [ns] explored for each ``tau``."""
+        return (
+            self.max_duration
+            if self.max_duration is not None
+            else self.min_number_pulses * self.delay_between_pulses_end
+        )
 
 @dataclass
 class CpmgSpectroscopyResults(Results):
@@ -92,21 +96,30 @@ def _acquisition(
     """Data acquisition for CpmgSpectroscopy.
 
     For each fixed inter-pulse delay ``tau`` (outer loop) the number of CPMG
-    pulses ``n`` is swept (inner loop), so that the total free evolution time
-    ``t = n * tau`` plays the role of the time axis of a coherence decay
-    filtered at the CPMG passband centered at that ``tau``. Fitting this
-    decay for every ``tau`` provides ``T2`` as a function of the CPMG filter
-    frequency, i.e. a coherence "spectroscopy".
+    pulses ``n`` is swept (inner loop). The time axis used to fit ``T2`` is
+    the actual elapsed time of the sequence
+
+        ``t = n * (tau + RY.duration) + 2 * RX90.duration``,
+
+    i.e. it includes the duration of the CPMG (RY) and boundary (RX90)
+    pulses, not just the waits. This plays the role of the time axis of a
+    coherence decay filtered at the CPMG passband centered at that ``tau``.
+    Fitting this decay for every ``tau`` provides ``T2`` as a function of the
+    CPMG filter frequency, i.e. a coherence "spectroscopy".
     """
     data = CpmgSpectroscopyData()
 
-    max_duration = (
-        params.max_duration
-        if params.max_duration is not None
-        else params.min_number_pulses * params.tau_max
-    )
+    tau_range = np.arange(params.delay_between_pulses_start, params.delay_between_pulses_end, params.delay_between_pulses_step)
 
-    tau_range = np.arange(params.tau_min, params.tau_max, params.tau_step)
+    # durations of the boundary RX90 pulses and of the CPMG (RY) pulses, used
+    # to convert the number of pulses ``n`` into the actual elapsed time of
+    # the sequence, including the pulses themselves and not just the waits.
+    rx90_duration = {}
+    ry_duration = {}
+    for qubit in targets:
+        natives: SingleQubitNatives = platform.natives.single_qubit[qubit]
+        rx90_duration[qubit] = natives.R(theta=np.pi / 2).duration
+        ry_duration[qubit] = natives.R(phi=np.pi / 2).duration
 
     options = dict(
         nshots=params.nshots,
@@ -116,26 +129,30 @@ def _acquisition(
     )
 
     for tau in tau_range:
-        n_max = int(max_duration // tau)
+        n_max = int(params._max_duration // (tau + ry_duration[targets[0]]))  # conservative estimate using the first target qubit)
         if n_max < params.min_number_pulses:
             n_values = np.array([params.min_number_pulses])
         else:
+            span = n_max - params.min_number_pulses + 1
+            step = max(1, int(np.ceil(span / params.max_points_per_tau)))
             n_values = np.arange(
-                params.min_number_pulses, n_max + 1, params.n_step
-            )
+                params.min_number_pulses, n_max + 1, step
+            ).astype(int)
 
         sequences = []
-        all_ro_pulses = []
+        delays = []
+        ro_pulses = []
         for n in n_values:
-            sequence, _ = dynamical_decoupling_sequence(
-                platform, targets, wait=tau / 2, n=int(n), kind="CPMG"
+            _sequence, _delays = dynamical_decoupling_sequence(
+                platform, targets, wait=tau / 2, n=n, kind="CPMG"
             )
-            ro_pulses = {
-                qubit: list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+            _ro_pulses = {
+                qubit: list(_sequence.channel(platform.qubits[qubit].acquisition))[-1]
                 for qubit in targets
             }
-            sequences.append(sequence)
-            all_ro_pulses.append(ro_pulses)
+            delays.append(_delays)
+            sequences.append(_sequence)
+            ro_pulses.append(_ro_pulses)
 
         if params.unrolling:
             results = platform.execute(sequences, **options)
@@ -144,16 +161,21 @@ def _acquisition(
             for sequence in sequences:
                 results.update(platform.execute([sequence], **options))
 
-        for n, ro_pulses in zip(n_values, all_ro_pulses):
+        for n, _ro_pulses in zip(n_values, ro_pulses):
             for qubit in targets:
-                prob = probability(results[ro_pulses[qubit].id], state=1)
+                prob = probability(results[_ro_pulses[qubit].id], state=1)
                 error = np.sqrt(prob * (1 - prob) / params.nshots)
                 data.register_qubit(
                     CpmgSpectroscopyType,
                     (qubit, float(tau)),
                     dict(
                         n=np.array([n]),
-                        wait=np.array([n * tau]),
+                        wait=np.array(
+                            [
+                                n * (tau + ry_duration[qubit])
+                                + 2 * rx90_duration[qubit]
+                            ]
+                        ),
                         prob=np.array([prob]),
                         error=np.array([error]),
                     ),
@@ -181,7 +203,10 @@ def _fit(data: CpmgSpectroscopyData) -> CpmgSpectroscopyResults:
             )
         except Exception as e:
             log.warning(f"Exponential decay fit failed for {key} due to {e}")
-
+            t2s[key] = [np.nan, np.nan]
+            fitted_parameters[key] = [np.nan, np.nan, np.nan]
+            pcovs[key] = np.full((3, 3), np.nan)
+            chi2[key] = (np.nan, np.nan)
     return CpmgSpectroscopyResults(t2s, fitted_parameters, pcovs, chi2)
 
 
@@ -199,13 +224,21 @@ def _plot(
         order = np.argsort(qubit_data.wait)
         waits = qubit_data.wait[order]
         probs = qubit_data.prob[order]
+        ns = qubit_data.n[order]
 
         decay_fig.add_trace(
             go.Scatter(
                 x=waits,
                 y=probs,
-                mode="markers+lines",
+                mode="markers",
                 name=f"tau = {tau:.0f} ns",
+                line=go.scatter.Line(dash="dot"),
+                customdata=ns,
+                hovertemplate=(
+                    "t = %{x:.0f} ns<br>"
+                    "P(1) = %{y:.3f}<br>"
+                    "n = %{customdata:.0f}<extra></extra>"
+                ),
             ),
         )
 
@@ -224,7 +257,7 @@ def _plot(
 
     decay_fig.update_layout(
         showlegend=True,
-        xaxis_title="Total free evolution time n * tau [ns]",
+        xaxis_title="Total sequence duration [ns]",
         yaxis_title="Probability of State 1",
     )
 
