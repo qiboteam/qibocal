@@ -311,6 +311,8 @@ class StandardRBResult(Results):
 
     fidelity: dict[QubitId, float]
     """The overall fidelity of this qubit."""
+    infidelity: dict[QubitId, float]
+    """The overall infidelity of this qubit."""
     pulse_fidelity: dict[QubitId, float]
     """The pulse fidelity of the gates acting on this qubit."""
     fit_parameters: dict[QubitId, list[float]]
