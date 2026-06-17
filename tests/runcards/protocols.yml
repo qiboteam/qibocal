@@ -577,6 +577,16 @@ actions:
       nshots: 10
       n: 4
 
+  - id: CPMG spectroscopy
+    operation: cpmg_spectroscopy
+    parameters:
+      delay_between_pulses_start: 40
+      delay_between_pulses_end: 80
+      delay_between_pulses_step: 20
+      min_number_pulses: 1
+      max_duration: 2000
+      nshots: 10
+
   - id: spin_echo_signal
     operation: spin_echo_signal
     parameters:

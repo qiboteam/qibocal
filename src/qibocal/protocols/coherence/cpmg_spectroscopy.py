@@ -61,6 +61,11 @@ class CpmgSpectroscopyResults(Results):
     chi2: dict[tuple[QubitId, int], tuple[float, float | None]]
     """Chi squared estimate mean value and error."""
 
+    def __contains__(self, target: QubitId) -> bool:
+        """Check if a qubit has been fitted for at least one ``tau``.
+        """
+        return any(key[0] == target for key in self.t2)
+
 
 CpmgSpectroscopyType = np.dtype(
     [
@@ -100,20 +105,10 @@ def _acquisition(
     the actual elapsed time of the sequence
 
         ``t = n * (tau + RY.duration) + 2 * RX90.duration``,
-
-    i.e. it includes the duration of the CPMG (RY) and boundary (RX90)
-    pulses, not just the waits. This plays the role of the time axis of a
-    coherence decay filtered at the CPMG passband centered at that ``tau``.
-    Fitting this decay for every ``tau`` provides ``T2`` as a function of the
-    CPMG filter frequency, i.e. a coherence "spectroscopy".
     """
     data = CpmgSpectroscopyData()
 
     tau_range = np.arange(params.delay_between_pulses_start, params.delay_between_pulses_end, params.delay_between_pulses_step)
-
-    # durations of the boundary RX90 pulses and of the CPMG (RY) pulses, used
-    # to convert the number of pulses ``n`` into the actual elapsed time of
-    # the sequence, including the pulses themselves and not just the waits.
     rx90_duration = {}
     ry_duration = {}
     for qubit in targets:
@@ -180,7 +175,6 @@ def _acquisition(
                         error=np.array([error]),
                     ),
                 )
-
     return data
 
 

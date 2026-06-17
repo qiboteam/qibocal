@@ -24,6 +24,7 @@ In this section we introduce the basics of all protocols supported by ``qibocal`
     t2/t2
     t2_echo/t2_echo
     cpmg/cpmg
+    cpmg/cpmg_spectroscopy
     flux/single
     flux/crosstalk
     flux/flux_amplitude
