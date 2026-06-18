@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
+import plotly.express as px
 import plotly.graph_objects as go
 from qibocal.protocols.coherence.spin_echo import SpinEchoParameters
 from qibolab import AcquisitionType, AveragingMode
@@ -11,6 +12,8 @@ from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.result import probability
+from qibolab import Delay, Platform, PulseSequence
+from sympy import sequence
 
 from ..utils import table_dict, table_html
 from .utils import dynamical_decoupling_sequence, exp_decay, single_exponential_fit
@@ -82,7 +85,7 @@ CpmgSpectroscopyType = np.dtype(
 class CpmgSpectroscopyData(Data):
     """CpmgSpectroscopy acquisition outputs."""
 
-    data: dict[tuple[QubitId, int], npt.NDArray[CpmgSpectroscopyType]] = field(
+    data: dict[tuple[QubitId, int]] = field(
         default_factory=dict
     )
     """Raw data acquired, keyed by ``(qubit, tau)``."""
@@ -91,6 +94,7 @@ class CpmgSpectroscopyData(Data):
     def taus(self):
         """Access tau values from data structure."""
         return np.unique([key[1] for key in self.data])
+
 
 
 def _acquisition(
@@ -196,10 +200,10 @@ def _fit(data: CpmgSpectroscopyData) -> CpmgSpectroscopyResults:
                 )
             )
         except Exception as e:
-            log.warning(f"Exponential decay fit failed for {key} due to {e}")
+            log.warning(f"Exponential decay fit failed for {key}. {e}")
             t2s[key] = [np.nan, np.nan]
             fitted_parameters[key] = [np.nan, np.nan, np.nan]
-            pcovs[key] = np.full((3, 3), np.nan)
+            pcovs[key] = np.full((3, 3), np.nan).tolist()
             chi2[key] = (np.nan, np.nan)
     return CpmgSpectroscopyResults(t2s, fitted_parameters, pcovs, chi2)
 
@@ -212,8 +216,11 @@ def _plot(
     fitting_report = ""
     taus = data.taus
 
+    colors = px.colors.qualitative.Plotly
+
     decay_fig = go.Figure()
-    for tau in taus:
+    for i, tau in enumerate(taus):
+        color = colors[i % len(colors)]
         qubit_data = data[target, tau]
         order = np.argsort(qubit_data.wait)
         waits = qubit_data.wait[order]
@@ -226,7 +233,8 @@ def _plot(
                 y=probs,
                 mode="markers",
                 name=f"tau = {tau:.0f} ns",
-                line=go.scatter.Line(dash="dot"),
+                legendgroup=f"tau{tau}",
+                marker=dict(color=color),
                 customdata=ns,
                 hovertemplate=(
                     "t = %{x:.0f} ns<br>"
@@ -243,8 +251,10 @@ def _plot(
                 go.Scatter(
                     x=waitrange,
                     y=exp_decay(waitrange, *fit_params),
-                    name=f"Fit tau = {tau:.0f} ns",
-                    line=go.scatter.Line(dash="dot"),
+                    name=f"tau = {tau:.0f} ns",
+                    legendgroup=f"tau{tau}",
+                    mode="lines",
+                    line=go.scatter.Line(dash="solid", color=color),
                     showlegend=False,
                 ),
             )
