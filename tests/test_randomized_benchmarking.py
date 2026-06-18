@@ -3,10 +3,11 @@ from functools import reduce
 import numpy as np
 import pytest
 
-from qibocal.protocols.randomized_benchmarking import fitting
+from qibocal.protocols.randomized_benchmarking import fitting, standard_rb
 from qibocal.protocols.randomized_benchmarking.dict_utils import load_inverse_cliffords
 from qibocal.protocols.randomized_benchmarking.utils import (
     RBGenerator,
+    _generate_indexed_circuits,
     generate_inv_dict_cliffords_file,
     layer_circuit,
     load_cliffords,
@@ -194,3 +195,26 @@ def test_layer_circuit_two_qubit(mocker, depth):
     circuit_gates = [g for m in circuit.queue.moments for g in m if g is not None]
     for gates in two_qubit_spy.spy_return_list:
         assert all(g in circuit_gates for g in gates)
+
+
+def test_single_qubit_circuit_generation_parallel():
+    targets = [0, 1, 2]
+    params = standard_rb.parameters_type.load(dict(depths=[1], niter=1))
+    rb_gen = RBGenerator(123)
+    circuits = _generate_indexed_circuits(params=params, rb_gen=rb_gen, targets=targets)
+    assert len(circuits) == 1
+
+    circuit = circuits[0].circuit
+    assert circuit.nqubits == len(targets)
+    assert circuit.ngates == len(targets) * 3
+
+
+def test_two_qubit_circuit_generation_parallel():
+    targets = [(0, 1), (2, 3), (4, 5)]
+    params = standard_rb.parameters_type.load(dict(depths=[1], niter=1))
+    rb_gen = RBGenerator(123, file="2qubitCliffs.json")
+    circuits = _generate_indexed_circuits(params=params, rb_gen=rb_gen, targets=targets)
+    assert len(circuits) == 1
+
+    circuit = circuits[0].circuit
+    assert circuit.nqubits == len(targets) * 2
