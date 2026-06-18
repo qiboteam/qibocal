@@ -3,7 +3,13 @@ from collections import Counter
 import numpy as np
 import pytest
 from qibo import Circuit, gates
-from qibolab import AcquisitionType, AveragingMode, create_platform
+from qibolab import (
+    Acquisition,
+    AcquisitionType,
+    AveragingMode,
+    PulseSequence,
+    create_platform,
+)
 
 from qibocal.auto.operation import QubitId
 from qibocal.auto.transpile import (
@@ -11,8 +17,10 @@ from qibocal.auto.transpile import (
     _pad_circuit,
     _string_to_integer_qubit_map,
     _transpile_circuit,
+    _validate_measurement,
     build_native_gate_compiler,
     build_native_gate_transpiler,
+    execute_circuits,
 )
 
 
@@ -87,6 +95,85 @@ def test_transpile_circuits_with_string_qubit_ids():
     expected.add(gates.X(0))
 
     assert np.all(expected.unitary() == transpiled_circuit.unitary())
+
+
+def test_execute_circuits_qubit_mapping():
+    platform = create_platform("dummy")
+    compiler = build_native_gate_compiler(platform)
+    transpiler = build_native_gate_transpiler(platform)
+
+    circuit = Circuit(2)
+    circuit.add(gates.M(*range(2)))
+
+    qubit_map = [0, 1]
+    qubit_maps = [qubit_map] * 2
+    circuits = [circuit] * 2
+
+    # No qubit mapping passed
+    with pytest.raises(AssertionError):
+        execute_circuits(
+            platform=platform,
+            compiler=compiler,
+            transpiler=transpiler,
+            circuits=[circuit],
+            nshots=20,
+        )
+
+    # Number of qubit mapping not matching number of circuits
+    with pytest.raises(AssertionError):
+        execute_circuits(
+            platform=platform,
+            compiler=compiler,
+            circuits=circuits,
+            transpiler=transpiler,
+            nshots=20,
+            qubit_maps=[qubit_map],
+        )
+    with pytest.raises(AssertionError):
+        execute_circuits(
+            platform=platform,
+            compiler=compiler,
+            transpiler=transpiler,
+            circuits=[circuit],
+            nshots=20,
+            qubit_maps=qubit_maps,
+        )
+
+    # qubit_maps and qubit_map being passed to exec call
+    with pytest.raises(AssertionError):
+        execute_circuits(
+            platform=platform,
+            compiler=compiler,
+            circuits=circuits,
+            transpiler=transpiler,
+            nshots=20,
+            qubit_maps=qubit_maps,
+            qubit_map=qubit_maps,
+        )
+
+    execute_circuits(
+        platform=platform,
+        compiler=compiler,
+        circuits=circuits,
+        transpiler=transpiler,
+        nshots=20,
+        qubit_maps=qubit_maps,
+    )
+
+
+def test_measurement_validation():
+    meas = gates.M(0)
+    acq = Acquisition(duration=20)
+    seq = PulseSequence([("0/acq", acq)])
+    readout = {acq.id: np.zeros(20)}
+
+    with pytest.raises(
+        KeyError, match=f"Acquisition ID {acq.id} not found in readout results."
+    ):
+        _validate_measurement(meas, seq, {})
+
+    with pytest.raises(AssertionError):
+        _validate_measurement(gates.M(*range(2)), seq, readout)
 
 
 def test_execute_circuits_single_shot():

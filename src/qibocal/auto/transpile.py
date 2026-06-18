@@ -288,8 +288,6 @@ def execute_circuits(
             )
             for circuit, qmap in zip(circuits, qubit_maps)
         ]
-    else:
-        raise ValueError("Qubit mapping required")
 
     return _execute_circuits(
         platform,
