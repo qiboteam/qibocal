@@ -237,7 +237,7 @@ def _acquisition(
     # TODO: Optimize by directly using Cluster._channels_by_module to assign
     # one sequencer per output port instead of calling configure(). This would
     # allow sequential calibration of individual channel mixers.
-    seq_map, _ = cluster.configure(
+    seq_map, _ = cluster._configure_sequencers(
         configs=configs,
     )
 
