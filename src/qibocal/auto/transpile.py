@@ -47,7 +47,8 @@ def _pad_circuit(nqubits: int, circuit: Circuit, qubit_map: list[int]) -> Circui
     Args:
         nqubits: The total number of qubits in the new circuit.
         circuit: The original quantum circuit to be padded.
-        qubit_map: A list mapping physical qubits to logical qubits in the new circuit.
+        qubit_map: A list mapping the logical qubits in the original circuit to the
+            logical qubits in the padded circuit.
 
     Returns:
         A Circuit instance with `nqubits` qubits, containing the original circuit's
@@ -68,15 +69,6 @@ def _transpile_circuit(
 
     Apply the `transpiler` to `circuit` and pad them in
     a circuit with the same number of qubits in the platform.
-    Before manipulating the circuit, this function check that the
-    `qubit_map` contain string ids and in the positive case it
-    remap them in integers, following the ids order provided by the
-    platform.
-
-    .. note::
-
-        In this function we are implicitly assume that the qubit ids
-        are all string or all integers.
 
     Returns:
         Transpiled and padded circuit instance.
@@ -105,6 +97,18 @@ def _resolve_results_mapping_singleshot(
     readout: dict[PulseId, Result],
     measurement_map: dict[gates.M, PulseSequence],
 ) -> ResultMap:
+    """
+    Iterates across the requested measurements and fetches the corresponding results as a count of states.
+    If a multi-qubit measurement is requested, reconcile the results per shot into a multi-qubit state count.
+
+    Args:
+        platform_qubit_map: A list where the indices are logical qubit indices and the values are physical qubit IDs.
+        readout: Results from circuit execution.
+        measurement_map: Map of measurement registers to measurement pulse sequences for the current circuit.
+
+    Returns:
+        A dictionary mapping the physical qubit IDs measured to an array of state counters for the current circuit.
+    """
 
     measurements: ResultMap = defaultdict(list)
     for measure, sequence in measurement_map.items():
@@ -132,6 +136,18 @@ def _resolve_results_mapping_averaged(
     measurement_map: dict[gates.M, PulseSequence],
     nshots: int,
 ) -> ResultMap:
+    """
+    Iterates across the requested measurements and fetches the corresponding results as a count of states.
+
+    Args:
+        platform_qubit_map: A list where the indices are logical qubit indices and the values are physical qubit IDs.
+        readout: Results from circuit execution.
+        measurement_map: Map of measurement registers to measurement pulse sequences for the current circuit.
+        nshots: Number of shots requested.
+
+    Returns:
+        A dictionary mapping the physical qubit IDs measured to an array of state counters for the current circuit.
+    """
 
     measurements: ResultMap = defaultdict(list)
     for measure, sequence in measurement_map.items():
@@ -216,7 +232,8 @@ def execute_circuits(
 ) -> list[ResultMap]:
     """Execute multiple quantum circuits.
 
-    Combines :func:`transpile_circuits` and :func:`execute_circuits` into a single call.
+    The circuits are first padded to fit the number of qubits in the platform
+    and rearranged according to the qubit mapping before being transpiled and executed.
 
     Args:
         circuits: List of quantum circuits to transpile and execute.
@@ -239,27 +256,28 @@ def execute_circuits(
         from qibo import Circuit, gates
         from qibolab import create_platform
         from qibocal.auto.transpile import (
-            dummy_transpiler,
-            set_compiler,
+            build_native_gate_compiler,
+            build_native_gate_transpiler,
             execute_circuits,
         )
 
         platform = create_platform("dummy")
-        transpiler = dummy_transpiler(platform)
-        compiler = set_compiler(platform)
+        transpiler = build_native_gate_transpiler(platform)
+        compiler = build_native_gate_compiler(platform)
 
         circuit = Circuit(1)
         circuit.add(gates.M(0))
 
         qubit = next(iter(platform.qubits))
-        [counts] = execute_circuits(
+        [results] = execute_circuits(
             circuits=[circuit],
-            qubit_maps=[[qubit]],
+            qubit_map=[qubit],
             platform=platform,
             transpiler=transpiler,
             compiler=compiler,
             nshots=100,
         )
+        [counts] = results[qubit]
 
         assert sum(counts.values()) == 100
     """
