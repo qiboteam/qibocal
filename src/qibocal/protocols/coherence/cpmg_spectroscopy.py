@@ -64,7 +64,7 @@ class CpmgSpectroscopyResults(Results):
     def __contains__(self, target: QubitId) -> bool:
         """Check if a qubit has been fitted for at least one ``tau``.
         """
-        return any(key[0] == target for key in self.t2)
+        return all(target in key for key in self.t2)
 
 
 CpmgSpectroscopyType = np.dtype(
