@@ -95,6 +95,7 @@ actions:
       bias_width: 0.2
       bias_step:  0.005
       drive_amplitude: 0.5
+      drive_duration: 2000
       nshots: 1024
       relaxation_time: 2000
 
@@ -110,6 +111,7 @@ actions:
       bias_width: 0.2
       bias_step:  0.005
       drive_amplitude: 0.5
+      drive_duration: 2000
       flux_qubits: [1]
       nshots: 1024
       relaxation_time: 2000

@@ -1,6 +1,7 @@
 import pathlib
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
+from itertools import chain
 from numbers import Number
 from typing import Union
 
@@ -27,23 +28,22 @@ from qibocal.protocols.randomized_benchmarking.dict_utils import (
     load_cliffords,
     separator,
 )
-from qibocal.protocols.utils import significant_digit
+from qibocal.protocols.utils import marginalize_qubit_counts, significant_digit
 
 from .fitting import fit_exp1B_func
 
 
 class CircuitIndex(BaseModel):
-    """Tracks the (qubit, depth, iteration) CircuitIndex of a circuit."""
+    """Tracks the (depth, iteration) CircuitIndex of a circuit."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    qubit: QubitId | QubitPairId
     depth: int
     iteration: int
 
 
 class IndexedCircuit(BaseModel):
-    """A circuit paired with its (qubit, depth, iteration) CircuitIndex."""
+    """A circuit paired with its (depth, iteration) CircuitIndex."""
 
     # arbitrary_types_allowed is needed to allow the Circuit type to be a field.
     model_config = ConfigDict(frozen=True, extra="forbid", arbitrary_types_allowed=True)
@@ -53,7 +53,7 @@ class IndexedCircuit(BaseModel):
 
 
 class IndexedResult(BaseModel):
-    """An execution result paired with its (qubit, depth, iteration) CircuitIndex."""
+    """An execution result paired with its (depth, iteration) CircuitIndex."""
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
@@ -359,7 +359,7 @@ def setup_data(
 def _generate_indexed_circuits(
     params: Parameters,
     rb_gen: RBGenerator,
-    targets,  # list[QubitId] or list[QubitPairId]
+    targets: list[QubitId] | list[QubitPairId],
     inverse_layer: bool = True,
     interleave: str | None = None,
 ) -> list[IndexedCircuit]:
@@ -380,16 +380,31 @@ def _generate_indexed_circuits(
 
     inv_file = getattr(params, "file_inv", None)
 
-    for target in targets:
-        for iteration in range(params.niter):
-            for depth in params.depths:
+    assert len(targets) > 0
+    two_qubit = isinstance(targets[0], tuple)
+    nqubits = len(targets) * (2 if two_qubit else 1)
+
+    target_id_map = {
+        target: (idx * 2, idx * 2 + 1) if two_qubit else (idx,)
+        # Reverse assignment for little-endianess resolution
+        for idx, target in enumerate(reversed(targets))
+    }
+
+    for iteration in range(params.niter):
+        for depth in params.depths:
+            full_circuit = Circuit(nqubits)
+            for target in targets:
                 circuit = layer_circuit(rb_gen, depth, target, interleave)
                 if inverse_layer:
                     add_inverse_layer(circuit, rb_gen, inv_file)
-                add_measurement_layer(circuit)
+                full_circuit.add(circuit.on_qubits(*target_id_map[target]))
 
-                index = CircuitIndex(qubit=target, depth=depth, iteration=iteration)
-                indexed_circuits.append(IndexedCircuit(circuit=circuit, index=index))
+            add_measurement_layer(full_circuit)
+            index = CircuitIndex(
+                depth=depth,
+                iteration=iteration,
+            )
+            indexed_circuits.append(IndexedCircuit(circuit=full_circuit, index=index))
 
     return indexed_circuits
 
@@ -398,28 +413,24 @@ def _execute_indexed_circuits(
     indexed_circuits: list[IndexedCircuit],
     params: Parameters,
     platform: CalibrationPlatform,
+    qubit_map: list[QubitId],
     averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
 ) -> list[IndexedResult]:
     """Execute indexed circuits and return results paired with their indices.
 
     Args:
         indexed_circuits: List of IndexedCircuit objects to execute.
-        targets: List of target qubit IDs.
         params: Experiment parameters.
         platform: CalibrationPlatform to execute on.
+        qubit_map: List of physical qubit IDs.
 
     Returns:
         List of IndexedResult objects with execution results paired with their indices.
     """
 
-    qubit_maps = []
+    qubit_maps = [qubit_map] * len(indexed_circuits)
     circuits = []
     for indexed_circuit in indexed_circuits:
-        qubit = indexed_circuit.index.qubit
-        if isinstance(qubit, (list, tuple)):  # Multi-qubit
-            qubit_maps.append(list(qubit))
-        else:  # Single-qubit
-            qubit_maps.append([qubit])
         circuits.append(indexed_circuit.circuit)
 
     transpiler = build_native_gate_transpiler(platform)
@@ -481,19 +492,22 @@ def rb_acquisition(
         indexed_circuits=indexed_circuits,
         params=params,
         platform=platform,
-        averaging_mode=AveragingMode.CYCLIC,
+        qubit_map=targets,
+        averaging_mode=AveragingMode.CYCLIC
+        if len(targets) == 1
+        else AveragingMode.SINGLESHOT,
     )
 
     # Create a dict of the form {(qubit, depth): list[result]}.
     # This marginalises over the iterations for a given (qubit, depth)
     grouped: defaultdict = defaultdict(list)
     for indexed_result in indexed_results:
-        key = (indexed_result.index.qubit, indexed_result.index.depth)
-        survival_counts = (
-            indexed_result.result["0"] if inverse_layer else indexed_result.result["1"]
-        )
-        survival_prob = survival_counts / params.nshots
-        grouped[key].append(survival_prob)
+        for qubit_id, target in enumerate(targets):
+            result = marginalize_qubit_counts(indexed_result.result, qubit_id)
+            key = (target, indexed_result.index.depth)
+            survival_counts = result["0"] if inverse_layer else result["1"]
+            survival_prob = survival_counts / params.nshots
+            grouped[key].append(survival_prob)
 
     for (qubit, depth), results in grouped.items():
         data.register_qubit(
@@ -546,22 +560,23 @@ def twoq_rb_acquisition(
         indexed_circuits=indexed_circuits,
         params=params,
         platform=platform,
+        qubit_map=list(chain.from_iterable(targets)),
     )
 
     # Create a dict of the form {(qubit[0], qubit[1], depth): list[result]}.
     # This marginalises over the iterations for a given (qubit_pair, depth)
     grouped: defaultdict = defaultdict(list)
     for indexed_result in indexed_results:
-        qubit_pair = indexed_result.index.qubit
-        assert isinstance(qubit_pair, tuple)
-        key = (qubit_pair[0], qubit_pair[1], indexed_result.index.depth)
-        survival_counts = (
-            indexed_result.result["00"]
-            if inverse_layer
-            else indexed_result.result["11"]
-        )
-        survival_prob = survival_counts / params.nshots
-        grouped[key].append(survival_prob)
+        for pair_id, qubit_pair in enumerate(targets):
+            partial_result = marginalize_qubit_counts(
+                indexed_result.result, [pair_id * 2, pair_id * 2 + 1]
+            )
+            key = (qubit_pair[0], qubit_pair[1], indexed_result.index.depth)
+            survival_counts = (
+                partial_result["00"] if inverse_layer else partial_result["11"]
+            )
+            survival_prob = survival_counts / params.nshots
+            grouped[key].append(survival_prob)
 
     for (qubit0, qubit1, depth), results in grouped.items():
         data.register_qubit(

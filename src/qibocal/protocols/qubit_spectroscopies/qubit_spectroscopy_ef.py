@@ -151,13 +151,6 @@ def _acquisition(
 
         signal = magnitude(result)
         _phase = phase(result)
-        if len(signal.shape) > 1:
-            error_signal = np.std(signal, axis=0, ddof=1) / np.sqrt(signal.shape[0])
-            signal = np.mean(signal, axis=0)
-            error_phase = np.std(_phase, axis=0, ddof=1) / np.sqrt(_phase.shape[0])
-            _phase = np.mean(_phase, axis=0)
-        else:
-            error_signal, error_phase = None, None
 
         data.register_qubit(
             ResSpecType,
@@ -166,8 +159,6 @@ def _acquisition(
                 signal=signal,
                 phase=_phase,
                 freq=delta_frequency_range + f0,
-                error_signal=error_signal,
-                error_phase=error_phase,
             ),
         )
     return data
@@ -178,44 +169,23 @@ def _plot(
 ):
     """Plotting function for QubitSpectroscopy."""
     figures, report = spectroscopy_plot(data, target, fit)
-    show_error_bars = not np.isnan(data[target].error_signal).any()
     if fit is not None:
-        if show_error_bars:
-            report = table_html(
-                table_dict(
-                    target,
-                    [
-                        "Frequency 1->2 [Hz]",
-                        "Amplitude [a.u.]",
-                        "Anharmonicity [Hz]",
-                        "Chi2",
-                    ],
-                    [
-                        (fit.frequency[target], fit.error_fit_pars[target][1]),
-                        (fit.amplitude[target], fit.error_fit_pars[target][0]),
-                        (fit.anharmonicity[target], fit.error_fit_pars[target][2]),
-                        fit.chi2_reduced[target],
-                    ],
-                    display_error=True,
-                )
+        report = table_html(
+            table_dict(
+                target,
+                [
+                    "Frequency 1->2 [Hz]",
+                    "Amplitude [a.u.]",
+                    "Anharmonicity [Hz]",
+                ],
+                [
+                    fit.frequency[target],
+                    fit.amplitude[target],
+                    fit.anharmonicity[target],
+                ],
+                display_error=False,
             )
-        else:
-            report = table_html(
-                table_dict(
-                    target,
-                    [
-                        "Frequency 1->2 [Hz]",
-                        "Amplitude [a.u.]",
-                        "Anharmonicity [Hz]",
-                    ],
-                    [
-                        fit.frequency[target],
-                        fit.amplitude[target],
-                        fit.anharmonicity[target],
-                    ],
-                    display_error=False,
-                )
-            )
+        )
 
     return figures, report
 
