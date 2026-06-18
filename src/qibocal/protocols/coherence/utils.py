@@ -60,18 +60,20 @@ def dynamical_decoupling_sequence(
         }
 
         sequence += _pulse_factory["rx90"]
-        sequence.append((qd_channel, Delay(duration=_pulse_factory["rx90"].duration)))
+        sequence.append((ro_channel, Delay(duration=_pulse_factory["rx90"].duration)))
 
         for _ in range(n):
             sequence.append((qd_channel, _pulse_factory["wait"]))
             sequence.append((ro_channel, _pulse_factory["wait"]))
+
             sequence += _pulse_factory[kind]
             sequence.append((ro_channel, Delay(duration=_pulse_factory[kind].duration)))
+            
             sequence.append((qd_channel, _pulse_factory["wait"]))
             sequence.append((ro_channel, _pulse_factory["wait"]))
 
         sequence += _pulse_factory["rx90"]
-        sequence.append((qd_channel, Delay(duration=_pulse_factory["rx90"].duration)))
+        sequence.append((ro_channel, Delay(duration=_pulse_factory["rx90"].duration)))
 
         sequence.append((ro_channel, ro_pulse))
         all_delays.append(_pulse_factory["wait"])
