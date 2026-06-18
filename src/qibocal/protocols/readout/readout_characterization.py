@@ -262,10 +262,10 @@ def _plot(
             col=2,
         )
 
-        fig.update_xaxes(title_text="Measured state", row=1, col=1)
-        fig.update_xaxes(title_text="Measured state", row=1, col=2)
-        fig.update_yaxes(title_text="Prepared state", row=1, col=1)
-        fig.update_yaxes(title_text="Prepared state", row=1, col=2)
+        fig.update_yaxes(title_text="Measured state", row=1, col=1)
+        fig.update_yaxes(title_text="Measured state", row=1, col=2)
+        fig.update_xaxes(title_text="Prepared state", row=1, col=1)
+        fig.update_xaxes(title_text="Prepared state", row=1, col=2)
 
         figures.append(fig)
 
