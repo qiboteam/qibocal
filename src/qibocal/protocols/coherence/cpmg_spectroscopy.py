@@ -1,24 +1,25 @@
 from dataclasses import dataclass, field
 
 import numpy as np
-import numpy.typing as npt
-import plotly.express as px
 import plotly.graph_objects as go
 from qibocal.protocols.coherence.spin_echo import SpinEchoParameters
 from qibolab import AcquisitionType, AveragingMode
 from qibolab._core.native import SingleQubitNatives
+from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.result import probability
-from qibolab import Delay, Platform, PulseSequence
-from sympy import sequence
 
 from ..utils import table_dict, table_html
-from .utils import dynamical_decoupling_sequence, exp_decay, single_exponential_fit
+from .utils import dynamical_decoupling_sequence, single_exponential_fit
 
 __all__ = ["cpmg_spectroscopy"]
+
+MAX_GATES = 4096
+"""Maximum number of pulses/delays that fit in a single QCM module, bounding how
+many sequences can be unrolled into a single instrument call."""
 
 KAPPA_GUESS = 0.25
 """Initial guess for the cavity decay rate ``kappa`` [MHz] (typical readout linewidth ~250 kHz)."""
@@ -125,15 +126,23 @@ def _acquisition(
 ) -> CpmgSpectroscopyData:
     """Data acquisition for CpmgSpectroscopy.
 
-    For each fixed inter-pulse delay ``tau`` (outer loop) the number of CPMG
-    pulses ``n`` is swept (inner loop). The time axis used to fit ``T2`` is
-    the actual elapsed time of the sequence
+    For each inter-pulse delay ``tau`` the number of CPMG pulses ``n`` is swept
+    so that the total free evolution time spans ``max_duration`` independently
+    of ``tau``. All sequences, across every ``tau`` and ``n``, are built upfront
+    and then, when unrolling, grouped into batches that stay within
+    ``MAX_GATES`` pulses, since a single unrolled instrument call is limited by
+    the QCM module's memory. The time axis used to fit ``T2`` is the actual
+    elapsed time of the sequence
 
         ``t = n * (tau + RY.duration) + 2 * RX90.duration``,
     """
     data = CpmgSpectroscopyData()
 
-    tau_range = np.arange(params.delay_between_pulses_start, params.delay_between_pulses_end, params.delay_between_pulses_step)
+    tau_range = np.arange(
+        params.delay_between_pulses_start,
+        params.delay_between_pulses_end,
+        params.delay_between_pulses_step,
+    )
     rx90_duration = {}
     ry_duration = {}
     for qubit in targets:
@@ -148,8 +157,12 @@ def _acquisition(
         averaging_mode=AveragingMode.SINGLESHOT,
     )
 
+    sequences = []
+    ro_pulses = []
+    taus_per_sequence = []
+    n_per_sequence = []
     for tau in tau_range:
-        n_max = int(params._max_duration // (tau + ry_duration[targets[0]]))  # conservative estimate using the first target qubit)
+        n_max = int(params._max_duration // (tau + ry_duration[targets[0]]))
         if n_max < params.min_number_pulses:
             n_values = np.array([params.min_number_pulses])
         else:
@@ -159,47 +172,71 @@ def _acquisition(
                 params.min_number_pulses, n_max + 1, step
             ).astype(int)
 
-        sequences = []
-        delays = []
-        ro_pulses = []
         for n in n_values:
-            _sequence, _delays = dynamical_decoupling_sequence(
+            _sequence, _ = dynamical_decoupling_sequence(
                 platform, targets, wait=tau / 2, n=n, kind="CPMG"
             )
             _ro_pulses = {
                 qubit: list(_sequence.channel(platform.qubits[qubit].acquisition))[-1]
                 for qubit in targets
             }
-            delays.append(_delays)
             sequences.append(_sequence)
             ro_pulses.append(_ro_pulses)
+            taus_per_sequence.append(tau)
+            n_per_sequence.append(n)
 
-        if params.unrolling:
-            results = platform.execute(sequences, **options)
-        else:
-            results = {}
-            for sequence in sequences:
-                results.update(platform.execute([sequence], **options))
+    total_n = sum(n_per_sequence)
+    cumulative_n = 0
 
-        for n, _ro_pulses in zip(n_values, ro_pulses):
-            for qubit in targets:
-                prob = probability(results[_ro_pulses[qubit].id], state=1)
-                error = np.sqrt(prob * (1 - prob) / params.nshots)
-                data.register_qubit(
-                    CpmgSpectroscopyType,
-                    (qubit, float(tau)),
-                    dict(
-                        n=np.array([n]),
-                        wait=np.array(
-                            [
-                                n * (tau + ry_duration[qubit])
-                                + 2 * rx90_duration[qubit]
-                            ]
-                        ),
-                        prob=np.array([prob]),
-                        error=np.array([error]),
-                    ),
+    def _log_progress():
+        log.info(
+            f"CpmgSpectroscopy acquisition progress: "
+            f"[{'#' * int(20 * cumulative_n / total_n)}{'_' * (20 - int(20 * cumulative_n / total_n))}] {100 * cumulative_n / total_n:.1f}% ({cumulative_n}/{total_n} pulses)."
+        )
+
+    results = {}
+    if params.unrolling:
+        batch, batch_gates, batch_n = [], 0, 0
+        for sequence, n in zip(sequences, n_per_sequence):
+            if batch and batch_gates + len(sequence) > MAX_GATES:
+                results.update(platform.execute(batch, **options))
+                cumulative_n += batch_n
+                _log_progress()
+                batch, batch_gates, batch_n = [], 0, 0
+            if len(sequence) > MAX_GATES:
+                log.warning(
+                    f"Sequence with {len(sequence)} pulses exceeds MAX_GATES "
+                    f"({MAX_GATES}); sending it on its own."
                 )
+            batch.append(sequence)
+            batch_gates += len(sequence)
+            batch_n += n
+        if batch:
+            results.update(platform.execute(batch, **options))
+            cumulative_n += batch_n
+            _log_progress()
+    else:
+        for sequence, n in zip(sequences, n_per_sequence):
+            results.update(platform.execute([sequence], **options))
+            cumulative_n += n
+            _log_progress()
+
+    for tau, n, _ro_pulses in zip(taus_per_sequence, n_per_sequence, ro_pulses):
+        for qubit in targets:
+            prob = probability(results[_ro_pulses[qubit].id], state=1)
+            error = np.sqrt(prob * (1 - prob) / params.nshots)
+            data.register_qubit(
+                CpmgSpectroscopyType,
+                (qubit, float(tau)),
+                dict(
+                    n=np.array([n]),
+                    wait=np.array(
+                        [n * (tau + ry_duration[qubit]) + 2 * rx90_duration[qubit]]
+                    ),
+                    prob=np.array([prob]),
+                    error=np.array([error]),
+                ),
+            )
     return data
 
 
