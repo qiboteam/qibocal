@@ -30,43 +30,6 @@ PLATFORM_DIR = "platform"
 """Folder where platform will be dumped."""
 
 
-def _register(name: str, obj: Any) -> None:
-    """Register object as module.
-
-    With a small abuse of the Python module system, the object is registered as a
-    module, with the given `name`.
-    `name` may contain dots, cf. :attr:`Executor.name` for clarifications about their
-    meaning.
-
-    .. note::
-
-        This is mainly used to register executors, such that the protocols can be
-        bound to it through the `import` keyword, in order to construct an intuitive
-        syntax, apparently purely functional, maintaining the context in a single
-        `Executor` "global" object.
-    """
-    # prevent overwriting existing modules
-    if name in sys.modules:
-        raise ValueError(
-            f"Module '{name}' already present. "
-            "Choose a different one to avoid overwriting it."
-        )
-
-    # allow relative paths, where relative is intended respect to package root
-    root = __name__.split(".")[0]
-    qualified = importlib.util.resolve_name(name, root)
-
-    # allow to nest module in arbitrary subpackage
-    if "." in qualified:
-        parent_name, _, child_name = qualified.rpartition(".")
-        parent_module = importlib.import_module(parent_name)
-        setattr(parent_module, child_name, obj)
-
-    sys.modules[qualified] = obj
-    obj.__name__ = qualified
-    obj.__spec__ = None
-
-
 class Executor(BaseModel):
     """Execute a tasks' graph and tracks its history."""
 
@@ -85,28 +48,12 @@ class Executor(BaseModel):
 
     sources: list[ProtocolsCollection] = Field(default_factory=list)
     """Sources to extend core protocol set."""
-    name: str | None = None
-    """Symbol for the executor.
-
-    This can be used generically to distinguish the executor, but its specific use is to
-    register a module with this name in `sys.modules`.
-    They can contain dots, `.`, that are interpreted as usual by the Python module
-    system.
-
-    .. note::
-
-        As a special case, mainly used for internal purposes, names starting with `.`
-        are also allowed, and they are interpreted relative to this package (in the top
-        scope).
-    """
 
     def model_post_init(self, context: Any) -> None:
-        """Register as a module, if a name is specified."""
+        """Register protocols for execution."""
         # explicitly unused
         _ = context
 
-        if self.name is not None:
-            _register(self.name, self)
         if len(self.targets) == 0:
             object.__setattr__(self, "targets", list(self.platform.qubits))
 
@@ -212,27 +159,6 @@ class Executor(BaseModel):
 
         return wrapper
 
-    def unload(self):
-        """Unlist the executor from available modules."""
-        if self.name is not None:
-            del sys.modules[self.name]
-
-    def __del__(self):
-        """Revert constructions side-effects.
-
-        .. note::
-
-            This is to make sure that the executor is properly unregistered from
-            `sys.modules`. However, it is not reliable to be called directly, since `del
-            executor` is not guaranteed to immediately invoke this method, cf. the note
-            for :meth:`object.__del__`.
-        """
-        try:
-            self.unload()
-        except KeyError:
-            # it has been explicitly unloaded, no need to do it again
-            pass
-
     @classmethod
     def create(
         cls,
@@ -293,9 +219,6 @@ class Executor(BaseModel):
         output = Output(self.history, self.meta, self.platform)
         output.dump(self.path)
 
-        # attempt unloading
-        self.__del__()
-
     @classmethod
     @contextmanager
     def open(
@@ -340,3 +263,40 @@ class Executor(BaseModel):
         """
         self.close()
         return False
+
+
+def _register(name: str, obj: Any) -> None:
+    """Register object as module.
+
+    With a small abuse of the Python module system, the object is registered as a
+    module, with the given `name`.
+    `name` may contain dots, cf. :attr:`Executor.name` for clarifications about their
+    meaning.
+
+    .. note::
+
+        This is mainly used to register executors, such that the protocols can be
+        bound to it through the `import` keyword, in order to construct an intuitive
+        syntax, apparently purely functional, maintaining the context in a single
+        `Executor` "global" object.
+    """
+    # prevent overwriting existing modules
+    if name in sys.modules:
+        raise ValueError(
+            f"Module '{name}' already present. "
+            "Choose a different one to avoid overwriting it."
+        )
+
+    # allow relative paths, where relative is intended respect to package root
+    root = __name__.split(".")[0]
+    qualified = importlib.util.resolve_name(name, root)
+
+    # allow to nest module in arbitrary subpackage
+    if "." in qualified:
+        parent_name, _, child_name = qualified.rpartition(".")
+        parent_module = importlib.import_module(parent_name)
+        setattr(parent_module, child_name, obj)
+
+    sys.modules[qualified] = obj
+    obj.__name__ = qualified
+    obj.__spec__ = None
