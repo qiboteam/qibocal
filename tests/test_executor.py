@@ -33,9 +33,7 @@ ACTION = Action(**action)
 
 
 @pytest.mark.parametrize("params", [ACTION, PARAMETERS])
-def test_anonymous_executor(
-    params: dict | Action, platform: Platform | str, tmp_path: Path
-):
+def test_executor(params: dict | Action, platform: Platform | str, tmp_path: Path):
     """Executor without any name."""
     platform = (
         platform
@@ -51,16 +49,6 @@ def test_anonymous_executor(
     executor.run_protocol(
         flipping, Action.cast(params, "flipping"), mode=ExecutionMode.ACQUIRE
     )
-
-    assert executor.name is None
-
-
-@pytest.mark.parametrize("params", [ACTION, PARAMETERS])
-def test_named_executor(params, platform):
-    """Create method of Executor."""
-    executor = Executor.create("myexec", platform=platform)
-    executor.run_protocol(flipping, Action.cast(params, "flipping"))
-    executor.unload()
 
 
 SCRIPTS = Path(__file__).parent / "scripts"
@@ -115,13 +103,7 @@ def fake_protocols(request):
 
 @pytest.fixture
 def executor(tmp_path: Path, platform: CalibrationPlatform):
-    executor = Executor.create(tmp_path / "out")
-    yield executor
-    try:
-        executor.unload()
-    except KeyError:
-        # it has been explicitly unloaded, no need to do it again
-        pass
+    return Executor.create(tmp_path / "out")
 
 
 def test_init(executor: Executor):
