@@ -160,6 +160,7 @@ class Executor(BaseModel):
     def create(
         cls,
         path: os.PathLike,
+        targets: Targets,
         platform: CalibrationPlatform | Platform | str | None = None,
         **kwargs: Any,
     ) -> "Executor":
@@ -167,7 +168,8 @@ class Executor(BaseModel):
 
         This is a wrapper of the default constructor, which is only handling different
         platforms specification.
-        All the extra arguments in `kwargs` are then passed to the default one.
+
+        For the full set of arguments, cf. :class:`Executor`.
         """
         platform = (
             platform
@@ -184,6 +186,7 @@ class Executor(BaseModel):
             history=History(),
             platform=platform,
             path=path_,
+            targets=targets,
             meta=Metadata.generate(backend),
             **kwargs,
         )
@@ -221,19 +224,20 @@ class Executor(BaseModel):
     def open(
         cls,
         path: os.PathLike,
+        targets: Targets,
         force: bool = False,
         platform: CalibrationPlatform | str | None = None,
         update: bool | None = None,
-        targets: Targets | None = None,
         **kwargs: Any,
     ):
-        """Enter the execution context."""
+        """Enter the execution context.
+
+        For the full set of arguments, cf. :class:`Executor`.
+        """
         if update is not None:
             kwargs["update"] = update
-        if targets is not None:
-            kwargs["targets"] = targets
 
-        ex = cls.create(path=path, platform=platform, **kwargs)
+        ex = cls.create(path=path, platform=platform, targets=targets, **kwargs)
         ex.init(force)
 
         try:
