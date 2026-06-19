@@ -37,7 +37,7 @@ class Executor(BaseModel):
 
     history: History
     """The execution history, with results and exit states."""
-    targets: Targets = Field(default_factory=list)
+    targets: Targets
     """Qubits/Qubit Pairs to be calibrated."""
     platform: CalibrationPlatform
     """Qubits' platform."""
@@ -53,9 +53,6 @@ class Executor(BaseModel):
         """Register protocols for execution."""
         # explicitly unused
         _ = context
-
-        if len(self.targets) == 0:
-            object.__setattr__(self, "targets", list(self.platform.qubits))
 
         for name, protocol in self.protocols.items():
             object.__setattr__(self, name, self._wrapped_protocol(protocol, name))
