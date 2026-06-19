@@ -186,9 +186,16 @@ def _fit(data: DragTuningSimpleData) -> DragTuningSimpleResults:
                 sigma=qubit_data["error"],
             )
             fitted_parameters[qubit, setup] = popt.tolist()
-        betas_optimal[qubit] = -(
-            fitted_parameters[qubit, "YpX9"][1] - fitted_parameters[qubit, "XpY9"][1]
-        ) / (fitted_parameters[qubit, "YpX9"][0] - fitted_parameters[qubit, "XpY9"][0])
+        try:
+            betas_optimal[qubit] = -(
+                fitted_parameters[qubit, "YpX9"][1]
+                - fitted_parameters[qubit, "XpY9"][1]
+            ) / (
+                fitted_parameters[qubit, "YpX9"][0]
+                - fitted_parameters[qubit, "XpY9"][0]
+            )
+        except ZeroDivisionError:
+            pass
     return DragTuningSimpleResults(betas_optimal, fitted_parameters)
 
 
