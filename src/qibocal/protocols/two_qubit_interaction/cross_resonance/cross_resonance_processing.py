@@ -2,9 +2,7 @@ from collections.abc import Callable
 from typing import Union
 
 import numpy as np
-import plotly.graph_objects as go
 from numpy.typing import NDArray
-from plotly.subplots import make_subplots
 from scipy.optimize import (
     Bounds,
     NonlinearConstraint,
@@ -18,19 +16,13 @@ from qibocal.auto.operation import (
     QubitPairId,
 )
 from qibocal.config import log
-from qibocal.protocols.utils import (
-    angle_wrap,
-    quinn_fernandes_algorithm,
-    table_dict,
-    table_html,
-)
+from qibocal.protocols.utils import angle_wrap, quinn_fernandes_algorithm
 
 from . import fitting
 from .cr_parent_classes import (
     Basis,
     HamiltonianTerm,
     HamiltonianTomographyData,
-    HamiltonianTomographyResults,
     SetControl,
 )
 
@@ -151,23 +143,26 @@ def numerical_root_finder(
 
 
 def compute_total_expectation_value(
-    data: Union[
-        "HamiltonianTomographyCRLengthData",  # noqa: F821
-        "HamiltonianTomographyCRAmplData",  # noqa: F821
-    ],
+    data: HamiltonianTomographyData,
     pair: QubitPairId,
-) -> NDArray:
+) -> tuple[NDArray, NDArray]:
     """Given a Qubit Pair :data:`pair`=(control, target), it computes the expectation
-    values for each Pauli Basis for the target qubit.
+    values for each Pauli Basis for the target and control qubits respectively.
     """
 
-    tot_exp_vals = []
+    tot_exp_vals_target = []
+    tot_exp_vals_control = []
     for basis in Basis:
-        tot_exp_vals.append(
+        tot_exp_vals_target.append(
             data.data[pair[0], pair[1], basis, SetControl.Id].prob_target
             + data.data[pair[0], pair[1], basis, SetControl.X].prob_target
         )
-    return np.vstack(tot_exp_vals)
+        tot_exp_vals_control.append(
+            data.data[pair[0], pair[1], basis, SetControl.Id].prob_control
+            + data.data[pair[0], pair[1], basis, SetControl.X].prob_control
+        )
+
+    return np.vstack(tot_exp_vals_target), np.vstack(tot_exp_vals_control)
 
 
 def bloch_func(
@@ -193,23 +188,24 @@ def compute_bloch_vector(
     ],
     pair: QubitPairId,
     fitted_parameters: dict | None = None,
-) -> tuple[NDArray, NDArray | None]:
+) -> tuple[NDArray, NDArray | None, NDArray]:
     """For a given qubit pair :data:`pair`, it computes the Bloch vector R for each data point and
     also estimates the Bloch vector using the fitted parameters of the Hamiltonian Tomography.
     See `arXiv:1603.04821 <https://arxiv.org/abs/1603.04821>`__ for further information.
     """
 
-    bloch_exp = compute_total_expectation_value(data, pair)
-    bloch_exp = np.sqrt(np.sum((bloch_exp) ** 2, axis=0)) / 2
+    bloch_exp_targ, bloch_exp_ctrl = compute_total_expectation_value(data, pair)
+    bloch_exp_targ = np.sqrt(np.sum((bloch_exp_targ) ** 2, axis=0)) / 2
+    bloch_exp_ctrl = np.sqrt(np.sum((bloch_exp_ctrl) ** 2, axis=0)) / 2
 
-    bloch_fit = None
+    bloch_fit_targ = None
     if fitted_parameters is not None:
         times = data.data[pair[0], pair[1], Basis.Z, SetControl.Id].x
         times_range = np.linspace(min(times), max(times), 2 * len(times))
 
-        bloch_fit = bloch_func(times_range, pair, fitted_parameters)
+        bloch_fit_targ = bloch_func(times_range, pair, fitted_parameters)
 
-    return bloch_exp, bloch_fit
+    return bloch_exp_targ, bloch_fit_targ, bloch_exp_ctrl
 
 
 def estimate_cr_param(
@@ -231,7 +227,7 @@ def estimate_cr_param(
     """
 
     if all([(pair[0], pair[1], s) in fitted_parameters for s in SetControl]):
-        bloch_data, _ = compute_bloch_vector(data, pair, fitted_parameters)
+        bloch_data, _, _ = compute_bloch_vector(data, pair, fitted_parameters)
         x_range = data.data[pair[0], pair[1], Basis.Z, SetControl.Id].x
         param = numerical_root_finder(
             root_func=bloch_func,
@@ -241,7 +237,7 @@ def estimate_cr_param(
             fitted_parameters=fitted_parameters,
         )
     else:
-        bloch_data, _ = compute_bloch_vector(data, pair)
+        bloch_data, _, _ = compute_bloch_vector(data, pair)
         idx = np.argmin(bloch_data)
         param = x_range[idx]
 
@@ -723,263 +719,3 @@ def cancellation_phase_fit(
         ham_tomography_dict,
         gate_duration_dict,
     )
-
-
-def tomography_cr_plot(
-    data: HamiltonianTomographyData,
-    target: QubitPairId,
-    fit: HamiltonianTomographyResults | None = None,
-) -> tuple[list[go.Figure], str]:
-    """Generate plots for Hamiltonian tomography experiment."""
-
-    fig = make_subplots(
-        rows=4,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.05,
-        shared_xaxes=True,
-        shared_yaxes=True,
-    )
-
-    target = target if target in data.pairs else (target[1], target[0])
-    for i, basis in enumerate(Basis):
-        for setup in SetControl:
-            pair_data = data.data[target[0], target[1], basis, setup]
-            fig.add_trace(
-                go.Scatter(
-                    x=pair_data.x,
-                    y=pair_data.prob_target,
-                    name=f"Target when Control at {0 if setup is SetControl.Id else 1}",
-                    showlegend=True if basis is Basis.Z else False,
-                    legendgroup=f"Target when Control at {0 if setup is SetControl.Id else 1}",
-                    mode="markers",
-                    marker=dict(color="blue" if setup is SetControl.Id else "red"),
-                    error_y=dict(
-                        type="data",
-                        array=pair_data.error_target,
-                        visible=True,
-                    ),
-                ),
-                row=i + 1,
-                col=1,
-            )
-            if fit is not None and (*target, setup) in fit.fitted_parameters:
-                x = np.linspace(pair_data.x.min(), pair_data.x.max(), 100)
-                fig.add_trace(
-                    go.Scatter(
-                        x=x,
-                        y=getattr(fitting, f"pauli_{basis.name.lower()}_expectation")(
-                            x,
-                            wx=fit.fitted_parameters[target[0], target[1], setup][0],
-                            wy=fit.fitted_parameters[target[0], target[1], setup][1],
-                            wz=fit.fitted_parameters[target[0], target[1], setup][2],
-                            gamma=fit.fitted_parameters[target[0], target[1], setup][3],
-                        ),
-                        name=f"Simultaneous Fit of target when control at {0 if setup is SetControl.Id else 1}",
-                        showlegend=True if basis is Basis.Z else False,
-                        legendgroup=f"Simultaneous Fit target when control at {0 if setup is SetControl.Id else 1}",
-                        mode="lines",
-                        line=dict(
-                            color="green" if setup is SetControl.Id else "orange",
-                        ),
-                    ),
-                    row=i + 1,
-                    col=1,
-                )
-
-                if type(fit).__name__ == "HamiltonianTomographyCRAmplResults":
-                    fit_dict = fit.cr_amplitudes
-                    annotation = "CR gate amplitude [a.u.]"
-                else:
-                    fit_dict = fit.cr_lengths
-                    annotation = "CR gate duration [ns]"
-
-                if target in fit_dict:
-                    fig.add_vline(
-                        x=fit_dict[target],
-                        line_width=2,
-                        line_dash="dash",
-                        line_color="red",
-                        annotation_text=annotation,
-                        row=i + 1,
-                        col=1,
-                    )
-
-    if fit is not None and fit.fitted_parameters:
-        bloch_vect, bloch_fit = compute_bloch_vector(
-            data, target, fit.fitted_parameters
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=pair_data.x,
-                y=bloch_vect,
-                name="Bloch vector |R(t)|",
-                legendgroup="Bloch vector |R(t)|",
-                showlegend=True,
-                mode="markers",
-            ),
-            row=4,
-            col=1,
-        )
-
-        if bloch_fit is not None:
-            x = np.linspace(pair_data.x.min(), pair_data.x.max(), len(bloch_fit))
-            fig.add_trace(
-                go.Scatter(
-                    x=x,
-                    y=bloch_fit,
-                    name="Fitted Bloch vector |R(t)|",
-                    showlegend=True,
-                    legendgroup="Fitted Bloch vector |R(t)|",
-                    mode="lines",
-                ),
-                row=4,
-                col=1,
-            )
-
-        if type(fit).__name__ == "HamiltonianTomographyCRAmplResults":
-            fit_dict = fit.cr_amplitudes
-            annotation = "CR gate amplitude [a.u.]"
-        else:
-            fit_dict = fit.cr_lengths
-            annotation = "CR gate duration [ns]"
-
-        if target in fit_dict:
-            fig.add_vline(
-                x=fit_dict[target],
-                line_width=2,
-                line_dash="dash",
-                line_color="red",
-                annotation_text=annotation,
-                row=4,
-                col=1,
-            )
-
-    fig.update_layout(
-        yaxis1=dict(range=[-1.2, 1.2]),
-        yaxis2=dict(range=[-1.2, 1.2]),
-        yaxis3=dict(range=[-1.2, 1.2]),
-        yaxis4=dict(range=[-0.2, 1.2]),
-        height=800,
-    )
-    fig.update_yaxes(title_text="<X(t)>", row=1, col=1)
-    fig.update_yaxes(title_text="<Y(t)>", row=2, col=1)
-    fig.update_yaxes(title_text="<Z(t)>", row=3, col=1)
-    fig.update_yaxes(title_text="|R(t)|", row=4, col=1)
-
-    return [fig], ""
-
-
-def cancellation_calibration_plot(
-    data: HamiltonianTomographyData,
-    target: QubitPairId,
-    fit: HamiltonianTomographyResults | None = None,
-) -> tuple[list[go.Figure], str]:
-    """Plot calibration results for cross-resonance Hamiltonian tomography when
-    tuning cancellation pulses.
-
-    Generates plots for either amplitude or phase calibration data of cancellation pulses
-    in cross-resonance interactions. Fits effective Hamiltonian terms and visualizes the
-    results with fitted curves overlaid on experimental data.
-    """
-
-    figures = []
-    fitting_report = ""
-
-    if type(data).__name__ == "HamiltonianTomographyCANCAmplData":
-        fit_func = fitting.linear_func
-        x_title = "amplitude [a.u.]"
-        tunable_params = fit.cancellation_pulse_amplitudes[target]
-        plotting_terms = {
-            HamiltonianTerm.IX: "ampl_ix",
-            HamiltonianTerm.IY: "ampl_iy",
-        }
-
-    if type(data).__name__ == "HamiltonianTomographyCANCPhaseData":
-        fit_func = fitting.sin_func
-        x_title = "phase [rad.]"
-        tunable_params = {}
-        tunable_params["phi0"] = fit.cancellation_pulse_phases[target]["control"]
-        tunable_params["phi1"] = angle_wrap(
-            fit.cancellation_pulse_phases[target]["control"]
-            - fit.cancellation_pulse_phases[target]["target"]
-        )
-        plotting_terms = {
-            HamiltonianTerm.ZY: "phi0",
-            HamiltonianTerm.IY: "phi1",
-        }
-
-    if fit is not None:
-        for t in HamiltonianTerm:
-            eff_ham_term = []
-            exp_sweeper = []
-            for f in fit.hamiltonian_terms[target]:
-                eff_ham_term.append(f[1][t])
-                exp_sweeper.append(f[0])
-            fig = go.Figure(
-                [
-                    go.Scatter(
-                        x=exp_sweeper,
-                        y=eff_ham_term,
-                        opacity=1,
-                        name=f"{t.name}",
-                        showlegend=True,
-                        legendgroup="Probability",
-                        line=go.scatter.Line(dash="dot"),
-                    )
-                ]
-            )
-
-            if target in fit.fitted_parameters and t in fit.fitted_parameters[target]:
-                amp_range = np.linspace(
-                    min(exp_sweeper),
-                    max(exp_sweeper),
-                    2 * len(exp_sweeper) if len(exp_sweeper) >= 100 else 200,
-                )
-                params = fit.fitted_parameters[target][t]
-                fig.add_trace(
-                    go.Scatter(
-                        x=amp_range,
-                        y=fit_func(amp_range, **params),
-                        name=f"{t.name} Fit",
-                        mode="lines",
-                    ),
-                )
-
-                if t in plotting_terms:
-                    params_name = plotting_terms[t]
-                    fig.add_vline(
-                        x=tunable_params[params_name],
-                        name=f"{params_name}",
-                        line_dash="dash",
-                    )
-
-                fig.update_layout(
-                    showlegend=True,
-                    xaxis_title=(f"{x_title}"),
-                    yaxis_title="Interaction strength [MHz]",
-                )
-
-                fitting_report = table_html(
-                    table_dict(
-                        8 * [target],
-                        (
-                            [
-                                f"{term.name}: Fitted_parameters"
-                                for term in HamiltonianTerm
-                            ]
-                            + [k for k in tunable_params.keys()]
-                        ),
-                        (
-                            [
-                                fit.fitted_parameters[target][term]
-                                for term in HamiltonianTerm
-                            ]
-                            + [v for v in tunable_params.values()]
-                        ),
-                    )
-                )
-
-            figures.append(fig)
-
-    return figures, fitting_report

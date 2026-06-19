@@ -168,7 +168,7 @@ def cross_res_sequence(
         # phase-flipped cross resonance pulses
         cr_drive_pulse_flipped = replace(
             cr_drive_pulse.new(),
-            relative_phase=angle_wrap(np.pi + cr_drive_pulse.relative_phase),
+            amplitude=-cr_drive_pulse.amplitude,
         )
         cr_control_pulses.append(cr_drive_pulse_flipped)
 
@@ -177,7 +177,7 @@ def cross_res_sequence(
         else:
             target_pulse_flipped = replace(
                 target_drive_pulse.new(),
-                relative_phase=angle_wrap(np.pi + target_drive_pulse.relative_phase),
+                amplitude=-target_drive_pulse.amplitude,
             )
         cr_target_pulses.append(target_pulse_flipped)
 
@@ -216,7 +216,7 @@ def appending_ro_sequence(
     exp_sequence: PulseSequence,
     basis: Basis,
     interpolated_sweeper: bool,
-) -> PulseSequence:
+) -> tuple[PulseSequence, list[Delay]]:
     """Append a readout pulse sequence for two qubits with a specified delay.
 
     This function constructs a pulse sequence that applies readout operations to both
@@ -229,14 +229,23 @@ def appending_ro_sequence(
     ro_channel_control, ro_pulse_control = natives_control.MZ()[0]
     ro_channel_target, ro_pulse_target = natives_target.MZ()[0]
 
-    # switching measurement basis for target line and align all the others
+    # switching measurement basis for target and control lines and align all the others
     target_drive_channel, _ = natives_target.RX()[0]
+    control_drive_channel, _ = natives_control.RX()[0]
     # delay
     ro_delays = [Delay(duration=exp_sequence.duration) for _ in range(2)]
 
+    # basis on which measuring the state
+    if basis == Basis.X:
+        tom_angle = np.pi / 2
+    else:  # only relevant for Y
+        tom_angle = 0
+
+    target_rotation = natives_target.R(theta=np.pi / 2, phi=tom_angle)[0][1]
+    control_rotation = natives_control.R(theta=np.pi / 2, phi=tom_angle)[0][1]
+
     if interpolated_sweeper:
         # if using interpolated_sweepers I need all the channels to be aligned
-        control_drive_channel, _ = natives_control.RX()[0]
         cr_channel = platform.qubits[control].drive_extra[target]
 
         # align all the channels of the sequence
@@ -250,35 +259,27 @@ def appending_ro_sequence(
             ]
         )
     else:
-        # switching measurement basis for target line and align all the others
-        target_drive_channel, _ = natives_target.RX()[0]
-
         # delay to align the readout pulses of control and target qubits
         # done in every case, even when measuring Z-basis (no additional pulse on target)
         # to have the same timing for all the measurements
-        target_delay = Delay(
-            duration=natives_target.R(theta=3 * np.pi / 2, phi=np.pi / 2)[0][1].duration
+        flip_duration = max(target_rotation.duration, control_rotation.duration)
+        flip_delay = Delay(
+            duration=flip_duration,
         )
-        exp_sequence.append((ro_channel_control, target_delay))
-        exp_sequence.append((ro_channel_target, target_delay.new()))
+        exp_sequence.append((ro_channel_control, flip_delay))
+        exp_sequence.append((ro_channel_target, flip_delay.new()))
 
         # wait the whole cr-sequence duration before starting the readout pulses
         exp_sequence.append((ro_channel_target, ro_delays[0]))
         exp_sequence.append((ro_channel_control, ro_delays[1]))
 
-    if basis == Basis.X:
-        exp_sequence.append(
-            (
-                target_drive_channel,
-                natives_target.R(theta=np.pi / 2, phi=np.pi / 2)[0][1],
-            )
-        )
-    elif basis == Basis.Y:
-        exp_sequence.append(
-            (
-                target_drive_channel,
-                natives_target.R(theta=np.pi / 2, phi=0)[0][1],
-            )
+    # applying the tomography rotations on X and Y basis
+    if basis != Basis.Z:
+        exp_sequence += PulseSequence(
+            [
+                (target_drive_channel, target_rotation),
+                (control_drive_channel, control_rotation),
+            ]
         )
 
     # adding readout pulses
@@ -295,7 +296,7 @@ def cross_resonance_experiment(
     ctrl_ampl: float | dict[QubitPairId, float],
     ctrl_phase: float | dict[QubitPairId, float],
     targ_ampl: float | dict[QubitPairId, float | None] | None,
-    targ_phase: dict[QubitPairId, float],
+    targ_phase: float | dict[QubitPairId, float],
     basis: Basis,
     setup: SetControl,
     echo: bool = False,

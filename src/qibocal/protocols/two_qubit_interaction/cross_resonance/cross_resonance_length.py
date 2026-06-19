@@ -33,11 +33,11 @@ from .cr_parent_classes import (
     SetControl,
     check_qubit_overlap,
 )
-from .ham_tomography_utils import (
+from .cross_resonance_processing import (
     extract_hamiltonian_terms,
     tomography_cr_fit,
-    tomography_cr_plot,
 )
+from .plotting import tomography_cr_plot
 from .utils import (
     QubitId,
     cross_resonance_experiment,
@@ -259,9 +259,6 @@ def _plot(
 ):
     """Plotting function for HamiltonianTomographyCRLength."""
     figs, fitting_report = tomography_cr_plot(data, target, fit)
-    figs[0].update_layout(
-        xaxis3_title="CR pulse length [ns]",
-    )
 
     if fit is not None:
         fitting_report = table_html(

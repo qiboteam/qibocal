@@ -29,11 +29,11 @@ from .cr_parent_classes import (
     SetControl,
     check_qubit_overlap,
 )
-from .ham_tomography_utils import (
+from .cross_resonance_processing import (
     extract_hamiltonian_terms,
     tomography_cr_fit,
-    tomography_cr_plot,
 )
+from .plotting import tomography_cr_plot
 from .utils import cross_resonance_experiment, update_cnot_from_fit
 
 __all__ = ["cr_amplitude"]
@@ -177,9 +177,10 @@ def _acquisition(
                         error_target=(
                             2 * np.sqrt(prob_target * (1 - prob_target) / params.nshots)
                         ).tolist(),
-                        prob_control=prob_control,
-                        error_control=np.sqrt(
-                            prob_control * (1 - prob_control) / params.nshots
+                        prob_control=1 - 2 * prob_control,
+                        error_control=(
+                            2
+                            * np.sqrt(prob_control * (1 - prob_control) / params.nshots)
                         ).tolist(),
                     ),
                 )
@@ -221,9 +222,6 @@ def _plot(
 ):
     """Plotting function for HamiltonianTomographyCRAmpl."""
     figs, fitting_report = tomography_cr_plot(data, target, fit)
-    figs[0].update_layout(
-        xaxis3_title="CR pulse amplitude [a.u.]",
-    )
 
     if fit is not None:
         fitting_report = table_html(

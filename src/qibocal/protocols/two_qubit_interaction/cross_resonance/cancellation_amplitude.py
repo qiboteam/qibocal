@@ -34,11 +34,11 @@ from .cr_parent_classes import (
     SetControl,
     check_qubit_overlap,
 )
-from .ham_tomography_utils import (
+from .cross_resonance_processing import (
     cancellation_amplitude_fit,
-    cancellation_calibration_plot,
     reconstruct_full_hamiltonian_terms,
 )
+from .plotting import cancellation_calibration_plot
 from .utils import (
     cross_resonance_experiment,
     retrieve_cr_parameters,
@@ -303,10 +303,9 @@ def _acquisition(
                     prob_target=1 - 2 * prob_target,
                     error_target=2
                     * np.sqrt(prob_target * (1 - prob_target) / params.nshots),
-                    prob_control=prob_control,
-                    error_control=np.sqrt(
-                        prob_control * (1 - prob_control) / params.nshots
-                    ),
+                    prob_control=1 - 2 * prob_control,
+                    error_control=2
+                    * np.sqrt(prob_control * (1 - prob_control) / params.nshots),
                 ),
             )
 
@@ -348,7 +347,7 @@ def _plot(
     figs, fitting_report = cancellation_calibration_plot(data, target, fit)
 
     if fit.verbose_plot:
-        from .ham_tomography_utils import (
+        from .cross_resonance_processing import (
             tomography_cr_plot,
         )
 

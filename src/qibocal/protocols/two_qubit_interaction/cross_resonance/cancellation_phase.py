@@ -34,11 +34,11 @@ from .cr_parent_classes import (
     SetControl,
     check_qubit_overlap,
 )
-from .ham_tomography_utils import (
-    cancellation_calibration_plot,
+from .cross_resonance_processing import (
     cancellation_phase_fit,
     reconstruct_full_hamiltonian_terms,
 )
+from .plotting import cancellation_calibration_plot
 from .utils import (
     cross_resonance_experiment,
     retrieve_cr_parameters,
@@ -179,9 +179,7 @@ def _acquisition(
 
     updates = []
     control_ampls: dict[QubitPairId, float] = {}
-    control_phases: dict[QubitPairId, float] = {}
     target_ampls: dict[QubitPairId, float] = {}
-    target_phases: dict[QubitPairId, float] = {}
     for pair in targets:
         control, target = pair
 
@@ -202,9 +200,9 @@ def _acquisition(
                 "Please check the CR pulse configuration or first run previous protocols."
             )
         control_ampls |= {pair: cr_pulse["amplitude"]}
-        control_phases |= {pair: cr_pulse["relative_phase"]}
-        target_phases |= {pair: canc_pulse["relative_phase"]}
-        target_ampls |= {pair: canc_pulse["amplitude"]}
+        target_ampls |= {
+            pair: canc_pulse["amplitude"] if canc_pulse is not None else 0.0
+        }
 
     for basis in Basis:
         for setup in SetControl:
@@ -213,10 +211,10 @@ def _acquisition(
                     platform=platform,
                     pair_list=targets,
                     duration=0.0,
-                    control_amplitude=control_ampls,
-                    control_phase=0.0,
-                    target_amplitude=target_ampls,
-                    target_phase=target_phases,
+                    ctrl_ampl=control_ampls,
+                    ctrl_phase=0.0,
+                    targ_ampl=target_ampls,
+                    targ_phase=0.0,
                     basis=basis,
                     setup=setup,
                     echo=params.echo,
@@ -259,34 +257,29 @@ def _acquisition(
                                 control=c,
                                 platform=platform,
                             ),
-                            pulses=ro_delays,
+                            pulses=ro_delays[(c, t)],
                         )
                         for c, t in targets
                     ]
                 )
                 duration_parallel_sweeper += ro_sweeper
 
-            phase_sweepers = [
-                Sweeper(
-                    parameter=Parameter.relative_phase,
-                    range=params.phase_range,
-                    pulses=[cr_pulses[0]],
-                )
-            ]
-            if params.echo:
-                phase_sweepers.append(
+            phase_sweepers = ParallelSweepers(
+                [
                     Sweeper(
                         parameter=Parameter.relative_phase,
-                        range=params.phase_range + np.pi,
-                        pulses=[cr_pulses[1]],
+                        range=params.phase_range,
+                        pulses=cr_pulses[pair],
                     )
-                )
+                    for pair in targets
+                ]
+            )
 
             results = platform.execute(
                 [sequence],
                 [
                     duration_parallel_sweeper,
-                    ParallelSweepers(phase_sweepers),
+                    phase_sweepers,
                 ],
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
@@ -313,10 +306,9 @@ def _acquisition(
                     prob_target=1 - 2 * prob_target,
                     error_target=2
                     * np.sqrt(prob_target * (1 - prob_target) / params.nshots),
-                    prob_control=prob_control,
-                    error_control=np.sqrt(
-                        prob_control * (1 - prob_control) / params.nshots
-                    ),
+                    prob_control=1 - 2 * prob_control,
+                    error_control=2
+                    * np.sqrt(prob_control * (1 - prob_control) / params.nshots),
                 ),
             )
 
@@ -358,7 +350,7 @@ def _plot(
     figs, fitting_report = cancellation_calibration_plot(data, target, fit)
 
     if fit.verbose_plot:
-        from .ham_tomography_utils import (
+        from .cross_resonance_processing import (
             tomography_cr_plot,
         )
 
