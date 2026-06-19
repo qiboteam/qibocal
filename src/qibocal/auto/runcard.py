@@ -6,12 +6,15 @@ from typing import Any
 
 import yaml
 from pydantic.dataclasses import dataclass
-from qibolab import Platform
+from qibo.backends import construct_backend
+
+from qibocal.calibration.platform import CalibrationPlatform
 
 from .. import protocols
 from .execute import Executor
 from .history import History
 from .mode import ExecutionMode
+from .output import Metadata
 from .task import Action, Targets
 
 RUNCARD = "runcard.yml"
@@ -48,14 +51,24 @@ class Runcard:
         (path / RUNCARD).write_text(yaml.safe_dump(asdict(self)), encoding="utf-8")
 
     def run(
-        self, output: Path, platform: Platform, mode: ExecutionMode, update: bool = True
+        self,
+        output: Path,
+        platform: CalibrationPlatform,
+        mode: ExecutionMode,
+        update: bool = True,
     ) -> History:
         """Run runcard and dump to output."""
         targets = self.targets if self.targets is not None else list(platform.qubits)
         history = History.load(output)
         update = update and self.update
+        backend = construct_backend(backend="qibolab", platform=platform)
         instance = Executor(
-            history=history, platform=platform, targets=targets, update=update
+            history=history,
+            platform=platform,
+            targets=targets,
+            update=update,
+            path=output,
+            meta=Metadata.generate(backend),
         )
 
         for action in self.actions:
