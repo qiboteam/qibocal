@@ -1,16 +1,15 @@
 from dataclasses import dataclass, field
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
-from qibocal.protocols.coherence.spin_echo import SpinEchoParameters
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 from qibolab._core.native import SingleQubitNatives
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
+from qibocal.protocols.coherence.spin_echo import SpinEchoParameters
 from qibocal.result import probability
 
 from ..utils import table_dict, table_html
@@ -34,9 +33,9 @@ def noise_psd_model(f, a, alpha, b, c, kappa, epsilon):
     filter frequency exceeds the readout cavity decay rate ``kappa`` (lumping the
     dispersive shift, photon occupation and filtering factor into the amplitude
     ``c``, since only ``kappa`` itself is of physical interest here).
-    
-    ``epsilon * f`` is a phenomenological penalty term capturing the accumulation 
-    of control errors (and potential heating effects) from the increasing number 
+
+    ``epsilon * f`` is a phenomenological penalty term capturing the accumulation
+    of control errors (and potential heating effects) from the increasing number
     of pi-pulses required at higher filter frequencies (shorter delays).
     """
     return (a * f**-alpha) + (c * kappa**2 / (f**2 + kappa**2)) + b + (epsilon * f)
@@ -56,7 +55,7 @@ class CpmgSpectroscopyParameters(SpinEchoParameters):
     """Number of points (distinct sequences) for each ``tau``, to fit the ``T2`` decay.
 
     The step in the number of pulses ``n`` is chosen adaptively, for each ``tau``, so that at most this many points are sampled between
-    ``min_number_pulses`` and the maximum number of pulses allowed by ``max_duration``. 
+    ``min_number_pulses`` and the maximum number of pulses allowed by ``max_duration``.
     """
 
     unrolling: bool = True
@@ -71,6 +70,7 @@ class CpmgSpectroscopyParameters(SpinEchoParameters):
             if self.max_duration is not None
             else self.min_number_pulses * self.delay_between_pulses_end
         )
+
 
 @dataclass
 class CpmgSpectroscopyResults(Results):
@@ -88,8 +88,7 @@ class CpmgSpectroscopyResults(Results):
     """Noise PSD model (``noise_psd_model``) fitted parameters ``[a, alpha, b, c, kappa]``."""
 
     def __contains__(self, target: QubitId) -> bool:
-        """Check if a qubit has been fitted for at least one ``tau``.
-        """
+        """Check if a qubit has been fitted for at least one ``tau``."""
         return all(target in key for key in self.t2)
 
 
@@ -108,9 +107,7 @@ CpmgSpectroscopyType = np.dtype(
 class CpmgSpectroscopyData(Data):
     """CpmgSpectroscopy acquisition outputs."""
 
-    data: dict[tuple[QubitId, int]] = field(
-        default_factory=dict
-    )
+    data: dict[tuple[QubitId, int]] = field(default_factory=dict)
     """Raw data acquired, keyed by ``(qubit, tau)``."""
 
     @property
@@ -169,7 +166,7 @@ def _acquisition(
     delays_per_n = []
     for n in n_values:
         _sequence, _delays = dynamical_decoupling_sequence(
-            platform, targets, wait = tau_range[0]//2, n=n, kind="CPMG"
+            platform, targets, wait=tau_range[0] // 2, n=n, kind="CPMG"
         )
         _ro_pulses = {
             qubit: list(_sequence.channel(platform.qubits[qubit].acquisition))[-1]
@@ -253,7 +250,9 @@ def _fit(data: CpmgSpectroscopyData) -> CpmgSpectroscopyResults:
             psd_fitted_parameters[qubit] = [np.nan] * 5
             continue
 
-        freq = 1 / (2*np.array(taus))*1e3  # MHz, CPMG filter peaks at f = 1 / (2 * tau)
+        freq = (
+            1 / (2 * np.array(taus)) * 1e3
+        )  # MHz, CPMG filter peaks at f = 1 / (2 * tau)
         t2_values = np.array([t2s[(qubit, tau)][0] for tau in taus])
         t2_errors = np.array([t2s[(qubit, tau)][1] for tau in taus])
         gamma2 = 1 / t2_values
@@ -261,7 +260,9 @@ def _fit(data: CpmgSpectroscopyData) -> CpmgSpectroscopyResults:
 
         reliable = np.isfinite(gamma2_errors) & (gamma2_errors <= gamma2)
         if np.sum(reliable) < 5:
-            log.warning(f"Not enough reliable points to fit noise PSD for qubit {qubit}.")
+            log.warning(
+                f"Not enough reliable points to fit noise PSD for qubit {qubit}."
+            )
             psd_fitted_parameters[qubit] = [np.nan] * 5
             continue
 
@@ -308,9 +309,7 @@ def _plot(
             colorscale="Viridis",
             colorbar=dict(title="P(1)"),
             hovertemplate=(
-                "tau = %{x:.0f} ns<br>"
-                "n = %{y:.0f}<br>"
-                "P(1) = %{z:.3f}<extra></extra>"
+                "tau = %{x:.0f} ns<br>n = %{y:.0f}<br>P(1) = %{z:.3f}<extra></extra>"
             ),
         ),
     )
@@ -338,7 +337,7 @@ def _plot(
     if fit is not None:
         valid_taus = [tau for tau in taus if (target, tau) in fit.t2]
         # CPMG filter function peaks at f = 1 / (2 * tau).
-        filter_freq = 1 / (2*np.array(valid_taus))*1e3 # MHz, tau in ns
+        filter_freq = 1 / (2 * np.array(valid_taus)) * 1e3  # MHz, tau in ns
         order = np.argsort(filter_freq)
         filter_freq = filter_freq[order]
         t2_values = np.array([fit.t2[(target, tau)][0] for tau in valid_taus])[order]
@@ -359,7 +358,7 @@ def _plot(
                 y=gamma2,
                 error_y=dict(type="data", array=gamma2_errors),
                 mode="markers",
-                name="$\Gamma_2$ (filter frequency)",
+                name=r"$\Gamma_2$ (filter frequency)",
             )
         )
         psd_params = fit.psd_fitted_parameters.get(target, [np.nan] * 5)
@@ -388,7 +387,10 @@ def _plot(
         fitting_report = table_html(
             table_dict(
                 target,
-                [f"T2 [ns] (tau={tau:.0f} ns)" for tau in [valid_taus[0], valid_taus[-1]]],
+                [
+                    f"T2 [ns] (tau={tau:.0f} ns)"
+                    for tau in [valid_taus[0], valid_taus[-1]]
+                ],
                 [fit.t2[(target, tau)] for tau in [valid_taus[0], valid_taus[-1]]],
                 display_error=True,
             )
