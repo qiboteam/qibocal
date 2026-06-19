@@ -1283,14 +1283,14 @@ testing = ["pytest"]
 
 [[package]]
 name = "marimo"
-version = "0.23.8"
+version = "0.23.9"
 description = "A library for making reactive notebooks and apps"
 optional = false
 python-versions = ">=3.10"
 groups = ["dev"]
 files = [
-    {file = "marimo-0.23.8-py3-none-any.whl", hash = "sha256:99a4035d035fb320c8f2dcefc2213e0d64e9de13e989bc3f2a973b19dc40542a"},
-    {file = "marimo-0.23.8.tar.gz", hash = "sha256:8049df4ad263e7126e959d7d910b014e6181dffe49f540a89c3174e61a446a99"},
+    {file = "marimo-0.23.9-py3-none-any.whl", hash = "sha256:2cbd50ce9a995c2a256b9a05cc1844f035060e070b8a85fdb32645719817dbdf"},
+    {file = "marimo-0.23.9.tar.gz", hash = "sha256:9fb7123aa0dacb202d53bc0989cecd1892435671efc4107b8d8491986b4a6bb9"},
 ]
 
 [package.dependencies]
