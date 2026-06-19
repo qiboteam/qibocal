@@ -205,7 +205,47 @@ def _fit(data: CpmgSpectroscopyData) -> CpmgSpectroscopyResults:
             fitted_parameters[key] = [np.nan, np.nan, np.nan]
             pcovs[key] = np.full((3, 3), np.nan).tolist()
             chi2[key] = (np.nan, np.nan)
-    return CpmgSpectroscopyResults(t2s, fitted_parameters, pcovs, chi2)
+
+    psd_fitted_parameters = {}
+    for qubit in data.qubits:
+        taus = np.array(
+            [tau for (q, tau) in t2s if q == qubit and np.isfinite(t2s[(q, tau)][0])]
+        )
+        if len(taus) < 5:
+            log.warning(f"Not enough points to fit noise PSD for qubit {qubit}.")
+            psd_fitted_parameters[qubit] = [np.nan] * 5
+            continue
+
+        freq = 1 / (2*np.array(taus))*1e3  # MHz, CPMG filter peaks at f = 1 / (2 * tau)
+        t2_values = np.array([t2s[(qubit, tau)][0] for tau in taus])
+        t2_errors = np.array([t2s[(qubit, tau)][1] for tau in taus])
+        gamma2 = 1 / t2_values
+        gamma2_errors = t2_errors / t2_values**2
+
+        reliable = np.isfinite(gamma2_errors) & (gamma2_errors <= gamma2)
+        if np.sum(reliable) < 5:
+            log.warning(f"Not enough reliable points to fit noise PSD for qubit {qubit}.")
+            psd_fitted_parameters[qubit] = [np.nan] * 5
+            continue
+
+        try:
+            popt, _ = curve_fit(
+                noise_psd_model,
+                freq[reliable],
+                gamma2[reliable],
+                p0=[1, 1, 0, np.max(gamma2[reliable]), KAPPA_GUESS, 0],
+                bounds=(0, np.inf),
+                sigma=gamma2_errors[reliable],
+                maxfev=200000,
+            )
+            psd_fitted_parameters[qubit] = popt.tolist()
+        except Exception as e:
+            log.warning(f"Noise PSD fit failed for qubit {qubit}. {e}")
+            psd_fitted_parameters[qubit] = [np.nan] * 5
+
+    return CpmgSpectroscopyResults(
+        t2s, fitted_parameters, pcovs, chi2, psd_fitted_parameters
+    )
 
 
 def _plot(
@@ -216,86 +256,120 @@ def _plot(
     fitting_report = ""
     taus = data.taus
 
-    colors = px.colors.qualitative.Plotly
-
-    decay_fig = go.Figure()
-    for i, tau in enumerate(taus):
-        color = colors[i % len(colors)]
+    n_values = np.unique(data[target, taus[0]].n)
+    prob_matrix = np.full((len(n_values), len(taus)), np.nan)
+    for j, tau in enumerate(taus):
         qubit_data = data[target, tau]
-        order = np.argsort(qubit_data.wait)
-        waits = qubit_data.wait[order]
-        probs = qubit_data.prob[order]
-        ns = qubit_data.n[order]
+        order = np.argsort(qubit_data.n)
+        prob_matrix[:, j] = qubit_data.prob[order]
 
-        decay_fig.add_trace(
-            go.Scatter(
-                x=waits,
-                y=probs,
-                mode="markers",
-                name=f"tau = {tau:.0f} ns",
-                legendgroup=f"tau{tau}",
-                marker=dict(color=color),
-                customdata=ns,
-                hovertemplate=(
-                    "t = %{x:.0f} ns<br>"
-                    "P(1) = %{y:.3f}<br>"
-                    "n = %{customdata:.0f}<extra></extra>"
-                ),
+    decay_fig = go.Figure(
+        go.Contour(
+            x=taus,
+            y=n_values,
+            z=prob_matrix,
+            colorscale="Viridis",
+            colorbar=dict(title="P(1)"),
+            hovertemplate=(
+                "tau = %{x:.0f} ns<br>"
+                "n = %{y:.0f}<br>"
+                "P(1) = %{z:.3f}<extra></extra>"
             ),
-        )
-
-        if fit is not None and (target, tau) in fit.fitted_parameters:
-            waitrange = np.linspace(min(waits), max(waits), 2 * len(waits))
-            fit_params = fit.fitted_parameters[(target, tau)]
-            decay_fig.add_trace(
-                go.Scatter(
-                    x=waitrange,
-                    y=exp_decay(waitrange, *fit_params),
-                    name=f"tau = {tau:.0f} ns",
-                    legendgroup=f"tau{tau}",
-                    mode="lines",
-                    line=go.scatter.Line(dash="solid", color=color),
-                    showlegend=False,
-                ),
-            )
-
-    decay_fig.update_layout(
-        showlegend=True,
-        xaxis_title="Total sequence duration [ns]",
-        yaxis_title="Probability of State 1",
+        ),
     )
 
-    figures = [decay_fig]
+    decay_fig.update_layout(
+        xaxis_title="Inter-pulse delay tau [ns]",
+        yaxis_title="Number of pulses n",
+    )
+
+    duration_fig = go.Figure(
+        go.Scatter(
+            x=taus,
+            y=[data[target, tau].wait.max() for tau in taus],
+            mode="markers+lines",
+            name="Total duration",
+        )
+    )
+    duration_fig.update_layout(
+        xaxis_title="Inter-pulse delay tau [ns]",
+        yaxis_title="Total T2 experiment duration [ns]",
+    )
+
+    figures = [decay_fig, duration_fig]
 
     if fit is not None:
         valid_taus = [tau for tau in taus if (target, tau) in fit.t2]
-        t2_values = [fit.t2[(target, tau)][0] for tau in valid_taus]
-        t2_errors = [fit.t2[(target, tau)][1] for tau in valid_taus]
+        # CPMG filter function peaks at f = 1 / (2 * tau).
+        filter_freq = 1 / (2*np.array(valid_taus))*1e3 # MHz, tau in ns
+        order = np.argsort(filter_freq)
+        filter_freq = filter_freq[order]
+        t2_values = np.array([fit.t2[(target, tau)][0] for tau in valid_taus])[order]
+        t2_errors = np.array([fit.t2[(target, tau)][1] for tau in valid_taus])[order]
+
+        # Skip points whose fit error is too large to be informative.
+        reliable = np.isfinite(t2_errors) & (t2_errors <= t2_values)
+        filter_freq = filter_freq[reliable]
+        t2_values = t2_values[reliable]
+        t2_errors = t2_errors[reliable]
+
+        gamma2 = 1 / t2_values
+        gamma2_errors = t2_errors / t2_values**2
 
         t2_fig = go.Figure(
             go.Scatter(
-                x=valid_taus,
-                y=t2_values,
-                error_y=dict(type="data", array=t2_errors),
-                mode="markers+lines",
-                name="T2 (tau)",
+                x=filter_freq,
+                y=gamma2,
+                error_y=dict(type="data", array=gamma2_errors),
+                mode="markers",
+                name="$\Gamma_2$ (filter frequency)",
             )
         )
+        psd_params = fit.psd_fitted_parameters.get(target, [np.nan] * 5)
+        if len(filter_freq) > 0 and np.all(np.isfinite(psd_params)):
+            freq_fit = np.geomspace(filter_freq.min(), filter_freq.max(), 200)
+            gamma2_fit = noise_psd_model(freq_fit, *psd_params)
+            t2_fig.add_trace(
+                go.Scatter(
+                    x=freq_fit,
+                    y=gamma2_fit,
+                    mode="lines",
+                    name="Noise PSD fit",
+                    line=go.scatter.Line(dash="dash"),
+                ),
+            )
+
         t2_fig.update_layout(
             showlegend=True,
-            xaxis_title="Inter-pulse delay tau [ns]",
-            yaxis_title="T2 [ns]",
+            xaxis_title="CPMG filter frequency [MHz]",
+            yaxis_title="Gamma2 [1/ns]",
+            xaxis_type="log",
+            yaxis_type="log",
         )
         figures.append(t2_fig)
 
         fitting_report = table_html(
             table_dict(
                 target,
-                [f"T2 [ns] (tau={tau:.0f} ns)" for tau in valid_taus],
-                [fit.t2[(target, tau)] for tau in valid_taus],
+                [f"T2 [ns] (tau={tau:.0f} ns)" for tau in [valid_taus[0], valid_taus[-1]]],
+                [fit.t2[(target, tau)] for tau in [valid_taus[0], valid_taus[-1]]],
                 display_error=True,
             )
         )
+        if np.all(np.isfinite(psd_params)):
+            fitting_report += table_html(
+                table_dict(
+                    target,
+                    [
+                        "Noise PSD: A",
+                        "Noise PSD: alpha (1/f exponent)",
+                        "Noise PSD: B (white-noise floor)",
+                        "Noise PSD: C (thermal-photon amplitude)",
+                        "Noise PSD: kappa (cavity decay rate) [MHz]",
+                    ],
+                    psd_params,
+                )
+            )
 
     return figures, fitting_report
 
