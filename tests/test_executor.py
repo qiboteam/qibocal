@@ -103,7 +103,7 @@ def fake_protocols(request):
 
 @pytest.fixture
 def executor(tmp_path: Path, platform: CalibrationPlatform):
-    return Executor.create(tmp_path / "out")
+    return Executor.create(tmp_path / "out", targets=[0])
 
 
 def test_init(executor: Executor):
@@ -120,11 +120,8 @@ def test_init(executor: Executor):
 
 
 def test_close(executor: Executor):
-    init = executor.init
-    close = executor.close
-
-    init()
-    close()
+    executor.init()
+    executor.close()
 
     assert executor.meta is not None
     assert executor.meta.start is not None
@@ -139,10 +136,10 @@ def test_context_manager(executor: Executor):
         assert executor.meta.start is not None
 
 
-def test_open(tmp_path: Path, platform):
+def test_open(tmp_path: Path, platform: CalibrationPlatform):
     path = tmp_path / "my-open-folder"
 
-    with Executor.open(path) as e:
+    with Executor.open(path, targets=[0]) as e:
         assert isinstance(e.t1, Callable)
         assert e.meta is not None
         assert e.meta.start is not None
@@ -150,11 +147,11 @@ def test_open(tmp_path: Path, platform):
     assert e.meta.end is not None
 
 
-def test_single_shot(tmp_path: Path, platform):
+def test_single_shot(tmp_path: Path, platform: CalibrationPlatform):
     globals_ = {"platform": platform, "targets": [0], "path": tmp_path}
     exec((CALIBRATION_SCRIPTS / "single_shot.py").read_text(), globals_)
 
 
-def test_rx_calibration(tmp_path: Path, platform):
+def test_rx_calibration(tmp_path: Path, platform: CalibrationPlatform):
     globals_ = {"platform": platform, "target": 0, "path": tmp_path}
     exec((CALIBRATION_SCRIPTS / "rx_calibration.py").read_text(), globals_)
