@@ -1,5 +1,6 @@
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable, Optional, TypedDict, Union
+from typing import TypedDict
 
 import numpy as np
 import plotly.graph_objects as go
@@ -11,7 +12,7 @@ from ..utils import table_dict, table_html
 from .fitting import exp1B_func
 from .utils import RBData, StandardRBResult, fit, number_to_str, rb_acquisition
 
-__all__ = ["standard_rb", "StandardRBParameters", "RBData", "_plot"]
+__all__ = ["standard_rb", "StandardRBParameters", "RBData"]
 
 
 class Depthsdict(TypedDict):
@@ -27,27 +28,21 @@ class Depthsdict(TypedDict):
 class StandardRBParameters(Parameters):
     """Standard Randomized Benchmarking runcard inputs."""
 
-    depths: Union[list, Depthsdict]
+    depths: list | Depthsdict
     """A list of depths/sequence lengths.
 
     If a dictionary is given the list will be build.
     """
     niter: int
     """Sets how many iterations over the same depth value."""
-    uncertainties: Optional[float] = None
+    uncertainties: float | None = None
     """Method of computing the error bars of the signal and uncertainties of
     the fit.
 
     If ``None``,
     it computes the standard deviation. Otherwise it computes the corresponding confidence interval. Defaults `None`.
     """
-    unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple circuits in a
-    single instrument call.
-
-    Defaults to ``False``.
-    """
-    seed: Optional[int] = None
+    seed: int | None = None
     """A fixed seed to initialize ``np.random.Generator``.
 
     If ``None``, uses a random seed.
@@ -96,7 +91,7 @@ def _fit(data: RBData) -> StandardRBResult:
     Returns:
         StandardRBResult: Aggregated and processed data.
     """
-    return fit(data.qubits, data)
+    return fit(data)
 
 
 def _plot(
@@ -118,7 +113,14 @@ def _plot(
     fig = go.Figure()
     fitting_report = ""
     x = data.depths
-    raw_data = data.extract_probabilities(qubit)
+    single_qubit = isinstance(target, int)
+    raw_data = np.array(
+        [
+            val["survival_probs"]
+            for key, val in data.data.items()
+            if (key[0] if single_qubit else key[:2]) == target
+        ]
+    )  # rows -> depths, cols -> iterations
     y = np.mean(raw_data, axis=1)
     raw_depths = [[depth] * data.niter for depth in data.depths]
 

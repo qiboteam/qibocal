@@ -1,7 +1,7 @@
 """Helper functions to update parameters in platform."""
 
 from collections.abc import Iterable
-from typing import Union
+from typing import Literal
 
 import numpy as np
 from pydantic import BaseModel
@@ -31,12 +31,12 @@ def readout_frequency(freq: float, platform: Platform, qubit: QubitId):
 
 def bare_resonator_frequency(freq: float, platform: Platform, qubit: QubitId):
     """Update rbare frequency value in platform for specific qubit."""
-    platform.calibration.single_qubits[qubit].resonator.bare_frequency = int(freq)
+    platform.calibration.single_qubits[qubit].resonator.bare_frequency = freq
 
 
 def dressed_resonator_frequency(freq: float, platform: Platform, qubit: QubitId):
     """Update rbare frequency value in platform for specific qubit."""
-    platform.calibration.single_qubits[qubit].resonator.dressed_frequency = int(freq)
+    platform.calibration.single_qubits[qubit].resonator.dressed_frequency = freq
 
 
 def readout_amplitude(amp: float, platform: Platform, qubit: QubitId):
@@ -44,9 +44,7 @@ def readout_amplitude(amp: float, platform: Platform, qubit: QubitId):
     platform.update({f"native_gates.single_qubit.{qubit}.MZ.0.1.probe.amplitude": amp})
 
 
-def drive_frequency(
-    freq: Union[float, tuple, list], platform: Platform, qubit: QubitId
-):
+def drive_frequency(freq: float | tuple | list, platform: Platform, qubit: QubitId):
     """Update drive frequency value in platform for specific qubit."""
     if isinstance(freq, Iterable):
         freq = freq[0]
@@ -55,7 +53,7 @@ def drive_frequency(
 
 
 def drive_amplitude(
-    amp: Union[float, tuple, list], rx90: bool, platform: Platform, qubit: QubitId
+    amp: float | tuple | list, rx90: bool, platform: Platform, qubit: QubitId
 ):
     """Update drive frequency value in platform for specific qubit."""
     if isinstance(amp, Iterable):
@@ -67,19 +65,43 @@ def drive_amplitude(
 
 
 def drive_duration(
-    duration: Union[int, tuple, list], rx90: bool, platform: Platform, qubit: QubitId
+    duration: int | tuple | list, rx90: bool, platform: Platform, qubit: QubitId
 ):
     """Update drive duration value in platform for specific qubit."""
     if isinstance(duration, Iterable):
         duration = duration[0]
     if rx90:
         platform.update(
-            {f"native_gates.single_qubit.{qubit}.RX90.0.1.duration": int(duration)}
+            {f"native_gates.single_qubit.{qubit}.RX90.0.1.duration": duration}
         )
     else:
         platform.update(
-            {f"native_gates.single_qubit.{qubit}.RX.0.1.duration": int(duration)}
+            {f"native_gates.single_qubit.{qubit}.RX.0.1.duration": duration}
         )
+
+
+def lo_frequency(
+    freq: float,
+    platform: Platform,
+    qubit: QubitId,
+    channel_type: Literal["probe", "drive"] = "probe",
+):
+    """Update LO frequency value in platform for specific qubit."""
+    channel = getattr(platform.qubits[qubit], channel_type)
+    lo_channel = platform.channels[channel].lo
+    platform.update({f"configs.{lo_channel}.frequency": freq})
+
+
+def lo_attenuation(
+    attenuation: float,
+    platform: Platform,
+    qubit: QubitId,
+    channel_type: Literal["probe", "drive"] = "probe",
+):
+    """Update LO attenuation value in platform for specific qubit."""
+    channel = getattr(platform.qubits[qubit], channel_type)
+    lo_channel = platform.channels[channel].lo
+    platform.update({f"configs.{lo_channel}.power": attenuation})
 
 
 def crosstalk_matrix(
@@ -116,7 +138,7 @@ def mean_exc_states(excited_state: list, platform: Platform, qubit: QubitId):
 
 def readout_fidelity(fidelity: float, platform: Platform, qubit: QubitId):
     """Update fidelity of single shot classification."""
-    platform.calibration.single_qubits[qubit].readout.fidelity = float(fidelity)
+    platform.calibration.single_qubits[qubit].readout.fidelity = fidelity
 
 
 def virtual_phases(
@@ -137,7 +159,7 @@ def virtual_phases(
     )
 
 
-def CZ_duration(duration: int, platform: Platform, pair: QubitPairId):
+def CZ_duration(duration: float, platform: Platform, pair: QubitPairId):
     """Update CZ duration for specific pair."""
     platform.update(
         {f"native_gates.two_qubit.{f'{pair[0]}-{pair[1]}'}.CZ.0.1.duration": duration}
@@ -151,7 +173,7 @@ def CZ_amplitude(amp: float, platform: Platform, pair: QubitPairId):
     )
 
 
-def iSWAP_duration(duration: int, platform: Platform, pair: QubitPairId):
+def iSWAP_duration(duration: float, platform: Platform, pair: QubitPairId):
     """Update iSWAP_duration duration for specific pair."""
     platform.update(
         {f"native_gates.two_qubit.{f'{pair[0]}-{pair[1]}'}.CZ.0.1.duration": duration}
@@ -165,12 +187,12 @@ def iSWAP_amplitude(amp: float, platform: Platform, pair: QubitPairId):
     )
 
 
-def t1(t1: int, platform: Platform, qubit: QubitId):
+def t1(t1: float, platform: Platform, qubit: QubitId):
     """Update t1 value in platform for specific qubit."""
     platform.calibration.single_qubits[qubit].t1 = tuple(t1)
 
 
-def t2(t2: int, platform: Platform, qubit: QubitId):
+def t2(t2: float, platform: Platform, qubit: QubitId):
     """Update t2 value in platform for specific qubit."""
     platform.calibration.single_qubits[qubit].t2 = tuple(t2)
 
@@ -192,16 +214,7 @@ def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
 
 def sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):
     """Update sweetspot parameter in platform for specific qubit."""
-    platform.calibration.single_qubits[qubit].qubit.sweetspot = float(sweetspot)
-
-
-def flux_coefficients(
-    flux_coefficients: list[float], platform: Platform, qubit: QubitId
-):
-    """Update flux-amplitude relation parameters for specific qubit."""
-    platform.calibration.single_qubits[qubit].qubit.flux_coefficients = [
-        float(value) for value in flux_coefficients
-    ]
+    platform.calibration.single_qubits[qubit].qubit.sweetspot = sweetspot
 
 
 def flux_offset(offset: float, platform: Platform, qubit: QubitId):
@@ -209,10 +222,10 @@ def flux_offset(offset: float, platform: Platform, qubit: QubitId):
     platform.update({f"configs.{platform.qubits[qubit].flux}.offset": offset})
 
 
-def frequency_12_transition(frequency: int, platform: Platform, qubit: QubitId):
+def frequency_12_transition(frequency: float, platform: Platform, qubit: QubitId):
     channel = platform.qubits[qubit].drive_extra[1, 2]
     platform.update({f"configs.{channel}.frequency": frequency})
-    platform.calibration.single_qubits[qubit].qubit.frequency_12 = int(frequency)
+    platform.calibration.single_qubits[qubit].qubit.frequency_12 = frequency
 
 
 def drive_12_amplitude(amplitude: float, platform: Platform, qubit: QubitId):
@@ -221,17 +234,17 @@ def drive_12_amplitude(amplitude: float, platform: Platform, qubit: QubitId):
     )
 
 
-def drive_12_duration(
-    duration: Union[int, tuple, list], platform: Platform, qubit: QubitId
-):
+def drive_12_duration(duration: int | tuple | list, platform: Platform, qubit: QubitId):
     """Update drive duration value in platform for specific qubit."""
-    platform.update(
-        {f"native_gates.single_qubit.{qubit}.RX12.0.1.duration": int(duration)}
-    )
+    platform.update({f"native_gates.single_qubit.{qubit}.RX12.0.1.duration": duration})
 
 
-def coupling(g: float, platform: Platform, qubit: QubitId):
-    platform.calibration.single_qubits[qubit].readout.coupling = float(g)
+def readout_coupling(g: float, platform: Platform, qubit: QubitId):
+    platform.calibration.single_qubits[qubit].readout.coupling = g
+
+
+def pair_coupling(g: list[float], platform: Platform, pair: QubitPairId):
+    platform.calibration.two_qubits[pair].coupling = g
 
 
 def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):

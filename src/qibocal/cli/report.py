@@ -1,6 +1,5 @@
 import io
 import pathlib
-from typing import Optional, Union
 
 import plotly.graph_objects as go
 from jinja2 import Environment, FileSystemLoader
@@ -24,7 +23,7 @@ ReportOutcome = tuple[str, list[go.Figure]]
 
 
 def generate_figures_and_report(
-    node: Completed, target: Union[QubitId, QubitPairId, list[QubitId]]
+    node: Completed, target: QubitId | QubitPairId | list[QubitId]
 ) -> ReportOutcome:
     """Calling protocol plot by checking if fit has been performed.
 
@@ -43,7 +42,7 @@ def generate_figures_and_report(
 
 
 def plotter(
-    node: Completed, target: Union[QubitId, QubitPairId, list[QubitId]]
+    node: Completed, target: QubitId | QubitPairId | list[QubitId]
 ) -> tuple[str, str]:
     """Run plotly pipeline for generating html.
 
@@ -62,7 +61,7 @@ def plotter(
     return all_html, fitting_report
 
 
-def report(path: pathlib.Path, history: Optional[History] = None):
+def report(path: pathlib.Path, history: History | None = None):
     """Report generation.
 
     Generates the report for protocol dumped in `path`.

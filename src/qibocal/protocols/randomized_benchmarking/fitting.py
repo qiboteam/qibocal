@@ -2,8 +2,6 @@
 They consist mostly of exponential decay fitting.
 """
 
-from typing import Optional, Union
-
 import numpy as np
 from scipy.linalg import hankel, svd
 from scipy.optimize import curve_fit
@@ -37,7 +35,7 @@ def esprit(
     xdata: np.ndarray,
     ydata: np.ndarray,
     num_decays: int,
-    hankel_dim: Optional[int] = None,
+    hankel_dim: int | None = None,
 ) -> np.ndarray:
     """Implements the ESPRIT algorithm for peak detection.
 
@@ -80,7 +78,7 @@ def esprit(
 
 
 def fit_exp1B_func(
-    xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], **kwargs
+    xdata: np.ndarray | list, ydata: np.ndarray | list, **kwargs
 ) -> tuple[tuple, tuple]:
     """Calculate an single exponential A*p^m+B fit to the given ydata.
 
@@ -117,7 +115,7 @@ def fit_exp1B_func(
 
 
 def fit_exp1_func(
-    xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], **kwargs
+    xdata: np.ndarray | list, ydata: np.ndarray | list, **kwargs
 ) -> tuple[tuple, tuple]:
     """Calculate an single exponential  A*p^m fit to the given ydata, no linear offset.
 
@@ -149,8 +147,8 @@ def fit_exp1_func(
 
 
 def fit_expn_func(
-    xdata: Union[np.ndarray, list],
-    ydata: Union[np.ndarray, list],
+    xdata: np.ndarray | list,
+    ydata: np.ndarray | list,
     n: int = 2,
 ) -> tuple[tuple, tuple]:
     """Calculate n exponentials on top of each other, fit to the given ydata.
@@ -174,8 +172,8 @@ def fit_expn_func(
 
 
 def fit_exp2_func(
-    xdata: Union[np.ndarray, list],
-    ydata: Union[np.ndarray, list],
+    xdata: np.ndarray | list,
+    ydata: np.ndarray | list,
 ) -> tuple[tuple, tuple]:
     """Calculate 2 exponentials on top of each other, fit to the given ydata.
 

@@ -1,5 +1,3 @@
-from typing import Optional
-
 import numpy as np
 from qibolab import Delay, PulseSequence, VirtualZ
 
@@ -18,7 +16,7 @@ COUPLER_PULSE_DURATION = 100
 def chevron_sequence(
     platform: CalibrationPlatform,
     ordered_pair: QubitPairId,
-    duration_max: Optional[int] = None,
+    duration_max: int | None = None,
     parking: bool = False,
     native: str = "CZ",
     dt: int = 0,

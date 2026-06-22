@@ -22,6 +22,10 @@ to the transition frequency  :math:`w_{01}` some of the population will
 move to the excited state. If the drive pulse is long enough it will be
 generated a maximally mixed state with :math:`\rho \propto I` :cite:p:`Baur2012RealizingQG, gao2021practical`.
 
+When the frequency bandwidth measured exceeds the IF bandwidth range (+/- 300 MHz),
+the routine automatically splits the sweep into multiple batches, adjusting
+the LO frequency accordingly for each batch.
+"""
 
 Parameters
 ^^^^^^^^^^

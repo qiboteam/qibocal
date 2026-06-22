@@ -53,7 +53,7 @@ def fit_flux_amplitude(matrix, amps, times):
 
     amplitude = amps[np.argmax(std)]
     delta = fs[np.argmax(std)]
-    index = int(np.where(np.unique(amps) == amplitude)[0])
+    index = int(np.where(np.unique(amps) == amplitude)[0][0])
     return amplitude, index, delta
 
 
@@ -91,6 +91,7 @@ def fit_virtualz(
     thetas: list,
     gate_repetition: int,
     key=None,
+    rec_array=False,
 ):
     fitted_parameters = {}
     angle = {}
@@ -102,7 +103,10 @@ def fit_virtualz(
 
     target, control = pair
     for setup in ["I", "X"]:
-        target_data = data[target, control, setup][0]
+        if rec_array:
+            target_data = data[target, control, setup].target
+        else:
+            target_data = data[target, control, setup][0]
         try:
             params = fit_sinusoid(np.array(thetas), target_data, gate_repetition)
             fitted_param[target, control, setup] = params
@@ -114,9 +118,17 @@ def fit_virtualz(
         # See NZ paper from Di Carlo
         # approximation which does not need qutrits
         # https://arxiv.org/pdf/1903.02492.pdf
-        leakage[key] = 0.5 * float(
-            np.mean(data[target, control, "X"][1] - data[target, control, "I"][1])
-        )
+        if rec_array:
+            leakage[key] = 0.5 * float(
+                np.mean(
+                    data[target, control, "X"].control
+                    - data[target, control, "I"].control
+                )
+            )
+        else:
+            leakage[key] = 0.5 * float(
+                np.mean(data[target, control, "X"][1] - data[target, control, "I"][1])
+            )
 
         angle[key] = phase_diff(
             fitted_param[target, control, "X"][2],

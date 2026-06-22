@@ -66,10 +66,9 @@ def _fit(data: RB2QInterData) -> StandardRB2QInterResult:
         StandardRB2QInterResult: Aggregated and processed data.
     """
 
-    qubits = data.pairs
-    results = fit(qubits, data)
+    results = fit(data, single_qubit=False)
     fidelity_cz = {}
-    for qubit in qubits:
+    for qubit in data.pairs:
         fid_cz = results.fidelity[qubit] / data.fidelity[qubit][0]
         # TODO: check this error formula
         uncertainty_cz = np.sqrt(

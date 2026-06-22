@@ -1,7 +1,6 @@
 """Rabi experiment that sweeps length and frequency."""
 
 from dataclasses import dataclass, field
-from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -16,9 +15,9 @@ from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
 
 from ...result import magnitude, phase
-from ..utils import HZ_TO_GHZ, fallback_period, guess_period, readout_frequency
+from ..utils import HZ_TO_GHZ, readout_frequency
 from .length_signal import RabiLengthSignalResults
-from .utils import fit_length_function, sequence_length
+from .utils import fit_length_function, rabi_initial_guess, sequence_length
 
 __all__ = [
     "rabi_length_frequency_signal",
@@ -45,7 +44,7 @@ class RabiLengthFrequencySignalParameters(Parameters):
     """Maximum frequency as an offset."""
     step_freq: int
     """Frequency to use as step for the scan."""
-    pulse_amplitude: Optional[float] = None
+    pulse_amplitude: float | None = None
     """Pi pulse amplitude. Same for all qubits."""
     rx90: bool = False
     """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
@@ -59,7 +58,7 @@ class RabiLengthFrequencySignalResults(RabiLengthSignalResults):
 
     rx90: bool
     """Pi or Pi_half calibration"""
-    frequency: dict[QubitId, Union[float, list[float]]]
+    frequency: dict[QubitId, float | list[float]]
     """Drive frequency for each qubit."""
 
 
@@ -201,8 +200,7 @@ def _fit(data: RabiLengthFreqSignalData) -> RabiLengthFrequencySignalResults:
         x = (durations - x_min) / (x_max - x_min)
         y = (y - y_min) / (y_max - y_min)
 
-        period = fallback_period(guess_period(x, y))
-        pguess = [0, np.sign(y[0]) * 0.5, period, 0, 0]
+        pguess = rabi_initial_guess(x, y, "length", signal=False)
 
         try:
             popt, _, pi_pulse_parameter = fit_length_function(

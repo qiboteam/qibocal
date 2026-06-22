@@ -1,7 +1,6 @@
 from _collections_abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass, field, fields
-from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -15,8 +14,6 @@ from qibocal.update import replace
 
 from ..utils import (
     PowerLevel,
-    chi2_reduced,
-    chi2_reduced_complex,
     lorentzian,
     lorentzian_fit,
     readout_frequency,
@@ -30,8 +27,6 @@ ResSpecType = np.dtype(
         ("freq", np.float64),
         ("signal", np.float64),
         ("phase", np.float64),
-        ("error_signal", np.float64),
-        ("error_phase", np.float64),
     ]
 )
 """Custom dtype for resonator spectroscopy."""
@@ -45,12 +40,8 @@ class ResonatorSpectroscopyFit:
     """Routine function to fit data with a model."""
     fit: Callable
     """Fit function used for the resonance."""
-    chi2: Callable
-    """Chi2 reduced."""
     values: Callable
     """Extract values from data."""
-    errors: Callable
-    """Extract errors from data."""
     plot: Callable
     """Plotting function for ResonatorSpectroscopy."""
 
@@ -59,17 +50,13 @@ FITS = {
     "lorentzian": ResonatorSpectroscopyFit(
         lorentzian,
         lorentzian_fit,
-        chi2_reduced,
         lambda z: z.signal,
-        lambda z: z.error_signal,
         spectroscopy_plot,
     ),
     "s21": ResonatorSpectroscopyFit(
         s21,
         s21_fit,
-        chi2_reduced_complex,
         lambda z: (z.signal, z.phase),
-        lambda z: (z.error_signal, z.error_phase),
         s21_spectroscopy_plot,
     ),
 }
@@ -84,7 +71,7 @@ class ResonatorSpectroscopyParameters(Parameters):
     """Width for frequency sweep relative  to the readout frequency [Hz]."""
     freq_step: int
     """Frequency step for sweep [Hz]."""
-    power_level: Union[PowerLevel, str]
+    power_level: PowerLevel | str
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
     fit_function: str = "lorentzian"
@@ -92,11 +79,9 @@ class ResonatorSpectroscopyParameters(Parameters):
     phase_sign: bool = True
     """Several instruments have their convention about the sign of the phase. If True, the routine
     will apply a minus to the phase data."""
-    amplitude: Optional[float] = None
+    amplitude: float | None = None
     """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
-    hardware_average: bool = True
-    """By default hardware average will be performed."""
 
     def __post_init__(self):
         if isinstance(self.power_level, str):
@@ -111,17 +96,11 @@ class ResonatorSpectroscopyResults(Results):
     """Readout frequency [Hz] for each qubit."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitted parameters."""
-    bare_frequency: Optional[dict[QubitId, float]] = field(
+    bare_frequency: dict[QubitId, float] | None = field(
         default_factory=dict,
     )
     """Bare resonator frequency [Hz] for each qubit."""
-    error_fit_pars: dict[QubitId, list] = field(default_factory=dict)
-    """Errors of the fit parameters."""
-    chi2_reduced: dict[QubitId, tuple[float, Optional[float]]] = field(
-        default_factory=dict
-    )
-    """Chi2 reduced."""
-    amplitude: Optional[dict[QubitId, float]] = field(
+    amplitude: dict[QubitId, float] | None = field(
         default_factory=dict,
     )
     """Readout amplitude for each qubit."""
@@ -210,7 +189,7 @@ def _acquisition(
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
-        averaging_mode=AveragingMode.SINGLESHOT,
+        averaging_mode=AveragingMode.CYCLIC,
     )
 
     # retrieve the results for every qubit
@@ -224,11 +203,9 @@ def _acquisition(
             ResSpecType,
             (q),
             dict(
-                signal=signal.mean(axis=0),
-                phase=phase_.mean(axis=0),
+                signal=signal,
+                phase=phase_,
                 freq=delta_frequency_range + ro_frequency,
-                error_signal=np.std(signal, axis=0, ddof=1) / np.sqrt(signal.shape[0]),
-                error_phase=np.std(phase_, axis=0, ddof=1) / np.sqrt(phase_.shape[0]),
             ),
         )
     return data
@@ -243,9 +220,6 @@ def _fit(
     bare_frequency = {}
     frequency = {}
     fitted_parameters = {}
-    error_fit_pars = {}
-    chi2 = {}
-    amplitudes = {}
 
     fit = FITS[data.fit_function]
 
@@ -261,41 +235,14 @@ def _fit(
             qubit_data, resonator_type=data.resonator_type, fit="resonator"
         )
         if fit_result is not None:
-            (
-                frequency[qubit],
-                fitted_parameters[qubit],
-                error_fit_pars[qubit],
-            ) = fit_result
-
-            dof = len(data[qubit].freq) - len(fitted_parameters[qubit])
-
+            frequency[qubit], fitted_parameters[qubit], _ = fit_result
             if data.power_level is PowerLevel.high:
                 bare_frequency[qubit] = frequency[qubit]
 
-            chi2[qubit] = (
-                fit.chi2(
-                    fit.values(data[qubit]),
-                    fit.function(data[qubit].freq, *fitted_parameters[qubit]),
-                    fit.errors(data[qubit]),
-                    dof,
-                ),
-                np.sqrt(2 / dof),
-            )
-            amplitudes[qubit] = fitted_parameters[qubit][0]
-    if data.power_level is PowerLevel.high:
-        return ResonatorSpectroscopyResults(
-            frequency=frequency,
-            fitted_parameters=fitted_parameters,
-            bare_frequency=bare_frequency,
-            error_fit_pars=error_fit_pars,
-            chi2_reduced=chi2,
-            amplitude=data.amplitudes,
-        )
     return ResonatorSpectroscopyResults(
         frequency=frequency,
         fitted_parameters=fitted_parameters,
-        error_fit_pars=error_fit_pars,
-        chi2_reduced=chi2,
+        bare_frequency=bare_frequency if data.power_level is PowerLevel.high else {},
         amplitude=data.amplitudes,
     )
 

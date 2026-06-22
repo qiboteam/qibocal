@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qibocal"
-version = "0.2.4"
+version = "0.2.6"
 description = "Qibo's quantum calibration, characterization and validation module."
 authors = ["The Qibo team"]
 license = "Apache License 2.0"
@@ -18,7 +18,7 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.10,<3.14"
 qibolab = "^0.2.8"
-qibo = "^0.2.16"
+qibo = "^0.3.1"
 numpy = ">=1.26.4,<3"
 scipy = "^1.10.1"
 pandas = { version = "^2.2.2", extras = ["html"] }
@@ -33,7 +33,8 @@ cma = "^3.3.0"
 optional = true
 
 [tool.poetry.group.tests.dependencies]
-pytest = "^7.1.2"
+qibolab = "^0.2.13"        # "bounds" are not defined in the test platform but required by earlier versions of qibolab
+pytest = ">=7.1.2,<10.0.0"
 pytest-cov = "^3.0.0"
 pytest-env = "^0.8.1"
 pytest-mock = "^3.14.0"
@@ -45,7 +46,6 @@ optional = true
 ruff = "^0.9.1"
 
 [tool.ruff.lint.per-file-ignores]
-"simple.py" = ["E402"]
 "__init__.py" = ["F403"]
 "calibration_scripts/**/*.py" = ["F821"]
 "tests/calibration_scripts/**/*.py" = ["F821"]
@@ -70,6 +70,7 @@ optional = true
 [tool.poetry.group.dev.dependencies]
 ipython = "^8.0"
 devtools = "^0.10.0"
+marimo = "^0.23.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

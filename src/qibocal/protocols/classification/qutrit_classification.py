@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 from qibolab import AcquisitionType, PulseSequence
 
@@ -30,7 +29,7 @@ class QutritClassificationParameters(SingleShotClassificationParameters):
 
 @dataclass
 class QutritClassificationData(SingleShotClassificationData):
-    classifiers_list: Optional[list[str]] = field(
+    classifiers_list: list[str] | None = field(
         default_factory=lambda: [DEFAULT_CLASSIFIER]
     )
     """List of models to classify the qubit states"""
@@ -110,12 +109,8 @@ def _acquisition(
         }
         for q in targets
     ]
-    if params.unrolling:
-        results = platform.execute(sequences, **options, updates=updates)
-    else:
-        results = {}
-        for sequence in sequences:
-            results.update(platform.execute([sequence], **options, updates=updates))
+
+    results = platform.execute(sequences, **options, updates=updates)
 
     for state, ro_pulses in zip(states, all_ro_pulses):
         for qubit in targets:

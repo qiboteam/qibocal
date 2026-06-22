@@ -1,25 +1,26 @@
 import inspect
 import json
 import time
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import asdict, dataclass, fields
 from functools import wraps
 from pathlib import Path
-from typing import Callable, Generic, NewType, Optional, TypeVar, Union
+from typing import Generic, NewType, TypeVar
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, Platform, Qubit
+from qibolab import Platform, Qubit
 
 from qibocal.config import log
 
 from ..calibration.calibration import QubitId, QubitPairId
 from .serialize import deserialize, load, serialize
 
+__all__ = ["ProtocolsCollection", "Routine"]
+
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
-ParameterValue = Union[float, int]
-"""Valid value for a routine and runcard parameter."""
 Qubits = dict[QubitId, Qubit]
 """Convenient way of passing qubit pairs in the routines."""
 
@@ -70,11 +71,7 @@ class Parameters:
     nshots: int
     """Number of executions on hardware."""
     relaxation_time: float
-    """Wait time for the qubit to decohere back to the `gnd` state."""
-    hardware_average: bool = False
-    """By default hardware average will be performed."""
-    classify: bool = False
-    """By default qubit state classification will not be performed."""
+    """Wait time for the qubit to decohere back to the ground state."""
 
     @classmethod
     def load(cls, input_parameters):
@@ -99,34 +96,14 @@ class Parameters:
             setattr(instantiated_class, parameter, value)
         return instantiated_class
 
-    @property
-    def execution_parameters(self):
-        """Default execution parameters."""
-        averaging_mode = (
-            AveragingMode.CYCLIC if self.hardware_average else AveragingMode.SINGLESHOT
-        )
-        acquisition_type = (
-            AcquisitionType.DISCRIMINATION
-            if self.classify
-            else AcquisitionType.INTEGRATION
-        )
-        return dict(
-            nshots=self.nshots,
-            relaxation_time=self.relaxation_time,
-            acquisition_type=acquisition_type,
-            averaging_mode=averaging_mode,
-        )
-
 
 class AbstractData:
     """Abstract data class."""
 
-    def __init__(
-        self, data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray] = None
-    ):
+    def __init__(self, data: dict[tuple[QubitId, int] | QubitId, npt.NDArray] = None):
         self.data = data if data is not None else {}
 
-    def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
+    def __getitem__(self, qubit: QubitId | tuple[QubitId, int]):
         """Access data attribute member."""
         return self.data[qubit]
 
@@ -199,16 +176,19 @@ class Data(AbstractData):
     """Data resulting from acquisition routine."""
 
     @property
-    def qubits(self):
+    def qubits(self) -> list[QubitId]:
         """Access qubits from data structure."""
+        # TODO: In the two-qubit case, a set of the first elements of the tuples is
+        # returned. This behaviour is not reflected in the name of the property so may
+        # lead to confusion and should therefore be changed.
         if set(map(type, self.data)) == {tuple}:
             return list({q[0] for q in self.data})
         return [q for q in self.data]
 
     @property
     def pairs(self):
-        """Access qubit pairs ordered alphanumerically from data structure."""
-        return list({tuple(sorted(q[:2])) for q in self.data})
+        """Access qubit pairs from data structure."""
+        return list({tuple(q[:2]) for q in self.data})
 
     def register_qubit(self, dtype, data_keys, data_dict):
         """Store output for single qubit.
@@ -230,24 +210,21 @@ class Data(AbstractData):
         else:
             self.data[data_keys] = np.rec.array(ar)
 
-    def save(self, path: Path):
+    def save(self, path: Path, filename: str = DATAFILE):
         """Store data to file."""
-        super()._to_json(path, DATAFILE)
-        super()._to_npz(path, DATAFILE)
+        super().save(path, filename)
 
     @classmethod
-    def load(cls, path: Path):
+    def load(cls, path: Path, filename: str = DATAFILE):
         """Load data and parameters."""
-        return super().load(path, filename=DATAFILE)
+        return super().load(path, filename)
 
 
 @dataclass
 class Results(AbstractData):
     """Generic runcard update."""
 
-    def __contains__(
-        self, key: Union[QubitId, QubitPairId, tuple[QubitId, ...]]
-    ) -> bool:
+    def __contains__(self, key: QubitId | QubitPairId | tuple[QubitId, ...]) -> bool:
         """Checking if qubit is in Results.
 
         If key is not present means that fitting failed or was not
@@ -260,14 +237,13 @@ class Results(AbstractData):
         )
 
     @classmethod
-    def load(cls, path: Path):
+    def load(cls, path: Path, filename: str = RESULTSFILE):
         """Load results."""
-        return super().load(path, filename=RESULTSFILE)
+        return super().load(path, filename)
 
-    def save(self, path: Path):
+    def save(self, path: Path, filename: str = RESULTSFILE):
         """Store results to file."""
-        super()._to_json(path, RESULTSFILE)
-        super()._to_npz(path, RESULTSFILE)
+        super().save(path, filename)
 
 
 # Internal types, in particular `_ParametersT` is used to address function
@@ -289,7 +265,7 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """Plotting function."""
     update: Callable[[_ResultsT, Platform], None] = None
     """Update function platform."""
-    two_qubit_gates: Optional[bool] = False
+    two_qubit_gates: bool | None = False
     """Flag to determine whether to allocate list of Qubits or Pairs."""
 
     def __post_init__(self):
@@ -328,6 +304,14 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
         return "targets" in inspect.signature(self.acquisition).parameters
 
 
+ProtocolsCollection = dict[str, Routine]
+"""Collection of protocols.
+
+This collection is supposed to be a bundle, either built-in or provided by external
+extensions.
+"""
+
+
 @dataclass
 class DummyPars(Parameters):
     """Dummy parameters."""
@@ -352,7 +336,7 @@ def _dummy_acquisition(pars: DummyPars, platform: Platform) -> DummyData:
 
 
 def _dummy_update(
-    results: DummyRes, platform: Platform, qubit: Union[QubitId, QubitPairId]
+    results: DummyRes, platform: Platform, qubit: QubitId | QubitPairId
 ) -> None:
     """Dummy update function."""
 

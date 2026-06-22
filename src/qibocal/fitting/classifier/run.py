@@ -4,7 +4,6 @@ import logging
 import pathlib
 import time
 from dataclasses import asdict, dataclass
-from typing import List, Optional
 
 import numpy as np
 import pandas as pd
@@ -31,7 +30,7 @@ BENCHTABFILE = "benchmarks.csv"
 base_dir = pathlib.Path()
 
 
-def import_classifiers(cls_names: List[str]):
+def import_classifiers(cls_names: list[str]):
     r"""Return the classification models.
 
     Args:
@@ -153,7 +152,7 @@ class BenchmarkResults:
     accuracy: float
     testing_time: float
     training_time: float
-    name: Optional[str] = None
+    name: str | None = None
 
 
 def benchmarking(model, x_train, y_train, x_test, y_test, **fit_kwargs):

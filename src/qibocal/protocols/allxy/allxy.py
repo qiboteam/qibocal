@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -135,7 +134,7 @@ def _acquisition(
     return data
 
 
-def apply_drag(pulse: Pulse, beta_param: Optional[float] = None) -> Pulse:
+def apply_drag(pulse: Pulse, beta_param: float | None = None) -> Pulse:
     """Apply Drag with parameter beta."""
     if beta_param is None:
         return pulse

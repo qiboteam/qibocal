@@ -222,6 +222,8 @@ def _fit(
                     _pair,
                     thetas=data.thetas,
                     gate_repetition=1,
+                    key=(pair[0], pair[1], amplitude, t_idle),
+                    rec_array=True,
                 )
                 angles[_pair].append(new_angle[_pair])
                 leakages[_pair].append(new_leak[_pair])

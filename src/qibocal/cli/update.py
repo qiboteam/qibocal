@@ -2,7 +2,6 @@ import json
 import os
 import pathlib
 import shutil
-from typing import Optional
 
 from qibolab import locate_platform
 
@@ -12,7 +11,7 @@ from ..calibration import CalibrationPlatform, create_calibration_platform
 from ..config import log, raise_error
 
 
-def update(path: pathlib.Path, skip_qubits: Optional[list[QubitId]]):
+def update(path: pathlib.Path, skip_qubits: list[QubitId] | None):
     """Perform copy of updated platform in QIBOLAB_PLATFORM
 
     Arguments:

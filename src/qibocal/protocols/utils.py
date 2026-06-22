@@ -1,6 +1,7 @@
+from collections import Counter
+from collections.abc import Sequence
 from colorsys import hls_to_rgb
 from enum import Enum
-from typing import Literal, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -8,11 +9,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 from numpy.typing import NDArray
 from plotly.subplots import make_subplots
-from qibolab._core.components import Config
 from scipy import constants, sparse
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 from scipy.stats import norm as scipy_norm
+from sklearn.cluster import HDBSCAN
 
 from qibocal.auto.operation import Data, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
@@ -35,13 +36,25 @@ KB = constants.k
 H = constants.h
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
-CONFIDENCE_INTERVAL_FIRST_MASK = 99
-"""Confidence interval used to mask flux data."""
-CONFIDENCE_INTERVAL_SECOND_MASK = 70
-"""Confidence interval used to clean outliers."""
 DELAY_FIT_PERCENTAGE = 10
 """Percentage of the first and last points used to fit the cable delay."""
 STRING_TYPE = "<U100"
+
+# constants for signal detection
+MAX_PIXELS = 2
+"""How many pixels at most two clusters' endpoints should be far for merging them."""
+DISTANCE_XY = 1.5 * MAX_PIXELS  # very heuristic
+""" Minimum distance for separate clusters.
+Clusters below this distance will be merged.
+Since it is given in a 3D-space, with a compressed vertical dimension, and the horizontal plane measured in pixels,
+this distance correspond to diagonally adjacent pixels, with some additional leeway for the extra dimension.
+"""
+DISTANCE_Z = 0.5
+"""See :const:`DISTANCE_XY`."""
+
+
+class FeatExtractionError(Exception):
+    """Exception for feature extraction errors."""
 
 
 class PowerLevel(str, Enum):
@@ -80,11 +93,11 @@ def readout_frequency(
     return platform_frequency
 
 
-def lorentzian(frequency, amplitude, center, sigma, offset):
+def lorentzian(frequency, amplitude, center, sigma, offset, slope):
     # http://openafox.com/science/peak-function-derivations.html
-    return (amplitude / np.pi) * (
-        sigma / ((frequency - center) ** 2 + sigma**2)
-    ) + offset
+    peak = (amplitude / np.pi) * (sigma / ((frequency - center) ** 2 + sigma**2))
+    background = offset + frequency * slope
+    return peak + background
 
 
 def lorentzian_fit(data, resonator_type=None, fit=None):
@@ -92,69 +105,65 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
     voltages = data.signal
 
     # Guess parameters for Lorentzian max or min
-    # TODO: probably this is not working on HW
-    guess_offset = np.mean(
-        voltages[np.abs(voltages - np.mean(voltages)) < np.std(voltages)]
-    )
+    guess_slope = (voltages[-1] - voltages[0]) / (frequencies[-1] - frequencies[0])
+    guess_offset = voltages[0] - guess_slope * frequencies[0]
+    guess_background = guess_offset + guess_slope * frequencies
+    voltages_no_background = voltages - guess_background
+
     if (resonator_type == "3D" and fit == "resonator") or (
         resonator_type == "2D" and fit == "qubit"
     ):
-        guess_center = frequencies[
-            np.argmax(voltages)
-        ]  # Argmax = Returns the indices of the maximum values along an axis.
-        guess_sigma = abs(frequencies[np.argmin(voltages)] - guess_center)
-        guess_amp = (np.max(voltages) - guess_offset) * guess_sigma * np.pi
-
+        guess_center = frequencies[np.argmax(voltages_no_background)]
+        guess_peak_height = voltages_no_background.max()
+        indices_beyond_half = np.where(voltages_no_background > guess_peak_height / 2)[
+            0
+        ]
     else:
-        guess_center = frequencies[
-            np.argmin(voltages)
-        ]  # Argmin = Returns the indices of the minimum values along an axis.
-        guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
-        guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
+        guess_center = frequencies[np.argmin(voltages_no_background)]
+        guess_peak_height = voltages_no_background.min()
+        indices_beyond_half = np.where(voltages_no_background < guess_peak_height / 2)[
+            0
+        ]
+
+    if len(indices_beyond_half) >= 1:
+        guess_sigma = (
+            frequencies[indices_beyond_half[-1]] - frequencies[indices_beyond_half[0]]
+        ) / 2
+    else:
+        # if there is no clear peak, we give a high flexibility
+        guess_sigma = frequencies[-1] - frequencies[0]
+
+    guess_amp = guess_peak_height * guess_sigma * np.pi
 
     initial_parameters = [
         guess_amp,
         guess_center,
         guess_sigma,
         guess_offset,
+        guess_slope,
     ]
+    freq_domain_size = frequencies[-1] - frequencies[0]
+    bounds = (
+        [-np.inf, frequencies[0], 0.0, -np.inf, -np.inf],
+        [np.inf, frequencies[-1], freq_domain_size, np.inf, np.inf],
+    )
+
     # fit the model with the data and guessed parameters
     try:
-        if hasattr(data, "error_signal"):
-            if not np.isnan(data.error_signal).any():
-                fit_parameters, perr = curve_fit(
-                    lorentzian,
-                    frequencies,
-                    voltages,
-                    p0=initial_parameters,
-                    sigma=data.error_signal,
-                )
-                perr = np.sqrt(np.diag(perr)).tolist()
-                model_parameters = list(fit_parameters)
-                return model_parameters[1] * GHZ_TO_HZ, list(model_parameters), perr
-        fit_parameters, perr = curve_fit(
+        fit_parameters, parameters_cov = curve_fit(
             lorentzian,
             frequencies,
             voltages,
             p0=initial_parameters,
+            bounds=bounds,
         )
-        perr = [0] * 4
-        model_parameters = list(fit_parameters)
-        return model_parameters[1] * GHZ_TO_HZ, model_parameters, perr
+        # The output results are stored in a json, but ndarray is not JSON serializable,
+        # so the parameters are converted to list.
+        parameter_errors = np.sqrt(np.diag(parameters_cov)).tolist()
+        model_parameters = fit_parameters.tolist()
+        return model_parameters[1] * GHZ_TO_HZ, model_parameters, parameter_errors
     except RuntimeError as e:
         log.warning(f"Lorentzian fit not successful due to {e}")
-
-
-class DcFilteredConfig(Config):
-    """Dummy config for dc with filters.
-
-    Required by cryoscope protocol.
-
-    """
-
-    kind: Literal["dc-filter"] = "dc-filter"
-    offset: float
-    filter: list
 
 
 def effective_qubit_temperature(
@@ -217,6 +226,33 @@ def compute_qnd(
     return qnd, lambda_m.tolist(), lambda_m2.tolist()
 
 
+def marginalize_qubit_counts(
+    counts: Counter[str], qubit_id: Sequence[int] | int
+) -> Counter[str]:
+    """
+    Extract marginal distribution from measurement counts over selected qubit indices.
+
+    Args:
+        counts: Counter mapping big-endian bitstrings to counts (e.g. {'0101': 10, ...})
+        qubit_id: Qubit ids to marginalize over.
+
+    Returns:
+        Counter of the marginal distribution.
+    """
+    out = Counter()
+    indices_list = [qubit_id] if isinstance(qubit_id, int) else qubit_id
+    # Indices are the qubit ids. Since results are returned in big-endian format this
+    # means that the qubit with id 0 is the rightmost bit in the bitstring, so we need to
+    # remap the indices to account for this.
+    assert len(set(map(len, counts))) == 1, "All bitstrings must have the same length"
+    nqubits = len(next(iter(counts)))
+    state_indices = [nqubits - 1 - i for i in indices_list]
+    for state, count in counts.items():
+        reduced = "".join(state[i] for i in state_indices)
+        out[reduced] += count
+    return out
+
+
 def compute_assignment_fidelity(
     one_samples: np.ndarray, zero_samples: np.ndarray
 ) -> float:
@@ -253,55 +289,7 @@ def cumulative(input_data, points):
     return np.searchsorted(np.sort(points), np.sort(input_data))
 
 
-def fit_punchout(data: Data, fit_type: str):
-    """
-    Punchout fitting function.
-
-    Args:
-
-    data (Data): Punchout acquisition data.
-    fit_type (str): Punchout type, it could be `amp` (amplitude)
-    or `att` (attenuation).
-
-    Return:
-
-    List of dictionaries containing the low, high amplitude
-    (attenuation) frequencies and the readout amplitude (attenuation)
-    for each qubit.
-    """
-    qubits = data.qubits
-
-    low_freqs = {}
-    high_freqs = {}
-    ro_values = {}
-
-    for qubit in qubits:
-        qubit_data = data[qubit]
-        freqs = qubit_data.freq
-        amps = getattr(qubit_data, fit_type)
-        signal = qubit_data.signal
-        if data.resonator_type == "3D":
-            mask_freq, mask_amps = extract_feature(
-                freqs, amps, signal, "max", ci_first_mask=90
-            )
-        else:
-            mask_freq, mask_amps = extract_feature(
-                freqs, amps, signal, "min", ci_first_mask=90
-            )
-        if fit_type == "amp":
-            best_freq = np.max(mask_freq)
-            bare_freq = np.min(mask_freq)
-        else:
-            best_freq = np.min(mask_freq)
-            bare_freq = np.max(mask_freq)
-        ro_val = np.max(mask_amps[mask_freq == best_freq])
-        low_freqs[qubit] = best_freq
-        high_freqs[qubit] = bare_freq
-        ro_values[qubit] = ro_val
-    return [low_freqs, high_freqs, ro_values]
-
-
-def eval_magnitude(value):
+def eval_magnitude(value: int | float | np.number) -> int:
     """number of non decimal digits in `value`"""
     if value == 0 or not np.isfinite(value):
         return 0
@@ -345,7 +333,7 @@ def round_report(
     return rounded_values, rounded_errors
 
 
-def format_error_single_cell(measure: tuple):
+def format_error_single_cell(measure: tuple) -> str:
     """Helper function to print mean value and error in one line."""
     # extract mean value and error
     mean = measure[0][0]
@@ -360,8 +348,8 @@ def chi2_reduced(
     observed: NDArray,
     estimated: NDArray,
     errors: NDArray,
-    dof: Optional[float] = None,
-):
+    dof: float | None = None,
+) -> float:
     if np.count_nonzero(errors) < len(errors):
         return EXTREME_CHI
 
@@ -370,15 +358,15 @@ def chi2_reduced(
 
     chi2 = np.sum(np.square((observed - estimated) / errors)) / dof
 
-    return chi2
+    return float(chi2)
 
 
 def chi2_reduced_complex(
     observed: tuple[NDArray, NDArray],
     estimated: NDArray,
     errors: tuple[NDArray, NDArray],
-    dof: Optional[float] = None,
-):
+    dof: float | None = None,
+) -> float:
     observed_complex = np.abs(observed[0] * np.exp(1j * observed[1]))
 
     observed_real = np.real(observed_complex)
@@ -402,15 +390,15 @@ def chi2_reduced_complex(
     return chi2_real + chi2_imag
 
 
-def get_color_state0(number):
+def get_color_state0(number) -> str:
     return "rgb" + str(hls_to_rgb((-0.35 - number * 9 / 20) % 1, 0.6, 0.75))
 
 
-def get_color_state1(number):
+def get_color_state1(number) -> str:
     return "rgb" + str(hls_to_rgb((-0.02 - number * 9 / 20) % 1, 0.6, 0.75))
 
 
-def significant_digit(number: float):
+def significant_digit(number: float) -> int:
     """Computes the position of the first significant digit of a given number.
 
     Args:
@@ -479,7 +467,9 @@ def evaluate_grid(
     return np.vstack([i_values.ravel(), q_values.ravel()]).T
 
 
-def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
+def plot_results(
+    data: Data, qubit: QubitId, qubit_states: list, fit: Results
+) -> list[go.Figure]:
     """
     Plots for the qubit and qutrit classification.
 
@@ -709,7 +699,7 @@ def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
 
 
 def table_dict(
-    qubit: Union[list[QubitId], QubitId],
+    qubit: list[QubitId] | QubitId,
     names: list[str],
     values: list,
     display_error=False,
@@ -764,43 +754,263 @@ def table_html(data: dict) -> str:
     )
 
 
-def extract_feature(
-    x: np.ndarray,
-    y: np.ndarray,
-    z: np.ndarray,
-    feat: str,
-    ci_first_mask: float = CONFIDENCE_INTERVAL_FIRST_MASK,
-    ci_second_mask: float = CONFIDENCE_INTERVAL_SECOND_MASK,
-):
-    """Extract feature using confidence intervals.
+def euclidean_metric(point1: np.ndarray, point2: np.ndarray):
+    """Euclidean distance between two arrays."""
+    return np.linalg.norm(point1 - point2)
 
-    Given a dataset of the form (x, y, z) where a spike or a valley is expected,
-    this function discriminate the points (x, y) with a signal, from the pure noise
-    and return the first ones.
 
-    A first mask is construct by looking at `ci_first_mask` confidence interval for each y bin.
-    A second mask is applied by looking at `ci_second_mask` confidence interval to remove outliers.
-    `feat` could be `min` or `max`, in the first case the function will look for valleys, otherwise
-    for peaks.
+def zca_whiten(X):
+    """
+    Applies ZCA whitening to the data (X)
+    https://en.wikipedia.org/wiki/Whitening_transformation
+    This implementation is analoguous of calling :func:`np.linalg.svd` function and
+    multiplying `U` and `Vh` matrices;
+    Example for matrix `X`:
 
+    ```python
+    U, S, Vh = np.linalg.svd(V)
+    ZCA_X = X @ U @ Vh
+    ```
+    The aforementioned method does not require any regularization term `EPS`, making it formally more correct;
+    however the current method is preferred because it scales better with respect to `X` dimensions and
+    the relative error scales linear with `EPS`.
+
+    X: numpy 2d array
+        input data, rows are data points, columns are features
+
+    Returns: ZCA whitened 2d array
+    """
+    assert X.ndim == 2
+    EPS = 10e-5
+
+    #   covariance matrix
+    cov = np.dot(X.T, X)
+    #   d = (lambda1, lambda2, ..., lambdaN)
+    d, E = np.linalg.eigh(cov)
+    #   D = diag(d) ^ (-1/2)
+    D = np.diag(1.0 / np.sqrt(d + EPS))
+    #   W_zca = E * D * E.T
+    W = np.dot(np.dot(E, D), E.T)
+
+    X_white = np.dot(X, W)
+
+    return X_white
+
+
+def scaling_global(sig: np.ndarray) -> np.ndarray:
+    """Min–max scaling over the whole np.ndarray (global)."""
+    return scaling_slice(sig, axis=None)
+
+
+def scaling_slice(sig: np.ndarray, axis: int | None) -> np.ndarray:
+    """Min–max scaling over a specific axis of the np.ndarray."""
+
+    def expand(a):
+        return np.expand_dims(a, axis) if axis is not None else a
+
+    sig_min = expand(np.min(sig, axis=axis))
+    return (sig - sig_min) / (expand(np.max(sig, axis=axis)) - sig_min)
+
+
+# not used - we can remove
+def horizontal_diagonal(xs: np.ndarray, ys: np.ndarray) -> float:
+    """Computing the lenght of the diagonal of a two dimensional grid."""
+    sizes = np.empty(2)
+    for i, values in enumerate([xs, ys]):
+        sizes[i] = np.max(values) - np.min(values)
+    return np.sqrt((sizes**2).sum())
+
+
+def build_clustering_data(peaks_dict: dict, z: np.ndarray):
+    """Preprocessing of the data to cluster."""
+    x_ = peaks_dict["x"]["idx"]
+    y_ = peaks_dict["y"]["idx"]
+    z_ = z[y_, x_]
+
+    return np.stack((x_, y_, scaling_global(z_))).T
+
+
+def peaks_finder(x, y, z) -> dict | None:
+    """Function for finding the peaks over the whole signal.
+
+    This function takes as input 3 features of the signal. It slices the dataset along a
+    preferred direction (`y` dimension, corresponding to the flux bias) and for each
+    slice it determines the biggest peaks by using `scipy.signal.find_peaks` routine.
+
+    If peaks are found, it returns a dictionary `peaks_dict` containing all the features
+    for the computed peaks. If no peaks are found returns None.
     """
 
-    masks = []
-    for i in np.unique(y):
-        signal_fixed_y = z[y == i]
-        min, max = np.percentile(
-            signal_fixed_y,
-            [100 - ci_first_mask, ci_first_mask],
-        )
-        masks.append(signal_fixed_y < min if feat == "min" else signal_fixed_y > max)
+    # filter data using find_peaks
+    peaks = {"x": {"idx": [], "val": []}, "y": {"idx": [], "val": []}}
+    for y_idx, y_val in enumerate(y):
+        peak, info = find_peaks(z[y_idx], prominence=0.2)
+        if len(peak) > 0:
+            idx = np.argmax(info["prominences"])
+            # if multiple peaks per bias are found, select the one with the highest prominence
+            x_idx = peak[idx]
+            peaks["x"]["idx"].append(x_idx)
+            peaks["x"]["val"].append(x[x_idx])
+            peaks["y"]["idx"].append(y_idx)
+            peaks["y"]["val"].append(y_val)
 
-    first_mask = np.vstack(masks).ravel()
-    min, max = np.percentile(
-        z[first_mask],
-        [100 - ci_second_mask, ci_second_mask],
+    if len(peaks["x"]["idx"]) == 0:
+        return None
+
+    return {
+        feat: {kind: np.array(vals) for kind, vals in smth.items()}
+        for feat, smth in peaks.items()
+    }
+
+
+def merging(
+    data: tuple,
+    labels: list,
+    min_points_per_cluster: int,
+    distance_xy: float,
+    distance_z: float,
+):
+    """Divides the processed signal into clusters for separating signal from noise.
+
+    `data` is a 3D tuple of the data to cluster, while `labels` is the classification made by the clustering algorithm;
+    `min_points_per_cluster` is the minimum size of points for a cluster to be considered relevant signal.
+    It is also possible to set the parameter `distance`, which represents the Euclidean distance between neighboring points of two clusters.
+    If this distance is smaller than `distance`, the two clusters are merged.
+    It allows a `min_cluster_size=2` in order to decrease as much as possible misclassification of few points.
+    The function returns a boolean list corresponding to the indices of the relevant signal.
+    """
+
+    # removing data classified as noise
+    unique_labels = np.unique(labels[labels >= 0])
+    if len(unique_labels) == 0:  # if all points are noise
+        """
+        Clustering Failed:
+        no signal but random noise is found.
+        """
+        raise FeatExtractionError()
+
+    indices_list = np.arange(len(labels)).astype(int)
+    indexed_labels = np.stack((labels, indices_list)).T
+    data = np.vstack((data.T, indices_list))
+
+    clusters = [data[:, labels == lab] for lab in unique_labels if lab >= 0]
+    noise_points = data[:, labels < 0]
+
+    for i in range(noise_points.shape[1]):
+        clusters.append(noise_points[:, i][:, np.newaxis])
+
+    clusters = sorted(
+        clusters,
+        key=lambda c: np.min(c[1]),
     )
-    second_mask = z[first_mask] < min if feat == "min" else z[first_mask] > max
-    return x[first_mask][second_mask], y[first_mask][second_mask]
+
+    first = clusters[0]
+    first_leftmost = first[:, np.argmin(first[1, :])]
+    first_rightmost = first[:, np.argmax(first[1, :])]
+    first_label = indexed_labels[first_leftmost[3].astype(int), 0]
+    # If the leftmost point is classified as noise (label = -1),
+    # we still use it as the initial cluster for the merge step.
+    # Its label is reassigned to a unique value;
+    # This avoids edge cases where true signal is fused first with one
+    # noise points and then since it takes -1 label gets fused with
+    # all other unmerged noise points
+    if first_label < 0:
+        max_lab = np.max(indexed_labels[:, 0]) + 1
+        first_label = max_lab
+        unique_labels = np.append(unique_labels, max_lab)
+
+    active_clusters = {
+        first_label: {
+            "cluster": first,
+            "leftmost": first_leftmost,
+            "rightmost": first_rightmost,
+        }
+    }
+
+    if len(unique_labels) == 1:
+        # only one cluster found
+        return active_clusters
+
+    for cluster in clusters[1:]:
+        distances_list = []
+        indices = []
+
+        for idx in active_clusters.keys():
+            cluster_rightmost = cluster[:, np.argmax(cluster[1, :])]
+            cluster_leftmost = cluster[:, np.argmin(cluster[1, :])]
+            cluster_label = indexed_labels[cluster_leftmost[3].astype(int), 0]
+
+            d_xy = euclidean_metric(
+                active_clusters[idx]["rightmost"][:-2], cluster_leftmost[:-2]
+            )
+            d_z = euclidean_metric(
+                active_clusters[idx]["rightmost"][-2], cluster_leftmost[-2]
+            )
+            if d_xy <= distance_xy and d_z <= distance_z:  # keep the list
+                distances_list.append(np.sqrt(d_xy**2 + d_z**2))
+                indices.append(idx)
+
+        if len(distances_list) != 0:
+            best_dist = np.argmin(distances_list)
+            best_idx = indices[best_dist]
+            old_cluster = active_clusters[best_idx]["cluster"]
+            updated_cluster = np.hstack((old_cluster, cluster))
+            active_clusters[best_idx]["cluster"] = updated_cluster
+            active_clusters[best_idx]["rightmost"] = updated_cluster[
+                :, np.argmax(updated_cluster[1, :])
+            ]
+        else:
+            if cluster_label < 0:
+                cluster_label = np.max(unique_labels) + 1
+                unique_labels = np.append(unique_labels, cluster_label)
+
+            active_clusters[cluster_label] = {
+                "cluster": cluster,
+                "leftmost": cluster_leftmost,
+                "rightmost": cluster_rightmost,
+            }
+
+    valid_clusters = {
+        lab: v_clust
+        for lab, v_clust in active_clusters.items()
+        if v_clust["cluster"].shape[1] >= min_points_per_cluster
+    }
+
+    # since we allowed for clustering even a group of 2 points, we filter the allowed eligible clusters
+    # to be at least composed by a minimum number of points given by min_points_per_cluster parameter
+    if len(valid_clusters.keys()) == 0:  # if no big enough clusters are found
+        """
+        Clustering Failed:
+        not enough big clusters after merging routine.
+        """
+        raise FeatExtractionError()
+
+    return valid_clusters
+
+
+def clustering(peaks_dict, z_masked):
+    """In this function Hierarchical Density-Based Spatial Clustering of Applications with Noise (HDBSCAN) algorithm is used;
+    HDBSCAN is a good algorithm for successfully capture clusters with different densities.
+    """
+
+    # normalizing peaks for clustering
+    peaks = build_clustering_data(peaks_dict, z_masked)
+
+    # clustering
+    hdb = HDBSCAN(copy=True, min_cluster_size=2)
+    hdb.fit(peaks)
+    labels = hdb.labels_
+
+    return peaks, labels
+
+
+def reshaping_raw_signal(x, y, z):
+    x_ = np.unique(x)
+    y_ = np.unique(y)
+    # background removed over y axis
+    z_ = z.reshape(len(y_), len(x_))
+
+    return x_, y_, z_
 
 
 def guess_period(x, y):
@@ -819,6 +1029,11 @@ def guess_period(x, y):
 def fallback_period(period):
     """Function to estimate period if guess_period fails."""
     return period if period is not None else 4
+
+
+def angle_wrap(angle: float):
+    """Wrap an angle from [-np.inf,np.inf] into the [0,2*np.pi] domain"""
+    return angle % (2 * np.pi)
 
 
 def baseline_als(data: NDArray, lamda: float, p: float, niter: int = 10) -> NDArray:

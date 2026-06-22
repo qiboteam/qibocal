@@ -1,7 +1,6 @@
 import io
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -196,7 +195,7 @@ class ComparedReport:
         return "".join(html_list)
 
     def plotter(
-        self, nodes: list[Completed], target: Union[QubitId, QubitPairId, list[QubitId]]
+        self, nodes: list[Completed], target: QubitId | QubitPairId | list[QubitId]
     ) -> tuple[str, str]:
         tables = []
         plots = []

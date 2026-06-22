@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -9,7 +8,7 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.protocols.utils import fallback_period, guess_period, readout_frequency
+from qibocal.protocols.utils import readout_frequency
 from qibocal.result import magnitude, phase
 
 from . import utils
@@ -27,7 +26,7 @@ class RabiLengthSignalParameters(Parameters):
     """Final pi pulse duration [ns]."""
     pulse_duration_step: float
     """Step pi pulse duration [ns]."""
-    pulse_amplitude: Optional[float] = None
+    pulse_amplitude: float | None = None
     """Pi pulse amplitude. Same for all qubits."""
     rx90: bool = False
     """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
@@ -39,9 +38,9 @@ class RabiLengthSignalParameters(Parameters):
 class RabiLengthSignalResults(Results):
     """RabiLengthSignal outputs."""
 
-    length: dict[QubitId, Union[int, list[float]]]
+    length: dict[QubitId, int | list[float]]
     """Pi pulse duration for each qubit."""
-    amplitude: dict[QubitId, Union[float, list[float]]]
+    amplitude: dict[QubitId, float | list[float]]
     """Pi pulse amplitude. Same for all qubits."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -147,8 +146,8 @@ def _fit(data: RabiLengthSignalData) -> RabiLengthSignalResults:
         x = (rabi_parameter - x_min) / (x_max - x_min)
         y = (voltages - y_min) / (y_max - y_min) - 1 / 2
 
-        period = fallback_period(guess_period(x, y))
-        pguess = [0, np.sign(y[0]) * 0.5, period, 0, 0]
+        pguess = utils.rabi_initial_guess(x, y, "length", signal=True)
+
         try:
             popt, _, pi_pulse_parameter = utils.fit_length_function(
                 x,

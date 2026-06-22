@@ -3,10 +3,10 @@
 import json
 import os
 from collections import defaultdict
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 from functools import singledispatchmethod
 from pathlib import Path
-from typing import Iterator, Optional
 
 from .task import Completed, Id, TaskId
 
@@ -115,7 +115,7 @@ class History:
         self._order.append(task_id)
         return task_id
 
-    def task_path(self, task_id: TaskId, folder: Optional[Path]) -> Optional[Path]:
+    def task_path(self, task_id: TaskId, folder: Path | None) -> Path | None:
         """Determine the path related to a completed task given TaskId.
 
         `folder` should be usually the general output folder, used by Qibocal to store

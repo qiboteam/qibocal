@@ -24,7 +24,7 @@ from scipy.signal import lfilter
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
 from qibocal.config import log
-from qibocal.protocols.ramsey.utils import fitting
+from qibocal.protocols.ramsey.processing import fitting
 from qibocal.protocols.utils import table_dict, table_html
 
 # TODO: remove hard-coded QM parameters
@@ -203,7 +203,7 @@ def _acquisition(
         data.flux_coefficients[qubit] = platform.calibration.single_qubits[
             qubit
         ].qubit.flux_coefficients
-        data.filters[qubit] = platform.config(platform.qubits[qubit].flux).filter
+        data.filters[qubit] = platform.config(platform.qubits[qubit].flux).filters
 
     sequences_x = []
     sequences_y = []

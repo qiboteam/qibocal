@@ -1,14 +1,13 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.ramsey.acquisition import ramsey_and_acquisition_sequence
+from qibocal.result import probability
 
-from ...result import probability
-from ..ramsey.utils import ramsey_sequence
 from . import utils
 from .t1 import CoherenceProbType, T1Data
 from .t2_signal import T2SignalParameters, T2SignalResults, update_t2
@@ -30,9 +29,7 @@ class T2Parameters(T2SignalParameters):
 class T2Results(T2SignalResults):
     """T2 outputs."""
 
-    chi2: Optional[dict[QubitId, tuple[float, Optional[float]]]] = field(
-        default_factory=dict
-    )
+    chi2: dict[QubitId, tuple[float, float | None]] | None = field(default_factory=dict)
     """Chi squared estimate mean value and error."""
 
 
@@ -53,7 +50,7 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
-    sequence, delays = ramsey_sequence(platform, targets)
+    sequence, delays = ramsey_and_acquisition_sequence(platform, targets)
 
     data = T2Data()
 

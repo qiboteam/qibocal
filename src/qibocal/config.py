@@ -1,7 +1,9 @@
-"""Custom logger implemenation."""
+"""Custom logger implementation."""
 
 import logging
 import os
+
+from qibocal.version import __version__
 
 # Logging levels available here https://docs.python.org/3/library/logging.html#logging-levels
 QIBOCAL_LOG_LEVEL = 10
@@ -33,7 +35,6 @@ class CustomHandler(logging.StreamHandler):
 
     def format(self, record):
         """Format the record with specific format."""
-        from qibocal import __version__
 
         fmt = f"[Qibocal {__version__}|%(levelname)s|%(asctime)s]: %(message)s"
 

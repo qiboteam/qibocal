@@ -29,7 +29,7 @@ drive pulse it is detuned on purpose to generate oscillations.
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.ramsey.ramsey.RamseyParameters
+.. autoclass:: qibocal.protocols.ramsey.acquisition.RamseyParameters
   :noindex:
 
 
@@ -43,9 +43,7 @@ A possible runcard to launch a Ramsey experiment could be the following:
     - id: ramsey
       operation: ramsey
       parameters:
-        delay_between_pulses_end: 2000
-        delay_between_pulses_start: 50
-        delay_between_pulses_step: 50
+        delay: (50, 2000, 50)
         detuning: -1000000
         nshots: 1024
 
@@ -80,7 +78,7 @@ that on the y axis it will be displayed the raw measurements from the instrument
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.ramsey.ramsey_signal.RamseySignalParameters
+.. autoclass:: qibocal.protocols.ramsey.acquisition.RamseyParameters
   :noindex:
 
 Example
@@ -91,9 +89,7 @@ Example
     - id: ramsey with signal
       operation: ramsey_signal
       parameters:
-        delay_between_pulses_end: 25000
-        delay_between_pulses_start: 50
-        delay_between_pulses_step: 1000
+        delay: (50, 25000, 1000)
         nshots: 1024
 
 
@@ -117,7 +113,7 @@ without tunable couplers such terms is expected to be of the order of a few hund
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.ramsey.ramsey_zz.RamseyZZParameters
+.. autoclass:: qibocal.protocols.ramsey.acquisition.RamseyParameters
     :noindex:
 
 
@@ -129,12 +125,10 @@ Example
     - id: ramsey zz
       operation: ramsey_zz
       parameters:
-        delay_between_pulses_end: 2000
-        delay_between_pulses_start: 10
-        delay_between_pulses_step: 50
+        delay: (10, 2000, 50)
         detuning: 500000
         nshots: 1024
-        target_qubit: D1
+        targets: [D1, D0]
 
 
 .. image:: ramsey_zz.png

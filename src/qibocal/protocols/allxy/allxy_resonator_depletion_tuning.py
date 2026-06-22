@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -40,7 +39,7 @@ class AllXYResonatorResults(Results):
 class AllXYResonatorData(Data):
     """AllXY acquisition outputs."""
 
-    delay_param: Optional[float] = None
+    delay_param: float | None = None
     """Delay parameter for resonator depletion."""
     data: dict[tuple[QubitId, float], npt.NDArray[AllXYType]] = field(
         default_factory=dict

@@ -10,7 +10,7 @@ actions:
       nshots: 1024
       readout_amplitude: 0.5
 
-  - id: resonator high power high amplitude average
+  - id: resonator high power high amplitude
     operation: resonator_spectroscopy
     parameters:
       freq_width: 10_000_000
@@ -18,16 +18,6 @@ actions:
       amplitude: 0.4
       power_level: high
       nshots: 10
-
-  - id: resonator high power high amplitude single shot
-    operation: resonator_spectroscopy
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 100_000
-      amplitude: 0.4
-      power_level: high
-      nshots: 10
-      hardware_average: false
 
   - id: resonator punchout
     operation: resonator_punchout
@@ -59,13 +49,13 @@ actions:
       fit_function: s21
       nshots: 10
 
-  - id: qubit spectroscopy average
+  - id: qubit spectroscopy
     operation: qubit_spectroscopy
     parameters:
       drive_amplitude: 0.001
       drive_duration: 1000
       freq_width: 2_000_000
-      freq_step: 500_000
+      freq_step: 200_000
       nshots: 10
 
   - id: qubit power spectroscopy
@@ -78,17 +68,7 @@ actions:
       step_amp: 0.05
       duration: 100
 
-  - id: qubit spectroscopy singleshot
-    operation: qubit_spectroscopy
-    parameters:
-      drive_amplitude: 0.001
-      drive_duration: 1000
-      freq_width: 2_000_000
-      freq_step: 500_000
-      nshots: 10
-      hardware_average: false
-
-  - id: qubit spectroscopy ef average
+  - id: qubit spectroscopy ef
     operation: qubit_spectroscopy_ef
     parameters:
       drive_amplitude: 0.001
@@ -96,17 +76,6 @@ actions:
       freq_width: 2_000_000
       freq_step: 500_000
       nshots: 10
-
-  - id: qubit spectroscopy ef single shot
-    operation: qubit_spectroscopy_ef
-    parameters:
-      drive_amplitude: 0.001
-      drive_duration: 1000
-      freq_width: 2_000_000
-      freq_step: 500_000
-      nshots: 10
-      hardware_average: false
-
 
   - id: resonator flux dependence bias
     operation: resonator_flux
@@ -126,6 +95,7 @@ actions:
       bias_width: 0.2
       bias_step:  0.005
       drive_amplitude: 0.5
+      drive_duration: 2000
       nshots: 1024
       relaxation_time: 2000
 
@@ -141,6 +111,7 @@ actions:
       bias_width: 0.2
       bias_step:  0.005
       drive_amplitude: 0.5
+      drive_duration: 2000
       flux_qubits: [1]
       nshots: 1024
       relaxation_time: 2000
@@ -474,17 +445,6 @@ actions:
   - id: ramsey_signal_detuned
     operation: ramsey_signal
     parameters:
-      unrolling: False
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 50
-      delay_between_pulses_step: 1
-      detuning: 1_000_000
-      nshots: 10
-
-  - id: ramsey_signal_detuned_unrolled
-    operation: ramsey_signal
-    parameters:
-      unrolling: True
       delay_between_pulses_start: 0
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
@@ -500,28 +460,14 @@ actions:
       detuning: 0
       nshots: 1024
 
-
   - id: ramsey zz
     operation: ramsey_zz
-    targets: [0]
+    targets: [[0, 1]]
     parameters:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 20
       delay_between_pulses_step: 1
       detuning: 0
-      target_qubit: 1
-      nshots: 1024
-
-  - id: ramsey zz unrolling
-    operation: ramsey_zz
-    targets: [0]
-    parameters:
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 20
-      delay_between_pulses_step: 1
-      detuning: 0
-      unrolling: true
-      target_qubit: 1
       nshots: 1024
 
   - id: calibrate_state_discrimination
@@ -544,26 +490,9 @@ actions:
       detuning: 2_000_000
       nshots: 10
 
-  - id: ramsey_unrolled_detuned
-    operation: ramsey
-    parameters:
-      unrolling: True
-      delay_between_pulses_start: 0
-      delay_between_pulses_end: 50
-      delay_between_pulses_step: 1
-      nshots: 10
-      detuning: 1_000_000
-
   - id: single shot classification
     operation: single_shot_classification
     parameters:
-      unrolling: False
-      nshots: 10
-
-  - id: single shot classification with unrolling
-    operation: single_shot_classification
-    parameters:
-      unrolling: True
       nshots: 10
 
   - id: single shot classification with classifiers
@@ -623,15 +552,6 @@ actions:
       beta_step: 0.01
       nshots: 10
 
-  - id: drag_pulse_tuning_unrolling
-    operation: drag_tuning
-    parameters:
-      beta_start: 0
-      beta_end: 0.1
-      beta_step: 0.01
-      nshots: 10
-      unrolling: true
-
   - id: drag_pulse_simple
     operation: drag_simple
     parameters:
@@ -639,15 +559,6 @@ actions:
       beta_end: 0.1
       beta_step: 0.01
       nshots: 10
-
-  - id: drag_pulse_simple_unrolling
-    operation: drag_simple
-    parameters:
-      beta_start: 0
-      beta_end: 0.1
-      beta_step: 0.01
-      nshots: 10
-      unrolling: true
 
   - id: spin_echo
     operation: spin_echo
@@ -691,16 +602,6 @@ actions:
       nshots: 50
       delta_amplitude: 0.1
 
-  - id: flipping unrolling
-    operation: flipping
-    parameters:
-      nflips_max: 10
-      nflips_step: 1
-      nshots: 50
-      unrolling: True
-      rx90: True
-
-
   - id: dispersive shift
     operation: dispersive_shift
     parameters:
@@ -726,7 +627,6 @@ actions:
       uncertainties: 95
       nshots: 50
 
-
   - id: standard rb no error
     operation: standard_rb
     parameters:
@@ -736,17 +636,6 @@ actions:
         step: 2
       niter: 2
       nshots: 50
-
-  - id: standard rb unrolling
-    operation: standard_rb
-    parameters:
-      depths:
-        start: 1
-        stop: 10
-        step: 2
-      niter: 2
-      nshots: 50
-      unrolling: True
 
   - id: filtered_rb
     operation: filtered_rb
@@ -885,12 +774,6 @@ actions:
     operation: qutrit_classification
     parameters:
       nshots: 1000
-
-  - id: qutrit unrolling
-    operation: qutrit_classification
-    parameters:
-      nshots: 1000
-      unrolling: true
 
   - id: optimize cz
     operation: optimize_two_qubit_gate

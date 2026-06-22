@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -8,9 +7,9 @@ from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 from qibocal import update
 from qibocal.auto.operation import Parameters, QubitId, Results, Routine
 from qibocal.calibration import CalibrationPlatform
+from qibocal.protocols.ramsey.acquisition import ramsey_and_acquisition_sequence
+from qibocal.result import magnitude, phase
 
-from ...result import magnitude, phase
-from ..ramsey.utils import ramsey_sequence
 from ..utils import readout_frequency, table_dict, table_html
 from . import utils
 from .t1_signal import T1SignalData
@@ -36,7 +35,7 @@ class T2SignalParameters(Parameters):
 class T2SignalResults(Results):
     """T2Signal outputs."""
 
-    t2: dict[QubitId, Union[float, list[float]]]
+    t2: dict[QubitId, float | list[float]]
     """T2 for each qubit [ns]."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -70,7 +69,7 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
-    sequence, delays = ramsey_sequence(platform, targets)
+    sequence, delays = ramsey_and_acquisition_sequence(platform, targets)
 
     data = T2SignalData()
 

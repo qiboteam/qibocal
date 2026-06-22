@@ -4,7 +4,6 @@ import shutil
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 from qibo.backends import construct_backend
 
@@ -43,19 +42,18 @@ class TaskStats:
 class Metadata:
     """Execution metadata."""
 
-    title: str
     backend: str
     platform: str
-    start_time: Optional[datetime]
-    end_time: Optional[datetime]
+    start_time: datetime | None
+    end_time: datetime | None
     stats: dict[str, TaskStats]
     versions: Versions
-    author: Optional[str] = None
-    tag: Optional[str] = None
-    targets: Optional[Targets] = None
+    author: str | None = None
+    tag: str | None = None
+    targets: Targets | None = None
 
     @classmethod
-    def generate(cls, name: str, backend):
+    def generate(cls, backend):
         """Generate template metadata.
 
         The purpose is to fill the arguments with defaults, or extract
@@ -63,7 +61,6 @@ class Metadata:
         """
         versions = Versions(other=backend.versions)
         return cls(
-            title=name,
             backend=backend.name,
             platform=backend.platform.name,
             start_time=None,
@@ -154,7 +151,7 @@ class Output:
 
     history: History
     meta: Metadata
-    platform: Optional[CalibrationPlatform] = None
+    platform: CalibrationPlatform | None = None
 
     @classmethod
     def load(cls, path: Path):
@@ -165,7 +162,7 @@ class Output:
         )
 
     @staticmethod
-    def mkdir(path: Optional[Path] = None, force: bool = False) -> Path:
+    def mkdir(path: Path | None = None, force: bool = False) -> Path:
         """Create output directory.
 
         If a `path` is given and existing, it is overwritten only in the case `force`
@@ -238,8 +235,8 @@ class Output:
         backend = construct_backend(
             backend=self.meta.backend, platform=self.meta.platform
         )
+        assert backend.platform is not None
         self.platform = CalibrationPlatform.from_platform(backend.platform)
-        assert self.platform is not None
 
         for task_id, completed in self.history.items():
             # TODO: should we drop this check as well, and just allow overwriting?
@@ -253,9 +250,7 @@ class Output:
             self.history._tasks[task_id.id][task_id.iteration] = completed.task.run(
                 platform=self.platform,
                 mode=mode,
-                folder=self.history.task_path(
-                    self.history._executed_task_id(task_id.id), output
-                ),
+                folder=self.history.task_path(task_id, output),
             )
             if update and completed.task.update:
                 completed.update_platform(platform=self.platform)

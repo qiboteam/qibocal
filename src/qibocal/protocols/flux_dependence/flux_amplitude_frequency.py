@@ -2,7 +2,6 @@
 
 import math
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -41,7 +40,7 @@ class FluxAmplitudeFrequencyParameters(Parameters):
     """Flux pulse amplitude step."""
     duration: float
     """Flux pulse duration."""
-    crosstalk_qubit: Optional[QubitId] = None
+    crosstalk_qubit: QubitId | None = None
     """If provided a flux pulse will be applied on this qubit.
 
     Enable to compute the crosstalk matrix.
@@ -156,7 +155,7 @@ def ramsey_flux(
 class FluxAmplitudeFrequencyData(Data):
     """FluxAmplitudeFrequency acquisition outputs."""
 
-    crosstalk_qubit: Optional[QubitId]
+    crosstalk_qubit: QubitId | None
     """Qubit where crosstalk will be measured."""
     flux_pulse_duration: float
     """Flux pulse amplitude."""

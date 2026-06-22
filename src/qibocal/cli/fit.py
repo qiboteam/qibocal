@@ -1,6 +1,5 @@
 import shutil
 from pathlib import Path
-from typing import Optional
 
 from ..auto.mode import ExecutionMode
 from ..auto.operation import RESULTSFILE
@@ -8,7 +7,7 @@ from ..auto.output import Output
 from ..config import log, raise_error
 
 
-def mkoutput(input: Path, output: Optional[Path], force: bool):
+def mkoutput(input: Path, output: Path | None, force: bool):
     if output is not None:
         if output.exists():
             if not force:
@@ -26,7 +25,7 @@ def mkoutput(input: Path, output: Optional[Path], force: bool):
     return input
 
 
-def fit(input_path: Path, update: bool, output_path: Optional[Path], force: bool):
+def fit(input_path: Path, update: bool, output_path: Path | None, force: bool):
     """Post-processing analysis.
 
     Arguments:

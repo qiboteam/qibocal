@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
@@ -28,9 +27,7 @@ class SpinEchoParameters(SpinEchoSignalParameters):
 class SpinEchoResults(SpinEchoSignalResults):
     """SpinEcho outputs."""
 
-    chi2: Optional[dict[QubitId, tuple[float, Optional[float]]]] = field(
-        default_factory=dict
-    )
+    chi2: dict[QubitId, tuple[float, float | None]] | None = field(default_factory=dict)
     """Chi squared estimate mean value and error."""
 
 

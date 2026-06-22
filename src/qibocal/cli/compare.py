@@ -13,7 +13,7 @@ def initialize_combined_report(
 ) -> tuple[Output, Path]:
     """Initialisation of the output.
 
-    Create the report directory and set up start-finish time, report title.
+    Create the report directory and set up start-finish time.
 
     Args:
         report_path (pathlib.Path): path of the folder containing one of the initial reports.
@@ -24,7 +24,6 @@ def initialize_combined_report(
     combined_meta.start()
     combined_report = Output(history=DummyHistory(), meta=combined_meta)
     combined_report_path = combined_report.mkdir(output_folder, force)
-    combined_meta.title = combined_report_path.name
     combined_meta.end()
     combined_report.meta = combined_meta
     return combined_report, combined_report_path
@@ -54,7 +53,7 @@ def compare_reports(folder: Path, path_1: Path, path_2: Path, force: bool):
         is_static=True,
         css_styles=report_css_styles(STYLES),
         path=combined_report_path,
-        title=combined_report.meta.title,
+        title="",
         report=ComparedReport(
             report_paths=paths,
             folder=combined_report_path,
