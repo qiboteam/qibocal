@@ -51,39 +51,32 @@ def dynamical_decoupling_sequence(
     for qubit in targets:
         natives = platform.natives.single_qubit[qubit]
         qd_channel = platform.qubits[qubit].drive
-        rx90_sequence = natives.R(theta=np.pi / 2)
-        decoupling_sequence = (
-            natives.R(phi=np.pi / 2) if kind == "CPMG" else natives.RX()
-        )
         ro_channel, ro_pulse = natives.MZ()[0]
+        _pulse_factory = {
+            "CPMG": natives.R(phi=np.pi / 2),
+            "CP": natives.RX(),
+            "wait": Delay(duration=wait),
+            "rx90": natives.R(theta=np.pi / 2),
+        }
 
-        drive_delays = 2 * n * [Delay(duration=wait)]
-        ro_delays = 2 * n * [Delay(duration=wait)]
+        sequence += _pulse_factory["rx90"]
+        sequence.append((ro_channel, Delay(duration=_pulse_factory["rx90"].duration)))
 
-        sequence += rx90_sequence
+        for _ in range(n):
+            sequence.append((qd_channel, _pulse_factory["wait"]))
+            sequence.append((ro_channel, _pulse_factory["wait"]))
 
-        for i in range(n):
-            sequence.append((qd_channel, drive_delays[2 * i]))
-            sequence.append((ro_channel, ro_delays[2 * i]))
-            sequence += decoupling_sequence
-            sequence.append((qd_channel, drive_delays[2 * i + 1]))
-            sequence.append((ro_channel, ro_delays[2 * i + 1]))
+            sequence += _pulse_factory[kind]
+            sequence.append((ro_channel, Delay(duration=_pulse_factory[kind].duration)))
 
-        sequence += rx90_sequence
+            sequence.append((qd_channel, _pulse_factory["wait"]))
+            sequence.append((ro_channel, _pulse_factory["wait"]))
 
-        sequence.append(
-            (
-                ro_channel,
-                Delay(
-                    duration=2 * rx90_sequence.duration
-                    + n * decoupling_sequence.duration
-                ),
-            )
-        )
+        sequence += _pulse_factory["rx90"]
+        sequence.append((ro_channel, Delay(duration=_pulse_factory["rx90"].duration)))
 
         sequence.append((ro_channel, ro_pulse))
-        all_delays.extend(drive_delays)
-        all_delays.extend(ro_delays)
+        all_delays.append(_pulse_factory["wait"])
     return sequence, all_delays
 
 
