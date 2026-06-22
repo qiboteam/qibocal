@@ -112,21 +112,23 @@ def _acquisition(
 ) -> CpmgSpectroscopyData:
     """Data acquisition for CpmgSpectroscopy.
 
-    One sequence is built per number of CPMG pulses ``n``, and the inter-pulse
+    One sequence is built per number of CPMG pulses ``N``, and the inter-pulse
     delay ``tau`` is swept within each sequence using a hardware ``Sweeper``.
     The time axis used to fit ``T2`` is the actual elapsed time of the sequence
 
-        ``t = n * (tau + RY.duration) + 2 * RX90.duration``,
+        ``t = N * (tau + RY.duration) + 2 * RX90.duration``,
 
-    which is increasing in both ``n`` and ``tau``. To keep every probed point
-    within ``max_duration``, each ``n`` only sweeps the subset of ``tau``
+    which is increasing in both ``N`` and ``tau``. To keep every probed point
+    within ``max_duration``, each ``N`` only sweeps the subset of ``tau``
     values for which ``t <= max_duration`` -- the longest sequences (largest
-    ``n``) therefore only run for the shortest ``tau``, while ``n = 1`` (a
-    spin-echo sequence) already fits the full ``tau`` range. ``n`` itself is
+    ``N``) therefore only run for the shortest ``tau``, while ``N = 1`` (a
+    spin-echo sequence) already fits the full ``tau`` range. ``N`` itself is
     swept between ``1`` and the number of flips needed to reach
-    ``max_duration`` at the smallest ``tau``. Since each ``n`` sweeps a
-    different number of ``tau`` points, sequences cannot share a single
-    unrolled ``Sweeper`` call and are executed one at a time.
+    ``max_duration`` at the smallest ``tau``. 
+    
+    Since each ``N`` sweeps a different number of ``tau`` points, sequences cannot
+    share a single unrolled ``Sweeper`` call and are executed one at a time.
+    TODO: Make sure this is true
     """
     data = CpmgSpectroscopyData()
 
@@ -163,23 +165,23 @@ def _acquisition(
     results = {}
     ro_pulses = []
     taus_per_n = []
-    for n in n_values:
-        # Only the tau values for which this n still fits within max_duration
-        # are swept; this shrinks as n grows, so larger n probes fewer (and
+    for N in n_values:
+        # Only the tau values for which this N still fits within max_duration
+        # are swept; this shrinks as N grows, so larger N  probes fewer (and
         # shorter) delays.
-        tau_cutoff = (params._max_duration - 2 * rx90) / n - ry
+        tau_cutoff = (params._max_duration - 2 * rx90) / N - ry
         taus_n = tau_range[tau_range <= tau_cutoff]
         if len(taus_n) == 0:
             taus_n = np.array([tau_range[0]])  # at least one tau value is needed to build a sequence
 
-        log.info(f"Sweeping {len(taus_n)} taus for n={n} CPMG pulses.")
+        log.info(f"Sweeping {len(taus_n)} taus for N={N} CPMG pulses.")
 
         single_tau = len(taus_n) == 1
         _sequence, _delays = dynamical_decoupling_sequence(
             platform,
             targets,
             wait=(taus_n[0] if single_tau else tau_range[0]) // 2,
-            n=n,
+            n=N,
             kind="CPMG",
         )
         _ro_pulses = {
@@ -211,13 +213,13 @@ def _acquisition(
             # is a 0-d scalar rather than a 1-element array.
             prob = np.atleast_1d(results[_ro_pulses[qubit].id])
             error = np.sqrt(prob * (1 - prob) / params.nshots)
-            wait = n * (taus_n + ry_duration[qubit]) + 2 * rx90_duration[qubit]
+            wait = N * (taus_n + ry_duration[qubit]) + 2 * rx90_duration[qubit]
             for i, tau in enumerate(taus_n):
                 data.register_qubit(
                     CpmgSpectroscopyType,
                     (qubit, float(tau)),
                     dict(
-                        n=np.array([n]),
+                        N=np.array([N]),
                         wait=np.array([wait[i]]),
                         prob=np.array([prob[i]]),
                         error=np.array([error[i]]),
