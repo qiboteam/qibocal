@@ -36,6 +36,7 @@ def noise_psd_model(f, a, alpha, b, c, kappa, epsilon):
     """
     return (a * f**-alpha) + (c * kappa**2 / (f**2 + kappa**2)) + b + (epsilon * f)
 
+
 KAPPA_GUESS = 0.25
 """Initial guess for the cavity decay rate ``kappa`` [MHz] (typical readout linewidth ~250 kHz)."""
 
@@ -50,9 +51,9 @@ def noise_psd_model(f, a, alpha, b, c, kappa, epsilon):
     filter frequency exceeds the readout cavity decay rate ``kappa`` (lumping the
     dispersive shift, photon occupation and filtering factor into the amplitude
     ``c``, since only ``kappa`` itself is of physical interest here).
-    
-    ``epsilon * f`` is a phenomenological penalty term capturing the accumulation 
-    of control errors (and potential heating effects) from the increasing number 
+
+    ``epsilon * f`` is a phenomenological penalty term capturing the accumulation
+    of control errors (and potential heating effects) from the increasing number
     of pi-pulses required at higher filter frequencies (shorter delays).
     """
     return (a * f**-alpha) + (c * kappa**2 / (f**2 + kappa**2)) + b + (epsilon * f)
@@ -145,8 +146,8 @@ def _acquisition(
     ``N``) therefore only run for the shortest ``tau``, while ``N = 1`` (a
     spin-echo sequence) already fits the full ``tau`` range. ``N`` itself is
     swept between ``1`` and the number of flips needed to reach
-    ``max_duration`` at the smallest ``tau``. 
-    
+    ``max_duration`` at the smallest ``tau``.
+
     Since each ``N`` sweeps a different number of ``tau`` points, sequences cannot
     share a single unrolled ``Sweeper`` call and are executed one at a time.
     TODO: Make sure this is true
@@ -178,10 +179,10 @@ def _acquisition(
     # smallest tau (hardest case) sets how many flips can be swept before even
     # it exceeds max_duration.
     n_max = max(1, int((params._max_duration - 2 * rx90) // (tau_range.min() + ry)))
-    n_values = np.unique(
-        np.round(np.geomspace(1, n_max, params.n_points)).astype(int)
+    n_values = np.unique(np.round(np.geomspace(1, n_max, params.n_points)).astype(int))
+    log.info(
+        f"CPMG spectroscopy: sweeping {len(n_values)} n values between 1 and {n_max}."
     )
-    log.info(f"CPMG spectroscopy: sweeping {len(n_values)} n values between 1 and {n_max}.")
 
     results = {}
     ro_pulses = []
@@ -193,7 +194,9 @@ def _acquisition(
         tau_cutoff = (params._max_duration - 2 * rx90) / N - ry
         taus_n = tau_range[tau_range <= tau_cutoff]
         if len(taus_n) == 0:
-            taus_n = np.array([tau_range[0]])  # at least one tau value is needed to build a sequence
+            taus_n = np.array(
+                [tau_range[0]]
+            )  # at least one tau value is needed to build a sequence
 
         log.info(f"Sweeping {len(taus_n)} taus for N={N} CPMG pulses.")
 
@@ -215,12 +218,15 @@ def _acquisition(
                 [_sequence],
                 None
                 if single_tau
-                else [[ Sweeper(
+                else [
+                    [
+                        Sweeper(
                             parameter=Parameter.duration,
                             values=taus_n // 2,
                             pulses=_delays,
                         )
-                    ]],
+                    ]
+                ],
                 **options,
             )
         )
@@ -396,9 +402,7 @@ def _plot(
             # the (sometimes much larger) error bars.
             margin = 0.1 * (t2_values.max() - t2_values.min())
             t2_tau_fig.update_layout(
-                yaxis=dict(
-                    range=[t2_values.min() - margin, t2_values.max() + margin]
-                )
+                yaxis=dict(range=[t2_values.min() - margin, t2_values.max() + margin])
             )
         t2_tau_fig.update_layout(
             xaxis_title="Inter-pulse delay tau [ns]",
