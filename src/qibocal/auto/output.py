@@ -42,7 +42,6 @@ class TaskStats:
 class Metadata:
     """Execution metadata."""
 
-    title: str
     backend: str
     platform: str
     start_time: datetime | None
@@ -54,7 +53,7 @@ class Metadata:
     targets: Targets | None = None
 
     @classmethod
-    def generate(cls, name: str, backend):
+    def generate(cls, backend):
         """Generate template metadata.
 
         The purpose is to fill the arguments with defaults, or extract
@@ -62,7 +61,6 @@ class Metadata:
         """
         versions = Versions(other=backend.versions)
         return cls(
-            title=name,
             backend=backend.name,
             platform=backend.platform.name,
             start_time=None,

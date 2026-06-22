@@ -23,7 +23,6 @@ from qibocal.cli.report import report
 # path = Path("my_path")
 
 with Executor.open(
-    "myexec",
     path=path,
     platform=platform,
     targets=targets,
