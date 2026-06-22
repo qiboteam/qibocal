@@ -2,6 +2,7 @@ from collections import Counter
 from collections.abc import Sequence
 from colorsys import hls_to_rgb
 from enum import Enum
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -1013,24 +1014,6 @@ def reshaping_raw_signal(x, y, z):
     return x_, y_, z_
 
 
-def guess_period(x, y):
-    """Return fft period estimation given a sinusoidal plot."""
-
-    fft = np.fft.rfft(y)
-    fft_freqs = np.fft.rfftfreq(len(y), d=(x[1] - x[0]))
-    mags = abs(fft)
-    mags[0] = 0
-    local_maxima, _ = find_peaks(mags)
-    if len(local_maxima) > 0:
-        return 1 / fft_freqs[np.argmax(mags)]
-    return None
-
-
-def fallback_period(period):
-    """Function to estimate period if guess_period fails."""
-    return period if period is not None else 4
-
-
 def angle_wrap(angle: float):
     """Wrap an angle from [-np.inf,np.inf] into the [0,2*np.pi] domain"""
     return angle % (2 * np.pi)
@@ -1064,3 +1047,143 @@ def baseline_als(data: NDArray, lamda: float, p: float, niter: int = 10) -> NDAr
         z = sparse.linalg.spsolve(a, b)
         weights = p * (data > z) + (1 - p) * (data < z)
     return z
+
+
+def guess_frequency(x: NDArray, y: NDArray, axis: int = -1) -> NDArray:
+    """Return FFT frequency estimation given a sinusoidal plot.
+
+    Computes the dominant frequency component from the FFT of the signal.
+    axis represents the dimension along which to compute the FFT.
+    This parameter specifies which dimension of y contains the sinusoidal
+    data to analyze. For multi-dimensional arrays, the FFT is computed
+    along this axis, and the dominant frequency is determined for each
+    slice along other dimensions.
+    """
+    assert x.ndim == 1, f"Expected 1D array, got array with shape {x.shape}"
+
+    y = np.moveaxis(y, axis, -1)
+    fft = np.fft.rfft(y, axis=-1)
+    fft_freqs = np.fft.rfftfreq(y.shape[-1], d=(x[1] - x[0]))
+    mags = np.abs(fft)
+    mags[:, 0] = 0
+
+    selected_freqs = fft_freqs[np.argmax(mags, axis=-1)]
+
+    return np.moveaxis(selected_freqs, -1, axis)
+
+
+def fallback_frequency(frequency: NDArray) -> NDArray:
+    """Return a numeric frequency array with NaNs replaced by a fallback value.
+
+    This helper is used to ensure a valid numeric frequency is available for
+    downstream processing when the frequency estimation returns missing values.
+    """
+    assert frequency.ndim <= 1, (
+        f"Expected 1D array or scalar, got array with shape {frequency.shape}"
+    )
+
+    return np.where(np.isnan(frequency), 0.25, frequency)
+
+
+def quinn_fernandes_algorithm(
+    signal: Any,
+    x: Any,
+    axis: int = -1,
+    speedup_flag: bool = False,
+    iterations: int = 100,
+    tol: int = 1e-8,
+) -> NDArray:
+    """This is a custom implementation of the Quinn-Fernandes algorithm.
+    We compute the signal sampling rate from :param:x, hence this function assumes x to be
+    ordered.
+
+    The Quinn–Fernandes method is a high-accuracy frequency estimator based on
+    phase interpolation of the discrete Fourier transform (DFT). It refines the
+    peak frequency obtained from the FFT by analyzing the phase evolution of the
+    complex spectrum, achieving super-resolution beyond the FFT bin spacing.
+    If :const:`speedup_flag` is set to `True`, the algorithm will change the updating rule,
+    can lead to faster convergence, especially when the initial guess is close to the true frequency.
+    Link for the original paper: https://www.jstor.org/stable/2337018?seq=3
+    """
+
+    fs = 1 / abs(x[0] - x[1])
+
+    if not isinstance(x, np.ndarray):
+        x = np.array(x)
+
+    if not isinstance(signal, np.ndarray):
+        signal = np.array(signal)
+
+    if signal.ndim == 1:
+        signal = signal[np.newaxis, :]
+
+    omegas = 2 * np.pi * fallback_frequency(guess_frequency(x, signal, axis=axis))
+    alpha = 2 * np.cos(omegas)
+
+    signal = signal - np.mean(signal, axis=axis, keepdims=True)
+
+    sig_shape = list(signal.shape)
+    sig_shape[axis] += 2
+    buffer_beta = []
+    for _ in range(iterations):
+        xi = np.zeros(sig_shape)
+        for t in range(2, xi.shape[axis]):
+            xi[..., t] = signal[..., t - 2] + alpha * xi[..., t - 1] - xi[..., t - 2]
+
+        beta = np.sum((xi[..., 2:] + xi[..., :-2]) * xi[..., 1:-1], axis=axis) / np.sum(
+            xi[..., :-1] ** 2, axis=axis
+        )
+        beta[np.isnan(beta)] = 0
+        if len(buffer_beta) >= 5:
+            buffer_beta.pop(0)
+        buffer_beta.append(beta)
+        if np.all(np.abs(np.mean(buffer_beta, axis=0) - alpha) < tol):
+            alpha = beta
+            break
+
+        if speedup_flag:
+            alpha = beta
+        else:
+            alpha = 2 * beta - alpha
+
+    alpha = np.clip(alpha, -2, 2)
+    omega_est = np.arccos(alpha / 2)
+    med_omega = np.median(omega_est)
+
+    return med_omega * fs
+
+
+def guess_period(
+    x: NDArray, y: NDArray, axis: int = -1, speedup_flag: bool = True
+) -> NDArray:
+    """Estimate the period(s) of a (set of) sinusoidal signal(s).
+
+    This is a thin wrapper around :func:`guess_frequency` that returns the
+    reciprocal of the estimated dominant frequency. For multi-dimensional
+    signals, the period is computed along ``axis`` of ``y`` and returned with
+    the same shape semantics as :func:`guess_frequency`.
+    """
+
+    return (
+        2
+        * np.pi
+        / quinn_fernandes_algorithm(
+            signal=y,
+            x=x,
+            axis=axis,
+            speedup_flag=speedup_flag,
+        )
+    )
+
+
+def fallback_period(period: NDArray) -> NDArray:
+    """Return a numeric period array with NaNs replaced by a fallback value.
+
+    This helper is used to ensure a valid numeric period is available for
+    downstream processing when the period estimation returns missing values.
+    """
+    assert period.ndim <= 1, (
+        f"Expected 1D array or scalar, got array with shape {period.shape}"
+    )
+
+    return np.where(np.isnan(period), 4, period)
