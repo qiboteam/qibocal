@@ -12,40 +12,33 @@ from qibocal.update import cnot_sequence, replace
 from .cr_parent_classes import Basis, SetControl
 
 
-def retrieve_cr_parameters(
-    platform: Platform,
-    control: QubitId,
-    target: QubitId,
-) -> tuple[dict[str, float] | None, dict[str, float] | None]:
+def cross_resonance_pulses(
+    platform: CalibrationPlatform, control: QubitId, target: QubitId
+) -> tuple[Pulse | None, Pulse | None]:
     """Retrieve cross-resonance (CR) pulse parameters from platform calibration.
     This function extracts the CR pulse and its corresponding cancellation pulse
     from the platform's native gates configuration for a given control-target qubit pair.
     """
 
+    # extracting the channels involved in the CR gate
+    target_channel, _ = platform.parameters.native_gates.single_qubit[target].RX()[0]
+    cr_channel = platform.qubits[control].drive_extra[target]
+
+    # CNOT sequence present in the platform parameters.json
+    cnot_cal_seq = platform.parameters.native_gates.two_qubit[(control, target)].CNOT
+
     cr_params = None
     canc_params = None
-    if len(platform.parameters.native_gates.two_qubit[(control, target)].CNOT) != 0:
-        for p in platform.parameters.native_gates.two_qubit[(control, target)].CNOT[2:]:
-            if (
-                cr_params is None
-                and str(control) == str(p[0]).split("/")[0]
-                and isinstance(p[1], Pulse)
-            ):
-                cr_params = {
-                    "amplitude": p[1].amplitude,
-                    "duration": p[1].duration,
-                    "relative_phase": p[1].relative_phase,
-                }
+    if cnot_cal_seq is None and len(cnot_cal_seq) != 0:
+        for p in cnot_cal_seq[2:]:
+            if cr_params is None and p[0] == cr_channel and isinstance(p[1], Pulse):
+                cr_params = p[1]
             if (
                 canc_params is None
-                and str(target) == str(p[0]).split("/")[0]
+                and p[1] == target_channel
                 and isinstance(p[1], Pulse)
             ):
-                canc_params = {
-                    "amplitude": p[1].amplitude,
-                    "duration": p[1].duration,
-                    "relative_phase": p[1].relative_phase,
-                }
+                canc_params = p[1]
 
             if cr_params is not None and canc_params is not None:
                 # here we identified both the CR and cancellation pulse,
@@ -130,16 +123,19 @@ def cross_res_sequence(
     natives_control = platform.natives.single_qubit[control]
     natives_target = platform.natives.single_qubit[target]
 
-    # qubit channels necessary for the cross resonance sequence
-    cr_channel = platform.qubits[control].drive_extra[target]
     control_drive_channel, control_drive_pulse = natives_control.RX()[0]
     target_drive_channel, _ = natives_target.RX()[0]
+    cr_channel = platform.qubits[control].drive_extra[target]
+
+    cr_drive_pulse, target_drive_pulse = cross_resonance_pulses(
+        platform, control, target
+    )
 
     cr_drive_pulse = Pulse(
         duration=duration,
         amplitude=control_amplitude,
         relative_phase=angle_wrap(control_phase),
-        envelope=Rectangular(),
+        envelope=Rectangular() if cr_drive_pulse is None else cr_drive_pulse.envelope,
     )
     cr_control_pulses.append(cr_drive_pulse)
 
@@ -150,7 +146,9 @@ def cross_res_sequence(
             duration=duration,
             amplitude=target_amplitude,
             relative_phase=angle_wrap(target_phase),
-            envelope=Rectangular(),
+            envelope=Rectangular()
+            if target_drive_pulse is None
+            else target_drive_pulse.envelope,
         )
     cr_target_pulses.append(target_drive_pulse)
 

@@ -551,7 +551,9 @@ def cancellation_amplitude_fit(
     with amplitude to obtain linear parameters and cancellation amplitudes.
     """
 
-    amp_hamiltonian_params: dict[QubitPairId, list[tuple[HamiltonianTerm, float]]] = {}
+    amp_hamiltonian_params: dict[
+        QubitPairId, list[tuple[float, dict[HamiltonianTerm, float]]]
+    ] = {}
     ham_tomography_dict: dict[
         float, dict[tuple[QubitId, QubitId, SetControl], list[float]]
     ] = {}
@@ -669,7 +671,7 @@ def cancellation_phase_fit(
         QubitPairId, list[tuple[float, dict[HamiltonianTerm, float]]]
     ] = {}
     ham_tomography_dict: dict[
-        float, tuple[QubitId, QubitId, SetControl], list[float]
+        float, dict[tuple[QubitId, QubitId, SetControl], list[float]]
     ] = {}
     gate_duration_dict: dict[float, dict[tuple[QubitId, QubitId], float]] = {}
     for p in data.phases:

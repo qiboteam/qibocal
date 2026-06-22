@@ -41,7 +41,7 @@ from .cross_resonance_processing import (
 from .plotting import cancellation_calibration_plot
 from .utils import (
     cross_resonance_experiment,
-    retrieve_cr_parameters,
+    cross_resonance_pulses,
     ro_delay_range,
     update_cnot_from_fit,
 )
@@ -128,8 +128,8 @@ class HamiltonianTomographyCANCPhaseData(HamiltonianTomographyData):
 
     @property
     def phases(self) -> list[float]:
-        first_value = next(iter(self.data.values()))
-        return np.unique(self.data[first_value].phase).tolist()
+        first_key = next(iter(self.data.keys()))
+        return np.unique(self.data[first_key].phase).tolist()
 
     def select_phase(self, phase: float) -> HamiltonianTomographyData:
         new_data = HamiltonianTomographyData(echo=self.echo)
@@ -193,16 +193,14 @@ def _acquisition(
             }
         )
 
-        cr_pulse, canc_pulse = retrieve_cr_parameters(platform, control, target)
+        cr_pulse, canc_pulse = cross_resonance_pulses(platform, control, target)
         if cr_pulse is None:
             raise ValueError(
                 "CR pulse not found for control {control} and target {target}. "
                 "Please check the CR pulse configuration or first run previous protocols."
             )
-        control_ampls |= {pair: cr_pulse["amplitude"]}
-        target_ampls |= {
-            pair: canc_pulse["amplitude"] if canc_pulse is not None else 0.0
-        }
+        control_ampls |= {pair: cr_pulse.amplitude}
+        target_ampls |= {pair: canc_pulse.amplitude if canc_pulse is not None else 0.0}
 
     for basis in Basis:
         for setup in SetControl:
@@ -287,30 +285,32 @@ def _acquisition(
                 averaging_mode=AveragingMode.CYCLIC,
                 updates=updates,
             )
-            target_acq_handle = list(
-                sequence.channel(platform.qubits[target].acquisition)
-            )[-1].id
-            control_acq_handle = list(
-                sequence.channel(platform.qubits[control].acquisition)
-            )[-1].id
 
-            prob_target = results[target_acq_handle].ravel()
-            prob_control = results[control_acq_handle].ravel()
+            for ctrl, targ in targets:
+                target_acq_handle = list(
+                    sequence.channel(platform.qubits[targ].acquisition)
+                )[-1].id
+                control_acq_handle = list(
+                    sequence.channel(platform.qubits[ctrl].acquisition)
+                )[-1].id
 
-            data.register_qubit(
-                HamiltonianTomographyCANCPhaseType,
-                (control, target, basis, setup),
-                dict(
-                    x=params.duration_range,
-                    phase=params.phase_range,
-                    prob_target=1 - 2 * prob_target,
-                    error_target=2
-                    * np.sqrt(prob_target * (1 - prob_target) / params.nshots),
-                    prob_control=1 - 2 * prob_control,
-                    error_control=2
-                    * np.sqrt(prob_control * (1 - prob_control) / params.nshots),
-                ),
-            )
+                prob_target = results[target_acq_handle].ravel()
+                prob_control = results[control_acq_handle].ravel()
+
+                data.register_qubit(
+                    HamiltonianTomographyCANCPhaseType,
+                    (ctrl, targ, basis, setup),
+                    dict(
+                        x=np.arange(*params.duration_range),
+                        phase=np.arange(*params.phase_range),
+                        prob_target=1 - 2 * prob_target,
+                        error_target=2
+                        * np.sqrt(prob_target * (1 - prob_target) / params.nshots),
+                        prob_control=1 - 2 * prob_control,
+                        error_control=2
+                        * np.sqrt(prob_control * (1 - prob_control) / params.nshots),
+                    ),
+                )
 
     return data
 
@@ -344,28 +344,29 @@ def _fit(
 def _plot(
     data: HamiltonianTomographyCANCPhaseData,
     target: QubitPairId,
-    fit: HamiltonianTomographyCANCPhaseResults,
+    fit: HamiltonianTomographyCANCPhaseResults | None = None,
 ):
     """Plotting function for HamiltonianTomographyCANCPhase."""
     figs, fitting_report = cancellation_calibration_plot(data, target, fit)
 
-    if fit.verbose_plot:
-        from .cross_resonance_processing import (
+    plot_ham_tom = True if fit is None else fit.verbose_plot
+
+    if plot_ham_tom:
+        from .plotting import (
             tomography_cr_plot,
         )
 
         for phi in data.phases:
-            selected_ham_terms = fit.select_pair_and_phase_ham_params(phi, target)
             ampl_data = data.select_phase(phi)
-            ham_tom_fit = HamiltonianTomographyResults(
-                echo=fit.echo,
-                hamiltonian_terms=selected_ham_terms,
-                fitted_parameters=fit.hamiltonian_tom_params[phi],
-                cr_lengths=fit.cr_lengths[phi],
-            )
-            f, _ = tomography_cr_plot(ampl_data, target, ham_tom_fit)
-            figs += f
-            if ham_tom_fit is not None:
+            if fit is not None:
+                selected_ham_terms = fit.select_pair_and_phase_ham_params(phi, target)
+                ham_tom_fit = HamiltonianTomographyResults(
+                    echo=fit.echo,
+                    hamiltonian_terms=selected_ham_terms,
+                    fitted_parameters=fit.hamiltonian_tom_params[phi],
+                    cr_lengths=fit.cr_lengths[phi],
+                )
+
                 fitting_report += "\n" + table_html(
                     table_dict(
                         8 * [target],
@@ -384,6 +385,12 @@ def _plot(
                         + [phi],
                     )
                 )
+            else:
+                ham_tom_fit = None
+                fitting_report = ""
+
+            f, _ = tomography_cr_plot(ampl_data, target, ham_tom_fit)
+            figs += f
 
     return figs, fitting_report
 
@@ -400,10 +407,10 @@ def _update(
 
     # now no check is needed since the acquisition was executed correctly,
     # which means we have all parameters defined.
-    cr_pulse, canc_pulse = retrieve_cr_parameters(platform, target[0], target[1])
-    gate_duration = cr_pulse["duration"]
-    control_amplitude = cr_pulse["amplitude"]
-    target_amplitude = canc_pulse["amplitude"]
+    cr_pulse, canc_pulse = cross_resonance_pulses(platform, target[0], target[1])
+    gate_duration = cr_pulse.duration
+    control_amplitude = cr_pulse.amplitude
+    target_amplitude = 0.0 if canc_pulse is None else canc_pulse.amplitude
 
     # check if the resulting fit was succsessfull
     if target in results.cancellation_pulse_phases:

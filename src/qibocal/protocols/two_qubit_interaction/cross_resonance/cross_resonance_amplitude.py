@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from itertools import chain
 
 import numpy as np
 from qibolab import (
@@ -34,7 +33,10 @@ from .cross_resonance_processing import (
     tomography_cr_fit,
 )
 from .plotting import tomography_cr_plot
-from .utils import cross_resonance_experiment, update_cnot_from_fit
+from .utils import (
+    cross_resonance_experiment,
+    update_cnot_from_fit,
+)
 
 __all__ = ["cr_amplitude"]
 
@@ -143,10 +145,22 @@ def _acquisition(
                     Sweeper(
                         parameter=Parameter.amplitude,
                         range=params.amplitude_range,
-                        pulses=list(chain.from_iterable(cr_pulses.values())),
+                        pulses=[cr_pulses[pair][0] for pair in targets],
                     )
                 ]
             )
+            if params.echo:
+                # sweeping over the out-of-phase signal (refocusing)
+                echo_ampl_range = tuple(-x for x in params.amplitude_range)
+                ampl_parsweepers += ParallelSweepers(
+                    [
+                        Sweeper(
+                            parameter=Parameter.amplitude,
+                            range=echo_ampl_range,
+                            pulses=[cr_pulses[pair][1] for pair in targets],
+                        )
+                    ]
+                )
 
             results = platform.execute(
                 [sequence],
@@ -218,7 +232,7 @@ def _fit(
 def _plot(
     data: HamiltonianTomographyCRAmplData,
     target: QubitPairId,
-    fit: HamiltonianTomographyCRAmplResults,
+    fit: HamiltonianTomographyCRAmplResults | None = None,
 ):
     """Plotting function for HamiltonianTomographyCRAmpl."""
     figs, fitting_report = tomography_cr_plot(data, target, fit)

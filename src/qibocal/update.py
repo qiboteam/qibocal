@@ -193,6 +193,7 @@ def iSWAP_amplitude(amp: float, platform: Platform, pair: QubitPairId):
 
 
 def cnot_sequence(cr_sequence: PulseSequence, platform: Platform, pair: QubitPairId):
+    """Update CNOT gate for specific pair."""
     platform.update({f"native_gates.two_qubit.{_dump_pair(pair)}.CNOT": cr_sequence})
 
 

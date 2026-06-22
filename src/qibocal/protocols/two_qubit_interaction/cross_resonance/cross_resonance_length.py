@@ -255,7 +255,7 @@ def _fit(
 def _plot(
     data: HamiltonianTomographyCRLengthData,
     target: QubitPairId,
-    fit: HamiltonianTomographyCRLengthResults,
+    fit: HamiltonianTomographyCRLengthResults | None = None,
 ):
     """Plotting function for HamiltonianTomographyCRLength."""
     figs, fitting_report = tomography_cr_plot(data, target, fit)

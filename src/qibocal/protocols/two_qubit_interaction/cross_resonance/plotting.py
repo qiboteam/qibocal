@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -208,30 +210,32 @@ def cancellation_calibration_plot(
     figures = []
     fitting_report = ""
 
-    if type(data).__name__ == "HamiltonianTomographyCANCAmplData":
-        fit_func = fitting.linear_func
-        x_title = "amplitude [a.u.]"
-        tunable_params = fit.cancellation_pulse_amplitudes[target]
-        plotting_terms = {
-            HamiltonianTerm.IX: "ampl_ix",
-            HamiltonianTerm.IY: "ampl_iy",
-        }
+    if fit is None:
+        logging.warning("Fit failed, plotting only data.")
+    else:
+        if type(data).__name__ == "HamiltonianTomographyCANCAmplData":
+            fit_func = fitting.linear_func
+            x_title = "amplitude [a.u.]"
+            tunable_params = fit.cancellation_pulse_amplitudes[target]
+            plotting_terms = {
+                HamiltonianTerm.IX: "ampl_ix",
+                HamiltonianTerm.IY: "ampl_iy",
+            }
 
-    if type(data).__name__ == "HamiltonianTomographyCANCPhaseData":
-        fit_func = fitting.sin_func
-        x_title = "phase [rad.]"
-        tunable_params = {}
-        tunable_params["phi0"] = fit.cancellation_pulse_phases[target]["control"]
-        tunable_params["phi1"] = angle_wrap(
-            fit.cancellation_pulse_phases[target]["control"]
-            - fit.cancellation_pulse_phases[target]["target"]
-        )
-        plotting_terms = {
-            HamiltonianTerm.ZY: "phi0",
-            HamiltonianTerm.IY: "phi1",
-        }
+        if type(data).__name__ == "HamiltonianTomographyCANCPhaseData":
+            fit_func = fitting.sin_func
+            x_title = "phase [rad.]"
+            tunable_params = {}
+            tunable_params["phi0"] = fit.cancellation_pulse_phases[target]["control"]
+            tunable_params["phi1"] = angle_wrap(
+                fit.cancellation_pulse_phases[target]["control"]
+                - fit.cancellation_pulse_phases[target]["target"]
+            )
+            plotting_terms = {
+                HamiltonianTerm.ZY: "phi0",
+                HamiltonianTerm.IY: "phi1",
+            }
 
-    if fit is not None:
         for t in HamiltonianTerm:
             eff_ham_term = []
             exp_sweeper = []
