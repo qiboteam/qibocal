@@ -3,12 +3,12 @@ from pathlib import Path
 
 import pytest
 from qibo.backends import construct_backend
-from qibolab import Platform
 
 from qibocal import Executor
 from qibocal.auto.mode import ExecutionMode
 from qibocal.auto.output import History, Metadata, Output, TaskStats, _new_output
 from qibocal.auto.runcard import Action
+from qibocal.calibration.platform import CalibrationPlatform
 from qibocal.protocols import flipping
 
 PARAMETERS = {
@@ -28,15 +28,18 @@ ACTION = Action(**action)
 # TODO: this is essentially a proto `qq run` invocation, it should be simplified as
 # much as possible in the library, and made available in conftest
 @pytest.fixture
-def mock_output(tmp_path: Path, platform) -> tuple[Output, Path]:
-    backend = construct_backend(backend="qibolab", platform="mock")
-    platform: Platform = backend.platform
-    meta = Metadata.generate(tmp_path.name, backend)
+def mock_output(tmp_path: Path, platform: CalibrationPlatform) -> tuple[Output, Path]:
+    backend = construct_backend(backend="qibolab", platform=platform)
+    meta = Metadata.generate(backend)
     output = Output(History(), meta, platform)
     platform.connect()
     meta.start()
     executor = Executor(
-        history=History(), targets=list(platform.qubits), platform=platform
+        history=History(),
+        targets=list(platform.qubits),
+        platform=platform,
+        path=tmp_path,
+        meta=meta,
     )
     executor.run_protocol(flipping, ACTION, mode=ExecutionMode.ACQUIRE, output=tmp_path)
     meta.end()

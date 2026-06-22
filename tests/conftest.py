@@ -4,7 +4,10 @@ from pathlib import Path
 import pytest
 from qibolab._core.platform.load import PLATFORMS
 
-from qibocal.calibration.platform import create_calibration_platform
+from qibocal.calibration.platform import (
+    CalibrationPlatform,
+    create_calibration_platform,
+)
 
 TESTING_PLATFORM_NAMES = [
     "mock",
@@ -21,7 +24,7 @@ def cd(tmp_path_factory: pytest.TempdirFactory):
 
 
 @pytest.fixture(scope="function", params=TESTING_PLATFORM_NAMES)
-def platform(request, monkeypatch):
+def platform(request, monkeypatch) -> CalibrationPlatform:
     """Dummy platform to be used when there is no access to QPU."""
     monkeypatch.setenv(PLATFORMS, str(Path(__file__).parent / "platforms"))
     return create_calibration_platform(request.param)
