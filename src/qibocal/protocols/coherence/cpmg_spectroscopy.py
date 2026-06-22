@@ -58,27 +58,6 @@ def noise_psd_model(f, a, alpha, b, c, kappa, epsilon):
     """
     return (a * f**-alpha) + (c * kappa**2 / (f**2 + kappa**2)) + b + (epsilon * f)
 
-KAPPA_GUESS = 0.25
-"""Initial guess for the cavity decay rate ``kappa`` [MHz] (typical readout linewidth ~250 kHz)."""
-
-
-def noise_psd_model(f, a, alpha, b, c, kappa, epsilon):
-    """Decay rate ``Gamma2 = 1 / T2`` as a function of the CPMG filter frequency.
-
-    ``a * f ** -alpha`` captures the 1/f-like noise typically dominating at low
-    frequency (``alpha`` close to 1); ``b`` is a frequency-independent floor (e.g.
-    set by ``T1`` processes); ``c * kappa**2 / (f**2 + kappa**2)`` is the
-    thermal-photon-induced dephasing contribution, which rolls off once the CPMG
-    filter frequency exceeds the readout cavity decay rate ``kappa`` (lumping the
-    dispersive shift, photon occupation and filtering factor into the amplitude
-    ``c``, since only ``kappa`` itself is of physical interest here).
-    
-    ``epsilon * f`` is a phenomenological penalty term capturing the accumulation 
-    of control errors (and potential heating effects) from the increasing number 
-    of pi-pulses required at higher filter frequencies (shorter delays).
-    """
-    return (a * f**-alpha) + (c * kappa**2 / (f**2 + kappa**2)) + b + (epsilon * f)
-
 
 @dataclass
 class CpmgSpectroscopyParameters(SpinEchoParameters):
