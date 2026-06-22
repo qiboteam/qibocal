@@ -187,6 +187,7 @@ def _fit(
                     thetas=data.angles,
                     gate_repetition=1,
                     key=(pair[0], pair[1], t_idle, duration),
+                    rec_array=True,
                 )
                 fitted_parameters |= new_fitted_parameter
                 virtual_phases |= new_phases
