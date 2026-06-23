@@ -1,6 +1,7 @@
 # This file contains functions to transpile and execute quantum circuits.
 from collections import Counter, defaultdict
 from collections.abc import Callable
+from itertools import cycle
 
 import numpy as np
 from qibo import Circuit, gates
@@ -20,64 +21,26 @@ REPLACEMENTS = {
 }
 
 QubitMap = list[QubitId]
-"""An array where the elements are physical qubit IDs (str/int) and the indices are logical qubit IDs
-on the corresponding circuit
+"""An array where the elements are physical qubit IDs (str/int) and the indices are
+logical qubit IDs
 """
 ResultMap = dict[QubitId | tuple[QubitId, ...], list[Counter[str]]]
-"""A dictionary mapping the physical qubit ID(s) measured to an array of state counts per requested measurement
-on the corresponding circuit
+"""A dictionary mapping the physical qubit ID(s) measured to an array of state counts
+per requested measurement
 """
 
 
-def _string_to_integer_qubit_map(qubit_map: QubitMap, platform: Platform) -> list[int]:
-    """QubitId can be integers or strings. ``pad_circuit`` only works with integer qubit
-    IDs, so if the qubit maps contain string IDs, we convert them to integer indices
-    based on the platform's qubit order.
+def _string_to_integer_qubit_maps(
+    qubit_maps: list[QubitMap], platform: Platform
+) -> list[list[int]]:
+    """QubitId can be integers or strings. If the qubit maps contain string IDs, we
+    convert them to integer indices based on the platform's qubit order.
     """
     qubits = list(platform.qubits)
-    return [q if isinstance(q, int) else qubits.index(q) for q in qubit_map]
-
-
-def _pad_circuit(nqubits: int, circuit: Circuit, qubit_map: list[int]) -> Circuit:
-    """
-    Pad `circuit` in a new one with `nqubits` qubits, according to `qubit_map`.
-    `qubit_map` is a list `[i, j, k, ...]`, where physical qubit i is mapped into the
-    0th logical qubit and so on.
-
-    Args:
-        nqubits: The total number of qubits in the new circuit.
-        circuit: The original quantum circuit to be padded.
-        qubit_map: A list mapping the logical qubits in the original circuit to the
-            logical qubits in the padded circuit.
-
-    Returns:
-        A Circuit instance with `nqubits` qubits, containing the original circuit's
-        gates mapped according to `qubit_map`.
-    """
-    new_circuit = Circuit(nqubits)
-    new_circuit.add(circuit.on_qubits(*qubit_map))
-    return new_circuit
-
-
-def _transpile_circuit(
-    circuit: Circuit,
-    qubit_map: list[int],
-    platform: Platform,
-    transpiler: Passes,
-) -> list[Circuit]:
-    """Transpile and pad `circuit` according to the platform.
-
-    Apply the `transpiler` to `circuit` and pad them in
-    a circuit with the same number of qubits in the platform.
-
-    Returns:
-        Transpiled and padded circuit instance.
-    """
-
-    new_circuit = _pad_circuit(platform.nqubits, circuit, qubit_map)
-    transpiled_circ, _ = transpiler(new_circuit)
-
-    return transpiled_circ
+    return [
+        [q if isinstance(q, int) else qubits.index(q) for q in qubit_map]
+        for qubit_map in qubit_maps
+    ]
 
 
 def _validate_measurement(
@@ -217,12 +180,11 @@ def _execute_circuits(
 
 def execute_circuits(
     circuits: list[Circuit],
+    qubit_maps: list[QubitMap],
     platform: Platform,
     transpiler: Passes,
     compiler: Compiler,
     nshots: int,
-    qubit_map: QubitMap | None = None,
-    qubit_maps: list[QubitMap] | None = None,
     averaging_mode: AveragingMode = AveragingMode.SINGLESHOT,
 ) -> list[ResultMap]:
     """Execute multiple quantum circuits.
@@ -266,7 +228,7 @@ def execute_circuits(
         qubit = next(iter(platform.qubits))
         [results] = execute_circuits(
             circuits=[circuit],
-            qubit_map=[qubit],
+            qubit_maps=[[qubit]],
             platform=platform,
             transpiler=transpiler,
             compiler=compiler,
@@ -276,31 +238,17 @@ def execute_circuits(
 
         assert sum(counts.values()) == 100
     """
-    assert qubit_map is not None or qubit_maps is not None
-    assert not (qubit_map is not None and qubit_maps is not None)
 
-    if qubit_map is not None:
-        _qubit_map = _string_to_integer_qubit_map(qubit_map, platform)
-        transpiled = [
-            _transpile_circuit(
-                circuit=circuit,
-                qubit_map=_qubit_map,
-                platform=platform,
-                transpiler=transpiler,
-            )
-            for circuit in circuits
-        ]
-    elif qubit_maps is not None:
-        assert len(qubit_maps) == len(circuits)
-        transpiled = [
-            _transpile_circuit(
-                circuit=circuit,
-                qubit_map=_string_to_integer_qubit_map(qmap, platform),
-                platform=platform,
-                transpiler=transpiler,
-            )
-            for circuit, qmap in zip(circuits, qubit_maps)
-        ]
+    assert len(qubit_maps) == 1 or len(qubit_maps) == len(circuits)
+
+    transpiled = [Circuit(platform.nqubits) for _ in circuits]
+    _qubit_maps = _string_to_integer_qubit_maps(qubit_maps, platform)
+
+    for actual_circuit, original_circuit, qubit_map in zip(
+        transpiled, circuits, cycle(_qubit_maps)
+    ):
+        transpiled_circ, _ = transpiler(original_circuit)
+        actual_circuit.add(transpiled_circ.on_qubits(*qubit_map))
 
     return _execute_circuits(
         platform,
