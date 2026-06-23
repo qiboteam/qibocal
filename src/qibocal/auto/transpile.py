@@ -30,19 +30,6 @@ per requested measurement
 """
 
 
-def _string_to_integer_qubit_maps(
-    qubit_maps: list[QubitMap], platform: Platform
-) -> list[list[int]]:
-    """QubitId can be integers or strings. If the qubit maps contain string IDs, we
-    convert them to integer indices based on the platform's qubit order.
-    """
-    qubits = list(platform.qubits)
-    return [
-        [q if isinstance(q, int) else qubits.index(q) for q in qubit_map]
-        for qubit_map in qubit_maps
-    ]
-
-
 def _validate_measurement(
     gate: gates.M, sequence: PulseSequence, readout: dict[PulseId, Result]
 ):
@@ -242,7 +229,11 @@ def execute_circuits(
     assert len(qubit_maps) == 1 or len(qubit_maps) == len(circuits)
 
     transpiled = [Circuit(platform.nqubits) for _ in circuits]
-    _qubit_maps = _string_to_integer_qubit_maps(qubit_maps, platform)
+    qubits = list(platform.qubits)
+    _qubit_maps = [
+        [q if isinstance(q, int) else qubits.index(q) for q in qubit_map]
+        for qubit_map in qubit_maps
+    ]
 
     for actual_circuit, original_circuit, qubit_map in zip(
         transpiled, circuits, cycle(_qubit_maps)
