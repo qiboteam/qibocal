@@ -13,7 +13,7 @@ from qibolab._core.identifier import Result
 from qibolab._core.native import NativeContainer
 from qibolab._core.pulses import PulseId
 
-from qibocal.auto.operation import QubitId
+from qibocal.auto.operation import QubitId, QubitPairId
 
 REPLACEMENTS = {
     "RX": "GPI2",
@@ -24,7 +24,7 @@ QubitMap = list[QubitId]
 """An array where the elements are physical qubit IDs (str/int) and the indices are
 logical qubit IDs
 """
-ResultMap = dict[QubitId | tuple[QubitId, ...], list[Counter[str]]]
+ResultMap = dict[QubitId | QubitPairId, list[Counter[str]]]
 """A dictionary mapping the physical qubit ID(s) measured to an array of state counts
 per requested measurement
 """
@@ -47,17 +47,9 @@ def _resolve_results_mapping_singleshot(
     readout: dict[PulseId, Result],
     measurement_map: dict[gates.M, PulseSequence],
 ) -> ResultMap:
-    """
-    Iterates across the requested measurements and fetches the corresponding results as a count of states.
-    If a multi-qubit measurement is requested, reconcile the results per shot into a multi-qubit state count.
-
-    Args:
-        platform_qubit_map: A list where the indices are logical qubit indices and the values are physical qubit IDs.
-        readout: Results from circuit execution.
-        measurement_map: Map of measurement registers to measurement pulse sequences for the current circuit.
-
-    Returns:
-        A dictionary mapping the physical qubit IDs measured to an array of state counters for the current circuit.
+    """Iterates across the requested measurements and fetches the corresponding results
+    as a count of states. If a multi-qubit measurement is requested, reconcile the
+    results per shot into a multi-qubit state count.
     """
 
     measurements: ResultMap = defaultdict(list)
@@ -81,17 +73,8 @@ def _resolve_results_mapping_averaged(
     measurement_map: dict[gates.M, PulseSequence],
     nshots: int,
 ) -> ResultMap:
-    """
-    Iterates across the requested measurements and fetches the corresponding results as a count of states.
-
-    Args:
-        platform_qubit_map: A list where the indices are logical qubit indices and the values are physical qubit IDs.
-        readout: Results from circuit execution.
-        measurement_map: Map of measurement registers to measurement pulse sequences for the current circuit.
-        nshots: Number of shots requested.
-
-    Returns:
-        A dictionary mapping the physical qubit IDs measured to an array of state counters for the current circuit.
+    """Iterates across the requested measurements and fetches the corresponding results
+    as a count of states.
     """
 
     measurements: ResultMap = defaultdict(list)
@@ -176,23 +159,24 @@ def execute_circuits(
 ) -> list[ResultMap]:
     """Execute multiple quantum circuits.
 
-    The circuits are first padded to fit the number of qubits in the platform
-    and rearranged according to the qubit mapping before being transpiled and executed.
+    Each circuit is transpiled and remapped onto a larger circuit using the provided
+    physical-to-logical mapping from `qubit_maps`. Finally, all circuits are passed
+    for execution in a single call.
 
     Args:
         circuits: List of quantum circuits to transpile and execute.
+        qubit_maps: An array of physical qubit to logical qubit mapping per circuit.
         platform: The platform to transpile circuits for and execute on.
         transpiler: The transpiler to apply to the circuits.
         compiler: The compiler to use for circuit compilation.
         nshots: Number of times to sample from the experiment.
-        qubit_map: A mapping of physical qubit IDs to logical qubit indices.
-        qubit_maps: An array of physical qubit to logical qubit mapping per circuit.
         averaging_mode: Averaging mode for measurements. Default is single-shot.
 
     Returns:
-        List of dictionaries mapping physical qubit ID(s) to measurement outcomes as Counter objects,
-        one per circuit. Each Counter maps measurement outcome states as strings (e.g., "01", "10")
-        to their occurrence counts. Total counts per counter equals nshots.
+        List of dictionaries mapping physical qubit ID(s) to measurement outcomes as
+        Counter objects, one per circuit. Each Counter maps measurement outcome states
+        as strings (e.g., "01", "10") to their occurrence counts. Total counts per
+        counter equals nshots.
 
     Examples:
         .. testcode::
