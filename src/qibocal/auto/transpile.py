@@ -115,17 +115,12 @@ def _resolve_results_mapping_singleshot(
         _validate_measurement(measure, sequence, readout)
         if len(measure.qubits) == 1:
             qid = platform_qubit_map[measure.qubits[0]]
-            result = readout[sequence.acquisitions[0][1].id]
-            measurements[qid].append(
-                Counter({str(key): val for key, val in Counter(result).items()})
-            )
         else:
-            result = {}
             qid = tuple([platform_qubit_map[qubit_id] for qubit_id in measure.qubits])
-            arr = np.stack(
-                [readout[pulse.id] for (_, pulse) in sequence.acquisitions]
-            ).astype(int)
-            measurements[qid].append(Counter("".join(map(str, col)) for col in arr.T))
+        arr = np.stack(
+            [readout[pulse.id] for (_, pulse) in sequence.acquisitions]
+        ).astype(int)
+        measurements[qid].append(Counter("".join(map(str, col)) for col in arr.T))
 
     return measurements
 
