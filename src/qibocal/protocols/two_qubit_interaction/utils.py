@@ -102,7 +102,6 @@ def fit_virtualz(
         key = pair
 
     target, control = pair
-
     for setup in ["I", "X"]:
         if rec_array:
             target_data = data[target, control, setup].target
