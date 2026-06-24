@@ -475,12 +475,6 @@ actions:
     parameters:
       nshots: 10
 
-  - id: calibrate_state_discrimination unrolling
-    operation: calibrate_state_discrimination
-    parameters:
-      nshots: 10
-      unrolling: true
-
   - id: ramsey_detuned
     operation: ramsey
     parameters:
@@ -520,13 +514,6 @@ actions:
       beta_param: null
       nshots: 10
 
-  - id: allXY unrolling
-    operation: allxy
-    parameters:
-      beta_param: null
-      unrolling: True
-      nshots: 10
-
   - id: resonator_depletion_tuning
     operation: allxy_resonator_depletion_tuning
     parameters:
@@ -534,15 +521,6 @@ actions:
       delay_end: 3000.0
       delay_step: 1000.0
       nshots: 10
-
-  - id: resonator_depletion_tuning unrolling
-    operation: allxy_resonator_depletion_tuning
-    parameters:
-      delay_start: 1000.0
-      delay_end: 3000.0
-      delay_step: 1000.0
-      nshots: 10
-      unrolling: true
 
   - id: drag_pulse_tuning
     operation: drag_tuning

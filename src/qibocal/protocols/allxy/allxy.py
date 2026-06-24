@@ -25,9 +25,6 @@ class AllXYParameters(Parameters):
 
     beta_param: float = None
     """Beta parameter for drag pulse. If None is given, the native rx pulse in the parameters will be used"""
-    unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
-    Defaults to ``False``."""
 
 
 @dataclass
@@ -107,12 +104,7 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
         acquisition_type=AcquisitionType.DISCRIMINATION,
     )
-    if params.unrolling:
-        results = platform.execute(sequences, **options)
-    else:
-        results = {}
-        for sequence in sequences:
-            results.update(platform.execute([sequence], **options))
+    results = platform.execute(sequences, **options)
 
     for gates, ro_pulses in zip(gatelist, all_ro_pulses):
         gate = "-".join(gates)

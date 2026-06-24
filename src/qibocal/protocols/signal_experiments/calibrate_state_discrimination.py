@@ -24,7 +24,6 @@ class CalibrateStateDiscriminationParameters(Parameters):
     """Number of shots."""
     relaxation_time: int | None = None
     """Relaxation time (ns)."""
-    unrolling: bool | None = False
 
 
 CalibrateStateDiscriminationResType = np.dtype(
@@ -110,12 +109,7 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    if params.unrolling:
-        results = platform.execute(sequences, **options)
-    else:
-        results = {}
-        for sequence in sequences:
-            results.update(platform.execute([sequence], **options))
+    results = platform.execute(sequences, **options)
 
     intermediate_frequency = {
         qubit: platform.config(platform.qubits[qubit].probe).frequency

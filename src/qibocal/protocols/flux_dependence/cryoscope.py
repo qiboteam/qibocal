@@ -50,7 +50,6 @@ class CryoscopeParameters(Parameters):
     """Flux pulse amplitude."""
     fir: int = 20
     """Number of feedforward taps to be optimized after IIR."""
-    unrolling: bool = True
 
 
 @dataclass
@@ -232,16 +231,8 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    if params.unrolling:
-        results_x = platform.execute(sequences_x, **options)
-        results_y = platform.execute(sequences_y, **options)
-    else:
-        results_x = [
-            platform.execute([sequence], **options) for sequence in sequences_x
-        ]
-        results_y = [
-            platform.execute([sequence], **options) for sequence in sequences_y
-        ]
+    results_x = platform.execute(sequences_x, **options)
+    results_y = platform.execute(sequences_y, **options)
 
     for measure, results, sequence in zip(
         ["MX", "MY"], [results_x, results_y], [sequences_x, sequences_y]
@@ -251,11 +242,7 @@ def _acquisition(
                 ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[
                     -1
                 ]
-                result = (
-                    results[ro_pulse.id]
-                    if params.unrolling
-                    else results[i][ro_pulse.id]
-                )
+                result = results[ro_pulse.id]
                 data.register_qubit(
                     CryoscopeType,
                     (qubit, measure),
