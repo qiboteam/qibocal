@@ -108,7 +108,7 @@ class CHSHData(Data):
         """Store output."""
 
         for state in COMPUTATIONAL_BASIS:
-            freq = frequencies.get(state, 0)
+            freq = frequencies[state]
 
             if (pair[0], pair[1], bell_state, basis, state) in self.data:
                 self.data[pair[0], pair[1], bell_state, basis, state] = np.concatenate(
@@ -170,11 +170,11 @@ def _acquisition(
                 for basis, circuit in chsh_circuits.items():
                     [result] = execute_circuits(
                         [circuit],
+                        [pair],
                         platform,
                         transpiler,
                         compiler,
                         nshots=params.nshots,
-                        qubit_map=pair,
                     )
                     [state_counter] = result[pair]
                     data.register_basis(pair, bell_state, basis, state_counter)
