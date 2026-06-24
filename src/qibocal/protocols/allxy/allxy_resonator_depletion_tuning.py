@@ -23,9 +23,6 @@ class AllXYResonatorParameters(Parameters):
     """Step delay parameter for resonator depletion."""
     readout_delay: int = 1000
     """Delay on readout."""
-    unrolling: bool = False
-    """If ``True`` it uses sequence unrolling to deploy multiple sequences in a single instrument call.
-    Defaults to ``False``."""
     beta_param: float = None
     """Beta parameter for drag pulse."""
 
@@ -87,12 +84,7 @@ def _acquisition(
             sequences.append(sequence)
             all_ro_pulses.append(ro_pulses)
         options = dict(nshots=params.nshots, averaging_mode=AveragingMode.CYCLIC)
-        if params.unrolling:
-            results = platform.execute(sequences, **options)
-        else:
-            results = {}
-            for sequence in sequences:
-                results.update(platform.execute([sequence], **options))
+        results = platform.execute(sequences, **options)
 
         for gates, ro_pulses in zip(gatelist, all_ro_pulses):
             gate = "-".join(gates)
