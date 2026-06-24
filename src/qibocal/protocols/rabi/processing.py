@@ -1,16 +1,25 @@
+from collections.abc import Callable
+
 import numpy as np
 import plotly.graph_objects as go
+from numpy.typing import ArrayLike, NDArray
 from plotly.subplots import make_subplots
 from scipy.optimize import curve_fit
 
+from qibocal import update
+from qibocal.auto.operation import QubitId
+from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
     COLORBAND,
     COLORBAND_LINE,
     angle_wrap,
-    quinn_fernandes_algorithm,
+    guess_period,
     table_dict,
     table_html,
 )
+from qibocal.result import collect, magnitude, phase
+
+from .parent_classes import RabiData, RabiFreqResults, RabiResults
 
 QUANTILE_CONSTANT = 1.5
 """Scaling factor to recover signal amplitude from quantiles.
@@ -25,31 +34,59 @@ sinusoidal oscillation.
 """
 
 
-def rabi_amplitude_function(x, offset, amplitude, period, phase):
+def update_rabi_parameters(
+    results: RabiResults | RabiFreqResults,
+    platform: CalibrationPlatform,
+    target: QubitId,
+) -> None:
+    """Updating RX or RX90 parameters if the drive line is the physical line for qubit `target`"""
+    if target == results.drive_lines[target]:
+        update.drive_duration(results.length[target], results.rx90, platform, target)
+        update.drive_amplitude(
+            results.amplitude[target], results.rx90, platform, target
+        )
+        if isinstance(results, RabiFreqResults):
+            update.drive_frequency(results.frequency[target], platform, target)
+
+
+def rabi_amplitude_function(
+    x: ArrayLike,
+    offset: float,
+    amplitude: float,
+    period: float,
+    phase: float,
+) -> NDArray:
     """
     Fit function of Rabi amplitude signal experiment.
-
-    Args:
-        x: Input data.
     """
     return offset + amplitude * np.cos(2 * np.pi * x / period + phase)
 
 
-def rabi_length_function(x, offset, amplitude, period, phase, t2_inv):
+def rabi_length_function(
+    x: ArrayLike,
+    offset: float,
+    amplitude: float,
+    period: float,
+    phase: float,
+    t2_inv: float,
+) -> NDArray:
     """
     Fit function of Rabi length signal experiment.
-
-    Args:
-        x: Input data.
     """
     return offset + amplitude * np.cos(2 * np.pi * x / period + phase) * np.exp(
         -x * t2_inv
     )
 
 
-def rabi_initial_guess(x, y, experiment: str, signal: bool):
-    # period = fallback_period(guess_period(x, y))
-    period = quinn_fernandes_algorithm(y, x, speedup_flag=True)
+def rabi_initial_guess(
+    x: ArrayLike, y: ArrayLike, experiment: str, signal: bool
+) -> list[float]:
+    """Generate an initial guess for Rabi curve fitting.
+
+    For a length experiment, the returned list contains [offset, amplitude, period,
+    phase, t2_inv]; otherwise it contains [offset, amplitude, period, phase].
+    """
+    period = guess_period(x, y)
     median_sig = np.median(y)
     q80 = np.quantile(y, 0.8)
     q20 = np.quantile(y, 0.2)
@@ -62,7 +99,10 @@ def rabi_initial_guess(x, y, experiment: str, signal: bool):
         return [median_sig, amplitude_guess, period, phase_guess]
 
 
-def plot(data, qubit, fit, rx90):
+def plot_signal(
+    data: RabiData, qubit: QubitId, fit: RabiResults | None, rx90: bool
+) -> tuple[list[go.Figure], str]:
+    """Create plots for a Rabi experiment signal and phase."""
     quantity, title, fitting = extract_rabi(data)
     figures = []
     fitting_report = ""
@@ -84,11 +124,12 @@ def plot(data, qubit, fit, rx90):
     fig.add_trace(
         go.Scatter(
             x=rabi_parameters,
-            y=qubit_data.signal,
-            opacity=1,
+            y=magnitude(collect(i=qubit_data.i, q=qubit_data.q)),
             name="Signal",
             showlegend=True,
             legendgroup="Signal",
+            mode="markers",
+            marker=dict(color=COLORBAND),
         ),
         row=1,
         col=1,
@@ -96,11 +137,12 @@ def plot(data, qubit, fit, rx90):
     fig.add_trace(
         go.Scatter(
             x=rabi_parameters,
-            y=qubit_data.phase,
-            opacity=1,
+            y=phase(collect(i=qubit_data.i, q=qubit_data.q)),
             name="Phase",
             showlegend=True,
             legendgroup="Phase",
+            mode="markers",
+            marker=dict(color=COLORBAND),
         ),
         row=1,
         col=2,
@@ -118,8 +160,8 @@ def plot(data, qubit, fit, rx90):
                 x=rabi_parameter_range,
                 y=fitting(rabi_parameter_range, *params),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
-                marker_color="rgb(255, 130, 67)",
+                mode="lines",
+                line=dict(color=COLORBAND_LINE),
             ),
             row=1,
             col=1,
@@ -147,34 +189,31 @@ def plot(data, qubit, fit, rx90):
     return figures, fitting_report
 
 
-def plot_probabilities(data, qubit, fit, rx90):
+def plot_probabilities(
+    data: RabiData, qubit: QubitId, fit: RabiResults | None, rx90: bool
+) -> tuple[list[go.Figure], str]:
+    """
+    Generate probability plot for Rabi experiment.
+    """
     quantity, title, fitting = extract_rabi(data)
-    figures = []
+    figures: list[go.Figure] = []
     fitting_report = ""
 
     qubit_data = data[qubit]
-    probs = qubit_data.prob
-    error_bars = qubit_data.error
     rabi_parameters = getattr(qubit_data, quantity)
     fig = go.Figure(
         [
             go.Scatter(
                 x=rabi_parameters,
                 y=qubit_data.prob,
-                opacity=1,
+                error_y=dict(
+                    type="data", array=qubit_data.error, visible=True, color=COLORBAND
+                ),
                 name="Probability",
                 showlegend=True,
                 legendgroup="Probability",
-                mode="lines",
-            ),
-            go.Scatter(
-                x=np.concatenate((rabi_parameters, rabi_parameters[::-1])),
-                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
-                fill="toself",
-                fillcolor=COLORBAND,
-                line=dict(color=COLORBAND_LINE),
-                showlegend=True,
-                name="Errors",
+                mode="markers",
+                marker=dict(color=COLORBAND),
             ),
         ]
     )
@@ -191,8 +230,8 @@ def plot_probabilities(data, qubit, fit, rx90):
                 x=rabi_parameter_range,
                 y=fitting(rabi_parameter_range, *params),
                 name="Fit",
-                line=go.scatter.Line(dash="dot"),
-                marker_color="rgb(255, 130, 67)",
+                mode="lines",
+                line=dict(color=COLORBAND_LINE),
             ),
         )
         pulse_name = "Pi-half pulse" if rx90 else "Pi pulse"
@@ -221,12 +260,12 @@ def plot_probabilities(data, qubit, fit, rx90):
     return figures, fitting_report
 
 
-def extract_rabi(data):
+def extract_rabi(data: RabiData) -> tuple[str, str, Callable]:
     """
     Extract Rabi fit info.
     """
-    if "RabiAmplitude" in data.__class__.__name__:
-        return "amp", "Amplitude [dimensionless]", rabi_amplitude_function
+    if any([s in data.__class__.__name__ for s in ["RabiAmplitude", "RabiEF"]]):
+        return "amp", "Amplitude [a.u.]", rabi_amplitude_function
     if "RabiLength" in data.__class__.__name__:
         return "length", "Time [ns]", rabi_length_function
     raise RuntimeError("Data has to be a data structure of the Rabi routines.")
@@ -260,6 +299,13 @@ def period_correction_factor(phase: float):
 def fit_length_function(
     x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
 ) -> tuple[list[float], list[float], float]:
+    """Fit Rabi length function to experimental data.
+
+    Performs curve fitting on Rabi oscillation data as a function of pulse duration,
+    with exponential decay correction. Rescales fitted parameters based on signal type
+    and provided axis limits.
+    """
+
     popt, perr = curve_fit(
         rabi_length_function,
         x,
@@ -284,25 +330,30 @@ def fit_length_function(
             angle_wrap(popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min)),
             popt[4] / (x_max - x_min),
         ]
+        # errors are not propagated correctly
         perr = np.sqrt(np.diag(perr))
     else:
-        popt = np.array(
-            [  # change it according to the fit function
-                (y_max - y_min) * (popt[0] + 1 / 2) + y_min,
-                (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
-                popt[2] * (x_max - x_min),
-                popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
-                popt[4] / (x_max - x_min),
-            ]
-        )
+        popt = [  # change it according to the fit function
+            (y_max - y_min) * (popt[0] + 1 / 2) + y_min,
+            (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
+            popt[2] * (x_max - x_min),
+            popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
+            popt[4] / (x_max - x_min),
+        ]
+        # errors are not propagated correctly
 
     pi_pulse_parameter = popt[2] / 2 * period_correction_factor(phase=popt[3])
-    return popt.tolist(), perr.tolist(), pi_pulse_parameter
+    return popt, perr.tolist(), pi_pulse_parameter
 
 
 def fit_amplitude_function(
     x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
 ) -> tuple[list[float], list[float], float]:
+    """Fit Rabi amplitude function to experimental data.
+
+    Performs curve fitting on Rabi oscillation data as a function of pulse amplitude.
+    Rescales fitted parameters based on provided axis limits.
+    """
     popt, perr = curve_fit(
         rabi_amplitude_function,
         x,

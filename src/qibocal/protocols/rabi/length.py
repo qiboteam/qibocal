@@ -5,46 +5,44 @@ import numpy.typing as npt
 from qibolab import (
     AcquisitionType,
     AveragingMode,
+    ParallelSweepers,
     Parameter,
     Sweeper,
 )
 
-from qibocal import update
 from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
 from ..utils import chi2_reduced
-from . import utils
+from .acquisition import check_correct_drive_lines_setup, sequence_length
 from .parent_classes import (
-    InputError,
-    RabiLengthData,
+    RabiData,
     RabiLengthParameters,
-    RabiLengthResults,
+    RabiResults,
+)
+from .processing import (
+    fit_length_function,
+    plot_probabilities,
+    rabi_initial_guess,
+    rabi_length_function,
+    update_rabi_parameters,
 )
 
 __all__ = ["rabi_length"]
 
 
-RabiLenType = np.dtype(
+RabiLenClassType = np.dtype(
     [("length", np.float64), ("prob", np.float64), ("error", np.float64)]
 )
-"""Custom dtype for rabi amplitude."""
+"""Custom dtype for rabi duration classification."""
 
 
 @dataclass
-class ClassificationResults(RabiLengthResults):
-    """RabiLength outputs."""
-
-    chi2: dict[QubitId, float] = field(default_factory=dict)
-    """Chi2 from each qubit's fit."""
-
-
-@dataclass
-class RabiLengthData(RabiLengthData):
+class RabiLengthClassificationData(RabiData):
     """RabiLength acquisition outputs."""
 
-    data: dict[QubitId, npt.NDArray[RabiLenType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[RabiLenClassType]] = field(default_factory=dict)
     """Raw data acquired for classification experiment."""
 
 
@@ -52,19 +50,16 @@ def _acquisition(
     params: RabiLengthParameters,
     platform: CalibrationPlatform,
     targets: list[QubitId],
-) -> RabiLengthData:
+) -> RabiLengthClassificationData:
     r"""
     Data acquisition for RabiLength Classification Experiment.
     """
 
-    drive_lines = params.drive_lines if params.drive_lines is not None else targets
-    if len(drive_lines) != len(targets):
-        raise InputError(
-            "Each qubit has to be assigned to a drive line; "
-            "If inserted, drive_lines must have the same length of targets list."
-        )
+    drive_lines = check_correct_drive_lines_setup(
+        targets=targets, input_drivelines=params.drive_lines
+    )
 
-    sequence, qd_pulses, delays, amplitudes, updates = utils.sequence_length(
+    sequence, qd_pulses, delays, amplitudes, updates = sequence_length(
         targets=targets,
         drive_lines=drive_lines,
         platform=platform,
@@ -86,12 +81,16 @@ def _acquisition(
         pulses=qd_pulses + delays,
     )
 
-    data = RabiLengthData(amplitudes=amplitudes, rx90=params.rx90)
+    data = RabiLengthClassificationData(
+        drive_lines={t: d for t, d in zip(targets, drive_lines)},
+        rx90=params.rx90,
+        amplitudes=amplitudes,
+    )
 
     # execute the sweep
     results = platform.execute(
         [sequence],
-        [[sweeper]],
+        [ParallelSweepers([sweeper])],
         updates=[updates],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
@@ -103,7 +102,7 @@ def _acquisition(
         ro_pulse = list(sequence.channel(platform.qubits[q].acquisition))[-1]
         prob = results[ro_pulse.id]
         data.register_qubit(
-            RabiLenType,
+            RabiLenClassType,
             (q),
             dict(
                 length=sweeper.values,
@@ -114,7 +113,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: RabiLengthData) -> RabiLengthResults:
+def _fit(data: RabiLengthClassificationData) -> RabiResults:
     """Post-processing for RabiLength experiment."""
 
     qubits = data.qubits
@@ -131,10 +130,10 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         y = qubit_data.prob
         x = (raw_x - min_x) / (max_x - min_x)
 
-        pguess = utils.rabi_initial_guess(x, y, "length", signal=False)
+        pguess = rabi_initial_guess(x, y, "length", signal=False)
 
         try:
-            popt, perr, pi_pulse_parameter = utils.fit_length_function(
+            popt, perr, pi_pulse_parameter = fit_length_function(
                 x,
                 y,
                 pguess,
@@ -148,7 +147,7 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
             chi2[qubit] = [
                 chi2_reduced(
                     y,
-                    utils.rabi_length_function(raw_x, *popt),
+                    rabi_length_function(raw_x, *popt),
                     qubit_data.error,
                 ),
                 np.sqrt(2 / len(y)),
@@ -156,7 +155,8 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
-    return ClassificationResults(
+    return RabiResults(
+        drive_lines=data.drive_lines,
         length=durations,
         amplitude=amplitudes,
         fitted_parameters=fitted_parameters,
@@ -165,19 +165,16 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
     )
 
 
-def _update(
-    results: ClassificationResults, platform: CalibrationPlatform, target: QubitId
+def _plot(
+    data: RabiLengthClassificationData,
+    target: QubitId,
+    fit: RabiResults | None = None,
 ):
-    update.drive_duration(results.length[target], results.rx90, platform, target)
-    update.drive_amplitude(results.amplitude[target], results.rx90, platform, target)
+    """Plotting function for RabiLength classification experiment."""
+    return plot_probabilities(data, target, fit, data.rx90)
 
 
-def _plot(data: RabiLengthData, fit: ClassificationResults, target: QubitId):
-    """Plotting function for RabiLength experiment."""
-    return utils.plot_probabilities(data, target, fit, data.rx90)
-
-
-rabi_length = Routine(_acquisition, _fit, _plot, _update)
+rabi_length = Routine(_acquisition, _fit, _plot, update_rabi_parameters)
 """RabiLength Routine object.
 
 In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse length

@@ -2,77 +2,46 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
+from qibolab import AcquisitionType, AveragingMode, ParallelSweepers, Parameter, Sweeper
 
-from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import QubitId, Routine
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import readout_frequency
-from qibocal.result import magnitude, phase
+from qibocal.result import collect, magnitude
 
-from . import utils
+from .acquisition import check_correct_drive_lines_setup, sequence_amplitude
+from .parent_classes import (
+    RabiAmplitudeParameters,
+    RabiData,
+    RabiResults,
+)
+from .processing import (
+    fit_amplitude_function,
+    plot_signal,
+    rabi_initial_guess,
+    update_rabi_parameters,
+)
 
-__all__ = [
-    "RabiAmplitudeSignalResults",
-    "RabiAmplitudeSignalParameters",
-    "RabiAmplitudeSignalData",
-    "rabi_amplitude_signal",
-    "_fit",
-    "RabiAmpSignalType",
-]
-
-
-@dataclass
-class RabiAmplitudeSignalParameters(Parameters):
-    """RabiAmplitude runcard inputs."""
-
-    min_amp: float
-    """Minimum amplitude."""
-    max_amp: float
-    """Maximum amplitude."""
-    step_amp: float
-    """Step amplitude."""
-    pulse_length: float | None = None
-    """RX pulse duration [ns]."""
-    rx90: bool = False
-    """Calibration of native pi pulse, if true calibrates pi/2 pulse"""
-
-
-@dataclass
-class RabiAmplitudeSignalResults(Results):
-    """RabiAmplitude outputs."""
-
-    amplitude: dict[QubitId, float | list[float]]
-    """Drive amplitude for each qubit."""
-    length: dict[QubitId, float | list[float]]
-    """Drive pulse duration. Same for all qubits."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitted parameters."""
-    rx90: bool
-    """Pi or Pi_half calibration"""
+__all__ = ["rabi_amplitude_signal"]
 
 
 RabiAmpSignalType = np.dtype(
-    [("amp", np.float64), ("signal", np.float64), ("phase", np.float64)]
+    [("amp", np.float64), ("i", np.float64), ("q", np.float64)]
 )
 """Custom dtype for rabi amplitude."""
 
 
 @dataclass
-class RabiAmplitudeSignalData(Data):
+class RabiAmplitudeSignalData(RabiData):
     """RabiAmplitudeSignal data acquisition."""
 
-    rx90: bool
-    """Pi or Pi_half calibration"""
-    durations: dict[QubitId, float] = field(default_factory=dict)
-    """Pulse durations provided by the user."""
     data: dict[QubitId, npt.NDArray[RabiAmpSignalType]] = field(default_factory=dict)
     """Raw data acquired."""
 
 
 def _acquisition(
-    params: RabiAmplitudeSignalParameters,
+    params: RabiAmplitudeParameters,
     platform: CalibrationPlatform,
     targets: list[QubitId],
 ) -> RabiAmplitudeSignalData:
@@ -82,50 +51,67 @@ def _acquisition(
     to find the drive pulse amplitude that creates a rotation of a desired angle.
     """
 
+    drive_lines = check_correct_drive_lines_setup(
+        targets=targets, input_drivelines=params.drive_lines
+    )
+
     # create a sequence of pulses for the experiment
-    sequence, qd_pulses, ro_pulses, durations = utils.sequence_amplitude(
-        targets, params, platform, params.rx90
+    sequence, qd_pulses, durations, updates = sequence_amplitude(
+        targets=targets,
+        drive_lines=drive_lines,
+        platform=platform,
+        pulse_duration=params.pulse_length,
+        pulse_ampl=None,  # in this case we are sweeping on amplitude
+        rx90=params.rx90,
     )
 
     sweeper = Sweeper(
         parameter=Parameter.amplitude,
-        range=(params.min_amp, params.max_amp, params.step_amp),
-        pulses=[qd_pulses[qubit] for qubit in targets],
+        range=params.amplitude_range,
+        pulses=qd_pulses,
     )
 
-    data = RabiAmplitudeSignalData(durations=durations, rx90=params.rx90)
+    data = RabiAmplitudeSignalData(
+        drive_lines={t: d for t, d in zip(targets, drive_lines)},
+        rx90=params.rx90,
+        durations=durations,
+    )
+
+    # for signal measurement we have to change readout
+    updates |= {
+        platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}
+        for q in targets
+    }
 
     # sweep the parameter
     results = platform.execute(
         [sequence],
-        [[sweeper]],
-        updates=[
-            {platform.qubits[q].probe: {"frequency": readout_frequency(q, platform)}}
-            for q in targets
-        ],
+        [ParallelSweepers([sweeper])],
+        updates=[updates],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
     for qubit in targets:
-        result = results[ro_pulses[qubit].id]
+        ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+        result = results[ro_pulse.id]
         data.register_qubit(
             RabiAmpSignalType,
             (qubit),
             dict(
                 amp=sweeper.values,
-                signal=magnitude(result),
-                phase=phase(result),
+                i=result[..., 0],
+                q=result[..., 1],
             ),
         )
     return data
 
 
-def _fit(data: RabiAmplitudeSignalData) -> RabiAmplitudeSignalResults:
-    """Post-processing for RabiAmplitude."""
-    qubits = data.qubits
+def _fit(data: RabiAmplitudeSignalData) -> RabiResults:
+    """Post-processing for RabiAmplitude experiment."""
 
+    qubits = data.qubits
     pi_pulse_amplitudes = {}
     fitted_parameters = {}
 
@@ -133,7 +119,7 @@ def _fit(data: RabiAmplitudeSignalData) -> RabiAmplitudeSignalResults:
         qubit_data = data[qubit]
 
         rabi_parameter = qubit_data.amp
-        voltages = qubit_data.signal
+        voltages = magnitude(collect(i=qubit_data.i, q=qubit_data.q))
 
         y_min = np.min(voltages)
         y_max = np.max(voltages)
@@ -142,9 +128,9 @@ def _fit(data: RabiAmplitudeSignalData) -> RabiAmplitudeSignalResults:
         x = (rabi_parameter - x_min) / (x_max - x_min)
         y = (voltages - y_min) / (y_max - y_min)
 
-        pguess = utils.rabi_initial_guess(x, y, "amp", signal=True)
+        pguess = rabi_initial_guess(x, y, "amp", signal=True)
         try:
-            popt, _, pi_pulse_parameter = utils.fit_amplitude_function(
+            popt, _, pi_pulse_parameter = fit_amplitude_function(
                 x,
                 y,
                 pguess,
@@ -158,26 +144,23 @@ def _fit(data: RabiAmplitudeSignalData) -> RabiAmplitudeSignalResults:
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
 
-    return RabiAmplitudeSignalResults(
-        pi_pulse_amplitudes, data.durations, fitted_parameters, data.rx90
+    return RabiResults(
+        drive_lines=data.drive_lines,
+        length=data.durations,
+        amplitude=pi_pulse_amplitudes,
+        fitted_parameters=fitted_parameters,
+        rx90=data.rx90,
     )
 
 
 def _plot(
     data: RabiAmplitudeSignalData,
     target: QubitId,
-    fit: RabiAmplitudeSignalResults = None,
+    fit: RabiResults | None = None,
 ):
     """Plotting function for RabiAmplitude."""
-    return utils.plot(data, target, fit, data.rx90)
+    return plot_signal(data, target, fit, data.rx90)
 
 
-def _update(
-    results: RabiAmplitudeSignalResults, platform: CalibrationPlatform, target: QubitId
-):
-    update.drive_amplitude(results.amplitude[target], results.rx90, platform, target)
-    update.drive_duration(results.length[target], results.rx90, platform, target)
-
-
-rabi_amplitude_signal = Routine(_acquisition, _fit, _plot, _update)
+rabi_amplitude_signal = Routine(_acquisition, _fit, _plot, update_rabi_parameters)
 """RabiAmplitude Routine object."""
