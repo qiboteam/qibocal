@@ -22,7 +22,7 @@ from scipy.optimize import curve_fit
 from scipy.signal import lfilter
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.config import log
 from qibocal.protocols.ramsey.processing import fitting
 from qibocal.protocols.utils import table_dict, table_html
@@ -532,4 +532,4 @@ def _update(results: CryoscopeResults, platform: Platform, target: QubitId):
         log.info(f"Skipping filters update on qubit {target}.")
 
 
-cryoscope = Routine(_acquisition, _fit, _plot, _update)
+cryoscope = Protocol(_acquisition, _fit, _plot, _update)

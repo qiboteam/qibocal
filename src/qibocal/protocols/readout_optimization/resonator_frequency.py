@@ -13,7 +13,7 @@ from qibolab import (
 )
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.utils import readout_frequency, table_dict, table_html
@@ -241,5 +241,5 @@ def _update(
     update.iq_angle(results.best_angle[target], platform, target)
 
 
-resonator_frequency = Routine(_acquisition, _fit, _plot, _update)
-"""Optimization RO frequency Routine object"""
+resonator_frequency = Protocol(_acquisition, _fit, _plot, _update)
+"""Optimization RO frequency Protocol object"""

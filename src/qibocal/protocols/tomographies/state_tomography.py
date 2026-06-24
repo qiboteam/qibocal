@@ -12,7 +12,7 @@ from qibo.quantum_info import fidelity, partial_trace
 
 from qibocal.protocols.utils import marginalize_qubit_counts
 
-from ...auto.operation import DATAFILE, Data, Parameters, QubitId, Results, Routine
+from ...auto.operation import DATAFILE, Data, Parameters, Protocol, QubitId, Results
 from ...auto.transpile import (
     build_native_gate_compiler,
     build_native_gate_transpiler,
@@ -373,4 +373,4 @@ def _plot(data: StateTomographyData, fit: StateTomographyResults, target: QubitI
     return [fig], fitting_report
 
 
-state_tomography = Routine(_acquisition, _fit, _plot)
+state_tomography = Protocol(_acquisition, _fit, _plot)

@@ -7,7 +7,7 @@ from qibolab import AcquisitionType, AveragingMode, PulseSequence
 from scipy.signal import butter, filtfilt
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 
 from .utils import _get_lo_frequency
@@ -237,5 +237,5 @@ def _update(
     update.kernel(results.data[qubit], platform, qubit)
 
 
-calibrate_state_discrimination = Routine(_acquisition, _fit, _plot, _update)
-"""Calibrate State Discrimination Routine object."""
+calibrate_state_discrimination = Protocol(_acquisition, _fit, _plot, _update)
+"""Calibrate State Discrimination Protocol object."""

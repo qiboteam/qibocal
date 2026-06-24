@@ -12,7 +12,7 @@ from qibolab import (
     PulseSequence,
 )
 
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.update import replace
 
@@ -262,5 +262,5 @@ def _plot(data: AllXYData, target: QubitId, fit: AllXYResults = None):
     return figures, fitting_report
 
 
-allxy = Routine(_acquisition, _fit, _plot)
-"""AllXY Routine object."""
+allxy = Protocol(_acquisition, _fit, _plot)
+"""AllXY Protocol object."""

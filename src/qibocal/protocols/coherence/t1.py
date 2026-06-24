@@ -5,7 +5,7 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 
-from qibocal.auto.operation import Data, QubitId, Routine
+from qibocal.auto.operation import Data, Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import probability
 
@@ -172,5 +172,5 @@ def _plot(data: T1Data, target: QubitId, fit: T1Results = None):
     return figures, fitting_report
 
 
-t1 = Routine(_acquisition, _fit, _plot, update_t1)
-"""T1 Routine object."""
+t1 = Protocol(_acquisition, _fit, _plot, update_t1)
+"""T1 Protocol object."""

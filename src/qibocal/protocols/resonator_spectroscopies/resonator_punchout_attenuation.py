@@ -7,7 +7,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.result import magnitude, phase
 
@@ -371,8 +371,8 @@ def _update(
         )
 
 
-resonator_punchout_attenuation = Routine(_acquisition, _fit, _plot, _update)
-"""**Resonator Punchout Attenuation Qibocal Routine Object.**
+resonator_punchout_attenuation = Protocol(_acquisition, _fit, _plot, _update)
+"""**Resonator Punchout Attenuation Qibocal Protocol Object.**
 
 This routine performs a resonator punchout (power shift) measurement by sweeping the LO attenuation
 and the IF frequency to determine the critical power for a qubit's resonator to be dispersively shifted.

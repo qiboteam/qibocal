@@ -21,10 +21,10 @@ from qibolab import (
 from qibocal.auto.operation import (
     Data,
     Parameters,
+    Protocol,
     QubitId,
     QubitPairId,
     Results,
-    Routine,
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import table_dict, table_html
@@ -446,7 +446,7 @@ def _update(
         update.virtual_phases(results.virtual_phase, results.native, platform, target)
 
 
-correct_virtual_z_phases = Routine(
+correct_virtual_z_phases = Protocol(
     _acquisition, _fit, _plot, _update, two_qubit_gates=True
 )
 """Virtual phases correction protocol."""

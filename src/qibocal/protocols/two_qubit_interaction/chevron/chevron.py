@@ -10,7 +10,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import table_dict, table_html
@@ -323,5 +323,5 @@ def _update(
     )
 
 
-chevron = Routine(_aquisition, _fit, _plot, _update, two_qubit_gates=True)
+chevron = Protocol(_aquisition, _fit, _plot, _update, two_qubit_gates=True)
 """Chevron routine."""

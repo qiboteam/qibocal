@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 import plotly.graph_objects as go
 
-from qibocal.auto.operation import QubitId, Results, Routine
+from qibocal.auto.operation import Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.randomized_benchmarking.utils import rb_acquisition
 from qibocal.protocols.utils import table_dict, table_html
@@ -128,4 +128,4 @@ def _plot(
 
 # TODO: add update function (?)
 
-filtered_rb = Routine(_acquisition, _fit, _plot)
+filtered_rb = Protocol(_acquisition, _fit, _plot)

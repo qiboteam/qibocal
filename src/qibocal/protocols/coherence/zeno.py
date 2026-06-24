@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, PulseSequence, Readout
 
 from qibocal import update
-from qibocal.auto.operation import Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 
 from ...result import probability
@@ -204,4 +204,4 @@ def _update(results: ZenoResults, platform: CalibrationPlatform, qubit: QubitId)
     update.t1(results.zeno_t1[qubit], platform, qubit)
 
 
-zeno = Routine(_acquisition, _fit, _plot, _update)
+zeno = Protocol(_acquisition, _fit, _plot, _update)

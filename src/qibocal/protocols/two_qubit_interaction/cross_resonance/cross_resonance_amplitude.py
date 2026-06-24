@@ -12,9 +12,9 @@ from scipy.constants import kilo
 
 from qibocal.auto.operation import (
     Parameters,
+    Protocol,
     QubitId,
     QubitPairId,
-    Routine,
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import table_dict, table_html
@@ -290,7 +290,7 @@ def _update(
         )
 
 
-cr_amplitude = Routine(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
+cr_amplitude = Protocol(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
 """Hamiltonian tomography protocol for CR gate calibration.
 
 This protocol computes the expectation values for X, Y and Z for the target qubit

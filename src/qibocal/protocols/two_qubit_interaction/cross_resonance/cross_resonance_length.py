@@ -17,8 +17,8 @@ from qibolab import (
 from scipy.constants import kilo
 
 from qibocal.auto.operation import (
+    Protocol,
     QubitPairId,
-    Routine,
 )
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import table_dict, table_html
@@ -314,8 +314,8 @@ def _update(
         )
 
 
-cr_length = Routine(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
-"""HamiltonianTomographyCRLength Routine object.
+cr_length = Protocol(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
+"""HamiltonianTomographyCRLength Protocol object.
 
 We measure the expectation values X,Y and Z on the target qubit after
 applying the CR sequence specified by the input parameters. We repeat the

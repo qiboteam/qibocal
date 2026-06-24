@@ -22,7 +22,7 @@ from qibocal.config import log
 from ..calibration import CalibrationPlatform, create_calibration_platform
 from .history import History
 from .mode import AUTOCALIBRATION, ExecutionMode
-from .operation import ProtocolsCollection, Routine
+from .operation import Protocol, ProtocolsCollection
 from .output import Metadata, Output
 from .task import Action, Completed, Targets, Task
 
@@ -63,7 +63,7 @@ class Executor(BaseModel):
 
     def run_protocol(
         self,
-        protocol: Routine,
+        protocol: Protocol,
         parameters: Action,
         mode: ExecutionMode = AUTOCALIBRATION,
         output: Path | None = None,
@@ -89,7 +89,7 @@ class Executor(BaseModel):
 
         return completed
 
-    def _wrapped_protocol(self, protocol: Routine, operation: str):
+    def _wrapped_protocol(self, protocol: Protocol, operation: str):
         """Create a bound protocol.
 
         Returns a closure, already wrapping the current `Executor` instance, but

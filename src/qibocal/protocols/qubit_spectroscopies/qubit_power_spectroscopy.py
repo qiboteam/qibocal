@@ -11,7 +11,7 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal.auto.operation import Parameters, QubitId, Results, Routine
+from qibocal.auto.operation import Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 
 from ...update import replace
@@ -158,5 +158,5 @@ def _plot(
     return figures, fitting_report
 
 
-qubit_power_spectroscopy = Routine(_acquisition, _fit, _plot)
-"""QubitPowerSpectroscopy Routine object."""
+qubit_power_spectroscopy = Protocol(_acquisition, _fit, _plot)
+"""QubitPowerSpectroscopy Protocol object."""

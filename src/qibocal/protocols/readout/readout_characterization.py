@@ -6,7 +6,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, Delay, PulseSequence, Readout
 
 from ... import update
-from ...auto.operation import Data, Parameters, QubitId, Results, Routine
+from ...auto.operation import Data, Parameters, Protocol, QubitId, Results
 from ...calibration import CalibrationPlatform
 from ..utils import (
     classify,
@@ -278,5 +278,5 @@ def _update(
     ].readout.effective_temperature = results.effective_temperature[target][0]
 
 
-readout_characterization = Routine(_acquisition, _fit, _plot, _update)
-"""ReadoutCharacterization Routine object."""
+readout_characterization = Protocol(_acquisition, _fit, _plot, _update)
+"""ReadoutCharacterization Protocol object."""

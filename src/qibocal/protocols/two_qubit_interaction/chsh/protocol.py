@@ -9,10 +9,10 @@ from qibolab import Platform
 from qibocal.auto.operation import (
     Data,
     Parameters,
+    Protocol,
     QubitId,
     QubitPairId,
     Results,
-    Routine,
 )
 from qibocal.auto.transpile import (
     build_native_gate_compiler,
@@ -292,5 +292,5 @@ def _fit(data: CHSHData) -> CHSHResults:
     return CHSHResults(chsh=results, chsh_mitigated=mitigated_results)
 
 
-chsh = Routine(_acquisition, _fit, _plot, two_qubit_gates=True)
+chsh = Protocol(_acquisition, _fit, _plot, two_qubit_gates=True)
 """CHSH experiment using pulses."""
