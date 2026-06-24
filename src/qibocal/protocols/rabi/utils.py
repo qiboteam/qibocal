@@ -1,10 +1,14 @@
+from collections.abc import Callable
+
 import numpy as np
 import plotly.graph_objects as go
+from numpy.typing import ArrayLike, NDArray
 from plotly.subplots import make_subplots
 from qibolab import Delay, PulseLike, PulseSequence
+from qibolab._core.identifier import ChannelId
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Parameters, QubitId
+from qibocal.auto.operation import QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
     COLORBAND,
@@ -15,6 +19,8 @@ from qibocal.protocols.utils import (
     table_html,
 )
 from qibocal.update import replace
+
+from .parent_classes import RabiData, RabiResults
 
 QUANTILE_CONSTANT = 1.5
 """Scaling factor to recover signal amplitude from quantiles.
@@ -29,29 +35,43 @@ sinusoidal oscillation.
 """
 
 
-def rabi_amplitude_function(x, offset, amplitude, period, phase):
+def rabi_amplitude_function(
+    x: ArrayLike,
+    offset: float,
+    amplitude: float,
+    period: float,
+    phase: float,
+) -> NDArray:
     """
     Fit function of Rabi amplitude signal experiment.
-
-    Args:
-        x: Input data.
     """
     return offset + amplitude * np.cos(2 * np.pi * x / period + phase)
 
 
-def rabi_length_function(x, offset, amplitude, period, phase, t2_inv):
+def rabi_length_function(
+    x: ArrayLike,
+    offset: float,
+    amplitude: float,
+    period: float,
+    phase: float,
+    t2_inv: float,
+) -> NDArray:
     """
     Fit function of Rabi length signal experiment.
-
-    Args:
-        x: Input data.
     """
     return offset + amplitude * np.cos(2 * np.pi * x / period + phase) * np.exp(
         -x * t2_inv
     )
 
 
-def rabi_initial_guess(x, y, experiment: str, signal: bool):
+def rabi_initial_guess(
+    x: ArrayLike, y: ArrayLike, experiment: str, signal: bool
+) -> list[float]:
+    """Generate an initial guess for Rabi curve fitting.
+
+    For a length experiment, the returned list contains [offset, amplitude, period,
+    phase, t2_inv]; otherwise it contains [offset, amplitude, period, phase].
+    """
     period = guess_period(x, y)
     median_sig = np.median(y)
     q80 = np.quantile(y, 0.8)
@@ -65,7 +85,10 @@ def rabi_initial_guess(x, y, experiment: str, signal: bool):
         return [median_sig, amplitude_guess, period, phase_guess]
 
 
-def plot(data, qubit, fit, rx90):
+def plot_signal(
+    data: RabiData, qubit: QubitId, fit: RabiResults | None, rx90: bool
+) -> tuple[list[go.Figure], str]:
+    """Create plots for a Rabi experiment signal and phase."""
     quantity, title, fitting = extract_rabi(data)
     figures = []
     fitting_report = ""
@@ -150,9 +173,14 @@ def plot(data, qubit, fit, rx90):
     return figures, fitting_report
 
 
-def plot_probabilities(data, qubit, fit, rx90):
+def plot_probabilities(
+    data: RabiData, qubit: QubitId, fit: RabiResults | None, rx90: bool
+) -> tuple[list[go.Figure], str]:
+    """
+    Generate probability plot for Rabi experiment.
+    """
     quantity, title, fitting = extract_rabi(data)
-    figures = []
+    figures: list[go.Figure] = []
     fitting_report = ""
 
     qubit_data = data[qubit]
@@ -224,7 +252,7 @@ def plot_probabilities(data, qubit, fit, rx90):
     return figures, fitting_report
 
 
-def extract_rabi(data):
+def extract_rabi(data: RabiData) -> tuple[str, str, Callable]:
     """
     Extract Rabi fit info.
     """
@@ -260,38 +288,77 @@ def period_correction_factor(phase: float):
     return np.round(1 + x) - x
 
 
+def single_qubit_rabi_sequence(
+    target: QubitId,
+    drive_line: QubitId,
+    platform: CalibrationPlatform,
+    pulse_duration: float | None,
+    pulse_ampl: float | None,
+    rx90: bool,
+) -> tuple[PulseSequence, PulseLike, ChannelId, dict]:
+    """Generate a single qubit Rabi sequence given a specific qubit and the line we want to drive it."""
+
+    single_q_sequence = PulseSequence()
+    update = {}
+    natives_pulses = platform.natives.single_qubit[target]
+
+    qd_channel, qd_pulse = natives_pulses.RX90()[0] if rx90 else natives_pulses.RX()[0]
+    if target != drive_line:
+        # used when q is being driven with another line (cross rabi)
+        cross_channel = platform.qubits[drive_line].drive
+        qubit_freq = platform.parameters.configs[qd_channel].frequency
+        update |= {cross_channel: {"frequency": qubit_freq}}
+        qd_channel = cross_channel
+
+    if pulse_ampl is not None:
+        qd_pulse = replace(qd_pulse, amplitude=pulse_ampl)
+
+    if pulse_duration is not None:
+        qd_pulse = replace(qd_pulse, duration=pulse_duration)
+
+    if rx90:
+        single_q_sequence.append((qd_channel, qd_pulse))
+
+    single_q_sequence.append((qd_channel, qd_pulse))
+
+    return single_q_sequence, qd_pulse, qd_channel, update
+
+
 def sequence_amplitude(
     targets: list[QubitId],
-    params: Parameters,
+    drive_lines: list[QubitId],
     platform: CalibrationPlatform,
+    pulse_duration: float | None,
+    pulse_ampl: float | None,
     rx90: bool,
-) -> tuple[PulseSequence, dict, dict, dict]:
-    """Return sequence for rabi amplitude."""
+) -> tuple[PulseSequence, dict[QubitId, PulseLike], dict[QubitId, float], dict]:
+    """Generate Rabi pulse sequences for amplitude sweeping on multiple qubits and generic drive lines scheme."""
 
     sequence = PulseSequence()
-    qd_pulses = {}
-    ro_pulses = {}
-    durations = {}
-    for q in targets:
-        natives = platform.natives.single_qubit[q]
+    qd_pulses: list[PulseLike] = []
+    durations: dict[QubitId, float] = {}
+    updates = {}
+    for q, d in zip(targets, drive_lines):
+        # creating Rabi sequence for a (qubit, drive_line) pair
+        single_q_seq, single_q_pulse, _, single_q_update = single_qubit_rabi_sequence(
+            target=q,
+            drive_line=d,
+            platform=platform,
+            pulse_duration=pulse_duration,
+            pulse_ampl=pulse_ampl,
+            rx90=rx90,
+        )
+        qd_pulses.append(single_q_pulse)
+        durations[q] = single_q_pulse.duration
+        updates |= single_q_update
 
-        qd_channel, qd_pulse = natives.RX90()[0] if rx90 else natives.RX()[0]
-        ro_channel, ro_pulse = natives.MZ()[0]
+        # aligning readout pulses to single qubit sequence
+        single_q_seq |= PulseSequence(platform.natives.single_qubit[q].MZ()[0])
 
-        if params.pulse_length is not None:
-            qd_pulse = replace(qd_pulse, duration=params.pulse_length)
+        # adding the single qubit sequence to the complete one
+        sequence += single_q_seq
 
-        durations[q] = qd_pulse.duration
-        qd_pulses[q] = qd_pulse
-        ro_pulses[q] = ro_pulse
-
-        if rx90:
-            sequence.append((qd_channel, qd_pulses[q]))
-
-        sequence.append((qd_channel, qd_pulses[q]))
-        sequence.append((ro_channel, Delay(duration=durations[q])))
-        sequence.append((ro_channel, ro_pulse))
-    return sequence, qd_pulses, ro_pulses, durations
+    return sequence, qd_pulses, durations, updates
 
 
 def sequence_length(
@@ -302,47 +369,37 @@ def sequence_length(
     pulse_ampl: float | None,
     rx90: bool,
     use_align: bool = False,
-) -> tuple[PulseSequence, list[PulseLike], list[Delay], dict, dict]:
-    """Return sequence for rabi length."""
+) -> tuple[PulseSequence, list[PulseLike], list[Delay], dict[QubitId, float], dict]:
+    """Generate Rabi pulse sequences for duration sweeping on multiple qubits and generic drive lines scheme."""
 
     sequence = PulseSequence()
-    amplitudes = {}
+    amplitudes: dict[QubitId, float] = {}
     updates = {}
     qd_pulses: list[PulseLike] = []
     delays: list[Delay] = []
     for q, d in zip(targets, drive_lines):
-        natives_dict = platform.natives.single_qubit
-
-        qd_channel, qd_pulse = (
-            natives_dict[q].RX90()[0] if rx90 else natives_dict[q].RX()[0]
-        )
-        ro_channel, ro_pulse = natives_dict[q].MZ()[0]
-        if q != d:
-            # used when q is being driven with another line (cross rabi)
-            cross_channel, _ = (
-                natives_dict[d].RX90()[0] if rx90 else natives_dict[d].RX()[0]
+        # creating Rabi sequence for a (qubit, drive_line) pair
+        single_q_seq, single_q_pulse, single_q_channel, single_q_update = (
+            single_qubit_rabi_sequence(
+                target=q,
+                drive_line=d,
+                platform=platform,
+                pulse_duration=pulse_duration,
+                pulse_ampl=pulse_ampl,
+                rx90=rx90,
             )
-            qubit_freq = platform.parameters.configs[qd_channel].frequency
-            updates |= {platform.qubits[d].drive: {"frequency": qubit_freq}}
-            qd_channel = cross_channel
+        )
+        sequence += single_q_seq
+        qd_pulses.append(single_q_pulse)
+        amplitudes[q] = single_q_pulse.amplitude
+        updates |= single_q_update
 
-        if pulse_ampl is not None:
-            qd_pulse = replace(qd_pulse, amplitude=pulse_ampl)
-
-        if pulse_duration is not None:
-            qd_pulse = replace(qd_pulse, duration=pulse_duration)
-
-        amplitudes[q] = qd_pulse.amplitude
-        qd_pulses.append(qd_pulse)
-
-        if rx90:
-            sequence.append((qd_channel, qd_pulse))
-
-        sequence.append((qd_channel, qd_pulse))
+        # appending readout pulses
+        ro_channel, ro_pulse = platform.natives.single_qubit[q].MZ()[0]
         if use_align:
-            sequence.align([qd_channel, ro_channel])
+            sequence.align([single_q_channel, ro_channel])
         else:
-            delays.append(Delay(duration=qd_pulse.duration))
+            delays.append(Delay(duration=single_q_pulse.duration))
             sequence.append((ro_channel, delays[-1]))
         sequence.append((ro_channel, ro_pulse))
 
@@ -352,6 +409,13 @@ def sequence_length(
 def fit_length_function(
     x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
 ) -> tuple[list[float], list[float], float]:
+    """Fit Rabi length function to experimental data.
+
+    Performs curve fitting on Rabi oscillation data as a function of pulse duration,
+    with exponential decay correction. Rescales fitted parameters based on signal type
+    and provided axis limits.
+    """
+
     popt, perr = curve_fit(
         rabi_length_function,
         x,
@@ -393,6 +457,11 @@ def fit_length_function(
 def fit_amplitude_function(
     x, y, guess, sigma=None, signal=True, x_limits=(None, None), y_limits=(None, None)
 ) -> tuple[list[float], list[float], float]:
+    """Fit Rabi amplitude function to experimental data.
+
+    Performs curve fitting on Rabi oscillation data as a function of pulse amplitude.
+    Rescales fitted parameters based on provided axis limits.
+    """
     popt, perr = curve_fit(
         rabi_amplitude_function,
         x,
