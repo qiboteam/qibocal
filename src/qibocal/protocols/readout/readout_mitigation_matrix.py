@@ -88,11 +88,11 @@ def _acquisition(
             circuit.add(gates.M(*range(nqubits)))
             [result] = execute_circuits(
                 [circuit],
+                [qubits],
                 platform,
                 transpiler,
                 compiler,
                 nshots=params.nshots,
-                qubit_map=qubits,
             )
             frequencies = np.zeros(2 ** len(qubits))
             [result] = result[qubits]
