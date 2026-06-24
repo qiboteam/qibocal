@@ -128,38 +128,35 @@ def _acquisition(
                 basis_circuit.add(getattr(gates, basis1)(pair[0]).basis_rotation())
             if basis2 != "Z":
                 basis_circuit.add(getattr(gates, basis2)(pair[1]).basis_rotation())
-
-        basis_circuit.add([gates.M(*logical_pair) for logical_pair in logical_pairs])
+            basis_circuit.add(gates.M(*pair))
         simulation_result = simulator.execute_circuit(basis_circuit)
 
         [result] = execute_circuits(
             [basis_circuit],
+            [qubits],
             platform,
             transpiler,
             compiler,
             nshots=params.nshots,
-            qubit_map=qubits,
         )
 
-        for logical_pair, pair in zip(logical_pairs, targets):
-            [frequencies] = result[pair]
+        for pair, key in zip(logical_pairs, targets):
+            [frequencies] = result[key]
             simulation_probabilities = simulation_result.probabilities(
-                qubits=logical_pair
+                qubits=list(pair)
             )
             data.register_qubit(
                 TomographyType,
-                pair + (basis1, basis2),
+                key + (basis1, basis2),
                 {
-                    "frequencies": np.array([frequencies.get(i, 0) for i in OUTCOMES]),
+                    "frequencies": np.array([frequencies[i] for i in OUTCOMES]),
                     "simulation_probabilities": simulation_probabilities,
                 },
             )
             if basis1 == "Z" and basis2 == "Z":
                 nqubits = basis_circuit.nqubits
-                traced_qubits = tuple(
-                    q for q in range(nqubits) if q not in logical_pair
-                )
-                data.ideal[pair] = partial_trace(
+                traced_qubits = tuple(q for q in range(nqubits) if q not in pair)
+                data.ideal[key] = partial_trace(
                     simulation_result.state(), traced_qubits
                 )
 
