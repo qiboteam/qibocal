@@ -59,7 +59,7 @@ class IndexedResult(BaseModel):
 
     result: Counter
     index: CircuitIndex
-    qubit: QubitId | QubitPairId
+    target: QubitId | QubitPairId
 
 
 CircuitDepth = int
@@ -387,7 +387,6 @@ def _generate_indexed_circuits(
 
     logical_qubit_map = {
         target: (idx * 2, idx * 2 + 1) if two_qubit else (idx,)
-        # Reverse assignment for little-endianess resolution
         for idx, target in enumerate(targets)
     }
 
@@ -435,16 +434,16 @@ def _execute_indexed_circuits(
 
     executed_results = execute_circuits(
         circuits,
+        [qubit_map],
         platform,
         transpiler,
         compiler,
         nshots=params.nshots,
         averaging_mode=averaging_mode,
-        qubit_map=qubit_map,
     )
 
     indexed_results = [
-        IndexedResult(result=counts, index=ic.index, qubit=target)
+        IndexedResult(result=counts, index=ic.index, target=target)
         for ic, result in zip(indexed_circuits, executed_results)
         for target, [counts] in result.items()
     ]
@@ -498,7 +497,7 @@ def rb_acquisition(
     # This marginalises over the iterations for a given (qubit, depth)
     grouped: defaultdict = defaultdict(list)
     for indexed_result in indexed_results:
-        key = (indexed_result.qubit, indexed_result.index.depth)
+        key = (indexed_result.target, indexed_result.index.depth)
         result = indexed_result.result
         survival_counts = result["0"] if inverse_layer else result["1"]
         survival_prob = survival_counts / params.nshots
@@ -563,7 +562,7 @@ def twoq_rb_acquisition(
     grouped: defaultdict = defaultdict(list)
     for indexed_result in indexed_results:
         result = indexed_result.result
-        qubit_pair: QubitPairId = indexed_result.qubit
+        qubit_pair: QubitPairId = indexed_result.target
         key = (qubit_pair[0], qubit_pair[1], indexed_result.index.depth)
         survival_counts = result["00"] if inverse_layer else result["11"]
         survival_prob = survival_counts / params.nshots
