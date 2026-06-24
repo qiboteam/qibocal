@@ -172,11 +172,11 @@ def _acquisition(
             basis_circuit.add(gates.M(i))
         [result] = execute_circuits(
             [basis_circuit],
+            [targets],
             platform,
             transpiler,
             compiler,
             nshots=params.nshots,
-            qubit_map=targets,
         )
         for i, target in enumerate(targets):
             [single_qubit_state_counter] = result[target]
