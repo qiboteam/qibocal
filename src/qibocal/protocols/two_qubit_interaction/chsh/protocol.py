@@ -1,5 +1,6 @@
 """Protocol for CHSH experiment using both circuits and pulses."""
 
+from collections import Counter
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -101,16 +102,14 @@ class CHSHData(Data):
     frequencies: FreqType = field(default_factory=dict)
     mitigated_frequencies: FreqType = field(default_factory=dict)
 
-    def register_basis(self, pair, bell_state, basis, frequencies):
-        """Store output for single qubit."""
+    def register_basis(
+        self, pair: QubitPairId, bell_state: int, basis: str, frequencies: Counter[str]
+    ):
+        """Store output."""
 
-        # Add zero is state do not appear in state
-        # could be removed by using high number of shots
-        for i in COMPUTATIONAL_BASIS:
-            if i not in frequencies:
-                frequencies[i] = 0
+        for state in COMPUTATIONAL_BASIS:
+            freq = frequencies[state]
 
-        for state, freq in frequencies.items():
             if (pair[0], pair[1], bell_state, basis, state) in self.data:
                 self.data[pair[0], pair[1], bell_state, basis, state] = np.concatenate(
                     (
@@ -145,7 +144,7 @@ class CHSHResults(Results):
 def _acquisition(
     params: CHSHParameters,
     platform: Platform,
-    targets: list[list[QubitId]],
+    targets: list[QubitPairId],
 ) -> CHSHData:
     r"""Data acquisition for CHSH protocol using pulse sequences."""
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
@@ -177,13 +176,14 @@ def _acquisition(
                         compiler,
                         nshots=params.nshots,
                     )
-                    data.register_basis(pair, bell_state, basis, result)
+                    [state_counter] = result[pair]
+                    data.register_basis(pair, bell_state, basis, state_counter)
 
-            data.frequencies[bell_state] = freqs = merge_frequencies(
+            data.frequencies[pair, bell_state] = freqs = merge_frequencies(
                 data.data, pair, bell_state
             )
             if mitigation_matrix is not None:
-                data.mitigated_frequencies[bell_state] = mitigated_frequencies(
+                data.mitigated_frequencies[pair, bell_state] = mitigated_frequencies(
                     freqs, mitigation_matrix, thetas
                 )
 
@@ -194,20 +194,21 @@ def _plot(data: CHSHData, fit: CHSHResults, target: QubitPairId):
     """Plotting function for CHSH protocol."""
     figures = []
     for bell_state in data.bell_states:
+        key = (target[0], target[1], bell_state)
         fig = go.Figure(layout_yaxis_range=[-3, 3])
         if fit is not None:
             fig.add_trace(
                 go.Scatter(
                     x=data.thetas,
-                    y=fit.chsh[target[0], target[1], bell_state],
+                    y=fit.chsh[key],
                     name="Bare",
                 )
             )
-            if fit.chsh_mitigated:
+            if fit.chsh_mitigated.get(key):
                 fig.add_trace(
                     go.Scatter(
                         x=data.thetas,
-                        y=fit.chsh_mitigated[target[0], target[1], bell_state],
+                        y=fit.chsh_mitigated[key],
                         name="Mitigated",
                     )
                 )
@@ -278,13 +279,14 @@ def _fit(data: CHSHData) -> CHSHResults:
     pairs = list({tuple(q[:2]) for q in data.data})
     for pair in pairs:
         for bell_state in data.bell_states:
-            freq = data.frequencies[bell_state]
+            key = (pair, bell_state)
+            freq = data.frequencies[key]
             results[pair[0], pair[1], bell_state] = [
                 compute_chsh(freq, bell_state, ith) for ith in range(len(data.thetas))
             ]
 
-            if bell_state in data.mitigated_frequencies:
-                mitigated_freq = data.mitigated_frequencies[bell_state]
+            if data.mitigated_frequencies.get(key):
+                mitigated_freq = data.mitigated_frequencies[key]
                 mitigated_results[pair[0], pair[1], bell_state] = [
                     compute_chsh(mitigated_freq, bell_state, ith)
                     for ith in range(len(data.thetas))
