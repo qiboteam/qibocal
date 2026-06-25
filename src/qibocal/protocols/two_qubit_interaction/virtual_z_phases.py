@@ -62,7 +62,7 @@ class VirtualZPhasesParameters(Parameters):
 class VirtualZPhasesResults(Results):
     """VirtualZ outputs when fitting will be done."""
 
-    fitted_parameters: dict[tuple[str, QubitId],]
+    fitted_parameters: dict[tuple[str, QubitId], object]
     """Fitted parameters"""
     native: str
     """Native two qubit gate."""
@@ -87,11 +87,13 @@ class VirtualZPhasesData(Data):
     """VirtualZPhases data."""
 
     gate_repetition: int
-    data: dict[tuple, npt.NDArray] = field(default_factory=dict)
+    data: dict[tuple[QubitId, QubitId, Literal["I", "X"]], npt.NDArray[np.float64]]
+    thetas: list[float]
     native: str = "CZ"
-    thetas: list = field(default_factory=list)
 
-    def __getitem__(self, pair):
+    def __getitem__(
+        self, pair: QubitPairId
+    ) -> dict[tuple[QubitId, QubitId, Literal["I", "X"]], npt.NDArray[np.float64]]:
         return {
             index: value
             for index, value in self.data.items()
@@ -99,8 +101,8 @@ class VirtualZPhasesData(Data):
         }
 
     @property
-    def order_pairs(self):
-        pairs = []
+    def order_pairs(self) -> list[QubitPairId]:
+        pairs: list[QubitPairId] = []
         for key in self.data.keys():
             pairs.append((key[0], key[1]))
         return np.unique(pairs, axis=0).tolist()
@@ -111,7 +113,7 @@ def create_sequence(
     setup: Literal["I", "X"],
     target_qubit: QubitId,
     control_qubit: QubitId,
-    ordered_pair: list[QubitId, QubitId],
+    ordered_pair: tuple[QubitId, QubitId],
     native: Literal["CZ", "iSWAP"],
     dt: float,
     flux_pulse_max_duration: float | None = None,
@@ -145,6 +147,7 @@ def create_sequence(
     sequence += target_natives.R(theta=np.pi / 2)
     # X
     if setup == "X":
+        assert control_natives.RX is not None
         sequence += control_natives.RX()
 
     flux_channel = platform.qubits[ordered_pair[1]].flux
@@ -230,12 +233,8 @@ def _acquisition(
     during the execution of the flux pulse.
     """
     assert params.native == "CZ", "This protocol supports only CZ gate."
-    theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
-    data = VirtualZPhasesData(
-        gate_repetition=params.gate_repetition,
-        thetas=theta_absolute.tolist(),
-        native=params.native,
-    )
+
+    data: dict[tuple[QubitId, QubitId, Literal["I", "X"]], npt.NDArray[np.float64]] = {}
     for pair in targets:
         # order the qubits so that the low frequency one is the first
         ordered_pair = order_pair(pair, platform)
@@ -294,11 +293,18 @@ def _acquisition(
                 result_target = results[ro_target.id]
                 result_control = results[ro_control.id]
 
-                data.data[target_q, control_q, setup] = np.stack(
+                data[target_q, control_q, setup] = np.stack(
                     [result_target, result_control]
                 )
 
-    return data
+    return VirtualZPhasesData(
+        data=data,
+        gate_repetition=params.gate_repetition,
+        thetas=np.arange(
+            params.theta_start, params.theta_end, params.theta_step
+        ).tolist(),
+        native=params.native,
+    )
 
 
 def _fit(
