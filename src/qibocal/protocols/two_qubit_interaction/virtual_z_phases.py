@@ -134,9 +134,9 @@ def create_sequence(
     `flux_pulse_max_duration` parameter.
 
     The function returns:
-            - The full experiment pulse sequence.
-            - The applied flux pulse.
-            - The final `VirtualZPhase` pulses to be used for phase sweeping.
+    - The full experiment pulse sequence.
+    - The applied flux pulse.
+    - The final `VirtualZPhase` pulses to be used for phase sweeping.
     """
 
     target_natives = platform.natives.single_qubit[target_qubit]
@@ -158,58 +158,36 @@ def create_sequence(
     if flux_pulse is None:
         cz_sequence = platform.natives.two_qubit[ordered_pair].CZ
         flux_pulse = list(cz_sequence.channel(flux_channel))[0]
-
     assert isinstance(flux_pulse, Pulse), "Flux pulse must be a Pulse object."
 
     if flux_pulse_max_duration is not None:
         flux_pulse = replace(flux_pulse, duration=flux_pulse_max_duration)
-    flux_sequence = PulseSequence([(flux_channel, flux_pulse)])
-    virtual_phases: list[VirtualZ] = []
-    align_channels = [
-        platform.qubits[control_qubit].drive,
-        platform.qubits[target_qubit].drive,
-        flux_channel,
-        platform.qubits[target_qubit].acquisition,
-        platform.qubits[control_qubit].acquisition,
-    ]
 
-    sequence.align(align_channels)
+    sequence |= PulseSequence(
+        [
+            (flux_channel, Delay(duration=dt)),
+            (flux_channel, flux_pulse),
+            (flux_channel, Delay(duration=dt)),
+        ]
+    )
 
-    for _ in range(gate_repetition):
-        sequence.append((flux_channel, Delay(duration=dt)))
-        sequence += flux_sequence
-        sequence.append((flux_channel, Delay(duration=dt)))
+    vz = VirtualZ(phase=0)
+    sequence.append((platform.qubits[target_qubit].drive, vz))
 
-    # Instead of having many RZ as expressed in gate_repetition,
-    # a single RZ with angle (theta*gate_repetition) is added because qm ignores the first one.
-    # This work for CZ since it commutes with the RZ, but break the iSWAP compatibility.
-    # See https://github.com/qiboteam/qibolab/discussions/1198.
-
-    virtual_phases.append(VirtualZ(phase=0))
-    sequence.append((platform.qubits[target_qubit].drive, virtual_phases[-1]))
-
-    theta_sequence = PulseSequence()
-    # RX90 (angle to be swept)
-    sequence.align(align_channels)
-    theta_sequence += target_natives.R(theta=np.pi / 2)
-
-    sequence += theta_sequence
+    sequence |= target_natives.R(theta=np.pi / 2)
 
     # X gate for the leakage
     if setup == "X":
         sequence += control_natives.RX()
 
-    sequence.align(align_channels)
-
-    ro_sequence = PulseSequence(
+    sequence |= PulseSequence(
         [
             target_natives.MZ()[0],
             control_natives.MZ()[0],
         ]
     )
 
-    sequence += ro_sequence
-    return sequence, flux_pulse, virtual_phases
+    return sequence, flux_pulse, vz
 
 
 def _acquisition(
