@@ -361,6 +361,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
             go.Scatter(
                 x=np.array(thetas),
                 y=target_prob,
+                mode="markers",
                 name=f"{setup} sequence",
                 legendgroup=setup,
             ),
@@ -372,6 +373,7 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
             go.Scatter(
                 x=np.array(thetas),
                 y=control_prob,
+                mode="markers",
                 name=f"{setup} sequence",
                 legendgroup=setup,
             ),
@@ -390,7 +392,6 @@ def _plot(data: VirtualZPhasesData, fit: VirtualZPhasesResults, target: QubitPai
                         *fitted_parameters,
                     ),
                     name="Fit",
-                    line=go.scatter.Line(dash="dot"),
                 ),
                 row=1,
                 col=1 if fig == fig1 else 2,
