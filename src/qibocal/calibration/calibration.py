@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated, Optional, Union
+from typing import Annotated
 
 import numpy as np
 import numpy.typing as npt
@@ -8,7 +8,7 @@ from scipy.sparse import lil_matrix
 
 from .serialize import NdArray, SparseArray
 
-QubitId = Annotated[Union[int, str], Field(union_mode="left_to_right")]
+QubitId = Annotated[int | str, Field(union_mode="left_to_right")]
 """Qubit name."""
 
 QubitPairId = Annotated[
@@ -21,7 +21,7 @@ QubitPairId = Annotated[
 CALIBRATION = "calibration.json"
 """Calibration file."""
 
-Measure = tuple[float, Optional[float]]
+Measure = tuple[float, float | None]
 """Measured is represented as two values: mean and error."""
 
 

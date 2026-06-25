@@ -1,6 +1,6 @@
 """CZ virtual correction experiment for two qubit gates, tune landscape."""
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Literal
 
 import numpy as np
@@ -13,6 +13,7 @@ from qibolab import (
     Delay,
     Parameter,
     Pulse,
+    PulseId,
     PulseSequence,
     Sweeper,
     VirtualZ,
@@ -22,11 +23,11 @@ from qibocal.auto.operation import (
     Data,
     Parameters,
     Protocol,
-    QubitId,
     QubitPairId,
     Results,
 )
 from qibocal.calibration import CalibrationPlatform
+from qibocal.calibration.calibration import QubitId
 from qibocal.protocols.utils import table_dict, table_html
 
 from ... import update
@@ -117,9 +118,8 @@ def create_sequence(
     native: Literal["CZ", "iSWAP"],
     dt: float,
     flux_pulse_max_duration: float | None = None,
-    gate_repetition: int = 1,
     flux_pulse: Pulse | None = None,
-) -> tuple[PulseSequence, Pulse, list[VirtualZ]]:
+) -> tuple[PulseSequence, Pulse, VirtualZ]:
     """
     Create the pulse sequence for the calibration of two-qubit gate virtual phases.
 
@@ -235,6 +235,11 @@ def _acquisition(
     assert params.native == "CZ", "This protocol supports only CZ gate."
 
     data: dict[tuple[QubitId, QubitId, Literal["I", "X"]], npt.NDArray[np.float64]] = {}
+    sequences: list[PulseSequence] = []
+    vzs: list[VirtualZ] = []
+    readouts: dict[
+        tuple[QubitId, QubitId, Literal["I", "X"]], tuple[PulseId, PulseId]
+    ] = {}
     for pair in targets:
         # order the qubits so that the low frequency one is the first
         ordered_pair = order_pair(pair, platform)
@@ -244,11 +249,7 @@ def _acquisition(
             (ordered_pair[1], ordered_pair[0]),
         ):
             for setup in ("I", "X"):
-                (
-                    sequence,
-                    _,
-                    vz_pulses,
-                ) = create_sequence(
+                (sequence, _, vz) = create_sequence(
                     platform,
                     setup,
                     target_q,
@@ -256,33 +257,10 @@ def _acquisition(
                     ordered_pair,
                     params.native,
                     dt=params.dt,
-                    gate_repetition=params.gate_repetition,
                 )
 
-                # The virtual phase values are the opposite of beta, this is
-                # because, according to the circuit we would like to reproduce
-                # after the CZ, an RZ is applied. The RZ gate with `theta` angle
-                # is compiled into  a VirtualPhase pulse with phase `-theta`.
-                # (See https://github.com/qiboteam/qibolab/pull/1044#issuecomment-2354622956)
-
-                sweeper = Sweeper(
-                    parameter=Parameter.phase,
-                    range=(
-                        -params.gate_repetition * params.theta_start,
-                        -params.gate_repetition * params.theta_end,
-                        -params.gate_repetition * params.theta_step,
-                    ),
-                    pulses=vz_pulses,
-                )
-
-                results = platform.execute(
-                    [sequence],
-                    [[sweeper]],
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=AveragingMode.CYCLIC,
-                )
+                sequences.append(sequence)
+                vzs.append(vz)
 
                 ro_target = list(
                     sequence.channel(platform.qubits[target_q].acquisition)
@@ -290,12 +268,33 @@ def _acquisition(
                 ro_control = list(
                     sequence.channel(platform.qubits[control_q].acquisition)
                 )[-1]
-                result_target = results[ro_target.id]
-                result_control = results[ro_control.id]
+                readouts[target_q, control_q, setup] = ro_target.id, ro_control.id
 
-                data[target_q, control_q, setup] = np.stack(
-                    [result_target, result_control]
-                )
+    # The virtual phase values are the opposite of beta, this is
+    # because, according to the circuit we would like to reproduce
+    # after the CZ, an RZ is applied. The RZ gate with `theta` angle
+    # is compiled into  a VirtualPhase pulse with phase `-theta`.
+    # (See https://github.com/qiboteam/qibolab/pull/1044#issuecomment-2354622956)
+    sweeper = Sweeper(
+        parameter=Parameter.phase,
+        range=(
+            -params.gate_repetition * params.theta_start,
+            -params.gate_repetition * params.theta_end,
+            -params.gate_repetition * params.theta_step,
+        ),
+        pulses=vzs,
+    )
+
+    results = platform.execute(
+        sequences,
+        [[sweeper]],
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
+        averaging_mode=AveragingMode.CYCLIC,
+    )
+    for key, (target, control) in readouts.items():
+        data[key] = np.stack([results[target], results[control]])
 
     return VirtualZPhasesData(
         data=data,
