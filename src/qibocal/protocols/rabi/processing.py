@@ -10,8 +10,6 @@ from qibocal import update
 from qibocal.auto.operation import QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
-    COLORBAND,
-    COLORBAND_LINE,
     angle_wrap,
     guess_period,
     table_dict,
@@ -21,6 +19,8 @@ from qibocal.result import collect, magnitude, phase
 
 from .parent_classes import RabiData, RabiFreqResults, RabiResults
 
+FIT_COLOUR_LINE = "rgba(255, 57, 57, 0.8)"
+"""Rgba code of the colour used for plotting the fit."""
 QUANTILE_CONSTANT = 1.5
 """Scaling factor to recover signal amplitude from quantiles.
 
@@ -129,7 +129,7 @@ def plot_signal(
             showlegend=True,
             legendgroup="Signal",
             mode="markers",
-            marker=dict(color=COLORBAND),
+            marker=dict(color="red"),
         ),
         row=1,
         col=1,
@@ -142,7 +142,7 @@ def plot_signal(
             showlegend=True,
             legendgroup="Phase",
             mode="markers",
-            marker=dict(color=COLORBAND),
+            marker=dict(color="red"),
         ),
         row=1,
         col=2,
@@ -152,7 +152,7 @@ def plot_signal(
         rabi_parameter_range = np.linspace(
             min(rabi_parameters),
             max(rabi_parameters),
-            2 * len(rabi_parameters),
+            50 * len(rabi_parameters),
         )
         params = fit.fitted_parameters[qubit]
         fig.add_trace(
@@ -161,7 +161,7 @@ def plot_signal(
                 y=fitting(rabi_parameter_range, *params),
                 name="Fit",
                 mode="lines",
-                line=dict(color=COLORBAND_LINE),
+                line=dict(color=FIT_COLOUR_LINE),
             ),
             row=1,
             col=1,
@@ -207,13 +207,13 @@ def plot_probabilities(
                 x=rabi_parameters,
                 y=qubit_data.prob,
                 error_y=dict(
-                    type="data", array=qubit_data.error, visible=True, color=COLORBAND
+                    type="data", array=qubit_data.error, visible=True, color="red"
                 ),
                 name="Probability",
                 showlegend=True,
                 legendgroup="Probability",
                 mode="markers",
-                marker=dict(color=COLORBAND),
+                marker=dict(color="red"),
             ),
         ]
     )
@@ -222,7 +222,7 @@ def plot_probabilities(
         rabi_parameter_range = np.linspace(
             min(rabi_parameters),
             max(rabi_parameters),
-            2 * len(rabi_parameters),
+            50 * len(rabi_parameters),
         )
         params = fit.fitted_parameters[qubit]
         fig.add_trace(
@@ -231,7 +231,7 @@ def plot_probabilities(
                 y=fitting(rabi_parameter_range, *params),
                 name="Fit",
                 mode="lines",
-                line=dict(color=COLORBAND_LINE),
+                line=dict(color=FIT_COLOUR_LINE),
             ),
         )
         pulse_name = "Pi-half pulse" if rx90 else "Pi pulse"
