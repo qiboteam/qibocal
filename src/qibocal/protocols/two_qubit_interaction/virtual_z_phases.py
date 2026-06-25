@@ -114,10 +114,10 @@ def create_sequence(
     ordered_pair: list[QubitId, QubitId],
     native: Literal["CZ", "iSWAP"],
     dt: float,
-    flux_pulse_max_duration: float = None,
+    flux_pulse_max_duration: float | None = None,
     gate_repetition: int = 1,
-    flux_pulse: list | None = None,
-) -> tuple[PulseSequence, Pulse, Pulse, list[Pulse]]:
+    flux_pulse: Pulse | None = None,
+) -> tuple[PulseSequence, Pulse, list[VirtualZ]]:
     """
     Create the pulse sequence for the calibration of two-qubit gate virtual phases.
 
@@ -148,15 +148,20 @@ def create_sequence(
         sequence += control_natives.RX()
 
     flux_channel = platform.qubits[ordered_pair[1]].flux
+    assert flux_channel is not None, (
+        "Flux channel must be defined for the control qubit."
+    )
     # CZ
     if flux_pulse is None:
         cz_sequence = platform.natives.two_qubit[ordered_pair].CZ
         flux_pulse = list(cz_sequence.channel(flux_channel))[0]
 
+    assert isinstance(flux_pulse, Pulse), "Flux pulse must be a Pulse object."
+
     if flux_pulse_max_duration is not None:
         flux_pulse = replace(flux_pulse, duration=flux_pulse_max_duration)
     flux_sequence = PulseSequence([(flux_channel, flux_pulse)])
-    virtual_phases = []
+    virtual_phases: list[VirtualZ] = []
     align_channels = [
         platform.qubits[control_qubit].drive,
         platform.qubits[target_qubit].drive,
