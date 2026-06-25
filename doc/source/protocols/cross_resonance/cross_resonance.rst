@@ -10,7 +10,7 @@ The cross resonance effect was first proposed :cite:p:`CR_First` in and later
 independently discovered in :cite:p:`CR_Righetti, CR_Second`.
 
 The CR effect can be showed by starting with the Hamiltonian of a two-qubit system with
-a drive term on the first qubit :cite:p:`Manenti:2023zzn`
+a drive term on the first qubit :cite:p:`Manenti:2023zzn`:
 
 .. math::
 
@@ -27,31 +27,62 @@ Schrieffer-Wolff transformation we can obtain the effective Hamiltonian:
     + \frac{\zeta}{4} \sigma_1^z \sigma_2^z
     + \Omega(t) \Big[ \sigma_1^x + \nu \sigma_2^x + \mu \sigma_1^z \sigma_2^x\Big]
 
-where :math:`\zeta` is the ZZ coupling, :math:`\nu` is quantum crosstalk factor and :math:`\mu` is the
-cross-resonance factor. From the equation above we can see that by driving the first qubit
-at the frequency of the second qubit .
+If we analyze each single component of the equation above we see:
 
-By tuning the amplitude and the duration of this drive pulse it is possible to calibrate a
-:math:`RZX` rotation to rotate exactly by :math:`- \pi/2`. This is done because starting
-from a :math:`ZX_{frac{\pi}{2}}` we can obtain a CNOT gate using single qubit rotations.
+  * two free-qubit terms (:math:`\propto \sigma^z_q`) proportional to the effective qubit frequencies :math:`\tilde(\omega)_q`
+  * ZZ interaction (:math:`\propto \sigma^z_1\sigma^z_2`) with coupling :math:`\eta` which corresponds to a conditional qubit's frequency shift.
+  * drive terms for both qubits (:math:`\propto \sigma^x_q`) with :math:`\nu` corresponding to the quantum crosstalk factor; quantum crosstalk parametrizes the effective coupling between the qubit and the non-directly coupled line.
+  * ZX interaction :math:`\sigma_1^z\sigma^x_2` with coupling :\math:`mu` (cross-resonance factor). In particular This term represents a conditional extra rotation along x-axis for qubit-2 depending on the state of qubit-1.
+
+The whole idea of the Cross Resonance gate is then to exploit ZX-term by driving qubit-1 at qubit-2 frequency;
+in this scheme it is easy to see that qubit-1 behaves as the control qubit while qubit-2 is the target.
+
+
+It is easy to prove that the CNOT gate can be built using two single-qubits gates plus the CR gate:
 
 .. math::
 
     \text{CNOT} = \text{R}_\text{ZX}(-\pi/2) \text{R}_\text{IX}(\pi/2) \text{R}_\text{ZI}(\pi/2)
 
-In Qibocal we provide protocols to calibrate CR pulses.
+Hence it is necessary to tune the amplitude and the duration of the CR drive pulse to calibrate a
+:math:`RZX(-pi/2)` rotation.
 
-Sweeping the duration of the CR pulse
+| In Qibocal we provide protocols to calibrate CR pulses based on :cite:p:`CR_IBM`.
+| The calibration procedure is based on characterizing all terms of the full effective Hamiltonian via a tomography-style experiment:
+
+.. math::
+
+  2H_{eff}/\hbar = \Omega_{ZX}\text{ZX} + \Omega_{ZY}\text{ZY} + \Omega_{IX}\text{IX} + \Omega_{IY}\text{IY} + \Omega_{XI}\text{XI} + \Omega_{YI}\text{YI} + \varepsilon\text{ZZ}
+
+| By measuring the target-qubit response for different states of the control qubit, the strengths of both the desired
+interaction and the accompanying unwanted terms are extracte; these parasitic terms arise from drive crosstalk and
+off-resonant interactions and can significantly affect gate performance.
+| The overall strategy is therefore to characterize the error channels at the Hamiltonian level and compensate them through calibrated control pulses.
+
+| In particular, a rotary drive on the target qubit suppresses unwanted single-qubit rotations (IX, IY),
+while echo sequences mitigate over essentially ZZ noise.
+By measuring the effective Hamiltonian after each calibration step and iteratively tuning the amplitudes, phases,
+and timings of the added pulses, the undesired interactions are progressively removed,
+leaving the desired conditional ZX coupling as the dominant term.
+| Also, we can assume that the XI and IY terms (CR pulse driving the control qubit) are essentially small and can be neglected
+since in general the two qubits are far in frequency then the CR pulse is far off-resonance with the control.
+
+The CR tune-up procedure consist in three different main steps but executing the full pipeline not required to obtain a
+functioning cross-resonance gate; a CR pulse already generates a conditional interaction that can be used as an
+entangling gate.
+| The purpose of the procedure is instead to improve performances by suppressing unwanted contributions.
+
+
+Hamiltonian tomography and gate-length calibration
 -------------------------------------
 
-In a first experiment we can sweep the duration of the CR pulse and measure both the
-target and control qubit. The measurement is performed while preparing the control
-qubit in state :math:`\ket{0}` and :math:`\ket{1}`.
+| In the initial experiment, we sweep the duration of the CR pulse and measure the state of both the control and target qubits.
+ This measurement is performed twice: first with the control qubit prepared in the :math:`|0\rangle` state, and then in the :math:`|1\rangle` state.
 
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.two_qubit_interaction.cross_resonance.length.CrossResonanceLengthParameters
+.. autoclass:: qibocal.protocols.two_qubit_interaction.cross_resonance.cross_resonance_length.HamiltonianTomographyCRLengthParameters
   :noindex:
 
 Example
@@ -62,34 +93,73 @@ A possible runcard to launch the experiment could be the following:
 .. code-block:: yaml
 
   - id: CR length
-    operation: cross_resonance_length
+    operation: cr_length
+    targets: [[0, 1]]
     parameters:
-      targets: [[0,1]]
-      pulse_duration_start: 10
-      pulse_duration_end: 200
-      pulse_duration_step: 10
-      flux_pulse_amplitude: 0.1
+      duration_range: [10, 400, 10]
+      pulse_amplitude: 0.1
+      echo: false
       nshots: 2000
       relaxation_time: 50000
 
 
 The expected output is the following:
 
-.. image:: length.png
+.. image:: ham_tom_length.png
+
+We can also see the effect of interleaving refocusing pulses in the middle of the pulse sequence:
+
+.. code-block:: yaml
+
+  - id: CR length
+    operation: cr_length
+    targets: [[0, 1]]
+    parameters:
+      duration_range:
+      - 10
+      - 200
+      - 10
+      pulse_amplitude: 0.1
+      echo: true
+      nshots: 2000
+      relaxation_time: 50000
+
+.. image:: ham_tom_length_echo.png
+
+
+When the echo sequence is enabled, the duration of each individual pulse is shortened. This occurs because the sequence now
+includes two out of phase CR pulses of equal length, bringing the total sequence duration to :math:`2\tau_{\text{CR}} + 2\tau_{\pi}`.
+
 
 Post-processing
 ^^^^^^^^^^^^^^^
 
-The probability of the target qubit is fitted in both cases to a dumped cosine functions.
-It is possible to extract the effective coupling as
+
+| The target qubit's state probability is fitted simultaneously across all three axes for both control state preparations,
+as the trajectories are physically constrained by the unitarity of the state norm.
+| Although theoretically exact, enforcing this constraint can make the fit highly sensitive to experimental errors and
+data fluctuations.
+
+Once the two trajectories (for control prepared in :math:`\{0,1\}`) are fitted to obtain the oscillation frequencies
+:math:`\vec{\Omega}^{\{0, 1\}}`, the Hamiltonian coefficients can be extracted using the following system of equations:
 
 .. math::
 
-    \text{J}_\text{eff}/ 2 \pi = \frac{f^{\pi}_\text{Rabi} - f_\text{Rabi}}{2}
+  \Omega_{ZX} = \frac{\Omega^0_X - \Omega^1_X}{2}
+  \Omega_{IX} = \frac{\Omega^0_X + \Omega^1_X}{2}
+  \Omega_{ZY} = \frac{\Omega^0_Y - \Omega^1_Y}{2}
+  \Omega_{IY} = \frac{\Omega^0_Y + \Omega^1_Y}{2}
+  \Omega_{ZZ} = \frac{\Omega^0_Z - \Omega^1_Z}{2}
+  \Omega_{IZ} = \frac{\Omega^0_Z + \Omega^1_Z}{2}
 
+Finally the CR gate optimal duration is estimated by minimizing the Bloch vector norm :math:`|\vec{R}|` defined as:
 
-where :math:`f^{\pi}_\text{Rabi}` and :math:`f_\text{Rabi}` are the frequencies of the
-fitted Rabi oscillations on the target qubit.
+.. math::
+
+  |\vec{R}| = \frac{1}{2}\sqrt((\langle X \rangle_0 + \langle X \rangle_1)^2 + (\langle Y \rangle_0 + \langle Y \rangle_1)^2 + (\langle Z \rangle_0 + \langle Z \rangle_1)^2)
+
+This quantity represents the geometric overlap between the two trajectories on the Bloch sphere;
+minimizing it maximizes the distance between them.
 
 Sweeping amplitude of the CR pulse
 ----------------------------------
@@ -101,7 +171,7 @@ target and control qubit.
 Parameters
 ^^^^^^^^^^
 
-.. autoclass:: qibocal.protocols.two_qubit_interaction.cross_resonance.length.CrossResonanceLengthParameters
+.. autoclass:: qibocal.protocols.two_qubit_interaction.cross_resonance.cross_resonance_amplitude.HamiltonianTomographyCRAmplParameters
   :noindex:
 
 Example
@@ -112,14 +182,15 @@ A possible runcard to launch the experiment could be the following:
 .. code-block:: yaml
 
   - id: CR amplitude
-    operation: cross_resonance_amplitude
+    operation: cr_amplitude
     parameters:
-      targets: [[0,1]]
-      max_amp: 0.05
-      min_amp: 0.01
-      step_amp: 0.005
-      pulse_duration: 100
-      nshots: 2000
+      amplitude_range:
+      - 0.01
+      - 0.1
+      - 0.005
+      echo: true
+      nshots: 1000
+      pulse_duration: 200
       relaxation_time: 50000
 
 
@@ -130,25 +201,23 @@ The expected output is the following:
 Post-processing
 ^^^^^^^^^^^^^^^
 
-The probability of the target qubit is fitted in both cases to a cosine function.
+The post-processing is the same as for the CR-duration experiment.
 
-Hamiltonian Tomography measurement
+Phase calibration of CR and cancellation drives
 ----------------------------------
 
-Although from the two previous experiments it is possible to perform an initial
-calibration of the CR gate, by performing a state tomography on the target qubit it is
-possible to reconstruct the effective Hamiltonian of the system :cite:p:`CRDrag`:
+| This step aligns both the CR and cancellation pulses along the correct axis (the x-axis).
+| The standard CR-duration experiment is repeated while sweeping the CR pulse phase. At each phase point, all Hamiltonian
+terms are extracted as described above.
 
-.. math::
+| Using these measurements, the algorithm fits the IX, IY, ZX, and ZY terms with sinusoidal functions to determine the two
+phases, :math:`\phi_0` and :math:`\phi_1`, that nullify the ZY and IY terms, respectively.
+| Because a full-period scan yields two possible phase values per term, the algorithm selects the value that maximise the
+orthogonal component.
 
-    H_\text{eff} = \frac{\nu_\text{ZX}}{2} \text{ZX} + \frac{\nu_\text{ZY}}{2} \text{ZY} +
-                    \frac{\nu_\text{ZZ}}{2} \text{ZZ} + \frac{\nu_\text{IX}}{2} \text{IX} +
-                    \frac{\nu_\text{IY}}{2} \text{IY} + \frac{\nu_\text{IZ}}{2} \text{IZ}
+| Once both phases are uniquely identified, the CR pulse phase is set to :math:`\phi_{CR}=\phi_0`, while the cancellation
+pulse phase is configured as :math:`\phi_{Canc}=\phi_0 - \phi_1`.
 
-In particular, by sweeping the duration of the CR pulse and measuring the expectation
-values of the target qubit :math:`\langle X \rangle`, :math:`\langle Y \rangle` and :math:`\langle Z \rangle`
-when the control qubit is prepared in :math:`\ket{0}` and :math:`\ket{1}` we can compute all terms in
-the effective Hamiltonian following the procedure in :cite:p:`CRDrag`.
 
 Parameters
 ^^^^^^^^^^
@@ -164,25 +233,75 @@ A possible runcard to launch the experiment could be the following:
 
 .. code-block:: yaml
 
-  - id: Hamiltonian tomography CR
-    operation: cross_resonance_amplitude
+  - id: cancellation_phase_tuning
+    operation: cancellation_phase_tuning
     parameters:
-      targets: [[0,1]]
-      nshots: 2000
-      pulse_amplitude: 0.1
-      pulse_duration_end: 400
-      pulse_duration_start: 10
-      pulse_duration_step: 20
-
+      duration_range:
+      - 10
+      - 210
+      - 20
+    echo: true
+    phase_range:
+      - 0.0
+      - 7.1
+      - 1.0
+    nshots: 1000
+    relaxation_time: 50000
 
 The expected output is the following:
 
-.. image:: tomography_length.png
+.. image:: cr_phase_tuning.png
 
+
+Amplitude calibration cancellation drive
+----------------------------------
+
+| This final step is necessary to cancel out the remaining single-qubit drive terms affecting the target qubit
+(IX and IY).
+| Having determined the phases for both the CR and cancellation pulses, this protocol sweeps the cancellation
+pulse amplitude over varying CR durations. At each step, the protocol extracts the coefficients of all
+Hamiltonian terms.
+| Unlike the phase tuning protocol, this experiment applies a linear fit exclusively to the measured
+IX and IY terms to determine the two zero-interaction amplitudes.
+
+| As described in :cite:p:`CR_IBM`, the two nulling amplitudes for IX and IY should theoretically coincide.
+| If they diverge, iterating the experiment with adjusted :math:`\phi_{CR}` and :math:`\phi_{Canc}` phases may be required.
+| By default, however, the protocol simply selects the amplitude :math:`a_{Canc}` that nulls the $IY$ term;
+while this does not entirely eliminate all parasitic rotations, it successfully cancels out the rotations
+orthogonal to the primary ZX interaction.
+
+
+A possible runcard to launch the experiment could be the following:
+
+.. code-block:: yaml
+
+  - id: cancellation_amplitude_tuning
+    operation: cancellation_amplitude_tuning
+    parameters:
+      duration_range:
+      - 10
+      - 210
+      - 20
+      echo: true
+      target_ampl_range:
+      - 0.0
+      - 0.4
+      - 0.1
+    nshots: 1000
+    relaxation_time: 50000
+
+The expected output is the following:
+
+.. image:: canc_ampl_tuning.png
+
+
+.. note::
+The `cancellation_phase_tuning` and `cancellation_amplitude_tuning` protocols support an additional
+input parameter, `verbose_plot`. It defaults to `False`; enabling it (`True``) generates plots of
+the measured signal for each axis at every sweeper point.
 
 
 Requirements
 ^^^^^^^^^^^^
 
-To run these experiments single qubit gates for both target and control qubit needs
-to be calibrated.
+To run these experiments single qubit gates for both target and control qubit needs to be calibrated.
