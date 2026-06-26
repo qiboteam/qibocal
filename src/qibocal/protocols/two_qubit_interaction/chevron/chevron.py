@@ -1,20 +1,21 @@
 """SWAP experiment for two qubit gates, chevron plot."""
 
 from dataclasses import dataclass, field
-from typing import Literal
 from pathlib import Path
+from typing import Literal
 
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
 from scipy.optimize import curve_fit
+from sklearn.preprocessing import minmax_scale
 
-from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId, Results
 from qibocal.auto.operation import (
     DATAFILE,
     Data,
     Parameters,
+    Protocol,
     QubitPairId,
     Results,
 )
@@ -24,7 +25,7 @@ from qibocal.protocols.utils import HZ_TO_GHZ, table_dict, table_html
 
 from .... import update
 from ..utils import order_pair
-from .utils import COLORAXIS, chevron_fit, chevron_sequence, z_normalization
+from .utils import COLORAXIS, chevron_fit, chevron_sequence
 
 __all__ = ["chevron"]
 
@@ -96,6 +97,7 @@ class ChevronData(Data):
 
     label: str | None = None
     """Label for the data."""
+
     @property
     def grid(self) -> np.ndarray:
         x, y = np.meshgrid(self.duration, self.amplitude)
@@ -231,27 +233,13 @@ def _fit(data: ChevronData) -> ChevronResults:
                 popt, _ = curve_fit(
                     chevron_fit,
                     data.grid,
-                    z_normalization(_data.T.flatten()),
+                    minmax_scale(_data.T.flatten()),
                     p0=[
                         data.detuning[pair] + data.anharmonicity[pair],
                         data.flux_coefficient[pair],
                         0.07,
                         0,
                     ],
-                    bounds=(
-                        [
-                            (data.detuning[pair] + data.anharmonicity[pair]) / 2,
-                            -3,
-                            0,
-                            0,
-                        ],
-                        [
-                            (2 * data.detuning[pair] + data.anharmonicity[pair]),
-                            -1,
-                            0.1,
-                            2 * np.pi,
-                        ],
-                    ),
                     maxfev=100000,
                 )
                 fitted_parameters[pair].append(popt.tolist())
@@ -282,8 +270,8 @@ def _plot(data: ChevronData, fit: ChevronResults, target: QubitPairId):
         subplot_titles=(
             f"Qubit {target[0]} - Low Frequency - Data",
             f"Qubit {target[1]} - High Frequency - Data",
-            f"Qubit {target[0]} - Low Frequency - Fit",
-            f"Qubit {target[1]} - High Frequency - Fit",
+            f"Qubit {target[0]} - Low Frequency - minmax scaled",
+            f"Qubit {target[1]} - High Frequency - minmax scaled",
         ),
         shared_xaxes="all",
         shared_yaxes="all",

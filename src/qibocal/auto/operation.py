@@ -105,10 +105,7 @@ class AbstractData:
 
     def __getitem__(self, qubit: QubitId | tuple[QubitId, int]):
         """Access data attribute member."""
-        try:
-            return self.data[qubit]
-        except KeyError:
-            return self.data[qubit[::-1]]
+        return self.data[qubit]
 
     @property
     def params(self) -> dict:

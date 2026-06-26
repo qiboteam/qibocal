@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
+from sklearn.preprocessing import minmax_scale
 
 from qibocal.auto.operation import Protocol, QubitPairId
 from qibocal.calibration import CalibrationPlatform
@@ -19,7 +20,7 @@ from .chevron import (
     _plot,
     _update,
 )
-from .utils import chevron_sequence, z_normalization
+from .utils import chevron_sequence
 
 __all__ = ["chevron_signal"]
 
@@ -121,10 +122,10 @@ def _aquisition(
 
         data.data[pair[0], pair[1]] = np.stack(
             [
-                z_normalization(magnitude(results[ro_low.id])),
-                1 - z_normalization(magnitude(results[ro_high.id]))
+                minmax_scale(magnitude(results[ro_low.id])),
+                1 - minmax_scale(magnitude(results[ro_high.id]))
                 if params.native == "CZ"
-                else z_normalization(magnitude(results[ro_high.id])),
+                else minmax_scale(magnitude(results[ro_high.id])),
             ]
         )
 
