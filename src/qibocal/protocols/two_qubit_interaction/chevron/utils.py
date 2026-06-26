@@ -90,6 +90,7 @@ def chevron_sequence(
 
 
 def chevron_fit(x, detuning, alpha, g, phase):
+    """Eq. 14.80 of :cite:t:`Manenti:2023zzn`"""
     delta = 2 * np.pi * (detuning + alpha * x[1] ** 2)
     return (
         delta**2 / (delta**2 + 4 * g**2)
