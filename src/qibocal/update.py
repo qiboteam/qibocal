@@ -261,19 +261,3 @@ def pair_coupling(g: list[float], platform: Platform, pair: QubitPairId):
 def kernel(kernel: np.ndarray, platform: Platform, qubit: QubitId):
     ro_channel = platform.qubits[qubit].acquisition
     platform.update({f"configs.{ro_channel}.kernel": kernel})
-
-
-def feedback(feedback: list[float], platform: Platform, qubit: QubitId):
-    """Update flux pulse feedback filter parameter in platform for specific qubit."""
-    feedbackQM = feedback.copy()
-    feedbackQM = [-feedbackQM[1]]
-    platform.update(
-        {f"configs.{platform.qubits[qubit].flux}.filter.feedback": feedbackQM}
-    )
-
-
-def feedforward(feedforward: list[float], platform: Platform, qubit: QubitId):
-    """Update flux pulse feedforward parameter in platform for specific qubit."""
-    platform.update(
-        {f"configs.{platform.qubits[qubit].flux}.filter.feedforward": feedforward}
-    )
