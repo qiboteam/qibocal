@@ -150,6 +150,8 @@ class TwoQubitCalibration(Model):
     """CZ interleaved rb fidelity."""
     coupling: list[float] | None = None
     """Qubit-qubit coupling."""
+    coupler: QubitId | None = None
+    """Coupler which mediate the qubit pair interaction."""
 
 
 class Calibration(Model):
