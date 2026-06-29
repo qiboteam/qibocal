@@ -1,4 +1,5 @@
 from .cpmg import cpmg
+from .rabi_coherence import rabi_coherence
 from .spin_echo import spin_echo
 from .spin_echo_signal import spin_echo_signal
 from .spin_lock import spin_lock
@@ -22,4 +23,5 @@ __all__ = [
     "spin_lock",
     "t1_flux",
     "t2_flux",
+    "rabi_coherence",
 ]
