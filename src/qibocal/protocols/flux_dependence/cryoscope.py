@@ -44,8 +44,6 @@ class CryoscopeParameters(Parameters):
     duration_max: float
     """Maximum flux duration start."""
     duration_step: float
-    # TODO: can this be anything other than 1? Since when the filter gets applied, it's
-    # applied at each sample I think
     """Flux pulse duration step."""
     flux_pulse_amplitude: float
     """Flux pulse amplitude."""
@@ -112,7 +110,10 @@ def generate_sequences(
 
     drive_channel, ry90 = native.R(theta=np.pi / 2, phi=np.pi / 2)[0]
     _, rx90 = native.R(theta=np.pi / 2)[0]
-    ro_channel, ro_pulse = native.MZ()[0]
+    ro_channel, ro_pulse_x = native.MZ()[0]
+    ro_pulse_y = (
+        ro_pulse_x.new()
+    )  # To ensure X and Y ro pulses don't have the same UUID
     flux_channel = platform.qubits[qubit].flux
 
     flux_pulse = Pulse(
@@ -137,7 +138,7 @@ def generate_sequences(
                     duration=ry90.duration + params.duration_max + 100 + ry90.duration
                 ),
             ),
-            (ro_channel, ro_pulse),
+            (ro_channel, ro_pulse_x),
         ]
     )
 
@@ -154,7 +155,7 @@ def generate_sequences(
                     duration=ry90.duration + params.duration_max + 100 + rx90.duration
                 ),
             ),
-            (ro_channel, ro_pulse),
+            (ro_channel, ro_pulse_y),
         ]
     )
     return sequence_x, sequence_y
@@ -249,12 +250,9 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    results_x = platform.execute(sequences_x, **options)
-    results_y = platform.execute(sequences_y, **options)
+    results = platform.execute(sequences_x + sequences_y, **options)
 
-    for measure, results, sequence in zip(
-        ["MX", "MY"], [results_x, results_y], [sequences_x, sequences_y]
-    ):
+    for measure, sequence in zip(["MX", "MY"], [sequences_x, sequences_y]):
         for duration, sequence in zip(duration_range, sequence):
             for qubit in targets:
                 ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[
