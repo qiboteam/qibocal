@@ -408,4 +408,20 @@ def _plot(
     return [fig], fitting_report
 
 
-snz_optimize = Protocol(_aquisition, _fit, _plot, two_qubit_gates=True)
+def _update(
+    results: SNZFinetuningResults, platform: CalibrationPlatform, target: QubitPairId
+):
+    platform.update(
+        {
+            f"native_gates.two_qubit.{target}.CZ.0.1.envelope.kind": "snz",
+            f"native_gates.two_qubit.{target}.CZ.0.1.amplitude": results.best_amplitude[
+                target
+            ],
+            f"native_gates.two_qubit.{target}.CZ.0.1.envelope.b_amplitude": results.best_rel_amplitude[
+                target
+            ],
+        }
+    )
+
+
+snz_optimize = Protocol(_aquisition, _fit, _plot, _update, two_qubit_gates=True)

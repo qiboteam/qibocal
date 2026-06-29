@@ -7,7 +7,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, Pulse, Sweeper
 from qibolab._core.pulses.envelope import Snz
 
-from qibocal.auto.operation import Parameters, Protocol, QubitPairId
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId
 from qibocal.calibration import CalibrationPlatform
 
 from .snz_optimize_t_idle import SNZIdlingResults
@@ -310,4 +310,22 @@ def _plot(
     return [fig], fitting_report
 
 
-snz_optimize_t_idle_vs_t_tot = Protocol(_aquisition, _fit, _plot, two_qubit_gates=True)
+def _update(
+    results: SNZDurationResults, platform: CalibrationPlatform, target: QubitPairId
+):
+    platform.update(
+        {
+            f"native_gates.two_qubit.{target}.CZ.0.1.envelope.kind": "snz",
+            f"native_gates.two_qubit.{target}.CZ.0.1.amplitude": results.best_duration[
+                target
+            ],
+            f"native_gates.two_qubit.{target}.CZ.0.1.envelope.t_idling": results.best_t_idle[
+                target
+            ],
+        }
+    )
+
+
+snz_optimize_t_idle_vs_t_tot = Protocol(
+    _aquisition, _fit, _plot, _update, two_qubit_gates=True
+)
