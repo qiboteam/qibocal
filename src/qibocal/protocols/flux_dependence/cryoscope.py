@@ -115,6 +115,7 @@ def generate_sequences(
         ro_pulse_x.new()
     )  # To ensure X and Y ro pulses don't have the same UUID
     flux_channel = platform.qubits[qubit].flux
+    assert flux_channel is not None
 
     flux_pulse = Pulse(
         duration=duration,
