@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ParallelSweepers, Parameter, Sweeper
 
-from qibocal.auto.operation import QubitId, Protocol
+from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import HZ_TO_GHZ, readout_frequency, table_dict, table_html

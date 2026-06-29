@@ -4,7 +4,7 @@ import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ParallelSweepers, Parameter, Sweeper
 
-from qibocal.auto.operation import QubitId, Protocol
+from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 from qibocal.protocols.utils import readout_frequency
