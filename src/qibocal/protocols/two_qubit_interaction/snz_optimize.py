@@ -267,10 +267,10 @@ def _fit(
         angle_mask = (angles_ > np.pi * 0.9) & (angles_ < np.pi * 1.1)
         leakage_mask = leakages_[angle_mask] == leakages_[angle_mask].min()
         x, y = np.meshgrid(data.amplitudes, data.rel_amplitudes)
-        best_amplitude[_pair] = float(x[angle_mask][leakage_mask])
-        best_rel_amplitude[_pair] = float(y[angle_mask][leakage_mask])
-        best_angle[_pair] = float(angles_[angle_mask][leakage_mask])
-        best_leakage[_pair] = float(leakages_[angle_mask][leakage_mask])
+        best_amplitude[_pair] = x[angle_mask][leakage_mask].item()
+        best_rel_amplitude[_pair] = y[angle_mask][leakage_mask].item()
+        best_angle[_pair] = angles_[angle_mask][leakage_mask].item()
+        best_leakage[_pair] = leakages_[angle_mask][leakage_mask].item()
     return SNZFinetuningResults(
         virtual_phases=virtual_phases,
         fitted_parameters=fitted_parameters,
