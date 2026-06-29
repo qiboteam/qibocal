@@ -10,7 +10,7 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal.auto.operation import QubitId, Protocol
+from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
 
