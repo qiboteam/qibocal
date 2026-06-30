@@ -21,8 +21,11 @@ def sparse_serialize(matrix: lil_matrix) -> str:
     return base64.standard_b64encode(buffer.read()).decode()
 
 
-def sparse_deserialize(data: str) -> lil_matrix | None:
+def sparse_deserialize(data: str | lil_matrix) -> lil_matrix | None:
     """Deserialize a base64 string back into a lil_matrix."""
+    if isinstance(data, lil_matrix):
+        return data
+
     buffer = io.BytesIO(base64.standard_b64decode(data))
     shape = np.load(buffer, allow_pickle=True)
     data_array = np.load(buffer, allow_pickle=True)
@@ -49,6 +52,9 @@ def ndarray_serialize(ar: npt.NDArray) -> str:
 
 def ndarray_deserialize(x: str | npt.NDArray) -> npt.NDArray:
     """Deserialize array."""
+    if isinstance(x, np.ndarray):
+        return x
+
     buffer = io.BytesIO()
     buffer.write(base64.standard_b64decode(x))
     buffer.seek(0)

@@ -12,7 +12,6 @@ from qibolab import (
 )
 from scipy.optimize import curve_fit
 
-from qibocal import update
 from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
@@ -139,7 +138,7 @@ def _acquisition(
         maximum_frequency[qubit] = platform.calibration.single_qubits[
             qubit
         ].qubit.maximum_frequency
-        matrix_element[qubit] = platform.calibration.get_crosstalk_element(qubit, qubit)
+        matrix_element[qubit] = platform.calibration.flux_crosstalk_matrix[qubit, qubit]
         charging_energy[qubit] = platform.calibration.single_qubits[
             qubit
         ].qubit.charging_energy
@@ -329,7 +328,7 @@ def _update(
     """Update crosstalk matrix."""
 
     for flux_qubit, element in results.crosstalk_matrix[qubit].items():
-        update.crosstalk_matrix(element, platform, qubit, flux_qubit)
+        platform.calibration.flux_crosstalk_matrix[qubit, flux_qubit] = element
 
 
 qubit_crosstalk = Protocol(_acquisition, _fit, _plot, _update)
