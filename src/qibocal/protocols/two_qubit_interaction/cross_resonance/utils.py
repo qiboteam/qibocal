@@ -29,7 +29,7 @@ def cross_resonance_pulses(
 
     cr_params = None
     canc_params = None
-    if cnot_cal_seq is None and len(cnot_cal_seq) != 0:
+    if cnot_cal_seq is not None and len(cnot_cal_seq) != 0:
         for p in cnot_cal_seq[2:]:
             if cr_params is None and p[0] == cr_channel and isinstance(p[1], Pulse):
                 cr_params = p[1]
