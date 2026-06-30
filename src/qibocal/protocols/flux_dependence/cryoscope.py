@@ -5,7 +5,9 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-import scipy
+import scipy.linalg
+import scipy.optimize
+import scipy.signal
 from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
@@ -16,7 +18,6 @@ from qibolab import (
     PulseSequence,
     Rectangular,
 )
-from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.config import log
@@ -270,7 +271,7 @@ def exponential_params(step_response, acquisition_time):
     def expmodel(t, tau, exp_amplitude, g):
         return step_response / (g * (1 + exp_amplitude * np.exp(-t / tau)))
 
-    popt, _ = curve_fit(expmodel, t, target, p0=init_guess)
+    popt, _ = scipy.optimize.curve_fit(expmodel, t, target, p0=init_guess)
 
     return popt
 
@@ -403,10 +404,12 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             taps = data.fir
             baseline = g[qubit]
 
-            # A @ taps == lfilter(taps, [1], iir_correction)
-            A = scipy.linalg.toeplitz(iir_correction, np.zeros(taps))
-            # solve: A @ fir == baseline
-            fir, _, _, _ = scipy.linalg.lstsq(A, np.full(len(iir_correction), baseline))
+            # toeplitz_matrix @ taps == lfilter(taps, [1], iir_correction)
+            toeplitz_matrix = scipy.linalg.toeplitz(iir_correction, np.zeros(taps))
+            # solve: toeplitz_matrix @ fir == baseline
+            fir, _, _, _ = scipy.linalg.lstsq(
+                toeplitz_matrix, np.full(len(iir_correction), baseline)
+            )
             fir_taps[qubit] = fir.tolist()
 
             feedforward_taps[qubit] = np.convolve(
