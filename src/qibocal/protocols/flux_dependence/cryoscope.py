@@ -15,6 +15,7 @@ from qibolab import (
     Delay,
     Platform,
     Pulse,
+    PulseId,
     PulseSequence,
     Rectangular,
 )
@@ -96,7 +97,7 @@ def generate_sequences(
     qubit: QubitId,
     duration: float,
     params: CryoscopeParameters,
-) -> tuple[PulseSequence, PulseSequence]:
+) -> tuple[PulseSequence, PulseSequence, PulseId, PulseId]:
     """Compute sequences at fixed duration of flux pulse for <X> and <Y>"""
     native = platform.natives.single_qubit[qubit]
 
@@ -151,7 +152,7 @@ def generate_sequences(
             (ro_channel, ro_pulse_y),
         ]
     )
-    return sequence_x, sequence_y
+    return sequence_x, sequence_y, ro_pulse_x.id, ro_pulse_y.id
 
 
 @dataclass
@@ -202,12 +203,11 @@ def _acquisition(
     )
 
     for qubit in targets:
-        assert (
-            platform.calibration.single_qubits[qubit].qubit.flux_coefficients
-            is not None
-        ), (
-            f"Cannot run cryoscope without flux coefficients, run cryoscope amplitude on qubit {qubit} before the cryoscope"
-        )
+        if platform.calibration.single_qubits[qubit].qubit.flux_coefficients is None:
+            raise ValueError(
+                "Cannot run cryoscope without flux coefficients, run "
+                f"cryoscope amplitude on qubit {qubit} before the cryoscope"
+            )
 
         data.flux_coefficients[qubit] = platform.calibration.single_qubits[
             qubit
@@ -218,6 +218,8 @@ def _acquisition(
 
     sequences_x = []
     sequences_y = []
+    ro_ids_x = []
+    ro_ids_y = []
 
     duration_range = np.arange(
         params.duration_min, params.duration_max, params.duration_step
@@ -226,16 +228,25 @@ def _acquisition(
     for duration in duration_range:
         sequence_x = PulseSequence()
         sequence_y = PulseSequence()
+        duration_ro_ids_x = {}
+        duration_ro_ids_y = {}
 
         for qubit in targets:
-            qubit_sequence_x, qubit_sequence_y = generate_sequences(
-                platform, qubit, duration, params
-            )
+            (
+                qubit_sequence_x,
+                qubit_sequence_y,
+                ro_pulse_id_x,
+                ro_pulse_id_y,
+            ) = generate_sequences(platform, qubit, duration, params)
             sequence_x += qubit_sequence_x
             sequence_y += qubit_sequence_y
+            duration_ro_ids_x[qubit] = ro_pulse_id_x
+            duration_ro_ids_y[qubit] = ro_pulse_id_y
 
         sequences_x.append(sequence_x)
         sequences_y.append(sequence_y)
+        ro_ids_x.append(duration_ro_ids_x)
+        ro_ids_y.append(duration_ro_ids_y)
 
     options = dict(
         nshots=params.nshots,
@@ -245,18 +256,15 @@ def _acquisition(
 
     results = platform.execute(sequences_x + sequences_y, **options)
 
-    for measure, sequences in zip(["MX", "MY"], [sequences_x, sequences_y]):
-        for duration, sequence in zip(duration_range, sequences):
+    for measure, ro_ids in zip(["MX", "MY"], [ro_ids_x, ro_ids_y]):
+        for duration, duration_ro_ids in zip(duration_range, ro_ids):
             for qubit in targets:
-                ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[
-                    -1
-                ]
                 data.register_qubit(
                     CryoscopeType,
                     (qubit, measure),
                     dict(
                         duration=np.array([duration]),
-                        prob_1=results[ro_pulse.id],
+                        prob_1=results[duration_ro_ids[qubit]],
                     ),
                 )
 
@@ -296,6 +304,7 @@ def filter_calc(params, sampling_rate):
     return feedback_taps.tolist(), feedforward_taps.tolist()
 
 
+# TODO: refactor into sub-functions with smaller scopes
 def _fit(data: CryoscopeData) -> CryoscopeResults:
     """Postprocessing for cryoscope experiment.
 
@@ -331,7 +340,6 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
         qubit_data = data[qubit, setup]
         x = qubit_data.duration
         y = 1 - 2 * qubit_data.prob_1
-
         popt, _ = fitting(x, y)
 
         fitted_parameters[qubit, setup] = popt
@@ -339,6 +347,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
     qubits = np.unique([i[0] for i in data.data]).tolist()
 
     for qubit in qubits:
+        x = data[(qubit, "MX")].duration
         sampling_rate = 1 / (x[1] - x[0])
         X_exp = 2 * data[(qubit, "MX")].prob_1 - 1
         Y_exp = 1 - 2 * data[(qubit, "MY")].prob_1
