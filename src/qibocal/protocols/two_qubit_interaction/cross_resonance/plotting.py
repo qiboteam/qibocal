@@ -119,15 +119,15 @@ def tomography_cr_plot(
                 if target in fit_dict:
                     fig.add_trace(
                         go.Scatter(
-                            x=fit_dict[target],
+                            x=[fit_dict[target]] * 2,
                             y=[
                                 -1.2,
                                 1.2,
                             ],
                             mode="lines",
-                            line=go.scatter.Line(color="orange", width=3, dash="dash"),
-                            name="Best frequency",
-                            showlegend=True,
+                            line=go.scatter.Line(color="red", width=3, dash="dash"),
+                            name=annotation,
+                            showlegend=False,
                             legendgroup=annotation,
                         ),
                         row=i + 1,
@@ -162,9 +162,7 @@ def tomography_cr_plot(
         )
 
         if bloch_fit_targ is not None:
-            x = np.linspace(
-                pair_data.x.min(), pair_data.x.max(), 50 * len(bloch_fit_targ)
-            )
+            x = np.linspace(pair_data.x.min(), pair_data.x.max(), len(bloch_fit_targ))
             fig.add_trace(
                 go.Scatter(
                     x=x,
@@ -186,14 +184,14 @@ def tomography_cr_plot(
         if target in fit_dict:
             fig.add_trace(
                 go.Scatter(
-                    x=fit_dict[target],
+                    x=[fit_dict[target]] * 2,
                     y=[
                         -1.2,
                         1.2,
                     ],
                     mode="lines",
                     line=go.scatter.Line(color="orange", width=3, dash="dash"),
-                    name="Best frequency",
+                    name=annotation,
                     showlegend=True,
                     legendgroup=annotation,
                 ),
