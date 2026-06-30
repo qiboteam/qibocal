@@ -40,13 +40,26 @@ def update_rabi_parameters(
     target: QubitId,
 ) -> None:
     """Updating RX or RX90 parameters if the drive line is the physical line for qubit `target`"""
-    if target == results.drive_lines[target]:
+    drive_line = results.drive_lines[target]
+    if target == drive_line:
         update.drive_duration(results.length[target], results.rx90, platform, target)
         update.drive_amplitude(
             results.amplitude[target], results.rx90, platform, target
         )
         if isinstance(results, RabiFreqResults):
             update.drive_frequency(results.frequency[target], platform, target)
+    else:
+        cross_rabi_freq = results.length[target] * results.amplitude[target]
+        _, rx_pulse = platform.parameters.native_gates.single_qubit[target].RX()[0]
+        rx_rabi_freq = rx_pulse.amplitude * rx_pulse.duration
+
+        # taking the ratio between the direct RX pulse and the cross one
+        # from https://arxiv.org/pdf/2112.03708
+        # here the first index is the qubit I want to drive and the second is the
+        # drive line I want to pulse form.
+        platform.calibration.microwave_crosstalk_matrix[target, drive_line] = (
+            cross_rabi_freq / rx_rabi_freq
+        )
 
 
 def rabi_amplitude_function(
