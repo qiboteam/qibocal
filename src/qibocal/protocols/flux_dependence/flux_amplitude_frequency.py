@@ -19,7 +19,6 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 
@@ -403,8 +402,8 @@ def _update(
 
     # TODO: needs to be inverted
     flux_qubit = results.crosstalk if results.crosstalk is not None else target
-    update.crosstalk_matrix(
-        results.fitted_parameters_flux[target][0], platform, target, flux_qubit
+    platform.calibration.flux_crosstalk_matrix[target, flux_qubit] = (
+        results.fitted_parameters_flux[target][0]
     )
 
 
