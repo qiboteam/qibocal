@@ -1,5 +1,6 @@
 """CZ virtual correction experiment for two qubit gates, tune landscape."""
 
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import Literal
 
@@ -57,6 +58,8 @@ class VirtualZPhasesParameters(Parameters):
     """Time delay between flux pulses and readout."""
     gate_repetition: int = 1
     """Number of CZ repetition"""
+    sweep: bool = True
+    """Toggle sweeping vs unrolling."""
 
 
 @dataclass
@@ -117,6 +120,7 @@ def create_sequence(
     ordered_pair: tuple[QubitId, QubitId],
     native: Literal["CZ", "iSWAP"],
     dt: float,
+    vzphase: float = 0.0,
     flux_pulse_max_duration: float | None = None,
     flux_pulse: Pulse | None = None,
 ) -> tuple[PulseSequence, Pulse, VirtualZ]:
@@ -171,7 +175,7 @@ def create_sequence(
         ]
     )
 
-    vz = VirtualZ(phase=0)
+    vz = VirtualZ(phase=vzphase)
     sequence.append((platform.qubits[target_qubit].drive, vz))
 
     sequence |= target_natives.R(theta=np.pi / 2)
@@ -216,37 +220,8 @@ def _acquisition(
     sequences: list[PulseSequence] = []
     vzs: list[VirtualZ] = []
     readouts: dict[
-        tuple[QubitId, QubitId, Literal["I", "X"]], tuple[PulseId, PulseId]
-    ] = {}
-    for pair in targets:
-        # order the qubits so that the low frequency one is the first
-        ordered_pair = order_pair(pair, platform)
-
-        for target_q, control_q in (
-            (ordered_pair[0], ordered_pair[1]),
-            (ordered_pair[1], ordered_pair[0]),
-        ):
-            for setup in ("I", "X"):
-                (sequence, _, vz) = create_sequence(
-                    platform,
-                    setup,
-                    target_q,
-                    control_q,
-                    ordered_pair,
-                    params.native,
-                    dt=params.dt,
-                )
-
-                sequences.append(sequence)
-                vzs.append(vz)
-
-                ro_target = list(
-                    sequence.channel(platform.qubits[target_q].acquisition)
-                )[-1]
-                ro_control = list(
-                    sequence.channel(platform.qubits[control_q].acquisition)
-                )[-1]
-                readouts[target_q, control_q, setup] = ro_target.id, ro_control.id
+        tuple[QubitId, QubitId, Literal["I", "X"]], list[tuple[PulseId, PulseId]]
+    ] = defaultdict(list)
 
     # The virtual phase values are the opposite of beta, this is
     # because, according to the circuit we would like to reproduce
@@ -262,17 +237,59 @@ def _acquisition(
         ),
         pulses=vzs,
     )
+    phases = [0.0] if params.sweep else np.arange(*sweeper.irange).tolist()
+
+    for pair in targets:
+        # order the qubits so that the low frequency one is the first
+        ordered_pair = order_pair(pair, platform)
+
+        for target_q, control_q in (
+            (ordered_pair[0], ordered_pair[1]),
+            (ordered_pair[1], ordered_pair[0]),
+        ):
+            for setup in ("I", "X"):
+                for phase in phases:
+                    (sequence, _, vz) = create_sequence(
+                        platform,
+                        setup,
+                        target_q,
+                        control_q,
+                        ordered_pair,
+                        params.native,
+                        dt=params.dt,
+                        vzphase=phase,
+                    )
+
+                    sequences.append(sequence)
+                    vzs.append(vz)
+
+                    ro_target = list(
+                        sequence.channel(platform.qubits[target_q].acquisition)
+                    )[-1]
+                    ro_control = list(
+                        sequence.channel(platform.qubits[control_q].acquisition)
+                    )[-1]
+                    readouts[target_q, control_q, setup].append(
+                        (ro_target.id, ro_control.id)
+                    )
+
+    sweep = [[sweeper]] if params.sweep else []
 
     results = platform.execute(
         sequences,
-        [[sweeper]],
+        sweep,
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.DISCRIMINATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    for key, (target, control) in readouts.items():
-        data[key] = np.stack([results[target], results[control]])
+    if params.sweep:
+        for key, [(target, control)] in readouts.items():
+            data[key] = np.stack([results[target], results[control]])
+    else:
+        for key, meas in readouts.items():
+            res = [[results[target], results[control]] for target, control in meas]
+            data[key] = np.moveaxis(res, 0, 1)
 
     return VirtualZPhasesData(
         data=data,
