@@ -238,21 +238,12 @@ def _acquisition(
         tuple[QubitId, QubitId, Literal["I", "X"]], list[tuple[PulseId, PulseId]]
     ] = defaultdict(list)
 
-    # The virtual phase values are the opposite of beta, this is
-    # because, according to the circuit we would like to reproduce
-    # after the CZ, an RZ is applied. The RZ gate with `theta` angle
-    # is compiled into  a VirtualPhase pulse with phase `-theta`.
-    # (See https://github.com/qiboteam/qibolab/pull/1044#issuecomment-2354622956)
-    sweeper = Sweeper(
-        parameter=Parameter.phase,
-        range=(
-            -params.gate_repetition * params.theta_start,
-            -params.gate_repetition * params.theta_end,
-            -params.gate_repetition * params.theta_step,
-        ),
-        pulses=vzs,
+    range_ = (
+        -params.gate_repetition * params.theta_start,
+        -params.gate_repetition * params.theta_end,
+        -params.gate_repetition * params.theta_step,
     )
-    phases = [0.0] if params.sweep else np.arange(*sweeper.irange).tolist()
+    phases = [0.0] if params.sweep else np.arange(*range_).tolist()
 
     for pair in targets:
         # order the qubits so that the low frequency one is the first
@@ -288,6 +279,12 @@ def _acquisition(
                         (ro_target.id, ro_control.id)
                     )
 
+    # The virtual phase values are the opposite of beta, this is
+    # because, according to the circuit we would like to reproduce
+    # after the CZ, an RZ is applied. The RZ gate with `theta` angle
+    # is compiled into  a VirtualPhase pulse with phase `-theta`.
+    # (See https://github.com/qiboteam/qibolab/pull/1044#issuecomment-2354622956)
+    sweeper = Sweeper(parameter=Parameter.phase, range=range_, pulses=vzs)
     sweep = [[sweeper]] if params.sweep else []
 
     results = platform.execute(
