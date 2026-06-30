@@ -2,12 +2,10 @@
 
 from dataclasses import dataclass, field
 
-import cma
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 import scipy
-import scipy.signal
 from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
@@ -19,7 +17,6 @@ from qibolab import (
     Rectangular,
 )
 from scipy.optimize import curve_fit
-from scipy.signal import lfilter
 
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.config import log
@@ -247,8 +244,8 @@ def _acquisition(
 
     results = platform.execute(sequences_x + sequences_y, **options)
 
-    for measure, sequence in zip(["MX", "MY"], [sequences_x, sequences_y]):
-        for duration, sequence in zip(duration_range, sequence):
+    for measure, sequences in zip(["MX", "MY"], [sequences_x, sequences_y]):
+        for duration, sequence in zip(duration_range, sequences):
             for qubit in targets:
                 ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[
                     -1
@@ -398,20 +395,18 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
                 feedforward_taps_iir[qubit] = [1.0]
 
             time_decay[qubit], alpha[qubit], g[qubit] = exp_params
-            iir_correction = lfilter(
+            iir_correction = scipy.signal.lfilter(
                 feedforward_taps_iir[qubit], feedback_taps[qubit], step_response[qubit]
             )
             # FIR corrections
 
             taps = data.fir
             baseline = g[qubit]
-            x0 = [1] + (taps - 1) * [0]
 
-            def fir_cost_function(x):
-                yc = lfilter(x, 1, iir_correction)
-                return np.mean(np.abs(yc - baseline)) / np.abs(baseline)
-
-            fir = cma.fmin2(fir_cost_function, x0, 0.5)[0]
+            # A @ taps == lfilter(taps, [1], iir_correction)
+            A = scipy.linalg.toeplitz(iir_correction, np.zeros(taps))
+            # solve: A @ fir == baseline
+            fir, _, _, _ = scipy.linalg.lstsq(A, np.full(len(iir_correction), baseline))
             fir_taps[qubit] = fir.tolist()
 
             feedforward_taps[qubit] = np.convolve(
@@ -479,14 +474,14 @@ def _plot(data: CryoscopeData, fit: CryoscopeResults, target: QubitId):
         )
 
         if not data.has_filters[target]:
-            all_corrections = lfilter(
+            all_corrections = scipy.signal.lfilter(
                 fit.feedforward_taps[target],
                 fit.feedback_taps[target],
                 fit.step_response[target],
             )
 
             if data.iir:
-                iir_corrections = lfilter(
+                iir_corrections = scipy.signal.lfilter(
                     fit.feedforward_taps_iir[target],
                     fit.feedback_taps[target],
                     fit.step_response[target],
