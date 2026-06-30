@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import plotly.graph_objects as go
+import pytest
 from scipy.signal import lfilter
 
 from qibocal.protocols import cryoscope
@@ -29,6 +30,25 @@ def test_cryoscope_acquisition(platform):
 
     cryoscope_data, _ = cryoscope.acquisition(params, platform, target)
     assert isinstance(cryoscope_data, CryoscopeData)
+
+
+def test_cryoscope_acquisition_raises_without_flux_coefficients(platform):
+    target = 0
+    platform.calibration.single_qubits[target].qubit.flux_coefficients = None
+
+    params = cryoscope.parameters_type.load(
+        dict(
+            duration_min=1,
+            duration_max=10,
+            duration_step=1,
+            flux_pulse_amplitude=0.1,
+        )
+    )
+
+    with pytest.raises(
+        ValueError, match="Cannot run cryoscope without flux coefficients"
+    ):
+        cryoscope.acquisition(params, platform, [target])
 
 
 def test_cryoscope_postprocessing():
