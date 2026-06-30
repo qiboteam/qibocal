@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+import scipy.constants
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, Parameter, PulseSequence, Sweeper
 
@@ -10,7 +11,6 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import (
-    HZ_TO_GHZ,
     lorentzian,
     lorentzian_fit,
     readout_frequency,
@@ -211,7 +211,7 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
         fit_group = f"state{state}-fit"
         q_data = data[target, state]
 
-        frequencies = q_data.freq * HZ_TO_GHZ
+        frequencies = q_data.freq * scipy.constants.nano
         for col, y in enumerate([q_data.signal, q_data.phase], start=1):
             fig.add_trace(
                 go.Scatter(
@@ -256,7 +256,7 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
         all_signals = np.concatenate((data[target, 0].signal, data[target, 1].signal))
         fig.add_trace(
             go.Scatter(
-                x=[fit.best_freq[target] * HZ_TO_GHZ] * 2,
+                x=[fit.best_freq[target] * scipy.constants.nano] * 2,
                 y=[all_signals.min(), all_signals.max()],
                 mode="lines",
                 line=go.scatter.Line(color="black", width=3, dash="dash"),
@@ -270,7 +270,7 @@ def _plot(data: DispersiveShiftData, target: QubitId, fit: DispersiveShiftResult
         all_phases = np.concatenate((data[target, 0].phase, data[target, 1].phase))
         fig.add_trace(
             go.Scatter(
-                x=[fit.best_freq[target] * HZ_TO_GHZ] * 2,
+                x=[fit.best_freq[target] * scipy.constants.nano] * 2,
                 y=[all_phases.min(), all_phases.max()],
                 mode="lines",
                 line=go.scatter.Line(color="black", width=3, dash="dash"),
