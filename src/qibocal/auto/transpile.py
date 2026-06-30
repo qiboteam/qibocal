@@ -78,6 +78,7 @@ def _transpile_circuits(
     transpiled_circuits = []
     _qubit_maps = _string_to_integer_qubit_maps(qubit_maps, platform)
     platform_nqubits = platform.nqubits
+    assert len(circuits) == len(_qubit_maps)
     for circuit, qubit_map in zip(circuits, _qubit_maps):
         new_circuit = _pad_circuit(platform_nqubits, circuit, qubit_map)
         transpiled_circ, _ = transpiler(new_circuit)

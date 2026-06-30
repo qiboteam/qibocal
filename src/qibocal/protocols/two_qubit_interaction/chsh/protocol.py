@@ -161,6 +161,8 @@ def _acquisition(
         except AssertionError:
             mitigation_matrix = None
 
+        circuits = []
+        bases = []
         for bell_state in params.bell_states:
             for theta in thetas:
                 chsh_circuits = create_chsh_circuits(
@@ -169,15 +171,20 @@ def _acquisition(
                     native=params.native,
                 )
                 for basis, circuit in chsh_circuits.items():
-                    [result] = execute_circuits(
-                        [circuit],
-                        [pair],
-                        platform,
-                        transpiler,
-                        compiler,
-                        nshots=params.nshots,
-                    )
-                    data.register_basis(pair, bell_state, basis, result)
+                    circuits.append(circuit)
+                    bases.append([bell_state, basis])
+
+        results = execute_circuits(
+            circuits,
+            [pair] * len(circuits),
+            platform,
+            transpiler,
+            compiler,
+            nshots=params.nshots,
+        )
+
+        for result, (bell_state, basis) in zip(results, bases):
+            data.register_basis(pair, bell_state, basis, result)
 
             data.frequencies[bell_state] = freqs = merge_frequencies(
                 data.data, pair, bell_state
