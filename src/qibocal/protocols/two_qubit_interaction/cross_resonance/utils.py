@@ -29,7 +29,7 @@ def cross_resonance_pulses(
 
     cr_params = None
     canc_params = None
-    if cnot_cal_seq is None and len(cnot_cal_seq) != 0:
+    if cnot_cal_seq is not None and len(cnot_cal_seq) != 0:
         for p in cnot_cal_seq[2:]:
             if cr_params is None and p[0] == cr_channel and isinstance(p[1], Pulse):
                 cr_params = p[1]
@@ -328,14 +328,7 @@ def cross_resonance_experiment(
             control_drive_channel, control_drive_pulse = platform.natives.single_qubit[
                 control
             ].RX()[0]
-            target_drive_channel, _ = platform.natives.single_qubit[target].RX()[0]
-            cr_channel = platform.qubits[control].drive_extra[target]
-
-            control_delay = Delay(duration=control_drive_pulse.duration)
-
             cntl_setup_sequence.append((control_drive_channel, control_drive_pulse))
-            cntl_setup_sequence.append((target_drive_channel, control_delay))
-            cntl_setup_sequence.append((cr_channel, control_delay))
 
         cr_sequence, cr_pulses, cr_target_pulses, cr_delays = cross_res_sequence(
             platform=platform,
@@ -357,7 +350,6 @@ def cross_resonance_experiment(
             echo=echo,
             interpolated_sweeper=interpolated_sweeper,
         )
-        cr_sequence = cntl_setup_sequence | cr_sequence
 
         total_sequence, ro_delays = appending_ro_sequence(
             platform=platform,
@@ -367,6 +359,8 @@ def cross_resonance_experiment(
             basis=basis,
             interpolated_sweeper=interpolated_sweeper,
         )
+        # aligning with the state preparation pulses
+        total_sequence = cntl_setup_sequence | total_sequence
 
         parallel_cr_sequences += total_sequence
         parallel_cr_pulses |= {pair: cr_pulses}
