@@ -86,7 +86,9 @@ def tomography_cr_plot(
                 col=2,
             )
             if fit is not None and (*target, setup) in fit.fitted_parameters:
-                x = np.linspace(pair_data.x.min(), pair_data.x.max(), 100)
+                x = np.linspace(
+                    pair_data.x.min(), pair_data.x.max(), 50 * len(pair_data.x)
+                )
                 fig.add_trace(
                     go.Scatter(
                         x=x,
@@ -115,12 +117,19 @@ def tomography_cr_plot(
                     fit_dict = fit.cr_lengths
 
                 if target in fit_dict:
-                    fig.add_vline(
-                        x=fit_dict[target],
-                        line_width=2,
-                        line_dash="dash",
-                        line_color="red",
-                        annotation_text=annotation,
+                    fig.add_trace(
+                        go.Scatter(
+                            x=fit_dict[target],
+                            y=[
+                                -1.2,
+                                1.2,
+                            ],
+                            mode="lines",
+                            line=go.scatter.Line(color="orange", width=3, dash="dash"),
+                            name="Best frequency",
+                            showlegend=True,
+                            legendgroup=annotation,
+                        ),
                         row=i + 1,
                         col=1,
                     )
@@ -153,7 +162,9 @@ def tomography_cr_plot(
         )
 
         if bloch_fit_targ is not None:
-            x = np.linspace(pair_data.x.min(), pair_data.x.max(), len(bloch_fit_targ))
+            x = np.linspace(
+                pair_data.x.min(), pair_data.x.max(), 50 * len(bloch_fit_targ)
+            )
             fig.add_trace(
                 go.Scatter(
                     x=x,
@@ -173,12 +184,19 @@ def tomography_cr_plot(
             fit_dict = fit.cr_lengths
 
         if target in fit_dict:
-            fig.add_vline(
-                x=fit_dict[target],
-                line_width=2,
-                line_dash="dash",
-                line_color="red",
-                annotation_text=annotation,
+            fig.add_trace(
+                go.Scatter(
+                    x=fit_dict[target],
+                    y=[
+                        -1.2,
+                        1.2,
+                    ],
+                    mode="lines",
+                    line=go.scatter.Line(color="orange", width=3, dash="dash"),
+                    name="Best frequency",
+                    showlegend=True,
+                    legendgroup=annotation,
+                ),
                 row=4,
                 col=1,
             )
