@@ -59,7 +59,22 @@ class VirtualZPhasesParameters(Parameters):
     gate_repetition: int = 1
     """Number of CZ repetition"""
     sweep: bool = True
-    """Toggle sweeping vs unrolling."""
+    """Toggle sweeping vs unrolling.
+
+
+    .. tip::
+
+       Sweeping phases has been proven fragile in certain platforms. For this reason, we
+       are now providing the double implementation.
+       The difference it is just an internal detail, and ideally the result is supposed
+       to be the exact same when sweeping phases is properly supported. Sweeping is
+       often a bit faster.
+
+       The recommended usage is just to toggle this to ``False`` when the user is
+       confident the sweeping is not working properly. Or just to check whether that is
+       actually the problem or not.
+
+    """
 
 
 @dataclass
