@@ -26,12 +26,6 @@ from qibocal.config import log
 from qibocal.protocols.ramsey.processing import fitting
 from qibocal.protocols.utils import table_dict, table_html
 
-# TODO: remove hard-coded QM parameters
-FEEDFORWARD_MAX = 2 - 2**-16
-"""Maximum feedforward tap value"""
-FEEDBACK_MAX = 1 - 2**-20
-"""Maximum feedback tap value"""
-
 __all__ = ["cryoscope", "CryoscopeData", "CryoscopeResults"]
 
 
@@ -301,10 +295,6 @@ def filter_calc(params, sampling_rate):
     feedback_taps = np.array([a0, a1])
     feedforward_taps = np.array([b0, b1])
 
-    if np.any(np.abs(feedback_taps) > FEEDBACK_MAX):
-        feedback_taps[feedback_taps > FEEDBACK_MAX] = FEEDBACK_MAX
-        feedback_taps[feedback_taps < -FEEDBACK_MAX] = -FEEDBACK_MAX
-
     return feedback_taps.tolist(), feedforward_taps.tolist()
 
 
@@ -427,14 +417,6 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             feedforward_taps[qubit] = np.convolve(
                 feedforward_taps_iir[qubit], fir
             ).tolist()
-
-            if np.max(np.abs(feedforward_taps[qubit])) > FEEDFORWARD_MAX:
-                print("np.max(np.abs(feedforward_taps[qubit])) > FEEDFORWARD_MAX")
-                feedforward_taps[qubit] = (
-                    2
-                    * np.array(feedforward_taps[qubit])
-                    / np.max(np.abs(feedforward_taps[qubit]))
-                ).tolist()
 
     return CryoscopeResults(
         amplitude=amplitude,
