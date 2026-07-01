@@ -30,15 +30,11 @@ def cross_resonance_pulses(
     cr_params = None
     canc_params = None
     if cnot_cal_seq is not None and len(cnot_cal_seq) != 0:
-        for p in cnot_cal_seq[2:]:
-            if cr_params is None and p[0] == cr_channel and isinstance(p[1], Pulse):
-                cr_params = p[1]
-            if (
-                canc_params is None
-                and p[1] == target_channel
-                and isinstance(p[1], Pulse)
-            ):
-                canc_params = p[1]
+        for ch, p in cnot_cal_seq[2:]:
+            if cr_params is None and ch == cr_channel and isinstance(p, Pulse):
+                cr_params = p
+            if canc_params is None and ch == target_channel and isinstance(p, Pulse):
+                canc_params = p
 
             if cr_params is not None and canc_params is not None:
                 # here we identified both the CR and cancellation pulse,
