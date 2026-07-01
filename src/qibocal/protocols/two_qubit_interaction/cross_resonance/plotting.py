@@ -125,7 +125,7 @@ def tomography_cr_plot(
                                 1.2,
                             ],
                             mode="lines",
-                            line=go.scatter.Line(color="red", width=3, dash="dash"),
+                            line=go.scatter.Line(color="orange", width=3, dash="dash"),
                             name=annotation,
                             showlegend=False,
                             legendgroup=annotation,
