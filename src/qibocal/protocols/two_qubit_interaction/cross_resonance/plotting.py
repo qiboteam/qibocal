@@ -125,7 +125,7 @@ def tomography_cr_plot(
                                 1.2,
                             ],
                             mode="lines",
-                            line=go.scatter.Line(color="red", width=3, dash="dash"),
+                            line=go.scatter.Line(color="orange", width=3, dash="dash"),
                             name=annotation,
                             showlegend=False,
                             legendgroup=annotation,
@@ -142,20 +142,19 @@ def tomography_cr_plot(
             [
                 go.Scatter(
                     x=pair_data.x,
-                    y=bloch_vect_targ,
-                    name="Bloch vector |R(t)|",
-                    legendgroup="Bloch vector |R(t)|",
+                    y=y,
+                    name=f"{label} Bloch vector |R(t)|",
+                    legendgroup=f"{label} Bloch vector |R(t)|",
                     showlegend=True,
                     mode="markers",
-                ),
-                go.Scatter(
-                    x=pair_data.x,
-                    y=bloch_vect_ctrl,
-                    name="Bloch vector |R(t)|",
-                    legendgroup="Bloch vector |R(t)|",
-                    showlegend=True,
-                    mode="markers",
-                ),
+                    marker=dict(
+                        color="green",
+                    ),
+                )
+                for y, label in [
+                    (bloch_vect_targ, "Target"),
+                    (bloch_vect_ctrl, "Control"),
+                ]
             ],
             rows=[4, 4],
             cols=[1, 2],
