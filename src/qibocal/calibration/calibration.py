@@ -208,8 +208,8 @@ class Calibration(Model):
     def validate_matrices(self):
 
         if (
-            self.flux_crosstalk_matrix.matrix.size == 0
-            or self.flux_crosstalk_matrix is None
+            self.flux_crosstalk_matrix is None
+            or self.flux_crosstalk_matrix.matrix.size == 0
         ):
             self.flux_crosstalk_matrix = Matrix(
                 matrix=ndarray_serialize(np.eye(self.nqubits))
@@ -219,8 +219,8 @@ class Calibration(Model):
             raise ValueError("Drive crosstalk matrix must have as many rows as qubits.")
 
         if (
-            self.microwave_crosstalk_matrix.matrix.size == 0
-            or self.microwave_crosstalk_matrix is None
+            self.microwave_crosstalk_matrix is None
+            or self.microwave_crosstalk_matrix.matrix.size == 0
         ):
             self.microwave_crosstalk_matrix = Matrix(
                 matrix=ndarray_serialize(np.eye(self.nqubits))
