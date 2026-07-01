@@ -47,37 +47,37 @@ It is easy to prove that the CNOT gate can be built using two single-qubits gate
 Hence it is necessary to tune the amplitude and the duration of the CR drive pulse to calibrate a
 :math:`RZX(-\pi/2)` rotation.
 
-| In Qibocal we provide protocols to calibrate CR pulses based on :cite:p:`CR_IBM`.
-| The calibration procedure is based on characterizing all terms of the full effective Hamiltonian via a tomography-style experiment:
+In Qibocal we provide protocols to calibrate CR pulses based on :cite:p:`CR_IBM`.
+The calibration procedure is based on characterizing all terms of the full effective Hamiltonian via a tomography-style experiment:
 
 .. math::
 
   2H_{\text{eff}}/\hbar = \Omega_{ZX}\text{ZX} + \Omega_{ZY}\text{ZY} + \Omega_{IX}\text{IX} + \Omega_{IY}\text{IY} + \Omega_{XI}\text{XI} + \Omega_{YI}\text{YI} + \varepsilon\text{ZZ}
 
-| By measuring the target-qubit response for different states of the control qubit, the strengths of both the desired
+By measuring the target-qubit response for different states of the control qubit, the strengths of both the desired
 interaction and the accompanying unwanted terms are extracted; these parasitic terms arise from drive crosstalk and
 off-resonant interactions and can significantly affect gate performance.
-| The overall strategy is therefore to characterize the error channels at the Hamiltonian level and compensate them through calibrated control pulses.
+The overall strategy is therefore to characterize the error channels at the Hamiltonian level and compensate them through calibrated control pulses.
 
-| In particular, an oscillating drive on the target qubit suppresses unwanted single-qubit rotations (IX, IY),
+In particular, an oscillating drive on the target qubit suppresses unwanted single-qubit rotations (IX, IY),
 while echo sequences mitigate over essentially ZZ noise.
 By measuring the effective Hamiltonian after each calibration step and iteratively tuning the amplitudes, phases,
 and timings of the added pulses, the undesired interactions are progressively removed,
 leaving the desired conditional ZX coupling as the dominant term.
-| Also, we can assume that the XI and YI terms (CR pulse driving the control qubit) are essentially small and can be neglected
+Also, we can assume that the XI and YI terms (CR pulse driving the control qubit) are essentially small and can be neglected
 since in general the two qubits are far in frequency then the CR pulse is far off-resonance with the control.
 
 The CR tune-up procedure consist in three different main steps but executing the full pipeline not required to obtain a
 functioning cross-resonance gate; a CR pulse already generates a conditional interaction that can be used as an
 entangling gate.
-| The purpose of the procedure is instead to improve performances by suppressing unwanted contributions.
+The purpose of the procedure is instead to improve performances by suppressing unwanted contributions.
 
 
 Hamiltonian tomography and gate-length calibration
 -------------------------------------
 
-| In the initial experiment, we sweep the duration of the CR pulse and measure the state of both the control and target qubits.
- This measurement is performed twice: first with the control qubit prepared in the :math:`|0\rangle` state, and then in the :math:`|1\rangle` state.
+In the initial experiment, we sweep the duration of the CR pulse and measure the state of both the control and target qubits.
+This measurement is performed twice: first with the control qubit prepared in the :math:`|0\rangle` state, and then in the :math:`|1\rangle` state.
 
 Parameters
 ^^^^^^^^^^
@@ -135,9 +135,9 @@ Post-processing
 ^^^^^^^^^^^^^^^
 
 
-| The target qubit's state probability is fitted simultaneously across all three axes for both control state preparations,
+The target qubit's state probability is fitted simultaneously across all three axes for both control state preparations,
 as the trajectories are physically constrained by the unitarity of the state norm.
-| Although theoretically exact, enforcing this constraint can make the fit highly sensitive to experimental errors and
+Although theoretically exact, enforcing this constraint can make the fit highly sensitive to experimental errors and
 data fluctuations.
 
 Once the two trajectories (for control prepared in :math:`\{0,1\}`) are fitted to obtain the oscillation frequencies
@@ -206,16 +206,16 @@ The post-processing is the same as for the CR-duration experiment.
 Phase calibration of CR and cancellation drives
 ----------------------------------
 
-| This step aligns both the CR and cancellation pulses along the correct axis (the x-axis).
-| The standard CR-duration experiment is repeated while sweeping the CR pulse phase. At each phase point, all Hamiltonian
+This step aligns both the CR and cancellation pulses along the correct axis (the x-axis).
+The standard CR-duration experiment is repeated while sweeping the CR pulse phase. At each phase point, all Hamiltonian
 terms are extracted as described above.
 
-| Using these measurements, the algorithm fits the IX, IY, ZX, and ZY terms with sinusoidal functions to determine the two
+Using these measurements, the algorithm fits the IX, IY, ZX, and ZY terms with sinusoidal functions to determine the two
 phases, :math:`\phi_0` and :math:`\phi_1`, that nullify the ZY and IY terms, respectively.
-| Because a full-period scan yields two possible phase values per term, the algorithm selects the value that maximise the
+Because a full-period scan yields two possible phase values per term, the algorithm selects the value that maximise the
 orthogonal component.
 
-| Once both phases are uniquely identified, the CR pulse phase is set to :math:`\phi_{CR}=\phi_0`, while the cancellation
+Once both phases are uniquely identified, the CR pulse phase is set to :math:`\phi_{CR}=\phi_0`, while the cancellation
 pulse phase is configured as :math:`\phi_{Canc}=\phi_0 - \phi_1`.
 
 
@@ -256,18 +256,20 @@ The expected output is the following:
 Amplitude calibration of the cancellation drive
 ----------------------------------
 
-| This final step is necessary to cancel out the remaining single-qubit drive terms affecting the target qubit
+This final step is necessary to cancel out the remaining single-qubit drive terms affecting the target qubit
 (IX and IY).
-| Having determined the phases for both the CR and cancellation pulses, this protocol sweeps the cancellation
+Having determined the phases for both the CR and cancellation pulses, this protocol sweeps the cancellation
 pulse amplitude over varying CR durations. At each step, the protocol extracts the coefficients of all
 Hamiltonian terms.
-| Unlike the phase tuning protocol, this experiment applies a linear fit exclusively to the measured
+
+Unlike the phase tuning protocol, this experiment applies a linear fit exclusively to the measured
 IX and IY terms to determine the two zero-interaction amplitudes.
 
-| As described in :cite:p:`CR_IBM`, the two nulling amplitudes for IX and IY should coincide, , since the cancellation pulse
+As described in :cite:p:`CR_IBM`, the two nulling amplitudes for IX and IY should coincide, , since the cancellation pulse
 phase is aligned with the expected rotation axis.
-| If they diverge, iterating the experiment with adjusted :math:`\phi_{CR}` and :math:`\phi_{Canc}` phases may be required.
-| By default, however, the protocol simply selects the amplitude :math:`a_{Canc}` that nulls the IY term;
+If they diverge, iterating the experiment with adjusted :math:`\phi_{CR}` and :math:`\phi_{Canc}` phases may be required.
+
+By default, however, the protocol simply selects the amplitude :math:`a_{Canc}` that nulls the IY term;
 while this does not entirely eliminate all parasitic rotations, it successfully cancels out the rotations
 orthogonal to the primary ZX interaction.
 
