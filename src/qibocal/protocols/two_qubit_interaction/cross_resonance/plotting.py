@@ -232,8 +232,8 @@ def cancellation_calibration_plot(
             x_title = "amplitude [a.u.]"
             tunable_params = fit.cancellation_pulse_amplitudes[target]
             plotting_line = {
-                HamiltonianTerm.IX: "ampl_ix",
-                HamiltonianTerm.IY: "ampl_iy",
+                HamiltonianTerm.IX: ["ampl_ix", "red"],
+                HamiltonianTerm.IY: ["ampl_iy", "blue"],
             }
             plotting_terms = list(plotting_line.keys())
             fig_title = "Ham terms vs Cancellation pulse " + x_title
@@ -248,8 +248,8 @@ def cancellation_calibration_plot(
                 - fit.cancellation_pulse_phases[target]["target"]
             )
             plotting_line = {
-                HamiltonianTerm.ZY: "phi0",
-                HamiltonianTerm.IY: "phi1",
+                HamiltonianTerm.ZY: ["phi0", "red"],
+                HamiltonianTerm.IY: ["phi1", "blue"],
             }
             plotting_terms = list(plotting_line.keys()) + [
                 HamiltonianTerm.IX,
@@ -289,16 +289,16 @@ def cancellation_calibration_plot(
             )
 
             if target in fit.fitted_parameters and t in fit.fitted_parameters[target]:
-                amp_range = np.linspace(
+                sweep_range = np.linspace(
                     min(exp_sweeper),
                     max(exp_sweeper),
                     2 * len(exp_sweeper) if len(exp_sweeper) >= 100 else 200,
                 )
-                params = fit.fitted_parameters[target][t]
+                fit_y = fit_func(sweep_range, **fit.fitted_parameters[target][t])
                 fig.add_trace(
                     go.Scatter(
-                        x=amp_range,
-                        y=fit_func(amp_range, **params),
+                        x=sweep_range,
+                        y=fit_y,
                         name=f"{t.name} Fit",
                         mode="lines",
                     ),
@@ -307,11 +307,22 @@ def cancellation_calibration_plot(
                 )
 
                 if t in plotting_line:
-                    params_name = plotting_line[t]
-                    fig.add_vline(
-                        x=tunable_params[params_name],
-                        name=f"{params_name}",
-                        line_dash="dash",
+                    params_name = plotting_line[t][0]
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[tunable_params[params_name]] * 2,
+                            y=[
+                                min(fit_y) - 0.1 * (max(fit_y) - min(fit_y)),
+                                max(fit_y) + 0.1 * (max(fit_y) - min(fit_y)),
+                            ],
+                            mode="lines",
+                            line=go.scatter.Line(
+                                color=plotting_line[t][1], width=3, dash="dash"
+                            ),
+                            name=f"{params_name}",
+                            showlegend=True,
+                            legendgroup=f"{params_name}",
+                        ),
                         row=plot_row,
                         col=1,
                     )
