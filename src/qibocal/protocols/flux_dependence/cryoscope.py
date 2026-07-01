@@ -15,10 +15,12 @@ from qibolab import (
     AveragingMode,
     BaseEnvelope,
     Delay,
+    Parameter,
     Platform,
     Pulse,
     PulseId,
     PulseSequence,
+    Sweeper,
     Waveform,
 )
 
@@ -120,10 +122,9 @@ CryoscopeType = np.dtype([("duration", float), ("prob_1", np.float64)])
 def generate_sequences(
     platform: Platform,
     qubit: QubitId,
-    duration: float,
     params: CryoscopeParameters,
-) -> tuple[PulseSequence, PulseSequence, PulseId, PulseId]:
-    """Compute sequences at fixed duration of flux pulse for <X> and <Y>"""
+) -> tuple[PulseSequence, PulseSequence, PulseId, PulseId, Pulse]:
+    """Compute sequences for <X> and <Y> with a flux pulse ready for duration sweep."""
     native = platform.natives.single_qubit[qubit]
 
     drive_channel, ry90 = native.R(theta=np.pi / 2, phi=np.pi / 2)[0]
@@ -136,7 +137,7 @@ def generate_sequences(
     assert flux_channel is not None
 
     flux_pulse = Pulse(
-        duration=duration + params.padding,
+        duration=params.padding,
         amplitude=params.flux_pulse_amplitude,
         envelope=PaddedRectangular(params.padding),
     )
@@ -177,7 +178,7 @@ def generate_sequences(
             (ro_channel, ro_pulse_y),
         ]
     )
-    return sequence_x, sequence_y, ro_pulse_x.id, ro_pulse_y.id
+    return sequence_x, sequence_y, ro_pulse_x.id, ro_pulse_y.id, flux_pulse
 
 
 @dataclass
@@ -241,37 +242,34 @@ def _acquisition(
             platform.config(platform.qubits[qubit].flux).filters
         )
 
-    sequences_x = []
-    sequences_y = []
-    ro_ids_x = []
-    ro_ids_y = []
-
     duration_range = np.arange(
         params.duration_min, params.duration_max, params.duration_step
     )
 
-    for duration in duration_range:
-        sequence_x = PulseSequence()
-        sequence_y = PulseSequence()
-        duration_ro_ids_x = {}
-        duration_ro_ids_y = {}
+    sequence_x = PulseSequence()
+    sequence_y = PulseSequence()
+    ro_ids_x = {}
+    ro_ids_y = {}
+    flux_pulses = []
+    for qubit in targets:
+        (
+            qubit_sequence_x,
+            qubit_sequence_y,
+            ro_pulse_id_x,
+            ro_pulse_id_y,
+            flux_pulse,
+        ) = generate_sequences(platform, qubit, params)
+        sequence_x += qubit_sequence_x
+        sequence_y += qubit_sequence_y
+        flux_pulses.append(flux_pulse)
+        ro_ids_x[qubit] = ro_pulse_id_x
+        ro_ids_y[qubit] = ro_pulse_id_y
 
-        for qubit in targets:
-            (
-                qubit_sequence_x,
-                qubit_sequence_y,
-                ro_pulse_id_x,
-                ro_pulse_id_y,
-            ) = generate_sequences(platform, qubit, duration, params)
-            sequence_x += qubit_sequence_x
-            sequence_y += qubit_sequence_y
-            duration_ro_ids_x[qubit] = ro_pulse_id_x
-            duration_ro_ids_y[qubit] = ro_pulse_id_y
-
-        sequences_x.append(sequence_x)
-        sequences_y.append(sequence_y)
-        ro_ids_x.append(duration_ro_ids_x)
-        ro_ids_y.append(duration_ro_ids_y)
+    sweeper = Sweeper(
+        parameter=Parameter.duration,
+        values=duration_range + params.padding,
+        pulses=flux_pulses,
+    )
 
     options = dict(
         nshots=params.nshots,
@@ -279,19 +277,18 @@ def _acquisition(
         averaging_mode=AveragingMode.CYCLIC,
     )
 
-    results = platform.execute(sequences_x + sequences_y, **options)
+    results = platform.execute([sequence_x, sequence_y], [[sweeper]], **options)
 
     for measure, ro_ids in zip(["MX", "MY"], [ro_ids_x, ro_ids_y]):
-        for duration, duration_ro_ids in zip(duration_range, ro_ids):
-            for qubit in targets:
-                data.register_qubit(
-                    CryoscopeType,
-                    (qubit, measure),
-                    dict(
-                        duration=np.array([duration]),
-                        prob_1=results[duration_ro_ids[qubit]],
-                    ),
-                )
+        for qubit in targets:
+            data.register_qubit(
+                CryoscopeType,
+                (qubit, measure),
+                dict(
+                    duration=duration_range,
+                    prob_1=results[ro_ids[qubit]],
+                ),
+            )
 
     return data
 
