@@ -142,7 +142,7 @@ def _fit(data: RabiLengthSignalData) -> RabiResults:
                 x_limits=(x_min, x_max),
                 y_limits=(y_min, y_max),
             )
-            durations[qubit] = pi_pulse_parameter
+            durations[qubit] = [pi_pulse_parameter]
             fitted_parameters[qubit] = popt
 
         except Exception as e:
@@ -151,7 +151,7 @@ def _fit(data: RabiLengthSignalData) -> RabiResults:
     return RabiResults(
         drive_lines=data.drive_lines,
         length=durations,
-        amplitude=data.amplitudes,
+        amplitude={k: [v] for k, v in data.amplitudes.items()},
         fitted_parameters=fitted_parameters,
         rx90=data.rx90,
     )

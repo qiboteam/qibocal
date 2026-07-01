@@ -49,7 +49,7 @@ def update_rabi_parameters(
         if isinstance(results, RabiFreqResults):
             update.drive_frequency(results.frequency[target], platform, target)
     else:
-        cross_rabi_freq = results.length[target] * results.amplitude[target]
+        cross_rabi_freq = results.length[target][0] * results.amplitude[target][0]
         _, rx_pulse = platform.parameters.native_gates.single_qubit[target].RX()[0]
         rx_rabi_freq = rx_pulse.amplitude * rx_pulse.duration
 
@@ -185,7 +185,10 @@ def plot_signal(
             table_dict(
                 qubit,
                 [f"{pulse_name} amplitude [a.u.]", f"{pulse_name} length [ns]"],
-                [np.round(fit.amplitude[qubit], 3), np.round(fit.length[qubit], 3)],
+                [
+                    np.round(fit.amplitude[qubit][0], 3),
+                    np.round(fit.length[qubit][0], 3),
+                ],
             )
         )
 

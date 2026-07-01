@@ -202,7 +202,7 @@ def _fit(data: RabiLengthFreqClassificationData) -> RabiFreqResults:
     return RabiFreqResults(
         drive_lines=data.drive_lines,
         length=fitted_durations,
-        amplitude=data.amplitudes,
+        amplitude={k: [v] for k, v in data.amplitudes.items()},
         fitted_parameters=fitted_parameters,
         frequency=fitted_frequencies,
         chi2=chi2,

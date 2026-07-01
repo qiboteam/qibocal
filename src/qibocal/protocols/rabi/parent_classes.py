@@ -142,9 +142,9 @@ class RabiResults(Results):
 
     drive_lines: dict[QubitId, QubitId]
     """List of drive line used for each qubit."""
-    length: dict[QubitId, int | list[float]]
+    length: dict[QubitId, list[float]]
     """Pi pulse duration for each qubit."""
-    amplitude: dict[QubitId, float | list[float]]
+    amplitude: dict[QubitId, list[float]]
     """Pi pulse amplitude. Same for all qubits."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
@@ -157,7 +157,7 @@ class RabiResults(Results):
 class RabiFreqResults(RabiResults):
     """Results container for outputs produced by Rabi protocols."""
 
-    frequency: dict[QubitId, float | list[float]] = field(default_factory=dict)
+    frequency: dict[QubitId, float] = field(default_factory=dict)
     """Drive frequency for each qubit."""
 
 
