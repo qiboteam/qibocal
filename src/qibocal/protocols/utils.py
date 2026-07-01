@@ -1091,7 +1091,7 @@ def quinn_fernandes_algorithm(
     axis: int = -1,
     speedup_flag: bool = False,
     iterations: int = 100,
-    tol: int = 1e-8,
+    tol: float = 1e-8,
 ) -> np.floating[Any]:
     """This is a custom implementation of the Quinn-Fernandes algorithm.
     We compute the signal sampling rate from :param:x, hence this function assumes x to be

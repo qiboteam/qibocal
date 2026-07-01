@@ -331,7 +331,7 @@ def sequence_amplitude(
     pulse_duration: float | None,
     pulse_ampl: float | None,
     rx90: bool,
-) -> tuple[PulseSequence, dict[QubitId, PulseLike], dict[QubitId, float], dict]:
+) -> tuple[PulseSequence, list[PulseLike], dict[QubitId, float], dict]:
     """Generate Rabi pulse sequences for amplitude sweeping on multiple qubits and generic drive lines scheme."""
 
     sequence = PulseSequence()
@@ -353,7 +353,7 @@ def sequence_amplitude(
         updates |= single_q_update
 
         # aligning readout pulses to single qubit sequence
-        single_q_seq |= PulseSequence(platform.natives.single_qubit[q].MZ()[0])
+        single_q_seq |= PulseSequence(platform.natives.single_qubit[q].MZ())
 
         # adding the single qubit sequence to the complete one
         sequence += single_q_seq

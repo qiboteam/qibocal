@@ -73,12 +73,12 @@ def _acquisition(
         if q != d:
             # used when q is being driven with another line (cross rabi)
             cross_channel = platform.qubits[d].drive
-            qubit12_freq = platform.calibration.configs[qd12_channel].frequency
+            qubit12_freq = platform.parameters.configs[qd12_channel].frequency
             updates |= {cross_channel: {"frequency": qubit12_freq}}
             qd12_channel = cross_channel
 
         if params.pulse_length is not None:
-            qd12_pulse = replace(qd_pulse, duration=params.pulse_length)
+            qd12_pulse = replace(qd12_pulse, duration=params.pulse_length)
 
         durations[q] = qd12_pulse.duration
         qd_pulses[q] = qd12_pulse
@@ -103,7 +103,11 @@ def _acquisition(
 
     assert not params.rx90, "Rabi ef available only for RX pulses."
 
-    data = RabiEFSignalData(drive_lines=drive_lines, durations=durations, rx90=False)
+    data = RabiEFSignalData(
+        drive_lines={t: d for t, d in zip(targets, drive_lines)},
+        durations=durations,
+        rx90=False,
+    )
 
     # for signal measurement we have to change readout
     updates |= {
