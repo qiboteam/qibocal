@@ -67,6 +67,10 @@ leaving the desired conditional ZX coupling as the dominant term.
 Also, we can assume that the XI and YI terms (CR pulse driving the control qubit) are essentially small and can be neglected
 since in general the two qubits are far in frequency then the CR pulse is far off-resonance with the control.
 
+Here there is a schematic representation of the two pulse sequences, with and without echo:
+
+.. image:: CR_sequences.png
+
 The CR tune-up procedure consist in three different main steps but executing the full pipeline not required to obtain a
 functioning cross-resonance gate; a CR pulse already generates a conditional interaction that can be used as an
 entangling gate.
