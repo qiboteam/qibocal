@@ -152,7 +152,7 @@ class RabiResults(Results):
     """Pi pulse duration for each qubit."""
     amplitude: dict[QubitId, float | list[float]]
     """Pi pulse amplitude. Same for all qubits."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
+    fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
     rx90: bool
     """Pi or Pi_half calibration"""
