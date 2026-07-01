@@ -282,7 +282,7 @@ def cancellation_calibration_plot(
                     name=f"{t.name}",
                     showlegend=True,
                     legendgroup="Probability",
-                    line=go.scatter.Line(dash="dot"),
+                    mode="markers",
                 ),
                 row=plot_row,
                 col=1,
