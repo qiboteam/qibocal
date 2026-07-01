@@ -29,10 +29,10 @@ Schrieffer-Wolff transformation we can obtain the effective Hamiltonian:
 
 If we analyze each single component of the equation above we see:
 
-  * two free-qubit terms (:math:`\propto \sigma^z_q`) proportional to the effective qubit frequencies :math:`\tilde(\omega)_q`
+  * two free-qubit terms (:math:`\propto \sigma^z_q`) proportional to the effective qubit frequencies :math:`\tilde{\omega}_q`
   * ZZ interaction (:math:`\propto \sigma^z_1\sigma^z_2`) with coupling :math:`\eta` which corresponds to a conditional qubit's frequency shift.
   * drive terms for both qubits (:math:`\propto \sigma^x_q`) with :math:`\nu` corresponding to the quantum crosstalk factor; quantum crosstalk parametrizes the effective coupling between the qubit and the non-directly coupled line.
-  * ZX interaction :math:`\sigma_1^z\sigma^x_2` with coupling :\math:`mu` (cross-resonance factor). In particular This term represents a conditional extra rotation along x-axis for qubit-2 depending on the state of qubit-1.
+  * ZX interaction :math:`\sigma_1^z\sigma^x_2` with coupling :math:`\mu` (cross-resonance factor). In particular This term represents a conditional extra rotation along x-axis for qubit-2 depending on the state of qubit-1.
 
 The whole idea of the Cross Resonance gate is then to exploit ZX-term by driving qubit-1 at qubit-2 frequency;
 in this scheme it is easy to see that qubit-1 behaves as the control qubit while qubit-2 is the target.
@@ -45,17 +45,17 @@ It is easy to prove that the CNOT gate can be built using two single-qubits gate
     \text{CNOT} = \text{R}_\text{ZX}(-\pi/2) \text{R}_\text{IX}(\pi/2) \text{R}_\text{ZI}(\pi/2)
 
 Hence it is necessary to tune the amplitude and the duration of the CR drive pulse to calibrate a
-:math:`RZX(-pi/2)` rotation.
+:math:`RZX(-\pi/2)` rotation.
 
 | In Qibocal we provide protocols to calibrate CR pulses based on :cite:p:`CR_IBM`.
 | The calibration procedure is based on characterizing all terms of the full effective Hamiltonian via a tomography-style experiment:
 
 .. math::
 
-  2H_{eff}/\hbar = \Omega_{ZX}\text{ZX} + \Omega_{ZY}\text{ZY} + \Omega_{IX}\text{IX} + \Omega_{IY}\text{IY} + \Omega_{XI}\text{XI} + \Omega_{YI}\text{YI} + \varepsilon\text{ZZ}
+  2H_{\text{eff}}/\hbar = \Omega_{ZX}\text{ZX} + \Omega_{ZY}\text{ZY} + \Omega_{IX}\text{IX} + \Omega_{IY}\text{IY} + \Omega_{XI}\text{XI} + \Omega_{YI}\text{YI} + \varepsilon\text{ZZ}
 
 | By measuring the target-qubit response for different states of the control qubit, the strengths of both the desired
-interaction and the accompanying unwanted terms are extracte; these parasitic terms arise from drive crosstalk and
+interaction and the accompanying unwanted terms are extracted; these parasitic terms arise from drive crosstalk and
 off-resonant interactions and can significantly affect gate performance.
 | The overall strategy is therefore to characterize the error channels at the Hamiltonian level and compensate them through calibrated control pulses.
 
@@ -64,7 +64,7 @@ while echo sequences mitigate over essentially ZZ noise.
 By measuring the effective Hamiltonian after each calibration step and iteratively tuning the amplitudes, phases,
 and timings of the added pulses, the undesired interactions are progressively removed,
 leaving the desired conditional ZX coupling as the dominant term.
-| Also, we can assume that the XI and IY terms (CR pulse driving the control qubit) are essentially small and can be neglected
+| Also, we can assume that the XI and YI terms (CR pulse driving the control qubit) are essentially small and can be neglected
 since in general the two qubits are far in frequency then the CR pulse is far off-resonance with the control.
 
 The CR tune-up procedure consist in three different main steps but executing the full pipeline not required to obtain a
@@ -156,7 +156,7 @@ Finally the CR gate optimal duration is estimated by minimizing the Bloch vector
 
 .. math::
 
-  |\vec{R}| = \frac{1}{2}\sqrt((\langle X \rangle_0 + \langle X \rangle_1)^2 + (\langle Y \rangle_0 + \langle Y \rangle_1)^2 + (\langle Z \rangle_0 + \langle Z \rangle_1)^2)
+  |\vec{R}| = \frac{1}{2}\sqrt{(\langle X \rangle_0 + \langle X \rangle_1)^2 + (\langle Y \rangle_0 + \langle Y \rangle_1)^2 + (\langle Z \rangle_0 + \langle Z \rangle_1)^2}
 
 This quantity represents the geometric overlap between the two trajectories on the Bloch sphere;
 minimizing it maximizes the distance between them.
@@ -223,7 +223,7 @@ Parameters
 ^^^^^^^^^^
 
 
-.. autoclass:: qibocal.protocols.two_qubit_interaction.cross_resonance.hamiltonian_tomography.length.HamiltonianTomographyCRLengthParameters
+.. autoclass:: qibocal.protocols.two_qubit_interaction.cross_resonance.cancellation_phase.HamiltonianTomographyCANCPhaseParameters
   :noindex:
 
 Example
@@ -253,7 +253,7 @@ The expected output is the following:
 .. image:: cr_phase_tuning.png
 
 
-Amplitude calibration cancellation drive
+Amplitude calibration of the cancellation drive
 ----------------------------------
 
 | This final step is necessary to cancel out the remaining single-qubit drive terms affecting the target qubit
@@ -264,11 +264,21 @@ Hamiltonian terms.
 | Unlike the phase tuning protocol, this experiment applies a linear fit exclusively to the measured
 IX and IY terms to determine the two zero-interaction amplitudes.
 
-| As described in :cite:p:`CR_IBM`, the two nulling amplitudes for IX and IY should theoretically coincide.
+| As described in :cite:p:`CR_IBM`, the two nulling amplitudes for IX and IY should coincide, , since the cancellation pulse
+phase is aligned with the expected rotation axis.
 | If they diverge, iterating the experiment with adjusted :math:`\phi_{CR}` and :math:`\phi_{Canc}` phases may be required.
-| By default, however, the protocol simply selects the amplitude :math:`a_{Canc}` that nulls the $IY$ term;
+| By default, however, the protocol simply selects the amplitude :math:`a_{Canc}` that nulls the IY term;
 while this does not entirely eliminate all parasitic rotations, it successfully cancels out the rotations
 orthogonal to the primary ZX interaction.
+
+Parameters
+^^^^^^^^^^
+
+.. autoclass:: qibocal.protocols.two_qubit_interaction.cross_resonance.cancellation_amplitude.HamiltonianTomographyCANCAmplParameters
+  :noindex:
+
+Example
+^^^^^^^
 
 
 A possible runcard to launch the experiment could be the following:
