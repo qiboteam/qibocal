@@ -4,12 +4,6 @@ from typing import Any
 from qibocal.auto.operation import Data, Parameters, QubitId, Results
 
 
-class InputError(Exception):
-    """Raised when Rabi length protocol input validation fails."""
-
-    pass
-
-
 @dataclass
 class RabiLengthParameters(Parameters):
     """RabiLength experiments runcard inputs."""
@@ -47,7 +41,7 @@ class RabiLengthParameters(Parameters):
 
     def __post_init__(self):
         if any([d is None for d in self.duration_range]):
-            raise InputError("Valid pulse duration range not inserted.")
+            raise ValueError("Valid pulse duration range not inserted.")
 
 
 @dataclass
@@ -81,7 +75,7 @@ class RabiAmplitudeParameters(Parameters):
 
     def __post_init__(self):
         if any([d is None for d in self.amplitude_range]):
-            raise InputError("Valid pulse amplitude range not inserted.")
+            raise ValueError("Valid pulse amplitude range not inserted.")
 
 
 @dataclass
@@ -110,7 +104,7 @@ class RabiLengthFrequencyParameters(RabiLengthParameters):
         super().__post_init__()
 
         if any([f is None for f in self.frequency_range]):
-            raise InputError("Valid frequency offset range not inserted.")
+            raise ValueError("Valid frequency offset range not inserted.")
 
 
 @dataclass
@@ -139,7 +133,7 @@ class RabiAmplitudeFrequencyParameters(RabiAmplitudeParameters):
         super().__post_init__()
 
         if any([f is None for f in self.frequency_range]):
-            raise InputError("Valid frequency offset range not inserted.")
+            raise ValueError("Valid frequency offset range not inserted.")
 
 
 @dataclass

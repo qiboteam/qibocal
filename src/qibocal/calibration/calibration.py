@@ -215,8 +215,10 @@ class Calibration(Model):
                 matrix=ndarray_serialize(np.eye(self.nqubits))
             )
         self.flux_crosstalk_matrix.qubits = self.qubits
-        if self.flux_crosstalk_matrix.matrix.shape[0] != self.nqubits:
-            raise ValueError("Drive crosstalk matrix must have as many rows as qubits.")
+        if self.flux_crosstalk_matrix.matrix.shape != (self.nqubits, self.nqubits):
+            raise ValueError(
+                "Drive crosstalk matrix must have shape (nqubits, nqubits)."
+            )
 
         if (
             self.microwave_crosstalk_matrix is None
@@ -225,8 +227,10 @@ class Calibration(Model):
             self.microwave_crosstalk_matrix = Matrix(
                 matrix=ndarray_serialize(np.eye(self.nqubits))
             )
-        if self.microwave_crosstalk_matrix.matrix.shape[0] != self.nqubits:
-            raise ValueError("Drive crosstalk matrix must have as many rows as qubits.")
+        if self.microwave_crosstalk_matrix.matrix.shape != (self.nqubits, self.nqubits):
+            raise ValueError(
+                "Microwave crosstalk matrix must have shape (nqubits, nqubits)."
+            )
         self.microwave_crosstalk_matrix.qubits = self.qubits
 
         return self

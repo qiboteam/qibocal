@@ -5,8 +5,6 @@ from qibocal.auto.operation import QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.update import replace
 
-from .parent_classes import InputError
-
 
 def check_correct_drive_lines_setup(
     targets: list[QubitId], input_drivelines: list[QubitId] | None
@@ -15,7 +13,7 @@ def check_correct_drive_lines_setup(
 
     drive_lines = input_drivelines if input_drivelines is not None else targets
     if len(drive_lines) != len(targets):
-        raise InputError(
+        raise ValueError(
             "Each qubit has to be assigned to a drive line; "
             "If inserted, drive_lines must have the same length of targets list."
         )

@@ -105,7 +105,9 @@ def _acquisition(
         )
 
     data = RabiAmplitudeFreqClassificationData(
-        drive_lines=drive_lines, durations=durations, rx90=params.rx90
+        drive_lines={t: d for t, d in zip(targets, drive_lines)},
+        durations=durations,
+        rx90=params.rx90,
     )
 
     results = platform.execute(
