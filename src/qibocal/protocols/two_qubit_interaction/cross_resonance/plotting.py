@@ -147,6 +147,9 @@ def tomography_cr_plot(
                     legendgroup="Bloch vector |R(t)|",
                     showlegend=True,
                     mode="markers",
+                    marker=dict(
+                        color="green",
+                    ),
                 ),
                 go.Scatter(
                     x=pair_data.x,
@@ -155,6 +158,9 @@ def tomography_cr_plot(
                     legendgroup="Bloch vector |R(t)|",
                     showlegend=True,
                     mode="markers",
+                    marker=dict(
+                        color="green",
+                    ),
                 ),
             ],
             rows=[4, 4],
