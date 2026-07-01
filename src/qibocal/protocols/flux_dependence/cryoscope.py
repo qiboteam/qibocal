@@ -441,7 +441,7 @@ def _fit(data: CryoscopeData) -> CryoscopeResults:
             # toeplitz_matrix @ taps == lfilter(taps, [1], iir_correction)
             toeplitz_matrix = scipy.linalg.toeplitz(iir_correction, np.zeros(taps))
             # solve: toeplitz_matrix @ fir == baseline
-            fir, _, _, _ = scipy.linalg.lstsq(
+            fir, _, _, _ = np.linalg.lstsq(
                 toeplitz_matrix, np.full(len(iir_correction), baseline)
             )
             fir_taps[qubit] = fir.tolist()
