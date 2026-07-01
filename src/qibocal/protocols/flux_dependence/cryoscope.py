@@ -1,6 +1,7 @@
 """Cryoscope experiment."""
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -12,12 +13,13 @@ from plotly.subplots import make_subplots
 from qibolab import (
     AcquisitionType,
     AveragingMode,
+    BaseEnvelope,
     Delay,
     Platform,
     Pulse,
     PulseId,
     PulseSequence,
-    Rectangular,
+    Waveform,
 )
 
 from qibocal.auto.operation import Data, Parameters, Protocol, QubitId, Results
@@ -26,6 +28,20 @@ from qibocal.protocols.ramsey.processing import fitting
 from qibocal.protocols.utils import table_dict, table_html
 
 __all__ = ["cryoscope", "CryoscopeData", "CryoscopeResults"]
+
+
+class PaddedRectangular(BaseEnvelope):
+    """Rectangular envelope with leading zero padding."""
+
+    kind: Literal["padded_rectangular"] = "padded_rectangular"
+    padding: int
+    """Number of leading zero samples."""
+
+    def i(self, samples: int) -> Waveform:
+        """Return a rectangular envelope with `padding` leading zeros."""
+        if samples < self.padding:
+            raise ValueError(f"samples ({samples}) must be >= padding ({self.padding})")
+        return np.concat([np.zeros(self.padding), np.ones(samples - self.padding)])
 
 
 @dataclass
@@ -45,6 +61,15 @@ class CryoscopeParameters(Parameters):
     iir: bool = False
     """Whether an IIR filter should be determined.
     If False only an FIR filter is determined.
+    """
+    padding: int = 0
+    """Leading zero samples in the flux pulse.
+
+    Padding is fixed during the duration sweep and added before the pulse. The waveform
+    consists of `padding` zeros followed by `duration` rectangular samples, for a total
+    length of `padding + duration`.
+
+    Useful when hardware enforces a minimum pulse length.
     """
 
 
@@ -111,9 +136,9 @@ def generate_sequences(
     assert flux_channel is not None
 
     flux_pulse = Pulse(
-        duration=duration,
+        duration=duration + params.padding,
         amplitude=params.flux_pulse_amplitude,
-        envelope=Rectangular(),
+        envelope=PaddedRectangular(params.padding),
     )
 
     # create the sequences
