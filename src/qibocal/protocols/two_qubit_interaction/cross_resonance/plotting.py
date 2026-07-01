@@ -142,16 +142,19 @@ def tomography_cr_plot(
             [
                 go.Scatter(
                     x=pair_data.x,
-                    y=y[0],
-                    name=f"{y[1]} Bloch vector |R(t)|",
-                    legendgroup=f"{y[1]} Bloch vector |R(t)|",
+                    y=y,
+                    name=f"{label} Bloch vector |R(t)|",
+                    legendgroup=f"{label} Bloch vector |R(t)|",
                     showlegend=True,
                     mode="markers",
                     marker=dict(
                         color="green",
                     ),
                 )
-                for y in [(bloch_vect_targ, "Target"), (bloch_vect_ctrl, "Control")]
+                for y, label in [
+                    (bloch_vect_targ, "Target"),
+                    (bloch_vect_ctrl, "Control"),
+                ]
             ],
             rows=[4, 4],
             cols=[1, 2],
