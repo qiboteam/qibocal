@@ -2,48 +2,47 @@ from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
-from qibolab import AcquisitionType, AveragingMode, Parameter, Sweeper
+from qibolab import (
+    AcquisitionType,
+    AveragingMode,
+    ParallelSweepers,
+    Parameter,
+    Sweeper,
+)
 
-from qibocal import update
-from qibocal.auto.operation import Data, Protocol, QubitId
+from qibocal.auto.operation import Protocol, QubitId
 from qibocal.calibration import CalibrationPlatform
 from qibocal.config import log
-from qibocal.result import probability
 
 from ..utils import chi2_reduced
-from . import utils
-from .amplitude_signal import RabiAmplitudeSignalParameters, RabiAmplitudeSignalResults
+from .acquisition import check_correct_drive_lines_setup, sequence_amplitude
+from .parent_classes import (
+    RabiAmplitudeParameters,
+    RabiData,
+    RabiResults,
+)
+from .processing import (
+    fit_amplitude_function,
+    plot_probabilities,
+    rabi_amplitude_function,
+    rabi_initial_guess,
+    update_rabi_parameters,
+)
 
 __all__ = ["rabi_amplitude"]
 
 
-@dataclass
-class RabiAmplitudeParameters(RabiAmplitudeSignalParameters):
-    """RabiAmplitude runcard inputs."""
-
-
-@dataclass
-class RabiAmplitudeResults(RabiAmplitudeSignalResults):
-    """RabiAmplitude outputs."""
-
-    chi2: dict[QubitId, list[float]] = field(default_factory=dict)
-
-
-RabiAmpType = np.dtype(
+RabiAmpClassType = np.dtype(
     [("amp", np.float64), ("prob", np.float64), ("error", np.float64)]
 )
 """Custom dtype for rabi amplitude."""
 
 
 @dataclass
-class RabiAmplitudeData(Data):
+class RabiAmplitudeClassificationData(RabiData):
     """RabiAmplitude data acquisition."""
 
-    rx90: bool
-    """Pi or Pi_half calibration"""
-    durations: dict[QubitId, float] = field(default_factory=dict)
-    """Pulse durations provided by the user."""
-    data: dict[QubitId, npt.NDArray[RabiAmpType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[RabiAmpClassType]] = field(default_factory=dict)
     """Raw data acquired."""
 
 
@@ -51,49 +50,65 @@ def _acquisition(
     params: RabiAmplitudeParameters,
     platform: CalibrationPlatform,
     targets: list[QubitId],
-) -> RabiAmplitudeData:
+) -> RabiAmplitudeClassificationData:
     r"""
     Data acquisition for Rabi experiment sweeping amplitude.
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse amplitude
     to find the drive pulse amplitude that creates a rotation of a desired angle.
     """
 
-    sequence, qd_pulses, ro_pulses, durations = utils.sequence_amplitude(
-        targets, params, platform, params.rx90
+    drive_lines = check_correct_drive_lines_setup(
+        targets=targets, input_drivelines=params.drive_lines
+    )
+
+    # create a sequence of pulses for the experiment
+    sequence, qd_pulses, durations, updates = sequence_amplitude(
+        targets=targets,
+        drive_lines=drive_lines,
+        platform=platform,
+        pulse_duration=params.pulse_length,
+        pulse_ampl=None,  # in this case we are sweeping on amplitude
+        rx90=params.rx90,
     )
 
     sweeper = Sweeper(
         parameter=Parameter.amplitude,
-        range=(params.min_amp, params.max_amp, params.step_amp),
-        pulses=[qd_pulses[qubit] for qubit in targets],
+        range=params.amplitude_range,
+        pulses=qd_pulses,
     )
 
-    data = RabiAmplitudeData(durations=durations, rx90=params.rx90)
+    data = RabiAmplitudeClassificationData(
+        drive_lines={t: d for t, d in zip(targets, drive_lines)},
+        rx90=params.rx90,
+        durations=durations,
+    )
 
     # sweep the parameter
     results = platform.execute(
         [sequence],
-        [[sweeper]],
+        [ParallelSweepers([sweeper])],
+        updates=[updates],
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
         acquisition_type=AcquisitionType.DISCRIMINATION,
-        averaging_mode=AveragingMode.SINGLESHOT,
+        averaging_mode=AveragingMode.CYCLIC,
     )
     for qubit in targets:
-        prob = probability(results[ro_pulses[qubit].id], state=1)
+        ro_pulse = list(sequence.channel(platform.qubits[qubit].acquisition))[-1]
+        prob = results[ro_pulse.id]
         data.register_qubit(
-            RabiAmpType,
+            RabiAmpClassType,
             (qubit),
             dict(
                 amp=sweeper.values,
-                prob=prob.tolist(),
+                prob=prob,
                 error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
             ),
         )
     return data
 
 
-def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
+def _fit(data: RabiAmplitudeClassificationData) -> RabiResults:
     """Post-processing for RabiAmplitude."""
     qubits = data.qubits
 
@@ -108,9 +123,9 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         x = qubit_data.amp
         y = qubit_data.prob
 
-        pguess = utils.rabi_initial_guess(x, y, "amp", signal=False)
+        pguess = rabi_initial_guess(x, y, "amp", signal=False)
         try:
-            popt, perr, pi_pulse_parameter = utils.fit_amplitude_function(
+            popt, perr, pi_pulse_parameter = fit_amplitude_function(
                 x,
                 y,
                 pguess,
@@ -123,7 +138,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
             chi2[qubit] = [
                 chi2_reduced(
                     y,
-                    utils.rabi_amplitude_function(x, *popt),
+                    rabi_amplitude_function(x, *popt),
                     qubit_data.error,
                 ),
                 np.sqrt(2 / len(y)),
@@ -131,22 +146,24 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
 
         except Exception as e:
             log.warning(f"Rabi fit failed for qubit {qubit} due to {e}.")
-    return RabiAmplitudeResults(
-        pi_pulse_amplitudes, durations, fitted_parameters, data.rx90, chi2
+    return RabiResults(
+        drive_lines=data.drive_lines,
+        length=durations,
+        amplitude=pi_pulse_amplitudes,
+        fitted_parameters=fitted_parameters,
+        rx90=data.rx90,
+        chi2=chi2,
     )
 
 
-def _plot(data: RabiAmplitudeData, target: QubitId, fit: RabiAmplitudeResults = None):
-    """Plotting function for RabiAmplitude."""
-    return utils.plot_probabilities(data, target, fit, data.rx90)
-
-
-def _update(
-    results: RabiAmplitudeResults, platform: CalibrationPlatform, target: QubitId
+def _plot(
+    data: RabiAmplitudeClassificationData,
+    target: QubitId,
+    fit: RabiResults | None = None,
 ):
-    update.drive_amplitude(results.amplitude[target], results.rx90, platform, target)
-    update.drive_duration(results.length[target], results.rx90, platform, target)
+    """Plotting function for RabiAmplitude."""
+    return plot_probabilities(data, target, fit, data.rx90)
 
 
-rabi_amplitude = Protocol(_acquisition, _fit, _plot, _update)
+rabi_amplitude = Protocol(_acquisition, _fit, _plot, update_rabi_parameters)
 """RabiAmplitude Protocol object."""
