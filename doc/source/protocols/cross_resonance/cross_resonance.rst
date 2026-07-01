@@ -59,7 +59,7 @@ interaction and the accompanying unwanted terms are extracte; these parasitic te
 off-resonant interactions and can significantly affect gate performance.
 | The overall strategy is therefore to characterize the error channels at the Hamiltonian level and compensate them through calibrated control pulses.
 
-| In particular, a rotary drive on the target qubit suppresses unwanted single-qubit rotations (IX, IY),
+| In particular, an oscillating drive on the target qubit suppresses unwanted single-qubit rotations (IX, IY),
 while echo sequences mitigate over essentially ZZ noise.
 By measuring the effective Hamiltonian after each calibration step and iteratively tuning the amplitudes, phases,
 and timings of the added pulses, the undesired interactions are progressively removed,
