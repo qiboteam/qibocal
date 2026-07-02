@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -26,6 +27,11 @@ __all__ = ["ResonatorFluxParameters", "resonator_flux"]
 @dataclass
 class ResonatorFluxParameters(utils.FluxFrequencySweepParameters):
     """ResonatorFlux runcard inputs."""
+
+    bias_center: Optional[float] = None
+    """Bias sweep center [V], used for all qubits."""
+    freq_center: Optional[float] = None
+    """Frequency sweep center [Hz], used for all qubits."""
 
 
 @dataclass
@@ -117,19 +123,26 @@ def _acquisition(
         sequence += ro_sequence
 
         qubit = platform.qubits[q]
-        offset0 = platform.config(qubit.flux).offset
+        bias_offset = (
+            params.bias_center
+            if params.bias_center
+            else platform.config(qubit.flux).offset
+        )
+        freq_offset = (
+            params.freq_center if params.freq_center else readout_frequency(q, platform)
+        )
 
         freq_sweepers.append(
             Sweeper(
                 parameter=Parameter.frequency,
-                values=readout_frequency(q, platform) + params.frequency_range,
+                values=freq_offset + params.frequency_range,
                 channels=[qubit.probe],
             )
         )
         offset_sweepers.append(
             Sweeper(
                 parameter=Parameter.offset,
-                values=offset0 + params.bias_range,
+                values=bias_offset + params.bias_range,
                 channels=[qubit.flux],
             )
         )
@@ -139,7 +152,7 @@ def _acquisition(
             q
         ].resonator.bare_frequency
         matrix_element[q] = platform.calibration.get_crosstalk_element(q, q)
-        offset[q] = -offset0 * matrix_element[q]
+        offset[q] = -bias_offset * matrix_element[q]
         charging_energy[q] = platform.calibration.single_qubits[q].qubit.charging_energy
 
     data = ResonatorFluxData(
