@@ -198,6 +198,10 @@ def plot_signal(
             yaxis_title="Signal [a.u.]",
             xaxis2_title=title,
             yaxis2_title="Phase [rad]",
+            title=(
+                f"Rabi experiment for qubit {qubit} with "
+                + f"drive line {fit.drive_lines[qubit]}"
+            ),
         )
 
     figures.append(fig)
@@ -223,7 +227,10 @@ def plot_probabilities(
                 x=rabi_parameters,
                 y=qubit_data.prob,
                 error_y=dict(
-                    type="data", array=qubit_data.error, visible=True, color="red"
+                    type="data",
+                    array=qubit_data.error,
+                    visible=True,
+                    color="red",
                 ),
                 name="Probability",
                 showlegend=True,
@@ -269,6 +276,10 @@ def plot_probabilities(
             showlegend=True,
             xaxis_title=title,
             yaxis_title="Excited state probability",
+            title=(
+                f"Rabi experiment for qubit {qubit} with "
+                + f"drive line {fit.drive_lines[qubit]}"
+            ),
         )
 
     figures.append(fig)
