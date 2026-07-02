@@ -41,24 +41,38 @@ def update_rabi_parameters(
 ) -> None:
     """Updating RX or RX90 parameters if the drive line is the physical line for qubit `target`"""
     drive_line = results.drive_lines[target]
-    if target == drive_line:
+    # checking if the parameters have been saved
+    if (
+        target == drive_line
+        and target in results.length
+        and target in results.amplitude
+    ):
         update.drive_duration(results.length[target], results.rx90, platform, target)
         update.drive_amplitude(
             results.amplitude[target], results.rx90, platform, target
         )
-        if isinstance(results, RabiFreqResults):
+        if isinstance(results, RabiFreqResults) and target in results.frequency:
             update.drive_frequency(results.frequency[target], platform, target)
-    else:
-        cross_rabi_freq = results.length[target][0] * results.amplitude[target][0]
-        _, rx_pulse = platform.parameters.native_gates.single_qubit[target].RX()[0]
-        rx_rabi_freq = rx_pulse.amplitude * rx_pulse.duration
 
-        # taking the ratio between the direct RX pulse and the cross one
-        # from https://arxiv.org/pdf/2112.03708
-        # here the first index is the qubit I want to drive and the second is the
-        # drive line I want to pulse form.
+
+def update_rabi_ampl_params(
+    results: RabiResults,
+    platform: CalibrationPlatform,
+    target: QubitId,
+):
+    """Update the platform with the results of the RabiAmplitude experiments."""
+
+    # updating rabi parameters in the platform
+    update_rabi_parameters(results, platform, target)
+
+    # saving amplitudes in the crosstalk matrix
+    # from https://arxiv.org/pdf/2112.03708
+    # here the first index is the qubit I want to drive and the second is the
+    # drive line I want to pulse form.
+    if target in results.amplitude:
+        drive_line = results.drive_lines[target]
         platform.calibration.microwave_crosstalk_matrix[target, drive_line] = (
-            cross_rabi_freq / rx_rabi_freq
+            results.amplitude[target][0]
         )
 
 

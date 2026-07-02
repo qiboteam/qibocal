@@ -225,7 +225,7 @@ class Calibration(Model):
             or self.microwave_crosstalk_matrix.matrix.size == 0
         ):
             self.microwave_crosstalk_matrix = Matrix(
-                matrix=ndarray_serialize(np.eye(self.nqubits))
+                matrix=ndarray_serialize(np.full((self.nqubits, self.nqubits), np.inf))
             )
         if self.microwave_crosstalk_matrix.matrix.shape != (self.nqubits, self.nqubits):
             raise ValueError(

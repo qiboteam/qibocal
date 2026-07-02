@@ -25,6 +25,7 @@ from . import (
 from . import (
     flipping as flipping_,
 )
+from . import microwave_cancellation_phase as microwave_cancellation_
 from . import (
     ramsey as ramsey_,
 )
@@ -35,6 +36,7 @@ from .dispersive_shift import *
 from .drag import *
 from .flipping import *
 from .flux_dependence import *
+from .microwave_cancellation_phase import *
 from .qubit_spectroscopies import *
 from .rabi import *
 from .ramsey import *
@@ -67,6 +69,7 @@ __all__ += resonator_spectroscopies.__all__
 __all__ += qubit_spectroscopies.__all__
 __all__ += two_qubit_interaction.__all__
 __all__ += twpa.__all__
+__all__ += microwave_cancellation_.__all__
 
 # TODO: This is a temporary workaround to avoid trying to import the calibrate_mixers
 # module when the optional qblox_instrument dependency is not installed (such as during

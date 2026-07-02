@@ -20,7 +20,7 @@ from .processing import (
     fit_amplitude_function,
     plot_signal,
     rabi_initial_guess,
-    update_rabi_parameters,
+    update_rabi_ampl_params,
 )
 
 __all__ = ["rabi_amplitude_signal"]
@@ -162,5 +162,5 @@ def _plot(
     return plot_signal(data, target, fit, data.rx90)
 
 
-rabi_amplitude_signal = Protocol(_acquisition, _fit, _plot, update_rabi_parameters)
+rabi_amplitude_signal = Protocol(_acquisition, _fit, _plot, update_rabi_ampl_params)
 """RabiAmplitude Protocol object."""

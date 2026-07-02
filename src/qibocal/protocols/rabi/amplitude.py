@@ -26,7 +26,7 @@ from .processing import (
     plot_probabilities,
     rabi_amplitude_function,
     rabi_initial_guess,
-    update_rabi_parameters,
+    update_rabi_ampl_params,
 )
 
 __all__ = ["rabi_amplitude"]
@@ -165,5 +165,5 @@ def _plot(
     return plot_probabilities(data, target, fit, data.rx90)
 
 
-rabi_amplitude = Protocol(_acquisition, _fit, _plot, update_rabi_parameters)
+rabi_amplitude = Protocol(_acquisition, _fit, _plot, update_rabi_ampl_params)
 """RabiAmplitude Protocol object."""

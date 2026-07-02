@@ -23,7 +23,7 @@ from .parent_classes import (
 from .processing import (
     fit_amplitude_function,
     rabi_initial_guess,
-    update_rabi_parameters,
+    update_rabi_ampl_params,
 )
 
 __all__ = ["rabi_amplitude_frequency_signal"]
@@ -288,6 +288,6 @@ def _plot(
 
 
 rabi_amplitude_frequency_signal = Protocol(
-    _acquisition, _fit, _plot, update_rabi_parameters
+    _acquisition, _fit, _plot, update_rabi_ampl_params
 )
 """Rabi amplitude with frequency tuning."""
