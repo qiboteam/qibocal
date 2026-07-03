@@ -150,8 +150,8 @@ def _plot(data: RabiEFSignalData, target: QubitId, fit: RabiResults = None):
 def _update(results: RabiResults, platform: CalibrationPlatform, target: QubitId):
     """Update RX2 amplitude_signal"""
     if target == results.drive_lines[target]:
-        drive_12_amplitude(results.amplitude[target], platform, target)
-        drive_12_duration(results.length[target], platform, target)
+        drive_12_amplitude(results.amplitude[target][0], platform, target)
+        drive_12_duration(results.length[target][0], platform, target)
 
 
 rabi_amplitude_ef = Protocol(_acquisition, _fit, _plot, _update)
