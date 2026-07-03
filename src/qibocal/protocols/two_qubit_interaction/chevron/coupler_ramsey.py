@@ -22,7 +22,7 @@ from qibolab import (
     Sweeper,
 )
 
-from qibocal.auto.operation import Data, Parameters, QubitPairId, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Protocol, QubitPairId, Results
 from qibocal.calibration import CalibrationPlatform
 from qibocal.protocols.utils import table_dict, table_html
 
@@ -241,5 +241,5 @@ def _update(
     pass
 
 
-coupler_ramsey = Routine(_acquisition, _fit, _plot, _update)
-"""Ramsey Routine object."""
+coupler_ramsey = Protocol(_acquisition, _fit, _plot, _update)
+"""Coupler ramsey zz protocol."""
