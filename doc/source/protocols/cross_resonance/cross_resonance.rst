@@ -4,9 +4,9 @@ Calibration of CNOT gate using Cross-Resonance
 It is possible to generate an interaction between two superconducting qubits without requiring
 flux tunability, through a mechanism known as Cross Resonance (CR). This mechanism relies only
 on microwave drive pulses. Moreover, not using flux lines, results in a reduction of the number
-of fridge lines and allows to ignore all problems related to flux noise.
+of fridge lines and allows to decouple from the additional complexity introduced by flux noise.
 
-The cross resonance effect was first proposed :cite:p:`CR_First` in and later
+The CR effect was first proposed :cite:p:`CR_First` in and later
 independently discovered in :cite:p:`CR_Righetti, CR_Second`.
 
 The CR effect can be showed by starting with the Hamiltonian of a two-qubit system with
@@ -18,7 +18,7 @@ a drive term on the first qubit :cite:p:`Manenti:2023zzn`:
         b_2^\dagger b_2 \omega_2 + \frac{\alpha_2}{2} b_2^\dagger b_2^\dagger b_2 b_2 +
         g (b_1 b_2^\dagger + b_1^\dagger b_2) + \Omega(t) (b_1 + b_1^\dagger)
 
-If we are in a dispersive regime (i.e. :math:`|\omega_1 - \omega_2| \gg g`), through a
+If the system is in the dispersive regime (i.e. :math:`|\omega_1 - \omega_2| \gg g`), through a
 Schrieffer-Wolff transformation we can obtain the effective Hamiltonian:
 
 .. math::
@@ -29,10 +29,10 @@ Schrieffer-Wolff transformation we can obtain the effective Hamiltonian:
 
 If we analyze each single component of the equation above we see:
 
-  * two free-qubit terms (:math:`\propto \sigma^z_q`) proportional to the effective qubit frequencies :math:`\tilde{\omega}_q`
-  * ZZ interaction (:math:`\propto \sigma^z_1\sigma^z_2`) with coupling :math:`\eta` which corresponds to a conditional qubit's frequency shift.
-  * drive terms for both qubits (:math:`\propto \sigma^x_q`) with :math:`\nu` corresponding to the quantum crosstalk factor; quantum crosstalk parametrizes the effective coupling between the qubit and the non-directly coupled line.
-  * ZX interaction :math:`\sigma_1^z\sigma^x_2` with coupling :math:`\mu` (cross-resonance factor). In particular This term represents a conditional extra rotation along x-axis for qubit-2 depending on the state of qubit-1.
+* two free-qubit terms (:math:`\propto \sigma^z_q`) proportional to the effective qubit frequencies :math:`\tilde{\omega}_q`
+* ZZ interaction (:math:`\propto \sigma^z_1\sigma^z_2`) with coupling :math:`\eta` which corresponds to a conditional qubit's frequency shift.
+* drive terms for both qubits (:math:`\propto \sigma^x_q`) with :math:`\nu` corresponding to the quantum crosstalk factor; quantum crosstalk parametrizes the effective coupling between the qubit and the non-directly coupled line.
+* ZX interaction (:math:`\sigma_1^z\sigma^x_2`) with coupling :math:`\mu` (cross-resonance factor). In particular This term represents a conditional extra rotation along x-axis for qubit-2 depending on the state of qubit-1.
 
 The whole idea of the Cross Resonance gate is then to exploit ZX-term by driving qubit-1 at qubit-2 frequency;
 in this scheme it is easy to see that qubit-1 behaves as the control qubit while qubit-2 is the target.
@@ -45,7 +45,7 @@ It is easy to prove that the CNOT gate can be built using two single-qubits gate
     \text{CNOT} = \text{R}_\text{ZX}(-\pi/2) \text{R}_\text{IX}(\pi/2) \text{R}_\text{ZI}(\pi/2)
 
 Hence it is necessary to tune the amplitude and the duration of the CR drive pulse to calibrate a
-:math:`RZX(-\pi/2)` rotation.
+:math:`\text{R}_\text{ZX}(-\pi/2)` rotation.
 
 In Qibocal we provide protocols to calibrate CR pulses based on :cite:p:`CR_IBM`.
 The calibration procedure is based on characterizing all terms of the full effective Hamiltonian via a tomography-style experiment:
@@ -60,7 +60,7 @@ off-resonant interactions and can significantly affect gate performance.
 The overall strategy is therefore to characterize the error channels at the Hamiltonian level and compensate them through calibrated control pulses.
 
 In particular, an oscillating drive on the target qubit suppresses unwanted single-qubit rotations (IX, IY),
-while echo sequences mitigate over essentially ZZ noise.
+while echo sequences mitigate over essentially ZZ contribution.
 By measuring the effective Hamiltonian after each calibration step and iteratively tuning the amplitudes, phases,
 and timings of the added pulses, the undesired interactions are progressively removed,
 leaving the desired conditional ZX coupling as the dominant term.
@@ -71,10 +71,16 @@ Here there is a schematic representation of the two pulse sequences, with and wi
 
 .. image:: CR_sequences.png
 
-The CR tune-up procedure consist in three different main steps but executing the full pipeline not required to obtain a
-functioning cross-resonance gate; a CR pulse already generates a conditional interaction that can be used as an
-entangling gate.
-The purpose of the procedure is instead to improve performances by suppressing unwanted contributions.
+The CR tune-up procedure consists of three main steps. While a cross-resonance pulse alone is sufficient to generate the conditional interaction
+required for an entangling gate, the complete tune-up procedure is designed to optimize its performance by suppressing unwanted interaction terms
+and mitigating error sources. The three steps can be summarized as follow:
+
+* *Hamiltonian tomography and gate-length calibration*: a quantum tomography-like experiment is performed to identify the CR pulse duration that maximizes
+the separation between the two conditional rotations on the Bloch sphere.
+* *Phase calibration of CR and cancellation pulses*: the previous experiment is repeated while changing the CR pulse phase, then the phase which
+minimizes misaligned ZY-term is selected.
+* *Amplitude calibration of the cancellation pulse*: similarly to the phase calibration, the experiment is repeated while sweeping the cancellation pulse amplitude.
+The optimal amplitude is then selected as the one that minimizes the unwanted IX and IY crosstalk terms in the effective Hamiltonian.
 
 
 Hamiltonian tomography and gate-length calibration
@@ -207,7 +213,7 @@ Post-processing
 
 The post-processing is the same as for the CR-duration experiment.
 
-Phase calibration of CR and cancellation drives
+Phase calibration of CR and cancellation pulses
 ----------------------------------
 
 This step aligns both the CR and cancellation pulses along the correct axis (the x-axis).
@@ -257,7 +263,7 @@ The expected output is the following:
 .. image:: cr_phase_tuning.png
 
 
-Amplitude calibration of the cancellation drive
+Amplitude calibration of the cancellation pulse
 ----------------------------------
 
 This final step is necessary to cancel out the remaining single-qubit drive terms affecting the target qubit
@@ -312,8 +318,8 @@ The expected output is the following:
 
 
 .. note::
-The `cancellation_phase_tuning` and `cancellation_amplitude_tuning` protocols support an additional
-input parameter, `verbose_plot`. It defaults to `False`; enabling it (`True``) generates plots of
+The ``cancellation_phase_tuning`` and ``cancellation_amplitude_tuning`` protocols support an additional
+input parameter, ``verbose_plot``. It defaults to ``False``; enabling it (``True``) generates plots of
 the measured signal for each axis at every sweeper point.
 
 
