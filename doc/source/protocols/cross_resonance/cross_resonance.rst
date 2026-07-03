@@ -150,14 +150,12 @@ data fluctuations.
 Once the two trajectories (for control prepared in :math:`\{0,1\}`) are fitted to obtain the oscillation frequencies
 :math:`\vec{\Omega}^{\{0, 1\}}`, the Hamiltonian coefficients can be extracted using the following system of equations:
 
-.. math::
-
-  \Omega_{ZX} = \frac{\Omega^0_X - \Omega^1_X}{2}
-  \Omega_{IX} = \frac{\Omega^0_X + \Omega^1_X}{2}
-  \Omega_{ZY} = \frac{\Omega^0_Y - \Omega^1_Y}{2}
-  \Omega_{IY} = \frac{\Omega^0_Y + \Omega^1_Y}{2}
-  \Omega_{ZZ} = \frac{\Omega^0_Z - \Omega^1_Z}{2}
-  \Omega_{IZ} = \frac{\Omega^0_Z + \Omega^1_Z}{2}
+* :math:`\Omega_{ZX} = \frac{\Omega^0_X - \Omega^1_X}{2}`
+* :math:`\Omega_{IX} = \frac{\Omega^0_X + \Omega^1_X}{2}`
+* :math:`\Omega_{ZY} = \frac{\Omega^0_Y - \Omega^1_Y}{2}`
+* :math:`\Omega_{IY} = \frac{\Omega^0_Y + \Omega^1_Y}{2}`
+* :math:`\Omega_{ZZ} = \frac{\Omega^0_Z - \Omega^1_Z}{2}`
+* :math:`\Omega_{IZ} = \frac{\Omega^0_Z + \Omega^1_Z}{2}`
 
 Finally the CR gate optimal duration is estimated by minimizing the Bloch vector norm :math:`|\vec{R}|` defined as:
 
