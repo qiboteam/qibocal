@@ -75,12 +75,9 @@ The CR tune-up procedure consists of three main steps. While a cross-resonance p
 required for an entangling gate, the complete tune-up procedure is designed to optimize its performance by suppressing unwanted interaction terms
 and mitigating error sources. The three steps can be summarized as follow:
 
-* *Hamiltonian tomography and gate-length calibration*: a quantum tomography-like experiment is performed to identify the CR pulse duration that maximizes
-the separation between the two conditional rotations on the Bloch sphere.
-* *Phase calibration of CR and cancellation pulses*: the previous experiment is repeated while changing the CR pulse phase, then the phase which
-minimizes misaligned ZY-term is selected.
-* *Amplitude calibration of the cancellation pulse*: similarly to the phase calibration, the experiment is repeated while sweeping the cancellation pulse amplitude.
-The optimal amplitude is then selected as the one that minimizes the unwanted IX and IY crosstalk terms in the effective Hamiltonian.
+* **Hamiltonian tomography and gate-length calibration**: a quantum tomography-like experiment is performed to identify the CR pulse duration that maximizes the separation between the two conditional rotations on the Bloch sphere.
+* **Phase calibration of CR and cancellation pulses**: the previous experiment is repeated while changing the CR pulse phase, then the phase which minimizes misaligned ZY-term is selected.
+* **Amplitude calibration of the cancellation pulse**: similarly to the phase calibration, the experiment is repeated while sweeping the cancellation pulse amplitude. The optimal amplitude is then selected as the one that minimizes the unwanted IX and IY crosstalk terms in the effective Hamiltonian.
 
 
 Hamiltonian tomography and gate-length calibration
