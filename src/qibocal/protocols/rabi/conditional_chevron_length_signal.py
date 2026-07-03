@@ -1,7 +1,6 @@
 """Rabi experiment that sweeps length and frequency."""
 
 from dataclasses import dataclass, field
-from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -43,7 +42,7 @@ class ConditionalRabiChevronLenSignalParameters(Parameters):
     """Maximum frequency as an offset."""
     step_freq: int
     """Frequency to use as step for the scan."""
-    pulse_amplitude: Optional[float] = None
+    pulse_amplitude: float | None = None
     """Pi pulse amplitude. Same for all qubits."""
 
     @property
@@ -67,7 +66,7 @@ class ConditionalRabiChevronLenSignalParameters(Parameters):
 class ConditionalRabiChevronLenSignalResults(Results):
     """ConditionalRabiChevron outputs."""
 
-    length: dict[QubitPairId, Union[int, list[int]]]
+    length: dict[QubitPairId, int | list[int]]
     """Pi pulse duration for each qubit."""
     fitted_parameters: dict[QubitPairId, dict[str, float]]
     """Raw fitting output."""

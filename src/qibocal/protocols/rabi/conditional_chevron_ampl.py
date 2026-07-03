@@ -1,7 +1,6 @@
 """Rabi experiment that sweeps amplitude and frequency when toggling a spectator qubit."""
 
 from dataclasses import dataclass, field
-from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -50,7 +49,7 @@ class ConditionalRabiChevronAmplParameters(Parameters):
     """Frequency to use as step for the scan."""
     activate_spectators: bool = True
     """Flag for setting spectator qbuit in state 1."""
-    pulse_length: Optional[float] = None
+    pulse_length: float | None = None
     """Pi pulse duration. Same for all qubits."""
 
     @property
@@ -76,7 +75,7 @@ class ConditionalRabiChevronAmplResults(Results):
 
     activate_spectators: bool
     """Flag for setting spectator qbuit in state 1."""
-    amplitude: dict[QubitPairId, Union[float, list[float]]]
+    amplitude: dict[QubitPairId, float | list[float]]
     """Pi pulse duration for each qubit."""
     fitted_parameters: dict[QubitPairId, dict[str, float]]
     """Raw fitting output."""
@@ -215,7 +214,7 @@ def _fit(data: ConditionalRabiChevronAmplData) -> ConditionalRabiChevronAmplResu
 def _plot(
     data: ConditionalRabiChevronAmplData,
     target: QubitPairId,
-    fit: Optional[ConditionalRabiChevronAmplResults] = None,
+    fit: ConditionalRabiChevronAmplResults | None = None,
 ):
     """Plotting function for ConditionalRabiChevron."""
     figures = []
