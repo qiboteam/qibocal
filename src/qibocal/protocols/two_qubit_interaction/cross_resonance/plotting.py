@@ -34,7 +34,7 @@ def tomography_cr_plot(
         rows=4,
         cols=2,
         horizontal_spacing=0.1,
-        vertical_spacing=0.05,
+        vertical_spacing=0.1,
         shared_xaxes=False,
         shared_yaxes=False,
         column_titles=["Target Qubit Evolution", "Control Qubit Evolution"],
@@ -222,7 +222,6 @@ def cancellation_calibration_plot(
     results with fitted curves overlaid on experimental data.
     """
 
-    figures = []
     fitting_report = ""
 
     if fit is None:
@@ -232,10 +231,12 @@ def cancellation_calibration_plot(
             fit_func = fitting.linear_func
             x_title = "amplitude [a.u.]"
             tunable_params = fit.cancellation_pulse_amplitudes[target]
-            plotting_terms = {
-                HamiltonianTerm.IX: "ampl_ix",
-                HamiltonianTerm.IY: "ampl_iy",
+            plotting_line = {
+                HamiltonianTerm.IX: ["ampl_ix", "red"],
+                HamiltonianTerm.IY: ["ampl_iy", "blue"],
             }
+            plotting_terms = list(plotting_line.keys())
+            fig_title = "Ham terms vs Cancellation pulse " + x_title
 
         if type(data).__name__ == "HamiltonianTomographyCANCPhaseData":
             fit_func = fitting.sin_func
@@ -246,81 +247,98 @@ def cancellation_calibration_plot(
                 fit.cancellation_pulse_phases[target]["control"]
                 - fit.cancellation_pulse_phases[target]["target"]
             )
-            plotting_terms = {
-                HamiltonianTerm.ZY: "phi0",
-                HamiltonianTerm.IY: "phi1",
+            plotting_line = {
+                HamiltonianTerm.ZY: ["phi0", "red"],
+                HamiltonianTerm.IY: ["phi1", "blue"],
             }
+            plotting_terms = list(plotting_line.keys()) + [
+                HamiltonianTerm.IX,
+                HamiltonianTerm.ZX,
+            ]
+            fig_title = "Ham terms vs CR pulse " + x_title
 
-        for t in HamiltonianTerm:
+        fig = make_subplots(
+            rows=len(plotting_terms) // 2,
+            cols=1,
+            vertical_spacing=0.1,
+            shared_xaxes=False,
+            shared_yaxes=False,
+            column_titles=[fig_title],
+        )
+
+        for t in plotting_terms:
             eff_ham_term = []
             exp_sweeper = []
             for f in fit.hamiltonian_terms[target]:
                 eff_ham_term.append(f[1][t])
                 exp_sweeper.append(f[0])
-            fig = go.Figure(
-                [
-                    go.Scatter(
-                        x=exp_sweeper,
-                        y=eff_ham_term,
-                        opacity=1,
-                        name=f"{t.name}",
-                        showlegend=True,
-                        legendgroup="Probability",
-                        line=go.scatter.Line(dash="dot"),
-                    )
-                ]
+
+            plot_row = 1 if "I" in t.name else 2
+            fig.append_trace(
+                go.Scatter(
+                    x=exp_sweeper,
+                    y=eff_ham_term,
+                    opacity=1,
+                    name=f"{t.name}",
+                    showlegend=True,
+                    legendgroup="Probability",
+                    mode="markers",
+                ),
+                row=plot_row,
+                col=1,
             )
 
             if target in fit.fitted_parameters and t in fit.fitted_parameters[target]:
-                amp_range = np.linspace(
+                sweep_range = np.linspace(
                     min(exp_sweeper),
                     max(exp_sweeper),
                     2 * len(exp_sweeper) if len(exp_sweeper) >= 100 else 200,
                 )
-                params = fit.fitted_parameters[target][t]
+                fit_y = fit_func(sweep_range, **fit.fitted_parameters[target][t])
                 fig.add_trace(
                     go.Scatter(
-                        x=amp_range,
-                        y=fit_func(amp_range, **params),
+                        x=sweep_range,
+                        y=fit_y,
                         name=f"{t.name} Fit",
                         mode="lines",
                     ),
+                    row=plot_row,
+                    col=1,
                 )
 
-                if t in plotting_terms:
-                    params_name = plotting_terms[t]
-                    fig.add_vline(
-                        x=tunable_params[params_name],
-                        name=f"{params_name}",
-                        line_dash="dash",
+                if t in plotting_line:
+                    params_name = plotting_line[t][0]
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[tunable_params[params_name]] * 2,
+                            y=[
+                                min(fit_y) - 0.1 * (max(fit_y) - min(fit_y)),
+                                max(fit_y) + 0.1 * (max(fit_y) - min(fit_y)),
+                            ],
+                            mode="lines",
+                            line=go.scatter.Line(
+                                color=plotting_line[t][1], width=3, dash="dash"
+                            ),
+                            name=f"{params_name}",
+                            showlegend=True,
+                            legendgroup=f"{params_name}",
+                        ),
+                        row=plot_row,
+                        col=1,
                     )
 
-                fig.update_layout(
-                    showlegend=True,
-                    xaxis_title=(f"{x_title}"),
-                    yaxis_title="Interaction strength [MHz]",
-                )
+        height = 500 if plot_row == 1 else 800
+        fig.update_layout(height=height, showlegend=True)
+        for i in range(1, plot_row + 1):
+            fig.update_yaxes(title_text="Interaction strength [MHz]", row=i)
+            fig.update_xaxes(title_text=f"{x_title}", row=i)
 
-                fitting_report = table_html(
-                    table_dict(
-                        8 * [target],
-                        (
-                            [
-                                f"{term.name}: Fitted_parameters"
-                                for term in HamiltonianTerm
-                            ]
-                            + [k for k in tunable_params.keys()]
-                        ),
-                        (
-                            [
-                                fit.fitted_parameters[target][term]
-                                for term in HamiltonianTerm
-                            ]
-                            + [v for v in tunable_params.values()]
-                        ),
-                    )
-                )
+        fitting_report = table_html(
+            table_dict(
+                len(plotting_line) * [target],
+                ([k for k in tunable_params.keys()]),
+                ([v for v in tunable_params.values()]),
+            )
+        )
 
-            figures.append(fig)
-
-    return figures, fitting_report
+    return [fig], fitting_report
