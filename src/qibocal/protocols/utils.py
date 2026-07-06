@@ -1187,6 +1187,9 @@ def fallback_period(period: NDArray) -> NDArray:
     return np.where(np.isnan(period), 4, period)
 
 
+Range = tuple[float, float, float]
+"""Value range, corresponding to ``(start, stop, step)``."""
+
 RangeLike = (
     tuple[float, float, float]
     | tuple[Literal["linspace"], float, float, int]
@@ -1224,9 +1227,7 @@ The other variants are the following:
 """
 
 
-def to_range(
-    spec: RangeLike, center: float | None = None
-) -> tuple[float, float, float]:
+def to_range(spec: RangeLike, center: float | None = None) -> Range:
     """Convert any range specification into the default representation."""
 
     if not isinstance(spec[0], str):
