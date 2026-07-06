@@ -2,7 +2,7 @@ from collections import Counter
 from collections.abc import Sequence
 from colorsys import hls_to_rgb
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -1185,3 +1185,72 @@ def fallback_period(period: NDArray) -> NDArray:
     )
 
     return np.where(np.isnan(period), 4, period)
+
+
+RangeLike = (
+    tuple[float, float, float]
+    | tuple[Literal["linspace"], float, float, int]
+    | tuple[Literal["window"], float, float, float]
+    | tuple[Literal["linwindow"], float, float, int]
+    | tuple[Literal["center"], float, float]
+    | tuple[Literal["lincenter"], float, int]
+    | tuple[Literal["asym"], tuple[float, float], float]
+    | tuple[Literal["linasym"], tuple[float, float], int]
+)
+"""Range specification.
+
+The alternative options allow for multiple representations of a range, which could all
+be reconducted to a sequence of evenly spaced values.
+
+The semantics of the default one is equivalent to that of the built-in :func:`range`, in
+which the three values correspond to ``(start, stop, step)``. Unlike :func:`range`, all
+values are mandatory, since the usual defaults are often unsuitable.
+
+The other variants are unambiguously discriminated by a starting label, e.g.
+``("linspace", 1.2, 1.5, 70)``.
+
+In the ``linspace`` variant, the ``step`` element is replaced with the number of steps.
+Since the step specification is always mandatory, for each of the other variants a
+further ``lin<...>`` version is also avaialble, making the same substitution.
+
+The other variants are the following:
+
+- ``window``, which allows to specify the center and width of the window, instead of its
+  extremes, i.e. ``("window", center, width, step)``
+- ``center``, similar to the former, but assuming a default for the center, which
+  depends the chosen protocol, i.e. ``("center", width, step)``
+- ``asym``, which is also a way to build upon an implicit center, but with specifying an
+  asymmetric interval around it, i.e. ``("asim", (left-shift, right-shift), step)``
+"""
+
+
+def to_range(
+    spec: RangeLike, center: float | None = None
+) -> tuple[float, float, float]:
+    """Convert any range specification into the default representation."""
+
+    if not isinstance(spec[0], str):
+        # Default case: assume it's a tuple of (start, stop, step)
+        return spec
+
+    if any(lab in spec[0] for lab in {"center", "asym"}) and center is None:
+        raise ValueError(
+            f"Center must be provided for '{spec[0]}' range specification."
+        )
+
+    if spec[0] == "linspace":
+        start, stop = spec[1:3]
+    elif spec[0].endswith("window"):
+        center_, width = spec[1:3]
+        start, stop = center_ - width / 2, center_ + width / 2
+    elif spec[0].endswith("center"):
+        width = spec[1]
+        start, stop = center - width / 2, center + width / 2
+    elif spec[0].endswith("asym"):
+        left_shift, right_shift = spec[1]
+        start, stop = center - left_shift, center + right_shift
+
+    if spec[0].startswith("lin"):
+        step = (stop - start) / (spec[-1] - 1)
+        return start, stop, step
+    return start, stop, spec[-1]
