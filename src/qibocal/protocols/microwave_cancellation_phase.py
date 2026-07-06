@@ -92,10 +92,14 @@ def _acquisition(
         qd_channel, qd_pulse = qubit_natives.RX()[0]
         qro_channel, qro_pulse = qubit_natives.MZ()[0]
 
-        drive_channel, drive_pulse = platform.parameters.native_gates.single_qubit[
+        # retrieving the channel related to the drive line
+        drive_channel, _ = platform.parameters.native_gates.single_qubit[
             drive_line
         ].RX()[0]
+
+        # pulse amplitude from drive_line that flips qubit
         cross_ampl = platform.calibration.microwave_crosstalk_matrix[qubit, drive_line]
+        # 180 amplitude when we drive qubit on its own line
         direct_ampl = platform.calibration.microwave_crosstalk_matrix[qubit, qubit]
 
         if not np.isfinite(cross_ampl):
@@ -103,11 +107,14 @@ def _acquisition(
                 f"Rabi amplitude calibration is missing for qubit {qubit} on drive line {drive_line}."
             )
 
+        # creating the crosstalk pulse on line drive_line
         cross_pulse = replace(
-            drive_pulse.new(),
+            qd_pulse.new(),
             duration=qd_pulse.duration,
             amplitude=cross_ampl,
         )
+        # creating the pulse on qubit's line with rescaled amplitude
+        # in order to cancel the crosstalk one
         cancellation_pulse = replace(
             cross_pulse.new(),
             amplitude=cross_pulse.amplitude * direct_ampl / cross_ampl,
